@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 from datetime import datetime
 
 
@@ -16,7 +16,7 @@ class Project:
                  project_id: str,
                  name: str,
                  path: str,
-                 state: ProjectState = ProjectState.ACTIVE):
+                 state: ProjectState = ProjectState.ACTIVE) -> None:
         self.id = project_id
         self.name = name
         self.path = path
@@ -29,7 +29,7 @@ class Project:
 class Workspace:
     """Manages multiple projects."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.projects: Dict[str, Project] = {}
 
     def add_project(self, project: Project) -> None:
