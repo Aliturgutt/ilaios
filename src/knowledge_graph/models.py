@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 
 
 class NodeType(Enum):
@@ -58,9 +58,9 @@ class Edge:
                  source_id: str,
                  target_id: str,
                  edge_type: EdgeType,
-                 properties: Dict[str, Any] = None):
+                 properties: Optional[Dict[str, Any]] = None):
         self.id = edge_id
         self.source = source_id
         self.target = target_id
         self.type = edge_type
-        self.properties = properties or {}
+        self.properties: Dict[str, Any] = properties if properties is not None else {}
