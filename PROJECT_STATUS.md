@@ -3,7 +3,7 @@
 ## Current Project Status
 
 - Environment and Repository Verification: COMPLETED / ACCEPTED
-- Core Initialization: NOT STARTED
+- Core Initialization: IN PROGRESS
 - Core Module Implementation: NOT STARTED
 - Current Phase: CORE INITIALIZATION
 - Repository Baseline: Stable
@@ -34,18 +34,24 @@
   and Repository Verification phase (baseline quality gates: ruff, mypy
   --strict, pytest, pre-commit). It does not indicate that Core
   Initialization has started, and no Core module implementation exists yet.
+- Fixed architecture order for Core Initialization:
+  1. Bootstrap Validator
+  2. Immutable Context
+  3. Tool Gateway
+  4. Audit Engine
+  5. Validation Pipeline
+  6. Evidence Chain
+  7. Confidence Scoring
 
 ## Completed Modules
 
-- None yet under Core Initialization. The model/agent files repaired during
-  Environment and Repository Verification (`code_intelligence`,
-  `knowledge_graph`, `project_manager`, `core/agent.py`) are pre-existing
-  baseline files, not Core Initialization deliverables.
+- Bootstrap Validator / Git Validation Foundation: COMPLETED
 
 ## Remaining Tasks
 
-- Core Initialization — not yet started.
-- Core Module Implementation — not yet started.
+- Core Initialization — IN PROGRESS
+- Core Module Implementation — not yet started
+- Immutable Context: NOT STARTED
 
 ## Known Issues
 
