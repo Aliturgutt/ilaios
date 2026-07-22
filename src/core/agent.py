@@ -7,17 +7,17 @@ from dotenv import load_dotenv
 
 DEFAULT_MODEL = "anthropic/claude-sonnet-5"
 
-# .env dosyasını proje kök klasöründe ara (src/core/agent.py'nin 2 üst klasörü)
+# .env dosyasini proje kocke klasorunda ara (src/core/agent.py'nin 2 ust klasoru)
 env_path = Path(__file__).parent.parent.parent / '.env'
 load_dotenv(dotenv_path=env_path)
 
 
 class OpenRouterConfigError(Exception):
-    """API anahtarı gibi yapılandırma bilgileri eksik veya geçersiz olduğunda yükseltilir."""
+    """API anahtarı gibi yapilandirmalari eksik veya gecerli olmadiginda yukselir."""
 
 
 class OpenRouterResponseError(Exception):
-    """OpenRouter yanıtı beklenen alanları içermediğinde yükseltilir."""
+    """OpenRouter response'u beklenen alanlari icermediğinde yükselir."""
 
 
 class OpenRouterAgent:
@@ -25,7 +25,7 @@ class OpenRouterAgent:
         api_key = os.getenv('OPENROUTER_API_KEY')
         if not api_key:
             raise OpenRouterConfigError(
-                "OPENROUTER_API_KEY bulunamadı! .env dosyasını kontrol et."
+                "OPENROUTER_API_KEY bulunamadi! .env dosyasini kontrol et."
             )
         self.api_key: str = api_key
         self.base_url: str = "https://openrouter.ai/api/v1"
