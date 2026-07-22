@@ -2,12 +2,13 @@
 
 ## Current Project Status
 
-- Phase: Core Initialization
-- Status: COMPLETED / ACCEPTED
-- Repository Status: Stable
-- Quality Gates: Ruff, Mypy --strict, Pytest, Pre-commit — all passed
+- Environment and Repository Verification: COMPLETED / ACCEPTED
+- Core Initialization: NOT STARTED
+- Core Module Implementation: NOT STARTED
+- Current Phase: CORE INITIALIZATION
+- Repository Baseline: Stable
+- Quality Gates at Baseline: Passed
 - Git: Working tree clean; origin/master synchronized
-- Result: Repository ready for Core Module Implementation
 
 ## Decision Log
 
@@ -29,20 +30,26 @@
   `init.py` renames were necessary).
 - Added targeted unit tests for all touched modules; all HTTP calls in
   OpenRouter agent tests are mocked — no live API calls are made.
+- The prior `ACCEPTED` verification result applies only to the Environment
+  and Repository Verification phase (baseline quality gates: ruff, mypy
+  --strict, pytest, pre-commit). It does not indicate that Core
+  Initialization has started, and no Core module implementation exists yet.
 
 ## Completed Modules
 
-- `src/code_intelligence/models.py` (`Symbol`, `SymbolType`, `Language`)
-- `src/knowledge_graph/models.py` (`Node`, `Edge`, `NodeType`, `EdgeType`)
-- `src/project_manager/models.py` (`Project`, `Workspace`, `ProjectState`)
-- `src/core/agent.py` (`OpenRouterAgent`)
+- None yet under Core Initialization. The model/agent files repaired during
+  Environment and Repository Verification (`code_intelligence`,
+  `knowledge_graph`, `project_manager`, `core/agent.py`) are pre-existing
+  baseline files, not Core Initialization deliverables.
 
 ## Remaining Tasks
 
-- Core Module Implementation (next phase) — not yet started.
+- Core Initialization — not yet started.
+- Core Module Implementation — not yet started.
 
 ## Known Issues
 
-- None open. All mandatory quality gates (`pre-commit`, `ruff check .`,
-  `mypy --strict .`, `pytest -q`) pass with exit code 0 as of the last
-  verification run against commit `e0e2eb768f507b8a4cab71ee67fdcefe1876761f`.
+- None verified at baseline. Baseline quality gates (`pre-commit`,
+  `ruff check .`, `mypy --strict .`, `pytest -q`) passed with exit code 0 as
+  of the last verification run against commit
+  `e0e2eb768f507b8a4cab71ee67fdcefe1876761f`.
