@@ -1,0 +1,8 @@
+[tool.mypy]
+mypy_path = "."
+explicit_package_bases = true
+strict = true
+
+[[tool.mypy.overrides]]
+module = "requests.*"
+ignore_missing_imports = true
