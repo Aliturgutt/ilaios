@@ -107,3 +107,13 @@ class AuditEngine:
     def count(self) -> int:
         """Return the number of stored audit records."""
         return len(self._records)
+
+    def ingest_event(
+        self,
+        component: str,
+        action: str,
+        status: str,
+        details: Mapping[str, str] | None = None,
+    ) -> AuditRecord:
+        """Ingest an audit event and return the created record."""
+        return self.record(component, action, status, details)
