@@ -1,40 +1,26 @@
-# Hermes Enterprise OS — Project Status
+# Hermes Enterprise OS - Project Status
 
 ## Current Project Status
 
 - Environment and Repository Verification: COMPLETED / ACCEPTED
-- Core Initialization: COMPLETED
-- Core Module Implementation: NOT STARTED
-- Current Phase: CORE INITIALIZATION
+- Core Initialization: COMPLETED / ACCEPTED
+- Core Module Implementation: COMPLETED
+- Current Phase: CORE COMPLETE
 - Repository Baseline: Stable
-- Quality Gates at Baseline: Passed
+- Quality Gates: Passed
 - Git: Working tree clean; origin/master synchronized
 
 ## Decision Log
 
-- Repaired `code_intelligence`, `knowledge_graph`, and `project_manager` model
-  modules: added missing `Any` imports, fixed unsafe mutable-default argument
-  on `Edge.properties`, added explicit `-> None` return annotations where
-  missing under `mypy --strict`.
-- Hardened `src/core/agent.py`: removed UTF-8 BOM, removed hardcoded
-  `deepseek/deepseek-chat` model, made model configurable via
-  `OPENROUTER_MODEL` env var (default `anthropic/claude-sonnet-5`), replaced
-  blanket `except Exception -> "Hata: ..."` string-masking with real
-  exception propagation (`requests.raise_for_status()`, new
-  `OpenRouterConfigError` / `OpenRouterResponseError`).
-- Added `pyproject.toml` with a minimal `[tool.mypy]` block
-  (`explicit_package_bases = true`, `strict = true`) — required for
-  `mypy --strict` to resolve the `src/` package layout without module-name
-  collisions; no architecture or dependency changes.
-- Verified package `__init__.py` files were already correctly named (no
-  `init.py` renames were necessary).
-- Added targeted unit tests for all touched modules; all HTTP calls in
-  OpenRouter agent tests are mocked — no live API calls are made.
-- The prior `ACCEPTED` verification result applies only to the Environment
-  and Repository Verification phase (baseline quality gates: ruff, mypy
-  --strict, pytest, pre-commit). It does not indicate that Core
-  Initialization has started, and no Core module implementation exists yet.
-- Fixed architecture order for Core Initialization:
+- Repaired `code_intelligence`, `knowledge_graph`, and `project_manager`
+  model modules for strict type-checking compatibility.
+- Hardened `src/core/agent.py` by removing hardcoded model selection,
+  supporting `OPENROUTER_MODEL`, and using explicit configuration,
+  HTTP, and response errors.
+- Configured strict mypy validation for the `src/` package layout.
+- Added deterministic unit tests for all implemented Core modules.
+- OpenRouter HTTP calls are mocked; tests make no live API calls.
+- Core Initialization was implemented in the fixed architecture order:
   1. Bootstrap Validator
   2. Immutable Context
   3. Tool Gateway
@@ -42,20 +28,40 @@
   5. Validation Pipeline
   6. Evidence Chain
   7. Confidence Scoring
+- Core completion was accepted after all repository-wide quality gates
+  passed and the local branch matched `origin/master`.
 
 ## Completed Modules
 
-- Bootstrap Validator / Git Validation Foundation: COMPLETED
+1. Bootstrap Validator / Git Validation Foundation: COMPLETED
+2. Immutable Context: COMPLETED
+3. Tool Gateway: COMPLETED
+4. Audit Engine: COMPLETED
+5. Validation Pipeline: COMPLETED
+6. Evidence Chain: COMPLETED
+7. Confidence Scoring: COMPLETED
+
+## Verification Evidence
+
+- `pre-commit run --all-files`: PASSED
+- `ruff check .`: PASSED
+- `mypy --strict .`: PASSED
+- `python -m pytest -q`: PASSED
+- Test result: `106 passed`
+- Last verified Core commit:
+  `1e7afc97a2ef356d127007ae4fe68571039ef8ae`
+- Local `HEAD` matched the configured upstream branch.
+- Working tree was clean after commit and push.
 
 ## Remaining Tasks
 
-- Core Initialization — IN PROGRESS
-- Core Module Implementation — not yet started
-- Immutable Context: NOT STARTED
+- Core Initialization: NONE
+- Core Module Implementation: NONE
+- Next project phase: NOT YET DEFINED
+
+The next phase will be selected separately. No additional Core module will be
+invented or added without an approved scope.
 
 ## Known Issues
 
-- None verified at baseline. Baseline quality gates (`pre-commit`,
-  `ruff check .`, `mypy --strict .`, `pytest -q`) passed with exit code 0 as
-  of the last verification run against commit
-  `e0e2eb768f507b8a4cab71ee67fdcefe1876761f`.
+- No verified Core implementation issues.
