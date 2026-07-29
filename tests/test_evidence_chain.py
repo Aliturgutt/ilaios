@@ -84,7 +84,7 @@ def test_evidence_record_rejects_empty_source() -> None:
         _record(source="   ")
 
 
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # type: ignore[misc, unused-ignore]
     "invalid_hash",
     [
         "",
