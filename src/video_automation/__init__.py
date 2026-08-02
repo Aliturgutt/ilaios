@@ -33,6 +33,12 @@ from .models import (
     VideoScript,
 )
 from .provider_registry import ProviderDescriptor, ProviderRegistry
+from .provider_selection import (
+    ProviderSelectionEngine,
+    ProviderSelectionError,
+    ProviderSelectionRequest,
+    ProviderSelectionResult,
+)
 from .providers import (
     BaseProvider,
     ImageGenerationProvider,
@@ -72,6 +78,10 @@ __all__ = [
     "ProviderRegistry",
     "ProviderRequest",
     "ProviderResult",
+    "ProviderSelectionEngine",
+    "ProviderSelectionError",
+    "ProviderSelectionRequest",
+    "ProviderSelectionResult",
     "PublishJob",
     "PublishingProvider",
     "PublishingProviderOutput",
