@@ -61,6 +61,13 @@ from .research import (
     ResearchPolicy,
     ResearchValidation,
 )
+from .script_generation import (
+    ScriptDraft,
+    ScriptGenerationPipeline,
+    ScriptGenerationPolicy,
+    ScriptSectionDraft,
+    ScriptValidation,
+)
 
 __all__ = [
     "ApprovalMode",
@@ -101,7 +108,12 @@ __all__ = [
     "ResearchValidation",
     "RetryPolicy",
     "Scene",
+    "ScriptDraft",
+    "ScriptGenerationPipeline",
+    "ScriptGenerationPolicy",
     "ScriptSection",
+    "ScriptSectionDraft",
+    "ScriptValidation",
     "Shot",
     "SoundEffectProvider",
     "StockMediaProvider",
