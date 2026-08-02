@@ -61,6 +61,14 @@ from .research import (
     ResearchPolicy,
     ResearchValidation,
 )
+from .scene_planning import (
+    CinematicShot,
+    EpisodeBeat,
+    EpisodeShotPlan,
+    ScenePlanner,
+    ShotPlannerConfig,
+    ShotPlanningError,
+)
 from .script_generation import (
     ScriptDraft,
     ScriptGenerationPipeline,
@@ -74,7 +82,10 @@ __all__ = [
     "AssetRequest",
     "BaseProvider",
     "BudgetPolicy",
+    "CinematicShot",
     "CostRecord",
+    "EpisodeBeat",
+    "EpisodeShotPlan",
     "ExecutionMode",
     "ImageGenerationProvider",
     "JobState",
@@ -108,6 +119,7 @@ __all__ = [
     "ResearchValidation",
     "RetryPolicy",
     "Scene",
+    "ScenePlanner",
     "ScriptDraft",
     "ScriptGenerationPipeline",
     "ScriptGenerationPolicy",
@@ -115,6 +127,8 @@ __all__ = [
     "ScriptSectionDraft",
     "ScriptValidation",
     "Shot",
+    "ShotPlannerConfig",
+    "ShotPlanningError",
     "SoundEffectProvider",
     "StockMediaProvider",
     "Timeline",
