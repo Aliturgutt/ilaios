@@ -32,6 +32,7 @@ from .models import (
     VideoJob,
     VideoScript,
 )
+from .provider_registry import ProviderDescriptor, ProviderRegistry
 from .providers import (
     BaseProvider,
     ImageGenerationProvider,
@@ -66,7 +67,9 @@ __all__ = [
     "PlatformPolicy",
     "Provider",
     "ProviderCapabilities",
+    "ProviderDescriptor",
     "ProviderPolicy",
+    "ProviderRegistry",
     "ProviderRequest",
     "ProviderResult",
     "PublishJob",
