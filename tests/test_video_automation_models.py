@@ -212,18 +212,18 @@ def test_asset_request_metadata_is_sorted_and_read_only() -> None:
         request.metadata["x"] = 3  # type: ignore[index]
 
 
-@pytest.mark.parametrize("checksum", ["abc", "g" * 64])  # type: ignore[misc]
-def test_media_asset_rejects_invalid_sha256(checksum: str) -> None:
-    with pytest.raises(ValueError, match="checksum_sha256"):
-        MediaAsset(
-            asset_id="asset-1",
-            job_id="job-1",
-            media_type=MediaType.VIDEO,
-            file_path="media/clip.mp4",
-            checksum_sha256=checksum,
-            provider_name="local-test",
-            source_reference="fixture://clip",
-        )
+def test_media_asset_rejects_invalid_sha256() -> None:
+    for checksum in ("abc", "g" * 64):
+        with pytest.raises(ValueError, match="checksum_sha256"):
+            MediaAsset(
+                asset_id="asset-1",
+                job_id="job-1",
+                media_type=MediaType.VIDEO,
+                file_path="media/clip.mp4",
+                checksum_sha256=checksum,
+                provider_name="local-test",
+                source_reference="fixture://clip",
+            )
 
 
 def test_timeline_requires_unique_item_ids() -> None:
