@@ -55,6 +55,12 @@ from .providers import (
     VideoGenerationProvider,
     VoiceProvider,
 )
+from .research import (
+    ResearchInput,
+    ResearchPipeline,
+    ResearchPolicy,
+    ResearchValidation,
+)
 
 __all__ = [
     "ApprovalMode",
@@ -88,7 +94,11 @@ __all__ = [
     "QualityRequirements",
     "RenderArtifact",
     "RenderProviderOutput",
+    "ResearchInput",
     "ResearchPacket",
+    "ResearchPipeline",
+    "ResearchPolicy",
+    "ResearchValidation",
     "RetryPolicy",
     "Scene",
     "ScriptSection",
