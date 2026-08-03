@@ -103,6 +103,13 @@ from .provider_execution import (
     ProviderExecutionError,
     ProviderExecutionOrchestrator,
 )
+from .seedance_ark_provider import (
+    ArkJsonResponse,
+    ArkJsonTransport,
+    SeedanceArkProviderError,
+    SeedanceArkVideoGenerationProvider,
+    UrllibArkJsonTransport,
+)
 from .provider_registry import ProviderDescriptor, ProviderRegistry
 from .provider_selection import (
     ProviderSelectionEngine,
@@ -162,6 +169,8 @@ from .script_generation import (
 
 __all__ = [
     "ApprovalMode",
+    "ArkJsonResponse",
+    "ArkJsonTransport",
     "AssetRequest",
     "BaseProvider",
     "BudgetPolicy",
@@ -256,6 +265,8 @@ __all__ = [
     "ResearchPolicy",
     "ResearchValidation",
     "RetryPolicy",
+    "SeedanceArkProviderError",
+    "SeedanceArkVideoGenerationProvider",
     "Scene",
     "ScenePlanner",
     "ScriptDraft",
@@ -276,6 +287,7 @@ __all__ = [
     "Timeline",
     "TimelineItem",
     "TranscriptionProvider",
+    "UrllibArkJsonTransport",
     "ValidationResult",
     "VideoAutomationPolicy",
     "VideoFormat",
