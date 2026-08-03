@@ -34,6 +34,12 @@ from .generation_execution_tracking import (
     GenerationExecutionTrackingError,
     GenerationExecutionUpdate,
 )
+from .generation_result_ingestion import (
+    EpisodeGenerationResultIngester,
+    EpisodeGenerationResultManifest,
+    GenerationResultAsset,
+    GenerationResultIngestionError,
+)
 from .generation_batch_planning import (
     EpisodeGenerationBatchPlan,
     EpisodeGenerationBatchPlanner,
@@ -148,6 +154,10 @@ __all__ = [
     "GenerationExecutionStatus",
     "GenerationExecutionTrackingError",
     "GenerationExecutionUpdate",
+    "EpisodeGenerationResultIngester",
+    "EpisodeGenerationResultManifest",
+    "GenerationResultAsset",
+    "GenerationResultIngestionError",
     "GenerationBatchDispatch",
     "GenerationDispatchItem",
     "GenerationDispatchPlanningError",
