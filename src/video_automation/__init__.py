@@ -40,6 +40,14 @@ from .generation_result_ingestion import (
     GenerationResultAsset,
     GenerationResultIngestionError,
 )
+from .generation_result_validation import (
+    EpisodeGenerationResultValidator,
+    EpisodeGenerationValidationManifest,
+    GenerationAssetValidationObservation,
+    GenerationAssetValidationStatus,
+    GenerationResultValidationError,
+    ValidatedGenerationAsset,
+)
 from .generation_batch_planning import (
     EpisodeGenerationBatchPlan,
     EpisodeGenerationBatchPlanner,
@@ -158,6 +166,12 @@ __all__ = [
     "EpisodeGenerationResultManifest",
     "GenerationResultAsset",
     "GenerationResultIngestionError",
+    "EpisodeGenerationResultValidator",
+    "EpisodeGenerationValidationManifest",
+    "GenerationAssetValidationObservation",
+    "GenerationAssetValidationStatus",
+    "GenerationResultValidationError",
+    "ValidatedGenerationAsset",
     "GenerationBatchDispatch",
     "GenerationDispatchItem",
     "GenerationDispatchPlanningError",
