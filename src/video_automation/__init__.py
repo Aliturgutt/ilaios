@@ -97,6 +97,12 @@ from .prompt_compilation import (
     ShotPromptPackage,
     ShotPromptPolicy,
 )
+from .provider_execution import (
+    EpisodeProviderExecutionReport,
+    ProviderDispatchSubmission,
+    ProviderExecutionError,
+    ProviderExecutionOrchestrator,
+)
 from .provider_registry import ProviderDescriptor, ProviderRegistry
 from .provider_selection import (
     ProviderSelectionEngine,
@@ -219,10 +225,13 @@ __all__ = [
     "ShotPromptCompiler",
     "ShotPromptPackage",
     "ShotPromptPolicy",
+    "ProviderDispatchSubmission",
     "Provider",
     "ProviderCapabilities",
     "ProviderDescriptor",
+    "ProviderExecutionError",
     "ProviderPolicy",
+    "ProviderExecutionOrchestrator",
     "ProviderRegistry",
     "ProviderRequest",
     "ProviderResult",
@@ -234,6 +243,7 @@ __all__ = [
     "PublishingProvider",
     "PublishingProviderOutput",
     "QualityRequirements",
+    "EpisodeProviderExecutionReport",
     "EpisodeRequestManifest",
     "EpisodeRequestManifestBuilder",
     "RequestManifestError",
