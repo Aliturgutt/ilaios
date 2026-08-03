@@ -85,6 +85,17 @@ from .generation_result_validation import (
     GenerationResultValidationError,
     ValidatedGenerationAsset,
 )
+from .episode_assembly_execution import (
+    EpisodeAssemblyArtifact,
+    EpisodeAssemblyExecutionCoordinator,
+    EpisodeAssemblyExecutionError,
+    EpisodeAssemblyExecutor,
+    EpisodeAssemblyExecutorRequest,
+    EpisodeAssemblyExecutorResult,
+    EpisodeAssemblyInputClip,
+    FfmpegEpisodeAssemblyExecutor,
+)
+
 from .episode_assembly_planning import (
     EpisodeAssemblyClip,
     EpisodeAssemblyPlan,
@@ -221,6 +232,14 @@ __all__ = [
     "ContinuityTransition",
     "ContinuityUpdate",
     "CostRecord",
+    "EpisodeAssemblyArtifact",
+    "EpisodeAssemblyExecutionCoordinator",
+    "EpisodeAssemblyExecutionError",
+    "EpisodeAssemblyExecutor",
+    "EpisodeAssemblyExecutorRequest",
+    "EpisodeAssemblyExecutorResult",
+    "EpisodeAssemblyInputClip",
+    "FfmpegEpisodeAssemblyExecutor",
     "EpisodeAssemblyClip",
     "EpisodeAssemblyPlan",
     "EpisodeAssemblyPlanner",
@@ -290,7 +309,8 @@ __all__ = [
     "MediaTechnicalValidationCoordinator",
     "MediaTechnicalValidationError",
     "MediaTechnicalValidationStatus",
-    "ValidatedMediaAsset",    "MusicProvider",
+    "ValidatedMediaAsset",
+    "MusicProvider",
     "PlatformPolicy",
     "PromptCompilationError",
     "PromptSection",
