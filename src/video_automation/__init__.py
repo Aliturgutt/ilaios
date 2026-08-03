@@ -26,6 +26,14 @@ from .generation_dispatch_planning import (
     GenerationDispatchPlanningError,
     GenerationProviderBinding,
 )
+from .generation_execution_tracking import (
+    EpisodeGenerationExecutionState,
+    EpisodeGenerationExecutionTracker,
+    GenerationDispatchExecution,
+    GenerationExecutionStatus,
+    GenerationExecutionTrackingError,
+    GenerationExecutionUpdate,
+)
 from .generation_batch_planning import (
     EpisodeGenerationBatchPlan,
     EpisodeGenerationBatchPlanner,
@@ -134,6 +142,12 @@ __all__ = [
     "CostRecord",
     "EpisodeGenerationDispatchPlan",
     "EpisodeGenerationDispatchPlanner",
+    "EpisodeGenerationExecutionState",
+    "EpisodeGenerationExecutionTracker",
+    "GenerationDispatchExecution",
+    "GenerationExecutionStatus",
+    "GenerationExecutionTrackingError",
+    "GenerationExecutionUpdate",
     "GenerationBatchDispatch",
     "GenerationDispatchItem",
     "GenerationDispatchPlanningError",
