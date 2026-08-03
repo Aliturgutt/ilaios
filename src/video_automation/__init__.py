@@ -18,6 +18,14 @@ from .continuity import (
     ContinuityTransition,
     ContinuityUpdate,
 )
+from .generation_dispatch_planning import (
+    EpisodeGenerationDispatchPlan,
+    EpisodeGenerationDispatchPlanner,
+    GenerationBatchDispatch,
+    GenerationDispatchItem,
+    GenerationDispatchPlanningError,
+    GenerationProviderBinding,
+)
 from .generation_batch_planning import (
     EpisodeGenerationBatchPlan,
     EpisodeGenerationBatchPlanner,
@@ -124,6 +132,12 @@ __all__ = [
     "ContinuityTransition",
     "ContinuityUpdate",
     "CostRecord",
+    "EpisodeGenerationDispatchPlan",
+    "EpisodeGenerationDispatchPlanner",
+    "GenerationBatchDispatch",
+    "GenerationDispatchItem",
+    "GenerationDispatchPlanningError",
+    "GenerationProviderBinding",
     "EpisodeBeat",
     "EpisodeGenerationBatchPlan",
     "EpisodeGenerationBatchPlanner",
