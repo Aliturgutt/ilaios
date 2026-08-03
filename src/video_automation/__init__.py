@@ -48,6 +48,12 @@ from .generation_result_validation import (
     GenerationResultValidationError,
     ValidatedGenerationAsset,
 )
+from .episode_assembly_planning import (
+    EpisodeAssemblyClip,
+    EpisodeAssemblyPlan,
+    EpisodeAssemblyPlanner,
+    EpisodeAssemblyPlanningError,
+)
 from .generation_batch_planning import (
     EpisodeGenerationBatchPlan,
     EpisodeGenerationBatchPlanner,
@@ -154,6 +160,10 @@ __all__ = [
     "ContinuityTransition",
     "ContinuityUpdate",
     "CostRecord",
+    "EpisodeAssemblyClip",
+    "EpisodeAssemblyPlan",
+    "EpisodeAssemblyPlanner",
+    "EpisodeAssemblyPlanningError",
     "EpisodeGenerationDispatchPlan",
     "EpisodeGenerationDispatchPlanner",
     "EpisodeGenerationExecutionState",
