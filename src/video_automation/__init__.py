@@ -10,6 +10,14 @@ from .configuration import (
     RetryPolicy,
     VideoAutomationPolicy,
 )
+from .continuity import (
+    CharacterContinuity,
+    ContinuityError,
+    ContinuityState,
+    ContinuityTracker,
+    ContinuityTransition,
+    ContinuityUpdate,
+)
 from .models import (
     AssetRequest,
     CostRecord,
@@ -83,6 +91,12 @@ __all__ = [
     "BaseProvider",
     "BudgetPolicy",
     "CinematicShot",
+    "CharacterContinuity",
+    "ContinuityError",
+    "ContinuityState",
+    "ContinuityTracker",
+    "ContinuityTransition",
+    "ContinuityUpdate",
     "CostRecord",
     "EpisodeBeat",
     "EpisodeShotPlan",
