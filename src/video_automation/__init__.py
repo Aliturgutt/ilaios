@@ -18,6 +18,13 @@ from .continuity import (
     ContinuityTransition,
     ContinuityUpdate,
 )
+from .generation_batch_planning import (
+    EpisodeGenerationBatchPlan,
+    EpisodeGenerationBatchPlanner,
+    GenerationBatch,
+    GenerationBatchPlanningError,
+    GenerationBatchPolicy,
+)
 from .models import (
     AssetRequest,
     CostRecord,
@@ -118,6 +125,11 @@ __all__ = [
     "ContinuityUpdate",
     "CostRecord",
     "EpisodeBeat",
+    "EpisodeGenerationBatchPlan",
+    "EpisodeGenerationBatchPlanner",
+    "GenerationBatch",
+    "GenerationBatchPlanningError",
+    "GenerationBatchPolicy",
     "EpisodeShotPlan",
     "ExecutionMode",
     "ImageGenerationProvider",
