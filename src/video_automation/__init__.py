@@ -40,6 +40,13 @@ from .models import (
     VideoJob,
     VideoScript,
 )
+from .prompt_compilation import (
+    PromptCompilationError,
+    PromptSection,
+    ShotPromptCompiler,
+    ShotPromptPackage,
+    ShotPromptPolicy,
+)
 from .provider_registry import ProviderDescriptor, ProviderRegistry
 from .provider_selection import (
     ProviderSelectionEngine,
@@ -109,6 +116,11 @@ __all__ = [
     "MediaType",
     "MusicProvider",
     "PlatformPolicy",
+    "PromptCompilationError",
+    "PromptSection",
+    "ShotPromptCompiler",
+    "ShotPromptPackage",
+    "ShotPromptPolicy",
     "Provider",
     "ProviderCapabilities",
     "ProviderDescriptor",
