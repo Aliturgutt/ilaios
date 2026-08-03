@@ -84,6 +84,12 @@ from .scene_planning import (
     ShotPlannerConfig,
     ShotPlanningError,
 )
+from .shot_request_planning import (
+    ShotGenerationPolicy,
+    ShotGenerationRequest,
+    ShotGenerationRequestPlanner,
+    ShotRequestPlanningError,
+)
 from .script_generation import (
     ScriptDraft,
     ScriptGenerationPipeline,
@@ -152,6 +158,10 @@ __all__ = [
     "ScriptSection",
     "ScriptSectionDraft",
     "ScriptValidation",
+    "ShotGenerationPolicy",
+    "ShotGenerationRequest",
+    "ShotGenerationRequestPlanner",
+    "ShotRequestPlanningError",
     "Shot",
     "ShotPlannerConfig",
     "ShotPlanningError",
