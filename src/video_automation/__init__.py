@@ -70,6 +70,12 @@ from .providers import (
     VideoGenerationProvider,
     VoiceProvider,
 )
+from .request_manifest import (
+    EpisodeRequestManifest,
+    EpisodeRequestManifestBuilder,
+    RequestManifestError,
+    ShotRequestEntry,
+)
 from .research import (
     ResearchInput,
     ResearchPipeline,
@@ -142,6 +148,10 @@ __all__ = [
     "PublishingProvider",
     "PublishingProviderOutput",
     "QualityRequirements",
+    "EpisodeRequestManifest",
+    "EpisodeRequestManifestBuilder",
+    "RequestManifestError",
+    "ShotRequestEntry",
     "RenderArtifact",
     "RenderProviderOutput",
     "ResearchInput",
