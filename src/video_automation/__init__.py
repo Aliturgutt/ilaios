@@ -54,6 +54,13 @@ from .episode_assembly_planning import (
     EpisodeAssemblyPlanner,
     EpisodeAssemblyPlanningError,
 )
+from .episode_assembly_request_planning import (
+    EpisodeAssemblyOutputPolicy,
+    EpisodeAssemblyRequest,
+    EpisodeAssemblyRequestClip,
+    EpisodeAssemblyRequestPlanner,
+    EpisodeAssemblyRequestPlanningError,
+)
 from .generation_batch_planning import (
     EpisodeGenerationBatchPlan,
     EpisodeGenerationBatchPlanner,
@@ -164,6 +171,11 @@ __all__ = [
     "EpisodeAssemblyPlan",
     "EpisodeAssemblyPlanner",
     "EpisodeAssemblyPlanningError",
+    "EpisodeAssemblyOutputPolicy",
+    "EpisodeAssemblyRequest",
+    "EpisodeAssemblyRequestClip",
+    "EpisodeAssemblyRequestPlanner",
+    "EpisodeAssemblyRequestPlanningError",
     "EpisodeGenerationDispatchPlan",
     "EpisodeGenerationDispatchPlanner",
     "EpisodeGenerationExecutionState",
