@@ -177,6 +177,13 @@ from .publishing_execution import (
     PublishingExecutionStatus,
     PublishingProviderAdapter,
 )
+from .post_publish_verification import (
+    PostPublishVerificationCoordinator,
+    PostPublishVerificationError,
+    PostPublishVerificationManifest,
+    PublicationVerificationEvidence,
+    PublicationVerificationStatus,
+)
 from .provider_execution import (
     EpisodeProviderExecutionReport,
     ProviderDispatchSubmission,
@@ -392,6 +399,11 @@ __all__ = [
     "PublishingExecutionReport",
     "PublishingExecutionStatus",
     "PublishingProviderAdapter",
+    "PostPublishVerificationCoordinator",
+    "PostPublishVerificationError",
+    "PostPublishVerificationManifest",
+    "PublicationVerificationEvidence",
+    "PublicationVerificationStatus",
     "QualityRequirements",
     "RenderArtifact",
     "RenderProviderOutput",
