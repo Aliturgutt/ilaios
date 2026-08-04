@@ -11,6 +11,13 @@ from .audio_processing import (
     AudioProcessingError,
     AudioProcessingManifest,
 )
+from .caption_subtitle import (
+    BurnedInCaptionInstructions,
+    CaptionCue,
+    CaptionExportManifest,
+    CaptionSubtitleEngine,
+    CaptionSubtitleError,
+)
 from .configuration import (
     ApprovalMode,
     BudgetPolicy,
@@ -303,6 +310,11 @@ __all__ = [
     "AssembledOutputTechnicalValidationStatus",
     "BaseProvider",
     "BudgetPolicy",
+    "BurnedInCaptionInstructions",
+    "CaptionCue",
+    "CaptionExportManifest",
+    "CaptionSubtitleEngine",
+    "CaptionSubtitleError",
     "CinematicShot",
     "CharacterContinuity",
     "ContinuityError",
