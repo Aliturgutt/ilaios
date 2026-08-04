@@ -160,6 +160,13 @@ from .prompt_compilation import (
     ShotPromptPackage,
     ShotPromptPolicy,
 )
+from .publishing_package_preparation import (
+    EpisodePublishingPackageManifest,
+    PlatformPublishingPackage,
+    PublishingPackagePreparationError,
+    PublishingPackagePreparer,
+    PublishingTarget,
+)
 from .provider_execution import (
     EpisodeProviderExecutionReport,
     ProviderDispatchSubmission,
@@ -362,6 +369,11 @@ __all__ = [
     "PublishJob",
     "PublishingProvider",
     "PublishingProviderOutput",
+    "EpisodePublishingPackageManifest",
+    "PlatformPublishingPackage",
+    "PublishingPackagePreparationError",
+    "PublishingPackagePreparer",
+    "PublishingTarget",
     "QualityRequirements",
     "RenderArtifact",
     "RenderProviderOutput",
