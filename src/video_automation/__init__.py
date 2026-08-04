@@ -270,6 +270,15 @@ from .remotion_composition import (
     RemotionCompositionElement,
     RemotionCompositionError,
 )
+from .render_technical_validation import (
+    RenderProbeEngine,
+    RenderTechnicalIssue,
+    RenderTechnicalValidation,
+    RenderTechnicalValidationError,
+    RenderTechnicalValidationProfile,
+    RenderTechnicalValidationStatus,
+    RenderTechnicalValidator,
+)
 from .render_engine import (
     MediaProbeEngine,
     RenderEngine,
@@ -490,6 +499,13 @@ __all__ = [
     "RenderArtifact",
     "MediaProbeEngine",
     "RenderEngine",
+    "RenderProbeEngine",
+    "RenderTechnicalIssue",
+    "RenderTechnicalValidation",
+    "RenderTechnicalValidationError",
+    "RenderTechnicalValidationProfile",
+    "RenderTechnicalValidationStatus",
+    "RenderTechnicalValidator",
     "RenderEngineError",
     "RenderExecutionRequest",
     "RenderExecutionResult",
