@@ -264,6 +264,12 @@ from .voice_generation import (
     VoiceGenerationCoordinator,
     VoiceGenerationError,
 )
+from .remotion_composition import (
+    RemotionCompositionAdapter,
+    RemotionCompositionArtifact,
+    RemotionCompositionElement,
+    RemotionCompositionError,
+)
 from .request_manifest import (
     EpisodeRequestManifest,
     EpisodeRequestManifestBuilder,
@@ -475,6 +481,10 @@ __all__ = [
     "QualityRequirements",
     "RenderArtifact",
     "RenderProviderOutput",
+    "RemotionCompositionAdapter",
+    "RemotionCompositionArtifact",
+    "RemotionCompositionElement",
+    "RemotionCompositionError",
     "RequestManifestError",
     "ResearchInput",
     "ResearchPacket",
