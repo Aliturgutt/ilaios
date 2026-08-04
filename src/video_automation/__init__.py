@@ -60,6 +60,10 @@ from .generated_asset_retrieval import (
     RetrievedGenerationAsset,
     UrllibAssetHttpTransport,
 )
+from .local_test_media_provider import (
+    LocalTestMediaProviderError,
+    LocalTestVideoProvider,
+)
 from .media_technical_validation import (
     EpisodeMediaTechnicalValidationManifest,
     FfprobeMediaTechnicalProbe,
@@ -355,6 +359,8 @@ __all__ = [
     "ImageGenerationProvider",
     "JobState",
     "JobStateRecord",
+    "LocalTestMediaProviderError",
+    "LocalTestVideoProvider",
     "MediaAsset",
     "MediaProbeObservation",
     "MediaProviderOutput",
