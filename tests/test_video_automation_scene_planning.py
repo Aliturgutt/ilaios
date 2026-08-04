@@ -178,3 +178,146 @@ def test_invalid_beat_fails_closed() -> None:
         EpisodeBeat("beat", "valid text", 0.0)
     with pytest.raises(ShotPlanningError):
         EpisodeBeat("beat", "valid text", 5.0, "")
+
+def test_shots_define_all_canonical_m09_fields() -> None:
+    beat = EpisodeBeat(
+        beat_id="scene-001",
+        text="The sentinel enters the ancient chamber.",
+        duration_seconds=5.0,
+        shot_type="establishing",
+        subject="the sentinel",
+        action="enters the ancient chamber",
+        environment="an ancient subterranean chamber",
+        framing="wide shot",
+        movement="slow dolly forward",
+        generation_prompt=(
+            "Wide cinematic view of the sentinel entering "
+            "an ancient subterranean chamber."
+        ),
+        required_provider_capability="video.generate",
+    )
+
+    shot = ScenePlanner().plan(
+        (beat,),
+        episode_id="canonical-m09",
+    ).shots[0]
+
+    assert shot.scene_id == "scene-001"
+    assert shot.source_beat_id == "scene-001"
+    assert shot.shot_type == "establishing"
+    assert shot.subject == "the sentinel"
+    assert shot.action == "enters the ancient chamber"
+    assert (
+        shot.environment
+        == "an ancient subterranean chamber"
+    )
+    assert shot.framing == "wide shot"
+    assert shot.movement == "slow dolly forward"
+    assert shot.generation_prompt == (
+        "Wide cinematic view of the sentinel entering "
+        "an ancient subterranean chamber."
+    )
+    assert (
+        shot.required_provider_capability
+        == "video.generate"
+    )
+
+
+def test_split_shots_preserve_structured_visual_intent() -> None:
+    beat = EpisodeBeat(
+        beat_id="scene-002",
+        text=(
+            "one two three four five six seven eight "
+            "nine ten eleven twelve"
+        ),
+        duration_seconds=10.0,
+        shot_type="action",
+        subject="the sentinel",
+        action="crosses the collapsing bridge",
+        environment="a volcanic abyss",
+        framing="tracking medium shot",
+        movement="lateral tracking",
+        required_provider_capability="video.generate",
+    )
+
+    shots = ScenePlanner().plan(
+        (beat,),
+        episode_id="split-intent",
+    ).shots
+
+    assert len(shots) == 2
+    assert all(
+        shot.scene_id == "scene-002"
+        for shot in shots
+    )
+    assert all(
+        shot.shot_type == "action"
+        for shot in shots
+    )
+    assert all(
+        shot.subject == "the sentinel"
+        for shot in shots
+    )
+    assert all(
+        shot.action == "crosses the collapsing bridge"
+        for shot in shots
+    )
+    assert all(
+        shot.environment == "a volcanic abyss"
+        for shot in shots
+    )
+    assert all(
+        shot.framing == "tracking medium shot"
+        for shot in shots
+    )
+    assert all(
+        shot.movement == "lateral tracking"
+        for shot in shots
+    )
+    assert all(
+        shot.required_provider_capability
+        == "video.generate"
+        for shot in shots
+    )
+
+
+def test_generation_prompt_defaults_to_split_shot_text() -> None:
+    plan = ScenePlanner().plan(
+        (
+            EpisodeBeat(
+                "scene-003",
+                "one two three four five six",
+                10.0,
+            ),
+        ),
+        episode_id="prompt-default",
+    )
+
+    assert all(
+        shot.generation_prompt == shot.text
+        for shot in plan.shots
+    )
+
+
+def test_invalid_structured_shot_intent_fails_closed() -> None:
+    with pytest.raises(
+        ShotPlanningError,
+        match="shot_type",
+    ):
+        EpisodeBeat(
+            "scene",
+            "valid narrative text",
+            5.0,
+            shot_type=" ",
+        )
+
+    with pytest.raises(
+        ShotPlanningError,
+        match="required_provider_capability",
+    ):
+        EpisodeBeat(
+            "scene",
+            "valid narrative text",
+            5.0,
+            required_provider_capability=" ",
+        )

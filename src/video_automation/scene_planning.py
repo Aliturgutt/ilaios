@@ -39,27 +39,60 @@ class ShotPlannerConfig:
 
 @dataclass(frozen=True, slots=True)
 class EpisodeBeat:
-    """One ordered narrative beat from the script-generation layer."""
+    """One ordered narrative beat with explicit shot-planning intent."""
 
     beat_id: str
     text: str
     duration_seconds: float
     continuity_note: str | None = None
+    shot_type: str = "cinematic"
+    subject: str = "narrative subject"
+    action: str = "depict the narrative beat"
+    environment: str = "story environment"
+    framing: str = "medium shot"
+    movement: str = "static"
+    generation_prompt: str | None = None
+    required_provider_capability: str = "video.generate"
 
     def __post_init__(self) -> None:
-        if not self.beat_id.strip():
-            raise ShotPlanningError("beat_id must not be blank")
-        if not self.text.strip():
-            raise ShotPlanningError("text must not be blank")
+        _require_non_blank("beat_id", self.beat_id)
+        _require_non_blank("text", self.text)
+
         if self.duration_seconds <= 0:
-            raise ShotPlanningError("duration_seconds must be greater than zero")
-        if self.continuity_note is not None and not self.continuity_note.strip():
-            raise ShotPlanningError("continuity_note must be None or non-blank")
+            raise ShotPlanningError(
+                "duration_seconds must be greater than zero"
+            )
+
+        if self.continuity_note is not None:
+            _require_non_blank(
+                "continuity_note",
+                self.continuity_note,
+            )
+
+        for name, value in (
+            ("shot_type", self.shot_type),
+            ("subject", self.subject),
+            ("action", self.action),
+            ("environment", self.environment),
+            ("framing", self.framing),
+            ("movement", self.movement),
+            (
+                "required_provider_capability",
+                self.required_provider_capability,
+            ),
+        ):
+            _require_non_blank(name, value)
+
+        if self.generation_prompt is not None:
+            _require_non_blank(
+                "generation_prompt",
+                self.generation_prompt,
+            )
 
 
 @dataclass(frozen=True, slots=True)
 class CinematicShot:
-    """One short ordered generation unit."""
+    """One executable provider-neutral visual unit."""
 
     shot_id: str
     sequence: int
@@ -69,6 +102,92 @@ class CinematicShot:
     continuity_note: str | None
     previous_shot_id: str | None
     next_shot_id: str | None
+    scene_id: str | None = None
+    shot_type: str = "cinematic"
+    subject: str = "narrative subject"
+    action: str = "depict the narrative beat"
+    environment: str = "story environment"
+    framing: str = "medium shot"
+    movement: str = "static"
+    generation_prompt: str | None = None
+    required_provider_capability: str = "video.generate"
+
+    def __post_init__(self) -> None:
+        for name, value in (
+            ("shot_id", self.shot_id),
+            ("source_beat_id", self.source_beat_id),
+            ("text", self.text),
+            ("shot_type", self.shot_type),
+            ("subject", self.subject),
+            ("action", self.action),
+            ("environment", self.environment),
+            ("framing", self.framing),
+            ("movement", self.movement),
+            (
+                "required_provider_capability",
+                self.required_provider_capability,
+            ),
+        ):
+            _require_non_blank(name, value)
+
+        if self.sequence <= 0:
+            raise ShotPlanningError(
+                "sequence must be greater than zero"
+            )
+
+        if self.duration_seconds <= 0:
+            raise ShotPlanningError(
+                "duration_seconds must be greater than zero"
+            )
+
+        if self.continuity_note is not None:
+            _require_non_blank(
+                "continuity_note",
+                self.continuity_note,
+            )
+
+        if self.previous_shot_id is not None:
+            _require_non_blank(
+                "previous_shot_id",
+                self.previous_shot_id,
+            )
+
+        if self.next_shot_id is not None:
+            _require_non_blank(
+                "next_shot_id",
+                self.next_shot_id,
+            )
+
+        resolved_scene_id = (
+            self.source_beat_id
+            if self.scene_id is None
+            else self.scene_id
+        )
+        _require_non_blank(
+            "scene_id",
+            resolved_scene_id,
+        )
+
+        resolved_prompt = (
+            self.text
+            if self.generation_prompt is None
+            else self.generation_prompt
+        )
+        _require_non_blank(
+            "generation_prompt",
+            resolved_prompt,
+        )
+
+        object.__setattr__(
+            self,
+            "scene_id",
+            resolved_scene_id,
+        )
+        object.__setattr__(
+            self,
+            "generation_prompt",
+            resolved_prompt,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -138,6 +257,21 @@ class ScenePlanner:
                         if sequence == total_shots
                         else _shot_id(episode_id, sequence + 1)
                     ),
+                    scene_id=beat.beat_id,
+                    shot_type=beat.shot_type,
+                    subject=beat.subject,
+                    action=beat.action,
+                    environment=beat.environment,
+                    framing=beat.framing,
+                    movement=beat.movement,
+                    generation_prompt=(
+                        text
+                        if beat.generation_prompt is None
+                        else beat.generation_prompt
+                    ),
+                    required_provider_capability=(
+                        beat.required_provider_capability
+                    ),
                 )
             )
 
@@ -168,6 +302,18 @@ class ScenePlanner:
             )
 
         return tuple(durations)
+
+
+def _require_non_blank(name: str, value: str) -> None:
+    if not value or not value.strip():
+        raise ShotPlanningError(
+            f"{name} must not be blank"
+        )
+
+    if value != value.strip():
+        raise ShotPlanningError(
+            f"{name} must not contain surrounding whitespace"
+        )
 
 
 def _shot_id(episode_id: str, sequence: int) -> str:
