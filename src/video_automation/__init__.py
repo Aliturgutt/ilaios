@@ -235,6 +235,11 @@ from .providers import (
     VideoGenerationProvider,
     VoiceProvider,
 )
+from .voice_generation import (
+    LocalTestVoiceProvider,
+    VoiceGenerationCoordinator,
+    VoiceGenerationError,
+)
 from .request_manifest import (
     EpisodeRequestManifest,
     EpisodeRequestManifestBuilder,
@@ -478,5 +483,8 @@ __all__ = [
     "VideoGenerationProvider",
     "VideoJob",
     "VideoScript",
+    "LocalTestVoiceProvider",
+    "VoiceGenerationCoordinator",
+    "VoiceGenerationError",
     "VoiceProvider",
 ]
