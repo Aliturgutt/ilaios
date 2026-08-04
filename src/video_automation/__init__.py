@@ -129,6 +129,14 @@ from .assembled_output_technical_validation import (
     AssembledOutputTechnicalValidationError,
     AssembledOutputTechnicalValidationStatus,
 )
+from .ffmpeg_media_engine import (
+    CommandRunner,
+    FfmpegMediaEngine,
+    FfmpegMediaEngineError,
+    MediaCommandResult,
+    MediaProbe,
+    SubprocessCommandRunner,
+)
 from .final_episode_acceptance import (
     FinalEpisodeAcceptanceCoordinator,
     FinalEpisodeAcceptanceDecision,
@@ -364,6 +372,12 @@ __all__ = [
     "EpisodeShotPlan",
     "ExecutionMode",
     "FfmpegEpisodeAssemblyExecutor",
+    "CommandRunner",
+    "FfmpegMediaEngine",
+    "FfmpegMediaEngineError",
+    "MediaCommandResult",
+    "MediaProbe",
+    "SubprocessCommandRunner",
     "FinalEpisodeAcceptanceCoordinator",
     "FinalEpisodeAcceptanceDecision",
     "FinalEpisodeAcceptanceError",
