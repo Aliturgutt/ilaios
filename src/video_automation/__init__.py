@@ -6,6 +6,11 @@ from .asset_store import (
     AssetStoreError,
     PersistentAssetStore,
 )
+from .audio_processing import (
+    AudioProcessingCoordinator,
+    AudioProcessingError,
+    AudioProcessingManifest,
+)
 from .configuration import (
     ApprovalMode,
     BudgetPolicy,
@@ -285,6 +290,9 @@ __all__ = [
     "AssetProvenanceRecord",
     "AssetRequest",
     "AssetStoreError",
+    "AudioProcessingCoordinator",
+    "AudioProcessingError",
+    "AudioProcessingManifest",
     "PersistentAssetStore",
     "AssetHttpResponse",
     "AssetHttpTransport",
