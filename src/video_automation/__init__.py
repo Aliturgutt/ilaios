@@ -247,6 +247,10 @@ from .providers import (
     VideoGenerationProvider,
     VoiceProvider,
 )
+from .timeline_engine import (
+    CanonicalTimelineEngine,
+    TimelineEngineError,
+)
 from .voice_generation import (
     LocalTestVoiceProvider,
     VoiceGenerationCoordinator,
@@ -489,7 +493,9 @@ __all__ = [
     "ShotRequestPlanningError",
     "SoundEffectProvider",
     "StockMediaProvider",
+    "CanonicalTimelineEngine",
     "Timeline",
+    "TimelineEngineError",
     "TimelineItem",
     "TranscriptionProvider",
     "UrllibArkJsonTransport",
