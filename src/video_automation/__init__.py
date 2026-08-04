@@ -1,6 +1,11 @@
 """Hermes Video Automation domain package."""
 
 from .asset_planning import AssetPlanner, AssetPlanningError
+from .asset_store import (
+    AssetProvenanceRecord,
+    AssetStoreError,
+    PersistentAssetStore,
+)
 from .configuration import (
     ApprovalMode,
     BudgetPolicy,
@@ -272,7 +277,10 @@ __all__ = [
     "ArkTaskJsonTransport",
     "AssetPlanner",
     "AssetPlanningError",
+    "AssetProvenanceRecord",
     "AssetRequest",
+    "AssetStoreError",
+    "PersistentAssetStore",
     "AssetHttpResponse",
     "AssetHttpTransport",
     "AssembledOutputTechnicalIssue",
