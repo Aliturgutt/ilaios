@@ -167,6 +167,16 @@ from .publishing_package_preparation import (
     PublishingPackagePreparer,
     PublishingTarget,
 )
+from .publishing_execution import (
+    PlatformPublisher,
+    PlatformPublisherRegistry,
+    PlatformPublishingObservation,
+    PublishingExecutionCoordinator,
+    PublishingExecutionError,
+    PublishingExecutionReport,
+    PublishingExecutionStatus,
+    PublishingProviderAdapter,
+)
 from .provider_execution import (
     EpisodeProviderExecutionReport,
     ProviderDispatchSubmission,
@@ -374,6 +384,14 @@ __all__ = [
     "PublishingPackagePreparationError",
     "PublishingPackagePreparer",
     "PublishingTarget",
+    "PlatformPublisher",
+    "PlatformPublisherRegistry",
+    "PlatformPublishingObservation",
+    "PublishingExecutionCoordinator",
+    "PublishingExecutionError",
+    "PublishingExecutionReport",
+    "PublishingExecutionStatus",
+    "PublishingProviderAdapter",
     "QualityRequirements",
     "RenderArtifact",
     "RenderProviderOutput",
