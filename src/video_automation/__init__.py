@@ -1,5 +1,6 @@
 """Hermes Video Automation domain package."""
 
+from .asset_planning import AssetPlanner, AssetPlanningError
 from .configuration import (
     ApprovalMode,
     BudgetPolicy,
@@ -260,6 +261,8 @@ __all__ = [
     "ArkJsonTransport",
     "ArkTaskJsonResponse",
     "ArkTaskJsonTransport",
+    "AssetPlanner",
+    "AssetPlanningError",
     "AssetRequest",
     "AssetHttpResponse",
     "AssetHttpTransport",
