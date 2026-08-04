@@ -102,6 +102,15 @@ from .assembled_output_technical_validation import (
     AssembledOutputTechnicalValidationError,
     AssembledOutputTechnicalValidationStatus,
 )
+from .final_episode_acceptance import (
+    FinalEpisodeAcceptanceCoordinator,
+    FinalEpisodeAcceptanceDecision,
+    FinalEpisodeAcceptanceError,
+    FinalEpisodeAcceptanceIssue,
+    FinalEpisodeAcceptancePolicy,
+    FinalEpisodeAcceptanceStatus,
+    FinalEpisodeQualityCheck,
+)
 from .episode_assembly_planning import (
     EpisodeAssemblyClip,
     EpisodeAssemblyPlan,
@@ -282,6 +291,13 @@ __all__ = [
     "EpisodeShotPlan",
     "ExecutionMode",
     "FfmpegEpisodeAssemblyExecutor",
+    "FinalEpisodeAcceptanceCoordinator",
+    "FinalEpisodeAcceptanceDecision",
+    "FinalEpisodeAcceptanceError",
+    "FinalEpisodeAcceptanceIssue",
+    "FinalEpisodeAcceptancePolicy",
+    "FinalEpisodeAcceptanceStatus",
+    "FinalEpisodeQualityCheck",
     "FfprobeMediaTechnicalProbe",
     "GeneratedAssetPayload",
     "GeneratedAssetRetrievalCoordinator",
