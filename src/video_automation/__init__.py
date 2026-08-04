@@ -270,6 +270,14 @@ from .remotion_composition import (
     RemotionCompositionElement,
     RemotionCompositionError,
 )
+from .render_engine import (
+    MediaProbeEngine,
+    RenderEngine,
+    RenderEngineError,
+    RenderExecutionRequest,
+    RenderExecutionResult,
+    RenderExecutor,
+)
 from .request_manifest import (
     EpisodeRequestManifest,
     EpisodeRequestManifestBuilder,
@@ -480,6 +488,12 @@ __all__ = [
     "PublicationVerificationStatus",
     "QualityRequirements",
     "RenderArtifact",
+    "MediaProbeEngine",
+    "RenderEngine",
+    "RenderEngineError",
+    "RenderExecutionRequest",
+    "RenderExecutionResult",
+    "RenderExecutor",
     "RenderProviderOutput",
     "RemotionCompositionAdapter",
     "RemotionCompositionArtifact",
