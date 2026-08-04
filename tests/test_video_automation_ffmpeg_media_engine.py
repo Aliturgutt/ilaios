@@ -202,7 +202,15 @@ def test_audio_normalization_uses_loudnorm() -> None:
         command = runner.calls[0]
 
         assert "-af" in command
-        assert "loudnorm=I=-16" in command
+
+        filter_value = command[
+            command.index("-af") + 1
+        ]
+
+        assert (
+            filter_value
+            == "loudnorm=I=-16:TP=-1.5:LRA=11"
+        )
 
 
 def test_audio_mix_requires_multiple_inputs() -> None:
@@ -243,7 +251,15 @@ def test_audio_mix_builds_amix_command() -> None:
 
         assert command.count("-i") == 2
         assert "-filter_complex" in command
-        assert "amix=inputs=2" in command
+
+        filter_value = command[
+            command.index("-filter_complex") + 1
+        ]
+
+        assert (
+            filter_value
+            == "amix=inputs=2:duration=longest:normalize=0"
+        )
 
 
 def test_mux_maps_video_and_audio_streams() -> None:
