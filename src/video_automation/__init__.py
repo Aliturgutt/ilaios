@@ -64,6 +64,11 @@ from .local_test_media_provider import (
     LocalTestMediaProviderError,
     LocalTestVideoProvider,
 )
+from .media_acquisition_orchestrator import (
+    MediaAcquisitionGenerationOrchestrator,
+    MediaAcquisitionGenerationResult,
+    MediaAcquisitionOrchestrationError,
+)
 from .media_technical_validation import (
     EpisodeMediaTechnicalValidationManifest,
     FfprobeMediaTechnicalProbe,
@@ -361,6 +366,9 @@ __all__ = [
     "JobStateRecord",
     "LocalTestMediaProviderError",
     "LocalTestVideoProvider",
+    "MediaAcquisitionGenerationOrchestrator",
+    "MediaAcquisitionGenerationResult",
+    "MediaAcquisitionOrchestrationError",
     "MediaAsset",
     "MediaProbeObservation",
     "MediaProviderOutput",
