@@ -8,12 +8,16 @@ from tempfile import TemporaryDirectory
 
 import pytest
 
-from src.video_automation.ffmpeg_media_engine import MediaProbe
+from src.video_automation.ffmpeg_media_engine import (
+    MediaCommandResult,
+    MediaProbe,
+)
 from src.video_automation.models import RenderArtifact
 from src.video_automation.remotion_composition import (
     RemotionCompositionArtifact,
 )
 from src.video_automation.render_engine import (
+    LocalFfmpegRenderExecutor,
     RenderEngine,
     RenderEngineError,
     RenderExecutionRequest,
@@ -30,7 +34,21 @@ def _composition(
     entry = root / "composition.tsx"
 
     manifest.write_text(
-        '{"engine":"remotion"}\n',
+        """{
+  "schema_version": 1,
+  "engine": "remotion",
+  "job_id": "job-1",
+  "composition": {
+    "duration_seconds": 5.0,
+    "duration_frames": 150,
+    "fps": 30,
+    "width": 720,
+    "height": 1280
+  },
+  "timeline": [],
+  "elements": []
+}
+""",
         encoding="utf-8",
     )
 
@@ -466,3 +484,158 @@ def test_zero_duration_probe_fails_closed() -> None:
                 composition=_composition(root),
                 output_path=root / "final.mp4",
             )
+
+class _MaterializingRunner:
+    def __init__(self) -> None:
+        self.calls: list[tuple[str, ...]] = []
+
+    def run(
+        self,
+        argv: tuple[str, ...],
+        *,
+        timeout_seconds: float,
+    ) -> MediaCommandResult:
+        assert timeout_seconds > 0
+        self.calls.append(argv)
+
+        output_path = Path(argv[-1])
+        output_path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+        output_path.write_bytes(
+            b"local-render-output"
+        )
+
+        return MediaCommandResult(
+            argv=argv,
+            return_code=0,
+            stdout="",
+            stderr="",
+        )
+
+
+def test_local_ffmpeg_executor_materializes_render_output() -> None:
+    with TemporaryDirectory() as directory_name:
+        root = Path(directory_name)
+        composition = _composition(root)
+        runner = _MaterializingRunner()
+
+        executor = LocalFfmpegRenderExecutor(
+            runner=runner,
+            timeout_seconds=30.0,
+        )
+
+        output_path = root / "local-render.mp4"
+
+        result = executor.execute(
+            RenderExecutionRequest(
+                job_id="job-1",
+                composition=composition,
+                output_path=str(output_path),
+            )
+        )
+
+        assert result.output_path == str(output_path)
+        assert (
+            result.renderer_id
+            == "local-ffmpeg-renderer-v1"
+        )
+        assert output_path.read_bytes() == (
+            b"local-render-output"
+        )
+
+        command = runner.calls[0]
+
+        assert command[0] == "ffmpeg"
+        assert "color=c=black:s=720x1280:r=30:d=5" in command
+        assert (
+            "anullsrc=channel_layout=stereo:"
+            "sample_rate=48000"
+        ) in command
+        assert "libx264" in command
+        assert "aac" in command
+        assert str(output_path) == command[-1]
+
+
+def test_local_ffmpeg_executor_rejects_manifest_metadata_drift() -> None:
+    with TemporaryDirectory() as directory_name:
+        root = Path(directory_name)
+        composition = _composition(root)
+
+        manifest_path = Path(
+            composition.manifest_path
+        )
+
+        manifest_path.write_text(
+            """{
+  "composition": {
+    "duration_seconds": 6.0,
+    "fps": 30,
+    "width": 720,
+    "height": 1280
+  }
+}
+""",
+            encoding="utf-8",
+        )
+
+        changed_composition = RemotionCompositionArtifact(
+            composition_id=composition.composition_id,
+            job_id=composition.job_id,
+            manifest_path=composition.manifest_path,
+            manifest_sha256=sha256(
+                manifest_path.read_bytes()
+            ).hexdigest(),
+            entry_source_path=composition.entry_source_path,
+            entry_source_sha256=composition.entry_source_sha256,
+            duration_seconds=5.0,
+            fps=30,
+            width=720,
+            height=1280,
+        )
+
+        with pytest.raises(
+            RenderEngineError,
+            match="manifest duration",
+        ):
+            LocalFfmpegRenderExecutor(
+                runner=_MaterializingRunner(),
+            ).execute(
+                RenderExecutionRequest(
+                    job_id="job-1",
+                    composition=changed_composition,
+                    output_path=str(
+                        root / "final.mp4"
+                    ),
+                )
+            )
+
+
+def test_render_engine_accepts_concrete_local_executor() -> None:
+    with TemporaryDirectory() as directory_name:
+        root = Path(directory_name)
+        composition = _composition(root)
+
+        artifact = RenderEngine(
+            executor=LocalFfmpegRenderExecutor(
+                runner=_MaterializingRunner(),
+            ),
+            probe_engine=_FakeProbeEngine(),
+        ).render(
+            job_id="job-1",
+            composition=composition,
+            output_path=root / "final.mp4",
+        )
+
+        assert isinstance(
+            artifact,
+            RenderArtifact,
+        )
+        assert artifact.job_id == "job-1"
+        assert artifact.resolution == "720x1280"
+        assert artifact.codec == "h264"
+        assert artifact.audio_codec == "aac"
+        assert Path(
+            artifact.file_path
+        ).read_bytes() == b"local-render-output"

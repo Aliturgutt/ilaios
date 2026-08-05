@@ -14,11 +14,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from fractions import Fraction
 from hashlib import sha256
+import json
 from math import gcd
 from pathlib import Path
 from typing import Mapping, Protocol
 
-from .ffmpeg_media_engine import MediaProbe
+from .ffmpeg_media_engine import (
+    CommandRunner,
+    MediaProbe,
+    SubprocessCommandRunner,
+)
 from .models import RenderArtifact
 from .remotion_composition import RemotionCompositionArtifact
 
@@ -75,6 +80,192 @@ class MediaProbeEngine(Protocol):
         path: str | Path,
     ) -> MediaProbe:
         ...
+
+
+class LocalFfmpegRenderExecutor:
+    """Render a deterministic local/free MP4 from an M19 composition.
+
+    This executor is the TEST/local implementation of the M20 RenderExecutor
+    contract. It reads the independently verified M19 manifest, uses its
+    canonical duration, dimensions, and FPS, and produces a technically valid
+    video/audio MP4 without any paid provider call.
+
+    Full visual application of every Remotion element remains replaceable
+    behind the same RenderExecutor contract.
+    """
+
+    def __init__(
+        self,
+        *,
+        ffmpeg_executable: str = "ffmpeg",
+        runner: CommandRunner | None = None,
+        timeout_seconds: float = 600.0,
+    ) -> None:
+        _require_non_blank(
+            "ffmpeg_executable",
+            ffmpeg_executable,
+        )
+
+        if timeout_seconds <= 0:
+            raise RenderEngineError(
+                "timeout_seconds must be greater than zero"
+            )
+
+        self._ffmpeg_executable = ffmpeg_executable
+        self._runner = runner or SubprocessCommandRunner()
+        self._timeout_seconds = timeout_seconds
+
+    def execute(
+        self,
+        request: RenderExecutionRequest,
+    ) -> RenderExecutionResult:
+        manifest_path = Path(
+            request.composition.manifest_path
+        )
+
+        try:
+            payload = json.loads(
+                manifest_path.read_text(
+                    encoding="utf-8"
+                )
+            )
+        except (
+            OSError,
+            json.JSONDecodeError,
+        ) as exc:
+            raise RenderEngineError(
+                "Remotion composition manifest is unreadable or invalid"
+            ) from exc
+
+        if not isinstance(payload, dict):
+            raise RenderEngineError(
+                "Remotion composition manifest root must be an object"
+            )
+
+        composition_payload = payload.get(
+            "composition"
+        )
+
+        if not isinstance(composition_payload, dict):
+            raise RenderEngineError(
+                "Remotion composition manifest requires composition object"
+            )
+
+        duration_seconds = _manifest_positive_float(
+            composition_payload,
+            "duration_seconds",
+        )
+        fps = _manifest_positive_int(
+            composition_payload,
+            "fps",
+        )
+        width = _manifest_positive_int(
+            composition_payload,
+            "width",
+        )
+        height = _manifest_positive_int(
+            composition_payload,
+            "height",
+        )
+
+        if (
+            abs(
+                duration_seconds
+                - request.composition.duration_seconds
+            )
+            > 1e-9
+        ):
+            raise RenderEngineError(
+                "manifest duration does not match composition artifact"
+            )
+
+        if fps != request.composition.fps:
+            raise RenderEngineError(
+                "manifest FPS does not match composition artifact"
+            )
+
+        if (
+            width != request.composition.width
+            or height != request.composition.height
+        ):
+            raise RenderEngineError(
+                "manifest dimensions do not match composition artifact"
+            )
+
+        output_path = Path(
+            request.output_path
+        )
+        output_path.parent.mkdir(
+            parents=True,
+            exist_ok=True,
+        )
+
+        video_source = (
+            f"color=c=black:"
+            f"s={width}x{height}:"
+            f"r={fps}:"
+            f"d={_format_number(duration_seconds)}"
+        )
+
+        argv = (
+            self._ffmpeg_executable,
+            "-y",
+            "-v",
+            "error",
+            "-f",
+            "lavfi",
+            "-i",
+            video_source,
+            "-f",
+            "lavfi",
+            "-i",
+            (
+                "anullsrc="
+                "channel_layout=stereo:"
+                "sample_rate=48000"
+            ),
+            "-t",
+            _format_number(duration_seconds),
+            "-shortest",
+            "-c:v",
+            "libx264",
+            "-pix_fmt",
+            "yuv420p",
+            "-r",
+            str(fps),
+            "-c:a",
+            "aac",
+            "-b:a",
+            "128k",
+            "-movflags",
+            "+faststart",
+            str(output_path),
+        )
+
+        self._runner.run(
+            argv,
+            timeout_seconds=self._timeout_seconds,
+        )
+
+        if not output_path.exists():
+            raise RenderEngineError(
+                "local FFmpeg renderer did not create output"
+            )
+
+        if not output_path.is_file():
+            raise RenderEngineError(
+                "local FFmpeg renderer output is not a file"
+            )
+
+        if output_path.stat().st_size <= 0:
+            raise RenderEngineError(
+                "local FFmpeg renderer output must not be empty"
+            )
+
+        return RenderExecutionResult(
+            output_path=str(output_path),
+            renderer_id="local-ffmpeg-renderer-v1",
+        )
 
 
 class RenderEngine:
@@ -256,6 +447,55 @@ class RenderEngine:
             aspect_ratio=aspect_ratio,
             size_bytes=len(body),
         )
+
+
+def _manifest_positive_float(
+    payload: Mapping[str, object],
+    key: str,
+) -> float:
+    value = payload.get(key)
+
+    if isinstance(value, bool):
+        raise RenderEngineError(
+            f"manifest field {key} must be numeric"
+        )
+
+    if not isinstance(value, (int, float)):
+        raise RenderEngineError(
+            f"manifest field {key} must be numeric"
+        )
+
+    normalized = float(value)
+
+    if normalized <= 0:
+        raise RenderEngineError(
+            f"manifest field {key} must be greater than zero"
+        )
+
+    return normalized
+
+
+def _manifest_positive_int(
+    payload: Mapping[str, object],
+    key: str,
+) -> int:
+    value = payload.get(key)
+
+    if isinstance(value, bool) or not isinstance(value, int):
+        raise RenderEngineError(
+            f"manifest field {key} must be an integer"
+        )
+
+    if value <= 0:
+        raise RenderEngineError(
+            f"manifest field {key} must be greater than zero"
+        )
+
+    return value
+
+
+def _format_number(value: float) -> str:
+    return format(value, ".9g")
 
 
 def _verify_composition_artifacts(

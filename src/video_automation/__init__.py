@@ -271,6 +271,7 @@ from .remotion_composition import (
     RemotionCompositionError,
 )
 from .render_engine import (
+    LocalFfmpegRenderExecutor,
     MediaProbeEngine,
     RenderEngine,
     RenderEngineError,
@@ -488,6 +489,7 @@ __all__ = [
     "PublicationVerificationStatus",
     "QualityRequirements",
     "RenderArtifact",
+    "LocalFfmpegRenderExecutor",
     "MediaProbeEngine",
     "RenderEngine",
     "RenderEngineError",
