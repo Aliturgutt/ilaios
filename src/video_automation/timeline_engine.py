@@ -10,8 +10,8 @@ Programmatic transition/effect execution remains a later composition concern.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from hashlib import sha256
-from typing import Mapping
 
 from .models import (
     MediaAsset,
@@ -19,7 +19,6 @@ from .models import (
     Timeline,
     TimelineItem,
 )
-
 
 _ALLOWED_MEDIA_TYPES = frozenset(
     {

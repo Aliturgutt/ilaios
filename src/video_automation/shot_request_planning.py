@@ -7,10 +7,10 @@ render media, retry work, or invent creative facts.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from hashlib import sha256
 from types import MappingProxyType
-from typing import Mapping
 
 from .prompt_compilation import ShotPromptPackage
 

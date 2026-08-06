@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from hashlib import sha256
 import json
+from hashlib import sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -320,22 +320,21 @@ def test_unvalidated_asset_fails_closed() -> None:
         ),
     )
 
-    with TemporaryDirectory() as directory_name:
-        with pytest.raises(
-            RemotionCompositionError,
-            match="must be validated",
-        ):
-            RemotionCompositionAdapter().prepare(
-                job_id="job-1",
-                timeline=_timeline(),
-                assets=assets,
-                elements=(),
-                output_directory=directory_name,
-                duration_seconds=5.0,
-                fps=30,
-                width=720,
-                height=1280,
-            )
+    with TemporaryDirectory() as directory_name, pytest.raises(
+        RemotionCompositionError,
+        match="must be validated",
+    ):
+        RemotionCompositionAdapter().prepare(
+            job_id="job-1",
+            timeline=_timeline(),
+            assets=assets,
+            elements=(),
+            output_directory=directory_name,
+            duration_seconds=5.0,
+            fps=30,
+            width=720,
+            height=1280,
+        )
 
 
 def test_asset_set_must_exactly_match_timeline() -> None:
@@ -346,22 +345,21 @@ def test_asset_set_must_exactly_match_timeline() -> None:
         ),
     )
 
-    with TemporaryDirectory() as directory_name:
-        with pytest.raises(
-            RemotionCompositionError,
-            match="exactly match",
-        ):
-            RemotionCompositionAdapter().prepare(
-                job_id="job-1",
-                timeline=_timeline(),
-                assets=assets,
-                elements=(),
-                output_directory=directory_name,
-                duration_seconds=5.0,
-                fps=30,
-                width=720,
-                height=1280,
-            )
+    with TemporaryDirectory() as directory_name, pytest.raises(
+        RemotionCompositionError,
+        match="exactly match",
+    ):
+        RemotionCompositionAdapter().prepare(
+            job_id="job-1",
+            timeline=_timeline(),
+            assets=assets,
+            elements=(),
+            output_directory=directory_name,
+            duration_seconds=5.0,
+            fps=30,
+            width=720,
+            height=1280,
+        )
 
 
 def test_element_outside_composition_duration_fails_closed() -> None:
@@ -376,22 +374,21 @@ def test_element_outside_composition_duration_fails_closed() -> None:
         },
     )
 
-    with TemporaryDirectory() as directory_name:
-        with pytest.raises(
-            RemotionCompositionError,
-            match="exceeds duration",
-        ):
-            RemotionCompositionAdapter().prepare(
-                job_id="job-1",
-                timeline=_timeline(),
-                assets=_assets(),
-                elements=(element,),
-                output_directory=directory_name,
-                duration_seconds=5.0,
-                fps=30,
-                width=720,
-                height=1280,
-            )
+    with TemporaryDirectory() as directory_name, pytest.raises(
+        RemotionCompositionError,
+        match="exceeds duration",
+    ):
+        RemotionCompositionAdapter().prepare(
+            job_id="job-1",
+            timeline=_timeline(),
+            assets=_assets(),
+            elements=(element,),
+            output_directory=directory_name,
+            duration_seconds=5.0,
+            fps=30,
+            width=720,
+            height=1280,
+        )
 
 
 def test_unknown_element_kind_fails_closed() -> None:
@@ -430,19 +427,18 @@ def test_duplicate_element_ids_fail_closed() -> None:
         payload={"text": "Two"},
     )
 
-    with TemporaryDirectory() as directory_name:
-        with pytest.raises(
-            RemotionCompositionError,
-            match="identifiers must be unique",
-        ):
-            RemotionCompositionAdapter().prepare(
-                job_id="job-1",
-                timeline=_timeline(),
-                assets=_assets(),
-                elements=(first, second),
-                output_directory=directory_name,
-                duration_seconds=5.0,
-                fps=30,
-                width=720,
-                height=1280,
-            )
+    with TemporaryDirectory() as directory_name, pytest.raises(
+        RemotionCompositionError,
+        match="identifiers must be unique",
+    ):
+        RemotionCompositionAdapter().prepare(
+            job_id="job-1",
+            timeline=_timeline(),
+            assets=_assets(),
+            elements=(first, second),
+            output_directory=directory_name,
+            duration_seconds=5.0,
+            fps=30,
+            width=720,
+            height=1280,
+        )

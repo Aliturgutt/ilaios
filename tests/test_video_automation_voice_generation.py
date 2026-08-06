@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
+import wave
 from hashlib import sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import wave
 
 import pytest
 
@@ -179,18 +179,17 @@ def test_local_provider_rejects_blank_text() -> None:
 def test_coordinator_requires_explicit_registered_provider() -> None:
     coordinator = VoiceGenerationCoordinator(ProviderRegistry())
 
-    with TemporaryDirectory() as directory_name:
-        with pytest.raises(
-            KeyError,
-            match="provider not registered",
-        ):
-            coordinator.generate(
-                request_id="voice-request-1",
-                job_id="job-1",
-                provider_name="local-test-voice",
-                text="Narration.",
-                output_path=Path(directory_name) / "voice.wav",
-            )
+    with TemporaryDirectory() as directory_name, pytest.raises(
+        KeyError,
+        match="provider not registered",
+    ):
+        coordinator.generate(
+            request_id="voice-request-1",
+            job_id="job-1",
+            provider_name="local-test-voice",
+            text="Narration.",
+            output_path=Path(directory_name) / "voice.wav",
+        )
 
 
 def test_coordinator_normalizes_success_to_voice_media_asset() -> None:
@@ -299,15 +298,14 @@ def test_coordinator_rejects_blank_text_before_execution() -> None:
         ProviderRegistry((provider,))
     )
 
-    with TemporaryDirectory() as directory_name:
-        with pytest.raises(
-            VoiceGenerationError,
-            match="text",
-        ):
-            coordinator.generate(
-                request_id="voice-request-1",
-                job_id="job-1",
-                provider_name="local-test-voice",
-                text=" ",
-                output_path=Path(directory_name) / "voice.wav",
-            )
+    with TemporaryDirectory() as directory_name, pytest.raises(
+        VoiceGenerationError,
+        match="text",
+    ):
+        coordinator.generate(
+            request_id="voice-request-1",
+            job_id="job-1",
+            provider_name="local-test-voice",
+            text=" ",
+            output_path=Path(directory_name) / "voice.wav",
+        )

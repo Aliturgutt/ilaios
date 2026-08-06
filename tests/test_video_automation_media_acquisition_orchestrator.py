@@ -43,7 +43,6 @@ from src.video_automation.providers import (
     VideoGenerationProvider,
 )
 
-
 PROVIDER_ID = "test-video-provider"
 OPERATION = "video.generate"
 ASSET_ID = "fixture://generated-video-1"

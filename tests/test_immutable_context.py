@@ -4,8 +4,8 @@ from pathlib import Path
 
 import pytest
 
-from src.core.immutable_context import ExecutionContext
 from src.core.bootstrap_validator import ContextError
+from src.core.immutable_context import ExecutionContext
 
 
 def test_construction() -> None:

@@ -10,11 +10,10 @@ composition, rendering, or actual subtitle burn-in.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from hashlib import sha256
-import json
 from pathlib import Path
-
 
 _ALLOWED_TIMING_SOURCES = frozenset(
     {
@@ -307,7 +306,7 @@ def _format_timestamp(
             "timestamp separator must be comma or period"
         )
 
-    total_milliseconds = int(round(seconds * 1000.0))
+    total_milliseconds = round(seconds * 1000.0)
 
     hours, remainder = divmod(
         total_milliseconds,

@@ -7,10 +7,10 @@ download assets, inspect media contents, retry failed work, or infer outcomes.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from hashlib import sha256
 from types import MappingProxyType
-from typing import Mapping
 
 from .generation_execution_tracking import (
     EpisodeGenerationExecutionState,

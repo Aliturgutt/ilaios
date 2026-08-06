@@ -10,11 +10,12 @@ or make publishing policy decisions.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from hashlib import sha256
 from types import MappingProxyType
-from typing import Mapping, Protocol
+from typing import Protocol
 
 from .models import MetadataValue, ProviderRequest
 from .providers import PublishingProvider, PublishingProviderOutput

@@ -105,14 +105,14 @@ class TestToolGateway(unittest.TestCase):
     ) -> None:
         """Git validation failure prevents path resolution and handler execution."""
         mock_validator = MagicMock()
-        mock_validator.validate_git_identity.side_effect = Exception(
+        mock_validator.validate_git_identity.side_effect = RuntimeError(
             "Git validation failed"
         )
         gateway = ToolGateway(self.context, mock_validator)
         handler = MagicMock()
         gateway.register_handler("test", handler)
 
-        with self.assertRaises(Exception):
+        with self.assertRaises(RuntimeError):
             gateway.dispatch("test", path="some/path")
 
         handler.assert_not_called()

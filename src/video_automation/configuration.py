@@ -105,7 +105,7 @@ class ProviderPolicy:
 
         overlap = allowed.intersection(blocked)
         if overlap:
-            provider = sorted(overlap)[0]
+            provider = min(overlap)
             raise ValueError(f"provider cannot be both allowed and blocked: {provider}")
 
     def is_provider_allowed(self, provider_name: str, *, is_paid: bool) -> bool:
@@ -114,9 +114,7 @@ class ProviderPolicy:
             return False
         if self.allowed_provider_names and provider_name not in self.allowed_provider_names:
             return False
-        if is_paid and not self.allow_paid_providers:
-            return False
-        return True
+        return not (is_paid and not self.allow_paid_providers)
 
 
 @dataclass(frozen=True, slots=True)
@@ -153,7 +151,7 @@ class VideoAutomationPolicy:
             raise ValueError("TEST mode must not allow paid providers")
 
     @classmethod
-    def test_default(cls) -> "VideoAutomationPolicy":
+    def test_default(cls) -> VideoAutomationPolicy:
         return cls(
             mode=ExecutionMode.TEST,
             provider=ProviderPolicy(
@@ -177,7 +175,7 @@ class VideoAutomationPolicy:
         )
 
     @classmethod
-    def production_default(cls) -> "VideoAutomationPolicy":
+    def production_default(cls) -> VideoAutomationPolicy:
         return cls(
             mode=ExecutionMode.PRODUCTION,
             provider=ProviderPolicy(

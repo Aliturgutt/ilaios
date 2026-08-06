@@ -1,8 +1,8 @@
 """Tests for BootstrapValidator Git validation functionality."""
 
+import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, patch
-import subprocess
 
 import pytest
 

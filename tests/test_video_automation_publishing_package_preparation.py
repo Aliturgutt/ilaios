@@ -241,7 +241,7 @@ def test_scheduled_at_must_be_timezone_aware() -> None:
         PublishingTarget(
             platform="youtube",
             account_id="channel-001",
-            scheduled_at=datetime(2026, 8, 5, 9, 0),
+            scheduled_at=datetime(2026, 8, 5, 9, 0),  # noqa: DTZ001
             visibility="public",
             title="Episode",
             description="Description",

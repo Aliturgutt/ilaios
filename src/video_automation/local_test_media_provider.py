@@ -16,7 +16,6 @@ from pathlib import Path
 from .models import ProviderRequest, ProviderResult
 from .providers import ProviderCapabilities, VideoGenerationProvider
 
-
 _DEFAULT_PROVIDER_NAME = "local-test"
 _DEFAULT_OPERATION = "video.generate"
 

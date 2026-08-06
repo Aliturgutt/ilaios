@@ -5,7 +5,6 @@ from typing import Literal
 
 from src.core.validation_pipeline import ValidationResult
 
-
 ConfidenceLevel = Literal["high", "medium", "low"]
 
 

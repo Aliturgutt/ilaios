@@ -11,11 +11,12 @@ download media, inspect media, or mutate execution state.
 
 from __future__ import annotations
 
+import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
-import json
 from types import MappingProxyType
-from typing import Mapping, Protocol, cast
+from typing import Protocol, cast
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote
 from urllib.request import Request, urlopen
@@ -214,7 +215,7 @@ class UrllibArkTaskJsonTransport:
     ) -> ArkTaskJsonResponse:
         request = Request(url, headers=dict(headers), method="GET")
         try:
-            with urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+            with urlopen(request, timeout=timeout_seconds) as response:
                 status = int(response.status)
                 raw = response.read().decode("utf-8")
         except HTTPError as exc:

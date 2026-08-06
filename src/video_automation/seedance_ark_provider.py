@@ -8,16 +8,16 @@ modify execution-tracking state.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
+from collections.abc import Mapping
+from dataclasses import dataclass
 from types import MappingProxyType
-from typing import Mapping, Protocol, cast
+from typing import Protocol, cast
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 from .models import ProviderRequest, ProviderResult
 from .providers import ProviderCapabilities
-
 
 _DEFAULT_BASE_URL = "https://ark.cn-beijing.volces.com/api/v3"
 _DEFAULT_OPERATION = "video.generate"
@@ -73,7 +73,7 @@ class UrllibArkJsonTransport:
             method="POST",
         )
         try:
-            with urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+            with urlopen(request, timeout=timeout_seconds) as response:
                 status = int(response.status)
                 raw = response.read().decode("utf-8")
         except HTTPError as exc:
@@ -147,7 +147,7 @@ class SeedanceArkVideoGenerationProvider:
             )
         except SeedanceArkProviderError as exc:
             return _failure_result(request, "invalid_request", str(exc))
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             message = str(exc).strip() or exc.__class__.__name__
             return _failure_result(request, "transport_error", message)
 

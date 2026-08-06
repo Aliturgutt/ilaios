@@ -7,10 +7,10 @@ external services, render media, retry work, or reorder requests implicitly.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from hashlib import sha256
 from types import MappingProxyType
-from typing import Mapping, Sequence
 
 from .shot_request_planning import ShotGenerationRequest
 

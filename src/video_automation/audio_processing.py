@@ -21,15 +21,14 @@ responsibilities.
 
 from __future__ import annotations
 
+import sys
+import wave
 from array import array
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-import sys
-import wave
 
 from .models import MediaAsset, MediaType
-
 
 _SAMPLE_WIDTH_BYTES = 2
 _CHANNELS = 1
@@ -166,9 +165,7 @@ class AudioProcessingCoordinator:
         voice_track = _load_verified_pcm_asset(voice_asset)
         sample_rate = voice_track.sample_rate
 
-        target_frames = int(
-            round(target_duration_seconds * sample_rate)
-        )
+        target_frames = round(target_duration_seconds * sample_rate)
 
         if target_frames <= 0:
             raise AudioProcessingError(
@@ -296,12 +293,8 @@ class AudioProcessingCoordinator:
         body = _read_non_empty_file(output_path)
         checksum = sha256(body).hexdigest()
 
-        asset_identity = "\n".join(
-            (
-                source_asset.asset_id,
-                processing_id,
-                checksum,
-            )
+        asset_identity = (
+            f"{source_asset.asset_id}\n{processing_id}\n{checksum}"
         )
 
         asset_id = (
@@ -449,7 +442,7 @@ def _normalize_peak(
     normalized: list[int] = []
 
     for sample in samples:
-        scaled = int(round(sample * scale))
+        scaled = round(sample * scale)
         normalized.append(_clamp_int16(scaled))
 
     return tuple(normalized)

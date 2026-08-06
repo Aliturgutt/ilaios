@@ -10,16 +10,15 @@ transcription are intentionally outside M14.
 
 from __future__ import annotations
 
-from hashlib import sha256
 import math
-from pathlib import Path
 import struct
 import wave
+from hashlib import sha256
+from pathlib import Path
 
 from .models import MediaAsset, MediaType, ProviderRequest, ProviderResult
 from .provider_registry import ProviderRegistry
 from .providers import MediaProviderOutput, ProviderCapabilities, VoiceProvider
-
 
 _DEFAULT_PROVIDER_NAME = "local-test-voice"
 _DEFAULT_OPERATION = "voice.generate"

@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from hashlib import sha256
 import json
+from hashlib import sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -251,17 +251,16 @@ def test_all_canonical_timing_sources_are_supported() -> None:
 
 
 def test_unknown_timing_source_fails_closed() -> None:
-    with TemporaryDirectory() as directory_name:
-        with pytest.raises(
-            CaptionSubtitleError,
-            match="timing_source",
-        ):
-            CaptionSubtitleEngine().export(
-                job_id="job-1",
-                cues=_cues(),
-                timing_source="guessed",
-                output_directory=directory_name,
-            )
+    with TemporaryDirectory() as directory_name, pytest.raises(
+        CaptionSubtitleError,
+        match="timing_source",
+    ):
+        CaptionSubtitleEngine().export(
+            job_id="job-1",
+            cues=_cues(),
+            timing_source="guessed",
+            output_directory=directory_name,
+        )
 
 
 def test_duplicate_cue_ids_fail_closed() -> None:
@@ -280,17 +279,16 @@ def test_duplicate_cue_ids_fail_closed() -> None:
         ),
     )
 
-    with TemporaryDirectory() as directory_name:
-        with pytest.raises(
-            CaptionSubtitleError,
-            match="identifiers must be unique",
-        ):
-            CaptionSubtitleEngine().export(
-                job_id="job-1",
-                cues=cues,
-                timing_source="script",
-                output_directory=directory_name,
-            )
+    with TemporaryDirectory() as directory_name, pytest.raises(
+        CaptionSubtitleError,
+        match="identifiers must be unique",
+    ):
+        CaptionSubtitleEngine().export(
+            job_id="job-1",
+            cues=cues,
+            timing_source="script",
+            output_directory=directory_name,
+        )
 
 
 def test_overlapping_cues_fail_closed() -> None:
@@ -309,17 +307,16 @@ def test_overlapping_cues_fail_closed() -> None:
         ),
     )
 
-    with TemporaryDirectory() as directory_name:
-        with pytest.raises(
-            CaptionSubtitleError,
-            match="must not overlap",
-        ):
-            CaptionSubtitleEngine().export(
-                job_id="job-1",
-                cues=cues,
-                timing_source="script",
-                output_directory=directory_name,
-            )
+    with TemporaryDirectory() as directory_name, pytest.raises(
+        CaptionSubtitleError,
+        match="must not overlap",
+    ):
+        CaptionSubtitleEngine().export(
+            job_id="job-1",
+            cues=cues,
+            timing_source="script",
+            output_directory=directory_name,
+        )
 
 
 def test_invalid_cue_duration_fails_closed() -> None:
@@ -349,17 +346,16 @@ def test_negative_cue_start_fails_closed() -> None:
 
 
 def test_empty_caption_collection_fails_closed() -> None:
-    with TemporaryDirectory() as directory_name:
-        with pytest.raises(
-            CaptionSubtitleError,
-            match="at least one caption",
-        ):
-            CaptionSubtitleEngine().export(
-                job_id="job-1",
-                cues=(),
-                timing_source="script",
-                output_directory=directory_name,
-            )
+    with TemporaryDirectory() as directory_name, pytest.raises(
+        CaptionSubtitleError,
+        match="at least one caption",
+    ):
+        CaptionSubtitleEngine().export(
+            job_id="job-1",
+            cues=(),
+            timing_source="script",
+            output_directory=directory_name,
+        )
 
 
 def test_burn_in_instruction_rejects_unknown_format() -> None:

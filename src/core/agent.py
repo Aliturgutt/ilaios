@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 import requests
 from dotenv import load_dotenv
@@ -40,7 +40,7 @@ class OpenRouterAgent:
             "Content-Type": "application/json"
         }
 
-        data: Dict[str, Any] = {
+        data: dict[str, Any] = {
             "model": self.model,
             "messages": [{"role": "user", "content": message}],
             "max_tokens": 100

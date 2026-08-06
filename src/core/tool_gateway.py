@@ -1,4 +1,5 @@
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from .bootstrap_validator import BootstrapValidator
 from .immutable_context import ExecutionContext

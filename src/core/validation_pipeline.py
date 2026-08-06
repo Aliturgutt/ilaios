@@ -1,10 +1,9 @@
 """Validation Pipeline for Hermes Enterprise OS core modules."""
 
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Callable, Iterable
 
 from src.core.audit_engine import AuditRecord
-
 
 ValidationRule = Callable[[AuditRecord], str | None]
 

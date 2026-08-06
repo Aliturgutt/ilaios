@@ -7,8 +7,8 @@ specific film, character, story, or publishing platform.
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
-from typing import Iterable, Mapping
 
 
 class ContinuityError(ValueError):

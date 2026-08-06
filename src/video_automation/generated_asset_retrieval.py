@@ -8,11 +8,12 @@ probe codecs, retry requests, select providers, or infer generation outcomes.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from hashlib import sha256
 from pathlib import Path
 from types import MappingProxyType
-from typing import Mapping, Protocol
+from typing import Protocol
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
@@ -71,7 +72,7 @@ class UrllibAssetHttpTransport:
     ) -> AssetHttpResponse:
         request = Request(url, headers=dict(headers), method="GET")
         try:
-            with urlopen(request, timeout=timeout_seconds) as response:  # noqa: S310
+            with urlopen(request, timeout=timeout_seconds) as response:
                 status_code = int(response.status)
                 body = response.read()
                 content_type = response.headers.get_content_type()

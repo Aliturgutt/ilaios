@@ -28,7 +28,6 @@ from src.video_automation.models import (
     VideoScript,
 )
 
-
 UTC_NOW = datetime(2026, 8, 2, 12, 0, tzinfo=timezone.utc)
 SHA256 = "a" * 64
 

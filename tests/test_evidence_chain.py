@@ -12,7 +12,6 @@ from src.core.evidence_chain import (
     EvidenceRecord,
 )
 
-
 TIMESTAMP = datetime(2026, 7, 27, 12, 0, 0, tzinfo=timezone.utc)
 
 
@@ -63,7 +62,7 @@ def test_evidence_record_requires_timezone_aware_timestamp() -> None:
         EvidenceChainValidationError,
         match="timezone-aware",
     ):
-        _record(timestamp=datetime(2026, 7, 27, 12, 0, 0))
+        _record(timestamp=datetime(2026, 7, 27, 12, 0, 0))  # noqa: DTZ001
 
 
 def test_evidence_record_requires_utc_timestamp() -> None:

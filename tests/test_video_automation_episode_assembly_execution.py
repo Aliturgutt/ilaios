@@ -1,8 +1,11 @@
 from __future__ import annotations
+
+import subprocess
 from hashlib import sha256
 from pathlib import Path
-import subprocess
+
 import pytest
+
 from src.video_automation.episode_assembly_execution import (
     EpisodeAssemblyExecutionCoordinator,
     EpisodeAssemblyExecutionError,

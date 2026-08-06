@@ -22,15 +22,14 @@ to canonical M20.
 
 from __future__ import annotations
 
+import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from hashlib import sha256
-import json
 from pathlib import Path
 from types import MappingProxyType
-from typing import Mapping
 
 from .models import MediaAsset, Timeline
-
 
 _ALLOWED_KINDS = frozenset(
     {
@@ -280,9 +279,7 @@ class RemotionCompositionAdapter:
             "job_id": job_id,
             "composition": {
                 "duration_seconds": duration_seconds,
-                "duration_frames": int(
-                    round(duration_seconds * fps)
-                ),
+                "duration_frames": round(duration_seconds * fps),
                 "fps": fps,
                 "width": width,
                 "height": height,
@@ -302,12 +299,8 @@ class RemotionCompositionAdapter:
                     ].media_type.value,
                     "start_seconds": item.start_seconds,
                     "duration_seconds": item.duration_seconds,
-                    "start_frame": int(
-                        round(item.start_seconds * fps)
-                    ),
-                    "duration_frames": int(
-                        round(item.duration_seconds * fps)
-                    ),
+                    "start_frame": round(item.start_seconds * fps),
+                    "duration_frames": round(item.duration_seconds * fps),
                     "layer": item.layer,
                 }
                 for item in ordered_timeline_items
@@ -318,12 +311,8 @@ class RemotionCompositionAdapter:
                     "kind": element.kind,
                     "start_seconds": element.start_seconds,
                     "duration_seconds": element.duration_seconds,
-                    "start_frame": int(
-                        round(element.start_seconds * fps)
-                    ),
-                    "duration_frames": int(
-                        round(element.duration_seconds * fps)
-                    ),
+                    "start_frame": round(element.start_seconds * fps),
+                    "duration_frames": round(element.duration_seconds * fps),
                     "layer": element.layer,
                     "payload": dict(element.payload),
                 }

@@ -1,10 +1,10 @@
 """Deterministic data models for code intelligence."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
 from enum import Enum
 from types import MappingProxyType
-from typing import Dict, List, Mapping, TypeAlias
-
+from typing import TypeAlias
 
 MetadataValue: TypeAlias = str | int | float | bool | None
 
@@ -181,5 +181,5 @@ class Symbol:
         self.type = symbol_type
         self.location = location
         self.language = language
-        self.references: List[str] = []
-        self.metadata: Dict[str, MetadataValue] = {}
+        self.references: list[str] = []
+        self.metadata: dict[str, MetadataValue] = {}

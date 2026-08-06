@@ -127,7 +127,7 @@ def test_record_rejects_naive_timestamp() -> None:
             component="tool_gateway",
             action="dispatch",
             status="success",
-            timestamp=datetime(2026, 7, 23, 12, 0, 0),
+            timestamp=datetime(2026, 7, 23, 12, 0, 0),  # noqa: DTZ001
         )
 
 

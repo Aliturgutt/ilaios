@@ -3,7 +3,7 @@
 All HTTP calls to OpenRouter are mocked; no live network requests are made.
 """
 
-from typing import Any, Dict, Optional
+from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -44,9 +44,9 @@ def test_openrouter_model_env_override(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _make_mock_response(
-    json_body: Dict[str, Any],
+    json_body: dict[str, Any],
     status_code: int = 200,
-    raise_error: Optional[Exception] = None,
+    raise_error: Exception | None = None,
 ) -> MagicMock:
     mock_response = MagicMock()
     mock_response.status_code = status_code
@@ -82,9 +82,11 @@ def test_chat_raises_on_http_error(monkeypatch: pytest.MonkeyPatch) -> None:
     http_error = requests.HTTPError("500 Server Error")
     mock_response = _make_mock_response({}, status_code=500, raise_error=http_error)
 
-    with patch("src.core.agent.requests.post", return_value=mock_response):
-        with pytest.raises(requests.HTTPError):
-            agent.chat("hi")
+    with (
+        patch("src.core.agent.requests.post", return_value=mock_response),
+        pytest.raises(requests.HTTPError),
+    ):
+        agent.chat("hi")
 
 
 def test_chat_raises_on_malformed_response(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -94,9 +96,11 @@ def test_chat_raises_on_malformed_response(monkeypatch: pytest.MonkeyPatch) -> N
 
     mock_response = _make_mock_response({"unexpected": "shape"})
 
-    with patch("src.core.agent.requests.post", return_value=mock_response):
-        with pytest.raises(OpenRouterResponseError):
-            agent.chat("hi")
+    with (
+        patch("src.core.agent.requests.post", return_value=mock_response),
+        pytest.raises(OpenRouterResponseError),
+    ):
+        agent.chat("hi")
 
 
 def test_chat_sends_correct_authorization_header(monkeypatch: pytest.MonkeyPatch) -> None:

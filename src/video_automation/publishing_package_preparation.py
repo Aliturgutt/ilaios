@@ -10,11 +10,11 @@ schedule external jobs, select accounts, or retry failed publications.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 from hashlib import sha256
 from types import MappingProxyType
-from typing import Mapping, Sequence
 
 from .episode_assembly_execution import EpisodeAssemblyArtifact
 from .final_episode_acceptance import (

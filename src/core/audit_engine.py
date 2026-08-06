@@ -1,9 +1,9 @@
 """Immutable in-memory audit logging for Hermes Enterprise OS core modules."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from types import MappingProxyType
-from typing import Mapping
 
 
 class AuditValidationError(ValueError):

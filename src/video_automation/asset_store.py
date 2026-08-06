@@ -11,12 +11,13 @@ perform technical validation, render media, or mutate upstream M12 evidence.
 
 from __future__ import annotations
 
+import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from hashlib import sha256
-import json
 from pathlib import Path
 from types import MappingProxyType
-from typing import Mapping, cast
+from typing import cast
 
 from .generated_asset_retrieval import RetrievedGenerationAsset
 from .models import MediaAsset, MediaType

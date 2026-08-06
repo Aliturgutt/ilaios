@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from types import MappingProxyType
-from typing import ClassVar, Mapping
+from typing import ClassVar
 
 from src.code_intelligence.models import Language
-
 
 DEFAULT_MAX_FILE_SIZE_BYTES = 1_048_576
 

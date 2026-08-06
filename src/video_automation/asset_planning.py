@@ -7,8 +7,8 @@ poll jobs, perform retries, or mutate upstream planning data.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from hashlib import sha256
-from typing import Mapping, Sequence
 
 from .models import AssetRequest, MediaType, Shot
 

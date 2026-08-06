@@ -7,6 +7,7 @@ import pytest
 from src.core.audit_engine import AuditRecord
 from src.core.validation_pipeline import ValidationPipeline
 
+
 def make_record() -> AuditRecord:
     return AuditRecord(
         timestamp=datetime.now(timezone.utc),

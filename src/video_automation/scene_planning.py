@@ -7,9 +7,9 @@ character, or publishing platform.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from math import ceil, floor
-from typing import Sequence
 
 
 class ShotPlanningError(ValueError):

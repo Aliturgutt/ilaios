@@ -169,7 +169,7 @@ def test_confidence_result_is_immutable() -> None:
     )
 
     with pytest.raises(FrozenInstanceError):
-        setattr(result, "score", 0)
+        setattr(result, "score", 0)  # noqa: B010
 
 
 def test_negative_score_is_rejected() -> None:

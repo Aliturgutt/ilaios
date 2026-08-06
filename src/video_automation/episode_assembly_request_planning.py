@@ -8,10 +8,10 @@ All output policy is supplied explicitly by the caller.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from hashlib import sha256
 from types import MappingProxyType
-from typing import Mapping
 
 from .episode_assembly_planning import EpisodeAssemblyPlan
 

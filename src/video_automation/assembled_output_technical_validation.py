@@ -10,12 +10,12 @@ It does not render, repair, transcode, publish, download, or mutate media.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
 from hashlib import sha256
 from pathlib import Path
 from types import MappingProxyType
-from typing import Mapping
 
 from .episode_assembly_execution import EpisodeAssemblyArtifact
 from .media_technical_validation import MediaProbeObservation, MediaTechnicalProbe

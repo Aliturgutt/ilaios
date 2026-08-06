@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
+import sys
+import wave
 from array import array
 from hashlib import sha256
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import sys
-import wave
 
 import pytest
 
@@ -17,7 +17,6 @@ from src.video_automation.audio_processing import (
     AudioProcessingManifest,
 )
 from src.video_automation.models import MediaAsset, MediaType
-
 
 _SAMPLE_RATE = 16_000
 

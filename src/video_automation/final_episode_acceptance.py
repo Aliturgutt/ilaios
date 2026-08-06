@@ -10,11 +10,11 @@ subjective quality, or override failed evidence.
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from hashlib import sha256
 from types import MappingProxyType
-from typing import Mapping, Sequence
 
 from .assembled_output_technical_validation import (
     AssembledOutputTechnicalValidation,

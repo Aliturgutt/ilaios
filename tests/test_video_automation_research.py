@@ -11,7 +11,6 @@ from src.video_automation.research import (
     ResearchPolicy,
 )
 
-
 NOW = datetime(2026, 8, 2, 12, 0, tzinfo=timezone.utc)
 
 

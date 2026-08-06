@@ -1,5 +1,5 @@
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 
 class NodeType(Enum):
@@ -44,7 +44,7 @@ class Node:
     def __init__(self,
                  node_id: str,
                  node_type: NodeType,
-                 properties: Dict[str, Any]):
+                 properties: dict[str, Any]):
         self.id = node_id
         self.type = node_type
         self.properties = properties
@@ -58,9 +58,9 @@ class Edge:
                  source_id: str,
                  target_id: str,
                  edge_type: EdgeType,
-                 properties: Optional[Dict[str, Any]] = None):
+                 properties: dict[str, Any] | None = None):
         self.id = edge_id
         self.source = source_id
         self.target = target_id
         self.type = edge_type
-        self.properties: Dict[str, Any] = properties if properties is not None else {}
+        self.properties: dict[str, Any] = properties if properties is not None else {}

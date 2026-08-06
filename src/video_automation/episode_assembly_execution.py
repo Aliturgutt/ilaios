@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
+import subprocess
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from hashlib import sha256
 from pathlib import Path
-import subprocess
 from types import MappingProxyType
-from typing import Mapping, Protocol
+from typing import Protocol
 
 from .episode_assembly_request_planning import EpisodeAssemblyRequest
 from .media_technical_validation import (
@@ -331,9 +332,9 @@ def _validate_identity(
         raise EpisodeAssemblyExecutionError(
             "technical validation manifest must pass before assembly execution"
         )
-    if set(c.asset_id for c in request.clips) != set(
+    if {c.asset_id for c in request.clips} != {
         a.asset_id for a in manifest.assets
-    ):
+    }:
         raise EpisodeAssemblyExecutionError(
             "assembly request assets must exactly match technical validation assets"
         )

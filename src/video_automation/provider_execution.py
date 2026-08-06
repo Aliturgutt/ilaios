@@ -9,11 +9,11 @@ tracker.
 
 from __future__ import annotations
 
+import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from hashlib import sha256
-import json
 from types import MappingProxyType
-from typing import Mapping
 
 from .generation_dispatch_planning import (
     EpisodeGenerationDispatchPlan,
@@ -179,7 +179,7 @@ class ProviderExecutionOrchestrator:
         request = _build_provider_request(dispatch_plan, dispatch)
         try:
             result = provider.execute(request)
-        except Exception as exc:
+        except Exception as exc:  # noqa: BLE001
             message = str(exc).strip() or exc.__class__.__name__
             return ProviderDispatchSubmission(
                 dispatch_id=dispatch.dispatch_id,

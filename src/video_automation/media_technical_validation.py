@@ -9,15 +9,16 @@ assembly.
 
 from __future__ import annotations
 
+import json
+import subprocess
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from enum import Enum
 from fractions import Fraction
 from hashlib import sha256
-import json
 from pathlib import Path
-import subprocess
 from types import MappingProxyType
-from typing import Mapping, Protocol, Sequence
+from typing import Protocol
 
 from .generated_asset_retrieval import (
     EpisodeGeneratedAssetRetrievalManifest,

@@ -11,13 +11,14 @@ policy and M22+ own later quality/publishing concerns.
 
 from __future__ import annotations
 
+import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from fractions import Fraction
 from hashlib import sha256
-import json
 from math import gcd
 from pathlib import Path
-from typing import Mapping, Protocol
+from typing import Protocol
 
 from .ffmpeg_media_engine import (
     CommandRunner,

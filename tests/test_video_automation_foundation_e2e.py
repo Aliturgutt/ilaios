@@ -9,9 +9,9 @@ runtime entrypoint and top-level workflow coordination.
 
 from __future__ import annotations
 
+import subprocess
 from hashlib import sha256
 from pathlib import Path
-import subprocess
 
 from src.video_automation.ffmpeg_media_engine import FfmpegMediaEngine
 from src.video_automation.models import (

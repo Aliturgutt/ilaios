@@ -6,7 +6,6 @@ Git repository identity through four core checks.
 
 import subprocess
 from pathlib import Path
-from typing import Optional
 
 
 class ContextError(Exception):
@@ -16,7 +15,7 @@ class ContextError(Exception):
 class BootstrapValidator:
     """Validates Git repository identity and establishes context."""
 
-    def __init__(self, repo_path: Optional[Path] = None) -> None:
+    def __init__(self, repo_path: Path | None = None) -> None:
         """Initialize validator with optional repository path.
 
         Args:

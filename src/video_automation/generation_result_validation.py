@@ -7,11 +7,11 @@ not inspect media, call providers, infer quality, retry work, or modify assets.
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import StrEnum
 from hashlib import sha256
 from types import MappingProxyType
-from typing import Mapping
 
 from .generation_result_ingestion import EpisodeGenerationResultManifest
 
