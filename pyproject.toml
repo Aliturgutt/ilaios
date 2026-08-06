@@ -1,3 +1,11 @@
+[project]
+name = "HermesEnterpriseOS"
+dynamic = ["version"]
+dependencies = [
+    "requests",
+    "python-dotenv",
+]
+
 [tool.mypy]
 mypy_path = "."
 explicit_package_bases = true
