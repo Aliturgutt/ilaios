@@ -1,0 +1,22 @@
+schema_version: "1.0"
+release_milestone: RELEASE.R00
+evaluated_dependency: PLATFORM.P20
+release_state: NOT_DEPLOYED
+deployment_performed: false
+feature_flags:
+  default_enabled: false
+  canary_flag_defined: true
+allowlists:
+  required: true
+  default_entries: []
+health:
+  readiness_check_required: true
+  dependency_health_required: true
+  evidence_store_verification_required: true
+rollback:
+  runbook_required: true
+  immutable_prior_revision_required: true
+  drill_evidence: dev/openclaw/evidence/PLATFORM.P20/decision.yaml
+promotion:
+  eligible: true
+  explicit_human_approval_required_for_next_state: true

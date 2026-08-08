@@ -1,0 +1,9 @@
+RELEASE.R00.v1
+dependency PLATFORM.P20 durable PASS: PASS
+machine-readable eligibility assertion command: PASS
+python -m pytest -q: PASS (886 passed)
+ruff check .: PASS
+mypy --strict src tests: PASS
+pre-commit run --all-files: PASS
+git diff --check: PASS
+deployment command executed: NO
