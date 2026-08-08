@@ -1,0 +1,12 @@
+milestone_id: VIDEO.V30
+package_id: VIDEO.V30.v1
+legacy_traceability: M30
+status: PASS
+dependency_evidence: dev/openclaw/evidence/VIDEO.V29/decision.yaml
+repository_evidence:
+  production_code: src/video_automation/workflow_orchestrator.py
+  tests: tests/test_video_automation_workflow_orchestrator.py
+  history: 9eec30d
+validations: {targeted_video_tests: PASS, full_regression: PASS, ruff: PASS, mypy_strict: PASS, pre_commit: PASS, git_diff_check: PASS}
+forbidden_paths_modified: false
+code_repair_required: false
