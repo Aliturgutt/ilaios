@@ -17,8 +17,16 @@ from .proposals import (
     RiskClass,
     propose_execution,
 )
+from .workflows import (
+    AttemptRecord,
+    OutboxRecord,
+    WorkflowError,
+    WorkflowStore,
+    WorkflowStoreConfig,
+)
 
 __all__ = [
+    "AttemptRecord",
     "AuthenticationError",
     "BudgetEnvelope",
     "ControlPlane",
@@ -28,8 +36,12 @@ __all__ = [
     "GoalRecord",
     "GoalSpec",
     "JobRecord",
+    "OutboxRecord",
     "ProposalError",
     "ProposedTask",
     "RiskClass",
+    "WorkflowError",
+    "WorkflowStore",
+    "WorkflowStoreConfig",
     "propose_execution",
 ]

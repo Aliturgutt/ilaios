@@ -1,0 +1,16 @@
+milestone_id: PLATFORM.P07
+package_id: PLATFORM.P07.v1
+status: PASS
+dependency_evidence: dev/openclaw/evidence/PLATFORM.P06/decision.yaml
+scope_evidence:
+  durable_store: services/control_plane/workflows.py
+  workflow_task_attempt: true
+  checkpoint: true
+  retry_and_timeout: true
+  outbox_and_inbox: true
+  reconciliation_acknowledgement: true
+  compensation: true
+  crash_restart_recovery: tests/test_durable_workflows.py::test_checkpoint_and_attempt_survive_crash_restart
+  duplicate_event_recovery: tests/test_durable_workflows.py::test_duplicate_inbox_event_is_idempotent_after_restart
+validations: {targeted_tests: PASS, full_regression: PASS, ruff: PASS, mypy_strict: PASS, pre_commit: PASS, git_diff_check: PASS}
+canonical_authorities_unchanged: true
