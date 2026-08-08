@@ -1,8 +1,8 @@
-"""Film-agnostic cinematic scene and shot planning.
+"""Deterministic scene and shot planning for Video Automation.
 
-The planner converts ordered episode beats into short generation units. It does
-not call any media provider and does not encode a specific film, channel, story,
-character, or publishing platform.
+M08 converts structured :class:`VideoScript` objects into canonical logical
+:class:`Scene` objects. M09 converts scene/beat intent into executable visual
+units. Neither layer calls providers or performs rendering.
 """
 
 from __future__ import annotations
@@ -11,9 +11,47 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from math import ceil, floor
 
+from .models import Scene, Shot, VideoScript
+
+
+class ScenePlanningError(ValueError):
+    """Raised when a structured script cannot form canonical logical scenes."""
+
+
+class ScenePlanner:
+    """M08 planner: transform a structured script into ordered logical scenes."""
+
+    def plan(self, script: VideoScript) -> tuple[Scene, ...]:
+        """Create one deterministic logical scene for each script section."""
+
+        scenes: list[Scene] = []
+        for sequence, section in enumerate(script.sections, start=1):
+            if section.estimated_duration_seconds <= 0:
+                raise ScenePlanningError(
+                    "script section estimated_duration_seconds must be greater than zero"
+                )
+
+            visual_description = section.on_screen_text or section.title
+            scenes.append(
+                Scene(
+                    scene_id=f"{script.job_id}-scene-{sequence:03d}",
+                    script_reference=section.section_id,
+                    purpose=section.title,
+                    duration_seconds=float(section.estimated_duration_seconds),
+                    visual_description=visual_description,
+                    narration_reference=section.section_id,
+                    transition_intent=(
+                        "cut" if sequence == len(script.sections) else "continue"
+                    ),
+                    required_asset_ids=(),
+                )
+            )
+
+        return tuple(scenes)
+
 
 class ShotPlanningError(ValueError):
-    """Raised when an episode cannot be converted into a valid shot plan."""
+    """Raised when scene/beat intent cannot be converted into a shot plan."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,7 +77,7 @@ class ShotPlannerConfig:
 
 @dataclass(frozen=True, slots=True)
 class EpisodeBeat:
-    """One ordered narrative beat with explicit shot-planning intent."""
+    """Legacy-compatible explicit M09 shot-planning intent."""
 
     beat_id: str
     text: str
@@ -57,18 +95,10 @@ class EpisodeBeat:
     def __post_init__(self) -> None:
         _require_non_blank("beat_id", self.beat_id)
         _require_non_blank("text", self.text)
-
         if self.duration_seconds <= 0:
-            raise ShotPlanningError(
-                "duration_seconds must be greater than zero"
-            )
-
+            raise ShotPlanningError("duration_seconds must be greater than zero")
         if self.continuity_note is not None:
-            _require_non_blank(
-                "continuity_note",
-                self.continuity_note,
-            )
-
+            _require_non_blank("continuity_note", self.continuity_note)
         for name, value in (
             ("shot_type", self.shot_type),
             ("subject", self.subject),
@@ -76,18 +106,11 @@ class EpisodeBeat:
             ("environment", self.environment),
             ("framing", self.framing),
             ("movement", self.movement),
-            (
-                "required_provider_capability",
-                self.required_provider_capability,
-            ),
+            ("required_provider_capability", self.required_provider_capability),
         ):
             _require_non_blank(name, value)
-
         if self.generation_prompt is not None:
-            _require_non_blank(
-                "generation_prompt",
-                self.generation_prompt,
-            )
+            _require_non_blank("generation_prompt", self.generation_prompt)
 
 
 @dataclass(frozen=True, slots=True)
@@ -123,71 +146,26 @@ class CinematicShot:
             ("environment", self.environment),
             ("framing", self.framing),
             ("movement", self.movement),
-            (
-                "required_provider_capability",
-                self.required_provider_capability,
-            ),
+            ("required_provider_capability", self.required_provider_capability),
         ):
             _require_non_blank(name, value)
-
         if self.sequence <= 0:
-            raise ShotPlanningError(
-                "sequence must be greater than zero"
-            )
-
+            raise ShotPlanningError("sequence must be greater than zero")
         if self.duration_seconds <= 0:
-            raise ShotPlanningError(
-                "duration_seconds must be greater than zero"
-            )
-
+            raise ShotPlanningError("duration_seconds must be greater than zero")
         if self.continuity_note is not None:
-            _require_non_blank(
-                "continuity_note",
-                self.continuity_note,
-            )
-
+            _require_non_blank("continuity_note", self.continuity_note)
         if self.previous_shot_id is not None:
-            _require_non_blank(
-                "previous_shot_id",
-                self.previous_shot_id,
-            )
-
+            _require_non_blank("previous_shot_id", self.previous_shot_id)
         if self.next_shot_id is not None:
-            _require_non_blank(
-                "next_shot_id",
-                self.next_shot_id,
-            )
+            _require_non_blank("next_shot_id", self.next_shot_id)
 
-        resolved_scene_id = (
-            self.source_beat_id
-            if self.scene_id is None
-            else self.scene_id
-        )
-        _require_non_blank(
-            "scene_id",
-            resolved_scene_id,
-        )
-
-        resolved_prompt = (
-            self.text
-            if self.generation_prompt is None
-            else self.generation_prompt
-        )
-        _require_non_blank(
-            "generation_prompt",
-            resolved_prompt,
-        )
-
-        object.__setattr__(
-            self,
-            "scene_id",
-            resolved_scene_id,
-        )
-        object.__setattr__(
-            self,
-            "generation_prompt",
-            resolved_prompt,
-        )
+        resolved_scene_id = self.source_beat_id if self.scene_id is None else self.scene_id
+        resolved_prompt = self.text if self.generation_prompt is None else self.generation_prompt
+        _require_non_blank("scene_id", resolved_scene_id)
+        _require_non_blank("generation_prompt", resolved_prompt)
+        object.__setattr__(self, "scene_id", resolved_scene_id)
+        object.__setattr__(self, "generation_prompt", resolved_prompt)
 
 
 @dataclass(frozen=True, slots=True)
@@ -199,16 +177,41 @@ class EpisodeShotPlan:
 
     @property
     def total_duration_seconds(self) -> float:
-        """Return the exact planned episode duration."""
-
         return sum(shot.duration_seconds for shot in self.shots)
 
 
-class ScenePlanner:
-    """Split episode beats into deterministic short cinematic shots."""
+class ShotPlanner:
+    """M09 planner: transform scenes or explicit beat intent into visual units."""
 
     def __init__(self, config: ShotPlannerConfig | None = None) -> None:
         self._config = config or ShotPlannerConfig()
+
+    def plan_scenes(self, scenes: Sequence[Scene]) -> tuple[Shot, ...]:
+        """Create deterministic canonical Shot objects from logical scenes."""
+
+        if not scenes:
+            raise ShotPlanningError("at least one scene is required")
+        scene_ids = [scene.scene_id for scene in scenes]
+        if len(scene_ids) != len(set(scene_ids)):
+            raise ShotPlanningError("scene_id values must be unique")
+
+        return tuple(
+            Shot(
+                shot_id=f"{scene.scene_id}-shot-001",
+                scene_id=scene.scene_id,
+                shot_type="cinematic",
+                camera_description=scene.visual_description,
+                subject=scene.purpose,
+                action=f"depict {scene.purpose}",
+                environment=scene.visual_description,
+                framing="medium shot",
+                movement="static",
+                estimated_duration_seconds=scene.duration_seconds,
+                generation_prompt=scene.visual_description,
+                required_provider_capability="video.generate",
+            )
+            for scene in scenes
+        )
 
     def plan(
         self,
@@ -216,15 +219,14 @@ class ScenePlanner:
         *,
         episode_id: str,
     ) -> EpisodeShotPlan:
-        """Create an ordered short-shot plan without changing story order."""
+        """Preserve the existing deterministic short-shot planning behavior."""
 
         if not episode_id.strip():
             raise ShotPlanningError("episode_id must not be blank")
         if not beats:
             raise ShotPlanningError("at least one episode beat is required")
-
         beat_ids = [beat.beat_id for beat in beats]
-        if len(set(beat_ids)) != len(beat_ids):
+        if len(beat_ids) != len(set(beat_ids)):
             raise ShotPlanningError("beat_id values must be unique")
 
         drafts: list[tuple[EpisodeBeat, str, float]] = []
@@ -248,14 +250,10 @@ class ScenePlanner:
                     duration_seconds=duration,
                     continuity_note=beat.continuity_note,
                     previous_shot_id=(
-                        None
-                        if sequence == 1
-                        else _shot_id(episode_id, sequence - 1)
+                        None if sequence == 1 else _shot_id(episode_id, sequence - 1)
                     ),
                     next_shot_id=(
-                        None
-                        if sequence == total_shots
-                        else _shot_id(episode_id, sequence + 1)
+                        None if sequence == total_shots else _shot_id(episode_id, sequence + 1)
                     ),
                     scene_id=beat.beat_id,
                     shot_type=beat.shot_type,
@@ -264,14 +262,8 @@ class ScenePlanner:
                     environment=beat.environment,
                     framing=beat.framing,
                     movement=beat.movement,
-                    generation_prompt=(
-                        text
-                        if beat.generation_prompt is None
-                        else beat.generation_prompt
-                    ),
-                    required_provider_capability=(
-                        beat.required_provider_capability
-                    ),
+                    generation_prompt=(text if beat.generation_prompt is None else beat.generation_prompt),
+                    required_provider_capability=beat.required_provider_capability,
                 )
             )
 
@@ -281,39 +273,29 @@ class ScenePlanner:
         minimum = self._config.min_shot_seconds
         target = self._config.target_shot_seconds
         maximum = self._config.max_shot_seconds
-
         minimum_count = ceil(total_seconds / maximum)
         maximum_count = floor(total_seconds / minimum)
         if minimum_count > maximum_count:
             raise ShotPlanningError(
                 "beat duration cannot be partitioned inside configured shot bounds"
             )
-
         ideal_count = max(1, round(total_seconds / target))
         count = min(max(ideal_count, minimum_count), maximum_count)
-
         base_duration = total_seconds / count
         durations = [base_duration for _ in range(count)]
         durations[-1] = total_seconds - sum(durations[:-1])
-
         if any(duration < minimum or duration > maximum for duration in durations):
             raise ShotPlanningError(
                 "shot partition violated configured duration bounds"
             )
-
         return tuple(durations)
 
 
 def _require_non_blank(name: str, value: str) -> None:
     if not value or not value.strip():
-        raise ShotPlanningError(
-            f"{name} must not be blank"
-        )
-
+        raise ShotPlanningError(f"{name} must not be blank")
     if value != value.strip():
-        raise ShotPlanningError(
-            f"{name} must not contain surrounding whitespace"
-        )
+        raise ShotPlanningError(f"{name} must not contain surrounding whitespace")
 
 
 def _shot_id(episode_id: str, sequence: int) -> str:
@@ -324,7 +306,6 @@ def _split_text(text: str, count: int) -> tuple[str, ...]:
     words = " ".join(text.split()).split()
     if len(words) < count:
         raise ShotPlanningError("beat text has fewer words than required shots")
-
     chunks: list[str] = []
     offset = 0
     for index in range(count):
@@ -333,5 +314,4 @@ def _split_text(text: str, count: int) -> tuple[str, ...]:
         take = ceil(remaining_words / remaining_chunks)
         chunks.append(" ".join(words[offset : offset + take]))
         offset += take
-
     return tuple(chunks)
