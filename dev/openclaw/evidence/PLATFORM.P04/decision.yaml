@@ -1,0 +1,12 @@
+milestone_id: PLATFORM.P04
+package_id: PLATFORM.P04.v1
+status: PASS
+dependency_evidence: dev/openclaw/evidence/PLATFORM.P02/decision.yaml
+scope_evidence:
+  contracts_package: packages/contracts/ilaios_contracts
+  schema_version: "1.0"
+  compatibility_tests: tests/test_canonical_contracts.py
+  competing_job_lifecycle: false
+  release_state_separate: true
+validations: {targeted_tests: PASS, full_regression: PASS, ruff: PASS, mypy_strict: PASS, pre_commit: PASS, git_diff_check: PASS}
+canonical_authorities_unchanged: true
