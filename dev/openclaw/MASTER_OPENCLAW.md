@@ -241,9 +241,11 @@ OpenClaw must never autonomously promote release state.
 
 ## 17. EVIDENCE
 
-Write development evidence under:
+Normal development evidence is written under:
 
 `dev/openclaw/evidence/`
+
+Exception: `PRE.S00` is strictly read-only. PRE.S00 MUST NOT create or modify any repository file, including `dev/openclaw/evidence/`. Its evidence must be written outside the repository under `${HOME}/.openclaw/evidence/HermesEnterpriseOS/PRE.S00/`. After PRE.S00 is proven PASS, a later mutation-authorized package may import that evidence into the repository if explicitly required.
 
 Evidence must prove:
 - what was inspected;
@@ -280,10 +282,10 @@ When a milestone is proven PASS:
 2. Verify repository state.
 3. Apply allowed commit/push policy.
 4. Read `execution_plan.yaml`.
-5. Select the next canonical milestone whose dependencies are all PASS.
+5. Select the next canonical milestone whose dependencies are all PASS and whose package status is `READY`.
 6. Execute under this same controller.
 
-Never bypass a blocked milestone.
+Never bypass a blocked milestone or auto-promote a non-READY package.
 
 ## 20. CURRENT COMMAND
 
