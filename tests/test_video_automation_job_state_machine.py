@@ -4,7 +4,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from src.video_automation.job_state_machine import JobStateMachine, JobStateTransitionError
+from src.video_automation.job_state_machine import (
+    JobStateMachine,
+    JobStateTransitionError,
+)
 from src.video_automation.models import JobState
 
 
