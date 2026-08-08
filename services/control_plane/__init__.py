@@ -7,6 +7,12 @@ from .api import (
     GoalRecord,
     JobRecord,
 )
+from .live_state import (
+    LiveEvent,
+    LiveStateError,
+    LiveStateProjection,
+    LiveStateTransport,
+)
 from .proposals import (
     BudgetEnvelope,
     DataClass,
@@ -36,6 +42,10 @@ __all__ = [
     "GoalRecord",
     "GoalSpec",
     "JobRecord",
+    "LiveEvent",
+    "LiveStateError",
+    "LiveStateProjection",
+    "LiveStateTransport",
     "OutboxRecord",
     "ProposalError",
     "ProposedTask",
