@@ -1,0 +1,5 @@
+PLATFORM.P18.v1
+dependency PLATFORM.P17 durable PASS: PASS
+targeted pytest: PASS (2 passed)
+full pytest: PASS (882 passed)
+ruff, mypy strict, pre-commit, git diff --check: PASS
