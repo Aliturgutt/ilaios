@@ -1,0 +1,4 @@
+branch: master
+HEAD: 1116796c37818e4d732f0821120b93b84eff4adb
+origin/master: 1116796c37818e4d732f0821120b93b84eff4adb
+pre-existing interrupted active-package changes: services/integrations/__init__.py, services/integrations/product_proof.py
