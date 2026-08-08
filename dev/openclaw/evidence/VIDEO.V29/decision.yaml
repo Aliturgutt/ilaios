@@ -1,0 +1,12 @@
+milestone_id: VIDEO.V29
+package_id: VIDEO.V29.v1
+legacy_traceability: M29
+status: PASS
+dependency_evidence: dev/openclaw/evidence/VIDEO.V28/decision.yaml
+repository_evidence:
+  production_code: src/video_automation/audit_evidence.py
+  tests: tests/test_video_automation_audit_evidence.py
+  history: 9eec30d
+validations: {targeted_video_tests: PASS, full_regression: PASS, ruff: PASS, mypy_strict: PASS, pre_commit: PASS, git_diff_check: PASS}
+forbidden_paths_modified: false
+code_repair_required: false
