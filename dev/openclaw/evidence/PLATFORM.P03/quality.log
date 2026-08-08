@@ -1,0 +1,7 @@
+flutter analyze: PASS
+Windows release build: PASS, ilaios_desktop.exe
+Windows launch smoke: PASS
+ruff: PASS
+mypy --strict src tests: PASS, 132 source files
+pre-commit: PASS
+git diff --check: PASS
