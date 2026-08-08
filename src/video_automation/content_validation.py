@@ -89,11 +89,10 @@ class ContentValidationEvidence:
         if self.cta_text is not None:
             _require_non_blank("cta_text", self.cta_text)
 
-        if self.brand_text:
-            if self.brand_text != self.brand_text.strip():
-                raise ContentValidationError(
-                    "brand_text must not contain surrounding whitespace"
-                )
+        if self.brand_text and self.brand_text != self.brand_text.strip():
+            raise ContentValidationError(
+                "brand_text must not contain surrounding whitespace"
+            )
 
 
 @dataclass(frozen=True, slots=True)
