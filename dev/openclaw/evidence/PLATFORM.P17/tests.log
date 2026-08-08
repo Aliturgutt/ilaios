@@ -1,0 +1,2 @@
+tests/test_web_factory.py: 2 passed
+full regression: 880 passed

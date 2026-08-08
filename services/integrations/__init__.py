@@ -7,13 +7,16 @@ from .product_proof import (
     ProductProofError,
 )
 from .video import VideoChainAdapter, VideoIntegrationError, VideoIntegrationResult
+from .web_factory import GovernedWebFactory, WebsiteAcceptance
 
 __all__ = [
     "AcceptanceManifest",
     "DesktopGoalRequest",
     "GovernedVideoProductProof",
+    "GovernedWebFactory",
     "ProductProofError",
     "VideoChainAdapter",
     "VideoIntegrationError",
     "VideoIntegrationResult",
+    "WebsiteAcceptance",
 ]
