@@ -1,0 +1,12 @@
+milestone_id: VIDEO.V05
+package_id: VIDEO.V05.v1
+legacy_traceability: M05
+status: PASS
+dependency_evidence: dev/openclaw/evidence/VIDEO.V04/decision.yaml
+repository_evidence:
+  production_code: src/video_automation/provider_selection.py
+  tests: tests/test_video_automation_provider_selection.py
+  history: 354e5eb
+validations: {targeted_video_tests: PASS, full_regression: PASS, ruff: PASS, mypy_strict: PASS, pre_commit: PASS, git_diff_check: PASS}
+forbidden_paths_modified: false
+code_repair_required: false
