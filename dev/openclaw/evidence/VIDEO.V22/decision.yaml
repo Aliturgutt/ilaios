@@ -1,0 +1,12 @@
+milestone_id: VIDEO.V22
+package_id: VIDEO.V22.v1
+legacy_traceability: M22
+status: PASS
+dependency_evidence: dev/openclaw/evidence/VIDEO.V21/decision.yaml
+repository_evidence:
+  production_code: src/video_automation/content_validation.py
+  tests: tests/test_video_automation_content_validation.py
+  history: b834bbd
+validations: {targeted_video_tests: PASS, full_regression: PASS, ruff: PASS, mypy_strict: PASS, pre_commit: PASS, git_diff_check: PASS}
+forbidden_paths_modified: false
+code_repair_required: false
