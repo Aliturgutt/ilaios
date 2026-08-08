@@ -1,5 +1,6 @@
 """Governed agent, skill, and provider runtime."""
 
+from .grants import BlastRadiusBudget, ExecutionGrant, GrantError, GrantPolicy
 from .routing import (
     AgentProfile,
     ProviderProfile,
@@ -13,6 +14,10 @@ from .scheduler import Lease, SchedulingError, WorkerProfile, WorkerScheduler
 
 __all__ = [
     "AgentProfile",
+    "BlastRadiusBudget",
+    "ExecutionGrant",
+    "GrantError",
+    "GrantPolicy",
     "Lease",
     "ProviderProfile",
     "RouteDecision",

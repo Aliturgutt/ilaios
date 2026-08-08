@@ -1,0 +1,14 @@
+milestone_id: PLATFORM.P11
+package_id: PLATFORM.P11.v1
+status: PASS
+dependency_evidence: dev/openclaw/evidence/PLATFORM.P10/decision.yaml
+scope_evidence:
+  policy: services/runtime/grants.py
+  scoped_execution_grants: true
+  blast_radius_budgets: true
+  revocation: true
+  kill_switch: true
+  invalid_grants_fail_closed: true
+  stopped_work_requires_human_reset: true
+validations: {targeted_tests: PASS, full_regression: PASS, ruff: PASS, mypy_strict: PASS, pre_commit: PASS, git_diff_check: PASS}
+canonical_authorities_unchanged: true
