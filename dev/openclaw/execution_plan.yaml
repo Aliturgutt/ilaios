@@ -1,0 +1,218 @@
+schema_version: "1.0"
+plan_id: "ILAIOS_OPENCLAW_EXECUTION_PLAN_v1_0"
+controller: "dev/openclaw/MASTER_OPENCLAW.md"
+
+canonical_authorities:
+  - "ILAIOS_Master_Implementation_Specification_v1_0_CANONICAL_FINAL.docx"
+  - "ILAIOS_Canonical_Milestone_Manifest_v1_0.docx"
+
+execution:
+  mode: "fail_closed"
+  initial_milestone: "PRE.S00"
+  auto_advance: true
+  advance_requires_status: "READY"
+  dependency_evidence_required: true
+  prose_inference: false
+  unknown_milestone: "STOP"
+  missing_required_field: "STOP"
+  architecture_changes: false
+  release_auto_promotion: false
+
+package_activation:
+  rule: "Only a package explicitly present below with status READY may execute."
+  missing_package: "STOP"
+  blocked_package: "STOP"
+  future_package_policy: "Future milestone packages are created only from repository evidence plus canonical requirements; OpenClaw must never invent missing actions, paths, validations, approvals, rollback, or release transitions."
+
+evidence:
+  normal_root: "dev/openclaw/evidence"
+  pre_s00_root: "${HOME}/.openclaw/evidence/HermesEnterpriseOS/PRE.S00"
+  claim_without_evidence: "STOP"
+
+canonical_dependency_graph:
+  PRE.S00: []
+  VIDEO.V01: [PRE.S00]
+  VIDEO.V02: [VIDEO.V01]
+  VIDEO.V03: [VIDEO.V02]
+  VIDEO.V04: [VIDEO.V03]
+  VIDEO.V05: [VIDEO.V04]
+  VIDEO.V06: [VIDEO.V05]
+  VIDEO.V07: [VIDEO.V06]
+  VIDEO.V08: [VIDEO.V07]
+  VIDEO.V09: [VIDEO.V08]
+  VIDEO.V10: [VIDEO.V09]
+  VIDEO.V11: [VIDEO.V10]
+  VIDEO.V12: [VIDEO.V11]
+  VIDEO.V13: [VIDEO.V12]
+  VIDEO.V14: [VIDEO.V13]
+  VIDEO.V15: [VIDEO.V14]
+  VIDEO.V16: [VIDEO.V15]
+  VIDEO.V17: [VIDEO.V16]
+  VIDEO.V18: [VIDEO.V17]
+  VIDEO.V19: [VIDEO.V18]
+  VIDEO.V20: [VIDEO.V19]
+  VIDEO.V21: [VIDEO.V20]
+  VIDEO.V22: [VIDEO.V21]
+  VIDEO.V23: [VIDEO.V22]
+  VIDEO.V24: [VIDEO.V23]
+  VIDEO.V25: [VIDEO.V24]
+  VIDEO.V26: [VIDEO.V25]
+  VIDEO.V27: [VIDEO.V26]
+  VIDEO.V28: [VIDEO.V27]
+  VIDEO.V29: [VIDEO.V28]
+  VIDEO.V30: [VIDEO.V29]
+  PRE.S01: [VIDEO.V30]
+  PLATFORM.P00: [PRE.S01]
+  PLATFORM.P01: [PLATFORM.P00]
+  PLATFORM.P02: [PLATFORM.P01]
+  PLATFORM.P03: [PLATFORM.P02]
+  PLATFORM.P04: [PLATFORM.P02]
+  PLATFORM.P05: [PLATFORM.P03, PLATFORM.P04]
+  PLATFORM.P06: [PLATFORM.P05]
+  PLATFORM.P07: [PLATFORM.P06]
+  PLATFORM.P08: [PLATFORM.P07]
+  PLATFORM.P09: [PLATFORM.P08]
+  PLATFORM.P10: [PLATFORM.P09]
+  PLATFORM.P11: [PLATFORM.P10]
+  PLATFORM.P12: [PLATFORM.P11]
+  PLATFORM.P13: [PLATFORM.P12]
+  PLATFORM.P14: [PLATFORM.P13]
+  PLATFORM.P15: [PLATFORM.P14]
+  PLATFORM.P16: [PLATFORM.P15]
+  PLATFORM.P17: [PLATFORM.P16]
+  PLATFORM.P18: [PLATFORM.P17]
+  PLATFORM.P19: [PLATFORM.P18]
+  PLATFORM.P20: [PLATFORM.P19]
+  RELEASE.R00: [PLATFORM.P20]
+  RELEASE.R01: [RELEASE.R00]
+  RELEASE.R02: [RELEASE.R01]
+  RELEASE.R03: [RELEASE.R02]
+
+packages:
+  - milestone_id: "PRE.S00"
+    package_id: "PRE.S00.v1"
+    dependencies: []
+    allowed_paths:
+      - "."
+    forbidden_paths: []
+    actions:
+      - id: "A01"
+        type: "shell"
+        command: "git rev-parse --show-toplevel"
+        read_only: true
+      - id: "A02"
+        type: "shell"
+        command: "git rev-parse HEAD"
+        read_only: true
+      - id: "A03"
+        type: "shell"
+        command: "git branch --show-current"
+        read_only: true
+      - id: "A04"
+        type: "shell"
+        command: "git status --porcelain=v1 --branch"
+        read_only: true
+      - id: "A05"
+        type: "shell"
+        command: "git remote -v"
+        read_only: true
+      - id: "A06"
+        type: "shell"
+        command: "git ls-files"
+        read_only: true
+      - id: "A07"
+        type: "shell"
+        command: "git log -1 --decorate --oneline"
+        read_only: true
+      - id: "A08"
+        type: "shell"
+        command: "python --version"
+        read_only: true
+      - id: "A09"
+        type: "shell"
+        command: "python -m pytest --version"
+        read_only: true
+      - id: "A10"
+        type: "shell"
+        command: "ruff --version"
+        read_only: true
+      - id: "A11"
+        type: "shell"
+        command: "mypy --version"
+        read_only: true
+      - id: "A12"
+        type: "shell"
+        command: "pre-commit --version"
+        read_only: true
+      - id: "A13"
+        type: "shell"
+        command: "git ls-files '.github/workflows/*'"
+        read_only: true
+      - id: "A14"
+        type: "shell"
+        command: "git ls-files 'tests/*'"
+        read_only: true
+      - id: "A15"
+        type: "shell"
+        command: "git grep -n -E 'HermesEnterpriseOS|ILAIOS|ILATEN|ILAKOS' -- . ':!dev/openclaw/evidence/*' || true"
+        read_only: true
+      - id: "A16"
+        type: "shell"
+        command: "git status --porcelain=v1 --branch"
+        read_only: true
+    validations:
+      - id: "V01"
+        rule: "A02 returns a valid Git commit SHA."
+      - id: "V02"
+        rule: "A03 returns master."
+      - id: "V03"
+        rule: "A04 pre-state and A16 post-state are identical."
+      - id: "V04"
+        rule: "No repository file is created, modified, renamed, deleted, staged, committed, or pushed during PRE.S00."
+      - id: "V05"
+        rule: "All required tool-version commands complete successfully."
+      - id: "V06"
+        rule: "Repository, test, CI, identifier, and existing evidence inventories are captured."
+    requirements:
+      - "READ_ONLY"
+      - "FAIL_CLOSED"
+      - "NO_INFERENCE"
+      - "REPOSITORY_EVIDENCE_IS_TRUTH"
+    evidence_requirements:
+      - "${HOME}/.openclaw/evidence/HermesEnterpriseOS/PRE.S00/commands.log"
+      - "${HOME}/.openclaw/evidence/HermesEnterpriseOS/PRE.S00/pre_state.txt"
+      - "${HOME}/.openclaw/evidence/HermesEnterpriseOS/PRE.S00/post_state.txt"
+      - "${HOME}/.openclaw/evidence/HermesEnterpriseOS/PRE.S00/repository_inventory.txt"
+      - "${HOME}/.openclaw/evidence/HermesEnterpriseOS/PRE.S00/toolchain.txt"
+      - "${HOME}/.openclaw/evidence/HermesEnterpriseOS/PRE.S00/test_inventory.txt"
+      - "${HOME}/.openclaw/evidence/HermesEnterpriseOS/PRE.S00/ci_inventory.txt"
+      - "${HOME}/.openclaw/evidence/HermesEnterpriseOS/PRE.S00/identifier_inventory.txt"
+      - "${HOME}/.openclaw/evidence/HermesEnterpriseOS/PRE.S00/decision.yaml"
+    approvals: []
+    budget_policy: null
+    rollback:
+      - "No rollback action is permitted or required because PRE.S00 is read-only."
+    stop_conditions:
+      - "git_repository_not_detected"
+      - "branch_is_not_master"
+      - "repository_mutation_detected"
+      - "required_tool_missing"
+      - "required_field_missing_or_conflicting"
+      - "required_validation_failed_or_missing"
+      - "repository_evidence_contradicts_claimed_state"
+    expected_post_state:
+      repository_mutated: false
+      branch: "master"
+      head_unchanged: true
+      worktree_state_unchanged: true
+      decision: "PASS|FAIL|BLOCKED"
+    commit_policy:
+      allow_commit: false
+      allow_push: false
+      force_push: false
+    status: "READY"
+
+next_after_pre_s00:
+  milestone_id: "VIDEO.V01"
+  status: "BLOCKED"
+  unblock_rule: "PRE.S00 must be PASS with durable evidence, then VIDEO.V01 requires its own explicit bounded package before status may become READY."
