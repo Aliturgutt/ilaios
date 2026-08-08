@@ -1,0 +1,2 @@
+VIDEO.V04.v1 required commands: all PASS
+Targeted pytest, full pytest, ruff, strict mypy, pre-commit, git diff --check: PASS
