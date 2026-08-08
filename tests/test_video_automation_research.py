@@ -1,4 +1,4 @@
-"""Tests for the Hermes Video Automation research pipeline."""
+"""Tests for the ILAIOS Video Automation research pipeline."""
 
 from datetime import datetime, timezone
 

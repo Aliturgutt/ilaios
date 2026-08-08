@@ -1,4 +1,4 @@
-"""Deterministic configuration and policy models for Hermes Video Automation."""
+"""Deterministic configuration and policy models for ILAIOS Video Automation."""
 
 from __future__ import annotations
 

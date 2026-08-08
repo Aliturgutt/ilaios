@@ -1,4 +1,4 @@
-"""Deterministic research pipeline for Hermes Video Automation."""
+"""Deterministic research pipeline for ILAIOS Video Automation."""
 
 from __future__ import annotations
 

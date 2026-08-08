@@ -1,4 +1,4 @@
-"""Tests for deterministic Hermes script generation."""
+"""Tests for deterministic ILAIOS script generation."""
 
 from datetime import datetime, timezone
 

@@ -1,4 +1,4 @@
-"""Provider-independent interfaces for Hermes Video Automation."""
+"""Provider-independent interfaces for ILAIOS Video Automation."""
 
 from __future__ import annotations
 

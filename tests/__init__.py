@@ -1,1 +1,1 @@
-"""Tests for Hermes Enterprise OS."""
+"""Tests for ILAIOS."""

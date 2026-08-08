@@ -1,4 +1,4 @@
-"""Tests for the Hermes Enterprise OS evidence chain."""
+"""Tests for the ILAIOS evidence chain."""
 
 from dataclasses import FrozenInstanceError
 from datetime import datetime, timedelta, timezone

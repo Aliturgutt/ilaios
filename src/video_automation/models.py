@@ -1,4 +1,4 @@
-"""Deterministic domain models for Hermes Video Automation."""
+"""Deterministic domain models for ILAIOS Video Automation."""
 
 from __future__ import annotations
 

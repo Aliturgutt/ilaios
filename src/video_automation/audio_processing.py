@@ -1,4 +1,4 @@
-"""Canonical M15 audio processing for Hermes Video Automation.
+"""Canonical M15 audio processing for ILAIOS Video Automation.
 
 M15 prepares deterministic, technically validated PCM audio tracks for later
 timeline composition and media-engine mixing.

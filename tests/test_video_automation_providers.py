@@ -1,4 +1,4 @@
-"""Tests for provider-independent Hermes Video Automation interfaces."""
+"""Tests for provider-independent ILAIOS Video Automation interfaces."""
 
 from typing import cast
 

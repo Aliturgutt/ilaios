@@ -1,4 +1,4 @@
-"""Canonical M17 Timeline Engine for Hermes Video Automation.
+"""Canonical M17 Timeline Engine for ILAIOS Video Automation.
 
 M17 converts canonical MediaAsset records and explicit deterministic placement
 data into the pre-existing M01 Timeline and TimelineItem contracts.

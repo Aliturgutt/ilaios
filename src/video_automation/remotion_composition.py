@@ -415,7 +415,7 @@ def _build_entry_source(
         'import manifest from "./'
         + manifest_filename
         + '";\n\n'
-        + "export const hermesComposition = {\n"
+        + "export const ilaiosComposition = {\n"
         + f'  id: "{composition_id}",\n'
         + "  manifest,\n"
         + "} as const;\n"

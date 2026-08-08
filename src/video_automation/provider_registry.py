@@ -1,4 +1,4 @@
-"""Deterministic provider registry for Hermes Video Automation."""
+"""Deterministic provider registry for ILAIOS Video Automation."""
 
 from __future__ import annotations
 

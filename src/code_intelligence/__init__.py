@@ -1,4 +1,4 @@
-"""Code intelligence models and source analysis for Hermes Enterprise OS."""
+"""Code intelligence models and source analysis for ILAIOS."""
 
 from src.code_intelligence.models import (
     CodeEntity,

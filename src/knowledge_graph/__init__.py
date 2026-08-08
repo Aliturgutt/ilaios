@@ -1,1 +1,1 @@
-"""Knowledge Graph module for Hermes."""
+"""Knowledge Graph module for ILAIOS."""

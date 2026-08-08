@@ -1,1 +1,1 @@
-"""Project management module for Hermes."""
+"""Project management module for ILAIOS."""

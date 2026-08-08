@@ -1,4 +1,4 @@
-"""Deterministic asset planning for canonical Hermes Video Automation M10.
+"""Deterministic asset planning for canonical ILAIOS Video Automation M10.
 
 M10 converts approved Shot objects into provider-neutral AssetRequest objects.
 It does not select providers, invoke providers, generate media, download media,

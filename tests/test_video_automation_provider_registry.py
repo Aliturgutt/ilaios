@@ -1,4 +1,4 @@
-"""Tests for the Hermes Video Automation provider registry."""
+"""Tests for the ILAIOS Video Automation provider registry."""
 
 from types import MappingProxyType
 

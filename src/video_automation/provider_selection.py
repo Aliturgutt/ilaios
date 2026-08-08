@@ -1,4 +1,4 @@
-"""Deterministic provider selection engine for Hermes Video Automation."""
+"""Deterministic provider selection engine for ILAIOS Video Automation."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Foundation local/free integration gate for Hermes Video Automation.
+"""Foundation local/free integration gate for ILAIOS Video Automation.
 
 This test proves that existing canonical components can produce and independently
 probe a real local MP4 without paid providers or network access.

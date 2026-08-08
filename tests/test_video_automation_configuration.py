@@ -1,4 +1,4 @@
-"""Tests for Hermes Video Automation configuration and policy."""
+"""Tests for ILAIOS Video Automation configuration and policy."""
 
 import pytest
 

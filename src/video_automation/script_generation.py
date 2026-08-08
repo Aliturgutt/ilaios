@@ -1,4 +1,4 @@
-"""Deterministic script-generation layer for Hermes Video Automation."""
+"""Deterministic script-generation layer for ILAIOS Video Automation."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Hermes Video Automation domain package."""
+"""ILAIOS Video Automation domain package."""
 
 from .assembled_output_technical_validation import (
     AssembledOutputTechnicalIssue,

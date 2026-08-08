@@ -1,4 +1,4 @@
-"""Deterministic append-only evidence chain for Hermes Enterprise OS."""
+"""Deterministic append-only evidence chain for ILAIOS."""
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone

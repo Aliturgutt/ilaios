@@ -1,4 +1,4 @@
-"""Immutable in-memory audit logging for Hermes Enterprise OS core modules."""
+"""Immutable in-memory audit logging for ILAIOS core modules."""
 
 from collections.abc import Mapping
 from dataclasses import dataclass

@@ -1,4 +1,4 @@
-"""Validation Pipeline for Hermes Enterprise OS core modules."""
+"""Validation Pipeline for ILAIOS core modules."""
 
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass

@@ -1,7 +1,7 @@
 """Canonical M18 general FFmpeg media engine.
 
 This module provides deterministic low-level FFmpeg/FFprobe command execution
-for Hermes Video Automation.
+for ILAIOS Video Automation.
 
 Supported responsibilities:
 

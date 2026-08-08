@@ -1,4 +1,4 @@
-"""Deterministic confidence scoring for Hermes Enterprise OS."""
+"""Deterministic confidence scoring for ILAIOS."""
 
 from dataclasses import dataclass
 from typing import Literal

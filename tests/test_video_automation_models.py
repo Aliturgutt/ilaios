@@ -1,4 +1,4 @@
-"""Tests for Hermes Video Automation domain models."""
+"""Tests for ILAIOS Video Automation domain models."""
 
 from dataclasses import FrozenInstanceError
 from datetime import datetime, timedelta, timezone

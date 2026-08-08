@@ -1,4 +1,4 @@
-"""Tests for deterministic Hermes provider selection."""
+"""Tests for deterministic ILAIOS provider selection."""
 
 import pytest
 

@@ -1,4 +1,4 @@
-"""Canonical M14 voice generation for Hermes Video Automation.
+"""Canonical M14 voice generation for ILAIOS Video Automation.
 
 This module binds the existing VoiceProvider contract to one explicit,
 provider-neutral coordinator and provides a deterministic local/free TEST MODE
