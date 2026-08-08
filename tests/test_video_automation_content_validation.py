@@ -74,7 +74,7 @@ def test_missing_scene_narration_caption_asset_and_cta_fail() -> None:
     assert "cta_missing" in codes
 
 
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # type: ignore[misc, unused-ignore]
     ("duration", "expected_code"),
     (
         (37.9, "duration_too_short"),
