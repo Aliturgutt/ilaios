@@ -6,10 +6,10 @@ import pytest
 
 from src.video_automation.models import PublishJob, ValidationResult
 from src.video_automation.publishing_queue import (
-    PublishJobDispatcher,
     PublishingDispatchResult,
     PublishingQueue,
     PublishingQueueError,
+    PublishJobDispatcher,
 )
 
 
