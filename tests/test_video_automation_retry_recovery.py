@@ -16,7 +16,11 @@ def test_retry_requires_retryable_failure_remaining_attempt_and_budget() -> None
         attempt=1,
         retryable=True,
         estimated_retry_cost=1.0,
-        retry_policy=RetryPolicy(max_attempts=3, initial_backoff_seconds=2.0, max_backoff_seconds=10.0),
+        retry_policy=RetryPolicy(
+            max_attempts=3,
+            initial_backoff_seconds=2.0,
+            max_backoff_seconds=10.0,
+        ),
         budget_policy=BudgetPolicy(max_retry_cost=2.0),
     )
     assert decision.retry is True
@@ -48,38 +52,40 @@ def test_retry_cannot_bypass_budget() -> None:
     assert decision.reason == "retry cost exceeds budget"
 
 
-@pytest.mark.parametrize(
-    "kind",
-    [
+def test_m27_classifies_transient_failures_as_retryable() -> None:
+    controller = RetryRecoveryController()
+    retryable_kinds = (
         FailureKind.TIMEOUT,
         FailureKind.RATE_LIMITED,
         FailureKind.PROVIDER_UNAVAILABLE,
         FailureKind.NETWORK,
-    ],
-)
-def test_m27_classifies_transient_failures_as_retryable(kind: FailureKind) -> None:
+    )
+
+    for kind in retryable_kinds:
+        classification = controller.classify(
+            FailureObservation(kind, "temporary failure")
+        )
+        assert classification.kind is kind
+        assert classification.retryable is True
+
+
+def test_m27_classifies_permanent_failures_as_non_retryable() -> None:
     controller = RetryRecoveryController()
-    classification = controller.classify(FailureObservation(kind, "temporary failure"))
-    assert classification.kind is kind
-    assert classification.retryable is True
-
-
-@pytest.mark.parametrize(
-    "kind",
-    [
+    non_retryable_kinds = (
         FailureKind.VALIDATION,
         FailureKind.AUTHENTICATION,
         FailureKind.AUTHORIZATION,
         FailureKind.INVALID_REQUEST,
         FailureKind.POLICY,
         FailureKind.UNKNOWN,
-    ],
-)
-def test_m27_classifies_permanent_failures_as_non_retryable(kind: FailureKind) -> None:
-    controller = RetryRecoveryController()
-    classification = controller.classify(FailureObservation(kind, "permanent failure"))
-    assert classification.kind is kind
-    assert classification.retryable is False
+    )
+
+    for kind in non_retryable_kinds:
+        classification = controller.classify(
+            FailureObservation(kind, "permanent failure")
+        )
+        assert classification.kind is kind
+        assert classification.retryable is False
 
 
 def test_m27_decision_derives_retryability_from_failure_classification() -> None:
@@ -87,7 +93,11 @@ def test_m27_decision_derives_retryability_from_failure_classification() -> None
         attempt=1,
         failure=FailureObservation(FailureKind.TIMEOUT, "provider timed out"),
         estimated_retry_cost=1.0,
-        retry_policy=RetryPolicy(max_attempts=3, initial_backoff_seconds=2.0, max_backoff_seconds=10.0),
+        retry_policy=RetryPolicy(
+            max_attempts=3,
+            initial_backoff_seconds=2.0,
+            max_backoff_seconds=10.0,
+        ),
         budget_policy=BudgetPolicy(max_retry_cost=2.0),
     )
     assert decision.retry is True
@@ -99,7 +109,10 @@ def test_m27_decision_derives_retryability_from_failure_classification() -> None
 def test_m27_non_retryable_failure_never_retries() -> None:
     decision = RetryRecoveryController().decide_failure(
         attempt=1,
-        failure=FailureObservation(FailureKind.VALIDATION, "invalid generated artifact"),
+        failure=FailureObservation(
+            FailureKind.VALIDATION,
+            "invalid generated artifact",
+        ),
         estimated_retry_cost=0.0,
         retry_policy=RetryPolicy(max_attempts=3),
         budget_policy=BudgetPolicy(max_retry_cost=10.0),
