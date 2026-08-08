@@ -8,8 +8,8 @@ repository_evidence:
   production_code: src/video_automation/models.py
   tests: tests/test_video_automation_models.py
   history:
-    - d30f443 feat(video): implement video domain models
-    - 0639c17 feat(video): implement video domain models
+    - "d30f443 feat(video): implement video domain models"
+    - "0639c17 feat(video): implement video domain models"
 validations:
   targeted_video_tests: PASS
   full_regression: PASS
