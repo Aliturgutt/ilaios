@@ -110,6 +110,19 @@ EVIDENCE_RULES = (
         ),
     ),
     EvidenceRule(
+        ("3.4", "3.5", "3.6"),
+        re.compile(
+            r"secret|credential|key|KMS|HSM|envelope|encrypt|crypt|rotation|"
+            r"revocation|destruction|tenant|customer-managed|audit",
+            re.IGNORECASE,
+        ),
+        (
+            "services/cryptography.py",
+            "tests/test_managed_cryptography.py",
+            "evidence/migration/ILATEN_TO_ILAIOS/CRYPTO.I03.md",
+        ),
+    ),
+    EvidenceRule(
         ("6.3",),
         re.compile(r"confidence|uncertain", re.IGNORECASE),
         ("src/core/confidence_scoring.py", "tests/test_confidence_scoring.py"),

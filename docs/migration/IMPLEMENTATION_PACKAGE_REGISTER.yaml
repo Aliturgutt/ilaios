@@ -41,7 +41,7 @@ packages:
     evidence: evidence/migration/ILATEN_TO_ILAIOS/IAM.I02.md
   - id: CRYPTO.I03
     title: Provider-Neutral Secrets and Cryptographic Lifecycle
-    status: READY
+    status: PASS
     dependencies: [IAM.I02]
     scope:
       - managed KMS and HSM-compatible interfaces
@@ -49,6 +49,7 @@ packages:
       - secret and credential lifecycle
       - rotation revocation cryptoperiod destruction and tenant scope
       - crypto-agility and customer-managed-key extension contracts
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/CRYPTO.I03.md
   - id: DATA.I04
     title: Tenant Privacy Residency Retention and Legal Hold
     status: READY
