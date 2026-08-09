@@ -16,7 +16,9 @@ The supplied legacy architecture was structurally unfinished: Sections 1 through
 
 `docs/canonical/ILAIOS_ENTERPRISE_AI_OPERATING_SYSTEM_CANONICAL_ARCHITECTURE.md` preserves the substantive supplied architecture with active naming converted to ILAIOS. It adds explicit provenance and implementation-truth boundaries, removes non-public internal authoring metadata, replaces stale page estimates with measured source depth, and integrates the approved production-grade Sections 8 and 9 without claiming implementation.
 
-The final matrix is `docs/migration/ILATEN_TO_ILAIOS_MIGRATION_MATRIX.csv`. Each row includes the legacy statement and line, its ILAIOS canonical location, repository evidence when found, and one controlled status. Broad thematic evidence is classified `PARTIAL`; it is never treated as proof that every detailed control is implemented.
+The final matrix is `docs/migration/ILATEN_TO_ILAIOS_MIGRATION_MATRIX.csv`. Each row includes its source statement and line, ILAIOS canonical location, requirement-specific repository evidence when found, and one controlled status. The 8,250 migrated legacy rows are supplemented by 96 requirements authorized for the previously empty Sections 8 and 9. Related evidence is classified `PARTIAL`; it is never treated as proof that every detailed control is implemented.
+
+Implementation work is grouped in `docs/migration/IMPLEMENTATION_PACKAGE_REGISTER.yaml` with explicit dependencies, safe repository packages, and external-only packages.
 
 ## Status semantics
 

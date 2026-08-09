@@ -8,48 +8,162 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-SOURCE_NAME = "ILATEN_Enterprise_AI_Operating_System_Canonical_Architecture_v1.0(3)(4).md"
+SOURCE_NAME = (
+    "ILATEN_Enterprise_AI_Operating_System_Canonical_Architecture_v1.0(3)(4).md"
+)
 CANONICAL_NAME = "ILAIOS_ENTERPRISE_AI_OPERATING_SYSTEM_CANONICAL_ARCHITECTURE.md"
 
 
 @dataclass(frozen=True)
 class EvidenceRule:
     sections: tuple[str, ...]
+    pattern: re.Pattern[str]
     evidence: tuple[str, ...]
 
 
 EVIDENCE_RULES = (
-    EvidenceRule(("2.2", "2.9"), ("src/core/evidence_chain.py", "services/evidence/store.py", "tests/test_evidence_chain.py", "tests/test_evidence_store.py")),
-    EvidenceRule(("2.3", "2.6"), ("src/core/agent.py", "src/core/immutable_context.py", "src/core/tool_gateway.py", "services/control_plane/workflows.py", "tests/test_governed_runtime.py")),
-    EvidenceRule(("2.5",), ("services/runtime/scheduler.py", "services/control_plane/workflows.py", "tests/test_worker_scheduler.py", "tests/test_durable_workflows.py")),
-    EvidenceRule(("2.8",), ("src/core/validation_pipeline.py", "tests/test_validation_pipeline.py")),
-    EvidenceRule(("2.10",), ("src/core/audit_engine.py", "tests/test_audit_engine.py")),
-    EvidenceRule(("2.11", "6.5"), ("src/code_intelligence/source_file_analyzer.py", "src/code_intelligence/models.py", "tests/test_source_file_analyzer.py", "tests/test_code_intelligence_models.py")),
-    EvidenceRule(("3.3",), ("services/runtime/grants.py", "services/governance/gates.py", "tests/test_execution_grants.py")),
-    EvidenceRule(("3.7", "4.1", "4.5", "4.6", "4.7", "4.8"), ("pyproject.toml", ".pre-commit-config.yaml", "tests/test_architecture_boundaries.py")),
-    EvidenceRule(("6.3",), ("src/core/confidence_scoring.py", "tests/test_confidence_scoring.py")),
-    EvidenceRule(("6.4",), ("src/knowledge_graph/models.py", "tests/test_knowledge_graph_models.py")),
-    EvidenceRule(("6.7",), ("services/control_plane/proposals.py", "tests/test_goal_proposals.py")),
-    EvidenceRule(("7.1", "7.2"), ("services/cloud.py", "tests/test_cloud_boundaries.py")),
+    EvidenceRule(
+        ("2.2", "2.9"),
+        re.compile(r"evidence|append-only|hash|tamper", re.IGNORECASE),
+        (
+            "src/core/evidence_chain.py",
+            "services/evidence/store.py",
+            "tests/test_evidence_chain.py",
+            "tests/test_evidence_store.py",
+        ),
+    ),
+    EvidenceRule(
+        ("2.3", "2.6"),
+        re.compile(
+            r"immutable context|tool gateway|validation|execution grant|workflow",
+            re.IGNORECASE,
+        ),
+        (
+            "src/core/immutable_context.py",
+            "src/core/tool_gateway.py",
+            "services/control_plane/workflows.py",
+            "tests/test_governed_runtime.py",
+        ),
+    ),
+    EvidenceRule(
+        ("2.5",),
+        re.compile(r"scheduler|lease|retry|checkpoint|reconcil", re.IGNORECASE),
+        (
+            "services/runtime/scheduler.py",
+            "services/control_plane/workflows.py",
+            "tests/test_worker_scheduler.py",
+            "tests/test_durable_workflows.py",
+        ),
+    ),
+    EvidenceRule(
+        ("2.8",),
+        re.compile(r"validation|rule|waiver", re.IGNORECASE),
+        ("src/core/validation_pipeline.py", "tests/test_validation_pipeline.py"),
+    ),
+    EvidenceRule(
+        ("2.10",),
+        re.compile(r"audit event|audit engine|redact|material event", re.IGNORECASE),
+        ("src/core/audit_engine.py", "tests/test_audit_engine.py"),
+    ),
+    EvidenceRule(
+        ("2.11", "6.5"),
+        re.compile(r"source file|code entity|repository|analy", re.IGNORECASE),
+        (
+            "src/code_intelligence/source_file_analyzer.py",
+            "src/code_intelligence/models.py",
+            "tests/test_source_file_analyzer.py",
+            "tests/test_code_intelligence_models.py",
+        ),
+    ),
+    EvidenceRule(
+        ("3.3",),
+        re.compile(r"grant|scope|revocation|authoriz", re.IGNORECASE),
+        (
+            "services/runtime/grants.py",
+            "services/governance/gates.py",
+            "tests/test_execution_grants.py",
+        ),
+    ),
+    EvidenceRule(
+        ("3.7", "4.1", "4.5", "4.6", "4.7", "4.8"),
+        re.compile(
+            r"ruff|mypy|test|quality gate|pre-commit|architecture", re.IGNORECASE
+        ),
+        (
+            "pyproject.toml",
+            ".pre-commit-config.yaml",
+            "tests/test_architecture_boundaries.py",
+        ),
+    ),
+    EvidenceRule(
+        ("6.3",),
+        re.compile(r"confidence|uncertain", re.IGNORECASE),
+        ("src/core/confidence_scoring.py", "tests/test_confidence_scoring.py"),
+    ),
+    EvidenceRule(
+        ("6.4",),
+        re.compile(r"knowledge graph|node|edge|provenance", re.IGNORECASE),
+        ("src/knowledge_graph/models.py", "tests/test_knowledge_graph_models.py"),
+    ),
+    EvidenceRule(
+        ("6.7",),
+        re.compile(r"plan|proposal|goal", re.IGNORECASE),
+        ("services/control_plane/proposals.py", "tests/test_goal_proposals.py"),
+    ),
+    EvidenceRule(
+        ("7.1", "7.2"),
+        re.compile(r"tenant|region|deployment profile|quota", re.IGNORECASE),
+        ("services/cloud.py", "tests/test_cloud_boundaries.py"),
+    ),
+    EvidenceRule(
+        ("8.1", "8.10"),
+        re.compile(r"tenant_id|cross-tenant|region", re.IGNORECASE),
+        ("services/cloud.py", "tests/test_cloud_boundaries.py"),
+    ),
+    EvidenceRule(
+        ("8.5",),
+        re.compile(r"release|promotion", re.IGNORECASE),
+        ("services/readiness.py", "tests/test_promotion_readiness.py"),
+    ),
+    EvidenceRule(
+        ("8.8", "8.9"),
+        re.compile(r"budget|cost|pricing|reservation|hard ceiling", re.IGNORECASE),
+        ("services/governance/gates.py", "tests/test_security_finance_gates.py"),
+    ),
+    EvidenceRule(
+        ("8.9",),
+        re.compile(r"provider|routing|deterministic|skill|agent", re.IGNORECASE),
+        ("services/runtime/routing.py", "tests/test_governed_runtime.py"),
+    ),
 )
 
 MIGRATION_ONLY_PREFIXES = ("1.", "4.3", "4.4", "4.9", "4.10", "5.")
-BINDING_RE = re.compile(r"\b(shall|must|required|prohibited|cannot|may not|non-conformant|binding)\b", re.IGNORECASE)
+BINDING_RE = re.compile(
+    r"\b(shall|must|required|prohibited|cannot|may not|non-conformant|binding)\b",
+    re.IGNORECASE,
+)
 SECTION_RE = re.compile(r"^## (\d+\.\d+) (.+)")
 HEADING_RE = re.compile(r"^#{1,6} (.+)")
 
 
-def evidence_for(section: str, root: Path) -> tuple[str, ...]:
+def evidence_for(section: str, requirement: str, root: Path) -> tuple[str, ...]:
+    matches: list[str] = []
     for rule in EVIDENCE_RULES:
-        if section in rule.sections:
-            return tuple(path for path in rule.evidence if (root / path).exists())
-    return ()
+        if section in rule.sections and rule.pattern.search(requirement):
+            matches.extend(path for path in rule.evidence if (root / path).exists())
+    return tuple(dict.fromkeys(matches))
 
 
-def status_for(section: str, evidence: tuple[str, ...], canonical_exists: bool) -> str:
+def status_for(
+    section: str,
+    evidence: tuple[str, ...],
+    canonical_exists: bool,
+    *,
+    completion_requirement: bool = False,
+) -> str:
     if not canonical_exists:
         return "MISSING_DOCUMENTATION"
-    if section.startswith(MIGRATION_ONLY_PREFIXES):
+    if section.startswith(MIGRATION_ONLY_PREFIXES) or section.startswith("9."):
         return "MIGRATED"
     if evidence:
         return "PARTIAL"
@@ -62,7 +176,9 @@ def iter_requirements(source: Path) -> list[tuple[int, str, str, str]]:
     requirements: list[tuple[int, str, str, str]] = []
     gate_heading = False
     in_comment = False
-    for line_number, raw in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
+    for line_number, raw in enumerate(
+        source.read_text(encoding="utf-8").splitlines(), 1
+    ):
         if "<!--" in raw:
             in_comment = True
         if in_comment:
@@ -78,7 +194,12 @@ def iter_requirements(source: Path) -> list[tuple[int, str, str, str]]:
         heading_match = HEADING_RE.match(raw)
         if heading_match:
             heading = heading_match.group(1)
-            gate_heading = heading in {"Quality Gates", "Prohibited Practices", "Conformance Requirements", "Canonical Invariants"}
+            gate_heading = heading in {
+                "Quality Gates",
+                "Prohibited Practices",
+                "Conformance Requirements",
+                "Canonical Invariants",
+            }
             continue
         text = raw.strip()
         if not text:
@@ -88,19 +209,65 @@ def iter_requirements(source: Path) -> list[tuple[int, str, str, str]]:
     return requirements
 
 
+def iter_completion_requirements(canonical: Path) -> list[tuple[int, str, str, str]]:
+    requirements = iter_requirements(canonical)
+    return [item for item in requirements if item[1].startswith(("8.", "9."))]
+
+
 def generate(root: Path, output: Path, canonical_exists: bool) -> int:
     source = root / "dev/openclaw/migration_input" / SOURCE_NAME
     canonical = root / "docs/canonical" / CANONICAL_NAME
     rows = iter_requirements(source)
+    completion_rows = (
+        iter_completion_requirements(canonical) if canonical_exists else []
+    )
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", encoding="utf-8", newline="") as stream:
         writer = csv.writer(stream, lineterminator="\n")
-        writer.writerow(("requirement_id", "legacy_source", "ilaten_requirement", "current_ilaios_canonical_equivalent", "repository_implementation_evidence", "status"))
+        writer.writerow(
+            (
+                "requirement_id",
+                "legacy_source",
+                "ilaten_requirement",
+                "current_ilaios_canonical_equivalent",
+                "repository_implementation_evidence",
+                "status",
+            )
+        )
         for number, (line, section, heading, requirement) in enumerate(rows, 1):
-            evidence = evidence_for(section, root)
-            canonical_ref = f"{canonical.relative_to(root)} :: {section} / {heading}" if canonical_exists else "NONE"
-            writer.writerow((f"ILATEN-{number:05d}", f"{source.relative_to(root)}:{line}", requirement, canonical_ref, "; ".join(evidence) or "NONE", status_for(section, evidence, canonical_exists)))
-    return len(rows)
+            evidence = evidence_for(section, requirement, root)
+            canonical_ref = (
+                f"{canonical.relative_to(root)} :: {section} / {heading}"
+                if canonical_exists
+                else "NONE"
+            )
+            writer.writerow(
+                (
+                    f"ILATEN-{number:05d}",
+                    f"{source.relative_to(root)}:{line}",
+                    requirement,
+                    canonical_ref,
+                    "; ".join(evidence) or "NONE",
+                    status_for(section, evidence, canonical_exists),
+                )
+            )
+        for number, (line, section, heading, requirement) in enumerate(
+            completion_rows, 1
+        ):
+            evidence = evidence_for(section, requirement, root)
+            writer.writerow(
+                (
+                    f"ILAIOS-C-{number:05d}",
+                    "HUMAN_ARCHITECTURE_DECISION_PACKAGE:2026-08-09",
+                    requirement,
+                    f"{canonical.relative_to(root)}:{line} :: {section} / {heading}",
+                    "; ".join(evidence) or "NONE",
+                    status_for(
+                        section, evidence, canonical_exists, completion_requirement=True
+                    ),
+                )
+            )
+    return len(rows) + len(completion_rows)
 
 
 def main() -> None:
