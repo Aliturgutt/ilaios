@@ -135,6 +135,49 @@ EVIDENCE_RULES = (
         re.compile(r"provider|routing|deterministic|skill|agent", re.IGNORECASE),
         ("services/runtime/routing.py", "tests/test_governed_runtime.py"),
     ),
+    EvidenceRule(
+        ("8.8", "8.9"),
+        re.compile(
+            r"model|provider|routing|fallback|token|context|budget|cost|GPU|"
+            r"runtime|quota|concurrency|retry|circuit|usage|FinOps",
+            re.IGNORECASE,
+        ),
+        (
+            "services/ai_governance.py",
+            "tests/test_ai_governance.py",
+            "evidence/migration/ILATEN_TO_ILAIOS/GOV.I01.md",
+        ),
+    ),
+)
+
+# Exact implementation rules are deliberately separate from thematic evidence.
+# A row may become IMPLEMENTED only when its complete assertion is covered by a
+# bounded implementation package, tests, and durable package evidence.
+GOV_I01_PROOF = (
+    "services/ai_governance.py",
+    "tests/test_ai_governance.py",
+    "evidence/migration/ILATEN_TO_ILAIOS/GOV.I01.md",
+)
+IMPLEMENTATION_RULES = (
+    EvidenceRule(
+        ("8.8", "8.9"),
+        re.compile(
+            r"^(Per-user, tenant, project, job, provider, and model usage shall "
+            r"be attributable|Warning thresholds shall notify without granting "
+            r"authority|Hard ceilings shall block or safely degrade new billable "
+            r"work|Retry-cost ceilings, concurrency limits, rate limits, circuit "
+            r"breakers, and kill switches shall prevent runaway agents and "
+            r"economic amplification|Models and providers shall be admitted "
+            r"through versioned registries|Routing shall be deterministic and "
+            r"evidence-producing for the same approved inputs and registry state|"
+            r"Usage controls shall support per-user, per-tenant, per-project, "
+            r"per-job, per-provider, and per-model scopes|Hard ceilings block new "
+            r"governed consumption; they shall not be converted into warnings by "
+            r"a model or provider)\.?$",
+            re.IGNORECASE,
+        ),
+        GOV_I01_PROOF,
+    ),
 )
 
 MIGRATION_ONLY_PREFIXES = ("1.", "4.3", "4.4", "4.9", "4.10", "5.")
@@ -154,17 +197,33 @@ def evidence_for(section: str, requirement: str, root: Path) -> tuple[str, ...]:
     return tuple(dict.fromkeys(matches))
 
 
+def implementation_proof_for(
+    section: str, requirement: str, root: Path
+) -> tuple[str, ...]:
+    for rule in IMPLEMENTATION_RULES:
+        if (
+            section in rule.sections
+            and rule.pattern.search(requirement)
+            and all((root / path).exists() for path in rule.evidence)
+        ):
+            return rule.evidence
+    return ()
+
+
 def status_for(
     section: str,
     evidence: tuple[str, ...],
     canonical_exists: bool,
     *,
     completion_requirement: bool = False,
+    exact_proof: bool = False,
 ) -> str:
     if not canonical_exists:
         return "MISSING_DOCUMENTATION"
     if section.startswith(MIGRATION_ONLY_PREFIXES) or section.startswith("9."):
         return "MIGRATED"
+    if exact_proof:
+        return "IMPLEMENTED"
     if evidence:
         return "PARTIAL"
     return "MISSING_IMPLEMENTATION"
@@ -235,7 +294,10 @@ def generate(root: Path, output: Path, canonical_exists: bool) -> int:
             )
         )
         for number, (line, section, heading, requirement) in enumerate(rows, 1):
-            evidence = evidence_for(section, requirement, root)
+            proof = implementation_proof_for(section, requirement, root)
+            evidence = tuple(
+                dict.fromkeys((*evidence_for(section, requirement, root), *proof))
+            )
             canonical_ref = (
                 f"{canonical.relative_to(root)} :: {section} / {heading}"
                 if canonical_exists
@@ -248,13 +310,18 @@ def generate(root: Path, output: Path, canonical_exists: bool) -> int:
                     requirement,
                     canonical_ref,
                     "; ".join(evidence) or "NONE",
-                    status_for(section, evidence, canonical_exists),
+                    status_for(
+                        section, evidence, canonical_exists, exact_proof=bool(proof)
+                    ),
                 )
             )
         for number, (line, section, heading, requirement) in enumerate(
             completion_rows, 1
         ):
-            evidence = evidence_for(section, requirement, root)
+            proof = implementation_proof_for(section, requirement, root)
+            evidence = tuple(
+                dict.fromkeys((*evidence_for(section, requirement, root), *proof))
+            )
             writer.writerow(
                 (
                     f"ILAIOS-C-{number:05d}",
@@ -263,7 +330,11 @@ def generate(root: Path, output: Path, canonical_exists: bool) -> int:
                     f"{canonical.relative_to(root)}:{line} :: {section} / {heading}",
                     "; ".join(evidence) or "NONE",
                     status_for(
-                        section, evidence, canonical_exists, completion_requirement=True
+                        section,
+                        evidence,
+                        canonical_exists,
+                        completion_requirement=True,
+                        exact_proof=bool(proof),
                     ),
                 )
             )

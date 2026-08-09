@@ -3,6 +3,7 @@ from pathlib import Path
 from tools.migration_audit import (
     CANONICAL_NAME,
     SOURCE_NAME,
+    implementation_proof_for,
     iter_completion_requirements,
     iter_requirements,
     status_for,
@@ -36,6 +37,22 @@ def test_status_never_claims_implementation_without_evidence() -> None:
     assert status_for("3.1", (), True) == "MISSING_IMPLEMENTATION"
     assert status_for("3.1", ("tests/control.py",), True) == "PARTIAL"
     assert status_for("3.1", (), False) == "MISSING_DOCUMENTATION"
+    assert status_for("8.9", ("proof",), True, exact_proof=True) == "IMPLEMENTED"
+
+
+def test_gov_i01_exact_proof_requires_code_test_and_durable_evidence() -> None:
+    root = Path(__file__).parents[1]
+    proof = implementation_proof_for(
+        "8.9",
+        "Usage controls shall support per-user, per-tenant, per-project, per-job, "
+        "per-provider, and per-model scopes.",
+        root,
+    )
+    assert proof == (
+        "services/ai_governance.py",
+        "tests/test_ai_governance.py",
+        "evidence/migration/ILATEN_TO_ILAIOS/GOV.I01.md",
+    )
 
 
 def test_completion_requirements_include_only_sections_eight_and_nine() -> None:

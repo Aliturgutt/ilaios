@@ -17,7 +17,7 @@ packages:
     evidence: evidence/migration/ILATEN_TO_ILAIOS/AUDIT.C02.md
   - id: GOV.I01
     title: AI Model Provider Token and Cost Governance
-    status: READY
+    status: PASS
     dependencies: [AUDIT.C02]
     scope:
       - model and provider registries
@@ -27,6 +27,7 @@ packages:
       - scoped daily and monthly budgets
       - retry-cost ceilings and circuit breakers
       - usage attribution and FinOps evidence
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/GOV.I01.md
   - id: IAM.I02
     title: Standards-Based Identity and Tenant Authorization Contracts
     status: READY

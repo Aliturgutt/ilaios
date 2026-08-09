@@ -41,3 +41,10 @@ Implementation work is grouped in `docs/migration/IMPLEMENTATION_PACKAGE_REGISTE
 The legacy source allocated but did not author Governance & Operations (Section 8) or Enterprise Roadmap & Future Evolution (Section 9). Their substantive requirements are now based on the explicit Human Architecture Decision Package rather than inference.
 
 Thousands of enterprise controls still exceed the compact reference implementation. Repository-executable reference controls are grouped into bounded packages; provider selection, production infrastructure, certification, real credentials, organizational appointments, contractual targets, and deployed recovery exercises remain external dependencies documented in `ILATEN_TO_ILAIOS_UNRESOLVED_GAPS.md`.
+
+GOV.I01 subsequently added bounded model/provider/token/cost governance and
+row-specific evidence to 14 requirements. One requirement moved from
+`MISSING_IMPLEMENTATION` to `PARTIAL`; no composite requirement was promoted
+to `IMPLEMENTED` without complete proof. Current totals are 8,346 requirements:
+0 `IMPLEMENTED`, 1,102 `PARTIAL`, 1,967 `MIGRATED`, 5,277
+`MISSING_IMPLEMENTATION`, 0 `MISSING_DOCUMENTATION`, and 0 `CONFLICT`.
