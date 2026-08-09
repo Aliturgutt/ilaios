@@ -8,7 +8,7 @@ canonical_authorities:
 
 execution:
   mode: "fail_closed_per_milestone"
-  initial_milestone: "PRE.S01"
+  initial_milestone: "PLATFORM.P05"
   auto_advance: true
   continue_after_nonpass: true
   dependency_evidence_required: true
@@ -17,10 +17,29 @@ execution:
   prose_inference: false
   architecture_changes: false
   release_auto_promotion: false
+  active_recovery_package: "PLATFORM.P05.RECOVERY.v1"
+  historical_pass_satisfies_active_recovery: false
+  recovery_evidence_precedence: true
 
 completed_context:
   PRE.S00: "Previously PASS under governed read-only evidence."
   VIDEO.V01_VIDEO.V30: "Durable PASS evidence exists under dev/openclaw/evidence; VIDEO.V30 is the predecessor for PRE.S01."
+  PRE.S01_PLATFORM.P04: "Durable PASS evidence remains accepted through PLATFORM.P04."
+  PLATFORM.P05_PLATFORM.P20_RELEASE.R00: "Historical PASS evidence is retained for provenance but is insufficient for current readiness because runtime evidence contradicts completion claims."
+
+recovery_control:
+  active: true
+  trigger_commit: "261b35aaa66a1b7393694a78c070c693f49a3c17"
+  trigger_evidence:
+    - "infra/deployment/ext-e01-prerequisites.yaml"
+    - "evidence/migration/ILATEN_TO_ILAIOS/OPS.I05.md"
+    - "evidence/migration/ILATEN_TO_ILAIOS/OBS.I06.md"
+  affected_milestones: ["PLATFORM.P05", "PLATFORM.P06", "PLATFORM.P07", "PLATFORM.P08", "PLATFORM.P09", "PLATFORM.P10", "PLATFORM.P11", "PLATFORM.P12", "PLATFORM.P13", "PLATFORM.P14", "PLATFORM.P15", "PLATFORM.P16", "PLATFORM.P17", "PLATFORM.P18", "PLATFORM.P19", "PLATFORM.P20", "RELEASE.R00"]
+  rule: "For affected milestones, historical PASS evidence remains immutable provenance but does not satisfy dependency or promotion gates. Only the active recovery/revalidation package evidence declared below can restore PASS."
+  proof_standard: "Runtime behavior and end-to-end execution are required where the canonical scope implies a service, client, workflow, factory, deployment, or drill. Dataclass existence, in-process constructor tests, requested booleans, synthetic hashes, and reference-only contracts are not sufficient proof."
+  release_state: "NOT_DEPLOYED"
+  external_spend_authorized: false
+  release_promotion_authorized: false
 
 canonical_dependency_graph:
   PRE.S01: ["VIDEO.V30"]
@@ -106,6 +125,79 @@ common_actions: &common_actions
     type: "controller_finalize"
     instruction: "Persist exact evidence. On PASS, stage only allowed changes, create one atomic commit if required, push to origin/master, verify HEAD == origin/master and clean worktree. On FAIL/BLOCKED, do not commit defective partial work; restore only active-package mutations when the declared rollback allows it, persist failure evidence, recompute the READY set, and continue only with milestones whose declared dependencies are proven PASS."
 
+
+recovery_allowed_paths: &recovery_allowed_paths
+  - "src/**"
+  - "tests/**"
+  - "apps/**"
+  - "services/**"
+  - "packages/**"
+  - "infra/**"
+  - "tools/**"
+  - "docs/**"
+  - ".github/**"
+  - "Containerfile"
+  - "Dockerfile"
+  - ".dockerignore"
+  - "pyproject.toml"
+  - "requirements*.txt"
+  - "uv.lock"
+  - ".pre-commit-config.yaml"
+  - "README.md"
+  - "dev/openclaw/evidence/**"
+
+recovery_actions: &recovery_actions
+  - id: "A01"
+    type: "shell"
+    command: "git status --porcelain=v1 --branch && git rev-parse HEAD && git rev-parse origin/master"
+    read_only: true
+  - id: "A02"
+    type: "bounded_agent_audit_and_implementation"
+    instruction: "Execute only the active recovery package recovery_focus, canonical scope_intent, and exit_intent. Inspect real callers and runtime paths before editing. Implement minimum production behavior plus targeted unit, integration, negative, restart, and end-to-end tests appropriate to the scope. A reference contract, dataclass, in-process façade, asserted source label, requested boolean map, synthetic hash, or file-existence check alone can never satisfy runtime completion. Preserve accepted behavior and architecture. Make no release transition, paid provider call, external deployment, credential creation, canonical-document edit, or unrelated change. If exact completion cannot be executed and proven in the available environment, record FAIL or BLOCKED with the precise unmet condition."
+  - id: "A03"
+    type: "shell"
+    command: "python -m pytest -q"
+  - id: "A04"
+    type: "shell"
+    command: "ruff check ."
+  - id: "A05"
+    type: "shell"
+    command: "mypy --strict src tests"
+  - id: "A06"
+    type: "shell"
+    command: "pre-commit run --all-files"
+  - id: "A07"
+    type: "shell"
+    command: "git diff --check && git status --porcelain=v1 --branch"
+  - id: "A08"
+    type: "controller_finalize"
+    instruction: "Persist append-only recovery evidence under the exact active package evidence paths. On PASS, stage only allowed changes, create one atomic commit, push to origin/master, verify HEAD equals origin/master and the worktree is clean, then advance to the next recovery package. On FAIL or BLOCKED, do not fabricate PASS or overwrite historical evidence; preserve exact failure evidence and stop dependent recovery packages."
+
+recovery_validations: &recovery_validations
+  - {id: "V01", rule: "Every declared dependency is satisfied by the exact dependency_evidence paths in the active recovery package; historical affected PASS evidence is insufficient."}
+  - {id: "V02", rule: "Repository branch is master and pre-state is captured."}
+  - {id: "V03", rule: "Canonical scope_intent, exit_intent, and recovery_focus are proven by executable repository/runtime evidence."}
+  - {id: "V04", rule: "Targeted unit, integration, negative, restart, and end-to-end tests required by the scope pass; direct-constructor-only tests do not prove a client/service boundary."}
+  - {id: "V05", rule: "Full pytest, ruff, mypy strict, pre-commit, and git diff check pass."}
+  - {id: "V06", rule: "No forbidden, unrelated, canonical-authority, or historical-evidence file is modified."}
+  - {id: "V07", rule: "Runtime artifacts, process outputs, durable state, delivery outputs, or drill measurements are hashed and referenced where the scope requires them."}
+  - {id: "V08", rule: "Mocks and fakes are limited to true external boundaries; they cannot replace the internal end-to-end path under acceptance."}
+  - {id: "V09", rule: "Missing external provider, credential, domain, human owner, budget, or production infrastructure yields BLOCKED rather than invented evidence."}
+  - {id: "V10", rule: "On PASS, pushed HEAD equals origin/master and worktree is clean."}
+
+recovery_requirements: &recovery_requirements
+  - "REPOSITORY_EVIDENCE_IS_TRUTH"
+  - "DETERMINISTIC_FIRST"
+  - "MINIMUM_BOUNDED_CHANGE"
+  - "NO_TEST_WEAKENING"
+  - "NO_DEPENDENCY_BYPASS"
+  - "NO_ARCHITECTURE_REDEFINITION"
+  - "NO_AUTONOMOUS_RELEASE_PROMOTION"
+  - "NO_REFERENCE_CONTRACT_AS_RUNTIME_COMPLETION"
+  - "NO_SYNTHETIC_BOOLEAN_AS_DRILL_EVIDENCE"
+  - "NO_HASH_ONLY_ARTIFACT_ACCEPTANCE"
+  - "APPEND_ONLY_RECOVERY_EVIDENCE"
+
 common_validations: &common_validations
   - {id: "V01", rule: "Every declared dependency has durable PASS evidence."}
   - {id: "V02", rule: "Repository branch is master and pre-state is captured."}
@@ -156,6 +248,7 @@ common_commit_policy: &common_commit_policy
 packages:
   - milestone_id: "PRE.S01"
     package_id: "PRE.S01.v1"
+    historical_evidence: "dev/openclaw/evidence/PRE.S01/decision.yaml"
     dependencies: ["VIDEO.V30"]
     allowed_paths: ["src/video_automation/**", "tests/test_video_automation_*.py", "dev/openclaw/evidence/**"]
     forbidden_paths: *common_forbidden_paths
@@ -171,10 +264,11 @@ packages:
     stop_conditions: *common_stop_conditions
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
-    status: "READY"
+    status: "PASS"
 
   - milestone_id: "PLATFORM.P00"
     package_id: "PLATFORM.P00.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P00/decision.yaml"
     dependencies: ["PRE.S01"]
     allowed_paths: ["docs/**", "dev/openclaw/evidence/**"]
     forbidden_paths: *common_forbidden_paths
@@ -190,10 +284,11 @@ packages:
     stop_conditions: *common_stop_conditions
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
-    status: "READY"
+    status: "PASS"
 
   - milestone_id: "PLATFORM.P01"
     package_id: "PLATFORM.P01.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P01/decision.yaml"
     dependencies: ["PLATFORM.P00"]
     allowed_paths: [".", "dev/openclaw/evidence/**"]
     forbidden_paths: *common_forbidden_paths
@@ -209,10 +304,11 @@ packages:
     stop_conditions: *common_stop_conditions
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
-    status: "READY"
+    status: "PASS"
 
   - milestone_id: "PLATFORM.P02"
     package_id: "PLATFORM.P02.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P02/decision.yaml"
     dependencies: ["PLATFORM.P01"]
     allowed_paths: *common_allowed_paths
     forbidden_paths: *common_forbidden_paths
@@ -228,10 +324,11 @@ packages:
     stop_conditions: *common_stop_conditions
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
-    status: "READY"
+    status: "PASS"
 
   - milestone_id: "PLATFORM.P03"
     package_id: "PLATFORM.P03.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P03/decision.yaml"
     dependencies: ["PLATFORM.P02"]
     allowed_paths: ["apps/**", "packages/**", "docs/**", "tests/**", "dev/openclaw/evidence/**"]
     forbidden_paths: *common_forbidden_paths
@@ -247,10 +344,11 @@ packages:
     stop_conditions: *common_stop_conditions
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
-    status: "READY"
+    status: "PASS"
 
   - milestone_id: "PLATFORM.P04"
     package_id: "PLATFORM.P04.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P04/decision.yaml"
     dependencies: ["PLATFORM.P02"]
     allowed_paths: ["src/**", "packages/**", "tests/**", "docs/**", "dev/openclaw/evidence/**"]
     forbidden_paths: *common_forbidden_paths
@@ -266,19 +364,26 @@ packages:
     stop_conditions: *common_stop_conditions
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
-    status: "READY"
+    status: "PASS"
 
   - milestone_id: "PLATFORM.P05"
-    package_id: "PLATFORM.P05.v1"
+    package_id: "PLATFORM.P05.RECOVERY.v1"
+    supersedes_package_id: "PLATFORM.P05.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P05/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P03", "PLATFORM.P04"]
-    allowed_paths: *common_allowed_paths
+    dependency_evidence:
+      - "dev/openclaw/evidence/PLATFORM.P03/decision.yaml"
+      - "dev/openclaw/evidence/PLATFORM.P04/decision.yaml"
+    allowed_paths: *recovery_allowed_paths
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Expose the authoritative command/query/event control plane through a real authenticated local service/process boundary with explicit startup configuration, durable schema migrations, rollback procedure, and integration tests across that boundary."
     scope_intent: "Implement authenticated local Command/Query APIs, durable state, registry/event/config boundaries."
     exit_intent: "A real persistent goal/job passes through the authoritative control plane."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/PLATFORM.P05/commands.log", "dev/openclaw/evidence/PLATFORM.P05/tests.log", "dev/openclaw/evidence/PLATFORM.P05/quality.log", "dev/openclaw/evidence/PLATFORM.P05/git_before.txt", "dev/openclaw/evidence/PLATFORM.P05/git_after.txt", "dev/openclaw/evidence/PLATFORM.P05/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/PLATFORM.P05.RECOVERY.v1/commands.log", "dev/openclaw/evidence/recovery/PLATFORM.P05.RECOVERY.v1/tests.log", "dev/openclaw/evidence/recovery/PLATFORM.P05.RECOVERY.v1/quality.log", "dev/openclaw/evidence/recovery/PLATFORM.P05.RECOVERY.v1/runtime.log", "dev/openclaw/evidence/recovery/PLATFORM.P05.RECOVERY.v1/git_before.txt", "dev/openclaw/evidence/recovery/PLATFORM.P05.RECOVERY.v1/git_after.txt", "dev/openclaw/evidence/recovery/PLATFORM.P05.RECOVERY.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -286,18 +391,23 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "PLATFORM.P06"
-    package_id: "PLATFORM.P06.v1"
+    package_id: "PLATFORM.P06.RECOVERY.v1"
+    supersedes_package_id: "PLATFORM.P06.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P06/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P05"]
-    allowed_paths: *common_allowed_paths
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/PLATFORM.P05.RECOVERY.v1/decision.yaml"
+    allowed_paths: *recovery_allowed_paths
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Integrate GoalSpec, acceptance criteria, risk/data classification, budgets, and bounded DAG proposals through the real P05 boundary with durable inspectable records and rejection tests."
     scope_intent: "Implement GoalSpec, acceptance criteria, risk/data classification, budget envelope, and bounded DAG proposal."
     exit_intent: "Deterministic inspectable proposal exists with no privileged execution."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/PLATFORM.P06/commands.log", "dev/openclaw/evidence/PLATFORM.P06/tests.log", "dev/openclaw/evidence/PLATFORM.P06/quality.log", "dev/openclaw/evidence/PLATFORM.P06/git_before.txt", "dev/openclaw/evidence/PLATFORM.P06/git_after.txt", "dev/openclaw/evidence/PLATFORM.P06/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/PLATFORM.P06.RECOVERY.v1/commands.log", "dev/openclaw/evidence/recovery/PLATFORM.P06.RECOVERY.v1/tests.log", "dev/openclaw/evidence/recovery/PLATFORM.P06.RECOVERY.v1/quality.log", "dev/openclaw/evidence/recovery/PLATFORM.P06.RECOVERY.v1/runtime.log", "dev/openclaw/evidence/recovery/PLATFORM.P06.RECOVERY.v1/git_before.txt", "dev/openclaw/evidence/recovery/PLATFORM.P06.RECOVERY.v1/git_after.txt", "dev/openclaw/evidence/recovery/PLATFORM.P06.RECOVERY.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -305,18 +415,23 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "PLATFORM.P07"
-    package_id: "PLATFORM.P07.v1"
+    package_id: "PLATFORM.P07.RECOVERY.v1"
+    supersedes_package_id: "PLATFORM.P07.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P07/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P06"]
-    allowed_paths: *common_allowed_paths
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/PLATFORM.P06.RECOVERY.v1/decision.yaml"
+    allowed_paths: *recovery_allowed_paths
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Run durable workflow/task/attempt/checkpoint/retry/timeout/outbox/inbox/reconciliation/compensation behavior through the runtime with crash/restart and duplicate-delivery tests."
     scope_intent: "Implement durable workflow/task/attempt/checkpoint/retry/timeout/outbox/inbox/reconciliation/compensation."
     exit_intent: "Crash/restart and duplicate-event recovery are proven."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/PLATFORM.P07/commands.log", "dev/openclaw/evidence/PLATFORM.P07/tests.log", "dev/openclaw/evidence/PLATFORM.P07/quality.log", "dev/openclaw/evidence/PLATFORM.P07/git_before.txt", "dev/openclaw/evidence/PLATFORM.P07/git_after.txt", "dev/openclaw/evidence/PLATFORM.P07/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/PLATFORM.P07.RECOVERY.v1/commands.log", "dev/openclaw/evidence/recovery/PLATFORM.P07.RECOVERY.v1/tests.log", "dev/openclaw/evidence/recovery/PLATFORM.P07.RECOVERY.v1/quality.log", "dev/openclaw/evidence/recovery/PLATFORM.P07.RECOVERY.v1/runtime.log", "dev/openclaw/evidence/recovery/PLATFORM.P07.RECOVERY.v1/git_before.txt", "dev/openclaw/evidence/recovery/PLATFORM.P07.RECOVERY.v1/git_after.txt", "dev/openclaw/evidence/recovery/PLATFORM.P07.RECOVERY.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -324,18 +439,23 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "PLATFORM.P08"
-    package_id: "PLATFORM.P08.v1"
+    package_id: "PLATFORM.P08.RECOVERY.v1"
+    supersedes_package_id: "PLATFORM.P08.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P08/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P07"]
-    allowed_paths: *common_allowed_paths
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/PLATFORM.P07.RECOVERY.v1/decision.yaml"
+    allowed_paths: *recovery_allowed_paths
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Provide a real sequenced replayable reconnectable DLP-safe event transport across the service/client boundary, including gap, reorder, reconnect, and snapshot recovery tests."
     scope_intent: "Implement sequenced, replayable, reconnectable, DLP-safe event/live-state transport."
     exit_intent: "Authoritative state survives reconnect and reorder."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/PLATFORM.P08/commands.log", "dev/openclaw/evidence/PLATFORM.P08/tests.log", "dev/openclaw/evidence/PLATFORM.P08/quality.log", "dev/openclaw/evidence/PLATFORM.P08/git_before.txt", "dev/openclaw/evidence/PLATFORM.P08/git_after.txt", "dev/openclaw/evidence/PLATFORM.P08/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/PLATFORM.P08.RECOVERY.v1/commands.log", "dev/openclaw/evidence/recovery/PLATFORM.P08.RECOVERY.v1/tests.log", "dev/openclaw/evidence/recovery/PLATFORM.P08.RECOVERY.v1/quality.log", "dev/openclaw/evidence/recovery/PLATFORM.P08.RECOVERY.v1/runtime.log", "dev/openclaw/evidence/recovery/PLATFORM.P08.RECOVERY.v1/git_before.txt", "dev/openclaw/evidence/recovery/PLATFORM.P08.RECOVERY.v1/git_after.txt", "dev/openclaw/evidence/recovery/PLATFORM.P08.RECOVERY.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -343,18 +463,23 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "PLATFORM.P09"
-    package_id: "PLATFORM.P09.v1"
+    package_id: "PLATFORM.P09.RECOVERY.v1"
+    supersedes_package_id: "PLATFORM.P09.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P09/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P08"]
-    allowed_paths: *common_allowed_paths
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/PLATFORM.P08.RECOVERY.v1/decision.yaml"
+    allowed_paths: *recovery_allowed_paths
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Provide an executable agent/skill/provider runtime with persisted manifests, immutable artifact validation, deterministic-first routing, denied unapproved skills, and real adapter boundaries; mocks may represent only unavailable external providers."
     scope_intent: "Implement Agent/Skill/Provider Runtime, routing, supply-chain validation, and deterministic-first enforcement."
     exit_intent: "No authority expansion; routing evidence exists; unapproved skills are blocked."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/PLATFORM.P09/commands.log", "dev/openclaw/evidence/PLATFORM.P09/tests.log", "dev/openclaw/evidence/PLATFORM.P09/quality.log", "dev/openclaw/evidence/PLATFORM.P09/git_before.txt", "dev/openclaw/evidence/PLATFORM.P09/git_after.txt", "dev/openclaw/evidence/PLATFORM.P09/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/PLATFORM.P09.RECOVERY.v1/commands.log", "dev/openclaw/evidence/recovery/PLATFORM.P09.RECOVERY.v1/tests.log", "dev/openclaw/evidence/recovery/PLATFORM.P09.RECOVERY.v1/quality.log", "dev/openclaw/evidence/recovery/PLATFORM.P09.RECOVERY.v1/runtime.log", "dev/openclaw/evidence/recovery/PLATFORM.P09.RECOVERY.v1/git_before.txt", "dev/openclaw/evidence/recovery/PLATFORM.P09.RECOVERY.v1/git_after.txt", "dev/openclaw/evidence/recovery/PLATFORM.P09.RECOVERY.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -362,18 +487,23 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "PLATFORM.P10"
-    package_id: "PLATFORM.P10.v1"
+    package_id: "PLATFORM.P10.RECOVERY.v1"
+    supersedes_package_id: "PLATFORM.P10.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P10/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P09"]
-    allowed_paths: *common_allowed_paths
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/PLATFORM.P09.RECOVERY.v1/decision.yaml"
+    allowed_paths: *recovery_allowed_paths
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Provide executable worker scheduling with leases, heartbeats, fencing, quotas, concurrency, timeout, lease-loss, and safe rescheduling proven under concurrent runtime tests."
     scope_intent: "Implement worker profiles, leases, heartbeats, fencing, quotas, scheduling, and safe rescheduling."
     exit_intent: "Split-brain or lease-loss cannot cause uncontrolled side effects."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/PLATFORM.P10/commands.log", "dev/openclaw/evidence/PLATFORM.P10/tests.log", "dev/openclaw/evidence/PLATFORM.P10/quality.log", "dev/openclaw/evidence/PLATFORM.P10/git_before.txt", "dev/openclaw/evidence/PLATFORM.P10/git_after.txt", "dev/openclaw/evidence/PLATFORM.P10/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/PLATFORM.P10.RECOVERY.v1/commands.log", "dev/openclaw/evidence/recovery/PLATFORM.P10.RECOVERY.v1/tests.log", "dev/openclaw/evidence/recovery/PLATFORM.P10.RECOVERY.v1/quality.log", "dev/openclaw/evidence/recovery/PLATFORM.P10.RECOVERY.v1/runtime.log", "dev/openclaw/evidence/recovery/PLATFORM.P10.RECOVERY.v1/git_before.txt", "dev/openclaw/evidence/recovery/PLATFORM.P10.RECOVERY.v1/git_after.txt", "dev/openclaw/evidence/recovery/PLATFORM.P10.RECOVERY.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -381,18 +511,23 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "PLATFORM.P11"
-    package_id: "PLATFORM.P11.v1"
+    package_id: "PLATFORM.P11.RECOVERY.v1"
+    supersedes_package_id: "PLATFORM.P11.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P11/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P10"]
-    allowed_paths: *common_allowed_paths
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/PLATFORM.P10.RECOVERY.v1/decision.yaml"
+    allowed_paths: *recovery_allowed_paths
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Enforce policy, scoped ExecutionGrants, blast-radius limits, revocation, and kill switches on real side-effect paths; prove stopped or revoked work cannot resume automatically."
     scope_intent: "Implement policy, scoped ExecutionGrants, blast-radius budgets, revocation, and kill switches."
     exit_intent: "Invalid grants fail closed and stopped work cannot auto-resume."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/PLATFORM.P11/commands.log", "dev/openclaw/evidence/PLATFORM.P11/tests.log", "dev/openclaw/evidence/PLATFORM.P11/quality.log", "dev/openclaw/evidence/PLATFORM.P11/git_before.txt", "dev/openclaw/evidence/PLATFORM.P11/git_after.txt", "dev/openclaw/evidence/PLATFORM.P11/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/PLATFORM.P11.RECOVERY.v1/commands.log", "dev/openclaw/evidence/recovery/PLATFORM.P11.RECOVERY.v1/tests.log", "dev/openclaw/evidence/recovery/PLATFORM.P11.RECOVERY.v1/quality.log", "dev/openclaw/evidence/recovery/PLATFORM.P11.RECOVERY.v1/runtime.log", "dev/openclaw/evidence/recovery/PLATFORM.P11.RECOVERY.v1/git_before.txt", "dev/openclaw/evidence/recovery/PLATFORM.P11.RECOVERY.v1/git_after.txt", "dev/openclaw/evidence/recovery/PLATFORM.P11.RECOVERY.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -400,18 +535,23 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "PLATFORM.P12"
-    package_id: "PLATFORM.P12.v1"
+    package_id: "PLATFORM.P12.RECOVERY.v1"
+    supersedes_package_id: "PLATFORM.P12.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P12/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P11"]
-    allowed_paths: *common_allowed_paths
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/PLATFORM.P11.RECOVERY.v1/decision.yaml"
+    allowed_paths: *recovery_allowed_paths
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Provide a durable artifact store and append-only tamper-evident evidence/provenance chain with real artifact bytes, stable identities, restart persistence, integrity verification, and tamper rejection."
     scope_intent: "Implement artifact store plus append-only/tamper-evident evidence and provenance."
     exit_intent: "Evidence independently proves execution."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/PLATFORM.P12/commands.log", "dev/openclaw/evidence/PLATFORM.P12/tests.log", "dev/openclaw/evidence/PLATFORM.P12/quality.log", "dev/openclaw/evidence/PLATFORM.P12/git_before.txt", "dev/openclaw/evidence/PLATFORM.P12/git_after.txt", "dev/openclaw/evidence/PLATFORM.P12/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/PLATFORM.P12.RECOVERY.v1/commands.log", "dev/openclaw/evidence/recovery/PLATFORM.P12.RECOVERY.v1/tests.log", "dev/openclaw/evidence/recovery/PLATFORM.P12.RECOVERY.v1/quality.log", "dev/openclaw/evidence/recovery/PLATFORM.P12.RECOVERY.v1/runtime.log", "dev/openclaw/evidence/recovery/PLATFORM.P12.RECOVERY.v1/git_before.txt", "dev/openclaw/evidence/recovery/PLATFORM.P12.RECOVERY.v1/git_after.txt", "dev/openclaw/evidence/recovery/PLATFORM.P12.RECOVERY.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -419,18 +559,23 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "PLATFORM.P13"
-    package_id: "PLATFORM.P13.v1"
+    package_id: "PLATFORM.P13.RECOVERY.v1"
+    supersedes_package_id: "PLATFORM.P13.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P13/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P12"]
-    allowed_paths: *common_allowed_paths
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/PLATFORM.P12.RECOVERY.v1/decision.yaml"
+    allowed_paths: *recovery_allowed_paths
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Integrate real secret-reference boundaries, DLP, durable HITL, metering, ledger, pricing, reservation, hard caps, and reconciliation on applicable runtime paths without storing real credentials or making paid calls."
     scope_intent: "Implement Secrets/KMS, DLP, durable HITL, metering, ledger, Pricing Registry, credit reservation, hard caps, and reconciliation."
     exit_intent: "High-risk or billable work cannot bypass security, approval, or financial gates."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/PLATFORM.P13/commands.log", "dev/openclaw/evidence/PLATFORM.P13/tests.log", "dev/openclaw/evidence/PLATFORM.P13/quality.log", "dev/openclaw/evidence/PLATFORM.P13/git_before.txt", "dev/openclaw/evidence/PLATFORM.P13/git_after.txt", "dev/openclaw/evidence/PLATFORM.P13/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/PLATFORM.P13.RECOVERY.v1/commands.log", "dev/openclaw/evidence/recovery/PLATFORM.P13.RECOVERY.v1/tests.log", "dev/openclaw/evidence/recovery/PLATFORM.P13.RECOVERY.v1/quality.log", "dev/openclaw/evidence/recovery/PLATFORM.P13.RECOVERY.v1/runtime.log", "dev/openclaw/evidence/recovery/PLATFORM.P13.RECOVERY.v1/git_before.txt", "dev/openclaw/evidence/recovery/PLATFORM.P13.RECOVERY.v1/git_after.txt", "dev/openclaw/evidence/recovery/PLATFORM.P13.RECOVERY.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -438,18 +583,23 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "PLATFORM.P14"
-    package_id: "PLATFORM.P14.v1"
+    package_id: "PLATFORM.P14.RECOVERY.v1"
+    supersedes_package_id: "PLATFORM.P14.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P14/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P13"]
-    allowed_paths: *common_allowed_paths
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/PLATFORM.P13.RECOVERY.v1/decision.yaml"
+    allowed_paths: *recovery_allowed_paths
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Execute the proven VIDEO.V01-V30 chain through ILAIOS adapters, grants, evidence, FinOps, and delivery boundaries using deterministic local execution where available; provider or publisher boundaries may be mocked only as true external adapters and must be marked accordingly."
     scope_intent: "Migrate the proven video chain through adapters into ILAIOS contracts with grants, evidence, FinOps, and publish integration without unnecessarily rewriting proven video behavior."
     exit_intent: "Baseline quality plus cost, latency, QA, and publish evidence pass."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/PLATFORM.P14/commands.log", "dev/openclaw/evidence/PLATFORM.P14/tests.log", "dev/openclaw/evidence/PLATFORM.P14/quality.log", "dev/openclaw/evidence/PLATFORM.P14/git_before.txt", "dev/openclaw/evidence/PLATFORM.P14/git_after.txt", "dev/openclaw/evidence/PLATFORM.P14/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/PLATFORM.P14.RECOVERY.v1/commands.log", "dev/openclaw/evidence/recovery/PLATFORM.P14.RECOVERY.v1/tests.log", "dev/openclaw/evidence/recovery/PLATFORM.P14.RECOVERY.v1/quality.log", "dev/openclaw/evidence/recovery/PLATFORM.P14.RECOVERY.v1/runtime.log", "dev/openclaw/evidence/recovery/PLATFORM.P14.RECOVERY.v1/git_before.txt", "dev/openclaw/evidence/recovery/PLATFORM.P14.RECOVERY.v1/git_after.txt", "dev/openclaw/evidence/recovery/PLATFORM.P14.RECOVERY.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -457,18 +607,23 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "PLATFORM.P15"
-    package_id: "PLATFORM.P15.v1"
+    package_id: "PLATFORM.P15.RECOVERY.v1"
+    supersedes_package_id: "PLATFORM.P15.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P15/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P14"]
-    allowed_paths: *common_allowed_paths
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/PLATFORM.P14.RECOVERY.v1/decision.yaml"
+    allowed_paths: *recovery_allowed_paths
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Prove an actual Windows Desktop-originated request crosses the real service boundary, creates a governed goal/job, executes the real DAG/workers/approval/grant/cost/evidence/video path, and produces verifiable delivery plus AcceptanceManifest; a source string assertion or in-process composition alone is insufficient."
     scope_intent: "Run a real governed Video goal from Windows Desktop through real DAG, workers, approvals, cost, evidence, and delivery."
     exit_intent: "First complete product proof passes AcceptanceManifest."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/PLATFORM.P15/commands.log", "dev/openclaw/evidence/PLATFORM.P15/tests.log", "dev/openclaw/evidence/PLATFORM.P15/quality.log", "dev/openclaw/evidence/PLATFORM.P15/git_before.txt", "dev/openclaw/evidence/PLATFORM.P15/git_after.txt", "dev/openclaw/evidence/PLATFORM.P15/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/PLATFORM.P15.RECOVERY.v1/commands.log", "dev/openclaw/evidence/recovery/PLATFORM.P15.RECOVERY.v1/tests.log", "dev/openclaw/evidence/recovery/PLATFORM.P15.RECOVERY.v1/quality.log", "dev/openclaw/evidence/recovery/PLATFORM.P15.RECOVERY.v1/runtime.log", "dev/openclaw/evidence/recovery/PLATFORM.P15.RECOVERY.v1/git_before.txt", "dev/openclaw/evidence/recovery/PLATFORM.P15.RECOVERY.v1/git_after.txt", "dev/openclaw/evidence/recovery/PLATFORM.P15.RECOVERY.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -476,18 +631,23 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "PLATFORM.P16"
-    package_id: "PLATFORM.P16.v1"
+    package_id: "PLATFORM.P16.RECOVERY.v1"
+    supersedes_package_id: "PLATFORM.P16.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P16/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P15"]
-    allowed_paths: *common_allowed_paths
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/PLATFORM.P15.RECOVERY.v1/decision.yaml"
+    allowed_paths: *recovery_allowed_paths
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Provide a runnable Web Control Center using the same authenticated command/query/event service and schemas as Desktop, including browser-level or equivalent end-to-end parity, reconnect, authorization-denial, and no-local-authority tests."
     scope_intent: "Implement Web Control Center on the same authoritative contracts and events."
     exit_intent: "Desktop and Web semantic parity is proven with no bypass."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/PLATFORM.P16/commands.log", "dev/openclaw/evidence/PLATFORM.P16/tests.log", "dev/openclaw/evidence/PLATFORM.P16/quality.log", "dev/openclaw/evidence/PLATFORM.P16/git_before.txt", "dev/openclaw/evidence/PLATFORM.P16/git_after.txt", "dev/openclaw/evidence/PLATFORM.P16/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/PLATFORM.P16.RECOVERY.v1/commands.log", "dev/openclaw/evidence/recovery/PLATFORM.P16.RECOVERY.v1/tests.log", "dev/openclaw/evidence/recovery/PLATFORM.P16.RECOVERY.v1/quality.log", "dev/openclaw/evidence/recovery/PLATFORM.P16.RECOVERY.v1/runtime.log", "dev/openclaw/evidence/recovery/PLATFORM.P16.RECOVERY.v1/git_before.txt", "dev/openclaw/evidence/recovery/PLATFORM.P16.RECOVERY.v1/git_after.txt", "dev/openclaw/evidence/recovery/PLATFORM.P16.RECOVERY.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -495,18 +655,23 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "PLATFORM.P17"
-    package_id: "PLATFORM.P17.v1"
+    package_id: "PLATFORM.P17.RECOVERY.v1"
+    supersedes_package_id: "PLATFORM.P17.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P17/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P16"]
-    allowed_paths: *common_allowed_paths
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/PLATFORM.P16.RECOVERY.v1/decision.yaml"
+    allowed_paths: *recovery_allowed_paths
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Make Web Factory generate actual deterministic website files and an addressable artifact bundle for the official ILAIOS site, then validate required pages, brand, navigation, content, hashes, and machine-readable acceptance; returning only a payload hash is insufficient."
     scope_intent: "Implement Web Factory golden workflow producing the ILAIOS official website through governed execution."
     exit_intent: "Machine-readable golden acceptance passes."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/PLATFORM.P17/commands.log", "dev/openclaw/evidence/PLATFORM.P17/tests.log", "dev/openclaw/evidence/PLATFORM.P17/quality.log", "dev/openclaw/evidence/PLATFORM.P17/git_before.txt", "dev/openclaw/evidence/PLATFORM.P17/git_after.txt", "dev/openclaw/evidence/PLATFORM.P17/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/PLATFORM.P17.RECOVERY.v1/commands.log", "dev/openclaw/evidence/recovery/PLATFORM.P17.RECOVERY.v1/tests.log", "dev/openclaw/evidence/recovery/PLATFORM.P17.RECOVERY.v1/quality.log", "dev/openclaw/evidence/recovery/PLATFORM.P17.RECOVERY.v1/runtime.log", "dev/openclaw/evidence/recovery/PLATFORM.P17.RECOVERY.v1/git_before.txt", "dev/openclaw/evidence/recovery/PLATFORM.P17.RECOVERY.v1/git_after.txt", "dev/openclaw/evidence/recovery/PLATFORM.P17.RECOVERY.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -514,18 +679,23 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "PLATFORM.P18"
-    package_id: "PLATFORM.P18.v1"
+    package_id: "PLATFORM.P18.RECOVERY.v1"
+    supersedes_package_id: "PLATFORM.P18.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P18/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P17"]
-    allowed_paths: *common_allowed_paths
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/PLATFORM.P17.RECOVERY.v1/decision.yaml"
+    allowed_paths: *recovery_allowed_paths
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Provide an isolated bounded Software Factory workspace that can inspect, generate a real patch/diff, run tests, emit a content-addressed review proposal, require approval, and remain unable to mutate production directly."
     scope_intent: "Implement isolated Software Factory and bounded controlled self-change."
     exit_intent: "No autonomous direct production mutation is possible."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/PLATFORM.P18/commands.log", "dev/openclaw/evidence/PLATFORM.P18/tests.log", "dev/openclaw/evidence/PLATFORM.P18/quality.log", "dev/openclaw/evidence/PLATFORM.P18/git_before.txt", "dev/openclaw/evidence/PLATFORM.P18/git_after.txt", "dev/openclaw/evidence/PLATFORM.P18/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/PLATFORM.P18.RECOVERY.v1/commands.log", "dev/openclaw/evidence/recovery/PLATFORM.P18.RECOVERY.v1/tests.log", "dev/openclaw/evidence/recovery/PLATFORM.P18.RECOVERY.v1/quality.log", "dev/openclaw/evidence/recovery/PLATFORM.P18.RECOVERY.v1/runtime.log", "dev/openclaw/evidence/recovery/PLATFORM.P18.RECOVERY.v1/git_before.txt", "dev/openclaw/evidence/recovery/PLATFORM.P18.RECOVERY.v1/git_after.txt", "dev/openclaw/evidence/recovery/PLATFORM.P18.RECOVERY.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -533,18 +703,23 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "PLATFORM.P19"
-    package_id: "PLATFORM.P19.v1"
+    package_id: "PLATFORM.P19.RECOVERY.v1"
+    supersedes_package_id: "PLATFORM.P19.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P19/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P18"]
-    allowed_paths: *common_allowed_paths
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/PLATFORM.P18.RECOVERY.v1/decision.yaml"
+    allowed_paths: *recovery_allowed_paths
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Provide a provider-neutral deployable runtime: production composition root/process command, liveness/readiness HTTP endpoints, explicit migrations and rollback, dependency adapters, configuration/secrets references, resource/capacity baseline, OCI image build with immutable identity, and backup/restore implementation. No cloud deployment or spend occurs."
     scope_intent: "Implement cloud, multi-tenant, regional, dedicated/private, HA, quotas, billing, and abuse hardening."
     exit_intent: "Isolation, residency, and deployment-profile acceptance pass."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/PLATFORM.P19/commands.log", "dev/openclaw/evidence/PLATFORM.P19/tests.log", "dev/openclaw/evidence/PLATFORM.P19/quality.log", "dev/openclaw/evidence/PLATFORM.P19/git_before.txt", "dev/openclaw/evidence/PLATFORM.P19/git_after.txt", "dev/openclaw/evidence/PLATFORM.P19/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/PLATFORM.P19.RECOVERY.v1/commands.log", "dev/openclaw/evidence/recovery/PLATFORM.P19.RECOVERY.v1/tests.log", "dev/openclaw/evidence/recovery/PLATFORM.P19.RECOVERY.v1/quality.log", "dev/openclaw/evidence/recovery/PLATFORM.P19.RECOVERY.v1/runtime.log", "dev/openclaw/evidence/recovery/PLATFORM.P19.RECOVERY.v1/git_before.txt", "dev/openclaw/evidence/recovery/PLATFORM.P19.RECOVERY.v1/git_after.txt", "dev/openclaw/evidence/recovery/PLATFORM.P19.RECOVERY.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -552,18 +727,23 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "PLATFORM.P20"
-    package_id: "PLATFORM.P20.v1"
+    package_id: "PLATFORM.P20.RECOVERY.v1"
+    supersedes_package_id: "PLATFORM.P20.v1"
+    historical_evidence: "dev/openclaw/evidence/PLATFORM.P20/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P19"]
-    allowed_paths: *common_allowed_paths
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/PLATFORM.P19.RECOVERY.v1/decision.yaml"
+    allowed_paths: *recovery_allowed_paths
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Execute security/red-team, chaos/outage, backup/restore/DR, load, compromise/revocation, supply-chain, and rollback drills against the actual local/containerized runtime and record measured append-only evidence; passing a caller-supplied boolean dictionary is insufficient."
     scope_intent: "Run security/red-team, chaos/outage, DR/restore, load, compromise/revocation, supply-chain, and rollback drills."
     exit_intent: "Evidence-backed promotion eligibility exists; ReleaseState remains unchanged."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/PLATFORM.P20/commands.log", "dev/openclaw/evidence/PLATFORM.P20/tests.log", "dev/openclaw/evidence/PLATFORM.P20/quality.log", "dev/openclaw/evidence/PLATFORM.P20/git_before.txt", "dev/openclaw/evidence/PLATFORM.P20/git_after.txt", "dev/openclaw/evidence/PLATFORM.P20/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/PLATFORM.P20.RECOVERY.v1/commands.log", "dev/openclaw/evidence/recovery/PLATFORM.P20.RECOVERY.v1/tests.log", "dev/openclaw/evidence/recovery/PLATFORM.P20.RECOVERY.v1/quality.log", "dev/openclaw/evidence/recovery/PLATFORM.P20.RECOVERY.v1/runtime.log", "dev/openclaw/evidence/recovery/PLATFORM.P20.RECOVERY.v1/git_before.txt", "dev/openclaw/evidence/recovery/PLATFORM.P20.RECOVERY.v1/git_after.txt", "dev/openclaw/evidence/recovery/PLATFORM.P20.RECOVERY.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -571,18 +751,23 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "RELEASE.R00"
-    package_id: "RELEASE.R00.v1"
+    package_id: "RELEASE.R00.REVALIDATION.v1"
+    supersedes_package_id: "RELEASE.R00.v1"
+    historical_evidence: "dev/openclaw/evidence/RELEASE.R00/decision.yaml"
+    historical_evidence_disposition: "IMMUTABLE_PROVENANCE_NOT_CURRENT_PASS"
     dependencies: ["PLATFORM.P20"]
-    allowed_paths: ["docs/**", "infra/**", ".github/**", "dev/openclaw/evidence/**"]
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/PLATFORM.P20.RECOVERY.v1/decision.yaml"
+    allowed_paths: ["infra/**", ".github/**", "docs/**", "tests/**", "dev/openclaw/evidence/**"]
     forbidden_paths: *common_forbidden_paths
+    recovery_focus: "Independently verify the actual deployable artifact, health checks, migrations, rollback, feature flags, empty default allowlist, operational evidence, and every P20 drill artifact. Do not repair product code in this package; any defect is FAIL and routes back to its owning milestone. Keep ReleaseState NOT_DEPLOYED."
     scope_intent: "Run independent promotion-eligibility check including feature flags, allowlists, health, and rollback prerequisites without deployment."
     exit_intent: "Eligible but NOT_DEPLOYED."
-    actions: *common_actions
-    validations: *common_validations
-    requirements: *common_requirements
-    evidence_requirements: ["dev/openclaw/evidence/RELEASE.R00/commands.log", "dev/openclaw/evidence/RELEASE.R00/tests.log", "dev/openclaw/evidence/RELEASE.R00/quality.log", "dev/openclaw/evidence/RELEASE.R00/git_before.txt", "dev/openclaw/evidence/RELEASE.R00/git_after.txt", "dev/openclaw/evidence/RELEASE.R00/decision.yaml"]
+    actions: *recovery_actions
+    validations: *recovery_validations
+    requirements: *recovery_requirements
+    evidence_requirements: ["dev/openclaw/evidence/recovery/RELEASE.R00.REVALIDATION.v1/commands.log", "dev/openclaw/evidence/recovery/RELEASE.R00.REVALIDATION.v1/tests.log", "dev/openclaw/evidence/recovery/RELEASE.R00.REVALIDATION.v1/quality.log", "dev/openclaw/evidence/recovery/RELEASE.R00.REVALIDATION.v1/runtime.log", "dev/openclaw/evidence/recovery/RELEASE.R00.REVALIDATION.v1/git_before.txt", "dev/openclaw/evidence/recovery/RELEASE.R00.REVALIDATION.v1/git_after.txt", "dev/openclaw/evidence/recovery/RELEASE.R00.REVALIDATION.v1/decision.yaml"]
     approvals: []
     budget_policy: *common_budget_policy
     rollback: *common_rollback
@@ -590,13 +775,14 @@ packages:
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
     status: "READY"
-
   - milestone_id: "RELEASE.R01"
     package_id: "RELEASE.R01.v1"
     dependencies: ["RELEASE.R00"]
+    dependency_evidence:
+      - "dev/openclaw/evidence/recovery/RELEASE.R00.REVALIDATION.v1/decision.yaml"
     allowed_paths: ["infra/**", ".github/**", "docs/**", "dev/openclaw/evidence/**"]
     forbidden_paths: *common_forbidden_paths
-    scope_intent: "Promote to CANARY bounded exposure only after explicit human promotion approval."
+    scope_intent: "Promote to CANARY only after explicit human promotion approval and complete external prerequisites."
     exit_intent: "Canary evidence passes."
     actions: *common_actions
     validations: *common_validations
@@ -608,14 +794,16 @@ packages:
     stop_conditions: *common_stop_conditions
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
-    status: "READY"
-
+    blocked_reason: "EXPLICIT_HUMAN_RELEASE_PROMOTION_AND_EXTERNAL_DEPLOYMENT_INPUTS_REQUIRED"
+    status: "BLOCKED"
   - milestone_id: "RELEASE.R02"
     package_id: "RELEASE.R02.v1"
     dependencies: ["RELEASE.R01"]
+    dependency_evidence:
+      - "dev/openclaw/evidence/RELEASE.R01/decision.yaml"
     allowed_paths: ["infra/**", ".github/**", "docs/**", "dev/openclaw/evidence/**"]
     forbidden_paths: *common_forbidden_paths
-    scope_intent: "Promote to LIMITED only after explicit human promotion approval and R01 evidence."
+    scope_intent: "Promote to LIMITED only after explicit human promotion approval and complete external prerequisites."
     exit_intent: "Limited evidence passes."
     actions: *common_actions
     validations: *common_validations
@@ -627,14 +815,16 @@ packages:
     stop_conditions: *common_stop_conditions
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
-    status: "READY"
-
+    blocked_reason: "EXPLICIT_HUMAN_RELEASE_PROMOTION_AND_EXTERNAL_DEPLOYMENT_INPUTS_REQUIRED"
+    status: "BLOCKED"
   - milestone_id: "RELEASE.R03"
     package_id: "RELEASE.R03.v1"
     dependencies: ["RELEASE.R02"]
+    dependency_evidence:
+      - "dev/openclaw/evidence/RELEASE.R02/decision.yaml"
     allowed_paths: ["infra/**", ".github/**", "docs/**", "dev/openclaw/evidence/**"]
     forbidden_paths: *common_forbidden_paths
-    scope_intent: "Promote to PRODUCTION only after explicit human promotion approval, monitoring, and post-delivery verification."
+    scope_intent: "Promote to PRODUCTION only after explicit human promotion approval and complete external prerequisites."
     exit_intent: "Controlled, traceable, reversible production state."
     actions: *common_actions
     validations: *common_validations
@@ -646,4 +836,5 @@ packages:
     stop_conditions: *common_stop_conditions
     expected_post_state: *common_expected_post_state
     commit_policy: *common_commit_policy
-    status: "READY"
+    blocked_reason: "EXPLICIT_HUMAN_RELEASE_PROMOTION_AND_EXTERNAL_DEPLOYMENT_INPUTS_REQUIRED"
+    status: "BLOCKED"
