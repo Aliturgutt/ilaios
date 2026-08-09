@@ -49,6 +49,12 @@ to `IMPLEMENTED` without complete proof. Current totals are 8,346 requirements:
 0 `IMPLEMENTED`, 1,102 `PARTIAL`, 1,967 `MIGRATED`, 5,277
 `MISSING_IMPLEMENTATION`, 0 `MISSING_DOCUMENTATION`, and 0 `CONFLICT`.
 
+OBS.I06 subsequently added provider-neutral infrastructure capabilities and
+non-authoritative structured telemetry contracts. It supplies row-specific
+evidence to 1,269 requirements. Current totals are 8,346 requirements: 0
+`IMPLEMENTED`, 2,867 `PARTIAL`, 1,967 `MIGRATED`, 3,512
+`MISSING_IMPLEMENTATION`, 0 `MISSING_DOCUMENTATION`, and 0 `CONFLICT`.
+
 OPS.I05 subsequently added configurable service-level, incident, health,
 backup, restore, disaster-recovery, and rollback exercise contracts. It
 supplies row-specific evidence to 248 requirements. Current totals are 8,346

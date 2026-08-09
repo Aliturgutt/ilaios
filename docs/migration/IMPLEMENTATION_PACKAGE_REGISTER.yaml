@@ -72,13 +72,14 @@ packages:
     evidence: evidence/migration/ILATEN_TO_ILAIOS/OPS.I05.md
   - id: OBS.I06
     title: Technology-Neutral Observability and Infrastructure Contracts
-    status: READY
+    status: PASS
     dependencies: [OPS.I05]
     scope:
       - OCI workload relational object queue network and ingress interfaces
       - structured logs metrics traces and correlation IDs
       - capacity health security and cost signals
       - separation of telemetry authorization audit and evidence
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/OBS.I06.md
   - id: AGENT.I07
     title: Governed Agent Identity Permission Firewall and AI Security
     status: READY

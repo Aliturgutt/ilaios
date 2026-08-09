@@ -157,6 +157,20 @@ EVIDENCE_RULES = (
         ("services/cloud.py", "tests/test_cloud_boundaries.py"),
     ),
     EvidenceRule(
+        ("7.3", "7.4", "7.5", "7.6", "7.7", "7.8", "7.9", "7.10", "8.8"),
+        re.compile(
+            r"container|OCI|orchestrat|relational|object|queue|event|network|"
+            r"ingress|log|metric|trac|correlation|telemetry|observab|health|"
+            r"capacity|cost|evidence|authoriz",
+            re.IGNORECASE,
+        ),
+        (
+            "services/observability.py",
+            "tests/test_observability_contracts.py",
+            "evidence/migration/ILATEN_TO_ILAIOS/OBS.I06.md",
+        ),
+    ),
+    EvidenceRule(
         ("2.7", "7.1", "7.2", "7.5", "8.10"),
         re.compile(
             r"tenant|privacy|residency|region|retention|deletion|legal hold|"
