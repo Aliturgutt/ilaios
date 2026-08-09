@@ -21,6 +21,11 @@ from services.control_plane.api import (
     GoalRecord,
     JobRecord,
 )
+from services.control_plane.live_state import (
+    LiveEvent,
+    LiveStateError,
+    LiveStateTransport,
+)
 from services.control_plane.migrations import current_schema_version
 from services.control_plane.proposals import (
     BudgetEnvelope,
@@ -46,10 +51,12 @@ class ControlPlaneHTTPServer(ThreadingHTTPServer):
         server_address: tuple[str, int],
         control_plane: ControlPlane,
         workflow_store: WorkflowStore,
+        live_state: LiveStateTransport,
     ) -> None:
         super().__init__(server_address, ControlPlaneRequestHandler)
         self.control_plane = control_plane
         self.workflow_store = workflow_store
+        self.live_state = live_state
 
 
 class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
@@ -64,6 +71,30 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(HTTPStatus.OK, {"status": "live"})
                 return
             token = self._bearer_token()
+            self.server.control_plane.authenticate(token)
+            if path == "/v1/live/events":
+                query = parse_qs(urlparse(self.path).query)
+                after_sequence = _optional_query_int(query, "after_sequence", default=0)
+                self._send_json(
+                    HTTPStatus.OK,
+                    {
+                        "events": [
+                            _live_event_json(event)
+                            for event in self.server.live_state.replay(
+                                after_sequence=after_sequence
+                            )
+                        ]
+                    },
+                )
+                return
+            if path == "/v1/live/snapshot":
+                query = parse_qs(urlparse(self.path).query)
+                aggregate_id = _single_query_value(query, "aggregate_id")
+                self._send_json(
+                    HTTPStatus.OK,
+                    _live_event_json(self.server.live_state.snapshot(aggregate_id)),
+                )
+                return
             if path == "/v1/workflow/outbox":
                 self._send_json(
                     HTTPStatus.OK,
@@ -123,16 +154,27 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self._send_error(HTTPStatus.NOT_FOUND, str(error))
         except WorkflowError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except LiveStateError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except ValueError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
 
     def do_POST(self) -> None:
         try:
             token = self._bearer_token()
+            self.server.control_plane.authenticate(token)
             body = self._read_json()
             path = urlparse(self.path).path
             if path == "/v1/workflow/commands":
                 self._send_json(HTTPStatus.OK, self._workflow_command(body))
+                return
+            if path == "/v1/live/events":
+                event = self.server.live_state.publish(
+                    _required_string(body, "aggregate_id"),
+                    _required_string(body, "event_type"),
+                    _required_object(body, "state"),
+                )
+                self._send_json(HTTPStatus.CREATED, _live_event_json(event))
                 return
             record: GoalRecord | JobRecord
             if path == "/v1/goals":
@@ -162,6 +204,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
         except ControlPlaneError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except WorkflowError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except LiveStateError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except (json.JSONDecodeError, TypeError, UnicodeDecodeError, ValueError) as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
@@ -332,6 +376,17 @@ def _single_query_value(query: dict[str, list[str]], key: str) -> str:
     return values[0]
 
 
+def _optional_query_int(
+    query: dict[str, list[str]], key: str, *, default: int
+) -> int:
+    values = query.get(key)
+    if values is None:
+        return default
+    if len(values) != 1:
+        raise ValueError(f"at most one {key} query value is allowed")
+    return int(values[0])
+
+
 def _attempt_json(attempt: AttemptRecord) -> dict[str, Any]:
     return {
         "attempt_id": attempt.attempt_id,
@@ -340,6 +395,16 @@ def _attempt_json(attempt: AttemptRecord) -> dict[str, Any]:
         "number": attempt.number,
         "status": attempt.status,
         "deadline": attempt.deadline.isoformat(),
+    }
+
+
+def _live_event_json(event: LiveEvent) -> dict[str, Any]:
+    return {
+        "sequence": event.sequence,
+        "aggregate_id": event.aggregate_id,
+        "version": event.version,
+        "event_type": event.event_type,
+        "state": event.state,
     }
 
 
@@ -405,8 +470,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     token = os.environ.get("ILAIOS_CONTROL_PLANE_TOKEN", "")
     control_plane = ControlPlane(ControlPlaneConfig(arguments.database, token))
     workflow_store = WorkflowStore(WorkflowStoreConfig(arguments.database))
+    live_state = LiveStateTransport(arguments.database)
     server = ControlPlaneHTTPServer(
-        (arguments.host, arguments.port), control_plane, workflow_store
+        (arguments.host, arguments.port), control_plane, workflow_store, live_state
     )
     host, port = server.server_address[:2]
     ready = {

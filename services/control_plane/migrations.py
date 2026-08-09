@@ -13,7 +13,7 @@ class MigrationError(RuntimeError):
     """Raised when a control-plane migration cannot complete safely."""
 
 
-LATEST_SCHEMA_VERSION = 3
+LATEST_SCHEMA_VERSION = 4
 
 _UP_MIGRATIONS = {
     1: """
@@ -88,6 +88,23 @@ _UP_MIGRATIONS = {
             received_at TEXT NOT NULL
         );
     """,
+    4: """
+        CREATE TABLE live_events (
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+            aggregate_id TEXT NOT NULL,
+            version INTEGER NOT NULL,
+            event_type TEXT NOT NULL,
+            state_json TEXT NOT NULL,
+            occurred_at TEXT NOT NULL,
+            UNIQUE (aggregate_id, version)
+        );
+        CREATE TABLE live_state (
+            aggregate_id TEXT PRIMARY KEY,
+            version INTEGER NOT NULL,
+            state_json TEXT NOT NULL,
+            last_sequence INTEGER NOT NULL
+        );
+    """,
 }
 
 _DOWN_MIGRATIONS = {
@@ -106,6 +123,10 @@ _DOWN_MIGRATIONS = {
         DROP TABLE attempts;
         DROP TABLE workflow_tasks;
         DROP TABLE workflows;
+    """,
+    4: """
+        DROP TABLE live_state;
+        DROP TABLE live_events;
     """,
 }
 

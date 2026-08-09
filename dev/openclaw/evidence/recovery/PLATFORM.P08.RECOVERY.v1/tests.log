@@ -1,0 +1,8 @@
+Targeted replay/reconnect/reorder/gap/snapshot/DLP/authentication suite:
+17 passed in 4.28s
+Independent boundary acceptance: 1 passed in 0.77s
+Full repository regression: 933 passed in 11.55s
+
+The negative authentication test initially failed and prevented PASS. After
+central boundary validation was implemented, wrong bearer credentials return
+401 before workflow or live-state dispatch.

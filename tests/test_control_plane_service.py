@@ -19,6 +19,7 @@ from urllib.request import Request, urlopen
 
 import pytest
 
+from services.control_plane import LiveEvent, LiveStateError, LiveStateProjection
 from services.control_plane.migrations import (
     LATEST_SCHEMA_VERSION,
     MigrationError,
@@ -462,3 +463,66 @@ def test_workflow_crash_retry_duplicate_delivery_and_compensation_cross_boundary
         )
         _, reconciled = _request(base_url, "GET", "/v1/workflow/outbox")
         assert reconciled == {"events": []}
+
+
+def test_live_state_replay_reorder_gap_snapshot_and_dlp_cross_boundary(
+    tmp_path: Path,
+) -> None:
+    with _running_service(tmp_path) as (base_url, _):
+        published: list[dict[str, Any]] = []
+        for event_type, state in (
+            ("job.created", {"state": "pending", "token": "raw-token"}),
+            ("job.started", {"state": "running"}),
+            ("job.completed", {"state": "completed"}),
+        ):
+            status, event = _request(
+                base_url,
+                "POST",
+                "/v1/live/events",
+                payload={
+                    "aggregate_id": "job-live-1",
+                    "event_type": event_type,
+                    "state": state,
+                },
+            )
+            assert status == 201
+            published.append(event)
+        assert published[0]["state"]["token"] == "[REDACTED]"
+        status, replayed = _request(
+            base_url, "GET", "/v1/live/events?after_sequence=0"
+        )
+        assert status == 200
+        assert replayed["events"] == published
+        status, denied = _request(
+            base_url, "GET", "/v1/live/events", token="wrong"
+        )
+        assert status == 401
+        assert denied == {"error": "invalid local bearer token"}
+
+    raw_database = (tmp_path / "state.sqlite3").read_bytes().decode(errors="ignore")
+    assert "raw-token" not in raw_database
+    events = tuple(LiveEvent(**event) for event in published)
+    projection = LiveStateProjection()
+    projection.reconcile(tuple(reversed(events)))
+    assert projection.state("job-live-1") == {"state": "completed"}
+
+    with pytest.raises(LiveStateError, match="gap"):
+        LiveStateProjection().reconcile((events[1],))
+
+    (tmp_path / "ready.json").unlink()
+    with _running_service(tmp_path) as (base_url, _):
+        _, replay_after_reconnect = _request(
+            base_url,
+            "GET",
+            f"/v1/live/events?after_sequence={published[0]['sequence']}",
+        )
+        assert replay_after_reconnect["events"] == published[1:]
+        _, snapshot_payload = _request(
+            base_url,
+            "GET",
+            "/v1/live/snapshot?aggregate_id=job-live-1",
+        )
+        recovered = LiveStateProjection()
+        recovered.restore_snapshot(LiveEvent(**snapshot_payload))
+        assert recovered.last_sequence == 3
+        assert recovered.state("job-live-1") == {"state": "completed"}

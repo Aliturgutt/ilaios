@@ -73,6 +73,10 @@ class ControlPlane:
         if not hmac.compare_digest(token, self._config.bearer_token):
             raise AuthenticationError("invalid local bearer token")
 
+    def authenticate(self, token: str) -> None:
+        """Validate a transport credential before non-control-plane dispatch."""
+        self._authenticate(token)
+
     def create_goal(self, token: str, objective: str) -> GoalRecord:
         self._authenticate(token)
         if not objective or objective != objective.strip():

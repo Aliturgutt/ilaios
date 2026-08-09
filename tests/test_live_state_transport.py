@@ -63,3 +63,15 @@ def test_projection_fails_closed_on_sequence_gap(tmp_path: Path) -> None:
 
     with pytest.raises(LiveStateError, match="gap"):
         LiveStateProjection().reconcile((second,))
+
+
+def test_projection_recovers_from_authoritative_snapshot(tmp_path: Path) -> None:
+    transport = LiveStateTransport(tmp_path / "live.sqlite3")
+    transport.publish("job-1", "job.created", {"state": "pending"})
+    transport.publish("job-1", "job.started", {"state": "running"})
+
+    projection = LiveStateProjection()
+    projection.restore_snapshot(transport.snapshot("job-1"))
+
+    assert projection.last_sequence == 2
+    assert projection.state("job-1") == {"state": "running"}

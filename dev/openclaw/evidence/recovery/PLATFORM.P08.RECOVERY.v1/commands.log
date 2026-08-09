@@ -1,0 +1,20 @@
+PLATFORM.P08.RECOVERY.v1 commands
+repository pre-state and P07 recovery dependency reread: PASS
+python -m pytest -q tests/test_live_state_transport.py tests/test_durable_workflows.py tests/test_control_plane_service.py
+initial_exit_code=1 cause=workflow/live routes parsed but did not validate bearer token
+repair=central authenticated dispatch added before every /v1 route
+final_exit_code=0 result=17_passed
+python -m pytest -q -vv tests/test_control_plane_service.py::test_live_state_replay_reorder_gap_snapshot_and_dlp_cross_boundary --basetemp=/tmp/ilaios-p08-evidence
+exit_code=0 result=1_passed
+SQLite live event and snapshot extraction from executed runtime database
+exit_code=0
+python -m pytest -q
+exit_code=0 result=933_passed
+ruff check .
+exit_code=0
+mypy --strict src tests
+exit_code=0 result=158_source_files
+pre-commit run --all-files
+exit_code=0
+git diff --check
+exit_code=0

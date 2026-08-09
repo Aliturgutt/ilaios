@@ -154,6 +154,15 @@ class LiveStateProjection:
             self._states[event.aggregate_id] = event
             self._last_sequence = event.sequence
 
+    def restore_snapshot(self, snapshot: LiveEvent) -> None:
+        """Restore an authoritative snapshot after a detected replay gap."""
+        if snapshot.event_type != "state.snapshot":
+            raise LiveStateError("snapshot event type is required")
+        if snapshot.sequence < 1 or snapshot.version < 1:
+            raise LiveStateError("snapshot sequence and version must be positive")
+        self._states[snapshot.aggregate_id] = snapshot
+        self._last_sequence = snapshot.sequence
+
     def state(self, aggregate_id: str) -> dict[str, Any]:
         try:
             return dict(self._states[aggregate_id].state)
