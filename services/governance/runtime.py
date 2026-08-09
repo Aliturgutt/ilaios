@@ -140,17 +140,13 @@ class GovernedRuntimeGateway:
         )
 
     def execute(self, request_id: str) -> dict[str, object]:
+        amount = self.authorize_billable(request_id)
         with self._connect() as connection:
             row = connection.execute(
                 "SELECT * FROM governed_work WHERE request_id = ?", (request_id,)
             ).fetchone()
-        if row is None:
+        if row is None:  # pragma: no cover - protected by authorize_billable
             raise GateError("unknown governed work request")
-        if row["status"] != "pending":
-            raise GateError("governed work cannot execute more than once")
-        amount = self._gate.authorize(
-            WorkRequest(request_id, "high", "runtime_execution", 1)
-        )
         payload = cast(dict[str, Any], json.loads(row["payload_json"]))
         try:
             result = self._runtime.execute(
@@ -160,16 +156,12 @@ class GovernedRuntimeGateway:
                 payload,
             )
         except Exception:
-            self._ledger.reconcile(request_id, 0)
+            self.reconcile_billable(request_id, actual_minor=0, status="failed")
             raise
         safe_result = cast(dict[str, object], redact_sensitive(result))
-        self._ledger.reconcile(request_id, amount)
-        with self._connect() as connection:
-            connection.execute(
-                "UPDATE governed_work SET status = 'executed', result_json = ? "
-                "WHERE request_id = ?",
-                (json.dumps(safe_result, sort_keys=True), request_id),
-            )
+        self.reconcile_billable(
+            request_id, actual_minor=amount, status="executed", result=safe_result
+        )
         return {
             **safe_result,
             "request_id": request_id,
@@ -177,6 +169,41 @@ class GovernedRuntimeGateway:
             "reserved_minor": amount,
             "actual_minor": amount,
         }
+
+    def authorize_billable(self, request_id: str) -> int:
+        """Reserve one server-metered execution after durable HITL approval."""
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT status FROM governed_work WHERE request_id = ?", (request_id,)
+            ).fetchone()
+        if row is None:
+            raise GateError("unknown governed work request")
+        if row["status"] != "pending":
+            raise GateError("governed work cannot execute more than once")
+        return self._gate.authorize(
+            WorkRequest(request_id, "high", "runtime_execution", 1)
+        )
+
+    def reconcile_billable(
+        self,
+        request_id: str,
+        *,
+        actual_minor: int,
+        status: str,
+        result: dict[str, object] | None = None,
+    ) -> None:
+        if status not in {"executed", "failed"}:
+            raise GateError("invalid governed work terminal status")
+        self._ledger.reconcile(request_id, actual_minor)
+        with self._connect() as connection:
+            connection.execute(
+                "UPDATE governed_work SET status = ?, result_json = ? WHERE request_id = ?",
+                (
+                    status,
+                    None if result is None else json.dumps(result, sort_keys=True),
+                    request_id,
+                ),
+            )
 
     def state(self) -> dict[str, object]:
         with self._connect() as connection:

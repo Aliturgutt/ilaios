@@ -42,6 +42,7 @@ from services.control_plane.workflows import (
 )
 from services.evidence import EvidenceError, EvidenceStore, ProvenanceRecord
 from services.governance import GateError, GovernedRuntimeGateway
+from services.integrations import DeterministicLocalVideoRuntime, VideoRuntimeError
 from services.runtime import (
     BlastRadiusBudget,
     DurableGrantPolicy,
@@ -72,6 +73,7 @@ class ControlPlaneHTTPServer(ThreadingHTTPServer):
         grant_policy: DurableGrantPolicy,
         evidence_store: EvidenceStore,
         governance: GovernedRuntimeGateway,
+        video_runtime: DeterministicLocalVideoRuntime,
     ) -> None:
         super().__init__(server_address, ControlPlaneRequestHandler)
         self.control_plane = control_plane
@@ -82,6 +84,7 @@ class ControlPlaneHTTPServer(ThreadingHTTPServer):
         self.grant_policy = grant_policy
         self.evidence_store = evidence_store
         self.governance = governance
+        self.video_runtime = video_runtime
 
 
 class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
@@ -137,6 +140,12 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/v1/governance/state":
                 self._send_json(HTTPStatus.OK, self.server.governance.state())
+                return
+            if path.startswith("/v1/video/deliveries/"):
+                delivery_id = path.removeprefix("/v1/video/deliveries/")
+                self._send_json(
+                    HTTPStatus.OK, self.server.video_runtime.get_delivery(delivery_id)
+                )
                 return
             if path.startswith("/v1/evidence/artifacts/"):
                 digest = path.removeprefix("/v1/evidence/artifacts/")
@@ -229,6 +238,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except GateError as error:
             self._send_error(HTTPStatus.FORBIDDEN, str(error))
+        except VideoRuntimeError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except ValueError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
 
@@ -263,6 +274,9 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/v1/governance/commands":
                 self._send_json(HTTPStatus.OK, self._governance_command(body))
+                return
+            if path == "/v1/video/commands":
+                self._send_json(HTTPStatus.OK, self._video_command(body))
                 return
             record: GoalRecord | JobRecord
             if path == "/v1/goals":
@@ -305,6 +319,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except GateError as error:
             self._send_error(HTTPStatus.FORBIDDEN, str(error))
+        except VideoRuntimeError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except (
             json.JSONDecodeError,
             TypeError,
@@ -597,6 +613,16 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             return gateway.execute(_required_string(payload, "request_id"))
         raise ValueError("unknown governance operation")
 
+    def _video_command(self, payload: dict[str, Any]) -> dict[str, object]:
+        if _required_string(payload, "operation") != "execute_local":
+            raise ValueError("unknown video operation")
+        return self.server.video_runtime.execute(
+            request_id=_required_string(payload, "request_id"),
+            job_id=_required_string(payload, "job_id"),
+            grant_id=_required_string(payload, "grant_id"),
+            now=_required_datetime(payload, "now"),
+        )
+
 
 def _record_json(record: GoalRecord | JobRecord) -> dict[str, Any]:
     if isinstance(record, GoalRecord):
@@ -777,6 +803,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--evidence-root", type=Path, required=True)
     parser.add_argument("--governance-database", type=Path, required=True)
     parser.add_argument("--hard-cap-minor", type=int, default=100)
+    parser.add_argument("--video-root", type=Path, required=True)
     parser.add_argument("--lease-seconds", type=int, default=30)
     arguments = parser.parse_args(argv)
     if arguments.host not in {"127.0.0.1", "::1", "localhost"}:
@@ -796,6 +823,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         governed_runtime,
         hard_cap_minor=arguments.hard_cap_minor,
     )
+    video_runtime = DeterministicLocalVideoRuntime(
+        arguments.video_root, grant_policy, governance, evidence_store
+    )
     server = ControlPlaneHTTPServer(
         (arguments.host, arguments.port),
         control_plane,
@@ -806,6 +836,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         grant_policy,
         evidence_store,
         governance,
+        video_runtime,
     )
     host, port = server.server_address[:2]
     ready = {

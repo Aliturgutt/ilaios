@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import os
 import sqlite3
@@ -53,6 +54,8 @@ def _running_service(
             str(tmp_path / "governance.sqlite3"),
             "--hard-cap-minor",
             str(hard_cap_minor),
+            "--video-root",
+            str(tmp_path / "video"),
         ],
         cwd=Path(__file__).resolve().parents[1],
         env=environment,
@@ -951,6 +954,129 @@ def test_real_runtime_cannot_bypass_secret_dlp_hitl_or_financial_gates(
                 "reference": "kms://tenant-a/provider-key",
             }
         ]
+
+
+def test_real_local_video_crosses_grant_finops_evidence_and_delivery_boundaries(
+    tmp_path: Path,
+) -> None:
+    now = datetime(2026, 8, 9, tzinfo=timezone.utc)
+    with _running_service(tmp_path) as (base_url, _):
+        status, _ = _request(
+            base_url,
+            "POST",
+            "/v1/governance/commands",
+            payload={
+                "operation": "submit",
+                "request_id": "video-request-1",
+                "requester_id": "video-requester",
+                "agent_id": "video-agent",
+                "skill_id": "video-chain-v30",
+                "capability": "video",
+                "payload": {"objective": "deterministic local delivery"},
+                "secret_ids": [],
+            },
+        )
+        assert status == 200
+        status, _ = _request(
+            base_url,
+            "POST",
+            "/v1/governance/commands",
+            payload={
+                "operation": "decide",
+                "request_id": "video-request-1",
+                "approver": "video-owner",
+                "decision": "approved",
+            },
+        )
+        assert status == 200
+        status, _ = _request(
+            base_url,
+            "POST",
+            "/v1/grants/commands",
+            payload={
+                "operation": "register",
+                "grant_id": "video-grant-1",
+                "subject_id": "worker-video",
+                "actions": ["video.execute"],
+                "resources": ["video-job-1"],
+                "now": now.isoformat(),
+                "expires_at": (now + timedelta(minutes=5)).isoformat(),
+                "max_side_effects": 1,
+                "max_resources": 1,
+            },
+        )
+        assert status == 200
+        status, result = _request(
+            base_url,
+            "POST",
+            "/v1/video/commands",
+            payload={
+                "operation": "execute_local",
+                "request_id": "video-request-1",
+                "job_id": "video-job-1",
+                "grant_id": "video-grant-1",
+                "now": now.isoformat(),
+            },
+        )
+        assert status == 200
+        assert result["final_stage"] == "completed"
+        assert result["executed_stage_count"] == 15
+        assert result["qa"]["passed"] is True
+        assert result["qa"]["video_codec"] == "h264"
+        assert result["qa"]["audio_codec"] == "aac"
+        assert result["qa"]["width"] == 160
+        assert result["qa"]["height"] == 284
+        assert result["latency_passed"] is True
+        assert result["latency_ms"] <= result["latency_budget_ms"]
+        assert result["reserved_minor"] == result["actual_minor"] == 10
+        assert result["provider_boundary"] == "local-ffmpeg"
+        assert result["publisher_boundary"] == "deterministic-local-delivery"
+
+        delivery = result["delivery"]
+        delivered_path = Path(delivery["path"])
+        delivered_bytes = delivered_path.read_bytes()
+        assert delivered_bytes
+        assert delivery["size"] == len(delivered_bytes)
+        assert delivery["sha256"] == result["artifact_digest"]
+        assert delivery["sha256"] == hashlib.sha256(delivered_bytes).hexdigest()
+        status, artifact = _request(
+            base_url,
+            "GET",
+            f"/v1/evidence/artifacts/{result['artifact_digest']}",
+        )
+        assert status == 200
+        assert (
+            base64.b64decode(artifact["content_base64"], validate=True)
+            == delivered_bytes
+        )
+        status, verified = _request(base_url, "GET", "/v1/evidence/verify")
+        assert status == 200
+        assert verified["records"][0]["record_hash"] == result[
+            "provenance_record_hash"
+        ]
+
+    (tmp_path / "ready.json").unlink()
+    with _running_service(tmp_path) as (base_url, _):
+        status, delivery_after_restart = _request(
+            base_url,
+            "GET",
+            f"/v1/video/deliveries/{result['delivery']['delivery_id']}",
+        )
+        assert status == 200
+        assert delivery_after_restart == result["delivery"]
+        status, governance = _request(base_url, "GET", "/v1/governance/state")
+        assert status == 200
+        assert governance["ledger"] == [
+            {
+                "reservation_id": "video-request-1",
+                "reserved_minor": 10,
+                "actual_minor": 10,
+                "status": "reconciled",
+            }
+        ]
+        status, grants = _request(base_url, "GET", "/v1/grants/state")
+        assert status == 200
+        assert grants["grants"][0]["used_side_effects"] == 1
 
 
 def test_concurrent_scheduler_fences_stale_side_effects_and_survives_restart(
