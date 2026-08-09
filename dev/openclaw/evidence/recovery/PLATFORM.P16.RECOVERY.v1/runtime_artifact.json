@@ -1,0 +1,14 @@
+{
+  "authorization_denial_status": 401,
+  "events": [
+    {"aggregate_id": "goal-00000001", "event_type": "goal.created", "sequence": 1},
+    {"aggregate_id": "job-00000001", "event_type": "job.created", "sequence": 2}
+  ],
+  "goal": {"goal_id": "goal-00000001", "objective": "Web and Desktop share authoritative state"},
+  "html_bytes": 819,
+  "html_sha256": "fa3ae7cc133e4823180402dfe0669a6b0b08205340e49451c03eece574a1cf38",
+  "job": {"goal_id": "goal-00000001", "job_id": "job-00000001", "state": "PENDING"},
+  "local_authority": false,
+  "reconnect": true,
+  "transport": "real-http-subprocess"
+}

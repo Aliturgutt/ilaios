@@ -206,6 +206,46 @@ def _windows_desktop_request(
     return cast(dict[str, Any], json.loads(completed.stdout.strip()))
 
 
+@contextmanager
+def _running_web_control(
+    tmp_path: Path, *, token: str = "runtime-secret", name: str = "web"
+) -> Iterator[str]:
+    ready_file = tmp_path / f"{name}-ready.json"
+    environment = os.environ.copy()
+    environment["ILAIOS_WEB_CONTROL_TOKEN"] = token
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "apps.web.server",
+            "--ready-file",
+            str(ready_file),
+            "--upstream-ready-file",
+            str(tmp_path / "ready.json"),
+        ],
+        cwd=Path(__file__).resolve().parents[1],
+        env=environment,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    deadline = time.monotonic() + 10
+    while not ready_file.exists():
+        if process.poll() is not None:
+            output = process.stdout.read() if process.stdout is not None else ""
+            raise AssertionError(f"web control process exited early: {output}")
+        if time.monotonic() >= deadline:
+            process.kill()
+            raise AssertionError("web control process did not become ready")
+        time.sleep(0.01)
+    ready = json.loads(ready_file.read_text(encoding="utf-8"))
+    try:
+        yield f"http://{ready['host']}:{ready['port']}"
+    finally:
+        process.terminate()
+        process.wait(timeout=10)
+
+
 def test_real_process_boundary_persists_goal_job_and_events_after_restart(
     tmp_path: Path,
 ) -> None:
@@ -1242,6 +1282,67 @@ def test_native_windows_desktop_request_produces_durable_acceptance_manifest(
         status, evidence = _request(base_url, "GET", "/v1/evidence/verify")
         assert status == 200
         assert evidence["records"][0]["record_hash"] == manifest["evidence_hash"]
+
+
+def test_runnable_web_control_center_has_parity_reconnect_and_no_authority(
+    tmp_path: Path,
+) -> None:
+    with _running_web_control(tmp_path) as web_url:
+        with urlopen(web_url + "/", timeout=5) as response:
+            html = response.read().decode("utf-8")
+        assert "ILAIOS Control Center" in html
+        assert "fetch('/api/events')" in html
+        assert "indexedDB" not in html
+        assert "localStorage" not in html
+
+        with _running_service(tmp_path) as (control_url, _):
+            status, goal = _request(
+                web_url,
+                "POST",
+                "/api/goals",
+                payload={"objective": "Web and Desktop share authoritative state"},
+            )
+            assert status == 201
+            status, job = _request(
+                web_url,
+                "POST",
+                "/api/jobs",
+                payload={"goal_id": goal["goal_id"]},
+            )
+            assert status == 201
+            status, direct_goal = _request(
+                control_url, "GET", f"/v1/goals/{goal['goal_id']}"
+            )
+            assert status == 200
+            assert direct_goal == goal
+            status, direct_job = _request(
+                control_url, "GET", f"/v1/jobs/{job['job_id']}"
+            )
+            assert status == 200
+            assert direct_job == job
+            status, projected = _request(web_url, "GET", "/api/events")
+            assert status == 200
+            assert [event["event_type"] for event in projected["events"]] == [
+                "goal.created",
+                "job.created",
+            ]
+
+        status, unavailable = _request(web_url, "GET", "/api/events")
+        assert status == 503
+        assert unavailable == {"error": "control plane unavailable"}
+        (tmp_path / "ready.json").unlink()
+        with _running_service(tmp_path) as (_, _):
+            status, reconnected = _request(web_url, "GET", "/api/events")
+            assert status == 200
+            assert reconnected == projected
+            with _running_web_control(
+                tmp_path, token="wrong-token", name="denied-web"
+            ) as denied_url:
+                status, denied = _request(denied_url, "GET", "/api/events")
+                assert status == 401
+                assert denied == {"error": "invalid local bearer token"}
+
+    assert not (tmp_path / "web-state.sqlite3").exists()
 
 
 def test_concurrent_scheduler_fences_stale_side_effects_and_survives_restart(
