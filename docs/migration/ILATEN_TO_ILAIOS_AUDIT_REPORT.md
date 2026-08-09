@@ -56,6 +56,12 @@ requirements. Current totals are 8,346 requirements: 0 `IMPLEMENTED`, 2,971
 `PARTIAL`, 1,967 `MIGRATED`, 3,408 `MISSING_IMPLEMENTATION`, 0
 `MISSING_DOCUMENTATION`, and 0 `CONFLICT`.
 
+ORG.I08 subsequently added RACI, risk, exception, review, lifecycle, and
+assurance-claim record controls. It supplies row-specific evidence to 36
+requirements. Final repository-package totals are 8,346 requirements: 0
+`IMPLEMENTED`, 2,992 `PARTIAL`, 1,967 `MIGRATED`, 3,387
+`MISSING_IMPLEMENTATION`, 0 `MISSING_DOCUMENTATION`, and 0 `CONFLICT`.
+
 OBS.I06 subsequently added provider-neutral infrastructure capabilities and
 non-authoritative structured telemetry contracts. It supplies row-specific
 evidence to 1,269 requirements. Current totals are 8,346 requirements: 0

@@ -209,6 +209,20 @@ EVIDENCE_RULES = (
         ("services/readiness.py", "tests/test_promotion_readiness.py"),
     ),
     EvidenceRule(
+        ("8.1", "8.2", "8.3", "8.4", "8.5", "8.6", "8.11", "8.12"),
+        re.compile(
+            r"owner|ownership|RACI|accountable|responsible|consulted|informed|"
+            r"risk|treatment|acceptance|change|approval|exception|waiver|review|"
+            r"deprecat|retire|lifecycle|audit|compliance|certif|claim|evidence",
+            re.IGNORECASE,
+        ),
+        (
+            "services/governance/records.py",
+            "tests/test_governance_records.py",
+            "evidence/migration/ILATEN_TO_ILAIOS/ORG.I08.md",
+        ),
+    ),
+    EvidenceRule(
         ("8.8", "8.9"),
         re.compile(r"budget|cost|pricing|reservation|hard ceiling", re.IGNORECASE),
         ("services/governance/gates.py", "tests/test_security_finance_gates.py"),

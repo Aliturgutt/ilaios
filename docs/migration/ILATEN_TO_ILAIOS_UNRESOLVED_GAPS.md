@@ -21,6 +21,10 @@ The following items require real deployment or organizational inputs and cannot 
 
 ## Repository-executable work
 
-Technology-neutral contracts, policy engines, registries, budget controls, identity and tenant enforcement, provider-neutral secret/key boundaries, operational models, reference adapters, validation, tests, and durable evidence remain executable. The migration matrix and implementation-package register track these separately from the external dependencies above.
+All bounded technology-neutral packages authorized by this workflow are now
+implemented, validated, evidenced, committed, and tracked as `PASS` in the
+implementation-package register. Remaining `PARTIAL` and
+`MISSING_IMPLEMENTATION` rows contain broader enterprise or deployed controls
+that cannot truthfully be closed by adding more reference contracts alone.
 
 No requirement may become `IMPLEMENTED` merely because its architecture decision is resolved. Exact code, test, and durable evidence remain mandatory.

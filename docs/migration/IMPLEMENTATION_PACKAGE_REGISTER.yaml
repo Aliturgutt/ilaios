@@ -92,13 +92,14 @@ packages:
     evidence: evidence/migration/ILATEN_TO_ILAIOS/AGENT.I07.md
   - id: ORG.I08
     title: Governance Records RACI Risk Exception and Lifecycle Controls
-    status: READY
+    status: PASS
     dependencies: [IAM.I02, OPS.I05]
     scope:
       - ownership and RACI records
       - risk treatment change and approval governance
       - exception waiver periodic review deprecation and retirement
       - audit and compliance claim boundaries
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/ORG.I08.md
   - id: EXT.E01
     title: Provider Selection and Production Infrastructure
     status: BLOCKED_EXTERNAL
