@@ -9,7 +9,7 @@ from .product_proof import (
 from .product_runtime import DurableVideoProductRuntime, ProductRuntimeError
 from .video import VideoChainAdapter, VideoIntegrationError, VideoIntegrationResult
 from .video_runtime import DeterministicLocalVideoRuntime, VideoRuntimeError
-from .web_factory import GovernedWebFactory, WebsiteAcceptance
+from .web_factory import GovernedWebFactory, WebsiteAcceptance, WebsiteFile
 
 __all__ = [
     "AcceptanceManifest",
@@ -25,4 +25,5 @@ __all__ = [
     "VideoIntegrationResult",
     "VideoRuntimeError",
     "WebsiteAcceptance",
+    "WebsiteFile",
 ]
