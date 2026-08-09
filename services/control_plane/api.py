@@ -12,6 +12,14 @@ from typing import Any
 
 from packages.contracts.ilaios_contracts import ContractKind, SchemaVersion
 from services.control_plane.migrations import migrate_database
+from services.control_plane.proposals import (
+    BudgetEnvelope,
+    DataClass,
+    GoalSpec,
+    ProposedTask,
+    RiskClass,
+    propose_execution,
+)
 from src.video_automation.models import JobState
 
 
@@ -146,6 +154,70 @@ class ControlPlane:
             JobState(row["state"]),
             datetime.fromisoformat(row["created_at"]),
         )
+
+    def create_proposal(
+        self,
+        token: str,
+        goal_id: str,
+        *,
+        acceptance_criteria: tuple[str, ...],
+        risk_class: RiskClass,
+        data_class: DataClass,
+        budget: BudgetEnvelope,
+        tasks: tuple[ProposedTask, ...],
+    ) -> dict[str, object]:
+        """Create an inspectable bounded proposal with no execution authority."""
+        self._authenticate(token)
+        goal = self.get_goal(token, goal_id)
+        proposal = propose_execution(
+            GoalSpec(
+                objective=goal.objective,
+                acceptance_criteria=acceptance_criteria,
+                risk_class=risk_class,
+                data_class=data_class,
+                budget=budget,
+            ),
+            tasks,
+        )
+        inspected = proposal.inspect()
+        serialized = json.dumps(inspected, sort_keys=True, separators=(",", ":"))
+        created_at = datetime.now(timezone.utc)
+        with self._connect() as connection:
+            existing = connection.execute(
+                "SELECT goal_id, proposal_json FROM proposals WHERE proposal_id = ?",
+                (proposal.proposal_id,),
+            ).fetchone()
+            if existing is not None:
+                if existing["goal_id"] != goal_id or existing["proposal_json"] != serialized:
+                    raise ControlPlaneError("proposal identity collision")
+                return inspected
+            connection.execute(
+                "INSERT INTO proposals VALUES (?, ?, ?, ?)",
+                (proposal.proposal_id, goal_id, serialized, created_at.isoformat()),
+            )
+            self._append_event(
+                connection,
+                "proposal.created",
+                proposal.proposal_id,
+                {"goal_id": goal_id},
+                created_at,
+            )
+        return inspected
+
+    def get_proposal(self, token: str, proposal_id: str) -> dict[str, object]:
+        """Read a durable proposal through the authoritative query boundary."""
+        self._authenticate(token)
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT proposal_json FROM proposals WHERE proposal_id = ?",
+                (proposal_id,),
+            ).fetchone()
+        if row is None:
+            raise ControlPlaneError("unknown proposal_id")
+        value = json.loads(row["proposal_json"])
+        if not isinstance(value, dict):
+            raise ControlPlaneError("stored proposal is malformed")
+        return dict(value)
 
     def list_events(self, token: str) -> tuple[dict[str, Any], ...]:
         self._authenticate(token)

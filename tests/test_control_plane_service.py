@@ -18,6 +18,7 @@ from urllib.request import Request, urlopen
 import pytest
 
 from services.control_plane.migrations import (
+    LATEST_SCHEMA_VERSION,
     MigrationError,
     current_schema_version,
     migrate_database,
@@ -56,7 +57,7 @@ def _running_service(tmp_path: Path) -> Iterator[tuple[str, subprocess.Popen[str
             raise AssertionError("control-plane process did not become ready")
         time.sleep(0.01)
     ready = json.loads(ready_file.read_text(encoding="utf-8"))
-    assert ready["schema_version"] == 1
+    assert ready["schema_version"] == LATEST_SCHEMA_VERSION
     try:
         yield f"http://{ready['host']}:{ready['port']}", process
     finally:
@@ -70,7 +71,7 @@ def _request(
     path: str,
     *,
     token: str = "runtime-secret",
-    payload: dict[str, str] | None = None,
+    payload: dict[str, object] | None = None,
 ) -> tuple[int, dict[str, Any]]:
     body = None if payload is None else json.dumps(payload).encode("utf-8")
     request = Request(
@@ -149,13 +150,13 @@ def test_versioned_migration_and_recoverable_rollback(tmp_path: Path) -> None:
     database = tmp_path / "state.sqlite3"
     backup = tmp_path / "rollback-backup.sqlite3"
 
-    assert migrate_database(database) == 1
-    assert migrate_database(database) == 1
-    assert current_schema_version(database) == 1
-    assert rollback_database(database, backup) == 0
+    assert migrate_database(database) == LATEST_SCHEMA_VERSION
+    assert migrate_database(database) == LATEST_SCHEMA_VERSION
+    assert current_schema_version(database) == LATEST_SCHEMA_VERSION
+    assert rollback_database(database, backup) == LATEST_SCHEMA_VERSION - 1
     assert backup.is_file()
-    assert current_schema_version(database) == 0
-    assert current_schema_version(backup) == 1
+    assert current_schema_version(database) == LATEST_SCHEMA_VERSION - 1
+    assert current_schema_version(backup) == LATEST_SCHEMA_VERSION
 
     with pytest.raises(MigrationError, match="backup path already exists"):
         rollback_database(backup, backup)
@@ -193,7 +194,102 @@ def test_migration_adopts_exact_legacy_schema_without_losing_records(
             """
         )
 
-    assert migrate_database(database) == 1
+    assert migrate_database(database) == LATEST_SCHEMA_VERSION
     with sqlite3.connect(database) as connection:
         row = connection.execute("SELECT objective FROM goals").fetchone()
     assert row == ("preserve me",)
+
+
+def test_bounded_proposal_crosses_boundary_and_survives_restart(
+    tmp_path: Path,
+) -> None:
+    with _running_service(tmp_path) as (base_url, _):
+        _, goal = _request(
+            base_url,
+            "POST",
+            "/v1/goals",
+            payload={"objective": "Produce a governed artifact"},
+        )
+        status, proposal = _request(
+            base_url,
+            "POST",
+            "/v1/proposals",
+            payload={
+                "goal_id": goal["goal_id"],
+                "acceptance_criteria": ["Artifact validates", "Evidence persists"],
+                "risk_class": "medium",
+                "data_class": "internal",
+                "budget": {
+                    "max_attempts": 3,
+                    "max_runtime_seconds": 600,
+                    "max_external_spend_minor": 0,
+                },
+                "tasks": [
+                    {
+                        "task_id": "validate",
+                        "responsibility": "Validate artifact",
+                        "dependencies": ["produce"],
+                    },
+                    {
+                        "task_id": "produce",
+                        "responsibility": "Produce artifact",
+                        "dependencies": [],
+                    },
+                ],
+            },
+        )
+        assert status == 201
+        assert proposal["topological_order"] == ["produce", "validate"]
+        assert proposal["privileged_execution_authorized"] is False
+
+    (tmp_path / "ready.json").unlink()
+    with _running_service(tmp_path) as (base_url, _):
+        status, persisted = _request(
+            base_url, "GET", f"/v1/proposals/{proposal['proposal_id']}"
+        )
+        assert status == 200
+        assert persisted == proposal
+
+
+def test_invalid_proposal_is_rejected_without_durable_event(tmp_path: Path) -> None:
+    with _running_service(tmp_path) as (base_url, _):
+        _, goal = _request(
+            base_url,
+            "POST",
+            "/v1/goals",
+            payload={"objective": "Reject an unbounded graph"},
+        )
+        status, rejected = _request(
+            base_url,
+            "POST",
+            "/v1/proposals",
+            payload={
+                "goal_id": goal["goal_id"],
+                "acceptance_criteria": ["Must remain bounded"],
+                "risk_class": "high",
+                "data_class": "restricted",
+                "budget": {
+                    "max_attempts": 1,
+                    "max_runtime_seconds": 60,
+                    "max_external_spend_minor": 0,
+                },
+                "tasks": [
+                    {
+                        "task_id": "cycle-a",
+                        "responsibility": "A",
+                        "dependencies": ["cycle-b"],
+                    },
+                    {
+                        "task_id": "cycle-b",
+                        "responsibility": "B",
+                        "dependencies": ["cycle-a"],
+                    },
+                ],
+            },
+        )
+        assert status == 400
+        assert rejected == {"error": "task graph must be acyclic"}
+        _, events = _request(base_url, "GET", "/v1/events")
+        assert [event["event_type"] for event in events["events"]] == [
+            "goal.created"
+        ]

@@ -1,0 +1,7 @@
+Targeted: 13 passed in 2.17s
+Full repository: 930 passed in 10.03s
+
+Runtime acceptance proves authenticated creation and query through TCP, binding
+to a real durable goal, deterministic DAG ordering, zero privileged execution
+authority, restart persistence, and rejection of a cyclic graph without a
+proposal.created event.

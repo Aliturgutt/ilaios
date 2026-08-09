@@ -1,0 +1,6 @@
+ruff check .: PASS (All checks passed!)
+mypy --strict src tests: PASS (158 source files)
+targeted mypy strict for changed service modules and boundary tests: PASS
+pre-commit run --all-files: PASS
+git diff --check: PASS
+forbidden and canonical authority diff: empty

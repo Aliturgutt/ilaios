@@ -13,7 +13,7 @@ class MigrationError(RuntimeError):
     """Raised when a control-plane migration cannot complete safely."""
 
 
-LATEST_SCHEMA_VERSION = 1
+LATEST_SCHEMA_VERSION = 2
 
 _UP_MIGRATIONS = {
     1: """
@@ -37,6 +37,14 @@ _UP_MIGRATIONS = {
             schema_version TEXT NOT NULL
         );
     """,
+    2: """
+        CREATE TABLE proposals (
+            proposal_id TEXT PRIMARY KEY,
+            goal_id TEXT NOT NULL REFERENCES goals(goal_id),
+            proposal_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+    """,
 }
 
 _DOWN_MIGRATIONS = {
@@ -44,6 +52,9 @@ _DOWN_MIGRATIONS = {
         DROP TABLE events;
         DROP TABLE jobs;
         DROP TABLE goals;
+    """,
+    2: """
+        DROP TABLE proposals;
     """,
 }
 

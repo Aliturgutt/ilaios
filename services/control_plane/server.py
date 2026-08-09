@@ -22,6 +22,12 @@ from services.control_plane.api import (
     JobRecord,
 )
 from services.control_plane.migrations import current_schema_version
+from services.control_plane.proposals import (
+    BudgetEnvelope,
+    DataClass,
+    ProposedTask,
+    RiskClass,
+)
 
 
 class ControlPlaneHTTPServer(ThreadingHTTPServer):
@@ -67,6 +73,12 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                     _record_json(self.server.control_plane.get_job(token, identifier)),
                 )
                 return
+            if resource == "proposals":
+                self._send_json(
+                    HTTPStatus.OK,
+                    self.server.control_plane.get_proposal(token, identifier),
+                )
+                return
             self._send_error(HTTPStatus.NOT_FOUND, "unknown endpoint")
         except AuthenticationError as error:
             self._send_error(HTTPStatus.UNAUTHORIZED, str(error))
@@ -87,6 +99,18 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             elif path == "/v1/jobs":
                 goal_id = _required_string(body, "goal_id")
                 record = self.server.control_plane.create_job(token, goal_id)
+            elif path == "/v1/proposals":
+                proposal = self.server.control_plane.create_proposal(
+                    token,
+                    _required_string(body, "goal_id"),
+                    acceptance_criteria=_string_tuple(body, "acceptance_criteria"),
+                    risk_class=RiskClass(_required_string(body, "risk_class")),
+                    data_class=DataClass(_required_string(body, "data_class")),
+                    budget=_budget(body),
+                    tasks=_tasks(body),
+                )
+                self._send_json(HTTPStatus.CREATED, proposal)
+                return
             else:
                 self._send_error(HTTPStatus.NOT_FOUND, "unknown endpoint")
                 return
@@ -132,7 +156,11 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
     @staticmethod
     def _resource_path(path: str) -> tuple[str, str]:
         parts = path.strip("/").split("/")
-        if len(parts) != 3 or parts[0] != "v1" or parts[1] not in {"goals", "jobs"}:
+        if (
+            len(parts) != 3
+            or parts[0] != "v1"
+            or parts[1] not in {"goals", "jobs", "proposals"}
+        ):
             raise ValueError("invalid resource path")
         if not parts[2]:
             raise ValueError("resource identifier is required")
@@ -175,6 +203,55 @@ def _required_string(payload: dict[str, Any], key: str) -> str:
     if not isinstance(value, str):
         raise TypeError(f"{key} must be a string")
     return value
+
+
+def _required_int(payload: dict[str, Any], key: str) -> int:
+    value = payload.get(key)
+    if not isinstance(value, int) or isinstance(value, bool):
+        raise TypeError(f"{key} must be an integer")
+    return value
+
+
+def _required_object(payload: dict[str, Any], key: str) -> dict[str, Any]:
+    value = payload.get(key)
+    if not isinstance(value, dict):
+        raise TypeError(f"{key} must be an object")
+    return cast(dict[str, Any], value)
+
+
+def _string_tuple(payload: dict[str, Any], key: str) -> tuple[str, ...]:
+    value = payload.get(key)
+    if not isinstance(value, list) or any(not isinstance(item, str) for item in value):
+        raise TypeError(f"{key} must be an array of strings")
+    return tuple(value)
+
+
+def _budget(payload: dict[str, Any]) -> BudgetEnvelope:
+    value = _required_object(payload, "budget")
+    return BudgetEnvelope(
+        max_attempts=_required_int(value, "max_attempts"),
+        max_runtime_seconds=_required_int(value, "max_runtime_seconds"),
+        max_external_spend_minor=_required_int(value, "max_external_spend_minor"),
+    )
+
+
+def _tasks(payload: dict[str, Any]) -> tuple[ProposedTask, ...]:
+    value = payload.get("tasks")
+    if not isinstance(value, list):
+        raise TypeError("tasks must be an array")
+    tasks: list[ProposedTask] = []
+    for raw_task in value:
+        if not isinstance(raw_task, dict):
+            raise TypeError("each task must be an object")
+        task = cast(dict[str, Any], raw_task)
+        tasks.append(
+            ProposedTask(
+                task_id=_required_string(task, "task_id"),
+                responsibility=_required_string(task, "responsibility"),
+                dependencies=_string_tuple(task, "dependencies"),
+            )
+        )
+    return tuple(tasks)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
