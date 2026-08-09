@@ -10,6 +10,7 @@ import subprocess
 import sys
 import time
 from collections.abc import Iterator
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -625,3 +626,126 @@ def test_persisted_governed_runtime_executes_real_adapter_and_rejects_tamper(
         assert rejected == {"error": "skill digest does not match approval"}
         _, routes = _request(base_url, "GET", "/v1/runtime/routes")
         assert len(routes["routes"]) == 1
+
+
+def test_concurrent_scheduler_fences_stale_side_effects_and_survives_restart(
+    tmp_path: Path,
+) -> None:
+    now = datetime(2026, 8, 9, tzinfo=timezone.utc)
+    with _running_service(tmp_path) as (base_url, _):
+        for worker_id in ("worker-b", "worker-a"):
+            status, _ = _request(
+                base_url,
+                "POST",
+                "/v1/scheduler/commands",
+                payload={
+                    "operation": "register_worker",
+                    "worker_id": worker_id,
+                    "capabilities": ["render"],
+                    "max_concurrent_tasks": 1,
+                },
+            )
+            assert status == 200
+
+        schedule_payload: dict[str, object] = {
+            "operation": "schedule",
+            "task_id": "task-race",
+            "capability": "render",
+            "now": now.isoformat(),
+        }
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            results = list(
+                pool.map(
+                    lambda _: _request(
+                        base_url,
+                        "POST",
+                        "/v1/scheduler/commands",
+                        payload=schedule_payload,
+                    ),
+                    range(2),
+                )
+            )
+        assert sorted(status for status, _ in results) == [200, 400]
+        stale = next(payload for status, payload in results if status == 200)
+        assert stale["worker_id"] == "worker-a"
+
+        status, second = _request(
+            base_url,
+            "POST",
+            "/v1/scheduler/commands",
+            payload={
+                "operation": "schedule",
+                "task_id": "task-2",
+                "capability": "render",
+                "now": now.isoformat(),
+            },
+        )
+        assert status == 200
+        assert second["worker_id"] == "worker-b"
+        status, quota = _request(
+            base_url,
+            "POST",
+            "/v1/scheduler/commands",
+            payload={
+                "operation": "schedule",
+                "task_id": "task-3",
+                "capability": "render",
+                "now": now.isoformat(),
+            },
+        )
+        assert status == 400
+        assert quota == {"error": "no worker is within capability and quota"}
+
+        after_expiry = now + timedelta(seconds=31)
+        status, replacement = _request(
+            base_url,
+            "POST",
+            "/v1/scheduler/commands",
+            payload={
+                "operation": "reschedule_expired",
+                "task_id": "task-race",
+                "capability": "render",
+                "now": after_expiry.isoformat(),
+            },
+        )
+        assert status == 200
+        assert replacement["fencing_token"] == stale["fencing_token"] + 1
+        status, denied = _request(
+            base_url,
+            "POST",
+            "/v1/scheduler/commands",
+            payload={
+                "operation": "record_side_effect",
+                "lease": stale,
+                "now": after_expiry.isoformat(),
+                "payload": {"effect": "must-not-happen"},
+            },
+        )
+        assert status == 400
+        assert denied == {"error": "stale or replaced fencing token"}
+        status, recorded = _request(
+            base_url,
+            "POST",
+            "/v1/scheduler/commands",
+            payload={
+                "operation": "record_side_effect",
+                "lease": replacement,
+                "now": after_expiry.isoformat(),
+                "payload": {"effect": "bounded"},
+            },
+        )
+        assert status == 200
+        assert recorded == {"recorded": True}
+
+    (tmp_path / "ready.json").unlink()
+    with _running_service(tmp_path) as (base_url, _):
+        status, state = _request(base_url, "GET", "/v1/scheduler/state")
+        assert status == 200
+        assert state["effects"] == [
+            {
+                "task_id": "task-race",
+                "fencing_token": 2,
+                "payload_json": '{"effect": "bounded"}',
+                "created_at": after_expiry.isoformat(),
+            }
+        ]

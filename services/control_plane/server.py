@@ -7,7 +7,7 @@ import base64
 import json
 import os
 from collections.abc import Sequence
-from datetime import datetime
+from datetime import datetime, timedelta
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -40,7 +40,13 @@ from services.control_plane.workflows import (
     WorkflowStore,
     WorkflowStoreConfig,
 )
-from services.runtime import GovernedRuntime
+from services.runtime import (
+    DurableWorkerScheduler,
+    GovernedRuntime,
+    Lease,
+    SchedulingError,
+    WorkerProfile,
+)
 from services.runtime import RuntimeError as GovernedRuntimeError
 
 
@@ -56,12 +62,14 @@ class ControlPlaneHTTPServer(ThreadingHTTPServer):
         workflow_store: WorkflowStore,
         live_state: LiveStateTransport,
         governed_runtime: GovernedRuntime,
+        scheduler: DurableWorkerScheduler,
     ) -> None:
         super().__init__(server_address, ControlPlaneRequestHandler)
         self.control_plane = control_plane
         self.workflow_store = workflow_store
         self.live_state = live_state
         self.governed_runtime = governed_runtime
+        self.scheduler = scheduler
 
 
 class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
@@ -97,6 +105,9 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                     HTTPStatus.OK,
                     {"routes": self.server.governed_runtime.routes()},
                 )
+                return
+            if path == "/v1/scheduler/state":
+                self._send_json(HTTPStatus.OK, self.server.scheduler.state())
                 return
             if path == "/v1/live/snapshot":
                 query = parse_qs(urlparse(self.path).query)
@@ -169,6 +180,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except GovernedRuntimeError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except SchedulingError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except ValueError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
 
@@ -191,6 +204,9 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/v1/runtime/commands":
                 self._send_json(HTTPStatus.OK, self._runtime_command(body))
+                return
+            if path == "/v1/scheduler/commands":
+                self._send_json(HTTPStatus.OK, self._scheduler_command(body))
                 return
             record: GoalRecord | JobRecord
             if path == "/v1/goals":
@@ -224,6 +240,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
         except LiveStateError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except GovernedRuntimeError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except SchedulingError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except (json.JSONDecodeError, TypeError, UnicodeDecodeError, ValueError) as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
@@ -383,6 +401,51 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             )
         raise ValueError("unknown runtime operation")
 
+    def _scheduler_command(self, payload: dict[str, Any]) -> dict[str, Any]:
+        operation = _required_string(payload, "operation")
+        scheduler = self.server.scheduler
+        if operation == "register_worker":
+            worker_id = _required_string(payload, "worker_id")
+            scheduler.register(
+                WorkerProfile(
+                    worker_id,
+                    frozenset(_string_tuple(payload, "capabilities")),
+                    _required_int(payload, "max_concurrent_tasks"),
+                )
+            )
+            return {"worker_id": worker_id, "registered": True}
+        if operation == "schedule":
+            return _lease_json(
+                scheduler.schedule(
+                    _required_string(payload, "task_id"),
+                    _required_string(payload, "capability"),
+                    now=_required_datetime(payload, "now"),
+                )
+            )
+        if operation == "reschedule_expired":
+            return _lease_json(
+                scheduler.reschedule_expired(
+                    _required_string(payload, "task_id"),
+                    _required_string(payload, "capability"),
+                    now=_required_datetime(payload, "now"),
+                )
+            )
+        if operation == "heartbeat":
+            return _lease_json(
+                scheduler.heartbeat(
+                    _lease_from_payload(payload),
+                    now=_required_datetime(payload, "now"),
+                )
+            )
+        if operation == "record_side_effect":
+            scheduler.record_side_effect(
+                _lease_from_payload(payload),
+                now=_required_datetime(payload, "now"),
+                payload=_required_object(payload, "payload"),
+            )
+            return {"recorded": True}
+        raise ValueError("unknown scheduler operation")
+
 
 def _record_json(record: GoalRecord | JobRecord) -> dict[str, Any]:
     if isinstance(record, GoalRecord):
@@ -467,6 +530,25 @@ def _live_event_json(event: LiveEvent) -> dict[str, Any]:
     }
 
 
+def _lease_from_payload(payload: dict[str, Any]) -> Lease:
+    raw = _required_object(payload, "lease")
+    return Lease(
+        _required_string(raw, "task_id"),
+        _required_string(raw, "worker_id"),
+        _required_int(raw, "fencing_token"),
+        _required_datetime(raw, "expires_at"),
+    )
+
+
+def _lease_json(lease: Lease) -> dict[str, Any]:
+    return {
+        "task_id": lease.task_id,
+        "worker_id": lease.worker_id,
+        "fencing_token": lease.fencing_token,
+        "expires_at": lease.expires_at.isoformat(),
+    }
+
+
 def _required_int(payload: dict[str, Any], key: str) -> int:
     value = payload.get(key)
     if not isinstance(value, int) or isinstance(value, bool):
@@ -530,6 +612,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=0)
     parser.add_argument("--ready-file", type=Path, required=True)
+    parser.add_argument("--lease-seconds", type=int, default=30)
     arguments = parser.parse_args(argv)
     if arguments.host not in {"127.0.0.1", "::1", "localhost"}:
         parser.error("control plane must bind to a loopback host")
@@ -538,12 +621,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     workflow_store = WorkflowStore(WorkflowStoreConfig(arguments.database))
     live_state = LiveStateTransport(arguments.database)
     governed_runtime = GovernedRuntime(arguments.database)
+    scheduler = DurableWorkerScheduler(
+        arguments.database, lease_duration=timedelta(seconds=arguments.lease_seconds)
+    )
     server = ControlPlaneHTTPServer(
         (arguments.host, arguments.port),
         control_plane,
         workflow_store,
         live_state,
         governed_runtime,
+        scheduler,
     )
     host, port = server.server_address[:2]
     ready = {

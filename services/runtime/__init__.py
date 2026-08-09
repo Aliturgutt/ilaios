@@ -1,5 +1,6 @@
 """Governed agent, skill, and provider runtime."""
 
+from .durable_scheduler import DurableWorkerScheduler
 from .execution import GovernedRuntime
 from .grants import BlastRadiusBudget, ExecutionGrant, GrantError, GrantPolicy
 from .routing import (
@@ -16,6 +17,7 @@ from .scheduler import Lease, SchedulingError, WorkerProfile, WorkerScheduler
 __all__ = [
     "AgentProfile",
     "BlastRadiusBudget",
+    "DurableWorkerScheduler",
     "ExecutionGrant",
     "GovernedRuntime",
     "GrantError",

@@ -13,7 +13,7 @@ class MigrationError(RuntimeError):
     """Raised when a control-plane migration cannot complete safely."""
 
 
-LATEST_SCHEMA_VERSION = 5
+LATEST_SCHEMA_VERSION = 6
 
 _UP_MIGRATIONS = {
     1: """
@@ -134,6 +134,31 @@ _UP_MIGRATIONS = {
             created_at TEXT NOT NULL
         );
     """,
+    6: """
+        CREATE TABLE scheduler_workers (
+            worker_id TEXT PRIMARY KEY,
+            capabilities_json TEXT NOT NULL,
+            max_concurrent_tasks INTEGER NOT NULL
+        );
+        CREATE TABLE scheduler_fences (
+            task_id TEXT PRIMARY KEY,
+            fencing_token INTEGER NOT NULL
+        );
+        CREATE TABLE scheduler_leases (
+            task_id TEXT PRIMARY KEY,
+            worker_id TEXT NOT NULL REFERENCES scheduler_workers(worker_id),
+            capability TEXT NOT NULL,
+            fencing_token INTEGER NOT NULL,
+            expires_at TEXT NOT NULL
+        );
+        CREATE TABLE scheduler_effects (
+            task_id TEXT NOT NULL,
+            fencing_token INTEGER NOT NULL,
+            payload_json TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            PRIMARY KEY (task_id, fencing_token)
+        );
+    """,
 }
 
 _DOWN_MIGRATIONS = {
@@ -162,6 +187,12 @@ _DOWN_MIGRATIONS = {
         DROP TABLE runtime_providers;
         DROP TABLE runtime_skills;
         DROP TABLE runtime_agents;
+    """,
+    6: """
+        DROP TABLE scheduler_effects;
+        DROP TABLE scheduler_leases;
+        DROP TABLE scheduler_fences;
+        DROP TABLE scheduler_workers;
     """,
 }
 
