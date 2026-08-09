@@ -30,7 +30,7 @@ packages:
     evidence: evidence/migration/ILATEN_TO_ILAIOS/GOV.I01.md
   - id: IAM.I02
     title: Standards-Based Identity and Tenant Authorization Contracts
-    status: READY
+    status: PASS
     dependencies: [AUDIT.C02]
     scope:
       - OIDC and OAuth-compatible identity boundary contracts
@@ -38,6 +38,7 @@ packages:
       - tenant-scoped RBAC and ABAC
       - short-lived sessions revocation recovery and break-glass records
       - privileged and high-risk approval separation
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/IAM.I02.md
   - id: CRYPTO.I03
     title: Provider-Neutral Secrets and Cryptographic Lifecycle
     status: READY

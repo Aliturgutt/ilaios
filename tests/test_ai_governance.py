@@ -95,9 +95,8 @@ def test_all_scopes_enforced_warning_attribution_and_concurrency() -> None:
     assert governor.admit(_request("r2", scopes, estimated_cost=Decimal(2)), NOW)
 
 
-@pytest.mark.parametrize(
-    ("overrides", "message"),
-    [
+def test_hard_ceilings_fail_closed() -> None:
+    cases: tuple[tuple[dict[str, object], str], ...] = (
         ({"input_tokens": 81, "output_tokens": 0}, "input token"),
         ({"output_tokens": 41}, "output token"),
         ({"input_tokens": 80, "output_tokens": 30}, "context window"),
@@ -106,13 +105,12 @@ def test_all_scopes_enforced_warning_attribution_and_concurrency() -> None:
         ({"estimated_runtime_seconds": Decimal(61)}, "runtime"),
         ({"retry_number": 2}, "retry limit"),
         ({"retry_accumulated_cost": Decimal(3)}, "retry cost"),
-    ],
-)
-def test_hard_ceilings_fail_closed(overrides: dict[str, object], message: str) -> None:
-    tenant = Scope(ScopeKind.TENANT, "tenant-a")
-    governor = UsageGovernor(_registry(), {tenant: _limits()})
-    with pytest.raises(GovernanceError, match=message):
-        governor.admit(_request("r1", (tenant,), **overrides), NOW)
+    )
+    for index, (overrides, message) in enumerate(cases):
+        tenant = Scope(ScopeKind.TENANT, "tenant-a")
+        governor = UsageGovernor(_registry(), {tenant: _limits()})
+        with pytest.raises(GovernanceError, match=message):
+            governor.admit(_request(f"r{index}", (tenant,), **overrides), NOW)
 
 
 def test_missing_tenant_or_scope_policy_cannot_be_bypassed() -> None:

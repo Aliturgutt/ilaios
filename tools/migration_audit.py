@@ -85,6 +85,20 @@ EVIDENCE_RULES = (
         ),
     ),
     EvidenceRule(
+        ("3.1", "3.2", "3.3", "8.1", "8.2"),
+        re.compile(
+            r"OIDC|OAuth|federat|authenticat|identity|session|tenant|RBAC|ABAC|"
+            r"role|attribute|privileg|high-risk|approval|revocation|recovery|"
+            r"break-glass|service-to-service|workload",
+            re.IGNORECASE,
+        ),
+        (
+            "services/identity.py",
+            "tests/test_identity_access.py",
+            "evidence/migration/ILATEN_TO_ILAIOS/IAM.I02.md",
+        ),
+    ),
+    EvidenceRule(
         ("3.7", "4.1", "4.5", "4.6", "4.7", "4.8"),
         re.compile(
             r"ruff|mypy|test|quality gate|pre-commit|architecture", re.IGNORECASE

@@ -48,3 +48,9 @@ row-specific evidence to 14 requirements. One requirement moved from
 to `IMPLEMENTED` without complete proof. Current totals are 8,346 requirements:
 0 `IMPLEMENTED`, 1,102 `PARTIAL`, 1,967 `MIGRATED`, 5,277
 `MISSING_IMPLEMENTATION`, 0 `MISSING_DOCUMENTATION`, and 0 `CONFLICT`.
+
+IAM.I02 subsequently added provider-neutral identity, tenant authorization,
+session, revocation, recovery, and break-glass controls. It supplies
+row-specific evidence to 137 requirements. Current totals are 8,346
+requirements: 0 `IMPLEMENTED`, 1,220 `PARTIAL`, 1,967 `MIGRATED`, 5,159
+`MISSING_IMPLEMENTATION`, 0 `MISSING_DOCUMENTATION`, and 0 `CONFLICT`.
