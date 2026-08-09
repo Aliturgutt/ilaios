@@ -49,6 +49,12 @@ to `IMPLEMENTED` without complete proof. Current totals are 8,346 requirements:
 0 `IMPLEMENTED`, 1,102 `PARTIAL`, 1,967 `MIGRATED`, 5,277
 `MISSING_IMPLEMENTATION`, 0 `MISSING_DOCUMENTATION`, and 0 `CONFLICT`.
 
+DATA.I04 subsequently added tenant-authoritative privacy, residency,
+retention, legal-hold, deletion, export, and DLP controls. It supplies
+row-specific evidence to 282 requirements. Current totals are 8,346
+requirements: 0 `IMPLEMENTED`, 1,520 `PARTIAL`, 1,967 `MIGRATED`, 4,859
+`MISSING_IMPLEMENTATION`, 0 `MISSING_DOCUMENTATION`, and 0 `CONFLICT`.
+
 CRYPTO.I03 subsequently added managed cryptography interfaces and a
 tenant-bound secret lifecycle reference implementation. It supplies
 row-specific evidence to 134 requirements. Current totals are 8,346

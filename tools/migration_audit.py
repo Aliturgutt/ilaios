@@ -143,6 +143,19 @@ EVIDENCE_RULES = (
         ("services/cloud.py", "tests/test_cloud_boundaries.py"),
     ),
     EvidenceRule(
+        ("2.7", "7.1", "7.2", "7.5", "8.10"),
+        re.compile(
+            r"tenant|privacy|residency|region|retention|deletion|legal hold|"
+            r"minimi|purpose|export|DLP|regulatory|data class",
+            re.IGNORECASE,
+        ),
+        (
+            "services/privacy.py",
+            "tests/test_tenant_privacy.py",
+            "evidence/migration/ILATEN_TO_ILAIOS/DATA.I04.md",
+        ),
+    ),
+    EvidenceRule(
         ("8.1", "8.10"),
         re.compile(r"tenant_id|cross-tenant|region", re.IGNORECASE),
         ("services/cloud.py", "tests/test_cloud_boundaries.py"),

@@ -52,13 +52,14 @@ packages:
     evidence: evidence/migration/ILATEN_TO_ILAIOS/CRYPTO.I03.md
   - id: DATA.I04
     title: Tenant Privacy Residency Retention and Legal Hold
-    status: READY
+    status: PASS
     dependencies: [IAM.I02, CRYPTO.I03]
     scope:
       - authoritative tenant context enforcement
       - regional residency policy
       - retention deletion legal hold export and DLP workflows
       - modular regulatory profiles without certification claims
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/DATA.I04.md
   - id: OPS.I05
     title: Reliability Incident Backup Restore and DR Framework
     status: READY
