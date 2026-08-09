@@ -1,4 +1,6 @@
 Hermes Video Automation Architecture & Workflow
+
+> Historical provenance authority. The active product is ILAIOS and the active capability is ILAIOS Video Automation / Video Factory. Historical Hermes naming below records the accepted source architecture; it does not define a separate active product.
 # 1. Purpose and System Definition
 Hermes Video Automation, Hermes platformu üzerinde çalışan; fikir aşamasından başlayarak video içeriğinin araştırılması, senaryolaştırılması, sahne planına dönüştürülmesi, medya varlıklarının üretilmesi veya temin edilmesi, seslendirilmesi, kurgulanması, altyazılanması, render edilmesi, doğrulanması ve sosyal medya platformlarında yayınlanmasına kadar olan süreci otomatikleştiren bağımsız bir üretim sistemidir.
 Bu sistemin amacı yalnızca tek bir video oluşturmak değildir. Hermes Video Automation, sürekli ve tekrar kullanılabilir bir içerik üretim altyapısı olarak tasarlanacaktır.

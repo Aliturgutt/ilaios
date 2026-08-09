@@ -1,5 +1,7 @@
 # Hermes Video Automation --- Canonical Module Architecture & Dependency Order
 
+> Historical provenance authority. The active product is ILAIOS and the active capability is ILAIOS Video Automation / Video Factory. Historical Hermes naming below is retained for traceability only.
+
 **Status:** Canonical\
 **Scope:** Hermes Video Automation only\
 **Parent document:**

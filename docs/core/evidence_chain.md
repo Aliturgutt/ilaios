@@ -1,5 +1,7 @@
 # Evidence Chain Specification
 
+> Historical provenance specification. Its active implementation belongs to ILAIOS; references to Hermes below preserve origin and do not identify a separate active product.
+
 ## 1. Purpose and Scope
 Define a deterministic, append‑only record chain that captures immutable execution evidence for Hermes Enterprise OS core components. The chain links each evidence record to its predecessor via cryptographic hashes, providing verifiable ordering and integrity without external storage.
 

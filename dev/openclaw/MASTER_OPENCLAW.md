@@ -12,8 +12,9 @@ Use these authorities in order:
 
 1. `ILAIOS_Master_Implementation_Specification_v1_0_CANONICAL_FINAL.docx`
 2. `ILAIOS_Canonical_Milestone_Manifest_v1_0.docx`
-3. `dev/openclaw/execution_plan.yaml`
-4. the active bounded package
+3. `docs/canonical/ILAIOS_ENTERPRISE_AI_OPERATING_SYSTEM_CANONICAL_ARCHITECTURE.md` for product architecture and engineering requirements; it does not override implementation or promotion order.
+4. `dev/openclaw/execution_plan.yaml`
+5. the active bounded package
 
 Repository state, tests, static checks, CI/runtime evidence, and durable evidence determine actual completion. A lower authority never overrides a higher authority.
 
