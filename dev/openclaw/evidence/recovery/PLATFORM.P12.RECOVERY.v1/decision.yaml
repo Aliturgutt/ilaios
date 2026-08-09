@@ -1,0 +1,23 @@
+milestone_id: PLATFORM.P12
+package_id: PLATFORM.P12.RECOVERY.v1
+status: PASS
+dependency_evidence: dev/openclaw/evidence/recovery/PLATFORM.P11.RECOVERY.v1/decision.yaml
+scope_evidence:
+  durable_artifact_store: services/evidence/store.py
+  authenticated_service_boundary: services/control_plane/server.py
+  restart_and_tamper_e2e: tests/test_control_plane_service.py
+  measured_runtime: dev/openclaw/evidence/recovery/PLATFORM.P12.RECOVERY.v1/runtime_artifact.json
+proof:
+  real_artifact_bytes: PASS
+  content_derived_stable_identity: PASS
+  restart_persistence: PASS
+  integrity_verification: PASS
+  artifact_tamper_rejection: PASS
+  provenance_tamper_rejection: PASS
+  caller_supplied_digest_accepted: false
+  mocks_replacing_internal_e2e: false
+validations: {dependency_gate: PASS, targeted_runtime_tests: PASS, independent_runtime_probe: PASS, full_pytest: PASS, ruff: PASS, mypy_strict: PASS, pre_commit: PASS, git_diff_check: PASS}
+release_state: NOT_DEPLOYED
+canonical_authorities_unchanged: true
+commit_identity: SELF
+next_package: PLATFORM.P13.RECOVERY.v1

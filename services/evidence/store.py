@@ -62,11 +62,24 @@ class EvidenceStore:
             path.write_bytes(content)
         return ArtifactRecord(digest, len(content), path)
 
+    def get_artifact(self, digest: str) -> bytes:
+        """Return verified bytes for a stable content identity."""
+        if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+            raise EvidenceError("artifact digest must be a lowercase SHA-256 identity")
+        path = self._artifacts / digest
+        if not path.is_file():
+            raise EvidenceError("artifact is missing")
+        content = path.read_bytes()
+        if hashlib.sha256(content).hexdigest() != digest:
+            raise EvidenceError("artifact integrity check failed")
+        return content
+
     def append_provenance(
         self, execution_id: str, artifact: ArtifactRecord, action: str
     ) -> ProvenanceRecord:
         occurred_at = datetime.now(timezone.utc).isoformat()
         with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
             last = connection.execute(
                 "SELECT record_hash FROM provenance ORDER BY sequence DESC LIMIT 1"
             ).fetchone()

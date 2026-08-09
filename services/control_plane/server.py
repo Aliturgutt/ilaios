@@ -40,6 +40,7 @@ from services.control_plane.workflows import (
     WorkflowStore,
     WorkflowStoreConfig,
 )
+from services.evidence import EvidenceError, EvidenceStore, ProvenanceRecord
 from services.runtime import (
     BlastRadiusBudget,
     DurableGrantPolicy,
@@ -68,6 +69,7 @@ class ControlPlaneHTTPServer(ThreadingHTTPServer):
         governed_runtime: GovernedRuntime,
         scheduler: DurableWorkerScheduler,
         grant_policy: DurableGrantPolicy,
+        evidence_store: EvidenceStore,
     ) -> None:
         super().__init__(server_address, ControlPlaneRequestHandler)
         self.control_plane = control_plane
@@ -76,6 +78,7 @@ class ControlPlaneHTTPServer(ThreadingHTTPServer):
         self.governed_runtime = governed_runtime
         self.scheduler = scheduler
         self.grant_policy = grant_policy
+        self.evidence_store = evidence_store
 
 
 class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
@@ -117,6 +120,29 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/v1/grants/state":
                 self._send_json(HTTPStatus.OK, self.server.grant_policy.state())
+                return
+            if path == "/v1/evidence/verify":
+                self._send_json(
+                    HTTPStatus.OK,
+                    {
+                        "records": [
+                            _provenance_json(record)
+                            for record in self.server.evidence_store.verify()
+                        ]
+                    },
+                )
+                return
+            if path.startswith("/v1/evidence/artifacts/"):
+                digest = path.removeprefix("/v1/evidence/artifacts/")
+                content = self.server.evidence_store.get_artifact(digest)
+                self._send_json(
+                    HTTPStatus.OK,
+                    {
+                        "digest": digest,
+                        "size": len(content),
+                        "content_base64": base64.b64encode(content).decode("ascii"),
+                    },
+                )
                 return
             if path == "/v1/live/snapshot":
                 query = parse_qs(urlparse(self.path).query)
@@ -193,6 +219,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except GrantError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except EvidenceError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except ValueError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
 
@@ -221,6 +249,9 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/v1/grants/commands":
                 self._send_json(HTTPStatus.OK, self._grant_command(body))
+                return
+            if path == "/v1/evidence/commands":
+                self._send_json(HTTPStatus.CREATED, self._evidence_command(body))
                 return
             record: GoalRecord | JobRecord
             if path == "/v1/goals":
@@ -258,6 +289,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
         except SchedulingError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except GrantError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except EvidenceError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except (json.JSONDecodeError, TypeError, UnicodeDecodeError, ValueError) as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
@@ -500,6 +533,27 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             return {"stopped": True}
         raise ValueError("unknown grant operation")
 
+    def _evidence_command(self, payload: dict[str, Any]) -> dict[str, Any]:
+        operation = _required_string(payload, "operation")
+        if operation != "store_execution_artifact":
+            raise ValueError("unknown evidence operation")
+        try:
+            content = base64.b64decode(
+                _required_string(payload, "content_base64"), validate=True
+            )
+        except ValueError as error:
+            raise EvidenceError("artifact content is not valid base64") from error
+        artifact = self.server.evidence_store.put_artifact(content)
+        provenance = self.server.evidence_store.append_provenance(
+            _required_string(payload, "execution_id"),
+            artifact,
+            _required_string(payload, "action"),
+        )
+        return {
+            "artifact": {"digest": artifact.digest, "size": artifact.size},
+            "provenance": _provenance_json(provenance),
+        }
+
 
 def _record_json(record: GoalRecord | JobRecord) -> dict[str, Any]:
     if isinstance(record, GoalRecord):
@@ -603,6 +657,17 @@ def _lease_json(lease: Lease) -> dict[str, Any]:
     }
 
 
+def _provenance_json(record: ProvenanceRecord) -> dict[str, Any]:
+    return {
+        "sequence": record.sequence,
+        "execution_id": record.execution_id,
+        "artifact_digest": record.artifact_digest,
+        "action": record.action,
+        "previous_hash": record.previous_hash,
+        "record_hash": record.record_hash,
+    }
+
+
 def _required_int(payload: dict[str, Any], key: str) -> int:
     value = payload.get(key)
     if not isinstance(value, int) or isinstance(value, bool):
@@ -666,6 +731,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=0)
     parser.add_argument("--ready-file", type=Path, required=True)
+    parser.add_argument("--evidence-root", type=Path, required=True)
     parser.add_argument("--lease-seconds", type=int, default=30)
     arguments = parser.parse_args(argv)
     if arguments.host not in {"127.0.0.1", "::1", "localhost"}:
@@ -679,6 +745,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         arguments.database, lease_duration=timedelta(seconds=arguments.lease_seconds)
     )
     grant_policy = DurableGrantPolicy(arguments.database)
+    evidence_store = EvidenceStore(arguments.evidence_root)
     server = ControlPlaneHTTPServer(
         (arguments.host, arguments.port),
         control_plane,
@@ -687,6 +754,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         governed_runtime,
         scheduler,
         grant_policy,
+        evidence_store,
     )
     host, port = server.server_address[:2]
     ready = {

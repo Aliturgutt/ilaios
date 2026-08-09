@@ -45,6 +45,8 @@ def _running_service(tmp_path: Path) -> Iterator[tuple[str, subprocess.Popen[str
             str(tmp_path / "state.sqlite3"),
             "--ready-file",
             str(ready_file),
+            "--evidence-root",
+            str(tmp_path / "evidence"),
         ],
         cwd=Path(__file__).resolve().parents[1],
         env=environment,
@@ -149,6 +151,105 @@ def test_process_boundary_rejects_missing_wrong_and_malformed_requests(
         )
         assert status == 400
         assert payload == {"error": "objective must be non-blank and trimmed"}
+
+
+def test_evidence_bytes_and_provenance_survive_real_process_restart(
+    tmp_path: Path,
+) -> None:
+    content = b"real governed output bytes\x00\xff"
+    with _running_service(tmp_path) as (base_url, first_process):
+        status, stored = _request(
+            base_url,
+            "POST",
+            "/v1/evidence/commands",
+            payload={
+                "operation": "store_execution_artifact",
+                "execution_id": "execution-runtime-1",
+                "action": "render.completed",
+                "content_base64": base64.b64encode(content).decode("ascii"),
+            },
+        )
+        assert status == 201
+        digest = stored["artifact"]["digest"]
+        assert stored["artifact"]["size"] == len(content)
+        assert stored["provenance"]["artifact_digest"] == digest
+
+        status, fetched = _request(
+            base_url, "GET", f"/v1/evidence/artifacts/{digest}"
+        )
+        assert status == 200
+        assert base64.b64decode(fetched["content_base64"], validate=True) == content
+
+    (tmp_path / "ready.json").unlink()
+    with _running_service(tmp_path) as (base_url, second_process):
+        assert second_process.pid != first_process.pid
+        status, fetched = _request(
+            base_url, "GET", f"/v1/evidence/artifacts/{digest}"
+        )
+        assert status == 200
+        assert base64.b64decode(fetched["content_base64"], validate=True) == content
+        status, verified = _request(base_url, "GET", "/v1/evidence/verify")
+        assert status == 200
+        assert verified["records"] == [stored["provenance"]]
+
+
+def test_evidence_service_rejects_artifact_tampering_after_restart(
+    tmp_path: Path,
+) -> None:
+    with _running_service(tmp_path) as (base_url, _):
+        status, stored = _request(
+            base_url,
+            "POST",
+            "/v1/evidence/commands",
+            payload={
+                "operation": "store_execution_artifact",
+                "execution_id": "execution-runtime-2",
+                "action": "delivery.created",
+                "content_base64": base64.b64encode(b"original delivery").decode(
+                    "ascii"
+                ),
+            },
+        )
+        assert status == 201
+
+    digest = stored["artifact"]["digest"]
+    (tmp_path / "evidence" / "artifacts" / digest).write_bytes(b"tampered")
+    (tmp_path / "ready.json").unlink()
+    with _running_service(tmp_path) as (base_url, _):
+        status, rejected = _request(base_url, "GET", "/v1/evidence/verify")
+        assert status == 400
+        assert rejected == {"error": "artifact integrity check failed"}
+        status, rejected = _request(
+            base_url, "GET", f"/v1/evidence/artifacts/{digest}"
+        )
+        assert status == 400
+        assert rejected == {"error": "artifact integrity check failed"}
+
+
+def test_evidence_service_rejects_provenance_tampering_after_restart(
+    tmp_path: Path,
+) -> None:
+    with _running_service(tmp_path) as (base_url, _):
+        status, _ = _request(
+            base_url,
+            "POST",
+            "/v1/evidence/commands",
+            payload={
+                "operation": "store_execution_artifact",
+                "execution_id": "execution-runtime-3",
+                "action": "artifact.created",
+                "content_base64": base64.b64encode(b"untouched bytes").decode("ascii"),
+            },
+        )
+        assert status == 201
+
+    with sqlite3.connect(tmp_path / "evidence" / "provenance.sqlite3") as connection:
+        connection.execute("UPDATE provenance SET action = 'forged.action'")
+    (tmp_path / "ready.json").unlink()
+    with _running_service(tmp_path) as (base_url, _):
+        status, rejected = _request(base_url, "GET", "/v1/evidence/verify")
+        assert status == 400
+        assert rejected == {"error": "provenance hash chain is invalid"}
 
 
 def test_versioned_migration_and_recoverable_rollback(tmp_path: Path) -> None:
