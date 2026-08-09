@@ -310,6 +310,21 @@ class WorkflowStore:
         if cursor.rowcount != 1:
             raise WorkflowError("unknown outbox event")
 
+    def task_state(self, workflow_id: str) -> tuple[dict[str, str], ...]:
+        """Return durable task outcomes for acceptance verification."""
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT task_id, status FROM workflow_tasks "
+                "WHERE workflow_id = ? ORDER BY task_id",
+                (workflow_id,),
+            ).fetchall()
+        if not rows:
+            raise WorkflowError("unknown workflow")
+        return tuple(
+            {"task_id": str(row["task_id"]), "status": str(row["status"])}
+            for row in rows
+        )
+
     @staticmethod
     def _enqueue(
         connection: sqlite3.Connection,

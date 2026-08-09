@@ -20,6 +20,7 @@ from services.control_plane.proposals import (
     RiskClass,
     propose_execution,
 )
+from src.video_automation.job_state_machine import JobStateMachine
 from src.video_automation.models import JobState
 
 
@@ -158,6 +159,39 @@ class ControlPlane:
             JobState(row["state"]),
             datetime.fromisoformat(row["created_at"]),
         )
+
+    def transition_job(
+        self,
+        token: str,
+        job_id: str,
+        target: JobState,
+        *,
+        reason: str,
+        now: datetime,
+    ) -> JobRecord:
+        """Apply a canonical durable job-state transition."""
+        self._authenticate(token)
+        current = self.get_job(token, job_id)
+        transition = JobStateMachine().transition(
+            job_id, current.state, target, reason, timestamp=now
+        )
+        with self._connect() as connection:
+            connection.execute(
+                "UPDATE jobs SET state = ? WHERE job_id = ?",
+                (transition.new_state.value, job_id),
+            )
+            self._append_event(
+                connection,
+                "job.updated",
+                job_id,
+                {
+                    "previous_state": current.state.value,
+                    "state": transition.new_state.value,
+                    "reason": transition.reason,
+                },
+                transition.timestamp,
+            )
+        return JobRecord(job_id, current.goal_id, transition.new_state, current.created_at)
 
     def create_proposal(
         self,

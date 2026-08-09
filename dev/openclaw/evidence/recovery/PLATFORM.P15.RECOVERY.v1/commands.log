@@ -1,0 +1,23 @@
+PLATFORM.P15.RECOVERY.v1 commands
+controller and execution plan complete reread: PASS
+dependency decision inspection: PLATFORM.P14.RECOVERY.v1 PASS
+git status --porcelain=v1 --branch; git rev-parse HEAD; git rev-parse origin/master
+exit_code=0 branch=master clean=true head_equals_origin_master=true
+native Windows PowerShell OS/process interrogation
+exit_code=0 os=Microsoft_Windows_NT_10.0.26200.0 powershell=5.1.26100.8972
+python -m pytest -q tests/test_durable_workflows.py tests/test_security_finance_gates.py tests/test_control_plane_service.py::test_native_windows_desktop_request_produces_durable_acceptance_manifest
+exit_code=0 result=8_passed
+python -m pytest -q -vv tests/test_control_plane_service.py::test_native_windows_desktop_request_produces_durable_acceptance_manifest --basetemp=/tmp/ilaios-p15-final-evidence
+exit_code=0 result=1_passed native_windows_process=true real_service=true restart=true
+SQLite product/control/governance extraction and delivery hashing
+exit_code=0 durable_state_extracted=true delivery_bytes_verified=true
+python -m pytest -q
+exit_code=0 result=942_passed
+ruff check .
+exit_code=0 result=PASS
+mypy --strict src tests
+exit_code=0 result=PASS source_files=158
+pre-commit run --all-files
+exit_code=0 result=PASS
+git diff --check; git status --porcelain=v1 --branch
+exit_code=0 diff_check=PASS branch=master

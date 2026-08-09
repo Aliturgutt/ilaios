@@ -6,6 +6,7 @@ from .product_proof import (
     GovernedVideoProductProof,
     ProductProofError,
 )
+from .product_runtime import DurableVideoProductRuntime, ProductRuntimeError
 from .video import VideoChainAdapter, VideoIntegrationError, VideoIntegrationResult
 from .video_runtime import DeterministicLocalVideoRuntime, VideoRuntimeError
 from .web_factory import GovernedWebFactory, WebsiteAcceptance
@@ -14,9 +15,11 @@ __all__ = [
     "AcceptanceManifest",
     "DesktopGoalRequest",
     "DeterministicLocalVideoRuntime",
+    "DurableVideoProductRuntime",
     "GovernedVideoProductProof",
     "GovernedWebFactory",
     "ProductProofError",
+    "ProductRuntimeError",
     "VideoChainAdapter",
     "VideoIntegrationError",
     "VideoIntegrationResult",

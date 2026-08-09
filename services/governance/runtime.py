@@ -230,6 +230,10 @@ class GovernedRuntimeGateway:
             "ledger": self._ledger.state(),
         }
 
+    def approval_proven(self, request_id: str) -> bool:
+        """Read the durable independent approval used by the execution gate."""
+        return self._approvals.is_approved(request_id)
+
     @classmethod
     def _reject_inline_secrets(cls, value: object) -> None:
         if isinstance(value, dict):

@@ -42,7 +42,12 @@ from services.control_plane.workflows import (
 )
 from services.evidence import EvidenceError, EvidenceStore, ProvenanceRecord
 from services.governance import GateError, GovernedRuntimeGateway
-from services.integrations import DeterministicLocalVideoRuntime, VideoRuntimeError
+from services.integrations import (
+    DeterministicLocalVideoRuntime,
+    DurableVideoProductRuntime,
+    ProductRuntimeError,
+    VideoRuntimeError,
+)
 from services.runtime import (
     BlastRadiusBudget,
     DurableGrantPolicy,
@@ -74,6 +79,7 @@ class ControlPlaneHTTPServer(ThreadingHTTPServer):
         evidence_store: EvidenceStore,
         governance: GovernedRuntimeGateway,
         video_runtime: DeterministicLocalVideoRuntime,
+        product_runtime: DurableVideoProductRuntime,
     ) -> None:
         super().__init__(server_address, ControlPlaneRequestHandler)
         self.control_plane = control_plane
@@ -85,6 +91,7 @@ class ControlPlaneHTTPServer(ThreadingHTTPServer):
         self.evidence_store = evidence_store
         self.governance = governance
         self.video_runtime = video_runtime
+        self.product_runtime = product_runtime
 
 
 class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
@@ -145,6 +152,12 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 delivery_id = path.removeprefix("/v1/video/deliveries/")
                 self._send_json(
                     HTTPStatus.OK, self.server.video_runtime.get_delivery(delivery_id)
+                )
+                return
+            if path.startswith("/v1/product-proof/manifests/"):
+                request_id = path.removeprefix("/v1/product-proof/manifests/")
+                self._send_json(
+                    HTTPStatus.OK, self.server.product_runtime.get_manifest(request_id)
                 )
                 return
             if path.startswith("/v1/evidence/artifacts/"):
@@ -240,6 +253,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self._send_error(HTTPStatus.FORBIDDEN, str(error))
         except VideoRuntimeError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except ProductRuntimeError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except ValueError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
 
@@ -277,6 +292,11 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/v1/video/commands":
                 self._send_json(HTTPStatus.OK, self._video_command(body))
+                return
+            if path == "/v1/product-proof/commands":
+                self._send_json(
+                    HTTPStatus.OK, self._product_proof_command(body, token=token)
+                )
                 return
             record: GoalRecord | JobRecord
             if path == "/v1/goals":
@@ -320,6 +340,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
         except GateError as error:
             self._send_error(HTTPStatus.FORBIDDEN, str(error))
         except VideoRuntimeError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except ProductRuntimeError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except (
             json.JSONDecodeError,
@@ -623,6 +645,26 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             now=_required_datetime(payload, "now"),
         )
 
+    def _product_proof_command(
+        self, payload: dict[str, Any], *, token: str
+    ) -> dict[str, object]:
+        operation = _required_string(payload, "operation")
+        if operation == "prepare_windows_video":
+            return self.server.product_runtime.prepare(
+                _required_string(payload, "request_id"),
+                _required_string(payload, "objective"),
+                token=token,
+                now=_required_datetime(payload, "now"),
+            )
+        if operation == "execute_windows_video":
+            return self.server.product_runtime.execute(
+                _required_string(payload, "request_id"),
+                _required_string(payload, "grant_id"),
+                token=token,
+                now=_required_datetime(payload, "now"),
+            )
+        raise ValueError("unknown product-proof operation")
+
 
 def _record_json(record: GoalRecord | JobRecord) -> dict[str, Any]:
     if isinstance(record, GoalRecord):
@@ -804,6 +846,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--governance-database", type=Path, required=True)
     parser.add_argument("--hard-cap-minor", type=int, default=100)
     parser.add_argument("--video-root", type=Path, required=True)
+    parser.add_argument("--product-proof-database", type=Path, required=True)
     parser.add_argument("--lease-seconds", type=int, default=30)
     arguments = parser.parse_args(argv)
     if arguments.host not in {"127.0.0.1", "::1", "localhost"}:
@@ -826,6 +869,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     video_runtime = DeterministicLocalVideoRuntime(
         arguments.video_root, grant_policy, governance, evidence_store
     )
+    product_runtime = DurableVideoProductRuntime(
+        arguments.product_proof_database,
+        control_plane,
+        workflow_store,
+        scheduler,
+        grant_policy,
+        governance,
+        video_runtime,
+    )
     server = ControlPlaneHTTPServer(
         (arguments.host, arguments.port),
         control_plane,
@@ -837,6 +889,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         evidence_store,
         governance,
         video_runtime,
+        product_runtime,
     )
     host, port = server.server_address[:2]
     ready = {

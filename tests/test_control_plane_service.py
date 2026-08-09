@@ -56,6 +56,8 @@ def _running_service(
             str(hard_cap_minor),
             "--video-root",
             str(tmp_path / "video"),
+            "--product-proof-database",
+            str(tmp_path / "product-proof.sqlite3"),
         ],
         cwd=Path(__file__).resolve().parents[1],
         env=environment,
@@ -148,6 +150,60 @@ def _submit_approve_execute(
         "/v1/governance/commands",
         payload={"operation": "execute", "request_id": request_id},
     )
+
+
+def _windows_desktop_request(
+    base_url: str,
+    *,
+    mode: str,
+    request_id: str,
+    grant_id: str | None = None,
+) -> dict[str, Any]:
+    powershell = Path(
+        "/mnt/c/Windows/System32/WindowsPowerShell/v1.0/powershell.exe"
+    )
+    if not powershell.is_file():
+        pytest.skip("native Windows PowerShell interop is unavailable")
+    script = Path(__file__).resolve().parents[1] / (
+        "apps/desktop/windows/ilaios_recovery_client.ps1"
+    )
+    windows_path = subprocess.run(
+        ("wslpath", "-w", str(script)),
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    command = [
+        str(powershell),
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        windows_path,
+        "-BaseUrl",
+        base_url,
+        "-Token",
+        "runtime-secret",
+        "-Mode",
+        mode,
+        "-RequestId",
+        request_id,
+    ]
+    if grant_id is not None:
+        command.extend(("-GrantId", grant_id))
+    completed = subprocess.run(
+        command,
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=90,
+    )
+    if completed.returncode != 0:
+        raise AssertionError(
+            f"Windows Desktop client failed: {completed.stdout}{completed.stderr}"
+        )
+    return cast(dict[str, Any], json.loads(completed.stdout.strip()))
 
 
 def test_real_process_boundary_persists_goal_job_and_events_after_restart(
@@ -1077,6 +1133,115 @@ def test_real_local_video_crosses_grant_finops_evidence_and_delivery_boundaries(
         status, grants = _request(base_url, "GET", "/v1/grants/state")
         assert status == 200
         assert grants["grants"][0]["used_side_effects"] == 1
+
+
+def test_native_windows_desktop_request_produces_durable_acceptance_manifest(
+    tmp_path: Path,
+) -> None:
+    with _running_service(tmp_path) as (base_url, _):
+        prepared = _windows_desktop_request(
+            base_url, mode="Prepare", request_id="windows-proof-1"
+        )
+        runtime = prepared["windows_runtime"]
+        preparation = prepared["response"]
+        assert runtime["os_version"].startswith("Microsoft Windows NT")
+        assert runtime["process_path"].lower().endswith("powershell.exe")
+        assert preparation["status"] == "pending_independent_approval_and_grant"
+
+        now = datetime.now(timezone.utc)
+        status, _ = _request(
+            base_url,
+            "POST",
+            "/v1/governance/commands",
+            payload={
+                "operation": "decide",
+                "request_id": "windows-proof-1",
+                "approver": "independent-product-owner",
+                "decision": "approved",
+            },
+        )
+        assert status == 200
+        status, _ = _request(
+            base_url,
+            "POST",
+            "/v1/grants/commands",
+            payload={
+                "operation": "register",
+                "grant_id": "windows-proof-grant",
+                "subject_id": "worker-video",
+                "actions": ["video.execute"],
+                "resources": [preparation["job_id"]],
+                "now": now.isoformat(),
+                "expires_at": (now + timedelta(minutes=5)).isoformat(),
+                "max_side_effects": 1,
+                "max_resources": 1,
+            },
+        )
+        assert status == 200
+
+        executed = _windows_desktop_request(
+            base_url,
+            mode="Execute",
+            request_id="windows-proof-1",
+            grant_id="windows-proof-grant",
+        )
+        assert executed["windows_runtime"]["os_version"] == runtime["os_version"]
+        assert executed["windows_runtime"]["process_path"] == runtime["process_path"]
+        manifest = executed["response"]
+        assert manifest["accepted"] is True
+        assert manifest["request_id"] == "windows-proof-1"
+        assert manifest["goal_id"] == preparation["goal_id"]
+        assert manifest["job_id"] == preparation["job_id"]
+        assert manifest["proposal_id"] == preparation["proposal_id"]
+        assert manifest["workflow_id"] == preparation["workflow_id"]
+        assert manifest["worker_id"] == preparation["worker_id"]
+        assert manifest["approval_proven"] is True
+        assert manifest["dag_proven"] is True
+        assert manifest["worker_lease_proven"] is True
+        assert manifest["cost_proven"] is True
+        assert manifest["job_state_proven"] is True
+        assert manifest["qa"]["passed"] is True
+        assert manifest["artifact_digest"] == manifest["delivery_sha256"]
+
+        status, events = _request(base_url, "GET", "/v1/events")
+        assert status == 200
+        assert [event["event_type"] for event in events["events"]] == [
+            "goal.created",
+            "job.created",
+            "proposal.created",
+            "job.updated",
+            "job.updated",
+            "job.updated",
+        ]
+        status, scheduler = _request(base_url, "GET", "/v1/scheduler/state")
+        assert status == 200
+        assert scheduler["effects"][0]["task_id"] == preparation["job_id"]
+
+    with sqlite3.connect(tmp_path / "state.sqlite3") as connection:
+        task_rows = connection.execute(
+            "SELECT task_id, status FROM workflow_tasks ORDER BY task_id"
+        ).fetchall()
+        assert task_rows == [("delivery", "completed"), ("video", "completed")]
+
+    (tmp_path / "ready.json").unlink()
+    with _running_service(tmp_path) as (base_url, _):
+        status, persisted = _request(
+            base_url,
+            "GET",
+            "/v1/product-proof/manifests/windows-proof-1",
+        )
+        assert status == 200
+        assert persisted == manifest
+        status, delivery = _request(
+            base_url,
+            "GET",
+            f"/v1/video/deliveries/{manifest['delivery_id']}",
+        )
+        assert status == 200
+        assert delivery["sha256"] == manifest["artifact_digest"]
+        status, evidence = _request(base_url, "GET", "/v1/evidence/verify")
+        assert status == 200
+        assert evidence["records"][0]["record_hash"] == manifest["evidence_hash"]
 
 
 def test_concurrent_scheduler_fences_stale_side_effects_and_survives_restart(
