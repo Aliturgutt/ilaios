@@ -94,7 +94,7 @@ def generate(root: Path, output: Path, canonical_exists: bool) -> int:
     rows = iter_requirements(source)
     output.parent.mkdir(parents=True, exist_ok=True)
     with output.open("w", encoding="utf-8", newline="") as stream:
-        writer = csv.writer(stream)
+        writer = csv.writer(stream, lineterminator="\n")
         writer.writerow(("requirement_id", "legacy_source", "ilaten_requirement", "current_ilaios_canonical_equivalent", "repository_implementation_evidence", "status"))
         for number, (line, section, heading, requirement) in enumerate(rows, 1):
             evidence = evidence_for(section, root)

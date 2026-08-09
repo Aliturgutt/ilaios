@@ -1,7 +1,7 @@
 # ILATEN to ILAIOS Validation Evidence
 
-Validation date: 2026-08-09  
-Scope: canonical documentation consolidation, migration-matrix generator, preservation tests, authority pointers, and provenance labels.  
+Validation date: 2026-08-09
+Scope: canonical documentation consolidation, migration-matrix generator, preservation tests, authority pointers, and provenance labels.
 Release promotion: none; RELEASE.R01, RELEASE.R02, and RELEASE.R03 were not executed.
 
 ## Results
@@ -16,3 +16,5 @@ Release promotion: none; RELEASE.R01, RELEASE.R02, and RELEASE.R03 were not exec
 - Targeted migration tests after final matrix regeneration: PASS — `4 passed in 4.96s`.
 
 The preservation test proves that every extracted legacy normative statement and gate bullet is present in the consolidated ILAIOS canonical architecture after active-name conversion. It does not claim the requirements are implemented.
+
+Follow-up publication-hygiene validation initially failed because the EOF and trailing-whitespace hooks normalized the consolidated Markdown and this evidence file. The hook changes were retained, the failure was not treated as PASS, and the complete required validation sequence was rerun afterward.

@@ -2,10 +2,10 @@
 
 ## Canonical Architecture & Engineering Standards
 
-**Status:** Consolidated canonical architecture, Version 1.0 working edition  
-**Active product authority:** ILAIOS is the single master brand and extensible platform.  
-**Provenance:** Requirement-preserving migration of the legacy ILATEN canonical architecture supplied in `dev/openclaw/migration_input/`. ILATEN names historical architecture lineage only and is not a parallel active product.  
-**Implementation truth:** This document specifies requirements. Repository code, tests, validation records, and evidence determine implementation status; documentation alone never proves implementation.  
+**Status:** Consolidated canonical architecture, Version 1.0 working edition
+**Active product authority:** ILAIOS is the single master brand and extensible platform.
+**Provenance:** Requirement-preserving migration of the legacy ILATEN canonical architecture supplied in `dev/openclaw/migration_input/`. ILATEN names historical architecture lineage only and is not a parallel active product.
+**Implementation truth:** This document specifies requirements. Repository code, tests, validation records, and evidence determine implementation status; documentation alone never proves implementation.
 **Completion boundary:** Sections 1–7.10 are consolidated below. Sections 8 and 9 were listed but not authored in the supplied legacy source and remain explicitly unincorporated rather than being fabricated.
 
 **Version:** 1.0
@@ -34390,4 +34390,3 @@ The following invariants are binding:
 - architecture-significant logging decisions require an authorized ADR.
 
 A Logging implementation is non-conformant if it treats operational records, queries, indexes, provider logs, or analytics as authority, validation, canonical audit, or evidence; logs secrets, credentials, reusable capabilities, raw prompts, raw outputs, customer content, or unnecessary protected data; permits record injection or identity forgery; merges tenant data without approved isolation; silently samples, drops, suppresses, truncates, overwrites, or deletes required records; relies on container-local or node-local survival for required retention; uses centralization or hashing to claim completeness; allows logging failure to bypass Policy, Approval, capability, Tool Gateway, Validation, Audit, or Evidence controls; grants unrestricted standing access; retains records indefinitely by default; hides coverage, clock, source, provider, or bootstrap limitations; or gives a collector, sink, query, dashboard, detection, logging vendor, provider, customer, sales commitment, model output, framework, or engineering preference architectural authority.
-
