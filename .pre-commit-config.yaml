@@ -3,6 +3,7 @@ repos:
     rev: v4.4.0
     hooks:
       - id: end-of-file-fixer
+        exclude: ^dev/openclaw/(MASTER_OPENCLAW\.md|execution_plan\.yaml)$
       - id: trailing-whitespace
       - id: check-yaml
   - repo: https://github.com/astral-sh/ruff-pre-commit

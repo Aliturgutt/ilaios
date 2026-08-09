@@ -1,0 +1,52 @@
+PLATFORM.P05.RECOVERY.v1 command record
+
+PRE-STATE
+git -C /home/openclaw/ilaios-workspace/ilaios fetch origin master
+exit_code=0
+git -C /home/openclaw/ilaios-workspace/ilaios status --porcelain=v1 --branch
+exit_code=0
+output=## master...origin/master
+git -C /home/openclaw/ilaios-workspace/ilaios rev-parse HEAD
+exit_code=0
+output=d2b3139aba1d04da468ac98d8ca40f811b7a1beb
+git -C /home/openclaw/ilaios-workspace/ilaios rev-parse origin/master
+exit_code=0
+output=d2b3139aba1d04da468ac98d8ca40f811b7a1beb
+git -C /home/openclaw/ilaios-workspace/ilaios cat-file -t d2b3139aba1d04da468ac98d8ca40f811b7a1beb
+exit_code=0
+output=commit
+git -C /home/openclaw/ilaios-workspace/ilaios merge-base --is-ancestor d2b3139aba1d04da468ac98d8ca40f811b7a1beb HEAD
+exit_code=0
+
+DEPENDENCIES
+sed -n 1,240p /home/openclaw/ilaios-workspace/ilaios/dev/openclaw/evidence/PLATFORM.P03/decision.yaml
+exit_code=0 status=PASS
+sed -n 1,240p /home/openclaw/ilaios-workspace/ilaios/dev/openclaw/evidence/PLATFORM.P04/decision.yaml
+exit_code=0 status=PASS
+
+TARGETED VALIDATION
+python -m pytest -q /home/openclaw/ilaios-workspace/ilaios/tests/test_control_plane.py /home/openclaw/ilaios-workspace/ilaios/tests/test_control_plane_service.py
+exit_code=0 result=7_passed
+ruff check /home/openclaw/ilaios-workspace/ilaios/services/control_plane/api.py /home/openclaw/ilaios-workspace/ilaios/services/control_plane/migrations.py /home/openclaw/ilaios-workspace/ilaios/services/control_plane/server.py /home/openclaw/ilaios-workspace/ilaios/tests/test_control_plane_service.py
+exit_code=0
+mypy --strict /home/openclaw/ilaios-workspace/ilaios/services/control_plane/api.py /home/openclaw/ilaios-workspace/ilaios/services/control_plane/migrations.py /home/openclaw/ilaios-workspace/ilaios/services/control_plane/server.py /home/openclaw/ilaios-workspace/ilaios/tests/test_control_plane_service.py
+exit_code=0
+
+FULL VALIDATION
+python -m pytest -q
+exit_code=0 result=928_passed
+ruff check .
+exit_code=0
+mypy --strict src tests
+exit_code=0 result=158_source_files
+pre-commit run --all-files
+first_exit_code=1 cause=EOF_fixer_attempted_forbidden_execution_plan_mutation
+recovery=execution_plan_restored_byte-for-byte_from_HEAD; EOF_fixer_excludes_only_immutable_controller_files
+final_exit_code=0
+git -C /home/openclaw/ilaios-workspace/ilaios diff --check
+exit_code=0
+
+RUNTIME
+Independent loopback subprocess probe executed twice against one SQLite database.
+exit_code=0
+Full responses and content hashes are in runtime.log and runtime_artifact.sql.

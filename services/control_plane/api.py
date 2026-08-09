@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from packages.contracts.ilaios_contracts import ContractKind, SchemaVersion
+from services.control_plane.migrations import migrate_database
 from src.video_automation.models import JobState
 
 
@@ -53,38 +54,12 @@ class ControlPlane:
     def __init__(self, config: ControlPlaneConfig) -> None:
         self._config = config
         config.database_path.parent.mkdir(parents=True, exist_ok=True)
-        self._initialize()
+        migrate_database(config.database_path)
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self._config.database_path)
         connection.row_factory = sqlite3.Row
         return connection
-
-    def _initialize(self) -> None:
-        with self._connect() as connection:
-            connection.executescript(
-                """
-                CREATE TABLE IF NOT EXISTS goals (
-                    goal_id TEXT PRIMARY KEY,
-                    objective TEXT NOT NULL,
-                    created_at TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS jobs (
-                    job_id TEXT PRIMARY KEY,
-                    goal_id TEXT NOT NULL REFERENCES goals(goal_id),
-                    state TEXT NOT NULL,
-                    created_at TEXT NOT NULL
-                );
-                CREATE TABLE IF NOT EXISTS events (
-                    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
-                    event_type TEXT NOT NULL,
-                    aggregate_id TEXT NOT NULL,
-                    payload_json TEXT NOT NULL,
-                    occurred_at TEXT NOT NULL,
-                    schema_version TEXT NOT NULL
-                );
-                """
-            )
 
     def _authenticate(self, token: str) -> None:
         if not hmac.compare_digest(token, self._config.bearer_token):

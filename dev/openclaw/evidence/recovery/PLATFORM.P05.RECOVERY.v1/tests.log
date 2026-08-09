@@ -1,0 +1,34 @@
+PLATFORM.P05.RECOVERY.v1 test evidence
+
+Targeted command:
+python -m pytest -q /home/openclaw/ilaios-workspace/ilaios/tests/test_control_plane.py /home/openclaw/ilaios-workspace/ilaios/tests/test_control_plane_service.py
+
+.......                                                                  [100%]
+7 passed in 1.38s
+
+Acceptance coverage:
+- existing command/query/event behavior remains accepted
+- authenticated HTTP command/query/event calls cross a real TCP process boundary
+- a goal and job survive termination and restart of the service process
+- wrong credentials and malformed commands fail closed at the boundary
+- schema upgrade is explicit and idempotent
+- rollback creates a recovery backup before reversing the schema
+- exact legacy P05 schema is adopted without losing existing records
+
+Full command:
+python -m pytest -q
+
+........................................................................ [  7%]
+........................................................................ [ 15%]
+........................................................................ [ 23%]
+........................................................................ [ 31%]
+........................................................................ [ 38%]
+........................................................................ [ 46%]
+........................................................................ [ 54%]
+........................................................................ [ 62%]
+........................................................................ [ 69%]
+........................................................................ [ 77%]
+........................................................................ [ 85%]
+........................................................................ [ 93%]
+................................................................         [100%]
+928 passed in 9.13s
