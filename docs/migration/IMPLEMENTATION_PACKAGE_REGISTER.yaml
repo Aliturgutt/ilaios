@@ -82,13 +82,14 @@ packages:
     evidence: evidence/migration/ILATEN_TO_ILAIOS/OBS.I06.md
   - id: AGENT.I07
     title: Governed Agent Identity Permission Firewall and AI Security
-    status: READY
+    status: PASS
     dependencies: [GOV.I01, IAM.I02, DATA.I04]
     scope:
       - complete stable agent manifests
       - allowed callers targets escalation verifier version and status
       - prompt-injection and exfiltration defense
       - permission firewall grants scanning verification evidence and incident escalation
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/AGENT.I07.md
   - id: ORG.I08
     title: Governance Records RACI Risk Exception and Lifecycle Controls
     status: READY

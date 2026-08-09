@@ -56,6 +56,21 @@ EVIDENCE_RULES = (
         ),
     ),
     EvidenceRule(
+        ("2.4", "3.3", "3.8", "6.1", "6.2", "8.4", "8.9"),
+        re.compile(
+            r"agent|machine ID|alias|role|team|capabilit|permission|allowed caller|"
+            r"allowed target|escalat|verifier|prompt injection|exfiltrat|secret|"
+            r"permission firewall|security scan|independent verification|grant",
+            re.IGNORECASE,
+        ),
+        (
+            "services/agent_governance.py",
+            "services/runtime/grants.py",
+            "tests/test_agent_governance.py",
+            "evidence/migration/ILATEN_TO_ILAIOS/AGENT.I07.md",
+        ),
+    ),
+    EvidenceRule(
         ("2.8",),
         re.compile(r"validation|rule|waiver", re.IGNORECASE),
         ("src/core/validation_pipeline.py", "tests/test_validation_pipeline.py"),
