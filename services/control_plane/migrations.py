@@ -13,7 +13,7 @@ class MigrationError(RuntimeError):
     """Raised when a control-plane migration cannot complete safely."""
 
 
-LATEST_SCHEMA_VERSION = 4
+LATEST_SCHEMA_VERSION = 5
 
 _UP_MIGRATIONS = {
     1: """
@@ -105,6 +105,35 @@ _UP_MIGRATIONS = {
             last_sequence INTEGER NOT NULL
         );
     """,
+    5: """
+        CREATE TABLE runtime_agents (
+            agent_id TEXT PRIMARY KEY,
+            authorities_json TEXT NOT NULL
+        );
+        CREATE TABLE runtime_skills (
+            skill_id TEXT PRIMARY KEY,
+            digest TEXT NOT NULL,
+            authorities_json TEXT NOT NULL,
+            content BLOB NOT NULL
+        );
+        CREATE TABLE runtime_providers (
+            provider_id TEXT PRIMARY KEY,
+            capabilities_json TEXT NOT NULL,
+            deterministic INTEGER NOT NULL,
+            enabled INTEGER NOT NULL,
+            adapter_kind TEXT NOT NULL
+        );
+        CREATE TABLE runtime_routes (
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+            agent_id TEXT NOT NULL,
+            skill_id TEXT NOT NULL,
+            provider_id TEXT NOT NULL,
+            capability TEXT NOT NULL,
+            input_sha256 TEXT NOT NULL,
+            output_json TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+    """,
 }
 
 _DOWN_MIGRATIONS = {
@@ -127,6 +156,12 @@ _DOWN_MIGRATIONS = {
     4: """
         DROP TABLE live_state;
         DROP TABLE live_events;
+    """,
+    5: """
+        DROP TABLE runtime_routes;
+        DROP TABLE runtime_providers;
+        DROP TABLE runtime_skills;
+        DROP TABLE runtime_agents;
     """,
 }
 

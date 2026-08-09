@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 from collections.abc import Sequence
@@ -39,6 +40,8 @@ from services.control_plane.workflows import (
     WorkflowStore,
     WorkflowStoreConfig,
 )
+from services.runtime import GovernedRuntime
+from services.runtime import RuntimeError as GovernedRuntimeError
 
 
 class ControlPlaneHTTPServer(ThreadingHTTPServer):
@@ -52,11 +55,13 @@ class ControlPlaneHTTPServer(ThreadingHTTPServer):
         control_plane: ControlPlane,
         workflow_store: WorkflowStore,
         live_state: LiveStateTransport,
+        governed_runtime: GovernedRuntime,
     ) -> None:
         super().__init__(server_address, ControlPlaneRequestHandler)
         self.control_plane = control_plane
         self.workflow_store = workflow_store
         self.live_state = live_state
+        self.governed_runtime = governed_runtime
 
 
 class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
@@ -85,6 +90,12 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                             )
                         ]
                     },
+                )
+                return
+            if path == "/v1/runtime/routes":
+                self._send_json(
+                    HTTPStatus.OK,
+                    {"routes": self.server.governed_runtime.routes()},
                 )
                 return
             if path == "/v1/live/snapshot":
@@ -156,6 +167,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except LiveStateError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except GovernedRuntimeError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except ValueError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
 
@@ -175,6 +188,9 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                     _required_object(body, "state"),
                 )
                 self._send_json(HTTPStatus.CREATED, _live_event_json(event))
+                return
+            if path == "/v1/runtime/commands":
+                self._send_json(HTTPStatus.OK, self._runtime_command(body))
                 return
             record: GoalRecord | JobRecord
             if path == "/v1/goals":
@@ -206,6 +222,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
         except WorkflowError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except LiveStateError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except GovernedRuntimeError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except (json.JSONDecodeError, TypeError, UnicodeDecodeError, ValueError) as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
@@ -324,6 +342,47 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             return {"acknowledged": True}
         raise ValueError("unknown workflow operation")
 
+    def _runtime_command(self, payload: dict[str, Any]) -> dict[str, Any]:
+        operation = _required_string(payload, "operation")
+        runtime = self.server.governed_runtime
+        if operation == "register_agent":
+            agent_id = _required_string(payload, "agent_id")
+            runtime.register_agent(
+                agent_id, frozenset(_string_tuple(payload, "authorities"))
+            )
+            return {"agent_id": agent_id, "registered": True}
+        if operation == "register_skill":
+            skill_id = _required_string(payload, "skill_id")
+            try:
+                content = base64.b64decode(
+                    _required_string(payload, "content_base64"), validate=True
+                )
+            except ValueError as error:
+                raise GovernedRuntimeError("skill content is not valid base64") from error
+            digest = runtime.register_skill(
+                skill_id,
+                content,
+                frozenset(_string_tuple(payload, "authorities")),
+            )
+            return {"skill_id": skill_id, "digest": digest, "registered": True}
+        if operation == "register_provider":
+            provider_id = _required_string(payload, "provider_id")
+            runtime.register_provider(
+                provider_id,
+                frozenset(_string_tuple(payload, "capabilities")),
+                adapter_kind=_required_string(payload, "adapter_kind"),
+                enabled=_optional_bool(payload, "enabled", default=True),
+            )
+            return {"provider_id": provider_id, "registered": True}
+        if operation == "execute":
+            return runtime.execute(
+                _required_string(payload, "agent_id"),
+                _required_string(payload, "skill_id"),
+                _required_string(payload, "capability"),
+                _required_object(payload, "payload"),
+            )
+        raise ValueError("unknown runtime operation")
+
 
 def _record_json(record: GoalRecord | JobRecord) -> dict[str, Any]:
     if isinstance(record, GoalRecord):
@@ -415,6 +474,13 @@ def _required_int(payload: dict[str, Any], key: str) -> int:
     return value
 
 
+def _optional_bool(payload: dict[str, Any], key: str, *, default: bool) -> bool:
+    value = payload.get(key, default)
+    if not isinstance(value, bool):
+        raise TypeError(f"{key} must be a boolean")
+    return value
+
+
 def _required_object(payload: dict[str, Any], key: str) -> dict[str, Any]:
     value = payload.get(key)
     if not isinstance(value, dict):
@@ -471,8 +537,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     control_plane = ControlPlane(ControlPlaneConfig(arguments.database, token))
     workflow_store = WorkflowStore(WorkflowStoreConfig(arguments.database))
     live_state = LiveStateTransport(arguments.database)
+    governed_runtime = GovernedRuntime(arguments.database)
     server = ControlPlaneHTTPServer(
-        (arguments.host, arguments.port), control_plane, workflow_store, live_state
+        (arguments.host, arguments.port),
+        control_plane,
+        workflow_store,
+        live_state,
+        governed_runtime,
     )
     host, port = server.server_address[:2]
     ready = {

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import base64
 import json
 import os
 import sqlite3
@@ -526,3 +527,101 @@ def test_live_state_replay_reorder_gap_snapshot_and_dlp_cross_boundary(
         recovered.restore_snapshot(LiveEvent(**snapshot_payload))
         assert recovered.last_sequence == 3
         assert recovered.state("job-live-1") == {"state": "completed"}
+
+
+def test_persisted_governed_runtime_executes_real_adapter_and_rejects_tamper(
+    tmp_path: Path,
+) -> None:
+    skill_bytes = b"immutable uppercase skill v1"
+    with _running_service(tmp_path) as (base_url, _):
+        registration_payloads: tuple[dict[str, object], ...] = (
+            {
+                "operation": "register_agent",
+                "agent_id": "agent-1",
+                "authorities": ["render"],
+            },
+            {
+                "operation": "register_skill",
+                "skill_id": "uppercase",
+                "content_base64": base64.b64encode(skill_bytes).decode(),
+                "authorities": ["render"],
+            },
+            {
+                "operation": "register_provider",
+                "provider_id": "z-local",
+                "capabilities": ["render"],
+                "adapter_kind": "uppercase-text",
+            },
+            {
+                "operation": "register_provider",
+                "provider_id": "a-local",
+                "capabilities": ["render"],
+                "adapter_kind": "uppercase-text",
+            },
+        )
+        for payload in registration_payloads:
+            status, _ = _request(
+                base_url, "POST", "/v1/runtime/commands", payload=payload
+            )
+            assert status == 200
+        status, execution = _request(
+            base_url,
+            "POST",
+            "/v1/runtime/commands",
+            payload={
+                "operation": "execute",
+                "agent_id": "agent-1",
+                "skill_id": "uppercase",
+                "capability": "render",
+                "payload": {"text": "real adapter output"},
+            },
+        )
+        assert status == 200
+        assert execution["provider_id"] == "a-local"
+        assert execution["deterministic_first"] is True
+        assert execution["output"] == {"text": "REAL ADAPTER OUTPUT"}
+        status, unapproved = _request(
+            base_url,
+            "POST",
+            "/v1/runtime/commands",
+            payload={
+                "operation": "execute",
+                "agent_id": "agent-1",
+                "skill_id": "unknown",
+                "capability": "render",
+                "payload": {"text": "denied"},
+            },
+        )
+        assert status == 400
+        assert unapproved == {"error": "skill is not approved"}
+
+    (tmp_path / "ready.json").unlink()
+    with _running_service(tmp_path) as (base_url, _):
+        status, routes = _request(base_url, "GET", "/v1/runtime/routes")
+        assert status == 200
+        assert len(routes["routes"]) == 1
+        assert routes["routes"][0]["output"] == {"text": "REAL ADAPTER OUTPUT"}
+
+    with sqlite3.connect(tmp_path / "state.sqlite3") as connection:
+        connection.execute(
+            "UPDATE runtime_skills SET content = ? WHERE skill_id = ?",
+            (b"tampered", "uppercase"),
+        )
+    (tmp_path / "ready.json").unlink()
+    with _running_service(tmp_path) as (base_url, _):
+        status, rejected = _request(
+            base_url,
+            "POST",
+            "/v1/runtime/commands",
+            payload={
+                "operation": "execute",
+                "agent_id": "agent-1",
+                "skill_id": "uppercase",
+                "capability": "render",
+                "payload": {"text": "must not execute"},
+            },
+        )
+        assert status == 400
+        assert rejected == {"error": "skill digest does not match approval"}
+        _, routes = _request(base_url, "GET", "/v1/runtime/routes")
+        assert len(routes["routes"]) == 1
