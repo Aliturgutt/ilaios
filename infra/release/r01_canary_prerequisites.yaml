@@ -1,0 +1,39 @@
+schema_version: "1.0"
+release_milestone: RELEASE.R01
+target_state: CANARY
+current_state: NOT_DEPLOYED
+promotion_performed: false
+explicit_human_promotion_approval: null
+dependency:
+  release_r00_evidence: dev/openclaw/evidence/RELEASE.R00/decision.yaml
+  ext_e01_state: BLOCKED_EXTERNAL
+required_before_promotion:
+  infrastructure:
+    - provider and account ownership approved
+    - region and deployment profile approved
+    - immutable OCI artifact built scanned signed and recorded
+    - production composition root and health endpoints implemented
+    - dependency adapters integration-tested
+    - backups and rollback target verified
+  exposure:
+    - dedicated canary hostname and valid TLS
+    - feature flags default off
+    - allowlist non-empty and explicitly approved
+    - bounded tenant region traffic and cost limits
+  operations:
+    - named release incident security and rollback owners
+    - logs metrics traces health capacity cost and security signals verified
+    - alerts and escalation delivery tested
+    - rollback rehearsal evidence recorded
+    - approved numerical health gates and observation window
+  security:
+    - workload identity and least privilege verified
+    - secret rotation revocation and compromise path tested
+    - tenant isolation and data residency verified
+    - independent security review findings dispositioned
+promotion_gate:
+  fail_closed: true
+  require_all_prerequisites: true
+  require_explicit_human_approval: true
+  automated_promotion_prohibited: true
+  release_r02_r03_out_of_scope: true

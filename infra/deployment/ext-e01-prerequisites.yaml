@@ -1,0 +1,70 @@
+schema_version: "1.0"
+package_id: EXT.E01
+state: BLOCKED_EXTERNAL
+deployment_performed: false
+repository:
+  url: https://github.com/Aliturgutt/ilaios
+  default_branch: master
+architecture_decisions:
+  required:
+    - id: deployment_profile
+      choices: [shared, dedicated, private]
+      value: null
+    - id: cloud_provider
+      value: null
+    - id: primary_region
+      value: null
+    - id: secondary_region
+      value: null
+    - id: workload_platform
+      choices: [managed_kubernetes, managed_container_runtime, virtual_machines]
+      value: null
+    - id: infrastructure_as_code
+      recommended_open_source_option: opentofu
+      value: null
+    - id: gitops_controller
+      choices: [argocd, flux, none]
+      value: null
+capabilities:
+  required:
+    - private_network
+    - oci_workload_runtime
+    - relational_store
+    - object_store
+    - durable_queue
+    - ingress_load_balancer
+    - managed_dns
+    - managed_tls
+    - secrets_manager
+    - kms_or_hsm
+    - container_registry
+    - centralized_logs_metrics_traces
+    - backup_and_restore
+  ownership_and_provider_mapping: null
+runtime_gaps:
+  blocking:
+    - production service composition root and process command
+    - OCI image build and immutable artifact identity
+    - liveness and readiness HTTP endpoints
+    - database migration and rollback procedure
+    - deployment-specific dependency adapters
+    - resource requests limits and capacity baseline
+    - backup restore and disaster-recovery implementation
+human_inputs:
+  required:
+    - cloud account and provider selection
+    - billing and contractual approval
+    - deployment profile and approved regions
+    - named infrastructure security operations and release owners
+    - approved numerical SLO RPO RTO retention and quota targets
+    - applicable jurisdiction data residency and compliance profile
+    - production tenant and billing account identifiers
+guardrails:
+  no_secrets_in_git: true
+  no_personal_production_accounts: true
+  least_privilege_workload_identity: true
+  encryption_in_transit_required: true
+  encryption_at_rest_required: true
+  tenant_and_region_boundaries_required: true
+  immutable_artifact_reference_required: true
+  release_state: NOT_DEPLOYED

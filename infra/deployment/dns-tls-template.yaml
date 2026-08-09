@@ -1,0 +1,38 @@
+schema_version: "1.0"
+state: TEMPLATE_ONLY
+deployment_performed: false
+domain:
+  registrable_domain: null
+  registrar: null
+  authoritative_dns_provider: null
+  account_owner: null
+records:
+  canary:
+    hostname: null
+    type: null
+    target: null
+    ttl_seconds: null
+    proxy_enabled: null
+  certificate_validation:
+    method: null
+    records: []
+tls:
+  certificate_authority: null
+  automation_controller: null
+  issuer_reference: null
+  certificate_owner: null
+  renewal_monitor_owner: null
+  minimum_protocol_version: null
+  certificate_transparency_monitoring: null
+security_controls:
+  dnssec_decision: null
+  caa_policy: null
+  registrar_lock: null
+  registrar_mfa: null
+  split_horizon_or_private_dns: null
+validation_required:
+  - authoritative DNS resolution
+  - certificate chain and hostname verification
+  - automated renewal dry run
+  - TLS policy scan
+  - expiration alert delivery
