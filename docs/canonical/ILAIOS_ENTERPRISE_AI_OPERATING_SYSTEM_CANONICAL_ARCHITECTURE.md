@@ -6,7 +6,7 @@
 **Active product authority:** ILAIOS is the single master brand and extensible platform.
 **Provenance:** Requirement-preserving migration of the legacy ILATEN canonical architecture supplied in `dev/openclaw/migration_input/`. ILATEN names historical architecture lineage only and is not a parallel active product.
 **Implementation truth:** This document specifies requirements. Repository code, tests, validation records, and evidence determine implementation status; documentation alone never proves implementation.
-**Completion boundary:** Sections 1–7.10 are consolidated below. Sections 8 and 9 were listed but not authored in the supplied legacy source and remain explicitly unincorporated rather than being fabricated.
+**Completion boundary:** Sections 1–7.10 preserve the accepted legacy architecture. Sections 8 and 9 are authoritative ILAIOS additions approved by the Human Architecture Decision Package of 9 August 2026; they complete the previously empty allocations without representing future capabilities as implemented.
 
 **Version:** 1.0
 
@@ -236,7 +236,7 @@ The handbook shall describe ILAIOS as a product and engineering system, not as a
 
 ### 8. Governance & Operations
 
-**Source state:** NOT PRESENT in the supplied legacy authority. The headings below are an unimplemented allocation, not canonical substantive requirements.
+**Authority state:** Authored under the approved ILAIOS Enterprise Completion decision package. Content is canonical architecture; implementation status remains evidence-bound.
 
 8.1 Organizational and Operating Model
 
@@ -256,7 +256,7 @@ The handbook shall describe ILAIOS as a product and engineering system, not as a
 
 ### 9. Enterprise Roadmap & Future Evolution
 
-**Source state:** NOT PRESENT in the supplied legacy authority. The headings below are an unimplemented allocation, not canonical substantive requirements.
+**Authority state:** Authored under the approved ILAIOS Enterprise Completion decision package. Roadmap classifications are governance states, not implementation claims.
 
 9.1 Product Roadmap
 
@@ -34390,3 +34390,390 @@ The following invariants are binding:
 - architecture-significant logging decisions require an authorized ADR.
 
 A Logging implementation is non-conformant if it treats operational records, queries, indexes, provider logs, or analytics as authority, validation, canonical audit, or evidence; logs secrets, credentials, reusable capabilities, raw prompts, raw outputs, customer content, or unnecessary protected data; permits record injection or identity forgery; merges tenant data without approved isolation; silently samples, drops, suppresses, truncates, overwrites, or deletes required records; relies on container-local or node-local survival for required retention; uses centralization or hashing to claim completeness; allows logging failure to bypass Policy, Approval, capability, Tool Gateway, Validation, Audit, or Evidence controls; grants unrestricted standing access; retains records indefinitely by default; hides coverage, clock, source, provider, or bootstrap limitations; or gives a collector, sink, query, dashboard, detection, logging vendor, provider, customer, sales commitment, model output, framework, or engineering preference architectural authority.
+
+# 8. Governance & Operations
+
+## 8.1 Organizational and Operating Model
+
+### Purpose and Authority
+
+ILAIOS shall operate through an explicit governance system that separates product direction, architecture authority, security authority, operational responsibility, implementation responsibility, approval authority, independent verification, and audit oversight. Governance shall bind humans, services, agents, models, providers, deployment automation, support personnel, and temporary actuators. No model, agent, provider, tool, customer preference, commercial commitment, or operational convenience may create or expand authority outside this system.
+
+The operating model shall support a Single-Maintainer Bootstrap Profile without misrepresenting it as independent Enterprise governance. Where one person temporarily occupies multiple roles, the overlap, missing independence, compensating controls, review date, and exit criteria shall be recorded. Controls requiring independent custody, approval, verification, or external assurance shall remain blocked, externally fulfilled, or explicitly constrained; self-review shall never be labeled independent.
+
+### Governance Bodies and Functions
+
+The operating model shall define accountable functions for product governance, architecture governance, security governance, AI and model governance, data and privacy governance, change and release governance, service operations, incident and continuity governance, risk and compliance governance, FinOps governance, vendor governance, audit governance, and evidence stewardship. A small organization may combine personnel but shall not merge incompatible decision rights.
+
+Each function shall have a charter, accountable owner, delegated decision scope, required competence, escalation path, meeting or review cadence, durable decision record, and succession or continuity arrangement. Decisions affecting non-waivable controls, cross-tenant access, cryptographic custody, evidence integrity, release promotion, or irreversible customer impact shall require the exact independent participation defined by policy.
+
+### Operating Profiles
+
+Every deployment shall declare an approved Operating Profile covering environment, deployment model, supported service tier, tenant model, regions, data classes, regulatory modules, support model, operational hours, recovery capabilities, and responsible parties. Profiles shall distinguish development, test, staging, and production. Production authority, credentials, data, evidence, networks, and change paths shall not be inferred from a lower environment.
+
+The canonical deployment architecture is cloud-portable multi-tenant SaaS with separated control, execution, and data planes; strict logical tenant isolation; stateless services where practical; durable external state; horizontal scalability; provider adapters; and portable infrastructure configuration where feasible. This decision does not select, purchase, or certify a cloud provider.
+
+### RACI and Ownership Boundaries
+
+Every material capability and control shall have exactly one accountable owner and explicit responsible, consulted, and informed roles. RACI records shall cover at minimum identity, authorization, tenant isolation, policy, approvals, agents, skills, providers, model registry, Tool Gateway, secrets, keys, privacy, DLP, evidence, audit, validation, FinOps, infrastructure, observability, backups, recovery, incidents, releases, exceptions, and deprecation.
+
+Ownership shall not imply unilateral authority. Service owners cannot waive security controls; security owners cannot silently change product acceptance; operators cannot redefine evidence; providers cannot define ILAIOS policy; and developers cannot approve their own high-risk production changes where independence is required.
+
+### Quality Gates
+
+An Operating Profile shall not become production-eligible until ownership, RACI, escalation, on-call coverage where applicable, access boundaries, change authority, recovery responsibility, evidence custody, provider responsibility, and known governance limitations are approved and independently reviewable.
+
+## 8.2 Roles and Responsibilities
+
+### Canonical Roles
+
+ILAIOS shall define human roles for product owner, architecture authority, security authority, privacy authority, data steward, AI/model governance owner, service owner, system operator, incident commander, change authority, release authority, approver, implementer, independent verifier, auditor, evidence custodian, FinOps owner, vendor owner, and business-continuity owner. Machine roles shall be separate identities with bounded capabilities and shall never inherit human accountability.
+
+Every machine agent manifest shall include a stable machine identifier, human-readable alias, role, team, capabilities, permissions, accepted inputs, produced outputs, dependencies, allowed callers, allowed targets, escalation path, verifier, version, and lifecycle status. Aliases may change without changing machine identity. A missing or ambiguous manifest field shall fail closed for governed execution.
+
+### Separation of Duties
+
+The proposer, approver, executor, verifier, and evidence custodian shall be separated when risk policy requires. A generator shall not independently verify its own material output. A model or agent shall not approve its own authority, budget, exception, release, or evidence. Privileged administration shall be separate from ordinary access and shall use separately authorized identities and sessions.
+
+### Delegation and Succession
+
+Delegation shall be explicit, scoped, time-bounded, revocable, attributable, and no broader than the delegator's authority. Delegation shall not transfer accountability or bypass required independence. Acting assignments, emergency substitutions, and succession shall be recorded and reviewed.
+
+### Access Review
+
+Role assignments, service identities, machine agents, privileged groups, provider access, break-glass access, and delegated authority shall undergo periodic and event-driven review. Termination, role change, compromise, inactivity, or control failure shall trigger timely revocation.
+
+## 8.3 Audit Governance
+
+### Audit Independence and Scope
+
+Audit governance shall define the independent assessment scope, cadence, competence, access, evidence sources, sampling limitations, issue classification, remediation ownership, and reporting route. Operational logging, dashboards, provider attestations, and self-authored evidence may inform audit but shall not replace independent validation or canonical evidence.
+
+Auditors shall have read-only, least-privilege access to the evidence required for their approved scope. Audit access itself shall be attributable, monitored, and subject to tenant, privacy, retention, and legal restrictions.
+
+### Findings and Remediation
+
+Audit findings shall have stable identifiers, severity, affected controls and tenants, evidence references, accountable owner, remediation plan, due date, residual risk, verification requirement, and closure decision. Management acceptance shall not erase a finding or alter historical evidence. Overdue or repeated findings shall escalate according to risk.
+
+### Assurance Claims
+
+ILAIOS shall not claim certification, regulatory compliance, control effectiveness, non-repudiation, or independent assurance without the exact external or independent evidence required for that claim. Scope, date, exclusions, dependencies, and expiration shall accompany any assurance statement.
+
+## 8.4 Risk Management
+
+### Risk Model
+
+Risk governance shall maintain a versioned taxonomy for security, privacy, AI/model, operational, availability, financial, legal, compliance, vendor, data, safety, and strategic risk. Risk records shall identify assets, threats or failure modes, likelihood, impact, affected tenants and data, existing controls, residual risk, owner, treatment, target date, monitoring, and evidence.
+
+Risk classification shall drive approval, verification V0-V4, authority scope, sandboxing, DLP, budget, rollout, observability, recovery, and human-in-the-loop requirements. Models may recommend classifications but cannot determine or waive binding treatment.
+
+### Risk Treatment
+
+Accepted treatments are avoid, reduce, transfer where real and evidenced, or explicitly accept within authorized appetite. Risk acceptance shall be time-bounded and cannot waive law, tenant isolation, evidence integrity, authorization, required human accountability, or other non-waivable controls. Material residual risk shall be visible to the accountable decision maker before approval.
+
+### AI and Agent Risk
+
+AI risk assessment shall include prompt injection, indirect prompt injection, tool manipulation, data exfiltration, training-data or provider leakage, hallucination, insecure output handling, model substitution, provider compromise, excessive agency, runaway retries, context poisoning, memory poisoning, identity confusion, and verifier collusion. Mitigation shall use deterministic policy, permission firewalls, content and DLP controls, bounded tools, independent verification, rate and budget limits, circuit breakers, and escalation.
+
+## 8.5 Change Advisory
+
+### Change Classes
+
+Changes shall be classified as standard, normal, emergency, security-critical, architecture-significant, data-affecting, model/provider, policy, or release/promotion changes. Each class shall define required review, tests, approvals, evidence, rollback, scheduling, communication, and post-change verification.
+
+Architecture-significant changes require an ADR. Security, policy, grant, approval, verifier, audit, evidence, tenant-isolation, DLP, secrets, cryptographic, billing, or release controls shall not be silently weakened through ordinary change workflows.
+
+### Release Governance
+
+Capability maturity and ReleaseState remain independent. Test success or `VERIFIED` maturity shall not imply deployment. RELEASE.R01, RELEASE.R02, and RELEASE.R03 require explicit authorized human promotion decisions, bounded exposure, health gates, evidence, and tested rollback. No automation may infer promotion permission.
+
+### Emergency Change
+
+Emergency changes shall use the smallest safe scope, separately authenticated privileged access, recorded rationale, real-time or retrospective independent review according to urgency, continuous evidence, rollback or containment, expiry, and mandatory follow-up. Emergency status shall not create permanent bypasses.
+
+## 8.6 Compliance Operations
+
+### Modular Regulatory Profiles
+
+Compliance controls shall be implemented as modular, versioned profiles bound to applicable tenants, regions, data classes, contracts, and services. A profile shall state its authority, scope, exclusions, evidence requirements, control owners, assessment method, review cadence, and retirement conditions.
+
+Enabling a profile shall not constitute certification. ILAIOS shall report capability, implementation, assessment, and certification states separately. Unknown applicability shall escalate rather than default to a compliance claim.
+
+### Control Mapping
+
+Canonical requirements may map to multiple external frameworks, but external framework language shall not override stricter ILAIOS controls. Mappings shall retain source version, interpretation, evidence, assessor, gaps, and review date. One test or artifact shall not be treated as universal compliance proof.
+
+### Data Subject and Customer Operations
+
+Compliance operations shall support governed access, export, correction where applicable, deletion, restriction, objection, retention, and legal-hold workflows. Requests shall verify identity and authority, preserve tenant scope, minimize disclosure, record approvals and exceptions, and produce auditable disposition evidence.
+
+## 8.7 Business Continuity
+
+### Continuity Program
+
+Each critical service and dependency shall have an owned Business Continuity Plan identifying critical outcomes, maximum tolerable disruption inputs, dependency alternatives, staffing and communication plans, data and evidence requirements, recovery strategy, exercise cadence, and improvement actions. Concrete RPO, RTO, SLO, and contractual values shall remain deployment-profile configuration until approved for a business tier.
+
+### Backup and Restore Governance
+
+Backups shall be encrypted, tenant- and region-aware, access-controlled, inventoried, retention-governed, integrity-checked, and isolated from ordinary compromise paths. Backup creation alone does not prove recoverability. Restore tests shall verify data, authorization, tenant isolation, keys, evidence continuity, version compatibility, and application behavior.
+
+### Disaster Recovery Governance
+
+Disaster recovery shall define declaration authority, incident command, recovery order, eligible regions and providers, data-consistency treatment, failover and failback, credential and key access, communications, evidence collection, and return-to-normal criteria. Failover shall not select an ineligible tenant, region, provider, release, data authority, or security posture.
+
+Exercises shall record scenario, participants, actual timings, achieved data point, failures, manual actions, evidence, corrective work, and independent review. Unexercised assumptions shall remain explicit gaps.
+
+## 8.8 Operational Excellence
+
+### Service-Level Management
+
+Every production service shall define measurable SLIs, configurable SLOs, measurement windows, data-quality rules, error budgets, owners, and escalation policy. Numerical targets shall be selected by approved deployment profile and business tier and shall not be invented as contractual guarantees.
+
+Error-budget exhaustion shall constrain risky change and trigger review; it shall never waive security, authorization, privacy, evidence, or recovery controls. Missing or unreliable telemetry shall not be interpreted as successful service-level performance.
+
+### Health, Monitoring, and Alerting
+
+Services shall expose authenticated, minimal health and readiness signals that distinguish process liveness, dependency readiness, safe traffic acceptance, and degraded operation. Health signals shall not reveal secrets or create authorization. Monitoring shall cover availability, correctness, latency, saturation, queues, dependencies, security, tenant isolation, backups, recovery, costs, quotas, and evidence pipelines.
+
+Alerts shall have stable identity, severity, owner, routing, deduplication, inhibition, runbook, escalation, and closure evidence. Alert suppression and maintenance windows shall be scoped, time-bounded, attributable, and incapable of hiding protected security or evidence failures.
+
+### Incident Governance
+
+The incident model shall define severities, declaration criteria, incident commander authority, functional roles, escalation, communications, containment, evidence preservation, recovery, customer and regulatory notification decision paths, and closure. High-severity incidents shall receive independent post-incident review.
+
+Post-incident reviews shall be blameless toward people but exact about control and system failures. They shall record timeline, impact, detection, contributing conditions, authority use, evidence limitations, corrective actions, owners, due dates, verification, and lessons incorporated into architecture, tests, runbooks, or policy.
+
+### Runbooks and Rollback
+
+Material operational procedures shall have versioned runbooks with prerequisites, authorization, tenant and environment scope, safe checks, stop conditions, rollback or containment, evidence, and escalation. Runbooks shall be exercised proportionally to risk. A rollback shall preserve data and authority correctness and shall not restore a vulnerable, revoked, expired, or ineligible state.
+
+### Capacity and Cost Operations
+
+Capacity governance shall cover admission control, quotas, concurrency, queue depth, saturation, autoscaling signals, provider capacity, GPU/runtime capacity, and load-shedding priorities. Cost governance shall cover model/API/token/GPU/runtime use, storage, network, logging, evidence, retries, and external providers.
+
+Per-user, tenant, project, job, provider, and model usage shall be attributable where applicable. Warning thresholds shall notify without granting authority. Hard ceilings shall block or safely degrade new billable work. Retry-cost ceilings, concurrency limits, rate limits, circuit breakers, and kill switches shall prevent runaway agents and economic amplification.
+
+## 8.9 AI, Model, Provider, and FinOps Governance
+
+### Registry Governance
+
+Models and providers shall be admitted through versioned registries. A model record shall include stable model ID, provider ID, version or immutable selector, capabilities, context window, supported input and output classes, token limits, data-handling classification, residency constraints, security status, cost basis, evaluation evidence, allowed purposes, denied purposes, fallback eligibility, deprecation state, and owner.
+
+A provider record shall include stable provider ID, adapters, authentication boundary, supported capabilities, regions, data retention and training terms, subprocessors where applicable, availability and quota behavior, cost meters, security evidence, incident contacts, exit plan, and status. Registry admission never grants execution authority.
+
+### Routing and Fallback
+
+Routing shall be deterministic and evidence-producing for the same approved inputs and registry state. It shall enforce model/provider allow and deny policy, tenant and regional eligibility, capability needs, security classification, context and token bounds, budgets, rate limits, provider health, and deterministic-first selection. A fallback shall undergo the same checks and shall not silently change data authority, risk, quality, cost, or model class.
+
+### Usage and Budget Governance
+
+Usage controls shall support per-user, per-tenant, per-project, per-job, per-provider, and per-model scopes. They shall enforce input tokens, output tokens, context window, requests, rate, concurrency, API cost, GPU/runtime, daily and monthly budgets, retry cost, and total job ceilings. The strictest applicable limit shall win.
+
+Unknown pricing, stale pricing beyond policy, missing attribution, exhausted reservation, quota exhaustion, or anomalous usage shall follow explicit fail-safe policy. Hard ceilings block new governed consumption; they shall not be converted into warnings by a model or provider. Costs shall be estimated before authorization, reserved before billable execution, measured after execution, reconciled, and written to FinOps evidence with variance.
+
+### Security AI and Agent Governance
+
+Prompt and context inputs shall be classified, minimized, origin-labeled, and passed through injection and DLP controls. Untrusted instructions shall not alter system policy, authority, secrets, tool permissions, evidence, or budgets. Outputs shall be treated as untrusted until validated for their target use.
+
+Every agent shall operate under a permission firewall and time-bound ExecutionGrant. Allowed callers and targets shall be explicit. Security scanning, independent verification, audit/evidence, circuit breakers, incident escalation, and revocation shall apply according to risk. No agent receives unrestricted authority and no LLM may bypass policy, budget, approval, authorization, DLP, secrets, or evidence controls.
+
+## 8.10 Data, Privacy, and Evidence Governance
+
+### Tenant and Data Governance
+
+`tenant_id` shall be derived from trusted identity context and enforced at authoritative access and storage boundaries. Data stores, caches, queues, artifacts, indexes, telemetry, backups, exports, and deletion workflows shall preserve tenant scope. Cross-tenant access is denied by default and requires an exact, separately governed administrative or legal path.
+
+Data shall have owner, classification, purpose, allowed uses, residency, retention, deletion, legal-hold, access, lineage, and evidence requirements. Collection and processing shall follow minimization and purpose limitation. Regional residency, retention, and regulatory profiles shall be configurable without creating silent cross-region movement.
+
+### Privacy Operations
+
+Privacy review shall cover new data sources, purposes, model/provider transfers, telemetry, support access, exports, learning, and retention. High-risk processing shall require documented assessment and approval. DLP shall operate before external egress and on applicable telemetry, live views, artifacts, and provider requests.
+
+### Evidence and Approval Governance
+
+Approval policy shall define accountable approver class, independence, information presented, scope, expiry, revocation, and reapproval triggers. Approval records shall be durable, attributable, and bound to immutable request context. Approval cannot validate the result it authorizes.
+
+Evidence governance shall define material event coverage, schema, canonicalization, chain or signature claims, custody, access, retention, selective disclosure, verification, export, and incident treatment. Operational telemetry does not become canonical evidence unless explicitly admitted through the governed evidence system with provenance and validation.
+
+## 8.11 Vendor and Provider Governance
+
+Providers shall undergo risk-based due diligence before admission and periodic review thereafter. Review shall cover security, privacy, data use, residency, availability, continuity, financial viability, contractual dependencies, subprocessor change, incident notification, audit rights where applicable, portability, deletion, and exit.
+
+Adapters shall isolate provider-specific behavior. Provider identifiers, contracts, data formats, cost meters, and failure semantics shall be explicit. ILAIOS shall retain a tested exit or substitution path proportionate to criticality. A provider outage, policy change, or commercial pressure cannot waive canonical controls.
+
+## 8.12 Exception, Review, and Lifecycle Governance
+
+### Exceptions and Waivers
+
+Exceptions shall have stable identifier, exact requirement, rationale, scope, owner, approver, risk, compensating controls, monitoring, evidence, start, expiry, and remediation or exit plan. Exceptions shall be visible during authorization and verification. Expired exceptions fail closed.
+
+No exception may authorize cross-tenant leakage, fabricate evidence, delegate authorization to a model, conceal implementation state, bypass required human accountability, or claim certification without proof.
+
+### Periodic Review
+
+Canonical policies, risk registers, roles, registries, providers, agents, models, exceptions, access, SLOs, runbooks, backups, recovery plans, data schedules, and control evidence shall have risk-based review cadences and event-driven review triggers. Review shall produce durable findings and follow-up evidence.
+
+### Deprecation and Retirement
+
+Lifecycle governance shall define proposed, experimental, active, deprecated, blocked, retired, and revoked states where applicable. Deprecation shall identify replacement, compatibility window, migration path, affected tenants, security treatment, data and evidence retention, rollback limits, and final removal criteria.
+
+Retirement shall revoke authority and credentials, stop routing, preserve required evidence, dispose of data and secrets according to policy, update registries and documentation, and verify that hidden dependencies do not remain.
+
+### Governance Invariants
+
+The following invariants are binding:
+
+- ILAIOS remains the only active product and platform;
+- deterministic policy and authorization remain outside AI/model authority;
+- no model, agent, provider, operator, or commercial function may waive canonical controls;
+- tenant isolation, least privilege, human accountability, independent validation, audit, and evidence remain continuous;
+- documentation and telemetry do not prove implementation;
+- capability maturity and release state remain independent;
+- production promotion requires explicit human authority and is outside ordinary implementation automation;
+- future capability is never represented as current implementation;
+- bootstrap operation is never represented as independent Enterprise assurance; and
+- governance decisions and exceptions remain attributable, reviewable, time-bounded where applicable, and evidence-backed.
+
+# 9. Enterprise Roadmap & Future Evolution
+
+## 9.1 Product Roadmap
+
+### Roadmap Authority and State Model
+
+The roadmap governs evolution without weakening canonical architecture or overstating implementation. Every roadmap item shall have a stable identifier, owner, capability scope, dependencies, target maturity, evidence requirements, risks, compatibility impact, migration impact, and lifecycle state.
+
+The only permitted roadmap classifications are:
+
+- **CURRENT / REQUIRED FOR V1:** binding V1 scope; implementation still requires exact repository and validation evidence;
+- **PLANNED:** approved direction with dependencies or scheduling outstanding;
+- **OPTIONAL:** supported direction that is not required for the baseline product;
+- **EXPERIMENTAL:** isolated evaluation with no production authority or compatibility promise;
+- **FUTURE:** strategic possibility requiring later governance and architecture decisions.
+
+Classification is not implementation status. `CURRENT / REQUIRED FOR V1` may remain missing; `PLANNED` is not active; and `EXPERIMENTAL` shall not receive production data, credentials, authority, or release claims without separate approval.
+
+### Current / Required for V1
+
+V1 requires the governed control plane, versioned contracts, bounded goal-to-workflow execution, stable agent and provider identities, deterministic routing, scoped grants, durable workflows, worker fencing, evidence, validation, tenant enforcement, privacy/DLP, approvals, FinOps controls, Video Factory integration, non-authoritative client projections, and production-readiness evidence defined by the master implementation specification. Release promotion remains a separate human decision.
+
+The enterprise completion decisions in Section 8 are required architecture for V1. A reference implementation may prove bounded behavior without claiming deployed production infrastructure, external certification, cloud ownership, or contractual service levels.
+
+### Planned
+
+Planned evolution includes deeper enterprise federation integrations, customer-managed keys, configurable regulatory modules, expanded deployment automation, additional factory domains, broader provider portability, enhanced operational tooling, and mobile enablement after governed dependencies pass.
+
+### Optional, Experimental, and Future
+
+Optional modules may include deployment-profile-specific integrations and customer-controlled operations. Experimental work may evaluate new models, agent patterns, privacy techniques, verification methods, or infrastructure adapters in isolated non-authoritative environments. Future work may extend the platform ecosystem but shall not bypass current gates or be advertised as implemented.
+
+## 9.2 Technology Roadmap
+
+### Platform Evolution
+
+Platform evolution shall preserve separated control, execution, and data planes; portable infrastructure boundaries; tenant-aware authorization; durable external state; stateless service design where practical; horizontal scalability; and provider adapters. Technology adoption shall follow ADR, threat model, supply-chain assessment, portability analysis, operational readiness, migration plan, and rollback evidence.
+
+OCI-compatible packaging and orchestrated workloads are supported architectural targets, not proof of a deployed orchestrator. Durable relational data, object/artifact storage, queue/event execution, private segmentation, and ingress/API boundaries shall be represented by technology-neutral contracts with production-capable reference implementations where safe.
+
+### Deployment Evolution
+
+Deployment profiles may evolve from local/reference through managed cloud-portable SaaS, dedicated, private, hybrid, and on-premises profiles. Each profile shall declare supported controls and limitations. No profile may weaken tenant, identity, cryptographic, DLP, evidence, or authorization requirements; unsupported controls block the affected capability.
+
+Environment promotion shall preserve separation among development, test, staging, and production. Configuration, secrets, data, identities, evidence, and authority shall not drift between environments without governed migration.
+
+### Infrastructure Portability
+
+Infrastructure configuration shall remain portable where feasible through explicit interfaces, declarative state, open packaging formats, exportable data, replaceable adapters, and documented provider-specific extensions. Portability claims require tested migration or substitution evidence and shall state limitations.
+
+## 9.3 AI Capability Roadmap
+
+### Model Evolution
+
+Model evolution shall occur through the governed registry, evaluation, allow/deny policy, provider adapters, compatibility rules, cost controls, and controlled rollout. New model versions shall not silently replace accepted behavior. Evaluations shall cover capability, safety, privacy, injection resistance, data handling, latency, cost, determinism, and target-use validation.
+
+Context windows, token limits, modalities, tool-use capabilities, residency, and provider terms shall remain metadata-bound. Larger context or stronger model claims do not create greater authority.
+
+### Agent Evolution
+
+Agent evolution may add specialization, teams, delegation, memory proposals, planning, coordination, and new skills only while stable identity, explicit manifests, permission firewalls, scoped grants, caller/target restrictions, independent verification, budget limits, evidence, revocation, and incident escalation remain enforced.
+
+Self-improvement or controlled self-development remains proposal-based and isolated. No agent may directly modify production, its governing policy, verifier, audit controls, evidence chain, authorization semantics, or release state.
+
+### Learning and Knowledge Evolution
+
+Knowledge and learning capabilities shall preserve source provenance, tenant scope, confidence, purpose, retention, deletion, correction, and human accountability. Runtime observations may propose updates but shall not silently become trusted memory, policy, or canonical truth.
+
+## 9.4 Enterprise Adoption
+
+Enterprise adoption shall progress through evidence-backed deployment profiles and capability maturity rather than marketing stage names. Onboarding shall establish tenant identity, data classification, roles, integrations, residency, retention, support, recovery, budgets, providers, and acceptance criteria.
+
+Pilots shall use bounded scope, synthetic or approved data, explicit success and stop criteria, controlled provider access, cost ceilings, rollback, and evidence. A pilot does not prove production readiness or compliance.
+
+Expansion to additional teams, data classes, regions, providers, factories, or authority levels shall require impact assessment and updated acceptance. Customer-specific requests cannot silently fork canonical controls or create undocumented architecture.
+
+## 9.5 Future Modules
+
+### Factory and Capability Modules
+
+Additional factories, enterprise connectors, analytics, knowledge services, security automation, and developer ecosystems may be classified as Planned, Optional, Experimental, or Future. Each module shall use canonical identity, contracts, policy, grants, tenant boundaries, DLP, evidence, FinOps, validation, and lifecycle governance.
+
+### Desktop, Web, and Mobile Evolution
+
+Desktop, web, and mobile clients remain non-authoritative command/query/event projections. Shared client contracts may evolve through versioned compatibility rules. Platform-specific secure storage, permissions, signing, distribution, accessibility, and lifecycle requirements shall be independently validated. A client shall not absorb backend workflow truth, secrets, policy authority, or privileged execution.
+
+### API and SDK Ecosystem
+
+APIs and SDKs shall use versioned contracts, authenticated tenant context, least privilege, bounded scopes, rate and budget limits, idempotency, DLP, audit/evidence, deprecation policy, and compatibility tests. SDK convenience cannot expand authority or conceal provider-specific behavior.
+
+Third-party extensions shall be registered, signed or otherwise integrity-bound as appropriate, permission-scoped, supply-chain assessed, revocable, and isolated. Marketplace or ecosystem status shall not imply trust.
+
+## 9.6 Long-Term Vision
+
+ILAIOS may evolve into a broad enterprise trust and execution layer for governed AI-assisted work. The enduring boundary is that probabilistic intelligence proposes and assists while deterministic control, human accountability, constrained execution, independent validation, and evidence govern material action.
+
+Long-term evolution shall favor interoperable contracts, replaceable models and providers, portable deployment, independently verifiable controls, privacy-preserving data use, scalable operations, and explicit economics. Novel capability shall not outrun authority, evidence, security, recovery, or customer control.
+
+## 9.7 Security, Observability, and Scalability Evolution
+
+Security evolution shall maintain crypto-agility, provider-neutral KMS/HSM compatibility, short-lived identity, continuous authorization, tenant isolation, supply-chain integrity, prompt-injection defense, DLP, evidence, and incident learning. Customer-managed keys remain Planned until custody, availability, recovery, revocation, and support boundaries are implemented and validated.
+
+Observability evolution shall expand structured logs, metrics, traces, correlation, service-level measurement, capacity, security, recovery, and cost signals while preserving minimization and tenant isolation. Observability remains non-authoritative and does not become canonical evidence without governed admission.
+
+Scalability evolution shall use measured demand, admission, quotas, backpressure, concurrency, partitioning, fairness, load shedding, autoscaling, and cost constraints. Scale tests shall include security, privacy, evidence, and economic amplification failure modes.
+
+## 9.8 Data and Knowledge Evolution
+
+Data architecture may add regional stores, advanced lineage, privacy-enhancing techniques, customer-controlled data planes, richer knowledge graphs, and governed learning. Each evolution shall preserve tenant identity, purpose, minimization, residency, retention, legal hold, deletion, export, provenance, and correction.
+
+Data format, schema, index, embedding, model, and knowledge migrations shall be versioned, reversible where required, integrity-checked, tenant-scoped, and evidence-backed. Derived data shall not escape the obligations of its source.
+
+## 9.9 Compatibility, Migration, and Deprecation Policy
+
+### Compatibility
+
+Compatibility policy shall cover API, event, schema, evidence, workflow, agent, skill, provider, model metadata, client, configuration, and stored-data contracts. Compatibility guarantees shall be explicit by version and maturity. Consumers shall not infer compatibility from similar names or shapes.
+
+Breaking changes require versioning, impact analysis, migration tooling, test fixtures, security review, communication, coexistence or cutover policy, rollback limits, and evidence. Security fixes may shorten compatibility windows through authorized emergency governance, but shall not conceal impact.
+
+### Migration
+
+Migrations shall have stable identity, source and target, tenant and environment scope, preconditions, backups, dry-run or bounded verification where feasible, progress and reconciliation, stop conditions, rollback or forward-recovery strategy, evidence, and acceptance. Partial or unknown migration state shall fail closed for affected authority.
+
+### Deprecation
+
+Deprecation shall publish affected versions and capabilities, security implications, replacement, dates or decision gates, customer responsibilities, telemetry used, data and evidence treatment, and final removal criteria. Usage telemetry alone shall not authorize removal. Retired versions shall have credentials, routing, and support authority revoked.
+
+## 9.10 Roadmap Governance and Invariants
+
+Roadmap review shall occur periodically and on material changes in threat, law, provider terms, technology support, customer need, cost, incidents, or evidence. Changes to V1 scope, canonical boundaries, or release policy require authorized governance and applicable ADRs.
+
+The following roadmap invariants are binding:
+
+- roadmap classification never proves implementation or deployment;
+- future, optional, planned, and experimental capabilities remain visibly distinct from current scope;
+- models and agents never acquire deterministic policy or authorization authority;
+- portability and replaceability claims require evidence;
+- compatibility and deprecation are governed product commitments, not ad hoc engineering choices;
+- security, tenant isolation, privacy, budget, evidence, verification, and human accountability remain binding through evolution;
+- no roadmap item may auto-promote ReleaseState;
+- no vendor selection or purchase is implied by this architecture; and
+- external certification, production deployment, credentials, domain ownership, and contractual guarantees require separate real-world evidence.

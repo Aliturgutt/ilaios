@@ -37,3 +37,20 @@ def test_every_legacy_requirement_is_preserved_in_ilaios_canonical() -> None:
         if migrated not in canonical:
             missing.append((line, migrated))
     assert not missing, f"requirements missing from canonical: {missing[:10]}"
+
+
+def test_canonical_contains_approved_governance_and_roadmap_sections() -> None:
+    root = Path(__file__).parents[1]
+    canonical = (root / "docs/canonical" / CANONICAL_NAME).read_text(encoding="utf-8")
+    required_headings = (
+        "# 8. Governance & Operations",
+        "## 8.9 AI, Model, Provider, and FinOps Governance",
+        "## 8.10 Data, Privacy, and Evidence Governance",
+        "## 8.12 Exception, Review, and Lifecycle Governance",
+        "# 9. Enterprise Roadmap & Future Evolution",
+        "## 9.3 AI Capability Roadmap",
+        "## 9.9 Compatibility, Migration, and Deprecation Policy",
+    )
+    assert all(heading in canonical for heading in required_headings)
+    assert "Classification is not implementation status." in canonical
+    assert "No RELEASE.R01, RELEASE.R02, or RELEASE.R03 promotion was performed." not in canonical
