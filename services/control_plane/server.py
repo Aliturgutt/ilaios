@@ -11,7 +11,7 @@ from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any, cast
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from services.control_plane.api import (
     AuthenticationError,
@@ -28,6 +28,12 @@ from services.control_plane.proposals import (
     ProposedTask,
     RiskClass,
 )
+from services.control_plane.workflows import (
+    AttemptRecord,
+    WorkflowError,
+    WorkflowStore,
+    WorkflowStoreConfig,
+)
 
 
 class ControlPlaneHTTPServer(ThreadingHTTPServer):
@@ -39,9 +45,11 @@ class ControlPlaneHTTPServer(ThreadingHTTPServer):
         self,
         server_address: tuple[str, int],
         control_plane: ControlPlane,
+        workflow_store: WorkflowStore,
     ) -> None:
         super().__init__(server_address, ControlPlaneRequestHandler)
         self.control_plane = control_plane
+        self.workflow_store = workflow_store
 
 
 class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
@@ -56,6 +64,35 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 self._send_json(HTTPStatus.OK, {"status": "live"})
                 return
             token = self._bearer_token()
+            if path == "/v1/workflow/outbox":
+                self._send_json(
+                    HTTPStatus.OK,
+                    {
+                        "events": [
+                            {
+                                "sequence": event.sequence,
+                                "event_id": event.event_id,
+                                "event_type": event.event_type,
+                                "payload": event.payload,
+                            }
+                            for event in self.server.workflow_store.pending_outbox()
+                        ]
+                    },
+                )
+                return
+            if path == "/v1/workflow/checkpoint":
+                query = parse_qs(urlparse(self.path).query)
+                attempt_id = _single_query_value(query, "attempt_id")
+                key = _single_query_value(query, "key")
+                self._send_json(
+                    HTTPStatus.OK,
+                    {
+                        "payload": self.server.workflow_store.load_checkpoint(
+                            attempt_id, key
+                        )
+                    },
+                )
+                return
             if path == "/v1/events":
                 events = self.server.control_plane.list_events(token)
                 self._send_json(HTTPStatus.OK, {"events": events})
@@ -84,6 +121,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self._send_error(HTTPStatus.UNAUTHORIZED, str(error))
         except ControlPlaneError as error:
             self._send_error(HTTPStatus.NOT_FOUND, str(error))
+        except WorkflowError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except ValueError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
 
@@ -92,6 +131,9 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             token = self._bearer_token()
             body = self._read_json()
             path = urlparse(self.path).path
+            if path == "/v1/workflow/commands":
+                self._send_json(HTTPStatus.OK, self._workflow_command(body))
+                return
             record: GoalRecord | JobRecord
             if path == "/v1/goals":
                 objective = _required_string(body, "objective")
@@ -118,6 +160,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
         except AuthenticationError as error:
             self._send_error(HTTPStatus.UNAUTHORIZED, str(error))
         except ControlPlaneError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except WorkflowError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except (json.JSONDecodeError, TypeError, UnicodeDecodeError, ValueError) as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
@@ -177,6 +221,65 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
+    def _workflow_command(self, payload: dict[str, Any]) -> dict[str, Any]:
+        operation = _required_string(payload, "operation")
+        store = self.server.workflow_store
+        if operation == "create_workflow":
+            workflow_id = _required_string(payload, "workflow_id")
+            store.create_workflow(workflow_id)
+            return {"workflow_id": workflow_id, "status": "active"}
+        if operation == "add_task":
+            workflow_id = _required_string(payload, "workflow_id")
+            task_id = _required_string(payload, "task_id")
+            store.add_task(
+                workflow_id,
+                task_id,
+                max_attempts=_required_int(payload, "max_attempts"),
+                compensation_event_type=_optional_string(
+                    payload, "compensation_event_type"
+                ),
+            )
+            return {"workflow_id": workflow_id, "task_id": task_id, "status": "ready"}
+        if operation == "begin_attempt":
+            attempt = store.begin_attempt(
+                _required_string(payload, "workflow_id"),
+                _required_string(payload, "task_id"),
+                deadline=_required_datetime(payload, "deadline"),
+            )
+            return _attempt_json(attempt)
+        if operation == "save_checkpoint":
+            store.save_checkpoint(
+                _required_string(payload, "attempt_id"),
+                _required_string(payload, "key"),
+                _required_object(payload, "payload"),
+            )
+            return {"saved": True}
+        if operation == "fail_attempt":
+            status = store.fail_attempt(
+                _required_string(payload, "attempt_id"),
+                reason=_required_string(payload, "reason"),
+            )
+            return {"task_status": status}
+        if operation == "timeout_attempt":
+            status = store.timeout_attempt(
+                _required_string(payload, "attempt_id"),
+                now=_required_datetime(payload, "now"),
+            )
+            return {"task_status": status}
+        if operation == "complete_attempt":
+            store.complete_attempt(_required_string(payload, "attempt_id"))
+            return {"task_status": "completed"}
+        if operation == "receive_event":
+            accepted = store.receive_event(
+                _required_string(payload, "event_id"),
+                _required_object(payload, "payload"),
+            )
+            return {"accepted": accepted}
+        if operation == "acknowledge_outbox":
+            store.acknowledge_outbox(_required_string(payload, "event_id"))
+            return {"acknowledged": True}
+        raise ValueError("unknown workflow operation")
+
 
 def _record_json(record: GoalRecord | JobRecord) -> dict[str, Any]:
     if isinstance(record, GoalRecord):
@@ -203,6 +306,41 @@ def _required_string(payload: dict[str, Any], key: str) -> str:
     if not isinstance(value, str):
         raise TypeError(f"{key} must be a string")
     return value
+
+
+def _optional_string(payload: dict[str, Any], key: str) -> str | None:
+    value = payload.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise TypeError(f"{key} must be a string or null")
+    return value
+
+
+def _required_datetime(payload: dict[str, Any], key: str) -> datetime:
+    value = _required_string(payload, key)
+    result = datetime.fromisoformat(value)
+    if result.tzinfo is None:
+        raise ValueError(f"{key} must include a timezone")
+    return result
+
+
+def _single_query_value(query: dict[str, list[str]], key: str) -> str:
+    values = query.get(key, [])
+    if len(values) != 1 or not values[0]:
+        raise ValueError(f"exactly one {key} query value is required")
+    return values[0]
+
+
+def _attempt_json(attempt: AttemptRecord) -> dict[str, Any]:
+    return {
+        "attempt_id": attempt.attempt_id,
+        "workflow_id": attempt.workflow_id,
+        "task_id": attempt.task_id,
+        "number": attempt.number,
+        "status": attempt.status,
+        "deadline": attempt.deadline.isoformat(),
+    }
 
 
 def _required_int(payload: dict[str, Any], key: str) -> int:
@@ -266,7 +404,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("control plane must bind to a loopback host")
     token = os.environ.get("ILAIOS_CONTROL_PLANE_TOKEN", "")
     control_plane = ControlPlane(ControlPlaneConfig(arguments.database, token))
-    server = ControlPlaneHTTPServer((arguments.host, arguments.port), control_plane)
+    workflow_store = WorkflowStore(WorkflowStoreConfig(arguments.database))
+    server = ControlPlaneHTTPServer(
+        (arguments.host, arguments.port), control_plane, workflow_store
+    )
     host, port = server.server_address[:2]
     ready = {
         "host": host,

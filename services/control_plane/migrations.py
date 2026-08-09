@@ -13,7 +13,7 @@ class MigrationError(RuntimeError):
     """Raised when a control-plane migration cannot complete safely."""
 
 
-LATEST_SCHEMA_VERSION = 2
+LATEST_SCHEMA_VERSION = 3
 
 _UP_MIGRATIONS = {
     1: """
@@ -45,6 +45,49 @@ _UP_MIGRATIONS = {
             created_at TEXT NOT NULL
         );
     """,
+    3: """
+        CREATE TABLE workflows (
+            workflow_id TEXT PRIMARY KEY,
+            status TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+        CREATE TABLE workflow_tasks (
+            workflow_id TEXT NOT NULL REFERENCES workflows(workflow_id),
+            task_id TEXT NOT NULL,
+            status TEXT NOT NULL,
+            max_attempts INTEGER NOT NULL,
+            compensation_event_type TEXT,
+            PRIMARY KEY (workflow_id, task_id)
+        );
+        CREATE TABLE attempts (
+            attempt_id TEXT PRIMARY KEY,
+            workflow_id TEXT NOT NULL,
+            task_id TEXT NOT NULL,
+            number INTEGER NOT NULL,
+            status TEXT NOT NULL,
+            deadline TEXT NOT NULL,
+            FOREIGN KEY (workflow_id, task_id)
+                REFERENCES workflow_tasks(workflow_id, task_id)
+        );
+        CREATE TABLE checkpoints (
+            attempt_id TEXT NOT NULL REFERENCES attempts(attempt_id),
+            checkpoint_key TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            PRIMARY KEY (attempt_id, checkpoint_key)
+        );
+        CREATE TABLE outbox (
+            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_id TEXT UNIQUE NOT NULL,
+            event_type TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            delivered INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE inbox (
+            event_id TEXT PRIMARY KEY,
+            payload_json TEXT NOT NULL,
+            received_at TEXT NOT NULL
+        );
+    """,
 }
 
 _DOWN_MIGRATIONS = {
@@ -55,6 +98,14 @@ _DOWN_MIGRATIONS = {
     """,
     2: """
         DROP TABLE proposals;
+    """,
+    3: """
+        DROP TABLE inbox;
+        DROP TABLE outbox;
+        DROP TABLE checkpoints;
+        DROP TABLE attempts;
+        DROP TABLE workflow_tasks;
+        DROP TABLE workflows;
     """,
 }
 

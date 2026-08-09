@@ -10,9 +10,11 @@ import sys
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, cast
 from urllib.error import HTTPError
+from urllib.parse import quote
 from urllib.request import Request, urlopen
 
 import pytest
@@ -293,3 +295,170 @@ def test_invalid_proposal_is_rejected_without_durable_event(tmp_path: Path) -> N
         assert [event["event_type"] for event in events["events"]] == [
             "goal.created"
         ]
+
+
+def test_workflow_crash_retry_duplicate_delivery_and_compensation_cross_boundary(
+    tmp_path: Path,
+) -> None:
+    future = (datetime.now(timezone.utc) + timedelta(minutes=5)).isoformat()
+    with _running_service(tmp_path) as (base_url, _):
+        _request(
+            base_url,
+            "POST",
+            "/v1/workflow/commands",
+            payload={"operation": "create_workflow", "workflow_id": "workflow-1"},
+        )
+        _request(
+            base_url,
+            "POST",
+            "/v1/workflow/commands",
+            payload={
+                "operation": "add_task",
+                "workflow_id": "workflow-1",
+                "task_id": "render",
+                "max_attempts": 2,
+            },
+        )
+        _, attempt = _request(
+            base_url,
+            "POST",
+            "/v1/workflow/commands",
+            payload={
+                "operation": "begin_attempt",
+                "workflow_id": "workflow-1",
+                "task_id": "render",
+                "deadline": future,
+            },
+        )
+        _request(
+            base_url,
+            "POST",
+            "/v1/workflow/commands",
+            payload={
+                "operation": "save_checkpoint",
+                "attempt_id": attempt["attempt_id"],
+                "key": "frame",
+                "payload": {"number": 42},
+            },
+        )
+
+    (tmp_path / "ready.json").unlink()
+    with _running_service(tmp_path) as (base_url, _):
+        status, checkpoint = _request(
+            base_url,
+            "GET",
+            "/v1/workflow/checkpoint?attempt_id="
+            + quote(str(attempt["attempt_id"]))
+            + "&key=frame",
+        )
+        assert status == 200
+        assert checkpoint == {"payload": {"number": 42}}
+        _, failed = _request(
+            base_url,
+            "POST",
+            "/v1/workflow/commands",
+            payload={
+                "operation": "fail_attempt",
+                "attempt_id": attempt["attempt_id"],
+                "reason": "worker process lost",
+            },
+        )
+        assert failed == {"task_status": "ready"}
+        _, retry = _request(
+            base_url,
+            "POST",
+            "/v1/workflow/commands",
+            payload={
+                "operation": "begin_attempt",
+                "workflow_id": "workflow-1",
+                "task_id": "render",
+                "deadline": future,
+            },
+        )
+        assert retry["number"] == 2
+        _request(
+            base_url,
+            "POST",
+            "/v1/workflow/commands",
+            payload={
+                "operation": "complete_attempt",
+                "attempt_id": retry["attempt_id"],
+            },
+        )
+        _, received = _request(
+            base_url,
+            "POST",
+            "/v1/workflow/commands",
+            payload={
+                "operation": "receive_event",
+                "event_id": "event-1",
+                "payload": {"state": "ready"},
+            },
+        )
+        assert received == {"accepted": True}
+
+    (tmp_path / "ready.json").unlink()
+    with _running_service(tmp_path) as (base_url, _):
+        _, duplicate = _request(
+            base_url,
+            "POST",
+            "/v1/workflow/commands",
+            payload={
+                "operation": "receive_event",
+                "event_id": "event-1",
+                "payload": {"state": "ready"},
+            },
+        )
+        assert duplicate == {"accepted": False}
+        _request(
+            base_url,
+            "POST",
+            "/v1/workflow/commands",
+            payload={"operation": "create_workflow", "workflow_id": "workflow-2"},
+        )
+        _request(
+            base_url,
+            "POST",
+            "/v1/workflow/commands",
+            payload={
+                "operation": "add_task",
+                "workflow_id": "workflow-2",
+                "task_id": "publish",
+                "max_attempts": 1,
+                "compensation_event_type": "publication.rollback.requested",
+            },
+        )
+        past = (datetime.now(timezone.utc) - timedelta(seconds=1)).isoformat()
+        _, timed_attempt = _request(
+            base_url,
+            "POST",
+            "/v1/workflow/commands",
+            payload={
+                "operation": "begin_attempt",
+                "workflow_id": "workflow-2",
+                "task_id": "publish",
+                "deadline": past,
+            },
+        )
+        _, timed_out = _request(
+            base_url,
+            "POST",
+            "/v1/workflow/commands",
+            payload={
+                "operation": "timeout_attempt",
+                "attempt_id": timed_attempt["attempt_id"],
+                "now": datetime.now(timezone.utc).isoformat(),
+            },
+        )
+        assert timed_out == {"task_status": "failed"}
+        _, pending = _request(base_url, "GET", "/v1/workflow/outbox")
+        assert pending["events"][0]["event_type"] == "publication.rollback.requested"
+        event_id = pending["events"][0]["event_id"]
+        _request(
+            base_url,
+            "POST",
+            "/v1/workflow/commands",
+            payload={"operation": "acknowledge_outbox", "event_id": event_id},
+        )
+        _, reconciled = _request(base_url, "GET", "/v1/workflow/outbox")
+        assert reconciled == {"events": []}
