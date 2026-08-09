@@ -32,7 +32,9 @@ from services.control_plane.migrations import (
 
 
 @contextmanager
-def _running_service(tmp_path: Path) -> Iterator[tuple[str, subprocess.Popen[str]]]:
+def _running_service(
+    tmp_path: Path, *, hard_cap_minor: int = 100
+) -> Iterator[tuple[str, subprocess.Popen[str]]]:
     ready_file = tmp_path / "ready.json"
     environment = os.environ.copy()
     environment["ILAIOS_CONTROL_PLANE_TOKEN"] = "runtime-secret"
@@ -47,6 +49,10 @@ def _running_service(tmp_path: Path) -> Iterator[tuple[str, subprocess.Popen[str
             str(ready_file),
             "--evidence-root",
             str(tmp_path / "evidence"),
+            "--governance-database",
+            str(tmp_path / "governance.sqlite3"),
+            "--hard-cap-minor",
+            str(hard_cap_minor),
         ],
         cwd=Path(__file__).resolve().parents[1],
         env=environment,
@@ -96,6 +102,49 @@ def _request(
         return error.code, cast(dict[str, Any], json.loads(error.read()))
     with response:
         return response.status, cast(dict[str, Any], json.loads(response.read()))
+
+
+def _submit_approve_execute(
+    base_url: str,
+    request_id: str,
+    *,
+    skill_id: str,
+    text: str,
+) -> tuple[int, dict[str, Any]]:
+    status, _ = _request(
+        base_url,
+        "POST",
+        "/v1/governance/commands",
+        payload={
+            "operation": "submit",
+            "request_id": request_id,
+            "requester_id": "requester-1",
+            "agent_id": "agent-1",
+            "skill_id": skill_id,
+            "capability": "render",
+            "payload": {"text": text},
+            "secret_ids": [],
+        },
+    )
+    assert status == 200
+    status, _ = _request(
+        base_url,
+        "POST",
+        "/v1/governance/commands",
+        payload={
+            "operation": "decide",
+            "request_id": request_id,
+            "approver": "human-owner",
+            "decision": "approved",
+        },
+    )
+    assert status == 200
+    return _request(
+        base_url,
+        "POST",
+        "/v1/governance/commands",
+        payload={"operation": "execute", "request_id": request_id},
+    )
 
 
 def test_real_process_boundary_persists_goal_job_and_events_after_restart(
@@ -666,33 +715,21 @@ def test_persisted_governed_runtime_executes_real_adapter_and_rejects_tamper(
                 base_url, "POST", "/v1/runtime/commands", payload=payload
             )
             assert status == 200
-        status, execution = _request(
+        status, execution = _submit_approve_execute(
             base_url,
-            "POST",
-            "/v1/runtime/commands",
-            payload={
-                "operation": "execute",
-                "agent_id": "agent-1",
-                "skill_id": "uppercase",
-                "capability": "render",
-                "payload": {"text": "real adapter output"},
-            },
+            "runtime-request-1",
+            skill_id="uppercase",
+            text="real adapter output",
         )
         assert status == 200
         assert execution["provider_id"] == "a-local"
         assert execution["deterministic_first"] is True
         assert execution["output"] == {"text": "REAL ADAPTER OUTPUT"}
-        status, unapproved = _request(
+        status, unapproved = _submit_approve_execute(
             base_url,
-            "POST",
-            "/v1/runtime/commands",
-            payload={
-                "operation": "execute",
-                "agent_id": "agent-1",
-                "skill_id": "unknown",
-                "capability": "render",
-                "payload": {"text": "denied"},
-            },
+            "runtime-request-2",
+            skill_id="unknown",
+            text="denied",
         )
         assert status == 400
         assert unapproved == {"error": "skill is not approved"}
@@ -711,7 +748,49 @@ def test_persisted_governed_runtime_executes_real_adapter_and_rejects_tamper(
         )
     (tmp_path / "ready.json").unlink()
     with _running_service(tmp_path) as (base_url, _):
-        status, rejected = _request(
+        status, rejected = _submit_approve_execute(
+            base_url,
+            "runtime-request-3",
+            skill_id="uppercase",
+            text="must not execute",
+        )
+        assert status == 400
+        assert rejected == {"error": "skill digest does not match approval"}
+        _, routes = _request(base_url, "GET", "/v1/runtime/routes")
+        assert len(routes["routes"]) == 1
+
+
+def test_real_runtime_cannot_bypass_secret_dlp_hitl_or_financial_gates(
+    tmp_path: Path,
+) -> None:
+    skill_bytes = b"governed financial uppercase skill"
+    with _running_service(tmp_path, hard_cap_minor=10) as (base_url, _):
+        registrations: tuple[dict[str, object], ...] = (
+            {
+                "operation": "register_agent",
+                "agent_id": "agent-1",
+                "authorities": ["render"],
+            },
+            {
+                "operation": "register_skill",
+                "skill_id": "uppercase",
+                "content_base64": base64.b64encode(skill_bytes).decode("ascii"),
+                "authorities": ["render"],
+            },
+            {
+                "operation": "register_provider",
+                "provider_id": "local-zero-network",
+                "capabilities": ["render"],
+                "adapter_kind": "uppercase-text",
+            },
+        )
+        for registration in registrations:
+            status, _ = _request(
+                base_url, "POST", "/v1/runtime/commands", payload=registration
+            )
+            assert status == 200
+
+        status, bypassed = _request(
             base_url,
             "POST",
             "/v1/runtime/commands",
@@ -720,13 +799,158 @@ def test_persisted_governed_runtime_executes_real_adapter_and_rejects_tamper(
                 "agent_id": "agent-1",
                 "skill_id": "uppercase",
                 "capability": "render",
-                "payload": {"text": "must not execute"},
+                "payload": {"text": "bypass"},
             },
         )
-        assert status == 400
-        assert rejected == {"error": "skill digest does not match approval"}
-        _, routes = _request(base_url, "GET", "/v1/runtime/routes")
-        assert len(routes["routes"]) == 1
+        assert status == 403
+        assert bypassed == {"error": "runtime execution requires governed work"}
+
+        status, _ = _request(
+            base_url,
+            "POST",
+            "/v1/governance/commands",
+            payload={
+                "operation": "register_secret_reference",
+                "secret_id": "provider-key",
+                "reference": "kms://tenant-a/provider-key",
+            },
+        )
+        assert status == 200
+        status, dlp_rejected = _request(
+            base_url,
+            "POST",
+            "/v1/governance/commands",
+            payload={
+                "operation": "submit",
+                "request_id": "dlp-rejected",
+                "requester_id": "requester-1",
+                "agent_id": "agent-1",
+                "skill_id": "uppercase",
+                "capability": "render",
+                "payload": {"token": "inline-credential"},
+                "secret_ids": ["provider-key"],
+            },
+        )
+        assert status == 403
+        assert dlp_rejected == {"error": "DLP rejected inline secret material"}
+
+        status, submitted = _request(
+            base_url,
+            "POST",
+            "/v1/governance/commands",
+            payload={
+                "operation": "submit",
+                "request_id": "governed-request-1",
+                "requester_id": "requester-1",
+                "agent_id": "agent-1",
+                "skill_id": "uppercase",
+                "capability": "render",
+                "payload": {"text": "approved runtime"},
+                "secret_ids": ["provider-key"],
+            },
+        )
+        assert status == 200
+        assert submitted["risk"] == "high"
+        assert submitted["quoted_minor"] == 10
+        status, denied = _request(
+            base_url,
+            "POST",
+            "/v1/governance/commands",
+            payload={"operation": "execute", "request_id": "governed-request-1"},
+        )
+        assert status == 403
+        assert denied == {"error": "high-risk work requires durable human approval"}
+        status, self_approval = _request(
+            base_url,
+            "POST",
+            "/v1/governance/commands",
+            payload={
+                "operation": "decide",
+                "request_id": "governed-request-1",
+                "approver": "requester-1",
+                "decision": "approved",
+            },
+        )
+        assert status == 403
+        assert self_approval == {"error": "independent human approver is required"}
+        status, _ = _request(
+            base_url,
+            "POST",
+            "/v1/governance/commands",
+            payload={
+                "operation": "decide",
+                "request_id": "governed-request-1",
+                "approver": "human-owner",
+                "decision": "approved",
+            },
+        )
+        assert status == 200
+
+    (tmp_path / "ready.json").unlink()
+    with _running_service(tmp_path, hard_cap_minor=10) as (base_url, _):
+        status, executed = _request(
+            base_url,
+            "POST",
+            "/v1/governance/commands",
+            payload={"operation": "execute", "request_id": "governed-request-1"},
+        )
+        assert status == 200
+        assert executed["output"] == {"text": "APPROVED RUNTIME"}
+        assert executed["metered_units"] == 1
+        assert executed["reserved_minor"] == executed["actual_minor"] == 10
+
+        status, _ = _request(
+            base_url,
+            "POST",
+            "/v1/governance/commands",
+            payload={
+                "operation": "submit",
+                "request_id": "governed-request-2",
+                "requester_id": "requester-1",
+                "agent_id": "agent-1",
+                "skill_id": "uppercase",
+                "capability": "render",
+                "payload": {"text": "over cap"},
+                "secret_ids": [],
+            },
+        )
+        assert status == 200
+        status, _ = _request(
+            base_url,
+            "POST",
+            "/v1/governance/commands",
+            payload={
+                "operation": "decide",
+                "request_id": "governed-request-2",
+                "approver": "human-owner",
+                "decision": "approved",
+            },
+        )
+        assert status == 200
+        status, capped = _request(
+            base_url,
+            "POST",
+            "/v1/governance/commands",
+            payload={"operation": "execute", "request_id": "governed-request-2"},
+        )
+        assert status == 403
+        assert capped == {"error": "financial hard cap exceeded"}
+        status, state = _request(base_url, "GET", "/v1/governance/state")
+        assert status == 200
+        assert state["ledger"] == [
+            {
+                "reservation_id": "governed-request-1",
+                "reserved_minor": 10,
+                "actual_minor": 10,
+                "status": "reconciled",
+            }
+        ]
+        assert state["secret_references"] == [
+            {
+                "secret_id": "provider-key",
+                "reference": "kms://tenant-a/provider-key",
+            }
+        ]
 
 
 def test_concurrent_scheduler_fences_stale_side_effects_and_survives_restart(

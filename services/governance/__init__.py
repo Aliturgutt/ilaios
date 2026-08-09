@@ -11,10 +11,12 @@ from .gates import (
     WorkRequest,
     redact_sensitive,
 )
+from .runtime import GovernedRuntimeGateway
 
 __all__ = [
     "FinancialLedger",
     "GateError",
+    "GovernedRuntimeGateway",
     "HumanApprovalStore",
     "KeyManagementService",
     "PricingRegistry",

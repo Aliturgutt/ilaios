@@ -130,16 +130,20 @@ class FinancialLedger:
         if amount_minor < 0:
             raise GateError("reservation cannot be negative")
         with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
             used = connection.execute(
                 "SELECT COALESCE(SUM(COALESCE(actual_minor, reserved_minor)), 0) "
                 "FROM ledger"
             ).fetchone()[0]
             if used + amount_minor > self._hard_cap:
                 raise GateError("financial hard cap exceeded")
-            connection.execute(
-                "INSERT INTO ledger VALUES (?, ?, NULL, 'reserved')",
-                (reservation_id, amount_minor),
-            )
+            try:
+                connection.execute(
+                    "INSERT INTO ledger VALUES (?, ?, NULL, 'reserved')",
+                    (reservation_id, amount_minor),
+                )
+            except sqlite3.IntegrityError as error:
+                raise GateError("financial reservation already exists") from error
 
     def reconcile(self, reservation_id: str, actual_minor: int) -> None:
         if actual_minor < 0:
@@ -156,6 +160,22 @@ class FinancialLedger:
                 "WHERE reservation_id = ?",
                 (actual_minor, reservation_id),
             )
+
+    def state(self) -> list[dict[str, int | str | None]]:
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT reservation_id, reserved_minor, actual_minor, status "
+                "FROM ledger ORDER BY reservation_id"
+            ).fetchall()
+        return [
+            {
+                "reservation_id": str(row[0]),
+                "reserved_minor": int(row[1]),
+                "actual_minor": None if row[2] is None else int(row[2]),
+                "status": str(row[3]),
+            }
+            for row in rows
+        ]
 
 
 @dataclass(frozen=True, slots=True)
@@ -177,11 +197,15 @@ class SecurityFinanceGate:
         self._pricing = pricing
         self._ledger = ledger
 
-    def authorize(self, request: WorkRequest) -> None:
+    def authorize(self, request: WorkRequest) -> int:
         if request.risk not in {"low", "medium", "high"}:
             raise GateError("unknown risk classification")
-        if request.risk == "high" and not self._approvals.is_approved(request.request_id):
+        if request.risk == "high" and not self._approvals.is_approved(
+            request.request_id
+        ):
             raise GateError("high-risk work requires durable human approval")
         if request.billable_meter is not None:
             amount = self._pricing.quote(request.billable_meter, request.units)
             self._ledger.reserve(request.request_id, amount)
+            return amount
+        return 0

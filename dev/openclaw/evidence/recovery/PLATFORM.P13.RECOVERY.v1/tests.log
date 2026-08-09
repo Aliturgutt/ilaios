@@ -1,0 +1,18 @@
+targeted_command: python -m pytest -q tests/test_security_finance_gates.py tests/test_control_plane_service.py
+targeted_result: 18 passed in 13.86s
+independent_e2e_command: python -m pytest -q -vv tests/test_control_plane_service.py::test_real_runtime_cannot_bypass_secret_dlp_hitl_or_financial_gates --basetemp=/tmp/ilaios-p13-runtime-evidence
+independent_e2e_result: 1 passed in 1.11s
+coverage:
+  - raw HTTP runtime execution bypass rejected
+  - opaque KMS secret reference persisted without credential material
+  - inline credential DLP rejection before durable work admission
+  - missing approval and requester self-approval rejected
+  - independent human approval survives service restart
+  - real deterministic adapter executes after approval and reservation
+  - server-derived metered unit reconciles reserved and actual ledger values
+  - second approved execution rejected by durable financial hard cap
+full_command: python -m pytest -q
+full_result: 940 passed in 21.41s
+caller_supplied_approval_boolean_used: false
+caller_supplied_actual_cost_used: false
+mocks_replacing_internal_e2e: false

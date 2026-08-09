@@ -41,6 +41,7 @@ from services.control_plane.workflows import (
     WorkflowStoreConfig,
 )
 from services.evidence import EvidenceError, EvidenceStore, ProvenanceRecord
+from services.governance import GateError, GovernedRuntimeGateway
 from services.runtime import (
     BlastRadiusBudget,
     DurableGrantPolicy,
@@ -70,6 +71,7 @@ class ControlPlaneHTTPServer(ThreadingHTTPServer):
         scheduler: DurableWorkerScheduler,
         grant_policy: DurableGrantPolicy,
         evidence_store: EvidenceStore,
+        governance: GovernedRuntimeGateway,
     ) -> None:
         super().__init__(server_address, ControlPlaneRequestHandler)
         self.control_plane = control_plane
@@ -79,6 +81,7 @@ class ControlPlaneHTTPServer(ThreadingHTTPServer):
         self.scheduler = scheduler
         self.grant_policy = grant_policy
         self.evidence_store = evidence_store
+        self.governance = governance
 
 
 class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
@@ -131,6 +134,9 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                         ]
                     },
                 )
+                return
+            if path == "/v1/governance/state":
+                self._send_json(HTTPStatus.OK, self.server.governance.state())
                 return
             if path.startswith("/v1/evidence/artifacts/"):
                 digest = path.removeprefix("/v1/evidence/artifacts/")
@@ -221,6 +227,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except EvidenceError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except GateError as error:
+            self._send_error(HTTPStatus.FORBIDDEN, str(error))
         except ValueError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
 
@@ -252,6 +260,9 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/v1/evidence/commands":
                 self._send_json(HTTPStatus.CREATED, self._evidence_command(body))
+                return
+            if path == "/v1/governance/commands":
+                self._send_json(HTTPStatus.OK, self._governance_command(body))
                 return
             record: GoalRecord | JobRecord
             if path == "/v1/goals":
@@ -292,7 +303,14 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except EvidenceError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
-        except (json.JSONDecodeError, TypeError, UnicodeDecodeError, ValueError) as error:
+        except GateError as error:
+            self._send_error(HTTPStatus.FORBIDDEN, str(error))
+        except (
+            json.JSONDecodeError,
+            TypeError,
+            UnicodeDecodeError,
+            ValueError,
+        ) as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
 
     def log_message(self, message_format: str, *args: object) -> None:
@@ -442,12 +460,7 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             )
             return {"provider_id": provider_id, "registered": True}
         if operation == "execute":
-            return runtime.execute(
-                _required_string(payload, "agent_id"),
-                _required_string(payload, "skill_id"),
-                _required_string(payload, "capability"),
-                _required_object(payload, "payload"),
-            )
+            raise GateError("runtime execution requires governed work")
         raise ValueError("unknown runtime operation")
 
     def _scheduler_command(self, payload: dict[str, Any]) -> dict[str, Any]:
@@ -553,6 +566,36 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             "artifact": {"digest": artifact.digest, "size": artifact.size},
             "provenance": _provenance_json(provenance),
         }
+
+    def _governance_command(self, payload: dict[str, Any]) -> dict[str, object]:
+        operation = _required_string(payload, "operation")
+        gateway = self.server.governance
+        if operation == "register_secret_reference":
+            secret_id = _required_string(payload, "secret_id")
+            gateway.register_secret_reference(
+                secret_id, _required_string(payload, "reference")
+            )
+            return {"secret_id": secret_id, "registered": True}
+        if operation == "submit":
+            return gateway.submit(
+                _required_string(payload, "request_id"),
+                _required_string(payload, "requester_id"),
+                _required_string(payload, "agent_id"),
+                _required_string(payload, "skill_id"),
+                _required_string(payload, "capability"),
+                _required_object(payload, "payload"),
+                _string_tuple(payload, "secret_ids"),
+            )
+        if operation == "decide":
+            gateway.decide(
+                _required_string(payload, "request_id"),
+                _required_string(payload, "approver"),
+                _required_string(payload, "decision"),
+            )
+            return {"decided": True}
+        if operation == "execute":
+            return gateway.execute(_required_string(payload, "request_id"))
+        raise ValueError("unknown governance operation")
 
 
 def _record_json(record: GoalRecord | JobRecord) -> dict[str, Any]:
@@ -732,6 +775,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--port", type=int, default=0)
     parser.add_argument("--ready-file", type=Path, required=True)
     parser.add_argument("--evidence-root", type=Path, required=True)
+    parser.add_argument("--governance-database", type=Path, required=True)
+    parser.add_argument("--hard-cap-minor", type=int, default=100)
     parser.add_argument("--lease-seconds", type=int, default=30)
     arguments = parser.parse_args(argv)
     if arguments.host not in {"127.0.0.1", "::1", "localhost"}:
@@ -746,6 +791,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     grant_policy = DurableGrantPolicy(arguments.database)
     evidence_store = EvidenceStore(arguments.evidence_root)
+    governance = GovernedRuntimeGateway(
+        arguments.governance_database,
+        governed_runtime,
+        hard_cap_minor=arguments.hard_cap_minor,
+    )
     server = ControlPlaneHTTPServer(
         (arguments.host, arguments.port),
         control_plane,
@@ -755,6 +805,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         scheduler,
         grant_policy,
         evidence_store,
+        governance,
     )
     host, port = server.server_address[:2]
     ready = {

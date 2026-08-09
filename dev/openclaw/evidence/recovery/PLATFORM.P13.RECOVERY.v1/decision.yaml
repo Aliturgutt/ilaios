@@ -1,0 +1,27 @@
+milestone_id: PLATFORM.P13
+package_id: PLATFORM.P13.RECOVERY.v1
+status: PASS
+dependency_evidence: dev/openclaw/evidence/recovery/PLATFORM.P12.RECOVERY.v1/decision.yaml
+scope_evidence:
+  durable_governed_runtime: services/governance/runtime.py
+  approval_pricing_ledger: services/governance/gates.py
+  real_service_enforcement: services/control_plane/server.py
+  restart_e2e: tests/test_control_plane_service.py
+  measured_runtime: dev/openclaw/evidence/recovery/PLATFORM.P13.RECOVERY.v1/runtime_artifact.json
+proof:
+  opaque_secret_reference_boundary: PASS
+  dlp_inline_secret_rejection: PASS
+  durable_independent_hitl: PASS
+  pricing_and_reservation: PASS
+  metering_and_reconciliation: PASS
+  hard_cap_enforcement: PASS
+  bypass_rejection: PASS
+  caller_supplied_approval_boolean_used: false
+  caller_supplied_actual_cost_used: false
+  real_credentials_stored: false
+  paid_provider_calls: false
+validations: {dependency_gate: PASS, targeted_runtime_tests: PASS, independent_restart_e2e: PASS, full_pytest: PASS, ruff: PASS, mypy_strict: PASS, pre_commit: PASS, git_diff_check: PASS}
+release_state: NOT_DEPLOYED
+canonical_authorities_unchanged: true
+commit_identity: SELF
+next_package: PLATFORM.P14.RECOVERY.v1
