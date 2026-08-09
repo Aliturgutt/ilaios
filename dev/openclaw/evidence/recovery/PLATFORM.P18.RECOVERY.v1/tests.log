@@ -1,0 +1,5 @@
+targeted: 2 passed in 0.31s
+isolated_runtime: 1 passed in 0.25s
+isolated_inner_tests: 2 passed in 0.01s via python -m pytest -q
+full: 944 passed in 28.33s
+coverage: real copied workspace, hidden production mount, isolated network namespace, real diff, real tests, content-addressed proposal, durable external-review approval, unchanged production snapshot, escape/allowlist/symlink denial, no apply capability
