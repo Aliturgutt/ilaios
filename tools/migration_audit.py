@@ -128,6 +128,20 @@ EVIDENCE_RULES = (
         ("src/core/confidence_scoring.py", "tests/test_confidence_scoring.py"),
     ),
     EvidenceRule(
+        ("3.9", "3.10", "3.11", "7.9", "8.7", "8.8"),
+        re.compile(
+            r"SLI|SLO|error budget|health|readiness|incident|severity|escalat|"
+            r"runbook|backup|restore|disaster recovery|recovery exercise|RPO|"
+            r"RTO|rollback|post-incident|monitor|alert",
+            re.IGNORECASE,
+        ),
+        (
+            "services/operations.py",
+            "tests/test_operations_framework.py",
+            "evidence/migration/ILATEN_TO_ILAIOS/OPS.I05.md",
+        ),
+    ),
+    EvidenceRule(
         ("6.4",),
         re.compile(r"knowledge graph|node|edge|provenance", re.IGNORECASE),
         ("src/knowledge_graph/models.py", "tests/test_knowledge_graph_models.py"),

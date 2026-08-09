@@ -62,13 +62,14 @@ packages:
     evidence: evidence/migration/ILATEN_TO_ILAIOS/DATA.I04.md
   - id: OPS.I05
     title: Reliability Incident Backup Restore and DR Framework
-    status: READY
+    status: PASS
     dependencies: [AUDIT.C02]
     scope:
       - SLI SLO and error-budget contracts
       - health readiness alert incident and runbook models
       - backup verification restore and disaster-recovery exercise evidence
       - configurable SLO RPO and RTO targets
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/OPS.I05.md
   - id: OBS.I06
     title: Technology-Neutral Observability and Infrastructure Contracts
     status: READY
