@@ -13,7 +13,7 @@ class MigrationError(RuntimeError):
     """Raised when a control-plane migration cannot complete safely."""
 
 
-LATEST_SCHEMA_VERSION = 6
+LATEST_SCHEMA_VERSION = 7
 
 _UP_MIGRATIONS = {
     1: """
@@ -159,6 +159,24 @@ _UP_MIGRATIONS = {
             PRIMARY KEY (task_id, fencing_token)
         );
     """,
+    7: """
+        CREATE TABLE execution_grants (
+            grant_id TEXT PRIMARY KEY, subject_id TEXT NOT NULL,
+            actions_json TEXT NOT NULL, resources_json TEXT NOT NULL,
+            expires_at TEXT NOT NULL, max_side_effects INTEGER NOT NULL,
+            max_resources INTEGER NOT NULL, used_side_effects INTEGER NOT NULL DEFAULT 0
+        );
+        CREATE TABLE grant_resources (
+            grant_id TEXT NOT NULL REFERENCES execution_grants(grant_id),
+            resource TEXT NOT NULL, PRIMARY KEY (grant_id, resource)
+        );
+        CREATE TABLE revoked_grants (
+            grant_id TEXT PRIMARY KEY, revoked_at TEXT NOT NULL
+        );
+        CREATE TABLE stopped_subjects (
+            subject_id TEXT PRIMARY KEY, stopped_at TEXT NOT NULL
+        );
+    """,
 }
 
 _DOWN_MIGRATIONS = {
@@ -193,6 +211,12 @@ _DOWN_MIGRATIONS = {
         DROP TABLE scheduler_leases;
         DROP TABLE scheduler_fences;
         DROP TABLE scheduler_workers;
+    """,
+    7: """
+        DROP TABLE stopped_subjects;
+        DROP TABLE revoked_grants;
+        DROP TABLE grant_resources;
+        DROP TABLE execution_grants;
     """,
 }
 

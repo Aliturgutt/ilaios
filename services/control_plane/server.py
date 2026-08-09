@@ -41,8 +41,12 @@ from services.control_plane.workflows import (
     WorkflowStoreConfig,
 )
 from services.runtime import (
+    BlastRadiusBudget,
+    DurableGrantPolicy,
     DurableWorkerScheduler,
+    ExecutionGrant,
     GovernedRuntime,
+    GrantError,
     Lease,
     SchedulingError,
     WorkerProfile,
@@ -63,6 +67,7 @@ class ControlPlaneHTTPServer(ThreadingHTTPServer):
         live_state: LiveStateTransport,
         governed_runtime: GovernedRuntime,
         scheduler: DurableWorkerScheduler,
+        grant_policy: DurableGrantPolicy,
     ) -> None:
         super().__init__(server_address, ControlPlaneRequestHandler)
         self.control_plane = control_plane
@@ -70,6 +75,7 @@ class ControlPlaneHTTPServer(ThreadingHTTPServer):
         self.live_state = live_state
         self.governed_runtime = governed_runtime
         self.scheduler = scheduler
+        self.grant_policy = grant_policy
 
 
 class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
@@ -108,6 +114,9 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/v1/scheduler/state":
                 self._send_json(HTTPStatus.OK, self.server.scheduler.state())
+                return
+            if path == "/v1/grants/state":
+                self._send_json(HTTPStatus.OK, self.server.grant_policy.state())
                 return
             if path == "/v1/live/snapshot":
                 query = parse_qs(urlparse(self.path).query)
@@ -182,6 +191,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except SchedulingError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except GrantError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except ValueError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
 
@@ -207,6 +218,9 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/v1/scheduler/commands":
                 self._send_json(HTTPStatus.OK, self._scheduler_command(body))
+                return
+            if path == "/v1/grants/commands":
+                self._send_json(HTTPStatus.OK, self._grant_command(body))
                 return
             record: GoalRecord | JobRecord
             if path == "/v1/goals":
@@ -242,6 +256,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
         except GovernedRuntimeError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except SchedulingError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except GrantError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except (json.JSONDecodeError, TypeError, UnicodeDecodeError, ValueError) as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
@@ -438,13 +454,51 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 )
             )
         if operation == "record_side_effect":
+            lease = _lease_from_payload(payload)
+            now = _required_datetime(payload, "now")
+            scheduler.authorize(lease, now=now)
+            self.server.grant_policy.authorize_and_record(
+                _required_string(payload, "grant_id"),
+                subject_id=lease.worker_id,
+                action="write",
+                resource=lease.task_id,
+                now=now,
+            )
             scheduler.record_side_effect(
-                _lease_from_payload(payload),
-                now=_required_datetime(payload, "now"),
+                lease,
+                now=now,
                 payload=_required_object(payload, "payload"),
             )
             return {"recorded": True}
         raise ValueError("unknown scheduler operation")
+
+    def _grant_command(self, payload: dict[str, Any]) -> dict[str, Any]:
+        operation = _required_string(payload, "operation")
+        now = _required_datetime(payload, "now")
+        if operation == "register":
+            grant = ExecutionGrant(
+                _required_string(payload, "grant_id"),
+                _required_string(payload, "subject_id"),
+                frozenset(_string_tuple(payload, "actions")),
+                frozenset(_string_tuple(payload, "resources")),
+                _required_datetime(payload, "expires_at"),
+                BlastRadiusBudget(
+                    _required_int(payload, "max_side_effects"),
+                    _required_int(payload, "max_resources"),
+                ),
+            )
+            self.server.grant_policy.register(grant)
+            return {"grant_id": grant.grant_id, "registered": True}
+        grant_id = _required_string(payload, "grant_id")
+        if operation == "revoke":
+            self.server.grant_policy.revoke(grant_id, now=now)
+            return {"revoked": True}
+        if operation == "kill":
+            self.server.grant_policy.kill(
+                _required_string(payload, "subject_id"), now=now
+            )
+            return {"stopped": True}
+        raise ValueError("unknown grant operation")
 
 
 def _record_json(record: GoalRecord | JobRecord) -> dict[str, Any]:
@@ -624,6 +678,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     scheduler = DurableWorkerScheduler(
         arguments.database, lease_duration=timedelta(seconds=arguments.lease_seconds)
     )
+    grant_policy = DurableGrantPolicy(arguments.database)
     server = ControlPlaneHTTPServer(
         (arguments.host, arguments.port),
         control_plane,
@@ -631,6 +686,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         live_state,
         governed_runtime,
         scheduler,
+        grant_policy,
     )
     host, port = server.server_address[:2]
     ready = {

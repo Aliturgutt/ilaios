@@ -128,6 +128,11 @@ class DurableWorkerScheduler:
                 ),
             )
 
+    def authorize(self, lease: Lease, *, now: datetime) -> None:
+        """Verify the current durable lease without recording an effect."""
+        with self._connect() as connection:
+            self._authorize(connection, lease, now)
+
     def state(self) -> dict[str, Any]:
         with self._connect() as connection:
             leases = [dict(row) for row in connection.execute(

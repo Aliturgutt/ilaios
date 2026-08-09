@@ -710,6 +710,23 @@ def test_concurrent_scheduler_fences_stale_side_effects_and_survives_restart(
         )
         assert status == 200
         assert replacement["fencing_token"] == stale["fencing_token"] + 1
+        status, _ = _request(
+            base_url,
+            "POST",
+            "/v1/grants/commands",
+            payload={
+                "operation": "register",
+                "grant_id": "grant-race",
+                "subject_id": "worker-a",
+                "actions": ["write"],
+                "resources": ["task-race"],
+                "expires_at": (after_expiry + timedelta(minutes=5)).isoformat(),
+                "max_side_effects": 1,
+                "max_resources": 1,
+                "now": after_expiry.isoformat(),
+            },
+        )
+        assert status == 200
         status, denied = _request(
             base_url,
             "POST",
@@ -717,6 +734,7 @@ def test_concurrent_scheduler_fences_stale_side_effects_and_survives_restart(
             payload={
                 "operation": "record_side_effect",
                 "lease": stale,
+                "grant_id": "grant-race",
                 "now": after_expiry.isoformat(),
                 "payload": {"effect": "must-not-happen"},
             },
@@ -730,6 +748,7 @@ def test_concurrent_scheduler_fences_stale_side_effects_and_survives_restart(
             payload={
                 "operation": "record_side_effect",
                 "lease": replacement,
+                "grant_id": "grant-race",
                 "now": after_expiry.isoformat(),
                 "payload": {"effect": "bounded"},
             },
@@ -749,3 +768,122 @@ def test_concurrent_scheduler_fences_stale_side_effects_and_survives_restart(
                 "created_at": after_expiry.isoformat(),
             }
         ]
+
+
+def test_durable_grants_revoke_kill_and_budget_gate_real_side_effects(
+    tmp_path: Path,
+) -> None:
+    now = datetime(2026, 8, 9, tzinfo=timezone.utc)
+    with _running_service(tmp_path) as (base_url, _):
+        _request(
+            base_url,
+            "POST",
+            "/v1/scheduler/commands",
+            payload={
+                "operation": "register_worker",
+                "worker_id": "worker-1",
+                "capabilities": ["write"],
+                "max_concurrent_tasks": 3,
+            },
+        )
+        leases: dict[str, dict[str, Any]] = {}
+        for task_id in ("task-allowed", "task-revoked", "task-killed"):
+            _, lease = _request(
+                base_url,
+                "POST",
+                "/v1/scheduler/commands",
+                payload={
+                    "operation": "schedule",
+                    "task_id": task_id,
+                    "capability": "write",
+                    "now": now.isoformat(),
+                },
+            )
+            leases[task_id] = lease
+            _request(
+                base_url,
+                "POST",
+                "/v1/grants/commands",
+                payload={
+                    "operation": "register",
+                    "grant_id": "grant-" + task_id,
+                    "subject_id": "worker-1",
+                    "actions": ["write"],
+                    "resources": [task_id],
+                    "expires_at": (now + timedelta(minutes=5)).isoformat(),
+                    "max_side_effects": 1,
+                    "max_resources": 1,
+                    "now": now.isoformat(),
+                },
+            )
+        status, _ = _request(
+            base_url,
+            "POST",
+            "/v1/scheduler/commands",
+            payload={
+                "operation": "record_side_effect",
+                "lease": leases["task-allowed"],
+                "grant_id": "grant-task-allowed",
+                "now": now.isoformat(),
+                "payload": {"effect": "allowed"},
+            },
+        )
+        assert status == 200
+        status, exhausted = _request(
+            base_url,
+            "POST",
+            "/v1/scheduler/commands",
+            payload={
+                "operation": "record_side_effect",
+                "lease": leases["task-allowed"],
+                "grant_id": "grant-task-allowed",
+                "now": now.isoformat(),
+                "payload": {"effect": "denied"},
+            },
+        )
+        assert status == 400
+        assert exhausted == {"error": "side-effect budget exhausted"}
+        _request(
+            base_url,
+            "POST",
+            "/v1/grants/commands",
+            payload={
+                "operation": "revoke",
+                "grant_id": "grant-task-revoked",
+                "now": now.isoformat(),
+            },
+        )
+        _request(
+            base_url,
+            "POST",
+            "/v1/grants/commands",
+            payload={
+                "operation": "kill",
+                "grant_id": "grant-task-killed",
+                "subject_id": "worker-1",
+                "now": now.isoformat(),
+            },
+        )
+
+    (tmp_path / "ready.json").unlink()
+    with _running_service(tmp_path) as (base_url, _):
+        for task_id, expected in (
+            ("task-revoked", "grant is revoked"),
+            ("task-killed", "subject is stopped"),
+        ):
+            status, denied = _request(
+                base_url,
+                "POST",
+                "/v1/scheduler/commands",
+                payload={
+                    "operation": "record_side_effect",
+                    "lease": leases[task_id],
+                    "grant_id": "grant-" + task_id,
+                    "now": now.isoformat(),
+                    "payload": {"effect": "must-not-resume"},
+                },
+            )
+            assert status == 400
+            assert denied == {"error": expected}
+        _, scheduler_state = _request(base_url, "GET", "/v1/scheduler/state")
+        assert len(scheduler_state["effects"]) == 1
