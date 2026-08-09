@@ -78,6 +78,10 @@ class ControlPlane:
         """Validate a transport credential before non-control-plane dispatch."""
         self._authenticate(token)
 
+    @property
+    def database_path(self) -> Path:
+        return self._config.database_path
+
     def create_goal(self, token: str, objective: str) -> GoalRecord:
         self._authenticate(token)
         if not objective or objective != objective.strip():

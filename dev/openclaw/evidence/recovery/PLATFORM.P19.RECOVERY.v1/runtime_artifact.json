@@ -1,0 +1,24 @@
+{
+  "backup": {
+    "format": "ILAIOS_RUNTIME_BACKUP_V1",
+    "restore_goal_retrieval": true,
+    "sha256": "5beba2caaa81b0d30bcc9c05686dfa8e67b4051f2d6cab486f245b998f73b41f",
+    "size_bytes": 5007
+  },
+  "health": {
+    "liveness": "PASS",
+    "readiness": "PASS",
+    "restored_process": "PASS",
+    "schema_version": 7
+  },
+  "oci": {
+    "config_sha256": "ef6deb4a4e1914e53a73c199d783d55f6d48dd8f504a46874abde352b9216c60",
+    "extracted_runtime_execution": "oci-runtime-ok",
+    "index_sha256": "ac10cfb47ef8e86a501c25bbec8bd0adf2042c4eb9bcd137693a763714bee34c",
+    "layer_sha256": "cc5ff90678627b326c85106270d935d9fd5ff293eed234e7a08708f6bb9f8138",
+    "manifest_sha256": "828b04956aa3db5d6d6bf2217e077985465a2e0330832b9b6d7fdac93645f3d0",
+    "runtime_isolation": ["user_namespace", "mount_namespace", "chroot"]
+  },
+  "profile": "provider_neutral_local_baseline",
+  "release_state": "NOT_DEPLOYED"
+}

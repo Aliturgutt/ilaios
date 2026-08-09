@@ -27,7 +27,10 @@ from services.control_plane.live_state import (
     LiveStateError,
     LiveStateTransport,
 )
-from services.control_plane.migrations import current_schema_version
+from services.control_plane.migrations import (
+    LATEST_SCHEMA_VERSION,
+    current_schema_version,
+)
 from services.control_plane.proposals import (
     BudgetEnvelope,
     DataClass,
@@ -104,6 +107,30 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             path = urlparse(self.path).path
             if path == "/health/live":
                 self._send_json(HTTPStatus.OK, {"status": "live"})
+                return
+            if path == "/health/ready":
+                try:
+                    schema_version = current_schema_version(
+                        self.server.control_plane.database_path
+                    )
+                    self.server.evidence_store.verify()
+                except (EvidenceError, OSError):
+                    self._send_json(
+                        HTTPStatus.SERVICE_UNAVAILABLE, {"status": "not_ready"}
+                    )
+                    return
+                ready = schema_version == LATEST_SCHEMA_VERSION
+                self._send_json(
+                    HTTPStatus.OK if ready else HTTPStatus.SERVICE_UNAVAILABLE,
+                    {
+                        "status": "ready" if ready else "not_ready",
+                        "schema_version": schema_version,
+                        "dependencies": {
+                            "artifact_store": "ready",
+                            "control_database": "ready" if ready else "not_ready",
+                        },
+                    },
+                )
                 return
             token = self._bearer_token()
             self.server.control_plane.authenticate(token)
