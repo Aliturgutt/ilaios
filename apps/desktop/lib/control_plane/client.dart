@@ -5,6 +5,14 @@ import 'dart:io';
 import 'operational_snapshot.dart';
 import 'projection.dart';
 
+enum GovernanceDecision {
+  approved('approved'),
+  denied('denied');
+
+  const GovernanceDecision(this.wireValue);
+  final String wireValue;
+}
+
 class ControlPlaneClientException implements Exception {
   const ControlPlaneClientException(this.message);
 
@@ -26,6 +34,12 @@ abstract interface class ControlPlaneTransport {
     Uri uri, {
     Map<String, String> headers = const <String, String>{},
   });
+
+  Future<ControlPlaneResponse> post(
+    Uri uri, {
+    required String body,
+    Map<String, String> headers = const <String, String>{},
+  });
 }
 
 class IoControlPlaneTransport implements ControlPlaneTransport {
@@ -38,13 +52,38 @@ class IoControlPlaneTransport implements ControlPlaneTransport {
     Uri uri, {
     Map<String, String> headers = const <String, String>{},
   }) async {
+    return _request('GET', uri, headers: headers);
+  }
+
+  @override
+  Future<ControlPlaneResponse> post(
+    Uri uri, {
+    required String body,
+    Map<String, String> headers = const <String, String>{},
+  }) async {
+    return _request('POST', uri, body: body, headers: headers);
+  }
+
+  Future<ControlPlaneResponse> _request(
+    String method,
+    Uri uri, {
+    String? body,
+    Map<String, String> headers = const <String, String>{},
+  }) async {
     final client = HttpClient();
     try {
-      final request = await client.getUrl(uri).timeout(timeout);
+      final request = await client.openUrl(method, uri).timeout(timeout);
       headers.forEach(request.headers.set);
+      if (body != null) {
+        request.headers.contentType = ContentType.json;
+        request.write(body);
+      }
       final response = await request.close().timeout(timeout);
-      final body = await utf8.decoder.bind(response).join().timeout(timeout);
-      return ControlPlaneResponse(statusCode: response.statusCode, body: body);
+      final responseBody = await utf8.decoder.bind(response).join().timeout(timeout);
+      return ControlPlaneResponse(
+        statusCode: response.statusCode,
+        body: responseBody,
+      );
     } on TimeoutException {
       throw const ControlPlaneClientException('Control plane request timed out');
     } on SocketException {
@@ -158,6 +197,47 @@ class ControlPlaneClient {
     );
   }
 
+  Future<void> decideGovernanceRequest({
+    required String requestId,
+    required String approver,
+    required GovernanceDecision decision,
+  }) async {
+    final normalizedRequestId = requestId.trim();
+    final normalizedApprover = approver.trim();
+    if (normalizedRequestId.isEmpty || normalizedApprover.isEmpty) {
+      throw const ControlPlaneClientException(
+        'Governance decision requires request and approver identifiers',
+      );
+    }
+
+    final response = await _transport.post(
+      _baseUri.resolve('/v1/governance/commands'),
+      body: jsonEncode(<String, Object?>{
+        'operation': 'decide',
+        'request_id': normalizedRequestId,
+        'approver': normalizedApprover,
+        'decision': decision.wireValue,
+      }),
+      headers: <String, String>{'Authorization': 'Bearer $_token'},
+    );
+    if (response.statusCode == HttpStatus.unauthorized) {
+      throw const ControlPlaneClientException(
+        'Control plane authentication failed',
+      );
+    }
+    if (response.statusCode != HttpStatus.ok) {
+      throw const ControlPlaneClientException(
+        'Governance decision rejected by authoritative control plane',
+      );
+    }
+    final payload = _decodeObject(response, 'governance decision');
+    if (payload['decided'] != true) {
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed governance decision',
+      );
+    }
+  }
+
   Future<Map<String, dynamic>> _getAuthenticatedObject(
     String path,
     String label,
@@ -166,8 +246,7 @@ class ControlPlaneClient {
       _baseUri.resolve(path),
       headers: <String, String>{'Authorization': 'Bearer $_token'},
     );
-    if (response.statusCode == HttpStatus.unauthorized ||
-        response.statusCode == HttpStatus.forbidden) {
+    if (response.statusCode == HttpStatus.unauthorized) {
       throw const ControlPlaneClientException(
         'Control plane authentication failed',
       );
