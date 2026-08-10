@@ -81,24 +81,56 @@ jobs:
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
           set -euo pipefail
-          aws ecr start-image-scan \
+
+          SCAN_ON_PUSH="$(aws ecr describe-repositories \
+            --repository-names "$REPOSITORY" \
+            --region eu-central-1 \
+            --query 'repositories[0].imageScanningConfiguration.scanOnPush' \
+            --output text)"
+          echo "ECR_SCAN_ON_PUSH=$SCAN_ON_PUSH"
+
+          set +e
+          START_OUTPUT="$(aws ecr start-image-scan \
             --repository-name "$REPOSITORY" \
             --image-id imageDigest="$DIGEST" \
-            --region eu-central-1 >/dev/null 2>&1 || true
+            --region eu-central-1 2>&1)"
+          START_RC=$?
+          set -e
+          if [ "$START_RC" -ne 0 ]; then
+            echo "ECR_START_SCAN_RESULT=$START_OUTPUT"
+            if ! grep -q 'LimitExceededException' <<<"$START_OUTPUT"; then
+              exit "$START_RC"
+            fi
+          fi
 
           for i in $(seq 1 60); do
-            STATUS="$(aws ecr describe-image-scan-findings --repository-name "$REPOSITORY" --image-id imageDigest="$DIGEST" --region eu-central-1 --query 'imageScanStatus.status' --output text 2>/dev/null || true)"
+            set +e
+            SCAN_OUTPUT="$(aws ecr describe-image-scan-findings \
+              --repository-name "$REPOSITORY" \
+              --image-id imageDigest="$DIGEST" \
+              --region eu-central-1 \
+              --query '{status:imageScanStatus.status,severity:imageScanFindings.findingSeverityCounts}' \
+              --output json 2>&1)"
+            SCAN_RC=$?
+            set -e
+
+            if [ "$SCAN_RC" -ne 0 ]; then
+              echo "ECR_SCAN_QUERY_RESULT=$SCAN_OUTPUT"
+              if grep -q 'ScanNotFoundException' <<<"$SCAN_OUTPUT"; then
+                sleep 10
+                continue
+              fi
+              exit "$SCAN_RC"
+            fi
+
+            STATUS="$(python -c 'import json,sys; print(json.load(sys.stdin).get("status") or "")' <<<"$SCAN_OUTPUT")"
             case "$STATUS" in
               COMPLETE)
-                aws ecr describe-image-scan-findings \
-                  --repository-name "$REPOSITORY" \
-                  --image-id imageDigest="$DIGEST" \
-                  --region eu-central-1 \
-                  --query '{status:imageScanStatus.status,severity:imageScanFindings.findingSeverityCounts}'
+                echo "$SCAN_OUTPUT"
                 exit 0
                 ;;
               FAILED|UNSUPPORTED_IMAGE)
-                echo "ECR_SCAN_STATUS=$STATUS"
+                echo "$SCAN_OUTPUT"
                 exit 1
                 ;;
             esac
