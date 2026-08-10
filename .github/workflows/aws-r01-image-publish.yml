@@ -1,0 +1,94 @@
+name: AWS R01 image publish
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/aws-r01-image-publish.yml'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::101180464425:role/ILAIOS-GitHub-Deploy-Role
+          aws-region: eu-central-1
+
+      - name: Verify AWS identity
+        run: |
+          set -euo pipefail
+          ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
+          test "$ACCOUNT" = "101180464425"
+
+      - name: Build canonical OCI layout
+        id: build
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          from services.deployment import build_oci_layout
+          result = build_oci_layout(Path.cwd(), Path('/tmp/ilaios-r01-oci'))
+          with open('/tmp/oci-result.txt', 'w', encoding='utf-8') as f:
+              f.write(f'index_sha256={result.index_digest}\n')
+              f.write(f'manifest_sha256={result.manifest_digest}\n')
+              f.write(f'config_sha256={result.config_digest}\n')
+              f.write(f'layer_sha256={result.layer_digest}\n')
+          print(Path('/tmp/oci-result.txt').read_text())
+          PY
+
+      - name: Install Skopeo
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq skopeo
+
+      - name: Push immutable OCI image to ECR
+        id: push
+        env:
+          REGISTRY: 101180464425.dkr.ecr.eu-central-1.amazonaws.com
+          REPOSITORY: ilaios-r01-canary
+        run: |
+          set -euo pipefail
+          TAG="r01-${GITHUB_SHA}"
+          aws ecr get-login-password --region eu-central-1 | skopeo login --username AWS --password-stdin "$REGISTRY"
+          skopeo copy --preserve-digests "oci:/tmp/ilaios-r01-oci:ilaios:recovery" "docker://${REGISTRY}/${REPOSITORY}:${TAG}"
+          DIGEST="$(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$TAG" --region eu-central-1 --query 'imageDetails[0].imageDigest' --output text)"
+          test "${DIGEST#sha256:}" != "$DIGEST"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+          echo "ECR_IMAGE=${REGISTRY}/${REPOSITORY}@${DIGEST}"
+          echo "ECR_TAG=${TAG}"
+          echo "ECR_DIGEST=${DIGEST}"
+
+      - name: Wait for ECR scan result
+        env:
+          REPOSITORY: ilaios-r01-canary
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 24); do
+            STATUS="$(aws ecr describe-image-scan-findings --repository-name "$REPOSITORY" --image-id imageDigest="$DIGEST" --region eu-central-1 --query 'imageScanStatus.status' --output text 2>/dev/null || true)"
+            if [ "$STATUS" = "COMPLETE" ]; then
+              aws ecr describe-image-scan-findings --repository-name "$REPOSITORY" --image-id imageDigest="$DIGEST" --region eu-central-1 --query '{status:imageScanStatus.status,severity:imageScanFindings.findingSeverityCounts}'
+              exit 0
+            fi
+            if [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "UNSUPPORTED_IMAGE" ]; then
+              echo "ECR_SCAN_STATUS=$STATUS"
+              exit 1
+            fi
+            sleep 5
+          done
+          echo 'ECR scan did not complete within bounded wait window.'
+          exit 1
