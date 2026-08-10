@@ -1,0 +1,1 @@
+Turkish locale is public and intended for indexing under /tr. robots.ts remains the authoritative robots configuration.
