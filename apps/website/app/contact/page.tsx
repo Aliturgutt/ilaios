@@ -1,20 +1,2 @@
-export const metadata = { title: "Contact" };
-
-export default function Contact() {
-  return (
-    <>
-      <section className="shell page-hero">
-        <div className="eyebrow">Contact</div>
-        <h1>Start a conversation with ILAIOS.</h1>
-        <p className="lead">ILAIOS is currently in active development. Business, partnership, product, and security contact channels will be published here as each corporate mailbox is verified.</p>
-      </section>
-      <section className="section">
-        <div className="shell grid">
-          <article className="card"><h3>Business</h3><p>General company and early product discussions.</p><span className="status-chip">Corporate mailbox pending verification</span></article>
-          <article className="card"><h3>Partnerships</h3><p>Technology, distribution, ecosystem, and strategic collaboration enquiries.</p><span className="status-chip">Corporate mailbox pending verification</span></article>
-          <article className="card"><h3>Security</h3><p>Responsible disclosure and security-related communication.</p><span className="status-chip">Dedicated channel pending verification</span></article>
-        </div>
-      </section>
-    </>
-  );
-}
+export const metadata={title:"Contact",description:"Official contact information for ILAIOS."};
+export default function Contact(){return <><section className="shell page-hero"><div className="eyebrow">Contact</div><h1>Start a conversation with ILAIOS.</h1><p className="lead">ILAIOS is currently in active development. Public business, partnership, product, and security channels will be listed here only after each corporate mailbox is verified for external use.</p></section><section className="section"><div className="shell"><div className="eyebrow">Official channels</div><h2>Verification before publication.</h2><div className="grid"><article className="card"><h3>Business</h3><p>General company and early product discussions.</p><span className="status-chip">Public channel being verified</span></article><article className="card"><h3>Partnerships</h3><p>Technology, ecosystem, distribution, and strategic collaboration enquiries.</p><span className="status-chip">Public channel being verified</span></article><article className="card"><h3>Security</h3><p>Responsible disclosure and security-related communication.</p><span className="status-chip">Dedicated channel being verified</span></article></div><p className="contact-note">For security, operational or infrastructure mailboxes are intentionally not published as general contact addresses.</p></div></section></>}
