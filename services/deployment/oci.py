@@ -111,6 +111,7 @@ def _runtime_layer(repository: Path) -> bytes:
         )
         for target, source in _linked_libraries(linked_inputs).items():
             _add_file(archive, source, target)
+        _add_scanner_metadata(archive)
         for root_name in ("apps", "packages", "services", "src"):
             root = repository / root_name
             for source in sorted(root.rglob("*.py")):
@@ -120,6 +121,24 @@ def _runtime_layer(repository: Path) -> bytes:
                     Path("opt/ilaios") / source.relative_to(repository),
                 )
     return stream.getvalue()
+
+
+def _add_scanner_metadata(archive: tarfile.TarFile) -> None:
+    """Add real distro/package metadata when the build host provides it.
+
+    The R01 image is intentionally assembled without a container engine. ECR basic
+    scanning still needs standard operating-system and package-manager metadata to
+    identify the image platform. GitHub's Ubuntu runner provides both files below;
+    keeping their original contents also ties scanner findings to the exact runtime
+    libraries from that build host rather than inventing synthetic package records.
+    """
+    metadata = (
+        (Path("/etc/os-release"), Path("etc/os-release")),
+        (Path("/var/lib/dpkg/status"), Path("var/lib/dpkg/status")),
+    )
+    for source, target in metadata:
+        if source.is_file():
+            _add_file(archive, source, target)
 
 
 def _linked_libraries(inputs: tuple[Path, ...]) -> dict[Path, Path]:
