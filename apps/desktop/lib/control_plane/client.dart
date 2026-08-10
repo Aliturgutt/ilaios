@@ -149,7 +149,7 @@ class ControlPlaneClient {
     );
 
     return OperationalSnapshot(
-      runtimeRoutes: _objectMap(runtimePayload['routes'], 'runtime routes'),
+      runtimeRoutes: _objectList(runtimePayload['routes'], 'runtime routes'),
       schedulerState: Map<String, Object?>.from(schedulerPayload),
       grantsState: Map<String, Object?>.from(grantsPayload),
       governanceState: Map<String, Object?>.from(governancePayload),
@@ -176,15 +176,6 @@ class ControlPlaneClient {
       throw ControlPlaneClientException('Control plane $label query failed');
     }
     return _decodeObject(response, label);
-  }
-
-  static Map<String, Object?> _objectMap(Object? raw, String label) {
-    if (raw is Map<String, dynamic>) {
-      return Map<String, Object?>.from(raw);
-    }
-    throw ControlPlaneClientException(
-      'Control plane returned malformed $label',
-    );
   }
 
   static List<Map<String, Object?>> _objectList(Object? raw, String label) {
