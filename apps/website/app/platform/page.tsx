@@ -9,6 +9,13 @@ const capabilities = [
   ["Composable clients", "Desktop, mobile, and web interfaces can evolve independently while relying on stable contracts and shared backend authority."],
 ] as const;
 
+const planes = [
+  ["Experience plane", "Desktop, mobile, and web clients surface goals, approvals, state, evidence, and delivery without owning runtime authority."],
+  ["Control plane", "Policy, permissions, orchestration, validation, state transitions, and authoritative decisions are centralized behind durable contracts."],
+  ["Execution plane", "Tools, services, deterministic workers, and bounded intelligent capabilities perform approved work."],
+  ["Evidence plane", "Validation outcomes, audit context, provenance, and execution records make important system behavior inspectable."],
+] as const;
+
 export default function Platform() {
   return (
     <>
@@ -17,21 +24,30 @@ export default function Platform() {
         <h1>Infrastructure for governed intelligent operations.</h1>
         <p className="lead">ILAIOS is being developed as a control-oriented platform for coordinating workflows, software capabilities, and AI-assisted execution without moving authority into individual agents or interfaces.</p>
       </section>
+
+      <section className="section architecture-section">
+        <div className="shell">
+          <div className="section-heading"><div><div className="eyebrow">Platform model</div><h2>Separate experience from authority.</h2></div><p className="lead small">The architecture is designed so user-facing clients remain replaceable while policy, execution authority, and evidence stay durable.</p></div>
+          <div className="plane-grid">{planes.map(([title, text], index) => <article className="plane-card" key={title}><span>0{index + 1}</span><h3>{title}</h3><p>{text}</p></article>)}</div>
+        </div>
+      </section>
+
       <section className="section">
         <div className="shell">
           <div className="eyebrow">Architecture direction</div>
           <h2>Designed around authority, evidence, and durable contracts.</h2>
-          <div className="grid two-up">
-            {capabilities.map(([title, text]) => <article className="card" key={title}><h3>{title}</h3><p>{text}</p></article>)}
-          </div>
+          <div className="grid two-up">{capabilities.map(([title, text]) => <article className="card" key={title}><h3>{title}</h3><p>{text}</p></article>)}</div>
         </div>
       </section>
+
       <section className="section">
-        <div className="shell split-copy">
-          <div><div className="eyebrow">Current stage</div><h2>Built incrementally, validated continuously.</h2></div>
-          <div><p className="lead small">ILAIOS remains under active development. Public descriptions on this site communicate engineering direction and validated design principles; they do not imply that every planned capability is commercially available today.</p></div>
+        <div className="shell runtime-map">
+          <div><div className="eyebrow">Runtime path</div><h2>From goal to validated outcome.</h2><p className="lead small">A requested action is intended to move through a governed sequence rather than jumping directly from prompt to side effect.</p></div>
+          <div className="runtime-steps"><div><span>1</span><strong>Goal</strong><small>Intent enters the system</small></div><div><span>2</span><strong>Authorize</strong><small>Policy and permissions evaluated</small></div><div><span>3</span><strong>Execute</strong><small>Bounded capabilities perform work</small></div><div><span>4</span><strong>Verify</strong><small>Tests and validators assess outcome</small></div><div><span>5</span><strong>Deliver</strong><small>Accepted result and evidence surfaced</small></div></div>
         </div>
       </section>
+
+      <section className="section compact-section"><div className="shell callout"><div><div className="eyebrow">Current stage</div><h2>Built incrementally, validated continuously.</h2></div><div><p className="muted">ILAIOS remains under active development. Public descriptions communicate engineering direction and validated design principles; they do not imply that every planned capability is commercially available today.</p></div></div></section>
     </>
   );
 }
