@@ -26,7 +26,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
       <header className="site-header">
         <div className="shell nav">
           <Link className="brand" href={isTr ? "/tr" : "/"} aria-label="ILAIOS home">
-            <Image src="/brand/logo-horizontal-dark.jpg" alt="ILAIOS" width={2400} height={800} priority sizes="168px" />
+            <Image src="/brand/logo-horizontal-dark.jpg" alt="ILAIOS" width={2400} height={800} sizes="168px" />
           </Link>
           <nav className="nav-links" aria-label={isTr ? "Ana menü" : "Primary navigation"}>
             {links.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
@@ -38,6 +38,10 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
       </header>
       <main>{children}</main>
       <footer className="site-footer">
+        <div className="shell footer-trust">
+          <div><strong>ILAIOS</strong><p>{isTr ? "Kontrollü akıllı otomasyon için güvenlik, kanıt ve açık yetki sınırları etrafında geliştirilen teknoloji." : "Technology for governed intelligent automation, built around security, evidence, and explicit authority boundaries."}</p></div>
+          <div className="footer-signals"><span>{isTr ? "Aktif geliştirme" : "Active development"}</span><span>{isTr ? "Kanıt odaklı" : "Evidence-first"}</span><span>{isTr ? "Güvenlik odaklı" : "Security-first"}</span></div>
+        </div>
         <div className="shell footer-row">
           <span>© {new Date().getFullYear()} ILAIOS</span>
           <span>
