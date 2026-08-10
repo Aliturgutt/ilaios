@@ -1,0 +1,124 @@
+import 'package:flutter_test/flutter_test.dart';
+import 'package:ilaios_desktop/control_plane/client.dart';
+
+class _FakeTransport implements ControlPlaneTransport {
+  _FakeTransport(this.responses);
+
+  final Map<String, ControlPlaneResponse> responses;
+  final List<({Uri uri, Map<String, String> headers})> requests = [];
+
+  @override
+  Future<ControlPlaneResponse> get(
+    Uri uri, {
+    Map<String, String> headers = const <String, String>{},
+  }) async {
+    requests.add((uri: uri, headers: Map<String, String>.from(headers)));
+    final response = responses[uri.path];
+    if (response == null) {
+      throw StateError('No fake response for ${uri.path}');
+    }
+    return response;
+  }
+}
+
+void main() {
+  test('projects authoritative readiness and event state', () async {
+    final transport = _FakeTransport(<String, ControlPlaneResponse>{
+      '/health/ready': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{"status":"ready","schema_version":1}',
+      ),
+      '/v1/events': const ControlPlaneResponse(
+        statusCode: 200,
+        body:
+            '{"events":['
+            '{"event_type":"goal.created"},'
+            '{"event_type":"goal.created"},'
+            '{"event_type":"job.created"}'
+            ']}',
+      ),
+    });
+    final client = ControlPlaneClient(
+      baseUri: Uri.parse('http://127.0.0.1:4123'),
+      token: 'runtime-secret',
+      transport: transport,
+    );
+
+    final projection = await client.fetchProjection();
+
+    expect(projection.connected, isTrue);
+    expect(projection.goalCount, 2);
+    expect(projection.jobCount, 1);
+    expect(projection.lastEvent, 'job.created');
+    expect(projection.schemaVersion, '1');
+    expect(transport.requests, hasLength(2));
+    expect(transport.requests.first.headers, isEmpty);
+    expect(
+      transport.requests.last.headers['Authorization'],
+      'Bearer runtime-secret',
+    );
+  });
+
+  test('fails closed on authentication rejection', () async {
+    final transport = _FakeTransport(<String, ControlPlaneResponse>{
+      '/health/ready': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{"status":"ready","schema_version":1}',
+      ),
+      '/v1/events': const ControlPlaneResponse(
+        statusCode: 401,
+        body: '{"error":"invalid token"}',
+      ),
+    });
+    final client = ControlPlaneClient(
+      baseUri: Uri.parse('http://localhost:4123'),
+      token: 'wrong-secret',
+      transport: transport,
+    );
+
+    await expectLater(
+      client.fetchProjection(),
+      throwsA(
+        isA<ControlPlaneClientException>().having(
+          (error) => error.message,
+          'message',
+          'Control plane authentication failed',
+        ),
+      ),
+    );
+  });
+
+  test('rejects malformed authoritative event data', () async {
+    final transport = _FakeTransport(<String, ControlPlaneResponse>{
+      '/health/ready': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{"status":"ready","schema_version":1}',
+      ),
+      '/v1/events': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{"events":[{"unexpected":true}]}',
+      ),
+    });
+    final client = ControlPlaneClient(
+      baseUri: Uri.parse('http://127.0.0.1:4123'),
+      token: 'runtime-secret',
+      transport: transport,
+    );
+
+    await expectLater(
+      client.fetchProjection(),
+      throwsA(isA<ControlPlaneClientException>()),
+    );
+  });
+
+  test('rejects non-loopback control-plane endpoints', () {
+    expect(
+      () => ControlPlaneClient(
+        baseUri: Uri.parse('http://example.com:4123'),
+        token: 'runtime-secret',
+        transport: _FakeTransport(const <String, ControlPlaneResponse>{}),
+      ),
+      throwsArgumentError,
+    );
+  });
+}

@@ -1,31 +1,76 @@
 import 'package:flutter/material.dart';
 
-void main() {
-  runApp(const IlaiosDesktopApp());
+import 'control_plane/client.dart';
+import 'control_plane/config.dart';
+import 'control_plane/projection.dart';
+
+export 'control_plane/projection.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final config = await ControlPlaneConfig.fromEnvironment();
+  runApp(DesktopBootstrap(config: config));
 }
 
-@immutable
-class ControlPlaneProjection {
-  const ControlPlaneProjection({
-    required this.connected,
-    required this.status,
-    required this.goalCount,
-    required this.jobCount,
-    required this.lastEvent,
-  });
+class DesktopBootstrap extends StatefulWidget {
+  const DesktopBootstrap({required this.config, super.key});
 
-  const ControlPlaneProjection.unavailable()
-    : connected = false,
-      status = 'Authoritative control plane unavailable',
-      goalCount = null,
-      jobCount = null,
-      lastEvent = null;
+  final ControlPlaneConfig? config;
 
-  final bool connected;
-  final String status;
-  final int? goalCount;
-  final int? jobCount;
-  final String? lastEvent;
+  @override
+  State<DesktopBootstrap> createState() => _DesktopBootstrapState();
+}
+
+class _DesktopBootstrapState extends State<DesktopBootstrap> {
+  ControlPlaneProjection _projection = const ControlPlaneProjection.unavailable();
+  ControlPlaneClient? _client;
+
+  @override
+  void initState() {
+    super.initState();
+    final config = widget.config;
+    if (config != null) {
+      try {
+        _client = ControlPlaneClient(baseUri: config.baseUri, token: config.token);
+        _refresh();
+      } on ArgumentError {
+        _projection = const ControlPlaneProjection.unavailable(
+          status: 'Control plane configuration rejected',
+        );
+      }
+    }
+  }
+
+  Future<void> _refresh() async {
+    final client = _client;
+    if (client == null) {
+      return;
+    }
+    try {
+      final projection = await client.fetchProjection();
+      if (!mounted) {
+        return;
+      }
+      setState(() => _projection = projection);
+    } on ControlPlaneClientException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(
+        () => _projection = ControlPlaneProjection.unavailable(
+          status: error.message,
+        ),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return IlaiosDesktopApp(
+      projection: _projection,
+      onRefreshRequested: _client == null ? null : _refresh,
+    );
+  }
 }
 
 class IlaiosDesktopApp extends StatelessWidget {
@@ -85,6 +130,7 @@ class DesktopShell extends StatelessWidget {
             const SizedBox(height: 24),
             Wrap(
               spacing: 16,
+              runSpacing: 16,
               children: [
                 _ProjectionCard(
                   label: 'Goals',
