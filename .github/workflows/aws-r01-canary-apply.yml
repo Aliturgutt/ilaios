@@ -24,7 +24,7 @@ jobs:
       TF_INPUT: 'false'
       TF_VAR_aws_region: eu-central-1
       TF_VAR_enable_canary: 'true'
-      TF_VAR_image_digest: sha256:fcd67b650585897e35a6428fb318cbb21fda92420a4363dfee4fac740d4a6904
+      TF_VAR_image_digest: sha256:4534f8af614aa4fd890785e19f27e2ede7ce59435def93069884156261b86931
       TF_VAR_certificate_arn: arn:aws:acm:eu-central-1:101180464425:certificate/95994b5b-ff08-4af2-913d-9952e95f8aa1
       TF_VAR_control_plane_secret_arn: arn:aws:secretsmanager:eu-central-1:101180464425:secret:ilaios/r01/canary/control-plane-token-BgIO2G
       GH_TOKEN: ${{ github.token }}
