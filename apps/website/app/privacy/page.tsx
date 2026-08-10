@@ -1,2 +1,17 @@
 export const metadata = { title: "Privacy" };
-export default function Privacy() { return <div className="shell prose"><div className="eyebrow">Legal</div><h1>Privacy</h1><p>This initial ILAIOS website is designed to operate without advertising trackers, user accounts, or a marketing analytics layer. Standard hosting infrastructure may process technical request data required to deliver and secure the site.</p><p>If data collection features are introduced, this notice will be updated before those features are relied upon for public operation.</p><p>Privacy enquiries: <a href="mailto:privacy@ilaios.com">privacy@ilaios.com</a>.</p></div>; }
+
+export default function Privacy() {
+  return (
+    <div className="shell prose legal-copy">
+      <div className="eyebrow">Legal</div>
+      <h1>Privacy</h1>
+      <p>This initial ILAIOS website is designed to operate without advertising trackers, user accounts, or a marketing analytics layer.</p>
+      <h2>Technical data</h2>
+      <p>Hosting, DNS, security, and delivery infrastructure may process technical request information that is necessary to serve, protect, and troubleshoot the website. This may include network and request metadata handled by infrastructure providers.</p>
+      <h2>Future features</h2>
+      <p>If forms, accounts, analytics, or other data-collection features are introduced, this notice will be updated before those features are relied upon for public operation.</p>
+      <h2>Contact</h2>
+      <p>A dedicated privacy mailbox will be published after the corresponding corporate mailbox is verified.</p>
+    </div>
+  );
+}

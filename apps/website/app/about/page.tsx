@@ -1,2 +1,26 @@
 export const metadata = { title: "About" };
-export default function About() { return <div className="shell prose"><div className="eyebrow">About</div><h1>ILAIOS</h1><p>ILAIOS is an independent technology company building systems for governed intelligent automation. Our focus is not autonomy at any cost; it is useful automation with clear authority, evidence, and operational control.</p><h2>What we are building toward</h2><p>A platform where intelligent capabilities can assist and execute across workflows while remaining bounded by policy, permissions, validation, and human authority where required.</p><h2>Current stage</h2><p>ILAIOS is under active development. Public information on this site describes our direction and engineering principles and should not be interpreted as a claim that every planned capability is commercially available today.</p></div>; }
+
+export default function About() {
+  return (
+    <>
+      <section className="shell page-hero">
+        <div className="eyebrow">About ILAIOS</div>
+        <h1>Useful automation with clear authority.</h1>
+        <p className="lead">ILAIOS is an independent technology company building systems for governed intelligent automation. The goal is not autonomy at any cost; it is reliable execution with explicit control, evidence, and operational visibility.</p>
+      </section>
+      <section className="section">
+        <div className="shell grid">
+          <article className="card"><h3>Control before convenience</h3><p>Automation should not bypass authority simply because a model can act. Important operations remain bounded by policy and permissions.</p></article>
+          <article className="card"><h3>Evidence before confidence</h3><p>Systems should be able to show what happened, what was validated, and why an action was allowed.</p></article>
+          <article className="card"><h3>Architecture before interface</h3><p>Clients are projections of backend authority, allowing desktop, mobile, and web experiences to evolve without weakening system boundaries.</p></article>
+        </div>
+      </section>
+      <section className="section">
+        <div className="shell split-copy">
+          <div><div className="eyebrow">Development status</div><h2>Under active development.</h2></div>
+          <div><p className="lead small">This website describes ILAIOS&apos;s current engineering direction. Planned capabilities are not represented as commercially available until they are actually released and validated.</p></div>
+        </div>
+      </section>
+    </>
+  );
+}

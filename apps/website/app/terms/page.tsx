@@ -1,2 +1,17 @@
 export const metadata = { title: "Terms" };
-export default function Terms() { return <div className="shell prose"><div className="eyebrow">Legal</div><h1>Terms</h1><p>This website provides general information about ILAIOS and its development direction. Content may change as the product, company, and services evolve.</p><p>Nothing on this website constitutes a guarantee that a planned capability, integration, release, certification, or service is currently available unless explicitly stated as such.</p><p>Legal enquiries: <a href="mailto:legal@ilaios.com">legal@ilaios.com</a>.</p></div>; }
+
+export default function Terms() {
+  return (
+    <div className="shell prose legal-copy">
+      <div className="eyebrow">Legal</div>
+      <h1>Terms</h1>
+      <p>This website provides general information about ILAIOS, its engineering direction, and its developing product platform.</p>
+      <h2>Development-stage information</h2>
+      <p>Descriptions of planned capabilities, integrations, workflows, or interfaces do not constitute a guarantee that those capabilities are currently available, commercially released, or suitable for a particular use.</p>
+      <h2>No certification claims</h2>
+      <p>Nothing on this site should be interpreted as a claim of certification, regulatory approval, compliance status, partnership, customer adoption, or external endorsement unless explicitly published as verified.</p>
+      <h2>Changes</h2>
+      <p>Website content may change as ILAIOS develops. A dedicated legal contact mailbox will be published after the corresponding corporate mailbox is verified.</p>
+    </div>
+  );
+}
