@@ -74,9 +74,7 @@ class _DesktopShellState extends State<DesktopShell> {
   }
 
   void _selectSection(DesktopSection section) {
-    if (_section != section) {
-      setState(() => _section = section);
-    }
+    if (_section != section) setState(() => _section = section);
   }
 
   Widget _buildSection() {
@@ -112,30 +110,34 @@ class _NavigationRail extends StatelessWidget {
   final ValueChanged<DesktopSection> onSelected;
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: 232,
-        color: IlaiosTheme.sidebar,
-        padding: const EdgeInsets.fromLTRB(18, 24, 18, 18),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const _BrandHeader(),
-            const SizedBox(height: 34),
-            for (final section in DesktopSection.values)
-              _NavItem(
-                section: section,
-                selected: selected == section,
-                onTap: () => onSelected(section),
-              ),
-            const Spacer(),
-            const Divider(),
-            const SizedBox(height: 10),
-            const Text('Client projection',
-                style: TextStyle(color: IlaiosTheme.muted, fontSize: 11)),
-            const SizedBox(height: 4),
-            const Text('Backend authority enforced',
-                style: TextStyle(fontSize: 12)),
-          ],
+  Widget build(BuildContext context) => Semantics(
+        container: true,
+        label: 'ILAIOS Desktop primary navigation',
+        child: Container(
+          width: 232,
+          color: IlaiosTheme.sidebar,
+          padding: const EdgeInsets.fromLTRB(18, 24, 18, 18),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _BrandHeader(),
+              const SizedBox(height: 34),
+              for (final section in DesktopSection.values)
+                _NavItem(
+                  section: section,
+                  selected: selected == section,
+                  onTap: () => onSelected(section),
+                ),
+              const Spacer(),
+              const Divider(),
+              const SizedBox(height: 10),
+              const Text('Client projection',
+                  style: TextStyle(color: IlaiosTheme.muted, fontSize: 11)),
+              const SizedBox(height: 4),
+              const Text('Backend authority enforced',
+                  style: TextStyle(fontSize: 12)),
+            ],
+          ),
         ),
       );
 }
@@ -214,19 +216,25 @@ class _BrandHeader extends StatelessWidget {
 class _BrandMark extends StatelessWidget {
   const _BrandMark();
   @override
-  Widget build(BuildContext context) => Container(
-        width: 38,
-        height: 38,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-              color: IlaiosTheme.primary.withValues(alpha: .65)),
-          gradient: const LinearGradient(
-              colors: [Color(0xFF173A72), Color(0xFF10273E)]),
+  Widget build(BuildContext context) => Semantics(
+        label: 'ILAIOS',
+        image: true,
+        child: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+                color: IlaiosTheme.primary.withValues(alpha: .65)),
+            gradient: const LinearGradient(
+                colors: [Color(0xFF173A72), Color(0xFF10273E)]),
+          ),
+          alignment: Alignment.center,
+          child: const ExcludeSemantics(
+            child: Text('I',
+                style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+          ),
         ),
-        alignment: Alignment.center,
-        child: const Text('I',
-            style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
       );
 }
 
@@ -238,29 +246,34 @@ class _NavItem extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 7),
-        decoration: BoxDecoration(
-          color: selected
-              ? IlaiosTheme.primary.withValues(alpha: .13)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
-          border: selected
-              ? Border.all(
-                  color: IlaiosTheme.primary.withValues(alpha: .25))
-              : null,
-        ),
-        child: ListTile(
-          key: ValueKey('nav-${section.name}'),
-          dense: true,
-          onTap: onTap,
-          leading: Icon(section.icon,
-              size: 20,
-              color: selected ? IlaiosTheme.cyan : IlaiosTheme.muted),
-          title: Text(section.label,
-              style: TextStyle(
-                  color: selected ? IlaiosTheme.text : IlaiosTheme.muted,
-                  fontSize: 13)),
+  Widget build(BuildContext context) => Semantics(
+        button: true,
+        selected: selected,
+        label: section.label,
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 7),
+          decoration: BoxDecoration(
+            color: selected
+                ? IlaiosTheme.primary.withValues(alpha: .13)
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+            border: selected
+                ? Border.all(
+                    color: IlaiosTheme.primary.withValues(alpha: .25))
+                : null,
+          ),
+          child: ListTile(
+            key: ValueKey('nav-${section.name}'),
+            dense: true,
+            onTap: onTap,
+            leading: Icon(section.icon,
+                size: 20,
+                color: selected ? IlaiosTheme.cyan : IlaiosTheme.muted),
+            title: Text(section.label,
+                style: TextStyle(
+                    color: selected ? IlaiosTheme.text : IlaiosTheme.muted,
+                    fontSize: 13)),
+          ),
         ),
       );
 }
@@ -291,7 +304,14 @@ class _ConnectionPill extends StatelessWidget {
   final ControlPlaneProjection projection;
 
   @override
-  Widget build(BuildContext context) => Container(
+  Widget build(BuildContext context) {
+    final label = projection.connected
+        ? 'Control plane connected'
+        : 'Control plane offline';
+    return Semantics(
+      liveRegion: true,
+      label: label,
+      child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
           color: projection.connected
@@ -311,12 +331,16 @@ class _ConnectionPill extends StatelessWidget {
                   ? IlaiosTheme.success
                   : IlaiosTheme.muted),
           const SizedBox(width: 8),
-          Text(
-              projection.connected
-                  ? 'CONTROL PLANE CONNECTED'
-                  : 'CONTROL PLANE OFFLINE',
-              style:
-                  const TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+          ExcludeSemantics(
+            child: Text(
+                projection.connected
+                    ? 'CONTROL PLANE CONNECTED'
+                    : 'CONTROL PLANE OFFLINE',
+                style: const TextStyle(
+                    fontSize: 11, fontWeight: FontWeight.w700)),
+          ),
         ]),
-      );
+      ),
+    );
+  }
 }
