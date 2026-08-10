@@ -1,0 +1,39 @@
+import 'package:flutter/foundation.dart';
+
+@immutable
+class OperationalSnapshot {
+  const OperationalSnapshot({
+    required this.runtimeRoutes,
+    required this.schedulerState,
+    required this.grantsState,
+    required this.governanceState,
+    required this.evidenceRecords,
+    required this.liveEvents,
+  });
+
+  const OperationalSnapshot.unavailable()
+      : runtimeRoutes = const <String, Object?>{},
+        schedulerState = const <String, Object?>{},
+        grantsState = const <String, Object?>{},
+        governanceState = const <String, Object?>{},
+        evidenceRecords = const <Map<String, Object?>>[],
+        liveEvents = const <Map<String, Object?>>[];
+
+  final Map<String, Object?> runtimeRoutes;
+  final Map<String, Object?> schedulerState;
+  final Map<String, Object?> grantsState;
+  final Map<String, Object?> governanceState;
+  final List<Map<String, Object?>> evidenceRecords;
+  final List<Map<String, Object?>> liveEvents;
+
+  bool get available =>
+      runtimeRoutes.isNotEmpty ||
+      schedulerState.isNotEmpty ||
+      grantsState.isNotEmpty ||
+      governanceState.isNotEmpty ||
+      evidenceRecords.isNotEmpty ||
+      liveEvents.isNotEmpty;
+
+  int get evidenceCount => evidenceRecords.length;
+  int get liveEventCount => liveEvents.length;
+}
