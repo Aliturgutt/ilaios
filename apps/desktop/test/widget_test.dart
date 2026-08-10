@@ -1,45 +1,177 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ilaios_desktop/control_plane/client.dart';
+import 'package:ilaios_desktop/control_plane/evidence_record.dart';
+import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
 import 'package:ilaios_desktop/main.dart';
+
+const _evidence = EvidenceRecord(
+  sequence: 1,
+  executionId: 'exec-1',
+  artifactDigest: 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+  action: 'render',
+  previousHash: '',
+  recordHash: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+);
 
 void main() {
   testWidgets('disconnected shell never fabricates authoritative state', (
     WidgetTester tester,
   ) async {
     await tester.pumpWidget(const IlaiosDesktopApp());
-
+    expect(find.text('Authoritative control plane unavailable'), findsOneWidget);
+    expect(find.text('—'), findsNWidgets(6));
     expect(
-      find.text('Authoritative control plane unavailable'),
-      findsOneWidget,
+      tester
+          .widget<FilledButton>(find.byKey(const Key('refresh-command')))
+          .onPressed,
+      isNull,
     );
-    expect(find.text('—'), findsNWidgets(3));
-    final button = tester.widget<FilledButton>(
-      find.byKey(const Key('refresh-command')),
-    );
-    expect(button.onPressed, isNull);
   });
 
-  testWidgets('connected shell projects supplied query and event state', (
+  testWidgets('connected shell projects query state and refresh', (
     WidgetTester tester,
   ) async {
     var refreshRequests = 0;
-    await tester.pumpWidget(
-      IlaiosDesktopApp(
-        projection: const ControlPlaneProjection(
-          connected: true,
-          status: 'Connected to authoritative control plane',
-          goalCount: 2,
-          jobCount: 5,
-          lastEvent: 'job.updated',
-        ),
-        onRefreshRequested: () => refreshRequests += 1,
+    await tester.pumpWidget(IlaiosDesktopApp(
+      projection: const ControlPlaneProjection(
+        connected: true,
+        status: 'Connected to authoritative control plane',
+        goalCount: 2,
+        jobCount: 5,
+        lastEvent: 'job.updated',
+        schemaVersion: '1',
       ),
-    );
-
+      onRefreshRequested: () => refreshRequests += 1,
+    ));
     expect(find.text('2'), findsOneWidget);
     expect(find.text('5'), findsOneWidget);
-    expect(find.text('job.updated'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('refresh-command')));
+    final refresh = find.byKey(const Key('refresh-command'));
+    await tester.ensureVisible(refresh);
+    await tester.tap(refresh);
     expect(refreshRequests, 1);
+  });
+
+  testWidgets('wide navigation exposes only verified backend surfaces', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    expect(find.byKey(const ValueKey('nav-controlCenter')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-liveExecution')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-evidence')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-governance')), findsOneWidget);
+    expect(find.text('Agents'), findsNothing);
+    expect(find.text('Approvals'), findsNothing);
+  });
+
+  testWidgets('verified evidence renders provenance metadata only', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const IlaiosDesktopApp(
+      projection: ControlPlaneProjection(
+        connected: true,
+        status: 'Connected to authoritative control plane',
+        goalCount: 1,
+        jobCount: 1,
+        lastEvent: 'job.updated',
+        schemaVersion: '1',
+      ),
+      operationalSnapshot: OperationalSnapshot(
+        runtimeRoutes: <Map<String, Object?>>[
+          <String, Object?>{'sequence': 1, 'provider_id': 'local'},
+        ],
+        schedulerState: <String, Object?>{
+          'leases': <Object?>[<String, Object?>{'task_id': 'task-1'}],
+          'effects': <Object?>[],
+        },
+        grantsState: <String, Object?>{
+          'grants': <Object?>[],
+          'revoked': <Object?>[],
+          'stopped': <Object?>[],
+        },
+        governanceState: <String, Object?>{
+          'work': <Object?>[],
+          'secret_references': <Object?>[],
+          'ledger': <String, Object?>{},
+        },
+        evidenceRecords: <EvidenceRecord>[_evidence],
+        liveEvents: <Map<String, Object?>>[
+          <String, Object?>{'event_type': 'job.updated'},
+        ],
+      ),
+      operationalStatus: 'Operational APIs connected',
+    ));
+
+    await tester.tap(find.byKey(const ValueKey('nav-evidence')));
+    await tester.pumpAndSettle();
+    expect(find.text('Evidence & Audit'), findsOneWidget);
+    expect(find.text('render'), findsOneWidget);
+    expect(find.text('Execution: exec-1'), findsOneWidget);
+    expect(find.textContaining('aaaaaaaaaaaaaaaaaa'), findsOneWidget);
+    expect(find.textContaining('content_base64'), findsNothing);
+  });
+
+  testWidgets('governance decisions require independent approver', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    String? decidedRequest;
+    GovernanceDecision? decidedValue;
+    await tester.pumpWidget(IlaiosDesktopApp(
+      projection: const ControlPlaneProjection(
+        connected: true,
+        status: 'Connected to authoritative control plane',
+        goalCount: 0,
+        jobCount: 0,
+        lastEvent: null,
+        schemaVersion: '1',
+      ),
+      operationalSnapshot: const OperationalSnapshot(
+        runtimeRoutes: <Map<String, Object?>>[],
+        schedulerState: <String, Object?>{},
+        grantsState: <String, Object?>{
+          'grants': <Object?>[],
+          'revoked': <Object?>[],
+          'stopped': <Object?>[],
+        },
+        governanceState: <String, Object?>{
+          'work': <Object?>[
+            <String, Object?>{
+              'request_id': 'request-7',
+              'requester_id': 'requester-a',
+              'status': 'pending',
+            },
+          ],
+          'secret_references': <Object?>[
+            <String, Object?>{
+              'secret_id': 'secret-1',
+              'reference': 'vault://must-never-render',
+            },
+          ],
+          'ledger': <String, Object?>{},
+        },
+        evidenceRecords: <EvidenceRecord>[],
+        liveEvents: <Map<String, Object?>>[],
+      ),
+      operationalStatus: 'Operational APIs connected',
+      approverId: 'approver-b',
+      onGovernanceDecision: (requestId, decision) async {
+        decidedRequest = requestId;
+        decidedValue = decision;
+      },
+    ));
+    await tester.tap(find.byKey(const ValueKey('nav-governance')));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('vault://must-never-render'), findsNothing);
+    final approve = find.byKey(const ValueKey('approve-request-7'));
+    await tester.ensureVisible(approve);
+    await tester.tap(approve);
+    expect(decidedRequest, 'request-7');
+    expect(decidedValue, GovernanceDecision.approved);
   });
 }
