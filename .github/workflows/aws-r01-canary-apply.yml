@@ -1,0 +1,154 @@
+name: AWS R01 guarded canary apply
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - '.github/r01-canary-apply-approval.json'
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: release-r01-canary-state
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    env:
+      TF_IN_AUTOMATION: 'true'
+      TF_INPUT: 'false'
+      TF_VAR_aws_region: eu-central-1
+      TF_VAR_enable_canary: 'true'
+      TF_VAR_image_digest: sha256:fcd67b650585897e35a6428fb318cbb21fda92420a4363dfee4fac740d4a6904
+      TF_VAR_certificate_arn: arn:aws:acm:eu-central-1:101180464425:certificate/95994b5b-ff08-4af2-913d-9952e95f8aa1
+      TF_VAR_control_plane_secret_arn: arn:aws:secretsmanager:eu-central-1:101180464425:secret:ilaios/r01/canary/control-plane-token-BgIO2G
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate explicit human approval file
+        id: approval
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import ipaddress
+          import json
+          import os
+          from pathlib import Path
+          path = Path('.github/r01-canary-apply-approval.json')
+          if not path.is_file():
+              raise SystemExit('No explicit R01 approval file present.')
+          data = json.loads(path.read_text(encoding='utf-8'))
+          if data.get('approval') != 'RELEASE.R01 CANARY APPLY APPROVED':
+              raise SystemExit('Explicit RELEASE.R01 promotion approval missing.')
+          if data.get('external_spend_approval') is not True:
+              raise SystemExit('External-spend approval missing.')
+          network = ipaddress.ip_network(data.get('canary_ipv4_cidr', ''), strict=True)
+          if network.version != 4 or network.prefixlen != 32:
+              raise SystemExit('Canary source allowlist must be one explicitly approved IPv4 /32.')
+          tenant = data.get('canary_tenant_id', '')
+          if not tenant or len(tenant) > 64:
+              raise SystemExit('Approved Canary tenant identifier missing or invalid.')
+          with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as env:
+              env.write(f'TF_VAR_canary_ipv4_cidrs=["{network}"]\n')
+              env.write(f'R01_CANARY_TENANT_ID={tenant}\n')
+          print(f'APPROVED_CIDR={network}')
+          print(f'CANARY_TENANT_ID={tenant}')
+          PY
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::101180464425:role/ILAIOS-GitHub-Deploy-Role
+          aws-region: eu-central-1
+
+      - name: Verify AWS and immutable prerequisites
+        run: |
+          set -euo pipefail
+          test "$(aws sts get-caller-identity --query Account --output text)" = "101180464425"
+          test "$(aws acm describe-certificate --certificate-arn "$TF_VAR_certificate_arn" --region eu-central-1 --query 'Certificate.Status' --output text)" = "ISSUED"
+          test "$(aws ecr describe-images --repository-name ilaios-r01-canary --image-ids imageDigest="$TF_VAR_image_digest" --region eu-central-1 --query 'imageDetails[0].imageDigest' --output text)" = "$TF_VAR_image_digest"
+          aws secretsmanager describe-secret --secret-id "$TF_VAR_control_plane_secret_arn" --region eu-central-1 >/dev/null
+
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.10.6
+
+      - name: Locate prior serialized R01 state
+        id: prior
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/workflows/aws-r01-canary-apply.yml/runs?branch=master&status=success&per_page=20" --jq '.workflow_runs[0].id // empty')"
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Restore prior R01 state
+        if: steps.prior.outputs.run_id != ''
+        uses: actions/download-artifact@v4
+        with:
+          name: r01-tofu-state
+          path: infra/aws/r01-canary
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.prior.outputs.run_id }}
+
+      - name: Initialize OpenTofu and adopt prepared ECR
+        working-directory: infra/aws/r01-canary
+        run: |
+          set -euo pipefail
+          tofu init -backend=false -input=false
+          if [ ! -f terraform.tfstate ]; then
+            tofu import aws_ecr_repository.runtime ilaios-r01-canary
+          fi
+          tofu validate
+          tofu fmt -check -recursive
+
+      - name: Plan exact R01 Canary
+        working-directory: infra/aws/r01-canary
+        run: |
+          set -euo pipefail
+          tofu plan -input=false -out=r01.tfplan
+          tofu show -no-color r01.tfplan > r01-plan.txt
+          grep -q 'Plan:' r01-plan.txt
+
+      - name: Apply exact approved R01 Canary
+        working-directory: infra/aws/r01-canary
+        run: |
+          set -euo pipefail
+          tofu apply -input=false -auto-approve r01.tfplan
+
+      - name: Verify ECS service and target health
+        run: |
+          set -euo pipefail
+          aws ecs wait services-stable --cluster ilaios-r01-canary --services ilaios-r01-canary --region eu-central-1
+          TG_ARN="$(aws elbv2 describe-target-groups --names ilaios-r01-canary --region eu-central-1 --query 'TargetGroups[0].TargetGroupArn' --output text)"
+          for i in $(seq 1 60); do
+            STATE="$(aws elbv2 describe-target-health --target-group-arn "$TG_ARN" --region eu-central-1 --query 'TargetHealthDescriptions[0].TargetHealth.State' --output text 2>/dev/null || true)"
+            if [ "$STATE" = "healthy" ]; then
+              echo 'TARGET_HEALTH=healthy'
+              exit 0
+            fi
+            sleep 10
+          done
+          echo 'Target did not become healthy in bounded window.'
+          exit 1
+
+      - name: Record canary outputs
+        working-directory: infra/aws/r01-canary
+        run: |
+          set -euo pipefail
+          echo "CANARY_DNS_TARGET=$(tofu output -raw canary_dns_target)"
+          echo "ECR_REPOSITORY_URL=$(tofu output -raw ecr_repository_url)"
+          echo "ROLLBACK_COMMAND=$(tofu output -raw rollback_command)"
+          aws ecs describe-services --cluster ilaios-r01-canary --services ilaios-r01-canary --region eu-central-1 --query 'services[0].{status:status,desired:desiredCount,running:runningCount,pending:pendingCount,taskDefinition:taskDefinition}'
+
+      - name: Preserve serialized R01 OpenTofu state
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r01-tofu-state
+          path: infra/aws/r01-canary/terraform.tfstate
+          if-no-files-found: warn
+          retention-days: 90
