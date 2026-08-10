@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/ilaios_theme.dart';
 import '../../control_plane/client.dart';
+import '../../control_plane/evidence_record.dart';
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
 
@@ -58,25 +59,84 @@ class EvidenceView extends StatelessWidget {
   final OperationalSnapshot snapshot;
   final String status;
 
-  String _lastDigest() {
-    if (snapshot.evidenceRecords.isEmpty) return '—';
-    final record = snapshot.evidenceRecords.last;
-    final value = record['artifact_digest'] ?? record['digest'];
-    if (value is! String || value.isEmpty) return 'Verified record present';
-    return value.length <= 18 ? value : '${value.substring(0, 18)}…';
-  }
+  String _short(String value) =>
+      value.length <= 18 ? value : '${value.substring(0, 18)}…';
 
   @override
-  Widget build(BuildContext context) => _SurfaceFrame(
-        title: 'Evidence',
-        icon: Icons.fact_check_outlined,
-        status: status,
-        footer:
-            'Evidence is verified by the backend before projection. Artifact contents and secret material are not rendered by this view.',
-        child: Wrap(spacing: 14, runSpacing: 14, children: [
+  Widget build(BuildContext context) {
+    final records = snapshot.evidenceRecords.reversed.take(100).toList();
+    return _SurfaceFrame(
+      title: 'Evidence & Audit',
+      icon: Icons.fact_check_outlined,
+      status: status,
+      footer:
+          'The backend verifies the provenance chain before these records are returned. Desktop displays metadata only; artifact bytes, base64 payloads and secret material are not requested or rendered.',
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Wrap(spacing: 14, runSpacing: 14, children: [
           _OperationalCard(
               label: 'Verified records', value: '${snapshot.evidenceCount}'),
-          _OperationalCard(label: 'Latest digest', value: _lastDigest()),
+          _OperationalCard(
+              label: 'Displayed records', value: '${records.length}'),
+          _OperationalCard(
+              label: 'Verification',
+              value: status == 'Operational APIs connected' ? 'Verified' : 'Unavailable'),
+        ]),
+        const SizedBox(height: 22),
+        if (records.isEmpty)
+          const Text('No verified evidence records available.',
+              style: TextStyle(color: IlaiosTheme.muted))
+        else
+          for (final record in records) _EvidenceRow(record: record, short: _short),
+      ]),
+    );
+  }
+}
+
+class _EvidenceRow extends StatelessWidget {
+  const _EvidenceRow({required this.record, required this.short});
+  final EvidenceRecord record;
+  final String Function(String value) short;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: IlaiosTheme.canvas,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: IlaiosTheme.border),
+        ),
+        child: Row(children: [
+          SizedBox(
+            width: 48,
+            child: Text('#${record.sequence}',
+                style: const TextStyle(
+                    color: IlaiosTheme.cyan, fontWeight: FontWeight.w700)),
+          ),
+          Expanded(
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(record.action,
+                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              const SizedBox(height: 4),
+              Text('Execution: ${record.executionId}',
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                      color: IlaiosTheme.muted, fontSize: 12)),
+            ]),
+          ),
+          const SizedBox(width: 12),
+          SizedBox(
+            width: 185,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+              Text(short(record.artifactDigest),
+                  key: ValueKey('evidence-digest-${record.sequence}'),
+                  style: const TextStyle(fontSize: 12)),
+              const SizedBox(height: 4),
+              Text('chain ${short(record.recordHash)}',
+                  style: const TextStyle(
+                      color: IlaiosTheme.muted, fontSize: 11)),
+            ]),
+          ),
         ]),
       );
 }
@@ -89,7 +149,6 @@ class GovernanceView extends StatelessWidget {
     this.onDecision,
     super.key,
   });
-
   final OperationalSnapshot snapshot;
   final String status;
   final String? approverId;
@@ -148,10 +207,9 @@ class GovernanceView extends StatelessWidget {
             ),
           for (final request in pending)
             _ApprovalRow(
-              request: request,
-              approverId: approverId,
-              onDecision: onDecision,
-            ),
+                request: request,
+                approverId: approverId,
+                onDecision: onDecision),
         ],
       ]),
     );
@@ -164,7 +222,6 @@ class _ApprovalRow extends StatelessWidget {
     required this.approverId,
     required this.onDecision,
   });
-
   final Map<String, Object?> request;
   final String? approverId;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
@@ -178,7 +235,6 @@ class _ApprovalRow extends StatelessWidget {
     final independent = approverId != null && approverId != requesterId;
     final enabled = valid && independent && onDecision != null;
     final safeRequestId = valid ? requestId : 'Malformed request';
-
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -194,32 +250,31 @@ class _ApprovalRow extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w700)),
             const SizedBox(height: 4),
             Text(
-              requesterId is String
-                  ? 'Requester: $requesterId'
-                  : 'Requester unavailable',
-              style: const TextStyle(color: IlaiosTheme.muted, fontSize: 12),
-            ),
+                requesterId is String
+                    ? 'Requester: $requesterId'
+                    : 'Requester unavailable',
+                style: const TextStyle(
+                    color: IlaiosTheme.muted, fontSize: 12)),
             if (!independent)
               const Text('Independent approver required',
-                  style: TextStyle(color: IlaiosTheme.muted, fontSize: 12)),
+                  style: TextStyle(
+                      color: IlaiosTheme.muted, fontSize: 12)),
           ]),
         ),
         const SizedBox(width: 12),
         OutlinedButton(
-          key: ValueKey('deny-$safeRequestId'),
-          onPressed: enabled
-              ? () => onDecision!(safeRequestId, GovernanceDecision.denied)
-              : null,
-          child: const Text('Deny'),
-        ),
+            key: ValueKey('deny-$safeRequestId'),
+            onPressed: enabled
+                ? () => onDecision!(safeRequestId, GovernanceDecision.denied)
+                : null,
+            child: const Text('Deny')),
         const SizedBox(width: 8),
         FilledButton(
-          key: ValueKey('approve-$safeRequestId'),
-          onPressed: enabled
-              ? () => onDecision!(safeRequestId, GovernanceDecision.approved)
-              : null,
-          child: const Text('Approve'),
-        ),
+            key: ValueKey('approve-$safeRequestId'),
+            onPressed: enabled
+                ? () => onDecision!(safeRequestId, GovernanceDecision.approved)
+                : null,
+            child: const Text('Approve')),
       ]),
     );
   }
