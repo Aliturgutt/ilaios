@@ -25,11 +25,14 @@ variable "canary_ipv4_cidrs" {
 
 variable "image_digest" {
   type        = string
-  description = "Immutable ECR digest."
+  description = "Immutable ECR digest approved for RELEASE.R01 canary."
   default     = ""
   validation {
-    condition     = !var.enable_canary || can(regex("^sha256:[0-9a-f]{64}$", var.image_digest))
-    error_message = "Canary activation requires a sha256 image digest."
+    condition = !var.enable_canary || (
+      can(regex("^sha256:[0-9a-f]{64}$", var.image_digest)) &&
+      var.image_digest == "sha256:4534f8af614aa4fd890785e19f27e2ede7ce59435def93069884156261b86931"
+    )
+    error_message = "RELEASE.R01 canary requires the security-scanned canonical image digest."
   }
 }
 
