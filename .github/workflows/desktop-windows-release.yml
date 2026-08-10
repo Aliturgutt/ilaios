@@ -1,0 +1,78 @@
+name: ILAIOS Desktop Windows Gate
+
+on:
+  pull_request:
+    branches:
+      - desktop/d09-accessibility-performance
+    paths:
+      - 'apps/desktop/**'
+      - '.github/workflows/desktop-windows-release.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  windows-release:
+    name: Flutter analyze, test, Windows release
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout ILAIOS
+        uses: actions/checkout@v4
+
+      - name: Install pinned Flutter SDK
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $flutter = Join-Path $env:RUNNER_TEMP 'flutter'
+          git init $flutter
+          git -C $flutter remote add origin https://github.com/flutter/flutter.git
+          git -C $flutter fetch --depth 1 origin 6b182d2c7585eba26d4edce0f97630effd256c33
+          git -C $flutter checkout --detach FETCH_HEAD
+          (Join-Path $flutter 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify Flutter toolchain
+        shell: pwsh
+        run: |
+          flutter --version
+          dart --version
+
+      - name: Resolve locked dependencies
+        working-directory: apps/desktop
+        shell: pwsh
+        run: flutter pub get --enforce-lockfile
+
+      - name: Static analysis
+        working-directory: apps/desktop
+        shell: pwsh
+        run: flutter analyze
+
+      - name: Desktop tests
+        working-directory: apps/desktop
+        shell: pwsh
+        run: flutter test
+
+      - name: Windows release build
+        working-directory: apps/desktop
+        shell: pwsh
+        run: flutter build windows --release
+
+      - name: Verify release executable metadata
+        working-directory: apps/desktop
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $exe = Join-Path (Get-Location) 'build\windows\x64\runner\Release\ilaios_desktop.exe'
+          if (-not (Test-Path $exe)) { throw "Release executable not found: $exe" }
+          $item = Get-Item $exe
+          if ($item.Length -le 0) { throw 'Release executable is empty' }
+          $version = $item.VersionInfo
+          if ($version.ProductName -ne 'ILAIOS Desktop') {
+            throw "Unexpected ProductName: $($version.ProductName)"
+          }
+          if ($version.CompanyName -ne 'ILAIOS') {
+            throw "Unexpected CompanyName: $($version.CompanyName)"
+          }
+          Write-Host "ILAIOS_DESKTOP_WINDOWS_VALIDATION=PASS"
