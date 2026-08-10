@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../control_plane/projection.dart';
 import '../features/dashboard/desktop_shell.dart';
+import 'ilaios_theme.dart';
 
 class IlaiosDesktopApp extends StatelessWidget {
   const IlaiosDesktopApp({
@@ -17,9 +18,8 @@ class IlaiosDesktopApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'ILAIOS Desktop',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF3154A4)),
-      ),
+      debugShowCheckedModeBanner: false,
+      theme: IlaiosTheme.dark,
       home: DesktopShell(
         projection: projection,
         onRefreshRequested: onRefreshRequested,
