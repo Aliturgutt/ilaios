@@ -95,14 +95,44 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ steps.prior.outputs.run_id }}
 
-      - name: Initialize OpenTofu and adopt prepared ECR
+      - name: Initialize OpenTofu and adopt partial R01 resources
         working-directory: infra/aws/r01-canary
         run: |
           set -euo pipefail
           tofu init -backend=false -input=false
-          if [ ! -f terraform.tfstate ]; then
-            tofu import aws_ecr_repository.runtime ilaios-r01-canary
+
+          in_state() { tofu state list 2>/dev/null | grep -Fxq "$1"; }
+          adopt() {
+            addr="$1"
+            id="$2"
+            if [ -n "$id" ] && [ "$id" != "None" ] && ! in_state "$addr"; then
+              echo "Adopting $addr -> $id"
+              tofu import "$addr" "$id"
+            fi
+          }
+
+          adopt aws_ecr_repository.runtime ilaios-r01-canary
+
+          EFS_ID="$(aws efs describe-file-systems --region eu-central-1 --creation-token ilaios-r01-canary --query 'FileSystems[0].FileSystemId' --output text 2>/dev/null || true)"
+          adopt 'aws_efs_file_system.state[0]' "$EFS_ID"
+
+          if aws logs describe-log-groups --region eu-central-1 --log-group-name-prefix '/ilaios/r01/canary/runtime' --query 'logGroups[?logGroupName==`/ilaios/r01/canary/runtime`].logGroupName | [0]' --output text 2>/dev/null | grep -Fxq '/ilaios/r01/canary/runtime'; then
+            adopt 'aws_cloudwatch_log_group.runtime[0]' '/ilaios/r01/canary/runtime'
           fi
+
+          if aws iam get-role --role-name ilaios-r01-canary-execution >/dev/null 2>&1; then
+            adopt 'aws_iam_role.execution[0]' 'ilaios-r01-canary-execution'
+          fi
+          if aws iam get-role --role-name ilaios-r01-canary-task >/dev/null 2>&1; then
+            adopt 'aws_iam_role.task[0]' 'ilaios-r01-canary-task'
+          fi
+
+          LB_ARN="$(aws elbv2 describe-load-balancers --region eu-central-1 --names ilaios-r01-canary --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null || true)"
+          adopt 'aws_lb.canary[0]' "$LB_ARN"
+
+          TG_ARN="$(aws elbv2 describe-target-groups --region eu-central-1 --names ilaios-r01-canary --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || true)"
+          adopt 'aws_lb_target_group.runtime[0]' "$TG_ARN"
+
           tofu validate
           tofu fmt -check -recursive
 
