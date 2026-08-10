@@ -6,6 +6,8 @@ Windows-first Flutter/Dart client for the ILAIOS control plane.
 
 ILAIOS Desktop is a secure projection client. The backend/control plane remains authoritative for authorization, policy, tenant isolation, governance, scheduling, execution, grants, evidence verification, and critical decisions. The Desktop client does not fabricate capabilities or execute governed work locally.
 
+The client does not accept a client-selected tenant identifier or tenant override. Tenant scope is determined by the authenticated backend/control-plane context; the Desktop cannot switch, widen, or override that scope locally.
+
 The client accepts only an explicit loopback HTTP control-plane endpoint (`127.0.0.1`, `::1`, or `localhost`) and requires a bearer token before authenticated APIs are queried. Operational state is cleared when authoritative refresh fails so stale state is not presented as current.
 
 ## Runtime configuration
