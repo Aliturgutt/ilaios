@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "ILAIOS",
+  title: "Governed Intelligent Automation",
   description: "ILAIOS builds governed infrastructure for intelligent automation and autonomous operations.",
   alternates: { canonical: "/", languages: { en: "/", tr: "/tr", "x-default": "/" } },
 };
