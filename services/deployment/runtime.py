@@ -8,7 +8,6 @@ import threading
 from collections.abc import Sequence
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import cast
 
 from services.control_plane.server import main as control_plane_main
 
@@ -115,10 +114,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
         )
 
-    if os.environ.get("ILAIOS_TRUSTED_REVERSE_PROXY", "") != "1":
-        raise ValueError(
-            "non-loopback runtime exposure requires ILAIOS_TRUSTED_REVERSE_PROXY=1"
-        )
     external_port = int(requested_port)
     if not 1 <= external_port <= 65535:
         raise ValueError("non-loopback runtime exposure requires an explicit TCP port")
