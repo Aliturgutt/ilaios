@@ -59,6 +59,53 @@ void main() {
     );
   });
 
+  test('loads verified operational APIs through authenticated queries', () async {
+    final transport = _FakeTransport(<String, ControlPlaneResponse>{
+      '/v1/runtime/routes': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{"routes":{"video":"local"}}',
+      ),
+      '/v1/scheduler/state': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{"queued":2}',
+      ),
+      '/v1/grants/state': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{"active":1}',
+      ),
+      '/v1/governance/state': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{"pending":0}',
+      ),
+      '/v1/evidence/verify': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{"records":[{"digest":"abc"}]}',
+      ),
+      '/v1/live/events': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{"events":[{"sequence":1,"event_type":"job.updated"}]}',
+      ),
+    });
+    final client = ControlPlaneClient(
+      baseUri: Uri.parse('http://127.0.0.1:4123'),
+      token: 'runtime-secret',
+      transport: transport,
+    );
+
+    final snapshot = await client.fetchOperationalSnapshot();
+
+    expect(snapshot.runtimeRoutes['video'], 'local');
+    expect(snapshot.schedulerState['queued'], 2);
+    expect(snapshot.grantsState['active'], 1);
+    expect(snapshot.governanceState['pending'], 0);
+    expect(snapshot.evidenceCount, 1);
+    expect(snapshot.liveEventCount, 1);
+    expect(transport.requests, hasLength(6));
+    for (final request in transport.requests) {
+      expect(request.headers['Authorization'], 'Bearer runtime-secret');
+    }
+  });
+
   test('fails closed on authentication rejection', () async {
     final transport = _FakeTransport(<String, ControlPlaneResponse>{
       '/health/ready': const ControlPlaneResponse(
@@ -85,6 +132,45 @@ void main() {
           'Control plane authentication failed',
         ),
       ),
+    );
+  });
+
+  test('operational APIs reject malformed authoritative envelopes', () async {
+    final transport = _FakeTransport(<String, ControlPlaneResponse>{
+      '/v1/runtime/routes': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{"routes":[]}',
+      ),
+      '/v1/scheduler/state': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{}',
+      ),
+      '/v1/grants/state': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{}',
+      ),
+      '/v1/governance/state': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{}',
+      ),
+      '/v1/evidence/verify': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{"records":[]}',
+      ),
+      '/v1/live/events': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{"events":[]}',
+      ),
+    });
+    final client = ControlPlaneClient(
+      baseUri: Uri.parse('http://127.0.0.1:4123'),
+      token: 'runtime-secret',
+      transport: transport,
+    );
+
+    await expectLater(
+      client.fetchOperationalSnapshot(),
+      throwsA(isA<ControlPlaneClientException>()),
     );
   });
 
