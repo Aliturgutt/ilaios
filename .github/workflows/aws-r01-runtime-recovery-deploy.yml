@@ -1,0 +1,156 @@
+name: AWS R01 runtime recovery deploy
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/aws-r01-runtime-recovery-deploy.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: release-r01-canary-state
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-24.04
+    env:
+      AWS_REGION: eu-central-1
+      CLUSTER: ilaios-r01-canary
+      SERVICE: ilaios-r01-canary
+      REPOSITORY: ilaios-r01-canary
+      IMAGE_DIGEST: sha256:4534f8af614aa4fd890785e19f27e2ede7ce59435def93069884156261b86931
+      EXPECTED_CIDR: 176.217.181.22/32
+      EXPECTED_TENANT: ilaios-r01-canary
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate explicit approval
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d = json.loads(Path('.github/r01-canary-apply-approval.json').read_text())
+          assert d['approval'] == 'RELEASE.R01 CANARY APPLY APPROVED'
+          assert d['external_spend_approval'] is True
+          assert d['canary_ipv4_cidr'] == '176.217.181.22/32'
+          assert d['canary_tenant_id'] == 'ilaios-r01-canary'
+          print('R01_EXPLICIT_APPROVAL_PASS')
+          PY
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::101180464425:role/ILAIOS-GitHub-Deploy-Role
+          aws-region: eu-central-1
+
+      - name: Verify account image and zero critical/high scan
+        run: |
+          set -euo pipefail
+          test "$(aws sts get-caller-identity --query Account --output text)" = "101180464425"
+          FOUND="$(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageDigest="$IMAGE_DIGEST" --region "$AWS_REGION" --query 'imageDetails[0].imageDigest' --output text)"
+          test "$FOUND" = "$IMAGE_DIGEST"
+          read -r STATUS CRITICAL HIGH < <(aws ecr describe-image-scan-findings \
+            --repository-name "$REPOSITORY" \
+            --image-id imageDigest="$IMAGE_DIGEST" \
+            --region "$AWS_REGION" \
+            --query '[imageScanStatus.status, to_string(imageScanFindings.findingSeverityCounts.CRITICAL || `0`), to_string(imageScanFindings.findingSeverityCounts.HIGH || `0`)]' \
+            --output text)
+          echo "SCAN_STATUS=$STATUS CRITICAL=$CRITICAL HIGH=$HIGH"
+          test "$STATUS" = "COMPLETE"
+          test "$CRITICAL" = "0"
+          test "$HIGH" = "0"
+
+      - name: Verify current canary network boundary
+        run: |
+          set -euo pipefail
+          ALB_ARN="$(aws elbv2 describe-load-balancers --names "$SERVICE" --region "$AWS_REGION" --query 'LoadBalancers[0].LoadBalancerArn' --output text)"
+          SG_ID="$(aws elbv2 describe-load-balancers --load-balancer-arns "$ALB_ARN" --region "$AWS_REGION" --query 'LoadBalancers[0].SecurityGroups[0]' --output text)"
+          CIDRS="$(aws ec2 describe-security-groups --group-ids "$SG_ID" --region "$AWS_REGION" --query 'SecurityGroups[0].IpPermissions[?FromPort==`443` && ToPort==`443`].IpRanges[].CidrIp' --output text)"
+          echo "ALB_HTTPS_CIDRS=$CIDRS"
+          test "$CIDRS" = "$EXPECTED_CIDR"
+
+      - name: Register equivalent task revision with clean image
+        id: task
+        run: |
+          set -euo pipefail
+          CURRENT_TD="$(aws ecs describe-services --cluster "$CLUSTER" --services "$SERVICE" --region "$AWS_REGION" --query 'services[0].taskDefinition' --output text)"
+          test -n "$CURRENT_TD"
+          aws ecs describe-task-definition --task-definition "$CURRENT_TD" --region "$AWS_REGION" --query taskDefinition --output json > /tmp/current-task.json
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          td = json.loads(Path('/tmp/current-task.json').read_text())
+          keep = {
+              'family','taskRoleArn','executionRoleArn','networkMode','containerDefinitions',
+              'volumes','placementConstraints','requiresCompatibilities','cpu','memory',
+              'runtimePlatform','ipcMode','pidMode','proxyConfiguration','inferenceAccelerators',
+              'ephemeralStorage'
+          }
+          out = {k:v for k,v in td.items() if k in keep and v not in (None, [], {})}
+          containers = out['containerDefinitions']
+          runtime = next(c for c in containers if c['name'] == 'runtime')
+          runtime['image'] = f"101180464425.dkr.ecr.eu-central-1.amazonaws.com/ilaios-r01-canary@{os.environ['IMAGE_DIGEST']}"
+          runtime['user'] = '1000:1000'
+          runtime['readonlyRootFilesystem'] = True
+          runtime['healthCheck'] = {
+              'command': ['CMD-SHELL', "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready',timeout=2)\""],
+              'interval': 30, 'timeout': 5, 'retries': 3, 'startPeriod': 30,
+          }
+          Path('/tmp/new-task.json').write_text(json.dumps(out, separators=(',', ':')))
+          PY
+          NEW_TD="$(aws ecs register-task-definition --cli-input-json file:///tmp/new-task.json --region "$AWS_REGION" --query 'taskDefinition.taskDefinitionArn' --output text)"
+          test -n "$NEW_TD"
+          echo "task_definition=$NEW_TD" >> "$GITHUB_OUTPUT"
+          echo "NEW_TASK_DEFINITION=$NEW_TD"
+
+      - name: Update service to verified runtime revision
+        run: |
+          set -euo pipefail
+          aws ecs update-service \
+            --cluster "$CLUSTER" \
+            --service "$SERVICE" \
+            --task-definition "${{ steps.task.outputs.task_definition }}" \
+            --force-new-deployment \
+            --region "$AWS_REGION" >/tmp/update-service.json
+          python - <<'PY'
+          import json
+          d=json.load(open('/tmp/update-service.json'))['service']
+          print('SERVICE_STATUS=', d.get('status'))
+          print('DESIRED=', d.get('desiredCount'))
+          print('TASK_DEFINITION=', d.get('taskDefinition'))
+          PY
+
+      - name: Verify ECS stable target healthy and clean runtime
+        run: |
+          set -uo pipefail
+          STABLE=0
+          if aws ecs wait services-stable --cluster "$CLUSTER" --services "$SERVICE" --region "$AWS_REGION"; then STABLE=1; fi
+          TG_ARN="$(aws elbv2 describe-target-groups --names "$SERVICE" --region "$AWS_REGION" --query 'TargetGroups[0].TargetGroupArn' --output text)"
+          HEALTHY=0
+          for i in $(seq 1 36); do
+            HEALTH="$(aws elbv2 describe-target-health --target-group-arn "$TG_ARN" --region "$AWS_REGION" --query 'TargetHealthDescriptions[0].TargetHealth.State' --output text 2>/dev/null || true)"
+            echo "TARGET_HEALTH=$HEALTH"
+            if [ "$HEALTH" = "healthy" ]; then HEALTHY=1; break; fi
+            sleep 10
+          done
+          RUNNING="$(aws ecs list-tasks --cluster "$CLUSTER" --service-name "$SERVICE" --desired-status RUNNING --region "$AWS_REGION" --query 'taskArns' --output text 2>/dev/null || true)"
+          if [ -n "$RUNNING" ]; then
+            aws ecs describe-tasks --cluster "$CLUSTER" --tasks $RUNNING --region "$AWS_REGION" --query 'tasks[*].{task:taskArn,lastStatus:lastStatus,health:healthStatus,containers:containers[*].{name:name,status:lastStatus,health:healthStatus,exit:exitCode,reason:reason}}' --output json
+          fi
+          if [ "$STABLE" -eq 1 ] && [ "$HEALTHY" -eq 1 ]; then
+            echo 'R01_CANARY_RUNTIME_RECOVERY_PASS'
+            exit 0
+          fi
+          echo '--- SERVICE DIAGNOSTICS ---'
+          aws ecs describe-services --cluster "$CLUSTER" --services "$SERVICE" --region "$AWS_REGION" --query 'services[0].{status:status,desired:desiredCount,running:runningCount,pending:pendingCount,taskDefinition:taskDefinition,deployments:deployments,events:events[0:12].message}' --output json || true
+          STOPPED="$(aws ecs list-tasks --cluster "$CLUSTER" --service-name "$SERVICE" --desired-status STOPPED --region "$AWS_REGION" --query 'taskArns[0:10]' --output text 2>/dev/null || true)"
+          if [ -n "$STOPPED" ]; then
+            aws ecs describe-tasks --cluster "$CLUSTER" --tasks $STOPPED --region "$AWS_REGION" --query 'tasks[*].{task:taskArn,stopCode:stopCode,stoppedReason:stoppedReason,containers:containers[*].{name:name,status:lastStatus,exit:exitCode,reason:reason}}' --output json || true
+          fi
+          aws logs tail '/ilaios/r01/canary/runtime' --since 30m --region "$AWS_REGION" || true
+          exit 1
