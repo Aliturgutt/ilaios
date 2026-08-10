@@ -82,7 +82,7 @@ jobs:
         id: prior
         run: |
           set -euo pipefail
-          RUN_ID="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/workflows/aws-r01-canary-apply.yml/runs?branch=master&status=success&per_page=20" --jq '.workflow_runs[0].id // empty')"
+          RUN_ID="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/workflows/aws-r01-canary-apply.yml/runs?branch=master&status=completed&per_page=20" --jq '[.workflow_runs[] | select((.id|tostring) != env.GITHUB_RUN_ID)][0].id // empty')"
           echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
 
       - name: Restore prior R01 state
