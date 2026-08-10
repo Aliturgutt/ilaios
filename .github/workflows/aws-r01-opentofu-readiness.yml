@@ -1,0 +1,30 @@
+name: AWS R01 OpenTofu readiness
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/aws-r01-opentofu-readiness.yml'
+      - 'infra/aws/r01-canary/**'
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: opentofu/setup-opentofu@v1
+        with:
+          tofu_version: 1.10.6
+      - name: OpenTofu format
+        working-directory: infra/aws/r01-canary
+        run: tofu fmt -check -recursive
+      - name: OpenTofu init without backend
+        working-directory: infra/aws/r01-canary
+        run: tofu init -backend=false -input=false
+      - name: OpenTofu validate
+        working-directory: infra/aws/r01-canary
+        run: tofu validate
