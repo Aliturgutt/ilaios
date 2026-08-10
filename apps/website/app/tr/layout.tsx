@@ -1,0 +1,2 @@
+import Link from "next/link";
+export default function TurkishLayout({children}:{children:React.ReactNode}){return <><div className="locale-bar"><div className="shell locale-row"><nav aria-label="Türkçe site menüsü"><Link href="/tr">Ana Sayfa</Link><Link href="/tr/platform">Platform</Link><Link href="/tr/security">Güvenlik</Link><Link href="/tr/about">Hakkımızda</Link><Link href="/tr/contact">İletişim</Link></nav><div className="language-switch"><Link href="/">EN</Link><strong>TR</strong></div></div></div>{children}</>}
