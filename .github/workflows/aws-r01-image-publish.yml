@@ -109,7 +109,7 @@ jobs:
               --repository-name "$REPOSITORY" \
               --image-id imageDigest="$DIGEST" \
               --region eu-central-1 \
-              --query '{status:imageScanStatus.status,severity:imageScanFindings.findingSeverityCounts}' \
+              --query '{status:imageScanStatus.status,description:imageScanStatus.description,severity:imageScanFindings.findingSeverityCounts}' \
               --output json 2>&1)"
             SCAN_RC=$?
             set -e
@@ -127,6 +127,13 @@ jobs:
             case "$STATUS" in
               COMPLETE)
                 echo "$SCAN_OUTPUT"
+                read -r CRITICAL HIGH < <(python -c 'import json,sys; d=json.load(sys.stdin); s=d.get("severity") or {}; print(int(s.get("CRITICAL",0)), int(s.get("HIGH",0)))' <<<"$SCAN_OUTPUT")
+                echo "ECR_CRITICAL_FINDINGS=$CRITICAL"
+                echo "ECR_HIGH_FINDINGS=$HIGH"
+                if [ "$CRITICAL" -ne 0 ] || [ "$HIGH" -ne 0 ]; then
+                  echo 'ECR vulnerability gate failed: CRITICAL and HIGH findings must both be zero.'
+                  exit 1
+                fi
                 exit 0
                 ;;
               FAILED|UNSUPPORTED_IMAGE)
