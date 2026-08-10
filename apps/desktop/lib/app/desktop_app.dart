@@ -27,6 +27,8 @@ class IlaiosDesktopApp extends StatelessWidget {
       theme: IlaiosTheme.dark,
       home: DesktopShell(
         projection: projection,
+        operationalSnapshot: operationalSnapshot,
+        operationalStatus: operationalStatus,
         onRefreshRequested: onRefreshRequested,
       ),
     );
