@@ -7,7 +7,7 @@ locals {
     Environment  = "canary"
     ManagedBy    = "OpenTofu"
     Release      = "RELEASE.R01"
-    ReleaseState = "NOT_DEPLOYED"
+    ReleaseState = var.enable_canary ? "CANARY" : "NOT_DEPLOYED"
   }
 }
 
@@ -243,7 +243,7 @@ resource "aws_ecs_task_definition" "runtime" {
     ],
     secrets          = [{ name = "ILAIOS_CONTROL_PLANE_TOKEN", valueFrom = var.control_plane_secret_arn }],
     mountPoints      = [{ sourceVolume = "state", containerPath = "/var/lib/ilaios", readOnly = false }, { sourceVolume = "tmp", containerPath = "/tmp", readOnly = false }],
-    healthCheck      = { command = ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready',timeout=2)\""], interval = 30, timeout = 5, retries = 3, startPeriod = 30 },
+    healthCheck      = { command = ["CMD-SHELL", "/usr/bin/python3.12 -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready',timeout=2)\""], interval = 30, timeout = 5, retries = 3, startPeriod = 30 },
     logConfiguration = { logDriver = "awslogs", options = { awslogs-group = aws_cloudwatch_log_group.runtime[0].name, awslogs-region = var.aws_region, awslogs-stream-prefix = "runtime" } }
   }])
 }
