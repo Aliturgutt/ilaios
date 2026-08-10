@@ -63,15 +63,16 @@ void main() {
     final transport = _FakeTransport(<String, ControlPlaneResponse>{
       '/v1/runtime/routes': const ControlPlaneResponse(
         statusCode: 200,
-        body: '{"routes":{"video":"local"}}',
+        body:
+            '{"routes":[{"sequence":1,"provider_id":"local","capability":"video"}]}',
       ),
       '/v1/scheduler/state': const ControlPlaneResponse(
         statusCode: 200,
-        body: '{"queued":2}',
+        body: '{"leases":[],"effects":[]}',
       ),
       '/v1/grants/state': const ControlPlaneResponse(
         statusCode: 200,
-        body: '{"active":1}',
+        body: '{"grants":[],"revoked":[],"stopped":[]}',
       ),
       '/v1/governance/state': const ControlPlaneResponse(
         statusCode: 200,
@@ -94,9 +95,10 @@ void main() {
 
     final snapshot = await client.fetchOperationalSnapshot();
 
-    expect(snapshot.runtimeRoutes['video'], 'local');
-    expect(snapshot.schedulerState['queued'], 2);
-    expect(snapshot.grantsState['active'], 1);
+    expect(snapshot.runtimeRouteCount, 1);
+    expect(snapshot.runtimeRoutes.single['provider_id'], 'local');
+    expect(snapshot.schedulerState['leases'], isEmpty);
+    expect(snapshot.grantsState['grants'], isEmpty);
     expect(snapshot.governanceState['pending'], 0);
     expect(snapshot.evidenceCount, 1);
     expect(snapshot.liveEventCount, 1);
@@ -139,7 +141,7 @@ void main() {
     final transport = _FakeTransport(<String, ControlPlaneResponse>{
       '/v1/runtime/routes': const ControlPlaneResponse(
         statusCode: 200,
-        body: '{"routes":[]}',
+        body: '{"routes":{"unexpected":true}}',
       ),
       '/v1/scheduler/state': const ControlPlaneResponse(
         statusCode: 200,
