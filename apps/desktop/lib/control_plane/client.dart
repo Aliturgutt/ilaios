@@ -93,10 +93,10 @@ class ControlPlaneClient {
   ControlPlaneClient({
     required Uri baseUri,
     required String token,
-    ControlPlaneTransport transport = const IoControlPlaneTransport(),
+    ControlPlaneTransport? transport,
   })  : _baseUri = _validatedBaseUri(baseUri),
         _token = _validatedToken(token),
-        _transport = transport;
+        _transport = transport ?? const IoControlPlaneTransport();
 
   static const int maxLiveEvents = 200;
 
