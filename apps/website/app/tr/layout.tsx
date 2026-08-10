@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: { default: "ILAIOS Türkiye", template: "%s | ILAIOS" },
+  title: { default: "ILAIOS Türkiye", template: "%s" },
   description: "ILAIOS; kontrollü akıllı otomasyon, doğrulanabilir yürütme ve güvenlik odaklı operasyonlar için altyapı geliştirir.",
 };
 
