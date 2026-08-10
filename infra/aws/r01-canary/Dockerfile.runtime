@@ -1,0 +1,24 @@
+FROM python:3.12.13-alpine3.22
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/opt/ilaios
+
+WORKDIR /opt/ilaios
+
+RUN addgroup -S ilaios \
+    && adduser -S -G ilaios -h /home/ilaios ilaios \
+    && mkdir -p /var/lib/ilaios /tmp/ilaios \
+    && chown -R ilaios:ilaios /var/lib/ilaios /tmp/ilaios /opt/ilaios
+
+COPY --chown=ilaios:ilaios apps /opt/ilaios/apps
+COPY --chown=ilaios:ilaios packages /opt/ilaios/packages
+COPY --chown=ilaios:ilaios services /opt/ilaios/services
+COPY --chown=ilaios:ilaios src /opt/ilaios/src
+
+RUN python -m compileall -q /opt/ilaios \
+    && python -c "import sqlite3; import services.deployment.runtime; print('R01_RUNTIME_IMPORT_OK')"
+
+USER ilaios
+
+ENTRYPOINT ["python", "-m", "services.deployment.runtime"]
