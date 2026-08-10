@@ -3,9 +3,10 @@ name: ILAIOS Desktop Windows Gate
 on:
   pull_request:
     branches:
-      - desktop/d09-accessibility-performance
+      - master
     paths:
       - 'apps/desktop/**'
+      - 'brand/assets/05-ilaios-app-icon.jpg'
       - '.github/workflows/desktop-windows-release.yml'
   workflow_dispatch:
 
