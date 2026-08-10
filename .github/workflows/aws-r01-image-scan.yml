@@ -1,0 +1,49 @@
+name: AWS R01 image scan
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/aws-r01-image-scan.yml'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    env:
+      REPOSITORY: ilaios-r01-canary
+      DIGEST: sha256:fcd67b650585897e35a6428fb318cbb21fda92420a4363dfee4fac740d4a6904
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::101180464425:role/ILAIOS-GitHub-Deploy-Role
+          aws-region: eu-central-1
+      - name: Verify immutable image and scan
+        run: |
+          set -euo pipefail
+          ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
+          test "$ACCOUNT" = "101180464425"
+          FOUND="$(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageDigest="$DIGEST" --region eu-central-1 --query 'imageDetails[0].imageDigest' --output text)"
+          test "$FOUND" = "$DIGEST"
+          aws ecr start-image-scan --repository-name "$REPOSITORY" --image-id imageDigest="$DIGEST" --region eu-central-1 >/dev/null 2>&1 || true
+          for i in $(seq 1 60); do
+            STATUS="$(aws ecr describe-image-scan-findings --repository-name "$REPOSITORY" --image-id imageDigest="$DIGEST" --region eu-central-1 --query 'imageScanStatus.status' --output text 2>/dev/null || true)"
+            case "$STATUS" in
+              COMPLETE)
+                aws ecr describe-image-scan-findings --repository-name "$REPOSITORY" --image-id imageDigest="$DIGEST" --region eu-central-1 --query '{status:imageScanStatus.status,severity:imageScanFindings.findingSeverityCounts}'
+                exit 0
+                ;;
+              FAILED|UNSUPPORTED_IMAGE)
+                echo "ECR_SCAN_STATUS=$STATUS"
+                exit 1
+                ;;
+            esac
+            sleep 10
+          done
+          echo 'ECR scan did not complete within 10 minutes.'
+          exit 1
