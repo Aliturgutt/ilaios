@@ -109,9 +109,15 @@ def _runtime_layer(repository: Path) -> bytes:
         linked_inputs = (executable,) + tuple(
             source for source in stdlib_files if source.suffix == ".so"
         )
-        for target, source in _linked_libraries(linked_inputs).items():
+        linked_libraries = _linked_libraries(linked_inputs)
+        scanner_files: set[Path] = set()
+        for target, source in linked_libraries.items():
             _add_file(archive, source, target)
-        _add_scanner_metadata(archive)
+            scanner_files.add(source)
+            host_target = Path("/") / target
+            if host_target.exists():
+                scanner_files.add(host_target)
+        _add_scanner_metadata(archive, tuple(sorted(scanner_files)))
         for root_name in ("apps", "packages", "services", "src"):
             root = repository / root_name
             for source in sorted(root.rglob("*.py")):
@@ -123,22 +129,68 @@ def _runtime_layer(repository: Path) -> bytes:
     return stream.getvalue()
 
 
-def _add_scanner_metadata(archive: tarfile.TarFile) -> None:
-    """Add real distro/package metadata when the build host provides it.
+def _add_scanner_metadata(
+    archive: tarfile.TarFile, runtime_system_files: tuple[Path, ...]
+) -> None:
+    """Add distro metadata for packages that are actually present in the image."""
+    os_release = Path("/etc/os-release")
+    if os_release.is_file():
+        _add_file(archive, os_release, Path("etc/os-release"))
 
-    The R01 image is intentionally assembled without a container engine. ECR basic
-    scanning still needs standard operating-system and package-manager metadata to
-    identify the image platform. GitHub's Ubuntu runner provides both files below;
-    keeping their original contents also ties scanner findings to the exact runtime
-    libraries from that build host rather than inventing synthetic package records.
-    """
-    metadata = (
-        (Path("/etc/os-release"), Path("etc/os-release")),
-        (Path("/var/lib/dpkg/status"), Path("var/lib/dpkg/status")),
-    )
-    for source, target in metadata:
-        if source.is_file():
-            _add_file(archive, source, target)
+    package_names = _owning_debian_packages(runtime_system_files)
+    package_status = _filtered_dpkg_status(package_names)
+    if package_status:
+        _add_bytes(
+            archive,
+            package_status.encode("utf-8"),
+            Path("var/lib/dpkg/status"),
+            mode=0o644,
+        )
+
+
+def _owning_debian_packages(files: tuple[Path, ...]) -> tuple[str, ...]:
+    packages: set[str] = set()
+    if not Path("/usr/bin/dpkg-query").is_file():
+        return ()
+    for source in files:
+        completed = subprocess.run(
+            ("dpkg-query", "--search", str(source)),
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+        if completed.returncode != 0:
+            continue
+        for line in completed.stdout.splitlines():
+            owner_field, separator, _ = line.partition(": ")
+            if not separator:
+                continue
+            for owner in owner_field.split(", "):
+                package = owner.split(":", 1)[0].strip()
+                if package:
+                    packages.add(package)
+    return tuple(sorted(packages))
+
+
+def _filtered_dpkg_status(packages: tuple[str, ...]) -> str:
+    status_path = Path("/var/lib/dpkg/status")
+    if not packages or not status_path.is_file():
+        return ""
+    wanted = set(packages)
+    selected: list[str] = []
+    for stanza in status_path.read_text(encoding="utf-8", errors="strict").split("\n\n"):
+        package_name = ""
+        installed = False
+        for line in stanza.splitlines():
+            if line.startswith("Package: "):
+                package_name = line.removeprefix("Package: ").strip()
+            elif line == "Status: install ok installed":
+                installed = True
+        if package_name in wanted and installed:
+            selected.append(stanza.rstrip())
+    if not selected:
+        return ""
+    return "\n\n".join(sorted(selected)) + "\n"
 
 
 def _linked_libraries(inputs: tuple[Path, ...]) -> dict[Path, Path]:
@@ -159,10 +211,20 @@ def _linked_libraries(inputs: tuple[Path, ...]) -> dict[Path, Path]:
 
 
 def _add_file(archive: tarfile.TarFile, source: Path, target: Path) -> None:
+    _add_bytes(
+        archive,
+        source.read_bytes(),
+        target,
+        mode=source.stat().st_mode & 0o777,
+    )
+
+
+def _add_bytes(
+    archive: tarfile.TarFile, content: bytes, target: Path, *, mode: int
+) -> None:
     info = tarfile.TarInfo(target.as_posix())
-    content = source.read_bytes()
     info.size = len(content)
-    info.mode = source.stat().st_mode & 0o777
+    info.mode = mode
     info.uid = info.gid = 0
     info.mtime = 0
     archive.addfile(info, io.BytesIO(content))
