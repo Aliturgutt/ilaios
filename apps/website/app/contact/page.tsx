@@ -1,0 +1,2 @@
+export const metadata = { title: "Contact" };
+export default function Contact() { return <div className="shell prose"><div className="eyebrow">Contact</div><h1>Talk to ILAIOS.</h1><p>For general enquiries, partnerships, product discussions, or early business conversations, contact us by email.</p><div className="actions"><a className="button" href="mailto:hello@ilaios.com">hello@ilaios.com</a></div><h2>Security</h2><p>For security reports, use <a href="mailto:security@ilaios.com">security@ilaios.com</a>.</p></div>; }
