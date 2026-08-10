@@ -1,0 +1,21 @@
+milestone_id: RELEASE.R01
+package_id: RELEASE.R01.v1
+status: BLOCKED
+readiness: BLOCKED_GITHUB_WORKFLOW_PUSH_AUTHORIZATION
+release_state: NOT_DEPLOYED
+deployment_performed: false
+dependency_evidence: dev/openclaw/evidence/recovery/RELEASE.R00.REVALIDATION.v1/decision.yaml
+remaining_approvals: [GITHUB_WORKFLOW_PUSH_AUTHORIZATION, EXPLICIT_HUMAN_RELEASE_PROMOTION, REQUIRED_EXTERNAL_SPEND_APPROVAL]
+minimum_deployment_set: [ECR, ECS_FARGATE_ONE_TASK, VPC_TWO_SUBNETS, ALLOWLISTED_TLS_ALB, ENCRYPTED_EFS, CLOUDWATCH, SCOPED_IAM_ROLES, REFERENCED_SECRETS_MANAGER_SECRET, VALIDATED_ACM_CERTIFICATE]
+cost_class: LOW_BUT_EXTERNAL_SPEND_POSSIBLE
+credits_override_budget_policy: false
+canary_hostname: canary.ilaios.com
+canary_target: PREPARED_AFTER_APPROVED_APPLY
+rollback: prior immutable ECS task-definition ARN plus ECS deployment circuit breaker
+oidc_evidence: GitHub Actions artifact release-r01-aws-oidc-SELF
+oidc_status: NOT_RUN_WORKFLOW_COMMIT_PUSH_REJECTED
+failed_condition: configured GitHub PAT lacks workflow scope
+failed_action: git push origin master
+failed_result: remote rejected update to .github/workflows/aws-r01-oidc-proof.yml
+canonical_authorities_unchanged: true
+commit_identity: SELF

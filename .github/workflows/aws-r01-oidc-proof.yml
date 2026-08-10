@@ -1,0 +1,40 @@
+name: AWS R01 OIDC proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - .github/workflows/aws-r01-oidc-proof.yml
+      - infra/aws/r01-canary/**
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  identity-proof:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::101180464425:role/ILAIOS-GitHub-Deploy-Role
+          aws-region: eu-central-1
+      - name: Read-only caller identity proof
+        run: |
+          mkdir -p dev/openclaw/evidence/RELEASE.R01/aws-oidc
+          aws sts get-caller-identity > dev/openclaw/evidence/RELEASE.R01/aws-oidc/get-caller-identity.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          identity = json.loads(Path("dev/openclaw/evidence/RELEASE.R01/aws-oidc/get-caller-identity.json").read_text())
+          assert identity["Account"] == "101180464425"
+          assert ":assumed-role/ILAIOS-GitHub-Deploy-Role/" in identity["Arn"]
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-r01-aws-oidc-${{ github.sha }}
+          path: dev/openclaw/evidence/RELEASE.R01/aws-oidc/get-caller-identity.json
+          if-no-files-found: error
+          retention-days: 30

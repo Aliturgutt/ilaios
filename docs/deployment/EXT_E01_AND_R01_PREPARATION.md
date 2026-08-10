@@ -1,8 +1,7 @@
 # EXT.E01 and RELEASE.R01 Preparation
 
-This package inventories the safe work that can be completed before a provider,
-account, region, domain, credentials, and accountable owners exist. It performs
-no deployment and does not change `ReleaseState.NOT_DEPLOYED`.
+This package records AWS Canary preparation for account `101180464425` in
+`eu-central-1`. It performs no deployment and leaves `ReleaseState.NOT_DEPLOYED`.
 
 ## Prepared contracts
 
@@ -15,20 +14,25 @@ no deployment and does not change `ReleaseState.NOT_DEPLOYED`.
 - `infra/release/r01_canary_prerequisites.yaml` is a fail-closed checklist for
   the future, explicitly approved canary promotion.
 
-## Vendor-neutral implementation direction
+## Bound AWS implementation
 
-Prefer established portable components where the selected deployment profile
-supports them: OpenTofu for infrastructure as code, OCI images, Kubernetes with
-Kustomize for workload declarations, Argo CD or Flux for GitOps, External
-Secrets Operator for reference-based secret delivery, and cert-manager for TLS
-automation. Provider-specific modules and manifests must wait for architecture,
-provider, region, and account decisions.
+`infra/aws/r01-canary` provides fail-closed OpenTofu configuration for the
+minimum current runtime: ECR, one ECS Fargate task, encrypted EFS for proven
+SQLite/filesystem adapters, allowlisted TLS ALB, CloudWatch, scoped IAM, ACM,
+and a referenced Secrets Manager secret. It does not add EKS, RDS, S3, SQS,
+NAT Gateway, Route 53, or a second region.
 
-The repository currently supplies domain/service contracts rather than a
-deployable network service. A production composition root, process command,
-container build, HTTP liveness/readiness endpoints, dependency adapters,
-capacity baseline, and migration/rollback mechanics must be implemented and
-tested before provider-specific deployment manifests would be truthful.
+Historical runtime gaps are superseded by
+`dev/openclaw/evidence/recovery/RELEASE.R00.REVALIDATION.v1/decision.yaml`.
+The OIDC workflow runs `aws sts get-caller-identity` first and uploads its exact
+JSON result; no static AWS credential is stored.
+
+## FinOps boundary
+
+ECS Fargate, ALB, EFS, CloudWatch, ECR storage, Secrets Manager, and data
+transfer can incur external spend. VPC/IAM/ACM no-direct-charge components and
+AWS credits do not override `external_spend: false`. Deployment is blocked on
+`REQUIRED_EXTERNAL_SPEND_APPROVAL`.
 
 ## Promotion boundary
 
