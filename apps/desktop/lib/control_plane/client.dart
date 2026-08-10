@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
+import 'operational_snapshot.dart';
 import 'projection.dart';
 
 class ControlPlaneClientException implements Exception {
@@ -72,26 +73,19 @@ class ControlPlaneClient {
   Future<ControlPlaneProjection> fetchProjection() async {
     final readyResponse = await _transport.get(_baseUri.resolve('/health/ready'));
     final readyPayload = _decodeObject(readyResponse, 'readiness');
-    if (readyResponse.statusCode != HttpStatus.ok || readyPayload['status'] != 'ready') {
-      throw const ControlPlaneClientException('Authoritative control plane is not ready');
+    if (readyResponse.statusCode != HttpStatus.ok ||
+        readyPayload['status'] != 'ready') {
+      throw const ControlPlaneClientException(
+        'Authoritative control plane is not ready',
+      );
     }
 
-    final eventResponse = await _transport.get(
-      _baseUri.resolve('/v1/events'),
-      headers: <String, String>{'Authorization': 'Bearer $_token'},
-    );
-    if (eventResponse.statusCode == HttpStatus.unauthorized ||
-        eventResponse.statusCode == HttpStatus.forbidden) {
-      throw const ControlPlaneClientException('Control plane authentication failed');
-    }
-    final eventPayload = _decodeObject(eventResponse, 'events');
-    if (eventResponse.statusCode != HttpStatus.ok) {
-      throw const ControlPlaneClientException('Control plane event query failed');
-    }
-
+    final eventPayload = await _getAuthenticatedObject('/v1/events', 'events');
     final rawEvents = eventPayload['events'];
     if (rawEvents is! List<Object?>) {
-      throw const ControlPlaneClientException('Control plane returned malformed events');
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed events',
+      );
     }
 
     var goalCount = 0;
@@ -99,11 +93,15 @@ class ControlPlaneClient {
     String? lastEvent;
     for (final rawEvent in rawEvents) {
       if (rawEvent is! Map<String, dynamic>) {
-        throw const ControlPlaneClientException('Control plane returned malformed event data');
+        throw const ControlPlaneClientException(
+          'Control plane returned malformed event data',
+        );
       }
       final eventType = rawEvent['event_type'];
       if (eventType is! String) {
-        throw const ControlPlaneClientException('Control plane event type is malformed');
+        throw const ControlPlaneClientException(
+          'Control plane event type is malformed',
+        );
       }
       if (eventType == 'goal.created') {
         goalCount += 1;
@@ -124,10 +122,98 @@ class ControlPlaneClient {
     );
   }
 
+  Future<OperationalSnapshot> fetchOperationalSnapshot() async {
+    final runtimePayload = await _getAuthenticatedObject(
+      '/v1/runtime/routes',
+      'runtime routes',
+    );
+    final schedulerPayload = await _getAuthenticatedObject(
+      '/v1/scheduler/state',
+      'scheduler state',
+    );
+    final grantsPayload = await _getAuthenticatedObject(
+      '/v1/grants/state',
+      'grant state',
+    );
+    final governancePayload = await _getAuthenticatedObject(
+      '/v1/governance/state',
+      'governance state',
+    );
+    final evidencePayload = await _getAuthenticatedObject(
+      '/v1/evidence/verify',
+      'evidence verification',
+    );
+    final livePayload = await _getAuthenticatedObject(
+      '/v1/live/events',
+      'live events',
+    );
+
+    return OperationalSnapshot(
+      runtimeRoutes: _objectMap(runtimePayload['routes'], 'runtime routes'),
+      schedulerState: Map<String, Object?>.from(schedulerPayload),
+      grantsState: Map<String, Object?>.from(grantsPayload),
+      governanceState: Map<String, Object?>.from(governancePayload),
+      evidenceRecords: _objectList(evidencePayload['records'], 'evidence records'),
+      liveEvents: _objectList(livePayload['events'], 'live events'),
+    );
+  }
+
+  Future<Map<String, dynamic>> _getAuthenticatedObject(
+    String path,
+    String label,
+  ) async {
+    final response = await _transport.get(
+      _baseUri.resolve(path),
+      headers: <String, String>{'Authorization': 'Bearer $_token'},
+    );
+    if (response.statusCode == HttpStatus.unauthorized ||
+        response.statusCode == HttpStatus.forbidden) {
+      throw const ControlPlaneClientException(
+        'Control plane authentication failed',
+      );
+    }
+    if (response.statusCode != HttpStatus.ok) {
+      throw ControlPlaneClientException('Control plane $label query failed');
+    }
+    return _decodeObject(response, label);
+  }
+
+  static Map<String, Object?> _objectMap(Object? raw, String label) {
+    if (raw is Map<String, dynamic>) {
+      return Map<String, Object?>.from(raw);
+    }
+    throw ControlPlaneClientException(
+      'Control plane returned malformed $label',
+    );
+  }
+
+  static List<Map<String, Object?>> _objectList(Object? raw, String label) {
+    if (raw is! List<Object?>) {
+      throw ControlPlaneClientException(
+        'Control plane returned malformed $label',
+      );
+    }
+    final output = <Map<String, Object?>>[];
+    for (final item in raw) {
+      if (item is! Map<String, dynamic>) {
+        throw ControlPlaneClientException(
+          'Control plane returned malformed $label',
+        );
+      }
+      output.add(Map<String, Object?>.from(item));
+    }
+    return List<Map<String, Object?>>.unmodifiable(output);
+  }
+
   static Uri _validatedBaseUri(Uri uri) {
-    final loopbackHost = uri.host == '127.0.0.1' || uri.host == '::1' || uri.host == 'localhost';
+    final loopbackHost =
+        uri.host == '127.0.0.1' || uri.host == '::1' || uri.host == 'localhost';
     if (uri.scheme != 'http' || !loopbackHost || !uri.hasPort) {
-      throw ArgumentError.value(uri, 'baseUri', 'must be an explicit loopback HTTP endpoint');
+      throw ArgumentError.value(
+        uri,
+        'baseUri',
+        'must be an explicit loopback HTTP endpoint',
+      );
     }
     return uri;
   }
@@ -151,6 +237,8 @@ class ControlPlaneClient {
     } on FormatException {
       // Converted to a stable client exception below.
     }
-    throw ControlPlaneClientException('Control plane returned malformed $label JSON');
+    throw ControlPlaneClientException(
+      'Control plane returned malformed $label JSON',
+    );
   }
 }
