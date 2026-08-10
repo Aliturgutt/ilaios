@@ -83,13 +83,46 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     }
   }
 
+  Future<void> _decideGovernance(
+    String requestId,
+    GovernanceDecision decision,
+  ) async {
+    final client = _client;
+    final approver = widget.config?.approverId;
+    if (client == null || approver == null) {
+      return;
+    }
+    try {
+      await client.decideGovernanceRequest(
+        requestId: requestId,
+        approver: approver,
+        decision: decision,
+      );
+      if (!mounted) {
+        return;
+      }
+      setState(() => _operationalStatus = 'Governance decision accepted');
+      await _refresh();
+    } on ControlPlaneClientException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() => _operationalStatus = error.message);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return IlaiosDesktopApp(
       projection: _projection,
       operationalSnapshot: _operationalSnapshot,
       operationalStatus: _operationalStatus,
+      approverId: widget.config?.approverId,
       onRefreshRequested: _client == null ? null : _refresh,
+      onGovernanceDecision:
+          _client == null || widget.config?.approverId == null
+              ? null
+              : _decideGovernance,
     );
   }
 }
