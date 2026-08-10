@@ -113,30 +113,38 @@ class _NavigationRail extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
         container: true,
         label: 'ILAIOS Desktop primary navigation',
-        child: Container(
-          width: 232,
+        child: Material(
           color: IlaiosTheme.sidebar,
-          padding: const EdgeInsets.fromLTRB(18, 24, 18, 18),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const _BrandHeader(),
-              const SizedBox(height: 34),
-              for (final section in DesktopSection.values)
-                _NavItem(
-                  section: section,
-                  selected: selected == section,
-                  onTap: () => onSelected(section),
-                ),
-              const Spacer(),
-              const Divider(),
-              const SizedBox(height: 10),
-              const Text('Client projection',
-                  style: TextStyle(color: IlaiosTheme.muted, fontSize: 11)),
-              const SizedBox(height: 4),
-              const Text('Backend authority enforced',
-                  style: TextStyle(fontSize: 12)),
-            ],
+          child: SizedBox(
+            width: 232,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(18, 24, 18, 18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const _BrandHeader(),
+                  const SizedBox(height: 34),
+                  for (final section in DesktopSection.values)
+                    _NavItem(
+                      section: section,
+                      selected: selected == section,
+                      onTap: () => onSelected(section),
+                    ),
+                  const Spacer(),
+                  const Divider(),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Client projection',
+                    style: TextStyle(color: IlaiosTheme.muted, fontSize: 11),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Backend authority enforced',
+                    style: TextStyle(fontSize: 12),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
       );
@@ -179,8 +187,10 @@ class _CompactTopBar extends StatelessWidget {
               child: Row(children: [
                 const _BrandMark(),
                 const SizedBox(width: 10),
-                Text(section.label,
-                    style: const TextStyle(fontWeight: FontWeight.w700)),
+                Text(
+                  section.label,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
                 const SizedBox(width: 6),
                 const Icon(Icons.expand_more, size: 18),
               ]),
@@ -199,16 +209,22 @@ class _BrandHeader extends StatelessWidget {
         _BrandMark(),
         SizedBox(width: 12),
         Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text('ILAIOS',
-              style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.8)),
-          Text('DESKTOP',
-              style: TextStyle(
-                  fontSize: 10,
-                  color: IlaiosTheme.muted,
-                  letterSpacing: 2)),
+          Text(
+            'ILAIOS',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.8,
+            ),
+          ),
+          Text(
+            'DESKTOP',
+            style: TextStyle(
+              fontSize: 10,
+              color: IlaiosTheme.muted,
+              letterSpacing: 2,
+            ),
+          ),
         ]),
       ]);
 }
@@ -225,22 +241,29 @@ class _BrandMark extends StatelessWidget {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(10),
             border: Border.all(
-                color: IlaiosTheme.primary.withValues(alpha: .65)),
+              color: IlaiosTheme.primary.withValues(alpha: .65),
+            ),
             gradient: const LinearGradient(
-                colors: [Color(0xFF173A72), Color(0xFF10273E)]),
+              colors: [Color(0xFF173A72), Color(0xFF10273E)],
+            ),
           ),
           alignment: Alignment.center,
           child: const ExcludeSemantics(
-            child: Text('I',
-                style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
+            child: Text(
+              'I',
+              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
+            ),
           ),
         ),
       );
 }
 
 class _NavItem extends StatelessWidget {
-  const _NavItem(
-      {required this.section, required this.selected, required this.onTap});
+  const _NavItem({
+    required this.section,
+    required this.selected,
+    required this.onTap,
+  });
   final DesktopSection section;
   final bool selected;
   final VoidCallback onTap;
@@ -250,29 +273,39 @@ class _NavItem extends StatelessWidget {
         button: true,
         selected: selected,
         label: section.label,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 7),
-          decoration: BoxDecoration(
+        excludeSemantics: true,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 7),
+          child: Material(
             color: selected
                 ? IlaiosTheme.primary.withValues(alpha: .13)
                 : Colors.transparent,
-            borderRadius: BorderRadius.circular(10),
-            border: selected
-                ? Border.all(
-                    color: IlaiosTheme.primary.withValues(alpha: .25))
-                : null,
-          ),
-          child: ListTile(
-            key: ValueKey('nav-${section.name}'),
-            dense: true,
-            onTap: onTap,
-            leading: Icon(section.icon,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+              side: selected
+                  ? BorderSide(
+                      color: IlaiosTheme.primary.withValues(alpha: .25),
+                    )
+                  : BorderSide.none,
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: ListTile(
+              key: ValueKey('nav-${section.name}'),
+              dense: true,
+              onTap: onTap,
+              leading: Icon(
+                section.icon,
                 size: 20,
-                color: selected ? IlaiosTheme.cyan : IlaiosTheme.muted),
-            title: Text(section.label,
+                color: selected ? IlaiosTheme.cyan : IlaiosTheme.muted,
+              ),
+              title: Text(
+                section.label,
                 style: TextStyle(
-                    color: selected ? IlaiosTheme.text : IlaiosTheme.muted,
-                    fontSize: 13)),
+                  color: selected ? IlaiosTheme.text : IlaiosTheme.muted,
+                  fontSize: 13,
+                ),
+              ),
+            ),
           ),
         ),
       );
@@ -291,8 +324,10 @@ class _TopBar extends StatelessWidget {
           border: Border(bottom: BorderSide(color: IlaiosTheme.border)),
         ),
         child: Row(children: [
-          const Text('Enterprise AI OS',
-              style: TextStyle(fontWeight: FontWeight.w600)),
+          const Text(
+            'Enterprise AI OS',
+            style: TextStyle(fontWeight: FontWeight.w600),
+          ),
           const Spacer(),
           _ConnectionPill(projection: projection),
         ]),
@@ -325,19 +360,24 @@ class _ConnectionPill extends StatelessWidget {
           ),
         ),
         child: Row(children: [
-          Icon(Icons.circle,
-              size: 8,
-              color: projection.connected
-                  ? IlaiosTheme.success
-                  : IlaiosTheme.muted),
+          Icon(
+            Icons.circle,
+            size: 8,
+            color: projection.connected
+                ? IlaiosTheme.success
+                : IlaiosTheme.muted,
+          ),
           const SizedBox(width: 8),
           ExcludeSemantics(
             child: Text(
-                projection.connected
-                    ? 'CONTROL PLANE CONNECTED'
-                    : 'CONTROL PLANE OFFLINE',
-                style: const TextStyle(
-                    fontSize: 11, fontWeight: FontWeight.w700)),
+              projection.connected
+                  ? 'CONTROL PLANE CONNECTED'
+                  : 'CONTROL PLANE OFFLINE',
+              style: const TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ]),
       ),
