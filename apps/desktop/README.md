@@ -40,6 +40,10 @@ The repository GitHub Actions Windows gate pins Flutter `3.44.9` to revision `6b
 
 For a Windows-local release gate, run `tool/validate_windows_release.ps1` from this directory.
 
+## Distribution boundary
+
+The repository validates the production Windows binary but does not claim code-signing identity, Microsoft Store publication, installer certification, or external compliance certification. Those distribution credentials and external approvals remain separate release dependencies and must not be inferred from a successful application build.
+
 ## Scope
 
 This package is ILAIOS Desktop only. It does not own Website/Vercel/DNS configuration and OpenClaw is not a runtime dependency.
