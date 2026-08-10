@@ -1,0 +1,80 @@
+name: AWS R01 managed image signing
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/aws-r01-managed-signing.yml'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  sign:
+    runs-on: ubuntu-latest
+    env:
+      REPOSITORY: ilaios-r01-canary
+      DIGEST: sha256:fcd67b650585897e35a6428fb318cbb21fda92420a4363dfee4fac740d4a6904
+      PROFILE: ILAIOS_R01_ECR
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::101180464425:role/ILAIOS-GitHub-Deploy-Role
+          aws-region: eu-central-1
+      - name: Configure AWS Signer and ECR managed signing
+        run: |
+          set -euo pipefail
+          ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
+          test "$ACCOUNT" = "101180464425"
+          if ! aws signer get-signing-profile --profile-name "$PROFILE" --region eu-central-1 >/dev/null 2>&1; then
+            aws signer put-signing-profile --profile-name "$PROFILE" --platform-id Notation-OCI-SHA384-ECDSA --region eu-central-1 >/dev/null
+          fi
+          PROFILE_ARN="$(aws signer get-signing-profile --profile-name "$PROFILE" --region eu-central-1 --query 'arn' --output text)"
+          test -n "$PROFILE_ARN"
+          cat > /tmp/signing.json <<JSON
+          {
+            "rules": [
+              {
+                "signingProfileArn": "$PROFILE_ARN",
+                "repositoryFilters": [
+                  {"filter": "$REPOSITORY", "filterType": "WILDCARD_MATCH"}
+                ]
+              }
+            ]
+          }
+          JSON
+          aws ecr put-signing-configuration --signing-configuration file:///tmp/signing.json --region eu-central-1 >/dev/null
+          echo "SIGNING_PROFILE_ARN=$PROFILE_ARN"
+      - name: Re-register immutable manifest to trigger managed signing
+        id: trigger
+        run: |
+          set -euo pipefail
+          MANIFEST="$(aws ecr batch-get-image --repository-name "$REPOSITORY" --image-ids imageDigest="$DIGEST" --accepted-media-types application/vnd.oci.image.manifest.v1+json --region eu-central-1 --query 'images[0].imageManifest' --output text)"
+          test -n "$MANIFEST"
+          TAG="signed-${GITHUB_SHA}"
+          aws ecr put-image --repository-name "$REPOSITORY" --image-manifest "$MANIFEST" --image-tag "$TAG" --region eu-central-1 >/dev/null
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      - name: Verify managed signing status
+        env:
+          TAG: ${{ steps.trigger.outputs.tag }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            STATUS="$(aws ecr describe-image-signing-status --repository-name "$REPOSITORY" --image-id imageTag="$TAG" --region eu-central-1 --query 'signingStatus' --output text 2>/dev/null || true)"
+            case "$STATUS" in
+              SUCCESS|COMPLETE)
+                echo "IMAGE_SIGNING_STATUS=$STATUS"
+                exit 0
+                ;;
+              FAILED)
+                echo "IMAGE_SIGNING_STATUS=$STATUS"
+                exit 1
+                ;;
+            esac
+            sleep 5
+          done
+          echo 'Managed signing did not complete within bounded wait window.'
+          exit 1
