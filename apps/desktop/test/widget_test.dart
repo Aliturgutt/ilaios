@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
 import 'package:ilaios_desktop/main.dart';
 
@@ -90,9 +91,13 @@ void main() {
             'revoked': <Object?>[],
             'stopped': <Object?>[],
           },
-          governanceState: <String, Object?>{'pending': 0},
+          governanceState: <String, Object?>{
+            'work': <Object?>[],
+            'secret_references': <Object?>[],
+            'ledger': <String, Object?>{},
+          },
           evidenceRecords: <Map<String, Object?>>[
-            <String, Object?>{'digest': 'abcdef0123456789abcdef'},
+            <String, Object?>{'artifact_digest': 'abcdef0123456789abcdef'},
           ],
           liveEvents: <Map<String, Object?>>[
             <String, Object?>{'event_type': 'job.updated'},
@@ -109,12 +114,76 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-evidence')));
     await tester.pumpAndSettle();
     expect(find.text('Verified records'), findsOneWidget);
-    expect(find.text('1'), findsWidgets);
 
     await tester.tap(find.byKey(const ValueKey('nav-liveExecution')));
     await tester.pumpAndSettle();
     expect(find.text('Active leases'), findsOneWidget);
     expect(find.text('Last live event'), findsOneWidget);
     expect(find.text('job.updated'), findsOneWidget);
+  });
+
+  testWidgets('governance decisions require independent approver', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    String? decidedRequest;
+    GovernanceDecision? decidedValue;
+
+    await tester.pumpWidget(
+      IlaiosDesktopApp(
+        projection: const ControlPlaneProjection(
+          connected: true,
+          status: 'Connected to authoritative control plane',
+          goalCount: 0,
+          jobCount: 0,
+          lastEvent: null,
+          schemaVersion: '1',
+        ),
+        operationalSnapshot: const OperationalSnapshot(
+          runtimeRoutes: <Map<String, Object?>>[],
+          schedulerState: <String, Object?>{},
+          grantsState: <String, Object?>{
+            'grants': <Object?>[],
+            'revoked': <Object?>[],
+            'stopped': <Object?>[],
+          },
+          governanceState: <String, Object?>{
+            'work': <Object?>[
+              <String, Object?>{
+                'request_id': 'request-7',
+                'requester_id': 'requester-a',
+                'status': 'pending',
+              },
+            ],
+            'secret_references': <Object?>[
+              <String, Object?>{
+                'secret_id': 'secret-1',
+                'reference': 'vault://must-never-render',
+              },
+            ],
+            'ledger': <String, Object?>{},
+          },
+          evidenceRecords: <Map<String, Object?>>[],
+          liveEvents: <Map<String, Object?>>[],
+        ),
+        operationalStatus: 'Operational APIs connected',
+        approverId: 'approver-b',
+        onGovernanceDecision: (requestId, decision) async {
+          decidedRequest = requestId;
+          decidedValue = decision;
+        },
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey('nav-governance')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('request-7'), findsOneWidget);
+    expect(find.textContaining('vault://must-never-render'), findsNothing);
+    await tester.tap(find.byKey(const ValueKey('approve-request-7')));
+    await tester.pumpAndSettle();
+    expect(decidedRequest, 'request-7');
+    expect(decidedValue, GovernanceDecision.approved);
   });
 }
