@@ -95,7 +95,7 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ steps.prior.outputs.run_id }}
 
-      - name: Initialize OpenTofu and adopt partial R01 resources
+      - name: Initialize OpenTofu and reconcile partial R01 resources
         working-directory: infra/aws/r01-canary
         run: |
           set -euo pipefail
@@ -116,10 +116,64 @@ jobs:
             tofu import "$addr" "$id"
           }
 
+          DESIRED_VPC_ID="$(tofu state show 'aws_vpc.canary[0]' | awk -F'= ' '/^[[:space:]]*id[[:space:]]*=/{gsub(/\"/, "", $2); print $2; exit}')"
+          if [ -z "$DESIRED_VPC_ID" ]; then
+            echo 'Unable to resolve canonical R01 VPC from serialized state.'
+            exit 1
+          fi
+          echo "DESIRED_VPC_ID=$DESIRED_VPC_ID"
+
+          # Remove only stale canary load-balancer resources that were created in a different VPC.
+          # No production service has passed R01 health gates yet; this is bounded reconciliation of partial R01 artifacts.
+          LB_ARN="$(aws elbv2 describe-load-balancers --region eu-central-1 --names ilaios-r01-canary --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null || true)"
+          if [ -n "$LB_ARN" ] && [ "$LB_ARN" != "None" ]; then
+            LB_VPC="$(aws elbv2 describe-load-balancers --region eu-central-1 --load-balancer-arns "$LB_ARN" --query 'LoadBalancers[0].VpcId' --output text)"
+            if [ "$LB_VPC" != "$DESIRED_VPC_ID" ]; then
+              echo "Removing stale R01 ALB in VPC $LB_VPC"
+              for LISTENER_ARN in $(aws elbv2 describe-listeners --region eu-central-1 --load-balancer-arn "$LB_ARN" --query 'Listeners[].ListenerArn' --output text); do
+                aws elbv2 delete-listener --region eu-central-1 --listener-arn "$LISTENER_ARN"
+              done
+              aws elbv2 delete-load-balancer --region eu-central-1 --load-balancer-arn "$LB_ARN"
+              aws elbv2 wait load-balancers-deleted --region eu-central-1 --load-balancer-arns "$LB_ARN"
+              if in_state 'aws_lb.canary[0]'; then tofu state rm 'aws_lb.canary[0]'; fi
+            fi
+          fi
+
+          TG_ARN="$(aws elbv2 describe-target-groups --region eu-central-1 --names ilaios-r01-canary --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || true)"
+          if [ -n "$TG_ARN" ] && [ "$TG_ARN" != "None" ]; then
+            TG_VPC="$(aws elbv2 describe-target-groups --region eu-central-1 --target-group-arns "$TG_ARN" --query 'TargetGroups[0].VpcId' --output text)"
+            if [ "$TG_VPC" != "$DESIRED_VPC_ID" ]; then
+              echo "Removing stale R01 target group in VPC $TG_VPC"
+              aws elbv2 delete-target-group --region eu-central-1 --target-group-arn "$TG_ARN"
+              if in_state 'aws_lb_target_group.runtime[0]'; then tofu state rm 'aws_lb_target_group.runtime[0]'; fi
+            fi
+          fi
+
           adopt aws_ecr_repository.runtime ilaios-r01-canary
 
           EFS_ID="$(aws efs describe-file-systems --region eu-central-1 --creation-token ilaios-r01-canary --query 'FileSystems[0].FileSystemId' --output text 2>/dev/null || true)"
           adopt 'aws_efs_file_system.state[0]' "$EFS_ID"
+
+          # Preserve the EFS file system and data, but remove stale mount targets tied to a different VPC.
+          if [ -n "$EFS_ID" ] && [ "$EFS_ID" != "None" ]; then
+            for MT_ID in $(aws efs describe-mount-targets --region eu-central-1 --file-system-id "$EFS_ID" --query 'MountTargets[].MountTargetId' --output text); do
+              MT_SUBNET="$(aws efs describe-mount-targets --region eu-central-1 --mount-target-id "$MT_ID" --query 'MountTargets[0].SubnetId' --output text)"
+              MT_VPC="$(aws ec2 describe-subnets --region eu-central-1 --subnet-ids "$MT_SUBNET" --query 'Subnets[0].VpcId' --output text)"
+              if [ "$MT_VPC" != "$DESIRED_VPC_ID" ]; then
+                echo "Removing stale R01 EFS mount target $MT_ID from VPC $MT_VPC"
+                aws efs delete-mount-target --region eu-central-1 --mount-target-id "$MT_ID"
+              fi
+            done
+            for _ in $(seq 1 60); do
+              STALE_COUNT=0
+              for MT_SUBNET in $(aws efs describe-mount-targets --region eu-central-1 --file-system-id "$EFS_ID" --query 'MountTargets[].SubnetId' --output text); do
+                MT_VPC="$(aws ec2 describe-subnets --region eu-central-1 --subnet-ids "$MT_SUBNET" --query 'Subnets[0].VpcId' --output text)"
+                if [ "$MT_VPC" != "$DESIRED_VPC_ID" ]; then STALE_COUNT=$((STALE_COUNT + 1)); fi
+              done
+              if [ "$STALE_COUNT" -eq 0 ]; then break; fi
+              sleep 5
+            done
+          fi
 
           if aws logs describe-log-groups --region eu-central-1 --log-group-name-prefix '/ilaios/r01/canary/runtime' --query 'logGroups[?logGroupName==`/ilaios/r01/canary/runtime`].logGroupName | [0]' --output text 2>/dev/null | grep -Fxq '/ilaios/r01/canary/runtime'; then
             adopt 'aws_cloudwatch_log_group.runtime[0]' '/ilaios/r01/canary/runtime'
@@ -133,10 +187,16 @@ jobs:
           fi
 
           LB_ARN="$(aws elbv2 describe-load-balancers --region eu-central-1 --names ilaios-r01-canary --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null || true)"
-          adopt 'aws_lb.canary[0]' "$LB_ARN"
+          if [ -n "$LB_ARN" ] && [ "$LB_ARN" != "None" ]; then
+            LB_VPC="$(aws elbv2 describe-load-balancers --region eu-central-1 --load-balancer-arns "$LB_ARN" --query 'LoadBalancers[0].VpcId' --output text)"
+            if [ "$LB_VPC" = "$DESIRED_VPC_ID" ]; then adopt 'aws_lb.canary[0]' "$LB_ARN"; fi
+          fi
 
           TG_ARN="$(aws elbv2 describe-target-groups --region eu-central-1 --names ilaios-r01-canary --query 'TargetGroups[0].TargetGroupArn' --output text 2>/dev/null || true)"
-          adopt 'aws_lb_target_group.runtime[0]' "$TG_ARN"
+          if [ -n "$TG_ARN" ] && [ "$TG_ARN" != "None" ]; then
+            TG_VPC="$(aws elbv2 describe-target-groups --region eu-central-1 --target-group-arns "$TG_ARN" --query 'TargetGroups[0].VpcId' --output text)"
+            if [ "$TG_VPC" = "$DESIRED_VPC_ID" ]; then adopt 'aws_lb_target_group.runtime[0]' "$TG_ARN"; fi
+          fi
 
           tofu validate
           tofu fmt -check -recursive
