@@ -123,8 +123,6 @@ jobs:
           fi
           echo "DESIRED_VPC_ID=$DESIRED_VPC_ID"
 
-          # Remove only stale canary load-balancer resources that were created in a different VPC.
-          # No production service has passed R01 health gates yet; this is bounded reconciliation of partial R01 artifacts.
           LB_ARN="$(aws elbv2 describe-load-balancers --region eu-central-1 --names ilaios-r01-canary --query 'LoadBalancers[0].LoadBalancerArn' --output text 2>/dev/null || true)"
           if [ -n "$LB_ARN" ] && [ "$LB_ARN" != "None" ]; then
             LB_VPC="$(aws elbv2 describe-load-balancers --region eu-central-1 --load-balancer-arns "$LB_ARN" --query 'LoadBalancers[0].VpcId' --output text)"
@@ -154,7 +152,6 @@ jobs:
           EFS_ID="$(aws efs describe-file-systems --region eu-central-1 --creation-token ilaios-r01-canary --query 'FileSystems[0].FileSystemId' --output text 2>/dev/null || true)"
           adopt 'aws_efs_file_system.state[0]' "$EFS_ID"
 
-          # Preserve the EFS file system and data, but remove stale mount targets tied to a different VPC.
           if [ -n "$EFS_ID" ] && [ "$EFS_ID" != "None" ]; then
             for MT_ID in $(aws efs describe-mount-targets --region eu-central-1 --file-system-id "$EFS_ID" --query 'MountTargets[].MountTargetId' --output text); do
               MT_SUBNET="$(aws efs describe-mount-targets --region eu-central-1 --mount-target-id "$MT_ID" --query 'MountTargets[0].SubnetId' --output text)"
@@ -198,6 +195,11 @@ jobs:
             if [ "$TG_VPC" = "$DESIRED_VPC_ID" ]; then adopt 'aws_lb_target_group.runtime[0]' "$TG_ARN"; fi
           fi
 
+          SERVICE_ARN="$(aws ecs describe-services --region eu-central-1 --cluster ilaios-r01-canary --services ilaios-r01-canary --query 'services[0].serviceArn' --output text 2>/dev/null || true)"
+          if [ -n "$SERVICE_ARN" ] && [ "$SERVICE_ARN" != "None" ]; then
+            adopt 'aws_ecs_service.runtime[0]' "ilaios-r01-canary/ilaios-r01-canary"
+          fi
+
           tofu validate
           tofu fmt -check -recursive
 
@@ -207,7 +209,7 @@ jobs:
           set -euo pipefail
           tofu plan -input=false -out=r01.tfplan
           tofu show -no-color r01.tfplan > r01-plan.txt
-          grep -q 'Plan:' r01-plan.txt
+          grep -q 'Plan:' r01-plan.txt || grep -q 'No changes.' r01-plan.txt
 
       - name: Apply exact approved R01 Canary
         working-directory: infra/aws/r01-canary
@@ -217,18 +219,44 @@ jobs:
 
       - name: Verify ECS service and target health
         run: |
-          set -euo pipefail
-          aws ecs wait services-stable --cluster ilaios-r01-canary --services ilaios-r01-canary --region eu-central-1
+          set -uo pipefail
+          STABLE=0
+          if aws ecs wait services-stable --cluster ilaios-r01-canary --services ilaios-r01-canary --region eu-central-1; then
+            STABLE=1
+          fi
           TG_ARN="$(aws elbv2 describe-target-groups --names ilaios-r01-canary --region eu-central-1 --query 'TargetGroups[0].TargetGroupArn' --output text)"
-          for i in $(seq 1 60); do
+          HEALTHY=0
+          for i in $(seq 1 30); do
             STATE="$(aws elbv2 describe-target-health --target-group-arn "$TG_ARN" --region eu-central-1 --query 'TargetHealthDescriptions[0].TargetHealth.State' --output text 2>/dev/null || true)"
+            echo "TARGET_HEALTH=$STATE"
             if [ "$STATE" = "healthy" ]; then
-              echo 'TARGET_HEALTH=healthy'
-              exit 0
+              HEALTHY=1
+              break
             fi
             sleep 10
           done
-          echo 'Target did not become healthy in bounded window.'
+          if [ "$STABLE" -eq 1 ] && [ "$HEALTHY" -eq 1 ]; then
+            exit 0
+          fi
+
+          echo '--- ECS SERVICE SNAPSHOT ---'
+          aws ecs describe-services --cluster ilaios-r01-canary --services ilaios-r01-canary --region eu-central-1 --query 'services[0].{status:status,desired:desiredCount,running:runningCount,pending:pendingCount,taskDefinition:taskDefinition,deployments:deployments[*].{status:status,rolloutState:rolloutState,rolloutStateReason:rolloutStateReason,running:runningCount,pending:pendingCount,failed:failedTasks},events:events[0:10].message}' --output json || true
+
+          RUNNING_TASKS="$(aws ecs list-tasks --cluster ilaios-r01-canary --service-name ilaios-r01-canary --desired-status RUNNING --region eu-central-1 --query 'taskArns' --output text 2>/dev/null || true)"
+          STOPPED_TASKS="$(aws ecs list-tasks --cluster ilaios-r01-canary --service-name ilaios-r01-canary --desired-status STOPPED --region eu-central-1 --query 'taskArns[0:10]' --output text 2>/dev/null || true)"
+          if [ -n "$RUNNING_TASKS" ]; then
+            echo '--- RUNNING TASKS ---'
+            aws ecs describe-tasks --cluster ilaios-r01-canary --tasks $RUNNING_TASKS --region eu-central-1 --query 'tasks[*].{taskArn:taskArn,lastStatus:lastStatus,healthStatus:healthStatus,stoppedReason:stoppedReason,containers:containers[*].{name:name,lastStatus:lastStatus,healthStatus:healthStatus,reason:reason,exitCode:exitCode}}' --output json || true
+          fi
+          if [ -n "$STOPPED_TASKS" ]; then
+            echo '--- RECENT STOPPED TASKS ---'
+            aws ecs describe-tasks --cluster ilaios-r01-canary --tasks $STOPPED_TASKS --region eu-central-1 --query 'tasks[*].{taskArn:taskArn,lastStatus:lastStatus,stopCode:stopCode,stoppedReason:stoppedReason,containers:containers[*].{name:name,lastStatus:lastStatus,reason:reason,exitCode:exitCode}}' --output json || true
+          fi
+
+          echo '--- TARGET HEALTH SNAPSHOT ---'
+          aws elbv2 describe-target-health --target-group-arn "$TG_ARN" --region eu-central-1 --output json || true
+          echo '--- CLOUDWATCH RUNTIME LOGS ---'
+          aws logs tail '/ilaios/r01/canary/runtime' --region eu-central-1 --since 30m --format short || true
           exit 1
 
       - name: Record canary outputs
