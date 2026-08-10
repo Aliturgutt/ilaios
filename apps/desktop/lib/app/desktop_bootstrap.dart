@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../control_plane/client.dart';
 import '../control_plane/config.dart';
+import '../control_plane/operational_snapshot.dart';
 import '../control_plane/projection.dart';
 import 'desktop_app.dart';
 
@@ -16,6 +17,9 @@ class DesktopBootstrap extends StatefulWidget {
 
 class _DesktopBootstrapState extends State<DesktopBootstrap> {
   ControlPlaneProjection _projection = const ControlPlaneProjection.unavailable();
+  OperationalSnapshot _operationalSnapshot =
+      const OperationalSnapshot.unavailable();
+  String _operationalStatus = 'Operational APIs not connected';
   ControlPlaneClient? _client;
 
   @override
@@ -32,6 +36,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       _projection = const ControlPlaneProjection.unavailable(
         status: 'Control plane configuration rejected',
       );
+      _operationalStatus = 'Control plane configuration rejected';
     }
   }
 
@@ -40,21 +45,41 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     if (client == null) {
       return;
     }
+
+    ControlPlaneProjection projection;
     try {
-      final projection = await client.fetchProjection();
-      if (!mounted) {
-        return;
-      }
-      setState(() => _projection = projection);
+      projection = await client.fetchProjection();
     } on ControlPlaneClientException catch (error) {
       if (!mounted) {
         return;
       }
-      setState(
-        () => _projection = ControlPlaneProjection.unavailable(
-          status: error.message,
-        ),
-      );
+      setState(() {
+        _projection = ControlPlaneProjection.unavailable(status: error.message);
+        _operationalSnapshot = const OperationalSnapshot.unavailable();
+        _operationalStatus = error.message;
+      });
+      return;
+    }
+
+    try {
+      final operationalSnapshot = await client.fetchOperationalSnapshot();
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _projection = projection;
+        _operationalSnapshot = operationalSnapshot;
+        _operationalStatus = 'Operational APIs connected';
+      });
+    } on ControlPlaneClientException catch (error) {
+      if (!mounted) {
+        return;
+      }
+      setState(() {
+        _projection = projection;
+        _operationalSnapshot = const OperationalSnapshot.unavailable();
+        _operationalStatus = error.message;
+      });
     }
   }
 
@@ -62,6 +87,8 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
   Widget build(BuildContext context) {
     return IlaiosDesktopApp(
       projection: _projection,
+      operationalSnapshot: _operationalSnapshot,
+      operationalStatus: _operationalStatus,
       onRefreshRequested: _client == null ? null : _refresh,
     );
   }
