@@ -40,7 +40,7 @@ jobs:
       - name: Resolve and build minimal R01 runtime image
         id: build
         env:
-          BASE_IMAGE: python:3.12.13-alpine3.22
+          BASE_IMAGE: docker.io/library/python@sha256:a190708a2dec1bd18b1decb539f8e8f5407abaa9bf39cacda583f7f8c11db322
         run: |
           set -euo pipefail
           docker pull --platform linux/amd64 "$BASE_IMAGE"
@@ -59,9 +59,10 @@ jobs:
         run: |
           set -euo pipefail
           CID="$(docker run -d \
+            --user 1000:1000 \
             --read-only \
-            --tmpfs /tmp:rw,noexec,nosuid,size=32m \
-            --tmpfs /var/lib/ilaios:rw,noexec,nosuid,size=128m \
+            --tmpfs /tmp:rw,noexec,nosuid,uid=1000,gid=1000,size=32m \
+            --tmpfs /var/lib/ilaios:rw,noexec,nosuid,uid=1000,gid=1000,size=128m \
             -e ILAIOS_CONTROL_PLANE_TOKEN=r01-ci-smoke-token \
             -e ILAIOS_STATE_ROOT=/var/lib/ilaios \
             -e ILAIOS_READY_FILE=/tmp/ready.json \
