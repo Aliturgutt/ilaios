@@ -75,23 +75,35 @@ jobs:
           echo "ECR_TAG=${TAG}"
           echo "ECR_DIGEST=${DIGEST}"
 
-      - name: Wait for ECR scan result
+      - name: Start and wait for ECR scan result
         env:
           REPOSITORY: ilaios-r01-canary
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
           set -euo pipefail
-          for i in $(seq 1 24); do
+          aws ecr start-image-scan \
+            --repository-name "$REPOSITORY" \
+            --image-id imageDigest="$DIGEST" \
+            --region eu-central-1 >/dev/null 2>&1 || true
+
+          for i in $(seq 1 60); do
             STATUS="$(aws ecr describe-image-scan-findings --repository-name "$REPOSITORY" --image-id imageDigest="$DIGEST" --region eu-central-1 --query 'imageScanStatus.status' --output text 2>/dev/null || true)"
-            if [ "$STATUS" = "COMPLETE" ]; then
-              aws ecr describe-image-scan-findings --repository-name "$REPOSITORY" --image-id imageDigest="$DIGEST" --region eu-central-1 --query '{status:imageScanStatus.status,severity:imageScanFindings.findingSeverityCounts}'
-              exit 0
-            fi
-            if [ "$STATUS" = "FAILED" ] || [ "$STATUS" = "UNSUPPORTED_IMAGE" ]; then
-              echo "ECR_SCAN_STATUS=$STATUS"
-              exit 1
-            fi
-            sleep 5
+            case "$STATUS" in
+              COMPLETE)
+                aws ecr describe-image-scan-findings \
+                  --repository-name "$REPOSITORY" \
+                  --image-id imageDigest="$DIGEST" \
+                  --region eu-central-1 \
+                  --query '{status:imageScanStatus.status,severity:imageScanFindings.findingSeverityCounts}'
+                exit 0
+                ;;
+              FAILED|UNSUPPORTED_IMAGE)
+                echo "ECR_SCAN_STATUS=$STATUS"
+                exit 1
+                ;;
+            esac
+            sleep 10
           done
-          echo 'ECR scan did not complete within bounded wait window.'
+
+          echo 'ECR scan did not complete within 10 minutes.'
           exit 1
