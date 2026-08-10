@@ -21,15 +21,16 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
   const isTr = pathname === "/tr" || pathname.startsWith("/tr/");
   const links = isTr ? trLinks : enLinks;
   const switchHref = counterpart(pathname, isTr);
+  const lang = isTr ? "tr" : "en";
 
   useEffect(() => {
-    document.documentElement.lang = isTr ? "tr" : "en";
-  }, [isTr]);
+    document.documentElement.lang = lang;
+  }, [lang]);
 
   return (
     <>
-      <a className="skip-link" href="#main-content">{isTr ? "Ana içeriğe geç" : "Skip to main content"}</a>
-      <header className="site-header">
+      <a className="skip-link" href="#main-content" lang={lang}>{isTr ? "Ana içeriğe geç" : "Skip to main content"}</a>
+      <header className="site-header" lang={lang}>
         <div className="shell nav">
           <Link className="brand" href={isTr ? "/tr" : "/"} aria-label={isTr ? "ILAIOS ana sayfa" : "ILAIOS home"}>
             <Image src="/brand/logo-horizontal-dark.jpg" alt="ILAIOS" width={2400} height={800} sizes="168px" />
@@ -37,13 +38,13 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
           <nav className="nav-links" aria-label={isTr ? "Ana menü" : "Primary navigation"}>
             {links.map(([label, href]) => <Link key={href} href={href} aria-current={pathname === href ? "page" : undefined}>{label}</Link>)}
             <span className="language-switch" aria-label={isTr ? "Dil seçimi" : "Language selection"}>
-              {isTr ? <><Link href={switchHref} hrefLang="en">EN</Link><strong aria-current="true">TR</strong></> : <><strong aria-current="true">EN</strong><Link href={switchHref} hrefLang="tr">TR</Link></>}
+              {isTr ? <><Link href={switchHref} hrefLang="en" lang="en">EN</Link><strong aria-current="true">TR</strong></> : <><strong aria-current="true">EN</strong><Link href={switchHref} hrefLang="tr" lang="tr">TR</Link></>}
             </span>
           </nav>
         </div>
       </header>
-      <main id="main-content">{children}</main>
-      <footer className="site-footer">
+      <main id="main-content" lang={lang}>{children}</main>
+      <footer className="site-footer" lang={lang}>
         <div className="shell footer-trust">
           <div><strong>ILAIOS</strong><p>{isTr ? "Kontrollü akıllı otomasyon için güvenlik, kanıt ve açık yetki sınırları etrafında geliştirilen teknoloji." : "Technology for governed intelligent automation, built around security, evidence, and explicit authority boundaries."}</p></div>
           <div className="footer-signals"><span>{isTr ? "Aktif geliştirme" : "Active development"}</span><span>{isTr ? "Kanıt odaklı" : "Evidence-first"}</span><span>{isTr ? "Güvenlik odaklı" : "Security-first"}</span></div>
