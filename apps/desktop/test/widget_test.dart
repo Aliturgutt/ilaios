@@ -22,7 +22,9 @@ void main() {
     expect(find.text('Authoritative control plane unavailable'), findsOneWidget);
     expect(find.text('—'), findsNWidgets(6));
     expect(
-      tester.widget<FilledButton>(find.byKey(const Key('refresh-command'))).onPressed,
+      tester
+          .widget<FilledButton>(find.byKey(const Key('refresh-command')))
+          .onPressed,
       isNull,
     );
   });
@@ -44,7 +46,9 @@ void main() {
     ));
     expect(find.text('2'), findsOneWidget);
     expect(find.text('5'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('refresh-command')));
+    final refresh = find.byKey(const Key('refresh-command'));
+    await tester.ensureVisible(refresh);
+    await tester.tap(refresh);
     expect(refreshRequests, 1);
   });
 
@@ -54,10 +58,10 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const IlaiosDesktopApp());
-    expect(find.text('Control Center'), findsWidgets);
-    expect(find.text('Live Execution'), findsWidgets);
-    expect(find.text('Evidence'), findsOneWidget);
-    expect(find.text('Governance'), findsWidgets);
+    expect(find.byKey(const ValueKey('nav-controlCenter')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-liveExecution')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-evidence')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-governance')), findsOneWidget);
     expect(find.text('Agents'), findsNothing);
     expect(find.text('Approvals'), findsNothing);
   });
@@ -164,7 +168,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-governance')));
     await tester.pumpAndSettle();
     expect(find.textContaining('vault://must-never-render'), findsNothing);
-    await tester.tap(find.byKey(const ValueKey('approve-request-7')));
+    final approve = find.byKey(const ValueKey('approve-request-7'));
+    await tester.ensureVisible(approve);
+    await tester.tap(approve);
     expect(decidedRequest, 'request-7');
     expect(decidedValue, GovernanceDecision.approved);
   });
