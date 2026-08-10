@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import 'evidence_record.dart';
+
 @immutable
 class OperationalSnapshot {
   const OperationalSnapshot({
@@ -16,14 +18,14 @@ class OperationalSnapshot {
         schedulerState = const <String, Object?>{},
         grantsState = const <String, Object?>{},
         governanceState = const <String, Object?>{},
-        evidenceRecords = const <Map<String, Object?>>[],
+        evidenceRecords = const <EvidenceRecord>[],
         liveEvents = const <Map<String, Object?>>[];
 
   final List<Map<String, Object?>> runtimeRoutes;
   final Map<String, Object?> schedulerState;
   final Map<String, Object?> grantsState;
   final Map<String, Object?> governanceState;
-  final List<Map<String, Object?>> evidenceRecords;
+  final List<EvidenceRecord> evidenceRecords;
   final List<Map<String, Object?>> liveEvents;
 
   bool get available =>
