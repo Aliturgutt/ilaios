@@ -52,10 +52,31 @@ jobs:
         id: trigger
         run: |
           set -euo pipefail
-          MANIFEST="$(aws ecr batch-get-image --repository-name "$REPOSITORY" --image-ids imageDigest="$DIGEST" --accepted-media-types application/vnd.oci.image.manifest.v1+json --region eu-central-1 --query 'images[0].imageManifest' --output text)"
-          test -n "$MANIFEST"
+          aws ecr batch-get-image \
+            --repository-name "$REPOSITORY" \
+            --image-ids imageDigest="$DIGEST" \
+            --accepted-media-types application/vnd.oci.image.manifest.v1+json \
+            --region eu-central-1 \
+            --output json > /tmp/ecr-image.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('/tmp/ecr-image.json').read_text())
+          images = payload.get('images', [])
+          if len(images) != 1:
+              raise SystemExit('Expected exactly one immutable image manifest.')
+          manifest = images[0].get('imageManifest')
+          if not isinstance(manifest, str):
+              raise SystemExit('ECR image manifest missing.')
+          json.loads(manifest)
+          Path('/tmp/manifest.json').write_text(manifest, encoding='utf-8')
+          PY
           TAG="signed-${GITHUB_SHA}"
-          aws ecr put-image --repository-name "$REPOSITORY" --image-manifest "$MANIFEST" --image-tag "$TAG" --region eu-central-1 >/dev/null
+          aws ecr put-image \
+            --repository-name "$REPOSITORY" \
+            --image-manifest file:///tmp/manifest.json \
+            --image-tag "$TAG" \
+            --region eu-central-1 >/dev/null
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
       - name: Verify managed signing status
         env:
