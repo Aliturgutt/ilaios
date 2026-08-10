@@ -31,6 +31,7 @@ assets:
     role: app_icon_master
     dimensions: 1024x1024
     canonical: true
+    derivation_policy: scale_only_no_crop_no_recolor_no_redraw
   - id: BRAND.FAVICON_MASTER
     file: brand/assets/06-ilaios-favicon-master.jpg
     role: favicon_master
@@ -77,8 +78,10 @@ source_archive:
   contains_html_pdf_raster_exports: true
   canonical_authority: false
 
-legacy_runtime_assets:
+runtime_derivatives:
   - file: apps/desktop/windows/runner/resources/app_icon.ico
-    status: retained_runtime_dependency
+    role: windows_app_icon
     canonical: false
-    replacement_condition: approved_ico_export_available
+    source: brand/assets/05-ilaios-app-icon.jpg
+    derivation_policy: scale_only_no_crop_no_recolor_no_redraw
+    generation: apps/desktop/tool/generate_windows_icon.ps1
