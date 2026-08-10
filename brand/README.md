@@ -10,7 +10,7 @@ This directory is the canonical repository authority for approved ILAIOS brand a
 - Product/runtime code must not redefine, redraw, recolor, crop, or creatively reconstruct the canonical ILAIOS symbol.
 - Derived assets must preserve the approved master geometry and brand color system.
 - Historical or superseded assets must not be treated as canonical.
-- `apps/desktop/windows/runner/resources/app_icon.ico` is a runtime build dependency and is not canonical brand authority until explicitly replaced by an approved ICO export.
+- `apps/desktop/windows/runner/resources/app_icon.ico` is a non-canonical runtime derivative generated at Windows build time from the canonical `brand/assets/05-ilaios-app-icon.jpg` master using scale-only transforms.
 
 ## Canonical master
 
