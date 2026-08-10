@@ -6,23 +6,26 @@ on:
     branches: [master]
     paths:
       - '.github/workflows/aws-r01-image-publish.yml'
+      - 'infra/aws/r01-canary/Dockerfile.runtime'
       - 'services/deployment/runtime.py'
-      - 'services/deployment/oci.py'
       - 'services/control_plane/**'
+      - 'services/**'
+      - 'src/**'
+      - 'packages/**'
 
 permissions:
   contents: read
   id-token: write
+
+concurrency:
+  group: release-r01-image-publish
+  cancel-in-progress: true
 
 jobs:
   publish:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.12'
 
       - uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -32,32 +35,76 @@ jobs:
       - name: Verify AWS identity
         run: |
           set -euo pipefail
-          ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
-          test "$ACCOUNT" = "101180464425"
+          test "$(aws sts get-caller-identity --query Account --output text)" = "101180464425"
 
-      - name: Build canonical OCI layout
+      - name: Resolve and build minimal R01 runtime image
         id: build
+        env:
+          BASE_IMAGE: python:3.12.13-alpine3.22
         run: |
           set -euo pipefail
+          docker pull --platform linux/amd64 "$BASE_IMAGE"
+          BASE_RESOLVED="$(docker image inspect "$BASE_IMAGE" --format '{{index .RepoDigests 0}}')"
+          test -n "$BASE_RESOLVED"
+          echo "BASE_IMAGE_RESOLVED=$BASE_RESOLVED"
+          echo "base_resolved=$BASE_RESOLVED" >> "$GITHUB_OUTPUT"
+          docker build \
+            --platform linux/amd64 \
+            --pull \
+            --file infra/aws/r01-canary/Dockerfile.runtime \
+            --tag ilaios-r01-runtime:${GITHUB_SHA} \
+            .
+
+      - name: Smoke-test container runtime before publish
+        run: |
+          set -euo pipefail
+          CID="$(docker run -d \
+            --read-only \
+            --tmpfs /tmp:rw,noexec,nosuid,size=32m \
+            --tmpfs /var/lib/ilaios:rw,noexec,nosuid,size=128m \
+            -e ILAIOS_CONTROL_PLANE_TOKEN=r01-ci-smoke-token \
+            -e ILAIOS_STATE_ROOT=/var/lib/ilaios \
+            -e ILAIOS_READY_FILE=/tmp/ready.json \
+            -e ILAIOS_HOST=0.0.0.0 \
+            -e ILAIOS_PORT=8080 \
+            -p 127.0.0.1:18081:8080 \
+            ilaios-r01-runtime:${GITHUB_SHA})"
+          cleanup() {
+            docker logs "$CID" || true
+            docker rm -f "$CID" >/dev/null 2>&1 || true
+          }
+          trap cleanup EXIT
+          for i in $(seq 1 60); do
+            if ! docker inspect "$CID" --format '{{.State.Running}}' | grep -Fxq true; then
+              echo 'R01 container exited during smoke test.'
+              exit 1
+            fi
+            if curl --fail --silent --show-error \
+              -H 'Authorization: Bearer r01-ci-smoke-token' \
+              http://127.0.0.1:18081/health/live >/tmp/live.json 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          curl --fail --silent --show-error \
+            -H 'Authorization: Bearer r01-ci-smoke-token' \
+            http://127.0.0.1:18081/health/live | tee /tmp/live.json
+          curl --fail --silent --show-error \
+            -H 'Authorization: Bearer r01-ci-smoke-token' \
+            http://127.0.0.1:18081/health/ready | tee /tmp/ready.json
           python - <<'PY'
+          import json
           from pathlib import Path
-          from services.deployment import build_oci_layout
-          result = build_oci_layout(Path.cwd(), Path('/tmp/ilaios-r01-oci'))
-          with open('/tmp/oci-result.txt', 'w', encoding='utf-8') as f:
-              f.write(f'index_sha256={result.index_digest}\n')
-              f.write(f'manifest_sha256={result.manifest_digest}\n')
-              f.write(f'config_sha256={result.config_digest}\n')
-              f.write(f'layer_sha256={result.layer_digest}\n')
-          print(Path('/tmp/oci-result.txt').read_text())
+          live = json.loads(Path('/tmp/live.json').read_text())
+          ready = json.loads(Path('/tmp/ready.json').read_text())
+          if live.get('status') != 'live':
+              raise SystemExit(f'unexpected live response: {live}')
+          if ready.get('status') != 'ready':
+              raise SystemExit(f'unexpected ready response: {ready}')
+          print('R01_CONTAINER_SMOKE_PASS')
           PY
 
-      - name: Install Skopeo
-        run: |
-          set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq skopeo
-
-      - name: Push immutable OCI image to ECR
+      - name: Push immutable image to ECR
         id: push
         env:
           REGISTRY: 101180464425.dkr.ecr.eu-central-1.amazonaws.com
@@ -65,9 +112,15 @@ jobs:
         run: |
           set -euo pipefail
           TAG="r01-${GITHUB_SHA}"
-          aws ecr get-login-password --region eu-central-1 | skopeo login --username AWS --password-stdin "$REGISTRY"
-          skopeo copy --preserve-digests "oci:/tmp/ilaios-r01-oci:ilaios:recovery" "docker://${REGISTRY}/${REPOSITORY}:${TAG}"
-          DIGEST="$(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$TAG" --region eu-central-1 --query 'imageDetails[0].imageDigest' --output text)"
+          aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin "$REGISTRY"
+          docker tag "ilaios-r01-runtime:${GITHUB_SHA}" "${REGISTRY}/${REPOSITORY}:${TAG}"
+          docker push "${REGISTRY}/${REPOSITORY}:${TAG}"
+          DIGEST="$(aws ecr describe-images \
+            --repository-name "$REPOSITORY" \
+            --image-ids imageTag="$TAG" \
+            --region eu-central-1 \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)"
           test "${DIGEST#sha256:}" != "$DIGEST"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
@@ -75,34 +128,12 @@ jobs:
           echo "ECR_TAG=${TAG}"
           echo "ECR_DIGEST=${DIGEST}"
 
-      - name: Start and wait for ECR scan result
+      - name: Wait for ECR scan and enforce zero critical/high gate
         env:
           REPOSITORY: ilaios-r01-canary
           DIGEST: ${{ steps.push.outputs.digest }}
         run: |
           set -euo pipefail
-
-          SCAN_ON_PUSH="$(aws ecr describe-repositories \
-            --repository-names "$REPOSITORY" \
-            --region eu-central-1 \
-            --query 'repositories[0].imageScanningConfiguration.scanOnPush' \
-            --output text)"
-          echo "ECR_SCAN_ON_PUSH=$SCAN_ON_PUSH"
-
-          set +e
-          START_OUTPUT="$(aws ecr start-image-scan \
-            --repository-name "$REPOSITORY" \
-            --image-id imageDigest="$DIGEST" \
-            --region eu-central-1 2>&1)"
-          START_RC=$?
-          set -e
-          if [ "$START_RC" -ne 0 ]; then
-            echo "ECR_START_SCAN_RESULT=$START_OUTPUT"
-            if ! grep -q 'LimitExceededException' <<<"$START_OUTPUT"; then
-              exit "$START_RC"
-            fi
-          fi
-
           for i in $(seq 1 60); do
             set +e
             SCAN_OUTPUT="$(aws ecr describe-image-scan-findings \
@@ -113,7 +144,6 @@ jobs:
               --output json 2>&1)"
             SCAN_RC=$?
             set -e
-
             if [ "$SCAN_RC" -ne 0 ]; then
               echo "ECR_SCAN_QUERY_RESULT=$SCAN_OUTPUT"
               if grep -q 'ScanNotFoundException' <<<"$SCAN_OUTPUT"; then
@@ -122,7 +152,6 @@ jobs:
               fi
               exit "$SCAN_RC"
             fi
-
             STATUS="$(python -c 'import json,sys; print(json.load(sys.stdin).get("status") or "")' <<<"$SCAN_OUTPUT")"
             case "$STATUS" in
               COMPLETE)
@@ -136,33 +165,12 @@ jobs:
                     --image-id imageDigest="$DIGEST" \
                     --region eu-central-1 \
                     --max-results 100 \
-                    --output json > /tmp/ecr-findings.json
-                  python - <<'PY'
-          import json
-          from pathlib import Path
-
-          data = json.loads(Path('/tmp/ecr-findings.json').read_text())
-          findings = data.get('imageScanFindings', {}).get('findings', [])
-          for finding in findings:
-              if finding.get('severity') not in {'CRITICAL', 'HIGH'}:
-                  continue
-              attrs = {
-                  item.get('key'): item.get('value')
-                  for item in finding.get('attributes', [])
-              }
-              print(
-                  'ECR_FINDING '
-                  f"severity={finding.get('severity')} "
-                  f"name={finding.get('name')} "
-                  f"package={attrs.get('package_name')} "
-                  f"version={attrs.get('package_version')} "
-                  f"fixed={attrs.get('package_version')} "
-                  f"uri={finding.get('uri')}"
-              )
-          PY
+                    --query 'imageScanFindings.findings[?severity==`CRITICAL` || severity==`HIGH`].[severity,name,description,uri,attributes]' \
+                    --output json
                   echo 'ECR vulnerability gate failed: CRITICAL and HIGH findings must both be zero.'
                   exit 1
                 fi
+                echo 'R01_ECR_SECURITY_GATE_PASS'
                 exit 0
                 ;;
               FAILED|UNSUPPORTED_IMAGE)
@@ -172,6 +180,5 @@ jobs:
             esac
             sleep 10
           done
-
           echo 'ECR scan did not complete within 10 minutes.'
           exit 1
