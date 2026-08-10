@@ -101,14 +101,19 @@ jobs:
           set -euo pipefail
           tofu init -backend=false -input=false
 
-          in_state() { tofu state list 2>/dev/null | grep -Fxq "$1"; }
+          in_state() { tofu state show "$1" >/dev/null 2>&1; }
           adopt() {
             addr="$1"
             id="$2"
-            if [ -n "$id" ] && [ "$id" != "None" ] && ! in_state "$addr"; then
-              echo "Adopting $addr -> $id"
-              tofu import "$addr" "$id"
+            if [ -z "$id" ] || [ "$id" = "None" ]; then
+              return 0
             fi
+            if in_state "$addr"; then
+              echo "Already managed: $addr"
+              return 0
+            fi
+            echo "Adopting $addr -> $id"
+            tofu import "$addr" "$id"
           }
 
           adopt aws_ecr_repository.runtime ilaios-r01-canary
