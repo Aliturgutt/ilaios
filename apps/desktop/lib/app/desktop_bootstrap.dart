@@ -97,7 +97,9 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
         if (!mounted) return;
         setState(() {
           _projection = projection;
+          _operationalSnapshot = const OperationalSnapshot.unavailable();
           _operationalStatus = error.message;
+          _lastLiveSequence = 0;
         });
       }
     } finally {
