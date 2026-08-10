@@ -12,14 +12,14 @@ class OperationalSnapshot {
   });
 
   const OperationalSnapshot.unavailable()
-      : runtimeRoutes = const <String, Object?>{},
+      : runtimeRoutes = const <Map<String, Object?>>[],
         schedulerState = const <String, Object?>{},
         grantsState = const <String, Object?>{},
         governanceState = const <String, Object?>{},
         evidenceRecords = const <Map<String, Object?>>[],
         liveEvents = const <Map<String, Object?>>[];
 
-  final Map<String, Object?> runtimeRoutes;
+  final List<Map<String, Object?>> runtimeRoutes;
   final Map<String, Object?> schedulerState;
   final Map<String, Object?> grantsState;
   final Map<String, Object?> governanceState;
@@ -34,6 +34,7 @@ class OperationalSnapshot {
       evidenceRecords.isNotEmpty ||
       liveEvents.isNotEmpty;
 
+  int get runtimeRouteCount => runtimeRoutes.length;
   int get evidenceCount => evidenceRecords.length;
   int get liveEventCount => liveEvents.length;
 }
