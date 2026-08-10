@@ -9,6 +9,14 @@ const principles = [
   ["No premature claims", "ILAIOS does not claim certifications, compliance status, or external attestations that have not been formally obtained."],
 ] as const;
 
+const controls = [
+  ["Request", "A sensitive action is requested through an authenticated interface."],
+  ["Authorize", "Identity, scope, permissions, and required human authority are evaluated."],
+  ["Constrain", "Allowed tools, targets, data boundaries, and execution conditions are limited."],
+  ["Validate", "The resulting state is checked against explicit acceptance criteria."],
+  ["Record", "Relevant evidence and audit context are retained for inspection."],
+] as const;
+
 export default function Security() {
   return (
     <>
@@ -17,21 +25,30 @@ export default function Security() {
         <h1>Security is part of execution, not a layer added later.</h1>
         <p className="lead">ILAIOS is being engineered around constrained authority, validation gates, explicit approvals, auditable actions, and fail-closed behavior for sensitive operations.</p>
       </section>
+
+      <section className="section evidence-section">
+        <div className="shell">
+          <div className="section-heading"><div><div className="eyebrow">Sensitive execution path</div><h2>Authority before side effects.</h2></div><p className="lead small">The intended security model requires meaningful actions to cross explicit control points rather than relying on a model or client to self-police.</p></div>
+          <div className="security-chain">{controls.map(([title, text], index) => <article key={title}><span>0{index + 1}</span><div><h3>{title}</h3><p>{text}</p></div></article>)}</div>
+        </div>
+      </section>
+
       <section className="section">
         <div className="shell">
           <div className="eyebrow">Engineering principles</div>
           <h2>Control boundaries are designed into the system.</h2>
-          <div className="grid two-up">
-            {principles.map(([title, text]) => <article className="card" key={title}><h3>{title}</h3><p>{text}</p></article>)}
-          </div>
+          <div className="grid two-up">{principles.map(([title, text]) => <article className="card" key={title}><h3>{title}</h3><p>{text}</p></article>)}</div>
         </div>
       </section>
+
       <section className="section">
-        <div className="shell split-copy">
-          <div><div className="eyebrow">Reporting</div><h2>Responsible security reporting.</h2></div>
-          <div><p className="lead small">A dedicated public security-reporting mailbox will be published after the corresponding corporate mailbox is verified. Until then, no unverified contact address is represented here as operational.</p></div>
+        <div className="shell trust-boundary">
+          <div><div className="eyebrow">Trust boundary</div><h2>Clients can request. The control plane decides.</h2><p className="lead small">Desktop, mobile, and web interfaces are designed to display state and request actions; they are not intended to become the authoritative source for permissions, policy, or security decisions.</p></div>
+          <div className="boundary-diagram"><div className="boundary-client"><span>CLIENTS</span><strong>Request · Approve · Observe</strong></div><div className="boundary-line"><span>validated contract</span></div><div className="boundary-core"><span>CONTROL PLANE</span><strong>Authorize · Constrain · Verify</strong></div></div>
         </div>
       </section>
+
+      <section className="section compact-section"><div className="shell callout"><div><div className="eyebrow">Reporting</div><h2>Responsible security reporting.</h2></div><div><p className="muted">A dedicated public security-reporting mailbox will be published after the corresponding corporate mailbox is verified. Until then, no unverified contact address is represented here as operational.</p></div></div></section>
     </>
   );
 }
