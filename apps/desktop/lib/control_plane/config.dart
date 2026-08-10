@@ -2,10 +2,15 @@ import 'dart:convert';
 import 'dart:io';
 
 class ControlPlaneConfig {
-  const ControlPlaneConfig({required this.baseUri, required this.token});
+  const ControlPlaneConfig({
+    required this.baseUri,
+    required this.token,
+    this.approverId,
+  });
 
   final Uri baseUri;
   final String token;
+  final String? approverId;
 
   static Future<ControlPlaneConfig?> fromEnvironment({
     Map<String, String>? environment,
@@ -15,10 +20,16 @@ class ControlPlaneConfig {
     if (token.isEmpty) {
       return null;
     }
+    final rawApproverId = env['ILAIOS_APPROVER_ID']?.trim() ?? '';
+    final approverId = rawApproverId.isEmpty ? null : rawApproverId;
 
     final explicitUrl = env['ILAIOS_CONTROL_PLANE_URL']?.trim() ?? '';
     if (explicitUrl.isNotEmpty) {
-      return ControlPlaneConfig(baseUri: Uri.parse(explicitUrl), token: token);
+      return ControlPlaneConfig(
+        baseUri: Uri.parse(explicitUrl),
+        token: token,
+        approverId: approverId,
+      );
     }
 
     final readyFilePath = env['ILAIOS_CONTROL_PLANE_READY_FILE']?.trim() ?? '';
@@ -39,6 +50,7 @@ class ControlPlaneConfig {
       return ControlPlaneConfig(
         baseUri: Uri(scheme: 'http', host: host, port: port),
         token: token,
+        approverId: approverId,
       );
     } on FileSystemException {
       return null;
