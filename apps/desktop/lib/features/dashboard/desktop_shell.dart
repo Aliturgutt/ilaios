@@ -231,28 +231,22 @@ class _BrandHeader extends StatelessWidget {
 
 class _BrandMark extends StatelessWidget {
   const _BrandMark();
+
+  static const _asset = '../../brand/assets/05-ilaios-app-icon.jpg';
+
   @override
   Widget build(BuildContext context) => Semantics(
         label: 'ILAIOS',
         image: true,
-        child: Container(
-          width: 38,
-          height: 38,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-              color: IlaiosTheme.primary.withValues(alpha: .65),
-            ),
-            gradient: const LinearGradient(
-              colors: [Color(0xFF173A72), Color(0xFF10273E)],
-            ),
-          ),
-          alignment: Alignment.center,
-          child: const ExcludeSemantics(
-            child: Text(
-              'I',
-              style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800),
-            ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: Image.asset(
+            _asset,
+            width: 38,
+            height: 38,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+            excludeFromSemantics: true,
           ),
         ),
       );
@@ -340,46 +334,38 @@ class _ConnectionPill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final label = projection.connected
-        ? 'Control plane connected'
-        : 'Control plane offline';
+    final connected = projection.connected;
+    final label = connected ? 'CONTROL PLANE CONNECTED' : 'CONTROL PLANE OFFLINE';
     return Semantics(
+      label: 'Control plane connection status: $label',
       liveRegion: true,
-      label: label,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-        decoration: BoxDecoration(
-          color: projection.connected
-              ? IlaiosTheme.success.withValues(alpha: .10)
-              : IlaiosTheme.surfaceRaised,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: projection.connected
-                ? IlaiosTheme.success.withValues(alpha: .4)
-                : IlaiosTheme.border,
-          ),
-        ),
-        child: Row(children: [
-          Icon(
-            Icons.circle,
-            size: 8,
-            color: projection.connected
-                ? IlaiosTheme.success
-                : IlaiosTheme.muted,
-          ),
-          const SizedBox(width: 8),
-          ExcludeSemantics(
-            child: Text(
-              projection.connected
-                  ? 'CONTROL PLANE CONNECTED'
-                  : 'CONTROL PLANE OFFLINE',
-              style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
+      child: ExcludeSemantics(
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+          decoration: BoxDecoration(
+            color: connected
+                ? IlaiosTheme.success.withValues(alpha: .10)
+                : IlaiosTheme.surfaceRaised,
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: connected
+                  ? IlaiosTheme.success.withValues(alpha: .4)
+                  : IlaiosTheme.border,
             ),
           ),
-        ]),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            Icon(
+              Icons.circle,
+              size: 8,
+              color: connected ? IlaiosTheme.success : IlaiosTheme.muted,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+            ),
+          ]),
+        ),
       ),
     );
   }
