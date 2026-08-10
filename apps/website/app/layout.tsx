@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 import "./globals.css";
 
@@ -8,12 +9,23 @@ export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: { default: "ILAIOS", template: "%s | ILAIOS" },
   description: "ILAIOS builds governed infrastructure for intelligent automation and autonomous operations.",
+  icons: {
+    icon: [{ url: "/brand/favicon.jpg", type: "image/jpeg" }],
+    shortcut: ["/brand/favicon.jpg"],
+  },
   openGraph: {
     title: "ILAIOS",
     description: "Governed infrastructure for intelligent automation and autonomous operations.",
     url: siteUrl,
     siteName: "ILAIOS",
+    images: [{ url: "/brand/social-preview.jpg", width: 1280, height: 640, alt: "ILAIOS" }],
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "ILAIOS",
+    description: "Governed infrastructure for intelligent automation and autonomous operations.",
+    images: ["/brand/social-preview.jpg"],
   },
 };
 
@@ -30,7 +42,9 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body>
         <header className="site-header">
           <div className="shell nav">
-            <Link className="brand" href="/">ILAIOS</Link>
+            <Link className="brand" href="/" aria-label="ILAIOS home">
+              <Image src="/brand/logo-horizontal-dark.jpg" alt="ILAIOS" width={2400} height={800} priority />
+            </Link>
             <nav className="nav-links" aria-label="Primary navigation">
               {links.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}
             </nav>
