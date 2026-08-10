@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "ILAIOS | Kontrollü Akıllı Sistemler",
+  title: "Kontrollü Akıllı Sistemler",
   description: "ILAIOS; açık yetki sınırları, doğrulanabilir yürütme ve güvenlik odaklı operasyonlar için akıllı otomasyon altyapısı geliştirir.",
   alternates: { canonical: "/tr", languages: { tr: "/tr", en: "/", "x-default": "/" } },
 };
