@@ -2,26 +2,29 @@
 
 Status snapshot: 11 August 2026
 Baseline branch: `master`
-Baseline commit at audit start: `6c6a24b900f2c966ecc7acdff3a4656f6a5dd4c4`
+Truth-correction baseline: `a02a2c8897616afcafa45aafee6c1ac36c15898a`
 
 ## Authority rule
 
 This file is a human-readable status projection. It is not a canonical architecture or release authority. If this file conflicts with repository code, tests, CI, runtime evidence, deployment evidence, or the canonical implementation authorities, the lower proven lifecycle state wins until the conflict is reconciled.
 
+`REPOSITORY_EVIDENCE_IS_TRUTH` applies to implementation/release-state claims.
+
 ## Current verified state
 
 - Master commercial/product identity: ILAIOS.
-- Canonical v1 execution chain: completed through `RELEASE.R03`.
-- `RELEASE.R01`: CANARY deployment evidence exists and is healthy.
-- `RELEASE.R02`: LIMITED deployment evidence exists and is healthy.
-- `RELEASE.R03`: PRODUCTION deployment evidence records `PRODUCTION_DEPLOYED_HEALTHY`.
-- Production release evidence records TLS, OIDC, target health and rollback availability.
-- Repository includes Core, Code Intelligence, Knowledge Graph, Project Manager, Video Automation, Control Plane, governance, evidence, privacy, observability, operations and deployment implementations.
-- Website and Desktop are active product surfaces developed in separate bounded workstreams and are not governed by the post-v1 repository-governance package defined here.
+- Durable historical evidence exists across the v1 namespace, including later platform/release milestones.
+- The current machine-readable controller does **not** accept the historical higher-stage PASS records as sufficient for current readiness: `dev/openclaw/execution_plan.yaml` has active recovery, starts at `PLATFORM.P05`, and states that historical `PLATFORM.P05` through `PLATFORM.P20` and `RELEASE.R00` evidence is insufficient while recovery is active.
+- The same controller records `release_state: NOT_DEPLOYED` and forbids automatic release promotion.
+- `infra/deployment/ext-e01-prerequisites.yaml` records `state: PREPARED_AWAITING_APPROVALS`, `deployment_performed: false`, and `release_state: NOT_DEPLOYED`.
+- `evidence/migration/ILATEN_TO_ILAIOS/OPS.I05.md` and `OBS.I06.md` explicitly state that their implementations do not fabricate production recovery, monitoring, infrastructure, or deployment evidence.
+- Therefore the repository must **not** currently project `RELEASE.R03`, the deployment/cloud path, or the control plane as proven PRODUCTION solely from historical release artifacts.
+- The accepted completed context explicitly retained by the current controller is `PRE.S00`, `VIDEO.V01` through `VIDEO.V30`, `PRE.S01`, and `PLATFORM.P00` through `PLATFORM.P04`; higher affected platform/release stages require the active recovery/revalidation evidence before they can satisfy current dependency or promotion gates.
+- Website and Desktop remain separate bounded workstreams and are excluded from this repository-governance correction.
 
-## Canonical v1 completion
+## Canonical namespace
 
-The canonical implementation namespace remains:
+The existing v1 namespace remains:
 
 1. `PRE.S00`
 2. `VIDEO.V01` through `VIDEO.V30`
@@ -29,47 +32,31 @@ The canonical implementation namespace remains:
 4. `PLATFORM.P00` through `PLATFORM.P20`
 5. `RELEASE.R00` through `RELEASE.R03`
 
-No new milestone ID is considered canonical merely because it appears in a planning document. Post-v1 work must first be specified, dependency-ordered, bounded and approved through the existing governance model.
+Namespace existence or historical PASS provenance does not by itself prove current readiness or deployment. No new milestone ID is canonical merely because it appears in a planning document.
 
-## Current repository governance state
+## Repository governance truth-sync correction
 
-### Completed during the 11 August 2026 truth-sync audit
+The governance package merged at `a02a2c8897616afcafa45aafee6c1ac36c15898a` correctly retired historical planning and added useful governance material, but several human-readable files overstated current lifecycle state by treating historical release artifacts as current PRODUCTION proof.
 
-- Stale Desktop PR chain identified as superseded by merged consolidation PRs.
-- Open duplicate Desktop PRs `#2` through `#11` closed after confirming merged PR `#12` consolidated D01-D10.
-- Open duplicate Store-readiness PR `#16` closed after confirming merged PR `#18` carries the same content.
-- Post-v1 repository-governance work moved to an isolated branch rather than direct writes to `master`.
+This correction is intentionally documentation-only. It does not modify canonical authorities, the OpenClaw controller, runtime code, tests, workflows, infrastructure, Website, or Desktop.
 
-### Verified governance gaps
+## Current governance gaps
 
-- The previous version of this file still described the historical Hermes Core phase and was stale.
-- `POST_CORE_ROADMAP.md` was a historical pre-platform roadmap and was stale.
-- `master` is currently reported by GitHub as unprotected and has no required status-check contexts configured at branch-protection level.
-- Repository metadata still requires owner-level cleanup outside ordinary source-file changes: description, topics, license decision and branch-protection policy.
-- GitHub Releases currently has no formal release object even though production deployment evidence exists; release-tag policy must be defined before creating one.
+- Active `PLATFORM.P05.RECOVERY.v1` must be resolved by its declared evidence rules before affected milestones can regain current PASS.
+- External deployment prerequisites remain approval-gated and record that deployment has not been performed.
+- `master` branch-protection, repository license, metadata/topics, and formal release/tag policy remain owner-level governance decisions where changing them could alter repository behavior or legal posture.
+- Post-v1 product expansion must remain non-executable until current v1 lifecycle truth is coherent and the selected post-v1 graph is explicitly adopted.
 
-## Post-v1 status
+## Safe next sequence
 
-Post-v1 product expansion is **not yet a new canonical implementation graph**. The safe next sequence is:
-
-1. repository truth sync and governance baseline;
-2. capability maturity audit;
-3. CI/workflow audit;
-4. post-v1 dependency roadmap proposal;
-5. bounded automation plan proposal;
-6. only then, selection of the first new capability implementation package.
-
-See:
-
-- `docs/governance/REPOSITORY_AUDIT_2026-08-11.md`
-- `docs/governance/CAPABILITY_MATRIX.md`
-- `docs/governance/CI_WORKFLOW_AUDIT.md`
-- `docs/governance/POST_V1_ROADMAP.md`
-- `docs/governance/OPENCLAW_POST_V1_AUTOMATION_PLAN.md`
+1. preserve this truth correction and verify its PR diff/CI;
+2. resolve or explicitly close the active v1 recovery/revalidation package using its declared evidence requirements;
+3. only after the current v1 lifecycle state is coherent, re-run capability maturity classification;
+4. then perform post-v1 dependency selection and bounded implementation planning.
 
 ## Safety boundary
 
-The post-v1 governance package must not autonomously:
+Repository governance automation must not autonomously:
 
 - modify production AWS resources;
 - create or rotate secrets/credentials;
@@ -83,4 +70,4 @@ The post-v1 governance package must not autonomously:
 
 ## Current decision
 
-The v1 build/release chain is complete through production evidence. The next repository-level activity is governed post-v1 planning and capability prioritization, not an invented continuation such as `PLATFORM.P21` or `RELEASE.R04`.
+Current repository evidence does **not** support a human-readable claim that the v1 release chain is presently proven PRODUCTION. Historical evidence is retained as provenance, while the active recovery controller and deployment prerequisites require the conservative current state `NOT_DEPLOYED` until revalidation and explicit promotion gates are satisfied.
