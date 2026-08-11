@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 from urllib.request import urlopen
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 from packages.contracts.ilaios_contracts import ReleaseState
 from services.control_plane.migrations import (
