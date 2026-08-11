@@ -16,7 +16,6 @@ export const metadata: Metadata = {
   title: { default: "ILAIOS", template: "%s | ILAIOS" },
   description: "ILAIOS builds governed infrastructure for intelligent automation and autonomous operations.",
   keywords: ["ILAIOS", "Ali Turgut", "intelligent automation", "autonomous operations", "AI infrastructure", "governed automation"],
-  alternates: { canonical: siteUrl },
   authors: [{ name: "ILAIOS", url: siteUrl }],
   creator: "ILAIOS",
   publisher: "ILAIOS",
@@ -33,12 +32,10 @@ const structuredData = {
       "@id": organizationId,
       name: "ILAIOS",
       url: siteUrl,
-      logo: {
-        "@type": "ImageObject",
-        url: `${siteUrl}/brand/logo-horizontal-dark.jpg`,
-      },
+      logo: { "@type": "ImageObject", url: `${siteUrl}/brand/logo-horizontal-dark.jpg` },
       description: "Governed infrastructure for intelligent automation and autonomous operations.",
       founder: { "@id": founderId },
+      sameAs: ["https://www.linkedin.com/company/ilaios/"],
     },
     {
       "@type": "Person",
@@ -47,6 +44,7 @@ const structuredData = {
       url: `${siteUrl}/about#founder`,
       jobTitle: "Founder",
       worksFor: { "@id": organizationId },
+      sameAs: ["https://www.linkedin.com/in/ali-turgut-ilaios/", "https://github.com/Aliturgutt"],
     },
     {
       "@type": "WebSite",
