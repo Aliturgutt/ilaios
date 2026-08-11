@@ -1,0 +1,8 @@
+{
+  "approval": "RELEASE.R02 LIMITED PROMOTION APPROVED",
+  "package_id": "RELEASE.R02.v1",
+  "approved_by": "Ali Turgut",
+  "approval_source": "ChatGPT user instruction: r2 basla",
+  "approved_at": "2026-08-11T06:19:00+03:00",
+  "constraint": "Promote only if a machine-defined bounded LIMITED exposure exists and all live prerequisites pass; otherwise fail closed without AWS mutation."
+}
