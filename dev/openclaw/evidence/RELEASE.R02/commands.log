@@ -1,0 +1,16 @@
+RELEASE.R02.v1 command evidence
+workflow_run_id=31456250653
+workflow_head_sha=203cde1ea3379cbfedb13bdf0ccbe4073325ca77
+R02_EXACT_APPROVAL_PASS
+R01_DEPENDENCY_EVIDENCE_PASS
+R02_LIVE_R01_BASELINE_PASS
+STATE_SOURCE=r01-tofu-state@31453438846
+OpenTofu init PASS
+OpenTofu fmt -check -recursive PASS
+OpenTofu validate PASS
+R02_PLAN_BOUNDED_PASS
+plan_changes=aws_ecs_cluster.canary[0]:update;aws_ecs_service.runtime[0]:update;aws_ecs_task_definition.runtime[0]:replace
+OpenTofu apply PASS
+R02_LIMITED_DEPLOYMENT_PASS
+r02-tofu-state artifact=9088211868 sha256:b90a89a2795fefda37bd528b5af55911406a4f933f5d8ce6a05fbd3701325f6b
+r02-deployment-evidence artifact=9088212071 sha256:1d142c7b6a2172bb144eb0c6d5270e7c4f7599a75e1651b99742c40a3a187cae
