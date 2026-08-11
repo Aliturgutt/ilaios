@@ -1,6 +1,13 @@
 name: ILAIOS Desktop MSIX Packaging
 
 on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'apps/desktop/**'
+      - 'brand/assets/05-ilaios-app-icon.jpg'
+      - '.github/workflows/desktop-msix-packaging.yml'
   pull_request:
     branches:
       - master
