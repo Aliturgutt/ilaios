@@ -135,7 +135,7 @@ def test_alias_or_unscanned_invocation_never_reaches_runtime(tmp_path: Path) -> 
         "Analyze bounded evidence.",
         security_scan_passed=True,
     )
-    with pytest.raises((AgentSecurityError, KeyError)):
+    with pytest.raises(AgentSecurityError, match="target agent"):
         executor.execute(
             alias_invocation,
             _grant(CODESEC_ID, "repository.read"),
