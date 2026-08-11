@@ -39,7 +39,6 @@ jobs:
           import ipaddress
           import json
           from pathlib import Path
-
           data = json.loads(Path('.github/r02-limited-promotion-approval.json').read_text(encoding='utf-8'))
           assert data.get('approval') == 'RELEASE.R02 LIMITED PROMOTION APPROVED'
           assert data.get('package_id') == 'RELEASE.R02.v1'
@@ -83,7 +82,8 @@ jobs:
           test "$RUNNING" = 1
           test "$PENDING" = 0
 
-          IMAGE="$(aws ecs describe-task-definition --region "$AWS_REGION" --task-definition "$TASKDEF" --query 'taskDefinition.containerDefinitions[?name==`runtime`].image | [0]' --output text)"
+          TASK_JSON="$(aws ecs describe-task-definition --region "$AWS_REGION" --task-definition "$TASKDEF" --output json)"
+          IMAGE="$(printf '%s' "$TASK_JSON" | jq -r '.taskDefinition.containerDefinitions[] | select(.name=="runtime") | .image')"
           IMAGE_DIGEST="${IMAGE##*@}"
           test "${IMAGE_DIGEST#sha256:}" != "$IMAGE_DIGEST"
 
@@ -107,7 +107,9 @@ jobs:
           CERT_ARN="$(aws elbv2 describe-listener-certificates --region "$AWS_REGION" --listener-arn "$LISTENER_ARN" --query 'Certificates[?IsDefault==`true`].CertificateArn | [0]' --output text)"
           test "$(aws acm describe-certificate --region "$AWS_REGION" --certificate-arn "$CERT_ARN" --query Certificate.Status --output text)" = ISSUED
 
-          SECRET_ARN="$(aws ecs describe-task-definition --region "$AWS_REGION" --task-definition "$TASKDEF" --query 'taskDefinition.containerDefinitions[?name==`runtime`].secrets[?name==`ILAIOS_CONTROL_PLANE_TOKEN`].valueFrom | [0][0]' --output text)"
+          SECRET_ARN="$(printf '%s' "$TASK_JSON" | jq -r '.taskDefinition.containerDefinitions[] | select(.name=="runtime") | .secrets[]? | select(.name=="ILAIOS_CONTROL_PLANE_TOKEN") | .valueFrom')"
+          test -n "$SECRET_ARN"
+          test "$SECRET_ARN" != null
           aws secretsmanager describe-secret --region "$AWS_REGION" --secret-id "$SECRET_ARN" >/dev/null
 
           ALB_SG="$(aws elbv2 describe-load-balancers --region "$AWS_REGION" --load-balancer-arns "$LB_ARN" --query 'LoadBalancers[0].SecurityGroups[0]' --output text)"
@@ -168,14 +170,12 @@ jobs:
           export TF_VAR_certificate_arn="$CERT_ARN"
           export TF_VAR_control_plane_secret_arn="$SECRET_ARN"
           export TF_VAR_canary_ipv4_cidrs="[\"$APPROVED_CIDR\"]"
-
           tofu init -backend=false -input=false
           tofu fmt -check -recursive
           tofu validate
           tofu plan -input=false -out=r02.tfplan
           tofu show -json r02.tfplan > r02-plan.json
           tofu show -no-color r02.tfplan > r02-plan.txt
-
           python - <<'PY'
           import json
           from pathlib import Path
@@ -229,22 +229,18 @@ jobs:
           test "$DESIRED" = 2
           test "$RUNNING" = 2
           test "$PENDING" = 0
-
-          RELEASE_STATE="$(aws ecs describe-task-definition --region "$AWS_REGION" --task-definition "$TASKDEF" \
-            --query 'taskDefinition.containerDefinitions[?name==`runtime`].environment[?name==`ILAIOS_RELEASE_STATE`].value | [0][0]' --output text)"
+          TASK_JSON="$(aws ecs describe-task-definition --region "$AWS_REGION" --task-definition "$TASKDEF" --output json)"
+          RELEASE_STATE="$(printf '%s' "$TASK_JSON" | jq -r '.taskDefinition.containerDefinitions[] | select(.name=="runtime") | .environment[]? | select(.name=="ILAIOS_RELEASE_STATE") | .value')"
           test "$RELEASE_STATE" = LIMITED
-
           TG_ARN="$(aws elbv2 describe-target-groups --region "$AWS_REGION" --names "$RUNTIME_NAME" --query 'TargetGroups[0].TargetGroupArn' --output text)"
           HEALTHY="$(aws elbv2 describe-target-health --region "$AWS_REGION" --target-group-arn "$TG_ARN" --query 'length(TargetHealthDescriptions[?TargetHealth.State==`healthy`])' --output text)"
           test "$HEALTHY" -ge 2
-
           LB_ARN="$(aws elbv2 describe-load-balancers --region "$AWS_REGION" --names "$RUNTIME_NAME" --query 'LoadBalancers[0].LoadBalancerArn' --output text)"
           ALB_SG="$(aws elbv2 describe-load-balancers --region "$AWS_REGION" --load-balancer-arns "$LB_ARN" --query 'LoadBalancers[0].SecurityGroups[0]' --output text)"
           mapfile -t CIDRS < <(aws ec2 describe-security-groups --region "$AWS_REGION" --group-ids "$ALB_SG" \
             --query 'SecurityGroups[0].IpPermissions[?FromPort==`443` && ToPort==`443`].IpRanges[].CidrIp' --output text | tr '\t' '\n' | sed '/^$/d')
           test "${#CIDRS[@]}" -eq 1
           test "${CIDRS[0]}" = "$APPROVED_CIDR"
-
           {
             echo 'milestone_id: RELEASE.R02'
             echo 'package_id: RELEASE.R02.v1'
