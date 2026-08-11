@@ -1,0 +1,12 @@
+RELEASE.R03 execution command evidence
+workflow_run_id=31457550463
+workflow_head_sha=a743a253e4bf1455c1dbadcf18129c7186414cce
+approval_gate=R03_EXACT_APPROVAL_PASS
+dependency_gate=R02_DEPENDENCY_EVIDENCE_PASS
+live_baseline_gate=R03_LIVE_R02_BASELINE_PASS
+plan_gate=R03_PLAN_BOUNDED_PASS
+apply=tofu apply -input=false -auto-approve r03.tfplan
+health_wait=aws ecs wait services-stable --region eu-central-1 --cluster ilaios-r01-canary --services ilaios-r01-canary
+final_gate=R03_PRODUCTION_DEPLOYMENT_PASS
+rollback_command_available=aws ecs update-service --region eu-central-1 --cluster ilaios-r01-canary --service ilaios-r01-canary --task-definition arn:aws:ecs:eu-central-1:101180464425:task-definition/ilaios-r01-canary:6 --desired-count 2
+rollback_executed=false
