@@ -121,41 +121,29 @@ resource "aws_security_group" "efs" {
     protocol        = "tcp"
     security_groups = [aws_security_group.runtime[0].id]
   }
-  egress {
-    from_port   = 2049
-    to_port     = 2049
-    protocol    = "tcp"
-    cidr_blocks = [aws_vpc.canary[0].cidr_block]
-  }
   lifecycle { create_before_destroy = true }
-}
-
-resource "aws_cloudwatch_log_group" "runtime" {
-  count             = var.enable_canary ? 1 : 0
-  name              = "/ilaios/r01/canary/runtime"
-  retention_in_days = 7
 }
 
 resource "aws_efs_file_system" "state" {
   count          = var.enable_canary ? 1 : 0
   encrypted      = true
-  creation_token = "${local.name}-state"
+  creation_token = local.name
 }
 
 resource "aws_efs_access_point" "state" {
   count          = var.enable_canary ? 1 : 0
   file_system_id = aws_efs_file_system.state[0].id
-  root_directory {
-    path = "/ilaios"
-    creation_info {
-      owner_gid   = 1000
-      owner_uid   = 1000
-      permissions = "0750"
-    }
-  }
   posix_user {
     gid = 1000
     uid = 1000
+  }
+  root_directory {
+    path = "/runtime"
+    creation_info {
+      owner_gid   = 1000
+      owner_uid   = 1000
+      permissions = "0700"
+    }
   }
 }
 
@@ -166,10 +154,15 @@ resource "aws_efs_mount_target" "state" {
   security_groups = [aws_security_group.efs[0].id]
 }
 
+resource "aws_cloudwatch_log_group" "runtime" {
+  count             = var.enable_canary ? 1 : 0
+  name              = "/ilaios/r01/canary/runtime"
+  retention_in_days = 14
+}
+
 data "aws_iam_policy_document" "ecs_assume" {
   count = var.enable_canary ? 1 : 0
   statement {
-    effect  = "Allow"
     actions = ["sts:AssumeRole"]
     principals {
       type        = "Service"
@@ -187,24 +180,12 @@ resource "aws_iam_role" "execution" {
 resource "aws_iam_role_policy" "execution" {
   count = var.enable_canary ? 1 : 0
   role  = aws_iam_role.execution[0].id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "ecr:GetAuthorizationToken",
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:BatchGetImage",
-          "logs:CreateLogStream",
-          "logs:PutLogEvents",
-          "secretsmanager:GetSecretValue"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
+  policy = jsonencode({ Version = "2012-10-17", Statement = [
+    { Effect = "Allow", Action = ["ecr:GetAuthorizationToken"], Resource = "*" },
+    { Effect = "Allow", Action = ["ecr:BatchCheckLayerAvailability", "ecr:GetDownloadUrlForLayer", "ecr:BatchGetImage"], Resource = aws_ecr_repository.runtime.arn },
+    { Effect = "Allow", Action = ["logs:CreateLogStream", "logs:PutLogEvents"], Resource = "${aws_cloudwatch_log_group.runtime[0].arn}:*" },
+    { Effect = "Allow", Action = ["secretsmanager:GetSecretValue"], Resource = var.control_plane_secret_arn }
+  ] })
 }
 
 resource "aws_iam_role" "task" {
@@ -216,19 +197,9 @@ resource "aws_iam_role" "task" {
 resource "aws_iam_role_policy" "task" {
   count = var.enable_canary ? 1 : 0
   role  = aws_iam_role.task[0].id
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "elasticfilesystem:ClientMount",
-          "elasticfilesystem:ClientWrite"
-        ]
-        Resource = aws_efs_file_system.state[0].arn
-      }
-    ]
-  })
+  policy = jsonencode({ Version = "2012-10-17", Statement = [{
+    Effect = "Allow", Action = ["elasticfilesystem:ClientMount", "elasticfilesystem:ClientWrite"], Resource = aws_efs_file_system.state[0].arn
+  }] })
 }
 
 resource "aws_ecs_cluster" "canary" {
@@ -241,32 +212,65 @@ resource "aws_ecs_cluster" "canary" {
   }
 }
 
-resource "aws_lb_target_group" "runtime" {
-  count       = var.enable_canary ? 1 : 0
-  name        = local.name
-  port        = 8080
-  protocol    = "HTTP"
-  target_type = "ip"
-  vpc_id      = aws_vpc.canary[0].id
-  health_check {
-    enabled             = true
-    healthy_threshold   = 2
-    unhealthy_threshold = 2
-    interval            = 30
-    timeout             = 5
-    path                = "/health/ready"
-    protocol            = "HTTP"
-    matcher             = "200"
+resource "aws_ecs_task_definition" "runtime" {
+  count                    = var.enable_canary ? 1 : 0
+  family                   = local.name
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = 256
+  memory                   = 512
+  execution_role_arn       = aws_iam_role.execution[0].arn
+  task_role_arn            = aws_iam_role.task[0].arn
+  tags                     = local.tags
+  volume {
+    name = "state"
+    efs_volume_configuration {
+      file_system_id     = aws_efs_file_system.state[0].id
+      transit_encryption = "ENABLED"
+      authorization_config {
+        access_point_id = aws_efs_access_point.state[0].id
+        iam             = "ENABLED"
+      }
+    }
   }
+  container_definitions = jsonencode([{
+    name         = "runtime", image = "${aws_ecr_repository.runtime.repository_url}@${var.image_digest}", essential = true,
+    user         = "1000:1000", readonlyRootFilesystem = true,
+    portMappings = [{ containerPort = 8080, hostPort = 8080, protocol = "tcp" }],
+    environment = [
+      { name = "ILAIOS_HOST", value = "0.0.0.0" }, { name = "ILAIOS_PORT", value = "8080" },
+      { name = "ILAIOS_STATE_ROOT", value = "/var/lib/ilaios" }, { name = "ILAIOS_READY_FILE", value = "/var/lib/ilaios/ready.json" },
+      { name = "ILAIOS_RELEASE_STATE", value = var.release_state },
+      { name = "ILAIOS_HARD_CAP_MINOR", value = "100" }, { name = "PYTHONDONTWRITEBYTECODE", value = "1" }
+    ],
+    secrets          = [{ name = "ILAIOS_CONTROL_PLANE_TOKEN", valueFrom = var.control_plane_secret_arn }],
+    mountPoints      = [{ sourceVolume = "state", containerPath = "/var/lib/ilaios", readOnly = false }],
+    healthCheck      = { command = ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/ready',timeout=2)\""], interval = 30, timeout = 5, retries = 3, startPeriod = 30 },
+    logConfiguration = { logDriver = "awslogs", options = { awslogs-group = aws_cloudwatch_log_group.runtime[0].name, awslogs-region = var.aws_region, awslogs-stream-prefix = "runtime" } }
+  }])
 }
 
 resource "aws_lb" "canary" {
-  count              = var.enable_canary ? 1 : 0
-  name               = local.name
-  internal           = false
-  load_balancer_type = "application"
-  security_groups    = [aws_security_group.alb[0].id]
-  subnets            = aws_subnet.runtime[*].id
+  count                      = var.enable_canary ? 1 : 0
+  name                       = local.name
+  load_balancer_type         = "application"
+  drop_invalid_header_fields = true
+  security_groups            = [aws_security_group.alb[0].id]
+  subnets                    = aws_subnet.runtime[*].id
+}
+
+resource "aws_lb_target_group" "runtime" {
+  count                = var.enable_canary ? 1 : 0
+  name                 = local.name
+  port                 = 8080
+  protocol             = "HTTP"
+  target_type          = "ip"
+  vpc_id               = aws_vpc.canary[0].id
+  deregistration_delay = 30
+  health_check {
+    path    = "/health/ready"
+    matcher = "200"
+  }
 }
 
 resource "aws_lb_listener" "https" {
@@ -282,71 +286,6 @@ resource "aws_lb_listener" "https" {
   }
 }
 
-resource "aws_ecs_task_definition" "runtime" {
-  count                    = var.enable_canary ? 1 : 0
-  family                   = local.name
-  requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = "256"
-  memory                   = "512"
-  execution_role_arn       = aws_iam_role.execution[0].arn
-  task_role_arn            = aws_iam_role.task[0].arn
-  container_definitions = jsonencode([
-    {
-      name      = "runtime"
-      image     = "${aws_ecr_repository.runtime.repository_url}@${var.image_digest}"
-      essential = true
-      portMappings = [{
-        containerPort = 8080
-        hostPort      = 8080
-        protocol      = "tcp"
-      }]
-      environment = [
-        { name = "ILAIOS_RELEASE_STATE", value = var.release_state },
-        { name = "ILAIOS_STATE_ROOT", value = "/var/lib/ilaios" },
-        { name = "ILAIOS_READY_FILE", value = "/var/lib/ilaios/ready.json" },
-        { name = "ILAIOS_TENANT_ID", value = local.name },
-        { name = "ILAIOS_HTTP_BIND", value = "0.0.0.0" }
-      ]
-      secrets = [
-        { name = "ILAIOS_CONTROL_PLANE_TOKEN", valueFrom = var.control_plane_secret_arn }
-      ]
-      mountPoints = [{
-        sourceVolume  = "state"
-        containerPath = "/var/lib/ilaios"
-        readOnly      = false
-      }]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = aws_cloudwatch_log_group.runtime[0].name
-          awslogs-region        = var.aws_region
-          awslogs-stream-prefix = "runtime"
-        }
-      }
-      healthCheck = {
-        command     = ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/health/live', timeout=3)\" || exit 1"]
-        interval    = 30
-        timeout     = 5
-        retries     = 3
-        startPeriod = 15
-      }
-    }
-  ])
-  volume {
-    name = "state"
-    efs_volume_configuration {
-      file_system_id     = aws_efs_file_system.state[0].id
-      transit_encryption = "ENABLED"
-      authorization_config {
-        access_point_id = aws_efs_access_point.state[0].id
-        iam             = "ENABLED"
-      }
-    }
-  }
-  tags = local.tags
-}
-
 resource "aws_ecs_service" "runtime" {
   count           = var.enable_canary ? 1 : 0
   name            = local.name
@@ -354,6 +293,13 @@ resource "aws_ecs_service" "runtime" {
   task_definition = aws_ecs_task_definition.runtime[0].arn
   desired_count   = var.desired_count
   launch_type     = "FARGATE"
+  tags            = local.tags
+  deployment_circuit_breaker {
+    enable   = true
+    rollback = true
+  }
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
   network_configuration {
     subnets          = aws_subnet.runtime[*].id
     security_groups  = [aws_security_group.runtime[0].id]
@@ -364,10 +310,5 @@ resource "aws_ecs_service" "runtime" {
     container_name   = "runtime"
     container_port   = 8080
   }
-  deployment_minimum_healthy_percent = 100
-  deployment_maximum_percent         = 200
-  health_check_grace_period_seconds  = 30
-  enable_execute_command             = false
-  tags                               = local.tags
-  depends_on                         = [aws_lb_listener.https]
+  depends_on = [aws_lb_listener.https, aws_efs_mount_target.state]
 }
