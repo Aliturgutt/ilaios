@@ -37,6 +37,36 @@ jobs:
           set -euo pipefail
           test "$(aws sts get-caller-identity --query Account --output text)" = "101180464425"
 
+      - name: Ensure ECR managed signing configuration
+        id: signing
+        env:
+          REPOSITORY: ilaios-r01-canary
+          PROFILE: ILAIOS_R01_ECR
+        run: |
+          set -euo pipefail
+          if ! aws signer get-signing-profile --profile-name "$PROFILE" --region eu-central-1 >/dev/null 2>&1; then
+            aws signer put-signing-profile --profile-name "$PROFILE" --platform-id Notation-OCI-SHA384-ECDSA --region eu-central-1 >/dev/null
+          fi
+          PROFILE_ARN="$(aws signer get-signing-profile --profile-name "$PROFILE" --region eu-central-1 --query 'arn' --output text)"
+          test -n "$PROFILE_ARN"
+          cat > /tmp/signing.json <<JSON
+          {
+            "rules": [
+              {
+                "signingProfileArn": "$PROFILE_ARN",
+                "repositoryFilters": [
+                  {"filter": "$REPOSITORY", "filterType": "WILDCARD_MATCH"}
+                ]
+              }
+            ]
+          }
+          JSON
+          aws ecr put-signing-configuration --signing-configuration file:///tmp/signing.json --region eu-central-1 >/dev/null
+          CONFIGURED_ARN="$(aws ecr get-signing-configuration --region eu-central-1 --query 'signingConfiguration.rules[0].signingProfileArn' --output text)"
+          test "$CONFIGURED_ARN" = "$PROFILE_ARN"
+          echo "profile_arn=$PROFILE_ARN" >> "$GITHUB_OUTPUT"
+          echo "R01_MANAGED_SIGNING_CONFIGURATION_PASS"
+
       - name: Resolve and build minimal R01 runtime image
         id: build
         env:
@@ -172,7 +202,7 @@ jobs:
                   exit 1
                 fi
                 echo 'R01_ECR_SECURITY_GATE_PASS'
-                exit 0
+                break
                 ;;
               FAILED|UNSUPPORTED_IMAGE)
                 echo "$SCAN_OUTPUT"
@@ -181,5 +211,62 @@ jobs:
             esac
             sleep 10
           done
-          echo 'ECR scan did not complete within 10 minutes.'
+          test "$STATUS" = COMPLETE
+
+      - name: Verify ECR managed signature
+        env:
+          REPOSITORY: ilaios-r01-canary
+          TAG: ${{ steps.push.outputs.tag }}
+          PROFILE_ARN: ${{ steps.signing.outputs.profile_arn }}
+        run: |
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            aws ecr describe-image-signing-status \
+              --repository-name "$REPOSITORY" \
+              --image-id imageTag="$TAG" \
+              --region eu-central-1 \
+              --output json > /tmp/signing-status.json
+            read -r STATUS FAILURE_CODE < <(python - "$PROFILE_ARN" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          profile = sys.argv[1]
+          payload = json.loads(Path('/tmp/signing-status.json').read_text())
+          matches = [s for s in payload.get('signingStatuses', []) if s.get('signingProfileArn') == profile]
+          if not matches:
+              print('PENDING -')
+          else:
+              item = matches[0]
+              print(item.get('status', 'PENDING'), item.get('failureCode', '-'))
+          PY
+            )
+            echo "IMAGE_SIGNING_STATUS=$STATUS"
+            case "$STATUS" in
+              COMPLETE)
+                echo 'R01_ECR_MANAGED_SIGNING_PASS'
+                exit 0
+                ;;
+              FAILED)
+                python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('/tmp/signing-status.json').read_text())
+          for item in payload.get('signingStatuses', []):
+              if item.get('status') == 'FAILED':
+                  print('SIGNING_FAILURE_CODE=' + str(item.get('failureCode', 'unknown')))
+                  print('SIGNING_FAILURE_REASON=' + str(item.get('failureReason', 'unknown')))
+          PY
+                exit 1
+                ;;
+              IN_PROGRESS|PENDING)
+                ;;
+              *)
+                cat /tmp/signing-status.json
+                exit 1
+                ;;
+            esac
+            sleep 5
+          done
+          echo 'Managed signing did not complete within bounded wait window.'
+          cat /tmp/signing-status.json
           exit 1
