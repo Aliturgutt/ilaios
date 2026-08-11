@@ -1,14 +1,18 @@
 # ILAIOS Post-v1 Roadmap Proposal
 
-Status: **DRAFT / NON-CANONICAL**
+Status: **DRAFT / NON-CANONICAL / NOT EXECUTABLE**
 
-This document proposes the next dependency order after the completed v1 release chain. It does not amend the canonical architecture, implementation specification, milestone manifest, OpenClaw controller or current release state.
+This document proposes a dependency order for work after the existing v1 namespace. It does not amend the canonical architecture, implementation specification, milestone manifest, OpenClaw controller or current release state.
 
 ## Governing principle
 
-The existing canonical graph ends at `RELEASE.R03`. Post-v1 work must not invent an implicit `PLATFORM.P21` or `RELEASE.R04`.
+The existing canonical namespace ends at `RELEASE.R03`. Namespace presence and historical evidence do not prove current readiness.
 
-Before implementation, every active post-v1 package must define:
+The active `dev/openclaw/execution_plan.yaml` recovery package begins at `PLATFORM.P05`, rejects historical PASS as sufficient for affected current readiness, and records `release_state: NOT_DEPLOYED`. `infra/deployment/ext-e01-prerequisites.yaml` records `deployment_performed: false` and `PREPARED_AWAITING_APPROVALS`.
+
+Accordingly, post-v1 implementation is blocked until the current v1 lifecycle state is reconciled through the existing recovery/evidence rules. This proposal must not be used to bypass that dependency.
+
+Before any future post-v1 package becomes executable it must define:
 
 - exact objective and exit criteria;
 - dependencies;
@@ -23,17 +27,30 @@ Before implementation, every active post-v1 package must define:
 
 ## Proposed dependency flow
 
+### Stage -1 — Current v1 recovery/revalidation gate
+
+Dependencies: current canonical authorities and active recovery controller.
+
+Deliverables:
+- resolve `PLATFORM.P05.RECOVERY.v1` and every downstream affected dependency using accepted current evidence;
+- keep historical PASS as provenance but do not use it as a current dependency substitute where the controller forbids that;
+- reconcile release/deployment state with `infra/deployment/ext-e01-prerequisites.yaml`;
+- require explicit approvals for any external spend or release promotion;
+- update human-readable lifecycle projections only after evidence changes.
+
+Exit: current v1 lifecycle state is internally coherent and no human-readable PRODUCTION claim conflicts with active recovery/deployment evidence.
+
 ### Stage 0 — Governance baseline
 
-Dependencies: proven v1 production baseline.
+Dependencies: Stage -1.
 
 Deliverables:
 - repository truth synchronization;
 - security/governance policies;
 - stale PR cleanup;
 - CI/workflow inventory;
-- capability maturity matrix;
-- branch-protection and release-versioning owner decisions recorded.
+- capability maturity matrix refreshed against the resolved lifecycle state;
+- branch-protection, license and release-versioning owner decisions recorded when appropriate.
 
 Exit: repository planning state no longer contradicts current evidence.
 
@@ -46,7 +63,7 @@ Revalidate existing implementation before rewriting it:
 1. Code Intelligence;
 2. Knowledge Graph;
 3. Project Manager;
-4. Web/Software Factory foundations;
+4. Web/Software Factory foundations, excluding Website implementation changes from this governance track;
 5. privacy/cryptography service boundaries.
 
 Each capability is promoted only by fresh targeted + integration/regression evidence. Existing code that passes the new gates is preserved.
@@ -59,95 +76,56 @@ Dependencies: Stage 1.
 
 Owner/product decision required. Candidate workstreams are ranked by architectural fit and repository gap, not by novelty.
 
-Current strongest candidates:
-
-1. Mobile enablement — explicitly post-v1 in the architecture and no Android/iOS implementation path was found in the audit.
-2. Commercial account/billing/entitlement layer — no obvious implementation path was found in repository search.
-3. RAG/embedding/vector retrieval — architecture target, but no obvious current implementation was found in audit search.
-4. Existing factory capability promotion — implementation exists and should be revalidated before expansion.
+Candidate areas identified by the repository audit include Mobile enablement, commercial account/billing/entitlement, RAG/embedding/vector retrieval, and further promotion of existing factory capabilities. Candidate presence in this document does not authorize implementation.
 
 Only one primary workstream should become active unless independence is explicitly proven.
 
-### Stage 3A — Mobile enablement candidate
+### Stage 3 — Selected workstream specification
 
-Dependencies: Stage 2 selection = Mobile; stable control-plane contracts; identity/tenant boundary verified.
+Dependencies: Stage 2 selection.
 
-Proposed order:
+For the selected workstream only:
 
-1. shared Flutter/Dart client architecture audit;
-2. Android project enablement without moving backend authority to client;
-3. authentication/control-plane connectivity;
-4. read-only operational projection;
-5. governed interactions using existing backend contracts;
-6. Android test/build/signing readiness;
-7. Play Store external-account readiness;
-8. iOS project enablement;
-9. TestFlight/App Store readiness.
+1. freeze authority boundaries and acceptance criteria;
+2. define exact dependency graph;
+3. define allowed/forbidden paths;
+4. define validation and negative-test gates;
+5. define evidence and rollback/recovery requirements;
+6. define external approvals, spend and promotion boundaries;
+7. adopt the package through the governed canonical process where required.
 
-Signing, developer-account verification, payments, store declarations and final submissions remain explicit external actions.
+Website and Desktop implementation remain excluded from this repository-governance automation unless separately authorized in their own workstreams.
 
-### Stage 3B — Commercial SaaS candidate
+### Stage 4 — Bounded implementation and enterprise hardening
 
-Dependencies: Stage 2 selection = Commercial; identity/tenant behavior verified.
+Dependencies: Stage 3 package formally adopted and READY.
 
-Proposed order:
-
-1. product-plan/entitlement model;
-2. usage/quota metering;
-3. rate-limit policy integration;
-4. subscription/billing provider adapter;
-5. webhook/event reconciliation;
-6. invoice/payment-state projection;
-7. failure/refund/cancellation rules;
-8. security/privacy/FinOps verification;
-9. limited rollout before production.
-
-Provider-specific logic must remain replaceable behind ILAIOS-owned contracts.
-
-### Stage 3C — RAG / Knowledge candidate
-
-Dependencies: Stage 2 selection = RAG; privacy/data-classification requirements approved.
-
-Proposed order:
-
-1. data/source contract;
-2. tenant isolation model;
-3. ingestion and provenance;
-4. chunk/index lifecycle;
-5. embedding/provider adapter;
-6. retrieval/reranking;
-7. authorization-aware query path;
-8. evaluation and privacy leakage tests;
-9. bounded production rollout.
-
-### Stage 4 — Enterprise hardening
-
-Dependencies: first selected post-v1 capability VERIFIED.
-
-Cross-cutting gates:
+Cross-cutting gates include, as applicable:
 - backup/restore evidence where stateful data is introduced;
 - recovery drills;
 - tenant isolation regression;
 - security negative tests;
-- SBOM/build provenance where applicable;
+- SBOM/build provenance;
 - observability/SLOs;
 - cost limits;
 - runbooks;
 - independent release verification.
 
+No production promotion follows automatically from implementation or verification.
+
 ### Stage 5 — Further capability promotion
 
-Only after Stage 4, select the next candidate from the capability matrix. Do not open several speculative implementation tracks merely because they appear in the architecture.
+Only after the selected Stage 4 capability has accepted evidence, select the next candidate from the refreshed capability matrix. Do not open speculative implementation tracks merely because they appear in architecture or planning prose.
 
 ## Recommended immediate order
 
-1. merge governance baseline;
-2. owner enables appropriate `master` protection and decides repository metadata/license policy;
-3. run Stage 1 revalidation packages;
-4. select Mobile vs Commercial as the first net-new post-v1 track;
-5. formalize the selected track into a dedicated canonical amendment/package set;
-6. then execute automatically within bounded rules.
+1. merge the repository truth correction after diff/CI review;
+2. resolve the active v1 recovery/revalidation gate without bypassing dependencies;
+3. reconcile deployment/release evidence and required human approvals;
+4. refresh capability maturity classification;
+5. complete owner-level governance decisions that are safe and explicitly authorized;
+6. only then select and formalize the first post-v1 workstream.
 
 ## Definition of done for this roadmap
 
-This proposal is complete when it gives a safe dependency order. It is **not executable authority** until the selected post-v1 graph is explicitly adopted through the governed canonical process.
+This proposal is complete when it gives a safe dependency order. It is **not executable authority** and does not become one until current v1 recovery is resolved and the selected post-v1 graph is explicitly adopted through the governed process.
