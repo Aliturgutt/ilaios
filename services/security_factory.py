@@ -374,9 +374,9 @@ class SecurityFactory:
             if in_dependencies and value.startswith("]"):
                 in_dependencies = False
                 continue
-            if not in_dependencies or not value.startswith(('"', "'")):
+            if not in_dependencies or not value.startswith(("\"", "'")):
                 continue
-            dependency = value.strip(",").strip('"\'')
+            dependency = value.strip(",").strip("\"'")
             if dependency and "==" not in dependency and " @ " not in dependency:
                 findings.append(
                     SecurityFinding(
