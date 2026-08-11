@@ -10,5 +10,13 @@ terraform {
 
 provider "aws" {
   region = var.aws_region
-  default_tags { tags = local.tags }
+  default_tags {
+    tags = {
+      Application  = "ILAIOS"
+      Environment  = "canary"
+      ManagedBy    = "OpenTofu"
+      Release      = "RELEASE.R01"
+      ReleaseState = "CANARY"
+    }
+  }
 }
