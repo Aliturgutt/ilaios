@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import "./locale.css";
+import "./final.css";
 import SiteChrome from "./SiteChrome";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ilaios.com";

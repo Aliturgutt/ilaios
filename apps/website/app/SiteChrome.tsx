@@ -51,9 +51,10 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
         </div>
         <div className="shell footer-row">
           <span>© {new Date().getFullYear()} ILAIOS</span>
-          <span>
-            {isTr ? <><Link href="/tr/privacy">Gizlilik</Link> · <Link href="/tr/terms">Koşullar</Link></> : <><Link href="/privacy">Privacy</Link> · <Link href="/terms">Terms</Link></>}
-            {" · "}<Link href={switchHref}>{isTr ? "English" : "Türkçe"}</Link>
+          <span className="footer-contact">
+            <Link href={isTr ? "/tr/contact" : "/contact"}>{isTr ? "İletişim" : "Contact"}</Link><span>·</span><a href="mailto:contact@ilaios.com">contact@ilaios.com</a><span>·</span>
+            {isTr ? <><Link href="/tr/privacy">Gizlilik</Link><span>·</span><Link href="/tr/terms">Koşullar</Link></> : <><Link href="/privacy">Privacy</Link><span>·</span><Link href="/terms">Terms</Link></>}
+            <span>·</span><Link href={switchHref}>{isTr ? "English" : "Türkçe"}</Link>
           </span>
         </div>
       </footer>
