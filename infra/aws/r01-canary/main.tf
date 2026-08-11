@@ -4,17 +4,17 @@ locals {
   name = "ilaios-r01-canary"
   tags = {
     Application  = "ILAIOS"
-    Environment  = "canary"
+    Environment  = lower(var.release_state)
     ManagedBy    = "OpenTofu"
-    Release      = "RELEASE.R01"
-    ReleaseState = var.enable_canary ? "CANARY" : "NOT_DEPLOYED"
+    Release      = var.release_state == "LIMITED" ? "RELEASE.R02" : "RELEASE.R01"
+    ReleaseState = var.enable_canary ? var.release_state : "NOT_DEPLOYED"
   }
 }
 
 check "account_boundary" {
   assert {
     condition     = data.aws_caller_identity.current.account_id == "101180464425"
-    error_message = "Wrong AWS account for RELEASE.R01."
+    error_message = "Wrong AWS account for staged ILAIOS release."
   }
 }
 
@@ -205,6 +205,7 @@ resource "aws_iam_role_policy" "task" {
 resource "aws_ecs_cluster" "canary" {
   count = var.enable_canary ? 1 : 0
   name  = local.name
+  tags  = local.tags
   setting {
     name  = "containerInsights"
     value = "enabled"
@@ -220,6 +221,7 @@ resource "aws_ecs_task_definition" "runtime" {
   memory                   = 512
   execution_role_arn       = aws_iam_role.execution[0].arn
   task_role_arn            = aws_iam_role.task[0].arn
+  tags                     = local.tags
   volume {
     name = "state"
     efs_volume_configuration {
@@ -238,6 +240,7 @@ resource "aws_ecs_task_definition" "runtime" {
     environment = [
       { name = "ILAIOS_HOST", value = "0.0.0.0" }, { name = "ILAIOS_PORT", value = "8080" },
       { name = "ILAIOS_STATE_ROOT", value = "/var/lib/ilaios" }, { name = "ILAIOS_READY_FILE", value = "/var/lib/ilaios/ready.json" },
+      { name = "ILAIOS_RELEASE_STATE", value = var.release_state },
       { name = "ILAIOS_HARD_CAP_MINOR", value = "100" }, { name = "PYTHONDONTWRITEBYTECODE", value = "1" }
     ],
     secrets          = [{ name = "ILAIOS_CONTROL_PLANE_TOKEN", valueFrom = var.control_plane_secret_arn }],
@@ -288,8 +291,9 @@ resource "aws_ecs_service" "runtime" {
   name            = local.name
   cluster         = aws_ecs_cluster.canary[0].id
   task_definition = aws_ecs_task_definition.runtime[0].arn
-  desired_count   = 1
+  desired_count   = var.desired_count
   launch_type     = "FARGATE"
+  tags            = local.tags
   deployment_circuit_breaker {
     enable   = true
     rollback = true
