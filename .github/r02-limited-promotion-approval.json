@@ -8,5 +8,6 @@
   "limited_desired_count": 2,
   "retain_ipv4_cidr": "176.217.181.22/32",
   "retain_tenant_id": "ilaios-r01-canary",
+  "workflow_trigger_nonce": "2026-08-11T06:35:00+03:00",
   "constraint": "Promote the existing R01 runtime in place to machine-defined LIMITED with exactly two ECS tasks while retaining the single approved IPv4 /32, tenant boundary, immutable signed image, TLS, health gates, and automatic rollback. No public exposure expansion."
 }
