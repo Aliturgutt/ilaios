@@ -5,10 +5,10 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const enPrimary = [["Platform", "/platform"], ["Solutions", "/solutions"], ["Security", "/security"]] as const;
-const trPrimary = [["Platform", "/tr/platform"], ["Çözümler", "/tr/solutions"], ["Güvenlik", "/tr/security"]] as const;
-const enExplore = [["Trust Center", "/trust"], ["Architecture", "/architecture"], ["Documentation", "/docs"], ["Resources", "/resources"], ["About", "/about"]] as const;
-const trExplore = [["Güven Merkezi", "/tr/trust"], ["Mimari", "/tr/architecture"], ["Dokümanlar", "/tr/docs"], ["Kaynaklar", "/tr/resources"], ["Hakkımızda", "/tr/about"]] as const;
+const enPrimary = [["Platform", "/platform"], ["Capabilities", "/capabilities"], ["Solutions", "/solutions"], ["Security", "/security"]] as const;
+const trPrimary = [["Platform", "/tr/platform"], ["Yetenekler", "/tr/capabilities"], ["Çözümler", "/tr/solutions"], ["Güvenlik", "/tr/security"]] as const;
+const enExplore = [["For Enterprises", "/enterprise"], ["For Individuals", "/individuals"], ["ILAIOS Core", "/core"], ["Trust Center", "/trust"], ["Architecture", "/architecture"], ["Documentation", "/docs"], ["Resources", "/resources"], ["About", "/about"]] as const;
+const trExplore = [["Kurumlar İçin", "/tr/enterprise"], ["Bireysel Kullanıcılar", "/tr/individuals"], ["ILAIOS Core", "/tr/core"], ["Güven Merkezi", "/tr/trust"], ["Mimari", "/tr/architecture"], ["Dokümanlar", "/tr/docs"], ["Kaynaklar", "/tr/resources"], ["Hakkımızda", "/tr/about"]] as const;
 
 function counterpart(pathname: string, isTr: boolean) {
   if (isTr) { const next = pathname.replace(/^\/tr(?=\/|$)/, ""); return next || "/"; }
@@ -28,7 +28,8 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
 
   useEffect(() => { document.documentElement.lang = lang; setOpen(false); }, [lang, pathname]);
   useEffect(() => {
-    if (!open) return;
+    document.body.classList.toggle("menu-open", open);
+    if (!open) return () => document.body.classList.remove("menu-open");
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setOpen(false);
@@ -36,7 +37,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
       }
     };
     window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => { window.removeEventListener("keydown", onKeyDown); document.body.classList.remove("menu-open"); };
   }, [open]);
 
   return <>
@@ -58,10 +59,10 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
     <main id="main-content" lang={lang}>{children}</main>
     <footer className="site-footer" lang={lang}>
       <div className="shell footer-grid">
-        <div className="footer-brand"><strong>ILAIOS</strong><p>{isTr ? "Kontrollü akıllı otomasyon için güvenlik, kanıt ve açık yetki sınırları etrafında geliştirilen teknoloji." : "Technology for governed intelligent automation, built around security, evidence, and explicit authority boundaries."}</p><a href="mailto:contact@ilaios.com">contact@ilaios.com</a></div>
-        <div><strong>{isTr ? "Ürün" : "Product"}</strong><Link href={isTr ? "/tr/platform" : "/platform"}>Platform</Link><Link href={isTr ? "/tr/solutions" : "/solutions"}>{isTr ? "Çözümler" : "Solutions"}</Link><Link href={isTr ? "/tr/architecture" : "/architecture"}>{isTr ? "Mimari" : "Architecture"}</Link></div>
-        <div><strong>{isTr ? "Güven" : "Trust"}</strong><Link href={isTr ? "/tr/security" : "/security"}>{isTr ? "Güvenlik" : "Security"}</Link><Link href={isTr ? "/tr/trust" : "/trust"}>{isTr ? "Güven Merkezi" : "Trust Center"}</Link><Link href={isTr ? "/tr/docs" : "/docs"}>{isTr ? "Dokümanlar" : "Documentation"}</Link></div>
-        <div><strong>{isTr ? "Şirket" : "Company"}</strong><Link href={isTr ? "/tr/about" : "/about"}>{isTr ? "Hakkımızda" : "About"}</Link><Link href={isTr ? "/tr/resources" : "/resources"}>{isTr ? "Kaynaklar" : "Resources"}</Link><Link href={isTr ? "/tr/contact" : "/contact"}>{isTr ? "İletişim" : "Contact"}</Link></div>
+        <div className="footer-brand"><strong>ILAIOS</strong><p>{isTr ? "Kurum ve bireylerin hedeflerini kontrollü, doğrulanabilir ve izlenebilir dijital iş akışlarına dönüştürmek için geliştirilen yapay zekâ ve operasyon platformu." : "An AI and digital operations platform designed to turn organizational and individual goals into governed, verifiable and traceable workflows."}</p><a href="mailto:contact@ilaios.com">contact@ilaios.com</a></div>
+        <div><strong>{isTr ? "Ürün" : "Product"}</strong><Link href={isTr ? "/tr/platform" : "/platform"}>Platform</Link><Link href={isTr ? "/tr/capabilities" : "/capabilities"}>{isTr ? "Yetenekler" : "Capabilities"}</Link><Link href={isTr ? "/tr/core" : "/core"}>ILAIOS Core</Link><Link href={isTr ? "/tr/architecture" : "/architecture"}>{isTr ? "Mimari" : "Architecture"}</Link></div>
+        <div><strong>{isTr ? "Kullanım" : "Use"}</strong><Link href={isTr ? "/tr/enterprise" : "/enterprise"}>{isTr ? "Kurumlar" : "Enterprises"}</Link><Link href={isTr ? "/tr/individuals" : "/individuals"}>{isTr ? "Bireysel" : "Individuals"}</Link><Link href={isTr ? "/tr/solutions" : "/solutions"}>{isTr ? "Çözümler" : "Solutions"}</Link></div>
+        <div><strong>{isTr ? "Güven ve şirket" : "Trust & company"}</strong><Link href={isTr ? "/tr/security" : "/security"}>{isTr ? "Güvenlik" : "Security"}</Link><Link href={isTr ? "/tr/trust" : "/trust"}>{isTr ? "Güven Merkezi" : "Trust Center"}</Link><Link href={isTr ? "/tr/docs" : "/docs"}>{isTr ? "Dokümanlar" : "Documentation"}</Link><Link href={isTr ? "/tr/about" : "/about"}>{isTr ? "Hakkımızda" : "About"}</Link><Link href={isTr ? "/tr/contact" : "/contact"}>{isTr ? "İletişim" : "Contact"}</Link></div>
       </div>
       <div className="shell footer-row"><span>© {new Date().getFullYear()} ILAIOS</span><span className="footer-contact">{isTr ? <><Link href="/tr/privacy">Gizlilik</Link><span>·</span><Link href="/tr/terms">Koşullar</Link></> : <><Link href="/privacy">Privacy</Link><span>·</span><Link href="/terms">Terms</Link></>}<span>·</span><Link href={switchHref}>{isTr ? "English" : "Türkçe"}</Link></span></div>
     </footer>
