@@ -1,0 +1,8 @@
+RELEASE.R02 deployment pre-state
+branch=master
+workflow_head=203cde1ea3379cbfedb13bdf0ccbe4073325ca77
+workflow_run_id=31456250653
+prior_state_source=r01-tofu-state@31453438846
+prior_task_definition=arn:aws:ecs:eu-central-1:101180464425:task-definition/ilaios-r01-canary:5
+prior_desired_count=1
+prior_release_state=CANARY_DEPLOYED_HEALTHY
