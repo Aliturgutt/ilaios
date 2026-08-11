@@ -35,7 +35,9 @@ def test_factories_are_single_capabilities_not_legacy_parallel_products() -> Non
     assert factories["ilaios.capability.video-media-factory"].implementation_roots == (
         "src/video_automation",
     )
-    assert factories["ilaios.capability.security-factory"].implementation_roots == ()
+    assert factories["ilaios.capability.security-factory"].implementation_roots == (
+        "services/security_factory.py",
+    )
 
 
 def test_legacy_lineage_is_preserved_only_as_provenance_metadata() -> None:
