@@ -1,0 +1,80 @@
+name: ILAIOS Desktop MSIX Packaging
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'apps/desktop/**'
+      - 'brand/assets/05-ilaios-app-icon.jpg'
+      - '.github/workflows/desktop-msix-packaging.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package-msix:
+    runs-on: windows-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout ILAIOS
+        uses: actions/checkout@v4
+
+      - name: Install pinned Flutter SDK
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.44.9'
+          channel: stable
+          cache: true
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Resolve dependencies
+        working-directory: apps/desktop
+        run: flutter pub get --enforce-lockfile
+
+      - name: Analyze
+        working-directory: apps/desktop
+        run: flutter analyze
+
+      - name: Test
+        working-directory: apps/desktop
+        run: flutter test
+
+      - name: Build Windows release
+        working-directory: apps/desktop
+        run: flutter build windows --release
+
+      - name: Build unsigned MSIX
+        working-directory: apps/desktop
+        shell: pwsh
+        run: ./tool/build_msix.ps1
+
+      - name: Inspect package
+        working-directory: apps/desktop
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $msix = Get-ChildItem build\msix\*.msix | Select-Object -First 1
+          if ($null -eq $msix) { throw 'MSIX artifact not found.' }
+          $makeAppx = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe' |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if ($null -eq $makeAppx) { throw 'MakeAppx.exe not found.' }
+          $unpack = Join-Path $env:RUNNER_TEMP 'ilaios-msix-unpacked'
+          Remove-Item $unpack -Recurse -Force -ErrorAction SilentlyContinue
+          & $makeAppx.FullName unpack /p $msix.FullName /d $unpack /o
+          if ($LASTEXITCODE -ne 0) { throw 'MSIX unpack validation failed.' }
+          if (-not (Test-Path (Join-Path $unpack 'ilaios_desktop.exe'))) { throw 'Packaged executable missing.' }
+          if (-not (Test-Path (Join-Path $unpack 'AppxManifest.xml'))) { throw 'Packaged manifest missing.' }
+          Write-Host 'ILAIOS_DESKTOP_MSIX_INSPECTION=PASS'
+
+      - name: Upload unsigned CI package
+        uses: actions/upload-artifact@v4
+        with:
+          name: ilaios-desktop-msix-unsigned-ci
+          path: apps/desktop/build/msix/*.msix
+          if-no-files-found: error
+          retention-days: 7
