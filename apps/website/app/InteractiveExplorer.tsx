@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type Locale = "en" | "tr";
 
@@ -32,16 +32,22 @@ const copy = {
 
 export default function InteractiveExplorer({ locale }: { locale: Locale }) {
   const [active, setActive] = useState(0);
+  const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const data = copy[locale];
   const stage = data.stages[active];
+  const move = (next: number) => {
+    const index = (next + data.stages.length) % data.stages.length;
+    setActive(index);
+    tabRefs.current[index]?.focus();
+  };
   return <section className="section interactive-section" id="how-it-works">
     <div className="shell interactive-shell">
       <div className="section-heading compact-heading"><div><div className="eyebrow">{data.eyebrow}</div><h2>{data.title}</h2></div><p className="lead small">{data.intro}</p></div>
       <div className="interactive-explorer">
         <div className="explorer-tabs" role="tablist" aria-label={locale === "tr" ? "Sistem aşamaları" : "System stages"}>
-          {data.stages.map((item, index) => <button key={item.label} type="button" role="tab" aria-selected={active === index} className={active === index ? "is-active" : ""} onClick={() => setActive(index)}><span>0{index + 1}</span>{item.label}</button>)}
+          {data.stages.map((item, index) => <button key={item.label} ref={element => { tabRefs.current[index] = element; }} id={`explorer-tab-${locale}-${index}`} type="button" role="tab" aria-selected={active === index} aria-controls={`explorer-panel-${locale}`} tabIndex={active === index ? 0 : -1} className={active === index ? "is-active" : ""} onClick={() => setActive(index)} onKeyDown={event => { if (event.key === "ArrowRight" || event.key === "ArrowDown") { event.preventDefault(); move(active + 1); } else if (event.key === "ArrowLeft" || event.key === "ArrowUp") { event.preventDefault(); move(active - 1); } else if (event.key === "Home") { event.preventDefault(); move(0); } else if (event.key === "End") { event.preventDefault(); move(data.stages.length - 1); } }}><span>0{index + 1}</span>{item.label}</button>)}
         </div>
-        <div className="explorer-panel" role="tabpanel" aria-live="polite">
+        <div id={`explorer-panel-${locale}`} className="explorer-panel" role="tabpanel" aria-labelledby={`explorer-tab-${locale}-${active}`} tabIndex={0}>
           <div><span className="panel-kicker">{stage.label}</span><h3>{stage.title}</h3><p>{stage.text}</p></div>
           <ul>{stage.points.map(point => <li key={point}>{point}</li>)}</ul>
           <Link className="button secondary" href={stage.href}>{stage.cta} →</Link>
