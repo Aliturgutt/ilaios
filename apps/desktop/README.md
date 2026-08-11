@@ -38,6 +38,8 @@ flutter build windows --release
 
 The repository GitHub Actions Windows gate pins Flutter `3.44.9` to revision `6b182d2c7585eba26d4edce0f97630effd256c33`, runs static analysis and tests, builds the Windows release executable, and validates executable metadata.
 
+Unsigned MSIX packaging and package-structure inspection run automatically for Desktop changes pushed to `master`; the resulting CI package is an internal validation artifact only and is not a signed or Store-published release.
+
 For a Windows-local release gate, run `tool/validate_windows_release.ps1` from this directory.
 
 ## Distribution boundary
