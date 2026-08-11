@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import "./locale.css";
 import "./final.css";
+import "./ux-refresh.css";
 import SiteChrome from "./SiteChrome";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ilaios.com";
@@ -15,14 +16,7 @@ export const metadata: Metadata = {
   twitter: { card: "summary_large_image", title: "ILAIOS", description: "Governed infrastructure for intelligent automation and autonomous operations.", images: ["/brand/social-preview.jpg"] },
 };
 
-const organizationJsonLd = {
-  "@context": "https://schema.org",
-  "@type": "Organization",
-  name: "ILAIOS",
-  url: siteUrl,
-  logo: `${siteUrl}/brand/logo-horizontal-dark.jpg`,
-  description: "Governed infrastructure for intelligent automation and autonomous operations.",
-};
+const organizationJsonLd = { "@context": "https://schema.org", "@type": "Organization", name: "ILAIOS", url: siteUrl, logo: `${siteUrl}/brand/logo-horizontal-dark.jpg`, description: "Governed infrastructure for intelligent automation and autonomous operations." };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return <html lang="en"><body><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd) }} /><SiteChrome>{children}</SiteChrome></body></html>;
