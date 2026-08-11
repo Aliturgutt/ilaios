@@ -91,19 +91,54 @@ jobs:
           TAG: ${{ steps.trigger.outputs.tag }}
         run: |
           set -euo pipefail
+          PROFILE_ARN="$(aws signer get-signing-profile --profile-name "$PROFILE" --region eu-central-1 --query 'arn' --output text)"
           for i in $(seq 1 60); do
-            STATUS="$(aws ecr describe-image-signing-status --repository-name "$REPOSITORY" --image-id imageTag="$TAG" --region eu-central-1 --query 'signingStatus' --output text 2>/dev/null || true)"
+            aws ecr describe-image-signing-status \
+              --repository-name "$REPOSITORY" \
+              --image-id imageTag="$TAG" \
+              --region eu-central-1 \
+              --output json > /tmp/signing-status.json
+            read -r STATUS FAILURE_CODE < <(python - "$PROFILE_ARN" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+          profile = sys.argv[1]
+          payload = json.loads(Path('/tmp/signing-status.json').read_text())
+          matches = [s for s in payload.get('signingStatuses', []) if s.get('signingProfileArn') == profile]
+          if not matches:
+              print('PENDING -')
+          else:
+              item = matches[0]
+              print(item.get('status', 'PENDING'), item.get('failureCode', '-'))
+          PY
+            )
+            echo "IMAGE_SIGNING_STATUS=$STATUS"
             case "$STATUS" in
-              SUCCESS|COMPLETE)
-                echo "IMAGE_SIGNING_STATUS=$STATUS"
+              COMPLETE)
                 exit 0
                 ;;
               FAILED)
-                echo "IMAGE_SIGNING_STATUS=$STATUS"
+                python - <<'PY'
+          import json
+          from pathlib import Path
+          payload = json.loads(Path('/tmp/signing-status.json').read_text())
+          for item in payload.get('signingStatuses', []):
+              if item.get('status') == 'FAILED':
+                  print('SIGNING_FAILURE_CODE=' + str(item.get('failureCode', 'unknown')))
+                  print('SIGNING_FAILURE_REASON=' + str(item.get('failureReason', 'unknown')))
+          PY
+                exit 1
+                ;;
+              IN_PROGRESS|PENDING)
+                ;;
+              *)
+                echo "Unexpected signing status: $STATUS"
+                cat /tmp/signing-status.json
                 exit 1
                 ;;
             esac
             sleep 5
           done
           echo 'Managed signing did not complete within bounded wait window.'
+          cat /tmp/signing-status.json
           exit 1
