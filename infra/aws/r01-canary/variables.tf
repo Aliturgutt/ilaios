@@ -30,9 +30,9 @@ variable "image_digest" {
   validation {
     condition = !var.enable_canary || (
       can(regex("^sha256:[0-9a-f]{64}$", var.image_digest)) &&
-      var.image_digest == "sha256:4534f8af614aa4fd890785e19f27e2ede7ce59435def93069884156261b86931"
+      var.image_digest == "sha256:0b540cee1e9b7a8f6bf6573eb3a0b15b5e5dd374b693c2738f78c0670121428f"
     )
-    error_message = "RELEASE.R01 canary requires the security-scanned canonical image digest."
+    error_message = "RELEASE.R01 canary requires the security-scanned and AWS-managed-signed canonical image digest."
   }
 }
 
