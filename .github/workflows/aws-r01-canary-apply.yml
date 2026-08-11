@@ -24,7 +24,7 @@ jobs:
       TF_INPUT: 'false'
       TF_VAR_aws_region: eu-central-1
       TF_VAR_enable_canary: 'true'
-      TF_VAR_image_digest: sha256:4534f8af614aa4fd890785e19f27e2ede7ce59435def93069884156261b86931
+      TF_VAR_image_digest: sha256:0b540cee1e9b7a8f6bf6573eb3a0b15b5e5dd374b693c2738f78c0670121428f
       TF_VAR_certificate_arn: arn:aws:acm:eu-central-1:101180464425:certificate/95994b5b-ff08-4af2-913d-9952e95f8aa1
       TF_VAR_control_plane_secret_arn: arn:aws:secretsmanager:eu-central-1:101180464425:secret:ilaios/r01/canary/control-plane-token-BgIO2G
       GH_TOKEN: ${{ github.token }}
@@ -72,6 +72,24 @@ jobs:
           test "$(aws sts get-caller-identity --query Account --output text)" = "101180464425"
           test "$(aws acm describe-certificate --certificate-arn "$TF_VAR_certificate_arn" --region eu-central-1 --query 'Certificate.Status' --output text)" = "ISSUED"
           test "$(aws ecr describe-images --repository-name ilaios-r01-canary --image-ids imageDigest="$TF_VAR_image_digest" --region eu-central-1 --query 'imageDetails[0].imageDigest' --output text)" = "$TF_VAR_image_digest"
+          read -r SCAN_STATUS CRITICAL HIGH < <(aws ecr describe-image-scan-findings \
+            --repository-name ilaios-r01-canary \
+            --image-id imageDigest="$TF_VAR_image_digest" \
+            --region eu-central-1 \
+            --query '[imageScanStatus.status, to_string(imageScanFindings.findingSeverityCounts.CRITICAL || `0`), to_string(imageScanFindings.findingSeverityCounts.HIGH || `0`)]' \
+            --output text)
+          test "$SCAN_STATUS" = COMPLETE
+          test "$CRITICAL" = 0
+          test "$HIGH" = 0
+          PROFILE_ARN="$(aws signer get-signing-profile --profile-name ILAIOS_R01_ECR --region eu-central-1 --query 'arn' --output text)"
+          SIGNING_STATUS="$(aws ecr describe-image-signing-status \
+            --repository-name ilaios-r01-canary \
+            --image-id imageDigest="$TF_VAR_image_digest" \
+            --region eu-central-1 \
+            --query "signingStatuses[?signingProfileArn=='${PROFILE_ARN}'].status | [0]" \
+            --output text)"
+          test "$SIGNING_STATUS" = COMPLETE
+          echo "R01_SIGNED_IMAGE_PREREQUISITES_PASS"
           aws secretsmanager describe-secret --secret-id "$TF_VAR_control_plane_secret_arn" --region eu-central-1 >/dev/null
 
       - uses: opentofu/setup-opentofu@v1
