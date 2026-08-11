@@ -163,7 +163,9 @@ _INFRA_RULES: tuple[tuple[str, re.Pattern[str], Severity, str, str], ...] = (
     ),
     (
         "INFRA-WILDCARD-ACTION",
-        re.compile(r"(?:\"Action\"\s*:\s*\"\*\"|Action\s*=\s*\[?\s*\"\*\")"),
+        re.compile(
+            r"(?:\"Action\"\s*:\s*\"\*\"|\bAction\s*:\s*\"\*\"|Action\s*=\s*\[?\s*\"\*\")"
+        ),
         Severity.HIGH,
         "wildcard infrastructure permission detected",
         "replace wildcard permissions with least-privilege actions",
