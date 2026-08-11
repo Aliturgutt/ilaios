@@ -1,0 +1,16 @@
+RELEASE.R03 verification evidence
+R03_EXACT_APPROVAL_PASS
+R02_DEPENDENCY_EVIDENCE_PASS
+R03_LIVE_R02_BASELINE_PASS
+R03_PLAN_BOUNDED_PASS
+planned_changes=aws_ecs_cluster.canary[0]:update,aws_ecs_service.runtime[0]:update,aws_ecs_task_definition.runtime[0]:replace
+apply_result=success
+service_status=ACTIVE
+desired_running_pending=2/2/0
+release_state=PRODUCTION
+task_definition=arn:aws:ecs:eu-central-1:101180464425:task-definition/ilaios-r01-canary:7
+healthy_targets=2
+network_allowlist=176.217.181.22/32 only
+network_exposure_broadened=false
+R03_PRODUCTION_DEPLOYMENT_PASS
+workflow_conclusion=success
