@@ -3,6 +3,7 @@ import "./globals.css";
 import "./locale.css";
 import "./final.css";
 import "./ux-refresh.css";
+import "./professional-final.css";
 import SiteChrome from "./SiteChrome";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ilaios.com";

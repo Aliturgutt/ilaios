@@ -1,0 +1,30 @@
+/* Final professional hierarchy and compact enterprise navigation. */
+h1 { font-size: clamp(2.55rem, 4.5vw, 4.35rem); line-height: 1; max-width: 840px; }
+h2 { font-size: clamp(1.8rem, 3vw, 2.65rem); line-height: 1.1; }
+.lead { font-size: clamp(1rem, 1.35vw, 1.14rem); }
+.hero-refresh { min-height: 560px; padding-top: 64px; padding-bottom: 62px; }
+.page-hero { padding-top: 70px; padding-bottom: 54px; }
+.section { padding-top: 60px; padding-bottom: 60px; }
+
+.explore-menu { position: relative; }
+.explore-menu summary { list-style: none; cursor: pointer; color: var(--muted); font-size: .88rem; padding: 9px 2px; border-bottom: 1px solid transparent; transition: color .18s ease,border-color .18s ease; }
+.explore-menu summary::-webkit-details-marker { display: none; }
+.explore-menu summary::after { content: "⌄"; margin-left: 6px; color: #718391; }
+.explore-menu summary:hover,.explore-menu summary.is-active,.explore-menu[open] summary { color: var(--text); border-color: rgba(24,199,217,.65); }
+.explore-menu-panel { position: absolute; top: calc(100% + 8px); right: 0; z-index: 30; width: 220px; display: grid; gap: 3px; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: rgba(9,15,22,.98); box-shadow: 0 20px 50px rgba(0,0,0,.35); }
+.explore-menu-panel a { display: block; padding: 9px 11px !important; border: 0 !important; border-radius: 9px; }
+.explore-menu-panel a:hover,.explore-menu-panel a[aria-current="page"] { background: rgba(24,199,217,.07); }
+
+@media (max-width: 940px) {
+  .explore-menu { width: 100%; }
+  .explore-menu summary { padding: 10px; border: 0; border-radius: 10px; }
+  .explore-menu summary:hover,.explore-menu summary.is-active,.explore-menu[open] summary { background: rgba(24,199,217,.07); }
+  .explore-menu-panel { position: static; width: auto; margin: 3px 0 7px 10px; padding: 5px; box-shadow: none; background: rgba(255,255,255,.015); }
+}
+
+@media (max-width: 760px) {
+  h1 { font-size: clamp(2.05rem, 9.4vw, 2.75rem); line-height: 1.04; }
+  h2 { font-size: clamp(1.55rem, 7vw, 2.05rem); }
+  .hero-refresh { padding-top: 42px; padding-bottom: 48px; }
+  .page-hero,.section { padding-top: 46px; padding-bottom: 46px; }
+}
