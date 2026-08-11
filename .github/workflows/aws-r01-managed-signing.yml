@@ -63,7 +63,7 @@ jobs:
           aws ecr batch-get-image \
             --repository-name "$REPOSITORY" \
             --image-ids imageDigest="$DIGEST" \
-            --accepted-media-types application/vnd.oci.image.manifest.v1+json \
+            --accepted-media-types application/vnd.docker.distribution.manifest.v2+json application/vnd.oci.image.manifest.v1+json \
             --region eu-central-1 \
             --output json > /tmp/ecr-image.json
           python - <<'PY'
