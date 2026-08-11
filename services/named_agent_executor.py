@@ -15,6 +15,7 @@ from typing import Any
 from services.agent_governance import (
     AgentAdmissionEvidence,
     AgentInvocation,
+    AgentSecurityError,
     PermissionFirewall,
 )
 from services.agent_registry import CANONICAL_AGENT_REGISTRY, registration_for
@@ -81,7 +82,10 @@ class NamedAgentExecutor:
         now: datetime,
     ) -> NamedAgentExecution:
         """Admit, route, execute, and bind the result to independent verification."""
-        registration = registration_for(invocation.target_id)
+        try:
+            registration = registration_for(invocation.target_id)
+        except KeyError as exc:
+            raise AgentSecurityError("target agent is unavailable") from exc
         admission = self._firewall.admit(invocation, grant, now)
         route = self._runtime.execute(
             registration.manifest.agent_id,
