@@ -3,7 +3,7 @@ variable "aws_region" {
   default = "eu-central-1"
   validation {
     condition     = var.aws_region == "eu-central-1"
-    error_message = "RELEASE.R01/R02 is bounded to eu-central-1."
+    error_message = "RELEASE.R01/R02/R03 is bounded to eu-central-1."
   }
 }
 
@@ -18,34 +18,35 @@ variable "release_state" {
   description = "Machine-defined staged release state for the existing bounded runtime."
   default     = "CANARY"
   validation {
-    condition     = contains(["CANARY", "LIMITED"], var.release_state)
-    error_message = "release_state must be CANARY or LIMITED."
+    condition     = contains(["CANARY", "LIMITED", "PRODUCTION"], var.release_state)
+    error_message = "release_state must be CANARY, LIMITED, or PRODUCTION."
   }
 }
 
 variable "desired_count" {
   type        = number
-  description = "Bounded ECS task count: CANARY=1, LIMITED=2."
+  description = "Bounded ECS task count: CANARY=1, LIMITED=2, PRODUCTION=2."
   default     = 1
   validation {
     condition = (
       (var.release_state == "CANARY" && var.desired_count == 1) ||
-      (var.release_state == "LIMITED" && var.desired_count == 2)
+      (var.release_state == "LIMITED" && var.desired_count == 2) ||
+      (var.release_state == "PRODUCTION" && var.desired_count == 2)
     )
-    error_message = "CANARY requires desired_count=1; LIMITED requires desired_count=2."
+    error_message = "CANARY requires desired_count=1; LIMITED and PRODUCTION require desired_count=2."
   }
 }
 
 variable "canary_ipv4_cidrs" {
   type        = list(string)
-  description = "Explicitly approved bounded source allowlist retained across CANARY and LIMITED."
+  description = "Explicitly approved bounded source allowlist retained across CANARY, LIMITED, and guarded PRODUCTION."
   default     = []
   validation {
     condition = !var.enable_canary || (
       length(var.canary_ipv4_cidrs) == 1 &&
       alltrue([for cidr in var.canary_ipv4_cidrs : can(regex("^[0-9.]+/32$", cidr))])
     )
-    error_message = "Activation requires exactly one explicitly approved IPv4 /32; R02 LIMITED must not broaden network exposure."
+    error_message = "Activation requires exactly one explicitly approved IPv4 /32; staged promotion must not broaden network exposure."
   }
 }
 
