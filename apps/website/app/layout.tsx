@@ -9,12 +9,13 @@ import SiteChrome from "./SiteChrome";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ilaios.com";
 const organizationId = `${siteUrl}/#organization`;
 const websiteId = `${siteUrl}/#website`;
+const founderId = `${siteUrl}/about#founder`;
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: { default: "ILAIOS", template: "%s | ILAIOS" },
   description: "ILAIOS builds governed infrastructure for intelligent automation and autonomous operations.",
-  keywords: ["ILAIOS", "intelligent automation", "autonomous operations", "AI infrastructure", "governed automation"],
+  keywords: ["ILAIOS", "Ali Turgut", "intelligent automation", "autonomous operations", "AI infrastructure", "governed automation"],
   alternates: { canonical: siteUrl },
   authors: [{ name: "ILAIOS", url: siteUrl }],
   creator: "ILAIOS",
@@ -37,6 +38,15 @@ const structuredData = {
         url: `${siteUrl}/brand/logo-horizontal-dark.jpg`,
       },
       description: "Governed infrastructure for intelligent automation and autonomous operations.",
+      founder: { "@id": founderId },
+    },
+    {
+      "@type": "Person",
+      "@id": founderId,
+      name: "Ali Turgut",
+      url: `${siteUrl}/about#founder`,
+      jobTitle: "Founder",
+      worksFor: { "@id": organizationId },
     },
     {
       "@type": "WebSite",
