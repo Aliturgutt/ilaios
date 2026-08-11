@@ -1,1 +1,0 @@
-This sentinel intentionally exists only to force Desktop/MSIX path-filtered GitHub Actions validation for the rebased Store-readiness candidate. It carries no runtime behavior and may be removed after validation if the final Store-readiness commit remains otherwise unchanged.
