@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, cast
 from urllib.request import Request, urlopen
 
-import yaml  # type: ignore[import-untyped]
+import yaml
 
 from services.control_plane.migrations import (
     LATEST_SCHEMA_VERSION,
