@@ -18,6 +18,7 @@ jobs:
       REPOSITORY: ilaios-r01-canary
       DIGEST: sha256:4534f8af614aa4fd890785e19f27e2ede7ce59435def93069884156261b86931
       PROFILE: ILAIOS_R01_ECR
+      REGISTRY: 101180464425.dkr.ecr.eu-central-1.amazonaws.com
     steps:
       - uses: actions/checkout@v4
       - uses: aws-actions/configure-aws-credentials@v4
@@ -56,36 +57,22 @@ jobs:
           JSON
           aws ecr put-signing-configuration --signing-configuration file:///tmp/signing.json --region eu-central-1 >/dev/null
           echo "SIGNING_PROFILE_ARN=$PROFILE_ARN"
-      - name: Re-register immutable manifest to trigger managed signing
+      - name: Push immutable image again to trigger managed signing
         id: trigger
         run: |
           set -euo pipefail
-          aws ecr batch-get-image \
-            --repository-name "$REPOSITORY" \
-            --image-ids imageDigest="$DIGEST" \
-            --accepted-media-types application/vnd.docker.distribution.manifest.v2+json application/vnd.oci.image.manifest.v1+json \
-            --region eu-central-1 \
-            --output json > /tmp/ecr-image.json
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          payload = json.loads(Path('/tmp/ecr-image.json').read_text())
-          images = payload.get('images', [])
-          if len(images) != 1:
-              raise SystemExit('Expected exactly one immutable image manifest.')
-          manifest = images[0].get('imageManifest')
-          if not isinstance(manifest, str):
-              raise SystemExit('ECR image manifest missing.')
-          json.loads(manifest)
-          Path('/tmp/manifest.json').write_text(manifest, encoding='utf-8')
-          PY
+          aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin "$REGISTRY"
+          SOURCE="${REGISTRY}/${REPOSITORY}@${DIGEST}"
           TAG="signed-${GITHUB_SHA}"
-          aws ecr put-image \
-            --repository-name "$REPOSITORY" \
-            --image-manifest file:///tmp/manifest.json \
-            --image-tag "$TAG" \
-            --region eu-central-1 >/dev/null
+          TARGET="${REGISTRY}/${REPOSITORY}:${TAG}"
+          docker pull "$SOURCE"
+          docker tag "$SOURCE" "$TARGET"
+          docker push "$TARGET"
+          PUSHED_DIGEST="$(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageTag="$TAG" --region eu-central-1 --query 'imageDetails[0].imageDigest' --output text)"
+          test "$PUSHED_DIGEST" = "$DIGEST"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "SIGNED_TRIGGER_TAG=$TAG"
+          echo "SIGNED_TRIGGER_DIGEST=$PUSHED_DIGEST"
       - name: Verify managed signing status
         env:
           TAG: ${{ steps.trigger.outputs.tag }}
@@ -115,6 +102,7 @@ jobs:
             echo "IMAGE_SIGNING_STATUS=$STATUS"
             case "$STATUS" in
               COMPLETE)
+                echo 'R01_MANAGED_SIGNING_PASS'
                 exit 0
                 ;;
               FAILED)
