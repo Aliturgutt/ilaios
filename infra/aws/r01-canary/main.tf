@@ -257,12 +257,13 @@ resource "aws_lb" "canary" {
 }
 
 resource "aws_lb_target_group" "runtime" {
-  count       = var.enable_canary ? 1 : 0
-  name        = local.name
-  port        = 8080
-  protocol    = "HTTP"
-  target_type = "ip"
-  vpc_id      = aws_vpc.canary[0].id
+  count                = var.enable_canary ? 1 : 0
+  name                 = local.name
+  port                 = 8080
+  protocol             = "HTTP"
+  target_type          = "ip"
+  vpc_id               = aws_vpc.canary[0].id
+  deregistration_delay = 30
   health_check {
     path    = "/health/ready"
     matcher = "200"
@@ -293,8 +294,8 @@ resource "aws_ecs_service" "runtime" {
     enable   = true
     rollback = true
   }
-  deployment_minimum_healthy_percent = 0
-  deployment_maximum_percent         = 100
+  deployment_minimum_healthy_percent = 100
+  deployment_maximum_percent         = 200
   network_configuration {
     subnets          = aws_subnet.runtime[*].id
     security_groups  = [aws_security_group.runtime[0].id]
