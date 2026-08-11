@@ -171,7 +171,7 @@ CAPABILITIES: tuple[CapabilityDefinition, ...] = (
                 "ilaios.capability.evidence-audit",
             }
         ),
-        (),
+        ("services/security_factory.py",),
         frozenset({"Hermes", "ILAKOS", "ILATEN"}),
     ),
     CapabilityDefinition(
