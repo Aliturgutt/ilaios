@@ -15,6 +15,14 @@ function counterpart(pathname: string, isTr: boolean) {
   return pathname === "/" ? "/tr" : `/tr${pathname}`;
 }
 
+function LinkedInIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M5.3 3.8A2.3 2.3 0 1 1 5.3 8.4 2.3 2.3 0 0 1 5.3 3.8ZM3.4 9.9h3.8v10.7H3.4V9.9Zm6.1 0h3.6v1.5h.1c.5-.9 1.7-1.9 3.6-1.9 3.9 0 4.6 2.5 4.6 5.8v5.3h-3.8v-4.7c0-1.1 0-2.6-1.7-2.6s-1.9 1.2-1.9 2.5v4.8H9.5V9.9Z" /></svg>;
+}
+
+function XIcon() {
+  return <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M18.5 3H22l-7.6 8.7L23 21h-6.7l-5.2-6.8L5.2 21H1.7l7.8-8.9L1.2 3H8l4.7 6.2L18.5 3Zm-1.2 16h1.9L7 4.9H5L17.3 19Z" /></svg>;
+}
+
 export default function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -59,7 +67,17 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
     <main id="main-content" lang={lang}>{children}</main>
     <footer className="site-footer" lang={lang}>
       <div className="shell footer-grid">
-        <div className="footer-brand"><strong>ILAIOS</strong><p>{isTr ? "Kurum ve bireylerin hedeflerini kontrollü, doğrulanabilir ve izlenebilir dijital iş akışlarına dönüştürmek için geliştirilen yapay zekâ ve operasyon platformu." : "An AI and digital operations platform designed to turn organizational and individual goals into governed, verifiable and traceable workflows."}</p><a href="mailto:contact@ilaios.com">contact@ilaios.com</a><a href="https://x.com/ilaios" target="_blank" rel="noreferrer">X · @ilaios</a></div>
+        <div className="footer-brand">
+          <strong>ILAIOS</strong>
+          <p>{isTr ? "Kurum ve bireylerin hedeflerini kontrollü, doğrulanabilir ve izlenebilir dijital iş akışlarına dönüştürmek için geliştirilen yapay zekâ ve operasyon platformu." : "An AI and digital operations platform designed to turn organizational and individual goals into governed, verifiable and traceable workflows."}</p>
+          <div className="footer-contact-block">
+            <a className="footer-email" href="mailto:contact@ilaios.com">contact@ilaios.com</a>
+            <div className="footer-socials" aria-label={isTr ? "ILAIOS sosyal medya hesapları" : "ILAIOS social profiles"}>
+              <a href="https://www.linkedin.com/company/ilaios/" target="_blank" rel="noreferrer" aria-label={isTr ? "ILAIOS LinkedIn şirket sayfası" : "ILAIOS company on LinkedIn"}><LinkedInIcon /><span>LinkedIn</span></a>
+              <a href="https://x.com/ilaios" target="_blank" rel="noreferrer" aria-label={isTr ? "ILAIOS X hesabı" : "ILAIOS on X"}><XIcon /><span>X</span></a>
+            </div>
+          </div>
+        </div>
         <div><strong>{isTr ? "Ürün" : "Product"}</strong><Link href={isTr ? "/tr/platform" : "/platform"}>Platform</Link><Link href={isTr ? "/tr/capabilities" : "/capabilities"}>{isTr ? "Yetenekler" : "Capabilities"}</Link><Link href={isTr ? "/tr/how-it-works" : "/how-it-works"}>{isTr ? "Nasıl Çalışır" : "How It Works"}</Link><Link href={isTr ? "/tr/core" : "/core"}>ILAIOS Core</Link><Link href={isTr ? "/tr/architecture" : "/architecture"}>{isTr ? "Mimari" : "Architecture"}</Link></div>
         <div><strong>{isTr ? "Kullanım" : "Use"}</strong><Link href={isTr ? "/tr/enterprise" : "/enterprise"}>{isTr ? "Kurumlar" : "Enterprises"}</Link><Link href={isTr ? "/tr/individuals" : "/individuals"}>{isTr ? "Bireysel" : "Individuals"}</Link><Link href={isTr ? "/tr/solutions" : "/solutions"}>{isTr ? "Çözümler" : "Solutions"}</Link></div>
         <div><strong>{isTr ? "Güven ve şirket" : "Trust & company"}</strong><Link href={isTr ? "/tr/security" : "/security"}>{isTr ? "Güvenlik" : "Security"}</Link><Link href={isTr ? "/tr/trust" : "/trust"}>{isTr ? "Güven Merkezi" : "Trust Center"}</Link><Link href={isTr ? "/tr/docs" : "/docs"}>{isTr ? "Dokümanlar" : "Documentation"}</Link><Link href={isTr ? "/tr/about" : "/about"}>{isTr ? "Hakkımızda" : "About"}</Link><Link href={isTr ? "/tr/contact" : "/contact"}>{isTr ? "İletişim" : "Contact"}</Link></div>
