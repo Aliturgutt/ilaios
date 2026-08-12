@@ -1,9 +1,9 @@
-schema_version: "1.0"
+schema_version: "1.1"
 status: "ADOPTED_CANONICAL"
 name: "ILAIOS Post-v1 Dependency Graph"
 authority: "governed_post_v1_execution"
 adopted_from: "docs/governance/post_v1_dependency_graph.draft.yaml"
-adopted_direction: "EXISTING_FACTORY_PROMOTION"
+adopted_direction: "RAG_KNOWLEDGE"
 
 safety:
   repository_evidence_is_truth: true
@@ -48,12 +48,12 @@ nodes:
     purpose: "Select exactly one primary post-v1 workstream."
     dependencies: ["CAPABILITY_REVALIDATION"]
     state: "SELECTED"
-    selected: "EXISTING_FACTORY_PROMOTION"
-    selection_basis: "Owner-directed ILAIOS platform/core/factory consolidation; Website and Desktop remain separate workstreams."
+    selected: "RAG_KNOWLEDGE"
+    selection_basis: "Owner-directed roadmap continuation after VERIFIED Existing Factory Promotion; RAG/Knowledge is the next single primary workstream. Website and Desktop remain separate workstreams."
 
   EXISTING_FACTORY_PROMOTION:
     purpose: "Promote existing and planned ILAIOS factory capabilities through bounded implementation and fresh end-to-end evidence."
-    dependencies: ["PRODUCT_SELECTION", "CAPABILITY_REVALIDATION"]
+    dependencies: ["CAPABILITY_REVALIDATION"]
     state: "VERIFIED"
     order:
       - "AGENT_EXECUTOR_E2E"
@@ -105,17 +105,26 @@ nodes:
     dependencies: ["ENTERPRISE_HARDENING"]
     state: "VERIFIED"
 
+  RAG_KNOWLEDGE:
+    purpose: "Build bounded tenant-isolated retrieval-augmented knowledge on existing Research/Data, Knowledge Graph, Privacy/DLP, evidence and governed-runtime foundations."
+    dependencies: ["FINAL_LINEAGE_REDTEAM", "RESEARCH_DATA_FACTORY", "ENTERPRISE_HARDENING"]
+    state: "SELECTED"
+    required_gates:
+      - "tenant_isolation"
+      - "authorization_aware_retrieval"
+      - "source_provenance"
+      - "privacy_dlp"
+      - "deterministic_evidence"
+      - "full_platform_ci"
+
 inactive_alternatives:
   MOBILE:
     state: "DORMANT_NOT_SELECTED"
   COMMERCIAL_SAAS:
     state: "DORMANT_NOT_SELECTED"
-  RAG_KNOWLEDGE:
-    state: "DORMANT_NOT_SELECTED"
 
 external_owner_gates:
   - "master branch protection policy"
   - "repository license decision"
-  - "version/tag/release policy"
   - "store/developer-account actions for client distribution"
   - "payment/provider/account actions for commercial billing"
