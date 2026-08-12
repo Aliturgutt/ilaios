@@ -54,7 +54,7 @@ nodes:
   EXISTING_FACTORY_PROMOTION:
     purpose: "Promote existing and planned ILAIOS factory capabilities through bounded implementation and fresh end-to-end evidence."
     dependencies: ["PRODUCT_SELECTION", "CAPABILITY_REVALIDATION"]
-    state: "ACTIVE"
+    state: "VERIFIED"
     order:
       - "AGENT_EXECUTOR_E2E"
       - "RESEARCH_DATA_FACTORY"
@@ -68,42 +68,42 @@ nodes:
   AGENT_EXECUTOR_E2E:
     purpose: "Prove named ILAIOS agents can execute bounded governed work through stable machine IDs and independent verification."
     dependencies: ["EXISTING_FACTORY_PROMOTION"]
-    state: "READY"
+    state: "VERIFIED"
 
   RESEARCH_DATA_FACTORY:
     purpose: "Create a bounded research/data factory on existing knowledge, privacy and evidence foundations."
     dependencies: ["AGENT_EXECUTOR_E2E"]
-    state: "PLANNED"
+    state: "VERIFIED"
 
   CREATIVE_DOCUMENT_FACTORY:
     purpose: "Create a bounded creative/document factory on workflow, evidence and policy foundations."
     dependencies: ["RESEARCH_DATA_FACTORY"]
-    state: "PLANNED"
+    state: "VERIFIED"
 
   COMMERCE_GROWTH_FACTORY:
     purpose: "Create a bounded commerce/growth factory without billing or paid-provider mutation."
     dependencies: ["CREATIVE_DOCUMENT_FACTORY"]
-    state: "PLANNED"
+    state: "VERIFIED"
 
   PERSONAL_OPERATIONS_FACTORY:
     purpose: "Create a bounded personal-operations automation factory using governed workflow/runtime primitives."
     dependencies: ["COMMERCE_GROWTH_FACTORY"]
-    state: "PLANNED"
+    state: "VERIFIED"
 
   APP_FACTORY_PLATFORM_BOUNDARY:
     purpose: "Define and prove the platform-side App Factory boundary without modifying Desktop, Website or mobile client implementations."
     dependencies: ["PERSONAL_OPERATIONS_FACTORY"]
-    state: "PLANNED"
+    state: "VERIFIED"
 
   ENTERPRISE_HARDENING:
     purpose: "Apply cross-cutting recovery, isolation, provenance, observability, security and cost gates to promoted factories."
     dependencies: ["APP_FACTORY_PLATFORM_BOUNDARY"]
-    state: "PLANNED"
+    state: "VERIFIED"
 
   FINAL_LINEAGE_REDTEAM:
     purpose: "Run final Hermes -> ILAKOS -> ILATEN -> ILAIOS capability, identity, security and regression audit."
     dependencies: ["ENTERPRISE_HARDENING"]
-    state: "PLANNED"
+    state: "VERIFIED"
 
 inactive_alternatives:
   MOBILE:
