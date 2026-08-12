@@ -2,12 +2,21 @@ import type { Metadata } from "next";
 
 export const metadata: Metadata = {
   title: "İletişim",
-  description: "ILAIOS genel şirket ve ürün iletişimi için resmi iletişim bilgileri.",
+  description: "ILAIOS genel iletişim, bilgi talepleri, ürün desteği, güvenlik bildirimi, gizlilik ve kötüye kullanım bildirimleri için resmi iletişim adresleri.",
   alternates: { canonical: "/tr/contact", languages: { tr: "/tr/contact", en: "/contact", "x-default": "/contact" } },
 };
 
+const channels = [
+  ["Genel iletişim", "Şirket, ürün ve genel iletişim talepleri.", "contact@ilaios.com"],
+  ["Bilgi", "Şirket ve ürün hakkında genel bilgi talepleri.", "info@ilaios.com"],
+  ["Destek", "Ürün ve kullanıcı destek talepleri.", "support@ilaios.com"],
+  ["Güvenlik", "Sorumlu güvenlik bildirimi ve güvenlikle ilgili raporlar.", "security@ilaios.com"],
+  ["Gizlilik", "Gizlilikla ilgili talepler ve sorular.", "privacy@ilaios.com"],
+  ["Kötüye kullanım bildirimi", "ILAIOS hizmetleri veya altyapısıyla ilişkili spam, dolandırıcılık, kötüye kullanım ve benzeri raporlar.", "abuse@ilaios.com"],
+] as const;
+
 export default function Page(){return <>
-  <section className="shell page-hero"><div className="eyebrow">İletişim</div><h1>ILAIOS resmi iletişim kanalları.</h1><p className="lead">Genel şirket, ürün ve erken iş birliği görüşmeleri için aşağıdaki doğrulanmış genel iletişim adresini kullanabilirsiniz. Özel ortaklık ve güvenlik kanalları, dış kullanıma ayrıca doğrulandıktan sonra yayınlanacaktır.</p></section>
-  <section className="section"><div className="shell"><div className="eyebrow">Resmi kanallar</div><h2>Doğrulanmış iletişim.</h2><div className="grid"><article className="card"><h3>Genel iletişim</h3><p>Şirket, ürün ve genel iletişim talepleri.</p><p><a href="mailto:contact@ilaios.com">contact@ilaios.com</a></p><span className="status-chip">Genel kanal aktif</span></article><article className="card"><h3>Ortaklıklar</h3><p>Teknoloji, ekosistem, dağıtım ve stratejik iş birliği görüşmeleri.</p><span className="status-chip">Özel kanal doğrulaması bekleniyor</span></article><article className="card"><h3>Güvenlik</h3><p>Sorumlu güvenlik bildirimi ve güvenlikle ilgili iletişim.</p><span className="status-chip">Özel kanal doğrulaması bekleniyor</span></article></div></div></section>
-  <section className="section compact-section"><div className="shell callout"><div><div className="eyebrow">Güvenlik notu</div><h2>Operasyon adresleri özel kalır.</h2></div><div><p className="muted">Altyapıya özel mailbox'lar genel iletişim adresi olarak yayınlanmaz. Doğrulanmış güvenlik bildirim adresi hazır olduğunda burada yer alacaktır.</p></div></div></section>
+  <section className="shell page-hero"><div className="eyebrow">İletişim</div><h1>ILAIOS resmi iletişim kanalları.</h1><p className="lead">Talebinize en uygun kanalı kullanın. Aşağıdaki adresler ILAIOS için doğrulanmış kamuya açık yönlendirmelerdir; operasyon ve altyapı yönetim adresleri özel kalır.</p></section>
+  <section className="section"><div className="shell"><div className="eyebrow">Resmi kanallar</div><h2>Doğru kanala ulaşın.</h2><div className="grid two-up">{channels.map(([title,text,email])=><article className="card" key={email}><h3>{title}</h3><p>{text}</p><p><a className="text-link" href={`mailto:${email}`}>{email}</a></p></article>)}</div></div></section>
+  <section className="section compact-section"><div className="shell callout"><div><div className="eyebrow">Operasyon sınırı</div><h2>Yönetim adresleri özel kalır.</h2></div><div><p className="muted">Altyapı, faturalama, cloud operasyonları, root hesap, postmaster ve catch-all adresleri genel iletişim kanalı olarak yayınlanmaz.</p></div></div></section>
 </>}
