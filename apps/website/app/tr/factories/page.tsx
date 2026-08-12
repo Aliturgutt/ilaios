@@ -3,13 +3,14 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "ILAIOS Factory'leri",
-  description: "Web, yazılım, medya, güvenlik, araştırma, doküman, büyüme ve kişisel operasyon alanlarındaki kontrollü ILAIOS factory iş akışlarını inceleyin.",
+  description: "Web, yazılım, uygulama, medya, güvenlik, araştırma, doküman, büyüme ve kişisel operasyon alanlarındaki kontrollü ILAIOS factory iş akışlarını inceleyin.",
   alternates: { canonical: "/tr/factories", languages: { tr: "/tr/factories", en: "/factories", "x-default": "/factories" } },
 };
 
 const factories = [
   ["Web Factory", "Gereksinim ve bilgi mimarisinden doğrulama ve deployment hazırlığına uzanan kontrollü web üretimi.", "/tr/factories/web"],
   ["Software Factory", "Deterministik kalite kapıları ve izlenebilir teslim bağlamıyla sınırlandırılmış mühendislik workflow'ları.", "/tr/factories/software"],
+  ["App Factory", "Korunan client root'ları ve deployment, signing veya store yetkisi olmadan deterministik review-only Windows, Android ve iOS değişiklik, build ve test planları.", "/tr/factories/app"],
   ["Video / Media Factory", "Planlama, asset, render, doğrulama ve yayın hazırlığını yapılandıran medya üretimi.", "/tr/factories/video"],
   ["Security Factory", "Açık scope, remediation evidence ve bağımsız verification sınırlarıyla yetkili savunma analizleri.", "/tr/factories/security"],
   ["Research & Data Factory", "Önerilen iddiaları doğrulanmış gerçeklerden ayıran provenance-first araştırma ve deterministik sınırlı analiz.", "/tr/factories/research-data"],
