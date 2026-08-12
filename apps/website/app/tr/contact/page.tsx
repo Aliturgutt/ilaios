@@ -11,7 +11,7 @@ const channels = [
   ["Bilgi", "Şirket ve ürün hakkında genel bilgi talepleri.", "info@ilaios.com"],
   ["Destek", "Ürün ve kullanıcı destek talepleri.", "support@ilaios.com"],
   ["Güvenlik", "Sorumlu güvenlik bildirimi ve güvenlikle ilgili raporlar.", "security@ilaios.com"],
-  ["Gizlilik", "Gizlilikla ilgili talepler ve sorular.", "privacy@ilaios.com"],
+  ["Gizlilik", "Gizlilikle ilgili talepler ve sorular.", "privacy@ilaios.com"],
   ["Kötüye kullanım bildirimi", "ILAIOS hizmetleri veya altyapısıyla ilişkili spam, dolandırıcılık, kötüye kullanım ve benzeri raporlar.", "abuse@ilaios.com"],
 ] as const;
 
