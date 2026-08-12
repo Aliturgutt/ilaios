@@ -187,7 +187,7 @@ CAPABILITIES: tuple[CapabilityDefinition, ...] = (
         "Research and Data",
         "factory",
         frozenset({"ilaios.capability.knowledge"}),
-        (),
+        ("services/research_data_factory.py",),
         frozenset({"ILAKOS", "ILATEN"}),
     ),
     CapabilityDefinition(
