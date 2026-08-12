@@ -12,7 +12,7 @@ on:
       - '.github/workflows/website-ci.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: website-ci-${{ github.ref }}
@@ -26,8 +26,10 @@ jobs:
       run:
         working-directory: apps/website
     steps:
-      - name: Checkout
+      - name: Checkout active branch
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.ref || github.ref_name }}
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
@@ -42,13 +44,16 @@ jobs:
             npm install --package-lock-only --ignore-scripts --no-audit --no-fund
             echo 'generated=true' >> "$GITHUB_OUTPUT"
           fi
-      - name: Export generated lockfile
-        if: steps.lockfile.outputs.generated == 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: website-package-lock
-          path: apps/website/package-lock.json
-          if-no-files-found: error
+      - name: Commit generated lockfile to PR branch
+        if: steps.lockfile.outputs.generated == 'true' && github.event_name == 'pull_request'
+        working-directory: .
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/website/package-lock.json
+          git commit -m 'website: commit reproducible dependency lockfile'
+          git push origin HEAD:${{ github.event.pull_request.head.ref }}
       - name: Install dependencies reproducibly
         run: npm ci --no-audit --no-fund
       - name: Verify website
