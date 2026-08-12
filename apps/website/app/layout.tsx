@@ -35,7 +35,7 @@ const structuredData = {
       logo: { "@type": "ImageObject", url: `${siteUrl}/brand/logo-horizontal-dark.jpg` },
       description: "Governed infrastructure for intelligent automation and autonomous operations.",
       founder: { "@id": founderId },
-      sameAs: ["https://www.linkedin.com/company/ilaios/"],
+      sameAs: ["https://www.linkedin.com/company/ilaios/", "https://x.com/ilaios"],
     },
     {
       "@type": "Person",
