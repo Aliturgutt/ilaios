@@ -1,0 +1,45 @@
+name: Website CI
+
+on:
+  pull_request:
+    paths:
+      - 'apps/website/**'
+      - '.github/workflows/website-ci.yml'
+  push:
+    branches: [master]
+    paths:
+      - 'apps/website/**'
+      - '.github/workflows/website-ci.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: website / verify
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/website
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/website/package-lock.json
+      - name: Install dependencies
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci
+          else
+            npm install --no-audit --no-fund
+          fi
+      - name: Verify website
+        run: npm run verify
