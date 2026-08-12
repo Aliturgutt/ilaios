@@ -12,7 +12,7 @@ on:
       - '.github/workflows/website-ci.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: website-ci-${{ github.ref }}
@@ -34,26 +34,8 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
-      - name: Generate lockfile when absent
-        id: lockfile
-        shell: bash
-        run: |
-          if [ -f package-lock.json ]; then
-            echo 'generated=false' >> "$GITHUB_OUTPUT"
-          else
-            npm install --package-lock-only --ignore-scripts --no-audit --no-fund
-            echo 'generated=true' >> "$GITHUB_OUTPUT"
-          fi
-      - name: Commit generated lockfile to PR branch
-        if: steps.lockfile.outputs.generated == 'true' && github.event_name == 'pull_request'
-        working-directory: .
-        shell: bash
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add apps/website/package-lock.json
-          git commit -m 'website: commit reproducible dependency lockfile'
-          git push origin HEAD:${{ github.event.pull_request.head.ref }}
+          cache: npm
+          cache-dependency-path: apps/website/package-lock.json
       - name: Install dependencies reproducibly
         run: npm ci --no-audit --no-fund
       - name: Verify website
