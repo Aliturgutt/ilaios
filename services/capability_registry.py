@@ -195,7 +195,7 @@ CAPABILITIES: tuple[CapabilityDefinition, ...] = (
         "Creative and Document",
         "factory",
         frozenset({"ilaios.capability.workflow-runtime"}),
-        (),
+        ("services/creative_document_factory.py",),
         frozenset({"ILAKOS"}),
     ),
     CapabilityDefinition(
