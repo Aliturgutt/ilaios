@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import ProductDeepDive from "../../ProductDeepDive";
 export const metadata: Metadata = { title: "Yetenekler", description: "ILAIOS'un kontrollü otomasyon, yazılım, web, medya, araştırma, zekâ ve güvenlik yeteneklerini inceleyin.", alternates: { canonical: "/tr/capabilities", languages: { tr: "/tr/capabilities", en: "/capabilities", "x-default": "/capabilities" } } };
-export default function Page(){ return <ProductDeepDive locale="tr" mode="capabilities" />; }
+export default function Page(){ return <><ProductDeepDive locale="tr" mode="capabilities" /><section className="section"><div className="shell callout"><div><div className="eyebrow">Doğrulanmış factory workflow'ları</div><h2>Mevcut public factory haritasını ve her factory'nin açık sınırlarını inceleyin.</h2><p className="muted">Factory index; web, software, media, security, research/data, creative/document, commerce/growth ve personal operations alanlarını içerir. Detay sayfaları bounded implemented foundation ile daha geniş ürün workflow'larını ayırır.</p></div><div className="actions"><Link className="button" href="/tr/factories">Factory'leri incele</Link></div></div></section></>; }
