@@ -4,10 +4,25 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from typing import TypedDict
 
 
 class CreativeDocumentError(ValueError):
     """Creative/document work violates a bounded validation or approval gate."""
+
+
+class SourceProjection(TypedDict):
+    source_id: str
+    locator: str
+    content_sha256: str
+
+
+class DocumentProjection(TypedDict):
+    artifact_id: str
+    title: str
+    body: str
+    body_sha256: str
+    sources: tuple[SourceProjection, ...]
 
 
 @dataclass(frozen=True, slots=True)
@@ -105,7 +120,7 @@ class CreativeDocumentFactory:
         self._artifacts[artifact_id] = approved
         return approved
 
-    def export_projection(self, artifact_id: str) -> dict[str, object]:
+    def export_projection(self, artifact_id: str) -> DocumentProjection:
         artifact = self._artifacts.get(artifact_id)
         if artifact is None:
             raise CreativeDocumentError("artifact does not exist")
