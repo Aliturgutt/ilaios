@@ -1,0 +1,63 @@
+name: Operational Recovery Drill
+
+on:
+  schedule:
+    - cron: '17 3 * * 0'
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'services/operational_drills.py'
+      - 'services/deployment/**'
+      - 'services/control_plane/**'
+      - 'services/readiness.py'
+      - '.github/workflows/operational-recovery-drill.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  drill:
+    name: recovery / governed drill
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Setup Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install runtime validation dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install 'requests>=2.32,<3' 'python-dotenv>=1.0,<2' PyYAML
+
+      - name: Execute governed local recovery drills
+        run: |
+          rm -rf .recovery-drill
+          python -m services.operational_drills --repository . --workspace .recovery-drill | tee .recovery-drill-result.json
+          test -s .recovery-drill/operational-drills.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result = json.loads(Path('.recovery-drill-result.json').read_text())
+          if not result.get('eligible'):
+              raise SystemExit('operational recovery drill is not eligible')
+          artifact = json.loads(Path('.recovery-drill/operational-drills.json').read_text())
+          if artifact.get('release_state') != 'NOT_DEPLOYED':
+              raise SystemExit('recovery drill unexpectedly claims deployment')
+          PY
+
+      - name: Upload drill evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: operational-recovery-drill-${{ github.run_id }}
+          path: |
+            .recovery-drill-result.json
+            .recovery-drill/operational-drills.json
+          if-no-files-found: error
+          retention-days: 30
