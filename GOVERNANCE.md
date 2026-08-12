@@ -81,6 +81,8 @@ Post-v1 planning also must not assume Mobile, billing, RAG, factories or any oth
 
 Production state is established only by the governed release path and deployment evidence. Repository automation may prepare release inputs, run checks and collect evidence, but production promotion requires the declared approval model.
 
+Formal version, tag and GitHub Release semantics are governed by `docs/governance/RELEASE_VERSION_POLICY.md`. That policy is additive to this repository governance and cannot be used to bypass Class C approval requirements.
+
 ## Automation policy
 
 Automation must be deterministic-first and fail closed. It may continue independent ready work after a blocked package only when dependencies prove that the work is independent.
