@@ -3,13 +3,14 @@ import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "ILAIOS Factories",
-  description: "Explore ILAIOS governed production and operations factories, including web, software, media, security, research, documents, growth and personal operations.",
+  description: "Explore ILAIOS governed production and operations factories, including web, software, app, media, security, research, documents, growth and personal operations.",
   alternates: { canonical: "/factories", languages: { en: "/factories", tr: "/tr/factories", "x-default": "/factories" } },
 };
 
 const factories = [
   ["Web Factory", "Governed website production from requirements and information architecture through validation and deployment preparation.", "/factories/web"],
   ["Software Factory", "Bounded engineering workflows with deterministic quality gates and traceable delivery context.", "/factories/software"],
+  ["App Factory", "Deterministic review-only Windows, Android and iOS change, build and test plans with protected client roots and no deployment, signing or store authority.", "/factories/app"],
   ["Video / Media Factory", "Structured media production across planning, assets, render, validation and publishing preparation.", "/factories/video"],
   ["Security Factory", "Authorized defensive analysis with explicit scope, remediation evidence and independent verification boundaries.", "/factories/security"],
   ["Research & Data Factory", "Provenance-first research that separates proposed claims from verified facts and deterministic bounded analysis.", "/factories/research-data"],
