@@ -211,7 +211,7 @@ CAPABILITIES: tuple[CapabilityDefinition, ...] = (
         "Personal Operations and Automation",
         "factory",
         frozenset({"ilaios.capability.workflow-runtime"}),
-        (),
+        ("services/personal_operations_factory.py",),
         frozenset({"Hermes", "ILAKOS"}),
     ),
 )
