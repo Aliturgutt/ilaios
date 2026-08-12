@@ -37,8 +37,11 @@ jobs:
 
       - name: Execute governed local recovery drills
         run: |
-          rm -rf .recovery-drill
-          python -m services.operational_drills --repository . --workspace .recovery-drill | tee .recovery-drill-result.json
+          rm -rf "$PWD/.recovery-drill"
+          python -m services.operational_drills \
+            --repository "$PWD" \
+            --workspace "$PWD/.recovery-drill" \
+            | tee .recovery-drill-result.json
           test -s .recovery-drill/operational-drills.json
           python - <<'PY'
           import json
