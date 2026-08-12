@@ -15,11 +15,24 @@ h2 { font-size: clamp(1.8rem, 3vw, 2.65rem); line-height: 1.1; }
 .explore-menu-panel a { display: block; padding: 9px 11px !important; border: 0 !important; border-radius: 9px; }
 .explore-menu-panel a:hover,.explore-menu-panel a[aria-current="page"] { background: rgba(24,199,217,.07); }
 
+/* Footer contact and social channels are intentionally separated to prevent collision. */
+.footer-primary-contact { margin-top: 2px; }
+.footer-primary-contact a { display: inline-flex; color: var(--accent); overflow-wrap: anywhere; }
+.footer-social { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-top: 10px; }
+.footer-social a { display: inline-flex; align-items: center; min-height: 30px; color: #c9d4dc; }
+.footer-social a:hover { color: var(--text); }
+
 @media (max-width: 940px) {
   .explore-menu { width: 100%; }
   .explore-menu summary { padding: 10px; border: 0; border-radius: 10px; }
   .explore-menu summary:hover,.explore-menu summary.is-active,.explore-menu[open] summary { background: rgba(24,199,217,.07); }
-  .explore-menu-panel { position: static; width: auto; margin: 3px 0 7px 10px; padding: 5px; box-shadow: none; background: rgba(255,255,255,.015); }
+  .explore-menu-panel { position: static; width: auto; margin: 3px 0 7px; padding: 5px 0; box-shadow: none; background: rgba(255,255,255,.015); }
+  /* Keep logo left and menu trigger right, while removing unnecessary drawer indentation. */
+  .nav-panel { left: 12px; right: 12px; padding: 12px; }
+  .nav-primary,.nav-utility { width: 100%; gap: 4px 8px; }
+  .nav-primary a,.nav-utility a,.explore-menu summary { padding-left: 8px; padding-right: 8px; }
+  .nav-utility { padding-left: 0; padding-right: 0; }
+  .language-switch { margin-left: 0; margin-right: 0; }
 }
 
 @media (max-width: 760px) {
@@ -27,4 +40,12 @@ h2 { font-size: clamp(1.8rem, 3vw, 2.65rem); line-height: 1.1; }
   h2 { font-size: clamp(1.55rem, 7vw, 2.05rem); }
   .hero-refresh { padding-top: 42px; padding-bottom: 48px; }
   .page-hero,.section { padding-top: 46px; padding-bottom: 46px; }
+  .footer-social { gap: 6px 14px; }
+}
+
+@media (max-width: 430px) {
+  .nav-panel { left: 8px; right: 8px; padding: 10px; }
+  .nav-primary a,.nav-utility a,.explore-menu summary { padding-left: 6px; padding-right: 6px; }
+  .explore-menu-panel { margin-left: 0; }
+  .language-switch { margin-left: 0; }
 }
