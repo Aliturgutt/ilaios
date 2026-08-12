@@ -179,7 +179,7 @@ CAPABILITIES: tuple[CapabilityDefinition, ...] = (
         "App Factory",
         "factory",
         frozenset({"ilaios.capability.software-factory"}),
-        (),
+        ("services/app_factory.py",),
         frozenset({"ILAKOS"}),
     ),
     CapabilityDefinition(
