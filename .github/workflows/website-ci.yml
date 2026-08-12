@@ -32,12 +32,24 @@ jobs:
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: '24'
-      - name: Install dependencies
+      - name: Generate lockfile when absent
+        id: lockfile
+        shell: bash
         run: |
           if [ -f package-lock.json ]; then
-            npm ci
+            echo 'generated=false' >> "$GITHUB_OUTPUT"
           else
-            npm install --no-audit --no-fund
+            npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+            echo 'generated=true' >> "$GITHUB_OUTPUT"
           fi
+      - name: Export generated lockfile
+        if: steps.lockfile.outputs.generated == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: website-package-lock
+          path: apps/website/package-lock.json
+          if-no-files-found: error
+      - name: Install dependencies reproducibly
+        run: npm ci --no-audit --no-fund
       - name: Verify website
         run: npm run verify
