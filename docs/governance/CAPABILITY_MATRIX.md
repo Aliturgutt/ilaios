@@ -47,8 +47,8 @@ This matrix is deliberately conservative. File presence alone cannot promote a c
 | Mobile Android/iOS | No implementation path found in repository audit | PLANNED | Post-v1 architecture/package definition |
 | Billing / subscription / entitlements | No obvious implementation found in repository audit | PLANNED | Product/commercial requirements and backend design |
 | RAG / embeddings / vector retrieval | No obvious implementation found in repository audit | PLANNED | Data/security architecture and bounded specification |
-| Formal GitHub release/version model | No formal release object established in the governance audit | PLANNED | Version/tag/release policy |
-| Default-branch protection | `master` reported unprotected during governance audit | PLANNED OWNER POLICY | Enable appropriate GitHub protection rules |
+| Formal GitHub release/version model | `docs/governance/RELEASE_VERSION_POLICY.md`, `GOVERNANCE.md`, policy regression tests | SPECIFIED / PROCESS DEFINED | Select first formal version in a dedicated release package; create immutable tag + GitHub Release only after governed approval and exact-head CI |
+| Default-branch protection | `master` reported unprotected during governance audit; protection API is not accessible to the connected integration | PLANNED OWNER POLICY | Enable appropriate GitHub protection rules in repository settings |
 | Repository security policy | `SECURITY.md` present on master | SPECIFIED / PROCESS ACTIVE | Enforce through protected review/CI process |
 | Repository governance policy | `GOVERNANCE.md` present on master | SPECIFIED / PROCESS ACTIVE | Enforce through protected review/CI process |
 | External certification/compliance claims | No external certification assumed | PLANNED / EXTERNAL | Independent applicable certification process |
