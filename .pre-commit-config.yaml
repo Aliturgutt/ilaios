@@ -1,17 +1,17 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.4.0
+    rev: f71fa2c1f9cf5cb705f73dffe4b21f7c61470ba9  # v4.4.0
     hooks:
       - id: end-of-file-fixer
         exclude: ^dev/openclaw/(MASTER_OPENCLAW\.md|execution_plan\.yaml)$
       - id: trailing-whitespace
       - id: check-yaml
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.1.9
+    rev: 7bcc70ca475b87e0fdee2511300c74b25babe0b3  # v0.1.9
     hooks:
       - id: ruff
   - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.8.0
+    rev: 8cd2d4056637e242709fe09f15a36f0b4b682bda  # v1.8.0
     hooks:
       - id: mypy
         additional_dependencies:
