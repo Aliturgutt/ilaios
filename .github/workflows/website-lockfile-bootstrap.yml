@@ -1,0 +1,38 @@
+name: Website Lockfile Bootstrap
+
+on:
+  push:
+    branches:
+      - agent/redteam-gap-closure
+    paths:
+      - '.github/workflows/website-lockfile-bootstrap.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  bootstrap:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: agent/redteam-gap-closure
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '24'
+
+      - name: Generate and commit lockfile
+        working-directory: apps/website
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+
+      - name: Commit lockfile and remove bootstrap workflow
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/website/package-lock.json
+          git rm .github/workflows/website-lockfile-bootstrap.yml
+          git commit -m 'website: commit reproducible dependency lockfile'
+          git push origin HEAD:agent/redteam-gap-closure
