@@ -1,0 +1,227 @@
+# 201. Legacy Code
+
+Legacy compatibility must be explicit.
+
+Historical names may remain provenance-only, not active authority.
+
+---
+
+# 202. Technical Debt
+
+Debt must be:
+
+```text
+visible
+owned
+scoped
+prioritized
+```
+
+Do not hide security debt inside TODO comments.
+
+---
+
+# 203. Code Ownership
+
+Critical components should have explicit logical ownership.
+
+Examples:
+
+```text
+Core
+Policy
+Routing
+Evidence
+Identity
+```
+
+---
+
+# 204. Review Ownership
+
+Sensitive changes require appropriate reviewers/owners.
+
+In small teams/solo-founder context, roles may be logically separated but evidence remains explicit.
+
+---
+
+# 205. Autonomous Merge Guardrail
+
+An automation may merge only if governance explicitly allows and all required checks/conditions are satisfied.
+
+No test/branch protection bypass.
+
+---
+
+# 206. Repository Evidence
+
+Every completed engineering change should be able to identify:
+
+```text
+base revision
+branch
+commits
+diff
+tests
+CI
+review
+merge commit/revision
+```
+
+---
+
+# 207. Change Evidence Record
+
+Conceptual:
+
+```yaml
+change_id: "change_..."
+base_revision: "..."
+head_revision: "..."
+scope: "..."
+requirements: []
+files_changed: []
+tests: []
+ci_runs: []
+reviews: []
+security_impact: "..."
+migration_ref: null
+release_ref: null
+```
+
+---
+
+# 208. Engineering PASS
+
+A change may be considered engineering PASS when:
+
+```text
+requirement satisfied
+architecture respected
+tests applicable PASS
+quality gates PASS
+final diff reviewed
+evidence complete
+```
+
+---
+
+# 209. Engineering VERIFIED
+
+For capability/platform claims, `VERIFIED` additionally follows `TESTING_AND_EVALUATION.md`.
+
+Engineering PASS for a change is not automatically capability VERIFIED.
+
+---
+
+# 210. Documentation PASS
+
+A canonical document PASS means:
+
+```text
+internally consistent
+aligned with higher authority
+no known material contradiction
+```
+
+It does not mean implementation exists.
+
+---
+
+# 211. Current-State Claim Standard
+
+When reporting current state, cite/record evidence.
+
+Never say:
+
+```text
+"production ready"
+```
+
+because a design doc says so.
+
+---
+
+# 212. Status Language
+
+Use precise statements:
+
+```text
+DESIGNED
+SPECIFIED
+IMPLEMENTED
+TESTED
+VERIFIED
+DEPLOYED / PRODUCTION
+```
+
+for capability maturity.
+
+Use operational status separately.
+
+---
+
+# 213. No “Done” Without Scope
+
+Prefer:
+
+```text
+"Provider adapter VERIFIED for text-generation scope"
+```
+
+over:
+
+```text
+"Provider done"
+```
+
+---
+
+# 214. Engineering Incident Feedback
+
+Production defects should feed:
+
+```text
+regression tests
+threat model
+failure recovery
+engineering standards
+```
+
+where applicable.
+
+---
+
+# 215. Post-Incident Change
+
+Avoid rushing broad unrelated cleanup into incident fix.
+
+First restore safely.
+
+Then improve separately.
+
+---
+
+# 216. Break-Glass Engineering Change
+
+Emergency change still records:
+
+```text
+reason
+scope
+tests
+approval
+deployment
+follow-up
+```
+
+---
+
+# 217. Maintenance Windows
+
+Operational policy may define windows.
+
+Engineering architecture remains same.
+
+---
+
