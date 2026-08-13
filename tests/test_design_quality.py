@@ -1,3 +1,4 @@
+from collections.abc import Callable
 from typing import Any, cast
 
 import pytest
@@ -8,6 +9,11 @@ from services.design_quality import (
     NativeDesignQualityEvaluator,
 )
 from services.integrations.web_factory import GovernedWebFactory
+
+parametrize = cast(
+    Callable[..., Callable[[Callable[..., None]], Callable[..., None]]],
+    pytest.mark.parametrize,
+)
 
 
 def complete_rows(**overrides: int) -> list[DesignObservation]:
@@ -32,7 +38,7 @@ def test_complete_clean_en_tr_matrix_passes_and_is_stable() -> None:
     GovernedWebFactory.accept_design_quality(first)
 
 
-@pytest.mark.parametrize(
+@parametrize(
     ("field", "category", "severity"),
     [
         ("horizontal_overflow", "design.responsive-quality", "major"),
