@@ -1,0 +1,65 @@
+# 182. Runtime Engineering Standard
+
+Runtime code must preserve:
+
+```text
+durable state
+leases
+fencing
+bounded retry
+checkpoint
+cancellation
+```
+
+---
+
+# 183. Worker Engineering Standard
+
+Worker code must assume:
+
+```text
+input untrusted
+tool/provider output untrusted
+grant bounded
+lease temporary
+```
+
+---
+
+# 184. Scheduler Engineering Standard
+
+Scheduler assigns work.
+
+It does not expand permissions.
+
+---
+
+# 185. Routing Engineering Standard
+
+One canonical RoutingDecision.
+
+Any routing-related change must preserve deterministic/no-bypass tests.
+
+---
+
+# 186. Provider Adapter Standard
+
+Provider-specific SDK logic stays behind adapter.
+
+Normalize:
+
+```text
+request
+response
+errors
+usage
+```
+
+---
+
+# 187. Tool Adapter Standard
+
+Tool adapters must not perform actions outside ToolRequest/ExecutionGrant.
+
+---
+
