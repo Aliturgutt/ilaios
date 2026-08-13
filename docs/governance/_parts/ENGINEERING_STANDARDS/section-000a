@@ -1,0 +1,281 @@
+# ILAIOS — ENGINEERING STANDARDS
+
+**Document Type:** Canonical Engineering Standards  
+**Format:** GitHub Markdown + ASCII workflow diagrams  
+**Status:** Canonical Baseline v1.0 — Pending Repository Publication  
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
+**Dependency Authority:** `DEPENDENCY_GRAPH.md`  
+**API Authority:** `API_CONTRACTS.md`  
+**Security Authority:** `SECURITY_ARCHITECTURE.md`  
+**Data Authority:** `DATA_ARCHITECTURE.md`  
+**Threat Model Companion:** `THREAT_MODEL.md`  
+**Testing Authority:** `TESTING_AND_EVALUATION.md`  
+**Deployment Authority:** `DEPLOYMENT_ARCHITECTURE.md`  
+**FinOps Authority:** `FINOPS.md`  
+**Core Engineering Principle:** **SMALL, TRACEABLE, TESTED, REVIEWABLE CHANGES — NO ARCHITECTURE BYPASS**
+
+> This document defines the canonical engineering standards for ILAIOS: coding discipline, repository structure, naming, ADRs, documentation, testing, quality gates, CI/CD, branch/commit/review/merge policy, versioning, release discipline, dependency management, security hygiene, observability obligations, and change evidence. It defines how engineers and autonomous development agents must change ILAIOS without fragmenting its architecture or weakening its controls.
+
+---
+
+# 00. Purpose
+
+ILAIOS is a governed autonomous AI operating system.
+
+Its engineering process must protect the same invariants as its runtime architecture.
+
+Therefore engineering work must optimize for:
+
+```text
+correctness
+clarity
+traceability
+security
+testability
+reviewability
+reversibility
+evidence
+```
+
+not merely speed.
+
+The canonical engineering rule is:
+
+```text
+UNDERSTAND
+    │
+    ▼
+BOUND THE CHANGE
+    │
+    ▼
+IMPLEMENT
+    │
+    ▼
+TEST
+    │
+    ▼
+REVIEW
+    │
+    ▼
+EVIDENCE
+    │
+    ▼
+MERGE / RELEASE
+```
+
+No change may bypass architecture, policy, quality gates, or required evidence merely because the implementation appears obvious.
+
+---
+
+# 01. Scope
+
+This document owns:
+
+- coding standards;
+- repository organization rules;
+- naming standards;
+- source layout principles;
+- dependency discipline;
+- configuration discipline;
+- error-handling conventions;
+- logging/telemetry engineering rules;
+- ADR discipline;
+- documentation standards;
+- test-writing standards;
+- quality gates;
+- CI/CD engineering standards;
+- branch policy;
+- commit standards;
+- review standards;
+- merge standards;
+- versioning;
+- release policy;
+- deprecation discipline;
+- migration discipline;
+- engineering evidence;
+- autonomous-development guardrails;
+- architecture drift prevention;
+- maintenance standards.
+
+This document does **not** own:
+
+```text
+system architecture
+    → SYSTEM_ARCHITECTURE.md
+
+product behavior
+    → PRODUCT_REQUIREMENTS.md
+
+implementation contracts
+    → IMPLEMENTATION_SPEC.md
+
+security controls
+    → SECURITY_ARCHITECTURE.md
+
+test acceptance criteria
+    → TESTING_AND_EVALUATION.md
+
+deployment topology
+    → DEPLOYMENT_ARCHITECTURE.md
+
+cost policy
+    → FINOPS.md
+```
+
+---
+
+# 02. Target Engineering Standard vs Current Repository Reality
+
+This document defines what engineering work **must** conform to.
+
+Current repository reality must be proven from:
+
+```text
+current source
+current configuration
+current tests
+current CI
+current branch protections
+current review history
+current release evidence
+```
+
+Therefore:
+
+```text
+standard documented
+≠
+standard currently enforced
+
+quality gate listed
+≠
+quality gate currently passing
+
+branch policy defined
+≠
+branch protection currently configured
+
+release policy defined
+≠
+latest release complied
+```
+
+Mutable repository status belongs to current evidence and operational/governance status.
+
+---
+
+# 03. Engineering Constitutional Invariants
+
+The following are mandatory:
+
+```text
+NO second Core
+NO second Control Plane
+NO second planner authority
+NO second routing truth
+NO second evidence truth
+NO duplicate canonical capability identity
+NO architecture rewrite for local convenience
+NO direct factory → provider bypass
+NO worker → unrestricted secret access
+NO test weakening to manufacture PASS
+NO silent security downgrade
+NO unbounded retry/repair
+NO undocumented breaking contract change
+NO merge of failing required gates
+NO current-state claim without evidence
+```
+
+---
+
+# 04. Canonical Change Philosophy
+
+Every change should be:
+
+```text
+bounded
+minimal
+additive where possible
+backward-compatible where reasonable
+explicit
+testable
+reversible where practical
+evidence-producing
+```
+
+The preferred change is the smallest change that fully satisfies the requirement without creating hidden future debt.
+
+---
+
+# 05. Engineering Decision Order
+
+When implementing a change:
+
+```text
+1. Read the canonical authority.
+2. Identify the exact requirement.
+3. Identify existing implementation ownership.
+4. Identify dependencies.
+5. Identify security/data/test obligations.
+6. Reuse existing canonical capability boundaries.
+7. Implement the minimal coherent change.
+8. Test positive and negative behavior.
+9. Review final diff.
+10. Record evidence.
+```
+
+---
+
+# 06. Core Evolution Rule
+
+The ILAIOS Core is:
+
+```text
+FROZEN BY DEFAULT
+EVOLVABLE BY PROOF
+```
+
+A Core change is justified only when evidence proves that a platform-wide invariant or canonical contract cannot be correctly implemented inside an existing governed capability boundary.
+
+Core must not absorb:
+
+```text
+factory logic
+provider-specific logic
+model-specific logic
+third-party behavior
+UI behavior
+domain-specific heuristics
+replaceable integrations
+```
+
+for convenience.
+
+---
+
+# 07. Existing-Boundary-First Rule
+
+Before creating a new module/service/capability, ask:
+
+```text
+Does an existing canonical owner already exist?
+Can the requirement be implemented there?
+Would a new component duplicate authority?
+```
+
+Default:
+
+```text
+EXTEND EXISTING CANONICAL OWNER
+```
+
+rather than:
+
+```text
+CREATE PARALLEL SYSTEM
+```
+
+---
+
