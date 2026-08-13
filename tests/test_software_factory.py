@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
@@ -11,6 +12,8 @@ from services.software_factory import IsolatedSoftwareFactory, SoftwareFactoryEr
 
 
 def _factory(tmp_path: Path) -> tuple[IsolatedSoftwareFactory, Path]:
+    if shutil.which("unshare") is None or shutil.which("mount") is None:
+        pytest.skip("Linux mount-namespace isolation is unavailable")
     production = tmp_path / "production"
     (production / "src").mkdir(parents=True)
     (production / "tests").mkdir()
