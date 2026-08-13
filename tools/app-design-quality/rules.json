@@ -1,0 +1,25 @@
+{
+  "version": "1.0.0",
+  "owner": "ILAIOS",
+  "runtimeDependencies": [],
+  "skillId": "design.app-final-polish",
+  "supportedPlatforms": ["windows", "android", "ios"],
+  "formFactors": ["compact", "tablet", "wide"],
+  "families": [
+    "layout",
+    "accessibility-semantics",
+    "focus-traversal",
+    "interaction-states",
+    "touch-targets",
+    "contrast",
+    "navigation-adaptation",
+    "dialogs-and-sheets",
+    "component-consistency",
+    "motion",
+    "anti-generic-ai"
+  ],
+  "passCriteria": {"critical": 0, "major": 0, "p2": 0},
+  "implementation": "services/app_design_quality.py",
+  "appFactoryGate": "AppFactory.accept_design_quality",
+  "copiedThirdPartyCode": false
+}
