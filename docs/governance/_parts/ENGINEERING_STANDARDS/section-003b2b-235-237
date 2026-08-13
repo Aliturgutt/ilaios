@@ -1,0 +1,50 @@
+# 235. Code Review Red Flags
+
+Reviewers should immediately question:
+
+```text
+new "core" directory
+new router class
+provider SDK inside factory
+tenant_id trusted from client
+unscoped environment credential access
+catch-all exception swallowing
+disabled test
+skipped required check
+unbounded while retry
+artifact overwrite
+```
+
+---
+
+# 236. Pull Request Red-Team Questions
+
+Ask:
+
+```text
+Could this create second authority?
+Can tenant boundaries be crossed?
+Can untrusted content gain permission?
+Can retry exceed budget?
+Can stale worker commit?
+Can protected credentials be disclosed?
+Can current-state claims become stale?
+```
+
+---
+
+# 237. Merge Blockers
+
+Block merge for:
+
+```text
+known tenant isolation defect
+known authorization-control bypass
+failed required gate
+unreviewed breaking contract
+credential disclosure
+architecture authority duplication
+```
+
+---
+
