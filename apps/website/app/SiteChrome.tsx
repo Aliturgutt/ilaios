@@ -56,7 +56,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
         </nav>
       </div>
     </header>
-    <main id="main-content" lang={lang}>{children}</main>
+    <main id="main-content" lang={lang} tabIndex={-1}>{children}</main>
     <footer className="site-footer" lang={lang}>
       <div className="shell footer-grid">
         <div className="footer-brand">
