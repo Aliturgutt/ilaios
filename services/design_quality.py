@@ -143,4 +143,3 @@ class NativeDesignQualityEvaluator:
             self.evaluator_id, self.version, row.route, row.viewport, category,
             severity, finding, evidence, recommendation, confidence,
         )
-
