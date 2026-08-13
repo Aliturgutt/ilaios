@@ -1,8 +1,8 @@
+import csv
 from pathlib import Path
 
 from tools.migration_audit import (
     CANONICAL_NAME,
-    SOURCE_NAME,
     implementation_proof_for,
     iter_completion_requirements,
     iter_requirements,
@@ -65,17 +65,21 @@ def test_completion_requirements_include_only_sections_eight_and_nine() -> None:
 
 def test_every_legacy_requirement_is_preserved_in_ilaios_canonical() -> None:
     root = Path(__file__).parents[1]
-    source = root / "dev/openclaw/migration_input" / SOURCE_NAME
+    matrix = root / "docs/migration/ILATEN_TO_ILAIOS_MIGRATION_MATRIX.csv"
     canonical = (root / "docs/canonical" / CANONICAL_NAME).read_text(encoding="utf-8")
-    missing = []
-    for line, _, _, requirement in iter_requirements(source):
-        migrated = (
-            requirement.replace("ILATEN", "ILAIOS")
-            .replace("Ilaten", "ILAIOS")
-            .replace("ilaten", "ilaios")
-        )
-        if migrated not in canonical:
-            missing.append((line, migrated))
+    missing: list[tuple[str, str]] = []
+    with matrix.open(encoding="utf-8", newline="") as stream:
+        for row in csv.DictReader(stream):
+            if not row["requirement_id"].startswith("ILATEN-"):
+                continue
+            requirement = row["ilaten_requirement"]
+            migrated = (
+                requirement.replace("ILATEN", "ILAIOS")
+                .replace("Ilaten", "ILAIOS")
+                .replace("ilaten", "ilaios")
+            )
+            if migrated not in canonical:
+                missing.append((row["legacy_source"], migrated))
     assert not missing, f"requirements missing from canonical: {missing[:10]}"
 
 

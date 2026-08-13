@@ -11,7 +11,11 @@ from pathlib import Path
 SOURCE_NAME = (
     "ILATEN_Enterprise_AI_Operating_System_Canonical_Architecture_v1.0(3)(4).md"
 )
-CANONICAL_NAME = "ILAIOS_ENTERPRISE_AI_OPERATING_SYSTEM_CANONICAL_ARCHITECTURE.md"
+SOURCE_DIRECTORY = "docs/archive/pre-2026-08-13/migration-input"
+CANONICAL_NAME = (
+    "../archive/pre-2026-08-13/"
+    "ILAIOS_ENTERPRISE_AI_OPERATING_SYSTEM_CANONICAL_ARCHITECTURE.md"
+)
 
 
 @dataclass(frozen=True)
@@ -371,7 +375,7 @@ def iter_completion_requirements(canonical: Path) -> list[tuple[int, str, str, s
 
 
 def generate(root: Path, output: Path, canonical_exists: bool) -> int:
-    source = root / "dev/openclaw/migration_input" / SOURCE_NAME
+    source = root / SOURCE_DIRECTORY / SOURCE_NAME
     canonical = root / "docs/canonical" / CANONICAL_NAME
     rows = iter_requirements(source)
     completion_rows = (
