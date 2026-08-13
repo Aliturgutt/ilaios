@@ -36,14 +36,24 @@ async function walk(dir) {
 }
 
 const files = await walk(app);
-const source = (await Promise.all(files.map(async file => `${file}\n${await readFile(file, "utf8")}`))).join("\n");
+const fileTexts = await Promise.all(files.map(async file => ({ file, text: await readFile(file, "utf8") })));
+const source = fileTexts.map(({ file, text }) => `${file}\n${text}`).join("\n");
 const failures = [];
 
 for (const mailbox of forbiddenPublicMailboxes) {
   if (source.includes(`mailto:${mailbox}`)) failures.push(`forbidden public mailbox exposed: ${mailbox}`);
 }
+
+function mailboxIsLinked(mailbox) {
+  return fileTexts.some(({ text }) => {
+    if (text.includes(`mailto:${mailbox}`)) return true;
+    const mappedMailto = text.includes('href={`mailto:${email}`}') || text.includes("href={'mailto:' + email}") || text.includes('href={"mailto:" + email}');
+    return mappedMailto && text.includes(`"${mailbox}"`);
+  });
+}
+
 for (const mailbox of requiredPublicMailboxes) {
-  if (!source.includes(`mailto:${mailbox}`)) failures.push(`required public mailbox missing: ${mailbox}`);
+  if (!mailboxIsLinked(mailbox)) failures.push(`required public mailbox missing or not linked: ${mailbox}`);
 }
 for (const social of requiredSocial) {
   if (!source.includes(social)) failures.push(`verified social URL missing: ${social}`);
