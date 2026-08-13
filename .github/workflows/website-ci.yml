@@ -32,15 +32,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Require committed dependency lockfile
+        run: |
+          if [ ! -f package-lock.json ]; then
+            echo "ERROR: apps/website/package-lock.json is required for reproducible Website CI." >&2
+            exit 1
+          fi
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: apps/website/package-lock.json
-
-      - name: Require committed dependency lockfile
-        run: test -f package-lock.json
 
       - name: Install dependencies reproducibly
         run: npm ci --ignore-scripts --audit=false --fund=false
