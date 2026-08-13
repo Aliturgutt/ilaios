@@ -32,31 +32,56 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Require committed dependency lockfile
-        run: |
-          if [ ! -f package-lock.json ]; then
-            echo "ERROR: apps/website/package-lock.json is required for reproducible Website CI." >&2
-            exit 1
-          fi
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-          cache-dependency-path: apps/website/package-lock.json
+
+      - name: Detect committed dependency lockfile
+        id: lockfile
+        shell: bash
+        run: |
+          if [ -f package-lock.json ]; then
+            echo "missing=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "missing=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Generate bootstrap lockfile artifact
+        if: steps.lockfile.outputs.missing == 'true'
+        run: npm install --package-lock-only --ignore-scripts --audit=false --fund=false
+
+      - name: Upload bootstrap lockfile artifact
+        if: steps.lockfile.outputs.missing == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: website-package-lock
+          path: apps/website/package-lock.json
+          if-no-files-found: error
+          retention-days: 1
+
+      - name: Require committed dependency lockfile
+        if: steps.lockfile.outputs.missing == 'true'
+        run: |
+          echo "ERROR: apps/website/package-lock.json is required for reproducible Website CI. A bootstrap artifact was generated for review and commit." >&2
+          exit 1
 
       - name: Install dependencies reproducibly
+        if: steps.lockfile.outputs.missing == 'false'
         run: npm ci --ignore-scripts --audit=false --fund=false
 
       - name: Site policy and metadata checks
+        if: steps.lockfile.outputs.missing == 'false'
         run: npm run test:site
 
       - name: Lint
+        if: steps.lockfile.outputs.missing == 'false'
         run: npm run lint
 
       - name: Typecheck
+        if: steps.lockfile.outputs.missing == 'false'
         run: npm run typecheck
 
       - name: Production build
+        if: steps.lockfile.outputs.missing == 'false'
         run: npm run build
