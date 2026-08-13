@@ -1,0 +1,96 @@
+# 150. Dependency Management
+
+Every new dependency must answer:
+
+```text
+Why needed?
+Can standard library/existing dependency solve it?
+License?
+Maintenance health?
+Security?
+Supply-chain risk?
+Size/runtime impact?
+```
+
+---
+
+# 151. Minimal Dependency Principle
+
+Do not add a dependency for trivial functionality.
+
+Each dependency increases:
+
+```text
+attack surface
+maintenance
+build complexity
+license complexity
+```
+
+---
+
+# 152. Dependency Source
+
+Use trusted registries/sources.
+
+Avoid unverified package URLs.
+
+---
+
+# 153. Dependency Pinning
+
+Pin versions/lock according to ecosystem.
+
+---
+
+# 154. Dependency Updates
+
+Updates require:
+
+```text
+release notes review
+security advisories
+tests
+compatibility
+```
+
+---
+
+# 155. Major Dependency Upgrade
+
+Major version upgrade requires migration/review plan.
+
+---
+
+# 156. Transitive Dependencies
+
+Security review considers transitive dependencies.
+
+---
+
+# 157. License
+
+Dependency license must be compatible with ILAIOS distribution/use.
+
+---
+
+# 158. Abandoned Dependency
+
+Avoid critical dependency with unacceptable maintenance/security risk unless governed exception exists.
+
+---
+
+# 159. External Open-Source Assimilation
+
+Default:
+
+```text
+REFERENCE
+→ REQUIREMENT EXTRACTION
+→ ILAIOS-NATIVE IMPLEMENTATION
+```
+
+not direct permanent dependency.
+
+---
+
