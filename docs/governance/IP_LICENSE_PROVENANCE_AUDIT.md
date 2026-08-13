@@ -1,7 +1,7 @@
 # ILAIOS IP, License and Legacy Identity Provenance Audit
 
 Status: CONTROLLED — evidence-based repository audit  
-Baseline: `eb196abe96ff57e27a6b75c0d73bb6ec19411c82`  
+Baseline: `c68d6d96394359200293eb557e567546c2c8de60`  
 Canonical identity: ILAIOS  
 Canonical namespaces: `ilaios.capability.*`, `ilaios.agent.*`
 
