@@ -1,12 +1,24 @@
 """Code intelligence models and source analysis for ILAIOS."""
 
 from src.code_intelligence.models import (
+    Certainty,
     CodeEntity,
+    DependencyEdge,
+    FileKind,
+    ImpactAnalysis,
     Language,
     MetadataValue,
+    RepositorySnapshot,
+    SourceFileRecord,
     SourceLocation,
     Symbol,
+    SymbolRecord,
     SymbolType,
+    TestMapping,
+)
+from src.code_intelligence.repository_analyzer import (
+    RepositoryAnalysisError,
+    RepositoryAnalyzer,
 )
 from src.code_intelligence.source_file_analyzer import (
     DEFAULT_MAX_FILE_SIZE_BYTES,
@@ -24,18 +36,28 @@ from src.code_intelligence.source_file_analyzer import (
 __all__ = [
     "DEFAULT_MAX_FILE_SIZE_BYTES",
     "BinarySourceFileError",
+    "Certainty",
     "CodeEntity",
+    "DependencyEdge",
+    "FileKind",
+    "ImpactAnalysis",
     "Language",
     "MetadataValue",
+    "RepositoryAnalysisError",
+    "RepositoryAnalyzer",
+    "RepositorySnapshot",
     "SourceFile",
     "SourceFileAnalyzer",
     "SourceFileAnalyzerError",
     "SourceFileDecodeError",
     "SourceFileNotFoundError",
     "SourceFileOutsideRootError",
+    "SourceFileRecord",
     "SourceFileTooLargeError",
     "SourceLocation",
     "Symbol",
+    "SymbolRecord",
     "SymbolType",
+    "TestMapping",
     "UnsupportedSourceLanguageError",
 ]

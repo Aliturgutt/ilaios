@@ -59,6 +59,7 @@ def test_analyze_empty_source_file(tmp_path: Path) -> None:
         ("module.go", Language.GO),
         ("module.rs", Language.RUST),
         ("module.java", Language.JAVA),
+        ("module.dart", Language.DART),
     ],
 )
 def test_detect_supported_language(
@@ -176,6 +177,7 @@ def test_supported_extensions_are_sorted() -> None:
 
     assert extensions == tuple(sorted(extensions))
     assert extensions == (
+        ".dart",
         ".go",
         ".java",
         ".js",

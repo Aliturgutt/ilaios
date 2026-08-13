@@ -11,16 +11,19 @@ import shutil
 import subprocess
 import sys
 import threading
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path, PurePosixPath
-from typing import Any, Mapping, Protocol, cast
+from typing import Any, Protocol, cast
 
 from services.cloud import TenantBoundary
 from services.governance.gates import SecurityFinanceGate, WorkRequest
 from services.identity import AccessRequest, AuthorizationEngine, Principal
 from services.runtime.grants import ExecutionGrant, GrantPolicy
+from src.code_intelligence.models import ImpactAnalysis, RepositorySnapshot
+from src.code_intelligence.repository_analyzer import RepositoryAnalyzer
 from src.core.audit_engine import AuditEngine
 from src.core.evidence_chain import EvidenceChain, EvidenceRecord
 
@@ -234,6 +237,27 @@ class SoftwareFactory:
         if job is None or job.state is not FactoryJobState.PROPOSED or job.evidence is None:
             raise SoftwareFactoryError("job has no validated promotion proposal")
         return PromotionProposal(f"proposal-{job.evidence.evidence_id[9:29]}", job_id, job.evidence)
+
+    def repository_impact(
+        self, request: SoftwareFactoryRequest
+    ) -> tuple[RepositorySnapshot, ImpactAnalysis]:
+        """Read repository state and derive validation scope without execution authority."""
+        repository = request.repository.root.resolve()
+        if _git_head(repository) != request.repository.base_sha:
+            raise SoftwareFactoryError("repository base SHA changed")
+        analyzer = RepositoryAnalyzer(repository)
+        snapshot = analyzer.snapshot()
+        changed = tuple(
+            sorted(
+                {
+                    path
+                    for change in request.changeset.changes
+                    for path in (change.path, change.destination)
+                    if path is not None
+                }
+            )
+        )
+        return snapshot, analyzer.impact(snapshot, changed)
 
     def promote(self, job_id: str) -> None:
         if job_id not in self._jobs:
