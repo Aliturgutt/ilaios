@@ -7,6 +7,8 @@ import json
 from dataclasses import dataclass
 from typing import TypedDict
 
+from services.app_design_quality import AppDesignAssessment
+
 
 class AppFactoryError(PermissionError):
     """An app-factory request exceeds the bounded platform-side authority."""
@@ -46,6 +48,14 @@ class AppFactory:
 
     def __init__(self) -> None:
         self._requests: dict[str, AppRequest] = {}
+
+    @staticmethod
+    def accept_design_quality(assessment: AppDesignAssessment) -> None:
+        """Fail closed through the existing App Factory acceptance boundary."""
+        if assessment.evaluator_id != "design.app-final-polish":
+            raise ValueError("unrecognized app design quality evaluator")
+        if assessment.status != "PASS" or assessment.blocking_findings:
+            raise ValueError("app design quality gate failed")
 
     def propose(
         self,
