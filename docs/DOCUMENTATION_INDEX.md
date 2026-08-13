@@ -1,52 +1,35 @@
 # ILAIOS Documentation Index
 
-Status: CONTROLLED
+Status: CONTROLLED NAVIGATION — NOT AN INDEPENDENT ARCHITECTURE AUTHORITY
 
-## Authority order
-1. governed canonical architecture;
-2. canonical implementation specification/order;
-3. machine-readable milestone/dependency definitions;
-4. repository code, tests, CI/runtime/deployment evidence for implementation state;
-5. controlled operational standards and runbooks;
-6. status/planning/audit documents.
+The canonical documentation model contains exactly 19 items: 18 primary Markdown documents plus the `adr/` directory. Architecture is target/normative truth; current implementation state is established by code, tests, CI, runtime, deployment, and durable evidence.
 
-See `GOVERNANCE.md` and `docs/governance/DOCUMENT_LIFECYCLE_AND_AUTHORITY_POLICY.md`. Operational documents below do not redefine the canonical architecture.
+## Canonical items
 
-## Governance
-- `GOVERNANCE.md` — repository governance authority
-- `docs/governance/DOCUMENT_LIFECYCLE_AND_AUTHORITY_POLICY.md` — document lifecycle/conflicts
-- `docs/governance/BRANCH_PROTECTION_AND_REQUIRED_CHECKS.md` — protected branch/check rules
-- `docs/governance/LICENSE_DECISION.md` — proprietary/private licensing decision
-- existing governance audits, capability matrix and roadmap files — scope/status as declared in each file
+1. [README](../README.md)
+2. [System Architecture](canonical/SYSTEM_ARCHITECTURE.md)
+3. [Autonomous Node Architecture](canonical/AUTONOMOUS_NODE_ARCHITECTURE.md)
+4. [Product Requirements](canonical/PRODUCT_REQUIREMENTS.md)
+5. [Implementation Specification](canonical/IMPLEMENTATION_SPEC.md)
+6. [Dependency Graph](canonical/DEPENDENCY_GRAPH.md)
+7. [API Contracts](canonical/API_CONTRACTS.md)
+8. [Security Architecture](canonical/SECURITY_ARCHITECTURE.md)
+9. [Data Architecture](canonical/DATA_ARCHITECTURE.md)
+10. [Threat Model](security/THREAT_MODEL.md)
+11. [Testing and Evaluation](canonical/TESTING_AND_EVALUATION.md)
+12. [Deployment Architecture](canonical/DEPLOYMENT_ARCHITECTURE.md)
+13. [FinOps](operations/FINOPS.md)
+14. [Engineering Standards](governance/ENGINEERING_STANDARDS.md)
+15. [Governance](governance/GOVERNANCE.md)
+16. [Milestones](governance/MILESTONES.md)
+17. [Observability](operations/OBSERVABILITY.md)
+18. [Failure Recovery](operations/FAILURE_RECOVERY.md)
+19. [Architecture Decision Records](adr/README.md)
 
-## Security
-- `SECURITY.md` — top-level security policy
-- `docs/security/SECURITY_FACTORY.md`
-- `docs/security/DEPENDENCY_AND_SUPPLY_CHAIN_POLICY.md`
-- `docs/security/THREAT_MODEL.md`
-- `docs/security/INCIDENT_RESPONSE_RUNBOOK.md`
-- `docs/security/TENANT_ISOLATION_STANDARD.md`
-- `docs/security/PRIVACY_DLP_AND_DATA_HANDLING.md`
-- `docs/security/KEY_MANAGEMENT_AND_CRYPTOGRAPHY_OPERATIONS.md`
-- `docs/security/compliance/EXTERNAL_COMPLIANCE_EVIDENCE_REGISTER.md`
+## Supporting documentation
 
-## Release and deployment
-- `docs/release/RELEASE_R00_ELIGIBILITY.md`
-- `docs/release/VERSIONING_AND_RELEASE_POLICY.md`
-- `docs/release/RELEASE_EVIDENCE_STANDARD.md`
-- `docs/deployment/EXT_E01_AND_R01_PREPARATION.md`
-- `docs/deployment/PRODUCTION_READINESS_CHECKLIST.md`
-- `docs/deployment/PRODUCTION_DEPLOYMENT_RUNBOOK.md`
-- root `CHANGELOG.md`
+`SECURITY.md`, `CONTRIBUTING.md`, controlled runbooks, implementation/status evidence, and migration evidence remain scoped supporting material. Files under `archive/` are historical and non-authoritative.
 
-## Platform operations
-- `docs/platform/website/WEBSITE_ENGINEERING_AND_CI_STANDARD.md`
-- `docs/platform/desktop/DESKTOP_RELEASE_AND_SIGNING_RUNBOOK.md`
-- `docs/platform/operations/OBSERVABILITY_SLO_AND_ALERTING.md`
-- `docs/platform/operations/BACKUP_RESTORE_AND_DISASTER_RECOVERY.md`
+## Authority boundary
 
-## Canonical material
-Files under `docs/canonical/` and the governed canonical DOCX specifications remain authoritative only within their explicitly declared scope/status. This hardening package does not modify them.
-
-## Maintenance
-Update this index whenever controlled documentation is added, renamed, superseded or deprecated. A missing index entry does not elevate or lower a document's authority; authority follows the lifecycle policy and explicit source hierarchy.
+`canonical/SYSTEM_ARCHITECTURE.md` is the primary architecture authority. Specialist canonical documents govern only their declared scope. ADRs record rationale and do not override canonical documents. Compatibility paths, archive material, projections, status reports, and migration records cannot create a second Core, Control Plane, routing authority, policy authority, registry identity truth, governed runtime, or evidence/provenance truth.
