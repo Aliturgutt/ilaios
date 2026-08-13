@@ -1,21 +1,21 @@
 # ILAIOS — MILESTONES
 
-**Document Type:** Canonical Mutable Milestone & Execution Status Register  
-**Format:** GitHub Markdown + ASCII dependency/status diagrams  
-**Status:** Canonical Baseline v1.0 — Mutable by Evidence  
-**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
-**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
-**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
-**Dependency Authority:** `DEPENDENCY_GRAPH.md`  
-**API Authority:** `API_CONTRACTS.md`  
-**Security Authority:** `SECURITY_ARCHITECTURE.md`  
-**Data Authority:** `DATA_ARCHITECTURE.md`  
-**Threat Model Companion:** `THREAT_MODEL.md`  
-**Testing Authority:** `TESTING_AND_EVALUATION.md`  
-**Deployment Authority:** `DEPLOYMENT_ARCHITECTURE.md`  
-**FinOps Authority:** `FINOPS.md`  
-**Engineering Authority:** `ENGINEERING_STANDARDS.md`  
-**Governance Authority:** `docs/governance/GOVERNANCE.md`  
+**Document Type:** Canonical Mutable Milestone & Execution Status Register
+**Format:** GitHub Markdown + ASCII dependency/status diagrams
+**Status:** Canonical Baseline v1.0 — Mutable by Evidence
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`
+**Dependency Authority:** `DEPENDENCY_GRAPH.md`
+**API Authority:** `API_CONTRACTS.md`
+**Security Authority:** `SECURITY_ARCHITECTURE.md`
+**Data Authority:** `DATA_ARCHITECTURE.md`
+**Threat Model Companion:** `THREAT_MODEL.md`
+**Testing Authority:** `TESTING_AND_EVALUATION.md`
+**Deployment Authority:** `DEPLOYMENT_ARCHITECTURE.md`
+**FinOps Authority:** `FINOPS.md`
+**Engineering Authority:** `ENGINEERING_STANDARDS.md`
+**Governance Authority:** `docs/governance/GOVERNANCE.md`
 **Core Milestone Principle:** **STATUS IS MUTABLE; ARCHITECTURE IS NOT**
 
 > This document is the canonical mutable execution register for ILAIOS. It records milestone sequencing, current workstream selection, milestone state, entry/exit criteria, evidence requirements, owner-controlled gates, and the next governed execution steps. Unlike architecture/specification documents, this file is intentionally updated as work progresses. A milestone state is valid only for the exact revision/evidence scope that supports it.
@@ -159,10 +159,10 @@ A historical milestone snapshot must never be presented as current without reval
 
 # 04. Current Repository Evidence Snapshot
 
-**Snapshot Date:** 2026-08-13  
-**Repository:** `Aliturgutt/ilaios`  
-**Default Branch:** `master`  
-**Verified Master HEAD:** `31b75faf71243b1534d46369286b3f51532e4ccb`  
+**Snapshot Date:** 2026-08-13
+**Repository:** `Aliturgutt/ilaios`
+**Default Branch:** `master`
+**Verified Master HEAD:** `31b75faf71243b1534d46369286b3f51532e4ccb`
 **HEAD Commit:** `Governance: select RAG/Knowledge as next primary workstream`
 
 Primary evidence:
