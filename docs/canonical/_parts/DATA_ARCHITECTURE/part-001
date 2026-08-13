@@ -1,0 +1,1163 @@
+to_state
+reason_code
+actor_ref
+timestamp
+evidence_ref
+```
+
+Sequence must prevent stale state from winning.
+
+---
+
+# 24. Event Ordering
+
+At minimum:
+
+```text
+per-job state events
+```
+
+must be totally orderable.
+
+Depending on implementation, ordering can use:
+
+```text
+monotonic sequence
+database transaction version
+event-stream offset
+logical clock
+```
+
+Wall-clock timestamp alone is insufficient for authoritative ordering.
+
+---
+
+# 25. Worker Lease
+
+`WorkerLease` owns temporary execution assignment.
+
+Conceptual fields:
+
+```text
+lease_id
+tenant_id
+project_id
+job_id
+task_id
+worker_id
+grant_id
+fencing_token
+attempt
+issued_at
+expires_at
+released_at
+status
+```
+
+Lease is not permanent ownership.
+
+---
+
+# 26. Fencing Token
+
+A fencing token protects state/artifacts from stale workers.
+
+Required property:
+
+```text
+new valid lease
+    must be distinguishable from
+old expired lease
+```
+
+Commit attempts carrying stale fencing identity must fail.
+
+---
+
+# 27. ExecutionGrant Data
+
+ExecutionGrant references belong in operational/workflow state; secret values do not.
+
+Conceptual metadata:
+
+```text
+grant_id
+tenant_id
+project_id
+job_id
+task_id
+principal_id
+capability_id
+scope summary
+policy_decision_id
+approval_id optional
+issued_at
+expires_at
+revoked_at
+```
+
+Detailed permission contract belongs in implementation/API documents.
+
+---
+
+# 28. Policy Decision
+
+Policy decisions are material evidence-bearing records.
+
+Conceptual fields:
+
+```text
+policy_decision_id
+tenant_id
+project_id
+job_id
+task_id
+principal_id
+policy_version
+decision
+reason_codes
+risk_class
+data_class
+issued_at
+evidence_id
+```
+
+Decision values:
+
+```text
+ALLOW
+DENY
+REQUIRE_APPROVAL
+```
+
+---
+
+# 29. Approval
+
+Conceptual fields:
+
+```text
+approval_id
+tenant_id
+project_id
+job_id
+task_id
+requested_action_hash
+requested_scope
+requested_by
+approver_principal_id optional
+decision
+reason
+created_at
+decided_at
+expires_at
+revoked_at
+evidence_id
+```
+
+A material action change requires a new approval decision.
+
+---
+
+# 30. Agent Run
+
+Agent runs are orchestration records, not authority.
+
+Conceptual fields:
+
+```text
+agent_run_id
+tenant_id
+project_id
+job_id
+task_id
+agent_id
+agent_version
+input_refs
+output_refs
+started_at
+ended_at
+status
+evidence_refs
+```
+
+---
+
+# 31. Skill Invocation
+
+Skill invocation metadata should retain:
+
+```text
+skill_id
+skill_version
+skill_digest
+capability_id
+agent_run_id or task_id
+input_refs
+output_refs
+requested_permission summary
+validation status
+evidence_ref
+```
+
+The skill body itself may be versioned elsewhere.
+
+---
+
+# 32. RoutingDecision Data
+
+One canonical `RoutingDecision` is persisted/evidenced.
+
+Conceptual fields:
+
+```text
+route_id
+tenant_id
+project_id
+job_id
+task_id
+capability_id
+worker_class
+provider_id
+model_or_resource_id
+adapter_id
+reason_codes
+quality_floor
+privacy_class
+residency
+estimated_cost
+fallback_refs
+created_at
+evidence_id
+```
+
+Routing metadata must not contain raw secret credentials.
+
+---
+
+# 33. Provider Registry Data
+
+Provider metadata includes:
+
+```text
+provider_id
+provider_type
+adapter_id
+enabled
+supported_capabilities
+supported_modalities
+regions
+privacy metadata
+health reference
+quota reference
+cost model reference
+version
+```
+
+Provider registry state is configuration/operational data.
+
+It is not product authority.
+
+---
+
+# 34. Model / Resource Registry Data
+
+Conceptual fields:
+
+```text
+model_or_resource_id
+provider_id
+capabilities
+modalities
+context limits
+output limits
+region support
+cost metadata
+enabled
+version
+```
+
+Do not hard-code provider model IDs into product entities where a canonical route/reference suffices.
+
+---
+
+# 35. Provider Call
+
+Provider calls are execution events.
+
+Conceptual fields:
+
+```text
+provider_call_id
+tenant_id
+project_id
+job_id
+task_id
+route_id
+provider_id
+model_or_resource_id
+adapter_id
+request_payload_ref
+response_payload_ref
+usage_ref
+started_at
+ended_at
+status
+provider_request_id optional
+error_class optional
+evidence_ref
+```
+
+Sensitive payloads may be stored separately, redacted, or not retained according to policy.
+
+---
+
+# 36. Tool Call
+
+Conceptual fields:
+
+```text
+tool_call_id
+tenant_id
+project_id
+job_id
+task_id
+tool_id
+operation
+grant_id
+request_ref
+result_ref
+started_at
+ended_at
+status
+error_class
+evidence_ref
+```
+
+Raw tool output should not automatically enter evidence or prompt context without classification/validation.
+
+---
+
+# 37. Retrieval Request
+
+Conceptual fields:
+
+```text
+retrieval_id
+tenant_id
+project_id
+principal_id
+job_id
+task_id
+purpose
+query_ref
+data_class
+authorization_context_ref
+created_at
+status
+evidence_ref
+```
+
+Retrieval itself is a governed action.
+
+---
+
+# 38. Source
+
+A `Source` represents an authorized knowledge origin.
+
+Conceptual fields:
+
+```text
+source_id
+tenant_id
+project_id
+source_type
+canonical_locator
+owner_ref
+classification
+region
+retention_policy_ref
+authorization_policy_ref
+created_at
+status
+```
+
+Examples:
+
+```text
+uploaded document
+web source
+repository
+database export
+research record
+manual note
+connector source
+```
+
+---
+
+# 39. Source Version
+
+Source content must be versionable.
+
+Conceptual fields:
+
+```text
+source_version_id
+source_id
+content_hash
+content_ref
+retrieved_or_uploaded_at
+parser_version
+classification_version
+provenance
+status
+```
+
+Derived knowledge must reference a specific source version.
+
+---
+
+# 40. Knowledge Unit
+
+Knowledge unit is the retrievable canonical content unit.
+
+Conceptual fields:
+
+```text
+knowledge_unit_id
+tenant_id
+project_id
+source_id
+source_version_id
+unit_type
+content_ref
+content_hash
+classification
+purpose constraints
+region
+retention_policy_ref
+authorization attributes
+provenance
+created_at
+```
+
+---
+
+# 41. Chunk
+
+A chunk is a retrieval/index representation of a Knowledge Unit.
+
+Conceptual fields:
+
+```text
+chunk_id
+knowledge_unit_id
+source_version_id
+chunk_index
+content_ref
+content_hash
+token_count
+embedding_ref optional
+created_at
+```
+
+Chunk metadata must not lose tenant/project/source lineage.
+
+---
+
+# 42. Embedding Record
+
+Embedding metadata:
+
+```text
+embedding_id
+chunk_id
+embedding_model_ref
+dimension
+vector_store_ref
+created_at
+content_hash
+```
+
+Embedding vectors do not contain authorization authority.
+
+Authorization is evaluated from canonical metadata/policy.
+
+---
+
+# 43. Knowledge Graph Entity
+
+Knowledge graph nodes/edges must retain source provenance.
+
+Conceptual node:
+
+```text
+kg_entity_id
+tenant_id
+project_id
+entity_type
+canonical_label
+attributes
+provenance_refs
+```
+
+Conceptual edge:
+
+```text
+kg_edge_id
+tenant_id
+project_id
+from_entity_id
+to_entity_id
+relation_type
+confidence
+provenance_refs
+```
+
+---
+
+# 44. Retrieval Result
+
+Every retrieved unit should carry:
+
+```text
+knowledge_unit_id
+source_id
+source_version_id
+classification
+authorization decision reference
+relevance score
+rerank score optional
+provenance
+```
+
+The model should not receive a retrieval result detached from its security/provenance context.
+
+---
+
+# 45. AuthorizedContext
+
+`AuthorizedContext` is an execution-time assembly, not a permanent universal memory dump.
+
+Conceptual fields:
+
+```text
+context_id
+tenant_id
+project_id
+job_id
+task_id
+purpose
+knowledge_unit_refs
+artifact_refs
+policy_ref
+created_at
+expires_at optional
+content_hash
+```
+
+Two-phase context architecture is preserved:
+
+```text
+minimal pre-plan context
++
+task-scoped context
+```
+
+---
+
+# 46. Memory Model
+
+ILAIOS memory should distinguish:
+
+```text
+session memory
+project memory
+knowledge sources
+artifact history
+execution history
+user preferences
+organizational policy/context
+```
+
+These categories have different ownership, retention, and authorization rules.
+
+They should not be collapsed into one opaque “memory” store.
+
+---
+
+# 47. Artifact
+
+`Artifact` is a stable logical product/output identity.
+
+Conceptual fields:
+
+```text
+artifact_id
+tenant_id
+project_id
+job_id
+artifact_type
+classification
+created_by_task_id
+current_version_id
+created_at
+status
+```
+
+Artifact identity survives repairs/version changes.
+
+---
+
+# 48. Artifact Version
+
+Conceptual fields:
+
+```text
+artifact_version_id
+artifact_id
+version_number or version token
+content_hash
+size
+mime_type
+storage_ref
+producer_type
+producer_ref
+route_id optional
+input_refs
+created_at
+supersedes_version_id optional
+```
+
+Artifact contents should be immutable for a version.
+
+---
+
+# 49. Artifact Types
+
+Examples:
+
+```text
+website
+source code
+repository patch
+application package
+document
+image
+video
+audio
+research report
+dataset
+configuration
+deployment package
+render
+generated archive
+```
+
+Artifact type controls validation/storage policy.
+
+---
+
+# 50. Artifact Storage Rule
+
+Large content should use object/artifact storage.
+
+Operational records should store:
+
+```text
+artifact_id
+version_id
+storage_ref
+hash
+metadata
+```
+
+rather than duplicating large binary payloads inside ordinary relational rows.
+
+---
+
+# 51. Content Addressing
+
+Where useful, artifacts/evidence/source versions may use content hashes such as SHA-256.
+
+Hash supports:
+
+```text
+integrity
+deduplication
+lineage
+exact validation binding
+tamper detection
+```
+
+Hash alone does not prove authorization or trustworthiness.
+
+---
+
+# 52. Validation Result
+
+Conceptual fields:
+
+```text
+validation_id
+tenant_id
+project_id
+job_id
+task_id optional
+artifact_id
+artifact_version_id
+validator_id
+validator_version
+validation_type
+result
+failure_codes
+metrics
+created_at
+evidence_id
+```
+
+Validation must always identify the exact artifact version.
+
+---
+
+# 53. Evaluation Result
+
+Final evaluation extends validation across the complete product.
+
+Conceptual fields:
+
+```text
+evaluation_id
+goal_id
+job_id
+artifact_version_refs
+acceptance_criteria_version
+evaluator_refs
+result
+failure_classification
+created_at
+evidence_ref
+```
+
+---
+
+# 54. Evidence Record
+
+Conceptual fields:
+
+```text
+evidence_id
+tenant_id
+project_id
+job_id
+task_id optional
+event_type
+actor_ref
+timestamp
+input_refs
+output_refs
+decision_refs
+artifact_refs
+content_hash
+metadata
+classification
+```
+
+Evidence is append-oriented and integrity-verifiable according to criticality.
+
+---
+
+# 55. Evidence Event Types
+
+Examples:
+
+```text
+goal.accepted
+plan.proposed
+plan.admitted
+policy.decision
+approval.requested
+approval.decided
+route.selected
+worker.leased
+tool.called
+provider.called
+retrieval.performed
+artifact.created
+artifact.versioned
+validation.completed
+repair.started
+checkpoint.created
+cost.recorded
+delivery.requested
+delivery.completed
+security.violation
+```
+
+---
+
+# 56. Provenance Chain
+
+```text
+Goal + Acceptance
+      │
+      ▼
+Plan Version
+      │
+      ▼
+Policy / Approval
+      │
+      ▼
+RoutingDecision
+      │
+      ▼
+Tool / Provider / Retrieval Events
+      │
+      ▼
+Artifact Version
+      │
+      ▼
+Validation / Evaluation
+      │
+      ▼
+Evidence Chain
+      │
+      ▼
+AcceptanceManifest
+```
+
+---
+
+# 57. AcceptanceManifest
+
+Conceptual fields:
+
+```text
+acceptance_manifest_id
+tenant_id
+project_id
+job_id
+goal_id
+accepted_artifact_version_refs
+acceptance_criteria_version
+validation_refs
+evaluation_refs
+policy_refs
+approval_refs
+routing_refs
+cost_refs
+evidence_root_ref
+created_at
+manifest_hash
+```
+
+It must answer why a product was accepted.
+
+---
+
+# 58. Checkpoint
+
+Conceptual fields:
+
+```text
+checkpoint_id
+tenant_id
+project_id
+job_id
+task_id optional
+runtime_state
+completed_task_ids
+pending_task_ids
+artifact_refs
+evidence_cursor
+budget_state_ref
+retry_state
+route_refs
+context_refs
+created_at
+integrity_hash
+```
+
+Checkpoint data is durable workflow state.
+
+---
+
+# 59. Retry / Repair State
+
+Conceptual fields:
+
+```text
+job_id
+task_id
+attempt_count
+repair_count
+provider_failover_count
+spent_cost
+elapsed_time
+last_failure_id
+remaining_bounds
+```
+
+The persisted values must enforce:
+
+```text
+max_attempts
+max_cost
+max_elapsed_time
+```
+
+---
+
+# 60. Failure Record
+
+Conceptual fields:
+
+```text
+failure_id
+tenant_id
+project_id
+job_id
+task_id
+failure_class
+error_code
+safe_message
+diagnostic_ref
+retryable
+repairable
+created_at
+evidence_ref
+```
+
+Sensitive diagnostics belong in protected operational storage, not broad user-visible fields.
+
+---
+
+# 61. Cost / Usage Record
+
+Conceptual fields:
+
+```text
+usage_id
+tenant_id
+project_id
+job_id
+task_id
+route_id
+provider_id optional
+model_or_resource_id optional
+tool_id optional
+input_units
+output_units
+runtime_units
+external_cost
+currency
+retry_number
+created_at
+evidence_ref
+```
+
+FinOps calculations belong in `FINOPS.md`.
+
+---
+
+# 62. Notification
+
+Conceptual fields:
+
+```text
+notification_id
+tenant_id
+principal_id
+project_id optional
+job_id optional
+notification_type
+safe_payload_ref
+created_at
+delivered_at
+read_at
+status
+```
+
+Notification content must not expose protected data beyond recipient authorization.
+
+---
+
+# 63. Configuration Data
+
+Configuration should distinguish:
+
+```text
+platform config
+environment config
+tenant config
+project config
+feature flag config
+provider config
+security policy refs
+FinOps policy refs
+```
+
+Configuration records should be versioned where behavior/audit depends on them.
+
+---
+
+# 64. Policy Versioning
+
+Material policy decisions should reference:
+
+```text
+policy_id
+policy_version
+```
+
+so historical decisions can be interpreted accurately after policy updates.
+
+---
+
+# 65. Capability Registry Data
+
+Canonical capability records include:
+
+```text
+capability_id
+display_name
+domain
+dependencies
+implementation roots
+legacy provenance
+maturity metadata if stored
+schema/version
+```
+
+The canonical namespace remains:
+
+```text
+ilaios.capability.*
+```
+
+---
+
+# 66. Capability Maturity Data
+
+Canonical maturity values:
+
+```text
+DESIGNED
+SPECIFIED
+IMPLEMENTED
+TESTED
+VERIFIED
+DEPLOYED / PRODUCTION
+```
+
+`DEPRECATED` is a lifecycle exit state.
+
+A maturity record should reference evidence supporting the transition.
+
+---
+
+# 67. Agent Registry Data
+
+Agent records should include:
+
+```text
+agent_id
+version
+purpose
+allowed_capabilities
+authority ceiling
+allowed callers
+allowed targets
+risk ceiling
+status/maturity
+manifest hash
+```
+
+Agent registry data does not create authorization by itself.
+
+---
+
+# 68. Skill Registry Data
+
+Skill registry records should include:
+
+```text
+skill_id
+version
+capability_id
+content digest
+approved authority set
+network policy ref
+filesystem policy ref
+secret policy ref
+provenance
+status/maturity
+```
+
+---
+
+# 69. Worker Registry / Runtime Data
+
+Worker runtime metadata includes:
+
+```text
+worker_id
+worker_class
+runtime_environment
+supported_capabilities
+isolation_class
+health
+version
+last_seen
+current_lease_id optional
+```
+
+Worker health is operational data, not permanent evidence truth by itself.
+
+---
+
+# 70. Tool Registry Data
+
+Tool metadata may include:
+
+```text
+tool_id
+adapter_id
+supported_operations
+risk class
+required permissions
+network requirements
+secret requirements
+sandbox requirements
+version
+status
+```
+
+---
+
+# 71. Store Boundary: Operational vs Evidence
+
+Operational records may change:
+
+```text
+job.current_state
+provider.health
+membership.status
+feature_flag
+```
+
+Evidence records represent historical facts:
+
+```text
+policy decision at time T
+route selected at time T
+artifact hash at time T
+approval at time T
+```
+
+Do not overwrite evidence to match current operational state.
+
+---
+
