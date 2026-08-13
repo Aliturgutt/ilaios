@@ -66,9 +66,7 @@ class MediaProbe:
         _require_non_blank("format_name", self.format_name)
 
         if self.duration_seconds < 0:
-            raise FfmpegMediaEngineError(
-                "duration_seconds must be >= 0"
-            )
+            raise FfmpegMediaEngineError("duration_seconds must be >= 0")
 
 
 class CommandRunner(Protocol):
@@ -79,8 +77,7 @@ class CommandRunner(Protocol):
         argv: tuple[str, ...],
         *,
         timeout_seconds: float,
-    ) -> MediaCommandResult:
-        ...
+    ) -> MediaCommandResult: ...
 
 
 class SubprocessCommandRunner:
@@ -93,9 +90,7 @@ class SubprocessCommandRunner:
         timeout_seconds: float,
     ) -> MediaCommandResult:
         if timeout_seconds <= 0:
-            raise FfmpegMediaEngineError(
-                "timeout_seconds must be greater than zero"
-            )
+            raise FfmpegMediaEngineError("timeout_seconds must be greater than zero")
 
         try:
             completed = subprocess.run(
@@ -110,9 +105,7 @@ class SubprocessCommandRunner:
                 f"media executable was not found: {argv[0]}"
             ) from exc
         except subprocess.TimeoutExpired as exc:
-            raise FfmpegMediaEngineError(
-                f"media command timed out: {argv[0]}"
-            ) from exc
+            raise FfmpegMediaEngineError(f"media command timed out: {argv[0]}") from exc
 
         if completed.returncode != 0:
             raise FfmpegMediaEngineError(
@@ -149,9 +142,7 @@ class FfmpegMediaEngine:
         )
 
         if timeout_seconds <= 0:
-            raise FfmpegMediaEngineError(
-                "timeout_seconds must be greater than zero"
-            )
+            raise FfmpegMediaEngineError("timeout_seconds must be greater than zero")
 
         self._ffmpeg = ffmpeg_executable
         self._ffprobe = ffprobe_executable
@@ -179,57 +170,41 @@ class FfmpegMediaEngine:
         try:
             payload = json.loads(result.stdout)
         except json.JSONDecodeError as exc:
-            raise FfmpegMediaEngineError(
-                "ffprobe did not return valid JSON"
-            ) from exc
+            raise FfmpegMediaEngineError("ffprobe did not return valid JSON") from exc
 
         if not isinstance(payload, dict):
-            raise FfmpegMediaEngineError(
-                "ffprobe JSON root must be an object"
-            )
+            raise FfmpegMediaEngineError("ffprobe JSON root must be an object")
 
         format_payload = payload.get("format")
         streams_payload = payload.get("streams")
 
         if not isinstance(format_payload, dict):
-            raise FfmpegMediaEngineError(
-                "ffprobe JSON requires format object"
-            )
+            raise FfmpegMediaEngineError("ffprobe JSON requires format object")
 
         if not isinstance(streams_payload, list):
-            raise FfmpegMediaEngineError(
-                "ffprobe JSON requires streams array"
-            )
+            raise FfmpegMediaEngineError("ffprobe JSON requires streams array")
 
         format_name = format_payload.get("format_name")
         duration = format_payload.get("duration")
 
         if not isinstance(format_name, str):
-            raise FfmpegMediaEngineError(
-                "ffprobe format_name must be a string"
-            )
+            raise FfmpegMediaEngineError("ffprobe format_name must be a string")
 
         if not isinstance(duration, str):
-            raise FfmpegMediaEngineError(
-                "ffprobe duration must be a string"
-            )
+            raise FfmpegMediaEngineError("ffprobe duration must be a string")
 
         normalized_streams: list[Mapping[str, object]] = []
 
         for stream in streams_payload:
             if not isinstance(stream, dict):
-                raise FfmpegMediaEngineError(
-                    "ffprobe stream must be an object"
-                )
+                raise FfmpegMediaEngineError("ffprobe stream must be an object")
 
             normalized_streams.append(dict(stream))
 
         try:
             duration_seconds = float(duration)
         except ValueError as exc:
-            raise FfmpegMediaEngineError(
-                "ffprobe duration is invalid"
-            ) from exc
+            raise FfmpegMediaEngineError("ffprobe duration is invalid") from exc
 
         return MediaProbe(
             path=str(source.resolve()),
@@ -247,14 +222,10 @@ class FfmpegMediaEngine:
         duration_seconds: float,
     ) -> MediaCommandResult:
         if start_seconds < 0:
-            raise FfmpegMediaEngineError(
-                "start_seconds must be >= 0"
-            )
+            raise FfmpegMediaEngineError("start_seconds must be >= 0")
 
         if duration_seconds <= 0:
-            raise FfmpegMediaEngineError(
-                "duration_seconds must be greater than zero"
-            )
+            raise FfmpegMediaEngineError("duration_seconds must be greater than zero")
 
         source = _require_existing_file(input_path)
         output = _prepare_output(output_path)
@@ -284,25 +255,17 @@ class FfmpegMediaEngine:
         output_path: str | Path,
     ) -> MediaCommandResult:
         if not input_paths:
-            raise FfmpegMediaEngineError(
-                "input_paths must not be empty"
-            )
+            raise FfmpegMediaEngineError("input_paths must not be empty")
 
-        sources = tuple(
-            _require_existing_file(path)
-            for path in input_paths
-        )
+        sources = tuple(_require_existing_file(path) for path in input_paths)
         output = _prepare_output(output_path)
 
-        manifest = output.with_suffix(
-            output.suffix + ".m18-concat.txt"
-        )
+        manifest = output.with_suffix(output.suffix + ".m18-concat.txt")
 
         try:
             manifest.write_text(
                 "".join(
-                    f"file '{_escape_concat_path(source)}'\n"
-                    for source in sources
+                    f"file '{_escape_concat_path(source)}'\n" for source in sources
                 ),
                 encoding="utf-8",
                 newline="\n",
@@ -371,14 +334,10 @@ class FfmpegMediaEngine:
         audio_codec: str,
     ) -> MediaCommandResult:
         if width <= 0 or height <= 0:
-            raise FfmpegMediaEngineError(
-                "width and height must be greater than zero"
-            )
+            raise FfmpegMediaEngineError("width and height must be greater than zero")
 
         if fps <= 0:
-            raise FfmpegMediaEngineError(
-                "fps must be greater than zero"
-            )
+            raise FfmpegMediaEngineError("fps must be greater than zero")
 
         _require_non_blank("video_codec", video_codec)
         _require_non_blank("audio_codec", audio_codec)
@@ -433,6 +392,34 @@ class FfmpegMediaEngine:
 
         return self._execute(argv)
 
+    def crop(
+        self,
+        *,
+        input_path: str | Path,
+        output_path: str | Path,
+        width: int,
+        height: int,
+        x: int = 0,
+        y: int = 0,
+    ) -> MediaCommandResult:
+        if width <= 0 or height <= 0:
+            raise FfmpegMediaEngineError("crop width and height must be positive")
+        source = _require_existing_file(input_path)
+        output = _prepare_output(output_path)
+        return self._execute(
+            (
+                self._ffmpeg,
+                "-y",
+                "-v",
+                "error",
+                "-i",
+                str(source),
+                "-vf",
+                f"crop={width}:{height}:{x}:{y}",
+                str(output),
+            )
+        )
+
     def mix_audio(
         self,
         *,
@@ -440,14 +427,9 @@ class FfmpegMediaEngine:
         output_path: str | Path,
     ) -> MediaCommandResult:
         if len(input_paths) < 2:
-            raise FfmpegMediaEngineError(
-                "audio mixing requires at least two inputs"
-            )
+            raise FfmpegMediaEngineError("audio mixing requires at least two inputs")
 
-        sources = tuple(
-            _require_existing_file(path)
-            for path in input_paths
-        )
+        sources = tuple(_require_existing_file(path) for path in input_paths)
         output = _prepare_output(output_path)
 
         input_args: list[str] = []
@@ -455,10 +437,7 @@ class FfmpegMediaEngine:
         for source in sources:
             input_args.extend(("-i", str(source)))
 
-        filter_value = (
-            f"amix=inputs={len(sources)}:"
-            "duration=longest:normalize=0"
-        )
+        filter_value = f"amix=inputs={len(sources)}:duration=longest:normalize=0"
 
         argv = (
             self._ffmpeg,
@@ -472,6 +451,40 @@ class FfmpegMediaEngine:
         )
 
         return self._execute(tuple(argv))
+
+    def overlay(
+        self,
+        *,
+        input_path: str | Path,
+        overlay_path: str | Path,
+        output_path: str | Path,
+        x: int = 0,
+        y: int = 0,
+    ) -> MediaCommandResult:
+        """Overlay one registered visual asset without shell interpolation."""
+
+        source = _require_existing_file(input_path)
+        overlay = _require_existing_file(overlay_path)
+        output = _prepare_output(output_path)
+        filter_value = f"[0:v][1:v]overlay=x={x}:y={y}:format=auto"
+        argv = (
+            self._ffmpeg,
+            "-y",
+            "-v",
+            "error",
+            "-i",
+            str(source),
+            "-i",
+            str(overlay),
+            "-filter_complex",
+            filter_value,
+            "-map",
+            "0:a?",
+            "-c:a",
+            "copy",
+            str(output),
+        )
+        return self._execute(argv)
 
     def mux(
         self,
@@ -523,14 +536,10 @@ def _require_existing_file(
     value = Path(path)
 
     if not value.exists():
-        raise FfmpegMediaEngineError(
-            f"input media does not exist: {value}"
-        )
+        raise FfmpegMediaEngineError(f"input media does not exist: {value}")
 
     if not value.is_file():
-        raise FfmpegMediaEngineError(
-            f"input media is not a file: {value}"
-        )
+        raise FfmpegMediaEngineError(f"input media is not a file: {value}")
 
     return value
 
@@ -541,9 +550,7 @@ def _prepare_output(
     value = Path(path)
 
     if value.exists() and value.is_dir():
-        raise FfmpegMediaEngineError(
-            f"output_path must reference a file: {value}"
-        )
+        raise FfmpegMediaEngineError(f"output_path must reference a file: {value}")
 
     value.parent.mkdir(
         parents=True,
@@ -554,11 +561,7 @@ def _prepare_output(
 
 
 def _escape_concat_path(path: Path) -> str:
-    return (
-        str(path.resolve())
-        .replace("\\", "/")
-        .replace("'", "'\\''")
-    )
+    return str(path.resolve()).replace("\\", "/").replace("'", "'\\''")
 
 
 def _number(value: float) -> str:
@@ -570,11 +573,7 @@ def _require_non_blank(
     value: str,
 ) -> None:
     if not value or not value.strip():
-        raise FfmpegMediaEngineError(
-            f"{name} must not be blank"
-        )
+        raise FfmpegMediaEngineError(f"{name} must not be blank")
 
     if value != value.strip():
-        raise FfmpegMediaEngineError(
-            f"{name} must not contain surrounding whitespace"
-        )
+        raise FfmpegMediaEngineError(f"{name} must not contain surrounding whitespace")
