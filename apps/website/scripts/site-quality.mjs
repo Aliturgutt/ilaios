@@ -78,6 +78,14 @@ if (!layout.includes("https://ilaios.com") && !layout.includes("NEXT_PUBLIC_SITE
   failures.push("root layout lacks canonical site URL authority");
 }
 
+const siteChrome = await readFile(path.join(app, "SiteChrome.tsx"), "utf8");
+if (!/<a\b[^>]*href=["']#main-content["'][^>]*>/.test(siteChrome)) {
+  failures.push("site chrome lacks a skip link targeting the main landmark");
+}
+if (!/<main\b[^>]*id=["']main-content["'][^>]*tabIndex=\{-1\}[^>]*>/.test(siteChrome)) {
+  failures.push("main landmark must remain programmatically focusable without joining the Tab order");
+}
+
 if (failures.length) {
   console.error("Website quality gate FAILED");
   for (const failure of failures) console.error(`- ${failure}`);
