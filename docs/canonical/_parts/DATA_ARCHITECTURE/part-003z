@@ -1,0 +1,99 @@
+# 168. Canonical Data Flow
+
+```text
+AUTHENTICATED PRINCIPAL
+        │
+        ▼
+TENANT / PROJECT
+        │
+        ▼
+GOAL
+        │
+        ▼
+PLAN / JOB / TASK
+        │
+        ├──────────────► WORKFLOW STATE
+        │
+        ├──────────────► AUTHORIZED CONTEXT
+        │                    │
+        │                    ▼
+        │              KNOWLEDGE STORE
+        │
+        ├──────────────► ROUTING / PROVIDER / TOOL EVENTS
+        │
+        ▼
+EXECUTION
+        │
+        ▼
+ARTIFACT VERSION
+        │
+        ├──────────────► ARTIFACT STORE
+        │
+        ▼
+VALIDATION / EVALUATION
+        │
+        ▼
+EVIDENCE
+        │
+        ▼
+ACCEPTANCE MANIFEST
+        │
+        ▼
+DELIVERY / DEPLOYMENT RECORD
+```
+
+---
+
+# 169. Canonical Store Formula
+
+```text
+OPERATIONAL STORE
+    = who / what / current durable product state
+
+WORKFLOW STATE
+    = where execution currently is and how it resumes
+
+KNOWLEDGE STORE
+    = authorized source-derived context
+
+ARTIFACT STORE
+    = what ILAIOS produced or owns as file/object output
+
+EVIDENCE STORE
+    = why/how material actions/results occurred and were accepted
+
+SECRET / KEY STORE
+    = protected credentials and cryptographic material
+
+OBSERVABILITY STORES
+    = operational diagnostics and performance signals
+```
+
+---
+
+# 170. Final Data Invariant
+
+The defining ILAIOS data rule is:
+
+> **Every material record must be attributable, scoped, versioned where necessary, lifecycle-governed, and traceable to its authoritative context.**
+
+The data architecture must always allow ILAIOS to answer:
+
+```text
+Who owns this?
+Which tenant?
+Which project?
+Why does it exist?
+Which version is this?
+Where did it come from?
+Who/what produced it?
+Which policy applied?
+Which artifact/source does it reference?
+How long should it exist?
+Can this principal access it?
+What evidence proves its history?
+```
+
+If the system cannot answer those questions for security- or product-critical data, the data model is incomplete.
+
+**ILAIOS data is not a pile of prompts and files. It is a governed graph of identity, execution, artifacts, knowledge, and evidence.**
