@@ -1,0 +1,168 @@
+# 218. Dependency Removal
+
+When removing dependency:
+
+```text
+remove usage
+remove config
+invalidate affected credential references
+update docs
+run tests
+```
+
+---
+
+# 219. Provider Removal
+
+Preserve historical evidence/IDs.
+
+Disable future routing.
+
+---
+
+# 220. Feature Removal
+
+Removal requires:
+
+```text
+usage/deprecation review
+migration
+data handling
+documentation
+```
+
+---
+
+# 221. Capability Deprecation
+
+`DEPRECATED` is lifecycle exit.
+
+It does not appear in maturity progression.
+
+---
+
+# 222. Engineering Maturity
+
+Engineering process itself should improve through:
+
+```text
+automation
+faster tests
+stronger typing
+better observability
+better evidence
+```
+
+without adding bureaucracy that does not reduce risk.
+
+---
+
+# 223. Complexity Budget
+
+Every abstraction has maintenance cost.
+
+Prefer fewer clear concepts over many thin wrappers.
+
+---
+
+# 224. Architecture Complexity
+
+Do not solve local problems by creating platform-wide new authorities.
+
+---
+
+# 225. Dependency Direction
+
+Dependency direction follows canonical architecture.
+
+Higher-level domain code may depend on platform contracts.
+
+Platform authority must not depend on domain/factory implementation.
+
+---
+
+# 226. Circular Dependencies
+
+Avoid code/package cycles.
+
+Architecture-level authority cycles are forbidden.
+
+---
+
+# 227. Interface Segregation
+
+Consumers should depend on narrow contracts.
+
+Avoid giant service interfaces granting unrelated capabilities.
+
+---
+
+# 228. Dependency Injection
+
+Use dependency injection/interfaces where it improves:
+
+```text
+testing
+provider replaceability
+tool replaceability
+```
+
+Do not overengineer simple logic.
+
+---
+
+# 229. Factory Standard
+
+Factories:
+
+```text
+compose domain DAG
+declare capabilities
+define quality gates
+produce artifacts
+```
+
+Factories do not own runtime authority.
+
+---
+
+# 230. Skill Standard
+
+Skills are bounded expertise.
+
+They do not own credentials or authority.
+
+---
+
+# 231. Agent Standard
+
+Agents coordinate.
+
+They do not mint permission.
+
+---
+
+# 232. Provider Standard
+
+Providers execute replaceable resource calls.
+
+They do not own product semantics.
+
+---
+
+# 233. Worker Standard
+
+Workers perform scoped task execution.
+
+They do not own policy/routing truth.
+
+---
+
+# 234. Client Standard
+
+Clients project state and collect user intent.
+
+They do not own authoritative job state.
+
+---
+
