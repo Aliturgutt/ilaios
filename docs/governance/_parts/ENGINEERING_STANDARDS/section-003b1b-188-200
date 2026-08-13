@@ -1,0 +1,126 @@
+# 188. Knowledge Engineering Standard
+
+Knowledge/RAG must preserve:
+
+```text
+tenant
+project
+source version
+classification
+authorization
+provenance
+```
+
+---
+
+# 189. Artifact Engineering Standard
+
+Artifacts are versioned/hashed.
+
+Validation points to exact version.
+
+---
+
+# 190. Evidence Engineering Standard
+
+Evidence must be:
+
+```text
+structured
+traceable
+integrity-aware
+privacy-aware
+```
+
+---
+
+# 191. Evaluation Engineering Standard
+
+Producer and verifier separation where meaningful.
+
+AI evaluator is not authority.
+
+---
+
+# 192. FinOps Engineering Standard
+
+Every paid provider/tool path produces usage attribution.
+
+Retry/repair use same budget envelope.
+
+---
+
+# 193. Observability Engineering Standard
+
+Every production service should expose suitable:
+
+```text
+logs
+metrics
+traces
+health
+```
+
+without leaking secrets.
+
+---
+
+# 194. Health Endpoint Standard
+
+Health endpoints must be safe and scoped.
+
+Do not expose sensitive dependency details publicly.
+
+---
+
+# 195. SLO Engineering
+
+Engineering decisions should respect SLOs defined by operations/governance.
+
+---
+
+# 196. Performance Engineering
+
+Measure before optimizing.
+
+Do not trade away correctness/security for micro-optimizations.
+
+---
+
+# 197. Optimization Standard
+
+Optimization must preserve tests and invariants.
+
+Benchmark before/after.
+
+---
+
+# 198. Refactoring Standard
+
+Refactor means behavior-preserving unless explicitly part of feature change.
+
+Tests prove preservation.
+
+---
+
+# 199. Large Refactor
+
+Large refactors need:
+
+```text
+bounded phases
+compatibility
+migration
+architecture review
+```
+
+---
+
+# 200. Dead Code
+
+Remove dead code when safe.
+
+Do not preserve obsolete parallel authorities “just in case”.
+
+---
+
