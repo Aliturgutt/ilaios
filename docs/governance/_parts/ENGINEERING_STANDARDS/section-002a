@@ -1,0 +1,484 @@
+# 43. Core ADR Requirement
+
+Any approved Core evolution must have ADR/equivalent governance evidence.
+
+---
+
+# 44. Routing ADR Requirement
+
+Any change creating/merging routing authority requires ADR.
+
+---
+
+# 45. Data Ownership ADR
+
+Moving authoritative data between stores/services requires ADR if architecture-impacting.
+
+---
+
+# 46. Security ADR
+
+Material security model changes require ADR and threat review.
+
+---
+
+# 47. 4.4 Documentation Standards
+
+Documentation is part of the product engineering system.
+
+Required properties:
+
+```text
+accurate
+scoped
+version-aware
+non-duplicative
+traceable
+```
+
+---
+
+# 48. Documentation Authority
+
+Each concern has one canonical owner.
+
+Do not repeat large normative sections across many files.
+
+Use references.
+
+---
+
+# 49. Normative Language
+
+Use:
+
+```text
+MUST
+MUST NOT
+SHOULD
+MAY
+```
+
+consistently when prescribing requirements.
+
+---
+
+# 50. Target vs Current Reality
+
+Every canonical architecture/specification document must distinguish:
+
+```text
+what should be true
+vs
+what is currently evidenced
+```
+
+---
+
+# 51. No Mutable Current State in Canonical Architecture
+
+Avoid embedding:
+
+```text
+current PR number
+current branch HEAD
+current live status
+current selected workstream
+current provider health
+```
+
+inside timeless canonical architecture unless clearly non-authoritative example.
+
+---
+
+# 52. Examples
+
+Examples must be marked as examples.
+
+Example numeric values must not become accidental policy.
+
+---
+
+# 53. Diagrams
+
+ASCII diagrams are preferred when they improve portability/readability.
+
+Diagrams must not contradict prose.
+
+---
+
+# 54. Links
+
+Canonical docs should link to authoritative related documents.
+
+Avoid broken/duplicate links.
+
+---
+
+# 55. Code Examples
+
+Code examples must:
+
+```text
+be syntactically plausible
+avoid real secrets
+avoid unsafe patterns
+match contract semantics
+```
+
+---
+
+# 56. Documentation Review
+
+Architecture-affecting code changes must update relevant docs in same change where feasible.
+
+---
+
+# 57. Documentation Tests
+
+Where practical, automate:
+
+```text
+link checks
+filename checks
+duplicate canonical authority checks
+schema example validation
+```
+
+---
+
+# 58. README Role
+
+README is orientation.
+
+README must not replace detailed canonical documents.
+
+---
+
+# 59. Changelog / Release Notes
+
+Release notes describe user/developer-visible change.
+
+They are not architecture authority.
+
+---
+
+# 60. Comments vs Documentation
+
+Source comments explain local implementation.
+
+Canonical docs explain platform contract/architecture.
+
+Do not bury critical architecture only in code comments.
+
+---
+
+# 61. 4.5 Testing Standards
+
+All behavior changes require appropriate tests.
+
+The testing authority remains `TESTING_AND_EVALUATION.md`.
+
+Minimum principle:
+
+```text
+positive test
++
+negative test where authority/security relevant
+```
+
+---
+
+# 62. Test Behavior, Not Implementation Trivia
+
+Prefer:
+
+```text
+cross_tenant_read_is_denied
+```
+
+over:
+
+```text
+method_called_three_times
+```
+
+unless call count is the contract.
+
+---
+
+# 63. Test Determinism
+
+Tests should be deterministic.
+
+Flaky tests are defects.
+
+---
+
+# 64. Test Independence
+
+Tests should not depend on:
+
+```text
+execution order
+shared mutable global state
+production account state
+```
+
+unless explicitly integration testing such systems.
+
+---
+
+# 65. Unit Test Standard
+
+Unit tests:
+
+```text
+fast
+isolated
+deterministic
+```
+
+---
+
+# 66. Contract Test Standard
+
+Every cross-boundary schema needs producer/consumer compatibility tests.
+
+---
+
+# 67. Integration Test Standard
+
+Integration tests exercise real platform boundaries.
+
+---
+
+# 68. Security Test Standard
+
+Security-critical changes require negative tests.
+
+---
+
+# 69. Tenant Test Standard
+
+Every data/retrieval/artifact feature touching tenant data must include cross-tenant negative coverage.
+
+---
+
+# 70. E2E Standard
+
+A canonical E2E must exercise:
+
+```text
+Control Plane
+Policy
+Routing where applicable
+Scheduler/Worker
+Tool/Provider boundary
+Evidence
+```
+
+No hidden bypass.
+
+---
+
+# 71. AI Output Tests
+
+Avoid exact-string tests for inherently non-deterministic output.
+
+Test:
+
+```text
+schema
+required facts
+forbidden behavior
+acceptance rubric
+```
+
+---
+
+# 72. Golden Tests
+
+Each factory should maintain representative golden workflows.
+
+---
+
+# 73. Regression Tests
+
+Every meaningful defect fix should add regression coverage when practical.
+
+---
+
+# 74. Test Data
+
+Use synthetic/controlled data.
+
+Never casually use real production customer data.
+
+---
+
+# 75. Test Secrets
+
+Use fake credentials.
+
+Never real production secrets.
+
+---
+
+# 76. Test Timeouts
+
+Every integration/E2E/external test must be bounded.
+
+---
+
+# 77. Test Retry
+
+Do not rerun failing tests until green as a quality strategy.
+
+---
+
+# 78. Flake Quarantine
+
+Quarantine requires:
+
+```text
+owner
+reason
+impact
+exit condition
+```
+
+Required security tests cannot be silently quarantined.
+
+---
+
+# 79. Coverage
+
+Coverage metrics inform quality.
+
+They do not prove correctness.
+
+---
+
+# 80. 4.6 Quality Gates
+
+Quality gates are mandatory for applicable changes.
+
+Baseline repository gates may include:
+
+```text
+python -m pytest -q
+ruff check .
+mypy --strict src tests
+pre-commit run --all-files
+git diff --check
+```
+
+The repository configuration is the source of current executable details.
+
+Listing a command does not prove PASS.
+
+---
+
+# 81. Gate Categories
+
+```text
+syntax/build
+format
+lint
+type
+unit
+contract
+integration
+security
+dependency
+E2E
+artifact/evidence
+```
+
+---
+
+# 82. Required Gate Integrity
+
+Never remove/weaken a required gate to merge a change.
+
+A gate change must be reviewed as a product/security change.
+
+---
+
+# 83. Impact-Based Gate Selection
+
+Not every tiny documentation change must run every expensive E2E.
+
+But required gates must follow a documented impact strategy.
+
+---
+
+# 84. Security-Critical Change Gate
+
+Security-critical changes should run:
+
+```text
+relevant unit
+contract
+integration
+negative
+security
+E2E
+```
+
+---
+
+# 85. Core Change Gate
+
+Core changes require widest relevant regression suite.
+
+---
+
+# 86. Dependency Change Gate
+
+Dependency updates require:
+
+```text
+build
+tests
+security scanning
+license/provenance review
+```
+
+where applicable.
+
+---
+
+# 87. Migration Gate
+
+Schema/data migrations require:
+
+```text
+migration test
+backward compatibility
+rollback/forward-fix plan
+tenant preservation
+```
+
+---
+
+# 88. Documentation Gate
+
+Canonical docs must be internally consistent before PASS.
+
+---
+
+# 89. Gate Evidence
+
+Record:
+
+```text
+command/suite
+revision
+environment
+result
+```
+
+---
+
