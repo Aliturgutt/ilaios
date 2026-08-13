@@ -81,6 +81,7 @@ class SourceFileAnalyzer:
             ".go": Language.GO,
             ".rs": Language.RUST,
             ".java": Language.JAVA,
+            ".dart": Language.DART,
         }
     )
 

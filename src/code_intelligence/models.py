@@ -18,6 +18,23 @@ class Language(Enum):
     GO = "go"
     RUST = "rust"
     JAVA = "java"
+    DART = "dart"
+
+
+class Certainty(str, Enum):
+    """Strength of evidence behind an intelligence assertion."""
+
+    KNOWN = "known"
+    INFERRED = "inferred"
+    UNKNOWN = "unknown"
+
+
+class FileKind(str, Enum):
+    SOURCE = "source"
+    TEST = "test"
+    CONFIGURATION = "configuration"
+    MANIFEST = "manifest"
+    GENERATED = "generated"
 
 
 class SymbolType(Enum):
@@ -29,6 +46,9 @@ class SymbolType(Enum):
     METHOD = "method"
     VARIABLE = "variable"
     IMPORT = "import"
+    API_ROUTE = "api_route"
+    SCHEMA = "schema"
+    EXPORT = "export"
 
 
 @dataclass(frozen=True, slots=True)
@@ -183,3 +203,74 @@ class Symbol:
         self.language = language
         self.references: list[str] = []
         self.metadata: dict[str, MetadataValue] = {}
+
+
+@dataclass(frozen=True, slots=True)
+class SourceFileRecord:
+    path: str
+    language: Language | None
+    kind: FileKind
+    module: str | None
+    package: str | None
+    generated: bool
+    certainty: Certainty
+
+
+@dataclass(frozen=True, slots=True)
+class SymbolRecord:
+    symbol_id: str
+    name: str
+    qualified_name: str
+    symbol_type: SymbolType
+    location: SourceLocation
+    language: Language
+    public: bool
+    parent_symbol_id: str | None = None
+    bases: tuple[str, ...] = ()
+    references: tuple[str, ...] = ()
+    certainty: Certainty = Certainty.KNOWN
+
+
+@dataclass(frozen=True, slots=True)
+class DependencyEdge:
+    source: str
+    target: str
+    relationship: str
+    certainty: Certainty
+
+
+@dataclass(frozen=True, slots=True)
+class TestMapping:
+    test_file: str
+    source_files: tuple[str, ...]
+    certainty: Certainty
+    rationale: str
+
+
+@dataclass(frozen=True, slots=True)
+class RepositorySnapshot:
+    root: str
+    revision: str
+    files: tuple[SourceFileRecord, ...]
+    symbols: tuple[SymbolRecord, ...]
+    dependencies: tuple[DependencyEdge, ...]
+    test_mappings: tuple[TestMapping, ...]
+    api_routes: tuple[str, ...]
+    schema_entities: tuple[str, ...]
+    manifests: tuple[str, ...]
+    configurations: tuple[str, ...]
+    unknowns: tuple[str, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class ImpactAnalysis:
+    changed_files: tuple[str, ...]
+    changed_symbols: tuple[str, ...]
+    affected_files: tuple[str, ...]
+    affected_packages: tuple[str, ...]
+    affected_apis: tuple[str, ...]
+    affected_tests: tuple[str, ...]
+    regression_surface: tuple[str, ...]
+    confidence: Certainty
+    unknowns: tuple[str, ...]
+    recommended_validation_profile: tuple[str, ...]
