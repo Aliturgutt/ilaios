@@ -1,0 +1,497 @@
+# 238. Quality Culture
+
+Quality is not:
+
+```text
+more files
+more abstractions
+more tests by count
+```
+
+Quality is:
+
+```text
+correct requirements
+clear ownership
+sufficient tests
+safe failure
+traceable evidence
+```
+
+---
+
+# 239. Change Completeness Checklist
+
+```text
+[ ] Requirement identified
+[ ] Higher-authority docs read
+[ ] Correct owner boundary used
+[ ] No duplicate authority
+[ ] API impact assessed
+[ ] Data impact assessed
+[ ] Security impact assessed
+[ ] FinOps impact assessed
+[ ] Migration assessed
+[ ] Tests added/updated
+[ ] Negative tests added where required
+[ ] Quality gates run
+[ ] Final diff reviewed
+[ ] Docs updated
+[ ] Evidence recorded
+```
+
+---
+
+# 240. Core Change Checklist
+
+```text
+[ ] Existing capability cannot correctly own requirement
+[ ] Platform-wide invariant demonstrated
+[ ] ADR
+[ ] Architecture review
+[ ] Security review
+[ ] Dependency review
+[ ] Broad regression
+[ ] No second Core
+```
+
+---
+
+# 241. Provider Integration Checklist
+
+```text
+[ ] ProviderDescriptor
+[ ] Adapter boundary
+[ ] Secrets scoped
+[ ] Privacy/residency
+[ ] Routing integration
+[ ] Error normalization
+[ ] Usage/FinOps
+[ ] Tests
+[ ] Fallback
+[ ] Evidence
+```
+
+---
+
+# 242. Tool Integration Checklist
+
+```text
+[ ] ToolDescriptor
+[ ] ToolRequest/ToolResult
+[ ] ExecutionGrant
+[ ] Permission scope
+[ ] Secret scope
+[ ] Filesystem scope
+[ ] Network scope
+[ ] Sandbox
+[ ] Tests
+[ ] Evidence
+```
+
+---
+
+# 243. Knowledge/RAG Checklist
+
+```text
+[ ] Tenant/project metadata
+[ ] Source version
+[ ] Classification
+[ ] Authorization-aware retrieval
+[ ] Provenance
+[ ] Prompt injection tests
+[ ] Deletion propagation
+[ ] Negative isolation tests
+```
+
+---
+
+# 244. Factory Checklist
+
+```text
+[ ] Canonical capability ID
+[ ] Correct dependencies
+[ ] Shared runtime
+[ ] No private router
+[ ] No private policy
+[ ] Artifact contract
+[ ] Validation
+[ ] Bounded repair
+[ ] Evidence
+[ ] E2E
+```
+
+---
+
+# 245. Release Checklist — Engineering
+
+```text
+[ ] Source revision fixed
+[ ] Tests PASS
+[ ] Required CI PASS
+[ ] Security gate PASS
+[ ] Artifact digest
+[ ] Release notes
+[ ] Migration plan
+[ ] Rollback
+[ ] Approval
+[ ] Deployment evidence path
+```
+
+---
+
+# 246. Engineering Anti-Patterns
+
+Forbidden/rejected patterns:
+
+```text
+God module
+parallel Core
+parallel router
+utility dumping ground
+provider SDK everywhere
+raw SQL with tenant omitted
+silent exception
+global mutable state
+shared production secrets
+test-only security bypass
+magic environment behavior
+copy-pasted contract schemas
+manual current-status claims
+```
+
+---
+
+# 247. “Just Temporary” Rule
+
+Temporary bypasses frequently become permanent.
+
+Any temporary workaround requires:
+
+```text
+owner
+reason
+scope
+expiration/removal condition
+test ensuring no expansion
+```
+
+---
+
+# 248. Prototype vs Production
+
+Prototype code may relax some engineering ergonomics.
+
+It may not be mislabeled production.
+
+Promotion requires standards/tests appropriate to production scope.
+
+---
+
+# 249. Experimental Capability
+
+Experimental capability must still preserve:
+
+```text
+tenant isolation
+auth
+policy
+secret safety
+```
+
+Feature maturity does not waive constitutional controls.
+
+---
+
+# 250. Sandbox/Research Code
+
+Keep research/prototype code clearly isolated from production execution path.
+
+---
+
+# 251. Generated Migration
+
+Generated migration must be reviewed.
+
+Generated does not mean safe.
+
+---
+
+# 252. Generated Configuration
+
+AI-generated IaC/configuration must pass validation/security review.
+
+---
+
+# 253. Generated Tests
+
+AI-generated tests must be reviewed for:
+
+```text
+real assertion
+requirement coverage
+false positives
+test weakening
+```
+
+---
+
+# 254. Test-Driven Security
+
+For security invariants, write failing negative test before/with fix when practical.
+
+---
+
+# 255. Architecture-Driven Development
+
+Implementation follows:
+
+```text
+architecture
+→ contracts
+→ dependency graph
+→ code
+```
+
+not code-first authority invention.
+
+---
+
+# 256. Evidence-Driven Completion
+
+Completion statements must use evidence:
+
+```text
+tests
+CI
+runtime
+deployment
+```
+
+according to claim.
+
+---
+
+# 257. No Completion by Documentation
+
+A canonical document cannot prove feature completion.
+
+---
+
+# 258. Engineering Definition of Done — Code Change
+
+A code change is complete when:
+
+```text
+scope correct
+code implemented
+tests appropriate PASS
+quality gates PASS
+docs updated
+diff reviewed
+evidence available
+```
+
+---
+
+# 259. Engineering Definition of Done — Security Change
+
+Adds:
+
+```text
+threat mapping
+negative tests
+no regression
+security evidence
+```
+
+---
+
+# 260. Engineering Definition of Done — API Change
+
+Adds:
+
+```text
+schema/version
+compatibility
+contract tests
+docs
+```
+
+---
+
+# 261. Engineering Definition of Done — Data Change
+
+Adds:
+
+```text
+migration
+tenant preservation
+rollback/forward-fix
+data tests
+```
+
+---
+
+# 262. Engineering Definition of Done — Infrastructure Change
+
+Adds:
+
+```text
+IaC/config diff
+security
+deployment test
+rollback
+deployment evidence
+```
+
+---
+
+# 263. Engineering Definition of Done — Dependency Update
+
+Adds:
+
+```text
+provenance/license
+security
+compatibility
+tests
+```
+
+---
+
+# 264. Engineering Definition of Done — Canonical Document
+
+Requires:
+
+```text
+authority alignment
+internal consistency
+no duplicate truth
+correct target/current separation
+review
+```
+
+---
+
+# 265. Canonical Engineering Workflow
+
+```text
+REQUEST / REQUIREMENT
+        │
+        ▼
+READ CANONICAL AUTHORITIES
+        │
+        ▼
+LOCATE EXISTING OWNER
+        │
+        ▼
+BOUND CHANGE
+        │
+        ▼
+IMPLEMENT
+        │
+        ▼
+UNIT / CONTRACT TESTS
+        │
+        ▼
+INTEGRATION / NEGATIVE TESTS
+        │
+        ▼
+QUALITY GATES
+        │
+        ▼
+FINAL DIFF REVIEW
+        │
+        ▼
+PR / REVIEW
+        │
+        ▼
+MERGE
+        │
+        ▼
+RELEASE / DEPLOYMENT IF AUTHORIZED
+        │
+        ▼
+EVIDENCE
+```
+
+---
+
+# 266. Engineering Evidence Formula
+
+```text
+REQUIREMENT
++
+DIFF
++
+TEST RESULTS
++
+CI RESULTS
++
+REVIEW
++
+MERGE REVISION
++
+RELEASE / DEPLOYMENT EVIDENCE WHEN APPLICABLE
+=
+TRACEABLE ENGINEERING CHANGE
+```
+
+---
+
+# 267. Final Engineering Invariant
+
+The defining ILAIOS engineering rule is:
+
+> **Every change must strengthen or preserve the one canonical ILAIOS architecture; no local implementation convenience may create a second source of authority, weaken a required control, or manufacture a PASS without evidence.**
+
+Therefore:
+
+```text
+Fast
+≠
+Correct
+
+Compiles
+≠
+Tested
+
+Tests locally
+≠
+CI PASS
+
+Merged
+≠
+Released
+
+Released
+≠
+Deployed
+
+Deployed
+≠
+Currently Healthy
+```
+
+And:
+
+```text
+SMALL
++
+EXPLICIT
++
+TYPED
++
+TESTED
++
+SECURE
++
+REVIEWED
++
+TRACEABLE
+=
+ILAIOS ENGINEERING STANDARD
+```
+
+**The engineering system exists to make ILAIOS easier to evolve without making it easier to bypass.**
