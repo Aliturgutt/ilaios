@@ -59,7 +59,15 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
     <main id="main-content" lang={lang}>{children}</main>
     <footer className="site-footer" lang={lang}>
       <div className="shell footer-grid">
-        <div className="footer-brand"><strong>ILAIOS</strong><p>{isTr ? "Kurum ve bireylerin hedeflerini kontrollü, doğrulanabilir ve izlenebilir dijital iş akışlarına dönüştürmek için geliştirilen yapay zekâ ve operasyon platformu." : "An AI and digital operations platform designed to turn organizational and individual goals into governed, verifiable and traceable workflows."}</p><a href="mailto:contact@ilaios.com">contact@ilaios.com</a><a href="https://x.com/ilaios" target="_blank" rel="noreferrer">X · @ilaios</a></div>
+        <div className="footer-brand">
+          <strong>ILAIOS</strong>
+          <p>{isTr ? "Kurum ve bireylerin hedeflerini kontrollü, doğrulanabilir ve izlenebilir dijital iş akışlarına dönüştürmek için geliştirilen yapay zekâ ve operasyon platformu." : "An AI and digital operations platform designed to turn organizational and individual goals into governed, verifiable and traceable workflows."}</p>
+          <div className="footer-contact-primary"><a href="mailto:contact@ilaios.com">contact@ilaios.com</a></div>
+          <div className="footer-social" aria-label={isTr ? "ILAIOS sosyal kanalları" : "ILAIOS social channels"}>
+            <a href="https://www.linkedin.com/company/ilaios/" target="_blank" rel="noreferrer" aria-label={isTr ? "ILAIOS LinkedIn şirket sayfası" : "ILAIOS company page on LinkedIn"}>LinkedIn</a>
+            <a href="https://x.com/ilaios" target="_blank" rel="noreferrer" aria-label={isTr ? "ILAIOS X hesabı" : "ILAIOS on X"}>X · @ilaios</a>
+          </div>
+        </div>
         <div><strong>{isTr ? "Ürün" : "Product"}</strong><Link href={isTr ? "/tr/platform" : "/platform"}>Platform</Link><Link href={isTr ? "/tr/capabilities" : "/capabilities"}>{isTr ? "Yetenekler" : "Capabilities"}</Link><Link href={isTr ? "/tr/how-it-works" : "/how-it-works"}>{isTr ? "Nasıl Çalışır" : "How It Works"}</Link><Link href={isTr ? "/tr/core" : "/core"}>ILAIOS Core</Link><Link href={isTr ? "/tr/architecture" : "/architecture"}>{isTr ? "Mimari" : "Architecture"}</Link></div>
         <div><strong>{isTr ? "Kullanım" : "Use"}</strong><Link href={isTr ? "/tr/enterprise" : "/enterprise"}>{isTr ? "Kurumlar" : "Enterprises"}</Link><Link href={isTr ? "/tr/individuals" : "/individuals"}>{isTr ? "Bireysel" : "Individuals"}</Link><Link href={isTr ? "/tr/solutions" : "/solutions"}>{isTr ? "Çözümler" : "Solutions"}</Link></div>
         <div><strong>{isTr ? "Güven ve şirket" : "Trust & company"}</strong><Link href={isTr ? "/tr/security" : "/security"}>{isTr ? "Güvenlik" : "Security"}</Link><Link href={isTr ? "/tr/trust" : "/trust"}>{isTr ? "Güven Merkezi" : "Trust Center"}</Link><Link href={isTr ? "/tr/docs" : "/docs"}>{isTr ? "Dokümanlar" : "Documentation"}</Link><Link href={isTr ? "/tr/about" : "/about"}>{isTr ? "Hakkımızda" : "About"}</Link><Link href={isTr ? "/tr/contact" : "/contact"}>{isTr ? "İletişim" : "Contact"}</Link></div>
