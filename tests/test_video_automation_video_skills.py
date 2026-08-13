@@ -92,6 +92,12 @@ def test_independent_evaluator_requires_every_domain_and_evidence() -> None:
         evaluator.evaluate(
             ARTIFACT, _findings()[:-1], evaluator_id="ilaios.video.evaluator.v1"
         )
+    with pytest.raises(VideoSkillError, match="visual, audio"):
+        evaluator.evaluate(
+            ARTIFACT,
+            (*_findings(), _findings()[0]),
+            evaluator_id="ilaios.video.evaluator.v1",
+        )
 
 
 def test_selective_repair_targets_only_failed_finding_and_is_bounded() -> None:
@@ -105,14 +111,17 @@ def test_selective_repair_targets_only_failed_finding_and_is_bounded() -> None:
     ]
     with pytest.raises(VideoSkillError, match="exhausted"):
         controller.plan(evaluation, {"finding-audio": 2})
+    with pytest.raises(VideoSkillError, match="negative"):
+        controller.plan(evaluation, {"finding-audio": -1})
 
 
 def test_media_security_is_sandboxed_size_bounded_and_provenance_gated(
     tmp_path: Path,
 ) -> None:
     policy = MediaSecurityPolicy(tmp_path, frozenset({".mp4"}), 1024)
+    (tmp_path / "input.mp4").write_bytes(b"video-bytes")
     admitted = policy.admit(
-        tmp_path / "input.mp4", byte_length=100, provenance_reference="prov-1"
+        tmp_path / "input.mp4", byte_length=11, provenance_reference="prov-1"
     )
     assert admitted == (tmp_path / "input.mp4").resolve()
     with pytest.raises(VideoSkillError, match="escapes"):
@@ -122,7 +131,11 @@ def test_media_security_is_sandboxed_size_bounded_and_provenance_gated(
             provenance_reference="prov-1",
         )
     with pytest.raises(VideoSkillError, match="provenance"):
-        policy.admit(tmp_path / "input.mp4", byte_length=100, provenance_reference=None)
+        policy.admit(tmp_path / "input.mp4", byte_length=11, provenance_reference=None)
+    with pytest.raises(VideoSkillError, match="does not match"):
+        policy.admit(
+            tmp_path / "input.mp4", byte_length=10, provenance_reference="prov-1"
+        )
 
 
 def test_thumbnail_request_is_content_addressed_and_bounded() -> None:

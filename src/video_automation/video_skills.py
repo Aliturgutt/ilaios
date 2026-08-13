@@ -268,7 +268,9 @@ class IndependentVideoEvaluator:
         _sha256(artifact_sha256)
         _text("evaluator_id", evaluator_id)
         items = tuple(findings)
-        if not items or {item.domain for item in items} != set(QaDomain):
+        if len(items) != len(QaDomain) or {item.domain for item in items} != set(
+            QaDomain
+        ):
             raise VideoSkillError(
                 "final evaluation requires visual, audio, brand, and technical findings"
             )
@@ -298,7 +300,10 @@ class SelectiveRepairController:
         for finding in evaluation.findings:
             if finding.passed:
                 continue
-            attempt = prior_attempts.get(finding.finding_id, 0) + 1
+            prior_attempt = prior_attempts.get(finding.finding_id, 0)
+            if prior_attempt < 0:
+                raise VideoSkillError("prior repair attempts must not be negative")
+            attempt = prior_attempt + 1
             if attempt > self._max_attempts:
                 raise VideoSkillError(f"repair limit exhausted: {finding.finding_id}")
             assert finding.repair_target is not None
@@ -324,13 +329,19 @@ class MediaSecurityPolicy:
         self, path: Path, *, byte_length: int, provenance_reference: str | None
     ) -> Path:
         root = self.workspace_root.resolve()
+        if path.is_symlink():
+            raise VideoSkillError("symbolic-link media inputs are prohibited")
         candidate = path.resolve()
         if root != candidate and root not in candidate.parents:
             raise VideoSkillError("media path escapes the configured sandbox")
+        if not candidate.is_file():
+            raise VideoSkillError("media input must be an existing regular file")
         if candidate.suffix.lower() not in self.allowed_extensions:
             raise VideoSkillError("media extension is not allowed")
         if byte_length < 1 or byte_length > self.max_input_bytes:
             raise VideoSkillError("media byte length violates policy")
+        if candidate.stat().st_size != byte_length:
+            raise VideoSkillError("declared media byte length does not match the file")
         if self.require_provenance and not provenance_reference:
             raise VideoSkillError("media provenance is required")
         return candidate
