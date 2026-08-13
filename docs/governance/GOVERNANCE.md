@@ -1,21 +1,21 @@
 # ILAIOS — GOVERNANCE
 
-**Document Type:** Canonical Governance Standard  
-**Format:** GitHub Markdown + ASCII governance diagrams  
-**Status:** Canonical Baseline v1.0 — Pending Repository Publication  
-**Canonical Repository Location:** `docs/governance/GOVERNANCE.md`  
-**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
-**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
-**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
-**Dependency Authority:** `DEPENDENCY_GRAPH.md`  
-**API Authority:** `API_CONTRACTS.md`  
-**Security Authority:** `SECURITY_ARCHITECTURE.md`  
-**Data Authority:** `DATA_ARCHITECTURE.md`  
-**Threat Model Companion:** `THREAT_MODEL.md`  
-**Testing Authority:** `TESTING_AND_EVALUATION.md`  
-**Deployment Authority:** `DEPLOYMENT_ARCHITECTURE.md`  
-**FinOps Authority:** `FINOPS.md`  
-**Engineering Authority:** `ENGINEERING_STANDARDS.md`  
+**Document Type:** Canonical Governance Standard
+**Format:** GitHub Markdown + ASCII governance diagrams
+**Status:** Canonical Baseline v1.0 — Pending Repository Publication
+**Canonical Repository Location:** `docs/governance/GOVERNANCE.md`
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`
+**Dependency Authority:** `DEPENDENCY_GRAPH.md`
+**API Authority:** `API_CONTRACTS.md`
+**Security Authority:** `SECURITY_ARCHITECTURE.md`
+**Data Authority:** `DATA_ARCHITECTURE.md`
+**Threat Model Companion:** `THREAT_MODEL.md`
+**Testing Authority:** `TESTING_AND_EVALUATION.md`
+**Deployment Authority:** `DEPLOYMENT_ARCHITECTURE.md`
+**FinOps Authority:** `FINOPS.md`
+**Engineering Authority:** `ENGINEERING_STANDARDS.md`
 **Core Governance Principle:** **ONE ILAIOS — ONE AUTHORITY CHAIN — NO PARALLEL GOVERNANCE**
 
 > This document defines the canonical governance model of ILAIOS: authority, decision rights, architecture change control, Core evolution, capability promotion, policy ownership, exceptions, approvals, engineering/release governance, evidence requirements, external dependency adoption, owner-controlled gates, and governance Definition of Done. It defines target governance rules, not mutable repository status or current implementation state.
