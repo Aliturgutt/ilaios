@@ -48,28 +48,26 @@ def test_complete_windows_evidence_passes_app_factory_gate() -> None:
     AppFactory.accept_design_quality(assessment)
 
 
-@pytest.mark.parametrize(
-    ("field", "category", "severity"),
-    (
+def test_blocking_defects_fail_closed() -> None:
+    cases = (
         ("clipped_elements", "design.app-layout", "major"),
         ("missing_semantics", "design.app-accessibility", "p2"),
         ("missing_interaction_states", "design.app-interaction", "p2"),
         ("navigation_adaptation_failures", "design.app-navigation", "major"),
         ("dialog_or_sheet_failures", "design.app-interaction", "major"),
-    ),
-)
-def test_blocking_defects_fail_closed(field: str, category: str, severity: str) -> None:
-    assessment = NativeAppDesignQualityEvaluator().evaluate(
-        complete_rows(**{field: 1}),
-        required_surfaces=("windows:compact", "windows:wide"),
     )
-    assert assessment.status == "FAIL"
-    assert any(
-        finding.category == category and finding.severity == severity
-        for finding in assessment.findings
-    )
-    with pytest.raises(ValueError, match="app design quality gate failed"):
-        AppFactory.accept_design_quality(assessment)
+    for field, category, severity in cases:
+        assessment = NativeAppDesignQualityEvaluator().evaluate(
+            complete_rows(**{field: 1}),
+            required_surfaces=("windows:compact", "windows:wide"),
+        )
+        assert assessment.status == "FAIL"
+        assert any(
+            finding.category == category and finding.severity == severity
+            for finding in assessment.findings
+        )
+        with pytest.raises(ValueError, match="app design quality gate failed"):
+            AppFactory.accept_design_quality(assessment)
 
 
 def test_missing_declared_surface_fails_closed() -> None:
