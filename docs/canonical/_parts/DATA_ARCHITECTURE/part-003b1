@@ -1,0 +1,134 @@
+malware/content safety checks where relevant
+```
+
+Imported records cannot overwrite canonical IDs without controlled migration rules.
+
+---
+
+# 162. Data Portability
+
+Where product policy supports portability, export formats should preserve enough metadata for:
+
+```text
+ownership
+version
+timestamps
+provenance
+artifact relationships
+```
+
+without exposing internal secrets.
+
+---
+
+# 163. Search Data
+
+Search results should return references to authorized canonical entities.
+
+Search does not create alternate object truth.
+
+---
+
+# 164. Notification Data Minimization
+
+Notifications should use:
+
+```text
+safe summary
+stable entity reference
+deep link/reference
+```
+
+instead of embedding full sensitive task/artifact content.
+
+---
+
+# 165. Data Auditability
+
+Material data lifecycle events may require evidence:
+
+```text
+created
+classified
+shared
+exported
+deleted
+restored
+migrated
+retention hold applied
+```
+
+depending on risk/policy.
+
+---
+
+# 166. Current Reality vs Target Data Architecture
+
+This document defines the target data architecture.
+
+Current reality is determined from:
+
+```text
+current schemas
+current code
+current tests
+current CI
+runtime data behavior
+deployment/storage evidence
+```
+
+Therefore:
+
+```text
+DATA_ARCHITECTURE.md says a store/entity must exist
+≠
+proof it is currently production-deployed
+```
+
+Mutable implementation status belongs in milestones/evidence, not this canonical data architecture.
+
+---
+
+# 167. Data Red Lines
+
+Reject implementations that create:
+
+```text
+tenant inferred from frontend state
+vector retrieval without authorization
+artifact overwrite without version
+validation without artifact version ref
+evidence stored only as log text
+secrets inside ordinary application rows
+provider IDs as canonical user identity
+two authoritative job state stores
+two evidence truths
+two capability identity stores
+cross-store records with no owner/scope
+unbounded cache as source of truth
+silent data migration without evidence
+```
+
+---
+
+# 168. Canonical Data Flow
+
+```text
+AUTHENTICATED PRINCIPAL
+        │
+        ▼
+TENANT / PROJECT
+        │
+        ▼
+GOAL
+        │
+        ▼
+PLAN / JOB / TASK
+        │
+        ├──────────────► WORKFLOW STATE
+        │
+        ├──────────────► AUTHORIZED CONTEXT
+        │                    │
+        │                    ▼
+        │              KNOWLEDGE STORE
+        │
