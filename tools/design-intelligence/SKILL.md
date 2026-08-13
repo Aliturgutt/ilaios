@@ -1,6 +1,11 @@
+---
+name: design-intelligence
+description: Evaluate website visual quality, anti-generic-AI risk, typography, spacing, components, motion, interaction, responsive behavior, EN/TR parity, technical-content readability, accessibility visuals, and final polish through ILAIOS-native structured evidence and Web Factory gates. Use for website design audits, production visual acceptance, responsive/localization QA, or Web Factory design-quality decisions.
+---
+
 # ILAIOS Native Design Intelligence
 
-Status: IMPLEMENTED-SPEC / runtime integration pending verification
+Status: IMPLEMENTED
 Owner: ILAIOS
 Scope: Website and future Web Factory design-quality evaluation
 
@@ -42,5 +47,17 @@ Entry motion should generally decelerate; exits should not feel delayed. Do not 
 8. Do not expand agent/runtime authority.
 9. A PASS requires zero critical and zero major findings; minor findings must be fixed or explicitly accepted by project governance.
 
+## Machine contract
+- Skill ID: `design.final-polish`; version: `1.0.0`.
+- Input: bounded `DesignObservation` rows for route, locale, viewport, responsive, interaction, accessibility, readability, consistency, contextual decoration, and reduced-motion signals.
+- Output: `DesignAssessment` with evaluator ID/version, PASS/FAIL, coverage, and structured findings containing route, viewport, category, severity, evidence, recommendation, and confidence.
+- Severity: `critical`, `major`, and `p2` block; `minor` requires explicit disposition.
+- Determinism: measurable checks are deterministic. Governed visual review supplies bounded observations only where judgment is necessary.
+- Failure: reject empty, malformed, negative, unsupported-locale, or incomplete EN/TR/viewport evidence; Web Factory fails closed.
+- Dependencies: Python standard library only. Copied third-party implementation code: NO.
+
+Implementation: `services/design_quality.py`. Tests: `tests/test_design_quality.py`. Do not replace structured observations with unbounded prose or let an LLM silently choose severity.
+
 ## Web Factory reuse
-This skill is intentionally ILAIOS-owned and self-contained. Future Web Factory integration may call the same evaluation families, but Web Factory runtime must not require any external reference repository to be available.
+This skill is intentionally ILAIOS-owned and self-contained. Web Factory consumes it through `GovernedWebFactory.accept_design_quality` without duplicating policy, routing, evidence storage, or skill runtime.
+

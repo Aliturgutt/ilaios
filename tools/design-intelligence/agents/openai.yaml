@@ -1,0 +1,5 @@
+interface:
+  display_name: "ILAIOS Design Intelligence"
+  short_description: "Governed native website design-quality evaluation"
+  default_prompt: "Use $design-intelligence to evaluate this website with structured evidence and a fail-closed final-polish decision."
+

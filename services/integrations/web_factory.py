@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
+from services.design_quality import DesignAssessment
 from services.runtime import ExecutionGrant, GrantPolicy
 
 
@@ -35,6 +36,14 @@ class GovernedWebFactory:
     def __init__(self, grants: GrantPolicy, artifact_root: Path) -> None:
         self._grants = grants
         self._artifact_root = artifact_root
+
+    @staticmethod
+    def accept_design_quality(assessment: DesignAssessment) -> None:
+        """Fail closed without introducing another policy or evidence runtime."""
+        if assessment.evaluator_id != "design.final-polish":
+            raise ValueError("unrecognized design quality evaluator")
+        if assessment.status != "PASS" or assessment.blocking_findings:
+            raise ValueError("website design quality gate failed")
 
     def build_official_site(
         self,
@@ -147,7 +156,7 @@ def _site_content(pages: tuple[str, ...]) -> dict[str, bytes]:
 
 def _verify_existing(bundle: Path, expected: dict[str, bytes]) -> None:
     actual_paths = {
-        str(path.relative_to(bundle))
+        path.relative_to(bundle).as_posix()
         for path in bundle.rglob("*")
         if path.is_file() and path.name != "acceptance.json"
     }
