@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from services.agent_registry import CANONICAL_CANONICAL_AGENT_REGISTRY
+from services.agent_registry import CANONICAL_AGENT_REGISTRY
 from services.capability_registry import CAPABILITIES
 
 ROOT = Path(__file__).resolve().parents[1]
