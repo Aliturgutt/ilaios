@@ -1,0 +1,310 @@
+# 169. Governance Definition of Done — Exception
+
+Requires:
+
+```text
+scope
+risk
+owner
+approval
+compensating control
+expiration
+exit condition
+```
+
+---
+
+# 170. Governance Definition of Done — External Assimilation
+
+Requires:
+
+```text
+pinned source
+license
+security/supply-chain review
+requirements extracted
+native implementation
+tests
+independence
+evidence
+```
+
+---
+
+# 171. Governance Test Matrix
+
+Machine-enforceable governance should test:
+
+```text
+required check blocks merge
+expired approval rejected
+agent self-approval rejected
+client cannot mint grant
+parallel router path rejected
+provider bypass rejected
+exception expiry enforced
+maturity promotion requires evidence
+```
+
+---
+
+# 172. Governance Negative Tests
+
+Examples:
+
+```text
+Factory direct-calls provider
+    → FAIL
+
+Agent modifies approval to approve itself
+    → FAIL
+
+Worker broadens ExecutionGrant
+    → FAIL
+
+Client claims admin role
+    → FAIL
+
+Required test waived without valid waiver
+    → FAIL
+
+Expired exception reused
+    → FAIL
+```
+
+---
+
+# 173. Governance Red-Team
+
+Red-team should attempt:
+
+```text
+architecture bypass
+review bypass
+branch-protection bypass
+test weakening
+approval replay
+exception abuse
+current-state misreporting
+provider authority escalation
+```
+
+---
+
+# 174. Status Claim Review
+
+Before publishing a current-state claim, ask:
+
+```text
+What exact evidence supports this?
+Which revision/environment/scope?
+How recent is it?
+Is this target truth or current reality?
+```
+
+---
+
+# 175. Full Governance Flow
+
+```text
+PRODUCT / ENGINEERING NEED
+          │
+          ▼
+IDENTIFY CANONICAL AUTHORITY
+          │
+          ▼
+CLASSIFY CHANGE / RISK
+          │
+          ▼
+BOUND SCOPE
+          │
+          ▼
+REQUIRED REVIEWS
+          │
+   ┌──────┼─────────────────────────────┐
+   │      │        │       │            │
+   ▼      ▼        ▼       ▼            ▼
+Product Architecture Security Data   FinOps/Engineering
+   │      │        │       │            │
+   └──────┴────────┴───────┴────────────┘
+          │
+          ▼
+IMPLEMENT / SPECIFY
+          │
+          ▼
+TEST / EVALUATE
+          │
+          ▼
+EVIDENCE
+          │
+          ▼
+DECISION
+          │
+   ┌──────┼─────────┬──────────────────┐
+   │      │         │                  │
+   ▼      ▼         ▼                  ▼
+REJECT  REVISE   APPROVE    BOUNDED EXCEPTION
+                     │
+                     ▼
+          MERGE / RELEASE / DEPLOY
+             ONLY IF AUTHORIZED
+                     │
+                     ▼
+                  VERIFY
+                     │
+                     ▼
+             AUDIT / SUPERSEDE
+```
+
+---
+
+# 176. Governance Authority Map
+
+```text
+                        PRODUCT OWNER
+                             │
+                             ▼
+                    PRODUCT REQUIREMENTS
+                             │
+             ┌───────────────┼───────────────┐
+             │               │               │
+             ▼               ▼               ▼
+     ARCHITECTURE        SECURITY          DATA
+        AUTHORITY        AUTHORITY       AUTHORITY
+             │               │               │
+             └───────────────┼───────────────┘
+                             ▼
+                     IMPLEMENTATION RULES
+                             │
+                             ▼
+                     ENGINEERING CHANGE
+                             │
+                             ▼
+                    TEST / EVALUATION
+                             │
+                             ▼
+                         EVIDENCE
+                             │
+               ┌─────────────┼─────────────┐
+               │             │             │
+               ▼             ▼             ▼
+            MERGE         RELEASE       EXCEPTION
+               │             │             │
+               └─────────────┼─────────────┘
+                             ▼
+                      DEPLOYMENT POLICY
+                             │
+                             ▼
+                     APPROVAL IF REQUIRED
+                             │
+                             ▼
+                         DEPLOYMENT
+                             │
+                             ▼
+                        VERIFICATION
+```
+
+---
+
+# 177. Governance Evidence Formula
+
+```text
+DECISION
++
+AUTHORIZED ROLE
++
+SCOPE
++
+RATIONALE
++
+REQUIRED REVIEWS
++
+TEST / EVALUATION EVIDENCE
++
+VERSION / REVISION
++
+ADR / EXCEPTION IF APPLICABLE
+=
+GOVERNED CHANGE
+```
+
+---
+
+# 178. Constitutional Governance Formula
+
+```text
+ONE CORE
++
+ONE CONTROL PLANE
++
+ONE POLICY AUTHORITY
++
+ONE CAPABILITY REGISTRY
++
+ONE ROUTING TRUTH
++
+ONE EVIDENCE TRUTH
++
+BOUNDED HUMAN / AGENT AUTHORITY
++
+TRACEABLE DECISIONS
++
+NO BYPASS
+=
+ILAIOS GOVERNANCE
+```
+
+---
+
+# 179. Final Governance Invariant
+
+The defining ILAIOS governance rule is:
+
+> **No actor—human, agent, factory, worker, provider, tool, client, or external project—may create authority merely by being able to perform an action. Authority exists only when the canonical ILAIOS governance chain grants it.**
+
+Therefore:
+
+```text
+Capability
+≠ Authority
+
+Implementation
+≠ Approval
+
+Test PASS
+≠ Production Permission
+
+Documentation
+≠ Current Reality
+
+Provider Availability
+≠ Eligibility
+
+Human Request
+≠ Unlimited Scope
+
+Agent Confidence
+≠ Evidence
+```
+
+The canonical change sequence is:
+
+```text
+UNDERSTAND AUTHORITY
+        ↓
+BOUND THE CHANGE
+        ↓
+APPLY REQUIRED REVIEW
+        ↓
+TEST
+        ↓
+PRODUCE EVIDENCE
+        ↓
+AUTHORIZE
+        ↓
+EXECUTE
+        ↓
+VERIFY
+```
+
+**ILAIOS governance exists to make the system evolvable without making authority ambiguous.**
