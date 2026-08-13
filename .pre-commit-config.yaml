@@ -5,6 +5,8 @@ repos:
       - id: end-of-file-fixer
         exclude: ^dev/openclaw/(MASTER_OPENCLAW\.md|execution_plan\.yaml)$
       - id: trailing-whitespace
+        # Locked canonical Markdown uses intentional two-space hard breaks.
+        exclude: ^docs/governance/(GOVERNANCE|ENGINEERING_STANDARDS|MILESTONES)\.md$
       - id: check-yaml
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.1.9
