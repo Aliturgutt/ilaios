@@ -13,6 +13,7 @@ It is intentionally self-contained: no Taste Skill, Emil Kowalski skill, Impecca
 - Ownership boundary: IMPLEMENTED.
 - Design rule specification: IMPLEMENTED.
 - Website application: IN PROGRESS on the website-final branch.
+- Reproducible website dependency gate: IMPLEMENTED with a committed `apps/website/package-lock.json`; CI verification remains evidence-driven.
 - Deterministic executable evaluator: NOT YET VERIFIED.
 - Web Factory runtime wiring: NOT YET IMPLEMENTED.
 
