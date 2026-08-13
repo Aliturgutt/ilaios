@@ -1,0 +1,160 @@
+retention/deletion policy
+```
+
+---
+
+# 153. Evidence Data Definition of Done
+
+Evidence system requires:
+
+```text
+stable evidence IDs
+tenant/project scope
+material event taxonomy
+integrity verification
+artifact/version references
+decision references
+append-oriented history
+privacy-aware metadata
+acceptance manifest support
+```
+
+---
+
+# 154. Workflow State Definition of Done
+
+Durable workflow state requires:
+
+```text
+job/task IDs
+valid state machine
+sequenced transitions
+leases
+fencing
+checkpoint
+retry/repair state
+cancel state
+recovery tests
+stale commit rejection
+```
+
+---
+
+# 155. Data Security Definition of Done
+
+Data architecture is not production-ready until:
+
+```text
+encryption controls
+server-side tenant enforcement
+classification
+DLP/minimization
+secret-store separation
+backup protection
+restore validation
+retention/deletion policy
+cross-tenant negative tests
+```
+
+exist for the defined scope.
+
+---
+
+# 156. Data Access Governance
+
+Every data access is evaluated through:
+
+```text
+Principal
++ Tenant
++ Project
++ Resource
++ Action
++ Purpose
++ Classification
++ Policy
+```
+
+No storage technology may bypass the canonical authorization model.
+
+---
+
+# 157. Administrative Data Access
+
+Administrative access must be explicitly scoped.
+
+Operational support should not imply unrestricted access to tenant content.
+
+High-risk support/security access may require:
+
+```text
+strong auth
+break-glass
+reason
+approval
+evidence
+time limit
+```
+
+---
+
+# 158. Analytics Data
+
+Product analytics should use minimized/pseudonymized data where feasible.
+
+Analytics pipelines must not become an uncontrolled copy of all tenant content.
+
+Analytics datasets require:
+
+```text
+purpose
+classification
+retention
+owner
+access policy
+```
+
+---
+
+# 159. Training / Model Improvement Data
+
+Tenant/user data must not automatically become training data for ILAIOS or external providers.
+
+Any future training/improvement use requires explicit governed policy, legal/privacy basis, data classification handling, and user/tenant controls as applicable.
+
+---
+
+# 160. Export Data
+
+Tenant/project data export must be governed.
+
+Export may include:
+
+```text
+operational metadata
+artifacts
+knowledge sources
+evidence
+```
+
+depending on policy.
+
+Export must not include:
+
+- other tenants;
+- internal secrets;
+- protected system configuration;
+- unrelated provider credentials.
+
+---
+
+# 161. Import Data
+
+Imports require:
+
+```text
+source verification
+schema validation
+classification
+tenant assignment
+provenance
