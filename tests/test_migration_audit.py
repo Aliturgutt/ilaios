@@ -2,6 +2,7 @@ from pathlib import Path
 
 from tools.migration_audit import (
     CANONICAL_NAME,
+    SOURCE_DIRECTORY,
     SOURCE_NAME,
     implementation_proof_for,
     iter_completion_requirements,
@@ -65,7 +66,7 @@ def test_completion_requirements_include_only_sections_eight_and_nine() -> None:
 
 def test_every_legacy_requirement_is_preserved_in_ilaios_canonical() -> None:
     root = Path(__file__).parents[1]
-    source = root / "dev/openclaw/migration_input" / SOURCE_NAME
+    source = root / SOURCE_DIRECTORY / SOURCE_NAME
     canonical = (root / "docs/canonical" / CANONICAL_NAME).read_text(encoding="utf-8")
     missing = []
     for line, _, _, requirement in iter_requirements(source):
