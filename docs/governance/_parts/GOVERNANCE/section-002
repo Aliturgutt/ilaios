@@ -1,0 +1,955 @@
+# 100. Incident Governance
+
+Security/reliability incidents require:
+
+```text
+containment authority
+evidence
+recovery
+post-incident review
+corrective action
+```
+
+Detailed response mechanics belong in `FAILURE_RECOVERY.md`.
+
+---
+
+# 101. Disaster Recovery Governance
+
+DR must preserve:
+
+```text
+tenant isolation
+policy
+identity
+revocation state
+evidence
+```
+
+Emergency recovery must not start a permissive parallel platform.
+
+---
+
+# 102. Change Classification
+
+Material changes should be classified:
+
+```text
+C0 — Editorial / No Runtime Impact
+C1 — Local Low-Risk
+C2 — Cross-Component / Contract
+C3 — Security / Data / Runtime Critical
+C4 — Constitutional / Core / Production-Critical
+```
+
+This classification is a governance aid, not capability maturity.
+
+---
+
+# 103. C0 Change
+
+Examples:
+
+```text
+typo
+formatting
+non-semantic link correction
+```
+
+Minimal review.
+
+---
+
+# 104. C1 Change
+
+Examples:
+
+```text
+bounded bug fix
+local refactor
+non-critical internal improvement
+```
+
+Normal engineering tests/review.
+
+---
+
+# 105. C2 Change
+
+Examples:
+
+```text
+API/internal contract
+cross-service interface
+new capability dependency
+```
+
+Requires contract/integration review.
+
+---
+
+# 106. C3 Change
+
+Examples:
+
+```text
+auth
+tenant isolation
+secrets
+routing
+runtime state
+RAG authorization
+deployment credentials
+```
+
+Requires architecture/security/data review as applicable and negative tests.
+
+---
+
+# 107. C4 Change
+
+Examples:
+
+```text
+Core
+Control Plane
+planner authority
+capability registry
+evidence authority
+constitutional production governance
+```
+
+Requires highest scrutiny and ADR.
+
+---
+
+# 108. Risk Assessment
+
+Change risk considers:
+
+```text
+privilege
+tenant breadth
+data sensitivity
+blast radius
+financial impact
+irreversibility
+availability impact
+migration complexity
+```
+
+---
+
+# 109. Review Matrix
+
+Conceptually:
+
+```text
+C0 → author/self-review may suffice
+C1 → engineering review
+C2 → engineering + affected domain authority
+C3 → engineering + architecture/security/data as applicable
+C4 → architecture + security + owner/governance decision + ADR
+```
+
+One person may exercise several logical roles, but the roles must remain explicit.
+
+---
+
+# 110. Canonical Change Workflow
+
+```text
+Requirement
+    ↓
+Identify Canonical Authority
+    ↓
+Classify Change / Risk
+    ↓
+Bound Scope
+    ↓
+Implement / Specify
+    ↓
+Tests / Evaluation
+    ↓
+Required Review
+    ↓
+Evidence
+    ↓
+Decision
+    ↓
+Merge / Release / Deploy if authorized
+```
+
+---
+
+# 111. Scope Creep Governance
+
+If implementation discovers materially broader scope:
+
+```text
+stop silent expansion
+reclassify the change
+update proposal/ADR if needed
+review expanded impact
+```
+
+---
+
+# 112. Repository Governance
+
+Repository mechanics follow `ENGINEERING_STANDARDS.md`.
+
+Governance owns decision rights around:
+
+```text
+canonical branch
+branch protection
+required checks
+merge authority
+release source
+```
+
+Current enforcement remains mutable evidence.
+
+---
+
+# 113. Canonical Branch
+
+There is one canonical integration branch as configured by the repository.
+
+No long-lived competing mainline is permitted.
+
+---
+
+# 114. Branch Protection Governance
+
+The canonical branch should be protected according to project maturity/risk.
+
+Changing required protection is itself a governance-significant action.
+
+---
+
+# 115. Required Check Governance
+
+Required checks cannot be removed or weakened simply to merge a failing change.
+
+---
+
+# 116. Merge Governance
+
+Merge requires:
+
+```text
+required checks PASS
+required reviews complete
+blocking feedback resolved
+no known constitutional violation
+```
+
+---
+
+# 117. No Autonomous Merge Bypass
+
+An autonomous engineering agent may merge only where governance explicitly permits and all required gates have passed.
+
+---
+
+# 118. CI Governance
+
+CI is an independent quality/evidence system.
+
+CI configuration is governed code.
+
+A failed required check cannot be converted to PASS by status prose.
+
+---
+
+# 119. Release Version Governance
+
+Release version/tag, capability maturity, deployment state, and current live health are distinct facts.
+
+---
+
+# 120. Deprecation Governance
+
+Deprecation requires:
+
+```text
+replacement
+migration
+usage visibility
+retirement condition
+```
+
+`DEPRECATED` remains outside the capability maturity progression.
+
+---
+
+# 121. Migration Governance
+
+Migration requires:
+
+```text
+source state
+target state
+compatibility
+tests
+rollback/forward-fix
+data integrity
+retirement of temporary path
+```
+
+---
+
+# 122. Temporary Dual-System Rule
+
+Temporary dual-read/write or compatibility layers may exist only when:
+
+```text
+one final authority is explicit
+duration is bounded
+consistency is checked
+retirement is defined
+```
+
+Permanent parallel authority is forbidden.
+
+---
+
+# 123. Governance Decision Record
+
+Conceptual record:
+
+```yaml
+governance_decision_id: "gov_..."
+decision_type: "ARCHITECTURE_CHANGE"
+scope: "..."
+requested_by: "..."
+roles_exercised: []
+decision: "APPROVED|REJECTED|REQUIRES_CHANGES"
+reason: "..."
+evidence_refs: []
+adr_ref: null
+exception_ref: null
+created_at: "..."
+```
+
+---
+
+# 124. Governance Auditability
+
+Material governance must answer:
+
+```text
+Who decided?
+Under which role?
+What changed?
+Why?
+Which evidence?
+Which revision/version?
+Which exception/ADR?
+When?
+What later superseded it?
+```
+
+---
+
+# 125. Governance Drift
+
+Governance drift occurs when actual engineering/runtime behavior bypasses documented authority.
+
+Examples:
+
+```text
+direct provider call
+hidden router
+unprotected privileged deploy
+client-owned tenant authority
+worker-owned secret authority
+```
+
+---
+
+# 126. Drift Detection
+
+Use:
+
+```text
+architecture tests
+security negative tests
+repository scans
+review
+runtime evidence
+```
+
+Drift affecting Core, tenant isolation, policy, routing, or evidence is high severity.
+
+---
+
+# 127. Drift Remediation
+
+When drift is accidental:
+
+```text
+contain
+classify
+restore canonical path
+add regression test
+record evidence
+```
+
+Do not rewrite architecture merely to legitimize accidental code.
+
+---
+
+# 128. Architecture Change Proposal
+
+Minimum proposal:
+
+```text
+problem
+current authority
+proposed change
+why existing boundary is insufficient
+alternatives
+architecture/dependency impact
+security/data/API impact
+testing
+migration
+rollback
+```
+
+---
+
+# 129. Architecture Decision Outcomes
+
+```text
+ACCEPTED
+REJECTED
+REQUIRES_REVISION
+DEFERRED
+```
+
+These are proposal decisions, not implementation states.
+
+---
+
+# 130. Core Change Proposal
+
+Adds:
+
+```text
+proof existing capability cannot own invariant
+proof no second Core is created
+ADR
+broad regression plan
+```
+
+---
+
+# 131. Security Change Proposal
+
+Adds:
+
+```text
+threat mapping
+control mapping
+negative tests
+residual risk
+```
+
+---
+
+# 132. Data Change Proposal
+
+Adds:
+
+```text
+authoritative store
+migration
+retention/deletion
+tenant impact
+```
+
+---
+
+# 133. API Breaking Change Proposal
+
+Adds:
+
+```text
+new version
+consumer migration
+compatibility window
+deprecation
+```
+
+---
+
+# 134. Provider Adoption Proposal
+
+Adds:
+
+```text
+capabilities
+privacy/residency
+security
+cost
+credentials
+adapter
+fallback
+verification
+```
+
+---
+
+# 135. Tool Adoption Proposal
+
+Adds:
+
+```text
+operations
+risk
+secret scope
+network/filesystem scope
+sandbox
+approval candidates
+```
+
+---
+
+# 136. Factory Adoption Proposal
+
+Adds:
+
+```text
+finished-product domain
+canonical dependencies
+artifact contract
+shared runtime
+evaluation
+```
+
+---
+
+# 137. External Reference Assimilation Proposal
+
+Adds:
+
+```text
+source/version
+license
+security/supply chain
+behavior extracted
+native implementation plan
+independence test
+```
+
+---
+
+# 138. Release Approval Proposal
+
+Includes:
+
+```text
+source revision
+artifact hash
+test evidence
+security evidence
+migration
+known issues
+rollback
+```
+
+---
+
+# 139. Production Deployment Proposal
+
+Includes:
+
+```text
+release artifact
+target
+deployment identity
+approval scope
+expected impact
+verification
+rollback
+```
+
+---
+
+# 140. Decision Conflict Rules
+
+If roles disagree, the higher-risk concern cannot simply be ignored.
+
+Examples:
+
+```text
+Security/privacy > cost optimization
+Tenant isolation > user convenience
+Required quality > cheaper provider
+Fail-closed security > availability convenience
+Evidence requirement > status prose
+```
+
+---
+
+# 141. Security Veto
+
+Security Authority may block a change violating a constitutional security invariant.
+
+---
+
+# 142. Architecture Veto
+
+Architecture Authority may block a change that creates duplicate canonical authority.
+
+---
+
+# 143. Evidence Veto
+
+Missing required evidence means the system cannot truthfully claim `VERIFIED`, `DEPLOYED`, or current live health for that scope.
+
+---
+
+# 144. Governance Automation
+
+Deterministic governance checks should be automated where possible:
+
+```text
+dependency cycle checks
+required CI gates
+architecture import/bypass rules
+secret scanning
+branch-protection checks
+evidence completeness
+exception expiry
+```
+
+Automation executes governance; it does not expand authority.
+
+---
+
+# 145. Policy-as-Code
+
+Where appropriate, policy may be encoded as versioned/tested configuration or code.
+
+Policy-as-code must remain reviewable and traceable.
+
+---
+
+# 146. Governance-as-Code
+
+Machine-readable governance may encode:
+
+```text
+change class
+required reviewers
+required gates
+exception expiry
+release approval
+```
+
+Human-readable canonical meaning remains documented here.
+
+---
+
+# 147. Governance Reporting
+
+Reports may summarize:
+
+```text
+open exceptions
+expiring waivers
+architecture decisions
+maturity transitions
+privileged approvals
+release decisions
+```
+
+Reports are projections; source evidence/decision records remain authoritative.
+
+---
+
+# 148. Current Governance State
+
+Current enforcement should be read from:
+
+```text
+repository settings
+CI
+policy store
+identity platform
+cloud/deployment platform
+evidence store
+```
+
+not frozen into this document.
+
+---
+
+# 149. Maturity Promotion Record
+
+A maturity promotion should identify:
+
+```text
+capability
+scope
+from state
+to state
+evidence
+decision owner
+```
+
+---
+
+# 150. Verification Is Version-Scoped
+
+A capability verified at one revision/version is not automatically verified after a material change.
+
+Historical verification remains historical evidence.
+
+---
+
+# 151. Provider / Tool / Skill Revocation
+
+Compromised or non-compliant provider/tool/skill versions may be disabled/revoked.
+
+Historical evidence must remain intact.
+
+---
+
+# 152. Emergency Security Containment
+
+Bounded containment may include:
+
+```text
+revoke credential
+disable provider
+disable tool
+block route
+freeze deployment
+```
+
+according to incident/security authority.
+
+Containment remains evidence-bearing.
+
+---
+
+# 153. Solo-Founder Governance
+
+The governance model must remain practical for a solo founder.
+
+Therefore:
+
+```text
+one authorized human may exercise multiple logical roles
+```
+
+while preserving:
+
+```text
+explicit decision role
+evidence
+no agent self-approval
+no bypass
+```
+
+---
+
+# 154. Governance Scaling
+
+As the organization grows, logical roles may become separate teams/people without changing the core decision model.
+
+---
+
+# 155. Delegation
+
+Human authority may be delegated only with explicit:
+
+```text
+delegate
+scope
+duration
+actions
+limits
+```
+
+A delegate cannot delegate more authority than received.
+
+---
+
+# 156. Vendor Governance
+
+Critical vendor review may consider:
+
+```text
+security
+privacy
+availability
+lock-in
+cost
+jurisdiction
+data processing
+exit strategy
+```
+
+---
+
+# 157. Vendor Exit
+
+Critical integrations should have a bounded exit path:
+
+```text
+disable route/access
+revoke credentials
+preserve historical evidence
+handle retained data
+fallback or safe failure
+```
+
+---
+
+# 158. Compliance Governance
+
+Specific regulatory/compliance requirements may add controls through the same governance chain.
+
+No separate parallel governance system should be introduced merely for a compliance label.
+
+Compliance claims require direct evidence and explicit scope.
+
+---
+
+# 159. Commercial Policy Boundary
+
+Commercial plans/entitlements may define:
+
+```text
+usage limits
+included capabilities
+support level
+```
+
+They may not disable constitutional security or tenant isolation.
+
+---
+
+# 160. Experiment Governance
+
+Experiments may change UI, routing preference, evaluator choice, or rollout behavior within constitutional constraints.
+
+High-risk experiments require review and tenant/data isolation.
+
+---
+
+# 161. Technical Debt Governance
+
+Material debt should be visible, owned, and scoped.
+
+“Temporary debt” cannot justify permanent parallel authority or silent security bypass.
+
+---
+
+# 162. Governance Definition of Done — Canonical Document
+
+Ready for canonical publication when:
+
+```text
+authority order is correct
+target/current distinction is explicit
+roles/decision rights are explicit
+Core evolution rule preserved
+exception model is explicit
+status/milestone boundaries are explicit
+no mutable current-state claims are embedded
+no duplicate governance authority exists
+```
+
+---
+
+# 163. Governance Definition of Done — Core Change
+
+Requires:
+
+```text
+proof existing boundary insufficient
+ADR
+architecture approval
+security review
+implementation/test plan
+migration/compatibility
+broad regression
+evidence
+```
+
+---
+
+# 164. Governance Definition of Done — Capability Promotion
+
+Requires the canonical maturity evidence for the exact claimed scope.
+
+---
+
+# 165. Governance Definition of Done — Provider Adoption
+
+Requires:
+
+```text
+security/privacy/residency
+adapter
+routing
+FinOps impact
+tests
+evidence
+```
+
+---
+
+# 166. Governance Definition of Done — Tool Adoption
+
+Requires:
+
+```text
+operations
+grant scope
+secret/network/filesystem policy
+sandbox
+approval candidates
+tests
+evidence
+```
+
+---
+
+# 167. Governance Definition of Done — Release
+
+Requires:
+
+```text
+source revision
+artifact digest
+required tests
+security evidence
+migration state
+release authorization
+```
+
+---
+
+# 168. Governance Definition of Done — Production Deployment
+
+Requires:
+
+```text
+verified release
+deployment authorization
+approval if required
+scoped deployment identity
+post-deploy verification
+deployment evidence
+```
+
+---
+
