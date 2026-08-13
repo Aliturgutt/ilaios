@@ -1,19 +1,19 @@
 # ILAIOS — ENGINEERING STANDARDS
 
-**Document Type:** Canonical Engineering Standards  
-**Format:** GitHub Markdown + ASCII workflow diagrams  
-**Status:** Canonical Baseline v1.0 — Pending Repository Publication  
-**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
-**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
-**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
-**Dependency Authority:** `DEPENDENCY_GRAPH.md`  
-**API Authority:** `API_CONTRACTS.md`  
-**Security Authority:** `SECURITY_ARCHITECTURE.md`  
-**Data Authority:** `DATA_ARCHITECTURE.md`  
-**Threat Model Companion:** `THREAT_MODEL.md`  
-**Testing Authority:** `TESTING_AND_EVALUATION.md`  
-**Deployment Authority:** `DEPLOYMENT_ARCHITECTURE.md`  
-**FinOps Authority:** `FINOPS.md`  
+**Document Type:** Canonical Engineering Standards
+**Format:** GitHub Markdown + ASCII workflow diagrams
+**Status:** Canonical Baseline v1.0 — Pending Repository Publication
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`
+**Dependency Authority:** `DEPENDENCY_GRAPH.md`
+**API Authority:** `API_CONTRACTS.md`
+**Security Authority:** `SECURITY_ARCHITECTURE.md`
+**Data Authority:** `DATA_ARCHITECTURE.md`
+**Threat Model Companion:** `THREAT_MODEL.md`
+**Testing Authority:** `TESTING_AND_EVALUATION.md`
+**Deployment Authority:** `DEPLOYMENT_ARCHITECTURE.md`
+**FinOps Authority:** `FINOPS.md`
 **Core Engineering Principle:** **SMALL, TRACEABLE, TESTED, REVIEWABLE CHANGES — NO ARCHITECTURE BYPASS**
 
 > This document defines the canonical engineering standards for ILAIOS: coding discipline, repository structure, naming, ADRs, documentation, testing, quality gates, CI/CD, branch/commit/review/merge policy, versioning, release discipline, dependency management, security hygiene, observability obligations, and change evidence. It defines how engineers and autonomous development agents must change ILAIOS without fragmenting its architecture or weakening its controls.
