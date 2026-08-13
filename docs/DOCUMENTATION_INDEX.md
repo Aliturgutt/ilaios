@@ -1,52 +1,43 @@
 # ILAIOS Documentation Index
 
-Status: CONTROLLED
+Status: CONTROLLED NAVIGATION INDEX — NOT AN INDEPENDENT ARCHITECTURE AUTHORITY
 
-## Authority order
-1. governed canonical architecture;
-2. canonical implementation specification/order;
-3. machine-readable milestone/dependency definitions;
-4. repository code, tests, CI/runtime/deployment evidence for implementation state;
-5. controlled operational standards and runbooks;
-6. status/planning/audit documents.
+## Canonical documentation set (19 items)
 
-See `GOVERNANCE.md` and `docs/governance/DOCUMENT_LIFECYCLE_AND_AUTHORITY_POLICY.md`. Operational documents below do not redefine the canonical architecture.
+The active canonical documentation set is exactly 19 items: 18 Markdown documents plus the `docs/adr/` decision-record directory.
 
-## Governance
-- `GOVERNANCE.md` — repository governance authority
-- `docs/governance/DOCUMENT_LIFECYCLE_AND_AUTHORITY_POLICY.md` — document lifecycle/conflicts
-- `docs/governance/BRANCH_PROTECTION_AND_REQUIRED_CHECKS.md` — protected branch/check rules
-- `docs/governance/LICENSE_DECISION.md` — proprietary/private licensing decision
-- existing governance audits, capability matrix and roadmap files — scope/status as declared in each file
+1. `docs/canonical/SYSTEM_ARCHITECTURE.md`
+2. `docs/canonical/AUTONOMOUS_NODE_ARCHITECTURE.md`
+3. `README.md`
+4. `docs/canonical/PRODUCT_REQUIREMENTS.md`
+5. `docs/canonical/IMPLEMENTATION_SPEC.md`
+6. `docs/canonical/DEPENDENCY_GRAPH.md`
+7. `docs/canonical/API_CONTRACTS.md`
+8. `docs/canonical/SECURITY_ARCHITECTURE.md`
+9. `docs/canonical/DATA_ARCHITECTURE.md`
+10. `docs/security/THREAT_MODEL.md`
+11. `docs/canonical/TESTING_AND_EVALUATION.md`
+12. `docs/canonical/DEPLOYMENT_ARCHITECTURE.md`
+13. `docs/operations/FINOPS.md`
+14. `docs/governance/ENGINEERING_STANDARDS.md`
+15. `docs/governance/GOVERNANCE.md`
+16. `docs/governance/MILESTONES.md`
+17. `docs/adr/`
+18. `docs/operations/OBSERVABILITY.md`
+19. `docs/operations/FAILURE_RECOVERY.md`
 
-## Security
-- `SECURITY.md` — top-level security policy
-- `docs/security/SECURITY_FACTORY.md`
-- `docs/security/DEPENDENCY_AND_SUPPLY_CHAIN_POLICY.md`
-- `docs/security/THREAT_MODEL.md`
-- `docs/security/INCIDENT_RESPONSE_RUNBOOK.md`
-- `docs/security/TENANT_ISOLATION_STANDARD.md`
-- `docs/security/PRIVACY_DLP_AND_DATA_HANDLING.md`
-- `docs/security/KEY_MANAGEMENT_AND_CRYPTOGRAPHY_OPERATIONS.md`
-- `docs/security/compliance/EXTERNAL_COMPLIANCE_EVIDENCE_REGISTER.md`
+## Authority rule
 
-## Release and deployment
-- `docs/release/RELEASE_R00_ELIGIBILITY.md`
-- `docs/release/VERSIONING_AND_RELEASE_POLICY.md`
-- `docs/release/RELEASE_EVIDENCE_STANDARD.md`
-- `docs/deployment/EXT_E01_AND_R01_PREPARATION.md`
-- `docs/deployment/PRODUCTION_READINESS_CHECKLIST.md`
-- `docs/deployment/PRODUCTION_DEPLOYMENT_RUNBOOK.md`
-- root `CHANGELOG.md`
+`SYSTEM_ARCHITECTURE.md` is the primary architecture authority. Specialist canonical documents own only their declared scope. `README.md` and this index provide navigation/orientation and do not create a second architecture authority. ADRs record decision rationale and do not override architecture.
 
-## Platform operations
-- `docs/platform/website/WEBSITE_ENGINEERING_AND_CI_STANDARD.md`
-- `docs/platform/desktop/DESKTOP_RELEASE_AND_SIGNING_RUNBOOK.md`
-- `docs/platform/operations/OBSERVABILITY_SLO_AND_ALERTING.md`
-- `docs/platform/operations/BACKUP_RESTORE_AND_DISASTER_RECOVERY.md`
+Target truth in documentation and current implementation truth are separate. Code, tests, CI, runtime, deployment and durable evidence establish what is actually implemented today. Status/roadmap prose cannot promote implementation maturity by assertion.
 
-## Canonical material
-Files under `docs/canonical/` and the governed canonical DOCX specifications remain authoritative only within their explicitly declared scope/status. This hardening package does not modify them.
+## Supporting controlled documentation
 
-## Maintenance
-Update this index whenever controlled documentation is added, renamed, superseded or deprecated. A missing index entry does not elevate or lower a document's authority; authority follows the lifecycle policy and explicit source hierarchy.
+Existing documents under `docs/governance/`, `docs/security/`, `docs/deployment/`, `docs/platform/`, `docs/release/`, `docs/core/`, `docs/video_automation/` and `docs/migration/` remain supporting operational, evidence, status, runbook or migration material unless explicitly declared otherwise by the canonical set above. They may not redefine a canonical architecture contract.
+
+## Compatibility and archive
+
+Historical canonical paths retained as redirects or compatibility shims are not independent authorities. Superseded source content is retained under `docs/archive/pre-2026-08-13/` and/or Git history for provenance.
+
+See `docs/migration/CANONICAL_DOCUMENTATION_MIGRATION_2026-08-13.md` for the migration classification.

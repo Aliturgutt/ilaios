@@ -1,9 +1,23 @@
 # Default repository owner
 * @Aliturgutt
 
-# Canonical authorities and release governance
+# Active canonical documentation authorities
+/README.md @Aliturgutt
+/docs/DOCUMENTATION_INDEX.md @Aliturgutt
+/docs/canonical/ @Aliturgutt
+/docs/governance/GOVERNANCE.md @Aliturgutt
+/docs/governance/ENGINEERING_STANDARDS.md @Aliturgutt
+/docs/governance/MILESTONES.md @Aliturgutt
+/docs/security/THREAT_MODEL.md @Aliturgutt
+/docs/operations/ @Aliturgutt
+/docs/adr/ @Aliturgutt
+
+# Compatibility redirects retained for historical tooling only
 /ILAIOS_Master_Implementation_Specification_v1_0_CANONICAL_FINAL.docx @Aliturgutt
 /ILAIOS_Canonical_Milestone_Manifest_v1_0.docx @Aliturgutt
+/GOVERNANCE.md @Aliturgutt
+
+# Development controller / release-sensitive boundaries
 /dev/openclaw/MASTER_OPENCLAW.md @Aliturgutt
 /dev/openclaw/execution_plan.yaml @Aliturgutt
 /.github/workflows/ @Aliturgutt

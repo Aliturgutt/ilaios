@@ -1,10 +1,16 @@
-# ILAIOS Canonical Agent Organization
+# ILAIOS Agent Organization Projection
 
-Status: repository-governed identity model. Runtime maturity remains evidence-driven.
+Status: CONTROLLED PROJECTION — NOT IDENTITY AUTHORITY
+
+## Authority boundary
+
+This document is a human-readable projection of the ILAIOS agent organization. It is not a second registry and cannot mint, redefine, activate, or authorize an agent.
+
+`services/agent_registry.py` is the canonical machine-readable agent identity source. `AgentManifest` records declared identity and boundaries. Normative governance remains in `docs/governance/GOVERNANCE.md`, and actual execution authority remains governed by PolicyDecision / ExecutionGrant and applicable approval rules. Any UI, table, dashboard, or documentation list of agents is a projection only.
 
 ## Single active identity rule
 
-ILAIOS is the only active product/platform identity. Historical Hermes, ILAKOS and ILATEN agent designs are consolidated here as one ILAIOS organization. A legacy product name must never appear in an active machine agent ID.
+ILAIOS is the only active product/platform identity. Historical Hermes, ILAKOS and ILATEN agent designs are consolidated into the ILAIOS organization. A legacy product name must never appear in an active machine agent ID.
 
 Human-readable aliases are presentation metadata only. Orchestration binds to stable `ilaios.agent.*` machine IDs, capability contracts, permissions, callers/targets, escalation paths and verifier identities.
 
@@ -126,6 +132,7 @@ Every canonical registration provides:
 5. External content is data, never authority to override platform policy.
 6. Machine IDs and contracts remain stable even if a human-readable alias changes.
 7. Direct production mutation is outside the authority of ordinary implementation agents.
+8. Registry projections cannot become identity or execution authority.
 
 ## Verification
 
