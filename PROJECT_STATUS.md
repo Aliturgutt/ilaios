@@ -42,7 +42,7 @@ No new milestone ID is considered canonical merely because it appears in a plann
 
 ### Verified governance gaps
 
-- The previous version of this file still described the historical Hermes Core phase and was stale.
+- The previous version of this file still described a pre-ILAIOS historical Core phase and was stale.
 - `POST_CORE_ROADMAP.md` was a historical pre-platform roadmap and was stale.
 - `master` is currently reported by GitHub as unprotected and has no required status-check contexts configured at branch-protection level.
 - Repository metadata still requires owner-level cleanup outside ordinary source-file changes: description, topics, license decision and branch-protection policy.
