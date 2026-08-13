@@ -111,6 +111,8 @@ class VideoEditExecutor:
             for asset_id in operation.input_asset_ids
         )
         output = self._output_path(operation.output_asset_id)
+        if output.is_symlink():
+            raise VideoSkillError("edit output symbolic links are prohibited")
         if output.exists():
             raise VideoSkillError("edit output already exists")
         result = self._dispatch(operation, inputs, output)

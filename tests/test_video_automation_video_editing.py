@@ -1,5 +1,6 @@
 import subprocess
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -129,6 +130,23 @@ def test_rejects_unsafe_output_identity_and_existing_output(tmp_path: Path) -> N
     executor.execute(safe)
     with pytest.raises(VideoSkillError, match="already exists"):
         executor.execute(safe)
+
+
+def test_rejects_broken_output_symlink(tmp_path: Path) -> None:
+    source = _input(tmp_path, "a.mp4")
+    output_root = tmp_path / "outputs"
+    operation = EditOperation(
+        "edit-1",
+        EditKind.TRIM,
+        ("a",),
+        "output",
+        {"start_seconds": 0, "duration_seconds": 1},
+    )
+    with patch.object(Path, "is_symlink", return_value=True):
+        with pytest.raises(VideoSkillError, match="symbolic links"):
+            VideoEditExecutor(
+                _Resolver({"a": source}), output_root, engine=_Engine()
+            ).execute(operation)
 
 
 def test_real_ffmpeg_trim_execution_is_content_addressed(tmp_path: Path) -> None:
