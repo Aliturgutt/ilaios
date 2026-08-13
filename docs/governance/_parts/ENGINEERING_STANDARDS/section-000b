@@ -1,0 +1,50 @@
+# 08. Autonomous Development Agent Rule
+
+Codex, Claude Code, Gemini CLI, OpenClaw, or any other development-time agent may assist engineering.
+
+They are not engineering authorities.
+
+They must obey:
+
+```text
+canonical docs
+repository state
+tests
+CI
+review
+human/governance permissions
+```
+
+No autonomous development tool may:
+
+```text
+invent new architecture authority
+weaken tests
+bypass branch protection
+merge failed checks
+expose secrets
+claim deployment without evidence
+```
+
+---
+
+# 09. Engineering Change Contract
+
+Every non-trivial change should be expressible as:
+
+```text
+Intent
+Scope
+Owned files/modules
+Dependencies
+Security impact
+Data impact
+API impact
+Tests
+Migration impact
+Rollback
+Evidence
+```
+
+---
+
