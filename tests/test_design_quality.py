@@ -1,3 +1,5 @@
+from typing import Any, cast
+
 import pytest
 
 from services.design_quality import (
@@ -8,15 +10,20 @@ from services.design_quality import (
 from services.integrations.web_factory import GovernedWebFactory
 
 
-def complete_rows(**overrides):
+def complete_rows(**overrides: int) -> list[DesignObservation]:
     return [
-        DesignObservation(route="/" if locale == "en" else "/tr", locale=locale, viewport=width, **overrides)
+        DesignObservation(
+            route="/" if locale == "en" else "/tr",
+            locale=locale,
+            viewport=width,
+            **cast(Any, overrides),
+        )
         for locale in ("en", "tr")
         for width in REQUIRED_VIEWPORTS
     ]
 
 
-def test_complete_clean_en_tr_matrix_passes_and_is_stable():
+def test_complete_clean_en_tr_matrix_passes_and_is_stable() -> None:
     evaluator = NativeDesignQualityEvaluator()
     first = evaluator.evaluate(complete_rows())
     second = evaluator.evaluate(reversed(complete_rows()))
@@ -33,7 +40,7 @@ def test_complete_clean_en_tr_matrix_passes_and_is_stable():
         ("contrast_failures", "design.typography-quality", "major"),
     ],
 )
-def test_blocking_defects_fail_closed(field, category, severity):
+def test_blocking_defects_fail_closed(field: str, category: str, severity: str) -> None:
     result = NativeDesignQualityEvaluator().evaluate(complete_rows(**{field: 1}))
     assert result.status == "FAIL"
     assert any(f.category == category and f.severity == severity for f in result.findings)
@@ -41,7 +48,7 @@ def test_blocking_defects_fail_closed(field, category, severity):
         GovernedWebFactory.accept_design_quality(result)
 
 
-def test_missing_viewport_and_locale_evidence_is_blocking():
+def test_missing_viewport_and_locale_evidence_is_blocking() -> None:
     result = NativeDesignQualityEvaluator().evaluate([
         DesignObservation(route="/", locale="en", viewport=320)
     ])
@@ -51,7 +58,7 @@ def test_missing_viewport_and_locale_evidence_is_blocking():
     }
 
 
-def test_contextual_anti_generic_signal_resists_simple_false_positives():
+def test_contextual_anti_generic_signal_resists_simple_false_positives() -> None:
     low = NativeDesignQualityEvaluator().evaluate(complete_rows(unexplained_decorative_patterns=2))
     high = NativeDesignQualityEvaluator().evaluate(complete_rows(unexplained_decorative_patterns=3))
     assert low.findings == ()
@@ -59,9 +66,8 @@ def test_contextual_anti_generic_signal_resists_simple_false_positives():
     assert all(f.severity == "minor" for f in high.findings)
 
 
-def test_invalid_observation_is_rejected():
+def test_invalid_observation_is_rejected() -> None:
     with pytest.raises(ValueError, match="cannot be negative"):
         NativeDesignQualityEvaluator().evaluate([
             DesignObservation(route="/", locale="en", viewport=320, clipped_elements=-1)
         ])
-
