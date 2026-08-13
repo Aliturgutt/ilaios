@@ -1,0 +1,1036 @@
+# 72. Store Boundary: Artifact vs Evidence
+
+Artifact Store:
+
+```text
+what was produced
+```
+
+Evidence Store:
+
+```text
+how/why it was produced and accepted
+```
+
+A video file is not an evidence record.
+
+A hash/validation proving the video version is accepted is evidence.
+
+---
+
+# 73. Store Boundary: Knowledge vs Artifact
+
+A document may exist as:
+
+```text
+Artifact
+    if produced/owned as project output
+
+Source / Knowledge
+    if ingested for retrieval
+
+Both
+    if an artifact is intentionally promoted into project knowledge
+```
+
+If promoted, the knowledge representation must reference the artifact version and preserve classification/provenance.
+
+---
+
+# 74. Store Boundary: Logs vs Evidence
+
+Logs are mutable/operational telemetry.
+
+Evidence is canonical proof.
+
+Logs may expire sooner and may contain diagnostic detail.
+
+Evidence retention follows governance/legal/security policy.
+
+---
+
+# 75. Store Boundary: Secrets vs Configuration
+
+Configuration stores:
+
+```text
+secret_reference = "vault://..."
+```
+
+Secret store contains the actual credential.
+
+Never:
+
+```text
+config.api_key = "real-secret"
+```
+
+for production secrets.
+
+---
+
+# 76. Tenant Isolation Across Stores
+
+Tenant boundary must survive:
+
+```text
+Operational DB
+Queue
+Workflow state
+Cache
+Knowledge index
+Knowledge graph
+Object storage
+Evidence store
+Search index
+Worker lease
+Logs
+Backup/restore
+```
+
+---
+
+# 77. Tenant Query Rule
+
+Protected read/write operations require server-side scope.
+
+Conceptual query condition:
+
+```text
+requested_object.tenant_id
+    must equal
+authorized_context.tenant_id
+```
+
+plus project/resource authorization where applicable.
+
+Client-side tenant filtering is never sufficient.
+
+---
+
+# 78. Global/System Records
+
+Some records may be system-scoped:
+
+```text
+canonical capability definitions
+global provider descriptors
+platform policy templates
+system migration metadata
+```
+
+System-scoped data must be explicitly marked.
+
+A missing tenant_id must not automatically imply “global”.
+
+---
+
+# 79. Cross-Tenant Shared Resources
+
+If a resource is intentionally shared:
+
+```text
+shared_resource_id
+owner_scope
+allowed_tenant_refs
+policy
+classification
+```
+
+must be explicit.
+
+Cross-tenant sharing is not inferred.
+
+---
+
+# 80. Data Classification
+
+Minimum classes:
+
+```text
+PUBLIC
+INTERNAL
+CONFIDENTIAL
+RESTRICTED
+```
+
+Classification can inherit:
+
+```text
+tenant default
+→ project default
+→ source/artifact override
+```
+
+More restrictive classification wins unless governed policy explicitly permits otherwise.
+
+---
+
+# 81. Classification Propagation
+
+Derived data should inherit or calculate classification conservatively.
+
+Examples:
+
+```text
+RESTRICTED source
+    → derived chunk is not PUBLIC
+
+CONFIDENTIAL artifact
+    → validation text containing artifact content is protected
+
+secret-containing tool output
+    → redacted derivative before broad telemetry
+```
+
+---
+
+# 82. Purpose Metadata
+
+Purpose is part of authorization for sensitive data.
+
+Conceptual values may include:
+
+```text
+planning
+execution
+retrieval
+evaluation
+support
+security
+billing
+operations
+```
+
+Purpose metadata must not be free-form authority.
+
+Policy controls allowed purpose transitions.
+
+---
+
+# 83. Residency Metadata
+
+Residency-related data may include:
+
+```text
+tenant_region_policy
+source_region
+storage_region
+processing_region
+provider_region
+```
+
+Routing and storage choices must obey effective residency policy.
+
+---
+
+# 84. Retention Metadata
+
+Records requiring governed lifecycle should reference:
+
+```text
+retention_policy_id
+retention_class
+created_at
+expires_at optional
+legal_hold optional
+deletion_state
+```
+
+Retention policy is not always “longest possible”.
+
+---
+
+# 85. Retention Categories
+
+Different data classes may require different retention:
+
+```text
+session records
+job state
+task state
+prompts
+provider payloads
+artifacts
+knowledge
+evidence
+security evidence
+billing records
+observability
+backups
+secrets metadata
+```
+
+---
+
+# 86. Deletion States
+
+Deletion lifecycle may include:
+
+```text
+ACTIVE
+DELETION_REQUESTED
+LOGICALLY_DELETED
+PURGED_ACTIVE_STORE
+AWAITING_BACKUP_EXPIRY
+RETAINED_BY_POLICY
+PURGED
+```
+
+Exact status names may be refined later; the conceptual distinction must exist.
+
+---
+
+# 87. Legal / Security Hold
+
+A deletion request may conflict with a legal/security retention requirement.
+
+The system must distinguish:
+
+```text
+user-requested deletion
+vs
+authorized policy hold
+```
+
+and preserve evidence of the governing decision.
+
+---
+
+# 88. Derived Data Deletion
+
+Deleting a source may require propagation to:
+
+```text
+parsed units
+chunks
+embeddings
+knowledge graph edges
+cached context
+derived indexes
+```
+
+Deletion semantics must be explicit.
+
+---
+
+# 89. Provider-Side Data
+
+External provider retention may not be fully controlled by ILAIOS.
+
+The system should track, where relevant:
+
+```text
+provider_id
+data handling policy ref
+retention configuration
+processing region
+request identifiers
+```
+
+ILAIOS must not promise deletion guarantees it cannot enforce externally.
+
+---
+
+# 90. Caching
+
+Caches are non-authoritative unless explicitly defined otherwise.
+
+Cache rules:
+
+```text
+key includes tenant/project scope where required
+TTL
+classification-aware handling
+safe invalidation
+no secret values unless specialized secure cache
+no cross-tenant key collision
+```
+
+Cache misses must reconstruct from authoritative stores.
+
+---
+
+# 91. Search Indexes
+
+Search indexes are derived stores.
+
+They must preserve:
+
+```text
+tenant/project scope
+source object ID
+classification
+authorization attributes
+source version
+```
+
+Index results require authorization before content release.
+
+---
+
+# 92. Vector Indexes
+
+Vector index metadata must preserve:
+
+```text
+chunk_id
+tenant_id
+project_id
+source_version_id
+classification
+authorization metadata
+```
+
+Similarity is relevance, not permission.
+
+---
+
+# 93. Knowledge Graph Consistency
+
+Knowledge graph facts should maintain provenance and confidence.
+
+Avoid turning model inference into an unqualified canonical fact.
+
+Conceptual relation metadata:
+
+```text
+provenance
+confidence
+verification status
+created_by
+created_at
+source_version
+```
+
+---
+
+# 94. Claim Model
+
+Research/knowledge may use a Claim entity:
+
+```text
+claim_id
+tenant_id
+project_id
+claim_text_ref
+verification_status
+source_refs
+confidence
+created_at
+```
+
+Useful states:
+
+```text
+UNVERIFIED
+SUPPORTED
+CONFLICTED
+REJECTED
+```
+
+These are knowledge-claim semantics, not capability maturity states.
+
+---
+
+# 95. Provenance Requirements
+
+Provenance should answer:
+
+```text
+Where did this data come from?
+Which version?
+Who/what created it?
+Under which tenant/project?
+Which transformation produced it?
+Which artifact/source inputs were used?
+Which model/tool/provider participated?
+```
+
+---
+
+# 96. Lineage Graph
+
+```text
+SOURCE VERSION
+      │
+      ▼
+PARSED UNIT
+      │
+      ▼
+KNOWLEDGE UNIT / CHUNK
+      │
+      ▼
+AUTHORIZED RETRIEVAL
+      │
+      ▼
+TASK INPUT
+      │
+      ▼
+TOOL / MODEL / WORKER
+      │
+      ▼
+ARTIFACT VERSION
+      │
+      ▼
+VALIDATION
+      │
+      ▼
+EVIDENCE
+```
+
+---
+
+# 97. Artifact Lineage Example — Website
+
+```text
+Business Source
+    │
+    ▼
+Authorized Context
+    │
+    ▼
+Website Goal / Plan
+    │
+    ▼
+Copy + Design + Code Artifacts
+    │
+    ▼
+Build Artifact
+    │
+    ▼
+Browser / Security / A11y / Performance Validation
+    │
+    ▼
+Accepted Website Version
+    │
+    ▼
+AcceptanceManifest
+```
+
+---
+
+# 98. Artifact Lineage Example — Video
+
+```text
+Research Sources
+    │
+    ▼
+Script
+    │
+    ▼
+Storyboard / Shot Plan
+    │
+    ▼
+Generated Media Assets
+    │
+    ▼
+Canonical Timeline
+    │
+    ▼
+Rendered Video Version
+    │
+    ▼
+Video / Audio Validation
+    │
+    ▼
+Accepted Video Version
+```
+
+---
+
+# 99. Artifact Lineage Example — Software
+
+```text
+Repository Commit / Snapshot
+    │
+    ▼
+Change Proposal
+    │
+    ▼
+Patch / Code Changes
+    │
+    ▼
+Test Results
+    │
+    ▼
+Build Artifact
+    │
+    ▼
+Diff / Review Evidence
+    │
+    ▼
+PR / Release Candidate
+```
+
+---
+
+# 100. Mutable vs Immutable Data
+
+Prefer immutable/versioned records for:
+
+```text
+Goal versions
+Plan versions
+Artifact versions
+Source versions
+Policy decisions
+Approvals
+Routing decisions
+Evidence
+Validation
+Acceptance manifests
+```
+
+Mutable operational state may include:
+
+```text
+current job state
+current provider health
+current membership status
+current queue ownership
+current feature flag
+```
+
+Historical transitions remain recorded.
+
+---
+
+# 101. Append-Only / Event-Oriented Records
+
+Security/authority-sensitive events should be append-oriented.
+
+Examples:
+
+```text
+state transition
+policy decision
+approval
+route decision
+secret access event
+artifact version creation
+validation
+evidence
+```
+
+Corrections should usually create a new record referencing the old one rather than silently rewriting history.
+
+---
+
+# 102. Idempotency
+
+Replay-sensitive mutations need idempotency.
+
+Examples:
+
+```text
+job creation
+payment
+external send
+deployment
+artifact commit
+provider submission where supported
+approval action
+```
+
+Conceptual fields:
+
+```text
+idempotency_key
+scope
+request_hash
+result_ref
+created_at
+expires_at
+```
+
+---
+
+# 103. Optimistic Concurrency
+
+Mutable records may use:
+
+```text
+version
+etag
+updated_at + version
+transaction sequence
+```
+
+to reject lost updates.
+
+Authoritative state should never rely on unguarded last-write-wins.
+
+---
+
+# 104. Transactions
+
+Transactions should preserve invariants when multiple authoritative records change together.
+
+Examples:
+
+```text
+job state + state transition
+lease assignment + fencing increment
+approval decision + grant issuance
+artifact version + current version pointer
+```
+
+Distributed side effects may require outbox/saga/compensation patterns.
+
+---
+
+# 105. Outbox / Event Publication
+
+If events are published to queues/buses, use a pattern that avoids:
+
+```text
+database says committed
+but event was lost
+```
+
+Conceptually:
+
+```text
+authoritative transaction
+    + durable outbox
+    → event publication
+```
+
+Exact implementation belongs downstream.
+
+---
+
+# 106. Queue Message Data
+
+Queue/task messages must carry references and scoped metadata, not broad sensitive payloads where avoidable.
+
+Minimum:
+
+```text
+tenant_id
+project_id
+job_id
+task_id
+capability_id
+grant_id
+lease/fencing context
+input refs
+```
+
+---
+
+# 107. Queue Data Security
+
+Queue systems must preserve:
+
+- tenant scope;
+- message integrity;
+- retry/dead-letter semantics;
+- visibility/lease semantics;
+- no broad secret payloads;
+- bounded retention.
+
+---
+
+# 108. Dead-Letter Data
+
+Failed messages may enter DLQ/dead-letter storage.
+
+They remain protected data.
+
+DLQ must not become an ungoverned archive of sensitive payloads.
+
+---
+
+# 109. Checkpoint Data Integrity
+
+Checkpoint integrity must verify:
+
+```text
+state
+artifact refs
+evidence cursor
+budget/retry state
+task completion set
+```
+
+Resume must not trust a corrupted checkpoint.
+
+---
+
+# 110. Cancellation Data
+
+Cancellation requires records for:
+
+```text
+requested_by
+requested_at
+authorization result
+state transition
+worker cancellation attempts
+late-result fencing
+final cancellation state
+side effects already committed
+compensation result if applicable
+```
+
+---
+
+# 111. Compensation Data
+
+For reversible external side effects:
+
+```text
+original_action_id
+compensation_action_id
+reason
+status
+provider/tool refs
+evidence refs
+```
+
+must maintain lineage.
+
+---
+
+# 112. Secrets Metadata
+
+Secret values live in Secret/Key Store.
+
+Ordinary stores may retain metadata:
+
+```text
+secret_ref
+owner scope
+purpose
+provider
+created_at
+rotated_at
+expires_at
+status
+```
+
+Never persist raw secret values in evidence.
+
+---
+
+# 113. Key Metadata
+
+Cryptographic key metadata may include:
+
+```text
+key_ref
+key_purpose
+algorithm
+owner scope
+created_at
+rotation policy
+status
+```
+
+Private key material remains in governed key service.
+
+---
+
+# 114. Observability Data Model
+
+Operational telemetry may include:
+
+```text
+timestamp
+tenant-safe identifiers
+job_id
+task_id
+capability_id
+route_id
+worker_id
+provider_id where safe
+tool_id where safe
+latency
+status
+error class
+resource usage
+```
+
+Protected payload content should be minimized/redacted.
+
+---
+
+# 115. Audit/Evidence Data vs Telemetry
+
+A log line may be sampled or expired.
+
+A material evidence record must remain according to evidence policy.
+
+Therefore:
+
+```text
+observability availability
+≠
+evidence correctness
+```
+
+---
+
+# 116. Data Access Patterns
+
+Primary access patterns include:
+
+```text
+Principal → memberships
+Tenant → projects
+Project → goals/jobs/artifacts/knowledge
+Goal → plans/jobs
+Job → tasks/state/events/evidence
+Task → calls/artifacts/validation
+Artifact → versions/validation/evidence
+Source → versions/knowledge units
+Knowledge unit → chunks/index/provenance
+Evidence → referenced decisions/artifacts
+```
+
+Physical schema should optimize these without breaking boundaries.
+
+---
+
+# 117. Data Reference Pattern
+
+Cross-store relationships should use canonical references:
+
+```text
+artifact_version_id
+source_version_id
+evidence_id
+route_id
+policy_decision_id
+```
+
+rather than copying mutable foreign payloads.
+
+---
+
+# 118. Referential Integrity
+
+Where strong DB foreign keys are not possible across technologies, application/contract-level integrity must still be verifiable.
+
+Broken critical references should fail validation rather than silently disappear.
+
+---
+
+# 119. Soft References
+
+External resources may use soft references:
+
+```text
+external_repository_ref
+cloud_resource_ref
+provider_request_ref
+deployment_ref
+```
+
+Soft references require clear failure behavior when external resource disappears.
+
+---
+
+# 120. Data Serialization
+
+Canonical durable contracts should define:
+
+```text
+schema version
+field names
+timestamp format
+ID format
+enum values
+nullability
+normalization
+```
+
+Exact API encoding belongs in `API_CONTRACTS.md`.
+
+---
+
+# 121. Timestamp Rules
+
+Use unambiguous machine timestamps.
+
+Recommended:
+
+```text
+UTC
+ISO-8601 compatible representation
+```
+
+Preserve user locale/timezone separately for presentation/business logic.
+
+---
+
+# 122. Clock Assumptions
+
+Do not use wall clock alone for distributed ordering.
+
+Use:
+
+```text
+sequence
+transaction version
+fencing token
+event offset
+```
+
+for authoritative ordering.
+
+---
+
+# 123. Data Integrity Hashes
+
+Hashes may protect:
+
+```text
+artifact versions
+source versions
+skill content
+checkpoint content
+acceptance manifest
+evidence batch/root
+```
+
+Hash algorithm must be versionable.
+
+---
+
+# 124. Evidence Integrity
+
+Evidence architecture should support tamper detection.
+
+Possible approaches:
+
+```text
+content hashes
+hash chains
+signed records
+append-only storage
+Merkle roots
+immutable object versions
+```
+
+Exact implementation may vary by deployment/risk.
+
+---
+
+# 125. Data Encryption
+
+Data architecture assumes encryption:
+
+```text
+in transit
+at rest
+```
+
+for protected data.
+
+Sensitive fields may require additional encryption.
+
+Encryption key ownership belongs to Security Architecture/Key Management.
+
