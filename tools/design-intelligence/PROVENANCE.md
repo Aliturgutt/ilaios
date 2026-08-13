@@ -1,33 +1,43 @@
-# ILAIOS Design Intelligence — Reference Provenance
+# ILAIOS Design Intelligence â€” Reference Provenance
 
 Status: CONTROLLED RESEARCH RECORD
-Date reviewed: 2026-08-13
+Research date: 2026-08-13
 
-ILAIOS does not vendor, install, import, execute, or depend on the following projects at runtime. They were reviewed only as external design-research references. ILAIOS canonical architecture, brand, security, product truth, and repository standards remain authoritative.
+External references are non-authoritative research inputs. ILAIOS does not vendor, install, import, execute, or depend on them at runtime.
 
 ## Taste Skill
-- Repository: `Leonxlnx/taste-skill`
-- Reviewed branch: `main`
-- Pinned observed commit: `e988add20dab0fa97d7a76781c48961c8184288e`
-- Research themes used: anti-generic-AI review, hierarchy, typography, spacing, density, motion restraint, responsive fallbacks.
-- Integration decision: NO runtime dependency; NO required installer; NO authority expansion.
+- Repository/URL: `Leonxlnx/taste-skill`, https://github.com/Leonxlnx/taste-skill
+- Revision: `e988add20dab0fa97d7a76781c48961c8184288e` (`main`).
+- License: MIT; repository `LICENSE` inspected at the pinned revision.
+- Paths inspected: README, LICENSE, skills and research directory inventory.
+- Concepts learned: contextual anti-generic review, hierarchy, typography, spacing, density, motion restraint, responsive fallbacks.
+- License-sensitive material: source, prompt expression, scripts, and assets. None copied.
+- Decision: ideas only; copied code NO; runtime dependency NO; implementation attribution required NO because no protected implementation or substantial expression was copied.
 
-## Emil Kowalski — Skills for Design Engineers
-- Repository: `emilkowalski/skills`
-- Reviewed branch: `main`
-- Pinned observed commit: `78761e1b57f97dce65b983d640c70a68f39e8163`
-- Research themes used: animation decision quality, easing/duration reasoning, micro-interactions, interaction states, identifying surfaces that should not animate.
-- Integration decision: NO runtime dependency; NO required installer; NO authority expansion.
+## Emil Kowalski Skills for Design Engineers
+- Repository/URL: `emilkowalski/skills`, https://github.com/emilkowalski/skills
+- Revision: `78761e1b57f97dce65b983d640c70a68f39e8163` (`main`).
+- License: MIT; repository `LICENSE` inspected at the pinned revision.
+- Paths inspected: README, LICENSE, skill directory inventory.
+- Concepts learned: animation purpose, duration/easing consistency, micro-interactions, interaction states, and surfaces that should not animate.
+- License-sensitive material: prompts, examples, and implementation. None copied.
+- Decision: ideas only; copied code NO; runtime dependency NO; implementation attribution required NO.
 
 ## Impeccable
-- Repository: `pbakaus/impeccable`
-- Reviewed branch: `main`
-- Pinned observed commit: `bd2535974861db28a9f4a18ec78608488cd868dd`
-- Research themes used: design vocabulary, anti-pattern detection, typography/color/spatial/motion/interaction/responsive review, brand-vs-product context.
-- Integration decision: NO runtime dependency; NO required CLI/browser extension; NO authority expansion.
+- Repository/URL: `pbakaus/impeccable`, https://github.com/pbakaus/impeccable
+- Revision: `bd2535974861db28a9f4a18ec78608488cd868dd` (`main`).
+- License: Apache-2.0; repository `LICENSE` inspected at the pinned revision.
+- Paths inspected: README, LICENSE, skill and detector directory inventory.
+- Concepts learned: design vocabulary, contextual anti-pattern detection, typography/color/spatial/motion/interaction/responsive review, and brand-vs-product context.
+- License-sensitive material: detector implementation, rules expression, CLI, extension, prompts, and documentation. None copied.
+- Decision: ideas only; copied code NO; runtime dependency NO; implementation attribution required NO.
 
-## Clean-room rule
-ILAIOS-native artifacts must encode independently stated requirements and evaluators rather than copy upstream prose or implementation wholesale. If any external source disappears or changes incompatibly, ILAIOS design-intelligence behavior must remain available from this repository alone.
+## Independent implementation evidence
+- Neutral requirements: `rules.json` and `SKILL.md`.
+- Original standard-library implementation: `services/design_quality.py`.
+- Behavioral and contract tests: `tests/test_design_quality.py`.
+- Resulting skill ID: `design.final-polish`, composing native category findings.
+- External runtime dependencies: 0. Copied third-party implementation files or fragments: 0.
 
-## Licensing and security rule
-Before any external code or substantial expression is ever incorporated, the exact source revision and license must be re-reviewed. External prompts, scripts, installers, MCP tools, extensions, or agents must never be granted ILAIOS credentials, production authority, repository write scope, browser sessions, or secret access merely because they are design references.
+Before any future reuse of external code or substantial expression, re-review the exact revision and license and preserve all obligations. External prompts, scripts, installers, tools, extensions, or agents must not receive ILAIOS credentials or production authority merely because they are design references.
+
