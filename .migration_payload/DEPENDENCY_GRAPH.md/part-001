@@ -1,0 +1,920 @@
+ Privacy/DLP       Secrets/Crypto      Evidence   Observability
+        │              │                  │           │
+        └──────────────┴──────────┬───────┴───────────┘
+                                  ▼
+                         GOVERNED EXECUTION
+```
+
+These are not optional serial decorations.
+
+They are cross-cutting dependencies.
+
+---
+
+# 12. Canonical Request Dependency Chain
+
+The target execution dependency order is:
+
+```text
+AUTHENTICATED USER
+      │
+      ▼
+PRINCIPAL + TENANT + PROJECT
+      │
+      ▼
+PROMPT / REQUEST
+      │
+      ▼
+MINIMAL AUTHORIZED PRE-PLAN CONTEXT
+      │
+      ▼
+GOAL + ACCEPTANCE CRITERIA
+      │
+      ▼
+BOUNDED EXECUTION PROPOSAL
+      │
+      ▼
+CAPABILITY / FACTORY RESOLUTION
+      │
+      ▼
+FACTORY / DOMAIN DAG
+      │
+      ▼
+CONTROL PLANE VALIDATION
+      │
+      ▼
+TASK EXECUTION LOOP
+```
+
+No downstream node can assume an upstream contract that was never produced.
+
+---
+
+# 13. Task Execution Dependency Chain
+
+Every task depends on:
+
+```text
+TaskEnvelope
+    │
+    ▼
+Execution Admission
+    │
+    ▼
+Approval Decision if Required
+    │
+    ▼
+Task-Scoped Authorized Context
+    │
+    ▼
+RoutingDecision
+    │
+    ▼
+Queue / Scheduler
+    │
+    ▼
+WorkerLease + Fencing
+    │
+    ▼
+Worker
+    │
+    ▼
+Skill / Tool Gateway / Provider Adapter
+    │
+    ▼
+Step Output
+    │
+    ▼
+Validation
+    │
+    ▼
+Evidence + State Update
+    │
+    ▼
+Checkpoint
+```
+
+---
+
+# 14. Execution Admission Dependencies
+
+Execution Admission depends on:
+
+```text
+PrincipalContext
+TenantContext
+ProjectContext
+TaskEnvelope
+CapabilityRequirement
+Data Classification
+Risk Classification
+Budget Context
+Tool/Resource Request
+```
+
+It may also depend on:
+
+```text
+privacy/residency policy
+DLP policy
+secret policy
+organization policy
+project policy
+provider policy
+approval policy
+```
+
+Output:
+
+```text
+Allow
+Deny
+RequireApproval
+```
+
+or a scoped `ExecutionGrant`.
+
+---
+
+# 15. Human Approval Dependencies
+
+Approval is only meaningful after the exact proposed action exists.
+
+```text
+Task / Proposed Action
+        │
+        ▼
+Policy Decision
+        │
+        ▼
+RequireApproval
+        │
+        ▼
+ApprovalRequest
+        │
+        ▼
+Authorized Human
+        │
+        ▼
+ApprovalDecision
+        │
+        ▼
+Scoped ExecutionGrant
+```
+
+Therefore:
+
+```text
+Approval
+does NOT precede
+the definition of the exact action being approved.
+```
+
+A materially changed action invalidates/requires reevaluation of prior approval.
+
+---
+
+# 16. Routing Dependencies
+
+Canonical routing depends on all eligibility constraints before optimization.
+
+```text
+Capability Requirement
+        │
+        ▼
+Authority / Permissions
+        │
+        ▼
+Security / Privacy / Residency
+        │
+        ▼
+Context / Modality Requirement
+        │
+        ▼
+Tool Requirement
+        │
+        ▼
+Quality Floor
+        │
+        ▼
+Provider / Model Health
+        │
+        ▼
+Quota / Availability
+        │
+        ▼
+Budget / Cost
+        │
+        ▼
+Latency
+        │
+        ▼
+Historical Reliability / Quality
+        │
+        ▼
+Deterministic Tie-Break
+        │
+        ▼
+ONE RoutingDecision
+```
+
+Cost is not permitted to move ahead of security/privacy eligibility.
+
+---
+
+# 17. Routing Consolidation Dependency
+
+Current routing foundations exist in more than one implementation module.
+
+The target relationship is:
+
+```text
+services/runtime/routing.py
+            │
+            ├──────────────┐
+            │              │
+            ▼              ▼
+   Skill/Authority      Provider
+   eligibility          capability
+            │              │
+            └──────┬───────┘
+                   │
+                   ▼
+             Routing Core
+                   ▲
+                   │
+            ┌──────┴───────┐
+            │              │
+            ▼              ▼
+ services/ai_governance.py
+ provider/model registry
+ policy/budget/quota/health
+            │
+            ▼
+      ONE RoutingDecision
+```
+
+Hard rule:
+
+```text
+No third router.
+No competing final RouteDecision.
+```
+
+---
+
+# 18. Provider Dependency Boundary
+
+Provider calls depend on:
+
+```text
+RoutingDecision
+    │
+    ▼
+Approved Adapter
+    │
+    ▼
+Provider Request
+    │
+    ▼
+Provider
+```
+
+Providers do not sit above:
+
+- identity;
+- policy;
+- budget;
+- approval;
+- artifact acceptance;
+- evidence truth.
+
+A provider outage may invalidate one route but not ILAIOS authority.
+
+---
+
+# 19. External Router Boundary
+
+If an external routing system is ever used:
+
+```text
+ILAIOS Policy
+    │
+    ▼
+ILAIOS Routing Authority
+    │
+    ▼
+Approved External Routing Adapter
+    │
+    ▼
+External Router
+```
+
+Never:
+
+```text
+Factory
+    │
+    ▼
+External Router
+    │
+    ▼
+Provider
+```
+
+without ILAIOS governance.
+
+---
+
+# 20. Tool Gateway Dependencies
+
+Tool execution depends on:
+
+```text
+Worker
+  │
+  ▼
+ToolRequest
+  │
+  ▼
+ExecutionGrant
+  │
+  ▼
+Permission Firewall
+  │
+  ▼
+Scoped Secret Resolution
+  │
+  ▼
+Network / Filesystem Policy
+  │
+  ▼
+Sandbox / Isolation
+  │
+  ▼
+Tool Adapter
+  │
+  ▼
+Tool
+```
+
+No worker should receive unrestricted raw tool authority by default.
+
+---
+
+# 21. Repository / Git Dependencies
+
+Repository mutation depends on:
+
+```text
+Authorized Repository
+        │
+        ▼
+Repository Analysis
+        │
+        ▼
+Bounded Change Proposal
+        │
+        ▼
+Software Factory
+        │
+        ▼
+Write Admission
+        │
+        ▼
+Scoped Repository Grant
+        │
+        ▼
+Branch / Change
+        │
+        ▼
+Tests / Quality Gates
+        │
+        ▼
+Diff Review
+        │
+        ▼
+PR / Merge Policy
+```
+
+Read access does not imply write authority.
+
+---
+
+# 22. Worker Execution Dependencies
+
+Worker execution requires:
+
+```text
+Admitted Task
++ RoutingDecision
++ WorkerLease
++ Fencing Token
++ ExecutionGrant
++ Task Inputs
+```
+
+Worker result commitment additionally depends on:
+
+```text
+lease still valid
+job not cancelled
+fencing token current
+output contract valid
+```
+
+A stale worker result cannot become authoritative.
+
+---
+
+# 23. State Dependency Graph
+
+Runtime state must follow validated transitions.
+
+```text
+PLANNING
+   │
+   ▼
+QUEUED
+   │
+   ▼
+RUNNING
+   │
+   ├──────────────► WAITING_FOR_APPROVAL
+   │                       │
+   │                       ▼
+   │                     RUNNING
+   │
+   ├──────────────► NEEDS_USER_INPUT
+   │                       │
+   │                       ▼
+   │                     RUNNING
+   │
+   ▼
+VALIDATING
+   │
+   ├──── FAIL ───► REPAIRING ───► RETRYING ───► RUNNING
+   │
+   ▼ PASS
+CHECKPOINTED
+   │
+   ├──── MORE WORK ───► QUEUED
+   │
+   ▼
+FINAL_VALIDATION
+   │
+   ├──── FAIL ───► REPAIRING
+   │
+   ▼ PASS
+DONE
+```
+
+Cancellation path:
+
+```text
+ANY CANCELLABLE ACTIVE STATE
+        │
+        ▼
+CANCEL_REQUESTED
+        │
+        ▼
+CANCELLED
+```
+
+---
+
+# 24. Checkpoint Dependencies
+
+Checkpoint creation depends on:
+
+```text
+validated durable boundary
++ authoritative state
++ artifact references if any
++ evidence cursor
++ budget/retry state
++ route references
+```
+
+Resume depends on:
+
+```text
+valid checkpoint
++ integrity verification
++ current identity/policy
++ current budget/retry state
++ valid/reissued grants
++ provider/routing reevaluation when needed
+```
+
+Checkpoint does not freeze security policy forever.
+
+---
+
+# 25. Artifact Dependency Graph
+
+```text
+Task Inputs
+    │
+    ▼
+Producer
+    │
+    ▼
+Artifact Version
+    │
+    ▼
+Validation
+    │
+    ├──── FAIL ───► Repair ───► New Artifact Version
+    │
+    ▼ PASS
+Accepted Artifact Version
+    │
+    ▼
+AcceptanceManifest
+```
+
+A repaired artifact never silently replaces prior history.
+
+---
+
+# 26. Evidence Dependency Graph
+
+```text
+Goal ──────────────────┐
+Plan ──────────────────┤
+Policy Decision ───────┤
+Approval ───────────────┤
+RoutingDecision ────────┤
+Worker Lease ───────────┤
+Tool / Provider Call ───┤
+Artifact Version ────────┼────► Evidence Chain
+Validation ──────────────┤
+Repair ──────────────────┤
+Checkpoint ──────────────┤
+Cost / Usage ────────────┤
+Delivery Decision ───────┘
+                              │
+                              ▼
+                     AcceptanceManifest
+```
+
+Final evidence depends on the entire material decision chain.
+
+---
+
+# 27. Final Evaluation Dependencies
+
+Final evaluation requires:
+
+```text
+Final Artifact Version
++ GoalSpec
++ AcceptanceCriteria
++ Required Domain Evaluators
++ Security/Privacy gates
++ Evidence references
+```
+
+Output:
+
+```text
+PASS
+or
+FAIL + actionable failure classification
+```
+
+No final artifact may be labeled verified before this dependency is satisfied.
+
+---
+
+# 28. Bounded Repair Dependencies
+
+Repair depends on:
+
+```text
+Evaluation / Validation FAIL
+        │
+        ▼
+Failure Classification
+        │
+        ▼
+Remaining Attempt Budget
+        │
+        ▼
+Remaining Cost Budget
+        │
+        ▼
+Remaining Elapsed-Time Budget
+        │
+        ▼
+RepairProposal
+        │
+        ▼
+Re-Admission
+        │
+        ▼
+Repair Execution
+        │
+        ▼
+Re-Evaluation
+```
+
+If any hard repair budget is exhausted:
+
+```text
+FAILED
+or
+NEEDS_USER_INPUT
+```
+
+according to policy.
+
+---
+
+# 29. Delivery / Deploy / Publish Dependencies
+
+External side effects are governed DAG nodes.
+
+```text
+Accepted Artifact
+      │
+      ▼
+Delivery Action Proposal
+      │
+      ▼
+Admission
+      │
+      ▼
+Approval if Required
+      │
+      ▼
+Tool / Deployment Route
+      │
+      ▼
+External Side Effect
+      │
+      ▼
+Verification
+      │
+      ▼
+Evidence
+```
+
+Artifact acceptance does not automatically authorize publication.
+
+---
+
+# 30. Data Plane Dependency Graph
+
+```text
+                    Principal / Tenant / Project
+                              │
+        ┌─────────────────────┼─────────────────────┐
+        │                     │                     │
+        ▼                     ▼                     ▼
+ Operational Store      Knowledge Store        Artifact Store
+        │                     │                     │
+        ├──────────────┐      │      ┌──────────────┤
+        │              │      │      │              │
+        ▼              ▼      ▼      ▼              ▼
+ Workflow State      Queue  Retrieval  Evidence Store
+        │                                            │
+        ▼                                            ▼
+ Checkpoints                                    Acceptance
+        │                                        Manifests
+        │
+        ▼
+ Runtime Recovery
+
+Secrets / Key Store
+        │
+        └────► scoped runtime injection only
+
+Observability Stores
+        │
+        └────► logs / metrics / traces only
+```
+
+No one store should silently become all authorities.
+
+---
+
+# 31. Knowledge / RAG Production Dependencies
+
+A production-grade RAG capability depends on more than `knowledge`.
+
+```text
+Knowledge / Project Context
+        │
+        ├────► Identity / Tenant
+        ├────► Authorization-Aware Retrieval
+        ├────► Privacy / DLP
+        ├────► Source Provenance
+        ├────► Evidence
+        ├────► Governed Runtime
+        ├────► Prompt-Injection Defense
+        └────► Full Integration / CI
+```
+
+Therefore:
+
+```text
+Embeddings
++ Vector Store
+≠
+Production RAG
+```
+
+---
+
+# 32. Web Factory Runtime Dependencies
+
+Web Factory runtime depends on:
+
+```text
+Goal + Acceptance
+        │
+        ▼
+Authorized Context / Research
+        │
+        ▼
+Web Factory
+        │
+        ├────► Workflow Runtime
+        ├────► Policy / Governance
+        ├────► Routing when AI/provider needed
+        ├────► Tool Gateway
+        ├────► Artifact Store
+        ├────► Evidence
+        └────► Evaluation
+```
+
+Domain chain:
+
+```text
+Research
+→ Information Architecture
+→ Copy
+→ Design System
+→ Visual Design
+→ Build
+→ Browser QA
+→ Security QA
+→ Accessibility
+→ Performance
+→ SEO
+→ Visual QA
+→ Acceptance
+→ Deployment Validation
+```
+
+---
+
+# 33. Video / Media Factory Runtime Dependencies
+
+```text
+Video Factory
+    ├────► Workflow Runtime
+    ├────► Provider Routing
+    ├────► Evidence
+    ├────► Artifact Store
+    ├────► Media Tools
+    └────► Independent Evaluation
+```
+
+Domain chain:
+
+```text
+Research
+→ Concept
+→ Script
+→ Storyboard
+→ Shot Plan
+→ Generation / Acquisition
+→ Assets
+→ Voice / Music / SFX / Captions
+→ Canonical Timeline
+→ Editing
+→ Mix
+→ Render
+→ Video QA
+→ Audio QA
+→ Acceptance
+```
+
+No second video runtime is permitted.
+
+---
+
+# 34. Software Factory Runtime Dependencies
+
+```text
+Software Factory
+    ├────► Workflow Runtime
+    ├────► Policy / Governance
+    ├────► Code Intelligence
+    ├────► Repository Tool Gateway
+    ├────► Test / CI Gates
+    ├────► Evidence
+    └────► Independent Review
+```
+
+Domain chain:
+
+```text
+Repository Analysis
+→ Change Proposal
+→ Write Admission
+→ Scoped Change
+→ Tests
+→ Static/Security Checks
+→ Build
+→ Diff Review
+→ PR / Review Artifact
+```
+
+---
+
+# 35. App Factory Dependencies
+
+```text
+App Factory
+    │
+    ▼
+Software Factory
+    │
+    ├────► platform packaging
+    ├────► signing when applicable
+    ├────► store metadata
+    └────► distribution/release gates
+```
+
+App Factory may add platform delivery requirements but cannot duplicate Software Factory authority.
+
+---
+
+# 36. Research / Data Dependencies
+
+```text
+Research / Data
+    │
+    ▼
+Knowledge
+    │
+    ├────► authorized sources
+    ├────► provenance
+    ├────► privacy
+    └────► evidence
+```
+
+Research outputs may feed Knowledge only if authorization/provenance metadata survives.
+
+---
+
+# 37. Security Factory Dependencies
+
+```text
+Security Factory
+    ├────► Agent Governance
+    ├────► Evidence / Audit
+    ├────► Policy Gateway for mutation
+    └────► Approval when action is privileged
+```
+
+Security analysis authority is not permission authority.
+
+---
+
+# 38. Personal Operations Dependencies
+
+```text
+Personal Operations
+    ├────► Workflow Runtime
+    ├────► Identity / Connected Account
+    ├────► Tool Gateway
+    ├────► Policy / Approval
+    └────► Evidence
+```
+
+External side effects such as communication/calendar/payment depend on appropriate scoped authorization.
+
+---
+
+# 39. Capability Maturity Dependency Graph
+
+Canonical maturity progression:
+
+```text
+DESIGNED
+   │
+   ▼
+SPECIFIED
+   │
+   ▼
+IMPLEMENTED
+   │
+   ▼
+TESTED
+   │
+   ▼

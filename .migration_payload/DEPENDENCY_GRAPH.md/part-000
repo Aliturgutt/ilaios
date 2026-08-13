@@ -1,0 +1,636 @@
+# ILAIOS — DEPENDENCY GRAPH
+
+**Document Type:** Canonical Dependency Graph  
+**Format:** GitHub Markdown + ASCII dependency diagrams  
+**Status:** Canonical Baseline v1.0 — Pending Repository Publication  
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
+**Autonomous Execution View:** `AUTONOMOUS_NODE_ARCHITECTURE.md`  
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
+**Core Principle:** **NO DEPENDENCY BYPASS — NO PARALLEL AUTHORITY**
+
+> This document defines **what depends on what** across ILAIOS documents, platform capabilities, factories, runtime execution, data/evidence planes, maturity gates, and the currently adopted post-v1 workstream graph. It does not replace architecture, implementation specification, milestones, or runtime evidence.
+
+---
+
+# 00. Purpose
+
+ILAIOS must remain one coherent system.
+
+A dependency graph is required so that:
+
+- no capability bypasses a required platform authority;
+- no factory creates hidden infrastructure;
+- no provider becomes a product authority;
+- no implementation begins before its prerequisite contract exists;
+- no maturity state is claimed without its prior gates;
+- no post-v1 workstream starts by skipping adopted dependencies;
+- no document redefines a concern owned elsewhere.
+
+The canonical dependency rule is:
+
+```text
+DEPENDENCY
+    =
+a prerequisite contract,
+authority,
+capability,
+state,
+evidence gate,
+or implementation condition
+that must exist before the dependent node can be valid.
+```
+
+A dependency is **not** merely a suggested sequence.
+
+---
+
+# 01. Dependency Semantics
+
+This document uses the following dependency classes.
+
+## 01.1 Constitutional Dependency
+
+A node cannot exist correctly without the upstream platform invariant.
+
+Example:
+
+```text
+Provider Routing
+    depends on
+Policy / Governance
+```
+
+because routing may choose only among permitted resources.
+
+## 01.2 Contract Dependency
+
+A component consumes a canonical contract produced upstream.
+
+Example:
+
+```text
+Worker
+    depends on
+ExecutionGrant
+```
+
+## 01.3 Runtime Dependency
+
+A task cannot execute until an upstream runtime state or resource exists.
+
+Example:
+
+```text
+Worker Execution
+    depends on
+WorkerLease
+```
+
+## 01.4 Data Dependency
+
+A component requires an authoritative data plane or scoped record.
+
+Example:
+
+```text
+Authorized Retrieval
+    depends on
+Principal + Tenant + Project context
+```
+
+## 01.5 Governance Dependency
+
+A privileged action requires policy or approval.
+
+Example:
+
+```text
+Production Deployment
+    depends on
+Execution Admission
+    + optional Approval
+```
+
+## 01.6 Evidence Dependency
+
+A maturity/release claim requires evidence from prior stages.
+
+Example:
+
+```text
+VERIFIED
+    depends on
+TESTED
+    + independent acceptance evidence
+```
+
+## 01.7 External Owner Gate
+
+A dependency cannot be autonomously satisfied by runtime code and requires an authorized owner/account action.
+
+Example:
+
+```text
+Store Publication
+    depends on
+Developer Account / Store Approval
+```
+
+---
+
+# 02. Global Dependency Invariants
+
+The following are hard rules:
+
+```text
+NO second Core
+NO second Control Plane
+NO second Planner authority
+NO second Capability Registry
+NO second Agent Runtime authority
+NO second Policy authority
+NO second RoutingDecision truth
+NO second Evidence / Provenance truth
+NO factory-specific hidden runtime
+NO direct factory → provider bypass
+NO direct worker → unrestricted tool bypass
+NO client → authoritative state bypass
+NO cross-tenant context shortcut
+NO production side effect without required admission
+NO VERIFIED without TESTED + acceptance evidence
+NO DEPLOYED / PRODUCTION without VERIFIED
+```
+
+---
+
+# 03. Canonical Document Dependency Graph
+
+The canonical documentation set is dependency-ordered.
+
+```text
+SYSTEM_ARCHITECTURE.md
+        │
+        ├──────────────► AUTONOMOUS_NODE_ARCHITECTURE.md
+        │
+        ├──────────────► README.md
+        │
+        ▼
+PRODUCT_REQUIREMENTS.md
+        │
+        ▼
+IMPLEMENTATION_SPEC.md
+        │
+        ▼
+DEPENDENCY_GRAPH.md
+        │
+        ├──────────────► API_CONTRACTS.md
+        ├──────────────► SECURITY_ARCHITECTURE.md
+        ├──────────────► DATA_ARCHITECTURE.md
+        ├──────────────► THREAT_MODEL.md
+        ├──────────────► TESTING_AND_EVALUATION.md
+        ├──────────────► DEPLOYMENT_ARCHITECTURE.md
+        ├──────────────► FINOPS.md
+        ├──────────────► ENGINEERING_STANDARDS.md
+        ├──────────────► GOVERNANCE.md
+        ├──────────────► MILESTONES.md
+        ├──────────────► ADR/
+        ├──────────────► OBSERVABILITY.md
+        └──────────────► FAILURE_RECOVERY.md
+```
+
+## 03.1 Document Responsibilities
+
+```text
+SYSTEM_ARCHITECTURE.md
+    defines system authority and boundaries
+
+AUTONOMOUS_NODE_ARCHITECTURE.md
+    visualizes authoritative node connections
+
+README.md
+    orients repository users
+
+PRODUCT_REQUIREMENTS.md
+    defines product behavior/outcomes
+
+IMPLEMENTATION_SPEC.md
+    translates architecture/product into implementation rules
+
+DEPENDENCY_GRAPH.md
+    defines prerequisite relationships
+
+API_CONTRACTS.md
+    defines interface schemas
+
+SECURITY_ARCHITECTURE.md
+    defines control architecture
+
+DATA_ARCHITECTURE.md
+    defines entities/stores/lifecycle
+
+THREAT_MODEL.md
+    defines threats and mitigations
+
+TESTING_AND_EVALUATION.md
+    defines validation/evaluation obligations
+
+DEPLOYMENT_ARCHITECTURE.md
+    defines runtime deployment topology
+
+FINOPS.md
+    defines cost/budget governance
+
+ENGINEERING_STANDARDS.md
+    defines engineering discipline
+
+docs/governance/GOVERNANCE.md
+    defines change/authority governance
+
+MILESTONES.md
+    defines delivery units and acceptance
+
+ADR/
+    records significant architecture decisions
+
+OBSERVABILITY.md
+    defines logs/metrics/traces/SLO/alerts
+
+FAILURE_RECOVERY.md
+    defines recovery/rollback/continuity
+```
+
+No downstream document may silently redefine an upstream authority.
+
+---
+
+# 04. Target Truth vs Current Reality
+
+Dependency truth has two distinct dimensions.
+
+```text
+TARGET TRUTH
+    = canonical architecture + specifications + dependency rules
+
+CURRENT REALITY
+    = current code + tests + CI + runtime + deployment evidence
+```
+
+Therefore:
+
+```text
+Architecture says "A must depend on B"
+        │
+        ▼
+Implementation must prove A actually depends on B
+        │
+        ▼
+Tests/evidence prove bypass is impossible
+```
+
+Status or roadmap prose cannot prove this relationship by itself.
+
+---
+
+# 05. Constitutional Platform Dependency Graph
+
+At the highest level:
+
+```text
+                    ILAIOS CONSTITUTIONAL CORE
+                              │
+                              ▼
+                    Authoritative Control Plane
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+          ▼                   ▼                   ▼
+ Identity/Tenant         Goal / State        Evidence Primitives
+          │                   │                   │
+          └───────────────────┼───────────────────┘
+                              ▼
+                  Governed Platform Capabilities
+                              │
+          ┌───────────────────┼───────────────────┐
+          │                   │                   │
+          ▼                   ▼                   ▼
+       Policy              Runtime             Knowledge
+          │                   │                   │
+          ├───────────────┐   │   ┌───────────────┤
+          │               │   │   │               │
+          ▼               ▼   ▼   ▼               ▼
+       Routing          Agents Scheduler       Research
+          │               │     │
+          └───────────────┼─────┘
+                          ▼
+                       Factories
+                          │
+                          ▼
+                 Governed Execution
+                          │
+                          ▼
+                  Replaceable Resources
+```
+
+Core is not a dumping ground for every dependency.
+
+---
+
+# 06. Canonical Capability Registry Graph
+
+The active capability namespace is:
+
+```text
+ilaios.capability.*
+```
+
+The current registry defines these canonical capability identities and dependencies.
+
+---
+
+# 07. Platform Capability Dependencies
+
+```text
+ilaios.capability.core
+    │
+    ├──► ilaios.capability.identity-tenant
+    │        │
+    │        ├──► ilaios.capability.policy-governance
+    │        │        │
+    │        │        ├──► ilaios.capability.agent-governance
+    │        │        └──► ilaios.capability.provider-routing
+    │        │
+    │        ├──► ilaios.capability.privacy-dlp
+    │        └──► ilaios.capability.secrets-crypto
+    │
+    ├──► ilaios.capability.workflow-runtime
+    │        │
+    │        └──► ilaios.capability.observability-operations
+    │
+    ├──► ilaios.capability.evidence-audit
+    │
+    ├──► ilaios.capability.code-intelligence
+    │
+    └──► ilaios.capability.knowledge
+```
+
+## 07.1 Core
+
+```text
+ilaios.capability.core
+dependencies: none
+```
+
+Owns platform-wide invariants only.
+
+## 07.2 Identity / Tenant
+
+```text
+ilaios.capability.identity-tenant
+depends on:
+    ilaios.capability.core
+```
+
+## 07.3 Workflow Runtime
+
+```text
+ilaios.capability.workflow-runtime
+depends on:
+    ilaios.capability.core
+```
+
+## 07.4 Policy / Governance
+
+```text
+ilaios.capability.policy-governance
+depends on:
+    ilaios.capability.identity-tenant
+```
+
+Policy cannot correctly evaluate a request without identity/tenant scope.
+
+## 07.5 Evidence / Audit
+
+```text
+ilaios.capability.evidence-audit
+depends on:
+    ilaios.capability.core
+```
+
+## 07.6 Privacy / DLP
+
+```text
+ilaios.capability.privacy-dlp
+depends on:
+    ilaios.capability.identity-tenant
+```
+
+## 07.7 Secrets / Cryptography
+
+```text
+ilaios.capability.secrets-crypto
+depends on:
+    ilaios.capability.identity-tenant
+```
+
+## 07.8 Observability / Operations
+
+```text
+ilaios.capability.observability-operations
+depends on:
+    ilaios.capability.workflow-runtime
+```
+
+## 07.9 Agent Governance
+
+```text
+ilaios.capability.agent-governance
+depends on:
+    ilaios.capability.policy-governance
+```
+
+## 07.10 Provider Routing
+
+```text
+ilaios.capability.provider-routing
+depends on:
+    ilaios.capability.policy-governance
+```
+
+## 07.11 Code Intelligence
+
+```text
+ilaios.capability.code-intelligence
+depends on:
+    ilaios.capability.core
+```
+
+## 07.12 Knowledge
+
+```text
+ilaios.capability.knowledge
+depends on:
+    ilaios.capability.core
+```
+
+The registry dependency is minimal. Production-ready RAG has additional security/runtime dependencies defined later in this document.
+
+---
+
+# 08. Factory Capability Dependency Graph
+
+Current canonical factory identities form this dependency graph:
+
+```text
+workflow-runtime ───────────────┬──────────────┬──────────────┐
+                               │              │              │
+                               ▼              ▼              ▼
+                        Web Factory      Software Factory   Creative Document
+                               │              │              │
+                               │              ▼              │
+                               │          App Factory        │
+                               │                             │
+                               ├─────────────────────────────┤
+                               │                             │
+                               ▼                             ▼
+                        Personal Operations           Commerce / Growth
+
+provider-routing ───────► Video / Media Factory
+evidence-audit ─────────► Video / Media Factory
+
+policy-governance ──────► Web Factory
+policy-governance ──────► Software Factory
+
+agent-governance ───────► Security Factory
+evidence-audit ─────────► Security Factory
+
+knowledge ──────────────► Research / Data Factory
+```
+
+---
+
+# 09. Exact Factory Dependencies
+
+## 09.1 Video / Media Factory
+
+```text
+ilaios.capability.video-media-factory
+depends on:
+    ilaios.capability.workflow-runtime
+    ilaios.capability.evidence-audit
+    ilaios.capability.provider-routing
+```
+
+## 09.2 Web Factory
+
+```text
+ilaios.capability.web-factory
+depends on:
+    ilaios.capability.workflow-runtime
+    ilaios.capability.policy-governance
+```
+
+## 09.3 Software Factory
+
+```text
+ilaios.capability.software-factory
+depends on:
+    ilaios.capability.workflow-runtime
+    ilaios.capability.policy-governance
+```
+
+## 09.4 Security Factory
+
+```text
+ilaios.capability.security-factory
+depends on:
+    ilaios.capability.agent-governance
+    ilaios.capability.evidence-audit
+```
+
+## 09.5 App Factory
+
+```text
+ilaios.capability.app-factory
+depends on:
+    ilaios.capability.software-factory
+```
+
+App Factory must reuse shared software primitives.
+
+## 09.6 Research / Data
+
+```text
+ilaios.capability.research-data
+depends on:
+    ilaios.capability.knowledge
+```
+
+## 09.7 Creative / Document
+
+```text
+ilaios.capability.creative-document
+depends on:
+    ilaios.capability.workflow-runtime
+```
+
+## 09.8 Commerce / Growth
+
+```text
+ilaios.capability.commerce-growth
+depends on:
+    ilaios.capability.workflow-runtime
+```
+
+## 09.9 Personal Operations
+
+```text
+ilaios.capability.personal-operations
+depends on:
+    ilaios.capability.workflow-runtime
+```
+
+---
+
+# 10. Registry Dependency vs Runtime Dependency
+
+A capability registry dependency is not always the complete runtime dependency.
+
+Example:
+
+```text
+Registry:
+Research / Data
+    → Knowledge
+
+Runtime:
+Research / Data
+    → Knowledge
+    → Identity/Tenant authorization
+    → Privacy/DLP
+    → Policy
+    → Evidence
+    → Governed Runtime
+```
+
+The registry expresses canonical capability lineage.
+
+Runtime execution must also satisfy all applicable cross-cutting authorities.
+
+---
+
+# 11. Cross-Cutting Dependency Planes
+
+Every privileged execution can depend on several cross-cutting planes simultaneously.
+
+```text
+                         EXECUTABLE TASK
+                               │
+        ┌──────────────────────┼──────────────────────┐
+        │                      │                      │
+        ▼                      ▼                      ▼
+ Identity/Tenant          Policy/Security          Budget/FinOps
+        │                      │                      │
+        ├──────────────┬───────┴──────────┬───────────┤
+        │              │                  │           │
+        ▼              ▼                  ▼           ▼

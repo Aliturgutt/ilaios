@@ -1,0 +1,270 @@
+- evidence requirements.
+
+## Rules / Invariants
+
+- Factory = bounded domain DAG.
+- Factory ≠ provider.
+- Factory ≠ worker.
+- Factory ≠ agent.
+- All factories share the same Core trust, routing and evidence path.
+
+---
+
+# 21. Core Bypass — Explicitly Forbidden
+
+## Diagram
+
+```mermaid
+flowchart LR
+    WEB["Web Factory"]
+    VIDEO["Video Factory"]
+    OTHER["Other Factory"]
+    CORE["ILAIOS Core"]
+    PROVIDER["Provider / Tool / External System"]
+
+    WEB -->|required| CORE
+    VIDEO -->|required| CORE
+    OTHER -->|required| CORE
+    CORE --> PROVIDER
+
+    WEB -. "FORBIDDEN BYPASS" .-> PROVIDER
+    VIDEO -. "FORBIDDEN BYPASS" .-> PROVIDER
+    OTHER -. "FORBIDDEN BYPASS" .-> PROVIDER
+```
+
+## Responsibility
+
+Make the architectural trust boundary unambiguous.
+
+## Contract
+
+Every external execution must be represented by a governed Core decision.
+
+## Rules / Invariants
+
+A direct factory-to-provider path is invalid unless the Core contract explicitly owns and records that path.
+
+---
+
+# 22. External Reference Assimilation
+
+## Diagram
+
+```mermaid
+flowchart TD
+    REF["External Open-Source Reference"]
+    PIN["Pin Repo + Commit / Tag"]
+    LICENSE["License Review"]
+    SUPPLY["Security / Supply-Chain Review"]
+    STUDY["Architecture / UX / Behavior Study"]
+    EXTRACT["Requirement Extraction"]
+    SPEC["ILAIOS Specification"]
+    NATIVE["ILAIOS-Native Implementation"]
+    TEST["ILAIOS Tests"]
+    EVAL["Independent Evaluation"]
+    PROV["Provenance / Evidence"]
+    REG["Capability Registration"]
+    RELEASE["Release"]
+
+    REF --> PIN --> LICENSE --> SUPPLY --> STUDY --> EXTRACT --> SPEC --> NATIVE --> TEST --> EVAL --> PROV --> REG --> RELEASE
+```
+
+## Responsibility
+
+Learn from external projects without making ILAIOS dependent on their runtime.
+
+## Contract
+
+External reference produces requirements, not execution authority.
+
+## Rules / Invariants
+
+Examples:
+
+- OmniRoute → routing intelligence reference.
+- OpenCut → video editing semantics reference.
+- NotebookLM-style workflows → RAG / research UX reference.
+- Taste / Emil-style skills → design intelligence reference.
+- Codex / Claude / Gemini CLI / OpenClaw → development actuators, not released-product brain.
+
+---
+
+# 23. Full End-to-End System Relationship
+
+This diagram is the final summary. It is intentionally larger, but the previous sections are the canonical detailed views.
+
+```mermaid
+flowchart TD
+    USER["USER"]
+    AUTH["SIGN IN"]
+    CLIENT["WEB / DESKTOP / MOBILE / API / CLI"]
+
+    subgraph CORE["ILAIOS CONSTITUTIONAL CORE"]
+        CP["Authoritative Control Plane"]
+        CORECON["Core Contracts / Identity / State / Authority / Evidence Invariants"]
+    end
+
+    subgraph PLATFORM["GOVERNED PLATFORM CAPABILITIES"]
+        ID["Identity / Tenant / Project"]
+        GOAL["Intent / Goal / Acceptance"]
+        KNOW["Authorized Knowledge / RAG"]
+        PLAN["Planner / Bounded DAG"]
+        CAP["Capability Fabric"]
+        POLICY["Policy / Trust / Admission"]
+        HITL["Approval / HITL"]
+        AGENT["Agent Runtime"]
+        ROUTE["ONE RoutingDecision"]
+        WF["Workflow / Scheduler / Recovery"]
+        EVID["Evidence / Audit / Provenance"]
+    end
+
+    subgraph FACT["NATIVE FACTORIES / DOMAIN ORCHESTRATION"]
+        WEBF["Web"]
+        VIDF["Video"]
+        SOFTF["Software / App"]
+        DATAF["Research / Data"]
+        SECF["Security"]
+        DOCF["Creative / Document"]
+        COMF["Commerce / Growth"]
+        PERSF["Personal Operations"]
+    end
+
+    subgraph EXEC["EXECUTION PLANE"]
+        WORKER["Sandboxed Workers"]
+        SKILL["Approved Skills"]
+        TOOL["Tools"]
+        ADAPTER["Provider Adapters"]
+        PROVIDER["Replaceable Providers"]
+    end
+
+    STEPEVID["Step Evidence + State + Checkpoint"]
+    VERIFY["Independent Evaluation"]
+    REPAIR["Bounded Repair"]
+    ART["Artifact + AcceptanceManifest"]
+    DELIVERY["Delivery / Deploy / Publish"]
+    FINAL["VERIFIED FINISHED PRODUCT"]
+
+    USER --> AUTH --> CLIENT --> CP --> ID
+    CORECON --> PLATFORM
+    ID --> GOAL --> KNOW --> PLAN --> CAP
+    CAP --> FACT
+    FACT --> POLICY
+    HITL --> POLICY
+    POLICY --> AGENT --> ROUTE --> WF --> WORKER
+    WORKER --> SKILL
+    WORKER --> TOOL
+    WORKER --> ADAPTER --> PROVIDER
+    SKILL --> STEPEVID
+    TOOL --> STEPEVID
+    PROVIDER --> STEPEVID
+    STEPEVID --> WF
+    WF --> VERIFY
+    VERIFY -->|FAIL| REPAIR --> POLICY
+    VERIFY -->|PASS| EVID
+    EVID --> ART --> DELIVERY --> FINAL
+```
+
+### Canonical interpretation
+
+- Core supplies the non-duplicable authority and invariants.
+- Governed platform capabilities perform planning, policy, routing, scheduling, knowledge, approvals and evidence services under Core contracts.
+- Factories organize domain work before execution admission/routing.
+- Workers execute bounded tasks using approved skills, tools and replaceable providers.
+- Evidence/state/checkpoints are continuous execution outputs.
+- Independent evaluation decides acceptance; bounded repair re-enters governed admission rather than bypassing controls.
+
+---
+
+# 24. Canonical Component Template
+
+Every future architectural component added to this document should use this exact form:
+
+```text
+COMPONENT NAME
+│
+├─ Responsibility
+│  └─ What this component owns
+│
+├─ Input Contract
+│  └─ Exact required input concept
+│
+├─ Output Contract
+│  └─ Exact produced output concept
+│
+└─ Invariants
+   ├─ What cannot bypass it
+   ├─ What authority it does NOT own
+   ├─ What evidence it must produce
+   └─ What failure mode must fail closed
+```
+
+Example:
+
+```text
+POLICY GATEWAY
+│
+├─ Responsibility
+│  └─ Evaluate every governed execution before privileged action
+│
+├─ Input
+│  └─ ExecutionRequest + PrincipalContext + TenantContext
+│
+├─ Output
+│  └─ Allow | Deny | RequireApproval
+│
+└─ Invariants
+   ├─ Cannot be bypassed
+   ├─ Tenant context required
+   ├─ Audit event required
+   └─ Missing mandatory context fails closed
+```
+
+---
+
+# 25. Final Architecture Formula
+
+```mermaid
+flowchart LR
+    A["USER INTENT"]
+    B["GOAL + REQUIREMENTS + ACCEPTANCE"]
+    C["AUTHORIZED CONTEXT"]
+    D["BOUNDED PLAN"]
+    E["CAPABILITY RESOLUTION"]
+    F["FACTORY / DOMAIN ORCHESTRATION"]
+    G["EXECUTION ADMISSION / GOVERNANCE"]
+    H["APPROVAL GATE IF REQUIRED"]
+    I["ONE ROUTING DECISION"]
+    J["WORKER + SKILL + TOOL + PROVIDER / ADAPTER"]
+    K["STEP VALIDATION"]
+    L["STEP EVIDENCE + STATE + CHECKPOINT"]
+    M{"MORE DAG WORK?"}
+    N["INDEPENDENT FINAL EVALUATION"]
+    O["BOUNDED REPAIR"]
+    P["FINAL EVIDENCE / ACCEPTANCE MANIFEST"]
+    Q["DELIVERY / DEPLOY / PUBLISH"]
+    R["VERIFIED FINISHED PRODUCT"]
+
+    A --> B --> C --> D --> E --> F --> G --> H --> I --> J --> K
+    K -->|PASS| L --> M
+    M -->|YES| G
+    M -->|NO| N
+    K -->|FAIL| O --> G
+    N -->|FAIL| O
+    N -->|PASS| P --> Q --> R
+```
+
+### Constitutional Core Rule
+
+**CORE = FROZEN BY DEFAULT, EVOLVABLE BY PROOF.**
+
+The Core changes only when a platform-wide invariant or canonical contract cannot be correctly satisfied within an existing governed capability boundary. Factories, providers, models, domain intelligence and UI projections remain outside the Constitutional Core.
+
+# ILAIOS Architecture Identity
+
+**ILAIOS = Governed Capability Operating System + Native Factories + Deterministic Routing + Independent Evaluation / Repair + Evidence**
+
+The system brain is:
+
+**ILAIOS Constitutional Core + Authoritative Control Plane + Governed Platform Capabilities + Governed Runtime + Capability Fabric + Trust / Governance + Evidence**
+
+No external model, tool, skill repository, routing proxy or editing application becomes a second brain.

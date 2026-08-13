@@ -1,0 +1,731 @@
+# ILAIOS — API CONTRACTS
+
+**Document Type:** Canonical API & Cross-Boundary Contract Specification  
+**Format:** GitHub Markdown + YAML/JSON-style contract examples  
+**Status:** Canonical Baseline v1.0 — Pending Repository Publication  
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
+**Dependency Authority:** `DEPENDENCY_GRAPH.md`  
+**Security Authority:** `SECURITY_ARCHITECTURE.md`  
+**Data Authority:** `DATA_ARCHITECTURE.md`  
+**Core API Principle:** **CLIENTS EXPRESS INTENT; THE CONTROL PLANE OWNS AUTHORITY**
+
+> This document defines the **canonical public API boundaries and internal cross-boundary contracts** of ILAIOS. It defines schemas, invariants, compatibility rules, idempotency, errors, asynchronous job/event behavior, authorization context, and the contract surfaces between Control Plane, policy, routing, scheduler, workers, tools, providers, Knowledge/RAG, factories, artifacts, evaluation, and evidence. It does not claim that every endpoint described here is currently implemented or deployed.
+
+---
+
+# 00. Purpose
+
+ILAIOS must expose one coherent product while preserving strict internal authority boundaries.
+
+The public experience is:
+
+```text
+Authenticated Client
+      │
+      ▼
+ILAIOS Control Plane API
+      │
+      ▼
+Goal / Job
+      │
+      ▼
+Governed Autonomous Execution
+      │
+      ▼
+Artifact + Evidence
+```
+
+The public experience is **not**:
+
+```text
+Client
+  ├─ directly selects privileged worker
+  ├─ directly invokes provider with platform credentials
+  ├─ directly mints ExecutionGrant
+  ├─ directly mutates authoritative job state
+  └─ directly bypasses policy/routing/tool gateway
+```
+
+This document therefore separates:
+
+```text
+PUBLIC CLIENT CONTRACTS
+INTERNAL CONTROL CONTRACTS
+RUNTIME CONTRACTS
+TOOL CONTRACTS
+PROVIDER ADAPTER CONTRACTS
+KNOWLEDGE CONTRACTS
+FACTORY CONTRACTS
+ARTIFACT / EVIDENCE CONTRACTS
+EVENT CONTRACTS
+```
+
+---
+
+# 01. Contract Authority
+
+For API behavior:
+
+```text
+SYSTEM_ARCHITECTURE.md
+        │
+        ▼
+PRODUCT_REQUIREMENTS.md
+        │
+        ▼
+IMPLEMENTATION_SPEC.md
+        │
+        ▼
+DEPENDENCY_GRAPH.md
+        │
+        ▼
+API_CONTRACTS.md
+```
+
+This file may define the exact contract representation of an upstream architectural concept.
+
+It must not change the meaning or authority of that concept.
+
+Example:
+
+```text
+SYSTEM_ARCHITECTURE
+    says Policy Gateway owns execution admission
+
+API_CONTRACTS
+    defines ExecutionRequest / PolicyDecision / ExecutionGrant schemas
+
+API_CONTRACTS
+    may NOT make the client the Policy Gateway
+```
+
+---
+
+# 02. Target Truth vs Current Reality
+
+This document is **target contract truth**.
+
+Current API reality must be established from:
+
+```text
+current code
+current schemas
+current tests
+current CI
+current runtime
+current deployment evidence
+```
+
+Therefore:
+
+```text
+contract documented
+≠ endpoint implemented
+≠ endpoint tested
+≠ endpoint deployed
+≠ endpoint currently healthy
+```
+
+Mutable implementation status belongs in evidence / milestones / operational status, not this canonical contract authority.
+
+---
+
+# 03. API Planes
+
+ILAIOS uses several contract planes.
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ PUBLIC CLIENT API                                            │
+│ Web / Desktop / Mobile / CLI / External API Client          │
+└─────────────────────────────┬────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│ CONTROL PLANE CONTRACTS                                      │
+│ Identity / Project / Goal / Job / Approval / Artifacts      │
+└─────────────────────────────┬────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│ INTERNAL GOVERNANCE CONTRACTS                                │
+│ Policy / ExecutionGrant / Routing / Capability Resolution   │
+└─────────────────────────────┬────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│ RUNTIME CONTRACTS                                            │
+│ Queue / Task / Lease / Worker / State / Checkpoint          │
+└─────────────────────────────┬────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│ TOOL / PROVIDER CONTRACTS                                    │
+│ Tool Gateway / Adapter / ProviderRequest / ProviderResult   │
+└─────────────────────────────┬────────────────────────────────┘
+                              │
+                              ▼
+┌──────────────────────────────────────────────────────────────┐
+│ OUTPUT CONTRACTS                                             │
+│ Artifact / Validation / Evidence / AcceptanceManifest       │
+└──────────────────────────────────────────────────────────────┘
+```
+
+---
+
+# 04. Public vs Internal Contract Rule
+
+## Public contracts
+
+May be used by authorized product clients:
+
+```text
+identity/session projection
+tenant/project discovery
+goal submission
+job status
+job event stream
+user input continuation
+approval decision
+artifact retrieval
+evidence summary/retrieval
+knowledge-source management where permitted
+cancellation
+```
+
+## Internal-only contracts
+
+Must not be treated as arbitrary public APIs:
+
+```text
+ExecutionGrant
+PolicyDecision internals
+RoutingDecision mutation
+WorkerLease
+FencingToken
+secret resolution
+provider credential resolution
+raw Tool Gateway execution
+worker state commit
+internal evidence append
+```
+
+A future enterprise SDK may expose abstractions for some internal capabilities, but it must still preserve the same authority model.
+
+---
+
+# 05. Transport Model
+
+The canonical contracts are transport-neutral.
+
+They may be represented using:
+
+```text
+HTTP/JSON
+SSE
+WebSocket
+message queue
+event bus
+internal RPC
+durable workflow payload
+```
+
+The transport may change without changing contract authority.
+
+For public HTTP APIs, this document uses a target logical version prefix:
+
+```text
+/v1
+```
+
+Exact routing infrastructure belongs in deployment architecture.
+
+---
+
+# 06. Canonical Request Envelope
+
+Every public request should be traceable using a canonical request envelope or equivalent transport metadata.
+
+Conceptual fields:
+
+```yaml
+request_id: "req_..."
+schema_version: "1"
+timestamp: "..."
+client:
+  client_type: "web|desktop|mobile|cli|api"
+  client_version: "..."
+project_id: "project_..."   # when applicable
+payload: {}
+```
+
+The following must **not** become client-authoritative merely because they appear in a request:
+
+```text
+tenant_id
+principal_id
+roles
+permissions
+risk clearance
+ExecutionGrant
+approval status
+provider eligibility
+```
+
+The server derives or validates authoritative security context.
+
+---
+
+# 07. Canonical Response Envelope
+
+Success:
+
+```yaml
+request_id: "req_..."
+schema_version: "1"
+data: {}
+meta:
+  generated_at: "..."
+```
+
+Failure:
+
+```yaml
+request_id: "req_..."
+schema_version: "1"
+error:
+  code: "..."
+  message: "safe human-readable message"
+  retryable: false
+  details: {}
+```
+
+Sensitive internal details are not returned in public errors.
+
+---
+
+# 08. Authentication Contract
+
+Public API requests require authenticated identity unless an endpoint is explicitly public.
+
+Typical public transport:
+
+```text
+Authorization: Bearer <session/access token>
+```
+
+Authentication token semantics are defined by the identity implementation.
+
+The token must resolve to:
+
+```text
+Principal
+Session
+Tenant memberships
+Assurance level
+```
+
+A token is not itself permission to every tenant/project/resource.
+
+---
+
+# 09. Request Security Context
+
+The Control Plane resolves:
+
+```yaml
+principal_context:
+  principal_id: "principal_..."
+  session_id: "session_..."
+  auth_method: "oidc"
+  auth_provider: "microsoft"
+  assurance_level: "strong"
+
+tenant_context:
+  tenant_id: "tenant_..."
+
+project_context:
+  project_id: "project_..."
+```
+
+The authoritative context is server-produced.
+
+---
+
+# 10. Tenant Selection Contract
+
+A client may request a tenant context:
+
+```http
+POST /v1/session/context
+```
+
+Request:
+
+```json
+{
+  "tenant_id": "tenant_123",
+  "project_id": "project_456"
+}
+```
+
+Server requirements:
+
+```text
+authenticate Principal
+verify active Tenant membership
+verify Project membership/access
+apply assurance/security policy
+return accepted context projection
+```
+
+Client submission alone is not authorization.
+
+---
+
+# 11. Current Principal Contract
+
+```http
+GET /v1/me
+```
+
+Response concept:
+
+```yaml
+principal:
+  principal_id: "principal_..."
+  display_name: "..."
+  preferred_locale: "..."
+session:
+  session_id: "session_..."
+  assurance_level: "..."
+tenants:
+  - tenant_id: "tenant_..."
+    display_name: "..."
+```
+
+Do not return broad internal permissions or sensitive IdP assertions unnecessarily.
+
+---
+
+# 12. Tenant Contract
+
+```http
+GET /v1/tenants
+GET /v1/tenants/{tenant_id}
+```
+
+Tenant projection may include:
+
+```yaml
+tenant_id: "tenant_..."
+name: "..."
+tenant_type: "personal|organization"
+status: "..."
+allowed_actions: []
+```
+
+Public projection must not leak secret/provider/security configuration.
+
+---
+
+# 13. Project Contract
+
+```http
+GET  /v1/projects
+POST /v1/projects
+GET  /v1/projects/{project_id}
+```
+
+Create request:
+
+```yaml
+name: "Furniture Company Website"
+purpose: "..."
+classification_default: "INTERNAL"
+```
+
+Response:
+
+```yaml
+project_id: "project_..."
+tenant_id: "tenant_..."
+name: "..."
+created_at: "..."
+status: "..."
+```
+
+`tenant_id` in response reflects authoritative scope.
+
+---
+
+# 14. Project Update Contract
+
+```http
+PATCH /v1/projects/{project_id}
+```
+
+Use optimistic concurrency for behaviorally important changes.
+
+Example:
+
+```http
+If-Match: "project-version-7"
+```
+
+or equivalent explicit version field.
+
+Lost updates must not silently win.
+
+---
+
+# 15. Goal Submission Contract
+
+Primary one-prompt product API:
+
+```http
+POST /v1/projects/{project_id}/goals
+```
+
+Request:
+
+```yaml
+objective: "Build a premium website for my furniture company."
+constraints:
+  - "..."
+preferences:
+  - "..."
+attachments:
+  - artifact_or_upload_ref
+requested_delivery:
+  mode: "artifact"
+```
+
+The client does not submit provider/model/worker as mandatory default choices.
+
+---
+
+# 16. Goal Submission Response
+
+Goal submission should normally create or start a durable Job.
+
+Response:
+
+```yaml
+goal_id: "goal_..."
+job_id: "job_..."
+state: "PLANNING"
+accepted_input:
+  objective: "..."
+next:
+  status_uri: "/v1/jobs/job_..."
+  events_uri: "/v1/jobs/job_.../events"
+```
+
+The API must not claim completion synchronously for long-running work unless the work actually completed.
+
+---
+
+# 17. GoalSpec Contract
+
+Internal canonical `GoalSpec`:
+
+```yaml
+goal_id: "goal_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+requested_by_principal_id: "principal_..."
+objective: "..."
+acceptance_criteria_ref: "criteria_..."
+risk_class: "..."
+data_class: "..."
+budget:
+  max_attempts: 3
+  max_runtime_seconds: 3600
+  max_external_spend:
+    amount: 10.00
+    currency: "USD"
+version: 1
+```
+
+Exact numeric defaults are policy/configuration decisions, not hard-coded by this document.
+
+---
+
+# 18. AcceptanceCriteria Contract
+
+```yaml
+acceptance_criteria_id: "criteria_..."
+goal_id: "goal_..."
+version: 1
+criteria:
+  - criterion_id: "criterion_1"
+    type: "functional"
+    description: "..."
+    required: true
+  - criterion_id: "criterion_2"
+    type: "security"
+    description: "..."
+    required: true
+```
+
+Final evaluation must reference the exact version.
+
+---
+
+# 19. Clarification / User Input Contract
+
+If essential information cannot safely be inferred:
+
+```text
+Job State = NEEDS_USER_INPUT
+```
+
+Client retrieves the request:
+
+```http
+GET /v1/jobs/{job_id}
+```
+
+Projection:
+
+```yaml
+state: "NEEDS_USER_INPUT"
+user_input_request:
+  request_id: "inputreq_..."
+  prompt: "..."
+  fields:
+    - field_id: "..."
+      required: true
+      type: "string"
+```
+
+Submission:
+
+```http
+POST /v1/jobs/{job_id}/user-input
+```
+
+Request:
+
+```yaml
+input_request_id: "inputreq_..."
+answers:
+  field_id: "value"
+```
+
+Input must be revalidated and may trigger re-planning/re-admission.
+
+---
+
+# 20. ExecutionProposal Contract
+
+Internal planning output:
+
+```yaml
+proposal_id: "proposal_..."
+goal_id: "goal_..."
+plan_version: 1
+tasks:
+  - task_id: "task_..."
+    responsibility: "..."
+    dependencies: []
+    required_capabilities:
+      - "ilaios.capability.web-factory"
+    expected_output_contract: "..."
+    risk_class: "..."
+    data_class: "..."
+    validation_requirements: []
+graph_hash: "sha256:..."
+```
+
+Planner produces a proposal.
+
+Planner does not produce authorization.
+
+---
+
+# 21. CapabilityRequirement Contract
+
+```yaml
+capability_requirement_id: "capreq_..."
+job_id: "job_..."
+task_id: "task_..."
+capability_id: "ilaios.capability.web-factory"
+required_operations: []
+input_contract_refs: []
+output_contract_refs: []
+quality_floor: {}
+security_constraints: {}
+```
+
+---
+
+# 22. CapabilityDescriptor Contract
+
+Canonical registry projection:
+
+```yaml
+capability_id: "ilaios.capability.web-factory"
+schema_version: "1"
+display_name: "Web Factory"
+domain: "factory"
+dependencies:
+  - "ilaios.capability.workflow-runtime"
+  - "ilaios.capability.policy-governance"
+input_contracts: []
+output_contracts: []
+required_permissions: []
+maturity: "SPECIFIED"
+```
+
+Capability maturity values:
+
+```text
+DESIGNED
+SPECIFIED
+IMPLEMENTED
+TESTED
+VERIFIED
+DEPLOYED / PRODUCTION
+```
+
+`DEPRECATED` is a lifecycle exit state.
+
+---
+
+# 23. FactoryDescriptor Contract
+
+```yaml
+factory_id: "ilaios.factory.web"
+version: "1"
+capability_id: "ilaios.capability.web-factory"
+supported_goal_types: []
+required_capabilities: []
+input_contract: "..."
+artifact_contract: "..."
+policy_requirements: []
+validation_requirements: []
+repair_policy_ref: "..."
+evidence_requirements: []
+delivery_contract: "..."
+```
+
+Factory cannot declare a private router or private policy authority.
+
+---
+
+# 24. ExecutionRequest Contract
+
+Internal execution admission request:
+
+```yaml
+request_id: "execreq_..."
+principal_id: "principal_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+job_id: "job_..."
+task_id: "task_..."
+capability_id: "ilaios.capability..."

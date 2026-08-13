@@ -1,0 +1,716 @@
+# ILAIOS — PRODUCT REQUIREMENTS
+
+**Document Type:** Canonical Product Requirements Document  
+**Format:** GitHub Markdown  
+**Status:** Canonical Baseline v1.0 — Pending Repository Publication  
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
+**Autonomous Execution View:** `AUTONOMOUS_NODE_ARCHITECTURE.md`  
+**Repository Orientation:** `README.md`  
+**Core Product Principle:** **SIGN IN → ONE PROMPT → VERIFIED FINISHED PRODUCT**
+
+> This document defines **what the ILAIOS product must do and what experience it must provide**. It does not define implementation details, repository paths, deployment topology, or current implementation status. Those belong to downstream canonical documents.
+
+---
+
+# 00. Purpose
+
+ILAIOS is a governed AI operating system whose product promise is:
+
+```text
+SIGN IN
+   │
+   ▼
+ONE PROMPT
+   │
+   ▼
+GOVERNED AUTONOMOUS EXECUTION
+   │
+   ▼
+VERIFIED FINISHED PRODUCT
+```
+
+The purpose of ILAIOS is not to expose a collection of AI tools.
+
+The purpose is to let a user express an outcome and have ILAIOS own the governed path from intent to verified result.
+
+Example:
+
+```text
+"Build a premium website for my furniture company."
+```
+
+The expected product experience is not:
+
+```text
+Choose model
+Choose agent
+Choose skill
+Choose provider
+Choose browser
+Choose coding tool
+Choose deployment workflow
+Manually combine outputs
+```
+
+The expected product experience is:
+
+```text
+Authenticate
+Describe the desired outcome
+Provide indispensable context when needed
+Review approvals when required
+Receive a verified finished product
+```
+
+---
+
+# 01. Product Definition
+
+## 1.1 Product Category
+
+ILAIOS is a:
+
+> **Governed Capability Operating System with native finished-product factories.**
+
+Its product identity includes:
+
+```text
+Authoritative Control Plane
+Governed Capability Fabric
+Native Factories
+Authorized Context / Knowledge
+Single Routing Truth
+Governed Workers
+Permissioned Tools
+Replaceable Providers
+Human Approval Where Required
+Independent Evaluation
+Bounded Repair
+Evidence / Provenance
+Verified Final Artifacts and Actions
+```
+
+## 1.2 What ILAIOS Is Not
+
+ILAIOS is not:
+
+- a thin wrapper around one LLM;
+- an OpenAI wrapper;
+- a Claude wrapper;
+- a Gemini wrapper;
+- an agent chat demo;
+- an uncontrolled multi-agent swarm;
+- a marketplace of random skills;
+- a permanent dependency on a routing proxy;
+- a fork of a third-party editor;
+- a UI that merely visualizes external tools;
+- a product where the user must understand provider infrastructure to complete work.
+
+## 1.3 Product Brain
+
+The product brain remains ILAIOS.
+
+External models, providers, tools, editors, skill repositories, and development actuators are replaceable or reference resources.
+
+The user outcome must remain an ILAIOS product outcome.
+
+---
+
+# 02. Product Vision
+
+ILAIOS should allow an individual, team, or enterprise to move from intent to completed digital work without manually operating the underlying AI/tool stack.
+
+The long-term product experience is:
+
+```text
+I need something done
+        │
+        ▼
+I tell ILAIOS the outcome
+        │
+        ▼
+ILAIOS understands the goal
+        │
+        ▼
+ILAIOS plans bounded work
+        │
+        ▼
+ILAIOS obtains authorized context
+        │
+        ▼
+ILAIOS selects capabilities
+        │
+        ▼
+ILAIOS executes under policy
+        │
+        ▼
+ILAIOS validates and repairs
+        │
+        ▼
+ILAIOS proves what happened
+        │
+        ▼
+I receive the finished result
+```
+
+The product should feel like one coherent operating system, even when many providers or workers participate internally.
+
+---
+
+# 03. Product Principles
+
+The following are product-level invariants.
+
+## PRIN-001 — One Product Brain
+
+ILAIOS must present one coherent system.
+
+The product must not expose competing planners, routers, runtimes, or provider-specific product identities as separate brains.
+
+## PRIN-002 — Outcome First
+
+Users describe desired outcomes.
+
+The default product flow must not require model/provider/tool selection.
+
+## PRIN-003 — Governed Autonomy
+
+Autonomy must always operate within:
+
+```text
+identity
+tenant/project scope
+permissions
+privacy policy
+risk policy
+budget
+approval rules
+runtime limits
+repair limits
+evidence requirements
+```
+
+## PRIN-004 — Verified, Not Merely Generated
+
+A generated artifact is not automatically a completed product.
+
+Required validation and acceptance must pass before ILAIOS represents an output as verified/final.
+
+## PRIN-005 — Provider Independence
+
+Providers are replaceable.
+
+The critical product contract must not depend on the continued existence of one named model or external project.
+
+## PRIN-006 — Evidence Is Part of the Product
+
+ILAIOS must be able to explain the governed lineage of material outputs/actions.
+
+## PRIN-007 — Minimal Necessary User Interruption
+
+ILAIOS should infer and proceed where safe and reasonable.
+
+It should ask the user only when:
+
+- essential information is missing;
+- policy requires explicit approval;
+- the requested outcome is materially ambiguous;
+- a risk/cost decision cannot safely be inferred;
+- execution reaches a genuine user-dependent blocker.
+
+## PRIN-008 — Fail Closed on Authority
+
+Missing mandatory identity, tenant, permission, privacy, or security context must not be treated as permission to continue.
+
+## PRIN-009 — No Infinite Autonomy
+
+Retry and repair must be bounded.
+
+## PRIN-010 — Core Is Frozen by Default
+
+Product expansion should happen through governed capabilities/factories.
+
+Core evolution requires proof of a platform-wide invariant need.
+
+---
+
+# 04. Target Users
+
+ILAIOS must support multiple product contexts without changing its core operating model.
+
+## 4.1 Individual / Founder
+
+Needs:
+
+- finished websites;
+- product assets;
+- research;
+- code changes;
+- documents;
+- business automation;
+- personal operations.
+
+Primary value:
+
+> One interface replaces multiple manual AI/tool workflows.
+
+## 4.2 Small Team
+
+Needs:
+
+- shared projects;
+- controlled access;
+- collaborative approvals;
+- repeatable workflows;
+- reusable knowledge;
+- project history.
+
+Primary value:
+
+> Shared execution without losing ownership, policy, or traceability.
+
+## 4.3 Enterprise Team
+
+Needs:
+
+- organizational identity;
+- tenant isolation;
+- role/permission control;
+- SSO;
+- policy enforcement;
+- approval workflows;
+- audit/evidence;
+- privacy/data controls;
+- cost governance.
+
+Primary value:
+
+> AI execution that can operate under enterprise governance.
+
+## 4.4 Developer / Technical Operator
+
+Needs:
+
+- repository context;
+- software changes;
+- testing;
+- CI-aware execution;
+- artifacts;
+- reproducibility;
+- evidence;
+- clear failure states.
+
+Primary value:
+
+> Governed autonomous software work rather than unbounded code generation.
+
+## 4.5 Approver / Administrator
+
+Needs:
+
+- clear action scope;
+- risk context;
+- approval/rejection;
+- auditability;
+- tenant/project controls;
+- policy visibility.
+
+Primary value:
+
+> Human authority remains explicit where required.
+
+---
+
+# 05. Primary User Promise
+
+The product must make this user journey possible:
+
+```text
+USER
+  │
+  ▼
+SIGN IN
+  │
+  ▼
+SELECT / RESOLVE TENANT + PROJECT
+  │
+  ▼
+ENTER ONE NATURAL-LANGUAGE GOAL
+  │
+  ▼
+ILAIOS UNDERSTANDS INTENT
+  │
+  ▼
+GOAL + ACCEPTANCE ARE ESTABLISHED
+  │
+  ▼
+AUTHORIZED CONTEXT IS ACQUIRED
+  │
+  ▼
+BOUNDED PLAN IS CREATED
+  │
+  ▼
+CAPABILITIES / FACTORY ARE RESOLVED
+  │
+  ▼
+EXECUTION IS ADMITTED
+  │
+  ▼
+APPROVAL IS REQUESTED ONLY IF REQUIRED
+  │
+  ▼
+WORK EXECUTES AUTONOMOUSLY
+  │
+  ▼
+OUTPUTS ARE VALIDATED
+  │
+  ▼
+FAILURES ARE REPAIRED WITHIN BOUNDS
+  │
+  ▼
+FINAL RESULT IS INDEPENDENTLY EVALUATED
+  │
+  ▼
+EVIDENCE IS ASSEMBLED
+  │
+  ▼
+RESULT IS DELIVERED / DEPLOYED / PUBLISHED
+  │
+  ▼
+VERIFIED FINISHED PRODUCT
+```
+
+---
+
+# 06. Authentication and Identity Requirements
+
+## AUTH-001 — Sign-In Options
+
+The target product must support provider-neutral identity integration for:
+
+- Google;
+- Microsoft;
+- Outlook/Hotmail via Microsoft identity;
+- GitHub;
+- Apple;
+- email-based account access;
+- Microsoft Entra ID;
+- Google Workspace;
+- generic SAML/OIDC enterprise identity.
+
+Support may be released incrementally, but all methods must normalize into the same ILAIOS identity model.
+
+## AUTH-002 — Canonical Principal
+
+Every authenticated person must resolve to an ILAIOS Principal independent of the external login provider.
+
+## AUTH-003 — Tenant Resolution
+
+Every governed execution must resolve the tenant/organization context when applicable.
+
+## AUTH-004 — Project Resolution
+
+Project-scoped work must execute under explicit project context.
+
+## AUTH-005 — Cross-Tenant Denial
+
+A user authenticated to one tenant must not gain access to another tenant's protected resources without explicit authorized membership/role.
+
+## AUTH-006 — Stronger Authentication
+
+Privileged operations must be able to require stronger assurance/MFA according to policy.
+
+## AUTH-007 — Session Security
+
+Expired or revoked sessions must not remain usable for future privileged execution.
+
+---
+
+# 07. Account, Tenant, and Project Requirements
+
+## ORG-001 — Personal Workspace
+
+A user must be able to operate in an individual workspace.
+
+## ORG-002 — Organization / Tenant
+
+The product must support organization/tenant boundaries.
+
+## ORG-003 — Membership
+
+Tenants must support member identity and role/permission association.
+
+## ORG-004 — Project
+
+Users must be able to organize work by project.
+
+## ORG-005 — Project Context
+
+Project context should bind:
+
+- goals;
+- jobs;
+- artifacts;
+- knowledge;
+- evidence;
+- approvals;
+- relevant configuration.
+
+## ORG-006 — Tenant Isolation
+
+Tenant isolation must persist across:
+
+- operational data;
+- knowledge;
+- artifacts;
+- queues;
+- workers;
+- logs/evidence;
+- provider context.
+
+---
+
+# 08. Prompt and Goal Requirements
+
+## GOAL-001 — Natural-Language Goal
+
+A user must be able to initiate work using a natural-language outcome.
+
+## GOAL-002 — Intent Preservation
+
+ILAIOS must preserve the user's intended outcome when converting the prompt into a structured goal.
+
+## GOAL-003 — Requirements Extraction
+
+ILAIOS should extract:
+
+- objective;
+- deliverable;
+- constraints;
+- preferences;
+- risk/data hints;
+- required acceptance criteria.
+
+## GOAL-004 — Acceptance Before Finality
+
+The system must establish acceptance criteria before claiming final completion.
+
+## GOAL-005 — Clarification Only When Necessary
+
+When essential information cannot safely be inferred, the system must be able to enter a state equivalent to:
+
+```text
+NEEDS_USER_INPUT
+```
+
+The product should avoid unnecessary clarification loops.
+
+## GOAL-006 — Material Scope Change
+
+A material user goal change during execution must trigger controlled re-planning.
+
+## GOAL-007 — Outcome Visibility
+
+The user should be able to understand what ILAIOS believes it is producing.
+
+---
+
+# 09. Planning Requirements
+
+## PLAN-001 — Bounded Plan
+
+Every autonomous execution must be backed by a bounded execution plan/DAG.
+
+## PLAN-002 — No Infinite Task Graph
+
+Planning must enforce bounded task count/depth according to product/runtime policy.
+
+## PLAN-003 — Dependency Awareness
+
+Tasks must represent dependencies explicitly.
+
+## PLAN-004 — Inspectability
+
+The product must be able to expose an understandable representation of the active plan when appropriate.
+
+## PLAN-005 — Planning Is Not Permission
+
+A plan alone must not authorize privileged actions.
+
+## PLAN-006 — Cross-Factory Planning
+
+A single goal may compose multiple factories/capabilities under one governed plan.
+
+---
+
+# 10. Context, Memory, and Knowledge Requirements
+
+## KNOW-001 — Authorized Context
+
+Only authorized context may be injected into execution.
+
+## KNOW-002 — Project Memory
+
+ILAIOS should be able to use project-scoped memory/context to improve continuity.
+
+## KNOW-003 — Source Ingestion
+
+Users and authorized systems must be able to add governed knowledge sources.
+
+## KNOW-004 — Source Provenance
+
+Retrieved information must retain source provenance.
+
+## KNOW-005 — Authorization-Aware Retrieval
+
+Retrieval must enforce tenant/principal/project/purpose authorization before content is returned.
+
+## KNOW-006 — No Cross-Tenant Leakage
+
+Knowledge from another tenant must never be returned merely because it is semantically relevant.
+
+## KNOW-007 — Classification
+
+Knowledge units must support data classification metadata.
+
+## KNOW-008 — Grounded Synthesis
+
+Where source-grounded output is required, ILAIOS must preserve linkage between claims and supporting sources.
+
+## KNOW-009 — Knowledge Is More Than Vector Search
+
+RAG product readiness requires authorization, provenance, privacy, evidence, and tenant isolation—not merely embeddings.
+
+---
+
+# 11. Capability Requirements
+
+## CAP-001 — Canonical Capability Identity
+
+ILAIOS must maintain one canonical capability identity system.
+
+## CAP-002 — Capability Discovery
+
+The system must determine which capabilities are required to satisfy a goal.
+
+## CAP-003 — Capability Composition
+
+Multiple capabilities may be composed into a bounded workflow.
+
+## CAP-004 — No Capability Duplication
+
+New product functionality must not create a parallel capability identity for existing authority.
+
+## CAP-005 — Capability Status
+
+The product/engineering system must be able to distinguish the canonical capability maturity stages:
+
+```text
+DESIGNED
+→ SPECIFIED
+→ IMPLEMENTED
+→ TESTED
+→ VERIFIED
+→ DEPLOYED / PRODUCTION
+```
+
+`DEPRECATED` is a lifecycle exit state and is not part of the forward maturity sequence.
+
+A capability's registration does not itself prove production readiness.
+
+## CAP-006 — Fine-Grained Capability Growth
+
+Product growth should prefer bounded capabilities/sub-capabilities rather than unnecessary agent proliferation.
+
+---
+
+# 12. Skill Requirements
+
+## SKILL-001 — Approved Skills
+
+Production execution must use approved skills/behavior contracts.
+
+## SKILL-002 — Bounded Authority
+
+A skill cannot request more authority than permitted.
+
+## SKILL-003 — Integrity
+
+Skills should be immutable/content-addressed where applicable.
+
+## SKILL-004 — Traceability
+
+The system must be able to identify which skill/version influenced material execution.
+
+## SKILL-005 — External Skill Safety
+
+Third-party skill definitions cannot become production behavior solely by installation/import.
+
+## SKILL-006 — Skill ≠ Agent
+
+Adding a new skill must not automatically require a new agent.
+
+---
+
+# 13. Agent Requirements
+
+## AGENT-001 — Governed Roles
+
+Agents represent governed roles, not unrestricted autonomous identities.
+
+## AGENT-002 — Authority Boundaries
+
+Agents cannot grant themselves new permissions.
+
+## AGENT-003 — Role Reuse
+
+The product should prefer a controlled set of reusable roles over one agent per micro-task.
+
+## AGENT-004 — Producer / Verifier Separation
+
+Where feasible, final verification should be independent of the producing role.
+
+## AGENT-005 — Agent Visibility
+
+The UI may show agent roles/activity, but agent visualization must not become execution authority.
+
+---
+
+# 14. Factory Requirements
+
+Factories convert goals into finished domain outcomes.
+
+Required factory families include:
+
+- Web Factory;
+- Video / Media Factory;
+- Software Factory;
+- App Factory;
+- Research / Data;
+- Security Factory;
+- Creative / Document;
+- Commerce / Growth;
+- Personal Operations.
+
+Knowledge/RAG is a governed knowledge capability/plane and may participate across factories.
+
+## FACT-001 — Shared Governance
+
+Every factory must use the shared ILAIOS governance path.
+
+## FACT-002 — Shared Routing
+
+Every factory must use the canonical routing truth.
+
+## FACT-003 — Shared Evidence
+
+Every factory must use the canonical evidence/provenance system.
+
+## FACT-004 — No Mini-Platform
+
+A factory must not create:
+
+- its own Core;
+- its own planner authority;
+- its own provider router;
+- its own policy authority;

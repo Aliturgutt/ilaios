@@ -1,0 +1,112 @@
+                                         │
+                                         ▼
+                               ONE RoutingDecision
+                                         │
+                                         ▼
+                              QUEUE / SCHEDULER
+                                         │
+                                         ▼
+                               LEASE / FENCING
+                                         │
+                                         ▼
+                                      WORKER
+                                         │
+                              ┌──────────┼──────────┐
+                              │          │          │
+                              ▼          ▼          ▼
+                            SKILL    TOOL GATEWAY  PROVIDER
+                              │          │          │
+                              └──────────┼──────────┘
+                                         ▼
+                                    STEP OUTPUT
+                                         │
+                                         ▼
+                                     VALIDATION
+                                         │
+                           ┌─────────────┴─────────────┐
+                           │                           │
+                           ▼                           ▼
+                         FAIL                         PASS
+                           │                           │
+                           ▼                           ▼
+                  FAILURE CLASSIFIER               EVIDENCE
+                           │                           │
+                           ▼                           ▼
+                    BOUNDED REPAIR                STATE UPDATE
+                           │                           │
+                           └─────────────┬─────────────┘
+                                         ▼
+                                     CHECKPOINT
+                                         │
+                                         ▼
+                                  NEXT DAG NODE
+                                         │
+                                         ▼
+                                   FINAL ARTIFACT
+                                         │
+                                         ▼
+                             INDEPENDENT EVALUATION
+                                         │
+                            ┌────────────┴────────────┐
+                            │                         │
+                            ▼                         ▼
+                          FAIL                       PASS
+                            │                         │
+                            ▼                         ▼
+                    BOUNDED REPAIR          ACCEPTANCE MANIFEST
+                                                      │
+                                                      ▼
+                                         GOVERNED DELIVERY /
+                                          DEPLOY / PUBLISH
+                                                      │
+                                                      ▼
+                                         VERIFIED FINISHED
+                                              PRODUCT
+```
+
+---
+
+# 68. Final Dependency Formula
+
+```text
+NO AUTHORITY WITHOUT IDENTITY
+NO EXECUTION WITHOUT ADMISSION
+NO PRIVILEGED ACTION WITHOUT REQUIRED APPROVAL
+NO PROVIDER WITHOUT ROUTING
+NO TOOL WITHOUT GATEWAY / GRANT
+NO WORKER COMMIT WITHOUT VALID LEASE / FENCING
+NO FINAL ARTIFACT WITHOUT VALIDATION
+NO VERIFIED STATUS WITHOUT INDEPENDENT EVIDENCE
+NO DEPLOYED / PRODUCTION WITHOUT VERIFIED
+NO FACTORY WITHOUT SHARED PLATFORM AUTHORITIES
+NO EXTERNAL REFERENCE AS A SECOND BRAIN
+NO DEPENDENCY BYPASS
+```
+
+---
+
+# 69. Canonical Dependency Identity
+
+ILAIOS dependency architecture is:
+
+```text
+Constitutional Core
+        ↓
+Governed Platform Capabilities
+        ↓
+Native Factory Composition
+        ↓
+Admitted Execution
+        ↓
+Single Routing Truth
+        ↓
+Bounded Workers / Tools / Providers
+        ↓
+Validation / Evidence / State
+        ↓
+Independent Evaluation
+        ↓
+Verified Finished Product
+```
+
+**A dependency is valid only when it preserves one ILAIOS brain and strengthens explicit authority, isolation, recoverability, and evidence.**

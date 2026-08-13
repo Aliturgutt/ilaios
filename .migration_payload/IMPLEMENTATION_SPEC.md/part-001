@@ -1,0 +1,1084 @@
+- Agent cannot mint unrestricted grants.
+- Agent cannot self-approve.
+- Agent cannot bypass canonical routing.
+- Agent cannot become a second Control Plane.
+- Prefer few reusable roles over agent-per-function explosion.
+
+---
+
+# 18. Factory Framework
+
+Factory = bounded domain workflow/DAG.
+
+Every factory must implement the same high-level contract:
+
+```text
+GoalSpec
++ AcceptanceCriteria
++ AuthorizedContext
+        │
+        ▼
+Factory
+        │
+        ▼
+Bounded Domain DAG
+        │
+        ▼
+Shared Admission
+        │
+        ▼
+Shared Routing
+        │
+        ▼
+Shared Runtime
+        │
+        ▼
+Artifact + Evidence
+```
+
+FactoryDescriptor must define:
+
+```text
+factory_id
+version
+supported_goal_types
+required_capabilities
+input_schema
+artifact_schema
+default_dag_template
+policy requirements
+validation requirements
+repair policy
+evidence requirements
+delivery contract
+maturity
+```
+
+Forbidden:
+
+```text
+factory-owned Core
+factory-owned router
+factory-owned Policy Engine
+factory-owned hidden scheduler
+factory-owned evidence truth
+factory-owned provider secrets
+factory self-approval
+```
+
+---
+
+# 19. Execution Admission
+
+Every executable privileged task is admitted before execution.
+
+```text
+TaskEnvelope
+      │
+      ▼
+Policy / Admission
+      │
+      ├─ Identity
+      ├─ Tenant / Project
+      ├─ Permission
+      ├─ Privacy / Residency
+      ├─ DLP / Secrets
+      ├─ Tool Scope
+      ├─ Risk / Blast Radius
+      ├─ Budget / Quota
+      └─ Approval Requirement
+      │
+      ▼
+Allow | Deny | RequireApproval
+```
+
+## 19.1 ExecutionRequest
+
+Must include:
+
+```text
+request_id
+principal_id
+tenant_id
+project_id
+job_id
+task_id
+capability_id
+requested_action
+requested_tools
+requested_resources
+data_class
+risk_class
+budget_ref
+context_ref
+```
+
+## 19.2 ExecutionGrant
+
+Must bind:
+
+```text
+grant_id
+principal_id
+tenant_id
+project_id
+job_id
+task_id
+capability_id
+allowed_actions
+allowed_tools
+allowed_resources
+network_scope
+filesystem_scope
+secret_scope
+spend_ceiling
+attempt_ceiling
+issued_at
+expires_at
+policy_decision_ref
+approval_ref if applicable
+```
+
+Rules:
+
+- missing mandatory context fails closed;
+- expired grant is invalid;
+- a worker cannot broaden a grant;
+- a provider cannot broaden a grant;
+- retries remain inside grant/policy or must be re-admitted.
+
+---
+
+# 20. Human Approval / HITL
+
+Approval is a first-class runtime state and policy outcome.
+
+```text
+Proposed Privileged Action
+      │
+      ▼
+Policy
+      │
+      ▼
+RequireApproval
+      │
+      ▼
+WAITING_FOR_APPROVAL
+      │
+      ▼
+Human Decision
+   │          │
+Approve    Reject
+   │          │
+   ▼          ▼
+Scoped      Deny
+Grant
+```
+
+ApprovalRecord must include:
+
+```text
+approval_id
+approver_principal_id
+tenant_id
+project_id
+job_id
+task_id
+exact_action
+scope
+decision
+reason
+issued_at
+expires_at
+revoked_at
+evidence_ref
+```
+
+Approval can apply before:
+
+- production deploy;
+- DNS changes;
+- payment/spend;
+- destructive data action;
+- security/identity changes;
+- external communication;
+- publication/release.
+
+Agents and workers cannot self-approve.
+
+---
+
+# 21. ONE RoutingDecision
+
+The current routing foundations must converge into **one canonical routing decision contract**.
+
+No third router may be created.
+
+## 21.1 Eligibility Order
+
+```text
+Capability Requirement
+        │
+        ▼
+Authority Eligibility
+        │
+        ▼
+Security / Privacy / Residency
+        │
+        ▼
+Context / Modality
+        │
+        ▼
+Tool Requirements
+        │
+        ▼
+Quality Floor
+        │
+        ▼
+Provider / Model Health
+        │
+        ▼
+Quota / Availability
+        │
+        ▼
+Budget / Cost
+        │
+        ▼
+Latency
+        │
+        ▼
+Historical Reliability / Quality
+        │
+        ▼
+Deterministic Tie-Break
+        │
+        ▼
+ONE RoutingDecision
+```
+
+## 21.2 RoutingDecision
+
+Target:
+
+```yaml
+route_id: "route-..."
+tenant_id: "tenant-..."
+project_id: "project-..."
+job_id: "job-..."
+task_id: "task-..."
+capability_id: "ilaios.capability..."
+worker_class: "..."
+provider_id: "..."
+model_or_resource_id: "..."
+adapter_id: "..."
+quality_floor: "..."
+privacy_class: "..."
+residency: "..."
+estimated_cost: 0
+reason_codes: []
+fallback_candidates: []
+evidence_refs: []
+created_at: "timestamp"
+```
+
+## 21.3 Consolidation Rule
+
+`services/runtime/routing.py` and `services/ai_governance.py` may retain separated internal responsibilities, but externally:
+
+```text
+there must be one route request model
+one eligibility pipeline
+one canonical RoutingDecision
+one evidence lineage
+```
+
+No independent module may make a competing final routing decision.
+
+---
+
+# 22. Provider Registry and Adapters
+
+ProviderDescriptor must support:
+
+```text
+provider_id
+adapter_id
+provider_type
+supported_capabilities
+models/resources
+modalities
+context/input limits
+output limits
+regions
+privacy metadata
+cost metadata
+health
+quota
+enabled state
+```
+
+Adapter owns only protocol translation:
+
+```text
+serialize request
+call provider
+normalize response
+normalize errors
+extract usage
+emit health observations
+support cancellation where available
+```
+
+Adapter does not own:
+
+```text
+authorization
+tenant policy
+budget authority
+approval
+final acceptance
+canonical routing
+```
+
+Provider types may include:
+
+```text
+OpenAI
+Anthropic
+Gemini
+other hosted models
+image/video/audio providers
+search providers
+vLLM
+Ollama
+local deterministic runtimes
+```
+
+Provider catalog is runtime/configuration state, not Constitutional Core.
+
+---
+
+# 23. Worker and Scheduler
+
+Worker = actual execution process.
+
+Scheduler = governed work assignment.
+
+WorkerDescriptor:
+
+```text
+worker_id
+worker_class
+supported_capabilities
+runtime_environment
+isolation_class
+resource_limits
+network_profile
+health
+version
+```
+
+WorkerLease:
+
+```text
+lease_id
+worker_id
+tenant_id
+project_id
+job_id
+task_id
+grant_id
+attempt
+issued_at
+expires_at
+fencing_token
+```
+
+Rules:
+
+- lease is bounded;
+- stale leases cannot commit authoritative results;
+- duplicate execution must be idempotent or rejected;
+- workers do not own job-state authority;
+- worker crash is recoverable where checkpointing applies;
+- cancelled jobs fence late results.
+
+---
+
+# 24. Tool Gateway
+
+Workers must not directly receive unrestricted tool authority.
+
+Canonical path:
+
+```text
+Worker
+  │
+  ▼
+ToolRequest
+  │
+  ▼
+Tool Gateway
+  │
+  ├─ ExecutionGrant check
+  ├─ permission firewall
+  ├─ scoped secret resolution
+  ├─ network/filesystem policy
+  └─ sandbox/isolation
+  │
+  ▼
+Connector / Adapter
+  │
+  ▼
+Tool / External Service
+```
+
+Tool families:
+
+```text
+Browser
+Shell / Code
+Files
+Git / Repository
+External APIs
+Cloud
+Search
+Media
+Deployment
+Communication
+```
+
+ToolResult must be treated as untrusted content until validated.
+
+---
+
+# 25. GitHub / Repository Tool Boundary
+
+GitHub identity and GitHub repository access are separate capabilities.
+
+## Login role
+
+```text
+GitHub OAuth
+→ ILAIOS Identity
+```
+
+## Repository tool role
+
+```text
+ILAIOS Tool Gateway
+→ GitHub / Git Adapter
+→ repository read/write operation
+```
+
+Repository mutation requires:
+
+```text
+authorized project/repository
+scoped grant
+bounded branch/change
+tests
+diff review
+CI evidence
+merge/release policy
+```
+
+Read-only repository intelligence does not automatically gain write authority.
+
+---
+
+# 26. Runtime State Machine
+
+Authoritative state belongs to the platform.
+
+Minimum states:
+
+```text
+PLANNING
+QUEUED
+RUNNING
+WAITING_FOR_APPROVAL
+NEEDS_USER_INPUT
+VALIDATING
+CHECKPOINTED
+REPAIRING
+RETRYING
+FINAL_VALIDATION
+DONE
+FAILED
+CANCEL_REQUESTED
+CANCELLED
+```
+
+Representative transitions:
+
+```text
+PLANNING → QUEUED
+QUEUED → RUNNING
+RUNNING → WAITING_FOR_APPROVAL
+WAITING_FOR_APPROVAL → RUNNING
+RUNNING → NEEDS_USER_INPUT
+NEEDS_USER_INPUT → RUNNING
+RUNNING → VALIDATING
+VALIDATING → CHECKPOINTED
+VALIDATING → REPAIRING
+REPAIRING → RETRYING
+RETRYING → RUNNING
+CHECKPOINTED → QUEUED
+CHECKPOINTED → FINAL_VALIDATION
+FINAL_VALIDATION → DONE
+FINAL_VALIDATION → REPAIRING
+* → FAILED when terminal
+* → CANCEL_REQUESTED
+CANCEL_REQUESTED → CANCELLED
+```
+
+Invalid transitions fail closed.
+
+---
+
+# 27. StateTransition Contract
+
+```text
+event_id
+job_id
+task_id
+tenant_id
+project_id
+from_state
+to_state
+reason
+actor
+sequence
+timestamp
+evidence_ref
+```
+
+Rules:
+
+- sequence is monotonic per authoritative stream;
+- client cannot directly write transition state;
+- state transition and evidence link are durable;
+- late/stale worker commit is fenced;
+- reconnect reconstructs from authoritative state.
+
+---
+
+# 28. Checkpoint / Resume
+
+CheckpointRecord:
+
+```text
+checkpoint_id
+tenant_id
+project_id
+job_id
+task_id
+state
+completed_node_ids
+pending_node_ids
+artifact_refs
+evidence_cursor
+budget_state
+retry_state
+route_refs
+context_refs
+created_at
+integrity_hash
+```
+
+Recommended checkpoint boundaries:
+
+- task completion;
+- expensive provider generation;
+- artifact creation;
+- approval wait;
+- validation pass;
+- factory phase completion;
+- external side-effect pre/post boundary.
+
+Resume sequence:
+
+```text
+Load checkpoint
+→ verify integrity
+→ reload current identity/policy
+→ invalidate expired grants
+→ reload budget/retry state
+→ route again if required
+→ resume next valid node
+```
+
+---
+
+# 29. Continuous Evidence
+
+Evidence is emitted during execution, not appended only at completion.
+
+Required material events:
+
+```text
+goal accepted
+plan proposed
+plan validated
+policy decision
+approval decision
+routing decision
+worker lease
+tool call
+provider call
+artifact created/versioned
+validation
+checkpoint
+failure classification
+repair proposal
+cost/usage
+delivery decision
+```
+
+EvidenceRecord:
+
+```text
+evidence_id
+event_type
+tenant_id
+project_id
+job_id
+task_id
+actor
+timestamp
+input_refs
+output_refs
+decision_refs
+artifact_refs
+content_hash
+metadata
+```
+
+Evidence ≠ debug log.
+
+---
+
+# 30. Artifact and Version Model
+
+ArtifactRecord:
+
+```text
+artifact_id
+artifact_type
+tenant_id
+project_id
+job_id
+created_by_task
+current_version
+classification
+storage_ref
+created_at
+```
+
+ArtifactVersion:
+
+```text
+artifact_id
+version_id
+content_hash
+size
+mime_type
+producer
+route_ref
+input_refs
+storage_ref
+validation_refs
+created_at
+```
+
+Rules:
+
+- repair creates new version;
+- accepted validation refers to exact version;
+- artifact ownership preserves tenant/project;
+- content hash/integrity is available;
+- object storage is not evidence authority.
+
+---
+
+# 31. Step-Level Execution Loop
+
+Every executable DAG node follows:
+
+```text
+READY
+  │
+  ▼
+ADMISSION
+  │
+  ▼
+ROUTING
+  │
+  ▼
+SCHEDULER / LEASE
+  │
+  ▼
+WORKER
+  │
+  ▼
+TOOL / SKILL / PROVIDER
+  │
+  ▼
+STEP OUTPUT
+  │
+  ▼
+VALIDATION
+  │
+  ├── FAIL → FAILURE CLASSIFIER → BOUNDED REPAIR
+  │
+  ▼ PASS
+EVIDENCE
+  │
+  ▼
+STATE UPDATE
+  │
+  ▼
+CHECKPOINT
+  │
+  ▼
+NEXT DAG NODE
+```
+
+This is the atomic autonomous execution pattern.
+
+---
+
+# 32. Validation
+
+Step validation can include:
+
+```text
+schema validation
+deterministic business rules
+security checks
+artifact existence/integrity
+tool exit status
+provider response normalization
+domain-specific quality gate
+policy invariants
+```
+
+No downstream task should consume a failed output unless the contract explicitly permits partial/error input.
+
+---
+
+# 33. Independent Final Evaluation
+
+Final evaluation applies acceptance criteria to the complete artifact or action outcome.
+
+Possible dimensions:
+
+```text
+functional
+security
+privacy
+visual
+audio
+accessibility
+performance
+provenance/source grounding
+policy compliance
+user acceptance criteria
+```
+
+Where feasible:
+
+```text
+producer ≠ verifier
+```
+
+The producing model/worker must not be the sole authority accepting its own final result.
+
+---
+
+# 34. Bounded Repair
+
+Canonical repair path:
+
+```text
+Validation FAIL
+      │
+      ▼
+Failure Classification
+      │
+      ▼
+RepairProposal
+      │
+      ▼
+Budget / Attempt Check
+      │
+      ▼
+Re-Admission
+      │
+      ▼
+Repair Execution
+      │
+      ▼
+Re-Evaluation
+```
+
+Hard bounds:
+
+```text
+max_attempts
+max_cost
+max_elapsed_time
+```
+
+May additionally include:
+
+```text
+max_provider_failovers
+max_tool_retries
+max_artifact_versions
+```
+
+Security/policy denial cannot be repaired by bypassing policy.
+
+---
+
+# 35. Failure Classification
+
+Minimum classes:
+
+```text
+validation_failure
+transient_runtime_failure
+provider_failure
+provider_unavailable
+quota_failure
+budget_exhausted
+timeout
+tool_failure
+dependency_failure
+policy_denial
+security_failure
+privacy_violation
+tenant_scope_violation
+approval_rejection
+approval_timeout
+artifact_integrity_failure
+internal_invariant_failure
+cancelled
+needs_user_input
+```
+
+Behavior:
+
+```text
+transient
+    → bounded retry
+
+provider
+    → governed fallback / new route
+
+validation
+    → bounded repair
+
+policy/security/privacy/tenant
+    → fail closed
+
+approval
+    → wait/reject/expire
+
+missing essential input
+    → NEEDS_USER_INPUT
+```
+
+---
+
+# 36. Cancellation and Compensation
+
+Cancellation sequence:
+
+```text
+CancellationRequest
+      │
+      ▼
+Authorize
+      │
+      ▼
+CANCEL_REQUESTED
+      │
+      ▼
+Stop new scheduling
+      │
+      ▼
+Cancel safe active work
+      │
+      ▼
+Fence late results
+      │
+      ▼
+Compensate / rollback supported side effects
+      │
+      ▼
+CANCELLED
+```
+
+Compensation is required where a reversible external side effect was partially committed and the underlying system supports rollback.
+
+Irreversible actions require stronger pre-execution approval/risk handling.
+
+---
+
+# 37. Secrets
+
+Secrets follow scoped runtime resolution.
+
+```text
+ExecutionGrant
+      │
+      ▼
+Secret Policy
+      │
+      ▼
+Secret Reference
+      │
+      ▼
+Bounded Runtime Injection
+      │
+      ▼
+Immediate Use
+```
+
+Forbidden:
+
+- secret in source control;
+- secret in documentation;
+- entire vault injected into worker;
+- secrets in ordinary evidence/log payload;
+- client-embedded privileged backend secrets.
+
+---
+
+# 38. FinOps Enforcement
+
+Cost controls apply before and during execution.
+
+Cost context includes:
+
+```text
+tenant budget
+project budget
+goal budget
+task budget
+provider/model unit cost
+external service spend
+retry spend
+repair spend
+historical usage
+```
+
+Rules:
+
+- security/privacy eligibility comes before cost;
+- budget can be a hard admission constraint;
+- retry/repair consumes same governed envelope;
+- fallback cannot silently exceed budget;
+- material usage is attributable to tenant/project/job;
+- free provider capacity is never assumed as an architecture invariant.
+
+---
+
+# 39. Observability Hooks
+
+Every major execution component emits structured operational telemetry with safe identifiers:
+
+```text
+tenant_id
+project_id
+job_id
+task_id
+capability_id
+route_id
+worker_id
+tool_id when safe
+provider_id when safe
+latency
+status
+error_class
+retry_count
+cost/usage
+```
+
+Observability outputs:
+
+```text
+logs
+metrics
+traces
+SLO signals
+alerts
+incident signals
+```
+
+Observability is not authoritative evidence and cannot grant execution authority.
+
+---
+
+# 40. Persistence Planes
+
+Logical storage planes remain separated by responsibility.
+
+```text
+Operational Store
+    principals / tenants / projects / jobs / tasks
+
+Workflow State
+    queues / leases / checkpoints / state
+
+Knowledge Store
+    source units / indexes / graph / retrieval metadata
+
+Artifact Store
+    files / images / video / packages
+
+Evidence Store
+    audit / provenance / manifests
+
+Secret / Key Store
+    credentials / keys / signing references
+
+Observability Stores
+    logs / metrics / traces
+```
+
+Tenant identity must persist across every boundary.
+
+Detailed schemas belong in `DATA_ARCHITECTURE.md`.
+
+---
+
+# 41. Client / Projection Implementation
+
+Supported surfaces may include:
+
+```text
+Web
+Desktop
+Mobile
+API
+CLI
+Enterprise Console
+```
+
+Clients consume:
+
+```text
+authoritative state projections
+approval requests
+artifacts
+evidence summaries
+notifications
+```
+
+Clients must not contain:
+
+```text

@@ -1,0 +1,335 @@
+Worker → authoritative job-state ownership
+UI → execution authority
+Cross-tenant retrieval
+Unbounded retry / repair
+Secret exposure to broad context
+Unvalidated final artifact labeled verified
+Provider-specific dependency presented as ILAIOS authority
+Parallel planner/router/capability registry
+Security denial silently worked around
+```
+
+---
+
+# 60. End-to-End Product Acceptance Scenario — Website
+
+User request:
+
+```text
+"Build a premium website for my furniture company."
+```
+
+Expected product behavior:
+
+```text
+1. Authenticate user.
+2. Resolve tenant/project.
+3. Capture the goal.
+4. Derive explicit acceptance criteria.
+5. Retrieve only authorized business/brand context.
+6. Build a bounded plan.
+7. Resolve Web Factory capabilities.
+8. Apply execution admission/policy.
+9. Request approval only if a privileged side effect requires it.
+10. Route models/tools/providers internally.
+11. Research and create IA/copy/design/build output.
+12. Run browser/security/accessibility/performance/SEO/visual checks as applicable.
+13. Record evidence and checkpoints.
+14. Repair bounded failures.
+15. Run final independent evaluation.
+16. Produce a deployable website artifact.
+17. If production deployment is requested, govern that as a privileged action.
+18. Deliver final artifact + evidence.
+```
+
+Acceptance fails if:
+
+- the user must manually orchestrate providers to complete the normal flow;
+- the site is marked verified without required QA;
+- production deployment bypasses policy;
+- evidence cannot identify the accepted artifact version.
+
+---
+
+# 61. End-to-End Product Acceptance Scenario — Video
+
+User request:
+
+```text
+"Create a 60-second launch video for my new product."
+```
+
+Expected product behavior:
+
+```text
+1. Authenticate and resolve project.
+2. Establish goal/duration/style constraints.
+3. Establish acceptance criteria.
+4. Research authorized context.
+5. Plan concept/script/storyboard/shots.
+6. Select Video Factory capabilities.
+7. Admit execution.
+8. Route media/model resources.
+9. Generate/acquire assets.
+10. Produce voice/music/SFX/captions when required.
+11. Compose canonical timeline.
+12. Edit/mix/render.
+13. Perform video/audio QA.
+14. Record evidence.
+15. Repair bounded failures.
+16. Independently evaluate final result.
+17. Deliver final rendered video + evidence.
+```
+
+Acceptance fails if:
+
+- a second video runtime becomes authority;
+- render success alone is treated as quality PASS;
+- final evidence does not identify the output/artifact lineage.
+
+---
+
+# 62. End-to-End Product Acceptance Scenario — Software Change
+
+User request:
+
+```text
+"Add this feature to my repository and prepare it for review."
+```
+
+Expected product behavior:
+
+```text
+1. Authenticate.
+2. Resolve repository/project authority.
+3. Inspect repository safely.
+4. Create bounded change proposal.
+5. Resolve Software Factory capabilities.
+6. Admit write authority.
+7. Create governed code change.
+8. Run tests/static checks.
+9. Inspect diff.
+10. Record evidence.
+11. Repair bounded failures.
+12. Produce reviewable branch/PR artifact where applicable.
+```
+
+Acceptance fails if:
+
+- read-only repository intelligence silently mutates source;
+- required checks are weakened;
+- write scope exceeds grant;
+- unrelated changes are hidden in the same operation.
+
+---
+
+# 63. Product Requirement Priority Model
+
+Requirements may be prioritized:
+
+```text
+P0 — constitutional / security / product identity
+P1 — required for reliable finished-product workflows
+P2 — major product expansion
+P3 — optional enhancement
+```
+
+## P0 Categories
+
+- single Control Plane;
+- single routing truth;
+- identity/tenant boundary;
+- policy/admission;
+- bounded execution;
+- evidence;
+- provider replaceability;
+- no bypass;
+- verified finality;
+- bounded repair.
+
+## P1 Categories
+
+- durable state;
+- checkpoint/resume;
+- approvals;
+- real provider adapters;
+- Knowledge/RAG authorization;
+- factory quality gates;
+- observability;
+- cost governance.
+
+Specific milestone sequencing belongs in `MILESTONES.md` and `DEPENDENCY_GRAPH.md`.
+
+---
+
+# 64. Requirement Traceability
+
+Every implementation milestone should trace to product requirements.
+
+Recommended traceability form:
+
+```text
+Requirement ID
+      │
+      ▼
+Architecture Component
+      │
+      ▼
+Implementation Contract
+      │
+      ▼
+Tests
+      │
+      ▼
+Evidence
+      │
+      ▼
+Milestone Acceptance
+```
+
+Example:
+
+```text
+ROUTE-001
+→ Routing architecture
+→ RoutingDecision contract
+→ routing consolidation tests
+→ route evidence
+→ provider-routing milestone PASS
+```
+
+---
+
+# 65. Documentation Boundaries
+
+This PRD intentionally does not duplicate downstream detail.
+
+Use:
+
+```text
+PRODUCT_REQUIREMENTS.md
+    → what the product must do
+
+IMPLEMENTATION_SPEC.md
+    → how architecture/product requirements become implementation rules
+
+DEPENDENCY_GRAPH.md
+    → dependency and sequencing truth
+
+API_CONTRACTS.md
+    → API schemas/contracts
+
+SECURITY_ARCHITECTURE.md
+    → security control architecture
+
+DATA_ARCHITECTURE.md
+    → data entities/stores/lifecycle
+
+THREAT_MODEL.md
+    → adversaries/threats/mitigations
+
+TESTING_AND_EVALUATION.md
+    → verification/evaluation strategy
+
+DEPLOYMENT_ARCHITECTURE.md
+    → runtime/deployment topology
+
+FINOPS.md
+    → budgets/cost governance
+
+ENGINEERING_STANDARDS.md
+    → engineering rules
+
+GOVERNANCE.md
+    → change/authority governance
+
+MILESTONES.md
+    → delivery milestones
+
+ADR/
+    → significant architecture decisions
+
+OBSERVABILITY.md
+    → logs/metrics/traces/SLO/alerts
+
+FAILURE_RECOVERY.md
+    → failure/recovery/rollback/continuity
+```
+
+---
+
+# 66. Final Product Formula
+
+```text
+USER INTENT
+     │
+     ▼
+GOAL + ACCEPTANCE
+     │
+     ▼
+AUTHORIZED CONTEXT
+     │
+     ▼
+BOUNDED PLAN
+     │
+     ▼
+CAPABILITY RESOLUTION
+     │
+     ▼
+NATIVE FACTORY ORCHESTRATION
+     │
+     ▼
+GOVERNED EXECUTION ADMISSION
+     │
+     ▼
+APPROVAL IF REQUIRED
+     │
+     ▼
+ONE ROUTING TRUTH
+     │
+     ▼
+REPLACEABLE WORKERS / TOOLS / PROVIDERS
+     │
+     ▼
+STEP VALIDATION
+     │
+     ▼
+EVIDENCE + STATE + CHECKPOINT
+     │
+     ▼
+INDEPENDENT FINAL EVALUATION
+     │
+     ├──── FAIL ───► BOUNDED REPAIR ───► RE-EVALUATION
+     │
+     ▼ PASS
+DELIVERY / DEPLOY / PUBLISH
+     │
+     ▼
+VERIFIED FINISHED PRODUCT
+```
+
+---
+
+# 67. Final Product Requirement
+
+The defining ILAIOS requirement is:
+
+> **The user asks for an outcome. ILAIOS owns the governed path from authenticated intent to a verified finished result.**
+
+Supporting product identity:
+
+```text
+Providers execute.
+Tools actuate.
+Workers run.
+Agents coordinate.
+Skills constrain expertise.
+Factories organize domain work.
+Knowledge supplies authorized context.
+The Control Plane owns authority.
+Policy controls risk.
+Evidence proves what happened.
+Independent evaluation decides whether the result is acceptable.
+```
+
+**ILAIOS is the product. The underlying providers are replaceable parts.**

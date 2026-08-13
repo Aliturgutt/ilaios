@@ -1,0 +1,452 @@
+pre-commit run --all-files
+git diff --check
+```
+
+Component-specific gates may be stricter.
+
+A documented command is not evidence that it passed for a specific commit.
+
+---
+
+# 60. Capability Definition of Done
+
+A capability reaches each maturity state only when these gates are met.
+
+## DESIGNED
+
+```text
+responsibility defined
+architecture boundary defined
+dependencies identified
+no authority duplication
+```
+
+## SPECIFIED
+
+```text
+input/output contracts defined
+policy requirements defined
+evidence requirements defined
+failure behavior defined
+acceptance criteria defined
+```
+
+## IMPLEMENTED
+
+```text
+code exists
+canonical registry maps to implementation
+no hidden parallel authority
+basic local behavior demonstrable
+```
+
+## TESTED
+
+```text
+required unit tests pass
+contract tests pass
+integration tests pass
+negative-path tests pass where required
+```
+
+## VERIFIED
+
+```text
+independent acceptance passes
+security/governance gates pass
+evidence is complete
+canonical requirements are traceable
+```
+
+## DEPLOYED / PRODUCTION
+
+```text
+release/deployment completed
+production configuration valid
+required runtime health verified
+release evidence exists
+rollback/recovery path known
+```
+
+---
+
+# 61. Factory Definition of Done
+
+A factory is not complete because one happy-path generation works.
+
+A factory requires:
+
+```text
+goal contract
+bounded DAG
+shared admission
+shared routing
+shared runtime
+artifact model
+step validation
+failure classification
+bounded repair
+final independent evaluation
+evidence
+delivery contract
+negative tests
+end-to-end acceptance
+```
+
+---
+
+# 62. Provider Integration Definition of Done
+
+A provider adapter is complete when:
+
+```text
+provider is registered
+capabilities are declared
+adapter is bounded
+credentials are scoped
+requests normalize
+responses normalize
+errors normalize
+usage is captured
+health is observable
+routing eligibility works
+fallback semantics are tested
+privacy/budget rules are enforced
+evidence identifies provider/route
+```
+
+Provider integration alone does not make the related factory complete.
+
+---
+
+# 63. RAG Definition of Done
+
+Knowledge/RAG is not production-ready until:
+
+```text
+tenant isolation
+authorization-aware retrieval
+source provenance
+classification
+privacy/DLP
+retrieval evidence
+prompt-injection handling
+grounded output linkage
+negative isolation tests
+full integration tests
+```
+
+all pass for the defined production scope.
+
+Embeddings/indexing alone = not complete.
+
+---
+
+# 64. Routing Consolidation Definition of Done
+
+Provider routing is considered canonical when:
+
+```text
+one external RoutingRequest contract
+one eligibility pipeline
+one canonical RoutingDecision contract
+one provider/model registry relationship
+one evidence lineage
+one deterministic tie-break policy
+one governed fallback path
+```
+
+and tests prove there is no competing final route authority.
+
+---
+
+# 65. Human Approval Definition of Done
+
+Approval subsystem must prove:
+
+```text
+policy can require approval
+job enters WAITING_FOR_APPROVAL
+exact action is shown
+authorized approver can approve/reject
+approval expires/revokes
+self-approval is impossible
+grant binds to approved scope
+modified action requires reevaluation
+evidence preserves decision
+```
+
+---
+
+# 66. Checkpoint / Recovery Definition of Done
+
+Checkpoint/resume must prove:
+
+```text
+durable state survives interruption
+artifacts remain referenced
+evidence cursor survives
+budget/retry state survives
+expired grants are rejected
+resume continues from valid boundary
+completed work is not unnecessarily duplicated
+stale workers cannot overwrite resumed state
+```
+
+---
+
+# 67. Evidence Definition of Done
+
+Evidence subsystem must prove final acceptance can answer:
+
+```text
+Who requested the job?
+Which tenant/project?
+What goal?
+What plan?
+Which policy decisions?
+Which approvals?
+Which routes?
+Which workers/tools/providers?
+Which artifact version?
+Which validations?
+Which repair attempts?
+Which cost/usage?
+Why was the result accepted?
+What was delivered?
+```
+
+---
+
+# 68. Implementation Task Template
+
+Every engineering task should be executable using a bounded template:
+
+```text
+TASK ID
+Purpose
+Canonical requirement IDs
+Architecture component
+Existing implementation anchor
+Files expected to change
+Files explicitly out of scope
+Input contracts
+Output contracts
+Security/policy impact
+Data impact
+Evidence impact
+Tests required
+Negative tests required
+Migration required?
+Rollback
+Acceptance criteria
+Definition of Done
+```
+
+This prevents coding agents from broadening scope while implementing.
+
+---
+
+# 69. Change Workflow
+
+Canonical engineering flow:
+
+```text
+Current repository evidence
+      │
+      ▼
+Identify exact requirement
+      │
+      ▼
+Identify existing authority / anchor
+      │
+      ▼
+Design smallest compatible change
+      │
+      ▼
+Implement
+      │
+      ▼
+Targeted tests
+      │
+      ▼
+Repository-wide required gates
+      │
+      ▼
+Diff inspection
+      │
+      ▼
+Evidence
+      │
+      ▼
+PR / review
+      │
+      ▼
+Required CI
+      │
+      ▼
+Merge / release according to governance
+```
+
+No implementation task starts by creating a second system.
+
+---
+
+# 70. Architecture Drift Detection
+
+Implementation review must reject:
+
+```text
+new router that bypasses canonical router
+new planner with independent authority
+new capability registry
+factory direct provider calls
+factory direct secret access
+agent self-approval
+new job-state store used as authority
+UI-side authoritative workflow
+duplicate evidence system
+unbounded repair logic
+cross-tenant context shortcut
+```
+
+These are architecture defects, not stylistic differences.
+
+---
+
+# 71. Status Claims
+
+Implementation status must be evidence-based.
+
+Keep separate:
+
+```text
+architecture defined
+code implemented
+tests passed
+CI passed
+artifact built
+deployment executed
+production health verified
+```
+
+Never infer:
+
+```text
+Terraform exists
+⇒ service is currently live
+
+workflow exists
+⇒ workflow passed
+
+capability registered
+⇒ capability is verified
+
+provider adapter exists
+⇒ provider is production-ready
+```
+
+---
+
+# 72. Documentation Traceability
+
+Each implementation should trace:
+
+```text
+PRODUCT_REQUIREMENT
+      │
+      ▼
+SYSTEM_ARCHITECTURE component
+      │
+      ▼
+IMPLEMENTATION_SPEC contract
+      │
+      ▼
+code
+      │
+      ▼
+tests
+      │
+      ▼
+evidence
+      │
+      ▼
+maturity / milestone decision
+```
+
+---
+
+# 73. Implementation Non-Goals
+
+This specification does not authorize:
+
+- repo-wide rewrite for aesthetic cleanup;
+- new parallel platform;
+- one agent per skill;
+- one provider per capability as permanent coupling;
+- hidden provider-specific business logic;
+- unlimited autonomous retries;
+- production mutation without policy/approval;
+- third-party project adoption without assimilation review;
+- architecture changes made solely inside implementation code.
+
+---
+
+# 74. Canonical End-to-End Implementation Formula
+
+```text
+AUTHENTICATED USER
+      │
+      ▼
+PRINCIPAL + TENANT + PROJECT
+      │
+      ▼
+PROMPT / REQUEST
+      │
+      ▼
+MINIMAL AUTHORIZED PRE-PLAN CONTEXT
+      │
+      ▼
+GOAL + ACCEPTANCE
+      │
+      ▼
+BOUNDED EXECUTION PROPOSAL
+      │
+      ▼
+CAPABILITY / FACTORY RESOLUTION
+      │
+      ▼
+FACTORY / DOMAIN DAG
+      │
+      ▼
+CONTROL PLANE VALIDATION
+      │
+      ▼
+TASK LOOP
+      │
+      ├─ Admission / Policy
+      ├─ Approval if required
+      ├─ Task-scoped Authorized Context
+      ├─ ONE RoutingDecision
+      ├─ Queue / Scheduler / Lease / Fencing
+      ├─ Worker
+      ├─ Skill / Tool Gateway / Provider Adapter
+      ├─ Step Output
+      ├─ Validation
+      ├─ Evidence
+      ├─ State Update
+      └─ Checkpoint
+      │
+      ▼
+FINAL ARTIFACT
+      │
+      ▼
+INDEPENDENT FINAL EVALUATION
+      │
+      ├──── FAIL → BOUNDED REPAIR → RE-ADMISSION
+      │
+      ▼ PASS
+ACCEPTANCE MANIFEST
+      │
+      ▼
+GOVERNED DELIVERY / DEPLOY / PUBLISH

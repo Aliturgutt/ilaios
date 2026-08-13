@@ -1,0 +1,645 @@
+# ILAIOS — AUTONOMOUS NODE ARCHITECTURE
+
+**Document Type:** Canonical Autonomous Node / Execution Topology  
+**Format:** GitHub Markdown + Mermaid  
+**Status:** Proposed Canonical Companion to `SYSTEM_ARCHITECTURE.md`  
+**Purpose:** Show how ILAIOS components connect, delegate, execute, validate, repair, checkpoint, and complete work as an autonomous governed system.  
+**Core Principle:** **SIGN IN → ONE PROMPT → GOVERNED AUTONOMOUS EXECUTION → VERIFIED FINISHED PRODUCT**  
+**Authority Rule:** This document visualizes node relationships and autonomous execution topology. It does not override `SYSTEM_ARCHITECTURE.md`; any conflict must be resolved in favor of the canonical system architecture.
+
+---
+
+# 00. Reading Model
+
+This document is intentionally **node-first**.
+
+Each node represents one bounded responsibility in the ILAIOS system.
+
+A node may:
+
+- receive a typed input;
+- make a bounded decision;
+- emit a typed output;
+- create evidence;
+- update execution state;
+- request another governed node;
+- pause for approval;
+- fail closed;
+- resume from checkpoint.
+
+A node may **not** silently create new authority.
+
+```mermaid
+flowchart LR
+    INPUT["Typed Input"]
+    NODE["Governed Node"]
+    OUTPUT["Typed Output"]
+    EVID["Evidence"]
+    STATE["State Update"]
+    NEXT["Next Node"]
+
+    INPUT --> NODE
+    NODE --> OUTPUT
+    NODE --> EVID
+    NODE --> STATE
+    OUTPUT --> NEXT
+```
+
+## Global Node Invariants
+
+```mermaid
+flowchart TD
+    A["ONE Authoritative Control Plane"]
+    B["ONE Governed Runtime"]
+    C["ONE Canonical Identity System"]
+    D["ONE Capability Truth"]
+    E["ONE RoutingDecision Truth"]
+    F["ONE Evidence / Provenance Truth"]
+    G["Core Frozen by Default"]
+    H["Providers Replaceable"]
+    I["Factories Cannot Bypass Governance"]
+
+    A --> B --> C --> D --> E --> F
+    G --> A
+    H --> E
+    I --> B
+```
+
+**Forbidden:** second Core, second Planner, second routing authority, second capability registry, factory-specific hidden runtime, self-approved privileged action, uncontrolled retry loop, direct factory-to-provider bypass.
+
+---
+
+# 01. Full Autonomous Node Topology
+
+This is the primary node view of ILAIOS.
+
+```mermaid
+flowchart TD
+    USER["USER"]
+    AUTH["N01 Auth / Identity"]
+    PRINCIPAL["N02 Principal / Tenant / Project"]
+    PROMPT["N03 Prompt Intake"]
+    INTENT["N04 Intent Analysis"]
+    GOAL["N05 GoalSpec + Acceptance"]
+    CONTEXT["N06 Authorized Context"]
+    PLAN["N07 Planner / Bounded DAG"]
+    CAP["N08 Capability Resolver"]
+    FACTORY["N09 Factory / Domain Orchestrator"]
+    ADMIT["N10 Execution Admission"]
+    APPROVAL{"N11 Approval Required?"}
+    WAIT["N12 WAITING_FOR_APPROVAL"]
+    GRANT["N13 ExecutionGrant"]
+    ROUTE["N14 ONE RoutingDecision"]
+    SCHED["N15 Scheduler / Lease / Fencing"]
+    WORKER["N16 Governed Worker"]
+    SKILL["N17 Approved Skill"]
+    TOOL["N18 Tool / API / Browser / Shell"]
+    PROVIDER["N19 Replaceable Provider"]
+    STEP["N20 Step Output"]
+    VALIDATE["N21 Step Validation"]
+    EVID["N22 Step Evidence"]
+    STATE["N23 State Update"]
+    CHECKPOINT["N24 Checkpoint"]
+    MORE{"N25 More DAG Nodes?"}
+    FINALART["N26 Final Artifact"]
+    VERIFY["N27 Independent Evaluation"]
+    PASS{"N28 Acceptance PASS?"}
+    REPAIR["N29 Bounded Repair"]
+    FINALEVID["N30 Final Evidence / Provenance"]
+    DELIVERY["N31 Delivery / Deploy / Publish"]
+    PRODUCT["N32 VERIFIED FINISHED PRODUCT"]
+
+    USER --> AUTH --> PRINCIPAL --> PROMPT --> INTENT --> GOAL
+    GOAL --> CONTEXT --> PLAN --> CAP --> FACTORY --> ADMIT --> APPROVAL
+
+    APPROVAL -->|No| GRANT
+    APPROVAL -->|Yes| WAIT
+    WAIT -->|Approved| GRANT
+    WAIT -->|Rejected / Expired| STATE
+
+    GRANT --> ROUTE --> SCHED --> WORKER
+    WORKER --> SKILL
+    WORKER --> TOOL
+    WORKER --> PROVIDER
+    SKILL --> STEP
+    TOOL --> STEP
+    PROVIDER --> STEP
+
+    STEP --> VALIDATE
+    VALIDATE --> EVID --> STATE --> CHECKPOINT --> MORE
+
+    MORE -->|Yes| FACTORY
+    MORE -->|No| FINALART
+
+    FINALART --> VERIFY --> PASS
+    PASS -->|No| REPAIR --> ADMIT
+    PASS -->|Yes| FINALEVID --> DELIVERY --> PRODUCT
+```
+
+---
+
+# 02. Autonomous Control Loop
+
+ILAIOS autonomy is not an infinite agent loop. It is a bounded control loop.
+
+```mermaid
+flowchart LR
+    OBSERVE["Observe State"]
+    DECIDE["Decide Next Valid Node"]
+    AUTHORIZE["Authorize"]
+    EXECUTE["Execute"]
+    VERIFY["Verify"]
+    RECORD["Record Evidence"]
+    CHECKPOINT["Checkpoint"]
+    COMPLETE{"Goal Complete?"}
+
+    OBSERVE --> DECIDE --> AUTHORIZE --> EXECUTE --> VERIFY --> RECORD --> CHECKPOINT --> COMPLETE
+    COMPLETE -->|No| OBSERVE
+    COMPLETE -->|Yes| DONE["Finish"]
+```
+
+## Autonomous Loop Rules
+
+- Every loop iteration must be attached to a known `GoalSpec`.
+- Every execution must be bounded by policy, permissions, cost, time, and retry limits.
+- Every material execution emits evidence.
+- Every resumable execution updates durable state.
+- `Goal Complete?` is determined by acceptance criteria, not by an agent claiming completion.
+- A failed verification may trigger bounded repair, never unbounded self-retry.
+
+---
+
+# 03. Control Plane Node Graph
+
+```mermaid
+flowchart TD
+    CP["AUTHORITATIVE CONTROL PLANE"]
+
+    ID["Identity Node"]
+    TENANT["Tenant Boundary Node"]
+    PROJECT["Project Context Node"]
+    GOAL["Goal / Job Node"]
+    STATE["Execution State Node"]
+    POLICY["Policy Decision Node"]
+    APPROVAL["Approval Node"]
+    CAP["Capability Resolution Node"]
+    ROUTE["RoutingDecision Node"]
+    WF["Workflow / Scheduler Node"]
+    EVID["Evidence Node"]
+
+    CP --> ID
+    CP --> TENANT
+    CP --> PROJECT
+    CP --> GOAL
+    CP --> STATE
+    CP --> POLICY
+    CP --> APPROVAL
+    CP --> CAP
+    CP --> ROUTE
+    CP --> WF
+    CP --> EVID
+```
+
+## Control Plane Ownership
+
+The Control Plane owns **authority and state**, not every domain implementation.
+
+It is the source of truth for:
+
+- who is acting;
+- for which tenant/project;
+- what goal is active;
+- which plan is authorized;
+- which state the job is in;
+- whether execution is permitted;
+- whether approval is required;
+- which route was chosen;
+- what evidence was recorded.
+
+---
+
+# 04. Constitutional Core vs Governed Capability Nodes
+
+```mermaid
+flowchart TD
+    subgraph CORE["CONSTITUTIONAL CORE — FROZEN BY DEFAULT"]
+        AUTHORITY["Authority Boundaries"]
+        IDENTITY["Canonical Identity"]
+        STATE["Lifecycle / State Invariants"]
+        EVIDENCE["Evidence Primitives"]
+        CONTRACTS["Core Contracts"]
+        RECOVERY["Durable Recovery Invariants"]
+    end
+
+    subgraph PLATFORM["GOVERNED PLATFORM CAPABILITIES"]
+        POLICY["Policy / Trust"]
+        ROUTING["Routing"]
+        KNOWLEDGE["Knowledge / RAG"]
+        AGENTS["Agent Runtime"]
+        FINOPS["FinOps"]
+        HITL["Human Approval"]
+        TOOLS["Tool Governance"]
+        CAPFABRIC["Capability Fabric"]
+    end
+
+    CORE --> PLATFORM
+```
+
+## Core Evolution Rule
+
+**CORE = FROZEN BY DEFAULT, EVOLVABLE BY PROOF.**
+
+A Core change is permitted only when a platform-wide invariant or canonical contract cannot be correctly implemented inside an existing governed capability boundary.
+
+The following do **not** justify a Core change by themselves:
+
+- a new provider;
+- a new model;
+- a new factory;
+- a new skill;
+- a new UI;
+- a new open-source reference;
+- a new domain-specific workflow.
+
+---
+
+# 05. Intent → Goal → DAG Node Chain
+
+```mermaid
+flowchart TD
+    PROMPT["Raw User Prompt"]
+    INTENT["Intent Node"]
+    REQUIREMENTS["Requirement Extraction"]
+    CONSTRAINTS["Constraints"]
+    ACCEPT["Acceptance Criteria"]
+    GOAL["GoalSpec"]
+    DAG["Bounded Execution DAG"]
+    TASKS["Typed Task Nodes"]
+
+    PROMPT --> INTENT
+    INTENT --> REQUIREMENTS
+    INTENT --> CONSTRAINTS
+    REQUIREMENTS --> ACCEPT
+    CONSTRAINTS --> ACCEPT
+    ACCEPT --> GOAL
+    GOAL --> DAG
+    DAG --> TASKS
+```
+
+## Invariants
+
+- Planning does not itself grant execution permission.
+- A DAG must be acyclic and bounded.
+- Every task node must have a stable identity.
+- Every task node declares dependencies.
+- Acceptance criteria exist before final verification.
+- Planner cannot silently redefine the user's authorized goal.
+
+---
+
+# 06. Authorized Context / Memory / RAG Node Network
+
+```mermaid
+flowchart TD
+    REQUEST["ContextRequest"]
+    PRINCIPAL["PrincipalContext"]
+    TENANT["TenantContext"]
+    PROJECT["ProjectContext"]
+    PURPOSE["Purpose"]
+    POLICY["Authorization Filter"]
+
+    SOURCES["Authorized Sources"]
+    INGEST["Ingestion"]
+    PARSE["Parse / Normalize"]
+    CLASSIFY["Classification"]
+    INDEX["Index / Knowledge Graph"]
+    RETRIEVE["Authorized Retrieval"]
+    RERANK["Rerank"]
+    ASSEMBLE["Context Assembly"]
+    OUTPUT["AuthorizedContext"]
+    PROV["Source Provenance"]
+
+    SOURCES --> INGEST --> PARSE --> CLASSIFY --> INDEX
+    REQUEST --> POLICY
+    PRINCIPAL --> POLICY
+    TENANT --> POLICY
+    PROJECT --> POLICY
+    PURPOSE --> POLICY
+    INDEX --> POLICY
+    POLICY -->|Allow| RETRIEVE --> RERANK --> ASSEMBLE --> OUTPUT
+    POLICY -->|Deny| DENIED["Denied + Evidence"]
+    OUTPUT --> PROV
+```
+
+## Critical Rule
+
+**Retrieval is an authorized action.**
+
+A retrieved unit must preserve enough metadata to enforce:
+
+- tenant;
+- principal;
+- project;
+- classification;
+- purpose;
+- region;
+- retention;
+- authorization;
+- provenance.
+
+---
+
+# 07. Capability Resolution Node Graph
+
+```mermaid
+flowchart TD
+    GOAL["GoalSpec"]
+    REQUIRE["Required Outcome"]
+    REGISTRY["Canonical Capability Registry"]
+    RESOLVE["Capability Resolver"]
+    SET["Capability Set"]
+    FACTORY["Factory Selection / Composition"]
+
+    GOAL --> REQUIRE --> RESOLVE
+    REGISTRY --> RESOLVE
+    RESOLVE --> SET --> FACTORY
+```
+
+## Capability Node Rule
+
+A capability answers:
+
+> **What can ILAIOS do?**
+
+A capability does not automatically create:
+
+- a new agent;
+- a new worker;
+- a new provider;
+- a new runtime.
+
+---
+
+# 08. Factory / Domain Orchestration Nodes
+
+A Factory is a bounded domain DAG that composes capabilities into a finished product.
+
+```mermaid
+flowchart TD
+    GOAL["Goal"]
+    FACTORY["Selected Factory"]
+    DAG["Domain DAG"]
+
+    WEB["Web Factory"]
+    VIDEO["Video Factory"]
+    SOFTWARE["Software Factory"]
+    APP["App Factory"]
+    RESEARCH["Research / Data Factory"]
+    SECURITY["Security Factory"]
+    DOCS["Creative / Document Factory"]
+    COMMERCE["Commerce / Growth"]
+    PERSONAL["Personal Operations"]
+
+    GOAL --> FACTORY --> DAG
+    FACTORY --> WEB
+    FACTORY --> VIDEO
+    FACTORY --> SOFTWARE
+    FACTORY --> APP
+    FACTORY --> RESEARCH
+    FACTORY --> SECURITY
+    FACTORY --> DOCS
+    FACTORY --> COMMERCE
+    FACTORY --> PERSONAL
+```
+
+## Factory Invariants
+
+- Factory ≠ Core.
+- Factory ≠ Agent.
+- Factory ≠ Worker.
+- Factory ≠ Provider.
+- Factory cannot create its own routing authority.
+- Factory cannot bypass Policy Gateway.
+- Factory cannot bypass Evidence.
+- Factory cannot directly gain secrets.
+- Factory cannot self-approve privileged actions.
+
+---
+
+# 09. Execution Admission Node Graph
+
+```mermaid
+flowchart TD
+    TASK["Task Envelope"]
+    AUTH["Authority"]
+    TENANT["Tenant Isolation"]
+    PRIVACY["Privacy / Residency"]
+    DLP["DLP / Secrets"]
+    TOOL["Tool Permission"]
+    RISK["Risk / Blast Radius"]
+    QUALITY["Required Quality"]
+    BUDGET["Budget / Quota"]
+    DECISION{"Admission Decision"}
+
+    DENY["DENY"]
+    WAIT["REQUIRE APPROVAL"]
+    GRANT["ExecutionGrant"]
+
+    TASK --> AUTH --> TENANT --> PRIVACY --> DLP --> TOOL --> RISK --> QUALITY --> BUDGET --> DECISION
+    DECISION -->|Denied| DENY
+    DECISION -->|Approval Required| WAIT
+    DECISION -->|Allowed| GRANT
+```
+
+## Admission Output
+
+An admitted task produces a scoped `ExecutionGrant`.
+
+The grant must bind at minimum:
+
+- principal;
+- tenant;
+- project;
+- job/task;
+- allowed capability;
+- allowed tools;
+- allowed resources;
+- expiration;
+- risk/policy state;
+- budget envelope.
+
+---
+
+# 10. Human Approval Node
+
+```mermaid
+flowchart TD
+    ACTION["Proposed Privileged Action"]
+    POLICY["Policy Decision"]
+    WAIT["WAITING_FOR_APPROVAL"]
+    NOTIFY["Notify Approver"]
+    USERDEC{"Human Decision"}
+    APPROVED["Recorded Approval"]
+    REJECTED["Rejected"]
+    EXPIRED["Expired / Revoked"]
+    GRANT["Scoped ExecutionGrant"]
+    EVID["Audit Evidence"]
+
+    ACTION --> POLICY --> WAIT --> NOTIFY --> USERDEC
+    USERDEC -->|Approve| APPROVED --> GRANT --> EVID
+    USERDEC -->|Reject| REJECTED --> EVID
+    WAIT -->|Timeout / Revoke| EXPIRED --> EVID
+```
+
+Typical approval candidates:
+
+- production deployment;
+- payment / external spend;
+- DNS changes;
+- destructive data operation;
+- privileged identity/security change;
+- external email/send action when policy requires;
+- production publishing.
+
+---
+
+# 11. ONE RoutingDecision Node
+
+```mermaid
+flowchart TD
+    NEED["Capability Requirement"]
+    AUTH["Authority Eligibility"]
+    PRIV["Privacy / Residency"]
+    CTX["Context Window / Modality"]
+    TOOL["Tool Requirements"]
+    QUALITY["Quality Floor"]
+    HEALTH["Provider Health"]
+    QUOTA["Quota / Availability"]
+    COST["Budget / Cost"]
+    LAT["Latency"]
+    REL["Historical Reliability"]
+    SCORE["Historical Quality"]
+    TIE["Deterministic Tie-Break"]
+    ROUTE["ONE RoutingDecision"]
+    WORKERCLASS["Worker Class"]
+    ADAPTER["Approved Adapter"]
+    PROVIDER["Replaceable Provider"]
+
+    NEED --> AUTH --> PRIV --> CTX --> TOOL --> QUALITY --> HEALTH --> QUOTA --> COST --> LAT --> REL --> SCORE --> TIE --> ROUTE
+    ROUTE --> WORKERCLASS
+    ROUTE --> ADAPTER --> PROVIDER
+```
+
+## Routing Invariants
+
+- One routing truth.
+- Policy/security eligibility is evaluated before cost optimization.
+- Provider-specific code remains behind adapters.
+- Providers do not own routing authority.
+- External routing projects may be references, not a second brain.
+- Local, hosted, and external providers are all replaceable execution resources.
+
+---
+
+# 12. Worker / Skill / Tool / Provider Node Model
+
+```mermaid
+flowchart TD
+    TASK["Authorized Task"]
+    SCHED["Scheduler"]
+    LEASE["Lease / Fencing"]
+    WORKER["Worker Process"]
+
+    SKILL["Approved Skill"]
+    TOOL["Tool Adapter"]
+    PROVIDER["Provider Adapter"]
+
+    BROWSER["Browser"]
+    SHELL["Shell / Code"]
+    FILES["Files"]
+    API["External API"]
+    CLOUD["Cloud"]
+    GIT["Git / Repository"]
+
+    MODEL["LLM / Model"]
+    IMAGE["Image"]
+    VIDEO["Video"]
+    VOICE["Voice"]
+    SEARCH["Search"]
+    LOCAL["Local Runtime"]
+
+    RESULT["Step Result"]
+
+    TASK --> SCHED --> LEASE --> WORKER
+    WORKER --> SKILL
+    WORKER --> TOOL
+    WORKER --> PROVIDER
+
+    TOOL --> BROWSER
+    TOOL --> SHELL
+    TOOL --> FILES
+    TOOL --> API
+    TOOL --> CLOUD
+    TOOL --> GIT
+
+    PROVIDER --> MODEL
+    PROVIDER --> IMAGE
+    PROVIDER --> VIDEO
+    PROVIDER --> VOICE
+    PROVIDER --> SEARCH
+    PROVIDER --> LOCAL
+
+    SKILL --> RESULT
+    TOOL --> RESULT
+    PROVIDER --> RESULT
+```
+
+## Concept Separation
+
+```text
+CAPABILITY = what can be done
+SKILL      = bounded expertise / behavior contract
+AGENT      = governed coordinating role
+WORKER     = execution process
+TOOL       = bounded actuator
+PROVIDER   = replaceable model/service/resource
+ADAPTER    = ILAIOS ↔ external/local implementation boundary
+FACTORY    = bounded domain workflow / DAG
+```
+
+---
+
+# 13. Step-Level Autonomous Execution Loop
+
+Every DAG node follows this pattern.
+
+```mermaid
+flowchart TD
+    READY["READY"]
+    ADMIT["Admission"]
+    ROUTE["RoutingDecision"]
+    EXEC["Execute"]
+    OUTPUT["Step Output"]
+    VALIDATE["Validate"]
+    RESULT{"Valid?"}
+    EVID["Write Evidence"]
+    STATE["Update State"]
+    CHECKPOINT["Checkpoint"]
+    NEXT["NEXT NODE"]
+    FAIL["Failure Classifier"]
+    REPAIR["Bounded Repair / Retry"]
+
+    READY --> ADMIT --> ROUTE --> EXEC --> OUTPUT --> VALIDATE --> RESULT
+    RESULT -->|PASS| EVID --> STATE --> CHECKPOINT --> NEXT
+    RESULT -->|FAIL| FAIL --> REPAIR --> ADMIT
+```
+
+This is the atomic autonomous execution pattern of ILAIOS.
+
+---
+
+# 14. Runtime State Machine
+
+```mermaid
+stateDiagram-v2
+    [*] --> PLANNING

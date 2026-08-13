@@ -1,0 +1,481 @@
+authoritative scheduler
+canonical router
+unrestricted provider secrets
+hidden factory runtime
+job-state authority
+```
+
+Reconnect reconstructs from authoritative backend state.
+
+---
+
+# 42. API Implementation Principles
+
+Detailed API schemas belong in `API_CONTRACTS.md`.
+
+Mandatory principles:
+
+- contract-first;
+- authenticated;
+- server-side tenant validation;
+- versioned;
+- idempotency for replay-sensitive writes;
+- async jobs return stable job IDs;
+- privileged actions go through admission;
+- errors do not leak secrets;
+- API does not bypass Control Plane;
+- API state is projection of authoritative state.
+
+---
+
+# 43. Web Factory Implementation
+
+Target bounded phases:
+
+```text
+Research
+→ Information Architecture
+→ Copy
+→ Design System
+→ Visual Design
+→ Build
+→ Browser QA
+→ Security QA
+→ Accessibility
+→ Performance
+→ SEO
+→ Visual QA
+→ Acceptance
+→ Deployment Validation
+```
+
+Requirements:
+
+- shared admission;
+- shared routing;
+- shared evidence;
+- governed browser/tool usage;
+- no external design project as runtime authority;
+- deploy/publish is privileged side effect;
+- code compile/build alone is not final acceptance.
+
+---
+
+# 44. Video / Media Factory Implementation
+
+Target phases:
+
+```text
+Research
+→ Concept
+→ Script
+→ Storyboard
+→ Shot Plan
+→ Generation / Acquisition
+→ Assets
+→ Voice / Music / SFX / Captions
+→ Canonical Timeline
+→ Editing
+→ Mix
+→ Render
+→ Video QA
+→ Audio QA
+→ Acceptance
+```
+
+Rules:
+
+- preserve existing canonical timeline lineage;
+- extend existing FFmpeg/Remotion/render path rather than create second engine;
+- editing capabilities may grow under native capability families;
+- render success alone is not acceptance;
+- external editors are references unless explicitly approved as replaceable tools.
+
+---
+
+# 45. Software Factory Implementation
+
+Target flow:
+
+```text
+Repository Analysis
+→ Change Proposal
+→ Bounded Plan
+→ Write Admission
+→ Branch / Bounded Change
+→ Tests
+→ Static / Security Checks
+→ Build
+→ Diff Review
+→ PR / Review Artifact
+→ Merge / Release Policy
+```
+
+Rules:
+
+- read-only intelligence does not imply write authority;
+- repository write is scoped;
+- tests cannot be weakened to obtain PASS;
+- unrelated cleanup is not hidden in functional changes;
+- merge respects required checks;
+- build success ≠ deployment success.
+
+---
+
+# 46. App Factory Implementation
+
+App Factory composes shared Software Factory primitives.
+
+It may add platform-specific:
+
+```text
+application packaging
+platform signing
+store metadata
+store validation
+distribution
+release channels
+```
+
+It must not duplicate:
+
+```text
+code change engine
+test framework
+policy
+routing
+evidence
+software repository logic
+```
+
+Store publication is a governed external side effect.
+
+---
+
+# 47. Research / Data Implementation
+
+Research outputs must retain:
+
+```text
+source
+claim
+verification state
+provenance
+classification
+tenant/project
+timestamp/version
+```
+
+Research may feed Knowledge/RAG without losing authorization/provenance metadata.
+
+External research applications are references, not authoritative ILAIOS knowledge runtimes.
+
+---
+
+# 48. Security Factory Implementation
+
+Security Factory may:
+
+```text
+analyze
+detect
+evaluate
+classify
+propose remediation
+verify remediation
+generate evidence
+```
+
+It cannot:
+
+```text
+replace Policy Gateway
+grant permission
+self-authorize remediation
+bypass approval
+```
+
+Security-sensitive mutations use normal governed execution.
+
+---
+
+# 49. Cross-Factory Composition
+
+Cross-factory work is one shared DAG.
+
+```text
+Compound Goal
+    │
+    ▼
+Shared Execution Plan
+    │
+    ├─ Research
+    ├─ Web
+    ├─ Video
+    ├─ Software/App
+    ├─ Creative
+    └─ Security
+    │
+    ▼
+Artifact Composition
+    │
+    ▼
+Cross-Factory Evaluation
+```
+
+Factories communicate through typed artifact/contracts, not hidden direct dependencies.
+
+---
+
+# 50. External Reference Assimilation
+
+Required path:
+
+```text
+External Reference
+      │
+      ▼
+Pin source / commit / tag
+      │
+      ▼
+License Review
+      │
+      ▼
+Security / Supply-Chain Review
+      │
+      ▼
+Architecture / UX / Behavior Study
+      │
+      ▼
+Requirement Extraction
+      │
+      ▼
+ILAIOS Specification
+      │
+      ▼
+ILAIOS-Native Implementation
+      │
+      ▼
+Tests
+      │
+      ▼
+Independent Evaluation
+      │
+      ▼
+Evidence / Provenance
+      │
+      ▼
+Capability Registration
+```
+
+Independence test:
+
+```text
+Disable/remove upstream reference
+→ build ILAIOS
+→ run relevant tests
+→ run E2E acceptance
+→ verify required native behavior still works
+```
+
+---
+
+# 51. External Reference Boundaries
+
+Examples:
+
+```text
+OmniRoute
+    routing/fallback ideas
+    NOT routing authority
+
+NotebookLM-style systems
+    research/RAG workflow reference
+    NOT Core dependency
+
+Taste / design skill repositories
+    design heuristics
+    NOT permanent skill authority
+
+OpenCut
+    editing/timeline semantics reference
+    NOT second video engine
+
+Delegation-style visualizers
+    projection UX reference
+    NOT runtime authority
+
+Codex / Claude Code / Gemini CLI / OpenClaw
+    development actuators
+    NOT released-product brain
+```
+
+---
+
+# 52. Determinism
+
+Determinism is mandatory where authority and replay depend on it.
+
+Use:
+
+```text
+stable IDs
+canonical serialization
+content hashes
+bounded DAG ordering
+deterministic route tie-break
+validated state transitions
+idempotency keys
+fencing tokens
+artifact versions
+```
+
+AI generation itself may be nondeterministic.
+
+The governance/evidence path must still be able to prove what happened.
+
+---
+
+# 53. Concurrency and Idempotency
+
+Required controls:
+
+```text
+stable task identity
+lease/fencing
+idempotent mutation where possible
+sequenced state
+artifact versioning
+optimistic/transactional concurrency where necessary
+```
+
+No authoritative state mutation may rely on unsafe “last write wins”.
+
+---
+
+# 54. Configuration Hierarchy
+
+Conceptual hierarchy:
+
+```text
+platform constitutional defaults
+      ↓
+environment config
+      ↓
+tenant policy
+      ↓
+project policy
+      ↓
+goal/task bounded overrides
+```
+
+Lower scopes may tighten rules.
+
+They cannot weaken constitutional invariants.
+
+---
+
+# 55. Feature Flags
+
+Feature flags may control:
+
+```text
+availability
+tenant eligibility
+rollout percentage
+provider eligibility
+experimental evaluator
+factory phase
+```
+
+They cannot disable:
+
+```text
+tenant isolation
+mandatory policy
+mandatory evidence
+critical approval
+required acceptance
+constitutional invariants
+```
+
+---
+
+# 56. Migration and Backward Compatibility
+
+Breaking changes require an explicit lifecycle:
+
+```text
+new contract/version
+→ migration or compatibility adapter
+→ consumer migration
+→ evidence
+→ old version retirement
+```
+
+Temporary dual paths must have a retirement condition.
+
+Parallel authority may never become permanent “compatibility”.
+
+---
+
+# 57. Testing Layers
+
+Every material component must map to tests.
+
+Required categories:
+
+```text
+unit
+contract
+integration
+state-transition
+policy/deny-path
+tenant-isolation
+routing
+tool permission
+artifact/evidence
+failure/recovery
+end-to-end
+security/adversarial where applicable
+```
+
+Detailed strategy belongs in `TESTING_AND_EVALUATION.md`.
+
+---
+
+# 58. Mandatory Negative Tests
+
+Critical denial paths must be tested.
+
+Examples:
+
+```text
+cross-tenant retrieval denied
+expired grant denied
+unauthorized tool denied
+skill authority expansion denied
+unknown capability denied
+disabled provider rejected
+budget exhaustion enforced
+invalid state transition denied
+factory bypass denied
+self-approval denied
+repair limit enforced
+stale worker commit fenced
+cancelled job late commit denied
+missing policy context fails closed
+```
+
+Positive-only testing is insufficient for governed boundaries.
+
+---
+
+# 59. Repository Quality Gates
+
+Python/platform changes preserve the established gates where applicable:
+
+```text
+python -m pytest -q
+ruff check .
+mypy --strict src tests

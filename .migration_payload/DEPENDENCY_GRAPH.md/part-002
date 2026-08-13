@@ -1,0 +1,699 @@
+VERIFIED
+   │
+   ▼
+DEPLOYED / PRODUCTION
+```
+
+`DEPRECATED` is a lifecycle exit state, not the next maturity stage.
+
+---
+
+# 40. DESIGNED Dependencies
+
+`DESIGNED` depends on:
+
+```text
+responsibility defined
+architecture boundary defined
+upstream/downstream dependencies identified
+authority duplication check
+```
+
+---
+
+# 41. SPECIFIED Dependencies
+
+`SPECIFIED` depends on `DESIGNED` plus:
+
+```text
+input/output contracts
+policy requirements
+data requirements
+evidence requirements
+failure behavior
+acceptance criteria
+```
+
+---
+
+# 42. IMPLEMENTED Dependencies
+
+`IMPLEMENTED` depends on `SPECIFIED` plus:
+
+```text
+code exists
+canonical capability identity maps to implementation
+no hidden parallel authority
+basic behavior demonstrable
+```
+
+---
+
+# 43. TESTED Dependencies
+
+`TESTED` depends on `IMPLEMENTED` plus required:
+
+```text
+unit tests
+contract tests
+integration tests
+negative-path tests
+security/isolation tests where applicable
+```
+
+---
+
+# 44. VERIFIED Dependencies
+
+`VERIFIED` depends on `TESTED` plus:
+
+```text
+independent acceptance
+required security/governance gates
+complete evidence
+traceability to canonical requirements
+```
+
+---
+
+# 45. DEPLOYED / PRODUCTION Dependencies
+
+`DEPLOYED / PRODUCTION` depends on `VERIFIED` plus:
+
+```text
+release/deployment execution
+valid production configuration
+runtime health verification
+release/deployment evidence
+rollback/recovery knowledge
+```
+
+A production definition file alone does not satisfy this dependency.
+
+---
+
+# 46. Product / Implementation Status Semantics
+
+Separate from capability maturity, repository status may use:
+
+```text
+PLANNED
+PARTIAL
+IMPLEMENTED
+VERIFIED
+DEPLOYED
+LIVE_HEALTHY
+```
+
+These terms answer a different question.
+
+They must not replace the capability maturity model.
+
+---
+
+# 47. Test Dependency Graph
+
+```text
+Implementation
+    │
+    ▼
+Unit Tests
+    │
+    ▼
+Contract Tests
+    │
+    ▼
+Integration Tests
+    │
+    ▼
+Negative / Deny-Path Tests
+    │
+    ▼
+Security / Isolation Tests
+    │
+    ▼
+End-to-End Acceptance
+    │
+    ▼
+Independent Verification
+```
+
+Not every component requires every test category, but every omitted category must be justified by scope.
+
+---
+
+# 48. Negative Dependency Proofs
+
+Critical dependencies must be proven both positively and negatively.
+
+Examples:
+
+```text
+Tenant B retrieval
+    must NOT succeed using Tenant A context
+
+Expired ExecutionGrant
+    must NOT execute
+
+Factory direct provider call
+    must NOT bypass routing
+
+Skill with excess authority
+    must NOT execute
+
+Self-approval
+    must NOT produce valid grant
+
+Stale worker lease
+    must NOT commit
+
+Cancelled job
+    must NOT be revived by late result
+
+Budget exhausted
+    must NOT silently route to paid fallback
+```
+
+---
+
+# 49. Post-v1 Execution Overlay Boundary
+
+The repository may maintain a post-v1 execution dependency overlay, but this canonical dependency document records **dependency relationships only**.
+
+Mutable workstream states such as:
+
+```text
+VERIFIED
+SELECTED
+DORMANT
+ACTIVE
+BLOCKED
+COMPLETE
+```
+
+do not belong to this canonical dependency authority.
+
+Those states belong in:
+
+```text
+MILESTONES.md
+execution-status records
+runtime / CI / deployment evidence
+```
+
+This file may define that one workstream depends on another, but it must not claim the current maturity or execution state of that workstream.
+
+---
+
+# 50. Post-v1 Baseline Dependencies
+
+The post-v1 execution overlay may include dependency relationships such as:
+
+```text
+RELEASE.R03
+    │
+    ▼
+GOV_BASELINE
+    │
+    ▼
+CAPABILITY_REVALIDATION
+    │
+    ├──────────────► PRODUCT_SELECTION
+    │
+    ▼
+EXISTING_FACTORY_PROMOTION
+```
+
+This section defines only the dependency edges.
+
+Current state assertions belong in `MILESTONES.md` and evidence.
+
+---
+
+# 51. Existing Factory Promotion Dependencies
+
+The bounded promotion chain is:
+
+```text
+EXISTING_FACTORY_PROMOTION
+        │
+        ▼
+AGENT_EXECUTOR_E2E
+        │
+        ▼
+RESEARCH_DATA_FACTORY
+        │
+        ▼
+CREATIVE_DOCUMENT_FACTORY
+        │
+        ▼
+COMMERCE_GROWTH_FACTORY
+        │
+        ▼
+PERSONAL_OPERATIONS_FACTORY
+        │
+        ▼
+APP_FACTORY_PLATFORM_BOUNDARY
+        │
+        ▼
+ENTERPRISE_HARDENING
+        │
+        ▼
+FINAL_LINEAGE_REDTEAM
+```
+
+This graph defines execution prerequisites only.
+
+Whether any node is currently `DESIGNED`, `IMPLEMENTED`, `VERIFIED`, or otherwise is not owned by this document.
+
+---
+
+# 52. RAG / Knowledge Workstream Dependencies
+
+The RAG / Knowledge workstream depends on:
+
+```text
+RESEARCH_DATA_FACTORY ───────────┐
+                                │
+ENTERPRISE_HARDENING ────────────┼────► RAG_KNOWLEDGE
+                                │
+FINAL_LINEAGE_REDTEAM ───────────┘
+```
+
+Required gates include:
+
+```text
+tenant_isolation
+authorization_aware_retrieval
+source_provenance
+privacy_dlp
+deterministic_evidence
+full_platform_ci
+```
+
+These are dependency / acceptance prerequisites.
+
+Whether `RAG_KNOWLEDGE` is currently selected, active, implemented, verified, or deployed belongs to `MILESTONES.md` and current evidence.
+
+---
+
+# 53. Alternative Workstream Dependency Boundary
+
+Alternative workstreams such as:
+
+```text
+MOBILE
+COMMERCIAL_SAAS
+```
+
+may exist in the execution planning model.
+
+This document does not assign mutable states such as:
+
+```text
+DORMANT
+SELECTED
+ACTIVE
+BLOCKED
+```
+
+to them.
+
+Their current status belongs to milestone/execution-status authority.
+
+---
+
+# 54. External Owner Gates
+
+Some dependency edges terminate at external owner-controlled gates.
+
+Examples:
+
+```text
+master branch protection policy
+repository license decision
+store/developer-account actions for client distribution
+payment/provider/account actions for commercial billing
+```
+
+These remain valid dependency classes even though their current completion state is external and mutable.
+
+Current completion status must be proven by evidence or tracked in `MILESTONES.md`.
+
+---
+
+# 55. Post-v1 Safety Dependencies
+
+The post-v1 execution model requires these safety dependencies:
+
+```text
+repository evidence is truth
+deterministic-first
+no dependency bypass
+no test weakening
+no architecture redefinition
+no autonomous production promotion
+production mutation requires explicit human authorization
+```
+
+Scope exclusions or active-workstream choices are mutable execution decisions and therefore do not belong as current-state assertions in this canonical dependency graph.
+
+---
+
+# 56. Dependency Graph Ownership
+
+This file owns:
+
+```text
+canonical prerequisite relationships
+capability dependency topology
+factory prerequisite topology
+runtime prerequisite topology
+maturity prerequisite topology
+current adopted post-v1 dependency overlay
+```
+
+It does **not** own:
+
+```text
+architecture responsibility definitions
+product requirements
+implementation details
+API field definitions
+security controls
+data schemas
+test implementation details
+deployment topology
+cost formulas
+milestone dates
+```
+
+Those belong to their respective canonical documents.
+
+---
+
+# 57. Dependency Change Rules
+
+A dependency may change only through governed review when one of these is true:
+
+```text
+canonical architecture changes
+contract ownership changes
+capability boundary changes
+security/privacy requirement changes
+runtime/evidence invariant changes
+a dependency is proven obsolete
+a new hard prerequisite is proven necessary
+```
+
+A dependency must not be removed merely because:
+
+- implementation is inconvenient;
+- a test is failing;
+- a provider is easier to call directly;
+- a factory wants faster execution;
+- a UI wants immediate control;
+- an external project already solves the problem.
+
+---
+
+# 58. Dependency Addition Test
+
+Before adding a dependency, answer:
+
+```text
+1. Is it truly required for correctness?
+2. Is it constitutional, contract, runtime, data, governance, evidence, or external?
+3. Is the dependency already represented elsewhere?
+4. Does it create unwanted coupling?
+5. Does it make a replaceable provider permanent?
+6. Does it create a cycle?
+7. Does it create a second authority?
+8. Can the same requirement be satisfied through an existing canonical contract?
+```
+
+---
+
+# 59. Cycle Rules
+
+Canonical capability and execution dependencies should be acyclic at authority level.
+
+Forbidden cycle:
+
+```text
+Policy
+  → Router
+  → Provider
+  → Policy authority
+```
+
+Correct:
+
+```text
+Policy
+  → Router eligibility
+  → Provider execution
+  → result/health evidence
+  → future policy/routing input
+```
+
+Feedback data may exist.
+
+Authority cycles may not.
+
+---
+
+# 60. Dependency Cycle Detection
+
+Machine-readable dependency definitions should be validated for:
+
+```text
+unique node IDs
+known dependencies
+acyclic graph
+no self-dependency
+no orphan required authority
+no duplicate canonical identity
+```
+
+A cycle is a blocking architecture defect unless explicitly modeled as a non-authoritative feedback loop.
+
+---
+
+# 61. Cross-Factory Dependency Rule
+
+Factories should not hard-depend directly on one another unless the relationship is a canonical product composition.
+
+Prefer:
+
+```text
+Factory A
+   │
+   ▼
+Typed Artifact / Capability Contract
+   │
+   ▼
+Control Plane DAG
+   │
+   ▼
+Factory B
+```
+
+over:
+
+```text
+Factory A
+   ─────────► hidden internal call ─────────► Factory B
+```
+
+---
+
+# 62. Provider Independence Dependency Rule
+
+A capability may use one provider initially.
+
+But architecture must distinguish:
+
+```text
+CAPABILITY
+    = ILAIOS-owned behavior contract
+
+PROVIDER
+    = one replaceable implementation resource
+```
+
+If the only provider disappears, the capability may become temporarily unavailable.
+
+That does not transfer capability ownership to the provider.
+
+---
+
+# 63. Open-Source Reference Dependency Rule
+
+External references are not hard dependencies by default.
+
+Canonical path:
+
+```text
+Reference
+   │
+   ▼
+Requirement Extraction
+   │
+   ▼
+ILAIOS Specification
+   │
+   ▼
+ILAIOS-Native Behavior
+```
+
+A permanent third-party runtime dependency requires explicit architectural approval, licensing/security review, and a bounded adapter contract.
+
+---
+
+# 64. Dependency Traceability
+
+Every implemented dependency should be traceable:
+
+```text
+Product Requirement
+      │
+      ▼
+Architecture Node
+      │
+      ▼
+Dependency Edge
+      │
+      ▼
+Implementation Contract
+      │
+      ▼
+Code
+      │
+      ▼
+Tests
+      │
+      ▼
+Evidence
+```
+
+Example:
+
+```text
+ROUTE-001
+→ Provider Routing architecture
+→ Policy Governance → Provider Routing edge
+→ RoutingDecision contract
+→ routing implementation
+→ no-bypass/consolidation tests
+→ routing evidence
+```
+
+---
+
+# 65. Dependency Evidence Requirements
+
+A dependency edge is strongest when proven by:
+
+```text
+typed contract
++ code-level call/ownership boundary
++ test
++ negative bypass test
++ runtime/evidence event
+```
+
+Documentation-only edges remain target requirements until implementation evidence exists.
+
+---
+
+# 66. Dependency Review Checklist
+
+For each new capability/factory:
+
+```text
+[ ] canonical capability ID exists
+[ ] upstream dependencies are declared
+[ ] no duplicate authority exists
+[ ] input contracts exist
+[ ] output contracts exist
+[ ] identity/tenant boundary identified
+[ ] policy/admission dependency identified
+[ ] privacy/DLP dependency identified if applicable
+[ ] routing dependency identified if provider/resource selection occurs
+[ ] tool gateway dependency identified if side effects occur
+[ ] evidence dependency identified
+[ ] state/checkpoint dependency identified for long-running work
+[ ] evaluation dependency identified
+[ ] repair bounds identified
+[ ] deployment/approval dependency identified if external side effects occur
+[ ] tests prove required edges
+[ ] negative tests prove forbidden bypasses
+```
+
+---
+
+# 67. Full Canonical Dependency Map
+
+```text
+                              SYSTEM_ARCHITECTURE
+                                      │
+                                      ▼
+                            PRODUCT_REQUIREMENTS
+                                      │
+                                      ▼
+                            IMPLEMENTATION_SPEC
+                                      │
+                                      ▼
+                              DEPENDENCY_GRAPH
+                                      │
+                                      ▼
+                           CONSTITUTIONAL CORE
+                                      │
+                                      ▼
+                           AUTHORITATIVE CONTROL
+                                      │
+              ┌───────────────────────┼───────────────────────┐
+              │                       │                       │
+              ▼                       ▼                       ▼
+        IDENTITY/TENANT          GOAL / STATE          EVIDENCE PRIMITIVES
+              │                       │                       │
+              └───────────────┬───────┴───────────────┬──────┘
+                              │                       │
+                              ▼                       ▼
+                       POLICY / GOVERNANCE       WORKFLOW RUNTIME
+                              │                       │
+              ┌───────────────┼───────────────┐       │
+              │               │               │       │
+              ▼               ▼               ▼       ▼
+      AGENT GOVERNANCE   PROVIDER ROUTING   PRIVACY  SCHEDULER
+              │               │               │       │
+              └───────────────┼───────────────┴───┬───┘
+                              │                   │
+                              ▼                   ▼
+                      CAPABILITY RESOLUTION   KNOWLEDGE
+                              │                   │
+                              └──────────┬────────┘
+                                         ▼
+                                      FACTORIES
+                                         │
+                    ┌────────────────────┼────────────────────┐
+                    │                    │                    │
+                    ▼                    ▼                    ▼
+                   WEB                 VIDEO              SOFTWARE
+                                                             │
+                                                             ▼
+                                                            APP
+                    │                    │                    │
+                    ├──────────┬─────────┴───────┬────────────┤
+                    │          │                 │            │
+                    ▼          ▼                 ▼            ▼
+                RESEARCH    SECURITY         CREATIVE      PERSONAL /
+                  DATA                        DOCUMENT     COMMERCE
+                    │
+                    └────────────────────┬────────────────────┘
+                                         ▼
+                              EXECUTION ADMISSION
+                                         │
+                                         ▼
+                              APPROVAL IF REQUIRED

@@ -1,0 +1,736 @@
+- its own hidden execution runtime.
+
+## FACT-005 — Finished Outcome
+
+A factory should produce a usable finished product/action, not merely an intermediate generation.
+
+## FACT-006 — Cross-Factory Composition
+
+Factories must be composable through the shared bounded plan.
+
+---
+
+# 15. Web Factory Product Requirements
+
+## WEB-001 — One-Prompt Website Goal
+
+A user must be able to request a complete website as an outcome.
+
+## WEB-002 — Research
+
+The Web Factory should be able to perform relevant business/product/context research under authorization.
+
+## WEB-003 — Information Architecture
+
+The Web Factory must be able to create coherent site structure.
+
+## WEB-004 — Copy
+
+The Web Factory must be able to produce/organize website copy.
+
+## WEB-005 — Design System
+
+The Web Factory should produce a consistent design system appropriate to the goal.
+
+## WEB-006 — Visual Design
+
+The system must evaluate hierarchy, typography, spacing, composition, interaction, and visual coherence.
+
+## WEB-007 — Implementation
+
+The product must be able to produce deployable website artifacts, not only screenshots/mockups.
+
+## WEB-008 — Browser Validation
+
+Rendered behavior must be tested in a browser-capable validation path.
+
+## WEB-009 — Security Validation
+
+Web artifacts must pass required security checks.
+
+## WEB-010 — Accessibility
+
+Required accessibility criteria must be evaluated.
+
+## WEB-011 — Performance
+
+Required performance criteria must be evaluated.
+
+## WEB-012 — SEO
+
+Where relevant to the goal, technical/content SEO requirements must be evaluated.
+
+## WEB-013 — Visual QA
+
+Visual quality must be independently evaluated before final acceptance.
+
+## WEB-014 — Bounded Repair
+
+Failed web acceptance must enter bounded repair rather than infinite regeneration.
+
+## WEB-015 — Deployment
+
+Production deployment is a governed action and may require approval.
+
+---
+
+# 16. Video / Media Factory Product Requirements
+
+## VIDEO-001 — One-Prompt Video Goal
+
+A user must be able to request a finished video as an outcome.
+
+## VIDEO-002 — Research / Concept
+
+The product must support research and creative concept development.
+
+## VIDEO-003 — Script
+
+The product must support script generation/validation.
+
+## VIDEO-004 — Storyboard / Shot Plan
+
+The system must support structured scene/shot planning.
+
+## VIDEO-005 — Asset Acquisition / Generation
+
+Video execution may use replaceable image/video/audio providers behind governed routing.
+
+## VIDEO-006 — Asset Management
+
+Generated/acquired assets must be tracked as product artifacts.
+
+## VIDEO-007 — Voice / Music / SFX
+
+The system should support governed voice, music, and sound-effect workflows.
+
+## VIDEO-008 — Captions
+
+Caption generation/validation must be supported where applicable.
+
+## VIDEO-009 — Canonical Timeline
+
+The product must maintain one authoritative video composition/timeline lineage.
+
+## VIDEO-010 — Editing
+
+Native editing capabilities must support domain needs without creating a second video engine.
+
+## VIDEO-011 — Render
+
+The product must produce a final rendered artifact.
+
+## VIDEO-012 — Video QA
+
+Visual/video validation must run before acceptance.
+
+## VIDEO-013 — Audio QA
+
+Audio quality/synchronization validation must run where applicable.
+
+## VIDEO-014 — Repair
+
+Failed validation must enter bounded repair.
+
+## VIDEO-015 — Evidence
+
+The final video must retain relevant artifact/provenance/evaluation evidence.
+
+---
+
+# 17. Software Factory Product Requirements
+
+## SW-001 — Repository Understanding
+
+ILAIOS must be able to inspect an authorized code repository and understand relevant stack/architecture context.
+
+## SW-002 — Proposal Before Mutation
+
+Repository intelligence should produce a bounded proposal before governed write actions.
+
+## SW-003 — Scoped Repository Writes
+
+Code mutations require explicit repository/tool authority.
+
+## SW-004 — Test-Aware Changes
+
+Behavioral changes must include or preserve relevant tests.
+
+## SW-005 — Quality Gates
+
+The system must respect repository quality gates.
+
+## SW-006 — Diff Integrity
+
+Changes must be reviewable and bounded to intended scope.
+
+## SW-007 — PR Workflow
+
+Where Git hosting supports it, the product should support branch/PR-based governed delivery.
+
+## SW-008 — No CI Bypass
+
+ILAIOS must not weaken required checks merely to achieve PASS.
+
+## SW-009 — Build ≠ Deployment
+
+Successful build/CI does not automatically mean production deployment.
+
+---
+
+# 18. App Factory Product Requirements
+
+## APP-001 — Application Outcomes
+
+The App Factory must support application-level goals using shared Software Factory capabilities.
+
+## APP-002 — Shared Software Primitives
+
+App Factory must not duplicate core software development primitives.
+
+## APP-003 — Platform-Specific Delivery
+
+App-specific build/package/release requirements may extend the shared workflow.
+
+## APP-004 — Store / Distribution Governance
+
+External store/distribution actions must be treated as governed side effects.
+
+---
+
+# 19. Research / Data Product Requirements
+
+## RD-001 — Authorized Research
+
+Research must occur under project/tenant policy.
+
+## RD-002 — Source Traceability
+
+Research outputs must retain source attribution/provenance.
+
+## RD-003 — Claim Status
+
+The system should distinguish verified claims from unverified material when product behavior depends on factual grounding.
+
+## RD-004 — Reusable Knowledge
+
+Research outputs should be capable of entering the governed Knowledge layer without losing authorization/provenance metadata.
+
+## RD-005 — No Hidden External Brain
+
+External research products may be references but must not become authoritative ILAIOS knowledge runtime by convenience.
+
+---
+
+# 20. Security Factory Product Requirements
+
+## SECFACT-001 — Security Analysis
+
+The product should support bounded security analysis of authorized targets.
+
+## SECFACT-002 — Remediation Proposal
+
+Security findings may produce governed remediation proposals.
+
+## SECFACT-003 — No Independent Security Authority
+
+Security Factory does not replace Policy Gateway.
+
+## SECFACT-004 — Security Mutation Governance
+
+Security-sensitive changes use the same permission/approval/evidence path as other privileged actions.
+
+---
+
+# 21. Personal Operations Product Requirements
+
+## PERS-001 — Personal Workflow Goals
+
+Users should be able to request bounded personal operational outcomes.
+
+## PERS-002 — Connected Service Safety
+
+Connected accounts/services must use scoped permissions.
+
+## PERS-003 — Side-Effect Awareness
+
+Sending messages, changing calendar state, making purchases, or other external actions may require explicit policy/approval.
+
+## PERS-004 — No Credential Exposure
+
+Connected-service credentials must not be exposed to arbitrary agents/workers.
+
+---
+
+# 22. Execution Admission Requirements
+
+## EXEC-001 — Every Privileged Task Is Admitted
+
+Every privileged executable task must pass a policy/admission decision.
+
+## EXEC-002 — Admission Inputs
+
+Admission must account for:
+
+```text
+identity
+tenant
+project
+permission
+privacy
+data classification
+residency
+tool scope
+secret scope
+risk
+blast radius
+budget
+quota
+approval policy
+```
+
+## EXEC-003 — Outcomes
+
+Admission must support:
+
+```text
+ALLOW
+DENY
+REQUIRE_APPROVAL
+```
+
+## EXEC-004 — Scoped Grants
+
+Allowed execution must use scoped authorization.
+
+## EXEC-005 — Expiry
+
+Execution authorization must be time/scope bounded where appropriate.
+
+---
+
+# 23. Human Approval Requirements
+
+## HITL-001 — Policy-Driven Approval
+
+Human approval must be triggered by policy/risk, not by arbitrary agent preference.
+
+## HITL-002 — Exact Scope
+
+Approval must identify the exact proposed action.
+
+## HITL-003 — Approve / Reject
+
+Authorized humans must be able to approve or reject.
+
+## HITL-004 — Expiration / Revocation
+
+Approval may expire or be revoked.
+
+## HITL-005 — No Self-Approval
+
+Agents/workers cannot approve their own privileged action.
+
+## HITL-006 — Approval State Visibility
+
+The user must be able to see when work is blocked waiting for approval.
+
+## HITL-007 — Typical Approval Candidates
+
+Policy must be able to require approval for actions such as:
+
+- production deployment;
+- DNS changes;
+- external spend/payment;
+- destructive data changes;
+- privileged identity/security changes;
+- external communications;
+- publishing/release.
+
+---
+
+# 24. Routing and Provider Requirements
+
+## ROUTE-001 — One Routing Truth
+
+All provider/model/resource selection must converge on one canonical `RoutingDecision` truth.
+
+## ROUTE-002 — Policy Before Optimization
+
+Security, authority, privacy, and residency eligibility must be satisfied before optimizing quality/cost/latency.
+
+## ROUTE-003 — Routing Inputs
+
+Routing must be capable of considering:
+
+```text
+capability match
+authority
+privacy / residency
+context/modalities
+tool requirements
+quality floor
+provider health
+quota
+availability
+budget/cost
+latency
+historical reliability
+historical quality
+deterministic tie-break
+```
+
+## ROUTE-004 — Replaceable Providers
+
+The user outcome must not require one permanent provider identity unless the user explicitly requests that provider.
+
+## ROUTE-005 — Local Execution
+
+ILAIOS should support local execution resources where capability/policy allows.
+
+## ROUTE-006 — External Router Boundary
+
+An external routing service may be used as a bounded adapter/resource, but not as the authoritative ILAIOS routing brain.
+
+## ROUTE-007 — Fallback
+
+Provider failure may trigger governed fallback.
+
+Fallback must not bypass security/privacy/budget rules.
+
+## ROUTE-008 — User Abstraction
+
+Provider selection should normally remain invisible to the end user.
+
+---
+
+# 25. Worker Requirements
+
+## WORK-001 — Bounded Task Execution
+
+Workers execute bounded tasks.
+
+## WORK-002 — Worker ≠ Authority
+
+Workers must not own policy, approval, or final job-state authority.
+
+## WORK-003 — Isolation
+
+Worker execution must support isolation appropriate to task risk.
+
+## WORK-004 — Lease / Ownership
+
+The platform must prevent stale/duplicate workers from corrupting authoritative state.
+
+## WORK-005 — Resource Limits
+
+Workers must respect execution/time/resource limits.
+
+## WORK-006 — Cancellation
+
+Authorized job cancellation must prevent new work and reject/fence invalid late results.
+
+---
+
+# 26. Tool Requirements
+
+## TOOL-001 — Permissioned Tools
+
+Tool execution must require explicit allowed scope.
+
+## TOOL-002 — Tool Families
+
+The product may expose governed capabilities backed by:
+
+- browser;
+- shell/code;
+- files;
+- Git/repository;
+- external API;
+- cloud;
+- search;
+- media;
+- deployment;
+- communication.
+
+## TOOL-003 — No Raw Unrestricted Access
+
+Production agents/workers must not receive unrestricted tool access by default.
+
+## TOOL-004 — Secret Scoping
+
+Only required credentials may be made available to the relevant execution.
+
+## TOOL-005 — Untrusted Results
+
+Tool results and external content remain untrusted until validated.
+
+## TOOL-006 — Destructive Operations
+
+Destructive operations may require explicit approval.
+
+---
+
+# 27. Artifact Requirements
+
+## ART-001 — Artifact Identity
+
+Material outputs must have stable artifact identity.
+
+## ART-002 — Versioning
+
+Repairs/changes should create traceable artifact versions.
+
+## ART-003 — Integrity
+
+Artifacts should be integrity-verifiable.
+
+## ART-004 — Ownership
+
+Artifacts must retain tenant/project ownership context.
+
+## ART-005 — Exact Validation Binding
+
+Validation results must refer to the exact artifact version evaluated.
+
+## ART-006 — Artifact Types
+
+Artifacts may include:
+
+- websites;
+- code/packages;
+- documents;
+- images;
+- videos;
+- audio;
+- research reports;
+- data outputs;
+- configuration;
+- deployment packages;
+- externally executed action results.
+
+---
+
+# 28. Evidence and Provenance Requirements
+
+## EVID-001 — Continuous Evidence
+
+Material decisions/actions must emit evidence throughout the job, not only at the end.
+
+## EVID-002 — Evidence Coverage
+
+The system should record sufficient evidence for:
+
+```text
+goal
+plan
+policy decision
+approval
+routing decision
+worker execution
+tool call
+provider call
+artifact
+validation
+repair
+cost/usage
+checkpoint
+delivery
+```
+
+## EVID-003 — Acceptance Manifest
+
+A completed product must be able to produce an acceptance/evidence summary showing why it was accepted.
+
+## EVID-004 — Integrity
+
+Evidence must be tamper-evident or integrity-verifiable according to its criticality.
+
+## EVID-005 — Privacy
+
+Evidence must preserve privacy/classification rules.
+
+## EVID-006 — Evidence ≠ Logs
+
+Debug logs are not a substitute for canonical evidence.
+
+---
+
+# 29. State and Progress Requirements
+
+## STATE-001 — Authoritative State
+
+Execution state must be owned by the platform, not client UI.
+
+## STATE-002 — User-Visible Progress
+
+The UI should expose understandable states such as:
+
+```text
+Planning
+Queued
+Running
+Waiting for Approval
+Validating
+Checkpointed
+Repairing
+Retrying
+Final Validation
+Done
+Failed
+Cancelled
+```
+
+## STATE-003 — Live Projection
+
+Clients should receive current progress without becoming execution authority.
+
+## STATE-004 — Resume
+
+Long-running work should resume from durable checkpoints where supported.
+
+## STATE-005 — Reconnect
+
+A client reconnect should reconstruct state from authoritative platform data.
+
+---
+
+# 30. Checkpoint / Resume Requirements
+
+## CKPT-001 — Durable Progress
+
+Meaningful completed work should be checkpointable.
+
+## CKPT-002 — Resume Safety
+
+Resume must revalidate relevant current authority/policy.
+
+## CKPT-003 — Grant Expiry
+
+Expired authorization must not be silently reused after resume.
+
+## CKPT-004 — Budget State
+
+Retry/spend state must survive resume.
+
+## CKPT-005 — Artifact Preservation
+
+Already completed immutable artifact/evidence references must survive interruption.
+
+---
+
+# 31. Evaluation Requirements
+
+## EVAL-001 — Step Validation
+
+Individual DAG outputs must be validated before downstream use when required.
+
+## EVAL-002 — Final Evaluation
+
+The final product must undergo independent acceptance evaluation.
+
+## EVAL-003 — Applicable Dimensions
+
+Evaluation may include:
+
+- functional correctness;
+- security;
+- privacy;
+- visual quality;
+- audio quality;
+- accessibility;
+- performance;
+- provenance/source grounding;
+- policy compliance;
+- user acceptance criteria.
+
+## EVAL-004 — Producer Independence
+
+Where feasible, producer and verifier should not be the same decision authority.
+
+## EVAL-005 — Explainable Failure
+
+Evaluation failure should identify actionable failure categories suitable for bounded repair.
+
+---
+
+# 32. Repair Requirements
+
+## REPAIR-001 — Bounded Repair
+
+Repair must enforce hard limits.
+
+At minimum:
+
+```text
+max_attempts
+max_cost
+max_elapsed_time
+```
+
+## REPAIR-002 — Failure Classification
+
+Repair begins with failure classification.
+
+## REPAIR-003 — Re-Admission
+
+Repair execution must remain governed.
+
+## REPAIR-004 — No Policy Workaround
+
+Security/policy denial cannot be “repaired” by bypassing the control.
+
+## REPAIR-005 — Exhaustion
+
+When repair limits are exhausted, the product must:
+
+```text
+fail safely
+or
+request user input/approval where appropriate
+```
+
+It must not loop indefinitely.
+
+---
+
+# 33. Failure Requirements
+
+The product must explicitly handle:
+
+```text
+provider unavailable
+provider degraded
+quota exhausted
+budget exhausted
+network failure
+tool failure
+worker failure
+validation failure
+policy denial
+security violation
+privacy violation
+tenant-scope violation
+approval rejection
+approval expiration
+artifact integrity failure
+timeout
+cancelled work
+unrecoverable internal failure
+```
+
+## FAIL-001 — No Silent Success
+
+A terminal failure must not be presented as completed success.
+
+## FAIL-002 — Actionable User State
+
+User-facing failure should distinguish:
+
+- retrying automatically;
+- waiting for user;
+- waiting for approval;
+- safely failed;
+- partially completed;
+- externally blocked.
+

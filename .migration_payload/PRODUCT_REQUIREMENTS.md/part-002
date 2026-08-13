@@ -1,0 +1,726 @@
+## FAIL-003 — Preserve Evidence
+
+Failure evidence must be preserved.
+
+---
+
+# 34. Delivery / Deployment / Publish Requirements
+
+## DELIV-001 — Artifact vs Side Effect
+
+The product must distinguish:
+
+```text
+artifact creation
+≠
+external publication/deployment/action
+```
+
+## DELIV-002 — Governed Side Effects
+
+Production deploy/publish actions pass through the same governance model as other privileged actions.
+
+## DELIV-003 — Approval
+
+Delivery may require human approval.
+
+## DELIV-004 — Verification
+
+Delivery success must be verified where technically possible.
+
+## DELIV-005 — No False Live Claim
+
+Architecture or deployment configuration alone must never cause ILAIOS to claim a service is currently live/healthy.
+
+---
+
+# 35. Client Surface Requirements
+
+Target surfaces may include:
+
+- Web;
+- Desktop;
+- Mobile;
+- API;
+- CLI;
+- Enterprise Console.
+
+## UI-001 — Consistent Job Model
+
+All surfaces should represent the same canonical jobs/state.
+
+## UI-002 — One-Prompt Entry
+
+Primary surfaces must support a simple natural-language goal entry.
+
+## UI-003 — Progress
+
+Users must be able to see meaningful execution progress.
+
+## UI-004 — Approval
+
+Approvers must be able to inspect and act on approval requests.
+
+## UI-005 — Artifacts
+
+Users must be able to access final and relevant intermediate artifacts according to permission.
+
+## UI-006 — Evidence
+
+Users/administrators must be able to inspect appropriate evidence/provenance.
+
+## UI-007 — Projection Only
+
+No client surface becomes authoritative execution state.
+
+---
+
+# 36. Notifications Requirements
+
+ILAIOS should be able to notify users about meaningful execution states such as:
+
+```text
+approval required
+user input required
+job failed
+job completed
+delivery completed
+policy denied
+budget blocked
+```
+
+Notifications should avoid unnecessary noise.
+
+Sensitive details must respect permission/privacy constraints.
+
+---
+
+# 37. Security Product Requirements
+
+## SECURITY-001 — Authentication
+
+Protected execution requires authenticated identity.
+
+## SECURITY-002 — Authorization
+
+Every protected action must be authorization-checked.
+
+## SECURITY-003 — Tenant Isolation
+
+Tenant boundary must survive all execution/data layers.
+
+## SECURITY-004 — Prompt / Content Injection Defense
+
+External/untrusted content must not automatically become trusted instruction.
+
+## SECURITY-005 — Tool Permission Firewall
+
+Tool permissions must be bounded.
+
+## SECURITY-006 — Secret Protection
+
+Credentials/secrets must not be exposed broadly.
+
+## SECURITY-007 — DLP / PII
+
+The platform must support data loss prevention and sensitive-data handling.
+
+## SECURITY-008 — Sandbox
+
+Risk-appropriate execution isolation is required.
+
+## SECURITY-009 — Network/Egress Controls
+
+Workers/tools must support bounded network access according to policy.
+
+## SECURITY-010 — Audit Evidence
+
+Material security decisions/actions must produce evidence.
+
+## SECURITY-011 — Fail Closed
+
+Missing critical security context prevents privileged execution.
+
+Detailed controls belong in `SECURITY_ARCHITECTURE.md`.
+
+---
+
+# 38. Privacy Product Requirements
+
+## PRIV-001 — Data Classification
+
+User/project data must support classification.
+
+## PRIV-002 — Purpose Limitation
+
+Protected data usage must be consistent with authorized purpose.
+
+## PRIV-003 — Provider Eligibility
+
+Provider selection must consider privacy/residency constraints.
+
+## PRIV-004 — Data Minimization
+
+Only required context should be shared with tools/providers.
+
+## PRIV-005 — Retention
+
+Data/evidence/artifact retention must support governed lifecycle policies.
+
+## PRIV-006 — Tenant Data Separation
+
+Tenant data must not be commingled in a way that relies solely on UI filtering for protection.
+
+---
+
+# 39. Cost / FinOps Product Requirements
+
+## COST-001 — Budget Awareness
+
+Jobs must be able to operate under budget constraints.
+
+## COST-002 — Cost-Aware Routing
+
+Cost may influence routing after eligibility requirements are satisfied.
+
+## COST-003 — Repair Spend
+
+Repair/retry consumes the same governed budget envelope.
+
+## COST-004 — Spend Approval
+
+External spend may require explicit approval.
+
+## COST-005 — Usage Evidence
+
+Material usage/cost should be attributable to job/project/tenant where applicable.
+
+## COST-006 — No Free-Capacity Assumption
+
+Product reliability must not depend on an assumption that free model/provider capacity will always exist.
+
+---
+
+# 40. Performance and Reliability Requirements
+
+Specific SLO values belong in operational documents and release decisions.
+
+Product-level requirements:
+
+## NFR-REL-001 — Durable Jobs
+
+Long-running jobs must survive client disconnect.
+
+## NFR-REL-002 — Controlled Retry
+
+Transient failures may be retried within bounds.
+
+## NFR-REL-003 — Provider Failure Isolation
+
+A single provider outage should not collapse the ILAIOS product when an eligible alternative exists.
+
+## NFR-REL-004 — State Integrity
+
+Authoritative state must resist stale/duplicate worker updates.
+
+## NFR-REL-005 — Recoverability
+
+Checkpoint-capable work should resume without repeating unnecessary completed work.
+
+## NFR-REL-006 — Graceful Failure
+
+When no eligible route exists, the product must fail clearly rather than fabricate completion.
+
+---
+
+# 41. Quality Requirements
+
+## NFR-QUAL-001 — Acceptance Driven
+
+Quality is measured against explicit acceptance criteria.
+
+## NFR-QUAL-002 — Domain Quality Gates
+
+Factories must define domain-appropriate quality gates.
+
+## NFR-QUAL-003 — Verification Before Final
+
+Required quality evaluation must pass before `VERIFIED FINISHED PRODUCT`.
+
+## NFR-QUAL-004 — Evidence Binding
+
+Quality results must bind to exact artifact versions.
+
+---
+
+# 42. Accessibility Requirements
+
+## A11Y-001 — Product UI
+
+ILAIOS user interfaces should follow recognized accessibility practices appropriate to the target platform.
+
+## A11Y-002 — Generated Products
+
+Factories that produce user-facing interfaces/content must support accessibility evaluation where applicable.
+
+## A11Y-003 — Approval Accessibility
+
+Critical approval workflows must be usable without requiring visual-only interpretation.
+
+---
+
+# 43. Observability Product Requirements
+
+## OBS-001 — Operational Visibility
+
+Administrators/operators must be able to understand:
+
+- current job status;
+- failure class;
+- provider/worker health signals;
+- queue/runtime state;
+- latency;
+- major cost/usage signals.
+
+## OBS-002 — Privacy
+
+Operational telemetry must not broadly expose protected content/secrets.
+
+## OBS-003 — Evidence Separation
+
+Observability does not replace evidence.
+
+## OBS-004 — No Control Authority
+
+Observability cannot alter execution authority by itself.
+
+Detailed requirements belong in `OBSERVABILITY.md`.
+
+---
+
+# 44. External Reference Product Requirements
+
+ILAIOS may learn from external projects.
+
+Required principle:
+
+```text
+REFERENCE
+   │
+   ▼
+REQUIREMENT EXTRACTION
+   │
+   ▼
+ILAIOS SPECIFICATION
+   │
+   ▼
+ILAIOS-NATIVE IMPLEMENTATION
+```
+
+## EXT-001 — License Review
+
+Relevant external references must be license-reviewed before code/assets are incorporated.
+
+## EXT-002 — Supply-Chain Review
+
+Third-party runtime dependencies require security/supply-chain review.
+
+## EXT-003 — Independence
+
+Critical product behavior must not depend on a reference project unless explicitly approved as a replaceable dependency.
+
+## EXT-004 — No Second Brain
+
+External routers, agent frameworks, editors, skills, or research apps cannot become alternative execution authority.
+
+## EXT-005 — Provenance
+
+Material adapted ideas/code/assets must retain appropriate provenance.
+
+---
+
+# 45. Provider Independence Acceptance
+
+ILAIOS should pass the conceptual independence test:
+
+```text
+Provider/reference disappears
+          │
+          ▼
+Can ILAIOS still preserve:
+  - identity?
+  - policy?
+  - planning?
+  - capability definitions?
+  - evidence?
+  - artifact history?
+  - alternative routing where available?
+```
+
+A product capability should not be falsely marketed as provider-independent when its only implementation path depends on one unavailable provider.
+
+Provider independence means **architecture and product authority are ILAIOS-owned**, not that every capability always has an equivalent fallback.
+
+---
+
+# 46. Data Model Product Entities
+
+The product requires stable conceptual entities:
+
+```text
+User
+Account
+Principal
+Tenant / Organization
+Membership
+Project
+Goal
+Job
+Task
+Agent Run
+Tool Call
+Provider Call
+Approval
+Artifact
+Artifact Version
+Validation
+Evidence
+Checkpoint
+Notification
+```
+
+Detailed schemas belong in `DATA_ARCHITECTURE.md`.
+
+---
+
+# 47. API Product Requirements
+
+## API-001 — Programmatic Access
+
+ILAIOS should expose governed APIs for appropriate product capabilities.
+
+## API-002 — Same Authority Model
+
+API clients must use the same identity/policy model as UI clients.
+
+## API-003 — Asynchronous Jobs
+
+Long-running operations must support stable job identity and status retrieval.
+
+## API-004 — Idempotency
+
+Replay-sensitive mutations should support idempotency.
+
+## API-005 — No API Bypass
+
+API access must not create a shortcut around Control Plane governance.
+
+Detailed contracts belong in `API_CONTRACTS.md`.
+
+---
+
+# 48. Cancellation Requirements
+
+## CANCEL-001 — User Cancellation
+
+Authorized users must be able to request cancellation of cancellable jobs.
+
+## CANCEL-002 — Stop New Work
+
+Cancellation must stop future scheduling where possible.
+
+## CANCEL-003 — Late Result Protection
+
+Late worker/provider results must not silently reactivate a cancelled job.
+
+## CANCEL-004 — Evidence
+
+Cancellation and already-incurred usage must remain recorded.
+
+---
+
+# 49. History and Reproducibility Requirements
+
+## HIST-001 — Job History
+
+Users must be able to access permitted historical jobs.
+
+## HIST-002 — Artifact History
+
+Artifact versions must remain traceable according to retention policy.
+
+## HIST-003 — Decision Trace
+
+Material policy/routing/approval/evaluation decisions must be attributable.
+
+## HIST-004 — Reproducibility
+
+Where deterministic reproduction is possible, sufficient configuration/evidence should be retained.
+
+For nondeterministic AI generation, reproducibility means preserving inputs, route/model/provider identifiers, parameters where permitted, outputs, and evidence—not guaranteeing identical regenerated content.
+
+---
+
+# 50. Search and Discovery Requirements
+
+Users should be able to discover authorized:
+
+- projects;
+- jobs;
+- artifacts;
+- evidence;
+- knowledge sources;
+- completed outputs.
+
+Search must enforce the same tenant/project/permission boundaries as direct access.
+
+---
+
+# 51. Administrative Requirements
+
+Enterprise/administrative capability should support:
+
+- identity/membership management;
+- roles/permissions;
+- tenant policy;
+- provider eligibility policy;
+- budget policy;
+- approval policy;
+- privacy/data controls;
+- audit/evidence access;
+- operational status appropriate to role.
+
+Administration must not expose secrets unnecessarily.
+
+---
+
+# 52. User Experience Requirements
+
+## UX-001 — Simple Default
+
+The default experience should hide infrastructure complexity.
+
+## UX-002 — Progressive Disclosure
+
+Technical details such as route/provider/worker/evidence should be available when useful without overwhelming normal users.
+
+## UX-003 — State Clarity
+
+The user must be able to distinguish:
+
+```text
+working
+waiting for approval
+waiting for user input
+repairing
+failed
+done
+```
+
+## UX-004 — No Fake Progress
+
+Progress indicators must be grounded in authoritative state, not decorative timers.
+
+## UX-005 — Explainable Blocking
+
+When work cannot proceed, the product should explain the actionable reason.
+
+## UX-006 — Finished Product Focus
+
+The primary UX should emphasize outcomes/artifacts, not agent chatter.
+
+---
+
+# 53. Developer Experience Requirements
+
+## DX-001 — Canonical Docs
+
+Developers must be able to identify the canonical architecture and product requirements.
+
+## DX-002 — Stable Contracts
+
+Cross-boundary interfaces should be typed/versioned.
+
+## DX-003 — Bounded Changes
+
+Changes should be reviewable and limited in scope.
+
+## DX-004 — Evidence-Based Claims
+
+Developer tooling/documentation must not claim PASS/deployed/production without current evidence.
+
+## DX-005 — Testability
+
+Capabilities/factories must expose testable contracts.
+
+## DX-006 — No Hidden Architecture
+
+Major authority boundaries must not depend on undocumented implicit behavior.
+
+---
+
+# 54. Product Status Semantics
+
+ILAIOS must use precise status language.
+
+Recommended meanings:
+
+```text
+PLANNED
+    requirement/design exists
+
+PARTIAL
+    some implementation exists, acceptance incomplete
+
+IMPLEMENTED
+    code exists for defined scope
+
+VERIFIED
+    required tests/evidence for defined scope pass
+
+DEPLOYED
+    a deployment action has been evidenced
+
+LIVE_HEALTHY
+    current live state has been directly verified
+```
+
+These states must not be used interchangeably.
+
+---
+
+# 55. Product Metrics Framework
+
+Exact KPI targets will be defined separately.
+
+The product should be measurable across:
+
+## Outcome
+
+- goal completion rate;
+- acceptance pass rate;
+- finished-product delivery rate.
+
+## Autonomy
+
+- percentage of jobs completed without avoidable user intervention;
+- average required approval count;
+- clarification rate.
+
+## Quality
+
+- first-pass validation rate;
+- repair success rate;
+- regression/failure rate.
+
+## Reliability
+
+- provider fallback success;
+- resume/recovery success;
+- terminal failure rate.
+
+## Governance
+
+- unauthorized-action denial correctness;
+- cross-tenant isolation violations;
+- approval enforcement;
+- evidence completeness.
+
+## Cost
+
+- cost per completed goal;
+- repair/retry cost share;
+- provider-routing cost efficiency.
+
+## User Experience
+
+- time from goal to usable result;
+- abandoned jobs;
+- user acceptance/rejection.
+
+Metrics must not incentivize bypassing safety or quality.
+
+---
+
+# 56. MVP / Baseline Product Definition
+
+The canonical architecture is broader than one release.
+
+A baseline ILAIOS product is considered meaningfully usable when a user can:
+
+```text
+authenticate
+create/select a project
+submit a natural-language goal
+receive a bounded plan
+execute through governed capabilities
+use at least one real finished-product factory
+see job state
+approve privileged action when required
+receive a validated artifact
+observe bounded repair on failure
+receive evidence/provenance
+resume or fail safely
+```
+
+The MVP does not need every factory or every provider.
+
+It does require the **single governed operating model**.
+
+---
+
+# 57. Enterprise Readiness Requirements
+
+Enterprise readiness requires more than SSO.
+
+At minimum, the product must support or prove:
+
+```text
+tenant isolation
+enterprise identity integration
+RBAC/ABAC or equivalent governed authorization
+MFA/strong-auth policy for privileged action
+approval workflows
+privacy/DLP controls
+secret/key management
+provider/privacy policy
+evidence/audit
+budget governance
+failure/recovery
+observability
+secure deployment architecture
+```
+
+Enterprise readiness must be evidence-backed, not marketing-only.
+
+---
+
+# 58. Product Non-Goals
+
+The following are explicitly not product requirements:
+
+- expose every underlying provider to all users;
+- let end users manually orchestrate every worker;
+- maximize number of agents;
+- support unlimited repair;
+- guarantee every provider is always available;
+- guarantee every task can run for free;
+- make UI state authoritative;
+- copy third-party products wholesale;
+- maintain multiple equivalent Cores/runtimes;
+- support arbitrary unreviewed skills;
+- bypass approval to make automation “more autonomous”;
+- claim live deployment based solely on infrastructure code;
+- redesign architecture independently per factory.
+
+---
+
+# 59. Red Lines
+
+The following product behavior is unacceptable:
+
+```text
+Factory → Provider bypass
+Factory → hidden router
+Agent → self-granted permission
+Agent → self-approval
