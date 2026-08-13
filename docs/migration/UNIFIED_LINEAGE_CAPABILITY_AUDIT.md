@@ -67,7 +67,7 @@ This unified audit does not bulk-promote those rows. It supplies a platform-leve
 
 ## Identity rules
 
-Active machine IDs must not contain `Hermes`, `ILAKOS` or `ILATEN`. Human-facing historical provenance may contain those terms. The `Hermes` Integration agent alias is explicitly presentation-only and cannot be used as an orchestration key.
+Active machine IDs must not contain `Hermes`, `ILAKOS` or `ILATEN`. Human-facing historical provenance may contain those terms. Active agent display aliases must also avoid legacy product names; the integration role uses the neutral `Integration Bridge` label.
 
 ## Security conclusions
 
