@@ -1,0 +1,694 @@
+# ILAIOS — GOVERNANCE
+
+**Document Type:** Canonical Governance Standard  
+**Format:** GitHub Markdown + ASCII governance diagrams  
+**Status:** Canonical Baseline v1.0 — Pending Repository Publication  
+**Canonical Repository Location:** `docs/governance/GOVERNANCE.md`  
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
+**Dependency Authority:** `DEPENDENCY_GRAPH.md`  
+**API Authority:** `API_CONTRACTS.md`  
+**Security Authority:** `SECURITY_ARCHITECTURE.md`  
+**Data Authority:** `DATA_ARCHITECTURE.md`  
+**Threat Model Companion:** `THREAT_MODEL.md`  
+**Testing Authority:** `TESTING_AND_EVALUATION.md`  
+**Deployment Authority:** `DEPLOYMENT_ARCHITECTURE.md`  
+**FinOps Authority:** `FINOPS.md`  
+**Engineering Authority:** `ENGINEERING_STANDARDS.md`  
+**Core Governance Principle:** **ONE ILAIOS — ONE AUTHORITY CHAIN — NO PARALLEL GOVERNANCE**
+
+> This document defines the canonical governance model of ILAIOS: authority, decision rights, architecture change control, Core evolution, capability promotion, policy ownership, exceptions, approvals, engineering/release governance, evidence requirements, external dependency adoption, owner-controlled gates, and governance Definition of Done. It defines target governance rules, not mutable repository status or current implementation state.
+
+---
+
+# 00. Purpose
+
+ILAIOS must remain one governed AI operating system while it evolves.
+
+Governance exists to prevent the project from fragmenting into:
+
+```text
+multiple Cores
+multiple Control Planes
+multiple planners
+multiple routing authorities
+multiple capability registries
+multiple evidence truths
+multiple incompatible execution models
+```
+
+Every material decision must answer:
+
+```text
+Who is authorized to decide?
+Which canonical authority governs?
+What exact scope may change?
+Which evidence is required?
+Which reviews are mandatory?
+What may be automated?
+What requires human authority?
+How is the decision recorded?
+How can it be reversed or superseded?
+```
+
+The governing formula is:
+
+```text
+EXPLICIT AUTHORITY
++ BOUNDED CHANGE
++ REQUIRED REVIEW
++ TEST / EVALUATION
++ EVIDENCE
++ REVERSIBILITY
+= GOVERNED EVOLUTION
+```
+
+---
+
+# 01. Governance Scope
+
+This document owns:
+
+- canonical authority hierarchy;
+- governance roles and logical decision rights;
+- architecture change governance;
+- Core evolution governance;
+- capability/factory governance;
+- policy and routing governance;
+- security/data/API governance decision boundaries;
+- test and verification governance;
+- deployment/release governance;
+- FinOps/spend-governance decision rights;
+- external provider/tool/skill governance;
+- open-source/reference assimilation governance;
+- exceptions and waivers;
+- emergency and break-glass governance;
+- owner-controlled external gates;
+- maturity/status claim governance;
+- ADR and documentation governance;
+- autonomous-agent governance;
+- change evidence and auditability.
+
+This document does not redefine architecture, implementation, tests, deployment topology, or data/API schemas. Those remain owned by their canonical documents.
+
+---
+
+# 02. Target Governance vs Current Reality
+
+This document defines **target governance**.
+
+Current governance reality is established from:
+
+```text
+current repository configuration
+current branch protection
+current required checks
+current CI configuration
+current policy configuration
+current identity/permission configuration
+current deployment permissions
+current evidence
+```
+
+Therefore:
+
+```text
+governance rule documented
+≠ governance rule currently enforced
+
+branch protection required
+≠ branch protection currently enabled
+
+approval required
+≠ approval currently configured
+
+release policy defined
+≠ latest release complied
+```
+
+Mutable enforcement status belongs to `MILESTONES.md`, operational status, and direct evidence.
+
+---
+
+# 03. Canonical Authority Model
+
+Authority depends on the question.
+
+For **what ILAIOS must be**:
+
+```text
+SYSTEM_ARCHITECTURE.md
+        ↓
+PRODUCT_REQUIREMENTS.md
+        ↓
+IMPLEMENTATION_SPEC.md
+        ↓
+DEPENDENCY_GRAPH.md
+        ↓
+specialized canonical specifications
+```
+
+For **what ILAIOS actually is today**:
+
+```text
+current code
+    ↓
+current tests
+    ↓
+current CI
+    ↓
+current runtime evidence
+    ↓
+current deployment evidence
+```
+
+For planning/status prose:
+
+```text
+roadmap
+milestone prose
+status summaries
+comments
+historical notes
+```
+
+are descriptive only and may not override direct evidence.
+
+---
+
+# 04. Canonical Documentation Order
+
+```text
+01  SYSTEM_ARCHITECTURE.md
+02  AUTONOMOUS_NODE_ARCHITECTURE.md
+03  README.md
+04  PRODUCT_REQUIREMENTS.md
+05  IMPLEMENTATION_SPEC.md
+06  DEPENDENCY_GRAPH.md
+07  API_CONTRACTS.md
+08  SECURITY_ARCHITECTURE.md
+09  DATA_ARCHITECTURE.md
+10  THREAT_MODEL.md
+11  TESTING_AND_EVALUATION.md
+12  DEPLOYMENT_ARCHITECTURE.md
+13  FINOPS.md
+14  ENGINEERING_STANDARDS.md
+15  docs/governance/GOVERNANCE.md
+16  MILESTONES.md
+17  ADR/
+18  OBSERVABILITY.md
+19  FAILURE_RECOVERY.md
+```
+
+A downstream document may specialize an upstream authority. It may not silently contradict it.
+
+---
+
+# 05. Constitutional Governance Invariants
+
+```text
+ONE Constitutional Core
+ONE authoritative Control Plane
+ONE canonical identity / tenant truth
+ONE policy authority
+ONE planner authority
+ONE capability registry
+ONE RoutingDecision truth
+ONE evidence / provenance truth
+ONE canonical runtime state authority
+```
+
+No individual, team, factory, provider, worker, agent, tool, client, or external project may create a competing authority.
+
+---
+
+# 06. Core Governance Rule
+
+The ILAIOS Core is:
+
+```text
+FROZEN BY DEFAULT
+EVOLVABLE BY PROOF
+```
+
+A Core change is permitted only when evidence proves that a platform-wide invariant cannot be correctly implemented inside an existing governed capability boundary.
+
+Core must not absorb for convenience:
+
+```text
+factory logic
+provider-specific logic
+model-specific logic
+domain-specific intelligence
+third-party behavior
+UI behavior
+replaceable integrations
+```
+
+---
+
+# 07. Core Change Acceptance
+
+A Core change requires:
+
+```text
+platform-wide invariant
+existing-boundary analysis
+alternative analysis
+architecture impact
+dependency impact
+security impact
+data/API impact
+testing plan
+migration/compatibility plan
+ADR
+broad regression evidence
+```
+
+Any proposal named or behaving like `core_v2`, `new_core`, or a parallel Control Plane must be rejected unless it is a bounded migration mechanism with one final authority and an explicit retirement condition.
+
+---
+
+# 08. Logical Governance Roles
+
+Canonical logical roles include:
+
+```text
+Product Owner
+Architecture Authority
+Security Authority
+Data Authority
+Engineering Owner
+Release Authority
+FinOps Authority
+Tenant Administrator
+Reviewer
+Approver
+Auditor
+Operator
+```
+
+One human may hold several roles, especially in a solo-founder/small-team phase. Role boundaries still remain explicit in evidence.
+
+---
+
+# 09. Role vs Person
+
+```text
+ROLE
+    = decision responsibility
+
+PERSON
+    = individual exercising that responsibility
+```
+
+Logical separation is sufficient when organizational separation is not practical.
+
+Automated agents are never allowed to infer self-approval from the fact that one human holds multiple roles.
+
+---
+
+# 10. Product Owner
+
+Owns product direction, user outcome priorities, and product-level scope.
+
+Product preference may not silently override constitutional security, tenant isolation, or evidence requirements.
+
+---
+
+# 11. Architecture Authority
+
+Owns material decisions affecting:
+
+```text
+Core
+Control Plane
+planner authority
+capability boundaries
+routing authority
+factory boundaries
+cross-service authority/dependencies
+canonical execution model
+```
+
+---
+
+# 12. Security Authority
+
+Owns review/decision rights affecting:
+
+```text
+authentication
+authorization
+tenant isolation
+secrets
+cryptography
+sandboxing
+network trust
+high-risk tools
+security policy
+threat boundaries
+```
+
+---
+
+# 13. Data Authority
+
+Owns material decisions affecting:
+
+```text
+authoritative data ownership
+tenant data model
+retention/deletion
+data lineage
+knowledge ownership
+evidence schema ownership
+cross-store migration
+```
+
+---
+
+# 14. Engineering Owner
+
+Owns implementation quality, repository discipline, test quality, CI quality, and maintainability.
+
+Engineering code cannot redefine architecture authority merely by existing.
+
+---
+
+# 15. Release Authority
+
+Determines whether a verified release candidate is eligible to enter a governed deployment/release process.
+
+Release eligibility does not equal deployment authorization or live-health proof.
+
+---
+
+# 16. FinOps Authority
+
+Owns budget policy, spend thresholds, cost-model governance, provider cost governance, and internal showback/chargeback rules.
+
+FinOps cannot override security/privacy eligibility to obtain a cheaper route.
+
+---
+
+# 17. Reviewer / Approver / Auditor
+
+Reviewer assesses correctness and compliance.
+
+Approver authorizes a specific proposed action.
+
+Auditor verifies evidence and governance compliance.
+
+These are distinct responsibilities even when one person performs more than one role.
+
+---
+
+# 18. Automated Agent Governance
+
+Development/runtime agents may:
+
+```text
+analyze
+propose
+implement within granted scope
+run tests
+produce evidence
+prepare artifacts
+```
+
+They may not:
+
+```text
+self-grant
+self-approve
+change constitutional authority
+bypass required checks
+weaken tests to obtain PASS
+claim deployment/live state without evidence
+```
+
+---
+
+# 19. Agent Authority Ceiling
+
+Agent authority is bounded by:
+
+```text
+task scope
+ExecutionGrant
+tool/repository scope
+policy
+approval
+```
+
+Capability is not authority.
+
+---
+
+# 20. Human Approval Governance
+
+Human approval is used when policy determines autonomous authorization is insufficient.
+
+Potential approval candidates include:
+
+```text
+production deployment
+DNS mutation
+external communication
+payment/spend
+store publication
+destructive repo/database action
+security policy weakening
+high-risk export
+```
+
+Approval must bind to the exact action, resource, risk/cost, scope, and expiration.
+
+---
+
+# 21. No Generic Privileged Approval
+
+A phrase such as:
+
+```text
+"do whatever is necessary"
+```
+
+may express broad intent, but it is not a generic authorization for arbitrary privileged side effects.
+
+---
+
+# 22. No Automated Self-Approval
+
+The proposing agent/process cannot create the authoritative approval for its own privileged action.
+
+---
+
+# 23. Policy Authority
+
+Policy Gateway is the authoritative execution-admission boundary.
+
+Factories, workers, providers, clients, and agents cannot override PolicyDecision.
+
+---
+
+# 24. Policy Precedence
+
+```text
+Constitutional Platform Policy
+        ↓
+Environment Policy
+        ↓
+Tenant Policy
+        ↓
+Project Policy
+        ↓
+Task Restrictions
+```
+
+Lower scopes may tighten rules. They may not weaken higher mandatory restrictions.
+
+---
+
+# 25. Policy Change Governance
+
+Material policy changes require:
+
+```text
+reason
+scope
+version/diff
+security impact
+tenant impact
+tests
+approval where required
+rollback
+change evidence
+```
+
+---
+
+# 26. Capability Governance
+
+Every canonical capability requires:
+
+```text
+canonical capability ID
+owner
+responsibility
+dependencies
+contracts
+security/data obligations
+evidence obligations
+maturity state
+```
+
+Canonical IDs use `ilaios.capability.*`.
+
+---
+
+# 27. Capability Creation Test
+
+Create a new capability only when:
+
+```text
+responsibility is stable and distinct
+existing capability cannot coherently own it
+no duplicate authority results
+dependencies are explicit
+contracts can be defined
+```
+
+A new provider, skill, UI feature, or folder alone is not necessarily a new capability.
+
+---
+
+# 28. Capability Maturity Governance
+
+Canonical maturity:
+
+```text
+DESIGNED
+→ SPECIFIED
+→ IMPLEMENTED
+→ TESTED
+→ VERIFIED
+→ DEPLOYED / PRODUCTION
+```
+
+`DEPRECATED` is a lifecycle exit state.
+
+No maturity transition may occur without the evidence required by the canonical testing/implementation standards.
+
+---
+
+# 29. Maturity vs Operational Status
+
+Operational terms such as:
+
+```text
+ACTIVE
+BLOCKED
+DORMANT
+SELECTED
+LIVE_HEALTHY
+DEGRADED
+```
+
+are not capability maturity states.
+
+They belong to `MILESTONES.md`, execution status, or live operational evidence.
+
+---
+
+# 30. MILESTONES.md Boundary
+
+`MILESTONES.md` owns mutable delivery planning/status.
+
+Correct separation:
+
+```text
+GOVERNANCE.md
+    defines how a workstream may be selected/promoted
+
+MILESTONES.md
+    records which workstream is currently selected/promoted
+```
+
+---
+
+# 31. Dependency Governance
+
+`DEPENDENCY_GRAPH.md` owns prerequisite relationships.
+
+Governance defines how those relationships may change.
+
+A dependency cannot be removed merely because it is inconvenient.
+
+---
+
+# 32. Dependency Change Gate
+
+Changing dependency edges requires:
+
+```text
+need/rationale
+cycle analysis
+owner analysis
+security impact
+coupling impact
+replaceability impact
+tests
+```
+
+---
+
+# 33. Factory Governance
+
+Factories may:
+
+```text
+declare capabilities
+compose/instantiate domain DAGs
+define domain quality gates
+produce domain artifacts
+request privileged actions
+```
+
+Factories may not:
+
+```text
+own a second Control Plane
+own a second policy authority
+own a second RoutingDecision truth
+own a second evidence truth
+invoke providers outside approved boundaries
+```
+
+---
+
+# 34. Factory Creation Governance
+
+A new Factory requires:
+
+```text
+distinct finished-product domain
+reusable workflow boundary
+canonical capability dependencies
+shared workflow runtime
+artifact contract
+quality/evaluation gates
+```
+
+---
+
+# 35. Knowledge Governance
+
+Knowledge/RAG is a governed platform capability and knowledge plane.
+
+It does not become a Factory merely because it has a workflow.
+
+---
+
