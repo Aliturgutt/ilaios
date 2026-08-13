@@ -40,7 +40,7 @@ All canonical Markdown files were published byte-for-byte from the locked source
 ## Legacy classification
 
 - KEEP: repository code, tests, CI, deployment/evidence, `SECURITY.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, controlled subordinate runbooks/status/projection documents.
-- ARCHIVE: prior root governance, prior canonical architecture, two prior canonical DOCX specifications, and prior ADR-0001/ADR-0002.
+- ARCHIVE: prior root governance, prior canonical architecture, its legacy ILATEN migration input, two prior canonical DOCX specifications, and prior ADR-0001/ADR-0002.
 - REMOVE: temporary payloads, parts, probes, transfer fragments, partial/test files, and obsolete active authority paths.
 
 No compatibility redirect is retained because active repository callers can use the new canonical paths and Git history/archive preserves provenance.
