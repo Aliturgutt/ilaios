@@ -2,7 +2,8 @@
   "version": "1.0.0",
   "owner": "ILAIOS",
   "runtimeDependencies": [],
-  "severity": ["critical", "major", "minor"],
+  "skillId": "design.final-polish",
+  "severity": ["critical", "major", "p2", "minor"],
   "viewportMatrix": [320, 360, 390, 412, 430, 768, 1024, 1440],
   "families": {
     "typography": [
@@ -57,6 +58,11 @@
   "passCriteria": {
     "critical": 0,
     "major": 0,
+    "p2": 0,
     "minor": "fixed-or-explicitly-accepted"
-  }
+  },
+  "implementation": "services/design_quality.py",
+  "webFactoryGate": "GovernedWebFactory.accept_design_quality",
+  "copiedThirdPartyCode": false
 }
+
