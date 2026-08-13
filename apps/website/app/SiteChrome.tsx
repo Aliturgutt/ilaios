@@ -26,7 +26,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
   const active = (href: string) => pathname === href || (href !== "/" && href !== "/tr" && pathname.startsWith(`${href}/`));
   const exploreActive = explore.some(([, href]) => active(href));
 
-  useEffect(() => { document.documentElement.lang = lang; setOpen(false); }, [lang, pathname]);
+  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
   useEffect(() => {
     document.body.classList.toggle("menu-open", open);
     if (!open) return () => document.body.classList.remove("menu-open");
@@ -44,14 +44,14 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
     <a className="skip-link" href="#main-content" lang={lang}>{isTr ? "Ana içeriğe geç" : "Skip to main content"}</a>
     <header className="site-header" lang={lang}>
       <div className="shell nav">
-        <Link className="brand" href={isTr ? "/tr" : "/"} aria-label={isTr ? "ILAIOS ana sayfa" : "ILAIOS home"}><Image src="/brand/logo-horizontal-dark.jpg" alt="ILAIOS" width={2400} height={800} sizes="168px" priority /></Link>
+        <Link className="brand" href={isTr ? "/tr" : "/"} aria-label={isTr ? "ILAIOS ana sayfa" : "ILAIOS home"} onClick={() => setOpen(false)}><Image src="/brand/logo-horizontal-dark.jpg" alt="ILAIOS" width={2400} height={800} sizes="168px" priority /></Link>
         <button className="menu-toggle" type="button" aria-expanded={open} aria-controls="site-navigation" aria-label={open ? (isTr ? "Menüyü kapat" : "Close menu") : (isTr ? "Menüyü aç" : "Open menu")} onClick={() => setOpen(value => !value)}><span>{open ? (isTr ? "Kapat" : "Close") : (isTr ? "Menü" : "Menu")}</span><i aria-hidden="true" /></button>
         <nav id="site-navigation" className={`nav-panel ${open ? "is-open" : ""}`} aria-label={isTr ? "Ana menü" : "Primary navigation"}>
-          <div className="nav-primary">{primary.map(([label, href]) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined}>{label}</Link>)}</div>
+          <div className="nav-primary">{primary.map(([label, href]) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined} onClick={() => setOpen(false)}>{label}</Link>)}</div>
           <div className="nav-utility">
-            <details className="explore-menu"><summary className={exploreActive ? "is-active" : undefined}>{isTr ? "Keşfet" : "Explore"}</summary><div className="explore-menu-panel">{explore.map(([label, href]) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined}>{label}</Link>)}</div></details>
-            <Link href={isTr ? "/tr/contact" : "/contact"} aria-current={active(isTr ? "/tr/contact" : "/contact") ? "page" : undefined}>{isTr ? "İletişim" : "Contact"}</Link>
-            <span className="language-switch" aria-label={isTr ? "Dil seçimi" : "Language selection"}>{isTr ? <><Link href={switchHref} hrefLang="en" lang="en">EN</Link><strong aria-current="true">TR</strong></> : <><strong aria-current="true">EN</strong><Link href={switchHref} hrefLang="tr" lang="tr">TR</Link></>}</span>
+            <details className="explore-menu"><summary className={exploreActive ? "is-active" : undefined}>{isTr ? "Keşfet" : "Explore"}</summary><div className="explore-menu-panel">{explore.map(([label, href]) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined} onClick={() => setOpen(false)}>{label}</Link>)}</div></details>
+            <Link href={isTr ? "/tr/contact" : "/contact"} aria-current={active(isTr ? "/tr/contact" : "/contact") ? "page" : undefined} onClick={() => setOpen(false)}>{isTr ? "İletişim" : "Contact"}</Link>
+            <span className="language-switch" aria-label={isTr ? "Dil seçimi" : "Language selection"}>{isTr ? <><Link href={switchHref} hrefLang="en" lang="en" onClick={() => setOpen(false)}>EN</Link><strong aria-current="true">TR</strong></> : <><strong aria-current="true">EN</strong><Link href={switchHref} hrefLang="tr" lang="tr" onClick={() => setOpen(false)}>TR</Link></>}</span>
           </div>
         </nav>
       </div>
