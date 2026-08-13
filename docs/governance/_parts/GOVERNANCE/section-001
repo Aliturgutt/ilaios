@@ -1,0 +1,849 @@
+# 36. Provider Governance
+
+Providers are replaceable resources, never platform authorities.
+
+Production eligibility requires review of:
+
+```text
+capabilities
+security/privacy
+residency
+credential model
+cost
+adapter
+routing integration
+tests/evidence
+```
+
+---
+
+# 37. Routing Governance
+
+There is one canonical `RoutingDecision` truth.
+
+Any change that creates a competing final route decision is rejected.
+
+Material routing changes require architecture, security/privacy, FinOps, and regression review as applicable.
+
+---
+
+# 38. External Router Governance
+
+An external routing system may exist only beneath ILAIOS authority:
+
+```text
+ILAIOS Policy
+    ↓
+ILAIOS Routing Authority
+    ↓
+External Routing Adapter
+    ↓
+External Router
+```
+
+It may not replace ILAIOS policy or canonical route truth.
+
+---
+
+# 39. Tool Governance
+
+Every production tool requires:
+
+```text
+ToolDescriptor
+allowed operations
+risk class
+ExecutionGrant rules
+secret scope
+network scope
+filesystem scope
+sandbox requirement
+evidence requirement
+```
+
+Changing a tool from read-only to write/destructive is a governance-significant change.
+
+---
+
+# 40. Skill Governance
+
+Skills are bounded expertise, not authority.
+
+External skill adoption uses:
+
+```text
+reference
+→ inspect
+→ extract requirements/behavior
+→ ILAIOS-native SkillContract
+→ security review
+→ tests
+→ evidence
+```
+
+---
+
+# 41. Agent Governance
+
+AgentManifest changes affecting allowed capabilities, caller/target relationships, tool access, or risk ceiling require versioning and review.
+
+ILAIOS has one canonical Agent Registry / AgentManifest identity source. Any agent list, table, dashboard, or documentation view is a projection only and must not become a second identity or authority source. The canonical Agent Registry / AgentManifest defines agent identity and declared boundaries; execution authority remains governed by PolicyDecision / ExecutionGrant and applicable approval rules.
+
+Agents cannot mint permission.
+
+---
+
+# 42. Worker Governance
+
+Workers execute scoped tasks.
+
+Workers cannot create or expand:
+
+```text
+PolicyDecision
+ExecutionGrant
+ApprovalDecision
+RoutingDecision authority
+```
+
+---
+
+# 43. Scheduler Governance
+
+Scheduler owns assignment and coordination, not authorization.
+
+Changes to lease/fencing/retry/fairness are runtime/reliability-significant.
+
+---
+
+# 44. Data Governance
+
+Every protected record must have explicit ownership/scope and lifecycle.
+
+Moving authoritative ownership between stores/services requires a governed migration decision.
+
+---
+
+# 45. Retention Governance
+
+Retention is policy-driven, not “keep longest by default”.
+
+Balance:
+
+```text
+product need
+security
+privacy
+legal/audit
+cost
+```
+
+---
+
+# 46. Deletion Governance
+
+Deletion must account for:
+
+```text
+active data
+derived data
+knowledge indexes
+artifacts
+evidence
+backups
+legal/security holds
+```
+
+---
+
+# 47. Evidence Governance
+
+Evidence is canonical proof of material decisions/actions.
+
+Evidence must not be silently rewritten to support a desired status claim.
+
+Corrections should create new evidence or explicit supersession where integrity matters.
+
+---
+
+# 48. Evidence Completeness Governance
+
+A capability/job cannot truthfully claim `VERIFIED` when required evidence is materially incomplete.
+
+---
+
+# 49. Security Governance
+
+Material security changes map to:
+
+```text
+threat
+control
+test
+evidence
+```
+
+for the applicable scope.
+
+---
+
+# 50. Constitutional Security Controls
+
+The following cannot be silently waived:
+
+```text
+tenant isolation
+no agent self-approval
+no agent self-grant
+no raw unrestricted secret exposure
+required policy admission
+single routing truth
+required evidence
+```
+
+---
+
+# 51. Security Exception Governance
+
+A security exception requires:
+
+```text
+specific rule
+risk
+scope
+compensating control
+Security Authority approval
+expiration
+exit condition
+```
+
+Constitutional invariants may be non-waivable.
+
+---
+
+# 52. Secrets Governance
+
+Secrets are created, rotated, and revoked through governed secret/key infrastructure.
+
+They may not be normalized into source code, ordinary config, canonical docs, logs, or evidence payloads.
+
+---
+
+# 53. Cryptographic Governance
+
+Material changes to:
+
+```text
+trust roots
+key hierarchy
+signing
+encryption
+algorithm policy
+rotation
+```
+
+require security review and migration/recovery analysis.
+
+---
+
+# 54. API Governance
+
+Public breaking API changes require:
+
+```text
+version strategy
+consumer migration
+compatibility window
+contract tests
+documentation
+```
+
+Persisted/cross-process internal contracts require equivalent discipline.
+
+---
+
+# 55. State Machine Governance
+
+Canonical runtime states/transitions may not be changed casually.
+
+A change must assess:
+
+```text
+resume/recovery
+API projections
+persistence
+migration
+cancellation
+approval
+fencing
+```
+
+---
+
+# 56. Testing Governance
+
+Testing standards are mandatory evidence requirements.
+
+Forbidden:
+
+```text
+test weakening to manufacture PASS
+silent quarantine
+rerun-until-green as policy
+unrecorded waiver
+```
+
+---
+
+# 57. Test Waiver
+
+A waiver requires:
+
+```text
+specific test/gate
+reason
+risk
+scope
+owner
+expiration
+compensating control
+approval
+```
+
+---
+
+# 58. Evaluation Governance
+
+Independent final evaluation must remain independent enough for the risk.
+
+Producer-generated “PASS” does not automatically establish verified acceptance.
+
+---
+
+# 59. Human Evaluation Evidence
+
+A human evaluation should record:
+
+```text
+reviewer
+artifact/version
+criteria/version
+decision
+reason
+timestamp
+```
+
+---
+
+# 60. Release Governance
+
+A release requires:
+
+```text
+known source revision
+verified artifact
+required test evidence
+security status
+migration state
+release notes
+rollback/forward-fix path
+```
+
+---
+
+# 61. Production Promotion Governance
+
+Production promotion is a privileged action.
+
+```text
+verified artifact
+    ↓
+deployment admission
+    ↓
+approval if required
+    ↓
+deploy
+    ↓
+verify
+    ↓
+evidence
+```
+
+Passing tests do not themselves authorize production deployment.
+
+---
+
+# 62. Deployment Governance
+
+Deployment must preserve:
+
+```text
+artifact identity
+target identity
+scoped deployment credential
+approval scope
+verification
+rollback/evidence
+```
+
+---
+
+# 63. Infrastructure Governance
+
+Infrastructure changes affecting network, identity, data, secrets, HA/DR, or production permissions require appropriate architecture/security review.
+
+IaC describes desired state; it does not self-authorize deployment.
+
+---
+
+# 64. Emergency Change Governance
+
+Emergency does not mean ungoverned.
+
+Minimum required:
+
+```text
+reason
+scope
+authorized actor
+minimum safe validation
+evidence
+post-change review
+```
+
+---
+
+# 65. Break-Glass Governance
+
+Break-glass requires:
+
+```text
+strong authentication
+explicit reason
+limited scope
+short lifetime
+alerting
+evidence
+post-use review
+```
+
+It must not become routine workflow.
+
+---
+
+# 66. FinOps Governance
+
+Budget/spend changes are governed policy changes.
+
+Agents cannot increase hard ceilings through prompt reasoning.
+
+Cost optimization cannot weaken security/privacy/quality/evidence.
+
+---
+
+# 67. Payment Governance
+
+Payment/financial transfer requires stricter authorization than ordinary provider-compute spend.
+
+Approval must bind to exact amount, currency, recipient/resource, and expiration as applicable.
+
+---
+
+# 68. Open-Source Reference Governance
+
+Canonical assimilation path:
+
+```text
+External Reference
+      ↓
+Pin Source / Commit / Tag
+      ↓
+License Review
+      ↓
+Security / Supply-Chain Review
+      ↓
+Architecture / Behavior Study
+      ↓
+Requirement Extraction
+      ↓
+ILAIOS Specification
+      ↓
+ILAIOS-Native Implementation
+      ↓
+Tests / Evaluation / Evidence
+```
+
+External projects are references, not the ILAIOS brain.
+
+---
+
+# 69. Development Tool Governance
+
+Development-time tools such as Codex, Claude Code, Gemini CLI, or OpenClaw may act as bounded engineering actuators.
+
+They are not runtime platform authorities and are not allowed to bypass repository/governance gates.
+
+---
+
+# 70. Runtime Third-Party Adoption
+
+A permanent runtime dependency requires:
+
+```text
+license
+security
+supply-chain review
+replaceability
+failure behavior
+contract ownership
+update/retirement plan
+```
+
+---
+
+# 71. Provider Independence Governance
+
+Provider independence means:
+
+```text
+ILAIOS owns capability, authority, routing, policy, evidence, and product semantics.
+```
+
+It does not require an equivalent fallback for every provider-specific capability at all times.
+
+---
+
+# 72. Independence Test
+
+For a replaceable external resource:
+
+```text
+disable/remove external resource
+      ↓
+ILAIOS authority remains coherent
+      ↓
+eligible fallback or safe bounded failure
+```
+
+---
+
+# 73. ADR Governance
+
+ADR records significant architectural decisions.
+
+Typical trigger:
+
+```text
+Core
+Control Plane
+routing/planning authority
+data ownership
+security trust boundary
+deployment model
+major permanent technology dependency
+```
+
+`ACCEPTED` ADR means the decision is accepted; it does not prove implementation.
+
+---
+
+# 74. ADR Supersession
+
+Decisions are not erased.
+
+```text
+ADR-X
+    superseded by
+ADR-Y
+```
+
+preserves history and rationale.
+
+---
+
+# 75. Documentation Governance
+
+Canonical documents are controlled artifacts.
+
+Changes must preserve:
+
+```text
+authority order
+internal consistency
+single truth per concern
+target/current separation
+```
+
+---
+
+# 76. Document Change Classes
+
+```text
+EDITORIAL
+CLARIFICATION
+SPECIFICATION
+ARCHITECTURAL
+SECURITY-SIGNIFICANT
+BREAKING
+```
+
+The change class determines review depth.
+
+---
+
+# 77. Editorial Change
+
+Typographical/format/link changes with no semantic impact require minimal review.
+
+---
+
+# 78. Clarification Change
+
+Clarifies existing meaning without changing authority, behavior, or requirement.
+
+---
+
+# 79. Specification Change
+
+Changes normative behavior inside existing architecture and requires relevant owner review.
+
+---
+
+# 80. Architectural Change
+
+Changes authority, boundary, Core, Control Plane, dependency ownership, planner, routing, or factory model.
+
+Requires architecture governance and typically ADR.
+
+---
+
+# 81. Security-Significant Change
+
+Changes trust boundary or security requirement and requires Security Authority review.
+
+---
+
+# 82. Breaking Change
+
+Changes canonical contract meaning and requires versioning/migration analysis.
+
+---
+
+# 83. No Duplicate Canonical Documents
+
+Do not create competing canonical files such as:
+
+```text
+SYSTEM_ARCHITECTURE_V2.md
+NEW_GOVERNANCE.md
+FINAL_ROUTING.md
+```
+
+unless governance explicitly defines them as versioned historical artifacts rather than competing current authority.
+
+---
+
+# 84. Companion Document Governance
+
+A companion view must explicitly state its relationship to the primary authority.
+
+Example:
+
+```text
+AUTONOMOUS_NODE_ARCHITECTURE.md
+    = companion execution view of SYSTEM_ARCHITECTURE.md
+```
+
+---
+
+# 85. Repository Location
+
+Canonical repository path for this governance document is:
+
+```text
+docs/governance/GOVERNANCE.md
+```
+
+A local/exported `GOVERNANCE.md` file may be used for authoring and transfer, but repository publication must preserve the canonical location.
+
+---
+
+# 86. README Governance
+
+README is orientation, not a competing architecture/governance source.
+
+It should link to canonical documents rather than restating their full normative content.
+
+---
+
+# 87. Mutable Status Governance
+
+Do not embed mutable values such as:
+
+```text
+current PR number
+current HEAD
+current provider health
+current selected workstream
+current live deployment state
+```
+
+as permanent governance truth.
+
+---
+
+# 88. Status Claim Rule
+
+Any claim such as:
+
+```text
+VERIFIED
+DEPLOYED
+LIVE_HEALTHY
+ACTIVE
+SELECTED
+```
+
+must identify its evidence and scope when used as a current-state statement.
+
+---
+
+# 89. Status Conflict Rule
+
+If descriptive status conflicts with current code/tests/CI/runtime/deployment evidence:
+
+```text
+CURRENT EVIDENCE WINS
+```
+
+---
+
+# 90. Exception Governance
+
+An exception is a temporary, explicit deviation from a non-constitutional standard.
+
+It is not permission to violate constitutional invariants.
+
+---
+
+# 91. Exception Contract
+
+Every exception requires:
+
+```text
+exception_id
+rule
+scope
+reason
+risk
+owner
+start
+expiration
+compensating controls
+approval
+exit condition
+```
+
+---
+
+# 92. Exception Expiry
+
+Expired exceptions are invalid.
+
+No silent automatic renewal.
+
+---
+
+# 93. Waiver vs Exception
+
+```text
+WAIVER
+    temporarily waives a specific gate/requirement
+
+EXCEPTION
+    permits a bounded alternative implementation/process
+```
+
+Both require explicit governance.
+
+---
+
+# 94. Non-Waivable Invariants
+
+No waiver/exception may authorize:
+
+```text
+cross-tenant leakage
+agent self-approval
+agent self-grant
+parallel Control Plane
+parallel canonical routing truth
+silent evidence tampering
+unbounded secret exposure
+```
+
+---
+
+# 95. External Owner Gates
+
+Some work depends on external human/account/platform actions:
+
+```text
+store/developer account
+DNS/domain ownership
+legal/license decision
+payment provider account
+cloud account verification
+branch/repository settings
+code-signing identity
+```
+
+Governance defines the gate class. `MILESTONES.md` and evidence track current completion.
+
+---
+
+# 96. License Governance
+
+External-code adoption requires:
+
+```text
+license identity
+compatibility
+obligations
+distribution impact
+recorded decision
+```
+
+---
+
+# 97. Privacy Governance
+
+New data use must answer:
+
+```text
+purpose
+scope
+classification
+retention
+provider processing
+user/tenant control
+```
+
+---
+
+# 98. Training Data Governance
+
+Tenant/user data does not automatically become training data for ILAIOS or third-party providers.
+
+Any such use requires explicit governed policy/legal basis and appropriate controls.
+
+---
+
+# 99. Analytics Governance
+
+Analytics requires purpose limitation, minimization, access control, tenant safety, and retention.
+
+Analytics stores are not authorization authorities.
+
+---
+
