@@ -12,7 +12,7 @@ This audit closes the adopted `EXISTING_FACTORY_PROMOTION` chain after the bound
 - Active capability IDs remain in the `ilaios.capability.*` namespace.
 - Active machine-agent IDs remain in the `ilaios.agent.*` namespace.
 - Hermes, ILAKOS and ILATEN remain provenance/historical aliases only; they are not active orchestration namespaces.
-- The human-facing `Hermes` integration-agent alias remains presentation metadata behind an ILAIOS machine ID.
+- The former human-facing legacy integration-agent alias has been normalized to `Integration Bridge`; no active agent display identity uses a legacy product name.
 
 ## Core / architecture result
 

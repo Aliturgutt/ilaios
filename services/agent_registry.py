@@ -159,7 +159,7 @@ CANONICAL_AGENT_REGISTRY: tuple[AgentRegistration, ...] = (
     ),
     _registration(
         "ilaios.agent.engineering.integration.v1",
-        "Hermes",
+        "Integration Bridge",
         "integration engineering",
         "engineering",
         ("integration.propose",),

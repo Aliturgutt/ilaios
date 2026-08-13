@@ -24,7 +24,7 @@ def test_registry_has_stable_ilaios_machine_identity_and_named_engineering_team(
         "Hephaestus",
         "Apollo",
         "Atlas",
-        "Hermes",
+        "Integration Bridge",
         "Dike",
         "Athena",
         "Argus",

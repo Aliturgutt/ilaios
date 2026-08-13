@@ -35,7 +35,7 @@ def test_promoted_factories_have_unique_bound_implementation_roots() -> None:
 def test_legacy_names_remain_provenance_only() -> None:
     assert any(definition.legacy_sources for definition in CAPABILITIES)
     assert any(
-        registration.manifest.alias == "Hermes"
+        registration.manifest.alias == "Integration Bridge"
         for registration in CANONICAL_AGENT_REGISTRY
     )
     assert all(
