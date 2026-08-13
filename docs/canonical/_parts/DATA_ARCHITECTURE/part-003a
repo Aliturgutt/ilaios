@@ -1,0 +1,456 @@
+---
+
+# 126. PII Handling
+
+PII records must carry or inherit classification.
+
+PII may appear in:
+
+```text
+identity
+user prompts
+documents
+knowledge
+tool output
+artifacts
+evidence
+logs
+```
+
+Broad replication must be minimized.
+
+---
+
+# 127. Secret Detection / Redaction
+
+Before data enters broad telemetry or external provider context:
+
+```text
+secret detection
+DLP
+redaction/minimization
+```
+
+may apply according to policy.
+
+---
+
+# 128. Model Input Retention
+
+Model/provider payload retention should be configurable according to:
+
+```text
+provider behavior
+tenant policy
+data classification
+debugging need
+legal/security requirements
+```
+
+Do not assume every raw prompt/response must be stored forever.
+
+---
+
+# 129. Prompt Record Strategy
+
+Recommended conceptual separation:
+
+```text
+original user request
+    durable product record
+
+derived internal prompts
+    execution data with policy-driven retention
+
+provider wire payloads
+    sensitive execution data, minimized retention
+```
+
+---
+
+# 130. Context Snapshot Strategy
+
+For reproducibility/evidence, store references to exact context units rather than always copying entire context blobs.
+
+Conceptually:
+
+```text
+AuthorizedContext
+    → knowledge_unit_ids
+    → artifact_version_ids
+    → policy version
+    → hash
+```
+
+---
+
+# 131. Provider Response Strategy
+
+Store:
+
+```text
+normalized result
+usage
+provider request ID
+route ref
+artifact/result ref
+```
+
+Raw response retention is policy-dependent.
+
+---
+
+# 132. File Upload Data
+
+Uploaded files require:
+
+```text
+artifact/source identity
+tenant/project
+original filename
+normalized MIME type
+size
+content hash
+classification
+malware/safety status
+storage ref
+created_by
+created_at
+```
+
+Do not use filename alone as canonical identity.
+
+---
+
+# 133. File Naming
+
+User-visible filenames may change.
+
+Canonical references use immutable IDs.
+
+This avoids broken lineage after rename.
+
+---
+
+# 134. Large Media Data
+
+Video/audio/image data belong in object storage.
+
+Operational DB stores metadata/references.
+
+Temporary processing files should use ephemeral scoped storage with cleanup policy.
+
+---
+
+# 135. Build / Package Data
+
+Build artifacts should retain:
+
+```text
+source commit/ref
+build configuration ref
+dependency lock hash
+CI/test refs
+artifact hash
+created_at
+```
+
+where relevant.
+
+---
+
+# 136. Repository Snapshot Data
+
+Software Factory may record:
+
+```text
+repository_id
+owner
+canonical URL/ref
+base branch
+base commit SHA
+working branch
+target commit
+```
+
+Repository content itself may remain external rather than copied wholesale.
+
+---
+
+# 137. Deployment Record
+
+A deployment action is separate from artifact creation.
+
+Conceptual fields:
+
+```text
+deployment_id
+tenant_id
+project_id
+job_id
+artifact_version_id
+environment
+target_ref
+requested_by
+approval_ref
+started_at
+completed_at
+status
+verification_ref
+evidence_ref
+```
+
+This is a historical action record.
+
+---
+
+# 138. Live Health Data
+
+Current live health is mutable operational telemetry.
+
+It belongs in observability/runtime status.
+
+Do not encode `LIVE_HEALTHY` as permanent artifact metadata.
+
+---
+
+# 139. Release Record
+
+Release metadata may include:
+
+```text
+release_id
+artifact_version_refs
+version/tag
+environment/channel
+approval_ref
+deployment_refs
+created_at
+evidence_ref
+```
+
+Release policy belongs to Governance.
+
+---
+
+# 140. Multi-Region Data
+
+If multi-region deployment is used, data architecture must explicitly define:
+
+```text
+authoritative region
+replication rules
+write ownership
+read replicas
+residency constraints
+failover
+conflict handling
+```
+
+Do not assume active-active multi-writer semantics.
+
+---
+
+# 141. Replication
+
+Replicated data must preserve:
+
+- tenant isolation;
+- encryption;
+- version/order;
+- deletion propagation;
+- retention;
+- evidence integrity.
+
+---
+
+# 142. Backup Data Model
+
+Backup metadata should include:
+
+```text
+backup_id
+store
+scope
+created_at
+encryption key ref
+retention
+region
+integrity status
+restore test ref
+```
+
+Backup state is operational data.
+
+---
+
+# 143. Restore Invariants
+
+Restore must preserve:
+
+```text
+canonical IDs
+tenant ownership
+artifact hashes
+evidence lineage
+policy references
+fencing/version state where needed
+```
+
+Restore must not resurrect revoked secrets as valid credentials.
+
+---
+
+# 144. Data Migration
+
+Every breaking data migration needs:
+
+```text
+migration_id
+from_schema
+to_schema
+affected entities
+tenant impact
+backfill strategy
+validation
+rollback
+evidence
+```
+
+Migration must not create two indefinite sources of truth.
+
+---
+
+# 145. Schema Versioning
+
+Schema versions may apply to:
+
+```text
+API contracts
+durable events
+artifacts metadata
+evidence
+knowledge units
+checkpoints
+configuration
+```
+
+Consumers must reject unsupported breaking versions safely.
+
+---
+
+# 146. Dual-Read / Dual-Write Migration
+
+Temporary compatibility may require dual behavior.
+
+Rules:
+
+```text
+time-bounded
+explicit owner
+explicit retirement condition
+consistency checks
+no permanent parallel authority
+```
+
+---
+
+# 147. Data Quality
+
+Data quality controls may include:
+
+```text
+required fields
+enum validation
+referential integrity
+hash validation
+deduplication
+normalization
+classification validation
+provenance completeness
+```
+
+---
+
+# 148. Deduplication
+
+Deduplication may use content hashes but must preserve logical ownership.
+
+Same bytes across two tenants do not automatically imply shared authorization.
+
+Physical dedupe must never weaken logical isolation.
+
+---
+
+# 149. Data Lineage Definition of Done
+
+A material artifact lineage is complete when it can resolve:
+
+```text
+tenant/project
+goal
+plan
+task
+inputs
+authorized context
+route
+provider/tool/worker
+artifact version
+validation
+evidence
+acceptance
+delivery
+```
+
+---
+
+# 150. Tenant Isolation Definition of Done
+
+Data isolation is `VERIFIED` for a defined scope only when negative tests prove:
+
+```text
+Tenant A cannot read Tenant B operational records
+Tenant A cannot retrieve Tenant B knowledge
+Tenant A cannot access Tenant B artifacts
+Tenant A cannot inspect Tenant B evidence
+Tenant A cannot receive Tenant B queue/task state
+Tenant A cannot use Tenant B secret refs
+search/index paths also deny cross-tenant access
+```
+
+---
+
+# 151. Knowledge Data Definition of Done
+
+Knowledge/RAG data architecture requires:
+
+```text
+source identity
+source versioning
+classification
+tenant/project ownership
+provenance
+knowledge units
+chunks/index references
+authorization metadata
+retrieval evidence
+source-grounded output linkage
+deletion propagation
+negative isolation tests
+```
+
+---
+
+# 152. Artifact Data Definition of Done
+
+Artifact system requires:
+
+```text
+stable artifact_id
+immutable/versioned content
+content hash
+tenant/project scope
+storage reference
+exact validation binding
+provenance
+repair version lineage
