@@ -183,4 +183,3 @@ def _validate_site(
         encoded = body.encode()
         if hashlib.sha256(encoded).hexdigest() != item.sha256:
             raise ValueError("website file hash validation failed")
-
