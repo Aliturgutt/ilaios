@@ -11,7 +11,10 @@ from pathlib import Path
 SOURCE_NAME = (
     "ILATEN_Enterprise_AI_Operating_System_Canonical_Architecture_v1.0(3)(4).md"
 )
-CANONICAL_NAME = "ILAIOS_ENTERPRISE_AI_OPERATING_SYSTEM_CANONICAL_ARCHITECTURE.md"
+CANONICAL_NAME = (
+    "../archive/pre-2026-08-13/"
+    "ILAIOS_ENTERPRISE_AI_OPERATING_SYSTEM_CANONICAL_ARCHITECTURE.md"
+)
 
 
 @dataclass(frozen=True)
