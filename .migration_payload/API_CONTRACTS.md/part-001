@@ -1,0 +1,962 @@
+requested_action:
+  operation: "..."
+requested_tools: []
+requested_resources: []
+data_class: "CONFIDENTIAL"
+risk_class: "..."
+budget_ref: "budget_..."
+context_ref: "context_..."
+```
+
+---
+
+# 25. PolicyDecision Contract
+
+```yaml
+policy_decision_id: "policy_..."
+request_id: "execreq_..."
+decision: "ALLOW|DENY|REQUIRE_APPROVAL"
+reason_codes:
+  - "..."
+policy_id: "..."
+policy_version: "..."
+evaluated_at: "..."
+evidence_id: "evidence_..."
+```
+
+Missing mandatory security context must not become `ALLOW`.
+
+---
+
+# 26. ExecutionGrant Contract
+
+Internal-only scoped authorization:
+
+```yaml
+grant_id: "grant_..."
+principal_id: "principal_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+job_id: "job_..."
+task_id: "task_..."
+capability_id: "ilaios.capability..."
+allowed_actions: []
+allowed_tools: []
+allowed_resources: []
+network_scope: {}
+filesystem_scope: {}
+secret_scope: []
+spend_ceiling: {}
+attempt_ceiling: 1
+issued_at: "..."
+expires_at: "..."
+policy_decision_id: "policy_..."
+approval_id: null
+```
+
+Rules:
+
+```text
+not transferable across tenants
+not implicitly reusable across tasks
+not broadable by worker/provider
+expires
+revocable
+```
+
+---
+
+# 27. ApprovalRequest Contract
+
+Internal/public projection pair.
+
+Canonical record:
+
+```yaml
+approval_id: "approval_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+job_id: "job_..."
+task_id: "task_..."
+requested_action:
+  action_hash: "sha256:..."
+  human_summary: "Deploy website to production"
+scope: {}
+risk:
+  class: "HIGH"
+  reason_codes: []
+requested_by: "principal_or_system_ref"
+created_at: "..."
+expires_at: "..."
+```
+
+---
+
+# 28. Approval Public API
+
+Retrieve:
+
+```http
+GET /v1/approvals
+GET /v1/approvals/{approval_id}
+```
+
+Decide:
+
+```http
+POST /v1/approvals/{approval_id}/decision
+```
+
+Request:
+
+```yaml
+decision: "APPROVE|REJECT"
+reason: "..."
+```
+
+The server derives the approver Principal.
+
+Client cannot supply an arbitrary `approver_principal_id` as authority.
+
+---
+
+# 29. ApprovalDecision Contract
+
+```yaml
+approval_id: "approval_..."
+decision: "APPROVED|REJECTED|EXPIRED|REVOKED"
+approver_principal_id: "principal_..."
+decided_at: "..."
+reason: "..."
+action_hash: "sha256:..."
+evidence_id: "evidence_..."
+```
+
+Approval is bound to exact action hash/scope.
+
+---
+
+# 30. RoutingRequest Contract
+
+Internal:
+
+```yaml
+routing_request_id: "routereq_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+job_id: "job_..."
+task_id: "task_..."
+capability_requirement_ref: "capreq_..."
+grant_id: "grant_..."
+constraints:
+  data_class: "..."
+  privacy: {}
+  residency: {}
+  modality: []
+  context: {}
+  tool_requirements: []
+  quality_floor: {}
+  budget: {}
+  latency: {}
+```
+
+---
+
+# 31. RoutingDecision Contract
+
+Canonical single route truth:
+
+```yaml
+route_id: "route_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+job_id: "job_..."
+task_id: "task_..."
+capability_id: "ilaios.capability..."
+worker_class: "..."
+provider_id: "provider_..."
+model_or_resource_id: "..."
+adapter_id: "adapter_..."
+reason_codes: []
+quality_floor: {}
+privacy_class: "..."
+residency: "..."
+estimated_cost: {}
+fallback_candidates: []
+created_at: "..."
+evidence_id: "evidence_..."
+```
+
+There must be no second final route contract.
+
+---
+
+# 32. Route Eligibility Contract
+
+A route is eligible only after:
+
+```text
+authority
+security
+privacy
+residency
+capability
+context/modality
+tool requirements
+quality floor
+provider health
+quota
+budget
+```
+
+are satisfied.
+
+Cost/latency ranking occurs only within eligible candidates.
+
+---
+
+# 33. ProviderDescriptor Contract
+
+```yaml
+provider_id: "provider_openai"
+provider_type: "hosted-model"
+adapter_id: "adapter_openai"
+enabled: true
+supported_capabilities: []
+supported_modalities: []
+regions: []
+privacy:
+  classifications_allowed: []
+cost_model_ref: "..."
+health_ref: "..."
+quota_ref: "..."
+schema_version: "1"
+```
+
+Provider metadata is replaceable runtime/configuration state.
+
+---
+
+# 34. ModelDescriptor Contract
+
+```yaml
+model_id: "..."
+provider_id: "provider_..."
+capabilities: []
+modalities: []
+context_limit: null
+output_limit: null
+regions: []
+enabled: true
+schema_version: "1"
+```
+
+Model ID is not a product-level permanent capability ID.
+
+---
+
+# 35. ProviderRequest Contract
+
+Internal adapter input:
+
+```yaml
+provider_request_id: "provreq_..."
+route_id: "route_..."
+job_id: "job_..."
+task_id: "task_..."
+operation: "generate"
+normalized_input_ref: "..."
+parameters: {}
+timeout_ms: 60000
+```
+
+Secret credentials are resolved by the adapter/runtime boundary, not embedded as ordinary contract fields.
+
+---
+
+# 36. ProviderResult Contract
+
+```yaml
+provider_request_id: "provreq_..."
+status: "SUCCEEDED|FAILED|CANCELLED"
+normalized_output_ref: "..."
+usage:
+  input_units: null
+  output_units: null
+  runtime_units: null
+provider_request_ref: "external-id"
+error:
+  class: null
+  code: null
+  retryable: false
+completed_at: "..."
+evidence_id: "evidence_..."
+```
+
+Provider-native response shape must be normalized before leaving the adapter boundary.
+
+---
+
+# 37. WorkerDescriptor Contract
+
+```yaml
+worker_id: "worker_..."
+worker_class: "web-build"
+supported_capabilities: []
+runtime_environment: "..."
+isolation_class: "sandboxed"
+resource_limits: {}
+health: "..."
+version: "..."
+```
+
+Worker availability is not execution authority.
+
+---
+
+# 38. WorkerLease Contract
+
+Internal:
+
+```yaml
+lease_id: "lease_..."
+worker_id: "worker_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+job_id: "job_..."
+task_id: "task_..."
+grant_id: "grant_..."
+attempt: 1
+fencing_token: 42
+issued_at: "..."
+expires_at: "..."
+```
+
+A worker commit must present valid lease/fencing identity.
+
+---
+
+# 39. TaskEnvelope Contract
+
+```yaml
+task_id: "task_..."
+job_id: "job_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+capability_id: "ilaios.capability..."
+responsibility: "..."
+input_refs: []
+expected_output_contract: "..."
+validation_contract: "..."
+risk_class: "..."
+data_class: "..."
+grant_id: "grant_..."
+route_id: "route_..."
+```
+
+---
+
+# 40. ToolRequest Contract
+
+Internal Tool Gateway input:
+
+```yaml
+tool_request_id: "toolreq_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+job_id: "job_..."
+task_id: "task_..."
+tool_id: "tool_browser"
+operation: "navigate"
+parameters: {}
+input_refs: []
+grant_id: "grant_..."
+timeout_ms: 30000
+expected_result_schema: "..."
+```
+
+---
+
+# 41. ToolResult Contract
+
+```yaml
+tool_request_id: "toolreq_..."
+status: "SUCCEEDED|FAILED|CANCELLED"
+normalized_output_ref: "..."
+artifact_refs: []
+usage: {}
+error:
+  class: null
+  code: null
+  retryable: false
+redaction:
+  applied: false
+evidence_id: "evidence_..."
+```
+
+Tool output remains untrusted until validated.
+
+---
+
+# 42. Secret Resolution Contract
+
+Internal only.
+
+Request uses a secret reference and grant:
+
+```yaml
+secret_access_request_id: "secretreq_..."
+grant_id: "grant_..."
+secret_ref: "vault://..."
+purpose: "provider-authentication"
+```
+
+Result should normally be injected directly into the bounded runtime rather than returned as an ordinary serialized API payload.
+
+Secret values must not enter evidence/log contracts.
+
+---
+
+# 43. RetrievalRequest Contract
+
+```yaml
+retrieval_id: "retrieval_..."
+principal_id: "principal_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+job_id: "job_..."
+task_id: "task_..."
+purpose: "execution"
+query_ref: "..."
+data_class: "..."
+authorization_context_ref: "..."
+filters: {}
+limit: 20
+```
+
+Retrieval is a governed action.
+
+---
+
+# 44. RetrievalResult Contract
+
+```yaml
+retrieval_id: "retrieval_..."
+status: "SUCCEEDED|DENIED|FAILED"
+units:
+  - knowledge_unit_id: "ku_..."
+    source_id: "source_..."
+    source_version_id: "sourcev_..."
+    classification: "..."
+    relevance_score: 0.0
+    rerank_score: null
+    provenance_ref: "prov_..."
+authorization_decision_ref: "policy_..."
+evidence_id: "evidence_..."
+```
+
+Unauthorized units must not be returned with a flag saying “do not use”.
+
+They must be excluded/denied.
+
+---
+
+# 45. AuthorizedContext Contract
+
+```yaml
+context_id: "context_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+job_id: "job_..."
+task_id: "task_..."
+purpose: "..."
+knowledge_unit_refs: []
+artifact_version_refs: []
+policy_ref: "..."
+created_at: "..."
+expires_at: null
+content_hash: "sha256:..."
+```
+
+Context is task-scoped where appropriate.
+
+---
+
+# 46. Knowledge Source Public API
+
+Authorized source management may expose:
+
+```http
+POST   /v1/projects/{project_id}/sources
+GET    /v1/projects/{project_id}/sources
+GET    /v1/projects/{project_id}/sources/{source_id}
+DELETE /v1/projects/{project_id}/sources/{source_id}
+```
+
+Source creation request:
+
+```yaml
+source_type: "upload|url|repository|connector|note"
+locator_or_upload_ref: "..."
+classification: "CONFIDENTIAL"
+purpose: "project-knowledge"
+```
+
+Source ingestion success does not imply every source statement is verified truth.
+
+---
+
+# 47. Source Contract
+
+```yaml
+source_id: "source_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+source_type: "..."
+canonical_locator: "..."
+classification: "..."
+region: "..."
+retention_policy_ref: "..."
+authorization_policy_ref: "..."
+created_at: "..."
+status: "..."
+current_version_id: "sourcev_..."
+```
+
+---
+
+# 48. SourceVersion Contract
+
+```yaml
+source_version_id: "sourcev_..."
+source_id: "source_..."
+content_hash: "sha256:..."
+content_ref: "..."
+parser_version: "..."
+classification_version: "..."
+provenance_ref: "..."
+created_at: "..."
+```
+
+Derived chunks must point to exact source versions.
+
+---
+
+# 49. KnowledgeUnit Contract
+
+```yaml
+knowledge_unit_id: "ku_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+source_id: "source_..."
+source_version_id: "sourcev_..."
+unit_type: "..."
+content_ref: "..."
+content_hash: "sha256:..."
+classification: "..."
+purpose_constraints: []
+region: "..."
+retention_policy_ref: "..."
+authorization_attributes: {}
+provenance_ref: "..."
+```
+
+---
+
+# 50. ArtifactRecord Contract
+
+```yaml
+artifact_id: "artifact_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+job_id: "job_..."
+artifact_type: "website"
+classification: "INTERNAL"
+created_by_task_id: "task_..."
+current_version_id: "artifactv_..."
+created_at: "..."
+status: "..."
+```
+
+---
+
+# 51. ArtifactVersion Contract
+
+```yaml
+artifact_version_id: "artifactv_..."
+artifact_id: "artifact_..."
+version: 1
+content_hash: "sha256:..."
+size: 0
+mime_type: "..."
+storage_ref: "object://..."
+producer:
+  type: "worker|tool|provider|factory"
+  ref: "..."
+route_id: "route_..."
+input_refs: []
+created_at: "..."
+supersedes_version_id: null
+```
+
+Version contents are immutable.
+
+---
+
+# 52. Artifact Public API
+
+```http
+GET /v1/projects/{project_id}/artifacts
+GET /v1/artifacts/{artifact_id}
+GET /v1/artifacts/{artifact_id}/versions
+GET /v1/artifacts/{artifact_id}/versions/{version_id}
+```
+
+Binary download may use:
+
+```text
+short-lived authorized URL
+or
+streaming gateway
+```
+
+Object storage must not be publicly exposed merely because the client knows a storage key.
+
+---
+
+# 53. Artifact Upload Contract
+
+When users upload inputs:
+
+```http
+POST /v1/projects/{project_id}/uploads
+```
+
+Create-upload request:
+
+```yaml
+filename: "brand-guide.pdf"
+mime_type: "application/pdf"
+size: 12345
+classification: "CONFIDENTIAL"
+purpose: "goal-input"
+content_hash: "sha256:..."
+```
+
+The server may return a bounded upload target.
+
+Finalization validates integrity and scope.
+
+---
+
+# 54. ValidationResult Contract
+
+```yaml
+validation_id: "validation_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+job_id: "job_..."
+task_id: "task_..."
+artifact_id: "artifact_..."
+artifact_version_id: "artifactv_..."
+validator_id: "validator_..."
+validator_version: "..."
+validation_type: "security"
+result: "PASS|FAIL"
+failure_codes: []
+metrics: {}
+created_at: "..."
+evidence_id: "evidence_..."
+```
+
+---
+
+# 55. EvaluationResult Contract
+
+```yaml
+evaluation_id: "evaluation_..."
+goal_id: "goal_..."
+job_id: "job_..."
+artifact_version_refs: []
+acceptance_criteria_id: "criteria_..."
+acceptance_criteria_version: 1
+evaluator_refs: []
+result: "PASS|FAIL"
+failure_classification: []
+created_at: "..."
+evidence_id: "evidence_..."
+```
+
+---
+
+# 56. FailureRecord Contract
+
+```yaml
+failure_id: "failure_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+job_id: "job_..."
+task_id: "task_..."
+failure_class: "validation_failure"
+error_code: "..."
+safe_message: "..."
+diagnostic_ref: "..."
+retryable: true
+repairable: true
+created_at: "..."
+evidence_id: "evidence_..."
+```
+
+---
+
+# 57. RepairProposal Contract
+
+```yaml
+repair_proposal_id: "repair_..."
+failure_id: "failure_..."
+job_id: "job_..."
+task_id: "task_..."
+proposed_actions: []
+estimated_cost: {}
+estimated_attempts: 1
+requires_re_admission: true
+created_at: "..."
+```
+
+Repair is not authorization.
+
+---
+
+# 58. CheckpointRecord Contract
+
+```yaml
+checkpoint_id: "checkpoint_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+job_id: "job_..."
+task_id: null
+runtime_state: "CHECKPOINTED"
+completed_task_ids: []
+pending_task_ids: []
+artifact_refs: []
+evidence_cursor: "..."
+budget_state_ref: "..."
+retry_state: {}
+route_refs: []
+context_refs: []
+created_at: "..."
+integrity_hash: "sha256:..."
+```
+
+---
+
+# 59. StateTransition Contract
+
+```yaml
+event_id: "event_..."
+tenant_id: "tenant_..."
+project_id: "project_..."
+job_id: "job_..."
+task_id: null
+sequence: 42
+from_state: "RUNNING"
+to_state: "VALIDATING"
+reason_code: "task-output-ready"
+actor_ref: "..."
+timestamp: "..."
+evidence_id: "evidence_..."
+```
+
+The client cannot fabricate a valid state transition merely by calling an endpoint.
+
+---
+
+# 60. Canonical Job States
+
+```text
+PLANNING
+QUEUED
+RUNNING
+WAITING_FOR_APPROVAL
+NEEDS_USER_INPUT
+VALIDATING
+CHECKPOINTED
+REPAIRING
+RETRYING
+FINAL_VALIDATION
+DONE
+FAILED
+CANCEL_REQUESTED
+CANCELLED
+```
+
+Public projections may simplify wording but must map to canonical state.
+
+---
+
+# 61. Job Public API
+
+```http
+GET /v1/jobs/{job_id}
+```
+
+Response concept:
+
+```yaml
+job_id: "job_..."
+goal_id: "goal_..."
+project_id: "project_..."
+state: "RUNNING"
+progress:
+  completed_tasks: 4
+  total_tasks: 9
+current_activity:
+  category: "web.build"
+waiting_reason: null
+artifacts: []
+created_at: "..."
+updated_at: "..."
+```
+
+Do not expose secret/internal prompts/raw provider credentials.
+
+---
+
+# 62. Job List API
+
+```http
+GET /v1/projects/{project_id}/jobs
+```
+
+Supports pagination and filters such as:
+
+```text
+state
+created_after
+created_before
+goal_id
+```
+
+Filters must never broaden tenant/project visibility.
+
+---
+
+# 63. Job Event Stream
+
+Target logical endpoint:
+
+```http
+GET /v1/jobs/{job_id}/events
+```
+
+Transport may be SSE or WebSocket.
+
+Events are projections of authoritative state.
+
+---
+
+# 64. EventEnvelope Contract
+
+```yaml
+event_id: "event_..."
+sequence: 42
+event_type: "task.started"
+tenant_id: "tenant_..."
+project_id: "project_..."
+job_id: "job_..."
+task_id: "task_..."
+timestamp: "..."
+payload: {}
+evidence_ref: "evidence_..."
+```
+
+Public event payload must be safe for the authorized client.
+
+---
+
+# 65. Event Types
+
+Canonical families may include:
+
+```text
+goal.created
+goal.updated
+plan.created
+plan.admitted
+job.queued
+job.started
+task.started
+approval.required
+approval.decided
+user_input.required
+route.selected
+tool.started
+tool.completed
+provider.started
+provider.completed
+retrieval.completed
+artifact.created
+artifact.versioned
+validation.completed
+repair.started
+checkpoint.created
+job.final_validation
+job.completed
+job.failed
+job.cancel_requested
+job.cancelled
+delivery.started
+delivery.completed
+```
+
+New event types are additive if they do not alter authority.
+
+---
+
+# 66. Event Replay Contract
+
+Clients reconnect using:
+
+```text
+last_event_id
+or
+last_sequence
+```
+
+The server may replay retained events then continue live.
+
+Client-local event history is not authoritative.
+
+---
+
+# 67. Cancellation Public API
+
+```http
+POST /v1/jobs/{job_id}/cancel
+```
+
+Request:
+
+```yaml
+reason: "User requested cancellation"
+```
+
+Response:
+
+```yaml
+job_id: "job_..."
+state: "CANCEL_REQUESTED"
+```
+
+Cancellation is asynchronous if workers/providers cannot stop instantly.
+
+---
+
+# 68. Cancellation Internal Contract
+
+Canonical flow:
+
+```text
+CancellationRequest
+→ Authorization
+→ CANCEL_REQUESTED
