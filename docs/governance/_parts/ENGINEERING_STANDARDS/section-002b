@@ -1,0 +1,605 @@
+# 90. 4.7 CI/CD Standards
+
+CI/CD is a controlled execution system.
+
+It must not become a privileged bypass.
+
+---
+
+# 91. CI Principle
+
+```text
+SOURCE
+  │
+  ▼
+BUILD
+  │
+  ▼
+TEST
+  │
+  ▼
+VERIFY
+  │
+  ▼
+ARTIFACT
+```
+
+---
+
+# 92. CI Reproducibility
+
+Use:
+
+```text
+pinned runtime versions
+lockfiles
+reproducible commands
+clean environment
+```
+
+where practical.
+
+---
+
+# 93. CI Least Privilege
+
+CI tokens must have minimum required permissions.
+
+---
+
+# 94. Pull Request Secrets
+
+Untrusted PR/fork code must not automatically receive production secrets.
+
+---
+
+# 95. CI Dependency Pinning
+
+Third-party CI actions/tools should be pinned according to security policy.
+
+---
+
+# 96. CI Artifacts
+
+Build/test artifacts should be:
+
+```text
+versioned
+traceable
+retained according to policy
+```
+
+---
+
+# 97. CI Failure
+
+Required gate failure blocks merge/release.
+
+No silent bypass.
+
+---
+
+# 98. CI Infrastructure Failure
+
+Distinguish from product test failure.
+
+Rerun allowed only with transparent reason/evidence.
+
+---
+
+# 99. CD Principle
+
+Deployment is a governed side effect.
+
+CI success does not itself authorize production deployment.
+
+---
+
+# 100. Production CD
+
+Canonical:
+
+```text
+CI PASS
+   │
+   ▼
+VERIFIED ARTIFACT
+   │
+   ▼
+DEPLOYMENT POLICY
+   │
+   ▼
+APPROVAL IF REQUIRED
+   │
+   ▼
+DEPLOY
+   │
+   ▼
+HEALTH VERIFY
+```
+
+---
+
+# 101. Build Once Promote
+
+Prefer one immutable artifact promoted across environments.
+
+---
+
+# 102. Protected Environments
+
+Production deployment credentials/settings should be environment-protected.
+
+---
+
+# 103. Deployment Identity
+
+Use dedicated service/workload identity.
+
+Never personal developer credential as default automation identity.
+
+---
+
+# 104. Release Provenance
+
+Release should trace:
+
+```text
+commit
+build
+tests
+artifact digest
+approval
+deployment
+```
+
+---
+
+# 105. CI/CD Audit
+
+Material workflow/config changes require review.
+
+---
+
+# 106. 4.8 Branch, Commit, Review, Merge Standards
+
+## Branching
+
+Default workflow:
+
+```text
+master/main canonical branch
+        │
+        ▼
+focused branch
+        │
+        ▼
+bounded change
+        │
+        ▼
+tests
+        │
+        ▼
+review / PR
+        │
+        ▼
+merge
+```
+
+Exact branch name is repository configuration.
+
+---
+
+# 107. Focused Branch
+
+One branch should represent one coherent change.
+
+Avoid mixing:
+
+```text
+architecture
+feature
+formatting
+dependency update
+unrelated cleanup
+```
+
+unless inherently linked.
+
+---
+
+# 108. Small Diff Preference
+
+Prefer reviewable diffs.
+
+A large change should be decomposed when doing so preserves architectural coherence.
+
+---
+
+# 109. Atomic Commits
+
+Commits should represent logical steps.
+
+Avoid:
+
+```text
+"misc"
+"stuff"
+"final"
+"fix again"
+```
+
+---
+
+# 110. Commit Message
+
+Recommended:
+
+```text
+<scope>: <imperative summary>
+```
+
+Examples:
+
+```text
+routing: enforce canonical route decision
+security: reject stale execution grants
+docs: define tenant isolation contract
+```
+
+---
+
+# 111. Commit Content
+
+A commit should not knowingly include:
+
+```text
+secret
+debug file
+temporary artifact
+unrelated formatting
+```
+
+---
+
+# 112. Review Before Commit/Push
+
+Inspect:
+
+```text
+git diff
+git diff --check
+changed files
+unexpected generated artifacts
+secret risk
+```
+
+---
+
+# 113. Pull Request Description
+
+Should state:
+
+```text
+Problem
+Change
+Why
+Architecture impact
+Security/data impact
+Tests
+Evidence
+Migration
+Rollback
+```
+
+---
+
+# 114. Reviewer Goal
+
+Review asks:
+
+```text
+Is requirement satisfied?
+Is change in correct owner boundary?
+Any architecture bypass?
+Any security/data regression?
+Are tests sufficient?
+Is diff minimal?
+```
+
+---
+
+# 115. Architecture Review
+
+Required when change affects:
+
+```text
+Core
+Control Plane
+Routing
+Policy
+tenant isolation
+cross-service contract
+data ownership
+deployment topology
+```
+
+---
+
+# 116. Security Review
+
+Required for:
+
+```text
+identity
+authorization
+secrets
+network
+sandbox
+provider data
+tenant boundary
+high-risk tools
+```
+
+---
+
+# 117. Review of Generated Code
+
+AI-generated code receives the same review standard.
+
+No special trust.
+
+---
+
+# 118. Self-Review
+
+Author performs final self-review before requesting merge.
+
+---
+
+# 119. Merge Requirements
+
+Merge only when:
+
+```text
+required reviews satisfied
+required checks PASS
+no unresolved blocking feedback
+diff scope understood
+```
+
+---
+
+# 120. No Bypass Merge
+
+Do not merge:
+
+```text
+failed required check
+security-critical unresolved issue
+known tenant isolation regression
+```
+
+without explicit governed exception.
+
+---
+
+# 121. Merge Strategy
+
+Repository may use:
+
+```text
+squash
+merge commit
+rebase
+```
+
+according to governance.
+
+History should remain understandable.
+
+---
+
+# 122. Force Push
+
+Avoid force push to protected canonical branch.
+
+Branch force-push policy should be explicit.
+
+---
+
+# 123. Direct Push
+
+Direct push to canonical branch should be restricted according to governance.
+
+---
+
+# 124. Emergency Merge
+
+Emergency path still requires:
+
+```text
+documented reason
+minimum safe tests
+evidence
+follow-up review
+```
+
+---
+
+# 125. 4.9 Versioning Standards
+
+Version every public/durable contract where breaking change is possible.
+
+Version domains include:
+
+```text
+API
+event schema
+artifact metadata
+evidence schema
+skill
+agent manifest
+capability descriptor
+policy
+data migration
+release
+```
+
+---
+
+# 126. Semantic Versioning
+
+Use SemVer where it correctly models compatibility.
+
+```text
+MAJOR
+MINOR
+PATCH
+```
+
+Exact product release scheme may extend SemVer.
+
+---
+
+# 127. Contract Versioning
+
+Breaking contract changes require:
+
+```text
+new major/schema version
+migration
+compatibility window
+consumer updates
+```
+
+---
+
+# 128. Internal Versioning
+
+Internal contracts also need versioning when persisted or cross-process.
+
+---
+
+# 129. Artifact Version
+
+Artifact version identifies immutable output.
+
+Do not overwrite validated artifact bytes under same version.
+
+---
+
+# 130. Skill Version
+
+Skill changes that affect behavior/permissions require version/digest change.
+
+---
+
+# 131. Agent Version
+
+AgentManifest changes affecting authority/behavior require versioning.
+
+---
+
+# 132. Policy Version
+
+Material PolicyDecision must reference exact policy version.
+
+---
+
+# 133. Pricing Version
+
+FinOps cost decisions reference pricing version when material.
+
+---
+
+# 134. Schema Version
+
+Durable schemas require explicit version.
+
+---
+
+# 135. Deprecation
+
+Deprecation plan includes:
+
+```text
+replacement
+announcement/documentation
+migration
+telemetry/usage visibility
+removal condition
+```
+
+---
+
+# 136. Compatibility Window
+
+Temporary dual-read/write or multi-version support must have retirement condition.
+
+---
+
+# 137. Version Truth
+
+Repository version, artifact version, deployment version, and current runtime version are distinct facts.
+
+---
+
+# 138. 4.10 Release Policy and Standards
+
+A release is a governed packaging/promotion event.
+
+It requires:
+
+```text
+known revision
+verified artifact
+required test evidence
+security status
+release notes
+deployment/promotion plan
+rollback plan
+```
+
+---
+
+# 139. Release Types
+
+Possible categories:
+
+```text
+development snapshot
+pre-release
+candidate
+stable
+security patch
+hotfix
+```
+
+Exact labels are product governance.
+
+---
+
+# 140. Release Candidate
+
+A release candidate is not production until deployment/promotion occurs.
+
+---
+
+# 141. Release Checklist
+
+```text
+[ ] scope finalized
+[ ] canonical docs updated
+[ ] tests PASS
+[ ] security gates PASS
+[ ] artifact built
+[ ] artifact hash recorded
+[ ] migration reviewed
+[ ] release notes ready
+[ ] rollback path known
+[ ] approvals satisfied
+```
+
+---
+
