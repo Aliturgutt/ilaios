@@ -1,0 +1,770 @@
+# ILAIOS — DATA ARCHITECTURE
+
+**Document Type:** Canonical Data Architecture  
+**Format:** GitHub Markdown + ASCII architecture diagrams  
+**Status:** Canonical Baseline v1.0 — Pending Repository Publication  
+**Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
+**Product Authority:** `PRODUCT_REQUIREMENTS.md`  
+**Implementation Authority:** `IMPLEMENTATION_SPEC.md`  
+**Dependency Authority:** `DEPENDENCY_GRAPH.md`  
+**Security Authority:** `SECURITY_ARCHITECTURE.md`  
+**Core Data Principle:** **EVERY MATERIAL RECORD MUST RESOLVE TO OWNER, SCOPE, PURPOSE, LIFECYCLE, AND PROVENANCE**
+
+> This document defines **the canonical logical data model, store boundaries, ownership rules, lifecycle rules, lineage, consistency model, tenant isolation, knowledge data architecture, artifact/evidence separation, and data movement contracts of ILAIOS**. It defines target data architecture, not current production deployment state.
+
+---
+
+# 00. Purpose
+
+ILAIOS converts an authenticated user goal into governed autonomous execution and a verified finished product.
+
+That process creates and consumes many kinds of data:
+
+```text
+identity
+tenant membership
+projects
+goals
+acceptance criteria
+plans
+jobs
+tasks
+state transitions
+worker leases
+tool calls
+provider/model calls
+knowledge
+artifacts
+artifact versions
+validation
+evidence
+approvals
+cost/usage
+checkpoints
+notifications
+security events
+```
+
+Without a canonical data architecture, these records can fragment into parallel truths.
+
+Therefore the data architecture must preserve:
+
+```text
+ONE canonical identity scope
+ONE authoritative job/task state
+ONE artifact lineage
+ONE evidence/provenance truth
+ONE tenant boundary
+CLEAR separation of operational data, knowledge, artifacts, evidence, secrets, and observability
+```
+
+---
+
+# 01. Data Architecture Scope
+
+This document owns:
+
+- canonical logical entities;
+- identity and ownership fields;
+- entity relationships;
+- store responsibility boundaries;
+- source-of-truth rules;
+- data classification metadata;
+- tenant/project isolation;
+- job/task data model;
+- execution event/state data;
+- artifact/version model;
+- evidence/provenance model;
+- Knowledge/RAG data model;
+- source-ingestion lineage;
+- provider/tool call metadata;
+- approvals;
+- FinOps usage records;
+- checkpoint state;
+- notifications;
+- retention/deletion concepts;
+- backup/restore data invariants;
+- integrity/versioning rules;
+- cross-store reference rules;
+- data migration principles;
+- consistency/idempotency requirements.
+
+This document does **not** own:
+
+```text
+API request/response wire contracts
+    → API_CONTRACTS.md
+
+security control architecture
+    → SECURITY_ARCHITECTURE.md
+
+threat scenarios
+    → THREAT_MODEL.md
+
+physical cloud topology
+    → DEPLOYMENT_ARCHITECTURE.md
+
+test methodology
+    → TESTING_AND_EVALUATION.md
+
+operational SLO/logging definitions
+    → OBSERVABILITY.md
+
+incident/recovery procedures
+    → FAILURE_RECOVERY.md
+```
+
+---
+
+# 02. Canonical Data Invariants
+
+The following are hard invariants:
+
+```text
+NO protected record without owner/scope
+NO tenant inferred solely from UI
+NO cross-tenant join without explicit governed authority
+NO artifact mutation without version lineage
+NO validation detached from exact artifact version
+NO evidence replaced by debug logs
+NO secret values in ordinary application records
+NO vector similarity treated as authorization
+NO queue/workflow record without job/task identity
+NO stale worker commit without lease/fencing validation
+NO provider/model record as product authority
+NO client-side filtering as tenant boundary
+NO silent destructive overwrite of historical provenance
+```
+
+---
+
+# 03. Canonical Logical Entity Chain
+
+The primary entity lineage is:
+
+```text
+USER
+  │
+  ▼
+ACCOUNT
+  │
+  ▼
+PRINCIPAL
+  │
+  ▼
+TENANT / ORGANIZATION
+  │
+  ▼
+MEMBERSHIP / ROLE BINDING
+  │
+  ▼
+PROJECT
+  │
+  ▼
+GOAL
+  │
+  ▼
+JOB / WORKFLOW
+  │
+  ▼
+TASK
+  │
+  ├────────► AGENT RUN
+  ├────────► TOOL CALL
+  ├────────► PROVIDER / MODEL CALL
+  ├────────► RETRIEVAL
+  ├────────► APPROVAL
+  └────────► WORKER LEASE
+              │
+              ▼
+          ARTIFACT
+              │
+              ▼
+       ARTIFACT VERSION
+              │
+              ▼
+         VALIDATION
+              │
+              ▼
+          EVIDENCE
+              │
+              ▼
+     ACCEPTANCE MANIFEST
+```
+
+---
+
+# 04. Canonical Store Architecture
+
+```text
+┌───────────────────────────────────────────────────────────────┐
+│ OPERATIONAL STORE                                             │
+│ Accounts / Principals / Tenants / Projects / Goals / Jobs    │
+│ Tasks / Approvals / Config References                         │
+└──────────────────────────────┬────────────────────────────────┘
+                               │
+                               ▼
+┌───────────────────────────────────────────────────────────────┐
+│ WORKFLOW / DURABLE STATE                                      │
+│ Queue / Task State / Events / Leases / Checkpoints           │
+└──────────────────────────────┬────────────────────────────────┘
+                               │
+              ┌────────────────┼────────────────┐
+              │                │                │
+              ▼                ▼                ▼
+┌──────────────────┐ ┌──────────────────┐ ┌─────────────────────┐
+│ KNOWLEDGE STORE  │ │ ARTIFACT STORE   │ │ EVIDENCE STORE      │
+│ Sources          │ │ Files            │ │ Decisions           │
+│ Units / Chunks   │ │ Images           │ │ Routes              │
+│ Index / Graph    │ │ Video            │ │ Validations         │
+│ Provenance       │ │ Packages         │ │ Provenance          │
+└──────────────────┘ └──────────────────┘ └─────────────────────┘
+
+┌───────────────────────────────────────────────────────────────┐
+│ SECRET / KEY STORE                                            │
+│ Credentials / Encryption Keys / Signing References           │
+└───────────────────────────────────────────────────────────────┘
+
+┌───────────────────────────────────────────────────────────────┐
+│ OBSERVABILITY STORES                                          │
+│ Logs / Metrics / Traces / Operational Diagnostics            │
+└───────────────────────────────────────────────────────────────┘
+```
+
+These stores may map to one or several physical technologies.
+
+Logical authority boundaries must remain distinct.
+
+---
+
+# 05. Store Responsibility Matrix
+
+## Operational Store
+
+Owns durable product entities:
+
+```text
+Account
+Principal
+Tenant
+Membership
+Project
+Goal
+Job
+Task metadata
+Approval metadata
+Provider registry metadata
+Capability registry references
+configuration references
+```
+
+## Workflow / Durable State
+
+Owns:
+
+```text
+queue state
+task state
+state transitions
+worker leases
+fencing tokens
+checkpoint references
+retry state
+repair state
+orchestration cursor
+```
+
+## Knowledge Store
+
+Owns:
+
+```text
+sources
+source versions
+parsed units
+chunks
+embeddings/index references
+knowledge graph relations
+classification
+authorization metadata
+provenance
+```
+
+## Artifact Store
+
+Owns:
+
+```text
+binary/text artifacts
+artifact versions
+large files
+images
+audio
+video
+build packages
+generated websites
+documents
+```
+
+## Evidence Store
+
+Owns:
+
+```text
+material execution evidence
+policy decisions
+approval decisions
+routing decisions
+validation evidence
+artifact integrity references
+cost evidence
+acceptance manifests
+security events where canonical evidence is required
+```
+
+## Secret / Key Store
+
+Owns secret values and cryptographic material.
+
+## Observability Stores
+
+Own operational telemetry.
+
+---
+
+# 06. Data Ownership Model
+
+Every protected record must be classifiable as one of:
+
+```text
+SYSTEM
+TENANT
+PROJECT
+PRINCIPAL
+JOB
+TASK
+ARTIFACT
+```
+
+Most business/product data will include at least:
+
+```text
+tenant_id
+```
+
+Project-scoped data additionally includes:
+
+```text
+project_id
+```
+
+Execution-scoped data includes:
+
+```text
+job_id
+task_id where applicable
+```
+
+---
+
+# 07. Canonical Identifier Rules
+
+Canonical IDs must be:
+
+- stable;
+- globally unique or unique within clearly defined scope;
+- non-semantic where possible;
+- immutable after creation;
+- safe to reference across stores;
+- independent of provider-specific IDs.
+
+Recommended conceptual IDs:
+
+```text
+user_id
+account_id
+principal_id
+tenant_id
+membership_id
+project_id
+goal_id
+job_id
+task_id
+agent_run_id
+tool_call_id
+provider_call_id
+retrieval_id
+approval_id
+route_id
+lease_id
+checkpoint_id
+artifact_id
+artifact_version_id
+validation_id
+evidence_id
+source_id
+source_version_id
+knowledge_unit_id
+notification_id
+```
+
+---
+
+# 08. External Identifier Mapping
+
+External IDs may be retained as mappings:
+
+```text
+Google subject
+Microsoft object ID
+GitHub user ID
+provider request ID
+cloud resource ID
+repository ID
+external deployment ID
+```
+
+They must not replace canonical ILAIOS identity.
+
+Example:
+
+```text
+ILAIOS principal_id
+    │
+    ├── Google subject
+    ├── Microsoft subject
+    └── GitHub user ID
+```
+
+---
+
+# 09. User
+
+`User` represents the product-level human identity concept.
+
+Minimum conceptual attributes:
+
+```text
+user_id
+display_name
+preferred_locale
+created_at
+status
+```
+
+Sensitive identity details may live on account/identity records rather than User.
+
+---
+
+# 10. Account
+
+`Account` represents an authentication/account relationship.
+
+Conceptual attributes:
+
+```text
+account_id
+user_id
+provider_type
+provider_subject
+verified_email_ref
+assurance metadata
+linked_at
+last_authenticated_at
+status
+```
+
+Account linking must preserve evidence and security policy.
+
+---
+
+# 11. Principal
+
+`Principal` is the canonical actor used by authorization.
+
+Conceptual attributes:
+
+```text
+principal_id
+principal_type
+user_id or service identity ref
+status
+created_at
+```
+
+Principal types may include:
+
+```text
+human
+service
+system
+```
+
+Agent identities do not automatically equal authorization Principals unless architecture explicitly defines such a constrained service principal.
+
+---
+
+# 12. Tenant / Organization
+
+`Tenant` is the primary isolation boundary.
+
+Conceptual attributes:
+
+```text
+tenant_id
+name
+tenant_type
+region/residency policy ref
+security policy ref
+data policy ref
+billing/FinOps policy ref
+status
+created_at
+```
+
+No protected tenant data may be accessed using only a client-supplied tenant string.
+
+---
+
+# 13. Membership
+
+Membership binds Principal to Tenant.
+
+Conceptual fields:
+
+```text
+membership_id
+tenant_id
+principal_id
+status
+role_refs
+attribute_refs
+joined_at
+expires_at optional
+```
+
+Authorization evaluates current membership state.
+
+---
+
+# 14. Role and Attribute Bindings
+
+Authorization data may include:
+
+```text
+role_id
+permission_id
+principal_id
+tenant_id
+project_id optional
+attribute key/value
+policy reference
+valid_from
+valid_until
+```
+
+Role metadata must not become a substitute for policy evaluation.
+
+---
+
+# 15. Project
+
+`Project` is the primary work-context boundary inside a Tenant.
+
+Conceptual fields:
+
+```text
+project_id
+tenant_id
+name
+purpose
+classification_default
+region/residency policy ref
+knowledge scope ref
+artifact namespace ref
+created_by
+created_at
+status
+```
+
+---
+
+# 16. Goal
+
+A `Goal` records the user outcome request.
+
+Conceptual fields:
+
+```text
+goal_id
+tenant_id
+project_id
+requested_by_principal_id
+original_prompt_ref
+objective
+risk_class
+data_class
+budget_ref
+created_at
+version
+status
+```
+
+Goal mutation after execution begins must create a traceable version/change event.
+
+---
+
+# 17. Acceptance Criteria
+
+Acceptance criteria belong to the Goal and are versioned.
+
+Conceptual fields:
+
+```text
+acceptance_criteria_id
+goal_id
+version
+criterion_type
+criterion_text
+required
+evaluator_ref optional
+created_at
+```
+
+Final acceptance must resolve the exact criteria version used.
+
+---
+
+# 18. Execution Proposal / Plan
+
+Plan data is immutable or versioned after admission.
+
+Conceptual fields:
+
+```text
+proposal_id
+goal_id
+plan_version
+graph_hash
+task_ids
+topological_order
+created_by
+created_at
+admission_state
+```
+
+If the plan materially changes:
+
+```text
+new plan version
++ evidence
++ re-admission
+```
+
+---
+
+# 19. Job
+
+`Job` is the authoritative execution instance for a Goal.
+
+Conceptual fields:
+
+```text
+job_id
+tenant_id
+project_id
+goal_id
+plan_version
+requested_by
+state
+state_sequence
+budget_state_ref
+created_at
+started_at
+ended_at
+current_checkpoint_id
+```
+
+The client does not own Job state.
+
+---
+
+# 20. Task
+
+`Task` is a bounded executable DAG node.
+
+Conceptual fields:
+
+```text
+task_id
+job_id
+tenant_id
+project_id
+responsibility
+dependency_task_ids
+required_capabilities
+risk_class
+data_class
+state
+attempt
+max_attempts
+expected_output_contract
+validation_contract
+created_at
+```
+
+---
+
+# 21. Task Dependency Data
+
+Task dependencies must be persisted or deterministically reconstructable.
+
+Rules:
+
+- no self-dependency;
+- all dependency IDs resolve;
+- graph is acyclic;
+- task completion state is version/sequence aware;
+- downstream readiness is based on authoritative dependency completion.
+
+---
+
+# 22. Runtime State
+
+Canonical runtime states include:
+
+```text
+PLANNING
+QUEUED
+RUNNING
+WAITING_FOR_APPROVAL
+NEEDS_USER_INPUT
+VALIDATING
+CHECKPOINTED
+REPAIRING
+RETRYING
+FINAL_VALIDATION
+DONE
+FAILED
+CANCEL_REQUESTED
+CANCELLED
+```
+
+State is stored as authoritative platform state.
+
+---
+
+# 23. State Transition Event
+
+Every meaningful transition creates a durable event.
+
+Conceptual fields:
+
+```text
+event_id
+tenant_id
+project_id
+job_id
+task_id optional
+sequence
+from_state
