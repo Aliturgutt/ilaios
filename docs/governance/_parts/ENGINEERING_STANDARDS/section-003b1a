@@ -1,0 +1,192 @@
+# 164. Security Engineering Standard
+
+Security is part of engineering, not a final review phase.
+
+Every change asks:
+
+```text
+Does this expand authority?
+Does this expose data?
+Does this change tenant scope?
+Does this add network?
+Does this add secret?
+Does this add side effect?
+```
+
+---
+
+# 165. Threat Model Update Trigger
+
+Update `THREAT_MODEL.md` when change introduces:
+
+```text
+new trust boundary
+new tool
+new provider
+new data class
+new auth method
+new external side effect
+new deployment topology
+```
+
+---
+
+# 166. Secrets Engineering Standard
+
+Use:
+
+```text
+secret reference
+vault/key manager
+scoped runtime injection
+```
+
+---
+
+# 167. Secret Leak Response
+
+If secret reaches repository/log:
+
+```text
+revoke/rotate
+remove exposure where feasible
+audit impact
+add regression prevention
+```
+
+Removing the text alone is not enough.
+
+---
+
+# 168. Security Test Standard
+
+Every security fix should add regression coverage when possible.
+
+---
+
+# 169. Secure Defaults
+
+Defaults should be:
+
+```text
+deny
+private
+least privilege
+non-production
+bounded
+```
+
+---
+
+# 170. Dependency Security
+
+Automate vulnerability scanning where practical.
+
+A scanner PASS does not prove dependency safe.
+
+---
+
+# 171. Data Engineering Standard
+
+Every protected record should have:
+
+```text
+owner/scope
+tenant
+project where applicable
+classification
+lifecycle
+provenance where applicable
+```
+
+---
+
+# 172. Schema Change Standard
+
+Schema change requires:
+
+```text
+migration
+compatibility
+tests
+rollback/forward-fix
+```
+
+---
+
+# 173. No Silent Data Rewrite
+
+Material historical records such as:
+
+```text
+evidence
+approval
+routing decision
+artifact version
+```
+
+must not be silently rewritten.
+
+---
+
+# 174. Tenant Migration Standard
+
+Data migration must preserve tenant/project identity.
+
+---
+
+# 175. Data Deletion Engineering
+
+Deletion includes derived data/indexes.
+
+Do not delete required evidence improperly.
+
+---
+
+# 176. API Engineering Standard
+
+Public APIs remain Control Plane-facing.
+
+Do not expose internal privileged contracts casually.
+
+---
+
+# 177. API Compatibility
+
+Public breaking change requires version/migration.
+
+---
+
+# 178. API Error Stability
+
+Machine-readable error codes should remain stable.
+
+---
+
+# 179. API Idempotency
+
+Replay-sensitive mutations support idempotency.
+
+---
+
+# 180. API Pagination
+
+Use stable cursor pagination for scalable lists.
+
+---
+
+# 181. API Authorization
+
+Every protected route validates:
+
+```text
+Principal
+Tenant
+Project/resource
+Action
+```
+
+server-side.
+
+---
+
