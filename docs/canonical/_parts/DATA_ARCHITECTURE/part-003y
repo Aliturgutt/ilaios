@@ -1,0 +1,273 @@
+retention/deletion policy
+```
+
+---
+
+# 153. Evidence Data Definition of Done
+
+Evidence system requires:
+
+```text
+stable evidence IDs
+tenant/project scope
+material event taxonomy
+integrity verification
+artifact/version references
+decision references
+append-oriented history
+privacy-aware metadata
+acceptance manifest support
+```
+
+---
+
+# 154. Workflow State Definition of Done
+
+Durable workflow state requires:
+
+```text
+job/task IDs
+valid state machine
+sequenced transitions
+leases
+fencing
+checkpoint
+retry/repair state
+cancel state
+recovery tests
+stale commit rejection
+```
+
+---
+
+# 155. Data Security Definition of Done
+
+Data architecture is not production-ready until:
+
+```text
+encryption controls
+server-side tenant enforcement
+classification
+DLP/minimization
+secret-store separation
+backup protection
+restore validation
+retention/deletion policy
+cross-tenant negative tests
+```
+
+exist for the defined scope.
+
+---
+
+# 156. Data Access Governance
+
+Every data access is evaluated through:
+
+```text
+Principal
++ Tenant
++ Project
++ Resource
++ Action
++ Purpose
++ Classification
++ Policy
+```
+
+No storage technology may bypass the canonical authorization model.
+
+---
+
+# 157. Administrative Data Access
+
+Administrative access must be explicitly scoped.
+
+Operational support should not imply unrestricted access to tenant content.
+
+High-risk support/security access may require:
+
+```text
+strong auth
+break-glass
+reason
+approval
+evidence
+time limit
+```
+
+---
+
+# 158. Analytics Data
+
+Product analytics should use minimized/pseudonymized data where feasible.
+
+Analytics pipelines must not become an uncontrolled copy of all tenant content.
+
+Analytics datasets require:
+
+```text
+purpose
+classification
+retention
+owner
+access policy
+```
+
+---
+
+# 159. Training / Model Improvement Data
+
+Tenant/user data must not automatically become training data for ILAIOS or external providers.
+
+Any future training/improvement use requires explicit governed policy, legal/privacy basis, data classification handling, and user/tenant controls as applicable.
+
+---
+
+# 160. Export Data
+
+Tenant/project data export must be governed.
+
+Export may include:
+
+```text
+operational metadata
+artifacts
+knowledge sources
+evidence
+```
+
+depending on policy.
+
+Export must not include:
+
+- other tenants;
+- internal secrets;
+- protected system configuration;
+- unrelated provider credentials.
+
+---
+
+# 161. Import Data
+
+Imports require:
+
+```text
+source verification
+schema validation
+classification
+tenant assignment
+provenance
+malware/content safety checks where relevant
+```
+
+Imported records cannot overwrite canonical IDs without controlled migration rules.
+
+---
+
+# 162. Data Portability
+
+Where product policy supports portability, export formats should preserve enough metadata for:
+
+```text
+ownership
+version
+timestamps
+provenance
+artifact relationships
+```
+
+without exposing internal secrets.
+
+---
+
+# 163. Search Data
+
+Search results should return references to authorized canonical entities.
+
+Search does not create alternate object truth.
+
+---
+
+# 164. Notification Data Minimization
+
+Notifications should use:
+
+```text
+safe summary
+stable entity reference
+deep link/reference
+```
+
+instead of embedding full sensitive task/artifact content.
+
+---
+
+# 165. Data Auditability
+
+Material data lifecycle events may require evidence:
+
+```text
+created
+classified
+shared
+exported
+deleted
+restored
+migrated
+retention hold applied
+```
+
+depending on risk/policy.
+
+---
+
+# 166. Current Reality vs Target Data Architecture
+
+This document defines the target data architecture.
+
+Current reality is determined from:
+
+```text
+current schemas
+current code
+current tests
+current CI
+runtime data behavior
+deployment/storage evidence
+```
+
+Therefore:
+
+```text
+DATA_ARCHITECTURE.md says a store/entity must exist
+≠
+proof it is currently production-deployed
+```
+
+Mutable implementation status belongs in milestones/evidence, not this canonical data architecture.
+
+---
+
+# 167. Data Red Lines
+
+Reject implementations that create:
+
+```text
+tenant inferred from frontend state
+vector retrieval without authorization
+artifact overwrite without version
+validation without artifact version ref
+evidence stored only as log text
+secrets inside ordinary application rows
+provider IDs as canonical user identity
+two authoritative job state stores
+two evidence truths
+two capability identity stores
+cross-store records with no owner/scope
+unbounded cache as source of truth
+silent data migration without evidence
+```
+
+---
+
