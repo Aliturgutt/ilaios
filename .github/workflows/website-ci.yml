@@ -1,0 +1,58 @@
+name: Website CI
+
+on:
+  pull_request:
+    paths:
+      - "apps/website/**"
+      - "tools/design-intelligence/**"
+      - ".github/workflows/website-ci.yml"
+  push:
+    branches: [master]
+    paths:
+      - "apps/website/**"
+      - "tools/design-intelligence/**"
+      - ".github/workflows/website-ci.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  website-quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/website
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/website/package-lock.json
+
+      - name: Require committed dependency lockfile
+        run: test -f package-lock.json
+
+      - name: Install dependencies reproducibly
+        run: npm ci --ignore-scripts --audit=false --fund=false
+
+      - name: Site policy and metadata checks
+        run: npm run test:site
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Production build
+        run: npm run build
