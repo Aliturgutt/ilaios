@@ -86,6 +86,42 @@ if (!/<main\b[^>]*id=["']main-content["'][^>]*tabIndex=\{-1\}[^>]*>/.test(siteCh
   failures.push("main landmark must remain programmatically focusable without joining the Tab order");
 }
 
+// ILAIOS public-site visual policy: the final override layer must remain restrained,
+// compact, high-contrast and free from generic generator-style neon/glow decoration.
+// Older compatibility layers may retain historical declarations only when the final
+// loaded overrides explicitly neutralize them.
+const adaptiveNative = await readFile(path.join(app, "adaptive-native.css"), "utf8");
+const adaptiveStructures = await readFile(path.join(app, "adaptive-structures.css"), "utf8");
+const finalVisualSource = `${adaptiveNative}\n${adaptiveStructures}`;
+const forbiddenFinalVisualPatterns = [
+  ["radial gradient", /radial-gradient\s*\(/i],
+  ["linear gradient", /linear-gradient\s*\(/i],
+  ["text shadow", /text-shadow\s*:/i],
+  ["blur filter", /filter\s*:\s*blur\s*\(/i],
+  ["cyan translucent glow fill", /rgba\(\s*0\s*,\s*194\s*,\s*209\s*,/i],
+];
+for (const [label, pattern] of forbiddenFinalVisualPatterns) {
+  if (pattern.test(finalVisualSource)) failures.push(`final visual layer reintroduced forbidden ${label}`);
+}
+for (const match of finalVisualSource.matchAll(/box-shadow\s*:\s*([^;}]+)/gi)) {
+  const value = match[1].trim().toLowerCase();
+  if (!["none", "initial", "inherit", "unset"].includes(value)) {
+    failures.push(`final visual layer reintroduced non-neutral box shadow: ${match[1].trim()}`);
+  }
+}
+if (!/body::before\s*\{[^}]*display\s*:\s*none/i.test(adaptiveNative)) {
+  failures.push("decorative global background grid/auras are not explicitly disabled");
+}
+if (!/\.journey-card::after\s*\{[^}]*display\s*:\s*none/i.test(adaptiveStructures)) {
+  failures.push("legacy journey-card glow decoration is not explicitly disabled");
+}
+const compactSurfaceSelectors = [".detail-link-card", ".journey-card", ".plane-card"];
+for (const selector of compactSurfaceSelectors) {
+  const escaped = selector.replaceAll(".", "\\.");
+  const rule = new RegExp(`${escaped}\\s*\\{[^}]*min-height\\s*:\\s*0`, "i");
+  if (!rule.test(adaptiveNative)) failures.push(`compact visual policy missing min-height: 0 for ${selector}`);
+}
+
 if (failures.length) {
   console.error("Website quality gate FAILED");
   for (const failure of failures) console.error(`- ${failure}`);
