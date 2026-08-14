@@ -215,18 +215,28 @@ class SoftwareFactoryDependencyGovernance:
     def _validate_skill_contract(self) -> SkillPackage:
         package = self._registry.resolve(DEPENDENCY_SKILL_ID)
         manifest = package.manifest
-        if manifest.domain != "supply-chain-governance":
+        if manifest.domain != "supply-chain-commercial":
             raise SoftwareFactoryError(
-                "SF-13 dependency skill is outside supply-chain governance"
+                "SF-13 dependency skill is outside canonical supply-chain-commercial domain"
             )
         if not manifest.independent_review_required:
             raise SoftwareFactoryError(
                 "SF-13 dependency skill lost its independent-review requirement"
             )
-        required = {"dependency_changes", "license_compatibility", "policy_decision"}
-        if not required.issubset(manifest.emitted_evidence):
+        required_inputs = {"intent", "dependency_changes"}
+        if not required_inputs.issubset(manifest.inputs):
             raise SoftwareFactoryError(
-                "SF-13 dependency skill lost required evidence classes"
+                "SF-13 dependency skill lost canonical dependency inputs"
+            )
+        required_outputs = {"dependencies", "policy_disposition", "evidence_references"}
+        if not required_outputs.issubset(manifest.outputs):
+            raise SoftwareFactoryError(
+                "SF-13 dependency skill lost canonical dependency outputs"
+            )
+        required_evidence = {"policy_decision", "provenance", "reviewer"}
+        if not required_evidence.issubset(manifest.emitted_evidence):
+            raise SoftwareFactoryError(
+                "SF-13 dependency skill lost canonical governance evidence"
             )
         return package
 
