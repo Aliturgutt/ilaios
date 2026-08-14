@@ -139,7 +139,7 @@ jobs:
             base="$(git rev-parse HEAD^)"
           fi
 
-          python -m services.software_factory_db_migration_safety \
+          python -m services.software_factory_db_migration_admission \
             --repository-root . \
             --base-sha "$base" \
             --head-sha "$head"
