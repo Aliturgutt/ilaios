@@ -79,14 +79,17 @@ class EvidenceView extends StatelessWidget {
               label: 'Displayed records', value: '${records.length}'),
           _OperationalCard(
               label: 'Verification',
-              value: status == 'Operational APIs connected' ? 'Verified' : 'Unavailable'),
+              value: status == 'Operational APIs connected'
+                  ? 'Verified'
+                  : 'Unavailable'),
         ]),
         const SizedBox(height: 22),
         if (records.isEmpty)
           const Text('No verified evidence records available.',
               style: TextStyle(color: IlaiosTheme.muted))
         else
-          for (final record in records) _EvidenceRow(record: record, short: _short),
+          for (final record in records)
+            _EvidenceRow(record: record, short: _short),
       ]),
     );
   }
@@ -146,12 +149,14 @@ class GovernanceView extends StatelessWidget {
     required this.snapshot,
     required this.status,
     this.approverId,
+    this.authenticatedPrincipalId,
     this.onDecision,
     super.key,
   });
   final OperationalSnapshot snapshot;
   final String status;
   final String? approverId;
+  final String? authenticatedPrincipalId;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
       onDecision;
 
@@ -180,7 +185,7 @@ class GovernanceView extends StatelessWidget {
       icon: Icons.admin_panel_settings_outlined,
       status: status,
       footer:
-          'Approve/Deny sends only a decision to the authoritative governance gateway. Desktop cannot execute governed work, bypass independent approval, or expose secret references.',
+          'Coordinator execution requests derive the approver from a verified ILAIOS session. Legacy governed work may use the configured operator approver. The server rechecks independence and tenant scope before accepting a decision.',
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 14, runSpacing: 14, children: [
           _OperationalCard(
@@ -196,21 +201,14 @@ class GovernanceView extends StatelessWidget {
         if (pending.isEmpty)
           const Text('No pending governed work.',
               style: TextStyle(color: IlaiosTheme.muted))
-        else ...[
-          if (approverId == null || onDecision == null)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 12),
-              child: Text(
-                'Independent approver identity is not configured. Decisions are disabled.',
-                style: TextStyle(color: IlaiosTheme.muted),
-              ),
-            ),
+        else
           for (final request in pending)
             _ApprovalRow(
-                request: request,
-                approverId: approverId,
-                onDecision: onDecision),
-        ],
+              request: request,
+              legacyApproverId: approverId,
+              authenticatedPrincipalId: authenticatedPrincipalId,
+              onDecision: onDecision,
+            ),
       ]),
     );
   }
@@ -219,11 +217,13 @@ class GovernanceView extends StatelessWidget {
 class _ApprovalRow extends StatelessWidget {
   const _ApprovalRow({
     required this.request,
-    required this.approverId,
+    required this.legacyApproverId,
+    required this.authenticatedPrincipalId,
     required this.onDecision,
   });
   final Map<String, Object?> request;
-  final String? approverId;
+  final String? legacyApproverId;
+  final String? authenticatedPrincipalId;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
       onDecision;
 
@@ -232,9 +232,17 @@ class _ApprovalRow extends StatelessWidget {
     final requestId = request['request_id'];
     final requesterId = request['requester_id'];
     final valid = requestId is String && requestId.isNotEmpty;
-    final independent = approverId != null && approverId != requesterId;
+    final coordinatorRequest = valid && requestId.startsWith('exec-');
+    final effectiveApprover =
+        coordinatorRequest ? authenticatedPrincipalId : legacyApproverId;
+    final independent = effectiveApprover != null && effectiveApprover != requesterId;
     final enabled = valid && independent && onDecision != null;
     final safeRequestId = valid ? requestId : 'Malformed request';
+    final reason = _decisionReason(
+      coordinatorRequest: coordinatorRequest,
+      effectiveApprover: effectiveApprover,
+      requesterId: requesterId,
+    );
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -255,9 +263,10 @@ class _ApprovalRow extends StatelessWidget {
                     : 'Requester unavailable',
                 style: const TextStyle(
                     color: IlaiosTheme.muted, fontSize: 12)),
-            if (!independent)
-              const Text('Independent approver required',
-                  style: TextStyle(
+            if (reason != null)
+              Text(reason,
+                  key: ValueKey('approval-reason-$safeRequestId'),
+                  style: const TextStyle(
                       color: IlaiosTheme.muted, fontSize: 12)),
           ]),
         ),
@@ -278,6 +287,22 @@ class _ApprovalRow extends StatelessWidget {
       ]),
     );
   }
+}
+
+String? _decisionReason({
+  required bool coordinatorRequest,
+  required String? effectiveApprover,
+  required Object? requesterId,
+}) {
+  if (effectiveApprover == null) {
+    return coordinatorRequest
+        ? 'Sign in as an independent approver to decide this execution.'
+        : 'Independent operator approver is not configured.';
+  }
+  if (effectiveApprover == requesterId) {
+    return 'Requester cannot approve their own governed execution.';
+  }
+  return null;
 }
 
 class _SurfaceFrame extends StatelessWidget {
