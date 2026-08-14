@@ -92,8 +92,10 @@ class IoControlPlaneTransport implements ControlPlaneTransport {
       final request = await client.openUrl(method, uri).timeout(timeout);
       headers.forEach(request.headers.set);
       if (body != null) {
+        final bodyBytes = utf8.encode(body);
         request.headers.contentType = ContentType.json;
-        request.write(body);
+        request.contentLength = bodyBytes.length;
+        request.add(bodyBytes);
       }
       final response = await request.close().timeout(timeout);
       final responseBody =
