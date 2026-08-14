@@ -1,15 +1,7 @@
 name: Website CI
 
 on:
-  pull_request:
-    paths:
-      - "apps/website/**"
-      - "tools/design-intelligence/**"
-      - "services/design_quality.py"
-      - "services/integrations/web_factory.py"
-      - "tests/test_design_quality.py"
-      - "tests/test_web_factory.py"
-      - ".github/workflows/website-ci.yml"
+  workflow_call:
   push:
     branches: [master]
     paths:
@@ -20,6 +12,7 @@ on:
       - "tests/test_design_quality.py"
       - "tests/test_web_factory.py"
       - ".github/workflows/website-ci.yml"
+      - ".github/workflows/required-ci-gate.yml"
   workflow_dispatch:
 
 permissions:
