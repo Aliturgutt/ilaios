@@ -434,6 +434,7 @@ def _request(
             review_record,
             change=dependency_change,
         )
+    selected_artifacts: tuple[ArtifactProvenanceInput, ...]
     if artifacts is None:
         if dependency_record is None:
             selected_artifacts = (_generated_artifact(), _asset_artifact())
