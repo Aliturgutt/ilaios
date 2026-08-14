@@ -38,7 +38,8 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     super.initState();
     final config = widget.config;
     if (config == null) {
-      _operationalStatus = widget.runtime?.status ?? 'Control plane configuration unavailable';
+      _operationalStatus =
+          widget.runtime?.status ?? 'Control plane configuration unavailable';
       return;
     }
     try {
@@ -87,11 +88,12 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
           ..._operationalSnapshot.liveEvents,
           ...fresh.liveEvents,
         ];
-        final boundedEvents = mergedEvents.length <= ControlPlaneClient.maxLiveEvents
-            ? mergedEvents
-            : mergedEvents.sublist(
-                mergedEvents.length - ControlPlaneClient.maxLiveEvents,
-              );
+        final boundedEvents =
+            mergedEvents.length <= ControlPlaneClient.maxLiveEvents
+                ? mergedEvents
+                : mergedEvents.sublist(
+                    mergedEvents.length - ControlPlaneClient.maxLiveEvents,
+                  );
         if (boundedEvents.isNotEmpty) {
           final sequence = boundedEvents.last['sequence'];
           if (sequence is int && sequence > _lastLiveSequence) {
@@ -157,20 +159,18 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
             : '${Directory.systemTemp.path}\\ILAIOS\\Deliveries');
     final root = Directory(rootPath);
     await root.create(recursive: true);
-    final safeExecution = record.executionId.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
-    final extension = record.action.toLowerCase().contains('video') ? '.mp4' : '.bin';
+    final safeExecution =
+        record.executionId.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    final extension =
+        record.action.toLowerCase().contains('video') ? '.mp4' : '.bin';
     final filename =
         'ILAIOS-$safeExecution-${artifact.digest.substring(0, 16)}$extension';
     final output = File('${root.path}\\$filename');
-    if (await output.exists()) {
-      final existing = await output.readAsBytes();
-      if (existing.length != artifact.size) {
-        throw const ControlPlaneClientException(
-          'Existing delivery file conflicts with verified artifact size',
-        );
-      }
-    } else {
-      await output.writeAsBytes(artifact.bytes, flush: true);
+    await output.writeAsBytes(artifact.bytes, flush: true);
+    if (await output.length() != artifact.size) {
+      throw const ControlPlaneClientException(
+        'Saved delivery size does not match verified artifact',
+      );
     }
     if (mounted) {
       setState(() => _operationalStatus = 'Verified artifact saved');
