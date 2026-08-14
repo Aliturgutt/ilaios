@@ -80,3 +80,22 @@ def test_supply_chain_approval_is_complete_or_rejected() -> None:
             artifact.requested_authorities,
             owner="ILAIOS",
         )
+
+
+def test_video_namespace_cannot_bypass_proprietary_supply_chain_identity() -> None:
+    registry = SkillRegistry()
+    artifact = runtime_artifact_for_video_skill(VIDEO_SKILLS[0])
+
+    with pytest.raises(RuntimeError, match="proprietary supply-chain identity"):
+        registry.approve(
+            artifact.skill_id, artifact.digest, artifact.requested_authorities
+        )
+    with pytest.raises(RuntimeError, match="proprietary supply-chain identity"):
+        registry.approve(
+            artifact.skill_id,
+            artifact.digest,
+            artifact.requested_authorities,
+            owner="ILAIOS",
+            license_id="MIT",
+            source_provenance="ILAIOS-native",
+        )

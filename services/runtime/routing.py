@@ -6,6 +6,14 @@ import hashlib
 from dataclasses import dataclass
 
 
+_VIDEO_SKILL_PREFIX = "ilaios.skill.video."
+_VIDEO_SKILL_SUPPLY_CHAIN = (
+    "ILAIOS",
+    "LicenseRef-ILAIOS-Proprietary",
+    "ILAIOS-native",
+)
+
+
 class RuntimeError(ValueError):
     """Raised when governed runtime selection cannot be proven safe."""
 
@@ -83,6 +91,13 @@ class SkillRegistry:
                 raise RuntimeError("skill supply-chain metadata must be complete")
             if any(not value or value != value.strip() for value in metadata if value):
                 raise RuntimeError("skill supply-chain metadata must be trimmed")
+        if (
+            skill_id.startswith(_VIDEO_SKILL_PREFIX)
+            and metadata != _VIDEO_SKILL_SUPPLY_CHAIN
+        ):
+            raise RuntimeError(
+                "video skills require ILAIOS proprietary supply-chain identity"
+            )
         self._approved[skill_id] = _SkillApproval(
             digest,
             authorities,
