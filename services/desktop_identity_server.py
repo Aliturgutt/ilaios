@@ -11,7 +11,11 @@ from urllib.parse import parse_qs, urlparse
 
 import requests
 
-from services.desktop_oidc import DesktopIdentityError, DesktopOIDCService
+from services.desktop_oidc import (
+    DesktopAuthStatus,
+    DesktopIdentityError,
+    DesktopOIDCService,
+)
 
 
 class DesktopIdentityHTTPServer(ThreadingHTTPServer):
@@ -67,8 +71,7 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             if parsed.path == "/v1/auth/status":
                 identity = self._require_identity()
                 state = _single_query(parse_qs(parsed.query), "state")
-                status = identity.status(state)
-                self._send_json(HTTPStatus.OK, _status_json(status))
+                self._send_json(HTTPStatus.OK, _status_json(identity.status(state)))
                 return
             self._send_error(HTTPStatus.NOT_FOUND, "unknown endpoint")
         except DesktopIdentityError as error:
@@ -202,7 +205,9 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
         if not supplied or not hmac.compare_digest(
             supplied, self.server.bearer_token
         ):
-            raise DesktopIdentityError("Desktop identity transport authentication failed")
+            raise DesktopIdentityError(
+                "Desktop identity transport authentication failed"
+            )
 
     def _require_identity(self) -> DesktopOIDCService:
         identity = self.server.identity
@@ -255,6 +260,18 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+
+def _status_json(status: DesktopAuthStatus) -> dict[str, str | None]:
+    return {
+        "state": status.state,
+        "status": status.status,
+        "provider_id": status.provider_id,
+        "session_id": status.session_id,
+        "principal_id": status.principal_id,
+        "tenant_id": status.tenant_id,
+        "display_identity": status.display_identity,
+    }
 
 
 def _required_string(payload: dict[str, Any], key: str) -> str:
