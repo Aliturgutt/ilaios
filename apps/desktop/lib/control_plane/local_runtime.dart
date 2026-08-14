@@ -9,8 +9,8 @@ class DesktopRuntime {
   DesktopRuntime._({
     required this.config,
     required this.status,
-    Process? process,
-  }) : _process = process;
+    this._process,
+  });
 
   final ControlPlaneConfig? config;
   final String status;
@@ -84,7 +84,7 @@ class DesktopRuntime {
       return DesktopRuntime._(
         config: config,
         status: 'Bundled local control plane started',
-        process: process,
+        _process: process,
       );
     } on Object {
       process.kill();
