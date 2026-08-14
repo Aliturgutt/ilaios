@@ -84,7 +84,7 @@ class DesktopRuntime {
       return DesktopRuntime._(
         config: config,
         status: 'Bundled local control plane started',
-        _process: process,
+        process: process,
       );
     } on Object {
       process.kill();
