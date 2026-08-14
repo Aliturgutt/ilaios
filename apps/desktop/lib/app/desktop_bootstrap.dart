@@ -281,31 +281,44 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     GovernanceDecision decision,
   ) async {
     final client = _client;
-    final approver = widget.config?.approverId;
-    if (client == null || approver == null) return;
+    if (client == null) return;
     try {
-      await client.decideGovernanceRequest(
-        requestId: requestId,
-        approver: approver,
-        decision: decision,
-      );
-      if (decision == GovernanceDecision.approved &&
-          requestId.startsWith('exec-')) {
+      if (requestId.startsWith('exec-')) {
         final identityClient = _identityClient;
         final session = _userSession;
         if (identityClient == null || session == null) {
           throw const IdentityClientException(
-            'Signed-in requester session is required to resume approved execution',
+            'A verified approver session is required for execution decisions',
           );
         }
-        await identityClient.resumeExecution(requestId, session);
-        if (mounted) {
+        final status = await identityClient.decideExecution(
+          requestId,
+          decision,
+          session,
+        );
+        if (!mounted) return;
+        if (status == 'EXECUTION_STARTED') {
           setState(() {
-            _operationalStatus = 'Governance approved; governed execution started';
+            _operationalStatus =
+                'Independent approval recorded; governed execution started';
           });
+          unawaited(_monitorExecution(requestId));
+        } else {
+          setState(() => _operationalStatus = 'Governed execution denied');
         }
-        unawaited(_monitorExecution(requestId));
-      } else if (mounted) {
+      } else {
+        final approver = widget.config?.approverId;
+        if (approver == null) {
+          throw const ControlPlaneClientException(
+            'Independent operator approver is not configured',
+          );
+        }
+        await client.decideGovernanceRequest(
+          requestId: requestId,
+          approver: approver,
+          decision: decision,
+        );
+        if (!mounted) return;
         setState(() => _operationalStatus = 'Governance decision accepted');
       }
       await _refresh();
@@ -338,7 +351,9 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
           await _refresh();
           return;
         }
-        if (status == 'FAILED' || status.startsWith('BLOCKED_')) {
+        if (status == 'FAILED' ||
+            status == 'DENIED' ||
+            status.startsWith('BLOCKED_')) {
           setState(() => _operationalStatus = 'Governed execution: $status');
           await _refresh();
           return;
@@ -364,6 +379,9 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
         _identityClient != null &&
         _identityProviders.isNotEmpty &&
         _userSession != null;
+    final governanceEnabled = _client != null &&
+        (widget.config?.approverId != null ||
+            (_identityClient != null && _userSession != null));
     return IlaiosDesktopApp(
       projection: _projection,
       operationalSnapshot: _operationalSnapshot,
@@ -378,10 +396,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       onPromptSubmit: promptEnabled ? _submitPrompt : null,
       onSaveArtifact: _client == null ? null : _saveArtifact,
       onRefreshRequested: _client == null ? null : _refresh,
-      onGovernanceDecision:
-          _client == null || widget.config?.approverId == null
-              ? null
-              : _decideGovernance,
+      onGovernanceDecision: governanceEnabled ? _decideGovernance : null,
     );
   }
 }
