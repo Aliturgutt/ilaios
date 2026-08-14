@@ -743,8 +743,8 @@ class KnowledgeRAG:
         if len(versions) != len(snapshot.versions):
             raise KnowledgeRAGError("snapshot contains duplicate source versions")
         for key, version in versions.items():
-            source = sources.get(version.source_id)
-            if source is None:
+            version_source = sources.get(version.source_id)
+            if version_source is None:
                 raise KnowledgeRAGError("snapshot version references unknown source")
             if (
                 version.tenant_id != snapshot.tenant_id
@@ -761,9 +761,9 @@ class KnowledgeRAG:
         if len(units) != len(snapshot.units):
             raise KnowledgeRAGError("snapshot contains duplicate units")
         for unit in snapshot.units:
-            source = sources.get(unit.source_id)
-            version = versions.get((unit.source_id, unit.source_version))
-            if source is None or version is None:
+            unit_source = sources.get(unit.source_id)
+            unit_version = versions.get((unit.source_id, unit.source_version))
+            if unit_source is None or unit_version is None:
                 raise KnowledgeRAGError("snapshot unit lineage is incomplete")
             if (
                 unit.tenant_id != snapshot.tenant_id
@@ -773,18 +773,18 @@ class KnowledgeRAG:
             if unit.text:
                 if _sha256_text(unit.text) != unit.content_sha256:
                     raise KnowledgeRAGError("snapshot unit content hash mismatch")
-            elif source.state is not SourceState.DELETED:
+            elif unit_source.state is not SourceState.DELETED:
                 raise KnowledgeRAGError("non-deleted snapshot unit has empty content")
 
         if not snapshot.active_unit_ids <= units.keys():
             raise KnowledgeRAGError("snapshot references unknown active unit")
         for unit_id in snapshot.active_unit_ids:
             unit = units[unit_id]
-            source = sources[unit.source_id]
-            version = versions[(unit.source_id, unit.source_version)]
-            if source.state is not SourceState.ACTIVE:
+            active_source = sources[unit.source_id]
+            active_version = versions[(unit.source_id, unit.source_version)]
+            if active_source.state is not SourceState.ACTIVE:
                 raise KnowledgeRAGError("inactive source cannot have active unit")
-            if version.state is not VersionState.ACTIVE:
+            if active_version.state is not VersionState.ACTIVE:
                 raise KnowledgeRAGError("inactive source version cannot have active unit")
             if unit.quarantined_reason is not None or not unit.text:
                 raise KnowledgeRAGError("quarantined or empty unit cannot be active")
