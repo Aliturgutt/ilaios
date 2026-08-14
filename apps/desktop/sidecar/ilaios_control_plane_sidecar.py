@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import threading
 import time
 from collections.abc import Sequence
@@ -97,12 +98,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         control_thread.join()
         identity_server.shutdown()
 
+    def stop_identity_if_parent_pipe_closes() -> None:
+        try:
+            sys.stdin.buffer.read()
+        except (OSError, ValueError):
+            pass
+        identity_server.shutdown()
+
     watchdog = threading.Thread(
         target=stop_identity_if_control_plane_exits,
         name="ilaios-control-plane-watchdog",
         daemon=True,
     )
+    parent_watchdog = threading.Thread(
+        target=stop_identity_if_parent_pipe_closes,
+        name="ilaios-desktop-parent-watchdog",
+        daemon=True,
+    )
     watchdog.start()
+    parent_watchdog.start()
     try:
         identity_server.serve_forever()
     except KeyboardInterrupt:
