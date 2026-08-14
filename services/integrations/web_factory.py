@@ -1,4 +1,4 @@
-"""Governed deterministic Web Factory golden workflow with real artifacts."""
+"""Governed deterministic Web Factory golden workflow with native adaptive design."""
 
 from __future__ import annotations
 
@@ -8,7 +8,12 @@ from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
-from services.design_quality import DesignAssessment
+from services.design_quality import (
+    DesignAssessment,
+    DesignContext,
+    DesignStrategy,
+    NativeDesignStrategyEngine,
+)
 from services.runtime import ExecutionGrant, GrantPolicy
 
 
@@ -36,6 +41,11 @@ class GovernedWebFactory:
     def __init__(self, grants: GrantPolicy, artifact_root: Path) -> None:
         self._grants = grants
         self._artifact_root = artifact_root
+        self._design = NativeDesignStrategyEngine()
+
+    def plan_design(self, context: DesignContext) -> DesignStrategy:
+        """Derive a stable, inspectable design strategy from bounded project context."""
+        return self._design.plan(context)
 
     @staticmethod
     def accept_design_quality(assessment: DesignAssessment) -> None:
@@ -105,11 +115,7 @@ class GovernedWebFactory:
                 "brand": acceptance.official_brand,
                 "bundle_id": acceptance.bundle_id,
                 "files": [
-                    {
-                        "path": item.relative_path,
-                        "sha256": item.sha256,
-                        "size": item.size,
-                    }
+                    {"path": item.relative_path, "sha256": item.sha256, "size": item.size}
                     for item in acceptance.files
                 ],
                 "manifest_version": acceptance.manifest_version,
@@ -127,9 +133,7 @@ class GovernedWebFactory:
 
 
 def _site_content(pages: tuple[str, ...]) -> dict[str, bytes]:
-    navigation = "".join(
-        f'<a href="{page}.html">{page.title()}</a>' for page in pages
-    )
+    navigation = "".join(f'<a href="{page}.html">{page.title()}</a>' for page in pages)
     messages = {
         "home": "Governed intelligence for durable outcomes.",
         "product": "ILAIOS coordinates agents, evidence, and delivery.",
@@ -142,24 +146,16 @@ def _site_content(pages: tuple[str, ...]) -> dict[str, bytes]:
             f"<title>ILAIOS | {page.title()}</title>"
             '<link rel="stylesheet" href="assets/site.css"></head><body>'
             f"<header><strong>ILAIOS</strong><nav>{navigation}</nav></header>"
-            f"<main><h1>{page.title()}</h1><p>{messages[page]}</p></main>"
-            "</body></html>"
+            f"<main><h1>{page.title()}</h1><p>{messages[page]}</p></main></body></html>"
         ).encode()
         for page in pages
     }
-    files["assets/site.css"] = (
-        b"body{font-family:sans-serif;margin:2rem;color:#17223b}"
-        b"header{display:flex;justify-content:space-between}nav a{margin:.5rem}"
-    )
+    files["assets/site.css"] = b"body{font-family:sans-serif;margin:2rem;color:#17223b}header{display:flex;justify-content:space-between}nav a{margin:.5rem}"
     return files
 
 
 def _verify_existing(bundle: Path, expected: dict[str, bytes]) -> None:
-    actual_paths = {
-        path.relative_to(bundle).as_posix()
-        for path in bundle.rglob("*")
-        if path.is_file() and path.name != "acceptance.json"
-    }
+    actual_paths = {path.relative_to(bundle).as_posix() for path in bundle.rglob("*") if path.is_file() and path.name != "acceptance.json"}
     if actual_paths != set(expected):
         raise ValueError("website artifact bundle file set was tampered")
     for relative_path, body in expected.items():
@@ -167,9 +163,7 @@ def _verify_existing(bundle: Path, expected: dict[str, bytes]) -> None:
             raise ValueError("website artifact bundle content was tampered")
 
 
-def _validate_site(
-    bundle: Path, required: tuple[str, ...], files: tuple[WebsiteFile, ...]
-) -> None:
+def _validate_site(bundle: Path, required: tuple[str, ...], files: tuple[WebsiteFile, ...]) -> None:
     file_map = {item.relative_path: item for item in files}
     for page in required:
         relative_path = f"{page}.html"
