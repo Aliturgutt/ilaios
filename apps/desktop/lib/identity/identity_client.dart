@@ -218,12 +218,35 @@ class IdentityClient {
       <String, Object?>{'request_id': normalized},
       'execution resume',
       session,
-      expectedStatus: HttpStatus.ok,
+      expectedStatus: HttpStatus.accepted,
     );
     if (payload['request_id'] != normalized ||
-        payload['execution_status'] != 'ACCEPTED') {
+        payload['execution_status'] != 'RESUME_REQUESTED') {
       throw const IdentityClientException('Execution resume response is malformed');
     }
+  }
+
+  Future<String> fetchExecutionStatus(
+    String requestId,
+    DesktopUserSession session,
+  ) async {
+    final normalized = requestId.trim();
+    if (normalized.isEmpty) {
+      throw const IdentityClientException('Execution request is required');
+    }
+    final path = Uri(
+      path: '/v1/execution/status',
+      queryParameters: <String, String>{'request_id': normalized},
+    ).toString();
+    final payload = await _sessionGet(path, 'execution status', session);
+    if (payload['request_id'] != normalized) {
+      throw const IdentityClientException('Execution status response is malformed');
+    }
+    final status = payload['execution_status'];
+    if (status is! String || status.isEmpty) {
+      throw const IdentityClientException('Execution status response is malformed');
+    }
+    return status;
   }
 
   Future<void> logout(DesktopUserSession session) async {
@@ -251,6 +274,21 @@ class IdentityClient {
       throw IdentityClientException('Desktop $label query failed');
     }
     return payload;
+  }
+
+  Future<Map<String, dynamic>> _sessionGet(
+    String path,
+    String label,
+    DesktopUserSession session,
+  ) async {
+    final response = await _transport.get(
+      _baseUri.resolve(path),
+      headers: <String, String>{
+        'Authorization': 'Bearer $_transportToken',
+        'X-ILAIOS-Session': session.sessionId,
+      },
+    );
+    return _checkedPayload(response, label, HttpStatus.ok);
   }
 
   Future<Map<String, dynamic>> _post(
