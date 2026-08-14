@@ -73,7 +73,7 @@ def _goal() -> GoalSpec:
             "dependency provenance is explicit",
             "commercial and security policy is enforced",
         ),
-        RiskClass.CRITICAL,
+        RiskClass.HIGH,
         DataClass.INTERNAL,
         BudgetEnvelope(3, 600),
     )
