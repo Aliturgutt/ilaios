@@ -115,10 +115,18 @@ CAPABILITIES: tuple[CapabilityDefinition, ...] = (
     ),
     CapabilityDefinition(
         "ilaios.capability.knowledge",
-        "Knowledge Graph and Project Context",
+        "Knowledge / RAG and Project Context",
         "intelligence",
-        frozenset({"ilaios.capability.core"}),
-        ("src/knowledge_graph", "src/project_manager"),
+        frozenset(
+            {
+                "ilaios.capability.core",
+                "ilaios.capability.identity-tenant",
+                "ilaios.capability.privacy-dlp",
+                "ilaios.capability.evidence-audit",
+                "ilaios.capability.provider-routing",
+            }
+        ),
+        ("src/knowledge_graph", "src/project_manager", "services/knowledge_rag.py"),
         frozenset({"Hermes", "ILAKOS"}),
     ),
     CapabilityDefinition(
