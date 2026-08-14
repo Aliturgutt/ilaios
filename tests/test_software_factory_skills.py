@@ -57,11 +57,11 @@ def test_executor_uses_sf5_and_sf6_ports(tmp_path: Path) -> None:
     assert runtime.calls == [("ilaios.runtime.python", repository)]
     assert "runtime_evidence" in result.emitted_evidence
 
-@pytest.mark.parametrize("denied_action", sorted(CANONICAL_DENY_SET))
-def test_executor_blocks_canonical_denied_actions(tmp_path: Path, denied_action: str) -> None:
+def test_executor_blocks_canonical_denied_actions(tmp_path: Path) -> None:
     executor = SkillExecutor(SkillRegistry(SKILLS_ROOT), _RepositoryIntelligence(), _Runtime())
-    with pytest.raises(SoftwareFactoryError, match="deny-set"):
-        executor.execute(SkillExecutionRequest(skill_id="sf-requirements-analysis", repository=tmp_path.resolve(), base_sha=BASE_SHA, actor_id="actor", tenant_id="tenant", policy_allowed=True, payload={"intent":"analyze","constraints":[],"context":{}}, requested_actions=frozenset({denied_action})))
+    for denied_action in sorted(CANONICAL_DENY_SET):
+        with pytest.raises(SoftwareFactoryError, match="deny-set"):
+            executor.execute(SkillExecutionRequest(skill_id="sf-requirements-analysis", repository=tmp_path.resolve(), base_sha=BASE_SHA, actor_id="actor", tenant_id="tenant", policy_allowed=True, payload={"intent":"analyze","constraints":[],"context":{}}, requested_actions=frozenset({denied_action})))
 
 def test_input_and_output_contracts_are_enforced(tmp_path: Path) -> None:
     executor = SkillExecutor(SkillRegistry(SKILLS_ROOT), _RepositoryIntelligence(), _Runtime())

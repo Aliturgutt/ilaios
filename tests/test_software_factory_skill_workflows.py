@@ -4,8 +4,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from pathlib import Path
 
-import pytest
-
 from services.software_factory_skills import SkillExecutionRequest, SkillExecutor, SkillRegistry, default_skills_root
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,12 +30,12 @@ WORKFLOWS: tuple[tuple[str, dict[str, object], str | None], ...] = (
     ("sf-release-readiness", {"intent":"release readiness","artifact_references":["artifact-1"],"validation_evidence":["tests-pass"]}, "ilaios.runtime.python"),
 )
 
-@pytest.mark.parametrize(("skill_id", "payload", "runtime_adapter"), WORKFLOWS)
-def test_representative_workflows_dispatch_through_governed_layer(tmp_path: Path, skill_id: str, payload: dict[str, object], runtime_adapter: str | None) -> None:
+def test_representative_workflows_dispatch_through_governed_layer(tmp_path: Path) -> None:
     registry = SkillRegistry(SKILLS)
-    package = registry.resolve(skill_id)
     executor = SkillExecutor(registry, _Repo(), _Runtime())
-    requested = set(package.manifest.required_capabilities)
-    result = executor.execute(SkillExecutionRequest(skill_id=skill_id, repository=tmp_path.resolve(), base_sha=BASE_SHA, actor_id="workflow-agent", tenant_id="tenant", policy_allowed=True, payload=payload, requested_capabilities=frozenset(requested), runtime_adapter=runtime_adapter))
-    assert result.status == "READY"
-    assert result.skill_id == skill_id
+    for skill_id, payload, runtime_adapter in WORKFLOWS:
+        package = registry.resolve(skill_id)
+        requested = set(package.manifest.required_capabilities)
+        result = executor.execute(SkillExecutionRequest(skill_id=skill_id, repository=tmp_path.resolve(), base_sha=BASE_SHA, actor_id="workflow-agent", tenant_id="tenant", policy_allowed=True, payload=payload, requested_capabilities=frozenset(requested), runtime_adapter=runtime_adapter))
+        assert result.status == "READY"
+        assert result.skill_id == skill_id
