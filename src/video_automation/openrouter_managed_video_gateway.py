@@ -8,7 +8,11 @@ from typing import cast
 
 from .configuration import VideoAutomationPolicy
 from .managed_credit_store import ManagedCreditLedgerStore, ProviderSideEffectLedger
-from .managed_credits import ManagedCreditAccount, ProviderCostQuote
+from .managed_credits import (
+    ManagedCreditAccount,
+    ManagedCreditError,
+    ProviderCostQuote,
+)
 from .managed_provider_execution import ManagedPaidVideoExecutionCoordinator
 from .models import ProviderRequest, ProviderResult
 from .openrouter_managed_video_provider import (
@@ -70,6 +74,24 @@ class OpenRouterManagedVideoGateway:
             raise OpenRouterManagedVideoGatewayError(
                 "request is not bound to the managed OpenRouter provider"
             )
+
+        # A paid request identity is single-use. Even a deterministic FAILED
+        # provider result requires a fresh governed retry request/authorization;
+        # this prevents retries from silently reusing financial side-effect state.
+        side_effect_ledger = ProviderSideEffectLedger(self._credit_store)
+        try:
+            side_effect_ledger.get(request.request_id)
+        except ManagedCreditError as exc:
+            if str(exc) != "provider side effect does not exist":
+                raise OpenRouterManagedVideoGatewayError(
+                    "paid side-effect history could not be validated"
+                ) from exc
+        else:
+            raise OpenRouterManagedVideoGatewayError(
+                "paid request_id already has side-effect history; "
+                "create a new governed retry request"
+            )
+
         try:
             eligible = self._catalog.paid_eligible_models()
         except OpenRouterCatalogError as exc:
@@ -97,7 +119,7 @@ class OpenRouterManagedVideoGateway:
         coordinator = ManagedPaidVideoExecutionCoordinator(
             policy=self._policy,
             store=self._credit_store,
-            side_effect_ledger=ProviderSideEffectLedger(self._credit_store),
+            side_effect_ledger=side_effect_ledger,
         )
         plan = coordinator.authorize(
             account=account,
