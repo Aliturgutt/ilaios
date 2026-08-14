@@ -1,0 +1,2 @@
+# SF-18 native website test runner lock.
+pytest==9.1.1
