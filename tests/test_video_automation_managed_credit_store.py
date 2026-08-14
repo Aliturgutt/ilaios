@@ -12,6 +12,7 @@ from src.video_automation.managed_credit_store import (
     ReconciliationState,
 )
 from src.video_automation.managed_credits import (
+    CreditAuthorizationOutcome,
     ManagedCreditAccount,
     ManagedCreditError,
     ProviderCostQuote,
@@ -50,7 +51,9 @@ def _request(*, request_id: str = "request-001") -> ProviderRequest:
     )
 
 
-def _reserve(store: ManagedCreditLedgerStore, *, request_id: str = "request-001"):
+def _reserve(
+    store: ManagedCreditLedgerStore, *, request_id: str = "request-001"
+) -> CreditAuthorizationOutcome:
     return store.reserve(
         account=_account(),
         request_id=request_id,
