@@ -70,9 +70,7 @@ def test_probe_normalizes_ffprobe_json() -> None:
             ],
         }
 
-        runner = _RecordingRunner(
-            stdout=json.dumps(payload)
-        )
+        runner = _RecordingRunner(stdout=json.dumps(payload))
 
         engine = FfmpegMediaEngine(
             runner=runner,
@@ -174,9 +172,7 @@ def test_video_normalization_builds_scale_crop_fps_filter() -> None:
 
         command = runner.calls[0]
 
-        filter_value = command[
-            command.index("-vf") + 1
-        ]
+        filter_value = command[command.index("-vf") + 1]
 
         assert "scale=720:1280" in filter_value
         assert "crop=720:1280" in filter_value
@@ -203,14 +199,26 @@ def test_audio_normalization_uses_loudnorm() -> None:
 
         assert "-af" in command
 
-        filter_value = command[
-            command.index("-af") + 1
-        ]
+        filter_value = command[command.index("-af") + 1]
 
-        assert (
-            filter_value
-            == "loudnorm=I=-16:TP=-1.5:LRA=11"
+        assert filter_value == "loudnorm=I=-16:TP=-1.5:LRA=11"
+
+
+def test_crop_builds_bounded_video_filter() -> None:
+    with TemporaryDirectory() as directory_name:
+        root = Path(directory_name)
+        source = _file(root, "input.mp4")
+        runner = _RecordingRunner()
+        FfmpegMediaEngine(runner=runner).crop(
+            input_path=source,
+            output_path=root / "crop.mp4",
+            width=100,
+            height=200,
+            x=3,
+            y=4,
         )
+        command = runner.calls[0]
+        assert command[command.index("-vf") + 1] == "crop=100:200:3:4"
 
 
 def test_audio_mix_requires_multiple_inputs() -> None:
@@ -252,14 +260,9 @@ def test_audio_mix_builds_amix_command() -> None:
         assert command.count("-i") == 2
         assert "-filter_complex" in command
 
-        filter_value = command[
-            command.index("-filter_complex") + 1
-        ]
+        filter_value = command[command.index("-filter_complex") + 1]
 
-        assert (
-            filter_value
-            == "amix=inputs=2:duration=longest:normalize=0"
-        )
+        assert filter_value == "amix=inputs=2:duration=longest:normalize=0"
 
 
 def test_mux_maps_video_and_audio_streams() -> None:
@@ -287,6 +290,27 @@ def test_mux_maps_video_and_audio_streams() -> None:
         assert "-shortest" in command
 
 
+def test_overlay_builds_bounded_filter_command() -> None:
+    with TemporaryDirectory() as directory_name:
+        root = Path(directory_name)
+        source = _file(root, "video.mp4")
+        overlay = _file(root, "overlay.png")
+        output = root / "composited.mp4"
+        runner = _RecordingRunner()
+        FfmpegMediaEngine(runner=runner).overlay(
+            input_path=source,
+            overlay_path=overlay,
+            output_path=output,
+            x=12,
+            y=-4,
+        )
+        command = runner.calls[0]
+        assert command.count("-i") == 2
+        assert command[command.index("-filter_complex") + 1] == (
+            "[0:v][1:v]overlay=x=12:y=-4:format=auto"
+        )
+
+
 def test_concatenate_executes_concat_demuxer() -> None:
     with TemporaryDirectory() as directory_name:
         root = Path(directory_name)
@@ -311,9 +335,7 @@ def test_concatenate_executes_concat_demuxer() -> None:
         assert "-safe" in command
         assert "0" in command
 
-        manifest = output.with_suffix(
-            output.suffix + ".m18-concat.txt"
-        )
+        manifest = output.with_suffix(output.suffix + ".m18-concat.txt")
 
         assert not manifest.exists()
 
