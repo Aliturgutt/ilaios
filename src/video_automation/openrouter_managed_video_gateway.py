@@ -95,6 +95,13 @@ class OpenRouterManagedVideoGateway:
         try:
             eligible = self._catalog.paid_eligible_models()
         except OpenRouterCatalogError as exc:
+            snapshot = self._catalog.last_good_snapshot
+            if snapshot is not None and not any(
+                model.family is not None for model in snapshot.models
+            ):
+                raise OpenRouterManagedVideoGatewayError(
+                    "paid dispatch blocked: no governed paid-eligible candidate"
+                ) from exc
             raise OpenRouterManagedVideoGatewayError(str(exc)) from exc
         model_by_id = {model.model_id: model for model in eligible}
         model_id = _request_model_id(request)
