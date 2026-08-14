@@ -87,7 +87,7 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             if path == "/v1/auth/start":
                 identity = self._require_identity()
                 provider_id = _required_string(body, "provider_id")
-                host, port = self.server.server_address[:2]
+                host, port = _server_endpoint(self.server.server_address)
                 redirect_uri = f"http://{host}:{port}/oauth/callback"
                 started = identity.start(provider_id, redirect_uri)
                 self._send_json(
@@ -260,6 +260,17 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+
+def _server_endpoint(address: tuple[str | bytes, int]) -> tuple[str, int]:
+    host, port = address
+    if not isinstance(host, str):
+        raise DesktopIdentityError("Desktop identity callback host must be text")
+    if host not in {"127.0.0.1", "localhost", "::1"}:
+        raise DesktopIdentityError("Desktop identity callback must remain loopback")
+    if not isinstance(port, int) or isinstance(port, bool) or not 1 <= port <= 65535:
+        raise DesktopIdentityError("Desktop identity callback port is invalid")
+    return host, port
 
 
 def _status_json(status: DesktopAuthStatus) -> dict[str, str | None]:
