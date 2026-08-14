@@ -100,7 +100,7 @@ void main() {
       '/v1/desktop/intent': const ControlPlaneResponse(
         statusCode: 201,
         body:
-            '{"goal_id":"goal-1","job_id":"job-1","state":"PENDING","principal_id":"principal-1","tenant_id":"tenant-1"}',
+            '{"request_id":"exec-1","capability_id":"ilaios.capability.video-media-factory","execution_status":"PENDING_APPROVAL","goal_id":"goal-1","job_id":"job-1","state":"PENDING","principal_id":"principal-1","tenant_id":"tenant-1"}',
       ),
     });
     final client = IdentityClient(
@@ -115,7 +115,7 @@ void main() {
       tenantId: 'tenant-1',
     );
 
-    final submission = await client.submitPrompt('Build a website', session);
+    final submission = await client.submitPrompt('Create a launch video', session);
 
     expect(submission.goalId, 'goal-1');
     expect(submission.jobId, 'job-1');
@@ -123,6 +123,34 @@ void main() {
     expect(request.uri.path, '/v1/desktop/intent');
     expect(request.headers['X-ILAIOS-Session'], 'session-1');
     expect(request.headers['Authorization'], 'Bearer local-transport-token');
+  });
+
+  test('approved execution resumes only through the authenticated session broker', () async {
+    final transport = _FakeTransport(<String, ControlPlaneResponse>{
+      '/v1/execution/resume': const ControlPlaneResponse(
+        statusCode: 200,
+        body:
+            '{"request_id":"exec-1","execution_status":"ACCEPTED","result":{"accepted":true}}',
+      ),
+    });
+    final client = IdentityClient(
+      baseUri: Uri.parse('http://127.0.0.1:43123'),
+      transportToken: 'local-transport-token',
+      transport: transport,
+    );
+    const session = DesktopUserSession(
+      sessionId: 'session-1',
+      providerId: 'google',
+      principalId: 'principal-1',
+      tenantId: 'tenant-1',
+    );
+
+    await client.resumeExecution('exec-1', session);
+
+    final request = transport.requests.single;
+    expect(request.uri.path, '/v1/execution/resume');
+    expect(request.headers['X-ILAIOS-Session'], 'session-1');
+    expect(request.body, jsonEncode(<String, Object?>{'request_id': 'exec-1'}));
   });
 
   test('identity client rejects non-loopback broker endpoints', () {
