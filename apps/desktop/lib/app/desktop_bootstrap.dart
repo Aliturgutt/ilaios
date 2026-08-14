@@ -299,14 +299,15 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
           );
         }
         await identityClient.resumeExecution(requestId, session);
+        if (mounted) {
+          setState(() {
+            _operationalStatus = 'Governance approved; governed execution started';
+          });
+        }
+        unawaited(_monitorExecution(requestId));
+      } else if (mounted) {
+        setState(() => _operationalStatus = 'Governance decision accepted');
       }
-      if (!mounted) return;
-      setState(() {
-        _operationalStatus = decision == GovernanceDecision.approved &&
-                requestId.startsWith('exec-')
-            ? 'Governance approved; governed execution completed'
-            : 'Governance decision accepted';
-      });
       await _refresh();
     } on ControlPlaneClientException catch (error) {
       if (!mounted) return;
@@ -314,6 +315,45 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     } on IdentityClientException catch (error) {
       if (!mounted) return;
       setState(() => _operationalStatus = error.message);
+      await _refresh();
+    }
+  }
+
+  Future<void> _monitorExecution(String requestId) async {
+    final identityClient = _identityClient;
+    final session = _userSession;
+    if (identityClient == null || session == null) return;
+    for (var attempt = 0; attempt < 300; attempt += 1) {
+      await Future<void>.delayed(const Duration(seconds: 1));
+      if (!mounted || _userSession?.sessionId != session.sessionId) return;
+      try {
+        final status = await identityClient.fetchExecutionStatus(
+          requestId,
+          session,
+        );
+        if (status == 'ACCEPTED') {
+          setState(() {
+            _operationalStatus = 'Governed execution accepted; verified delivery ready';
+          });
+          await _refresh();
+          return;
+        }
+        if (status == 'FAILED' || status.startsWith('BLOCKED_')) {
+          setState(() => _operationalStatus = 'Governed execution: $status');
+          await _refresh();
+          return;
+        }
+      } on IdentityClientException catch (error) {
+        if (!mounted) return;
+        setState(() => _operationalStatus = error.message);
+        return;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _operationalStatus =
+            'Execution is still running; continue tracking it in Live Execution';
+      });
       await _refresh();
     }
   }
