@@ -96,7 +96,7 @@ class DesktopRuntime {
     File readyFile,
     String token,
   ) async {
-    const attempts = 100;
+    const attempts = 150;
     for (var attempt = 0; attempt < attempts; attempt += 1) {
       if (await readyFile.exists()) {
         try {
@@ -104,9 +104,23 @@ class DesktopRuntime {
           if (decoded is Map<String, dynamic>) {
             final host = decoded['host'];
             final port = decoded['port'];
-            if (host is String && port is int && port > 0 && port <= 65535) {
+            final identityHost = decoded['identity_host'];
+            final identityPort = decoded['identity_port'];
+            if (host is String &&
+                port is int &&
+                port > 0 &&
+                port <= 65535 &&
+                identityHost is String &&
+                identityPort is int &&
+                identityPort > 0 &&
+                identityPort <= 65535) {
               return ControlPlaneConfig(
                 baseUri: Uri(scheme: 'http', host: host, port: port),
+                identityUri: Uri(
+                  scheme: 'http',
+                  host: identityHost,
+                  port: identityPort,
+                ),
                 token: token,
               );
             }
