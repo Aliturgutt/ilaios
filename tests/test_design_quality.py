@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, cast
 
 import pytest
@@ -11,6 +12,7 @@ from services.design_quality import (
     NativeDesignStrategyEngine,
 )
 from services.integrations.web_factory import GovernedWebFactory
+from services.runtime import GrantPolicy
 
 parametrize = cast(Callable[..., Callable[[Callable[..., None]], Callable[..., None]]], pytest.mark.parametrize)
 
@@ -74,6 +76,14 @@ def test_design_strategy_is_deterministic() -> None:
     assert first.primary_composition == "technical-flow"
     assert first.mobile_transformation == "reorder-reduce-and-recompose"
     assert engine.fingerprint(first, ("hero", "architecture")).section_sequence == ("hero", "architecture")
+
+
+def test_web_factory_reuses_design_strategy(tmp_path: Path) -> None:
+    factory = GovernedWebFactory(GrantPolicy(), tmp_path)
+    first = factory.plan_design(sample_context())
+    second = factory.plan_design(sample_context())
+    assert first == second
+    assert first.primary_composition == "technical-flow"
 
 
 def test_context_changes_composition() -> None:
