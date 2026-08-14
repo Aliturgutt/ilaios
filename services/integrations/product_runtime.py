@@ -68,9 +68,20 @@ class DurableVideoProductRuntime:
         return connection
 
     def prepare(
-        self, request_id: str, objective: str, *, token: str, now: datetime
+        self,
+        request_id: str,
+        objective: str,
+        *,
+        token: str,
+        now: datetime,
+        requester_id: str = "windows-desktop-user",
+        tenant_id: str | None = None,
+        defer_lease: bool = False,
     ) -> dict[str, object]:
         _require_identity(request_id, "request_id")
+        _require_actor(requester_id, "requester_id")
+        if tenant_id is not None:
+            _require_actor(tenant_id, "tenant_id")
         goal = self._control_plane.create_goal(token, objective)
         job = self._control_plane.create_job(token, goal.goal_id)
         proposal = self._control_plane.create_proposal(
@@ -95,17 +106,24 @@ class DurableVideoProductRuntime:
         self._workflows.add_task(workflow_id, "delivery", max_attempts=1)
         worker_id = f"worker-{request_id}"
         self._scheduler.register(WorkerProfile(worker_id, frozenset({"video"}), 1))
-        lease = self._scheduler.schedule(job.job_id, "video", now=now)
+        lease = None if defer_lease else self._scheduler.schedule(job.job_id, "video", now=now)
+        governance_payload: dict[str, object] = {
+            "goal_id": goal.goal_id,
+            "job_id": job.job_id,
+            "objective": objective,
+        }
+        if tenant_id is not None:
+            governance_payload["tenant_id"] = tenant_id
         self._governance.submit(
             request_id,
-            "windows-desktop-user",
+            requester_id,
             "video-agent",
             "video-chain-v30",
             "video",
-            {"goal_id": goal.goal_id, "job_id": job.job_id, "objective": objective},
+            governance_payload,
             (),
         )
-        lease_json = json.dumps(_lease_json(lease), sort_keys=True)
+        lease_json = "{}" if lease is None else json.dumps(_lease_json(lease), sort_keys=True)
         with self._connect() as connection:
             try:
                 connection.execute(
@@ -129,7 +147,7 @@ class DurableVideoProductRuntime:
             "proposal_id": proposal_id,
             "workflow_id": workflow_id,
             "worker_id": worker_id,
-            "lease": _lease_json(lease),
+            "lease": None if lease is None else _lease_json(lease),
             "status": "pending_independent_approval_and_grant",
         }
 
@@ -137,13 +155,7 @@ class DurableVideoProductRuntime:
         self, request_id: str, grant_id: str, *, token: str, now: datetime
     ) -> dict[str, object]:
         row = self._pending(request_id)
-        lease_raw = cast(dict[str, Any], json.loads(row["lease_json"]))
-        lease = Lease(
-            str(lease_raw["task_id"]),
-            str(lease_raw["worker_id"]),
-            int(lease_raw["fencing_token"]),
-            datetime.fromisoformat(str(lease_raw["expires_at"])),
-        )
+        lease = self._execution_lease(row, now=now)
         self._scheduler.authorize(lease, now=now)
         self._control_plane.transition_job(
             token,
@@ -297,6 +309,39 @@ class DurableVideoProductRuntime:
             raise ProductRuntimeError("product proof is not pending")
         return cast(sqlite3.Row, row)
 
+    def _execution_lease(self, row: sqlite3.Row, *, now: datetime) -> Lease:
+        raw = json.loads(str(row["lease_json"]))
+        if not isinstance(raw, dict):
+            raise ProductRuntimeError("stored product lease is malformed")
+        lease_raw = cast(dict[str, Any], raw)
+        required = {"task_id", "worker_id", "fencing_token", "expires_at"}
+        if not required <= lease_raw.keys():
+            lease = self._scheduler.schedule(str(row["job_id"]), "video", now=now)
+            self._store_lease(str(row["request_id"]), lease)
+            return lease
+        try:
+            lease = Lease(
+                str(lease_raw["task_id"]),
+                str(lease_raw["worker_id"]),
+                int(lease_raw["fencing_token"]),
+                datetime.fromisoformat(str(lease_raw["expires_at"])),
+            )
+        except (TypeError, ValueError) as error:
+            raise ProductRuntimeError("stored product lease is malformed") from error
+        if lease.expires_at <= now:
+            lease = self._scheduler.reschedule_expired(
+                str(row["job_id"]), "video", now=now
+            )
+            self._store_lease(str(row["request_id"]), lease)
+        return lease
+
+    def _store_lease(self, request_id: str, lease: Lease) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                "UPDATE product_proofs SET lease_json = ? WHERE request_id = ?",
+                (json.dumps(_lease_json(lease), sort_keys=True), request_id),
+            )
+
 
 def _lease_json(lease: Lease) -> dict[str, object]:
     return {
@@ -311,5 +356,15 @@ def _require_identity(value: str, field: str) -> None:
     if not value or any(
         character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
         for character in value
+    ):
+        raise ProductRuntimeError(f"invalid {field}")
+
+
+def _require_actor(value: str, field: str) -> None:
+    if (
+        not value
+        or value != value.strip()
+        or len(value) > 512
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
     ):
         raise ProductRuntimeError(f"invalid {field}")
