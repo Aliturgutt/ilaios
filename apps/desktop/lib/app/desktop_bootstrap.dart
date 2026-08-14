@@ -1,15 +1,24 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../control_plane/client.dart';
 import '../control_plane/config.dart';
+import '../control_plane/evidence_record.dart';
+import '../control_plane/local_runtime.dart';
 import '../control_plane/operational_snapshot.dart';
 import '../control_plane/projection.dart';
 import 'desktop_app.dart';
 
 class DesktopBootstrap extends StatefulWidget {
-  const DesktopBootstrap({required this.config, super.key});
+  const DesktopBootstrap({
+    required this.config,
+    this.runtime,
+    super.key,
+  });
 
   final ControlPlaneConfig? config;
+  final DesktopRuntime? runtime;
 
   @override
   State<DesktopBootstrap> createState() => _DesktopBootstrapState();
@@ -28,9 +37,13 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
   void initState() {
     super.initState();
     final config = widget.config;
-    if (config == null) return;
+    if (config == null) {
+      _operationalStatus = widget.runtime?.status ?? 'Control plane configuration unavailable';
+      return;
+    }
     try {
       _client = ControlPlaneClient(baseUri: config.baseUri, token: config.token);
+      _operationalStatus = widget.runtime?.status ?? 'Control plane configured';
       _refresh();
     } on ArgumentError {
       _projection = const ControlPlaneProjection.unavailable(
@@ -38,6 +51,12 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       );
       _operationalStatus = 'Control plane configuration rejected';
     }
+  }
+
+  @override
+  void dispose() {
+    widget.runtime?.dispose();
+    super.dispose();
   }
 
   Future<void> _refresh() async {
@@ -107,6 +126,58 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     }
   }
 
+  Future<PromptSubmission> _submitPrompt(String objective) async {
+    final client = _client;
+    if (client == null) {
+      throw const ControlPlaneClientException('Control plane is unavailable');
+    }
+    final submission = await client.submitPrompt(objective);
+    if (mounted) {
+      setState(() {
+        _operationalStatus =
+            'Accepted ${submission.goalId}; ${submission.jobId} is ${submission.state}';
+      });
+    }
+    await _refresh();
+    return submission;
+  }
+
+  Future<String> _saveArtifact(EvidenceRecord record) async {
+    final client = _client;
+    if (client == null) {
+      throw const ControlPlaneClientException('Control plane is unavailable');
+    }
+    final artifact = await client.fetchVerifiedArtifact(record.artifactDigest);
+    final userProfile = Platform.environment['USERPROFILE']?.trim();
+    final localAppData = Platform.environment['LOCALAPPDATA']?.trim();
+    final rootPath = userProfile?.isNotEmpty == true
+        ? '$userProfile\\Downloads\\ILAIOS'
+        : (localAppData?.isNotEmpty == true
+            ? '$localAppData\\ILAIOS\\Deliveries'
+            : '${Directory.systemTemp.path}\\ILAIOS\\Deliveries');
+    final root = Directory(rootPath);
+    await root.create(recursive: true);
+    final safeExecution = record.executionId.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    final extension = record.action.toLowerCase().contains('video') ? '.mp4' : '.bin';
+    final filename =
+        'ILAIOS-$safeExecution-${artifact.digest.substring(0, 16)}$extension';
+    final output = File('${root.path}\\$filename');
+    if (await output.exists()) {
+      final existing = await output.readAsBytes();
+      if (existing.length != artifact.size) {
+        throw const ControlPlaneClientException(
+          'Existing delivery file conflicts with verified artifact size',
+        );
+      }
+    } else {
+      await output.writeAsBytes(artifact.bytes, flush: true);
+    }
+    if (mounted) {
+      setState(() => _operationalStatus = 'Verified artifact saved');
+    }
+    return output.path;
+  }
+
   Future<void> _decideGovernance(
     String requestId,
     GovernanceDecision decision,
@@ -136,6 +207,8 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       operationalSnapshot: _operationalSnapshot,
       operationalStatus: _operationalStatus,
       approverId: widget.config?.approverId,
+      onPromptSubmit: _client == null ? null : _submitPrompt,
+      onSaveArtifact: _client == null ? null : _saveArtifact,
       onRefreshRequested: _client == null ? null : _refresh,
       onGovernanceDecision:
           _client == null || widget.config?.approverId == null
