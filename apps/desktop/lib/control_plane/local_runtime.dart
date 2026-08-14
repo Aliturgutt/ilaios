@@ -76,8 +76,10 @@ class DesktopRuntime {
         readyFile.path,
       ],
       environment: environment,
-      mode: ProcessStartMode.detachedWithStdio,
+      mode: ProcessStartMode.normal,
     );
+    unawaited(process.stdout.drain<void>());
+    unawaited(process.stderr.drain<void>());
 
     try {
       final config = await _waitForReadiness(readyFile, token);
@@ -87,7 +89,15 @@ class DesktopRuntime {
         process: process,
       );
     } on Object {
-      process.kill();
+      try {
+        await process.stdin.close();
+      } on Object {
+        // Best-effort parent-pipe shutdown before forced termination.
+      }
+      if (!await _waitForExit(process, const Duration(seconds: 2))) {
+        process.kill();
+        await _waitForExit(process, const Duration(seconds: 2));
+      }
       rethrow;
     }
   }
@@ -144,8 +154,63 @@ class DesktopRuntime {
     return base64Url.encode(bytes).replaceAll('=', '');
   }
 
+  static Future<bool> _waitForExit(Process process, Duration timeout) async {
+    try {
+      await process.exitCode.timeout(timeout);
+      return true;
+    } on TimeoutException {
+      return false;
+    }
+  }
+
   void dispose() {
-    _process?.kill();
+    if (_process != null) {
+      unawaited(_shutdownBundledRuntime());
+    }
+  }
+
+  Future<void> _shutdownBundledRuntime() async {
+    final process = _process;
+    final runtimeConfig = config;
+    if (process == null) return;
+
+    final identityUri = runtimeConfig?.identityUri;
+    if (identityUri != null && runtimeConfig != null) {
+      final client = HttpClient();
+      try {
+        final request = await client
+            .postUrl(identityUri.resolve('/v1/runtime/shutdown'))
+            .timeout(const Duration(seconds: 1));
+        request.headers.set(
+          HttpHeaders.authorizationHeader,
+          'Bearer ${runtimeConfig.token}',
+        );
+        request.headers.contentType = ContentType.json;
+        final body = utf8.encode('{}');
+        request.contentLength = body.length;
+        request.add(body);
+        final response = await request.close().timeout(const Duration(seconds: 1));
+        await response.drain<void>().timeout(const Duration(seconds: 1));
+        if (response.statusCode == HttpStatus.accepted &&
+            await _waitForExit(process, const Duration(seconds: 3))) {
+          return;
+        }
+      } on Object {
+        // Parent-pipe EOF and forced termination remain bounded fallbacks.
+      } finally {
+        client.close(force: true);
+      }
+    }
+
+    try {
+      await process.stdin.close();
+    } on Object {
+      // The pipe may already be closed if the sidecar has started exiting.
+    }
+    if (await _waitForExit(process, const Duration(seconds: 3))) return;
+
+    process.kill();
+    await _waitForExit(process, const Duration(seconds: 2));
   }
 }
 
