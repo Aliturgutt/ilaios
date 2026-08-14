@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -17,9 +18,6 @@ void main() {
     expect(sidecar.existsSync(), isTrue, reason: 'Packaged sidecar must exist');
 
     final root = await Directory.systemTemp.createTemp('ilaios-desktop-e2e-');
-    addTearDown(() async {
-      if (await root.exists()) await root.delete(recursive: true);
-    });
     final readyFile = File('${root.path}${Platform.pathSeparator}ready.json');
     const token = 'desktop-e2e-runtime-token';
     final environment = Map<String, String>.from(Platform.environment)
@@ -35,10 +33,28 @@ void main() {
         readyFile.path,
       ],
       environment: environment,
-      mode: ProcessStartMode.detachedWithStdio,
     );
-    addTearDown(() {
+    unawaited(process.stdout.drain<void>());
+    unawaited(process.stderr.drain<void>());
+    addTearDown(() async {
       process.kill();
+      try {
+        await process.exitCode.timeout(const Duration(seconds: 5));
+      } on TimeoutException {
+        process.kill();
+      }
+      for (var attempt = 0; attempt < 30 && await root.exists(); attempt += 1) {
+        try {
+          await root.delete(recursive: true);
+        } on FileSystemException {
+          await Future<void>.delayed(const Duration(milliseconds: 100));
+        }
+      }
+      expect(
+        await root.exists(),
+        isFalse,
+        reason: 'Packaged runtime must release its data directory on shutdown',
+      );
     });
 
     Map<String, dynamic>? ready;
@@ -56,7 +72,7 @@ void main() {
       }
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
-    expect(ready, isNotNull, reason: 'Packaged Desktop runtime must become ready');
+    expect(ready, isNotNull, reason: 'Packaged Desktop runtime must publish readiness');
     final host = ready!['host'];
     final port = ready['port'];
     final identityHost = ready['identity_host'];
@@ -67,16 +83,22 @@ void main() {
     expect(identityPort, isA<int>());
     expect(ready['account_sign_in_configured'], isFalse);
 
-    final client = ControlPlaneClient(
-      baseUri: Uri(scheme: 'http', host: host as String, port: port as int),
-      token: token,
+    final controlPlaneUri = Uri(
+      scheme: 'http',
+      host: host as String,
+      port: port as int,
     );
+    final identityUri = Uri(
+      scheme: 'http',
+      host: identityHost as String,
+      port: identityPort as int,
+    );
+    await _waitForReady(controlPlaneUri.resolve('/health/ready'));
+    await _waitForReady(identityUri.resolve('/health/ready'));
+
+    final client = ControlPlaneClient(baseUri: controlPlaneUri, token: token);
     final identity = IdentityClient(
-      baseUri: Uri(
-        scheme: 'http',
-        host: identityHost as String,
-        port: identityPort as int,
-      ),
+      baseUri: identityUri,
       transportToken: token,
     );
 
@@ -97,4 +119,37 @@ void main() {
     expect(projection.goalCount, 1);
     expect(projection.jobCount, 1);
   }, timeout: const Timeout(Duration(seconds: 60)));
+}
+
+Future<void> _waitForReady(Uri uri) async {
+  final client = HttpClient();
+  try {
+    Object? lastError;
+    for (var attempt = 0; attempt < 150; attempt += 1) {
+      try {
+        final request = await client.getUrl(uri).timeout(
+          const Duration(milliseconds: 500),
+        );
+        final response = await request.close().timeout(
+          const Duration(milliseconds: 500),
+        );
+        final body = await utf8.decoder.bind(response).join();
+        if (response.statusCode == HttpStatus.ok) {
+          final decoded = jsonDecode(body);
+          if (decoded is Map<String, dynamic> && decoded['status'] == 'ready') {
+            return;
+          }
+        }
+        lastError = StateError(
+          'health endpoint returned ${response.statusCode}: $body',
+        );
+      } on Object catch (error) {
+        lastError = error;
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    throw StateError('Runtime never became ready at $uri: $lastError');
+  } finally {
+    client.close(force: true);
+  }
 }
