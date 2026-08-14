@@ -1,10 +1,10 @@
 # ILAIOS Knowledge / RAG — RAG.00 Baseline & Gap Confirmation
 
-**Snapshot date:** 2026-08-15  
-**Repository:** `Aliturgutt/ilaios`  
-**Base branch:** `master`  
-**Base revision:** `99fe389be6e056bc867d8f4123390d58fc4af8e8`  
-**Workstream:** `RAG_KNOWLEDGE`  
+**Snapshot date:** 2026-08-15
+**Repository:** `Aliturgutt/ilaios`
+**Base branch:** `master`
+**Base revision:** `99fe389be6e056bc867d8f4123390d58fc4af8e8`
+**Workstream:** `RAG_KNOWLEDGE`
 **Milestone:** `RAG.00 — Baseline & Gap Confirmation`
 
 ## Decision
