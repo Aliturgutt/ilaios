@@ -5,6 +5,7 @@ from collections.abc import Mapping
 
 import pytest
 
+from src.video_automation.configuration import VideoAutomationPolicy
 from src.video_automation.managed_credit_policy import (
     managed_credit_production_policy,
 )
@@ -97,7 +98,7 @@ def _request(
     )
 
 
-def _policy():
+def _policy() -> VideoAutomationPolicy:
     return managed_credit_production_policy(
         max_cost_per_video=5.0,
         max_daily_cost=50.0,
@@ -224,8 +225,6 @@ def test_unknown_or_free_suffix_seedance_model_is_not_in_managed_paid_allowlist(
 
 
 def test_default_production_policy_still_cannot_be_used_as_paid_credit_policy() -> None:
-    from src.video_automation.configuration import VideoAutomationPolicy
-
     coordinator = ManagedPaidVideoExecutionCoordinator(
         policy=VideoAutomationPolicy.production_default()
     )
