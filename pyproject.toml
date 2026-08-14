@@ -14,3 +14,7 @@ strict = true
 [[tool.mypy.overrides]]
 module = "requests.*"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "jwt.*"
+ignore_missing_imports = true
