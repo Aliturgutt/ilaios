@@ -70,6 +70,13 @@ jobs:
         shell: pwsh
         run: ./tool/build_control_plane_sidecar.ps1
 
+      - name: Packaged Desktop to control-plane E2E
+        working-directory: apps/desktop
+        shell: pwsh
+        env:
+          ILAIOS_E2E_SIDECAR_PATH: ${{ github.workspace }}\apps\desktop\build\windows\x64\runner\Release\ilaios_control_plane.exe
+        run: flutter test e2e/control_plane_e2e_test.dart
+
       - name: Verify release executable metadata and sidecar
         working-directory: apps/desktop
         shell: pwsh
