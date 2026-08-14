@@ -6,13 +6,13 @@ Windows-first Flutter/Dart client for the ILAIOS control plane.
 
 ILAIOS Desktop is a governed client. The backend/control plane remains authoritative for authorization, policy, tenant isolation, governance, scheduling, execution, grants, evidence verification, and critical decisions. The Desktop client may express user intent and explicitly retrieve an already verified delivery, but it does not fabricate capabilities, mint execution authority, select privileged workers/providers, or mark work complete locally.
 
-The client does not accept a client-selected tenant identifier or tenant override. Tenant scope is determined by authenticated backend/control-plane context; Desktop cannot widen or override that scope locally.
+The client does not accept a client-selected tenant identifier or tenant override. Tenant scope comes from the verified ILAIOS session; Desktop cannot widen or override that scope locally.
 
 The client accepts only loopback HTTP control-plane endpoints (`127.0.0.1`, `::1`, or `localhost`). Operational state is cleared when authoritative refresh fails so stale state is not presented as current.
 
 ## Packaged Windows runtime
 
-A production Windows build contains `ilaios_control_plane.exe`, a packaged entrypoint for the canonical Python control plane plus the loopback Desktop identity adapter. The adapter is not a second execution runtime or alternative authority.
+A Windows build contains `ilaios_control_plane.exe`, a packaged composition root for the canonical Python Control Plane plus the loopback Desktop identity adapter and one-prompt execution coordinator. These components share the same canonical governance, scheduler, grants, evidence and finished-product runtime objects; the adapter/coordinator do not create a second Core, runtime, scheduler or factory.
 
 When no trusted external control-plane configuration is supplied, Desktop:
 
@@ -22,7 +22,7 @@ When no trusted external control-plane configuration is supplied, Desktop:
 4. waits for canonical control-plane and identity-adapter readiness; and
 5. connects only after valid loopback endpoints are reported.
 
-The local transport token is passed to the child process through the process environment and is not written to the readiness file or committed to the repository. The bundled child process is stopped when the Desktop bootstrap is disposed.
+The local transport token is passed to the child process through the process environment and is not written to the readiness file or committed to the repository. It is a transport credential, not a human identity. The bundled child process is stopped when the Desktop bootstrap is disposed.
 
 For trusted development/operations, explicit runtime configuration remains supported:
 
@@ -36,23 +36,22 @@ For trusted development/operations, explicit runtime configuration remains suppo
 
 ### Create
 
-`Create` is the one-prompt intake surface. It sends the user's objective to the current authoritative goal endpoint and then creates a durable job bound to that goal. The client does not choose the provider/model/worker and does not interpret a created or pending job as a finished product.
+`Create` is the one-prompt intake surface. Governed product execution is enabled only after a verified account session exists. The Flutter client submits the objective to the loopback identity broker together with the short-lived ILAIOS session identifier; it does not send a client-selected principal or tenant.
 
-The current repository API reality used by Desktop is:
+The broker validates the session and calls the canonical `ExecutionCoordinator` with the authoritative `principal_id` and `tenant_id`. The coordinator creates the durable goal/job/proposal and selects a canonical capability conservatively. Ambiguous or unknown prompts fail closed rather than guessing.
 
-```text
-POST /v1/goals
-POST /v1/jobs
-GET  /v1/jobs/{job_id}
-```
+Current execution-adapter reality in this workstream:
 
-When external account providers are configured, prompt submission first requires a valid ILAIOS Desktop user session and flows through the identity adapter before the adapter forwards the bounded intent to the same canonical control plane.
+- Video/Media Factory: bound to the existing governed `DurableVideoProductRuntime`; it creates governance work and remains `PENDING_APPROVAL` until independent approval is proven.
+- Web, App, Software, Research/Data, Creative/Document, Commerce/Growth, Personal Operations and Security: capability classification exists, but no finished-product execution adapter is claimed here. These requests stop as `BLOCKED_ADAPTER_UNAVAILABLE` after durable goal/job/proposal creation.
 
-The richer project-scoped public API documented in canonical API contracts remains target truth until separately implemented and verified.
+This distinction is intentional. A capability being present in the registry does not prove that a complete one-prompt finished-product adapter exists.
+
+After a coordinator-created high-risk request is independently approved, Desktop explicitly asks the identity broker to resume that same request. The broker revalidates session ownership and the coordinator rechecks durable approval before issuing a bounded execution grant and acquiring a fresh scheduler lease. Submission, approval and execution are therefore separate authority transitions.
 
 ### Live execution, governance and evidence
 
-Existing operational surfaces continue to project authenticated runtime, scheduler, grants, governance, evidence and live-event state. Approval buttons send only an approve/deny decision to the authoritative governance gateway. Secret references are not rendered.
+Existing operational surfaces continue to project authenticated runtime, scheduler, grants, governance, evidence and live-event state. Approval buttons send only an approve/deny decision to the authoritative governance gateway. A coordinator request is resumed only after that durable decision succeeds. Secret references are not rendered.
 
 ### Deliveries
 
@@ -70,7 +69,7 @@ The bundled local control-plane bearer token is only an internal Desktop-to-side
 
 The adapter requires HTTPS provider authority, uses state, nonce and S256 PKCE, verifies signed ID tokens through provider JWKS, validates issuer/audience/token time claims, derives an ILAIOS principal/tenant projection, and issues an in-memory ILAIOS session whose lifetime cannot exceed the verified identity token. Raw identity-provider tokens are not returned to Flutter.
 
-Provider registration is external configuration supplied through `ILAIOS_DESKTOP_OIDC_PROVIDERS_JSON`; no provider client secret is accepted. Google and Microsoft may be configured as native public OIDC clients. Passwordless/email sign-in may be exposed through an approved OIDC identity broker that provides verified email federation. Without approved provider registration, Desktop truthfully reports account sign-in as not configured and does not invent an external identity.
+Provider registration is external configuration supplied through `ILAIOS_DESKTOP_OIDC_PROVIDERS_JSON`; no provider client secret is accepted. Google and Microsoft may be configured as native public OIDC clients. Passwordless/email sign-in may be exposed through an approved OIDC identity broker that provides verified email federation. Without approved provider registration, Desktop truthfully reports account sign-in as not configured and governed one-prompt execution remains disabled; no fallback identity is fabricated.
 
 ## Canonical branding
 
@@ -87,12 +86,11 @@ flutter test
 flutter build windows --release
 ```
 
-The Windows Gate additionally:
+The Windows Gate additionally builds the packaged sidecar and runs a real Dart client against it. With no external OIDC provider configured, that E2E must prove both sides of the boundary: the canonical low-level Control Plane remains reachable, while a fabricated Desktop session cannot use the identity broker to start governed execution.
 
-1. builds the bundled canonical control-plane/identity sidecar;
-2. starts that packaged executable in an isolated temporary data root;
-3. runs a real Dart client → packaged runtime E2E that validates the identity-adapter transport, creates an authoritative goal and job, and reads the job/projection back; and
-4. validates the Desktop executable metadata and sidecar presence.
+`tests/test_execution_coordinator.py` exercises the coordinator against the real durable Control Plane/governance/scheduler/grant/video components. Its delayed-approval case is designed to prove that execution obtains a fresh lease after approval instead of relying on a lease created before a human decision.
+
+These tests are code-level validation requirements. This branch must not be described as verified or production until the exact-head CI/Windows/MSIX gates actually run and pass.
 
 Unsigned MSIX packaging builds the Desktop executable plus bundled control-plane executable, unpacks the result and validates the package structure. The resulting CI package is an internal validation artifact only; it is not a signed or Store-published release.
 
@@ -109,7 +107,8 @@ Microsoft Store publication, account/provider registration, Store certification,
 - Google/Microsoft/passwordless-email account sign-in requires approved provider or broker registration and public client identifiers/configuration.
 - Signed MSIX proof requires real publisher/package identity and protected signing material.
 - Microsoft Store publication requires Partner Center account/submission actions and certification.
-- Factory-specific native executors may have additional packaged-runtime dependencies; their availability must be proven by their own governed capability/release gates rather than inferred from the Desktop shell.
+- Finished-product adapters beyond the currently bound Video/Media path require their own implementation and verification; registry presence alone is not execution proof.
+- Exact-head GitHub CI/Windows/MSIX verification depends on GitHub Actions being able to start repository jobs.
 
 ## Scope
 
