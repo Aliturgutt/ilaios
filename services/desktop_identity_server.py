@@ -15,12 +15,12 @@ from services.desktop_oidc import (
     DesktopAuthStatus,
     DesktopIdentityError,
     DesktopOIDCService,
-    DesktopSession,
 )
 from services.execution_coordinator import (
     ExecutionCoordinator,
     ExecutionCoordinatorError,
 )
+from services.identity import Session
 
 
 class DesktopIdentityHTTPServer(ThreadingHTTPServer):
@@ -197,7 +197,7 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             },
         )
 
-    def _authenticated_session(self) -> DesktopSession:
+    def _authenticated_session(self) -> Session:
         identity = self._require_identity()
         session_id = self.headers.get("X-ILAIOS-Session", "").strip()
         if not session_id:
@@ -205,7 +205,7 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
         return identity.validate_session(session_id)
 
     def _require_execution_owner(
-        self, execution: dict[str, object], session: DesktopSession
+        self, execution: dict[str, object], session: Session
     ) -> None:
         if (
             execution.get("principal_id") != session.principal_id
