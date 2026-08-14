@@ -20,12 +20,12 @@ class LeaseView(Protocol):
     expires_at: datetime
 
 
-class SeriesSchedulingUnavailableError(RuntimeError):
-    """Raised by the runtime adapter when governed scheduling fails closed."""
+class SeriesSchedulingUnavailableError(PermissionError):
+    """Raised by a runtime adapter when governed scheduling fails closed."""
 
 
 class SeriesScheduler(Protocol):
-    """Narrow contract implemented by the existing scheduler adapter."""
+    """Narrow contract implemented by the existing scheduler or its adapter."""
 
     def schedule(
         self,
@@ -80,7 +80,7 @@ class SeriesEpisodeScheduler:
                 SERIES_EPISODE_CAPABILITY,
                 now=now,
             )
-        except SeriesSchedulingUnavailableError:
+        except PermissionError:
             self._state_store.checkpoint_episode(
                 series_id=series_id,
                 episode_id=episode_id,
