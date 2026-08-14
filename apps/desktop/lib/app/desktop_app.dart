@@ -5,6 +5,7 @@ import '../control_plane/evidence_record.dart';
 import '../control_plane/operational_snapshot.dart';
 import '../control_plane/projection.dart';
 import '../features/dashboard/desktop_shell.dart';
+import '../identity/identity_client.dart';
 import 'ilaios_theme.dart';
 
 class IlaiosDesktopApp extends StatelessWidget {
@@ -14,6 +15,11 @@ class IlaiosDesktopApp extends StatelessWidget {
     this.operationalSnapshot = const OperationalSnapshot.unavailable(),
     this.operationalStatus = 'Operational APIs not connected',
     this.approverId,
+    this.identityProviders = const <IdentityProviderOption>[],
+    this.userSession,
+    this.identityStatus = 'Account sign-in is not configured',
+    this.onSignIn,
+    this.onLogout,
     this.onPromptSubmit,
     this.onSaveArtifact,
     this.onRefreshRequested,
@@ -24,6 +30,11 @@ class IlaiosDesktopApp extends StatelessWidget {
   final OperationalSnapshot operationalSnapshot;
   final String operationalStatus;
   final String? approverId;
+  final List<IdentityProviderOption> identityProviders;
+  final DesktopUserSession? userSession;
+  final String identityStatus;
+  final Future<void> Function(String providerId)? onSignIn;
+  final Future<void> Function()? onLogout;
   final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
   final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
   final VoidCallback? onRefreshRequested;
@@ -41,6 +52,11 @@ class IlaiosDesktopApp extends StatelessWidget {
         operationalSnapshot: operationalSnapshot,
         operationalStatus: operationalStatus,
         approverId: approverId,
+        identityProviders: identityProviders,
+        userSession: userSession,
+        identityStatus: identityStatus,
+        onSignIn: onSignIn,
+        onLogout: onLogout,
         onPromptSubmit: onPromptSubmit,
         onSaveArtifact: onSaveArtifact,
         onRefreshRequested: onRefreshRequested,
