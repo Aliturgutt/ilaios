@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -160,4 +161,5 @@ def test_video_execution_waits_for_approval_then_uses_fresh_lease_and_grant(
     assert state["tenant_id"] == tenant_id
     assert scheduler.state()["leases"]
     grant_state = grants.state()
-    assert grant_state["grants"][0]["used_side_effects"] == 1
+    grant_rows = cast(list[dict[str, object]], grant_state["grants"])
+    assert grant_rows[0]["used_side_effects"] == 1
