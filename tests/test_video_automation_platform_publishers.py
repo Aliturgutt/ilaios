@@ -6,6 +6,7 @@ import pytest
 
 from src.video_automation.platform_publishers import (
     InstagramPublisher,
+    OAuthPlatformPublisher,
     PlatformPublishRequest,
     PlatformPublishResponse,
     PlatformPublisherAdapterError,
@@ -47,16 +48,8 @@ def _package(platform: str) -> PlatformPublishingPackage:
     )
 
 
-@pytest.mark.parametrize(
-    ("publisher_type", "platform"),
-    (
-        (YouTubePublisher, "youtube"),
-        (TikTokPublisher, "tiktok"),
-        (InstagramPublisher, "instagram"),
-    ),
-)
-def test_platform_adapter_uses_opaque_oauth_reference_and_exact_artifact(
-    publisher_type, platform: str
+def _assert_platform_adapter(
+    publisher_type: type[OAuthPlatformPublisher], platform: str
 ) -> None:
     transport = _Transport()
     publisher = publisher_type(
@@ -72,6 +65,18 @@ def test_platform_adapter_uses_opaque_oauth_reference_and_exact_artifact(
     assert request.authorization_reference == "oauth-ref-account-001"
     assert request.media_sha256_hex == "a" * 64
     assert "token" not in request.authorization_reference.lower()
+
+
+def test_youtube_adapter_uses_opaque_oauth_reference_and_exact_artifact() -> None:
+    _assert_platform_adapter(YouTubePublisher, "youtube")
+
+
+def test_tiktok_adapter_uses_opaque_oauth_reference_and_exact_artifact() -> None:
+    _assert_platform_adapter(TikTokPublisher, "tiktok")
+
+
+def test_instagram_adapter_uses_opaque_oauth_reference_and_exact_artifact() -> None:
+    _assert_platform_adapter(InstagramPublisher, "instagram")
 
 
 def test_platform_adapter_rejects_cross_platform_package() -> None:
