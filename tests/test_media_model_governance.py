@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from src.media_model_governance import (
@@ -49,11 +51,9 @@ def test_native_promotion_requires_exact_checkpoint_security_and_hardware_eviden
 
 
 def test_native_promotion_rejects_unverified_commercial_compatibility() -> None:
-    candidate = MediaModelManifest(
-        **{
-            **_candidate().__dict__,
-            "commercial_compatibility": CommercialCompatibility.REVIEW_REQUIRED,
-        }
+    candidate = replace(
+        _candidate(),
+        commercial_compatibility=CommercialCompatibility.REVIEW_REQUIRED,
     )
     with pytest.raises(ModelGovernanceError, match="commercial compatibility"):
         promote_to_approved_native(
