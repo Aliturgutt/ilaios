@@ -66,11 +66,10 @@ export default function ProductExperience({ locale }: { locale: Locale }) {
 
   useEffect(() => {
     if (!running) return;
-    if (phase >= c.stages.length - 1) {
-      setRunning(false);
-      return;
-    }
-    const timer = window.setTimeout(() => setPhase(value => value + 1), 620);
+    const timer = window.setTimeout(() => {
+      if (phase >= c.stages.length - 1) setRunning(false);
+      else setPhase(value => value + 1);
+    }, 620);
     return () => window.clearTimeout(timer);
   }, [running, phase, c.stages.length]);
 
