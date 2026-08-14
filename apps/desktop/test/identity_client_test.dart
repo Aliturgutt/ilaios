@@ -125,6 +125,71 @@ void main() {
     expect(request.headers['Authorization'], 'Bearer local-transport-token');
   });
 
+  test('execution approval sends no client-selected approver identity', () async {
+    final transport = _FakeTransport(<String, ControlPlaneResponse>{
+      '/v1/execution/decision': const ControlPlaneResponse(
+        statusCode: 202,
+        body:
+            '{"request_id":"exec-1","execution_status":"EXECUTION_STARTED"}',
+      ),
+    });
+    final client = IdentityClient(
+      baseUri: Uri.parse('http://127.0.0.1:43123'),
+      transportToken: 'local-transport-token',
+      transport: transport,
+    );
+    const session = DesktopUserSession(
+      sessionId: 'approver-session',
+      providerId: 'google',
+      principalId: 'verified-approver',
+      tenantId: 'tenant-1',
+    );
+
+    final status = await client.decideExecution(
+      'exec-1',
+      GovernanceDecision.approved,
+      session,
+    );
+
+    expect(status, 'EXECUTION_STARTED');
+    final request = transport.requests.single;
+    expect(request.uri.path, '/v1/execution/decision');
+    expect(request.headers['X-ILAIOS-Session'], 'approver-session');
+    expect(
+      jsonDecode(request.body!),
+      <String, Object?>{'request_id': 'exec-1', 'decision': 'approved'},
+    );
+  });
+
+  test('execution denial remains terminal without a resume request', () async {
+    final transport = _FakeTransport(<String, ControlPlaneResponse>{
+      '/v1/execution/decision': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{"request_id":"exec-1","execution_status":"DENIED"}',
+      ),
+    });
+    final client = IdentityClient(
+      baseUri: Uri.parse('http://127.0.0.1:43123'),
+      transportToken: 'local-transport-token',
+      transport: transport,
+    );
+    const session = DesktopUserSession(
+      sessionId: 'approver-session',
+      providerId: 'microsoft',
+      principalId: 'verified-approver',
+      tenantId: 'tenant-1',
+    );
+
+    final status = await client.decideExecution(
+      'exec-1',
+      GovernanceDecision.denied,
+      session,
+    );
+
+    expect(status, 'DENIED');
+    expect(transport.requests, hasLength(1));
+  });
+
   test('approved execution resumes asynchronously and status remains session scoped', () async {
     final transport = _FakeTransport(<String, ControlPlaneResponse>{
       '/v1/execution/resume': const ControlPlaneResponse(
