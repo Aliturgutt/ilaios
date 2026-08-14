@@ -1,0 +1,69 @@
+name: Website Production Certification
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - "apps/website/**"
+      - ".github/workflows/website-production-certification.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website-production-certification-master
+  cancel-in-progress: true
+
+jobs:
+  certify-production:
+    name: Exact live-domain browser certification
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout exact master SHA
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install browser certification runtime
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install playwright==1.55.0
+          python -m playwright install --with-deps chromium
+
+      - name: Certify exact production deployment and live browser surfaces
+        env:
+          EXPECTED_SHA: ${{ github.sha }}
+          BASE_URL: https://ilaios.com
+          WWW_URL: https://www.ilaios.com
+          CERTIFICATION_WAIT_SECONDS: "900"
+          CERTIFICATION_ARTIFACT_DIR: artifacts/production-certification
+        run: python apps/website/scripts/production-certification.py
+
+      - name: Publish certification summary
+        if: always()
+        shell: bash
+        run: |
+          if [[ -f artifacts/production-certification/summary.md ]]; then
+            cat artifacts/production-certification/summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "# ILAIOS Production Website Certification" >> "$GITHUB_STEP_SUMMARY"
+            echo "Certification summary was not produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload certification evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ilaios-production-website-certification-${{ github.sha }}
+          path: artifacts/production-certification
+          if-no-files-found: warn
+          retention-days: 30

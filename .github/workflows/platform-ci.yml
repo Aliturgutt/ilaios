@@ -1,17 +1,7 @@
 name: Platform CI
 
 on:
-  pull_request:
-    paths:
-      - "src/**"
-      - "services/**"
-      - "packages/**"
-      - "tests/**"
-      - "docs/governance/**"
-      - "docs/migration/**"
-      - "pyproject.toml"
-      - ".pre-commit-config.yaml"
-      - ".github/workflows/platform-ci.yml"
+  workflow_call:
   push:
     branches: [master]
     paths:
@@ -24,6 +14,7 @@ on:
       - "pyproject.toml"
       - ".pre-commit-config.yaml"
       - ".github/workflows/platform-ci.yml"
+      - ".github/workflows/required-ci-gate.yml"
   workflow_dispatch:
 
 permissions:
@@ -74,7 +65,8 @@ jobs:
         run: |
           mapfile -d '' files < <(git ls-files -z -- \
             src services packages tests docs/governance docs/migration \
-            pyproject.toml .pre-commit-config.yaml .github/workflows/platform-ci.yml)
+            pyproject.toml .pre-commit-config.yaml \
+            .github/workflows/platform-ci.yml .github/workflows/required-ci-gate.yml)
           if ((${#files[@]})); then
             pre-commit run end-of-file-fixer --files "${files[@]}"
           fi
@@ -84,7 +76,8 @@ jobs:
         run: |
           mapfile -d '' files < <(git ls-files -z -- \
             src services packages tests docs/governance docs/migration \
-            pyproject.toml .pre-commit-config.yaml .github/workflows/platform-ci.yml)
+            pyproject.toml .pre-commit-config.yaml \
+            .github/workflows/platform-ci.yml .github/workflows/required-ci-gate.yml)
           if ((${#files[@]})); then
             pre-commit run trailing-whitespace --files "${files[@]}"
           fi
@@ -94,7 +87,8 @@ jobs:
         run: |
           mapfile -d '' files < <(git ls-files -z -- \
             src services packages tests docs/governance docs/migration \
-            pyproject.toml .pre-commit-config.yaml .github/workflows/platform-ci.yml)
+            pyproject.toml .pre-commit-config.yaml \
+            .github/workflows/platform-ci.yml .github/workflows/required-ci-gate.yml)
           if ((${#files[@]})); then
             pre-commit run check-yaml --files "${files[@]}"
           fi
@@ -104,7 +98,8 @@ jobs:
         run: |
           mapfile -d '' files < <(git ls-files -z -- \
             src services packages tests docs/governance docs/migration \
-            pyproject.toml .pre-commit-config.yaml .github/workflows/platform-ci.yml)
+            pyproject.toml .pre-commit-config.yaml \
+            .github/workflows/platform-ci.yml .github/workflows/required-ci-gate.yml)
           if ((${#files[@]})); then
             pre-commit run ruff --files "${files[@]}"
           fi
@@ -114,7 +109,8 @@ jobs:
         run: |
           mapfile -d '' files < <(git ls-files -z -- \
             src services packages tests docs/governance docs/migration \
-            pyproject.toml .pre-commit-config.yaml .github/workflows/platform-ci.yml)
+            pyproject.toml .pre-commit-config.yaml \
+            .github/workflows/platform-ci.yml .github/workflows/required-ci-gate.yml)
           if ((${#files[@]})); then
             pre-commit run mypy --files "${files[@]}"
           fi
