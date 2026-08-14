@@ -78,7 +78,7 @@ jobs:
           persist-credentials: false
 
       - name: Enforce immutable CI bootstrap policy
-        run: python services/software_factory_ci_supply_chain.py --repository-root .
+        run: python -m services.software_factory_ci_supply_chain --repository-root .
 
   platform:
     name: Platform validation
