@@ -109,7 +109,8 @@ for (const match of finalVisualSource.matchAll(/box-shadow\s*:\s*([^;}]+)/gi)) {
     failures.push(`final visual layer reintroduced non-neutral box shadow: ${match[1].trim()}`);
   }
 }
-if (!/body::before\s*\{[^}]*display\s*:\s*none/i.test(adaptiveNative)) {
+const globalAuraDisabled = /body::before\s*(?:,\s*body::after\s*)?\{[^}]*display\s*:\s*none/i.test(adaptiveNative);
+if (!globalAuraDisabled) {
   failures.push("decorative global background grid/auras are not explicitly disabled");
 }
 if (!/\.journey-card::after\s*\{[^}]*display\s*:\s*none/i.test(adaptiveStructures)) {

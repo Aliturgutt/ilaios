@@ -8,7 +8,9 @@
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
-    "test:site": "node scripts/site-quality.mjs"
+    "test:site": "node scripts/site-quality.mjs",
+    "test:design": "node scripts/design-benchmark.mjs",
+    "test:quality": "npm run test:site && npm run test:design"
   },
   "dependencies": {
     "next": "16.2.11",
