@@ -1,9 +1,8 @@
 """Provider-neutral OIDC Authorization Code + PKCE broker for ILAIOS Desktop.
 
-This module converts externally verified OIDC identity into the canonical
-``services.identity`` principal/session model. It never accepts a client secret,
-never trusts unsigned claims, and keeps authorization-code verifiers and local
-sessions in process memory.
+External identity is converted into the canonical ``services.identity``
+principal/session model only after cryptographic OIDC verification. Raw IdP
+credentials remain adapter-owned and are never returned to the Flutter client.
 """
 
 from __future__ import annotations
@@ -14,7 +13,7 @@ import json
 import os
 import re
 import secrets
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, cast
@@ -37,6 +36,7 @@ _PROVIDER_ID = re.compile(r"^[a-z][a-z0-9_-]{1,31}$")
 _ALLOWED_ALGORITHMS = frozenset({"RS256", "PS256", "ES256"})
 _FLOW_LIFETIME = timedelta(minutes=5)
 _SESSION_LIFETIME = timedelta(hours=8)
+VerifierFactory = Callable[["OIDCProviderConfig", str], OIDCTokenVerifier]
 
 
 class DesktopIdentityError(PermissionError):
@@ -85,22 +85,30 @@ class _AuthFlow:
 
 
 class DesktopOIDCService:
-    """Issue short-lived Desktop sessions only after verified OIDC federation."""
+    """Issue short-lived Desktop sessions after verified OIDC federation."""
 
     def __init__(
         self,
         providers: tuple[OIDCProviderConfig, ...],
         *,
         request_session: requests.Session | None = None,
+        verifier_factory: VerifierFactory | None = None,
     ) -> None:
         if len({item.provider_id for item in providers}) != len(providers):
             raise DesktopIdentityError("duplicate Desktop identity provider")
-        self._providers = {item.provider_id: _validate_provider(item) for item in providers}
+        self._providers = {
+            item.provider_id: _validate_provider(item) for item in providers
+        }
         self._flows: dict[str, _AuthFlow] = {}
         self._results: dict[str, DesktopAuthStatus] = {}
         self._session_tenants: dict[str, str] = {}
         self._session_registry = SessionRegistry(_SESSION_LIFETIME)
         self._http = request_session or requests.Session()
+        self._verifier_factory = verifier_factory or (
+            lambda provider, nonce: _PyJwtOIDCTokenVerifier(
+                provider, expected_nonce=nonce
+            )
+        )
 
     @classmethod
     def from_environment(
@@ -116,7 +124,9 @@ class DesktopOIDCService:
         except json.JSONDecodeError as error:
             raise DesktopIdentityError("Desktop OIDC provider JSON is invalid") from error
         if not isinstance(document, list):
-            raise DesktopIdentityError("Desktop OIDC provider configuration must be a list")
+            raise DesktopIdentityError(
+                "Desktop OIDC provider configuration must be a list"
+            )
         providers: list[OIDCProviderConfig] = []
         for item in document:
             if not isinstance(item, dict):
@@ -126,7 +136,9 @@ class DesktopOIDCService:
             if not isinstance(scopes, list) or not all(
                 isinstance(value, str) and value.strip() for value in scopes
             ):
-                raise DesktopIdentityError("Desktop OIDC scopes must be non-empty strings")
+                raise DesktopIdentityError(
+                    "Desktop OIDC scopes must be non-empty strings"
+                )
             providers.append(
                 OIDCProviderConfig(
                     provider_id=_required_text(provider, "provider_id"),
@@ -171,18 +183,19 @@ class DesktopOIDCService:
 
         state = secrets.token_urlsafe(32)
         nonce = secrets.token_urlsafe(32)
-        verifier = secrets.token_urlsafe(64)
-        challenge = _base64url(hashlib.sha256(verifier.encode("ascii")).digest())
+        code_verifier = secrets.token_urlsafe(64)
+        challenge = _base64url(
+            hashlib.sha256(code_verifier.encode("ascii")).digest()
+        )
         expires_at = current + _FLOW_LIFETIME
-        flow = _AuthFlow(
+        self._flows[state] = _AuthFlow(
             provider_id=provider.provider_id,
             state=state,
             nonce=nonce,
-            code_verifier=verifier,
+            code_verifier=code_verifier,
             redirect_uri=redirect_uri,
             expires_at=expires_at,
         )
-        self._flows[state] = flow
         query = urlencode(
             {
                 "response_type": "code",
@@ -223,7 +236,7 @@ class DesktopOIDCService:
                 data={
                     "grant_type": "authorization_code",
                     "client_id": provider.client_id,
-                    "code": code,
+                    "code": code.strip(),
                     "redirect_uri": flow.redirect_uri,
                     "code_verifier": flow.code_verifier,
                 },
@@ -238,9 +251,11 @@ class DesktopOIDCService:
             raise DesktopIdentityError("OIDC token response is malformed")
         encoded_token = payload.get("id_token")
         if not isinstance(encoded_token, str) or not encoded_token:
-            raise DesktopIdentityError("OIDC token response did not contain an ID token")
+            raise DesktopIdentityError(
+                "OIDC token response did not contain an ID token"
+            )
 
-        verifier = _PyJwtOIDCTokenVerifier(provider, expected_nonce=flow.nonce)
+        verifier = self._verifier_factory(provider, flow.nonce)
         principal = AuthenticationBoundary(
             verifier,
             IdentityPolicy(
@@ -249,16 +264,24 @@ class DesktopOIDCService:
                 maximum_session=_SESSION_LIFETIME,
             ),
         ).authenticate(encoded_token, current)
+        verified_expiry = getattr(verifier, "verified_expires_at", None)
+        if not isinstance(verified_expiry, datetime):
+            raise DesktopIdentityError(
+                "OIDC verifier did not bind the local session to token expiry"
+            )
+        remaining = verified_expiry.astimezone(timezone.utc) - current
+        lifetime = min(_SESSION_LIFETIME, remaining)
+        if lifetime <= timedelta(0):
+            raise DesktopIdentityError("verified OIDC token is already expired")
 
         session_id = secrets.token_urlsafe(32)
         session = self._session_registry.issue(
             session_id,
             principal,
             current,
-            _SESSION_LIFETIME,
+            lifetime,
         )
         self._session_tenants[session.session_id] = session.tenant_id
-        display_identity = _verified_email(principal)
         result = DesktopAuthStatus(
             state=state,
             status="authenticated",
@@ -266,7 +289,7 @@ class DesktopOIDCService:
             session_id=session.session_id,
             principal_id=session.principal_id,
             tenant_id=session.tenant_id,
-            display_identity=display_identity,
+            display_identity=_verified_email(principal),
         )
         self._results[state] = result
         return result
@@ -316,11 +339,20 @@ class DesktopOIDCService:
             return self._session_registry.validate(session_id, tenant_id, current)
         except PermissionError as error:
             self._session_tenants.pop(session_id, None)
-            raise DesktopIdentityError("Desktop session is invalid or expired") from error
+            raise DesktopIdentityError(
+                "Desktop session is invalid or expired"
+            ) from error
 
     def logout(self, session_id: str) -> None:
         self._session_registry.revoke_session(session_id)
         self._session_tenants.pop(session_id, None)
+        stale_states = [
+            state
+            for state, result in self._results.items()
+            if result.session_id == session_id
+        ]
+        for state in stale_states:
+            self._results.pop(state, None)
 
     def _purge(self, now: datetime) -> None:
         expired_states = [
@@ -328,7 +360,6 @@ class DesktopOIDCService:
         ]
         for state in expired_states:
             self._flows.pop(state, None)
-        # Completed status is deliberately short-lived and contains no raw tokens.
         if len(self._results) > 100:
             for state in tuple(self._results)[:-100]:
                 self._results.pop(state, None)
@@ -338,6 +369,7 @@ class _PyJwtOIDCTokenVerifier(OIDCTokenVerifier):
     def __init__(self, provider: OIDCProviderConfig, *, expected_nonce: str) -> None:
         self._provider = provider
         self._expected_nonce = expected_nonce
+        self.verified_expires_at: datetime | None = None
 
     def verify(self, encoded_token: str) -> VerifiedOIDCClaims:
         try:
@@ -356,7 +388,9 @@ class _PyJwtOIDCTokenVerifier(OIDCTokenVerifier):
                 algorithms=[algorithm],
                 audience=self._provider.client_id,
                 issuer=self._provider.issuer,
-                options={"require": ["exp", "iat", "iss", "aud", "sub", "nonce"]},
+                options={
+                    "require": ["exp", "iat", "iss", "aud", "sub", "nonce"]
+                },
             )
         except DesktopIdentityError:
             raise
@@ -369,6 +403,7 @@ class _PyJwtOIDCTokenVerifier(OIDCTokenVerifier):
         issuer = _claim_text(claims, "iss")
         issued_at = _claim_time(claims, "iat")
         expires_at = _claim_time(claims, "exp")
+        self.verified_expires_at = expires_at
         tenant_id = "desktop-" + hashlib.sha256(
             f"{issuer}\0{subject}".encode("utf-8")
         ).hexdigest()[:24]
@@ -377,9 +412,13 @@ class _PyJwtOIDCTokenVerifier(OIDCTokenVerifier):
         if isinstance(email, str) and claims.get("email_verified") is True:
             attributes.add(("verified_email", email.strip().casefold()))
         methods = claims.get("amr", [])
-        authentication_methods = frozenset(
-            value for value in methods if isinstance(value, str) and value.strip()
-        ) if isinstance(methods, list) else frozenset()
+        authentication_methods = (
+            frozenset(
+                value for value in methods if isinstance(value, str) and value.strip()
+            )
+            if isinstance(methods, list)
+            else frozenset()
+        )
         return VerifiedOIDCClaims(
             issuer=issuer,
             audience=self._provider.client_id,
@@ -407,7 +446,9 @@ def _validate_provider(provider: OIDCProviderConfig) -> OIDCProviderConfig:
     ):
         parsed = urlparse(value)
         if parsed.scheme != "https" or not parsed.netloc or parsed.fragment:
-            raise DesktopIdentityError(f"Desktop OIDC {name} must be an HTTPS URL")
+            raise DesktopIdentityError(
+                f"Desktop OIDC {name} must be an HTTPS URL"
+            )
     if "openid" not in provider.scopes:
         raise DesktopIdentityError("Desktop OIDC provider must request openid scope")
     return provider
@@ -423,7 +464,9 @@ def _validate_loopback_redirect(value: str) -> None:
         or parsed.query
         or parsed.fragment
     ):
-        raise DesktopIdentityError("Desktop OIDC redirect must be the loopback callback")
+        raise DesktopIdentityError(
+            "Desktop OIDC redirect must be the loopback callback"
+        )
 
 
 def _required_text(document: Mapping[str, Any], name: str) -> str:
@@ -440,7 +483,9 @@ def _base64url(value: bytes) -> str:
 def _utc(value: datetime | None) -> datetime:
     current = value or datetime.now(timezone.utc)
     if current.tzinfo is None or current.utcoffset() is None:
-        raise DesktopIdentityError("Desktop identity timestamps must be timezone-aware")
+        raise DesktopIdentityError(
+            "Desktop identity timestamps must be timezone-aware"
+        )
     return current.astimezone(timezone.utc)
 
 
