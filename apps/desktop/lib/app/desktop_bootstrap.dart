@@ -85,7 +85,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       setState(() {
         _identityProviders = providers;
         _identityStatus = providers.isEmpty
-            ? 'Account sign-in is not configured; local Desktop mode is available'
+            ? 'Account sign-in is not configured; governed execution is disabled'
             : 'Sign in to submit governed work';
       });
     } on IdentityClientException catch (error) {
@@ -218,25 +218,20 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
   }
 
   Future<PromptSubmission> _submitPrompt(String objective) async {
-    final client = _client;
-    if (client == null) {
+    if (_client == null) {
       throw const ControlPlaneClientException('Control plane is unavailable');
     }
-
-    PromptSubmission submission;
-    if (_identityProviders.isNotEmpty) {
-      final identityClient = _identityClient;
-      final session = _userSession;
-      if (identityClient == null || session == null) {
-        throw const IdentityClientException(
-          'Sign in before submitting governed work',
-        );
-      }
-      submission = await identityClient.submitPrompt(objective, session);
-    } else {
-      submission = await client.submitPrompt(objective);
+    final identityClient = _identityClient;
+    final session = _userSession;
+    if (identityClient == null ||
+        _identityProviders.isEmpty ||
+        session == null) {
+      throw const IdentityClientException(
+        'Verified account sign-in is required before governed execution',
+      );
     }
 
+    final submission = await identityClient.submitPrompt(objective, session);
     if (mounted) {
       setState(() {
         _operationalStatus =
@@ -294,20 +289,41 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
         approver: approver,
         decision: decision,
       );
+      if (decision == GovernanceDecision.approved &&
+          requestId.startsWith('exec-')) {
+        final identityClient = _identityClient;
+        final session = _userSession;
+        if (identityClient == null || session == null) {
+          throw const IdentityClientException(
+            'Signed-in requester session is required to resume approved execution',
+          );
+        }
+        await identityClient.resumeExecution(requestId, session);
+      }
       if (!mounted) return;
-      setState(() => _operationalStatus = 'Governance decision accepted');
+      setState(() {
+        _operationalStatus = decision == GovernanceDecision.approved &&
+                requestId.startsWith('exec-')
+            ? 'Governance approved; governed execution completed'
+            : 'Governance decision accepted';
+      });
       await _refresh();
     } on ControlPlaneClientException catch (error) {
       if (!mounted) return;
       setState(() => _operationalStatus = error.message);
+    } on IdentityClientException catch (error) {
+      if (!mounted) return;
+      setState(() => _operationalStatus = error.message);
+      await _refresh();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final signedInRequired = _identityProviders.isNotEmpty;
-    final promptEnabled =
-        _client != null && (!signedInRequired || _userSession != null);
+    final promptEnabled = _client != null &&
+        _identityClient != null &&
+        _identityProviders.isNotEmpty &&
+        _userSession != null;
     return IlaiosDesktopApp(
       projection: _projection,
       operationalSnapshot: _operationalSnapshot,
