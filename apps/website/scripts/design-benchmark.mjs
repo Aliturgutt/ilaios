@@ -7,12 +7,15 @@ const app = path.join(root, "app");
 const nativeCss = await readFile(path.join(app, "adaptive-native.css"), "utf8");
 const structureCss = await readFile(path.join(app, "adaptive-structures.css"), "utf8");
 const mobileCss = await readFile(path.join(app, "mobile-redteam.css"), "utf8");
-const css = `${nativeCss}\n${structureCss}\n${mobileCss}`;
+const canonicalCss = await readFile(path.join(app, "canonical-detail.css"), "utf8");
+const css = `${nativeCss}\n${structureCss}\n${mobileCss}\n${canonicalCss}`;
 const home = await readFile(path.join(app, "HomePage.tsx"), "utf8");
 const product = await readFile(path.join(app, "ProductExperience.tsx"), "utf8");
 const factory = await readFile(path.join(app, "FactoryExplorer.tsx"), "utf8");
+const factoriesPage = await readFile(path.join(app, "FactoriesPage.tsx"), "utf8");
 const spatial = await readFile(path.join(app, "SpatialArchitecture.tsx"), "utf8");
 const systemVisuals = await readFile(path.join(app, "SystemVisuals.tsx"), "utf8");
+const canonicalDetail = await readFile(path.join(app, "CanonicalSystemDetail.tsx"), "utf8");
 const platform = await readFile(path.join(app, "PlatformPage.tsx"), "utf8");
 const capabilities = await readFile(path.join(app, "CapabilitiesPage.tsx"), "utf8");
 const security = await readFile(path.join(app, "SecurityPage.tsx"), "utf8");
@@ -22,6 +25,10 @@ const contact = await readFile(path.join(app, "ContactPage.tsx"), "utf8");
 const about = await readFile(path.join(app, "AboutPage.tsx"), "utf8");
 const chrome = await readFile(path.join(app, "SiteChrome.tsx"), "utf8");
 const layout = await readFile(path.join(app, "layout.tsx"), "utf8");
+const how = await readFile(path.join(app, "how-it-works", "page.tsx"), "utf8");
+const howTr = await readFile(path.join(app, "tr", "how-it-works", "page.tsx"), "utf8");
+const webFactory = await readFile(path.join(app, "factories", "web", "page.tsx"), "utf8");
+const webFactoryTr = await readFile(path.join(app, "tr", "factories", "web", "page.tsx"), "utf8");
 
 const competitors = ["Manus", "Lovable", "Replit", "v0", "Framer", "Devin"];
 const benchmarkQuestions = [
@@ -62,6 +69,7 @@ for (const match of css.matchAll(/box-shadow\s*:\s*([^;}]+)/gi)) {
 }
 
 requireText(layout, "mobile-redteam.css", "mobile correction layer");
+requireText(layout, "canonical-detail.css", "canonical documentation visual layer");
 requireText(home, "ProductExperience", "homepage product visibility");
 requireText(home, "FactoryExplorer", "homepage factory interaction");
 requireText(home, "SpatialArchitecture", "homepage architecture storytelling");
@@ -78,24 +86,31 @@ requireText(factory, "factory-pipeline", "factory pipeline preview");
 requireText(spatial, "onPointerMove", "spatial pointer depth");
 requireText(spatial, "addEventListener(\"scroll\"", "spatial scroll depth");
 
-for (const role of ["governed-execution-diagram", "control-execution-plane-diagram", "factory-lifecycle-diagram", "trust-boundary-diagram"]) {
-  requireText(systemVisuals, role, "canonical system visual role");
-}
-requireText(systemVisuals, "Goal", "governed execution goal node");
-requireText(systemVisuals, "Policy", "governed execution policy node");
-requireText(systemVisuals, "Router", "governed execution router node");
-requireText(systemVisuals, "Validation", "governed execution validation node");
-requireText(systemVisuals, "Evidence", "governed execution evidence node");
-requireText(systemVisuals, "Request", "factory lifecycle request stage");
-requireText(systemVisuals, "Deliver", "factory lifecycle delivery stage");
+for (const role of ["governed-execution-diagram", "control-execution-plane-diagram", "factory-lifecycle-diagram", "trust-boundary-diagram"]) requireText(systemVisuals, role, "canonical system visual role");
+for (const role of ["canonical-request-chain", "admission-routing-runtime", "authorized-knowledge-plane", "checkpoint-bounded-repair", "finops-routing-flow", "capability-maturity-model", "web-factory-full-lifecycle"]) requireText(canonicalDetail, role, "canonical documentation visual role");
+for (const term of ["ExecutionGrant", "RoutingDecision", "Tenant isolation", "Quality floor", "Bounded plan / DAG", "DESIGNED", "DEPLOYED / PRODUCTION", "Browser QA", "Security QA", "Visual QA", "Bounded repair"]) requireText(canonicalDetail, term, "canonical detail coverage");
 
 requireText(platform, "platform-map-layout", "distinct Platform composition");
-requireText(platform, "variant=\"planes\"", "platform control/execution visual");
+requireText(platform, "variant=\"journey\"", "platform identity/request contract visual");
+requireText(platform, "variant=\"knowledge\"", "platform knowledge visual");
 requireText(capabilities, "capability-matrix", "distinct Capabilities composition");
+requireText(capabilities, "variant=\"maturity\"", "capability maturity truth");
+requireText(capabilities, "variant=\"cost\"", "capability FinOps routing truth");
 requireText(security, "trust-gate", "distinct Security composition");
-requireText(security, "variant=\"trust\"", "security trust-boundary visual");
+requireText(security, "variant=\"runtime\"", "security admission/routing visual");
 requireText(architecture, "architecture-primary", "distinct Architecture composition");
-requireText(architecture, "variant=\"execution\"", "architecture execution visual");
+requireText(architecture, "variant=\"runtime\"", "architecture admission/routing detail");
+requireText(architecture, "variant=\"knowledge\"", "architecture knowledge detail");
+requireText(architecture, "variant=\"recovery\"", "architecture recovery detail");
+requireText(factoriesPage, "Cross-factory composition", "cross-factory bounded composition");
+requireText(factoriesPage, "variant=\"knowledge\"", "factories shared knowledge plane");
+requireText(how, "variant=\"journey\"", "English full request chain");
+requireText(how, "variant=\"runtime\"", "English execution runtime chain");
+requireText(how, "variant=\"recovery\"", "English recovery chain");
+requireText(how, "variant=\"cost\"", "English FinOps chain");
+requireText(howTr, "variant=\"journey\"", "Turkish full request chain");
+requireText(webFactory, "variant=\"web\"", "English full Web Factory lifecycle");
+requireText(webFactoryTr, "variant=\"web\"", "Turkish full Web Factory lifecycle");
 requireText(audience, "audience-${audience}", "audience-specific rendered composition class");
 requireText(audience, "Enterprise control", "Enterprise governance composition");
 requireText(audience, "Outcome first", "Individuals outcome composition");
@@ -108,7 +123,6 @@ const requiredVisualRoles = ["interactive-product-demo", "five-step-execution", 
 const combined = [home, product, factory, spatial, contact].join("\n");
 for (const role of requiredVisualRoles) requireText(combined, role, "rendered visual role");
 
-/* P0 mobile source-level invariants. Runtime browser certification remains the rendered truth gate. */
 requireText(mobileCss, "@media (max-width:760px)", "dedicated mobile breakpoint");
 requireText(mobileCss, "grid-template-columns:1fr!important", "mobile one-column recomposition");
 requireText(mobileCss, ".process-rail{display:grid!important;grid-template-columns:1fr!important", "mobile vertical execution timeline");
@@ -118,6 +132,9 @@ requireText(mobileCss, "position:static!important", "mobile overlap neutralizati
 requireText(mobileCss, "min-height:0!important", "mobile auto-height protection");
 requireText(mobileCss, "overflow-x:hidden", "mobile horizontal overflow protection");
 requireText(mobileCss, "@media (prefers-reduced-motion:reduce)", "motion fallback");
+requireText(canonicalCss, "@media(max-width:760px)", "canonical detail mobile breakpoint");
+requireText(canonicalCss, ".canonical-dual{grid-template-columns:1fr", "canonical dual-stack mobile recomposition");
+requireText(canonicalCss, ".canonical-linear{display:grid;grid-template-columns:1fr", "canonical linear mobile timeline");
 
 if (failures.length) {
   console.error("ILAIOS design benchmark gate FAILED");
@@ -128,5 +145,6 @@ if (failures.length) {
 console.log("ILAIOS design benchmark gate PASS");
 console.log(`Benchmarks: ${competitors.join(", ")}`);
 for (const question of benchmarkQuestions) console.log(`- ${question}`);
-console.log("P0 mobile overlap/density invariants are present in the final override layer.");
+console.log("Canonical documentation coverage includes request contracts, admission/routing, knowledge, recovery, FinOps, maturity and the full Web Factory lifecycle.");
+console.log("P0 mobile overlap/density invariants are present in the final override layers.");
 console.log("Manual live-site visual approval remains REQUIRED before the website may be called FINAL.");
