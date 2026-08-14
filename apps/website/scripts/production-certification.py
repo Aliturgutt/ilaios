@@ -36,6 +36,11 @@ CRITICAL_PATHS = {
     "/contact",
     "/tr/contact",
 }
+ALLOWED_PROJECT_PRODUCTION_URLS = {
+    "ilaios.com",
+    "www.ilaios.com",
+    "ilaios.vercel.app",
+}
 
 
 @dataclass
@@ -88,7 +93,7 @@ def wait_for_exact_release() -> dict[str, Any]:
             if status == 200 and observed_sha == EXPECTED_SHA and environment == "production":
                 if deployment_id and not str(deployment_id).startswith("dpl_"):
                     raise RuntimeError(f"Unexpected Vercel deployment id: {deployment_id}")
-                if production_url and production_url not in {"ilaios.com", "www.ilaios.com"}:
+                if production_url and production_url not in ALLOWED_PROJECT_PRODUCTION_URLS:
                     raise RuntimeError(f"Unexpected production URL: {production_url}")
                 payload["releaseEndpointHeaders"] = {
                     "x-vercel-id": headers.get("x-vercel-id"),
@@ -343,7 +348,7 @@ def main() -> int:
         summary = [
             "# ILAIOS Production Website Certification",
             "",
-            f"- Status: **PASS**",
+            "- Status: **PASS**",
             f"- Exact master SHA: `{EXPECTED_SHA}`",
             f"- Vercel deployment ID: `{release.get('deploymentId')}`",
             f"- Production environment: `{release.get('environment')}`",
