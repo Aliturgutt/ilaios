@@ -61,9 +61,9 @@ jobs:
       - name: Install native design test runner
         run: python -m pip install --disable-pip-version-check pytest
 
-      - name: Site policy and metadata checks
+      - name: Site policy, metadata, density and competitor design benchmark
         working-directory: apps/website
-        run: npm run test:site
+        run: npm run test:quality
 
       - name: Lint
         working-directory: apps/website
