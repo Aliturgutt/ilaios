@@ -51,17 +51,20 @@ class MediaObservabilityProjector:
         self._sink = sink
 
     def emit(self, event: MediaOperationalEvent) -> None:
-        attributes = {
+        attributes: dict[str, str] = {
             "tenant_id": event.tenant_id,
             "operation_id": event.operation_id,
             "state": event.state,
         }
-        if event.provider_or_platform is not None:
-            attributes["provider_or_platform"] = event.provider_or_platform
-        if event.artifact_sha256 is not None:
-            attributes["artifact_sha256"] = event.artifact_sha256
-        if event.reason_code is not None:
-            attributes["reason_code"] = event.reason_code
+        provider_or_platform = event.provider_or_platform
+        if provider_or_platform is not None:
+            attributes["provider_or_platform"] = provider_or_platform
+        artifact_sha256 = event.artifact_sha256
+        if artifact_sha256 is not None:
+            attributes["artifact_sha256"] = artifact_sha256
+        reason_code = event.reason_code
+        if reason_code is not None:
+            attributes["reason_code"] = reason_code
         _assert_safe_attributes(attributes)
         self._sink.emit(event.event_name, attributes)
 
