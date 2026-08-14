@@ -13,7 +13,7 @@ from services.software_factory import SoftwareFactoryError
 REQUIRED_SKILL_IDS = (
     "sf-requirements-analysis", "sf-repository-intelligence", "sf-change-impact-analysis",
     "sf-architecture-planning", "sf-implementation-planning", "sf-core-engineering",
-    "sf-backend-engineering", "sf-frontend-engineering", "sf-integration-engineering",
+    "sf-backend-engineering", "sf-frontend-engineering", "sf-windows-desktop", "sf-integration-engineering",
     "sf-database-migration", "sf-api-contract", "sf-test-design", "sf-test-generation",
     "sf-debug-repair", "sf-refactor", "sf-migration", "sf-code-review", "sf-security-review",
     "sf-dependency-governance", "sf-license-provenance", "sf-build", "sf-release-readiness",
@@ -90,7 +90,7 @@ class SkillExecutionResult:
 
 
 class SkillRegistry:
-    """Fail closed unless the complete 24-skill first-party family is valid."""
+    """Fail closed unless the complete 25-skill first-party family is valid."""
     def __init__(self, skills_root: Path) -> None:
         self._root = skills_root.resolve()
         self._packages = self._load_all()
