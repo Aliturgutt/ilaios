@@ -34,11 +34,17 @@ class _Publisher:
         self,
         *,
         platform: str = "youtube",
+        account_id: str = "youtube-account-001",
+        oauth_authorization_ref: str = "oauth://youtube/account-001",
+        required_oauth_scopes: tuple[str, ...] = ("video.upload",),
         observation_status: PublishingExecutionStatus = PublishingExecutionStatus.SUCCEEDED,
         error: Exception | None = None,
         conflicting_package_id: str | None = None,
     ) -> None:
         self._platform = platform
+        self._account_id = account_id
+        self._oauth_authorization_ref = oauth_authorization_ref
+        self._required_oauth_scopes = required_oauth_scopes
         self._observation_status = observation_status
         self._error = error
         self._conflicting_package_id = conflicting_package_id
@@ -51,6 +57,18 @@ class _Publisher:
     @property
     def platform(self) -> str:
         return self._platform
+
+    @property
+    def account_id(self) -> str:
+        return self._account_id
+
+    @property
+    def oauth_authorization_ref(self) -> str:
+        return self._oauth_authorization_ref
+
+    @property
+    def required_oauth_scopes(self) -> tuple[str, ...]:
+        return self._required_oauth_scopes
 
     def publish(self, package: PlatformPublishingPackage) -> PlatformPublishingObservation:
         self.calls += 1
@@ -121,12 +139,13 @@ def _authorization(
     *,
     platform: str = "youtube",
     account_id: str = "youtube-account-001",
+    scopes: tuple[str, ...] = ("video.upload",),
 ) -> PublicationAuthorization:
     return PublicationAuthorization(
         platform=platform,
         account_id=account_id,
         oauth_authorization_ref="oauth://youtube/account-001",
-        scopes=("video.upload",),
+        scopes=scopes,
     )
 
 
@@ -143,6 +162,27 @@ def test_oauth_account_mismatch_blocks_before_any_publication_side_effect(
             package=package,
             product=product,
             authorization=_authorization(account_id="different-account"),
+            publisher=publisher,
+        )
+
+    assert publisher.calls == 0
+    with pytest.raises(PublicationLedgerError, match="does not exist"):
+        ledger.get(package.package_id)
+
+
+def test_missing_required_scope_blocks_before_any_publication_side_effect(
+    tmp_path: Path,
+) -> None:
+    product = _product(tmp_path)
+    package = _package(product)
+    ledger = PublicationSideEffectLedger(tmp_path / "ledger")
+    publisher = _Publisher(required_oauth_scopes=("video.upload", "channel.manage"))
+
+    with pytest.raises(GuardedPublishingError, match="missing required OAuth scopes"):
+        DurablePublishingCoordinator(ledger).publish(
+            package=package,
+            product=product,
+            authorization=_authorization(scopes=("video.upload",)),
             publisher=publisher,
         )
 
@@ -260,9 +300,7 @@ def test_conflicting_response_identity_becomes_ambiguous(tmp_path: Path) -> None
     assert ledger.get(package.package_id).state is PublicationState.AMBIGUOUS
 
 
-def test_observability_flags_ambiguous_and_stale_submitting_without_mutation(
-    tmp_path: Path,
-) -> None:
+def test_observability_flags_stale_submitting_without_mutation(tmp_path: Path) -> None:
     product = _product(tmp_path)
     package = _package(product)
     ledger = PublicationSideEffectLedger(tmp_path / "ledger")
