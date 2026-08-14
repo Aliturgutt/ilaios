@@ -30,15 +30,16 @@ class _Probe:
         self.include_audio = include_audio
 
     def probe(self, path: str | Path) -> MediaProbe:
-        streams: tuple[dict[str, object], ...] = (
-            {"codec_type": "video", "codec_name": "h264"},
-            *(({"codec_type": "audio", "codec_name": "aac"},) if self.include_audio else ()),
-        )
+        streams: list[dict[str, object]] = [
+            {"codec_type": "video", "codec_name": "h264"}
+        ]
+        if self.include_audio:
+            streams.append({"codec_type": "audio", "codec_name": "aac"})
         return MediaProbe(
             path=str(Path(path).resolve()),
             format_name="mp4",
             duration_seconds=self.duration_seconds,
-            streams=streams,
+            streams=tuple(streams),
         )
 
 
