@@ -280,21 +280,37 @@ class ExecutionCoordinator:
             raise ExecutionCoordinatorError("execution request is not awaiting approval")
         if row["tenant_id"] != tenant_id:
             raise ExecutionCoordinatorError("cross-tenant execution approval denied")
+
+        with self._connect() as connection:
+            changed = connection.execute(
+                "UPDATE execution_requests SET status = 'DECIDING', updated_at = ? "
+                "WHERE request_id = ? AND status = 'PENDING_APPROVAL'",
+                (now.isoformat(), request_id),
+            ).rowcount
+        if changed != 1:
+            raise ExecutionCoordinatorError("execution request changed concurrently")
+
         try:
             self._governance.decide(request_id, approver_id, decision)
         except GateError as error:
-            raise ExecutionCoordinatorError(str(error)) from error
-        if decision == "denied":
             with self._connect() as connection:
-                changed = connection.execute(
-                    "UPDATE execution_requests SET status = 'DENIED', updated_at = ? "
-                    "WHERE request_id = ? AND status = 'PENDING_APPROVAL'",
+                connection.execute(
+                    "UPDATE execution_requests SET status = 'PENDING_APPROVAL', "
+                    "updated_at = ? WHERE request_id = ? AND status = 'DECIDING'",
                     (now.isoformat(), request_id),
-                ).rowcount
-            if changed != 1:
-                raise ExecutionCoordinatorError("execution request changed concurrently")
-            return "DENIED"
-        return "APPROVED"
+                )
+            raise ExecutionCoordinatorError(str(error)) from error
+
+        final_status = "APPROVED" if decision == "approved" else "DENIED"
+        with self._connect() as connection:
+            changed = connection.execute(
+                "UPDATE execution_requests SET status = ?, updated_at = ? "
+                "WHERE request_id = ? AND status = 'DECIDING'",
+                (final_status, now.isoformat(), request_id),
+            ).rowcount
+        if changed != 1:
+            raise ExecutionCoordinatorError("execution decision state was lost")
+        return final_status
 
     def resume(
         self,
@@ -308,7 +324,7 @@ class ExecutionCoordinator:
         row = self._request_row(request_id)
         if row["status"] == "ACCEPTED" and row["result_json"] is not None:
             return cast(dict[str, object], json.loads(str(row["result_json"])))
-        if row["status"] != "PENDING_APPROVAL":
+        if row["status"] != "APPROVED":
             raise ExecutionCoordinatorError("execution request is not resumable")
         if (
             row["capability_id"] != _VIDEO
@@ -333,7 +349,7 @@ class ExecutionCoordinator:
         with self._connect() as connection:
             changed = connection.execute(
                 "UPDATE execution_requests SET status = 'EXECUTING', updated_at = ? "
-                "WHERE request_id = ? AND status = 'PENDING_APPROVAL'",
+                "WHERE request_id = ? AND status = 'APPROVED'",
                 (now.isoformat(), request_id),
             ).rowcount
         if changed != 1:
@@ -351,18 +367,20 @@ class ExecutionCoordinator:
             with self._connect() as connection:
                 connection.execute(
                     "UPDATE execution_requests SET status = 'FAILED', updated_at = ? "
-                    "WHERE request_id = ?",
+                    "WHERE request_id = ? AND status = 'EXECUTING'",
                     (now.isoformat(), request_id),
                 )
             raise
 
         serialized = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
         with self._connect() as connection:
-            connection.execute(
+            changed = connection.execute(
                 "UPDATE execution_requests SET status = 'ACCEPTED', result_json = ?, "
-                "updated_at = ? WHERE request_id = ?",
+                "updated_at = ? WHERE request_id = ? AND status = 'EXECUTING'",
                 (serialized, now.isoformat(), request_id),
-            )
+            ).rowcount
+        if changed != 1:
+            raise ExecutionCoordinatorError("execution completion state was lost")
         return manifest
 
     def get(self, request_id: str) -> dict[str, object]:
