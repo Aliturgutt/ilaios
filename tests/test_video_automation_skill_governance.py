@@ -2,13 +2,13 @@ from dataclasses import replace
 
 import pytest
 
-from services.runtime.routing import AgentProfile, RuntimeError, SkillRegistry
-from src.video_automation.video_skill_governance import (
+from services.integrations.video_skill_governance import (
     REQUIRED_VIDEO_SKILL_FAMILIES,
     approve_video_skills,
     runtime_artifact_for_video_skill,
     validate_video_skill,
 )
+from services.runtime.routing import AgentProfile, RuntimeError, SkillRegistry
 from src.video_automation.video_skills import VIDEO_SKILLS
 
 
