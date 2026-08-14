@@ -1,40 +1,52 @@
 # ILAIOS Video Factory lifecycle matrix
 
-Audit baseline: `c68d6d96394359200293eb557e567546c2c8de60` (2026-08-14).
+Truth-sync baseline before this revision: `d1b851ca09dbd8d55eabcb86001cda4d6ef6a151` (2026-08-14), after PR #72 merged.
 
-This matrix separates target truth from current repository reality. A unit test,
-contract, deterministic local render, or synthetic asset never proves production
-provider, perceptual-quality, publishing, or end-to-end acceptance.
+This matrix separates **TARGET TRUTH** from **CURRENT REALITY**. Code, tests, deterministic local media, or CI do not prove credentialed production-provider success, external perceptual review, real social publication, legal rights clearance, production observability, or production end-to-end acceptance. Website/Vercel deployment status is outside Video Factory acceptance; a Vercel quota or `build-rate-limit` signal must not be treated as a Video Platform CI failure.
 
-| Workstream | Target truth | Current reality at baseline | Lifecycle state | Evidence |
+| Workstream | Target truth | Current reality | Lifecycle state | Evidence / remaining proof |
 |---|---|---|---|---|
-| 1. M01-M30 | One canonical dependency-ordered workflow; M30 orchestrates | Implementations and tests exist for all modules | TEST-ACCEPTED; production-unproven | `src/video_automation`, `tests/test_video_automation_*`, `dev/openclaw/evidence/VIDEO.V01`-`VIDEO.V30` |
-| 2. Canonical registries | One capability registry and one video provider registry | Factory capability is in `services/capability_registry.py`; M04 is `ProviderRegistry` | IMPLEMENTED | `tests/test_capability_registry.py`, `tests/test_video_automation_provider_registry.py` |
-| 3. Native skill contracts | Ownable ILAIOS video skills, distinct from agents | Added on this workstream; no second authority | IMPLEMENTED; PR/CI pending | `src/video_automation/video_skills.py` |
-| 4. Native editing | `video.edit.*` immutable operations over registered assets | Contract coverage added; FFmpeg operations pre-exist below orchestration | PARTIAL; production execution evidence absent | `video_skills.py`, `ffmpeg_media_engine.py` |
-| 5. Creative direction | Structured cinematography intent and continuity | Contract added; no learned creative model is claimed | PARTIAL | `CreativeDirection` |
-| 6. Visual QA | Measured visual observations from real decoded media | Technical probes exist; no production perceptual observation evidence | NOT PRODUCTION-ACCEPTED | M21 tests; no real visual QA evidence |
-| 7. Audio and brand QA | Measured audio plus explicit brand checks | Audio processing/content validation exist; independent domain findings added | PARTIAL; real evidence absent | M15/M22 tests, `QaFinding` |
-| 8. Independent final evaluator | Fail closed across visual/audio/brand/technical evidence | Deterministic independent aggregator added | IMPLEMENTED; evidence inputs remain external | `IndependentVideoEvaluator` tests |
-| 9. Selective repair | Target only failed spans/assets with bounded attempts | Bounded controller added; production regeneration not yet evidenced | PARTIAL | `SelectiveRepairController` tests |
-| 10. Production providers/fallback | Real adapters behind M03/M04 and governed deterministic selection | Seedance Ark adapter exists; production credential/API run not evidenced | PARTIAL; production-unproven | provider and Seedance tests |
-| 11. One-prompt composition | Real composition root injects steps into M30 | Control-plane local composition exists; no production one-prompt acceptance | TEST-ACCEPTED only | `services/integrations/video_runtime.py` |
-| 12. Licensing/provenance | Versioned, digest-bound ILAIOS-native skill manifests | Native manifests added; repository-wide distribution review remains separate | IMPLEMENTED; legal release review pending | `VIDEO_SKILLS`, governance provenance audit |
-| 13. Media security/copyright | Sandboxed inputs, size/type/provenance/copyright gates | Path/type/size/provenance admission added; copyright rights evidence still external | PARTIAL | `MediaSecurityPolicy` tests |
-| 14. FinOps/observability | Per-operation costs and quality telemetry without authority duplication | M28 and central telemetry exist; no production video dashboards/SLO evidence | PARTIAL | `cost_control.py`, `services/observability.py` |
-| 15. Thumbnail generation/QA | Content-addressed generation and evaluated output | Request contract added; generation and real QA evidence absent | PARTIAL | `ThumbnailRequest` tests |
-| 16. Social publishing and production E2E | Real platform adapters, post verification, real acceptance evidence | Provider-neutral execution/queue/verification exist; no real platform adapters or production posts evidenced | NOT PRODUCTION-ACCEPTED | M24-M25 tests; no external publication evidence |
+| 1. M01-M30 lifecycle | One canonical dependency-ordered workflow; M30 coordinates the complete chain | M01-M30 implementations/tests/evidence exist; M30 remains the single canonical workflow orchestrator | TEST-ACCEPTED; production-unproven | `src/video_automation`, `tests/test_video_automation_*`, `dev/openclaw/evidence/VIDEO.V01`-`VIDEO.V30` |
+| 2. Canonical registries | One capability registry, one governed SkillRegistry, one Video provider registry | Existing registries are reused; no Video-specific duplicate authority was introduced | IMPLEMENTED / CI-VERIFIED | capability/provider registry tests; `services/integrations/video_skill_governance.py` |
+| 3. ILAIOS-native Video skills | Ownable, digest-bound ILAIOS-native edit/direction/QA/repair/thumbnail/publish capabilities | Native manifests are registered and governed through the existing SkillRegistry | IMPLEMENTED / CI-VERIFIED | `src/video_automation/video_skills.py`; PR #68/#70/#72 CI |
+| 4. Native editing | Governed immutable `video.edit.*` operations over registered media | Real FFmpeg editing exists; exact edit skill authority is validated before mutation | IMPLEMENTED / CI-VERIFIED; production-provider run unproven | `video_editing.py`, `ffmpeg_media_engine.py`, `services/integrations/video_editing.py`; real FFmpeg tests |
+| 5. Creative direction | Structured cinematography, visual intent, pacing, palette, continuity | Native structured direction contract and governance exist; no learned creative model behavior is falsely claimed | IMPLEMENTED contract / CI-VERIFIED; production creative-model quality unproven | `CreativeDirection`; governed cinematography tests |
+| 6. Visual QA | Deterministic signal checks plus independent semantic/perceptual review | Real FFmpeg black/freeze signal QA is implemented and artifact-bound; this revision adds fail-closed external perceptual evidence admission | IMPLEMENTED / CI-VERIFIED foundation; production perceptual evidence pending | `media_signal_quality.py`, `perceptual_review.py`; real FFmpeg signal test; external production review receipt still required |
+| 7. Audio QA | Deterministic signal checks plus independent semantic/perceptual review | Real FFmpeg silence QA is implemented and artifact-bound; this revision adds fail-closed external perceptual evidence admission | IMPLEMENTED / CI-VERIFIED foundation; production perceptual evidence pending | `audio_processing.py`, `media_signal_quality.py`, `perceptual_review.py`; external production review receipt still required |
+| 8. Brand QA | Explicit independent brand criteria and artifact-bound evidence | External human/independent-model evidence can be admitted only with reviewer independence, criteria version/digest, provenance, score/threshold and bounded repair target | IMPLEMENTED / CI-VERIFIED ingress; production brand review pending | `perceptual_review.py`; actual production brand-review evidence still required |
+| 9. Independent final evaluator | Fail closed across VISUAL/AUDIO/BRAND/TECHNICAL observations from the same artifact | Four-domain evaluator, observer/producer/evaluator independence and exact artifact binding are implemented | IMPLEMENTED / CI-VERIFIED | `video_quality.py`, `services/integrations/video_quality.py`, PR #68 |
+| 10. Complete quality composition | Technical + signal + perceptual evidence converge on one existing final acceptance authority | This revision composes exact assembly evidence, technical validation, signal QA, external perceptual evidence, governed four-domain QA and the existing final acceptance coordinator | IMPLEMENTED / CI-VERIFIED foundation; production evidence pending | `services/integrations/video_quality_pipeline.py`; no second acceptance gate |
+| 11. Selective repair | Repair only failed bounded targets with attempt limits and immutable evidence | Repair planning and governed artifact-bound repair execution are implemented; source/output SHA and byte evidence are verified and no-op repair is rejected | IMPLEMENTED / CI-VERIFIED; production regeneration run unproven | `SelectiveRepairController`, `selective_repair_execution.py`, `services/integrations/video_repair.py` |
+| 12. Production providers/fallback | Real provider adapters behind existing routing/registry with governed fallback | Seedance/Ark adapter and provider contracts exist; no credentialed production success/fallback receipt is present in repository evidence | PARTIAL / production-unproven | production API credentials, generation receipt, artifact receipt and fallback evidence required |
+| 13. One-prompt lifecycle | One authenticated prompt reaches completed governed Video delivery | Deterministic local composition crosses M30, FFmpeg rendering, governance, FinOps, evidence and local delivery in tests | TEST-ACCEPTED only | `services/integrations/video_runtime.py`; real provider-to-publication production E2E still required |
+| 14. Licensing/provenance | Versioned ownable native capabilities with traceable source/evidence | Native skill ownership/provenance contracts and artifact evidence bindings exist | IMPLEMENTED code contract; legal/release proof external | repository distribution/license review and release evidence remain external |
+| 15. Media security/copyright | Sandboxed, integrity-checked, provenance-aware media with rights evidence | Path/type/size/SHA/provenance controls exist; new thumbnail/repair/QA paths also fail closed on substitution/symlinks | IMPLEMENTED technical controls; legal rights proof pending | real copyright/license/consent evidence and legal review remain external |
+| 16. FinOps/observability | Per-operation cost/latency/quality telemetry with production SLO evidence | Existing M28/central telemetry and local runtime accounting are implemented | TEST-ACCEPTED; production observability unproven | production dashboards, alerts, cost traces and SLO evidence required |
+| 17. Thumbnail generation/QA | Content-addressed generation plus evaluated production output | Real FFmpeg thumbnail generation is implemented, exact-source bound, governed and CI-tested; optional text is file-fed rather than shell-interpolated | IMPLEMENTED / CI-VERIFIED generation; production perceptual thumbnail acceptance pending | PR #70; real FFmpeg thumbnail test; production thumbnail review evidence required |
+| 18. Social publishing | Governed real platform publication with post verification | Provider-neutral packaging/execution exists and `video.publish.social` authority is checked before external side effects | IMPLEMENTED boundary / CI-VERIFIED; production publication unproven | real platform adapters/credentials, account identity, post IDs/URLs and receipts required |
 
-## Baseline validation observation
+## Exact CI evidence already merged
 
-The repository suite began successfully but the local real-video control-plane test
-could not execute because this machine had no `ffmpeg`/`ffprobe` executable. This is
-an environment blocker, not production evidence and not a reason to weaken or skip
-the test. The exact failing test was
-`test_real_local_video_crosses_grant_finops_evidence_and_delivery_boundaries`.
+- PR #68: governed four-domain QA foundation merged at `9d6a7cd82b72bf1d2ce8eea0dcc461d517a29484`.
+- PR #70: artifact-bound technical evidence bridge and real FFmpeg thumbnail generation merged at `10dc22ec999a67ebc1bd97f148f94b3500e89df6`; exact-head Platform CI reported **1163 passed / 1 skipped**, Ruff PASS, strict mypy PASS and diff hygiene PASS.
+- PR #72: governed edit/repair/publish boundaries, final-acceptance binding and real FFmpeg visual/audio signal QA merged at `d1b851ca09dbd8d55eabcb86001cda4d6ef6a151`; exact-head Platform CI reported **1186 passed / 1 skipped**, pre-commit PASS, Ruff PASS, strict mypy PASS and diff hygiene PASS.
+
+The exact-head CI for the revision containing this truth-sync must also pass before the new code-level rows above are considered CI-verified.
+
+## Remaining external promotion blockers
+
+The repository can close code/test/CI gaps, but it cannot honestly manufacture external production evidence. Video Factory must remain **production-unproven** until the applicable evidence exists:
+
+1. real Seedance/Ark (or other approved production provider) credentials and successful generation receipts;
+2. real provider fallback execution evidence;
+3. real external VISUAL/AUDIO/BRAND perceptual-review evidence admitted against the exact production artifact;
+4. real social platform credentials/adapters/account identity plus publication IDs/URLs and verification receipts;
+5. copyright/license/consent and legal release evidence for production media;
+6. production cost, latency, availability, quality dashboards/alerts and SLO evidence;
+7. one-prompt, real-provider-to-real-publication production end-to-end acceptance evidence.
+
+Vercel is not one of these Video acceptance gates. Do not consume or force Vercel capacity to certify Video Factory platform work.
 
 ## Promotion rule
 
-Only verified artifacts, provider receipts, publisher observations, admitted
-evidence, required CI checks, and independent QA at the exact revision can advance a
-row. Target descriptions and synthetic TEST-mode results cannot do so.
+A row advances only from observed evidence at the exact revision: code, exact-head required CI, real media artifacts, immutable SHA/provenance records, provider/publisher receipts, independent review evidence, production telemetry and legal/rights evidence as applicable. Target descriptions, synthetic TEST-mode results, stale status prose, website deployment state, or self-certification cannot promote a Video capability to production.
