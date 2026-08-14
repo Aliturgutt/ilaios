@@ -3,7 +3,7 @@
 **Snapshot date:** 2026-08-15  
 **Repository:** `Aliturgutt/ilaios`  
 **Base branch:** `master`  
-**Base revision:** `d13f923a08ad529973d38a3712aefb69bec52369`  
+**Base revision:** `99fe389be6e056bc867d8f4123390d58fc4af8e8`  
 **Workstream:** `RAG_KNOWLEDGE`  
 **Milestone:** `RAG.00 — Baseline & Gap Confirmation`
 
