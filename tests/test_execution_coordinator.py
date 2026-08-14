@@ -104,6 +104,85 @@ def test_unverified_finished_product_adapter_fails_closed(tmp_path: Path) -> Non
         coordinator.resume("exec-web-1", token="token", now=now)
 
 
+def test_execution_decision_requires_independent_same_tenant_approver(
+    tmp_path: Path,
+) -> None:
+    coordinator, _, _, _ = _coordinator(tmp_path)
+    now = datetime(2026, 8, 14, 12, 0, tzinfo=timezone.utc)
+    requester = "oidc|requester@example.test"
+    tenant = "tenant/global-example"
+    coordinator.prepare(
+        "exec-approval-1",
+        "Create a launch video and final MP4",
+        token="token",
+        principal_id=requester,
+        tenant_id=tenant,
+        now=now,
+    )
+
+    with pytest.raises(ExecutionCoordinatorError, match="independent human approver"):
+        coordinator.decide(
+            "exec-approval-1",
+            approver_id=requester,
+            tenant_id=tenant,
+            decision="approved",
+            now=now + timedelta(minutes=1),
+        )
+    with pytest.raises(ExecutionCoordinatorError, match="cross-tenant"):
+        coordinator.decide(
+            "exec-approval-1",
+            approver_id="oidc|approver@example.test",
+            tenant_id="tenant/other",
+            decision="approved",
+            now=now + timedelta(minutes=1),
+        )
+
+    assert coordinator.decide(
+        "exec-approval-1",
+        approver_id="oidc|approver@example.test",
+        tenant_id=tenant,
+        decision="approved",
+        now=now + timedelta(minutes=1),
+    ) == "APPROVED"
+
+
+def test_denial_is_terminal_in_coordinator_and_governance(tmp_path: Path) -> None:
+    coordinator, governance, _, _ = _coordinator(tmp_path)
+    now = datetime(2026, 8, 14, 12, 0, tzinfo=timezone.utc)
+    coordinator.prepare(
+        "exec-denied-1",
+        "Create a product video and final MP4",
+        token="token",
+        principal_id="oidc|requester@example.test",
+        tenant_id="tenant/global-example",
+        now=now,
+    )
+
+    status = coordinator.decide(
+        "exec-denied-1",
+        approver_id="oidc|approver@example.test",
+        tenant_id="tenant/global-example",
+        decision="denied",
+        now=now + timedelta(minutes=1),
+    )
+
+    assert status == "DENIED"
+    assert coordinator.get("exec-denied-1")["execution_status"] == "DENIED"
+    assert governance.state()["work"] == [
+        {
+            "request_id": "exec-denied-1",
+            "requester_id": "oidc|requester@example.test",
+            "status": "denied",
+        }
+    ]
+    with pytest.raises(ExecutionCoordinatorError, match="not resumable"):
+        coordinator.resume(
+            "exec-denied-1",
+            token="token",
+            now=now + timedelta(minutes=2),
+        )
+
+
 def test_video_execution_waits_for_approval_then_uses_fresh_lease_and_grant(
     tmp_path: Path,
 ) -> None:
@@ -139,11 +218,13 @@ def test_video_execution_waits_for_approval_then_uses_fresh_lease_and_grant(
             now=prepared_at + timedelta(minutes=5),
         )
 
-    governance.decide(
+    assert coordinator.decide(
         "exec-video-1",
-        approver="independent-product-owner",
+        approver_id="oidc|independent-product-owner",
+        tenant_id=tenant_id,
         decision="approved",
-    )
+        now=prepared_at + timedelta(minutes=5),
+    ) == "APPROVED"
     manifest = coordinator.resume(
         "exec-video-1",
         token="token",
