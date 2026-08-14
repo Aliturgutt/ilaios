@@ -22,7 +22,7 @@ permissions:
 jobs:
   signed-msix:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     environment: desktop-release-signing
     env:
       ILAIOS_PACKAGE_IDENTITY: ${{ inputs.identity_name }}
@@ -71,6 +71,11 @@ jobs:
       - name: Build Windows release
         working-directory: apps/desktop
         run: flutter build windows --release
+
+      - name: Build bundled control plane
+        working-directory: apps/desktop
+        shell: pwsh
+        run: ./tool/build_control_plane_sidecar.ps1
 
       - name: Build publisher-bound MSIX
         working-directory: apps/desktop
