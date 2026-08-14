@@ -57,7 +57,9 @@ void main() {
       find.byKey(const Key('one-prompt-input')),
       'Build a premium website',
     );
-    await tester.tap(find.byKey(const Key('one-prompt-submit')));
+    final submit = find.byKey(const Key('one-prompt-submit'));
+    await tester.ensureVisible(submit);
+    await tester.tap(submit);
     await tester.pumpAndSettle();
 
     expect(submitted, 'Build a premium website');
