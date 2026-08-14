@@ -1,5 +1,101 @@
 /* ILAIOS native adaptive design layer */
-:root { --radius-ui: 12px; }
-body { background: #0b0f14; }
-.button { border-radius: var(--radius-ui); }
-h1 { font-size: clamp(2.8rem, 5vw, 5.4rem); }
+:root {
+  --bg: #0b0f14;
+  --panel: #10161d;
+  --panel-2: #151c24;
+  --text: #f5f7f8;
+  --muted: #9ca8b3;
+  --line: #27323c;
+  --line-strong: #3a4854;
+  --accent: #00c2d1;
+  --accent-2: #00c2d1;
+  --max: 1240px;
+  --radius-ui: 10px;
+}
+
+html { scroll-padding-top: 88px; }
+body {
+  background: #0b0f14;
+  color: var(--text);
+  font-family: "Sora", "Space Grotesk", "Segoe UI", Arial, sans-serif;
+  letter-spacing: -.006em;
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: -1;
+  opacity: .18;
+  background-image: linear-gradient(rgba(255,255,255,.018) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.018) 1px, transparent 1px);
+  background-size: 72px 72px;
+  mask-image: linear-gradient(to bottom, #000 0, transparent 72vh);
+}
+::selection { background: rgba(0,194,209,.28); color: #fff; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
+
+.shell { width: min(var(--max), calc(100% - 48px)); }
+.site-header { background: rgba(11,15,20,.94); backdrop-filter: blur(12px); border-bottom-color: rgba(255,255,255,.07); }
+.nav { min-height: 72px; }
+.brand { width: 154px; border-radius: 0; }
+
+h1 {
+  max-width: 980px;
+  margin: 14px 0 24px;
+  font-size: clamp(2.8rem, 5vw, 5.35rem);
+  line-height: .98;
+  letter-spacing: -.055em;
+  text-wrap: balance;
+}
+h2 { font-size: clamp(2rem, 3.65vw, 3.25rem); line-height: 1.03; letter-spacing: -.045em; text-wrap: balance; }
+h3 { letter-spacing: -.025em; }
+.lead { max-width: 790px; color: #c3cbd2; font-size: clamp(1.04rem, 1.7vw, 1.24rem); line-height: 1.62; }
+.muted { color: var(--muted); }
+.eyebrow { color: var(--accent); font-size: .7rem; letter-spacing: .16em; font-weight: 750; }
+
+.button {
+  border-radius: var(--radius-ui);
+  padding: 12px 17px;
+  border-color: rgba(255,255,255,.17);
+  transition: transform .16s ease, background .16s ease, border-color .16s ease, color .16s ease;
+}
+.button:hover { transform: translateY(-1px); }
+.button.secondary { background: rgba(255,255,255,.015); }
+.button.secondary:hover { border-color: rgba(0,194,209,.55); background: rgba(0,194,209,.045); }
+.text-link { text-underline-offset: 5px; }
+.text-link:hover { text-decoration: underline; }
+
+.hero {
+  min-height: auto;
+  padding: clamp(72px, 9vw, 124px) 0 clamp(72px, 8vw, 108px);
+  grid-template-columns: minmax(0,1.12fr) minmax(340px,.88fr);
+  gap: clamp(38px, 6vw, 82px);
+  align-items: end;
+}
+.hero-copy { align-self: center; }
+.hero-copy .lead { max-width: 720px; }
+.hero-visual { border-radius: 6px; border: 1px solid rgba(255,255,255,.11); box-shadow: none; background: #0d1218; position: relative; }
+.hero-visual::before {
+  content: "SYSTEM / CONTROLLED EXECUTION";
+  position: absolute;
+  z-index: 2;
+  left: 14px;
+  top: 12px;
+  padding: 5px 8px;
+  background: rgba(11,15,20,.86);
+  border: 1px solid rgba(255,255,255,.12);
+  color: #b8c4cc;
+  font: 700 .62rem/1.2 "Segoe UI", sans-serif;
+  letter-spacing: .13em;
+}
+.hero-visual-link > span { border-radius: 0; left: 0; right: 0; bottom: 0; padding: 13px 15px; background: rgba(8,12,16,.9); border-top: 1px solid rgba(255,255,255,.09); color: #dbe5ea; }
+.quick-links { margin-top: 28px; display: flex; flex-wrap: wrap; gap: 9px 18px; }
+.quick-links a { color: var(--muted); border-bottom: 1px solid transparent; font-size: .88rem; }
+.quick-links a:hover { color: var(--text); border-bottom-color: var(--line-strong); }
+
+.page-hero { padding: clamp(76px, 9vw, 124px) 0 clamp(58px, 6vw, 88px); max-width: 1040px; }
+.section { padding: clamp(68px, 8vw, 112px) 0; border-top: 1px solid rgba(255,255,255,.07); }
+.compact-section { padding: clamp(46px, 5vw, 68px) 0; }
+.architecture-section, .evidence-section { background: rgba(255,255,255,.012); }
+.section-heading { grid-template-columns: minmax(0,1.15fr) minmax(280px,.65fr); gap: clamp(34px, 6vw, 86px); align-items: start; margin-bottom: 44px; }
+.section-heading > p { max-width: 510px; justify-self: end; }
