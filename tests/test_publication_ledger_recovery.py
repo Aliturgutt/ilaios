@@ -87,6 +87,7 @@ def _fixtures(tmp_path: Path) -> tuple[FinishedVideoProduct, PlatformPublishingP
         visibility="private",
         title="Recovery",
         description="Recovery test",
+        tags=(),
     )
     return product, package
 
