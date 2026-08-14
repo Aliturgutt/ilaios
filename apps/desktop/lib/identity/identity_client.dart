@@ -205,6 +205,39 @@ class IdentityClient {
     return PromptSubmission(goalId: goalId, jobId: jobId, state: state);
   }
 
+  Future<String> decideExecution(
+    String requestId,
+    GovernanceDecision decision,
+    DesktopUserSession session,
+  ) async {
+    final normalized = requestId.trim();
+    if (normalized.isEmpty) {
+      throw const IdentityClientException('Execution request is required');
+    }
+    final expectedStatus = decision == GovernanceDecision.approved
+        ? HttpStatus.accepted
+        : HttpStatus.ok;
+    final payload = await _sessionPost(
+      '/v1/execution/decision',
+      <String, Object?>{
+        'request_id': normalized,
+        'decision': decision.name,
+      },
+      'execution decision',
+      session,
+      expectedStatus: expectedStatus,
+    );
+    if (payload['request_id'] != normalized) {
+      throw const IdentityClientException('Execution decision response is malformed');
+    }
+    final status = payload['execution_status'];
+    if (status is! String ||
+        (status != 'EXECUTION_STARTED' && status != 'DENIED')) {
+      throw const IdentityClientException('Execution decision response is malformed');
+    }
+    return status;
+  }
+
   Future<void> resumeExecution(
     String requestId,
     DesktopUserSession session,
