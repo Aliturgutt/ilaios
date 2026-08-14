@@ -22,7 +22,13 @@ class _Backend:
         self.calls = 0
         self.oom = oom
 
-    def generate(self, *, request, manifest, hardware) -> NativeBackendResult:
+    def generate(
+        self,
+        *,
+        request: NativeVideoRequest,
+        manifest: MediaModelManifest,
+        hardware: HardwareProfile,
+    ) -> NativeBackendResult:
         self.calls += 1
         if self.oom:
             raise MemoryError("simulated OOM")
