@@ -73,7 +73,7 @@ void main() {
   });
 
   test('verified artifact retrieval accepts only server-verified payload shape', () async {
-    final digest = 'a' * 64;
+    final digest = List<String>.filled(64, 'a').join();
     final encoded = base64Encode(<int>[1, 2, 3, 4]);
     final transport = _FakeTransport(<String, ControlPlaneResponse>{
       '/v1/evidence/artifacts/$digest': ControlPlaneResponse(
@@ -99,7 +99,7 @@ void main() {
   });
 
   test('artifact retrieval fails closed on inconsistent size', () async {
-    final digest = 'b' * 64;
+    final digest = List<String>.filled(64, 'b').join();
     final transport = _FakeTransport(<String, ControlPlaneResponse>{
       '/v1/evidence/artifacts/$digest': ControlPlaneResponse(
         statusCode: 200,
