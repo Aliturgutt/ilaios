@@ -1,21 +1,21 @@
 """SF-18 CI supply-chain hardening for the governed Software Factory.
 
-The module deliberately uses only the Python standard library so the Required
-CI Gate can validate its own bootstrap surface before installing third-party
-packages.  It audits the critical validation workflows and pre-commit toolchain
-without mutating workflows, retrieving secrets, or granting release authority.
+The audit is bootstrap-safe: it uses only the Python standard library so the
+Required CI Gate can validate its own dependency/action surface before
+third-party Python packages are installed.  It is read-only and grants no
+release, promotion, deployment, production, or repository-mutation authority.
 """
 
 from __future__ import annotations
 
 import argparse
+import hashlib
+import json
 import re
 from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 from typing import Iterable
-
-from src.core.validation_pipeline import canonical_sha256
 
 CI_SUPPLY_CHAIN_CONTRACT_VERSION = "1.0.0"
 CRITICAL_WORKFLOWS = (
@@ -33,6 +33,7 @@ _REQUIREMENT = re.compile(r"^[A-Za-z0-9_.-]+==[^=\s]+$")
 _UNTRUSTED_RUN_INTERPOLATION = re.compile(
     r"\$\{\{\s*github\.event\.pull_request\.(?:title|body|head\.label)\s*\}\}"
 )
+_EXACT_CHECKOUT_REF = "github.event.pull_request.head.sha || github.sha"
 
 
 class CIHardeningSeverity(str, Enum):
@@ -198,7 +199,7 @@ class SoftwareFactoryCISupplyChainHardening:
             deployment_authorized=False,
             production_applied=False,
             subject_mutated=False,
-            report_sha256=canonical_sha256(material),
+            report_sha256=_canonical_sha256(material),
         )
 
     def _audit_workflow(
@@ -266,8 +267,8 @@ class SoftwareFactoryCISupplyChainHardening:
         for index, line in enumerate(lines):
             if "uses: actions/checkout@" not in line:
                 continue
-            window = "\n".join(lines[index : index + 12])
-            if "persist-credentials: false" not in window:
+            block = self._step_block(lines, index)
+            if "persist-credentials: false" not in block:
                 findings.append(
                     self._finding(
                         "SF18-CHECKOUT-CREDENTIALS",
@@ -275,7 +276,7 @@ class SoftwareFactoryCISupplyChainHardening:
                         "checkout must disable persisted repository credentials",
                     )
                 )
-            if "github.event.pull_request.head.sha || github.sha" not in window:
+            if _EXACT_CHECKOUT_REF not in block:
                 findings.append(
                     self._finding(
                         "SF18-CHECKOUT-NONEXACT-REF",
@@ -284,6 +285,26 @@ class SoftwareFactoryCISupplyChainHardening:
                     )
                 )
         return tuple(findings)
+
+    @staticmethod
+    def _step_block(lines: list[str], uses_index: int) -> str:
+        """Return only the current action step, never a later checkout step."""
+
+        uses_line = lines[uses_index]
+        uses_indent = len(uses_line) - len(uses_line.lstrip())
+        block = [uses_line]
+        for candidate in lines[uses_index + 1 :]:
+            stripped = candidate.strip()
+            if not stripped:
+                block.append(candidate)
+                continue
+            indent = len(candidate) - len(candidate.lstrip())
+            if indent < uses_indent and (
+                stripped.startswith("- ") or stripped.endswith(":")
+            ):
+                break
+            block.append(candidate)
+        return "\n".join(block)
 
     def _audit_pre_commit(self, text: str) -> tuple[CIHardeningFinding, ...]:
         findings: list[CIHardeningFinding] = []
@@ -371,6 +392,17 @@ class SoftwareFactoryCISupplyChainHardening:
             path=path,
             reason=reason,
         )
+
+
+def _canonical_sha256(value: object) -> str:
+    encoded = json.dumps(
+        value,
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        allow_nan=False,
+    ).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def main(argv: list[str] | None = None) -> int:
