@@ -25,3 +25,8 @@ repos:
         entry: python -m services.software_factory_secret_scanning --repository-root . --staged
         language: system
         pass_filenames: false
+      - id: ilaios-db-migration-safety
+        name: ILAIOS SF-20 DB migration safety
+        entry: python -m services.software_factory_db_migration_safety --repository-root . --staged
+        language: system
+        pass_filenames: false
