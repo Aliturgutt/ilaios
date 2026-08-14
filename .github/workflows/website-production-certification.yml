@@ -46,7 +46,7 @@ jobs:
           WWW_URL: https://www.ilaios.com
           CERTIFICATION_WAIT_SECONDS: "900"
           CERTIFICATION_ARTIFACT_DIR: artifacts/production-certification
-        run: python apps/website/scripts/production-certification.py
+        run: python apps/website/scripts/production-certification-runner.py
 
       - name: Rendered density, interaction and visual-composition gate
         env:
