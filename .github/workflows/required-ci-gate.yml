@@ -50,7 +50,7 @@ jobs:
 
           for file in "${files[@]}"; do
             case "$file" in
-              src/*|services/*|packages/*|tests/*|docs/governance/*|docs/migration/*|pyproject.toml|.pre-commit-config.yaml|.github/requirements/platform-ci.txt|.github/workflows/platform-ci.yml|.github/workflows/required-ci-gate.yml)
+              src/*|services/*|packages/*|tests/*|apps/desktop/*|brand/assets/05-ilaios-app-icon.jpg|docs/governance/*|docs/migration/*|pyproject.toml|.pre-commit-config.yaml|.github/requirements/platform-ci.txt|.github/workflows/platform-ci.yml|.github/workflows/required-ci-gate.yml|.github/workflows/desktop-*.yml)
                 platform=true
                 ;;
             esac
@@ -77,8 +77,12 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
-      - name: Enforce immutable CI bootstrap policy
-        run: python -m services.software_factory_ci_supply_chain --repository-root .
+      - name: Enforce immutable CI bootstrap policies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m services.software_factory_ci_supply_chain --repository-root .
+          python -m services.desktop_ci_supply_chain --repository-root .
 
   platform:
     name: Platform validation
