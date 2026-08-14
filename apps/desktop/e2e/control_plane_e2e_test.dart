@@ -3,9 +3,10 @@ import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
+import 'package:ilaios_desktop/identity/identity_client.dart';
 
 void main() {
-  test('packaged Desktop client talks to packaged authoritative control plane', () async {
+  test('packaged Desktop client talks to packaged authoritative runtime', () async {
     final sidecarPath = Platform.environment['ILAIOS_E2E_SIDECAR_PATH'];
     expect(
       sidecarPath,
@@ -22,7 +23,8 @@ void main() {
     final readyFile = File('${root.path}${Platform.pathSeparator}ready.json');
     const token = 'desktop-e2e-runtime-token';
     final environment = Map<String, String>.from(Platform.environment)
-      ..['ILAIOS_CONTROL_PLANE_TOKEN'] = token;
+      ..['ILAIOS_CONTROL_PLANE_TOKEN'] = token
+      ..remove('ILAIOS_DESKTOP_OIDC_PROVIDERS_JSON');
 
     final process = await Process.start(
       sidecar.path,
@@ -54,22 +56,38 @@ void main() {
       }
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
-    expect(ready, isNotNull, reason: 'Packaged control plane must become ready');
+    expect(ready, isNotNull, reason: 'Packaged Desktop runtime must become ready');
     final host = ready!['host'];
     final port = ready['port'];
+    final identityHost = ready['identity_host'];
+    final identityPort = ready['identity_port'];
     expect(host, isA<String>());
     expect(port, isA<int>());
+    expect(identityHost, isA<String>());
+    expect(identityPort, isA<int>());
+    expect(ready['account_sign_in_configured'], isFalse);
 
     final client = ControlPlaneClient(
       baseUri: Uri(scheme: 'http', host: host as String, port: port as int),
       token: token,
     );
+    final identity = IdentityClient(
+      baseUri: Uri(
+        scheme: 'http',
+        host: identityHost as String,
+        port: identityPort as int,
+      ),
+      transportToken: token,
+    );
+
+    final providers = await identity.fetchProviders();
     final submission = await client.submitPrompt(
       'Build a deterministic Desktop E2E validation artifact',
     );
     final job = await client.fetchJob(submission.jobId);
     final projection = await client.fetchProjection();
 
+    expect(providers, isEmpty);
     expect(submission.goalId, startsWith('goal-'));
     expect(submission.jobId, startsWith('job-'));
     expect(submission.state, 'PENDING');
@@ -78,5 +96,5 @@ void main() {
     expect(projection.connected, isTrue);
     expect(projection.goalCount, 1);
     expect(projection.jobCount, 1);
-  }, timeout: const Timeout(Duration(seconds: 45)));
+  }, timeout: const Timeout(Duration(seconds: 60)));
 }
