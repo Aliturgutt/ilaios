@@ -1,9 +1,9 @@
-"""OpenRouter video generation adapters for the canonical Video Factory.
+"""Free-only OpenRouter video generation adapters for ILAIOS Video Factory.
 
-The module implements provider-neutral submit, poll, and generated-asset retrieval
-against OpenRouter's asynchronous ``/api/v1/videos`` API.  It intentionally does
-not select models, bypass the canonical provider registry, perform retries, or
-claim production success without external provider evidence.
+This module implements provider-neutral submit, poll, and generated-asset
+retrieval against OpenRouter's asynchronous video API. The production safety
+policy is intentionally fail-closed: only model IDs ending in ``:free`` may be
+submitted. Paid model IDs are rejected before any network side effect.
 """
 
 from __future__ import annotations
@@ -24,8 +24,10 @@ from .providers import ProviderCapabilities
 
 _DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 _DEFAULT_OPERATION = "video.generate"
-_DEFAULT_PROVIDER_NAME = "openrouter-video"
+_DEFAULT_PROVIDER_NAME = "openrouter-video-free"
 _DEFAULT_RESOLUTION = "480p"
+_FREE_SUFFIX = ":free"
+SEEDANCE_FREE_MODEL_ID = "bytedance/seedance-2.0-fast:free"
 
 
 class OpenRouterVideoProviderError(ValueError):
@@ -64,7 +66,7 @@ class OpenRouterByteResponse:
 
 
 class OpenRouterTransport(Protocol):
-    """Injectable HTTP transport for deterministic OpenRouter adapter tests."""
+    """Injectable HTTP transport for deterministic adapter tests."""
 
     def post_json(
         self,
@@ -96,7 +98,7 @@ class OpenRouterTransport(Protocol):
 
 
 class UrllibOpenRouterTransport:
-    """Standard-library HTTPS transport for the OpenRouter video API."""
+    """Standard-library HTTPS transport for OpenRouter video endpoints."""
 
     def post_json(
         self,
@@ -164,7 +166,7 @@ class UrllibOpenRouterTransport:
 
 
 class OpenRouterVideoGenerationProvider:
-    """Submit one provider-neutral Video Factory request to OpenRouter."""
+    """Submit one free-only Video Factory request to OpenRouter."""
 
     def __init__(
         self,
@@ -194,8 +196,12 @@ class OpenRouterVideoGenerationProvider:
         self._capabilities = ProviderCapabilities(
             provider_name=provider_name,
             operations=(_DEFAULT_OPERATION,),
-            is_paid=True,
-            metadata={"backend": "openrouter", "modality": "video"},
+            is_paid=False,
+            metadata={
+                "backend": "openrouter",
+                "modality": "video",
+                "cost_policy": "free_only",
+            },
         )
 
     @property
@@ -203,11 +209,12 @@ class OpenRouterVideoGenerationProvider:
         return self._capabilities
 
     def execute(self, request: ProviderRequest) -> ProviderResult:
-        """Submit exactly one asynchronous OpenRouter video generation job."""
+        """Submit exactly one asynchronous free OpenRouter video job."""
 
         try:
             self._validate_request(request)
             model_id, item = _parse_single_item_payload(request.payload)
+            _require_free_model_id(model_id)
             body = _build_openrouter_request_body(
                 model_id,
                 item,
@@ -239,6 +246,8 @@ class OpenRouterVideoGenerationProvider:
             )
         metadata = {
             "backend": "openrouter",
+            "cost_policy": "free_only",
+            "model_id": model_id,
             "submission_status": _string_or_default(
                 response.payload.get("status"), "accepted"
             ),
@@ -314,7 +323,7 @@ class OpenRouterVideoGenerationJobPoller:
 
 
 class OpenRouterGeneratedAssetRetriever:
-    """Download generated video bytes from OpenRouter's authenticated content endpoint."""
+    """Download video bytes from OpenRouter's authenticated content endpoint."""
 
     def __init__(
         self,
@@ -367,6 +376,16 @@ class OpenRouterGeneratedAssetRetriever:
         )
 
 
+def _require_free_model_id(model_id: str) -> None:
+    """Reject paid/non-explicitly-free model IDs before any provider call."""
+
+    if not model_id.endswith(_FREE_SUFFIX):
+        raise OpenRouterVideoProviderError(
+            "OpenRouter Video Factory policy requires an explicit :free model; "
+            "paid or unpriced model IDs are forbidden"
+        )
+
+
 def _parse_single_item_payload(
     payload: Mapping[str, object],
 ) -> tuple[str, Mapping[str, object]]:
@@ -404,8 +423,7 @@ def _build_openrouter_request_body(
     prompt = _required_string(item, "prompt_text")
     aspect_ratio = _required_string(item, "aspect_ratio")
     duration = _required_integral_duration(item, "duration_seconds")
-    output_count = item.get("output_count")
-    if output_count != 1:
+    if item.get("output_count") != 1:
         raise OpenRouterVideoProviderError(
             "OpenRouter video adapter requires output_count=1 per generation item"
         )
@@ -474,9 +492,7 @@ def _normalize_poll_observation(
         )
 
     if status is ProviderJobStatus.SUCCEEDED:
-        content_url = (
-            f"{base_url}/videos/{quote(provider_job_id, safe='')}/content"
-        )
+        content_url = f"{base_url}/videos/{quote(provider_job_id, safe='')}/content"
         return ProviderJobObservation(
             provider_id=provider_id,
             provider_job_id=provider_job_id,
@@ -543,7 +559,7 @@ def _failure_result(
         success=False,
         error_code=error_code,
         error_message=error_message,
-        metadata={"backend": "openrouter"},
+        metadata={"backend": "openrouter", "cost_policy": "free_only"},
     )
 
 
