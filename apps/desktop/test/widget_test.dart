@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/control_plane/evidence_record.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
+import 'package:ilaios_desktop/identity/identity_client.dart';
 import 'package:ilaios_desktop/main.dart';
 
 const _evidence = EvidenceRecord(
@@ -12,6 +13,18 @@ const _evidence = EvidenceRecord(
   action: 'video.local.rendered',
   previousHash: '',
   recordHash: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+);
+
+const _provider = IdentityProviderOption(
+  providerId: 'google',
+  displayName: 'Google',
+);
+
+const _session = DesktopUserSession(
+  sessionId: 'session-1',
+  providerId: 'google',
+  principalId: 'principal-1',
+  tenantId: 'tenant-1',
 );
 
 void main() {
@@ -29,7 +42,39 @@ void main() {
     expect(find.byKey(const Key('one-prompt-accepted')), findsNothing);
   });
 
-  testWidgets('connected shell submits one prompt without claiming completion', (
+  testWidgets('connected shell still fails closed without account sign-in', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(IlaiosDesktopApp(
+      projection: const ControlPlaneProjection(
+        connected: true,
+        status: 'Connected to authoritative control plane',
+        goalCount: 0,
+        jobCount: 0,
+        lastEvent: null,
+        schemaVersion: '1',
+      ),
+      operationalStatus: 'Operational APIs connected',
+      onPromptSubmit: (_) async => const PromptSubmission(
+        goalId: 'must-not-run',
+        jobId: 'must-not-run',
+        state: 'PENDING',
+      ),
+    ));
+
+    expect(
+      tester
+          .widget<FilledButton>(find.byKey(const Key('one-prompt-submit')))
+          .onPressed,
+      isNull,
+    );
+    expect(
+      find.textContaining('governed execution is disabled'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('signed-in shell submits one prompt without claiming completion', (
     WidgetTester tester,
   ) async {
     String? submitted;
@@ -43,6 +88,8 @@ void main() {
         schemaVersion: '1',
       ),
       operationalStatus: 'Operational APIs connected',
+      identityProviders: const <IdentityProviderOption>[_provider],
+      userSession: _session,
       onPromptSubmit: (objective) async {
         submitted = objective;
         return const PromptSubmission(
@@ -55,19 +102,19 @@ void main() {
 
     await tester.enterText(
       find.byKey(const Key('one-prompt-input')),
-      'Build a premium website',
+      'Create a premium launch video',
     );
     final submit = find.byKey(const Key('one-prompt-submit'));
     await tester.ensureVisible(submit);
     await tester.tap(submit);
     await tester.pumpAndSettle();
 
-    expect(submitted, 'Build a premium website');
+    expect(submitted, 'Create a premium launch video');
     expect(find.byKey(const Key('one-prompt-accepted')), findsOneWidget);
     expect(find.text('Goal: goal-00000003'), findsOneWidget);
     expect(find.text('Job: job-00000006'), findsOneWidget);
     expect(find.text('Authoritative state: PENDING'), findsOneWidget);
-    expect(find.textContaining('does not treat submission as completion'), findsOneWidget);
+    expect(find.textContaining('Submission is not completion'), findsOneWidget);
   });
 
   testWidgets('control center still projects query state and refresh', (
