@@ -37,9 +37,9 @@ def test_provider_circuit_opens_after_failure_threshold_and_survives_restart(
         )
 
 
-def test_open_circuit_becomes_half_open_after_cooldown() -> None:
+def test_open_circuit_becomes_half_open_after_cooldown(tmp_path: Path) -> None:
     store = ProviderHealthStore(
-        Path("/tmp") / "ilaios-provider-health-test-half-open",
+        tmp_path,
         failure_threshold=1,
         cooldown=timedelta(minutes=5),
     )
