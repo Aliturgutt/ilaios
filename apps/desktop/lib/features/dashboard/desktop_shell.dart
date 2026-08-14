@@ -131,6 +131,7 @@ class _DesktopShellState extends State<DesktopShell> {
           snapshot: widget.operationalSnapshot,
           status: widget.operationalStatus,
           approverId: widget.approverId,
+          authenticatedPrincipalId: widget.userSession?.principalId,
           onDecision: widget.onGovernanceDecision,
         ),
     };
