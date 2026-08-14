@@ -123,6 +123,9 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             if path == "/v1/desktop/intent":
                 self._submit_authenticated_intent(body)
                 return
+            if path == "/v1/execution/decision":
+                self._decide_authenticated_execution(body)
+                return
             if path == "/v1/execution/resume":
                 self._resume_authenticated_execution(body)
                 return
@@ -179,18 +182,41 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
         )
         self._send_json(HTTPStatus.CREATED, execution)
 
+    def _decide_authenticated_execution(self, body: dict[str, Any]) -> None:
+        session = self._authenticated_session()
+        request_id = _required_string(body, "request_id")
+        decision = _required_string(body, "decision")
+        status = self.server.coordinator.decide(
+            request_id,
+            approver_id=session.principal_id,
+            tenant_id=session.tenant_id,
+            decision=decision,
+            now=datetime.now(timezone.utc),
+        )
+        if status == "DENIED":
+            self._send_json(
+                HTTPStatus.OK,
+                {
+                    "request_id": request_id,
+                    "execution_status": "DENIED",
+                },
+            )
+            return
+        self._start_execution(request_id)
+        self._send_json(
+            HTTPStatus.ACCEPTED,
+            {
+                "request_id": request_id,
+                "execution_status": "EXECUTION_STARTED",
+            },
+        )
+
     def _resume_authenticated_execution(self, body: dict[str, Any]) -> None:
         session = self._authenticated_session()
         request_id = _required_string(body, "request_id")
         execution = self.server.coordinator.get(request_id)
         self._require_execution_owner(execution, session)
-        thread = threading.Thread(
-            target=self._run_execution,
-            args=(request_id,),
-            name=f"ilaios-execution-{request_id}",
-            daemon=True,
-        )
-        thread.start()
+        self._start_execution(request_id)
         self._send_json(
             HTTPStatus.ACCEPTED,
             {
@@ -198,6 +224,15 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                 "execution_status": "RESUME_REQUESTED",
             },
         )
+
+    def _start_execution(self, request_id: str) -> None:
+        thread = threading.Thread(
+            target=self._run_execution,
+            args=(request_id,),
+            name=f"ilaios-execution-{request_id}",
+            daemon=True,
+        )
+        thread.start()
 
     def _run_execution(self, request_id: str) -> None:
         try:
