@@ -82,6 +82,7 @@ void main() {
     expect(identityHost, isA<String>());
     expect(identityPort, isA<int>());
     expect(ready['account_sign_in_configured'], isFalse);
+    expect(ready['governed_execution_configured'], isFalse);
 
     final controlPlaneUri = Uri(
       scheme: 'http',
@@ -103,13 +104,24 @@ void main() {
     );
 
     final providers = await identity.fetchProviders();
+    expect(providers, isEmpty);
+    const fakeSession = DesktopUserSession(
+      sessionId: 'must-not-be-trusted',
+      providerId: 'none',
+      principalId: 'fake-principal',
+      tenantId: 'fake-tenant',
+    );
+    await expectLater(
+      identity.submitPrompt('Create a launch video', fakeSession),
+      throwsA(isA<IdentityClientException>()),
+    );
+
     final submission = await client.submitPrompt(
-      'Build a deterministic Desktop E2E validation artifact',
+      'Create a low-level Control Plane E2E validation record',
     );
     final job = await client.fetchJob(submission.jobId);
     final projection = await client.fetchProjection();
 
-    expect(providers, isEmpty);
     expect(submission.goalId, startsWith('goal-'));
     expect(submission.jobId, startsWith('job-'));
     expect(submission.state, 'PENDING');
