@@ -12,23 +12,24 @@ The client accepts only loopback HTTP control-plane endpoints (`127.0.0.1`, `::1
 
 ## Packaged Windows runtime
 
-A production Windows build contains `ilaios_control_plane.exe`, a packaged entrypoint for the canonical Python control plane. It is not a second runtime or alternative authority.
+A production Windows build contains `ilaios_control_plane.exe`, a packaged entrypoint for the canonical Python control plane plus the loopback Desktop identity adapter. The adapter is not a second execution runtime or alternative authority.
 
 When no trusted external control-plane configuration is supplied, Desktop:
 
 1. creates a cryptographically strong per-process local bearer token in memory;
-2. starts the bundled control-plane executable on loopback with an ephemeral port;
+2. starts the bundled control-plane executable on loopback with ephemeral ports;
 3. stores durable local control-plane state under the current user's local application-data area;
-4. waits for the canonical readiness file; and
-5. connects only after a valid loopback endpoint is reported.
+4. waits for canonical control-plane and identity-adapter readiness; and
+5. connects only after valid loopback endpoints are reported.
 
-The token is passed to the child process through the process environment and is not written to the readiness file or committed to the repository. The bundled child process is stopped when the Desktop bootstrap is disposed.
+The local transport token is passed to the child process through the process environment and is not written to the readiness file or committed to the repository. The bundled child process is stopped when the Desktop bootstrap is disposed.
 
 For trusted development/operations, explicit runtime configuration remains supported:
 
 - `ILAIOS_CONTROL_PLANE_TOKEN` — bearer token. Do not commit or log this value.
 - `ILAIOS_CONTROL_PLANE_URL` — optional explicit loopback URL, for example `http://127.0.0.1:4123`.
-- `ILAIOS_CONTROL_PLANE_READY_FILE` — optional readiness JSON file containing `host` and `port` when an explicit URL is not supplied.
+- `ILAIOS_CONTROL_PLANE_READY_FILE` — optional readiness JSON file containing runtime endpoints when an explicit URL is not supplied.
+- `ILAIOS_IDENTITY_URL` — optional explicit loopback Desktop identity-adapter URL.
 - `ILAIOS_APPROVER_ID` — optional independent human approver identity. Governance controls remain disabled when it is absent.
 
 ## Product surfaces
@@ -44,6 +45,8 @@ POST /v1/goals
 POST /v1/jobs
 GET  /v1/jobs/{job_id}
 ```
+
+When external account providers are configured, prompt submission first requires a valid ILAIOS Desktop user session and flows through the identity adapter before the adapter forwards the bounded intent to the same canonical control plane.
 
 The richer project-scoped public API documented in canonical API contracts remains target truth until separately implemented and verified.
 
@@ -63,9 +66,11 @@ GET /v1/evidence/artifacts/{sha256}
 
 ## Identity boundary
 
-The current bundled local control-plane token is an internal Desktop-to-sidecar transport credential, not a human Google/Microsoft/email identity and not a tenant authorization substitute. Public account sign-in must be implemented through the canonical identity/session boundary with cryptographically verified federation/session semantics; Desktop must not locally trust unverified IdP claims.
+The bundled local control-plane bearer token is only an internal Desktop-to-sidecar transport credential. Human account sign-in is implemented separately through a provider-neutral OIDC Authorization Code + PKCE adapter that composes the canonical `services.identity` verification/session boundary.
 
-No Google, Microsoft, email/magic-link, Store identity, or external certification is claimed by the existence of the local transport token.
+The adapter requires HTTPS provider authority, uses state, nonce and S256 PKCE, verifies signed ID tokens through provider JWKS, validates issuer/audience/token time claims, derives an ILAIOS principal/tenant projection, and issues an in-memory ILAIOS session whose lifetime cannot exceed the verified identity token. Raw identity-provider tokens are not returned to Flutter.
+
+Provider registration is external configuration supplied through `ILAIOS_DESKTOP_OIDC_PROVIDERS_JSON`; no provider client secret is accepted. Google and Microsoft may be configured as native public OIDC clients. Passwordless/email sign-in may be exposed through an approved OIDC identity broker that provides verified email federation. Without approved provider registration, Desktop truthfully reports account sign-in as not configured and does not invent an external identity.
 
 ## Canonical branding
 
@@ -84,9 +89,9 @@ flutter build windows --release
 
 The Windows Gate additionally:
 
-1. builds the bundled canonical control-plane executable;
+1. builds the bundled canonical control-plane/identity sidecar;
 2. starts that packaged executable in an isolated temporary data root;
-3. runs a real Dart client → packaged control-plane E2E that creates an authoritative goal and job and reads them back; and
+3. runs a real Dart client → packaged runtime E2E that validates the identity-adapter transport, creates an authoritative goal and job, and reads the job/projection back; and
 4. validates the Desktop executable metadata and sidecar presence.
 
 Unsigned MSIX packaging builds the Desktop executable plus bundled control-plane executable, unpacks the result and validates the package structure. The resulting CI package is an internal validation artifact only; it is not a signed or Store-published release.
@@ -97,11 +102,11 @@ For a Windows-local release gate, run `tool/validate_windows_release.ps1` from t
 
 The repository has a fail-closed signed-MSIX workflow, but a signed release is not proven until trusted publisher identity, package identity and signing secrets are deliberately provisioned and that workflow passes for the exact release revision.
 
-Microsoft Store publication, account identity verification, Store certification, restricted-capability approval, privacy/age-rating declarations and external compliance remain separate release dependencies. They must not be inferred from application, Windows Gate or unsigned-MSIX success.
+Microsoft Store publication, account/provider registration, Store certification, restricted-capability approval, privacy/age-rating declarations and external compliance remain separate release dependencies. They must not be inferred from application, Windows Gate or unsigned-MSIX success.
 
 ## Known external/product dependencies
 
-- Public Google/Microsoft/email account sign-in requires an approved identity-provider/broker configuration and verified session integration.
+- Google/Microsoft/passwordless-email account sign-in requires approved provider or broker registration and public client identifiers/configuration.
 - Signed MSIX proof requires real publisher/package identity and protected signing material.
 - Microsoft Store publication requires Partner Center account/submission actions and certification.
 - Factory-specific native executors may have additional packaged-runtime dependencies; their availability must be proven by their own governed capability/release gates rather than inferred from the Desktop shell.
