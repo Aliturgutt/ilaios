@@ -6,17 +6,34 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
-from services.runtime.scheduler import Lease, SchedulingError
-
 from .series_state import EpisodeProgressState, SeriesStateError, SeriesStateStore
 
 SERIES_EPISODE_CAPABILITY = "video.series.episode"
 
 
-class SeriesScheduler(Protocol):
-    """Narrow contract implemented by existing in-memory and durable schedulers."""
+class LeaseView(Protocol):
+    """Minimal lease contract consumed by the Video Factory domain."""
 
-    def schedule(self, task_id: str, capability: str, *, now: datetime) -> Lease: ...
+    task_id: str
+    worker_id: str
+    fencing_token: int
+    expires_at: datetime
+
+
+class SeriesSchedulingUnavailableError(RuntimeError):
+    """Raised by the runtime adapter when governed scheduling fails closed."""
+
+
+class SeriesScheduler(Protocol):
+    """Narrow contract implemented by the existing scheduler adapter."""
+
+    def schedule(
+        self,
+        task_id: str,
+        capability: str,
+        *,
+        now: datetime,
+    ) -> LeaseView: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -25,7 +42,7 @@ class ScheduledSeriesEpisode:
     episode_id: str
     episode_number: int
     task_id: str
-    lease: Lease
+    lease: LeaseView
 
 
 class SeriesEpisodeScheduler:
@@ -63,7 +80,7 @@ class SeriesEpisodeScheduler:
                 SERIES_EPISODE_CAPABILITY,
                 now=now,
             )
-        except SchedulingError:
+        except SeriesSchedulingUnavailableError:
             self._state_store.checkpoint_episode(
                 series_id=series_id,
                 episode_id=episode_id,
