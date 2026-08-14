@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import sys
 from pathlib import Path
 from types import ModuleType
 from typing import Any
@@ -8,11 +9,19 @@ from typing import Any
 
 def load_certification_module() -> ModuleType:
     script_path = Path(__file__).with_name("production-certification.py")
-    spec = importlib.util.spec_from_file_location("ilaios_production_certification", script_path)
+    module_name = "ilaios_production_certification"
+    spec = importlib.util.spec_from_file_location(module_name, script_path)
     if spec is None or spec.loader is None:
         raise RuntimeError(f"Unable to load certification module from {script_path}")
     module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
+    # dataclasses and other runtime introspection expect the module to be
+    # discoverable in sys.modules while its top-level definitions execute.
+    sys.modules[module_name] = module
+    try:
+        spec.loader.exec_module(module)
+    except Exception:
+        sys.modules.pop(module_name, None)
+        raise
     return module
 
 
