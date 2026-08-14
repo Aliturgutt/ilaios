@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hmac
 import json
+import threading
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, cast
@@ -38,6 +39,10 @@ class DesktopIdentityHTTPServer(ThreadingHTTPServer):
         self.control_plane_base_url = control_plane_base_url.rstrip("/")
         self.identity = identity
         self.http = requests.Session()
+
+    def server_close(self) -> None:
+        self.http.close()
+        super().server_close()
 
 
 class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
@@ -84,6 +89,14 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             self._authenticate_transport()
             body = self._read_json()
             path = urlparse(self.path).path
+            if path == "/v1/runtime/shutdown":
+                self._send_json(HTTPStatus.ACCEPTED, {"shutdown": True})
+                threading.Thread(
+                    target=self.server.shutdown,
+                    name="ilaios-desktop-shutdown",
+                    daemon=True,
+                ).start()
+                return
             if path == "/v1/auth/start":
                 identity = self._require_identity()
                 provider_id = _required_string(body, "provider_id")
