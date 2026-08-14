@@ -48,6 +48,12 @@ jobs:
           CERTIFICATION_ARTIFACT_DIR: artifacts/production-certification
         run: python apps/website/scripts/production-certification.py
 
+      - name: Rendered density, interaction and visual-composition gate
+        env:
+          BASE_URL: https://ilaios.com
+          CERTIFICATION_ARTIFACT_DIR: artifacts/production-certification
+        run: python apps/website/scripts/visual-runtime-gate.py
+
       - name: Publish certification summary
         if: always()
         shell: bash
@@ -58,6 +64,15 @@ jobs:
             echo "# ILAIOS Production Website Certification" >> "$GITHUB_STEP_SUMMARY"
             echo "Certification summary was not produced." >> "$GITHUB_STEP_SUMMARY"
           fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f artifacts/production-certification/visual-summary.md ]]; then
+            cat artifacts/production-certification/visual-summary.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "# ILAIOS Rendered Visual QA" >> "$GITHUB_STEP_SUMMARY"
+            echo "Rendered visual summary was not produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "> CI/browser certification never grants final visual approval. The live website remains **NOT FINAL** until the owner explicitly approves the rendered design." >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload certification evidence
         if: always()
