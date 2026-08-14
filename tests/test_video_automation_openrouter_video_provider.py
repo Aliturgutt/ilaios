@@ -5,8 +5,10 @@ from collections.abc import Mapping
 
 import pytest
 
+from src.video_automation.generation_job_polling import ProviderJobStatus
 from src.video_automation.models import ProviderRequest
 from src.video_automation.openrouter_video_provider import (
+    SEEDANCE_FREE_MODEL_ID,
     OpenRouterByteResponse,
     OpenRouterGeneratedAssetRetriever,
     OpenRouterJsonResponse,
@@ -15,7 +17,6 @@ from src.video_automation.openrouter_video_provider import (
     OpenRouterVideoGenerationProvider,
     OpenRouterVideoProviderError,
 )
-from src.video_automation.generation_job_polling import ProviderJobStatus
 
 
 class _Transport(OpenRouterTransport):
@@ -80,9 +81,9 @@ class _Transport(OpenRouterTransport):
 
 def _request(
     *,
-    provider_name: str = "openrouter-video",
+    provider_name: str = "openrouter-video-free",
     operation: str = "video.generate",
-    model_id: str = "bytedance/seedance-2.0-fast",
+    model_id: str = SEEDANCE_FREE_MODEL_ID,
     duration_seconds: float = 4.0,
     resolution: str | None = None,
     output_count: int = 1,
@@ -121,12 +122,13 @@ def _request(
     )
 
 
-def test_capabilities_advertise_video_generation() -> None:
+def test_capabilities_are_explicitly_free_only() -> None:
     provider = OpenRouterVideoGenerationProvider("secret", transport=_Transport())
-    assert provider.capabilities.provider_name == "openrouter-video"
+    assert provider.capabilities.provider_name == "openrouter-video-free"
     assert provider.capabilities.operations == ("video.generate",)
-    assert provider.capabilities.is_paid
+    assert not provider.capabilities.is_paid
     assert provider.capabilities.metadata["backend"] == "openrouter"
+    assert provider.capabilities.metadata["cost_policy"] == "free_only"
 
 
 def test_submit_uses_official_video_endpoint_and_bearer_auth() -> None:
@@ -144,18 +146,45 @@ def test_submit_uses_official_video_endpoint_and_bearer_auth() -> None:
     assert "secret" not in str(result.metadata)
 
 
-def test_submit_maps_seedance_fast_request_with_low_cost_defaults() -> None:
+def test_submit_maps_seedance_free_request_with_free_only_policy() -> None:
     transport = _Transport()
-    OpenRouterVideoGenerationProvider("secret", transport=transport).execute(_request())
+    result = OpenRouterVideoGenerationProvider("secret", transport=transport).execute(
+        _request()
+    )
+    assert result.success
     body = transport.post_calls[0][2]
     assert body == {
-        "model": "bytedance/seedance-2.0-fast",
+        "model": "bytedance/seedance-2.0-fast:free",
         "prompt": "cinematic graphite geometry with cyan light",
         "aspect_ratio": "16:9",
         "duration": 4,
         "resolution": "480p",
         "generate_audio": False,
     }
+    assert result.metadata["cost_policy"] == "free_only"
+    assert result.metadata["model_id"] == SEEDANCE_FREE_MODEL_ID
+
+
+def test_paid_seedance_model_is_rejected_before_network() -> None:
+    transport = _Transport()
+    result = OpenRouterVideoGenerationProvider("secret", transport=transport).execute(
+        _request(model_id="bytedance/seedance-2.0-fast")
+    )
+    assert not result.success
+    assert result.error_code == "invalid_request"
+    assert ":free" in (result.error_message or "")
+    assert transport.post_calls == []
+
+
+def test_any_nonfree_model_is_rejected_before_network() -> None:
+    transport = _Transport()
+    result = OpenRouterVideoGenerationProvider("secret", transport=transport).execute(
+        _request(model_id="provider/video-model")
+    )
+    assert not result.success
+    assert result.error_code == "invalid_request"
+    assert "paid or unpriced model IDs are forbidden" in (result.error_message or "")
+    assert transport.post_calls == []
 
 
 def test_submit_respects_explicit_resolution_and_audio_policy() -> None:
@@ -190,19 +219,19 @@ def test_submit_returns_openrouter_job_id() -> None:
     assert result.metadata["generation_id"] == "gen-001"
 
 
-def test_submit_normalizes_payment_error_without_leaking_key() -> None:
+def test_submit_normalizes_provider_error_without_leaking_key() -> None:
     result = OpenRouterVideoGenerationProvider(
         "secret",
         transport=_Transport(
             post_response=OpenRouterJsonResponse(
-                402,
-                {"error": {"code": 402, "message": "Insufficient credits"}},
+                429,
+                {"error": {"code": 429, "message": "Free model rate limited"}},
             )
         ),
     ).execute(_request())
     assert not result.success
-    assert result.error_code == "402"
-    assert result.error_message == "Insufficient credits"
+    assert result.error_code == "429"
+    assert result.error_message == "Free model rate limited"
     assert "secret" not in str(result)
 
 
@@ -219,7 +248,7 @@ def test_submit_rejects_fractional_duration_before_network() -> None:
 
 def test_submit_rejects_provider_mismatch_and_multiple_outputs() -> None:
     provider = OpenRouterVideoGenerationProvider("secret", transport=_Transport())
-    mismatch = provider.execute(_request(provider_name="volcengine-seedance"))
+    mismatch = provider.execute(_request(provider_name="openrouter-video"))
     assert not mismatch.success
     assert mismatch.error_code == "invalid_request"
     outputs = provider.execute(_request(output_count=2))
@@ -229,7 +258,10 @@ def test_submit_rejects_provider_mismatch_and_multiple_outputs() -> None:
 
 def test_poller_maps_pending_and_completed_states() -> None:
     pending_transport = _Transport(
-        get_response=OpenRouterJsonResponse(200, {"id": "job-001", "status": "pending"})
+        get_response=OpenRouterJsonResponse(
+            200,
+            {"id": "job-001", "status": "pending"},
+        )
     )
     pending = OpenRouterVideoGenerationJobPoller(
         "secret",
@@ -245,7 +277,7 @@ def test_poller_maps_pending_and_completed_states() -> None:
                 "id": "job-001",
                 "status": "completed",
                 "generation_id": "gen-001",
-                "usage": {"cost": 0.25},
+                "usage": {"cost": 0},
             },
         )
     )
@@ -258,7 +290,7 @@ def test_poller_maps_pending_and_completed_states() -> None:
         "https://openrouter.ai/api/v1/videos/job-001/content",
     )
     assert completed.metadata["generation_id"] == "gen-001"
-    assert completed.metadata["usage_json"] == '{"cost":0.25}'
+    assert completed.metadata["usage_json"] == '{"cost":0}'
 
 
 def test_poller_maps_failure_and_rejects_unknown_status() -> None:
@@ -270,13 +302,16 @@ def test_poller_maps_failure_and_rejects_unknown_status() -> None:
                 {
                     "id": "job-001",
                     "status": "failed",
-                    "error": {"code": "upstream_failed", "message": "generation failed"},
+                    "error": {
+                        "code": "free_capacity_unavailable",
+                        "message": "generation failed",
+                    },
                 },
             )
         ),
     ).poll("job-001")
     assert failed.status is ProviderJobStatus.FAILED
-    assert failed.error_code == "upstream_failed"
+    assert failed.error_code == "free_capacity_unavailable"
     assert failed.error_message == "generation failed"
 
     with pytest.raises(OpenRouterVideoProviderError, match="unsupported OpenRouter"):
