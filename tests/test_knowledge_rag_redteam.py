@@ -146,10 +146,9 @@ def test_authorized_context_rejects_query_evidence_and_citation_tampering() -> N
         citation=replace(result.units[0].citation, locator="fixture://attacker"),
     )
     tampered_units = (tampered_unit, *result.units[1:])
-    tampered_evidence = replace(result, units=tampered_units)
-    # Even if a caller could replace the result object, it cannot reuse the old evidence.
-    with pytest.raises(KnowledgeRAGError, match="evidence hash mismatch"):
-        rag.build_authorized_context(request, tampered_evidence)
+    tampered_result = replace(result, units=tampered_units)
+    with pytest.raises(KnowledgeRAGError, match="citation provenance mismatch"):
+        rag.build_authorized_context(request, tampered_result)
 
 
 def test_authorized_context_revalidates_revocation_after_retrieval() -> None:
