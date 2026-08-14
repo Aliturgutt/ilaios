@@ -319,7 +319,7 @@ def _validate_engineering_evidence(subject: Mapping[str, object]) -> str | None:
                 "skill_id": skill_id,
                 "version": version,
                 "status": "READY",
-                "evidence": cast(list[object], emitted),
+                "evidence": emitted,
                 "independent_review_required": skill.get(
                     "independent_review_required"
                 )
