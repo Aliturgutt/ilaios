@@ -201,12 +201,13 @@ def test_prompt_injection_and_credentials_are_quarantined() -> None:
         purposes=frozenset({"build"}),
         residency="eu",
     )
+    synthetic_credential = "sk" + "-" + ("a" * 24)
     rag.ingest_source(
         "source-secret",
         tenant_id="tenant-a",
         project_id="project-a",
         locator="fixture://secret",
-        content="temporary credential sk-abcdefghijklmnopqrstuv should never enter context",
+        content=f"temporary credential {synthetic_credential} must never enter context",
         trusted=False,
         classifications=frozenset({"INTERNAL"}),
         purposes=frozenset({"build"}),
