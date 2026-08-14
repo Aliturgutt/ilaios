@@ -1,0 +1,1 @@
+{"type":"object","required":["intent","contract_changes"],"properties":{"intent":{"type":"string","minLength":1},"contract_changes":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}
