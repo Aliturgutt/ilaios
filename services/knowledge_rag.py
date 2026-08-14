@@ -1,9 +1,8 @@
 """Canonical bounded Knowledge/RAG plane for ILAIOS.
 
-This module implements a provider-neutral, tenant-isolated reference RAG path.
-It is intentionally bounded: the default embedding/index implementations are
-deterministic local adapters for verification, not claims of production-scale
-vector infrastructure or model quality.
+The implementation is provider-neutral and tenant isolated. The default
+embedding and index adapters are deterministic local verification adapters;
+they are not production-scale vector infrastructure or model-quality claims.
 """
 
 from __future__ import annotations
@@ -21,7 +20,7 @@ class KnowledgeRAGError(ValueError):
 
 
 class AuthorizationDenied(KnowledgeRAGError):
-    """A caller attempted a cross-scope or otherwise unauthorized operation."""
+    """A caller attempted an unauthorized Knowledge/RAG operation."""
 
 
 class SourceState(str, Enum):
@@ -180,12 +179,12 @@ class EmbeddingProvider(Protocol):
         """Stable provider/adapter identity."""
 
     def embed(self, text: str) -> tuple[float, ...]:
-        """Return a deterministic vector for the supplied text."""
+        """Return an embedding for text."""
 
 
 class VectorIndex(Protocol):
     def upsert(self, unit_id: str, vector: tuple[float, ...]) -> None:
-        """Insert or replace one indexed unit."""
+        """Insert or replace an indexed unit."""
 
     def delete(self, unit_ids: frozenset[str]) -> None:
         """Delete exact unit IDs."""
@@ -201,11 +200,11 @@ class VectorIndex(Protocol):
 
 class ContentGuard(Protocol):
     def inspect(self, text: str) -> str | None:
-        """Return a quarantine reason, or None when content is admissible."""
+        """Return quarantine reason or None."""
 
 
 class DeterministicHashEmbeddingProvider:
-    """Pure-stdlib deterministic adapter used for bounded verification."""
+    """Pure-stdlib deterministic verification embedding adapter."""
 
     def __init__(self, dimensions: int = 64) -> None:
         if dimensions < 8:
@@ -217,13 +216,11 @@ class DeterministicHashEmbeddingProvider:
         return f"deterministic-hash-v1:{self._dimensions}"
 
     def embed(self, text: str) -> tuple[float, ...]:
-        tokens = _tokens(text)
         vector = [0.0] * self._dimensions
-        for token in tokens:
+        for token in _tokens(text):
             digest = hashlib.sha256(token.encode("utf-8")).digest()
             index = int.from_bytes(digest[:2], "big") % self._dimensions
-            sign = -1.0 if digest[2] & 1 else 1.0
-            vector[index] += sign
+            vector[index] += -1.0 if digest[2] & 1 else 1.0
         magnitude = math.sqrt(sum(value * value for value in vector))
         if magnitude == 0.0:
             return tuple(vector)
@@ -231,7 +228,7 @@ class DeterministicHashEmbeddingProvider:
 
 
 class InMemoryVectorIndex:
-    """Bounded deterministic vector index used by the canonical RAG service."""
+    """Deterministic bounded verification vector index."""
 
     def __init__(self) -> None:
         self._vectors: dict[str, tuple[float, ...]] = {}
@@ -268,14 +265,13 @@ class InMemoryVectorIndex:
 
 
 class BoundedRAGContentGuard:
-    """High-confidence RAG-specific quarantine checks.
-
-    This is defense in depth and does not replace the canonical Privacy/DLP or
-    secret-scanning authorities.
-    """
+    """High-confidence RAG quarantine checks used as defense in depth."""
 
     _INJECTION_PATTERNS = (
-        re.compile(r"\bignore\s+(?:all\s+|any\s+|the\s+)?previous\s+instructions\b", re.I),
+        re.compile(
+            r"\bignore\s+(?:all\s+|any\s+|the\s+)?previous\s+instructions\b",
+            re.I,
+        ),
         re.compile(r"\breveal\b.{0,40}\bsystem\s+prompt\b", re.I | re.S),
         re.compile(r"\bbegin\s+system\s+prompt\b", re.I),
         re.compile(r"\bdeveloper\s+message\b.{0,30}\boverride\b", re.I | re.S),
@@ -367,7 +363,9 @@ class KnowledgeRAG:
         if chunk_size_words < 10:
             raise KnowledgeRAGError("chunk_size_words must be at least 10")
         if chunk_overlap_words < 0 or chunk_overlap_words >= chunk_size_words:
-            raise KnowledgeRAGError("chunk overlap must be >= 0 and smaller than chunk size")
+            raise KnowledgeRAGError(
+                "chunk overlap must be >= 0 and smaller than chunk size"
+            )
         self._embedding = embedding_provider or DeterministicHashEmbeddingProvider()
         self._index = vector_index or InMemoryVectorIndex()
         self._guard = content_guard or BoundedRAGContentGuard()
@@ -437,13 +435,10 @@ class KnowledgeRAG:
         if source.state is not SourceState.ACTIVE:
             raise KnowledgeRAGError("only ACTIVE sources may be updated")
         current_key = (source_id, source.latest_version)
-        current = self._versions[current_key]
-        self._versions[current_key] = replace(current, state=VersionState.SUPERSEDED)
-        old_units = frozenset(
-            unit_id
-            for unit_id in self._active_unit_ids
-            if self._units[unit_id].source_id == source_id
+        self._versions[current_key] = replace(
+            self._versions[current_key], state=VersionState.SUPERSEDED
         )
+        old_units = self._active_ids_for_source(source_id)
         self._index.delete(old_units)
         self._active_unit_ids.difference_update(old_units)
         next_version = source.latest_version + 1
@@ -467,9 +462,8 @@ class KnowledgeRAG:
             return source
         revoked = replace(source, state=SourceState.REVOKED)
         self._sources[source_id] = revoked
-        version_key = (source_id, source.latest_version)
-        current = self._versions[version_key]
-        self._versions[version_key] = replace(current, state=VersionState.REVOKED)
+        key = (source_id, source.latest_version)
+        self._versions[key] = replace(self._versions[key], state=VersionState.REVOKED)
         active_ids = self._active_ids_for_source(source_id)
         self._index.delete(active_ids)
         self._active_unit_ids.difference_update(active_ids)
@@ -509,7 +503,9 @@ class KnowledgeRAG:
         eligible = frozenset(
             unit_id
             for unit_id in self._active_unit_ids
-            if self._is_authorized(self._units[unit_id], request.scope, request.purpose)
+            if self._is_authorized(
+                self._units[unit_id], request.scope, request.purpose
+            )
         )
         self._metrics.retrievals += 1
         query_sha = _sha256_text(request.query)
@@ -524,16 +520,12 @@ class KnowledgeRAG:
                 scored_count=0,
                 context_chars=0,
                 evidence_sha256=_retrieval_evidence(
-                    request.retrieval_id,
-                    query_sha,
-                    (),
-                    0,
+                    request.retrieval_id, query_sha, (), 0
                 ),
             )
 
-        query_vector = self._embedding.embed(request.query)
         candidates = self._index.search(
-            query_vector,
+            self._embedding.embed(request.query),
             eligible,
             min(request.candidate_limit, self._budget.max_candidate_scan),
         )
@@ -541,25 +533,28 @@ class KnowledgeRAG:
         query_tokens = frozenset(_tokens(request.query))
         reranked: list[tuple[float, float, ScoredCandidate, KnowledgeUnit]] = []
         for candidate in candidates:
+            if candidate.unit_id not in eligible:
+                raise KnowledgeRAGError("vector index returned an unauthorized unit")
             unit = self._units[candidate.unit_id]
             lexical = _lexical_overlap(query_tokens, frozenset(_tokens(unit.text)))
             final_score = 0.75 * candidate.semantic_score + 0.25 * lexical
+            if not math.isfinite(final_score):
+                raise KnowledgeRAGError("retrieval score must be finite")
             reranked.append((final_score, lexical, candidate, unit))
         reranked.sort(key=lambda item: (-item[0], item[3].unit_id))
 
         selected: list[RetrievedUnit] = []
         context_chars = 0
         effective_context_limit = min(
-            request.max_context_chars,
-            self._budget.max_context_chars,
+            request.max_context_chars, self._budget.max_context_chars
         )
         for final_score, lexical, candidate, unit in reranked:
             if len(selected) >= request.top_k:
                 break
             if context_chars + len(unit.text) > effective_context_limit:
                 continue
-            version = self._versions[(unit.source_id, unit.source_version)]
             source = self._sources[unit.source_id]
+            version = self._versions[(unit.source_id, unit.source_version)]
             citation = Citation(
                 citation_id=f"cite:{unit.unit_id}",
                 source_id=unit.source_id,
@@ -595,10 +590,7 @@ class KnowledgeRAG:
             scored_count=len(candidates),
             context_chars=context_chars,
             evidence_sha256=_retrieval_evidence(
-                request.retrieval_id,
-                query_sha,
-                units,
-                len(candidates),
+                request.retrieval_id, query_sha, units, len(candidates)
             ),
         )
 
@@ -607,16 +599,42 @@ class KnowledgeRAG:
         request: RetrievalRequest,
         result: RetrievalResult,
     ) -> AuthorizedContext:
+        """Bind only an untampered, still-authorized result to worker context."""
+        self._validate_request(request)
         if result.retrieval_id != request.retrieval_id:
             raise KnowledgeRAGError("retrieval result does not match request")
         if result.status is not RetrievalStatus.SUCCEEDED:
             raise KnowledgeRAGError("only successful retrieval may form context")
+        expected_query_sha = _sha256_text(request.query)
+        if result.query_sha256 != expected_query_sha:
+            raise KnowledgeRAGError("retrieval query hash mismatch")
+        if len(result.units) > request.top_k:
+            raise KnowledgeRAGError("retrieval result exceeds top_k")
+        if result.scored_count > request.candidate_limit:
+            raise KnowledgeRAGError("retrieval result exceeds candidate limit")
+        context_chars = sum(len(item.text) for item in result.units)
+        if context_chars != result.context_chars:
+            raise KnowledgeRAGError("retrieval context size mismatch")
+        if context_chars > request.max_context_chars:
+            raise KnowledgeRAGError("retrieval result exceeds context budget")
+        expected_evidence = _retrieval_evidence(
+            result.retrieval_id,
+            result.query_sha256,
+            result.units,
+            result.scored_count,
+        )
+        if expected_evidence != result.evidence_sha256:
+            raise KnowledgeRAGError("retrieval evidence hash mismatch")
+        for returned in result.units:
+            self._validate_returned_unit(request, returned)
         context_evidence = _sha256_text(
             "|".join(
                 (
+                    request.scope.principal_id,
                     request.scope.tenant_id,
                     request.scope.project_id,
                     request.purpose,
+                    result.query_sha256,
                     result.evidence_sha256,
                 )
             )
@@ -641,7 +659,8 @@ class KnowledgeRAG:
                 (
                     source
                     for source in self._sources.values()
-                    if source.tenant_id == tenant_id and source.project_id == project_id
+                    if source.tenant_id == tenant_id
+                    and source.project_id == project_id
                 ),
                 key=lambda item: item.source_id,
             )
@@ -688,8 +707,11 @@ class KnowledgeRAG:
         )
 
     def restore(self, snapshot: RAGSnapshot) -> None:
+        """Restore an integrity-checked single-tenant/project snapshot."""
         if self._sources or self._versions or self._units or self._active_unit_ids:
             raise KnowledgeRAGError("restore requires an empty KnowledgeRAG instance")
+        _require_id(snapshot.tenant_id, "snapshot tenant_id")
+        _require_id(snapshot.project_id, "snapshot project_id")
         if snapshot.provider_id != self.embedding_provider_id:
             raise KnowledgeRAGError("snapshot embedding provider mismatch")
         expected = _snapshot_evidence(
@@ -703,21 +725,76 @@ class KnowledgeRAG:
         )
         if expected != snapshot.evidence_sha256:
             raise KnowledgeRAGError("snapshot evidence hash mismatch")
-        for unit in snapshot.units:
-            if unit.text and _sha256_text(unit.text) != unit.content_sha256:
-                raise KnowledgeRAGError("snapshot unit content hash mismatch")
-        self._sources = {source.source_id: source for source in snapshot.sources}
-        self._versions = {
-            (version.source_id, version.version): version for version in snapshot.versions
+
+        sources = {source.source_id: source for source in snapshot.sources}
+        if len(sources) != len(snapshot.sources):
+            raise KnowledgeRAGError("snapshot contains duplicate sources")
+        for source in snapshot.sources:
+            if (
+                source.tenant_id != snapshot.tenant_id
+                or source.project_id != snapshot.project_id
+            ):
+                raise KnowledgeRAGError("snapshot source scope mismatch")
+
+        versions = {
+            (version.source_id, version.version): version
+            for version in snapshot.versions
         }
-        self._units = {unit.unit_id: unit for unit in snapshot.units}
+        if len(versions) != len(snapshot.versions):
+            raise KnowledgeRAGError("snapshot contains duplicate source versions")
+        for key, version in versions.items():
+            source = sources.get(version.source_id)
+            if source is None:
+                raise KnowledgeRAGError("snapshot version references unknown source")
+            if (
+                version.tenant_id != snapshot.tenant_id
+                or version.project_id != snapshot.project_id
+            ):
+                raise KnowledgeRAGError("snapshot version scope mismatch")
+            if key != (version.source_id, version.version) or version.version < 1:
+                raise KnowledgeRAGError("snapshot source version identity is invalid")
+        for source in snapshot.sources:
+            if (source.source_id, source.latest_version) not in versions:
+                raise KnowledgeRAGError("snapshot latest source version is missing")
+
+        units = {unit.unit_id: unit for unit in snapshot.units}
+        if len(units) != len(snapshot.units):
+            raise KnowledgeRAGError("snapshot contains duplicate units")
+        for unit in snapshot.units:
+            source = sources.get(unit.source_id)
+            version = versions.get((unit.source_id, unit.source_version))
+            if source is None or version is None:
+                raise KnowledgeRAGError("snapshot unit lineage is incomplete")
+            if (
+                unit.tenant_id != snapshot.tenant_id
+                or unit.project_id != snapshot.project_id
+            ):
+                raise KnowledgeRAGError("snapshot unit scope mismatch")
+            if unit.text:
+                if _sha256_text(unit.text) != unit.content_sha256:
+                    raise KnowledgeRAGError("snapshot unit content hash mismatch")
+            elif source.state is not SourceState.DELETED:
+                raise KnowledgeRAGError("non-deleted snapshot unit has empty content")
+
+        if not snapshot.active_unit_ids <= units.keys():
+            raise KnowledgeRAGError("snapshot references unknown active unit")
+        for unit_id in snapshot.active_unit_ids:
+            unit = units[unit_id]
+            source = sources[unit.source_id]
+            version = versions[(unit.source_id, unit.source_version)]
+            if source.state is not SourceState.ACTIVE:
+                raise KnowledgeRAGError("inactive source cannot have active unit")
+            if version.state is not VersionState.ACTIVE:
+                raise KnowledgeRAGError("inactive source version cannot have active unit")
+            if unit.quarantined_reason is not None or not unit.text:
+                raise KnowledgeRAGError("quarantined or empty unit cannot be active")
+
+        self._sources = sources
+        self._versions = versions
+        self._units = units
         self._active_unit_ids = set(snapshot.active_unit_ids)
         for unit_id in sorted(self._active_unit_ids):
-            unit = self._units.get(unit_id)
-            if unit is None:
-                raise KnowledgeRAGError("snapshot references unknown active unit")
-            if unit.quarantined_reason is not None:
-                raise KnowledgeRAGError("quarantined unit cannot be active")
+            unit = self._units[unit_id]
             self._index.upsert(unit_id, self._embedding.embed(unit.text))
 
     def metrics(self) -> RAGMetricsSnapshot:
@@ -753,13 +830,12 @@ class KnowledgeRAG:
             evidence_parts.append(
                 f"{case.case_id}:{result.evidence_sha256}:{','.join(sorted(returned))}"
             )
-        evidence = _sha256_text("|".join(evidence_parts))
         return RetrievalEvaluationReport(
             total=len(cases),
             passed=len(cases) - len(failed),
             failed_case_ids=tuple(failed),
             leakage_detected=leakage,
-            evidence_sha256=evidence,
+            evidence_sha256=_sha256_text("|".join(evidence_parts)),
         )
 
     def source(self, source_id: str) -> KnowledgeSource:
@@ -862,9 +938,50 @@ class KnowledgeRAG:
             return False
         if unit.residency not in scope.allowed_residencies:
             return False
-        source = self._sources[unit.source_id]
-        version = self._versions[(unit.source_id, unit.source_version)]
+        source = self._sources.get(unit.source_id)
+        version = self._versions.get((unit.source_id, unit.source_version))
+        if source is None or version is None:
+            return False
         return source.state is SourceState.ACTIVE and version.state is VersionState.ACTIVE
+
+    def _validate_returned_unit(
+        self,
+        request: RetrievalRequest,
+        returned: RetrievedUnit,
+    ) -> None:
+        canonical = self._units.get(returned.unit_id)
+        if canonical is None:
+            raise KnowledgeRAGError("retrieval result references unknown unit")
+        if not self._is_authorized(canonical, request.scope, request.purpose):
+            raise AuthorizationDenied("retrieval result contains unauthorized unit")
+        if (
+            returned.source_id != canonical.source_id
+            or returned.source_version != canonical.source_version
+            or returned.text != canonical.text
+        ):
+            raise KnowledgeRAGError("retrieval unit content or lineage mismatch")
+        if not all(
+            math.isfinite(score)
+            for score in (
+                returned.semantic_score,
+                returned.lexical_score,
+                returned.final_score,
+            )
+        ):
+            raise KnowledgeRAGError("retrieval scores must be finite")
+        source = self._sources[canonical.source_id]
+        version = self._versions[(canonical.source_id, canonical.source_version)]
+        citation = returned.citation
+        if (
+            citation.citation_id != f"cite:{canonical.unit_id}"
+            or citation.source_id != canonical.source_id
+            or citation.source_version != canonical.source_version
+            or citation.unit_id != canonical.unit_id
+            or citation.locator != source.locator
+            or citation.source_content_sha256 != version.content_sha256
+            or citation.unit_content_sha256 != canonical.content_sha256
+        ):
+            raise KnowledgeRAGError("retrieval citation provenance mismatch")
 
     def _validate_request(self, request: RetrievalRequest) -> None:
         _require_id(request.retrieval_id, "retrieval_id")
@@ -899,8 +1016,7 @@ def _chunk_words(text: str, *, size: int, overlap: int) -> tuple[str, ...]:
     chunks: list[str] = []
     start = 0
     while start < len(words):
-        chunk = " ".join(words[start : start + size])
-        chunks.append(chunk)
+        chunks.append(" ".join(words[start : start + size]))
         if start + size >= len(words):
             break
         start += size - overlap
@@ -911,7 +1027,9 @@ def _tokens(text: str) -> tuple[str, ...]:
     return tuple(re.findall(r"[A-Za-z0-9_]+", text.casefold()))
 
 
-def _lexical_overlap(query_tokens: frozenset[str], unit_tokens: frozenset[str]) -> float:
+def _lexical_overlap(
+    query_tokens: frozenset[str], unit_tokens: frozenset[str]
+) -> float:
     if not query_tokens or not unit_tokens:
         return 0.0
     return len(query_tokens & unit_tokens) / len(query_tokens | unit_tokens)
@@ -957,9 +1075,15 @@ def _snapshot_evidence(
             ":".join(
                 (
                     source.source_id,
+                    source.tenant_id,
+                    source.project_id,
                     source.state.value,
                     str(source.latest_version),
                     source.locator,
+                    str(source.trusted),
+                    ",".join(sorted(source.classifications)),
+                    ",".join(sorted(source.purposes)),
+                    source.residency,
                 )
             )
         )
@@ -969,6 +1093,8 @@ def _snapshot_evidence(
                 (
                     version.source_id,
                     str(version.version),
+                    version.tenant_id,
+                    version.project_id,
                     version.content_sha256,
                     version.state.value,
                 )
@@ -979,7 +1105,15 @@ def _snapshot_evidence(
             ":".join(
                 (
                     unit.unit_id,
+                    unit.source_id,
+                    str(unit.source_version),
+                    unit.tenant_id,
+                    unit.project_id,
+                    str(unit.sequence),
                     unit.content_sha256,
+                    ",".join(sorted(unit.classifications)),
+                    ",".join(sorted(unit.purposes)),
+                    unit.residency,
                     unit.quarantined_reason or "",
                 )
             )
