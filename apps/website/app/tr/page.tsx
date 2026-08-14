@@ -3,7 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import InteractiveExplorer from "../InteractiveExplorer";
 
-export const metadata: Metadata = { title: "Kontrollü AI ve Dijital Operasyon Platformu", description: "ILAIOS; kurum ve bireylerin hedeflerini otomasyon, yazılım, web, medya, araştırma ve güvenlik alanlarında kontrollü ve doğrulanabilir iş akışlarına dönüştürür.", alternates: { canonical: "/tr", languages: { tr: "/tr", en: "/", "x-default": "/" } } };
+export const metadata: Metadata = { title: "Governed AI Operating System", description: "ILAIOS; native finished-product factory'leriyle hedefleri kontrollü ve doğrulanabilir dijital işe dönüştürmek için tasarlanan Governed AI Operating System'dir.", alternates: { canonical: "/tr", languages: { tr: "/tr", en: "/", "x-default": "/" } } };
 
 const audience = [
   ["Kurumlar için", "Tekrarlanan operasyonları, yazılım/web teslimini, araştırmayı, medya üretimini ve güvenlik açısından hassas işleri açık policy, doğrulama ve evidence altında birleştirin.", "/tr/enterprise", "Kurumsal değeri incele"],
