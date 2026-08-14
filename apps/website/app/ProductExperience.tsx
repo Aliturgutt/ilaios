@@ -37,7 +37,7 @@ const copy = {
   },
   tr: {
     label: "Ürün deneyimi",
-    title: "Tek hedef girer. Yönetilen bir iş akışı çıkar.",
+    title: "Tek hedef girer. Yönetilen iş akışı çıkar.",
     note: "Etkileşimli kanonik iş akışı önizlemesi — burada dış sistemlerde işlem yapılmaz.",
     inputLabel: "Bitmesini istediğiniz sonucu tarif edin",
     run: "İş akışını önizle",
@@ -47,10 +47,10 @@ const copy = {
     evidence: "Kabul kanıtı",
     open: "Üretim alanını aç",
     modes: [
-      { key: "web", label: "Web sitesi", prompt: "EN/TR sayfaları, responsive QA ve doğrulanmış yayın kanıtı olan bir ürün sitesi oluştur.", result: "Doğrulanmış web sitesi paketi", artifact: "site + QA + yayın kanıtı", evidence: ["Responsive kontroller", "Erişilebilirlik ve SEO", "Yayın eşleştirmesi"], href: "/tr/factories/web" },
+      { key: "web", label: "Web sitesi", prompt: "EN/TR sayfaları, mobil ve masaüstü QA'sı, doğrulanmış yayın kanıtı olan bir ürün sitesi oluştur.", result: "Doğrulanmış web sitesi paketi", artifact: "site + QA + yayın kanıtı", evidence: ["Mobil/masaüstü kontroller", "Erişilebilirlik ve SEO", "Yayın eşleştirmesi"], href: "/tr/factories/web" },
       { key: "video", label: "Video", prompt: "Araştırmadan render ve doğrulamaya kadar ürün lansman videosu oluştur.", result: "Doğrulanmış medya paketi", artifact: "senaryo + varlıklar + render kanıtı", evidence: ["Kaynak kökeni", "Render doğrulaması", "Teslim manifestosu"], href: "/tr/factories/video" },
-      { key: "software", label: "Yazılım", prompt: "Testler, inceleme kapıları ve kanıtla sınırlandırılmış bir repository değişikliği uygula.", result: "Test edilmiş değişiklik paketi", artifact: "kod + testler + inceleme kanıtı", evidence: ["Repository bağlamı", "Deterministik testler", "Değişiklik kanıtı"], href: "/tr/factories/software" },
-      { key: "app", label: "Uygulama", prompt: "Sessiz deployment yetkisi olmadan yönetilen uygulama değişikliği ve doğrulama planı hazırla.", result: "İncelenebilir uygulama sonucu", artifact: "değişiklik planı + build/test kanıtı", evidence: ["Korunan kökler", "Build/test planı", "Onay sınırı"], href: "/tr/factories/app" },
+      { key: "software", label: "Yazılım", prompt: "Testler, inceleme kapıları ve kanıtla sınırlandırılmış bir kod deposu değişikliği uygula.", result: "Test edilmiş değişiklik paketi", artifact: "kod + testler + inceleme kanıtı", evidence: ["Kod deposu bağlamı", "Deterministik testler", "Değişiklik kanıtı"], href: "/tr/factories/software" },
+      { key: "app", label: "Uygulama", prompt: "Sessiz yayın yetkisi olmadan yönetilen uygulama değişikliği ve doğrulama planı hazırla.", result: "İncelenebilir uygulama sonucu", artifact: "değişiklik planı + derleme/test kanıtı", evidence: ["Korunan kökler", "Derleme/test planı", "Onay sınırı"], href: "/tr/factories/app" },
     ] as readonly Mode[],
   },
 } as const;

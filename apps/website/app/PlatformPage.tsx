@@ -1,5 +1,6 @@
 import Link from "next/link";
 import SpatialArchitecture from "./SpatialArchitecture";
+import SystemVisuals from "./SystemVisuals";
 
 type Locale = "en" | "tr";
 
@@ -11,6 +12,8 @@ const copy = {
     mapEyebrow: "System map",
     mapTitle: "Clients request. The control plane governs. Bounded capabilities execute.",
     planes: [["Experience", "Web, Desktop, Mobile, API, CLI and enterprise surfaces expose goals, approvals, state and delivery."], ["Control", "Identity, tenant context, policy, permissions, orchestration and authoritative state transitions."], ["Execution", "Deterministic services, tools and bounded intelligent capabilities perform admitted work."], ["Evidence", "Validation, provenance, audit context and recovery history keep consequential outcomes inspectable."]],
+    separationTitle: "Control authority and execution resources remain deliberately separated.",
+    separationLead: "The platform can change a model, provider or tool without moving policy truth, tenant authority or evidence ownership out of the control plane.",
     runtimeEyebrow: "Runtime",
     runtimeTitle: "A request crosses explicit boundaries before it becomes an accepted result.",
     runtime: [["Goal", "Intent enters"], ["Authorize", "Policy evaluated"], ["Route", "Capability selected"], ["Execute", "Work performed"], ["Verify", "Criteria checked"], ["Deliver", "Evidence surfaced"]],
@@ -24,6 +27,8 @@ const copy = {
     mapEyebrow: "Sistem haritası",
     mapTitle: "İstemciler talep eder. Kontrol katmanı yönetir. Sınırlandırılmış yetenekler yürütür.",
     planes: [["Deneyim", "Web, Masaüstü, Mobil, API, CLI ve kurumsal yüzeyler hedef, onay, durum ve teslimi gösterir."], ["Kontrol", "Kimlik, tenant bağlamı, politika, izinler, orkestrasyon ve yetkili durum geçişleri."], ["Yürütme", "Deterministik servisler, araçlar ve sınırlandırılmış akıllı yetenekler kabul edilmiş işi yapar."], ["Kanıt", "Doğrulama, kaynak kökeni, denetim bağlamı ve kurtarma geçmişi önemli sonuçları incelenebilir tutar."]],
+    separationTitle: "Kontrol yetkisi ile yürütme kaynakları bilinçli olarak ayrı tutulur.",
+    separationLead: "Model, sağlayıcı veya araç değişse bile politika gerçeği, tenant yetkisi ve kanıt sahipliği kontrol katmanından çıkmaz.",
     runtimeEyebrow: "Çalışma yolu",
     runtimeTitle: "Bir istek, kabul edilmiş sonuca dönüşmeden önce açık sınırları geçer.",
     runtime: [["Hedef", "Niyet girer"], ["Yetkilendir", "Politika değerlendirilir"], ["Yönlendir", "Yetenek seçilir"], ["Yürüt", "İş yapılır"], ["Doğrula", "Ölçütler kontrol edilir"], ["Teslim et", "Kanıt sunulur"]],
@@ -37,7 +42,8 @@ export default function PlatformPage({ locale }: { locale: Locale }) {
   return <>
     <section className="shell page-hero compact-page-hero"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p></section>
     <section className="section"><div className="shell platform-map-layout"><div className="platform-plane-list"><div className="eyebrow">{c.mapEyebrow}</div><h2>{c.mapTitle}</h2>{c.planes.map(([title, text], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{text}</p></div></article>)}</div><SpatialArchitecture locale={locale} /></div></section>
-    <section className="section surface-section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">{c.runtimeEyebrow}</div><h2>{c.runtimeTitle}</h2></div></div><div className="runtime-line">{c.runtime.map(([title, detail], index) => <div key={title}><span>{String(index + 1).padStart(2, "0")}</span><strong>{title}</strong><small>{detail}</small></div>)}</div></div></section>
+    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{locale === "tr" ? "Yetki ayrımı" : "Authority separation"}</div><h2>{c.separationTitle}</h2></div><p>{c.separationLead}</p></div><SystemVisuals locale={locale} variant="planes" /></div></section>
+    <section className="section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">{c.runtimeEyebrow}</div><h2>{c.runtimeTitle}</h2></div></div><div className="runtime-line">{c.runtime.map(([title, detail], index) => <div key={title}><span>{String(index + 1).padStart(2, "0")}</span><strong>{title}</strong><small>{detail}</small></div>)}</div></div></section>
     <section className="section"><div className="shell detail-directory">{c.details.map(([title, text, href]) => <Link href={href} key={href}><span>{title}</span><strong>{text}</strong><i>→</i></Link>)}</div></section>
     <section className="section compact-section"><div className="shell status-note"><span>{locale === "tr" ? "Güncel durum" : "Current reality"}</span><p>{c.current}</p></div></section>
   </>;
