@@ -19,7 +19,7 @@ void main() {
 
     final root = await Directory.systemTemp.createTemp('ilaios-desktop-e2e-');
     final readyFile = File('${root.path}${Platform.pathSeparator}ready.json');
-    const token = 'desktop-e2e-runtime-token';
+    const token = 'placeholder-desktop-e2e-token';
     final environment = Map<String, String>.from(Platform.environment)
       ..['ILAIOS_CONTROL_PLANE_TOKEN'] = token
       ..remove('ILAIOS_DESKTOP_OIDC_PROVIDERS_JSON');
