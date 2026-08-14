@@ -5,17 +5,25 @@ on:
     paths:
       - "apps/website/**"
       - "tools/design-intelligence/**"
+      - "services/design_quality.py"
+      - "services/integrations/web_factory.py"
+      - "tests/test_design_quality.py"
+      - "tests/test_web_factory.py"
       - ".github/workflows/website-ci.yml"
   push:
     branches: [master]
     paths:
       - "apps/website/**"
       - "tools/design-intelligence/**"
+      - "services/design_quality.py"
+      - "services/integrations/web_factory.py"
+      - "tests/test_design_quality.py"
+      - "tests/test_web_factory.py"
       - ".github/workflows/website-ci.yml"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: website-ci-${{ github.ref }}
@@ -25,76 +33,55 @@ jobs:
   website-quality:
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    defaults:
-      run:
-        working-directory: apps/website
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref || github.ref_name }}
+          fetch-depth: 0
+
+      - name: Diff hygiene
+        shell: bash
+        run: |
+          if git show-ref --verify --quiet refs/remotes/origin/master; then
+            git diff --check "$(git merge-base origin/master HEAD)" HEAD
+          else
+            git diff --check HEAD^ HEAD
+          fi
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
+          cache: npm
+          cache-dependency-path: apps/website/package-lock.json
 
-      - name: Detect committed dependency lockfile
-        id: lockfile
-        shell: bash
-        run: |
-          if [ -f package-lock.json ]; then
-            echo "missing=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "missing=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Generate bootstrap lockfile artifact
-        if: steps.lockfile.outputs.missing == 'true'
-        run: npm install --package-lock-only --ignore-scripts --audit=false --fund=false
-
-      - name: Upload bootstrap lockfile artifact
-        if: steps.lockfile.outputs.missing == 'true'
-        uses: actions/upload-artifact@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
         with:
-          name: website-package-lock
-          path: apps/website/package-lock.json
-          if-no-files-found: error
-          retention-days: 1
+          python-version: "3.12"
 
-      - name: Commit generated lockfile to same-repository PR branch
-        if: steps.lockfile.outputs.missing == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        working-directory: .
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/website/package-lock.json
-          git commit -m "build(website): commit dependency lockfile"
-          git push origin "HEAD:${GITHUB_HEAD_REF}"
-
-      - name: Require committed dependency lockfile
-        if: steps.lockfile.outputs.missing == 'true'
-        run: |
-          echo "ERROR: apps/website/package-lock.json was absent at the start of this run. The same-repository PR path attempts to commit the generated lockfile; the next run must validate it from source control." >&2
-          exit 1
-
-      - name: Install dependencies reproducibly
-        if: steps.lockfile.outputs.missing == 'false'
+      - name: Install website dependencies
+        working-directory: apps/website
         run: npm ci --ignore-scripts --audit=false --fund=false
 
+      - name: Install native design test runner
+        run: python -m pip install --disable-pip-version-check pytest
+
       - name: Site policy and metadata checks
-        if: steps.lockfile.outputs.missing == 'false'
+        working-directory: apps/website
         run: npm run test:site
 
       - name: Lint
-        if: steps.lockfile.outputs.missing == 'false'
+        working-directory: apps/website
         run: npm run lint
 
       - name: Typecheck
-        if: steps.lockfile.outputs.missing == 'false'
+        working-directory: apps/website
         run: npm run typecheck
 
       - name: Production build
-        if: steps.lockfile.outputs.missing == 'false'
+        working-directory: apps/website
         run: npm run build
+
+      - name: Native design quality and Web Factory acceptance
+        run: python -m pytest -q tests/test_design_quality.py tests/test_web_factory.py

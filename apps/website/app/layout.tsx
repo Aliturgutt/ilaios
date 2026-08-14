@@ -6,6 +6,8 @@ import "./final.css";
 import "./ux-refresh.css";
 import "./professional-final.css";
 import "./website-final.css";
+import "./adaptive-native.css";
+import "./adaptive-structures.css";
 import SiteChrome from "./SiteChrome";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ilaios.com";
