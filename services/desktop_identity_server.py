@@ -5,6 +5,7 @@ from __future__ import annotations
 import hmac
 import json
 import secrets
+import threading
 from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -183,19 +184,41 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
         request_id = _required_string(body, "request_id")
         execution = self.server.coordinator.get(request_id)
         self._require_execution_owner(execution, session)
-        manifest = self.server.coordinator.resume(
-            request_id,
-            token=self.server.bearer_token,
-            now=datetime.now(timezone.utc),
+        thread = threading.Thread(
+            target=self._run_execution,
+            args=(request_id,),
+            name=f"ilaios-execution-{request_id}",
+            daemon=True,
         )
+        thread.start()
         self._send_json(
-            HTTPStatus.OK,
+            HTTPStatus.ACCEPTED,
             {
                 "request_id": request_id,
-                "execution_status": "ACCEPTED",
-                "result": manifest,
+                "execution_status": "RESUME_REQUESTED",
             },
         )
+
+    def _run_execution(self, request_id: str) -> None:
+        try:
+            self.server.coordinator.resume(
+                request_id,
+                token=self.server.bearer_token,
+                now=datetime.now(timezone.utc),
+            )
+        except Exception as error:
+            print(
+                json.dumps(
+                    {
+                        "component": "desktop_identity",
+                        "event": "execution_resume_failed",
+                        "request_id": request_id,
+                        "error_type": type(error).__name__,
+                    },
+                    sort_keys=True,
+                ),
+                flush=True,
+            )
 
     def _authenticated_session(self) -> Session:
         identity = self._require_identity()
