@@ -23,7 +23,7 @@ permissions:
 jobs:
   package-msix:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout ILAIOS
@@ -55,6 +55,11 @@ jobs:
         working-directory: apps/desktop
         run: flutter build windows --release
 
+      - name: Build bundled control plane
+        working-directory: apps/desktop
+        shell: pwsh
+        run: ./tool/build_control_plane_sidecar.ps1
+
       - name: Build unsigned MSIX
         working-directory: apps/desktop
         shell: pwsh
@@ -75,6 +80,7 @@ jobs:
           & $makeAppx.FullName unpack /p $msix.FullName /d $unpack /o
           if ($LASTEXITCODE -ne 0) { throw 'MSIX unpack validation failed.' }
           if (-not (Test-Path (Join-Path $unpack 'ilaios_desktop.exe'))) { throw 'Packaged executable missing.' }
+          if (-not (Test-Path (Join-Path $unpack 'ilaios_control_plane.exe'))) { throw 'Packaged control-plane sidecar missing.' }
           if (-not (Test-Path (Join-Path $unpack 'AppxManifest.xml'))) { throw 'Packaged manifest missing.' }
           Write-Host 'ILAIOS_DESKTOP_MSIX_INSPECTION=PASS'
 
