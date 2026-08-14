@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: required-ci-v2-${{ github.event.pull_request.number || github.ref }}
+  group: required-ci-v3-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -19,10 +19,12 @@ jobs:
       platform: ${{ steps.changes.outputs.platform }}
       website: ${{ steps.changes.outputs.website }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Classify changed paths and enforce diff hygiene
         id: changes
@@ -48,13 +50,13 @@ jobs:
 
           for file in "${files[@]}"; do
             case "$file" in
-              src/*|services/*|packages/*|tests/*|docs/governance/*|docs/migration/*|pyproject.toml|.pre-commit-config.yaml|.github/workflows/platform-ci.yml|.github/workflows/required-ci-gate.yml)
+              src/*|services/*|packages/*|tests/*|docs/governance/*|docs/migration/*|pyproject.toml|.pre-commit-config.yaml|.github/requirements/platform-ci.txt|.github/workflows/platform-ci.yml|.github/workflows/required-ci-gate.yml)
                 platform=true
                 ;;
             esac
 
             case "$file" in
-              apps/website/*|tools/design-intelligence/*|services/design_quality.py|services/integrations/web_factory.py|tests/test_design_quality.py|tests/test_web_factory.py|.github/workflows/website-ci.yml|.github/workflows/required-ci-gate.yml|.github/workflows/website-production-certification.yml)
+              apps/website/*|tools/design-intelligence/*|services/design_quality.py|services/integrations/web_factory.py|tests/test_design_quality.py|tests/test_web_factory.py|.github/requirements/website-ci.txt|.github/workflows/website-ci.yml|.github/workflows/required-ci-gate.yml|.github/workflows/website-production-certification.yml)
                 website=true
                 ;;
             esac
@@ -63,6 +65,20 @@ jobs:
           echo "platform=$platform" >> "$GITHUB_OUTPUT"
           echo "website=$website" >> "$GITHUB_OUTPUT"
           printf 'platform=%s website=%s\n' "$platform" "$website"
+
+  supply-chain:
+    name: CI supply-chain hardening
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Enforce immutable CI bootstrap policy
+        run: python -m services.software_factory_ci_supply_chain --repository-root .
 
   platform:
     name: Platform validation
@@ -79,13 +95,14 @@ jobs:
   required-ci-gate:
     name: Required CI Gate
     if: always()
-    needs: [classify, platform, website]
+    needs: [classify, supply-chain, platform, website]
     runs-on: ubuntu-latest
     steps:
       - name: Enforce relevant validation results
         shell: bash
         env:
           CLASSIFY_RESULT: ${{ needs.classify.result }}
+          SUPPLY_CHAIN_RESULT: ${{ needs.supply-chain.result }}
           PLATFORM_REQUIRED: ${{ needs.classify.outputs.platform }}
           PLATFORM_RESULT: ${{ needs.platform.result }}
           WEBSITE_REQUIRED: ${{ needs.classify.outputs.website }}
@@ -95,6 +112,11 @@ jobs:
 
           if [[ "$CLASSIFY_RESULT" != "success" ]]; then
             echo "Change classification failed: $CLASSIFY_RESULT"
+            exit 1
+          fi
+
+          if [[ "$SUPPLY_CHAIN_RESULT" != "success" ]]; then
+            echo "CI supply-chain hardening failed: $SUPPLY_CHAIN_RESULT"
             exit 1
           fi
 
