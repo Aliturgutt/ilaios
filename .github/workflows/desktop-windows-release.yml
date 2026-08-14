@@ -17,7 +17,7 @@ jobs:
   windows-release:
     name: Flutter analyze, test, Windows release
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout ILAIOS
@@ -38,11 +38,12 @@ jobs:
           }
           (Join-Path $flutter 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Verify Flutter toolchain
+      - name: Verify toolchains
         shell: pwsh
         run: |
           flutter --version
           dart --version
+          python --version
 
       - name: Resolve locked dependencies
         working-directory: apps/desktop
@@ -64,15 +65,31 @@ jobs:
         shell: pwsh
         run: flutter build windows --release
 
-      - name: Verify release executable metadata
+      - name: Build bundled control plane
+        working-directory: apps/desktop
+        shell: pwsh
+        run: ./tool/build_control_plane_sidecar.ps1
+
+      - name: Packaged Desktop to control-plane E2E
+        working-directory: apps/desktop
+        shell: pwsh
+        env:
+          ILAIOS_E2E_SIDECAR_PATH: ${{ github.workspace }}\apps\desktop\build\windows\x64\runner\Release\ilaios_control_plane.exe
+        run: flutter test e2e/control_plane_e2e_test.dart
+
+      - name: Verify release executable metadata and sidecar
         working-directory: apps/desktop
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $exe = Join-Path (Get-Location) 'build\windows\x64\runner\Release\ilaios_desktop.exe'
+          $release = Join-Path (Get-Location) 'build\windows\x64\runner\Release'
+          $exe = Join-Path $release 'ilaios_desktop.exe'
+          $sidecar = Join-Path $release 'ilaios_control_plane.exe'
           if (-not (Test-Path $exe)) { throw "Release executable not found: $exe" }
+          if (-not (Test-Path $sidecar)) { throw "Bundled control plane not found: $sidecar" }
           $item = Get-Item $exe
           if ($item.Length -le 0) { throw 'Release executable is empty' }
+          if ((Get-Item $sidecar).Length -le 0) { throw 'Bundled control plane is empty' }
           $version = $item.VersionInfo
           if ($version.ProductName -ne 'ILAIOS Desktop') {
             throw "Unexpected ProductName: $($version.ProductName)"
