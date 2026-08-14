@@ -2,29 +2,54 @@
 
 ## Purpose and architecture
 
-`tools/design-intelligence` defines the reusable skill and neutral requirements. `services/design_quality.py` implements dependency-free deterministic evaluation. `GovernedWebFactory.accept_design_quality` consumes only the resulting assessment and fails closed; it does not create a second policy engine, router, evidence store, runtime, or Web Factory.
+`tools/design-intelligence` defines the reusable native skill. `services/design_quality.py` now implements both dependency-free deterministic design strategy and deterministic acceptance evaluation. `GovernedWebFactory.plan_design` reuses the strategy engine and `GovernedWebFactory.accept_design_quality` reuses the assessment gate; neither path creates a second policy engine, router, evidence store, runtime, or Web Factory.
 
-Browser, accessibility, and governed visual review produce bounded `DesignObservation` rows. The evaluator emits versioned `DesignFinding` evidence and a final `DesignAssessment`. Critical, major, and P2 findings block acceptance. Contextual aesthetic signals remain review inputs rather than pretending subjective quality can be inferred from CSS tokens alone.
+The scoped canonical invariants are recorded in `docs/canonical/WEB_DESIGN_INTELLIGENCE.md` under the parent authority of Product Requirements and System Architecture.
+
+## Adaptive planning model
+
+The native planning path is:
+
+```text
+DesignContext
+   ↓
+NativeDesignStrategyEngine
+   ↓
+DesignStrategy
+   ↓
+CompositionFingerprint (when needed for evidence)
+```
+
+`DesignContext` contains bounded business, audience, goal, brand, content, complexity, trust, visual-asset, density, locale and device-priority signals. The strategy engine maps this context to inspectable composition, type, spacing, surface, imagery, CTA, diagram, motion, navigation and mobile-transformation behavior.
+
+The engine does not use random layout rotation. Different contexts can deterministically choose different composition families while repeated calls with the same context remain stable.
 
 ## Native evaluator families
 
-The final-polish assessment composes responsive quality, localization parity, visual quality, typography/readability, component consistency, interaction/accessibility, motion quality, technical-content quality, and contextual anti-generic-AI review. It deliberately does not ban gradients, cards, dark backgrounds, large headings, or motion by mere presence.
+Browser, accessibility, deterministic probes and governed visual review produce bounded `DesignObservation` rows. The evaluator emits versioned `DesignFinding` evidence and a final `DesignAssessment`. Critical, major and P2 findings block acceptance.
+
+The final-polish assessment covers responsive quality, localization parity, visual quality, typography/readability, component consistency, interaction/accessibility, motion quality, technical-content quality and contextual anti-generic-AI review. It deliberately does not ban gradients, cards, dark backgrounds, large headings or motion by mere presence.
+
+Structural anti-generic evaluation includes a deterministic blocking signal when repeated equal-card groups and repeated centered sections occur together at a level that indicates a generic repeated skeleton. Lower-level decoration signals remain contextual review inputs.
 
 ## Evidence and severity
 
-Every finding identifies evaluator/version, route, viewport, category, severity, finding, evidence, recommendation, confidence, and status. Invalid or incomplete evidence fails closed. Minor polish observations remain non-blocking only when explicitly dispositioned by project governance.
+Every finding identifies evaluator/version, route, viewport, category, severity, finding, evidence, recommendation, confidence and status. Invalid or incomplete evidence fails closed. Minor polish observations remain non-blocking only when explicitly dispositioned by project governance.
+
+Required viewport coverage is 320, 360, 390, 412, 430, 768, 1024 and 1440. English and Turkish evidence are both required. Reduced-motion support is part of the blocking quality contract.
 
 ## External-reference and licensing policy
 
-Taste Skill, Emil Kowalski's skills, and Impeccable were inspected at pinned revisions for high-level behavior and vocabulary. Their code, prompts, scripts, assets, detectors, and runtime were not copied or imported. Exact revisions, licenses, inspected paths, decisions, and independent implementation evidence are recorded in `tools/design-intelligence/PROVENANCE.md`.
+Taste Skill, Emil Kowalski's skills and Impeccable may be inspected only as research/provenance references. Their code, prompts, scripts, assets, detectors, templates and runtime are not copied or imported into ILAIOS. Exact external-reference decisions remain recorded in `tools/design-intelligence/PROVENANCE.md`.
 
-This is engineering provenance preparation, not a legal opinion or declaration of an ILAIOS license. The package is `LICENSING_REVIEW_READY`: its source ownership boundary, dependency inventory, and external-reference decisions are explicit for later formal review.
+This is engineering provenance preparation, not a legal opinion or a declaration that formal licensing review has completed.
 
-## Testing and Web Factory gate
+## Testing and Website CI gate
 
-`tests/test_design_quality.py` covers PASS, blocking FAIL, incomplete coverage, invalid input, deterministic stability, EN/TR, all target viewports, accessibility interaction, and contextual anti-generic false-positive resistance. `tests/test_web_factory.py` verifies the existing governed artifact workflow; the design gate is exercised directly by the native evaluator tests.
+`tests/test_design_quality.py` covers clean PASS, blocking FAIL, incomplete coverage, invalid input, deterministic stability, EN/TR, target viewports, contextual anti-generic false-positive resistance, structural-repetition blocking, context-derived strategy stability and differentiation, plus reuse through the canonical Web Factory.
+
+`.github/workflows/website-ci.yml` runs the website policy checks, lint, typecheck, production build and native design/Web Factory tests. Changes to the website, design skill, design evaluator, Web Factory integration or relevant tests trigger the same acceptance workflow.
 
 ## Completeness scan
 
-Deterministic automation is appropriate for coverage, overflow, clipping, overlap, contrast results, focus results, target size results, reduced-motion support, and structured component-consistency counts. Composition quality, brand differentiation, diagram clarity, and whether decoration is contextually justified still require bounded browser/human/LLM observation. They must be recorded as evidence inputs; they must not be automated through an opaque prose-only score.
-
+Deterministic automation is appropriate for coverage, overflow, clipping, overlap, contrast results, focus results, target-size results, reduced-motion support and structural repetition signals. Composition quality, brand differentiation, diagram clarity and whether decoration is contextually justified may still require bounded browser/human/LLM observation. Those observations enter structured evidence; an opaque prose-only aesthetic score cannot become acceptance authority.
