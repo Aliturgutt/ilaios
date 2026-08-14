@@ -1,0 +1,5 @@
+/* ILAIOS native adaptive design layer */
+:root { --radius-ui: 12px; }
+body { background: #0b0f14; }
+.button { border-radius: var(--radius-ui); }
+h1 { font-size: clamp(2.8rem, 5vw, 5.4rem); }
