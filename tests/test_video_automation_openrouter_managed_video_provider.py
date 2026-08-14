@@ -265,7 +265,7 @@ def test_unknown_or_free_suffix_seedance_model_is_not_in_managed_paid_allowlist(
     )
     result = coordinator.execute(provider=provider, plan=plan)
     assert not result.success
-    assert "allowlist" in (result.error_message or "")
+    assert "catalog" in (result.error_message or "")
     assert transport.post_calls == []
 
 

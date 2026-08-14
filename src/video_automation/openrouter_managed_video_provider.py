@@ -1,9 +1,9 @@
-"""Managed-credit OpenRouter/Seedance provider for ILAIOS Video Factory.
+"""Catalog-bound ILAIOS-managed OpenRouter video provider.
 
-The normal ILAIOS user never supplies an OpenRouter or Seedance credential. This
-adapter is instantiated server-side with the ILAIOS-owned ``OPENROUTER_API_KEY``
-and requires immutable ILAIOS credit-authorization evidence before any paid
-network side effect.
+Normal users never supply OpenRouter credentials or choose infrastructure. This
+adapter is instantiated server-side and accepts only model IDs that an upstream
+governed capability/catalog gate has already approved. Canonical RouteDecision
+remains the provider-selection authority.
 """
 
 from __future__ import annotations
@@ -32,11 +32,11 @@ _DEFAULT_OPERATION = "video.generate"
 
 
 class OpenRouterManagedVideoProviderError(ValueError):
-    """Raised when managed provider execution fails before an external side effect."""
+    """Raised when managed execution fails before an external side effect."""
 
 
 class OpenRouterManagedVideoGenerationProvider:
-    """Submit a credit-authorized paid Seedance request through OpenRouter."""
+    """Submit exactly one credit-authorized catalog-approved video request."""
 
     def __init__(
         self,
@@ -46,6 +46,9 @@ class OpenRouterManagedVideoGenerationProvider:
         base_url: str = _DEFAULT_BASE_URL,
         timeout_seconds: float = 30.0,
         transport: OpenRouterTransport | None = None,
+        approved_model_ids: tuple[str, ...] = SEEDANCE_MANAGED_MODEL_IDS,
+        catalog_digest: str | None = None,
+        callback_url: str | None = None,
     ) -> None:
         _require_text("api_key", api_key)
         _require_text("provider_name", provider_name)
@@ -54,25 +57,55 @@ class OpenRouterManagedVideoGenerationProvider:
             raise OpenRouterManagedVideoProviderError(
                 "timeout_seconds must be greater than zero"
             )
+        if not approved_model_ids:
+            raise OpenRouterManagedVideoProviderError(
+                "approved_model_ids must not be empty"
+            )
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for model_id in approved_model_ids:
+            _require_text("approved model id", model_id)
+            if model_id in seen:
+                raise OpenRouterManagedVideoProviderError(
+                    f"duplicate approved model id: {model_id}"
+                )
+            seen.add(model_id)
+            normalized.append(model_id)
+        if catalog_digest is not None:
+            _require_sha256_text("catalog_digest", catalog_digest)
+        if callback_url is not None:
+            _require_https_url("callback_url", callback_url)
         self._api_key = api_key
         self._base_url = base_url.rstrip("/")
         self._timeout_seconds = timeout_seconds
         self._transport = transport or UrllibOpenRouterTransport()
+        self._approved_model_ids = tuple(sorted(normalized))
+        self._catalog_digest = catalog_digest
+        self._callback_url = callback_url
+        metadata: dict[str, MetadataValue] = {
+            "backend": "openrouter",
+            "credential_owner": "ILAIOS",
+            "billing_authority": "managed_credits",
+            "modality": "video",
+            "catalog_bound": catalog_digest is not None,
+            "approved_model_count": len(self._approved_model_ids),
+        }
+        if catalog_digest is not None:
+            metadata["catalog_digest"] = catalog_digest
         self._capabilities = ProviderCapabilities(
             provider_name=provider_name,
             operations=(_DEFAULT_OPERATION,),
             is_paid=True,
-            metadata={
-                "backend": "openrouter",
-                "credential_owner": "ILAIOS",
-                "billing_authority": "managed_credits",
-                "modality": "video",
-            },
+            metadata=metadata,
         )
 
     @property
     def capabilities(self) -> ProviderCapabilities:
         return self._capabilities
+
+    @property
+    def approved_model_ids(self) -> tuple[str, ...]:
+        return self._approved_model_ids
 
     def execute(self, request: ProviderRequest) -> ProviderResult:
         """Submit exactly one authorized paid video job."""
@@ -80,7 +113,7 @@ class OpenRouterManagedVideoGenerationProvider:
         try:
             self._validate_request(request)
             model_id, item = _parse_payload(request.payload)
-            _require_seedance_model(model_id)
+            self._require_approved_model(model_id)
             authorization_id = _required_sha256(
                 request.payload, "credit_authorization_id"
             )
@@ -89,7 +122,14 @@ class OpenRouterManagedVideoGenerationProvider:
             )
             tenant_id = _required_string(request.payload, "tenant_id")
             user_id = _required_string(request.payload, "user_id")
-            body = _build_request_body(model_id, item)
+            routing_decision_id = _required_string(
+                request.payload, "routing_decision_id"
+            )
+            body = _build_request_body(
+                model_id,
+                item,
+                callback_url=self._callback_url,
+            )
             response = self._transport.post_json(
                 f"{self._base_url}/videos",
                 headers=_auth_headers(self._api_key),
@@ -121,8 +161,11 @@ class OpenRouterManagedVideoGenerationProvider:
             "credit_reserved_microusd": reserved_microusd,
             "tenant_id": tenant_id,
             "user_id": user_id,
+            "routing_decision_id": routing_decision_id,
             "model_id": model_id,
         }
+        if self._catalog_digest is not None:
+            metadata["catalog_digest"] = self._catalog_digest
         provider_status = response.payload.get("status")
         if isinstance(provider_status, str) and provider_status.strip():
             metadata["submission_status"] = provider_status
@@ -146,6 +189,12 @@ class OpenRouterManagedVideoGenerationProvider:
         if request.operation != _DEFAULT_OPERATION:
             raise OpenRouterManagedVideoProviderError(
                 f"unsupported operation: {request.operation}"
+            )
+
+    def _require_approved_model(self, model_id: str) -> None:
+        if model_id not in self._approved_model_ids:
+            raise OpenRouterManagedVideoProviderError(
+                "model is not approved by the governed managed-video catalog gate"
             )
 
 
@@ -175,6 +224,8 @@ def _parse_payload(
 def _build_request_body(
     model_id: str,
     item: Mapping[str, object],
+    *,
+    callback_url: str | None,
 ) -> Mapping[str, object]:
     prompt = _item_string(item, "prompt_text")
     aspect_ratio = _item_string(item, "aspect_ratio")
@@ -187,8 +238,6 @@ def _build_request_body(
     generate_audio = item.get("generate_audio", False)
     if not isinstance(generate_audio, bool):
         raise OpenRouterManagedVideoProviderError("generate_audio must be boolean")
-
-    # Deliberately return a normal dict: urllib transport JSON-serializes this body.
     body: dict[str, object] = {
         "model": model_id,
         "prompt": prompt,
@@ -202,20 +251,19 @@ def _build_request_body(
         if isinstance(seed, bool) or not isinstance(seed, int):
             raise OpenRouterManagedVideoProviderError("seed must be an integer")
         body["seed"] = seed
+    if callback_url is not None:
+        body["callback_url"] = callback_url
     return body
-
-
-def _require_seedance_model(model_id: str) -> None:
-    if model_id not in SEEDANCE_MANAGED_MODEL_IDS:
-        raise OpenRouterManagedVideoProviderError(
-            "model is not in the governed paid Seedance allowlist"
-        )
 
 
 def _required_string(payload: Mapping[str, MetadataValue], name: str) -> str:
     value = payload.get(name)
     if not isinstance(value, str) or not value.strip():
         raise OpenRouterManagedVideoProviderError(f"{name} must be a non-empty string")
+    if value != value.strip():
+        raise OpenRouterManagedVideoProviderError(
+            f"{name} must not contain surrounding whitespace"
+        )
     return value
 
 
@@ -228,6 +276,11 @@ def _required_positive_int(payload: Mapping[str, MetadataValue], name: str) -> i
 
 def _required_sha256(payload: Mapping[str, MetadataValue], name: str) -> str:
     value = _required_string(payload, name)
+    _require_sha256_text(name, value)
+    return value
+
+
+def _require_sha256_text(name: str, value: str) -> None:
     if len(value) != 64:
         raise OpenRouterManagedVideoProviderError(f"{name} must be a SHA-256 digest")
     try:
@@ -236,7 +289,6 @@ def _required_sha256(payload: Mapping[str, MetadataValue], name: str) -> str:
         raise OpenRouterManagedVideoProviderError(
             f"{name} must be hexadecimal"
         ) from exc
-    return value
 
 
 def _item_string(item: Mapping[str, object], name: str) -> str:
@@ -304,6 +356,16 @@ def _failure(
     )
 
 
+def _require_https_url(name: str, value: str) -> None:
+    _require_text(name, value)
+    if not value.startswith("https://"):
+        raise OpenRouterManagedVideoProviderError(f"{name} must use HTTPS")
+
+
 def _require_text(name: str, value: str) -> None:
     if not value or not value.strip():
         raise OpenRouterManagedVideoProviderError(f"{name} must not be blank")
+    if value != value.strip():
+        raise OpenRouterManagedVideoProviderError(
+            f"{name} must not contain surrounding whitespace"
+        )
