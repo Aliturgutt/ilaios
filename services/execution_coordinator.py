@@ -14,11 +14,16 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
 from services.capability_registry import CAPABILITIES
 from services.control_plane.api import ControlPlane
-from services.control_plane.proposals import BudgetEnvelope, DataClass, ProposedTask, RiskClass
+from services.control_plane.proposals import (
+    BudgetEnvelope,
+    DataClass,
+    ProposedTask,
+    RiskClass,
+)
 from services.governance import GovernedRuntimeGateway
 from services.integrations.product_runtime import DurableVideoProductRuntime
 from services.runtime import BlastRadiusBudget, DurableGrantPolicy, ExecutionGrant
@@ -103,7 +108,9 @@ _ROUTE_TERMS: tuple[tuple[str, frozenset[str]], ...] = (
     ),
     (
         _COMMERCE,
-        frozenset({"campaign", "kampanya", "marketing", "pazarlama", "sales plan"}),
+        frozenset(
+            {"campaign", "kampanya", "marketing", "pazarlama", "sales plan"}
+        ),
     ),
     (
         _PERSONAL,
@@ -111,7 +118,9 @@ _ROUTE_TERMS: tuple[tuple[str, frozenset[str]], ...] = (
     ),
     (
         _SECURITY,
-        frozenset({"security review", "guvenlik", "güvenlik", "sast", "threat model"}),
+        frozenset(
+            {"security review", "guvenlik", "güvenlik", "sast", "threat model"}
+        ),
     ),
 )
 
@@ -160,8 +169,8 @@ class ExecutionCoordinator:
         now: datetime,
     ) -> dict[str, object]:
         _require_identifier(request_id, "request_id")
-        _require_identifier(principal_id, "principal_id")
-        _require_identifier(tenant_id, "tenant_id")
+        _require_identity_text(principal_id, "principal_id")
+        _require_identity_text(tenant_id, "tenant_id")
         if not objective or objective != objective.strip():
             raise ExecutionCoordinatorError("objective must be non-blank and trimmed")
         if len(objective) > 20_000:
@@ -175,7 +184,10 @@ class ExecutionCoordinator:
                 raise ExecutionCoordinatorError("execution request already exists")
 
         route = classify_execution_route(objective)
-        if route.capability_id == _VIDEO and route.adapter_id == "video.product-runtime.v1":
+        if (
+            route.capability_id == _VIDEO
+            and route.adapter_id == "video.product-runtime.v1"
+        ):
             prepared = self._video.prepare(
                 request_id,
                 objective,
@@ -229,7 +241,8 @@ class ExecutionCoordinator:
         timestamp = now.isoformat()
         with self._connect() as connection:
             connection.execute(
-                "INSERT INTO execution_requests VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)",
+                "INSERT INTO execution_requests VALUES "
+                "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, ?)",
                 (
                     request_id,
                     principal_id,
@@ -261,8 +274,13 @@ class ExecutionCoordinator:
             return cast(dict[str, object], json.loads(str(row["result_json"])))
         if row["status"] != "PENDING_APPROVAL":
             raise ExecutionCoordinatorError("execution request is not resumable")
-        if row["capability_id"] != _VIDEO or row["adapter_id"] != "video.product-runtime.v1":
-            raise ExecutionCoordinatorError("selected capability has no executable adapter")
+        if (
+            row["capability_id"] != _VIDEO
+            or row["adapter_id"] != "video.product-runtime.v1"
+        ):
+            raise ExecutionCoordinatorError(
+                "selected capability has no executable adapter"
+            )
         if not self._governance.approval_proven(request_id):
             raise ExecutionCoordinatorError("independent governance approval is required")
 
@@ -389,5 +407,15 @@ def _require_identifier(value: str, field: str) -> None:
     if not value or any(
         character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
         for character in value
+    ):
+        raise ExecutionCoordinatorError(f"invalid {field}")
+
+
+def _require_identity_text(value: str, field: str) -> None:
+    if (
+        not value
+        or value != value.strip()
+        or len(value) > 512
+        or any(ord(character) < 32 or ord(character) == 127 for character in value)
     ):
         raise ExecutionCoordinatorError(f"invalid {field}")
