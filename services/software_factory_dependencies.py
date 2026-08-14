@@ -1,9 +1,9 @@
 """SF-13 dependency governance over independently reviewed Software Factory changes.
 
-The gate operationalizes the existing first-party ``sf-dependency-governance``
-skill. It reuses SF-12 evidence, evaluates only reviewed manifest/lockfile changes,
-and emits deterministic supply-chain policy evidence. It grants no acceptance,
-promotion, deployment, production, or mutation authority.
+This gate operationalizes the canonical first-party ``sf-dependency-governance``
+skill. It consumes exact SF-12 evidence, evaluates only reviewed dependency
+manifest/lockfile changes, and emits deterministic policy evidence without
+acceptance, promotion, deployment, production, or mutation authority.
 """
 
 from __future__ import annotations
@@ -19,7 +19,7 @@ from services.software_factory_review import (
     SoftwareFactoryIndependentReview,
     SoftwareIndependentReviewRequest,
 )
-from services.software_factory_skills import SkillRegistry
+from services.software_factory_skills import SkillPackage, SkillRegistry
 from src.core.validation_pipeline import canonical_sha256
 
 DEPENDENCY_SKILL_ID = "sf-dependency-governance"
@@ -58,7 +58,7 @@ class CommercialCompatibility(str, Enum):
 
 @dataclass(frozen=True, slots=True)
 class DependencyPolicy:
-    """Explicit supply-chain policy; legal/security classifications are inputs."""
+    """Explicit supply-chain policy; classifications are policy inputs."""
 
     policy_id: str
     allowed_sources: frozenset[str]
@@ -73,8 +73,6 @@ class DependencyPolicy:
 
 @dataclass(frozen=True, slots=True)
 class DependencyChange:
-    """Canonical SF-13 dependency-change evidence supplied by manifest/lock analysis."""
-
     package: str
     version: str
     source: str
@@ -156,7 +154,9 @@ class SoftwareFactoryDependencyGovernance:
         package = self._validate_skill_contract()
         review = self._validate_review_binding(request)
         policy = self._validate_policy(request.policy)
-        repository_sha = request.review_request.validation_request.software_proposal.evidence.repository_sha
+        repository_sha = (
+            request.review_request.validation_request.software_proposal.evidence.repository_sha
+        )
         if _SHA1.fullmatch(repository_sha) is None:
             raise SoftwareFactoryError("SF-13 requires a lowercase repository SHA")
 
@@ -165,41 +165,27 @@ class SoftwareFactoryDependencyGovernance:
         )
         changes = self._validate_change_scope(request.dependency_changes, dependency_paths)
         evidence = tuple(self._evaluate_change(change, policy) for change in changes)
-
-        policy_reasons: list[str] = []
+        policy_reasons: tuple[str, ...] = ()
         if dependency_paths and not evidence:
-            policy_reasons.append(
-                "reviewed dependency manifest/lockfile changed without explained dependency inventory"
+            policy_reasons = (
+                "reviewed dependency manifest/lockfile changed without explained dependency inventory",
             )
         disposition = _aggregate_disposition(
             tuple(item.disposition for item in evidence),
             force_block=bool(policy_reasons),
         )
         policy_sha256 = canonical_sha256(_policy_material(policy))
-        material = {
-            "governance_id": request.governance_id,
-            "contract_version": DEPENDENCY_CONTRACT_VERSION,
-            "skill_id": package.manifest.skill_id,
-            "skill_version": package.manifest.version,
-            "policy_id": policy.policy_id,
-            "policy_sha256": policy_sha256,
-            "tenant_id": review.tenant_id,
-            "task_id": review.task_id,
-            "correlation_id": review.correlation_id,
-            "repository_sha": repository_sha,
-            "review_record_sha256": review.record_sha256,
-            "validation_report_sha256": review.validation_report_sha256,
-            "dependency_paths": list(dependency_paths),
-            "dependency_evidence": [_evidence_material(item) for item in evidence],
-            "disposition": disposition.value,
-            "policy_reasons": policy_reasons,
-            "independent_review_required": package.manifest.independent_review_required,
-            "acceptance_authorized": False,
-            "promotion_authorized": False,
-            "deployment_authorized": False,
-            "production_applied": False,
-            "subject_mutated": False,
-        }
+        material = _record_material(
+            request,
+            package,
+            review,
+            repository_sha,
+            dependency_paths,
+            evidence,
+            disposition,
+            policy_reasons,
+            policy_sha256,
+        )
         return DependencyGovernanceRecord(
             governance_id=request.governance_id,
             contract_version=DEPENDENCY_CONTRACT_VERSION,
@@ -216,7 +202,7 @@ class SoftwareFactoryDependencyGovernance:
             dependency_paths=dependency_paths,
             dependency_evidence=evidence,
             disposition=disposition,
-            policy_reasons=tuple(policy_reasons),
+            policy_reasons=policy_reasons,
             independent_review_required=package.manifest.independent_review_required,
             acceptance_authorized=False,
             promotion_authorized=False,
@@ -226,63 +212,101 @@ class SoftwareFactoryDependencyGovernance:
             record_sha256=canonical_sha256(material),
         )
 
-    def _validate_skill_contract(self):  # type: ignore[no-untyped-def]
+    def _validate_skill_contract(self) -> SkillPackage:
         package = self._registry.resolve(DEPENDENCY_SKILL_ID)
         manifest = package.manifest
         if manifest.domain != "supply-chain-governance":
-            raise SoftwareFactoryError("SF-13 dependency skill is outside supply-chain governance")
+            raise SoftwareFactoryError(
+                "SF-13 dependency skill is outside supply-chain governance"
+            )
         if not manifest.independent_review_required:
-            raise SoftwareFactoryError("SF-13 dependency skill lost its independent-review requirement")
-        required_evidence = {"dependency_changes", "license_compatibility", "policy_decision"}
-        if not required_evidence.issubset(manifest.emitted_evidence):
-            raise SoftwareFactoryError("SF-13 dependency skill lost required evidence classes")
+            raise SoftwareFactoryError(
+                "SF-13 dependency skill lost its independent-review requirement"
+            )
+        required = {"dependency_changes", "license_compatibility", "policy_decision"}
+        if not required.issubset(manifest.emitted_evidence):
+            raise SoftwareFactoryError(
+                "SF-13 dependency skill lost required evidence classes"
+            )
         return package
 
     def _validate_review_binding(
         self, request: DependencyGovernanceRequest
     ) -> IndependentReviewRecord:
         if not _trimmed(request.governance_id):
-            raise SoftwareFactoryError("SF-13 governance_id must be non-blank and trimmed")
-        regenerated = SoftwareFactoryIndependentReview(self._registry).review(request.review_request)
+            raise SoftwareFactoryError(
+                "SF-13 governance_id must be non-blank and trimmed"
+            )
+        regenerated = SoftwareFactoryIndependentReview(self._registry).review(
+            request.review_request
+        )
         if regenerated != request.review_record:
-            raise SoftwareFactoryError("SF-13 independent-review record is stale or tampered")
-        if regenerated.decision is not ReviewDecision.APPROVE or not regenerated.review_complete:
-            raise SoftwareFactoryError("SF-13 requires a completed, approved SF-12 independent review")
-        if regenerated.acceptance_authorized or regenerated.promotion_authorized or regenerated.production_applied:
-            raise SoftwareFactoryError("SF-13 cannot consume review evidence with downstream authority")
+            raise SoftwareFactoryError(
+                "SF-13 independent-review record is stale or tampered"
+            )
+        if (
+            regenerated.decision is not ReviewDecision.APPROVE
+            or not regenerated.review_complete
+        ):
+            raise SoftwareFactoryError(
+                "SF-13 requires a completed, approved SF-12 independent review"
+            )
+        if (
+            regenerated.acceptance_authorized
+            or regenerated.promotion_authorized
+            or regenerated.production_applied
+        ):
+            raise SoftwareFactoryError(
+                "SF-13 cannot consume review evidence with downstream authority"
+            )
         return regenerated
 
     @staticmethod
     def _validate_policy(policy: DependencyPolicy) -> DependencyPolicy:
         if not _trimmed(policy.policy_id):
             raise SoftwareFactoryError("SF-13 dependency policy identity is required")
-        if not policy.allowed_sources or any(not _trimmed(item) for item in policy.allowed_sources):
-            raise SoftwareFactoryError("SF-13 requires an explicit non-empty source allowlist")
-        license_sets = (policy.allowed_licenses, policy.review_licenses, policy.blocked_licenses)
+        if not policy.allowed_sources or any(
+            not _trimmed(item) for item in policy.allowed_sources
+        ):
+            raise SoftwareFactoryError(
+                "SF-13 requires an explicit non-empty source allowlist"
+            )
+        license_sets = (
+            policy.allowed_licenses,
+            policy.review_licenses,
+            policy.blocked_licenses,
+        )
         if any(any(not _trimmed(item) for item in values) for values in license_sets):
-            raise SoftwareFactoryError("SF-13 license policy entries must be non-blank and trimmed")
+            raise SoftwareFactoryError(
+                "SF-13 license policy entries must be non-blank and trimmed"
+            )
         if (
             policy.allowed_licenses & policy.review_licenses
             or policy.allowed_licenses & policy.blocked_licenses
             or policy.review_licenses & policy.blocked_licenses
         ):
             raise SoftwareFactoryError("SF-13 license policy sets must not overlap")
-        for disposition in (
+        unknowns = (
             policy.unknown_license_disposition,
             policy.unknown_security_disposition,
             policy.unknown_commercial_disposition,
-        ):
-            if disposition is DependencyDisposition.ALLOW:
-                raise SoftwareFactoryError("SF-13 unknown dependency evidence cannot default to ALLOW")
+        )
+        if DependencyDisposition.ALLOW in unknowns:
+            raise SoftwareFactoryError(
+                "SF-13 unknown dependency evidence cannot default to ALLOW"
+            )
         return policy
 
     @staticmethod
     def _validate_change_scope(
-        changes: tuple[DependencyChange, ...], dependency_paths: tuple[str, ...]
+        changes: tuple[DependencyChange, ...],
+        dependency_paths: tuple[str, ...],
     ) -> tuple[DependencyChange, ...]:
         if changes and not dependency_paths:
-            raise SoftwareFactoryError("SF-13 dependency evidence has no reviewed manifest/lockfile change")
-        dependency_path_set = set(dependency_paths)
+            raise SoftwareFactoryError(
+                "SF-13 dependency evidence has no reviewed manifest/lockfile change"
+            )
+        allowed_paths = set(dependency_paths)
         seen: set[tuple[str, str, str, str, str | None, str | None]] = set()
         validated: list[DependencyChange] = []
         for change in changes:
@@ -294,14 +318,20 @@ class SoftwareFactoryDependencyGovernance:
                 ("license", change.license),
             ):
                 if not _trimmed(value):
-                    raise SoftwareFactoryError(f"SF-13 dependency {label} must be non-blank and trimmed")
+                    raise SoftwareFactoryError(
+                        f"SF-13 dependency {label} must be non-blank and trimmed"
+                    )
             manifest_path = _optional_dependency_path(change.manifest_path)
             lockfile_path = _optional_dependency_path(change.lockfile_path)
             if manifest_path is None and lockfile_path is None:
-                raise SoftwareFactoryError("SF-13 dependency evidence must reference manifest or lockfile")
+                raise SoftwareFactoryError(
+                    "SF-13 dependency evidence must reference manifest or lockfile"
+                )
             for path in (manifest_path, lockfile_path):
-                if path is not None and path not in dependency_path_set:
-                    raise SoftwareFactoryError("SF-13 dependency evidence exceeds reviewed dependency-path scope")
+                if path is not None and path not in allowed_paths:
+                    raise SoftwareFactoryError(
+                        "SF-13 dependency evidence exceeds reviewed dependency-path scope"
+                    )
             identity = (
                 change.package,
                 change.version,
@@ -311,54 +341,33 @@ class SoftwareFactoryDependencyGovernance:
                 lockfile_path,
             )
             if identity in seen:
-                raise SoftwareFactoryError("SF-13 dependency evidence contains duplicate change identity")
+                raise SoftwareFactoryError(
+                    "SF-13 dependency evidence contains duplicate change identity"
+                )
             seen.add(identity)
             validated.append(
-                DependencyChange(
-                    package=change.package,
-                    version=change.version,
-                    source=change.source,
-                    role=change.role,
-                    reason=change.reason,
-                    integrity=change.integrity,
-                    integrity_verified=change.integrity_verified,
-                    security_status=change.security_status,
-                    license=change.license,
-                    commercial_compatibility=change.commercial_compatibility,
-                    operation=change.operation,
-                    manifest_path=manifest_path,
-                    lockfile_path=lockfile_path,
-                )
+                replace_paths(change, manifest_path=manifest_path, lockfile_path=lockfile_path)
             )
         return tuple(validated)
 
     @staticmethod
-    def _evaluate_change(change: DependencyChange, policy: DependencyPolicy) -> DependencyEvidence:
+    def _evaluate_change(
+        change: DependencyChange, policy: DependencyPolicy
+    ) -> DependencyEvidence:
         reasons: list[tuple[DependencyDisposition, str]] = []
         if not _trimmed(change.reason):
-            reasons.append((DependencyDisposition.BLOCK, "dependency change has no business/technical reason"))
+            reasons.append(
+                (
+                    DependencyDisposition.BLOCK,
+                    "dependency change has no business/technical reason",
+                )
+            )
         if policy.require_verified_integrity and not change.integrity_verified:
-            reasons.append((DependencyDisposition.BLOCK, "dependency integrity is not verified"))
-
+            reasons.append(
+                (DependencyDisposition.BLOCK, "dependency integrity is not verified")
+            )
         if change.operation is not DependencyOperation.REMOVE:
-            if change.source not in policy.allowed_sources:
-                reasons.append((DependencyDisposition.BLOCK, "dependency source is not allowlisted"))
-            if change.security_status is DependencySecurityStatus.VULNERABLE:
-                reasons.append((DependencyDisposition.BLOCK, "dependency has a known vulnerable security status"))
-            elif change.security_status is DependencySecurityStatus.UNKNOWN:
-                reasons.append((policy.unknown_security_disposition, "dependency security status is unknown"))
-
-            if change.commercial_compatibility is CommercialCompatibility.INCOMPATIBLE:
-                reasons.append((DependencyDisposition.BLOCK, "dependency is commercially incompatible under supplied evidence"))
-            elif change.commercial_compatibility is CommercialCompatibility.UNKNOWN:
-                reasons.append((policy.unknown_commercial_disposition, "dependency commercial compatibility is unknown"))
-
-            if change.license in policy.blocked_licenses:
-                reasons.append((DependencyDisposition.BLOCK, "dependency license is blocked by policy"))
-            elif change.license in policy.review_licenses:
-                reasons.append((DependencyDisposition.REVIEW_REQUIRED, "dependency license requires policy review"))
-            elif change.license not in policy.allowed_licenses:
-                reasons.append((policy.unknown_license_disposition, "dependency license is not explicitly classified by policy"))
+            _apply_add_update_policy(change, policy, reasons)
 
         disposition = _aggregate_disposition(tuple(item[0] for item in reasons))
         policy_reasons = tuple(item[1] for item in reasons)
@@ -385,8 +394,87 @@ class SoftwareFactoryDependencyGovernance:
         )
 
 
+def replace_paths(
+    change: DependencyChange,
+    *,
+    manifest_path: str | None,
+    lockfile_path: str | None,
+) -> DependencyChange:
+    return DependencyChange(
+        package=change.package,
+        version=change.version,
+        source=change.source,
+        role=change.role,
+        reason=change.reason,
+        integrity=change.integrity,
+        integrity_verified=change.integrity_verified,
+        security_status=change.security_status,
+        license=change.license,
+        commercial_compatibility=change.commercial_compatibility,
+        operation=change.operation,
+        manifest_path=manifest_path,
+        lockfile_path=lockfile_path,
+    )
+
+
+def _apply_add_update_policy(
+    change: DependencyChange,
+    policy: DependencyPolicy,
+    reasons: list[tuple[DependencyDisposition, str]],
+) -> None:
+    if change.source not in policy.allowed_sources:
+        reasons.append(
+            (DependencyDisposition.BLOCK, "dependency source is not allowlisted")
+        )
+    if change.security_status is DependencySecurityStatus.VULNERABLE:
+        reasons.append(
+            (
+                DependencyDisposition.BLOCK,
+                "dependency has a known vulnerable security status",
+            )
+        )
+    elif change.security_status is DependencySecurityStatus.UNKNOWN:
+        reasons.append(
+            (policy.unknown_security_disposition, "dependency security status is unknown")
+        )
+    if change.commercial_compatibility is CommercialCompatibility.INCOMPATIBLE:
+        reasons.append(
+            (
+                DependencyDisposition.BLOCK,
+                "dependency is commercially incompatible under supplied evidence",
+            )
+        )
+    elif change.commercial_compatibility is CommercialCompatibility.UNKNOWN:
+        reasons.append(
+            (
+                policy.unknown_commercial_disposition,
+                "dependency commercial compatibility is unknown",
+            )
+        )
+    if change.license in policy.blocked_licenses:
+        reasons.append(
+            (DependencyDisposition.BLOCK, "dependency license is blocked by policy")
+        )
+    elif change.license in policy.review_licenses:
+        reasons.append(
+            (
+                DependencyDisposition.REVIEW_REQUIRED,
+                "dependency license requires policy review",
+            )
+        )
+    elif change.license not in policy.allowed_licenses:
+        reasons.append(
+            (
+                policy.unknown_license_disposition,
+                "dependency license is not explicitly classified by policy",
+            )
+        )
+
+
 def _aggregate_disposition(
-    dispositions: tuple[DependencyDisposition, ...], *, force_block: bool = False
+    dispositions: tuple[DependencyDisposition, ...],
+    *,
+    force_block: bool = False,
 ) -> DependencyDisposition:
     if force_block or DependencyDisposition.BLOCK in dispositions:
         return DependencyDisposition.BLOCK
@@ -400,23 +488,25 @@ def _optional_dependency_path(path: str | None) -> str | None:
         return None
     normalized = _normalize_path(path)
     if not _is_dependency_path(normalized):
-        raise SoftwareFactoryError("SF-13 evidence path is not a supported dependency manifest/lockfile")
+        raise SoftwareFactoryError(
+            "SF-13 evidence path is not a supported dependency manifest/lockfile"
+        )
     return normalized
 
 
 def _normalize_path(path: str) -> str:
     if not _trimmed(path) or path.startswith(("/", "\\")):
-        raise SoftwareFactoryError("SF-13 dependency paths must be repository-relative")
+        raise SoftwareFactoryError(
+            "SF-13 dependency paths must be repository-relative"
+        )
     normalized = path.replace("\\", "/")
-    parts = normalized.split("/")
-    if any(part in {"", ".", ".."} for part in parts):
+    if any(part in {"", ".", ".."} for part in normalized.split("/")):
         raise SoftwareFactoryError("SF-13 dependency paths must be normalized")
     return normalized
 
 
 def _is_dependency_path(path: str) -> bool:
-    normalized = _normalize_path(path)
-    name = normalized.rsplit("/", 1)[-1]
+    name = _normalize_path(path).rsplit("/", 1)[-1]
     fixed = {
         "package.json",
         "package-lock.json",
@@ -439,7 +529,9 @@ def _is_dependency_path(path: str) -> bool:
         "Gemfile",
         "Gemfile.lock",
     }
-    return name in fixed or (name.startswith("requirements") and name.endswith(".txt"))
+    return name in fixed or (
+        name.startswith("requirements") and name.endswith(".txt")
+    )
 
 
 def _policy_material(policy: DependencyPolicy) -> dict[str, object]:
@@ -475,27 +567,61 @@ def _change_material(change: DependencyChange) -> dict[str, object]:
 
 
 def _evidence_material(evidence: DependencyEvidence) -> dict[str, object]:
-    material = _change_material(
-        DependencyChange(
-            package=evidence.package,
-            version=evidence.version,
-            source=evidence.source,
-            role=evidence.role,
-            reason=evidence.reason,
-            integrity=evidence.integrity,
-            integrity_verified=evidence.integrity_verified,
-            security_status=evidence.security_status,
-            license=evidence.license,
-            commercial_compatibility=evidence.commercial_compatibility,
-            operation=evidence.operation,
-            manifest_path=evidence.manifest_path,
-            lockfile_path=evidence.lockfile_path,
-        )
-    )
-    material["disposition"] = evidence.disposition.value
-    material["policy_reasons"] = list(evidence.policy_reasons)
-    material["evidence_sha256"] = evidence.evidence_sha256
-    return material
+    return {
+        "package": evidence.package,
+        "version": evidence.version,
+        "source": evidence.source,
+        "role": evidence.role.value,
+        "reason": evidence.reason,
+        "integrity": evidence.integrity,
+        "integrity_verified": evidence.integrity_verified,
+        "security_status": evidence.security_status.value,
+        "license": evidence.license,
+        "commercial_compatibility": evidence.commercial_compatibility.value,
+        "operation": evidence.operation.value,
+        "manifest_path": evidence.manifest_path,
+        "lockfile_path": evidence.lockfile_path,
+        "disposition": evidence.disposition.value,
+        "policy_reasons": list(evidence.policy_reasons),
+        "evidence_sha256": evidence.evidence_sha256,
+    }
+
+
+def _record_material(
+    request: DependencyGovernanceRequest,
+    package: SkillPackage,
+    review: IndependentReviewRecord,
+    repository_sha: str,
+    dependency_paths: tuple[str, ...],
+    evidence: tuple[DependencyEvidence, ...],
+    disposition: DependencyDisposition,
+    policy_reasons: tuple[str, ...],
+    policy_sha256: str,
+) -> dict[str, object]:
+    return {
+        "governance_id": request.governance_id,
+        "contract_version": DEPENDENCY_CONTRACT_VERSION,
+        "skill_id": package.manifest.skill_id,
+        "skill_version": package.manifest.version,
+        "policy_id": request.policy.policy_id,
+        "policy_sha256": policy_sha256,
+        "tenant_id": review.tenant_id,
+        "task_id": review.task_id,
+        "correlation_id": review.correlation_id,
+        "repository_sha": repository_sha,
+        "review_record_sha256": review.record_sha256,
+        "validation_report_sha256": review.validation_report_sha256,
+        "dependency_paths": list(dependency_paths),
+        "dependency_evidence": [_evidence_material(item) for item in evidence],
+        "disposition": disposition.value,
+        "policy_reasons": list(policy_reasons),
+        "independent_review_required": package.manifest.independent_review_required,
+        "acceptance_authorized": False,
+        "promotion_authorized": False,
+        "deployment_authorized": False,
+        "production_applied": False,
+        "subject_mutated": False,
+    }
 
 
 def _trimmed(value: str) -> bool:
