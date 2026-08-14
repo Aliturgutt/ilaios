@@ -2,8 +2,12 @@ import 'package:flutter/material.dart';
 
 import '../../app/ilaios_theme.dart';
 import '../../control_plane/client.dart';
+import '../../control_plane/evidence_record.dart';
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
+import '../../identity/identity_client.dart';
+import '../create/create_view.dart';
+import '../deliveries/deliveries_view.dart';
 import '../navigation/desktop_section.dart';
 import '../operations/operational_views.dart';
 import 'control_center_view.dart';
@@ -14,6 +18,13 @@ class DesktopShell extends StatefulWidget {
     required this.operationalSnapshot,
     required this.operationalStatus,
     this.approverId,
+    this.identityProviders = const <IdentityProviderOption>[],
+    this.userSession,
+    this.identityStatus = 'Account sign-in is not configured',
+    this.onSignIn,
+    this.onLogout,
+    this.onPromptSubmit,
+    this.onSaveArtifact,
     this.onRefreshRequested,
     this.onGovernanceDecision,
     super.key,
@@ -23,6 +34,13 @@ class DesktopShell extends StatefulWidget {
   final OperationalSnapshot operationalSnapshot;
   final String operationalStatus;
   final String? approverId;
+  final List<IdentityProviderOption> identityProviders;
+  final DesktopUserSession? userSession;
+  final String identityStatus;
+  final Future<void> Function(String providerId)? onSignIn;
+  final Future<void> Function()? onLogout;
+  final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
+  final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
   final VoidCallback? onRefreshRequested;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
       onGovernanceDecision;
@@ -32,7 +50,7 @@ class DesktopShell extends StatefulWidget {
 }
 
 class _DesktopShellState extends State<DesktopShell> {
-  DesktopSection _section = DesktopSection.controlCenter;
+  DesktopSection _section = DesktopSection.create;
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +97,16 @@ class _DesktopShellState extends State<DesktopShell> {
 
   Widget _buildSection() {
     return switch (_section) {
+      DesktopSection.create => CreateView(
+          projection: widget.projection,
+          status: widget.operationalStatus,
+          identityProviders: widget.identityProviders,
+          userSession: widget.userSession,
+          identityStatus: widget.identityStatus,
+          onSignIn: widget.onSignIn,
+          onLogout: widget.onLogout,
+          onSubmit: widget.onPromptSubmit,
+        ),
       DesktopSection.controlCenter => ControlCenterView(
           projection: widget.projection,
           operationalSnapshot: widget.operationalSnapshot,
@@ -89,6 +117,11 @@ class _DesktopShellState extends State<DesktopShell> {
           projection: widget.projection,
           snapshot: widget.operationalSnapshot,
           status: widget.operationalStatus,
+        ),
+      DesktopSection.deliveries => DeliveriesView(
+          snapshot: widget.operationalSnapshot,
+          status: widget.operationalStatus,
+          onSaveArtifact: widget.onSaveArtifact,
         ),
       DesktopSection.evidence => EvidenceView(
           snapshot: widget.operationalSnapshot,
@@ -134,7 +167,7 @@ class _NavigationRail extends StatelessWidget {
                   const Divider(),
                   const SizedBox(height: 10),
                   const Text(
-                    'Client projection',
+                    'Governed client',
                     style: TextStyle(color: IlaiosTheme.muted, fontSize: 11),
                   ),
                   const SizedBox(height: 4),

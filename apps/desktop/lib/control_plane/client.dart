@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'evidence_record.dart';
 import 'operational_snapshot.dart';
@@ -25,6 +26,30 @@ class ControlPlaneResponse {
   const ControlPlaneResponse({required this.statusCode, required this.body});
   final int statusCode;
   final String body;
+}
+
+class PromptSubmission {
+  const PromptSubmission({
+    required this.goalId,
+    required this.jobId,
+    required this.state,
+  });
+
+  final String goalId;
+  final String jobId;
+  final String state;
+}
+
+class VerifiedArtifact {
+  const VerifiedArtifact({
+    required this.digest,
+    required this.size,
+    required this.bytes,
+  });
+
+  final String digest;
+  final int size;
+  final Uint8List bytes;
 }
 
 abstract interface class ControlPlaneTransport {
@@ -103,6 +128,89 @@ class ControlPlaneClient {
   final Uri _baseUri;
   final String _token;
   final ControlPlaneTransport _transport;
+
+  Future<PromptSubmission> submitPrompt(String objective) async {
+    final normalized = objective.trim();
+    if (normalized.isEmpty) {
+      throw const ControlPlaneClientException('Prompt must not be empty');
+    }
+    if (normalized.length > 20000) {
+      throw const ControlPlaneClientException('Prompt exceeds the Desktop input limit');
+    }
+
+    final goal = await _postAuthenticatedObject(
+      '/v1/goals',
+      <String, Object?>{'objective': normalized},
+      'goal submission',
+      expectedStatus: HttpStatus.created,
+    );
+    final goalId = goal['goal_id'];
+    if (goalId is! String || goalId.isEmpty) {
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed goal submission',
+      );
+    }
+
+    final job = await _postAuthenticatedObject(
+      '/v1/jobs',
+      <String, Object?>{'goal_id': goalId},
+      'job submission',
+      expectedStatus: HttpStatus.created,
+    );
+    final jobId = job['job_id'];
+    final state = job['state'];
+    if (jobId is! String || jobId.isEmpty || state is! String || state.isEmpty) {
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed job submission',
+      );
+    }
+    return PromptSubmission(goalId: goalId, jobId: jobId, state: state);
+  }
+
+  Future<Map<String, Object?>> fetchJob(String jobId) async {
+    final normalized = jobId.trim();
+    if (normalized.isEmpty || normalized.contains('/')) {
+      throw const ControlPlaneClientException('Invalid job identity');
+    }
+    return Map<String, Object?>.from(
+      await _getAuthenticatedObject('/v1/jobs/$normalized', 'job'),
+    );
+  }
+
+  Future<VerifiedArtifact> fetchVerifiedArtifact(String digest) async {
+    final normalized = digest.trim();
+    if (normalized.length != 64 ||
+        normalized.codeUnits.any((value) =>
+            !((value >= 48 && value <= 57) || (value >= 97 && value <= 102)))) {
+      throw const ControlPlaneClientException('Invalid artifact digest');
+    }
+    final payload = await _getAuthenticatedObject(
+      '/v1/evidence/artifacts/$normalized',
+      'artifact',
+    );
+    final returnedDigest = payload['digest'];
+    final size = payload['size'];
+    final encoded = payload['content_base64'];
+    if (returnedDigest != normalized || size is! int || size < 0 || encoded is! String) {
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed artifact data',
+      );
+    }
+    Uint8List bytes;
+    try {
+      bytes = base64Decode(encoded);
+    } on FormatException {
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed artifact encoding',
+      );
+    }
+    if (bytes.length != size) {
+      throw const ControlPlaneClientException(
+        'Control plane returned inconsistent artifact size',
+      );
+    }
+    return VerifiedArtifact(digest: normalized, size: size, bytes: bytes);
+  }
 
   Future<ControlPlaneProjection> fetchProjection() async {
     final readyResponse = await _transport.get(_baseUri.resolve('/health/ready'));
@@ -241,6 +349,29 @@ class ControlPlaneClient {
     }
     if (response.statusCode != HttpStatus.ok) {
       throw ControlPlaneClientException('Control plane $label query failed');
+    }
+    return _decodeObject(response, label);
+  }
+
+  Future<Map<String, dynamic>> _postAuthenticatedObject(
+    String path,
+    Map<String, Object?> body,
+    String label, {
+    required int expectedStatus,
+  }) async {
+    final response = await _transport.post(
+      _baseUri.resolve(path),
+      body: jsonEncode(body),
+      headers: <String, String>{'Authorization': 'Bearer $_token'},
+    );
+    if (response.statusCode == HttpStatus.unauthorized ||
+        response.statusCode == HttpStatus.forbidden) {
+      throw const ControlPlaneClientException(
+        'Control plane authentication failed',
+      );
+    }
+    if (response.statusCode != expectedStatus) {
+      throw ControlPlaneClientException('Control plane $label failed');
     }
     return _decodeObject(response, label);
   }
