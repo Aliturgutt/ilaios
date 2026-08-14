@@ -5,6 +5,7 @@ import '../../control_plane/client.dart';
 import '../../control_plane/evidence_record.dart';
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
+import '../../identity/identity_client.dart';
 import '../create/create_view.dart';
 import '../deliveries/deliveries_view.dart';
 import '../navigation/desktop_section.dart';
@@ -17,6 +18,11 @@ class DesktopShell extends StatefulWidget {
     required this.operationalSnapshot,
     required this.operationalStatus,
     this.approverId,
+    this.identityProviders = const <IdentityProviderOption>[],
+    this.userSession,
+    this.identityStatus = 'Account sign-in is not configured',
+    this.onSignIn,
+    this.onLogout,
     this.onPromptSubmit,
     this.onSaveArtifact,
     this.onRefreshRequested,
@@ -28,6 +34,11 @@ class DesktopShell extends StatefulWidget {
   final OperationalSnapshot operationalSnapshot;
   final String operationalStatus;
   final String? approverId;
+  final List<IdentityProviderOption> identityProviders;
+  final DesktopUserSession? userSession;
+  final String identityStatus;
+  final Future<void> Function(String providerId)? onSignIn;
+  final Future<void> Function()? onLogout;
   final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
   final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
   final VoidCallback? onRefreshRequested;
@@ -89,6 +100,11 @@ class _DesktopShellState extends State<DesktopShell> {
       DesktopSection.create => CreateView(
           projection: widget.projection,
           status: widget.operationalStatus,
+          identityProviders: widget.identityProviders,
+          userSession: widget.userSession,
+          identityStatus: widget.identityStatus,
+          onSignIn: widget.onSignIn,
+          onLogout: widget.onLogout,
           onSubmit: widget.onPromptSubmit,
         ),
       DesktopSection.controlCenter => ControlCenterView(
