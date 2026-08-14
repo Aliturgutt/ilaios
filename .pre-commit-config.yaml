@@ -18,3 +18,10 @@ repos:
         additional_dependencies:
           - types-PyYAML==6.0.12.20260724
           - types-requests==2.33.0.20260712
+  - repo: local
+    hooks:
+      - id: ilaios-secret-scan
+        name: ILAIOS SF-19 secret scan
+        entry: python -m services.software_factory_secret_scanning --repository-root . --staged
+        language: system
+        pass_filenames: false
