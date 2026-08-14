@@ -69,6 +69,56 @@ jobs:
             types-requests \
             types-PyYAML
 
+      - name: Pre-commit end-of-file
+        shell: bash
+        run: |
+          mapfile -d '' files < <(git ls-files -z -- \
+            src services packages tests docs/governance docs/migration \
+            pyproject.toml .pre-commit-config.yaml .github/workflows/platform-ci.yml)
+          if ((${#files[@]})); then
+            pre-commit run end-of-file-fixer --files "${files[@]}"
+          fi
+
+      - name: Pre-commit trailing whitespace
+        shell: bash
+        run: |
+          mapfile -d '' files < <(git ls-files -z -- \
+            src services packages tests docs/governance docs/migration \
+            pyproject.toml .pre-commit-config.yaml .github/workflows/platform-ci.yml)
+          if ((${#files[@]})); then
+            pre-commit run trailing-whitespace --files "${files[@]}"
+          fi
+
+      - name: Pre-commit YAML
+        shell: bash
+        run: |
+          mapfile -d '' files < <(git ls-files -z -- \
+            src services packages tests docs/governance docs/migration \
+            pyproject.toml .pre-commit-config.yaml .github/workflows/platform-ci.yml)
+          if ((${#files[@]})); then
+            pre-commit run check-yaml --files "${files[@]}"
+          fi
+
+      - name: Pre-commit Ruff
+        shell: bash
+        run: |
+          mapfile -d '' files < <(git ls-files -z -- \
+            src services packages tests docs/governance docs/migration \
+            pyproject.toml .pre-commit-config.yaml .github/workflows/platform-ci.yml)
+          if ((${#files[@]})); then
+            pre-commit run ruff --files "${files[@]}"
+          fi
+
+      - name: Pre-commit Mypy
+        shell: bash
+        run: |
+          mapfile -d '' files < <(git ls-files -z -- \
+            src services packages tests docs/governance docs/migration \
+            pyproject.toml .pre-commit-config.yaml .github/workflows/platform-ci.yml)
+          if ((${#files[@]})); then
+            pre-commit run mypy --files "${files[@]}"
+          fi
+
       - name: Pytest
         run: python -m pytest -q
 
@@ -77,16 +127,6 @@ jobs:
 
       - name: Mypy strict
         run: mypy --strict src tests
-
-      - name: Pre-commit platform scope
-        shell: bash
-        run: |
-          mapfile -d '' files < <(git ls-files -z -- \
-            src services packages tests docs/governance docs/migration \
-            pyproject.toml .pre-commit-config.yaml .github/workflows/platform-ci.yml)
-          if ((${#files[@]})); then
-            pre-commit run --files "${files[@]}"
-          fi
 
       - name: Diff hygiene
         run: git diff --check
