@@ -9,6 +9,7 @@ import "./website-final.css";
 import "./adaptive-native.css";
 import "./adaptive-structures.css";
 import "./mobile-redteam.css";
+import "./canonical-detail.css";
 import SiteChrome from "./SiteChrome";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ilaios.com";
