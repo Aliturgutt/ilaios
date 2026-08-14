@@ -510,7 +510,7 @@ def test_generated_ai_code_never_claims_ip_risk_clearance() -> None:
 
 def test_artifact_reference_inventory_must_match_exactly() -> None:
     request = _request()
-    with pytest.raises(SoftwareFactoryError, match="must match exactly"):
+    with pytest.raises(SoftwareFactoryError, match="does not match provenance records"):
         _provenance().evaluate(
             replace(
                 request,
