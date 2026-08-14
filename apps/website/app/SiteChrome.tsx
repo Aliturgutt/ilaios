@@ -5,6 +5,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
+type NavLink = readonly [label: string, href: string];
+type FooterGroup = { heading: string; links: readonly NavLink[] };
+
 const enPrimary = [["Platform", "/platform"], ["Factories", "/factories"], ["Capabilities", "/capabilities"], ["Security", "/security"]] as const;
 const trPrimary = [["Platform", "/tr/platform"], ["Üretim", "/tr/factories"], ["Yetenekler", "/tr/capabilities"], ["Güvenlik", "/tr/security"]] as const;
 const enExplore = [["Solutions", "/solutions"], ["For Enterprises", "/enterprise"], ["For Individuals", "/individuals"], ["How It Works", "/how-it-works"], ["ILAIOS Core", "/core"], ["Trust Center", "/trust"], ["Architecture", "/architecture"], ["Documentation", "/docs"], ["Resources", "/resources"], ["About", "/about"]] as const;
@@ -46,21 +49,28 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
     };
   }, [open]);
 
-  const product = isTr
+  const product: readonly NavLink[] = isTr
     ? [["Platform", "/tr/platform"], ["Üretim", "/tr/factories"], ["Yetenekler", "/tr/capabilities"], ["Nasıl Çalışır", "/tr/how-it-works"]]
     : [["Platform", "/platform"], ["Factories", "/factories"], ["Capabilities", "/capabilities"], ["How It Works", "/how-it-works"]];
-  const use = isTr
+  const useLinks: readonly NavLink[] = isTr
     ? [["Kurumlar", "/tr/enterprise"], ["Bireysel", "/tr/individuals"], ["Çözümler", "/tr/solutions"]]
     : [["Enterprises", "/enterprise"], ["Individuals", "/individuals"], ["Solutions", "/solutions"]];
-  const resources = isTr
+  const resources: readonly NavLink[] = isTr
     ? [["Mimari", "/tr/architecture"], ["Dokümantasyon", "/tr/docs"], ["Kaynaklar", "/tr/resources"], ["ILAIOS Core", "/tr/core"]]
     : [["Architecture", "/architecture"], ["Documentation", "/docs"], ["Resources", "/resources"], ["ILAIOS Core", "/core"]];
-  const trust = isTr
+  const trust: readonly NavLink[] = isTr
     ? [["Güvenlik", "/tr/security"], ["Güven Merkezi", "/tr/trust"], ["Gizlilik", "/tr/privacy"]]
     : [["Security", "/security"], ["Trust Center", "/trust"], ["Privacy", "/privacy"]];
-  const company = isTr
+  const company: readonly NavLink[] = isTr
     ? [["Hakkımızda", "/tr/about"], ["İletişim", "/tr/contact"], ["Koşullar", "/tr/terms"]]
     : [["About", "/about"], ["Contact", "/contact"], ["Terms", "/terms"]];
+  const footerGroups: readonly FooterGroup[] = [
+    { heading: isTr ? "Ürün" : "Product", links: product },
+    { heading: isTr ? "Kullanım" : "Use", links: useLinks },
+    { heading: isTr ? "Kaynaklar" : "Resources", links: resources },
+    { heading: isTr ? "Güven" : "Trust", links: trust },
+    { heading: isTr ? "Şirket" : "Company", links: company },
+  ];
 
   return <>
     <a className="skip-link" href="#main-content" lang={lang}>{isTr ? "Ana içeriğe geç" : "Skip to main content"}</a>
@@ -78,9 +88,9 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
     <footer className="site-footer" lang={lang}>
       <div className="shell footer-main">
         <div className="footer-brand"><strong>ILAIOS</strong><p>{isTr ? "Kontrollü ve doğrulanabilir dijital sonuçlar için yönetilen yapay zekâ işletim sistemi." : "A governed AI operating system for controlled, verifiable finished digital outcomes."}</p><a href="mailto:contact@ilaios.com">contact@ilaios.com</a><div className="footer-social"><a href="https://www.linkedin.com/company/ilaios/" target="_blank" rel="noreferrer">LinkedIn</a><a href="https://x.com/ilaios" target="_blank" rel="noreferrer">X · @ilaios</a></div></div>
-        <div className="footer-nav-grid">{[[isTr ? "Ürün" : "Product", product], [isTr ? "Kullanım" : "Use", use], [isTr ? "Kaynaklar" : "Resources", resources], [isTr ? "Güven" : "Trust", trust], [isTr ? "Şirket" : "Company", company]].map(([heading, links]) => <div key={heading as string}><strong>{heading as string}</strong>{(links as readonly (readonly [string, string])[]).map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}</div>)}</div>
+        <div className="footer-nav-grid">{footerGroups.map(group => <div key={group.heading}><strong>{group.heading}</strong>{group.links.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}</div>)}</div>
       </div>
-      <div className="shell footer-row"><span>© {new Date().getFullYear()} ILAIOS</span><span>{isTr ? "Kontrollü yürütme · doğrulanmış sonuç" : "Governed execution · verified outcome"}</span><Link href={switchHref}>{isTr ? "English" : "Türkçe"}</Link></div>
+      <div className="shell footer-row"><span>© 2026 ILAIOS</span><span>{isTr ? "Kontrollü yürütme · doğrulanmış sonuç" : "Governed execution · verified outcome"}</span><Link href={switchHref}>{isTr ? "English" : "Türkçe"}</Link></div>
     </footer>
   </>;
 }
