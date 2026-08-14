@@ -56,13 +56,13 @@ class MediaModelManifest:
     eligibility: ModelEligibility
 
     def __post_init__(self) -> None:
-        for name, value in (
+        for required_name, required_value in (
             ("publisher", self.publisher),
             ("model_id", self.model_id),
             ("official_source", self.official_source),
         ):
-            _text(name, value)
-        for name, value in (
+            _text(required_name, required_value)
+        for optional_name, optional_value in (
             ("source_revision", self.source_revision),
             ("checkpoint_revision", self.checkpoint_revision),
             ("model_card_url", self.model_card_url),
@@ -70,13 +70,13 @@ class MediaModelManifest:
             ("license_evidence_url", self.license_evidence_url),
             ("security_review_ref", self.security_review_ref),
         ):
-            _optional_text(name, value)
+            _optional_text(optional_name, optional_value)
         if self.source_revision is not None:
             _git_sha("source_revision", self.source_revision)
         if self.checkpoint_digest_sha256 is not None:
             _sha256("checkpoint_digest_sha256", self.checkpoint_digest_sha256)
-        for value in self.notice_obligations + self.runtime_requirements:
-            _text("manifest list value", value)
+        for list_value in self.notice_obligations + self.runtime_requirements:
+            _text("manifest list value", list_value)
         if self.minimum_vram_gb is not None and self.minimum_vram_gb <= 0:
             raise ModelGovernanceError("minimum_vram_gb must be positive")
         if self.minimum_ram_gb is not None and self.minimum_ram_gb <= 0:
