@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Locale = "en" | "tr";
 
@@ -35,15 +35,38 @@ const copy = {
 
 export default function SpatialArchitecture({ locale, compact = false }: { locale: Locale; compact?: boolean }) {
   const c = copy[locale];
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  const [scrollDepth, setScrollDepth] = useState(0);
 
-  return <div className={`spatial-map ${compact ? "is-compact" : ""}`} data-visual-role="architecture-spatial-map">
-    <div className="spatial-map-head"><span className="micro-label">{c.label}</span><small>{locale === "tr" ? "Masaüstünde imleçle katman ilişkisini inceleyin. Mobilde düzleştirilir." : "Inspect layer relationships with the pointer on desktop. The map flattens on mobile."}</small></div>
+  useEffect(() => {
+    const update = () => {
+      if (!wrapperRef.current || window.innerWidth < 760 || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        setScrollDepth(0);
+        return;
+      }
+      const rect = wrapperRef.current.getBoundingClientRect();
+      const viewportCenter = window.innerHeight / 2;
+      const elementCenter = rect.top + rect.height / 2;
+      const normalized = Math.max(-1, Math.min(1, (viewportCenter - elementCenter) / Math.max(window.innerHeight, 1)));
+      setScrollDepth(normalized * 1.6);
+    };
+    update();
+    window.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      window.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
+  }, []);
+
+  return <div ref={wrapperRef} className={`spatial-map ${compact ? "is-compact" : ""}`} data-visual-role="architecture-spatial-map">
+    <div className="spatial-map-head"><span className="micro-label">{c.label}</span><small>{locale === "tr" ? "Masaüstünde imleç ve kaydırma katman ilişkisini gösterir. Mobilde düzleştirilir." : "Pointer and scroll expose layer relationships on desktop. The map flattens on mobile."}</small></div>
     <div
       className="spatial-stage"
       role="img"
       aria-label={c.aria}
-      style={{ transform: `perspective(900px) rotateX(${tilt.y}deg) rotateY(${tilt.x}deg)` }}
+      style={{ transform: `perspective(900px) rotateX(${tilt.y + scrollDepth}deg) rotateY(${tilt.x}deg)` }}
       onPointerMove={event => {
         const rect = event.currentTarget.getBoundingClientRect();
         const x = ((event.clientX - rect.left) / rect.width - 0.5) * 4;
