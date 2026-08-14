@@ -87,6 +87,8 @@ class PublicationSideEffectLedger:
             if existing is not None:
                 record = _record(existing)
                 _same_identity(record, package, product, payload_digest)
+                if record.state is PublicationState.PREPARED:
+                    return record
                 raise PublicationLedgerError(
                     "publication package already has side-effect history; "
                     "reconcile or create a new governed package instead of reposting"
@@ -192,7 +194,10 @@ class PublicationSideEffectLedger:
                 raise PublicationLedgerError(
                     f"publication package must be {require.value} before {state.value}"
                 )
-            if state is PublicationState.SUBMITTING and current.state is not PublicationState.PREPARED:
+            if (
+                state is PublicationState.SUBMITTING
+                and current.state is not PublicationState.PREPARED
+            ):
                 raise PublicationLedgerError(
                     "publication may enter SUBMITTING only from PREPARED"
                 )
@@ -247,15 +252,26 @@ def _validate_package_product(
     product: FinishedVideoProduct,
 ) -> None:
     if package.media_sha256_hex != product.final_sha256:
-        raise PublicationLedgerError("publishing package is not bound to finished product SHA")
+        raise PublicationLedgerError(
+            "publishing package is not bound to finished product SHA"
+        )
     if package.media_byte_length != product.byte_length:
-        raise PublicationLedgerError("publishing package byte length differs from finished product")
+        raise PublicationLedgerError(
+            "publishing package byte length differs from finished product"
+        )
     media = Path(package.media_path)
     if media.is_symlink() or not media.is_file():
-        raise PublicationLedgerError("publishing media must be an existing regular file")
+        raise PublicationLedgerError(
+            "publishing media must be an existing regular file"
+        )
     body = media.read_bytes()
-    if len(body) != product.byte_length or sha256(body).hexdigest() != product.final_sha256:
-        raise PublicationLedgerError("publishing media content differs from finished product evidence")
+    if (
+        len(body) != product.byte_length
+        or sha256(body).hexdigest() != product.final_sha256
+    ):
+        raise PublicationLedgerError(
+            "publishing media content differs from finished product evidence"
+        )
 
 
 def _same_identity(
@@ -279,7 +295,9 @@ def _same_identity(
         record.payload_sha256,
     )
     if observed != expected:
-        raise PublicationLedgerError("publication package identity conflicts with durable history")
+        raise PublicationLedgerError(
+            "publication package identity conflicts with durable history"
+        )
 
 
 def _record(row: sqlite3.Row) -> PublicationRecord:
