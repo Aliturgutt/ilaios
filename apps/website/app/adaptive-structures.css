@@ -8,6 +8,14 @@
 .verification-list>div{display:grid;grid-template-columns:48px 1fr;gap:14px;padding:11px 0;border-bottom:1px solid var(--line)}
 
 /* The older style layers remain for compatibility, but their synthetic glow/gradient/card treatment is explicitly neutralized here. */
+.brand{padding:0;background:transparent;border:0;box-shadow:none}
+.hero-refresh h1{margin:12px 0 18px}
+.hero-refresh .hero-visual:hover{transform:none;border-color:#46515b}
+.journey-card::after{display:none}
+.linked-card:hover{transform:none;border-color:var(--line-strong)}
+.quick-links a{padding:4px 0;border:0;border-bottom:1px solid transparent;border-radius:0;background:transparent}
+.quick-links a:hover{background:transparent;border-bottom-color:#697681}
+
 .detail-nav-link,.pathway-card,.destination-card,.core-node,.explorer-tabs button,.explorer-panel,.nav-panel,.explore-menu-panel,.footer-social a,.language-switch,.menu-toggle{background-image:none;box-shadow:none}
 .detail-nav-link,.pathway-card,.destination-card,.core-node{min-height:0;border-radius:3px;background:transparent;border-color:var(--line);padding:18px 0}
 .detail-nav-link{padding:15px 17px;background:#0f151b}
