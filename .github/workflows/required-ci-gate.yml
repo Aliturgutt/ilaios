@@ -54,7 +54,7 @@ jobs:
             esac
 
             case "$file" in
-              apps/website/*|tools/design-intelligence/*|services/design_quality.py|services/integrations/web_factory.py|tests/test_design_quality.py|tests/test_web_factory.py|.github/workflows/website-ci.yml|.github/workflows/required-ci-gate.yml)
+              apps/website/*|tools/design-intelligence/*|services/design_quality.py|services/integrations/web_factory.py|tests/test_design_quality.py|tests/test_web_factory.py|.github/workflows/website-ci.yml|.github/workflows/required-ci-gate.yml|.github/workflows/website-production-certification.yml)
                 website=true
                 ;;
             esac
