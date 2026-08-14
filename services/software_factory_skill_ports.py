@@ -1,23 +1,22 @@
 """Canonical SF-5/SF-6 adapters used by the governed SF-7 skill executor."""
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
 from pathlib import Path
-from typing import cast
 
 from services.software_factory import ExecutionPolicy, SoftwareFactoryError
-from services.software_factory_runtime import RuntimeAdapter, evidence_json
+from services.software_factory_runtime import RuntimeAdapter
 from src.code_intelligence import RepositoryAnalyzer
 
 
 class CanonicalRepositoryIntelligence:
     """Expose existing SF-5 repository intelligence without duplicating analysis."""
+
     def inspect(self, repository: Path, base_sha: str) -> Mapping[str, object]:
         snapshot = RepositoryAnalyzer(repository.resolve()).snapshot()
         if snapshot.revision != base_sha:
             raise SoftwareFactoryError("repository base SHA changed")
-        return {
+        evidence: dict[str, object] = {
             "revision": snapshot.revision,
             "files": tuple(item.path for item in snapshot.files),
             "symbols": tuple(item.qualified_name for item in snapshot.symbols),
@@ -25,13 +24,19 @@ class CanonicalRepositoryIntelligence:
             "schema_entities": snapshot.schema_entities,
             "unknowns": snapshot.unknowns,
         }
+        return evidence
 
 
 class CanonicalRuntimeValidation:
     """Run the existing SF-6 lifecycle only through configured RuntimeAdapters."""
-    def __init__(self, adapters: Mapping[str, RuntimeAdapter], policy: ExecutionPolicy) -> None:
-        self._adapters = dict(adapters)
-        self._policy = policy
+
+    def __init__(
+        self,
+        adapters: Mapping[str, RuntimeAdapter],
+        policy: ExecutionPolicy,
+    ) -> None:
+        self._adapters: dict[str, RuntimeAdapter] = dict(adapters)
+        self._policy: ExecutionPolicy = policy
 
     def validate(self, adapter_id: str, repository: Path) -> Mapping[str, object]:
         adapter = self._adapters.get(adapter_id)
@@ -51,7 +56,21 @@ class CanonicalRuntimeValidation:
         evidence = adapter.collect_evidence(workspace, results)
         if not evidence.passed:
             raise SoftwareFactoryError("canonical runtime validation failed")
-        document = json.loads(evidence_json(evidence))
-        if not isinstance(document, dict) or not all(isinstance(key, str) for key in document):
-            raise SoftwareFactoryError("canonical runtime evidence is malformed")
-        return cast(dict[str, object], document)
+        steps: tuple[dict[str, object], ...] = tuple(
+            {
+                "stage": result.stage,
+                "command": result.command,
+                "exit_code": result.exit_code,
+                "stdout_sha256": result.stdout_sha256,
+                "stderr_sha256": result.stderr_sha256,
+                "passed": result.passed,
+            }
+            for result in evidence.steps
+        )
+        document: dict[str, object] = {
+            "adapter_id": evidence.adapter_id,
+            "workspace_sha256": evidence.workspace_sha256,
+            "passed": evidence.passed,
+            "steps": steps,
+        }
+        return document
