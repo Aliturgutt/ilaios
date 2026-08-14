@@ -118,7 +118,7 @@ class _CreateViewState extends State<CreateView> {
               ),
               const SizedBox(height: 8),
               const Text(
-                'Describe the finished outcome. ILAIOS records the intent as an authoritative goal and durable job; provider, worker and privileged execution authority remain server-controlled.',
+                'Describe the finished outcome. After verified sign-in, the canonical coordinator records the intent, selects a bounded capability, applies governance and only advances through verified execution adapters.',
                 style: TextStyle(color: IlaiosTheme.muted, height: 1.5),
               ),
               const SizedBox(height: 20),
@@ -148,7 +148,7 @@ class _CreateViewState extends State<CreateView> {
                         textInputAction: TextInputAction.newline,
                         decoration: const InputDecoration(
                           hintText:
-                              'Example: Build a premium website for my furniture company and deliver the finished result.',
+                              'Example: Create a 60-second launch video and deliver the verified finished MP4.',
                           border: OutlineInputBorder(),
                         ),
                       ),
@@ -217,7 +217,7 @@ class _CreateViewState extends State<CreateView> {
                         Text('Authoritative state: ${submission.state}'),
                         const SizedBox(height: 12),
                         const Text(
-                          'Desktop does not treat submission as completion. Progress, governance, evidence and final artifacts must be proven by the authoritative runtime.',
+                          'Submission is not completion. Governance, execution, evidence, QA and final artifacts must still be proven by the authoritative runtime.',
                           style: TextStyle(
                             color: IlaiosTheme.muted,
                             height: 1.45,
@@ -350,7 +350,10 @@ String _disabledPromptReason(CreateView widget) {
   if (!widget.projection.connected) {
     return 'Authoritative control plane is unavailable';
   }
-  if (widget.identityProviders.isNotEmpty && widget.userSession == null) {
+  if (widget.identityProviders.isEmpty) {
+    return 'Account sign-in is not configured; governed execution is disabled';
+  }
+  if (widget.userSession == null) {
     return 'Sign in to submit governed work';
   }
   return widget.status;
