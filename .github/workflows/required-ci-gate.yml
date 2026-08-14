@@ -1,0 +1,111 @@
+name: Required CI Gate
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: required-ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  classify:
+    name: Classify changes
+    runs-on: ubuntu-latest
+    outputs:
+      platform: ${{ steps.changes.outputs.platform }}
+      website: ${{ steps.changes.outputs.website }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed paths and enforce diff hygiene
+        id: changes
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          base="$PR_BASE_SHA"
+          head="$PR_HEAD_SHA"
+          if [[ -z "$base" || -z "$head" ]]; then
+            head="$(git rev-parse HEAD)"
+            base="$(git rev-parse HEAD^)"
+          fi
+
+          git diff --check "$base" "$head"
+          mapfile -t files < <(git diff --name-only "$base" "$head")
+
+          platform=false
+          website=false
+
+          for file in "${files[@]}"; do
+            case "$file" in
+              src/*|services/*|packages/*|tests/*|docs/governance/*|docs/migration/*|pyproject.toml|.pre-commit-config.yaml|.github/workflows/platform-ci.yml|.github/workflows/required-ci-gate.yml)
+                platform=true
+                ;;
+            esac
+
+            case "$file" in
+              apps/website/*|tools/design-intelligence/*|services/design_quality.py|services/integrations/web_factory.py|tests/test_design_quality.py|tests/test_web_factory.py|.github/workflows/website-ci.yml|.github/workflows/required-ci-gate.yml)
+                website=true
+                ;;
+            esac
+          done
+
+          echo "platform=$platform" >> "$GITHUB_OUTPUT"
+          echo "website=$website" >> "$GITHUB_OUTPUT"
+          printf 'platform=%s website=%s\n' "$platform" "$website"
+
+  platform:
+    name: Platform validation
+    needs: classify
+    if: needs.classify.outputs.platform == 'true'
+    uses: ./.github/workflows/platform-ci.yml
+
+  website:
+    name: Website validation
+    needs: classify
+    if: needs.classify.outputs.website == 'true'
+    uses: ./.github/workflows/website-ci.yml
+
+  required-ci-gate:
+    name: Required CI Gate
+    if: always()
+    needs: [classify, platform, website]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce relevant validation results
+        shell: bash
+        env:
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          PLATFORM_REQUIRED: ${{ needs.classify.outputs.platform }}
+          PLATFORM_RESULT: ${{ needs.platform.result }}
+          WEBSITE_REQUIRED: ${{ needs.classify.outputs.website }}
+          WEBSITE_RESULT: ${{ needs.website.result }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$CLASSIFY_RESULT" != "success" ]]; then
+            echo "Change classification failed: $CLASSIFY_RESULT"
+            exit 1
+          fi
+
+          if [[ "$PLATFORM_REQUIRED" == "true" && "$PLATFORM_RESULT" != "success" ]]; then
+            echo "Platform validation required but result was: $PLATFORM_RESULT"
+            exit 1
+          fi
+
+          if [[ "$WEBSITE_REQUIRED" == "true" && "$WEBSITE_RESULT" != "success" ]]; then
+            echo "Website validation required but result was: $WEBSITE_RESULT"
+            exit 1
+          fi
+
+          echo "Required CI Gate PASS"
