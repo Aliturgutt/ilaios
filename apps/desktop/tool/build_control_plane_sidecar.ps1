@@ -18,7 +18,9 @@ New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 python -m pip install --disable-pip-version-check `
   'pyinstaller==6.21.0' `
   'requests==2.34.2' `
-  'python-dotenv==1.2.2'
+  'python-dotenv==1.2.2' `
+  'PyJWT[crypto]==2.13.0' `
+  'cryptography==49.0.0'
 if ($LASTEXITCODE -ne 0) { throw 'Desktop sidecar build dependencies failed to install.' }
 
 $work = Join-Path $desktopRoot 'build\sidecar\work'
@@ -35,6 +37,8 @@ python -m PyInstaller `
   --console `
   --name ilaios_control_plane `
   --paths $repoRoot `
+  --hidden-import jwt `
+  --hidden-import jwt.algorithms `
   --workpath $work `
   --specpath $spec `
   --distpath $dist `
