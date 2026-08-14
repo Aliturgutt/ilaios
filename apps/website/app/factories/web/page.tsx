@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import CanonicalSystemDetail from "../../CanonicalSystemDetail";
 
 export const metadata: Metadata = {
   title: "Web Factory",
-  description: "ILAIOS Web Factory: from goal, research and information architecture through visual design, implementation, QA, bounded repair, deployment validation and finished-site evidence.",
+  description: "ILAIOS Web Factory: from goal, research and information architecture through visual design, implementation, browser/security/accessibility/performance/SEO/visual QA, bounded repair, deployment validation and finished-site evidence.",
   alternates: { canonical: "/factories/web", languages: { en: "/factories/web", tr: "/tr/factories/web", "x-default": "/factories/web" } },
 };
 
@@ -24,5 +25,6 @@ export default function Page() { return <>
   <section className="shell page-hero"><div className="eyebrow">ILAIOS Web Factory</div><h1>The target outcome is a verified finished website, not a mockup or partial generation.</h1><p className="lead">Web Factory is the canonical ILAIOS workflow for turning a business goal into a complete website lifecycle with context-derived design, implementation, independent quality gates, bounded repair and evidence.</p></section>
   <section className="section"><div className="shell split-copy"><div><div className="eyebrow">Product truth</div><h2>Canonical target and current release state remain separate.</h2></div><div><p className="lead small">The finished-product target includes deployable site artifacts plus required QA and evidence. The existence of this canonical workflow does not claim every stage is generally available as a public service today.</p><p className="muted">Current capability maturity is determined by repository implementation, tests, CI, runtime and deployment evidence.</p></div></div></section>
   <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">Canonical production sequence</div><h2>Design and acceptance are first-class stages.</h2></div><p className="muted">The workflow explicitly includes research, visual direction, browser QA, visual QA, acceptance, bounded repair and deployment validation.</p></div><div className="grid two-up">{stages.map(([n,t,x]) => <article className="card" key={n}><div className="eyebrow">{n}</div><h2>{t}</h2><p>{x}</p></article>)}</div></div></section>
+  <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">Full lifecycle</div><h2>The canonical chain makes every quality gate visible.</h2></div><p>Website Goal → Research → Information Architecture → Copy → Design System → Visual Design → Implementation → Browser QA → Security QA → Accessibility → Performance → SEO → Visual QA → Acceptance → bounded repair → Deployment Validation → Finished Website + Evidence.</p></div><CanonicalSystemDetail locale="en" variant="web" /></div></section>
   <section className="section"><div className="shell callout"><div><div className="eyebrow">Native design intelligence</div><h2>Dynamic means context-derived, not random and not template roulette.</h2><p className="muted">Brand, audience, content, trust requirements, information density and device priorities shape design strategy while structured quality evidence remains authoritative.</p></div><div className="actions"><Link className="button" href="/how-it-works">How ILAIOS works</Link><Link className="button secondary" href="/platform/evidence">Evidence model</Link></div></div></section>
 </>; }
