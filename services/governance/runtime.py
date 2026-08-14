@@ -138,6 +138,12 @@ class GovernedRuntimeGateway:
         self._approvals.decide(
             request_id, approved=decision == "approved", approver=approver
         )
+        if decision == "denied":
+            with self._connect() as connection:
+                connection.execute(
+                    "UPDATE governed_work SET status = 'denied' WHERE request_id = ?",
+                    (request_id,),
+                )
 
     def execute(self, request_id: str) -> dict[str, object]:
         amount = self.authorize_billable(request_id)
