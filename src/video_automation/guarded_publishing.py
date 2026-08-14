@@ -78,7 +78,17 @@ class DurablePublishingCoordinator:
                 "publication became ambiguous; reconcile durable platform state before repost"
             ) from exc
 
-        self._validate_observation(package, observation)
+        try:
+            self._validate_observation(package, observation)
+        except GuardedPublishingError as exc:
+            self._ledger.ambiguous(
+                package_id=package.package_id,
+                observed_status="publisher returned conflicting publication identity",
+            )
+            raise GuardedPublishingError(
+                "publisher response identity is ambiguous; reconcile before repost"
+            ) from exc
+
         if observation.status is PublishingExecutionStatus.SUCCEEDED:
             if observation.platform_post_id is None:
                 self._ledger.ambiguous(
