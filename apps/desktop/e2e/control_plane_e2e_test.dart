@@ -36,14 +36,41 @@ void main() {
     );
     unawaited(process.stdout.drain<void>());
     unawaited(process.stderr.drain<void>());
+    Uri? identityUri;
     addTearDown(() async {
-      process.kill();
-      try {
-        await process.exitCode.timeout(const Duration(seconds: 5));
-      } on TimeoutException {
-        process.kill();
+      var exited = false;
+      final shutdownBase = identityUri;
+      if (shutdownBase != null) {
+        try {
+          await _requestShutdown(shutdownBase, token);
+          await process.exitCode.timeout(const Duration(seconds: 5));
+          exited = true;
+        } on Object {
+          // The parent-pipe EOF path below is the bounded graceful fallback.
+        }
       }
-      for (var attempt = 0; attempt < 30 && await root.exists(); attempt += 1) {
+      if (!exited) {
+        try {
+          await process.stdin.close();
+        } on Object {
+          // The pipe may already be closed if the child started exiting.
+        }
+        try {
+          await process.exitCode.timeout(const Duration(seconds: 3));
+          exited = true;
+        } on TimeoutException {
+          // Forced termination is the final bounded fallback, never the proof path.
+        }
+      }
+      if (!exited) {
+        process.kill();
+        try {
+          await process.exitCode.timeout(const Duration(seconds: 3));
+        } on TimeoutException {
+          // The directory-release assertion below remains authoritative.
+        }
+      }
+      for (var attempt = 0; attempt < 50 && await root.exists(); attempt += 1) {
         try {
           await root.delete(recursive: true);
         } on FileSystemException {
@@ -88,17 +115,18 @@ void main() {
       host: host as String,
       port: port as int,
     );
-    final identityUri = Uri(
+    final readyIdentityUri = Uri(
       scheme: 'http',
       host: identityHost as String,
       port: identityPort as int,
     );
+    identityUri = readyIdentityUri;
     await _waitForReady(controlPlaneUri.resolve('/health/ready'));
-    await _waitForReady(identityUri.resolve('/health/ready'));
+    await _waitForReady(readyIdentityUri.resolve('/health/ready'));
 
     final client = ControlPlaneClient(baseUri: controlPlaneUri, token: token);
     final identity = IdentityClient(
-      baseUri: identityUri,
+      baseUri: readyIdentityUri,
       transportToken: token,
     );
 
@@ -119,6 +147,27 @@ void main() {
     expect(projection.goalCount, 1);
     expect(projection.jobCount, 1);
   }, timeout: const Timeout(Duration(seconds: 60)));
+}
+
+Future<void> _requestShutdown(Uri baseUri, String token) async {
+  final client = HttpClient();
+  try {
+    final request = await client
+        .postUrl(baseUri.resolve('/v1/runtime/shutdown'))
+        .timeout(const Duration(seconds: 1));
+    request.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
+    request.headers.contentType = ContentType.json;
+    final body = utf8.encode('{}');
+    request.contentLength = body.length;
+    request.add(body);
+    final response = await request.close().timeout(const Duration(seconds: 1));
+    await response.drain<void>().timeout(const Duration(seconds: 1));
+    if (response.statusCode != HttpStatus.accepted) {
+      throw StateError('Packaged runtime rejected graceful shutdown');
+    }
+  } finally {
+    client.close(force: true);
+  }
 }
 
 Future<void> _waitForReady(Uri uri) async {
