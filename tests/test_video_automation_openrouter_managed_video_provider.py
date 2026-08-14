@@ -2,17 +2,19 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
+from pathlib import Path
 
 import pytest
 
 from src.video_automation.configuration import VideoAutomationPolicy
-from src.video_automation.managed_credit_policy import (
-    managed_credit_production_policy,
+from src.video_automation.managed_credit_policy import managed_credit_production_policy
+from src.video_automation.managed_credit_store import (
+    ManagedCreditLedgerStore,
+    ProviderSideEffectLedger,
+    ProviderSubmissionState,
+    ReconciliationState,
 )
-from src.video_automation.managed_credits import (
-    ManagedCreditAccount,
-    ProviderCostQuote,
-)
+from src.video_automation.managed_credits import ManagedCreditAccount, ProviderCostQuote
 from src.video_automation.managed_provider_execution import (
     ManagedPaidVideoExecutionCoordinator,
     ManagedPaidVideoExecutionError,
@@ -31,7 +33,8 @@ from src.video_automation.openrouter_video_provider import (
 
 
 class _Transport(OpenRouterTransport):
-    def __init__(self) -> None:
+    def __init__(self, *, fail_transport: bool = False) -> None:
+        self.fail_transport = fail_transport
         self.post_calls: list[
             tuple[str, Mapping[str, str], Mapping[str, object], float]
         ] = []
@@ -45,12 +48,10 @@ class _Transport(OpenRouterTransport):
         timeout_seconds: float,
     ) -> OpenRouterJsonResponse:
         self.post_calls.append((url, headers, body, timeout_seconds))
-        # Regression guard for the previously observed MappingProxyType body bug.
         json.dumps(body)
-        return OpenRouterJsonResponse(
-            202,
-            {"id": "video-job-001", "status": "pending"},
-        )
+        if self.fail_transport:
+            raise TimeoutError("response lost after submit")
+        return OpenRouterJsonResponse(202, {"id": "video-job-001", "status": "pending"})
 
     def get_json(
         self,
@@ -71,10 +72,7 @@ class _Transport(OpenRouterTransport):
         raise AssertionError("asset retrieval is outside submit-provider unit scope")
 
 
-def _request(
-    *,
-    model_id: str = "bytedance/seedance-2.0-fast",
-) -> ProviderRequest:
+def _request(*, model_id: str = "bytedance/seedance-2.0-fast") -> ProviderRequest:
     item = {
         "request_id": "request-001",
         "shot_id": "shot-001",
@@ -106,6 +104,30 @@ def _policy() -> VideoAutomationPolicy:
     )
 
 
+def _account() -> ManagedCreditAccount:
+    return ManagedCreditAccount(
+        tenant_id="tenant-001",
+        user_id="user-001",
+        available_microusd=5_000_000,
+    )
+
+
+def _quote(*, model_id: str = "bytedance/seedance-2.0-fast") -> ProviderCostQuote:
+    return ProviderCostQuote(
+        provider_name=OPENROUTER_MANAGED_PROVIDER_NAME,
+        model_id=model_id,
+        estimated_cost_microusd=600_000,
+        max_cost_microusd=1_000_000,
+    )
+
+
+def _coordinator(root: Path) -> ManagedPaidVideoExecutionCoordinator:
+    return ManagedPaidVideoExecutionCoordinator(
+        policy=_policy(),
+        store=ManagedCreditLedgerStore(root),
+    )
+
+
 def test_managed_provider_is_paid_and_server_credential_owned() -> None:
     provider = OpenRouterManagedVideoGenerationProvider("server-secret", transport=_Transport())
     assert provider.capabilities.is_paid
@@ -133,54 +155,49 @@ def test_raw_paid_provider_request_without_credit_authorization_fails_before_net
     assert transport.post_calls == []
 
 
-def test_credit_coordinator_binds_tenant_user_and_reservation_before_network() -> None:
-    account = ManagedCreditAccount(
-        tenant_id="tenant-001",
-        user_id="user-001",
-        available_microusd=5_000_000,
-    )
-    request = _request()
-    quote = ProviderCostQuote(
-        provider_name=OPENROUTER_MANAGED_PROVIDER_NAME,
-        model_id="bytedance/seedance-2.0-fast",
-        estimated_cost_microusd=600_000,
-        max_cost_microusd=1_000_000,
-    )
-    plan = ManagedPaidVideoExecutionCoordinator(policy=_policy()).authorize(
-        account=account,
-        request=request,
-        quote=quote,
+def test_credit_coordinator_persists_route_tenant_user_and_reservation_before_network(
+    tmp_path: Path,
+) -> None:
+    store = ManagedCreditLedgerStore(tmp_path)
+    plan = ManagedPaidVideoExecutionCoordinator(policy=_policy(), store=store).authorize(
+        account=_account(),
+        request=_request(),
+        quote=_quote(),
+        routing_decision_id="route-001",
     )
 
     assert plan.account.available_microusd == 4_000_000
     assert plan.account.reserved_microusd == 1_000_000
+    assert plan.routing_decision_id == "route-001"
     assert plan.request.payload["tenant_id"] == "tenant-001"
     assert plan.request.payload["user_id"] == "user-001"
+    assert plan.request.payload["routing_decision_id"] == "route-001"
     assert plan.request.payload["credit_reserved_microusd"] == 1_000_000
     authorization_id = plan.request.payload["credit_authorization_id"]
     assert isinstance(authorization_id, str)
     assert len(authorization_id) == 64
+    restarted = ManagedCreditLedgerStore(tmp_path)
+    assert restarted.get_account(
+        tenant_id="tenant-001", user_id="user-001"
+    ).reserved_microusd == 1_000_000
 
 
-def test_authorized_request_submits_serializable_seedance_body() -> None:
+def test_authorized_request_submits_exactly_once_and_persists_external_job_id(
+    tmp_path: Path,
+) -> None:
     transport = _Transport()
     provider = OpenRouterManagedVideoGenerationProvider(
         "server-secret",
         transport=transport,
     )
-    account = ManagedCreditAccount(
-        tenant_id="tenant-001",
-        user_id="user-001",
-        available_microusd=5_000_000,
+    store = ManagedCreditLedgerStore(tmp_path)
+    coordinator = ManagedPaidVideoExecutionCoordinator(policy=_policy(), store=store)
+    plan = coordinator.authorize(
+        account=_account(),
+        request=_request(),
+        quote=_quote(),
+        routing_decision_id="route-001",
     )
-    quote = ProviderCostQuote(
-        provider_name=OPENROUTER_MANAGED_PROVIDER_NAME,
-        model_id="bytedance/seedance-2.0-fast",
-        estimated_cost_microusd=600_000,
-        max_cost_microusd=1_000_000,
-    )
-    coordinator = ManagedPaidVideoExecutionCoordinator(policy=_policy())
-    plan = coordinator.authorize(account=account, request=_request(), quote=quote)
     result = coordinator.execute(provider=provider, plan=plan)
 
     assert result.success
@@ -194,50 +211,75 @@ def test_authorized_request_submits_serializable_seedance_body() -> None:
     assert body["model"] == "bytedance/seedance-2.0-fast"
     assert body["duration"] == 4
     assert timeout > 0
+    side_effect = ProviderSideEffectLedger(store).get("request-001")
+    assert side_effect.submission_state is ProviderSubmissionState.ACCEPTED
+    assert side_effect.external_job_id == "video-job-001"
+
+    with pytest.raises(Exception, match="reconcile instead of redispatch"):
+        coordinator.execute(provider=provider, plan=plan)
+    assert len(transport.post_calls) == 1
 
 
-def test_unknown_or_free_suffix_seedance_model_is_not_in_managed_paid_allowlist() -> None:
+def test_transport_timeout_is_ambiguous_and_cannot_be_blindly_retried(
+    tmp_path: Path,
+) -> None:
+    transport = _Transport(fail_transport=True)
+    provider = OpenRouterManagedVideoGenerationProvider(
+        "server-secret", transport=transport
+    )
+    store = ManagedCreditLedgerStore(tmp_path)
+    coordinator = ManagedPaidVideoExecutionCoordinator(policy=_policy(), store=store)
+    plan = coordinator.authorize(
+        account=_account(),
+        request=_request(),
+        quote=_quote(),
+        routing_decision_id="route-001",
+    )
+
+    result = coordinator.execute(provider=provider, plan=plan)
+    assert not result.success
+    assert result.error_code == "transport_error"
+    ambiguous = ProviderSideEffectLedger(store).get("request-001")
+    assert ambiguous.submission_state is ProviderSubmissionState.AMBIGUOUS
+    assert ambiguous.reconciliation_state is ReconciliationState.PENDING
+
+    with pytest.raises(Exception, match="reconcile instead of redispatch"):
+        coordinator.execute(provider=provider, plan=plan)
+    assert len(transport.post_calls) == 1
+
+
+def test_unknown_or_free_suffix_seedance_model_is_not_in_managed_paid_allowlist(
+    tmp_path: Path,
+) -> None:
     transport = _Transport()
     provider = OpenRouterManagedVideoGenerationProvider(
         "server-secret", transport=transport
     )
-    account = ManagedCreditAccount(
-        tenant_id="tenant-001",
-        user_id="user-001",
-        available_microusd=5_000_000,
+    model_id = "bytedance/seedance-2.0-fast:free"
+    coordinator = _coordinator(tmp_path)
+    plan = coordinator.authorize(
+        account=_account(),
+        request=_request(model_id=model_id),
+        quote=_quote(model_id=model_id),
+        routing_decision_id="route-001",
     )
-    request = _request(model_id="bytedance/seedance-2.0-fast:free")
-    quote = ProviderCostQuote(
-        provider_name=OPENROUTER_MANAGED_PROVIDER_NAME,
-        model_id="bytedance/seedance-2.0-fast:free",
-        estimated_cost_microusd=600_000,
-        max_cost_microusd=1_000_000,
-    )
-    plan = ManagedPaidVideoExecutionCoordinator(policy=_policy()).authorize(
-        account=account,
-        request=request,
-        quote=quote,
-    )
-    result = provider.execute(plan.request)
+    result = coordinator.execute(provider=provider, plan=plan)
     assert not result.success
     assert "allowlist" in (result.error_message or "")
     assert transport.post_calls == []
 
 
-def test_default_production_policy_still_cannot_be_used_as_paid_credit_policy() -> None:
+def test_default_production_policy_still_cannot_be_used_as_paid_credit_policy(
+    tmp_path: Path,
+) -> None:
     coordinator = ManagedPaidVideoExecutionCoordinator(
-        policy=VideoAutomationPolicy.production_default()
-    )
-    account = ManagedCreditAccount(
-        tenant_id="tenant-001",
-        user_id="user-001",
-        available_microusd=5_000_000,
-    )
-    quote = ProviderCostQuote(
-        provider_name=OPENROUTER_MANAGED_PROVIDER_NAME,
-        model_id="bytedance/seedance-2.0-fast",
-        estimated_cost_microusd=600_000,
-        max_cost_microusd=1_000_000,
+        policy=VideoAutomationPolicy.production_default(),
+        store=ManagedCreditLedgerStore(tmp_path),
     )
     with pytest.raises(ManagedPaidVideoExecutionError, match="not permitted"):
-        coordinator.authorize(account=account, request=_request(), quote=quote)
+        coordinator.authorize(
+            account=_account(),
+            request=_request(),
+            quote=_quote(),
+            routing_decision_id="route-001",
+        )
