@@ -167,3 +167,48 @@ h3 { letter-spacing: -.025em; }
 }
 .flow-card:last-child, .security-chain article:last-child { border-right: 0; }
 .flow-card > span, .evidence-icon, .runtime-steps span { border-radius: 4px; }
+
+.control-stack { margin-top: 52px; max-width: 1050px; }
+.stack-layer {
+  border-radius: 4px;
+  box-shadow: none;
+  background: #0e141b;
+  padding: 25px 30px;
+  display: grid;
+  grid-template-columns: 64px 240px 1fr;
+  gap: 20px;
+  align-items: center;
+}
+.stack-layer span { margin: 0; }
+.stack-layer small { margin: 0; max-width: 58ch; justify-self: end; }
+.authority-layer { border-color: rgba(0,194,209,.48); background: rgba(0,194,209,.045); box-shadow: none; }
+.stack-connector { text-align: left; padding: 9px 0 9px 30px; color: #64727e; }
+
+.evidence-grid { gap: clamp(44px, 7vw, 92px); }
+.evidence-panel { border-radius: 4px; padding: 0; background: transparent; border-left: 0; border-right: 0; }
+.evidence-row { padding: 20px 4px; }
+.evidence-icon { background: transparent; }
+
+.runtime-map { gap: clamp(40px, 7vw, 88px); }
+.runtime-steps { border-top: 1px solid var(--line); }
+.runtime-steps > div { border: 0; border-bottom: 1px solid var(--line); border-radius: 0; background: transparent; padding: 16px 4px; }
+
+.boundary-diagram { border-radius: 4px; background: transparent; padding: 0; border-left: 0; border-right: 0; }
+.boundary-client, .boundary-core { border-radius: 4px; }
+.boundary-core { background: rgba(0,194,209,.04); }
+
+.callout {
+  border-radius: 4px;
+  background: transparent;
+  border-left: 3px solid var(--accent);
+  border-right: 0;
+  border-top: 0;
+  border-bottom: 0;
+  padding: 12px 0 12px 30px;
+}
+
+.plane-grid { gap: 0; border-top: 1px solid var(--line); }
+.plane-card { min-height: 0; border-radius: 0; border: 0; border-bottom: 1px solid var(--line); background: transparent; padding: 28px 28px 30px 0; }
+.plane-card:nth-child(odd) { border-right: 1px solid var(--line); }
+.plane-card:nth-child(even) { padding-left: 28px; }
+.plane-card span { margin-bottom: 26px; }
