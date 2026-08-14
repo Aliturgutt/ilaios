@@ -16,6 +16,11 @@ class DesktopRuntime {
   final String status;
   final Process? _process;
 
+  factory DesktopRuntime.unavailable(String status) => DesktopRuntime._(
+        config: null,
+        status: status,
+      );
+
   static Future<DesktopRuntime> resolve() async {
     final configured = await ControlPlaneConfig.fromEnvironment();
     if (configured != null) {
@@ -25,21 +30,25 @@ class DesktopRuntime {
       );
     }
     if (!Platform.isWindows) {
-      return DesktopRuntime._(
-        config: null,
-        status: 'Bundled local control plane is available on Windows builds only',
+      return DesktopRuntime.unavailable(
+        'Bundled local control plane is available on Windows builds only',
       );
     }
-    return _startBundledWindowsRuntime();
+    try {
+      return await _startBundledWindowsRuntime();
+    } on Object catch (error) {
+      return DesktopRuntime.unavailable(
+        'Bundled local control plane failed to start: $error',
+      );
+    }
   }
 
   static Future<DesktopRuntime> _startBundledWindowsRuntime() async {
     final executableDirectory = File(Platform.resolvedExecutable).parent;
     final sidecar = File('${executableDirectory.path}\\ilaios_control_plane.exe');
     if (!await sidecar.exists()) {
-      return DesktopRuntime._(
-        config: null,
-        status: 'Bundled ILAIOS control plane is not present in this build',
+      return DesktopRuntime.unavailable(
+        'Bundled ILAIOS control plane is not present in this build',
       );
     }
 
