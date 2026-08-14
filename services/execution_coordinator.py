@@ -24,7 +24,7 @@ from services.control_plane.proposals import (
     ProposedTask,
     RiskClass,
 )
-from services.governance import GovernedRuntimeGateway
+from services.governance import GateError, GovernedRuntimeGateway
 from services.integrations.product_runtime import DurableVideoProductRuntime
 from services.runtime import BlastRadiusBudget, DurableGrantPolicy, ExecutionGrant
 
@@ -259,6 +259,42 @@ class ExecutionCoordinator:
                 ),
             )
         return result
+
+    def decide(
+        self,
+        request_id: str,
+        *,
+        approver_id: str,
+        tenant_id: str,
+        decision: str,
+        now: datetime,
+    ) -> str:
+        _require_identity_text(approver_id, "approver_id")
+        _require_identity_text(tenant_id, "tenant_id")
+        if now.tzinfo is None:
+            raise ExecutionCoordinatorError("decision time must be timezone-aware")
+        if decision not in {"approved", "denied"}:
+            raise ExecutionCoordinatorError("approval decision must be approved or denied")
+        row = self._request_row(request_id)
+        if row["status"] != "PENDING_APPROVAL":
+            raise ExecutionCoordinatorError("execution request is not awaiting approval")
+        if row["tenant_id"] != tenant_id:
+            raise ExecutionCoordinatorError("cross-tenant execution approval denied")
+        try:
+            self._governance.decide(request_id, approver_id, decision)
+        except GateError as error:
+            raise ExecutionCoordinatorError(str(error)) from error
+        if decision == "denied":
+            with self._connect() as connection:
+                changed = connection.execute(
+                    "UPDATE execution_requests SET status = 'DENIED', updated_at = ? "
+                    "WHERE request_id = ? AND status = 'PENDING_APPROVAL'",
+                    (now.isoformat(), request_id),
+                ).rowcount
+            if changed != 1:
+                raise ExecutionCoordinatorError("execution request changed concurrently")
+            return "DENIED"
+        return "APPROVED"
 
     def resume(
         self,
