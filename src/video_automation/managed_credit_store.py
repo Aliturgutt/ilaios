@@ -1,10 +1,4 @@
-"""Durable ILAIOS-managed media credits and provider side-effect safety.
-
-The store extends the existing provider-neutral managed-credit authority with
-SQLite durability and an idempotent financial side-effect ledger. It is shared
-infrastructure for media factories and does not create a factory-specific
-credit authority.
-"""
+"""Durable shared media credits and paid-provider side-effect safety."""
 
 from __future__ import annotations
 
@@ -83,57 +77,32 @@ class ProviderSideEffectRecord:
 
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS credit_accounts (
-    tenant_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    available_microusd INTEGER NOT NULL CHECK (available_microusd >= 0),
-    reserved_microusd INTEGER NOT NULL CHECK (reserved_microusd >= 0),
-    version INTEGER NOT NULL CHECK (version >= 1),
-    PRIMARY KEY (tenant_id, user_id)
-);
+ tenant_id TEXT NOT NULL, user_id TEXT NOT NULL,
+ available_microusd INTEGER NOT NULL CHECK (available_microusd >= 0),
+ reserved_microusd INTEGER NOT NULL CHECK (reserved_microusd >= 0),
+ version INTEGER NOT NULL CHECK (version >= 1), PRIMARY KEY (tenant_id, user_id));
 CREATE TABLE IF NOT EXISTS credit_authorizations (
-    authorization_id TEXT PRIMARY KEY,
-    request_id TEXT UNIQUE NOT NULL,
-    tenant_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    provider_name TEXT NOT NULL,
-    model_id TEXT NOT NULL,
-    estimated_cost_microusd INTEGER NOT NULL,
-    max_cost_microusd INTEGER NOT NULL,
-    reserved_microusd INTEGER NOT NULL,
-    account_version INTEGER NOT NULL,
-    routing_decision_id TEXT NOT NULL,
-    state TEXT NOT NULL,
-    provider_job_id TEXT,
-    actual_cost_microusd INTEGER,
-    created_at TEXT NOT NULL,
-    settled_at TEXT,
-    FOREIGN KEY (tenant_id, user_id)
-        REFERENCES credit_accounts (tenant_id, user_id)
-);
+ authorization_id TEXT PRIMARY KEY, request_id TEXT UNIQUE NOT NULL,
+ tenant_id TEXT NOT NULL, user_id TEXT NOT NULL, provider_name TEXT NOT NULL,
+ model_id TEXT NOT NULL, estimated_cost_microusd INTEGER NOT NULL,
+ max_cost_microusd INTEGER NOT NULL, reserved_microusd INTEGER NOT NULL,
+ account_version INTEGER NOT NULL, routing_decision_id TEXT NOT NULL,
+ state TEXT NOT NULL, provider_job_id TEXT, actual_cost_microusd INTEGER,
+ created_at TEXT NOT NULL, settled_at TEXT,
+ FOREIGN KEY (tenant_id, user_id) REFERENCES credit_accounts (tenant_id, user_id));
 CREATE TABLE IF NOT EXISTS provider_side_effects (
-    request_id TEXT PRIMARY KEY,
-    tenant_id TEXT NOT NULL,
-    user_id TEXT NOT NULL,
-    authorization_id TEXT NOT NULL,
-    routing_decision_id TEXT NOT NULL,
-    provider TEXT NOT NULL,
-    model TEXT NOT NULL,
-    payload_sha256 TEXT NOT NULL,
-    submission_state TEXT NOT NULL,
-    external_job_id TEXT,
-    submitted_at TEXT,
-    last_observed_status TEXT,
-    actual_cost_microusd INTEGER,
-    artifact_reference TEXT,
-    reconciliation_state TEXT NOT NULL,
-    FOREIGN KEY (authorization_id)
-        REFERENCES credit_authorizations (authorization_id)
-);
+ request_id TEXT PRIMARY KEY, tenant_id TEXT NOT NULL, user_id TEXT NOT NULL,
+ authorization_id TEXT NOT NULL, routing_decision_id TEXT NOT NULL,
+ provider TEXT NOT NULL, model TEXT NOT NULL, payload_sha256 TEXT NOT NULL,
+ submission_state TEXT NOT NULL, external_job_id TEXT, submitted_at TEXT,
+ last_observed_status TEXT, actual_cost_microusd INTEGER,
+ artifact_reference TEXT, reconciliation_state TEXT NOT NULL,
+ FOREIGN KEY (authorization_id) REFERENCES credit_authorizations (authorization_id));
 """
 
 
 class ManagedCreditLedgerStore:
-    """Persistent tenant/user credit authority and settlement ledger."""
+    """Persistent tenant/user balance, authorization, and settlement authority."""
 
     def __init__(self, root: Path) -> None:
         root.mkdir(parents=True, exist_ok=True)
@@ -148,21 +117,13 @@ class ManagedCreditLedgerStore:
         return connection
 
     def seed_account(self, account: ManagedCreditAccount) -> ManagedCreditAccount:
-        """Persist an account only if absent; never overwrite a durable balance."""
-
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
-            row = self._account_row(
-                connection,
-                tenant_id=account.tenant_id,
-                user_id=account.user_id,
-            )
+            row = self._account_row(connection, account.tenant_id, account.user_id)
             if row is not None:
-                return _account_from_row(row)
+                return _account(row)
             connection.execute(
-                "INSERT INTO credit_accounts "
-                "(tenant_id, user_id, available_microusd, reserved_microusd, version) "
-                "VALUES (?, ?, ?, ?, ?)",
+                "INSERT INTO credit_accounts VALUES (?, ?, ?, ?, ?)",
                 (
                     account.tenant_id,
                     account.user_id,
@@ -175,14 +136,10 @@ class ManagedCreditLedgerStore:
 
     def get_account(self, *, tenant_id: str, user_id: str) -> ManagedCreditAccount:
         with self._connect() as connection:
-            row = self._account_row(
-                connection,
-                tenant_id=tenant_id,
-                user_id=user_id,
-            )
+            row = self._account_row(connection, tenant_id, user_id)
         if row is None:
             raise ManagedCreditError("managed credit account does not exist")
-        return _account_from_row(row)
+        return _account(row)
 
     def reserve(
         self,
@@ -192,21 +149,13 @@ class ManagedCreditLedgerStore:
         routing_decision_id: str,
         quote: ProviderCostQuote,
     ) -> CreditAuthorizationOutcome:
-        """Reserve the maximum quoted provider cost atomically and idempotently."""
-
-        _require_text("routing_decision_id", routing_decision_id)
+        _text("routing_decision_id", routing_decision_id)
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
-            stored = self._account_row(
-                connection,
-                tenant_id=account.tenant_id,
-                user_id=account.user_id,
-            )
-            if stored is None:
+            row = self._account_row(connection, account.tenant_id, account.user_id)
+            if row is None:
                 connection.execute(
-                    "INSERT INTO credit_accounts "
-                    "(tenant_id, user_id, available_microusd, reserved_microusd, version) "
-                    "VALUES (?, ?, ?, ?, ?)",
+                    "INSERT INTO credit_accounts VALUES (?, ?, ?, ?, ?)",
                     (
                         account.tenant_id,
                         account.user_id,
@@ -217,63 +166,57 @@ class ManagedCreditLedgerStore:
                 )
                 current = account
             else:
-                current = _account_from_row(stored)
-
+                current = _account(row)
             existing = connection.execute(
                 "SELECT * FROM credit_authorizations WHERE request_id = ?",
                 (request_id,),
             ).fetchone()
             if existing is not None:
-                _validate_existing_authorization(
-                    existing,
-                    account=current,
-                    quote=quote,
-                    routing_decision_id=routing_decision_id,
+                existing_row = _row(existing)
+                _same_authorization(
+                    existing_row, current, quote, routing_decision_id
                 )
                 return CreditAuthorizationOutcome(
-                    current,
-                    _authorization_from_row(existing),
+                    current, _authorization(existing_row)
                 )
-
             outcome = ManagedCreditAuthorizer().authorize(
-                account=current,
-                request_id=request_id,
-                quote=quote,
+                account=current, request_id=request_id, quote=quote
             )
             self._write_account(connection, outcome.account)
+            auth = outcome.authorization
             connection.execute(
                 "INSERT INTO credit_authorizations "
-                "(authorization_id, request_id, tenant_id, user_id, provider_name, "
-                "model_id, estimated_cost_microusd, max_cost_microusd, "
-                "reserved_microusd, account_version, routing_decision_id, state, "
-                "created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                "(authorization_id,request_id,tenant_id,user_id,provider_name,model_id,"
+                "estimated_cost_microusd,max_cost_microusd,reserved_microusd,"
+                "account_version,routing_decision_id,state,created_at) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (
-                    outcome.authorization.authorization_id,
-                    outcome.authorization.request_id,
-                    outcome.authorization.tenant_id,
-                    outcome.authorization.user_id,
-                    outcome.authorization.provider_name,
-                    outcome.authorization.model_id,
+                    auth.authorization_id,
+                    auth.request_id,
+                    auth.tenant_id,
+                    auth.user_id,
+                    auth.provider_name,
+                    auth.model_id,
                     quote.estimated_cost_microusd,
                     quote.max_cost_microusd,
-                    outcome.authorization.reserved_microusd,
-                    outcome.authorization.account_version,
+                    auth.reserved_microusd,
+                    auth.account_version,
                     routing_decision_id,
                     CreditAuthorizationState.RESERVED.value,
-                    _utc_now(),
+                    _now(),
                 ),
             )
             return outcome
 
     def get_authorization(self, authorization_id: str) -> PersistentCreditAuthorization:
         with self._connect() as connection:
-            row = connection.execute(
+            value = connection.execute(
                 "SELECT * FROM credit_authorizations WHERE authorization_id = ?",
                 (authorization_id,),
             ).fetchone()
-        if row is None:
+        if value is None:
             raise ManagedCreditError("credit authorization does not exist")
-        return _persistent_authorization_from_row(row)
+        return _persistent_authorization(_row(value))
 
     def settle(
         self,
@@ -282,29 +225,23 @@ class ManagedCreditLedgerStore:
         actual_cost_microusd: int,
         provider_job_id: str,
     ) -> CreditSettlementOutcome:
-        """Settle actual provider cost once; identical duplicate settlement is safe."""
-
-        _require_text("provider_job_id", provider_job_id)
+        _text("provider_job_id", provider_job_id)
+        result: CreditSettlementOutcome | None = None
         violation = False
-        outcome: CreditSettlementOutcome | None = None
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
-            row = connection.execute(
+            value = connection.execute(
                 "SELECT * FROM credit_authorizations WHERE authorization_id = ?",
                 (authorization_id,),
             ).fetchone()
-            if row is None:
+            if value is None:
                 raise ManagedCreditError("credit authorization does not exist")
-            persistent = _persistent_authorization_from_row(row)
-            account_row = self._account_row(
-                connection,
-                tenant_id=persistent.authorization.tenant_id,
-                user_id=persistent.authorization.user_id,
-            )
+            persistent = _persistent_authorization(_row(value))
+            auth = persistent.authorization
+            account_row = self._account_row(connection, auth.tenant_id, auth.user_id)
             if account_row is None:
                 raise ManagedCreditError("managed credit account does not exist")
-            account = _account_from_row(account_row)
-
+            account = _account(account_row)
             if persistent.state is CreditAuthorizationState.SETTLED:
                 if (
                     persistent.actual_cost_microusd != actual_cost_microusd
@@ -313,114 +250,89 @@ class ManagedCreditLedgerStore:
                     raise ManagedCreditError(
                         "authorization is already settled differently"
                     )
-                released = (
-                    persistent.authorization.reserved_microusd - actual_cost_microusd
-                )
+                released = auth.reserved_microusd - actual_cost_microusd
                 return CreditSettlementOutcome(
                     account,
-                    CreditSettlement(
-                        authorization_id,
-                        actual_cost_microusd,
-                        released,
-                    ),
+                    CreditSettlement(authorization_id, actual_cost_microusd, released),
                 )
-
             if persistent.state is not CreditAuthorizationState.RESERVED:
                 raise ManagedCreditError(
-                    "authorization cannot settle from state "
-                    f"{persistent.state.value}"
+                    f"authorization cannot settle from state {persistent.state.value}"
                 )
-
-            if actual_cost_microusd > persistent.authorization.reserved_microusd:
+            if actual_cost_microusd > auth.reserved_microusd:
                 connection.execute(
-                    "UPDATE credit_authorizations SET state = ?, provider_job_id = ?, "
-                    "actual_cost_microusd = ?, settled_at = ? "
-                    "WHERE authorization_id = ?",
+                    "UPDATE credit_authorizations SET state=?,provider_job_id=?,"
+                    "actual_cost_microusd=?,settled_at=? WHERE authorization_id=?",
                     (
                         CreditAuthorizationState.COST_POLICY_VIOLATION.value,
                         provider_job_id,
                         actual_cost_microusd,
-                        _utc_now(),
+                        _now(),
                         authorization_id,
                     ),
                 )
                 violation = True
             else:
-                outcome = ManagedCreditAuthorizer().settle(
+                result = ManagedCreditAuthorizer().settle(
                     account=account,
-                    authorization=persistent.authorization,
+                    authorization=auth,
                     actual_cost_microusd=actual_cost_microusd,
                 )
-                self._write_account(connection, outcome.account)
+                self._write_account(connection, result.account)
                 connection.execute(
-                    "UPDATE credit_authorizations SET state = ?, provider_job_id = ?, "
-                    "actual_cost_microusd = ?, settled_at = ? "
-                    "WHERE authorization_id = ?",
+                    "UPDATE credit_authorizations SET state=?,provider_job_id=?,"
+                    "actual_cost_microusd=?,settled_at=? WHERE authorization_id=?",
                     (
                         CreditAuthorizationState.SETTLED.value,
                         provider_job_id,
                         actual_cost_microusd,
-                        _utc_now(),
+                        _now(),
                         authorization_id,
                     ),
                 )
-
         if violation:
-            raise ManagedCreditError(
-                "actual provider cost exceeded authorized maximum"
-            )
-        if outcome is None:
+            raise ManagedCreditError("actual provider cost exceeded authorized maximum")
+        if result is None:
             raise ManagedCreditError("settlement failed without a terminal state")
-        return outcome
+        return result
 
     def release(self, *, authorization_id: str) -> ManagedCreditAccount:
-        """Release one unused reservation before an accepted provider side effect."""
-
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
-            row = connection.execute(
+            value = connection.execute(
                 "SELECT * FROM credit_authorizations WHERE authorization_id = ?",
                 (authorization_id,),
             ).fetchone()
-            if row is None:
+            if value is None:
                 raise ManagedCreditError("credit authorization does not exist")
-            persistent = _persistent_authorization_from_row(row)
-            account_row = self._account_row(
-                connection,
-                tenant_id=persistent.authorization.tenant_id,
-                user_id=persistent.authorization.user_id,
-            )
+            persistent = _persistent_authorization(_row(value))
+            auth = persistent.authorization
+            account_row = self._account_row(connection, auth.tenant_id, auth.user_id)
             if account_row is None:
                 raise ManagedCreditError("managed credit account does not exist")
-            account = _account_from_row(account_row)
-
+            account = _account(account_row)
             if persistent.state is CreditAuthorizationState.RELEASED:
                 return account
             if persistent.state is not CreditAuthorizationState.RESERVED:
                 raise ManagedCreditError(
-                    "authorization cannot release from state "
-                    f"{persistent.state.value}"
+                    f"authorization cannot release from state {persistent.state.value}"
                 )
-
-            reserved = persistent.authorization.reserved_microusd
-            if account.reserved_microusd < reserved:
-                raise ManagedCreditError(
-                    "reserved balance does not cover authorization"
-                )
+            if account.reserved_microusd < auth.reserved_microusd:
+                raise ManagedCreditError("reserved balance does not cover authorization")
             released = ManagedCreditAccount(
                 tenant_id=account.tenant_id,
                 user_id=account.user_id,
-                available_microusd=account.available_microusd + reserved,
-                reserved_microusd=account.reserved_microusd - reserved,
+                available_microusd=account.available_microusd + auth.reserved_microusd,
+                reserved_microusd=account.reserved_microusd - auth.reserved_microusd,
                 version=account.version + 1,
             )
             self._write_account(connection, released)
             connection.execute(
-                "UPDATE credit_authorizations SET state = ?, settled_at = ? "
-                "WHERE authorization_id = ?",
+                "UPDATE credit_authorizations SET state=?,settled_at=? "
+                "WHERE authorization_id=?",
                 (
                     CreditAuthorizationState.RELEASED.value,
-                    _utc_now(),
+                    _now(),
                     authorization_id,
                 ),
             )
@@ -428,25 +340,23 @@ class ManagedCreditLedgerStore:
 
     @staticmethod
     def _account_row(
-        connection: sqlite3.Connection,
-        *,
-        tenant_id: str,
-        user_id: str,
+        connection: sqlite3.Connection, tenant_id: str, user_id: str
     ) -> sqlite3.Row | None:
-        return connection.execute(
-            "SELECT * FROM credit_accounts WHERE tenant_id = ? AND user_id = ?",
+        value = connection.execute(
+            "SELECT * FROM credit_accounts WHERE tenant_id=? AND user_id=?",
             (tenant_id, user_id),
         ).fetchone()
+        if value is None:
+            return None
+        return _row(value)
 
     @staticmethod
     def _write_account(
-        connection: sqlite3.Connection,
-        account: ManagedCreditAccount,
+        connection: sqlite3.Connection, account: ManagedCreditAccount
     ) -> None:
         connection.execute(
-            "UPDATE credit_accounts SET available_microusd = ?, "
-            "reserved_microusd = ?, version = ? "
-            "WHERE tenant_id = ? AND user_id = ?",
+            "UPDATE credit_accounts SET available_microusd=?,reserved_microusd=?,"
+            "version=? WHERE tenant_id=? AND user_id=?",
             (
                 account.available_microusd,
                 account.reserved_microusd,
@@ -470,43 +380,28 @@ class ProviderSideEffectLedger:
         authorization: CreditAuthorization,
         routing_decision_id: str,
     ) -> ProviderSideEffectRecord:
-        """Persist SUBMITTING exactly once before a paid network side effect."""
-
-        _require_text("routing_decision_id", routing_decision_id)
+        _text("routing_decision_id", routing_decision_id)
         model = request.payload.get("model_id")
         if not isinstance(model, str) or not model.strip():
             raise ManagedCreditError("provider request requires model_id")
-        payload_sha256 = provider_request_payload_sha256(request)
-        persistent = self._store.get_authorization(
-            authorization.authorization_id
-        )
+        digest = provider_request_payload_sha256(request)
+        persistent = self._store.get_authorization(authorization.authorization_id)
         if persistent.state is not CreditAuthorizationState.RESERVED:
-            raise ManagedCreditError(
-                "provider dispatch requires a reserved authorization"
-            )
+            raise ManagedCreditError("provider dispatch requires a reserved authorization")
         if persistent.routing_decision_id != routing_decision_id:
-            raise ManagedCreditError(
-                "routing decision does not match authorization"
-            )
+            raise ManagedCreditError("routing decision does not match authorization")
         if authorization.request_id != request.request_id:
-            raise ManagedCreditError(
-                "provider request does not match authorization"
-            )
-
+            raise ManagedCreditError("provider request does not match authorization")
         with self._store._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
-            row = connection.execute(
-                "SELECT * FROM provider_side_effects WHERE request_id = ?",
+            value = connection.execute(
+                "SELECT * FROM provider_side_effects WHERE request_id=?",
                 (request.request_id,),
             ).fetchone()
-            if row is not None:
-                record = _side_effect_from_row(row)
-                _validate_existing_side_effect(
-                    record,
-                    request=request,
-                    authorization=authorization,
-                    routing_decision_id=routing_decision_id,
-                    payload_sha256=payload_sha256,
+            if value is not None:
+                record = _side_effect(_row(value))
+                _same_side_effect(
+                    record, request, authorization, routing_decision_id, digest
                 )
                 if record.submission_state in {
                     ProviderSubmissionState.SUBMITTING,
@@ -518,8 +413,8 @@ class ProviderSideEffectLedger:
                         "provider side effect already exists; reconcile instead of redispatch"
                     )
                 connection.execute(
-                    "UPDATE provider_side_effects SET submission_state = ?, "
-                    "reconciliation_state = ? WHERE request_id = ?",
+                    "UPDATE provider_side_effects SET submission_state=?,"
+                    "reconciliation_state=? WHERE request_id=?",
                     (
                         ProviderSubmissionState.SUBMITTING.value,
                         ReconciliationState.NOT_REQUIRED.value,
@@ -529,10 +424,9 @@ class ProviderSideEffectLedger:
             else:
                 connection.execute(
                     "INSERT INTO provider_side_effects "
-                    "(request_id, tenant_id, user_id, authorization_id, "
-                    "routing_decision_id, provider, model, payload_sha256, "
-                    "submission_state, reconciliation_state) "
-                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    "(request_id,tenant_id,user_id,authorization_id,routing_decision_id,"
+                    "provider,model,payload_sha256,submission_state,reconciliation_state) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?)",
                     (
                         request.request_id,
                         authorization.tenant_id,
@@ -541,62 +435,51 @@ class ProviderSideEffectLedger:
                         routing_decision_id,
                         request.provider_name,
                         model,
-                        payload_sha256,
+                        digest,
                         ProviderSubmissionState.SUBMITTING.value,
                         ReconciliationState.NOT_REQUIRED.value,
                     ),
                 )
             current = connection.execute(
-                "SELECT * FROM provider_side_effects WHERE request_id = ?",
+                "SELECT * FROM provider_side_effects WHERE request_id=?",
                 (request.request_id,),
             ).fetchone()
             if current is None:
-                raise ManagedCreditError(
-                    "provider side-effect row was not persisted"
-                )
-            return _side_effect_from_row(current)
+                raise ManagedCreditError("provider side-effect row was not persisted")
+            return _side_effect(_row(current))
 
     def accepted(
-        self,
-        *,
-        request_id: str,
-        external_job_id: str,
+        self, *, request_id: str, external_job_id: str
     ) -> ProviderSideEffectRecord:
-        _require_text("external_job_id", external_job_id)
+        _text("external_job_id", external_job_id)
         return self._transition(
-            request_id=request_id,
-            state=ProviderSubmissionState.ACCEPTED,
+            request_id,
+            ProviderSubmissionState.ACCEPTED,
+            ReconciliationState.NOT_REQUIRED,
             external_job_id=external_job_id,
-            submitted_at=_utc_now(),
-            reconciliation=ReconciliationState.NOT_REQUIRED,
+            submitted_at=_now(),
         )
 
     def failed(
-        self,
-        *,
-        request_id: str,
-        observed_status: str,
+        self, *, request_id: str, observed_status: str
     ) -> ProviderSideEffectRecord:
-        _require_text("observed_status", observed_status)
+        _text("observed_status", observed_status)
         return self._transition(
-            request_id=request_id,
-            state=ProviderSubmissionState.FAILED,
+            request_id,
+            ProviderSubmissionState.FAILED,
+            ReconciliationState.NOT_REQUIRED,
             observed_status=observed_status,
-            reconciliation=ReconciliationState.NOT_REQUIRED,
         )
 
     def ambiguous(
-        self,
-        *,
-        request_id: str,
-        observed_status: str,
+        self, *, request_id: str, observed_status: str
     ) -> ProviderSideEffectRecord:
-        _require_text("observed_status", observed_status)
+        _text("observed_status", observed_status)
         return self._transition(
-            request_id=request_id,
-            state=ProviderSubmissionState.AMBIGUOUS,
+            request_id,
+            ProviderSubmissionState.AMBIGUOUS,
+            ReconciliationState.PENDING,
             observed_status=observed_status,
-            reconciliation=ReconciliationState.PENDING,
         )
 
     def complete(
@@ -607,90 +490,76 @@ class ProviderSideEffectLedger:
         actual_cost_microusd: int,
         artifact_reference: str,
     ) -> ProviderSideEffectRecord:
-        _require_text("observed_status", observed_status)
-        _require_text("artifact_reference", artifact_reference)
+        _text("observed_status", observed_status)
+        _text("artifact_reference", artifact_reference)
         if actual_cost_microusd < 0:
-            raise ManagedCreditError(
-                "actual provider cost must be non-negative"
-            )
+            raise ManagedCreditError("actual provider cost must be non-negative")
         return self._transition(
-            request_id=request_id,
-            state=ProviderSubmissionState.COMPLETED,
+            request_id,
+            ProviderSubmissionState.COMPLETED,
+            ReconciliationState.RECONCILED,
             observed_status=observed_status,
             actual_cost_microusd=actual_cost_microusd,
             artifact_reference=artifact_reference,
-            reconciliation=ReconciliationState.RECONCILED,
         )
 
     def reconcile(
-        self,
-        *,
-        request_id: str,
-        external_job_id: str,
-        observed_status: str,
+        self, *, request_id: str, external_job_id: str, observed_status: str
     ) -> ProviderSideEffectRecord:
-        """Resolve AMBIGUOUS without issuing a second provider POST."""
-
-        _require_text("external_job_id", external_job_id)
-        _require_text("observed_status", observed_status)
+        _text("external_job_id", external_job_id)
+        _text("observed_status", observed_status)
         return self._transition(
-            request_id=request_id,
-            state=ProviderSubmissionState.ACCEPTED,
+            request_id,
+            ProviderSubmissionState.ACCEPTED,
+            ReconciliationState.RECONCILED,
             external_job_id=external_job_id,
-            submitted_at=_utc_now(),
+            submitted_at=_now(),
             observed_status=observed_status,
-            reconciliation=ReconciliationState.RECONCILED,
-            require_current=ProviderSubmissionState.AMBIGUOUS,
+            require=ProviderSubmissionState.AMBIGUOUS,
         )
 
     def get(self, request_id: str) -> ProviderSideEffectRecord:
         with self._store._connect() as connection:
-            row = connection.execute(
-                "SELECT * FROM provider_side_effects WHERE request_id = ?",
-                (request_id,),
+            value = connection.execute(
+                "SELECT * FROM provider_side_effects WHERE request_id=?", (request_id,)
             ).fetchone()
-        if row is None:
+        if value is None:
             raise ManagedCreditError("provider side effect does not exist")
-        return _side_effect_from_row(row)
+        return _side_effect(_row(value))
 
     def _transition(
         self,
-        *,
         request_id: str,
         state: ProviderSubmissionState,
         reconciliation: ReconciliationState,
+        *,
         external_job_id: str | None = None,
         submitted_at: str | None = None,
         observed_status: str | None = None,
         actual_cost_microusd: int | None = None,
         artifact_reference: str | None = None,
-        require_current: ProviderSubmissionState | None = None,
+        require: ProviderSubmissionState | None = None,
     ) -> ProviderSideEffectRecord:
         with self._store._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
-            row = connection.execute(
-                "SELECT * FROM provider_side_effects WHERE request_id = ?",
-                (request_id,),
+            value = connection.execute(
+                "SELECT * FROM provider_side_effects WHERE request_id=?", (request_id,)
             ).fetchone()
-            if row is None:
+            if value is None:
                 raise ManagedCreditError("provider side effect does not exist")
-            current = _side_effect_from_row(row)
-            if (
-                require_current is not None
-                and current.submission_state is not require_current
-            ):
+            current = _side_effect(_row(value))
+            if require is not None and current.submission_state is not require:
                 raise ManagedCreditError(
-                    "provider side effect must be "
-                    f"{require_current.value} to reconcile"
+                    f"provider side effect must be {require.value} to reconcile"
                 )
             connection.execute(
-                "UPDATE provider_side_effects SET submission_state = ?, "
-                "external_job_id = COALESCE(?, external_job_id), "
-                "submitted_at = COALESCE(?, submitted_at), "
-                "last_observed_status = COALESCE(?, last_observed_status), "
-                "actual_cost_microusd = COALESCE(?, actual_cost_microusd), "
-                "artifact_reference = COALESCE(?, artifact_reference), "
-                "reconciliation_state = ? WHERE request_id = ?",
+                "UPDATE provider_side_effects SET submission_state=?,"
+                "external_job_id=COALESCE(?,external_job_id),"
+                "submitted_at=COALESCE(?,submitted_at),"
+                "last_observed_status=COALESCE(?,last_observed_status),"
+                "actual_cost_microusd=COALESCE(?,actual_cost_microusd),"
+                "artifact_reference=COALESCE(?,artifact_reference),"
+                "reconciliation_state=? WHERE request_id=?",
                 (
                     state.value,
                     external_job_id,
@@ -703,17 +572,14 @@ class ProviderSideEffectLedger:
                 ),
             )
             updated = connection.execute(
-                "SELECT * FROM provider_side_effects WHERE request_id = ?",
-                (request_id,),
+                "SELECT * FROM provider_side_effects WHERE request_id=?", (request_id,)
             ).fetchone()
             if updated is None:
                 raise ManagedCreditError("provider side-effect row disappeared")
-            return _side_effect_from_row(updated)
+            return _side_effect(_row(updated))
 
 
 def provider_request_payload_sha256(request: ProviderRequest) -> str:
-    """Return deterministic identity for the exact paid request envelope."""
-
     material: dict[str, object] = {
         "request_id": request.request_id,
         "job_id": request.job_id,
@@ -722,15 +588,18 @@ def provider_request_payload_sha256(request: ProviderRequest) -> str:
         "payload": dict(request.payload),
     }
     encoded = json.dumps(
-        material,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=True,
+        material, sort_keys=True, separators=(",", ":"), ensure_ascii=True
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
 
 
-def _account_from_row(row: sqlite3.Row) -> ManagedCreditAccount:
+def _row(value: object) -> sqlite3.Row:
+    if not isinstance(value, sqlite3.Row):
+        raise ManagedCreditError("SQLite ledger returned an invalid row type")
+    return value
+
+
+def _account(row: sqlite3.Row) -> ManagedCreditAccount:
     return ManagedCreditAccount(
         tenant_id=str(row["tenant_id"]),
         user_id=str(row["user_id"]),
@@ -740,7 +609,7 @@ def _account_from_row(row: sqlite3.Row) -> ManagedCreditAccount:
     )
 
 
-def _authorization_from_row(row: sqlite3.Row) -> CreditAuthorization:
+def _authorization(row: sqlite3.Row) -> CreditAuthorization:
     return CreditAuthorization(
         authorization_id=str(row["authorization_id"]),
         request_id=str(row["request_id"]),
@@ -753,28 +622,22 @@ def _authorization_from_row(row: sqlite3.Row) -> CreditAuthorization:
     )
 
 
-def _persistent_authorization_from_row(
-    row: sqlite3.Row,
-) -> PersistentCreditAuthorization:
-    provider_job_id = row["provider_job_id"]
-    actual_cost = row["actual_cost_microusd"]
+def _persistent_authorization(row: sqlite3.Row) -> PersistentCreditAuthorization:
+    job = row["provider_job_id"]
+    cost = row["actual_cost_microusd"]
     return PersistentCreditAuthorization(
-        authorization=_authorization_from_row(row),
+        authorization=_authorization(row),
         estimated_cost_microusd=int(row["estimated_cost_microusd"]),
         max_cost_microusd=int(row["max_cost_microusd"]),
         routing_decision_id=str(row["routing_decision_id"]),
         state=CreditAuthorizationState(str(row["state"])),
-        provider_job_id=(
-            None if provider_job_id is None else str(provider_job_id)
-        ),
-        actual_cost_microusd=(
-            None if actual_cost is None else int(actual_cost)
-        ),
+        provider_job_id=None if job is None else str(job),
+        actual_cost_microusd=None if cost is None else int(cost),
     )
 
 
-def _side_effect_from_row(row: sqlite3.Row) -> ProviderSideEffectRecord:
-    actual_cost = row["actual_cost_microusd"]
+def _side_effect(row: sqlite3.Row) -> ProviderSideEffectRecord:
+    cost = row["actual_cost_microusd"]
     return ProviderSideEffectRecord(
         request_id=str(row["request_id"]),
         tenant_id=str(row["tenant_id"]),
@@ -785,40 +648,26 @@ def _side_effect_from_row(row: sqlite3.Row) -> ProviderSideEffectRecord:
         model=str(row["model"]),
         payload_sha256=str(row["payload_sha256"]),
         submission_state=ProviderSubmissionState(str(row["submission_state"])),
-        external_job_id=_optional_text(row, "external_job_id"),
-        submitted_at=_optional_text(row, "submitted_at"),
-        last_observed_status=_optional_text(row, "last_observed_status"),
-        actual_cost_microusd=(
-            None if actual_cost is None else int(actual_cost)
-        ),
-        artifact_reference=_optional_text(row, "artifact_reference"),
-        reconciliation_state=ReconciliationState(
-            str(row["reconciliation_state"])
-        ),
+        external_job_id=_optional(row, "external_job_id"),
+        submitted_at=_optional(row, "submitted_at"),
+        last_observed_status=_optional(row, "last_observed_status"),
+        actual_cost_microusd=None if cost is None else int(cost),
+        artifact_reference=_optional(row, "artifact_reference"),
+        reconciliation_state=ReconciliationState(str(row["reconciliation_state"])),
     )
 
 
-def _optional_text(row: sqlite3.Row, field: str) -> str | None:
+def _optional(row: sqlite3.Row, field: str) -> str | None:
     value = row[field]
     return None if value is None else str(value)
 
 
-def _validate_existing_authorization(
+def _same_authorization(
     row: sqlite3.Row,
-    *,
     account: ManagedCreditAccount,
     quote: ProviderCostQuote,
     routing_decision_id: str,
 ) -> None:
-    expected = (
-        account.tenant_id,
-        account.user_id,
-        quote.provider_name,
-        quote.model_id,
-        quote.estimated_cost_microusd,
-        quote.max_cost_microusd,
-        routing_decision_id,
-    )
     observed = (
         str(row["tenant_id"]),
         str(row["user_id"]),
@@ -828,30 +677,28 @@ def _validate_existing_authorization(
         int(row["max_cost_microusd"]),
         str(row["routing_decision_id"]),
     )
+    expected = (
+        account.tenant_id,
+        account.user_id,
+        quote.provider_name,
+        quote.model_id,
+        quote.estimated_cost_microusd,
+        quote.max_cost_microusd,
+        routing_decision_id,
+    )
     if observed != expected:
         raise ManagedCreditError(
             "request_id is already bound to different authorization material"
         )
 
 
-def _validate_existing_side_effect(
+def _same_side_effect(
     record: ProviderSideEffectRecord,
-    *,
     request: ProviderRequest,
     authorization: CreditAuthorization,
     routing_decision_id: str,
-    payload_sha256: str,
+    digest: str,
 ) -> None:
-    model = request.payload.get("model_id")
-    expected = (
-        authorization.tenant_id,
-        authorization.user_id,
-        authorization.authorization_id,
-        routing_decision_id,
-        request.provider_name,
-        model,
-        payload_sha256,
-    )
     observed = (
         record.tenant_id,
         record.user_id,
@@ -861,20 +708,27 @@ def _validate_existing_side_effect(
         record.model,
         record.payload_sha256,
     )
+    expected = (
+        authorization.tenant_id,
+        authorization.user_id,
+        authorization.authorization_id,
+        routing_decision_id,
+        request.provider_name,
+        request.payload.get("model_id"),
+        digest,
+    )
     if observed != expected:
         raise ManagedCreditError(
             "request_id is already bound to a different provider side effect"
         )
 
 
-def _require_text(name: str, value: str) -> None:
+def _text(name: str, value: str) -> None:
     if not value or not value.strip():
         raise ManagedCreditError(f"{name} must not be blank")
     if value != value.strip():
-        raise ManagedCreditError(
-            f"{name} must not contain surrounding whitespace"
-        )
+        raise ManagedCreditError(f"{name} must not contain surrounding whitespace")
 
 
-def _utc_now() -> str:
+def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
