@@ -102,7 +102,10 @@ class _CreateViewState extends State<CreateView> {
 
   @override
   Widget build(BuildContext context) {
-    final enabled = widget.projection.connected && widget.onSubmit != null;
+    final enabled = widget.projection.connected &&
+        widget.onSubmit != null &&
+        widget.identityProviders.isNotEmpty &&
+        widget.userSession != null;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(28),
       child: Align(
