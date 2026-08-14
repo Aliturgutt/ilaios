@@ -125,12 +125,17 @@ void main() {
     expect(request.headers['Authorization'], 'Bearer local-transport-token');
   });
 
-  test('approved execution resumes only through the authenticated session broker', () async {
+  test('approved execution resumes asynchronously and status remains session scoped', () async {
     final transport = _FakeTransport(<String, ControlPlaneResponse>{
       '/v1/execution/resume': const ControlPlaneResponse(
+        statusCode: 202,
+        body:
+            '{"request_id":"exec-1","execution_status":"RESUME_REQUESTED"}',
+      ),
+      '/v1/execution/status': const ControlPlaneResponse(
         statusCode: 200,
         body:
-            '{"request_id":"exec-1","execution_status":"ACCEPTED","result":{"accepted":true}}',
+            '{"request_id":"exec-1","execution_status":"ACCEPTED","principal_id":"principal-1","tenant_id":"tenant-1"}',
       ),
     });
     final client = IdentityClient(
@@ -146,11 +151,18 @@ void main() {
     );
 
     await client.resumeExecution('exec-1', session);
+    final status = await client.fetchExecutionStatus('exec-1', session);
 
-    final request = transport.requests.single;
-    expect(request.uri.path, '/v1/execution/resume');
-    expect(request.headers['X-ILAIOS-Session'], 'session-1');
-    expect(request.body, jsonEncode(<String, Object?>{'request_id': 'exec-1'}));
+    expect(status, 'ACCEPTED');
+    expect(transport.requests, hasLength(2));
+    final resume = transport.requests.first;
+    expect(resume.uri.path, '/v1/execution/resume');
+    expect(resume.headers['X-ILAIOS-Session'], 'session-1');
+    expect(resume.body, jsonEncode(<String, Object?>{'request_id': 'exec-1'}));
+    final poll = transport.requests.last;
+    expect(poll.uri.path, '/v1/execution/status');
+    expect(poll.uri.queryParameters['request_id'], 'exec-1');
+    expect(poll.headers['X-ILAIOS-Session'], 'session-1');
   });
 
   test('identity client rejects non-loopback broker endpoints', () {
