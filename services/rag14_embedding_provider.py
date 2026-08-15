@@ -13,6 +13,7 @@ import json
 import math
 import os
 import sys
+import time
 from collections.abc import Iterator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
@@ -55,6 +56,7 @@ class PinnedE5EmbeddingProvider:
     """CPU-only, immutable-artifact multilingual E5 provider."""
 
     def __init__(self, *, manifest_path: Path, artifact_root: Path) -> None:
+        cold_started = time.perf_counter()
         self._candidate = load_candidate(manifest_path)
         self._validate_candidate_identity(self._candidate)
         self._artifact_root = artifact_root
@@ -66,8 +68,10 @@ class PinnedE5EmbeddingProvider:
         probe = self._encode((self._candidate.passage_prefix + "runtime integrity probe",))
         if len(probe) != 1 or len(probe[0]) != self._candidate.embedding_dimensions:
             raise ProductionEmbeddingError("production embedding startup probe failed")
+        cold_start_ms = (time.perf_counter() - cold_started) * 1000.0
         self._startup_selftest_report = self._run_startup_selftest_if_required(
-            manifest_path
+            manifest_path,
+            cold_start_ms=cold_start_ms,
         )
 
     @property
@@ -101,7 +105,10 @@ class PinnedE5EmbeddingProvider:
         return encoded[0]
 
     def _run_startup_selftest_if_required(
-        self, manifest_path: Path
+        self,
+        manifest_path: Path,
+        *,
+        cold_start_ms: float,
     ) -> dict[str, object] | None:
         raw = os.environ.get("ILAIOS_KNOWLEDGE_STARTUP_SELFTEST_REQUIRED", "false")
         if raw not in {"false", "true"}:
@@ -120,6 +127,7 @@ class PinnedE5EmbeddingProvider:
             report = run_startup_selftest(
                 self,
                 thresholds=thresholds_from_manifest(manifest_path),
+                cold_start_ms=cold_start_ms,
             )
         except StartupSelfTestError as error:
             raise ProductionEmbeddingError(

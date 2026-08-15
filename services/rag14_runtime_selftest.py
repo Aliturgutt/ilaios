@@ -72,8 +72,12 @@ def run_startup_selftest(
     provider: EmbeddingProviderLike,
     *,
     thresholds: StartupSelfTestThresholds,
+    cold_start_ms: float | None = None,
 ) -> dict[str, object]:
     """Run exact in-process semantic and resource checks on an initialized provider."""
+    if cold_start_ms is not None and (not math.isfinite(cold_start_ms) or cold_start_ms < 0):
+        raise StartupSelfTestError("cold start latency must be a finite non-negative value")
+
     corpus_vectors = tuple(provider.embed(text) for _, text in _CORPUS)
     _validate_vectors(corpus_vectors, thresholds.embedding_dimensions)
     latencies_ms: list[float] = []
@@ -100,9 +104,9 @@ def run_startup_selftest(
             "query_latency_ms": round(latency_ms, 3),
         })
 
-    sorted_latencies = sorted(latencies_ms)
-    p95_index = max(0, math.ceil(0.95 * len(sorted_latencies)) - 1)
-    p95_ms = sorted_latencies[p95_index]
+    p50_ms = _percentile(latencies_ms, 0.50)
+    p95_ms = _percentile(latencies_ms, 0.95)
+    p99_ms = _percentile(latencies_ms, 0.99)
     peak_rss_mib = _peak_rss_mib()
     if top1_passes != thresholds.required_top1_cases:
         raise StartupSelfTestError(
@@ -123,7 +127,11 @@ def run_startup_selftest(
         "embedding_dimensions": thresholds.embedding_dimensions,
         "top1_passes": top1_passes,
         "required_top1_cases": thresholds.required_top1_cases,
+        "cold_start_ms": None if cold_start_ms is None else round(cold_start_ms, 3),
+        "warm_inference_sample_count": len(latencies_ms),
+        "p50_query_latency_ms": round(p50_ms, 3),
         "p95_query_latency_ms": round(p95_ms, 3),
+        "p99_query_latency_ms": round(p99_ms, 3),
         "max_p95_query_latency_ms": thresholds.max_p95_query_latency_ms,
         "peak_rss_mib": round(peak_rss_mib, 3),
         "max_peak_rss_mib": thresholds.max_peak_rss_mib,
@@ -132,6 +140,16 @@ def run_startup_selftest(
         "cases": reports,
         "production_authority": False,
     }
+
+
+def _percentile(values: Sequence[float], percentile: float) -> float:
+    if not values:
+        raise StartupSelfTestError("latency sample set must not be empty")
+    if not 0.0 <= percentile <= 1.0:
+        raise StartupSelfTestError("percentile must be between zero and one")
+    ordered = sorted(values)
+    index = max(0, math.ceil(percentile * len(ordered)) - 1)
+    return ordered[index]
 
 
 def _validate_vectors(vectors: Sequence[tuple[float, ...]], expected_dimensions: int) -> None:
