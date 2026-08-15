@@ -171,6 +171,9 @@ def test_medium_video_executes_to_verified_acceptance_with_fresh_grant_and_lease
     )
 
     assert manifest["accepted"] is True
+    assert manifest["requester_id"] == principal_id
+    assert manifest["tenant_id"] == tenant_id
+    assert manifest["identity_proven"] is True
     assert manifest["risk"] == "medium"
     assert manifest["admission_decision"] == "ALLOW"
     assert manifest["admission_proven"] is True
@@ -189,6 +192,7 @@ def test_medium_video_executes_to_verified_acceptance_with_fresh_grant_and_lease
     assert len(state["result_sha256"]) == 64
     assert governance.admission_proven("exec-video-2") is True
     assert scheduler.state()["leases"] == []
+    assert not (tmp_path / "video" / "exec-video-2").exists()
     grant_state = grants.state()
     grant_rows = cast(list[dict[str, object]], grant_state["grants"])
     assert grant_rows[0]["used_side_effects"] == 1
@@ -239,6 +243,7 @@ def test_failure_closes_product_execution_and_releases_resources(tmp_path: Path)
     assert state["terminal"] is True
     assert "GrantError" in cast(str, state["terminal_reason"])
     assert scheduler.state()["leases"] == []
+    assert not (tmp_path / "video" / "exec-video-fail").exists()
     grant_state = grants.state()
     revoked = cast(list[dict[str, object]], grant_state["revoked"])
     assert len(revoked) == 1
