@@ -37,6 +37,13 @@ class _FakeTransport implements ControlPlaneTransport {
   }
 }
 
+const _session = DesktopUserSession(
+  sessionId: 'session-1',
+  providerId: 'google',
+  principalId: 'principal-1',
+  tenantId: 'tenant-1',
+);
+
 void main() {
   test('loads configured identity providers without exposing provider secrets', () async {
     final transport = _FakeTransport(<String, ControlPlaneResponse>{
@@ -95,12 +102,12 @@ void main() {
     }));
   });
 
-  test('authenticated prompt goes through session broker rather than direct client authority', () async {
+  test('authenticated prompt carries coordinator request identity and admission status', () async {
     final transport = _FakeTransport(<String, ControlPlaneResponse>{
       '/v1/desktop/intent': const ControlPlaneResponse(
         statusCode: 201,
         body:
-            '{"goal_id":"goal-1","job_id":"job-1","state":"PENDING","principal_id":"principal-1","tenant_id":"tenant-1"}',
+            '{"request_id":"exec-1","goal_id":"goal-1","job_id":"job-1","state":"PENDING","execution_status":"ADMITTED","principal_id":"principal-1","tenant_id":"tenant-1"}',
       ),
     });
     final client = IdentityClient(
@@ -108,21 +115,58 @@ void main() {
       transportToken: 'local-transport-token',
       transport: transport,
     );
-    const session = DesktopUserSession(
-      sessionId: 'session-1',
-      providerId: 'google',
-      principalId: 'principal-1',
-      tenantId: 'tenant-1',
-    );
 
-    final submission = await client.submitPrompt('Build a website', session);
+    final submission = await client.submitPrompt('Create a launch video', _session);
 
     expect(submission.goalId, 'goal-1');
     expect(submission.jobId, 'job-1');
+    expect(submission.requestId, 'exec-1');
+    expect(submission.executionStatus, 'ADMITTED');
     final request = transport.requests.single;
     expect(request.uri.path, '/v1/desktop/intent');
     expect(request.headers['X-ILAIOS-Session'], 'session-1');
     expect(request.headers['Authorization'], 'Bearer local-transport-token');
+  });
+
+  test('execution status is session scoped and cannot omit ownership boundary', () async {
+    final transport = _FakeTransport(<String, ControlPlaneResponse>{
+      '/v1/execution/status': const ControlPlaneResponse(
+        statusCode: 200,
+        body: '{"request_id":"exec-1","execution_status":"ACCEPTED"}',
+      ),
+    });
+    final client = IdentityClient(
+      baseUri: Uri.parse('http://127.0.0.1:43123'),
+      transportToken: 'local-transport-token',
+      transport: transport,
+    );
+
+    final status = await client.fetchExecutionStatus('exec-1', _session);
+
+    expect(status, 'ACCEPTED');
+    final request = transport.requests.single;
+    expect(request.method, 'GET');
+    expect(request.uri.queryParameters['request_id'], 'exec-1');
+    expect(request.headers['X-ILAIOS-Session'], 'session-1');
+  });
+
+  test('authenticated prompt fails closed without coordinator identity', () async {
+    final transport = _FakeTransport(<String, ControlPlaneResponse>{
+      '/v1/desktop/intent': const ControlPlaneResponse(
+        statusCode: 201,
+        body: '{"goal_id":"goal-1","job_id":"job-1","state":"PENDING"}',
+      ),
+    });
+    final client = IdentityClient(
+      baseUri: Uri.parse('http://127.0.0.1:43123'),
+      transportToken: 'local-transport-token',
+      transport: transport,
+    );
+
+    expect(
+      () => client.submitPrompt('Create a launch video', _session),
+      throwsA(isA<IdentityClientException>()),
+    );
   });
 
   test('identity client rejects non-loopback broker endpoints', () {
