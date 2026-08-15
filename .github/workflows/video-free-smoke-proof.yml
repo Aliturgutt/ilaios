@@ -1,0 +1,148 @@
+name: Video Free Smoke Proof
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/video-free-smoke-proof.trigger
+
+permissions:
+  contents: read
+
+concurrency:
+  group: video-free-smoke-proof
+  cancel-in-progress: true
+
+jobs:
+  free-smoke:
+    name: Zero-cost local video smoke proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROOF_DIR: artifacts/video-free-smoke-proof
+
+    steps:
+      - name: Checkout exact source revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Install FFmpeg
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Generate zero-cost local MP4 and seal evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$PROOF_DIR"
+          ffmpeg -hide_banner -loglevel error \
+            -f lavfi -i "testsrc2=size=854x480:rate=24:duration=4" \
+            -c:v libx264 -pix_fmt yuv420p -movflags +faststart \
+            "$PROOF_DIR/free-smoke.mp4"
+
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import subprocess
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          proof_dir = Path(os.environ["PROOF_DIR"])
+          video_path = proof_dir / "free-smoke.mp4"
+          stream = json.loads(
+              subprocess.check_output(
+                  [
+                      "ffprobe", "-v", "error", "-select_streams", "v:0",
+                      "-show_entries", "stream=codec_name,width,height,r_frame_rate",
+                      "-of", "json", str(video_path),
+                  ],
+                  text=True,
+              )
+          )["streams"][0]
+          duration = float(
+              subprocess.check_output(
+                  [
+                      "ffprobe", "-v", "error", "-show_entries", "format=duration",
+                      "-of", "default=noprint_wrappers=1:nokey=1", str(video_path),
+                  ],
+                  text=True,
+              ).strip()
+          )
+          if stream["codec_name"] != "h264":
+              raise SystemExit("unexpected codec")
+          if (stream["width"], stream["height"]) != (854, 480):
+              raise SystemExit("unexpected dimensions")
+          if not 3.9 <= duration <= 4.1:
+              raise SystemExit("unexpected duration")
+
+          body = video_path.read_bytes()
+          digest = hashlib.sha256(body).hexdigest()
+          receipt = {
+              "schema": "ilaios.video.free-smoke-proof.v1",
+              "status": "PASS",
+              "proof_class": "FREE_LOCAL_SMOKE_ONLY",
+              "revision_sha": os.environ.get("GITHUB_SHA", "unknown"),
+              "workflow_run_id": os.environ.get("GITHUB_RUN_ID", "local"),
+              "billing_usd": "0",
+              "external_provider_called": False,
+              "production_provider_proof": False,
+              "artifact": {
+                  "path": video_path.name,
+                  "sha256": digest,
+                  "bytes": len(body),
+                  "content_type": "video/mp4",
+                  "codec": stream["codec_name"],
+                  "width": stream["width"],
+                  "height": stream["height"],
+                  "frame_rate": stream["r_frame_rate"],
+                  "duration_seconds": duration,
+              },
+              "truth_boundary": (
+                  "Validates zero-cost MP4 generation/artifact plumbing only; "
+                  "it is not real AI-provider production evidence."
+              ),
+              "finished_at": datetime.now(timezone.utc).isoformat(),
+          }
+          (proof_dir / "free-smoke-receipt.json").write_text(
+              json.dumps(receipt, sort_keys=True, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Publish smoke-proof summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+          receipt = json.loads(
+              (Path(os.environ["PROOF_DIR"]) / "free-smoke-receipt.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          artifact = receipt["artifact"]
+          print("## Video Free Smoke Proof")
+          print(f"- Status: `{receipt['status']}`")
+          print("- Cost: `$0`")
+          print("- External provider called: `false`")
+          print(f"- Artifact SHA-256: `{artifact['sha256']}`")
+          print(f"- MP4: `{artifact['width']}x{artifact['height']}`, `{artifact['duration_seconds']:.3f}s`, `{artifact['codec']}`")
+          print("- Truth boundary: local smoke proof only; not AI-provider production proof.")
+          PY
+
+      - name: Upload immutable free smoke evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: video-free-smoke-proof-${{ github.sha }}-${{ github.run_id }}
+          path: artifacts/video-free-smoke-proof
+          if-no-files-found: error
+          retention-days: 30
