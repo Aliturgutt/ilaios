@@ -250,7 +250,7 @@ def test_failure_closes_product_execution_and_releases_resources(tmp_path: Path)
 
 
 def test_stale_executing_request_closes_as_interrupted(tmp_path: Path) -> None:
-    coordinator, _, _, grants = _coordinator(tmp_path)
+    coordinator, _, scheduler, grants = _coordinator(tmp_path)
     prepared_at = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
     coordinator.prepare(
         "exec-video-stale",
@@ -277,6 +277,24 @@ def test_stale_executing_request_closes_as_interrupted(tmp_path: Path) -> None:
     assert state["execution_status"] == "INTERRUPTED"
     assert state["terminal"] is True
     assert "recovery window" in cast(str, state["terminal_reason"])
+    assert scheduler.state()["leases"] == []
+    with sqlite3.connect(tmp_path / "product.sqlite3") as connection:
+        product_status = connection.execute(
+            "SELECT status FROM product_proofs WHERE request_id = ?",
+            ("exec-video-stale",),
+        ).fetchone()
+        product_closure = connection.execute(
+            "SELECT terminal_status FROM product_proof_closure WHERE request_id = ?",
+            ("exec-video-stale",),
+        ).fetchone()
+    assert product_status == ("interrupted",)
+    assert product_closure == ("interrupted",)
+    with sqlite3.connect(tmp_path / "state.sqlite3") as connection:
+        workflow_status = connection.execute(
+            "SELECT status FROM workflows WHERE workflow_id = ?",
+            ("proof-exec-video-stale",),
+        ).fetchone()
+    assert workflow_status == ("cancelled",)
     revoked = cast(list[dict[str, object]], grants.state()["revoked"])
     assert len(revoked) == 1
 
