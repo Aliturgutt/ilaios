@@ -88,8 +88,9 @@ def test_high_risk_policy_reaches_authoritative_governance_without_early_lease(
         "admission_decision": "REQUIRE_APPROVAL",
         "human_approval_required": True,
         "approval_proven": False,
-        "admission_proven": True,
+        "admission_proven": False,
     }
+    assert governance.admission_proven("policy-high-1") is False
     assert scheduler.state()["leases"] == []
 
 
