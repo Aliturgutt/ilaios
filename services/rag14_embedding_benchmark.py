@@ -182,7 +182,7 @@ def _session(candidate: EmbeddingCandidate, work_dir: Path, onnxruntime: Any) ->
     options = onnxruntime.SessionOptions()
     options.intra_op_num_threads = 1
     options.inter_op_num_threads = 1
-    options.enable_cpu_mem_arena = True
+    options.enable_cpu_mem_arena = False
     return onnxruntime.InferenceSession(
         str(_model_path(candidate, work_dir)),
         sess_options=options,
@@ -291,6 +291,7 @@ def run_benchmark(candidate: EmbeddingCandidate, work_dir: Path) -> dict[str, ob
                 "expected_source_id": expected_source_id,
                 "returned_source_id": corpus_ids[top_index],
                 "top1_score": float(scores[top_index]),
+                "runner_up_source_id": corpus_ids[runner_up],
                 "runner_up_score": float(scores[runner_up]),
             }
         )
@@ -327,9 +328,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     candidate = load_candidate(arguments.manifest)
     report = run_benchmark(candidate, arguments.work_dir)
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
-    arguments.output.write_text(
-        json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    serialized_report = json.dumps(report, indent=2, sort_keys=True) + "\n"
+    arguments.output.write_text(serialized_report, encoding="utf-8")
+    print(serialized_report, end="")
     decision = evaluate_measured_report(candidate, arguments.output)
     print(json.dumps(asdict(decision), sort_keys=True))
     return 0 if decision.status == "HOST_CERTIFIED_CANDIDATE" else 1
