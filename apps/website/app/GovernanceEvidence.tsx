@@ -5,10 +5,9 @@ import { useState } from "react";
 type Locale = "en" | "tr";
 type Item = { title: string; summary: string; description: string };
 
-const copy: Record<Locale, { hint: string; close: string; items: Item[] }> = {
+const copy: Record<Locale, { hint: string; items: Item[] }> = {
   en: {
     hint: "Select a control to see what it protects and how it behaves.",
-    close: "Close detail",
     items: [
       { title: "Authority", summary: "Requests and model output do not silently widen permissions.", description: "Identity, tenant scope, policy, approvals, tool permissions and budget define the execution boundary. A model or factory may act only inside that admitted authority and cannot self-expand it." },
       { title: "Validation", summary: "Deterministic checks and explicit criteria decide acceptance.", description: "Outputs advance only when the required tests, security gates and acceptance criteria pass. Generation completion is not treated as product completion." },
@@ -18,7 +17,6 @@ const copy: Record<Locale, { hint: string; close: string; items: Item[] }> = {
   },
   tr: {
     hint: "Neyi koruduğunu ve nasıl davrandığını görmek için bir kontrol seçin.",
-    close: "Detayı kapat",
     items: [
       { title: "Yetki", summary: "İstekler ve model çıktısı izinleri sessizce genişletmez.", description: "Kimlik, tenant kapsamı, politika, onaylar, araç izinleri ve bütçe yürütme sınırını belirler. Model veya factory yalnız kabul edilmiş yetki içinde hareket edebilir; kendi yetkisini genişletemez." },
       { title: "Doğrulama", summary: "Deterministik kontroller ve açık ölçütler kabulü belirler.", description: "Çıktılar yalnız gerekli testler, güvenlik kapıları ve kabul kriterleri geçtiğinde ilerler. Üretimin tamamlanması ürünün tamamlandığı anlamına gelmez." },
@@ -30,20 +28,19 @@ const copy: Record<Locale, { hint: string; close: string; items: Item[] }> = {
 
 export default function GovernanceEvidence({ locale }: { locale: Locale }) {
   const c = copy[locale];
-  const [active, setActive] = useState<number | null>(null);
-  const selected = active === null ? null : c.items[active];
+  const [active, setActive] = useState(0);
+  const selected = c.items[active];
 
   return <div className="governance-evidence">
     <p className="governance-evidence-hint">{c.hint}</p>
     <div className="evidence-ledger evidence-ledger-interactive">
-      {c.items.map((item, index) => <button type="button" key={item.title} className={`evidence-control${active === index ? " is-active" : ""}`} aria-expanded={active === index} aria-controls="governance-evidence-detail" onClick={() => setActive(active === index ? null : index)}>
+      {c.items.map((item, index) => <button type="button" key={item.title} className={`evidence-control${active === index ? " is-active" : ""}`} aria-pressed={active === index} aria-controls="governance-evidence-detail" onClick={() => setActive(index)}>
         <span>{String(index + 1).padStart(2, "0")}</span>
         <div><strong>{item.title}</strong><p>{item.summary}</p></div>
       </button>)}
     </div>
-    {selected && <section id="governance-evidence-detail" className="governance-evidence-detail" aria-live="polite">
-      <div><span className="micro-label">{String(active! + 1).padStart(2, "0")} · {selected.title}</span><p>{selected.description}</p></div>
-      <button type="button" className="text-link" onClick={() => setActive(null)} aria-label={c.close}>×</button>
-    </section>}
+    <section id="governance-evidence-detail" className="governance-evidence-detail" aria-live="polite">
+      <div><span className="micro-label">{String(active + 1).padStart(2, "0")} · {selected.title}</span><p>{selected.description}</p></div>
+    </section>
   </div>;
 }
