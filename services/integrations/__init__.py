@@ -23,6 +23,7 @@ from .web_factory import (
     derive_website_spec,
 )
 from .web_product_runtime import DurableWebProductRuntime, WebProductRuntimeError
+from .web_project import WebProjectArtifact, WebProjectFile, materialize_next_project
 
 __all__ = [
     "AcceptanceManifest",
@@ -42,9 +43,12 @@ __all__ = [
     "WebDeploymentReceipt",
     "WebDeploymentReceiptError",
     "WebProductRuntimeError",
+    "WebProjectArtifact",
+    "WebProjectFile",
     "WebsiteAcceptance",
     "WebsiteFile",
     "WebsiteSpec",
     "derive_website_spec",
+    "materialize_next_project",
     "validate_web_deployment_receipt",
 ]
