@@ -25,7 +25,10 @@ from services.control_plane.proposals import (
     RiskClass,
 )
 from services.governance import GateError, GovernedRuntimeGateway
-from services.integrations.product_runtime import DurableVideoProductRuntime
+from services.integrations.product_runtime import (
+    DurableVideoProductRuntime,
+    ProductRuntimeError,
+)
 from services.runtime import BlastRadiusBudget, DurableGrantPolicy, ExecutionGrant
 
 
@@ -49,6 +52,7 @@ _COMMERCE = "ilaios.capability.commerce-growth"
 _PERSONAL = "ilaios.capability.personal-operations"
 _SECURITY = "ilaios.capability.security-factory"
 _KNOWN_CAPABILITY_IDS = frozenset(item.capability_id for item in CAPABILITIES)
+_STALE_EXECUTION_AFTER = timedelta(minutes=15)
 
 _ROUTE_TERMS: tuple[tuple[str, frozenset[str]], ...] = (
     (
@@ -151,6 +155,12 @@ class ExecutionCoordinator:
                 "goal_id TEXT NOT NULL, job_id TEXT NOT NULL, "
                 "proposal_id TEXT, status TEXT NOT NULL, "
                 "result_json TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL)"
+            )
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS execution_closure ("
+                "request_id TEXT PRIMARY KEY, terminal_status TEXT NOT NULL, "
+                "reason TEXT NOT NULL, terminal_at TEXT NOT NULL, "
+                "result_sha256 TEXT)"
             )
 
     def _connect(self) -> sqlite3.Connection:
@@ -310,6 +320,14 @@ class ExecutionCoordinator:
                 "WHERE request_id = ? AND status = 'DECIDING'",
                 (final_status, now.isoformat(), request_id),
             ).rowcount
+            if changed == 1 and final_status == "DENIED":
+                self._record_closure(
+                    connection,
+                    request_id,
+                    "DENIED",
+                    "governed execution approval denied",
+                    now,
+                )
         if changed != 1:
             raise ExecutionCoordinatorError("execution decision state was lost")
         return final_status
@@ -326,6 +344,11 @@ class ExecutionCoordinator:
         row = self._request_row(request_id)
         if row["status"] == "ACCEPTED" and row["result_json"] is not None:
             return cast(dict[str, object], json.loads(str(row["result_json"])))
+        if row["status"] == "EXECUTING":
+            recovered = self._reconcile_executing(row, token=token, now=now)
+            if recovered is not None:
+                return recovered
+            row = self._request_row(request_id)
         current_status = str(row["status"])
         if current_status not in {"ADMITTED", "APPROVED"}:
             raise ExecutionCoordinatorError("execution request is not resumable")
@@ -358,36 +381,92 @@ class ExecutionCoordinator:
         if changed != 1:
             raise ExecutionCoordinatorError("execution request changed concurrently")
 
+        grant_registered = False
         try:
             self._grants.register(grant)
+            grant_registered = True
             manifest = self._video.execute(
                 request_id,
                 grant_id,
                 token=token,
                 now=now,
             )
-        except Exception:
+        except Exception as error:
+            reason = _failure_reason(error)
             with self._connect() as connection:
-                connection.execute(
+                changed = connection.execute(
                     "UPDATE execution_requests SET status = 'FAILED', updated_at = ? "
                     "WHERE request_id = ? AND status = 'EXECUTING'",
                     (now.isoformat(), request_id),
-                )
+                ).rowcount
+                if changed == 1:
+                    self._record_closure(
+                        connection, request_id, "FAILED", reason, now
+                    )
             raise
+        finally:
+            if grant_registered:
+                self._grants.revoke(grant_id, now=now)
 
         serialized = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
+        result_sha256 = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
         with self._connect() as connection:
             changed = connection.execute(
                 "UPDATE execution_requests SET status = 'ACCEPTED', result_json = ?, "
                 "updated_at = ? WHERE request_id = ? AND status = 'EXECUTING'",
                 (serialized, now.isoformat(), request_id),
             ).rowcount
+            if changed == 1:
+                self._record_closure(
+                    connection,
+                    request_id,
+                    "ACCEPTED",
+                    "finished product and acceptance evidence verified",
+                    now,
+                    result_sha256=result_sha256,
+                )
         if changed != 1:
             raise ExecutionCoordinatorError("execution completion state was lost")
         return cast(dict[str, object], json.loads(serialized))
 
+    def recover_stale(
+        self,
+        *,
+        token: str,
+        now: datetime,
+    ) -> tuple[dict[str, str], ...]:
+        """Reconcile coordinator rows left EXECUTING after a process interruption."""
+        if now.tzinfo is None:
+            raise ExecutionCoordinatorError("execution time must be timezone-aware")
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM execution_requests WHERE status = 'EXECUTING' "
+                "ORDER BY request_id"
+            ).fetchall()
+        reconciled: list[dict[str, str]] = []
+        for row in rows:
+            request_id = str(row["request_id"])
+            try:
+                result = self._reconcile_executing(
+                    cast(sqlite3.Row, row), token=token, now=now
+                )
+                status = "ACCEPTED" if result is not None else str(
+                    self._request_row(request_id)["status"]
+                )
+            except ExecutionCoordinatorError:
+                status = str(self._request_row(request_id)["status"])
+            if status != "EXECUTING":
+                reconciled.append({"request_id": request_id, "status": status})
+        return tuple(reconciled)
+
     def get(self, request_id: str) -> dict[str, object]:
         row = self._request_row(request_id)
+        with self._connect() as connection:
+            closure = connection.execute(
+                "SELECT terminal_status, reason, terminal_at, result_sha256 "
+                "FROM execution_closure WHERE request_id = ?",
+                (request_id,),
+            ).fetchone()
         result: dict[str, object] = {
             "request_id": row["request_id"],
             "principal_id": row["principal_id"],
@@ -398,6 +477,10 @@ class ExecutionCoordinator:
             "job_id": row["job_id"],
             "proposal_id": row["proposal_id"],
             "execution_status": row["status"],
+            "terminal": closure is not None,
+            "terminal_reason": None if closure is None else closure["reason"],
+            "terminal_at": None if closure is None else closure["terminal_at"],
+            "result_sha256": None if closure is None else closure["result_sha256"],
         }
         if row["result_json"] is not None:
             value = json.loads(str(row["result_json"]))
@@ -411,6 +494,123 @@ class ExecutionCoordinator:
             return connection.execute(
                 "SELECT 1 FROM execution_requests WHERE request_id = ?", (request_id,)
             ).fetchone() is not None
+
+    def _reconcile_executing(
+        self,
+        row: sqlite3.Row,
+        *,
+        token: str,
+        now: datetime,
+    ) -> dict[str, object] | None:
+        request_id = str(row["request_id"])
+        try:
+            product_state = self._video.get_state(request_id)
+        except ProductRuntimeError as error:
+            raise ExecutionCoordinatorError(str(error)) from error
+
+        if product_state["status"] == "accepted":
+            manifest = self._video.get_manifest(request_id)
+            serialized = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
+            digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+            with self._connect() as connection:
+                changed = connection.execute(
+                    "UPDATE execution_requests SET status = 'ACCEPTED', result_json = ?, "
+                    "updated_at = ? WHERE request_id = ? AND status = 'EXECUTING'",
+                    (serialized, now.isoformat(), request_id),
+                ).rowcount
+                if changed == 1:
+                    self._record_closure(
+                        connection,
+                        request_id,
+                        "ACCEPTED",
+                        "reconciled durable finished-product acceptance after interruption",
+                        now,
+                        result_sha256=digest,
+                    )
+            self._grants.revoke(_grant_id(request_id), now=now)
+            return cast(dict[str, object], json.loads(serialized))
+
+        if product_state["status"] == "failed":
+            reason = str(product_state.get("reason") or "finished-product runtime failed")
+            with self._connect() as connection:
+                changed = connection.execute(
+                    "UPDATE execution_requests SET status = 'FAILED', updated_at = ? "
+                    "WHERE request_id = ? AND status = 'EXECUTING'",
+                    (now.isoformat(), request_id),
+                ).rowcount
+                if changed == 1:
+                    self._record_closure(
+                        connection, request_id, "FAILED", reason, now
+                    )
+            self._grants.revoke(_grant_id(request_id), now=now)
+            return None
+
+        if product_state["status"] == "interrupted":
+            reason = str(
+                product_state.get("reason")
+                or "finished-product execution interrupted"
+            )
+            with self._connect() as connection:
+                changed = connection.execute(
+                    "UPDATE execution_requests SET status = 'INTERRUPTED', updated_at = ? "
+                    "WHERE request_id = ? AND status = 'EXECUTING'",
+                    (now.isoformat(), request_id),
+                ).rowcount
+                if changed == 1:
+                    self._record_closure(
+                        connection, request_id, "INTERRUPTED", reason, now
+                    )
+            self._grants.revoke(_grant_id(request_id), now=now)
+            return None
+
+        updated_at = datetime.fromisoformat(str(row["updated_at"]))
+        if now - updated_at < _STALE_EXECUTION_AFTER:
+            raise ExecutionCoordinatorError("execution request is already executing")
+        interruption_reason = (
+            "execution exceeded recovery window without durable product terminal evidence"
+        )
+        try:
+            interrupted = self._video.interrupt(
+                request_id,
+                token=token,
+                now=now,
+                reason=interruption_reason,
+            )
+        except ProductRuntimeError as error:
+            raise ExecutionCoordinatorError(str(error)) from error
+        if interrupted["status"] != "interrupted":
+            raise ExecutionCoordinatorError("product interruption did not close durably")
+        with self._connect() as connection:
+            changed = connection.execute(
+                "UPDATE execution_requests SET status = 'INTERRUPTED', updated_at = ? "
+                "WHERE request_id = ? AND status = 'EXECUTING'",
+                (now.isoformat(), request_id),
+            ).rowcount
+            if changed == 1:
+                self._record_closure(
+                    connection,
+                    request_id,
+                    "INTERRUPTED",
+                    interruption_reason,
+                    now,
+                )
+        self._grants.revoke(_grant_id(request_id), now=now)
+        return None
+
+    @staticmethod
+    def _record_closure(
+        connection: sqlite3.Connection,
+        request_id: str,
+        terminal_status: str,
+        reason: str,
+        now: datetime,
+        *,
+        result_sha256: str | None = None,
+    ) -> None:
+        connection.execute(
+            "INSERT OR IGNORE INTO execution_closure VALUES (?, ?, ?, ?, ?)",
+            (request_id, terminal_status, reason, now.isoformat(), result_sha256),
+        )
 
     def _request_row(self, request_id: str) -> sqlite3.Row:
         _require_identifier(request_id, "request_id")
@@ -458,6 +658,13 @@ def _result_text(payload: dict[str, object], key: str) -> str:
     if not isinstance(value, str) or not value:
         raise ExecutionCoordinatorError(f"execution adapter returned invalid {key}")
     return value
+
+
+def _failure_reason(error: Exception) -> str:
+    message = " ".join(str(error).split())
+    if not message:
+        message = "execution failed without an error message"
+    return f"{type(error).__name__}: {message}"[:2048]
 
 
 def _require_identifier(value: str, field: str) -> None:

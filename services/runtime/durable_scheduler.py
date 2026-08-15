@@ -133,6 +133,26 @@ class DurableWorkerScheduler:
         with self._connect() as connection:
             self._authorize(connection, lease, now)
 
+    def release(self, lease: Lease) -> bool:
+        """Release exactly the current fenced lease; duplicate release is idempotent."""
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT * FROM scheduler_leases WHERE task_id = ?", (lease.task_id,)
+            ).fetchone()
+            if row is None:
+                return False
+            if (
+                row["worker_id"] != lease.worker_id
+                or row["fencing_token"] != lease.fencing_token
+                or row["expires_at"] != lease.expires_at.isoformat()
+            ):
+                raise SchedulingError("cannot release stale or replaced fencing token")
+            connection.execute(
+                "DELETE FROM scheduler_leases WHERE task_id = ?", (lease.task_id,)
+            )
+        return True
+
     def state(self) -> dict[str, Any]:
         with self._connect() as connection:
             leases = [dict(row) for row in connection.execute(
