@@ -30,6 +30,7 @@ NOW = datetime(2026, 8, 14, tzinfo=timezone.utc)
 ROOT = Path(__file__).resolve().parents[1]
 BASE_SHA = "c" * 40
 BACKEND_ID = "ilaios.agent.engineering.backend.v1"
+FRONTEND_ID = "ilaios.agent.engineering.frontend.v1"
 
 
 class _RepositoryIntelligence:
@@ -114,8 +115,12 @@ def test_sf8_binds_exact_engineering_team_and_all_sf7_skills_once() -> None:
         for agent_id in sorted(ENGINEERING_AGENT_SKILLS)
         for skill_id in ENGINEERING_AGENT_SKILLS[agent_id]
     ]
-    assert len(bound) == len(set(bound)) == 24
+    assert len(bound) == len(set(bound)) == 25
     assert set(bound) == set(REQUIRED_SKILL_IDS)
+    assert "sf-windows-desktop" in ENGINEERING_AGENT_SKILLS[FRONTEND_ID]
+    assert sum(
+        "sf-windows-desktop" in skills for skills in ENGINEERING_AGENT_SKILLS.values()
+    ) == 1
 
 
 def test_backend_agent_executes_only_through_admission_and_sf7(tmp_path: Path) -> None:

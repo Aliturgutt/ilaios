@@ -23,14 +23,17 @@ permissions:
 jobs:
   package-msix:
     runs-on: windows-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
-      - name: Checkout ILAIOS
-        uses: actions/checkout@v4
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
 
       - name: Install pinned Flutter SDK
-        uses: subosito/flutter-action@v2
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
           flutter-version: '3.44.9'
           channel: stable
@@ -55,6 +58,11 @@ jobs:
         working-directory: apps/desktop
         run: flutter build windows --release
 
+      - name: Build bundled control plane
+        working-directory: apps/desktop
+        shell: pwsh
+        run: ./tool/build_control_plane_sidecar.ps1
+
       - name: Build unsigned MSIX
         working-directory: apps/desktop
         shell: pwsh
@@ -75,11 +83,12 @@ jobs:
           & $makeAppx.FullName unpack /p $msix.FullName /d $unpack /o
           if ($LASTEXITCODE -ne 0) { throw 'MSIX unpack validation failed.' }
           if (-not (Test-Path (Join-Path $unpack 'ilaios_desktop.exe'))) { throw 'Packaged executable missing.' }
+          if (-not (Test-Path (Join-Path $unpack 'ilaios_control_plane.exe'))) { throw 'Packaged control-plane sidecar missing.' }
           if (-not (Test-Path (Join-Path $unpack 'AppxManifest.xml'))) { throw 'Packaged manifest missing.' }
           Write-Host 'ILAIOS_DESKTOP_MSIX_INSPECTION=PASS'
 
       - name: Upload unsigned CI package
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: ilaios-desktop-msix-unsigned-ci
           path: apps/desktop/build/msix/*.msix

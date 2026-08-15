@@ -31,8 +31,8 @@ class _Runtime:
 def test_registry_loads_exact_first_party_sf7_family() -> None:
     registry = SkillRegistry(SKILLS_ROOT)
     assert registry.skill_ids == tuple(sorted(REQUIRED_SKILL_IDS))
-    assert len(registry.skill_ids) == 24
-    assert len({(registry.resolve(s).manifest.skill_id, registry.resolve(s).manifest.version) for s in registry.skill_ids}) == 24
+    assert len(registry.skill_ids) == 25
+    assert len({(registry.resolve(s).manifest.skill_id, registry.resolve(s).manifest.version) for s in registry.skill_ids}) == 25
     for skill_id in registry.skill_ids:
         package = registry.resolve(skill_id)
         assert package.manifest.owner == "ILAIOS Software Factory"
