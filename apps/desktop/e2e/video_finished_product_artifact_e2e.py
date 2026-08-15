@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import gc
 import hashlib
 import json
 import os
 import shutil
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -42,6 +44,19 @@ def _required_env(name: str) -> str:
     return value
 
 
+def _remove_runtime_private(path: Path) -> None:
+    gc.collect()
+    for attempt in range(5):
+        try:
+            shutil.rmtree(path)
+            return
+        except PermissionError:
+            if attempt == 4:
+                raise
+            gc.collect()
+            time.sleep(0.25 * (attempt + 1))
+
+
 def main() -> int:
     artifact_root = Path(_required_env("ILAIOS_VIDEO_E2E_ARTIFACT_DIR")).resolve()
     source_revision = _required_env("ILAIOS_VIDEO_E2E_SOURCE_SHA")
@@ -70,10 +85,13 @@ def main() -> int:
     rendered = run_root / "final.mp4"
     if not rendered.is_file() or rendered.stat().st_size <= 100_000:
         raise RuntimeError("verified finished-product MP4 is missing")
+    rendered_sha = _sha256(rendered)
 
     finished_product = artifact_root / "finished-product.mp4"
     shutil.copy2(rendered, finished_product)
     finished_sha = _sha256(finished_product)
+    if finished_sha != rendered_sha:
+        raise RuntimeError("persisted MP4 digest does not match accepted rendered artifact")
 
     probe = FfmpegMediaEngine(timeout_seconds=60).probe(finished_product)
     video_stream = next(
@@ -140,7 +158,7 @@ def main() -> int:
 
     # Do not publish runtime databases, test tokens, governance state, or other
     # private execution internals. Only the curated evidence above is uploadable.
-    shutil.rmtree(runtime_root)
+    _remove_runtime_private(runtime_root)
 
     print(json.dumps(receipt, sort_keys=True))
     print("ILAIOS_DESKTOP_VIDEO_PERSISTED_EVIDENCE=PASS")
