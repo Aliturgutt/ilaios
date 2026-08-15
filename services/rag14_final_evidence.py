@@ -12,7 +12,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
-from typing import Callable, cast
+from typing import cast
 
 from services.knowledge_rag_production import (
     RAG14EvidenceItem,
@@ -30,7 +30,9 @@ _VERIFIER = "ilaios.rag14.runtime-evidence.v1"
 
 def _load(path: Path) -> dict[str, object]:
     if not path.is_file() or path.is_symlink():
-        raise RAG14FinalEvidenceError(f"required evidence file is missing or unsafe: {path}")
+        raise RAG14FinalEvidenceError(
+            f"required evidence file is missing or unsafe: {path}"
+        )
     try:
         value: object = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as error:
@@ -68,7 +70,9 @@ def _bundle(
     directory = root / "final-evidence-items"
     directory.mkdir(parents=True, exist_ok=True)
     path = directory / f"{requirement}.json"
-    path.write_text(json.dumps(bundle, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(bundle, sort_keys=True, indent=2) + "\n", encoding="utf-8"
+    )
     return RAG14EvidenceItem(
         requirement=requirement,
         evidence_ref=f"artifact://rag14/{path.relative_to(root).as_posix()}",
@@ -92,13 +96,30 @@ def _release_scope(root: Path) -> str:
     release = _load(root / "release-binding.json")
     source = release.get("runtime_source_sha")
     digest = release.get("image_digest")
-    if not isinstance(source, str) or len(source) != 40 or any(c not in "0123456789abcdef" for c in source):
+    if (
+        not isinstance(source, str)
+        or len(source) != 40
+        or any(character not in "0123456789abcdef" for character in source)
+    ):
         raise RAG14FinalEvidenceError("release binding source SHA is invalid")
-    if not isinstance(digest, str) or not digest.startswith("sha256:") or len(digest) != 71:
+    if (
+        not isinstance(digest, str)
+        or not digest.startswith("sha256:")
+        or len(digest) != 71
+        or any(character not in "0123456789abcdef" for character in digest[7:])
+    ):
         raise RAG14FinalEvidenceError("release binding image digest is invalid")
     if release.get("production_authority") not in {False, None}:
-        raise RAG14FinalEvidenceError("release evidence attempted to claim production authority")
+        raise RAG14FinalEvidenceError(
+            "release evidence attempted to claim production authority"
+        )
     return f"source:{source}@image:{digest}"
+
+
+def _integer(value: object) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    return value
 
 
 def _satisfied_checks(root: Path) -> dict[str, tuple[bool, tuple[str, ...]]]:
@@ -132,11 +153,24 @@ def _satisfied_checks(root: Path) -> dict[str, tuple[bool, tuple[str, ...]]]:
         and isinstance(vector, dict)
         and vector.get("integrity_ok") is True
     )
-    deletion_ok = vector_ok and isinstance(vector, dict) and vector.get("row_count") == 0
-    quarantine_ok = isinstance(metrics, dict) and int(metrics.get("quarantined_units", 0)) >= 2
+    deletion_ok = (
+        vector_ok
+        and isinstance(vector, dict)
+        and _integer(vector.get("row_count")) == 0
+    )
+    quarantine_ok = (
+        isinstance(metrics, dict)
+        and (_integer(metrics.get("quarantined_units")) or 0) >= 2
+    )
+    leakage_sources = {
+        str(unit.get("source_id"))
+        for item in units if isinstance(units, list)
+        for unit in [cast(dict[str, object], item)]
+        if isinstance(item, dict)
+    }
     leakage_ok = (
         isinstance(units, list)
-        and {str(cast(dict[str, object], unit).get("source_id")) for unit in units if isinstance(unit, dict)} == {"safe-source"}
+        and leakage_sources == {"safe-source"}
         and cross_tenant.get("scope_binding_rejected") is True
     )
     auth_members = (
@@ -158,7 +192,7 @@ def _satisfied_checks(root: Path) -> dict[str, tuple[bool, tuple[str, ...]]]:
         and alerts.get("all_rules_fired") is True
         and alerts.get("all_rules_recovered") is True
         and health.get("status") == "PASS"
-        and int(health.get("sample_count", 0)) >= 12
+        and (_integer(health.get("sample_count")) or 0) >= 12
         and startup_ok
     )
     finops_ok = (
@@ -175,7 +209,9 @@ def _satisfied_checks(root: Path) -> dict[str, tuple[bool, tuple[str, ...]]]:
         and isinstance(deployment.get("image"), str)
         and str(release.get("image_digest")) in str(deployment.get("image"))
     )
-    deployment_ok = exact_artifact_ok and isinstance(deployment.get("task_definition_arn"), str)
+    deployment_ok = exact_artifact_ok and isinstance(
+        deployment.get("task_definition_arn"), str
+    )
     rollback_ok = (
         rollback.get("status") == "PASS"
         and rollback.get("bad_deployment_simulated") is True
@@ -187,10 +223,14 @@ def _satisfied_checks(root: Path) -> dict[str, tuple[bool, tuple[str, ...]]]:
         "production_embedding_provider": (startup_ok, ("startup-selftest.json",)),
         "durable_vector_index": (
             vector_ok,
-            ("live-redteam/verify-after-restart.json", "live-redteam/state-after-restart.json"),
+            (
+                "live-redteam/verify-after-restart.json",
+                "live-redteam/state-after-restart.json",
+            ),
         ),
         "production_tenant_isolation": (
-            cross_tenant.get("status") == "PASS" and cross_tenant.get("scope_binding_rejected") is True,
+            cross_tenant.get("status") == "PASS"
+            and cross_tenant.get("scope_binding_rejected") is True,
             ("cross-tenant-fargate.json",),
         ),
         "production_authorization_policy": (auth_ok, auth_members),
@@ -200,16 +240,26 @@ def _satisfied_checks(root: Path) -> dict[str, tuple[bool, tuple[str, ...]]]:
         ),
         "production_leakage_redteam": (
             leakage_ok,
-            ("live-redteam/retrieval-safe-only.json", "cross-tenant-fargate.json"),
+            (
+                "live-redteam/retrieval-safe-only.json",
+                "cross-tenant-fargate.json",
+            ),
         ),
         "production_backup_restore": (backup_ok, ("backup-restore.json",)),
         "production_deletion_reconciliation": (
             deletion_ok,
-            ("live-redteam/state-after-restart.json", "live-redteam/verify-after-restart.json"),
+            (
+                "live-redteam/state-after-restart.json",
+                "live-redteam/verify-after-restart.json",
+            ),
         ),
         "production_observability_slo": (
             observability_ok,
-            ("observability-alerts.json", "deployment-health-window.json", "startup-selftest.json"),
+            (
+                "observability-alerts.json",
+                "deployment-health-window.json",
+                "startup-selftest.json",
+            ),
         ),
         "production_routing_finops": (finops_ok, ("finops-resource-meter.json",)),
         "exact_release_artifact": (
@@ -220,7 +270,10 @@ def _satisfied_checks(root: Path) -> dict[str, tuple[bool, tuple[str, ...]]]:
             deployment_ok,
             ("deployment-task-definition.json", "deployment-health-window.json"),
         ),
-        "deployment_health": (health.get("status") == "PASS", ("deployment-health-window.json",)),
+        "deployment_health": (
+            health.get("status") == "PASS",
+            ("deployment-health-window.json",),
+        ),
         "rollback_recovery": (rollback_ok, ("rollback-recovery.json",)),
     }
 
@@ -237,7 +290,9 @@ def assemble(root: Path) -> dict[str, object]:
         if satisfied:
             items.append(_bundle(root, requirement, members, exact_scope))
         else:
-            unsatisfied_reasons[requirement] = "required live evidence absent or not strong enough"
+            unsatisfied_reasons[requirement] = (
+                "required live evidence absent or not strong enough"
+            )
 
     gate = RAG14PromotionGate().evaluate(tuple(items))
     report: dict[str, object] = {
