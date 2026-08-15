@@ -61,6 +61,11 @@ class DurableVideoProductRuntime:
                 "workflow_id TEXT NOT NULL, worker_id TEXT NOT NULL, "
                 "lease_json TEXT NOT NULL, status TEXT NOT NULL, manifest_json TEXT)"
             )
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS product_proof_closure ("
+                "request_id TEXT PRIMARY KEY, terminal_status TEXT NOT NULL, "
+                "reason TEXT NOT NULL, terminal_at TEXT NOT NULL)"
+            )
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self._database_path)
@@ -136,6 +141,8 @@ class DurableVideoProductRuntime:
             admission.get("admission_decision") != "ALLOW"
             or admission.get("human_approval_required") is not False
         ):
+            if lease is not None:
+                self._scheduler.release(lease)
             raise ProductRuntimeError("medium video admission did not fail closed")
         lease_json = (
             "{}" if lease is None else json.dumps(_lease_json(lease), sort_keys=True)
@@ -156,6 +163,8 @@ class DurableVideoProductRuntime:
                     ),
                 )
             except sqlite3.IntegrityError as error:
+                if lease is not None:
+                    self._scheduler.release(lease)
                 raise ProductRuntimeError("product proof request already exists") from error
         return {
             "request_id": request_id,
@@ -174,145 +183,154 @@ class DurableVideoProductRuntime:
         self, request_id: str, grant_id: str, *, token: str, now: datetime
     ) -> dict[str, object]:
         row = self._pending(request_id)
-        admission = self._governance.admission_snapshot(request_id)
-        if admission["admission_proven"] is not True:
-            raise ProductRuntimeError("governed execution admission is not proven")
-        lease = self._execution_lease(row, now=now)
-        self._scheduler.authorize(lease, now=now)
-        self._control_plane.transition_job(
-            token,
-            str(row["job_id"]),
-            JobState.RUNNING,
-            reason="governed product proof started",
-            now=now,
-        )
-        deadline = now + timedelta(minutes=5)
-        video_attempt = self._workflows.begin_attempt(
-            str(row["workflow_id"]), "video", deadline=deadline
-        )
+        lease: Lease | None = None
         try:
-            video = self._video.execute(
-                request_id=request_id,
-                job_id=str(row["job_id"]),
-                grant_id=grant_id,
-                now=now,
-            )
-        except Exception:
-            self._workflows.fail_attempt(video_attempt.attempt_id, reason="video failed")
+            admission = self._governance.admission_snapshot(request_id)
+            if admission["admission_proven"] is not True:
+                raise ProductRuntimeError("governed execution admission is not proven")
+            lease = self._execution_lease(row, now=now)
+            self._scheduler.authorize(lease, now=now)
             self._control_plane.transition_job(
                 token,
                 str(row["job_id"]),
-                JobState.FAILED,
-                reason="governed video execution failed",
+                JobState.RUNNING,
+                reason="governed product proof started",
                 now=now,
             )
-            raise
-        self._workflows.complete_attempt(video_attempt.attempt_id)
-        self._control_plane.transition_job(
-            token,
-            str(row["job_id"]),
-            JobState.VALIDATING,
-            reason="video rendered; validating delivery",
-            now=now,
-        )
-        delivery_attempt = self._workflows.begin_attempt(
-            str(row["workflow_id"]), "delivery", deadline=deadline
-        )
-        delivery = cast(dict[str, Any], video["delivery"])
-        verified_delivery = self._video.get_delivery(str(delivery["delivery_id"]))
-        if verified_delivery["sha256"] != video["artifact_digest"]:
-            self._workflows.fail_attempt(
-                delivery_attempt.attempt_id, reason="delivery integrity failed"
+            deadline = now + timedelta(minutes=5)
+            video_attempt = self._workflows.begin_attempt(
+                str(row["workflow_id"]), "video", deadline=deadline
             )
-            raise ProductRuntimeError("delivery does not match evidence artifact")
-        self._workflows.complete_attempt(delivery_attempt.attempt_id)
-        self._scheduler.record_side_effect(
-            lease,
-            now=now,
-            payload={
+            try:
+                video = self._video.execute(
+                    request_id=request_id,
+                    job_id=str(row["job_id"]),
+                    grant_id=grant_id,
+                    now=now,
+                )
+            except Exception:
+                self._workflows.fail_attempt(video_attempt.attempt_id, reason="video failed")
+                raise
+            self._workflows.complete_attempt(video_attempt.attempt_id)
+            self._control_plane.transition_job(
+                token,
+                str(row["job_id"]),
+                JobState.VALIDATING,
+                reason="video rendered; validating delivery",
+                now=now,
+            )
+            delivery_attempt = self._workflows.begin_attempt(
+                str(row["workflow_id"]), "delivery", deadline=deadline
+            )
+            delivery = cast(dict[str, Any], video["delivery"])
+            verified_delivery = self._video.get_delivery(str(delivery["delivery_id"]))
+            if verified_delivery["sha256"] != video["artifact_digest"]:
+                self._workflows.fail_attempt(
+                    delivery_attempt.attempt_id, reason="delivery integrity failed"
+                )
+                raise ProductRuntimeError("delivery does not match evidence artifact")
+            self._workflows.complete_attempt(delivery_attempt.attempt_id)
+            self._scheduler.record_side_effect(
+                lease,
+                now=now,
+                payload={
+                    "request_id": request_id,
+                    "delivery_id": verified_delivery["delivery_id"],
+                    "artifact_digest": video["artifact_digest"],
+                },
+            )
+            completed_job = self._control_plane.transition_job(
+                token,
+                str(row["job_id"]),
+                JobState.COMPLETED,
+                reason="delivery and acceptance evidence verified",
+                now=now,
+            )
+            workflow_tasks = self._workflows.task_state(str(row["workflow_id"]))
+            dag_proven = workflow_tasks == (
+                {"task_id": "delivery", "status": "completed"},
+                {"task_id": "video", "status": "completed"},
+            )
+            scheduler_state = self._scheduler.state()
+            worker_lease_proven = any(
+                effect["task_id"] == row["job_id"]
+                and effect["fencing_token"] == lease.fencing_token
+                for effect in scheduler_state["effects"]
+            )
+            grant_state = self._grants.state()
+            grants = cast(list[dict[str, object]], grant_state["grants"])
+            grant_proven = any(
+                grant["grant_id"] == grant_id and grant["used_side_effects"] == 1
+                for grant in grants
+            )
+            approval_proven = bool(admission["approval_proven"])
+            admission_proven = bool(admission["admission_proven"])
+            cost_proven = video["reserved_minor"] == video["actual_minor"]
+            job_state_proven = completed_job.state is JobState.COMPLETED
+            qa = cast(dict[str, object], video["qa"])
+            accepted = all(
+                (
+                    admission_proven,
+                    dag_proven,
+                    worker_lease_proven,
+                    grant_proven,
+                    cost_proven,
+                    job_state_proven,
+                    qa.get("passed") is True,
+                    verified_delivery["sha256"] == video["artifact_digest"],
+                )
+            )
+            if not accepted:
+                raise ProductRuntimeError("durable AcceptanceManifest checks failed")
+            manifest: dict[str, object] = {
+                "manifest_version": "1.0",
                 "request_id": request_id,
-                "delivery_id": verified_delivery["delivery_id"],
+                "goal_id": row["goal_id"],
+                "job_id": row["job_id"],
+                "proposal_id": row["proposal_id"],
+                "workflow_id": row["workflow_id"],
+                "worker_id": row["worker_id"],
+                "grant_id": grant_id,
+                "risk": admission["risk"],
+                "admission_decision": admission["admission_decision"],
+                "human_approval_required": admission["human_approval_required"],
+                "admission_proven": admission_proven,
+                "approval_proven": approval_proven,
+                "dag_proven": dag_proven,
+                "workflow_tasks": workflow_tasks,
+                "worker_lease_proven": worker_lease_proven,
+                "grant_proven": grant_proven,
+                "cost_proven": cost_proven,
+                "job_state_proven": job_state_proven,
+                "evidence_hash": video["provenance_record_hash"],
                 "artifact_digest": video["artifact_digest"],
-            },
-        )
-        completed_job = self._control_plane.transition_job(
-            token,
-            str(row["job_id"]),
-            JobState.COMPLETED,
-            reason="delivery and acceptance evidence verified",
-            now=now,
-        )
-        workflow_tasks = self._workflows.task_state(str(row["workflow_id"]))
-        dag_proven = workflow_tasks == (
-            {"task_id": "delivery", "status": "completed"},
-            {"task_id": "video", "status": "completed"},
-        )
-        scheduler_state = self._scheduler.state()
-        worker_lease_proven = any(
-            effect["task_id"] == row["job_id"]
-            and effect["fencing_token"] == lease.fencing_token
-            for effect in scheduler_state["effects"]
-        )
-        grant_state = self._grants.state()
-        grants = cast(list[dict[str, object]], grant_state["grants"])
-        grant_proven = any(
-            grant["grant_id"] == grant_id and grant["used_side_effects"] == 1
-            for grant in grants
-        )
-        approval_proven = bool(admission["approval_proven"])
-        admission_proven = bool(admission["admission_proven"])
-        cost_proven = video["reserved_minor"] == video["actual_minor"]
-        job_state_proven = completed_job.state is JobState.COMPLETED
-        qa = cast(dict[str, object], video["qa"])
-        accepted = all(
-            (
-                admission_proven,
-                dag_proven,
-                worker_lease_proven,
-                grant_proven,
-                cost_proven,
-                job_state_proven,
-                qa.get("passed") is True,
-                verified_delivery["sha256"] == video["artifact_digest"],
-            )
-        )
-        if not accepted:
-            raise ProductRuntimeError("durable AcceptanceManifest checks failed")
-        manifest: dict[str, object] = {
-            "manifest_version": "1.0",
-            "request_id": request_id,
-            "goal_id": row["goal_id"],
-            "job_id": row["job_id"],
-            "proposal_id": row["proposal_id"],
-            "workflow_id": row["workflow_id"],
-            "worker_id": row["worker_id"],
-            "grant_id": grant_id,
-            "risk": admission["risk"],
-            "admission_decision": admission["admission_decision"],
-            "human_approval_required": admission["human_approval_required"],
-            "admission_proven": admission_proven,
-            "approval_proven": approval_proven,
-            "dag_proven": dag_proven,
-            "workflow_tasks": workflow_tasks,
-            "worker_lease_proven": worker_lease_proven,
-            "grant_proven": grant_proven,
-            "cost_proven": cost_proven,
-            "job_state_proven": job_state_proven,
-            "evidence_hash": video["provenance_record_hash"],
-            "artifact_digest": video["artifact_digest"],
-            "delivery_id": verified_delivery["delivery_id"],
-            "delivery_sha256": verified_delivery["sha256"],
-            "qa": qa,
-            "latency_ms": video["latency_ms"],
-            "accepted": accepted,
-        }
-        with self._connect() as connection:
-            connection.execute(
-                "UPDATE product_proofs SET status = 'accepted', manifest_json = ? "
-                "WHERE request_id = ?",
-                (json.dumps(manifest, sort_keys=True), request_id),
-            )
-        return manifest
+                "delivery_id": verified_delivery["delivery_id"],
+                "delivery_sha256": verified_delivery["sha256"],
+                "qa": qa,
+                "latency_ms": video["latency_ms"],
+                "accepted": accepted,
+            }
+            if not self._scheduler.release(lease):
+                raise ProductRuntimeError("worker lease disappeared before product closure")
+            lease = None
+            terminal_at = datetime.now().astimezone().isoformat()
+            with self._connect() as connection:
+                connection.execute(
+                    "UPDATE product_proofs SET status = 'accepted', manifest_json = ? "
+                    "WHERE request_id = ? AND status = 'pending'",
+                    (json.dumps(manifest, sort_keys=True), request_id),
+                )
+                connection.execute(
+                    "INSERT INTO product_proof_closure VALUES (?, 'accepted', ?, ?)",
+                    (request_id, "delivery and acceptance evidence verified", terminal_at),
+                )
+            return manifest
+        except Exception as error:
+            self._fail_product_proof(row, token=token, now=now, error=error)
+            raise
+        finally:
+            if lease is not None:
+                self._scheduler.release(lease)
 
     def get_manifest(self, request_id: str) -> dict[str, object]:
         with self._connect() as connection:
@@ -327,6 +345,28 @@ class DurableVideoProductRuntime:
             raise ProductRuntimeError("stored AcceptanceManifest is malformed")
         return cast(dict[str, object], value)
 
+    def get_state(self, request_id: str) -> dict[str, object]:
+        """Return product-proof terminal truth without treating failure as acceptance."""
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT status FROM product_proofs WHERE request_id = ?", (request_id,)
+            ).fetchone()
+            closure = connection.execute(
+                "SELECT terminal_status, reason, terminal_at FROM product_proof_closure "
+                "WHERE request_id = ?",
+                (request_id,),
+            ).fetchone()
+        if row is None:
+            raise ProductRuntimeError("unknown product proof")
+        return {
+            "request_id": request_id,
+            "status": str(row["status"]),
+            "terminal": closure is not None,
+            "terminal_status": None if closure is None else str(closure["terminal_status"]),
+            "reason": None if closure is None else str(closure["reason"]),
+            "terminal_at": None if closure is None else str(closure["terminal_at"]),
+        }
+
     def _pending(self, request_id: str) -> sqlite3.Row:
         with self._connect() as connection:
             row = connection.execute(
@@ -335,6 +375,45 @@ class DurableVideoProductRuntime:
         if row is None or row["status"] != "pending":
             raise ProductRuntimeError("product proof is not pending")
         return cast(sqlite3.Row, row)
+
+    def _fail_product_proof(
+        self,
+        row: sqlite3.Row,
+        *,
+        token: str,
+        now: datetime,
+        error: Exception,
+    ) -> None:
+        request_id = str(row["request_id"])
+        job_id = str(row["job_id"])
+        reason = _failure_reason(error)
+        try:
+            current = self._control_plane.get_job(token, job_id)
+            if current.state in {
+                JobState.RUNNING,
+                JobState.WAITING_PROVIDER,
+                JobState.VALIDATING,
+                JobState.RETRY_PENDING,
+            }:
+                self._control_plane.transition_job(
+                    token,
+                    job_id,
+                    JobState.FAILED,
+                    reason="finished-product execution failed closed",
+                    now=now,
+                )
+        except Exception:
+            pass
+        with self._connect() as connection:
+            connection.execute(
+                "UPDATE product_proofs SET status = 'failed' "
+                "WHERE request_id = ? AND status = 'pending'",
+                (request_id,),
+            )
+            connection.execute(
+                "INSERT OR IGNORE INTO product_proof_closure VALUES (?, 'failed', ?, ?)",
+                (request_id, reason, datetime.now().astimezone().isoformat()),
+            )
 
     def _execution_lease(self, row: sqlite3.Row, *, now: datetime) -> Lease:
         raw = json.loads(str(row["lease_json"]))
@@ -377,6 +456,13 @@ def _lease_json(lease: Lease) -> dict[str, object]:
         "fencing_token": lease.fencing_token,
         "expires_at": lease.expires_at.isoformat(),
     }
+
+
+def _failure_reason(error: Exception) -> str:
+    message = " ".join(str(error).split())
+    if not message:
+        message = "execution failed without an error message"
+    return f"{type(error).__name__}: {message}"[:2048]
 
 
 def _require_identity(value: str, field: str) -> None:
