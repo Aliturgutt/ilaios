@@ -82,10 +82,32 @@ jobs:
                       api_key,
                       transport=UrllibOpenRouterTransport(),
                   ).refresh()
+                  selected = None
+                  if observation.snapshot is not None:
+                      target_model = os.environ.get("VIDEO_PROVIDER_MODEL", "")
+                      selected = next(
+                          (
+                              model
+                              for model in observation.snapshot.models
+                              if model.model_id == target_model
+                          ),
+                          None,
+                      )
+                  selected_model = None
+                  if selected is not None:
+                      selected_model = {
+                          "model_id": selected.model_id,
+                          "generate_audio": selected.generate_audio,
+                          "supported_aspect_ratios": list(selected.supported_aspect_ratios),
+                          "supported_durations": list(selected.supported_durations),
+                          "supported_resolutions": list(selected.supported_resolutions),
+                          "pricing_skus": dict(selected.pricing_skus),
+                      }
                   diagnostic = {
-                      "schema": "ilaios.video.catalog-diagnostic.v1",
+                      "schema": "ilaios.video.catalog-diagnostic.v2",
                       "health": observation.health.value,
                       "detail": observation.detail,
+                      "selected_model": selected_model,
                       "raw_payload_recorded": False,
                       "credential_recorded": False,
                   }
@@ -95,6 +117,12 @@ jobs:
                   )
                   print(f"- Catalog diagnostic health: `{observation.health.value}`")
                   print(f"- Catalog diagnostic detail: `{observation.detail}`")
+                  if selected is not None:
+                      print(
+                          "- Selected pricing SKU names: `"
+                          + ", ".join(sorted(selected.pricing_skus))
+                          + "`"
+                      )
               else:
                   print("- Catalog diagnostic: `SECRET_UNAVAILABLE`")
           PY
