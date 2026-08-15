@@ -227,28 +227,32 @@ class OperationsSloProductionProof:
             raise VideoProductionAcceptanceError(
                 "production operations proof requires observed samples"
             )
-        for name, value in (
+        for metric_name, metric_value in (
             ("cost_usd", self.cost_usd),
             ("cost_budget_usd", self.cost_budget_usd),
             ("p95_latency_ms", self.p95_latency_ms),
             ("p95_latency_target_ms", self.p95_latency_target_ms),
         ):
-            if value < 0:
-                raise VideoProductionAcceptanceError(f"{name} cannot be negative")
-        for name, value in (
+            if metric_value < 0:
+                raise VideoProductionAcceptanceError(
+                    f"{metric_name} cannot be negative"
+                )
+        for ratio_name, ratio_value in (
             ("availability_ratio", self.availability_ratio),
             ("availability_target_ratio", self.availability_target_ratio),
             ("quality_pass_ratio", self.quality_pass_ratio),
             ("quality_target_ratio", self.quality_target_ratio),
         ):
-            if not 0.0 <= value <= 1.0:
-                raise VideoProductionAcceptanceError(f"{name} must be normalized")
-        for name, value in (
+            if not 0.0 <= ratio_value <= 1.0:
+                raise VideoProductionAcceptanceError(
+                    f"{ratio_name} must be normalized"
+                )
+        for reference_name, reference_value in (
             ("telemetry_evidence_ref", self.telemetry_evidence_ref),
             ("alert_evidence_ref", self.alert_evidence_ref),
             ("slo_evidence_ref", self.slo_evidence_ref),
         ):
-            _text(name, value)
+            _text(reference_name, reference_value)
 
     @property
     def passed(self) -> bool:
