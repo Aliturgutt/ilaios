@@ -44,7 +44,13 @@ P95 query latency
 Linux x86_64 execution identity
 ```
 
-Thresholds remain bounded against the existing 512 MiB task memory limit. The candidate must keep peak benchmark RSS at or below 384 MiB, leaving explicit memory headroom for the surrounding runtime rather than consuming the whole task budget.
+## Measured memory decision
+
+The first glibc target-container measurements established that the model executes correctly and quickly, but consumes about 483 MiB peak RSS. Disabling the ONNX CPU memory arena did not materially reduce that peak. Therefore the existing 512 MiB ECS task envelope is not production-safe once the surrounding ILAIOS runtime is included.
+
+The candidate is now evaluated against a planned 1 GiB task envelope with a 768 MiB maximum benchmark RSS. This retains at least 256 MiB of task-level headroom before production canary measurements. The infrastructure must be separately aligned to 1 GiB and the resulting cost/spend change must remain release-bound and approval-gated before any AWS apply.
+
+The language fixture was also corrected so the case labelled `tr-tenant` uses a Turkish tenant-isolation passage. Cross-lingual quality remains independently covered by dedicated English↔Turkish cases. With that correction, the measured retrieval suite reached 6/6 Top-1; no quality threshold was relaxed.
 
 ## Certification states
 
@@ -90,6 +96,7 @@ A future production-provider promotion still requires at minimum:
 
 ```text
 successful measured target-container candidate evidence
+1 GiB target task envelope aligned in infrastructure
 exact pinned runtime image + package/model identities
 real AWS canary inference and CPU compatibility proof
 production tenant/auth/DLP/leakage evidence
