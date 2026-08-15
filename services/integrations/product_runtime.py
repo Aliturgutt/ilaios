@@ -32,6 +32,10 @@ class ProductRuntimeError(RuntimeError):
     """Raised when a complete product proof cannot be derived from durable state."""
 
 
+class ProductFinalizationPending(ProductRuntimeError):
+    """Raised when acceptance reached a durable recoverable finalization boundary."""
+
+
 class DurableVideoProductRuntime:
     """Compose existing platform boundaries into one durable product proof."""
 
@@ -255,13 +259,6 @@ class DurableVideoProductRuntime:
                     "artifact_digest": video["artifact_digest"],
                 },
             )
-            completed_job = self._control_plane.transition_job(
-                token,
-                str(row["job_id"]),
-                JobState.COMPLETED,
-                reason="delivery and acceptance evidence verified",
-                now=now,
-            )
             workflow_tasks = self._workflows.task_state(str(row["workflow_id"]))
             dag_proven = workflow_tasks == (
                 {"task_id": "delivery", "status": "completed"},
@@ -282,9 +279,12 @@ class DurableVideoProductRuntime:
             approval_proven = bool(admission["approval_proven"])
             admission_proven = bool(admission["admission_proven"])
             cost_proven = video["reserved_minor"] == video["actual_minor"]
-            job_state_proven = completed_job.state is JobState.COMPLETED
+            job_ready_proven = (
+                self._control_plane.get_job(token, str(row["job_id"])).state
+                is JobState.VALIDATING
+            )
             qa = cast(dict[str, object], video["qa"])
-            accepted = all(
+            finalization_ready = all(
                 (
                     admission_proven,
                     identity_proven,
@@ -292,12 +292,12 @@ class DurableVideoProductRuntime:
                     worker_lease_proven,
                     grant_proven,
                     cost_proven,
-                    job_state_proven,
+                    job_ready_proven,
                     qa.get("passed") is True,
                     verified_delivery["sha256"] == video["artifact_digest"],
                 )
             )
-            if not accepted:
+            if not finalization_ready:
                 raise ProductRuntimeError("durable AcceptanceManifest checks failed")
             manifest: dict[str, object] = {
                 "manifest_version": "1.0",
@@ -321,39 +321,140 @@ class DurableVideoProductRuntime:
                 "worker_lease_proven": worker_lease_proven,
                 "grant_proven": grant_proven,
                 "cost_proven": cost_proven,
-                "job_state_proven": job_state_proven,
+                "job_state_proven": False,
                 "evidence_hash": video["provenance_record_hash"],
                 "artifact_digest": video["artifact_digest"],
                 "delivery_id": verified_delivery["delivery_id"],
                 "delivery_sha256": verified_delivery["sha256"],
                 "qa": qa,
                 "latency_ms": video["latency_ms"],
-                "accepted": accepted,
+                "finalization_status": "finalizing",
+                "accepted": False,
             }
             if not self._scheduler.release(lease):
                 raise ProductRuntimeError("worker lease disappeared before product closure")
             lease = None
             with self._connect() as connection:
-                connection.execute(
-                    "UPDATE product_proofs SET status = 'accepted', manifest_json = ? "
+                connection.execute("BEGIN IMMEDIATE")
+                changed = connection.execute(
+                    "UPDATE product_proofs SET status = 'finalizing', manifest_json = ? "
                     "WHERE request_id = ? AND status = 'pending'",
                     (json.dumps(manifest, sort_keys=True), request_id),
-                )
-                connection.execute(
-                    "INSERT INTO product_proof_closure VALUES (?, 'accepted', ?, ?)",
-                    (
-                        request_id,
-                        "delivery, identity, and acceptance evidence verified",
-                        now.isoformat(),
-                    ),
-                )
-            return manifest
+                ).rowcount
+            if changed != 1:
+                raise ProductRuntimeError("product finalization state changed concurrently")
+            try:
+                return self.recover_finalizing(request_id, token=token, now=now)
+            except Exception as error:
+                raise ProductFinalizationPending(
+                    "product acceptance is durably finalizing and requires recovery"
+                ) from error
+        except ProductFinalizationPending:
+            raise
         except Exception as error:
             self._fail_product_proof(row, token=token, now=now, error=error)
             raise
         finally:
             if lease is not None:
                 self._scheduler.release(lease)
+
+    def recover_finalizing(
+        self, request_id: str, *, token: str, now: datetime
+    ) -> dict[str, object]:
+        """Idempotently finish a crash-interrupted cross-store acceptance saga."""
+        if now.tzinfo is None:
+            raise ProductRuntimeError("finalization time must be timezone-aware")
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT status, job_id, manifest_json FROM product_proofs "
+                "WHERE request_id = ?",
+                (request_id,),
+            ).fetchone()
+        if row is None:
+            raise ProductRuntimeError("unknown product proof")
+        if row["status"] == "accepted":
+            return self.get_manifest(request_id)
+        if row["status"] != "finalizing" or row["manifest_json"] is None:
+            raise ProductRuntimeError("product proof is not finalizing")
+        value = json.loads(str(row["manifest_json"]))
+        if not isinstance(value, dict):
+            raise ProductRuntimeError("stored finalizing AcceptanceManifest is malformed")
+        manifest = cast(dict[str, object], value)
+        qa = manifest.get("qa")
+        if not isinstance(qa, dict):
+            raise ProductRuntimeError("stored finalizing QA evidence is malformed")
+        if not all(
+            (
+                manifest.get("admission_proven") is True,
+                manifest.get("identity_proven") is True,
+                manifest.get("dag_proven") is True,
+                manifest.get("worker_lease_proven") is True,
+                manifest.get("grant_proven") is True,
+                manifest.get("cost_proven") is True,
+                qa.get("passed") is True,
+                manifest.get("artifact_digest") == manifest.get("delivery_sha256"),
+            )
+        ):
+            raise ProductRuntimeError("stored finalizing evidence is incomplete")
+
+        job_id = str(row["job_id"])
+        current = self._control_plane.get_job(token, job_id)
+        if current.state is JobState.VALIDATING:
+            try:
+                current = self._control_plane.transition_job(
+                    token,
+                    job_id,
+                    JobState.COMPLETED,
+                    reason="durable product finalization evidence verified",
+                    now=now,
+                )
+            except Exception as error:
+                current = self._control_plane.get_job(token, job_id)
+                if current.state is not JobState.COMPLETED:
+                    raise ProductRuntimeError(
+                        "job completion could not be reconciled"
+                    ) from error
+        if current.state is not JobState.COMPLETED:
+            raise ProductRuntimeError("finalizing product job is not completable")
+
+        manifest["job_state_proven"] = True
+        manifest["finalization_status"] = "accepted"
+        manifest["accepted"] = True
+        serialized = json.dumps(manifest, sort_keys=True)
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            current_row = connection.execute(
+                "SELECT status, manifest_json FROM product_proofs WHERE request_id = ?",
+                (request_id,),
+            ).fetchone()
+            if current_row is None:
+                raise ProductRuntimeError("unknown product proof")
+            if current_row["status"] == "accepted":
+                stored = current_row["manifest_json"]
+                if stored is None:
+                    raise ProductRuntimeError("accepted product manifest is missing")
+                accepted_value = json.loads(str(stored))
+                if not isinstance(accepted_value, dict):
+                    raise ProductRuntimeError("stored AcceptanceManifest is malformed")
+                return cast(dict[str, object], accepted_value)
+            if current_row["status"] != "finalizing":
+                raise ProductRuntimeError("product finalization state changed concurrently")
+            changed = connection.execute(
+                "UPDATE product_proofs SET status = 'accepted', manifest_json = ? "
+                "WHERE request_id = ? AND status = 'finalizing'",
+                (serialized, request_id),
+            ).rowcount
+            if changed != 1:
+                raise ProductRuntimeError("product finalization state changed concurrently")
+            connection.execute(
+                "INSERT OR IGNORE INTO product_proof_closure VALUES (?, 'accepted', ?, ?)",
+                (
+                    request_id,
+                    "delivery, identity, and cross-store acceptance evidence verified",
+                    now.isoformat(),
+                ),
+            )
+        return manifest
 
     def get_manifest(self, request_id: str) -> dict[str, object]:
         with self._connect() as connection:

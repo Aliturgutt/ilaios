@@ -19,6 +19,10 @@ from services.execution_coordinator import (
 )
 from services.governance import GovernedRuntimeGateway
 from services.integrations import DeterministicLocalVideoRuntime, DurableVideoProductRuntime
+from services.integrations.product_runtime import (
+    ProductFinalizationPending,
+    ProductRuntimeError,
+)
 from services.runtime import (
     DurableGrantPolicy,
     DurableWorkerScheduler,
@@ -247,6 +251,82 @@ def test_failure_closes_product_execution_and_releases_resources(tmp_path: Path)
     grant_state = grants.state()
     revoked = cast(list[dict[str, object]], grant_state["revoked"])
     assert len(revoked) == 1
+
+
+def test_finalizing_product_recovers_after_cross_store_crash(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    coordinator, _, scheduler, grants = _coordinator(tmp_path)
+    prepared_at = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
+    request_id = "exec-video-finalize-recovery"
+    coordinator.prepare(
+        request_id,
+        "Create a launch video and final MP4",
+        token="token",
+        principal_id="oidc|user@example.test",
+        tenant_id="tenant/example",
+        now=prepared_at,
+    )
+    product = cast(DurableVideoProductRuntime, getattr(coordinator, "_video"))
+    real_recover = product.recover_finalizing
+
+    def crash_boundary(
+        request_id_arg: str, *, token: str, now: datetime
+    ) -> dict[str, object]:
+        assert request_id_arg == request_id
+        raise ProductRuntimeError("simulated crash before cross-store completion")
+
+    monkeypatch.setattr(product, "recover_finalizing", crash_boundary)
+    with pytest.raises(ProductFinalizationPending, match="durably finalizing"):
+        coordinator.resume(
+            request_id,
+            token="token",
+            now=prepared_at + timedelta(seconds=1),
+        )
+
+    state = coordinator.get(request_id)
+    assert state["execution_status"] == "EXECUTING"
+    assert state["terminal"] is False
+    assert scheduler.state()["leases"] == []
+    with sqlite3.connect(tmp_path / "product.sqlite3") as connection:
+        product_status = connection.execute(
+            "SELECT status FROM product_proofs WHERE request_id = ?",
+            (request_id,),
+        ).fetchone()
+        product_closure = connection.execute(
+            "SELECT terminal_status FROM product_proof_closure WHERE request_id = ?",
+            (request_id,),
+        ).fetchone()
+    assert product_status == ("finalizing",)
+    assert product_closure is None
+    revoked_after_crash = cast(list[dict[str, object]], grants.state()["revoked"])
+    assert len(revoked_after_crash) == 1
+
+    monkeypatch.setattr(product, "recover_finalizing", real_recover)
+    manifest = coordinator.resume(
+        request_id,
+        token="token",
+        now=prepared_at + timedelta(seconds=2),
+    )
+    assert manifest["accepted"] is True
+    assert manifest["job_state_proven"] is True
+    assert manifest["finalization_status"] == "accepted"
+    final_state = coordinator.get(request_id)
+    assert final_state["execution_status"] == "ACCEPTED"
+    assert final_state["terminal"] is True
+    assert scheduler.state()["leases"] == []
+    with sqlite3.connect(tmp_path / "product.sqlite3") as connection:
+        product_status = connection.execute(
+            "SELECT status FROM product_proofs WHERE request_id = ?",
+            (request_id,),
+        ).fetchone()
+        product_closure = connection.execute(
+            "SELECT terminal_status FROM product_proof_closure WHERE request_id = ?",
+            (request_id,),
+        ).fetchone()
+    assert product_status == ("accepted",)
+    assert product_closure == ("accepted",)
 
 
 def test_stale_executing_request_closes_as_interrupted(tmp_path: Path) -> None:
