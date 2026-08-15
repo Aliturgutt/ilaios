@@ -33,6 +33,7 @@ from services.identity import (
 )
 
 _PROVIDER_ID = re.compile(r"^[a-z][a-z0-9_-]{1,31}$")
+_PROVIDER_ERROR_CODE = re.compile(r"^[a-z][a-z0-9_.-]{0,63}$")
 _ALLOWED_ALGORITHMS = frozenset({"RS256", "PS256", "ES256"})
 _FLOW_LIFETIME = timedelta(minutes=5)
 _SESSION_LIFETIME = timedelta(hours=8)
@@ -52,6 +53,7 @@ class OIDCProviderConfig:
     token_endpoint: str
     jwks_uri: str
     client_id: str
+    client_secret: str | None = None
     scopes: tuple[str, ...] = ("openid", "profile", "email")
 
 
@@ -150,6 +152,7 @@ class DesktopOIDCService:
                     token_endpoint=_required_text(provider, "token_endpoint"),
                     jwks_uri=_required_text(provider, "jwks_uri"),
                     client_id=_required_text(provider, "client_id"),
+                    client_secret=_optional_text(provider, "client_secret"),
                     scopes=tuple(cast(list[str], scopes)),
                 )
             )
@@ -230,23 +233,44 @@ class DesktopOIDCService:
             raise DesktopIdentityError("OIDC authorization code is required")
         provider = self._providers[flow.provider_id]
 
+        token_data = {
+            "grant_type": "authorization_code",
+            "client_id": provider.client_id,
+            "code": code.strip(),
+            "redirect_uri": flow.redirect_uri,
+            "code_verifier": flow.code_verifier,
+        }
+        if provider.client_secret is not None:
+            token_data["client_secret"] = provider.client_secret
+
         try:
             response = self._http.post(
                 provider.token_endpoint,
-                data={
-                    "grant_type": "authorization_code",
-                    "client_id": provider.client_id,
-                    "code": code.strip(),
-                    "redirect_uri": flow.redirect_uri,
-                    "code_verifier": flow.code_verifier,
-                },
+                data=token_data,
                 headers={"Accept": "application/json"},
                 timeout=10,
             )
-            response.raise_for_status()
-            payload = response.json()
-        except (requests.RequestException, ValueError) as error:
+        except requests.RequestException as error:
             raise DesktopIdentityError("OIDC token exchange failed") from error
+
+        try:
+            payload = response.json()
+        except ValueError as error:
+            try:
+                response.raise_for_status()
+            except requests.RequestException as status_error:
+                raise DesktopIdentityError("OIDC token exchange failed") from status_error
+            raise DesktopIdentityError("OIDC token response is malformed") from error
+
+        try:
+            response.raise_for_status()
+        except requests.RequestException as error:
+            provider_error = _safe_provider_error_code(payload)
+            detail = f": {provider_error}" if provider_error is not None else ""
+            raise DesktopIdentityError(
+                f"OIDC token exchange failed{detail}"
+            ) from error
+
         if not isinstance(payload, dict):
             raise DesktopIdentityError("OIDC token response is malformed")
         encoded_token = payload.get("id_token")
@@ -474,6 +498,27 @@ def _required_text(document: Mapping[str, Any], name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise DesktopIdentityError(f"Desktop OIDC {name} is required")
     return value.strip()
+
+
+def _optional_text(document: Mapping[str, Any], name: str) -> str | None:
+    value = document.get(name)
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise DesktopIdentityError(f"Desktop OIDC {name} must be a non-empty string")
+    return value.strip()
+
+
+def _safe_provider_error_code(payload: object) -> str | None:
+    if not isinstance(payload, dict):
+        return None
+    value = payload.get("error")
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip().casefold()
+    if _PROVIDER_ERROR_CODE.fullmatch(normalized) is None:
+        return None
+    return normalized
 
 
 def _base64url(value: bytes) -> str:
