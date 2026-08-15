@@ -85,7 +85,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       setState(() {
         _identityProviders = providers;
         _identityStatus = providers.isEmpty
-            ? 'Account sign-in is not configured; local Desktop mode is available'
+            ? 'Account sign-in is not configured; governed execution is disabled'
             : 'Sign in to submit governed work';
       });
     } on IdentityClientException catch (error) {
@@ -218,30 +218,29 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
   }
 
   Future<PromptSubmission> _submitPrompt(String objective) async {
-    final client = _client;
-    if (client == null) {
+    if (_client == null) {
       throw const ControlPlaneClientException('Control plane is unavailable');
     }
-
-    PromptSubmission submission;
-    if (_identityProviders.isNotEmpty) {
-      final identityClient = _identityClient;
-      final session = _userSession;
-      if (identityClient == null || session == null) {
-        throw const IdentityClientException(
-          'Sign in before submitting governed work',
-        );
-      }
-      submission = await identityClient.submitPrompt(objective, session);
-    } else {
-      submission = await client.submitPrompt(objective);
+    final identityClient = _identityClient;
+    final session = _userSession;
+    if (identityClient == null ||
+        _identityProviders.isEmpty ||
+        session == null) {
+      throw const IdentityClientException(
+        'Verified account sign-in is required before governed execution',
+      );
     }
 
+    final submission = await identityClient.submitPrompt(objective, session);
     if (mounted) {
       setState(() {
         _operationalStatus =
-            'Accepted ${submission.goalId}; ${submission.jobId} is ${submission.state}';
+            'Accepted ${submission.goalId}; execution ${submission.executionStatus}';
       });
+    }
+    if (submission.executionStatus == 'ADMITTED' ||
+        submission.executionStatus == 'EXECUTING') {
+      unawaited(_monitorExecution(submission.requestId));
     }
     await _refresh();
     return submission;
@@ -286,28 +285,108 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     GovernanceDecision decision,
   ) async {
     final client = _client;
-    final approver = widget.config?.approverId;
-    if (client == null || approver == null) return;
+    if (client == null) return;
     try {
-      await client.decideGovernanceRequest(
-        requestId: requestId,
-        approver: approver,
-        decision: decision,
-      );
-      if (!mounted) return;
-      setState(() => _operationalStatus = 'Governance decision accepted');
+      if (requestId.startsWith('exec-')) {
+        final identityClient = _identityClient;
+        final session = _userSession;
+        if (identityClient == null || session == null) {
+          throw const IdentityClientException(
+            'A verified approver session is required for execution decisions',
+          );
+        }
+        final status = await identityClient.decideExecution(
+          requestId,
+          decision,
+          session,
+        );
+        if (!mounted) return;
+        if (status == 'EXECUTION_STARTED') {
+          setState(() {
+            _operationalStatus =
+                'Independent approval recorded; governed execution started';
+          });
+          unawaited(_monitorExecution(requestId));
+        } else {
+          setState(() => _operationalStatus = 'Governed execution denied');
+        }
+      } else {
+        final approver = widget.config?.approverId;
+        if (approver == null) {
+          throw const ControlPlaneClientException(
+            'Independent operator approver is not configured',
+          );
+        }
+        await client.decideGovernanceRequest(
+          requestId: requestId,
+          approver: approver,
+          decision: decision,
+        );
+        if (!mounted) return;
+        setState(() => _operationalStatus = 'Governance decision accepted');
+      }
       await _refresh();
     } on ControlPlaneClientException catch (error) {
       if (!mounted) return;
       setState(() => _operationalStatus = error.message);
+    } on IdentityClientException catch (error) {
+      if (!mounted) return;
+      setState(() => _operationalStatus = error.message);
+      await _refresh();
+    }
+  }
+
+  Future<void> _monitorExecution(String requestId) async {
+    final identityClient = _identityClient;
+    final session = _userSession;
+    if (identityClient == null || session == null) return;
+    for (var attempt = 0; attempt < 300; attempt += 1) {
+      await Future<void>.delayed(const Duration(seconds: 1));
+      if (!mounted || _userSession?.sessionId != session.sessionId) return;
+      try {
+        final status = await identityClient.fetchExecutionStatus(
+          requestId,
+          session,
+        );
+        if (status == 'ACCEPTED') {
+          setState(() {
+            _operationalStatus =
+                'Governed execution accepted; verified delivery ready';
+          });
+          await _refresh();
+          return;
+        }
+        if (status == 'FAILED' ||
+            status == 'DENIED' ||
+            status.startsWith('BLOCKED_')) {
+          setState(() => _operationalStatus = 'Governed execution: $status');
+          await _refresh();
+          return;
+        }
+      } on IdentityClientException catch (error) {
+        if (!mounted) return;
+        setState(() => _operationalStatus = error.message);
+        return;
+      }
+    }
+    if (mounted) {
+      setState(() {
+        _operationalStatus =
+            'Execution is still running; continue tracking it in Live Execution';
+      });
+      await _refresh();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final signedInRequired = _identityProviders.isNotEmpty;
-    final promptEnabled =
-        _client != null && (!signedInRequired || _userSession != null);
+    final promptEnabled = _client != null &&
+        _identityClient != null &&
+        _identityProviders.isNotEmpty &&
+        _userSession != null;
+    final governanceEnabled = _client != null &&
+        (widget.config?.approverId != null ||
+            (_identityClient != null && _userSession != null));
     return IlaiosDesktopApp(
       projection: _projection,
       operationalSnapshot: _operationalSnapshot,
@@ -322,10 +401,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       onPromptSubmit: promptEnabled ? _submitPrompt : null,
       onSaveArtifact: _client == null ? null : _saveArtifact,
       onRefreshRequested: _client == null ? null : _refresh,
-      onGovernanceDecision:
-          _client == null || widget.config?.approverId == null
-              ? null
-              : _decideGovernance,
+      onGovernanceDecision: governanceEnabled ? _decideGovernance : null,
     );
   }
 }
