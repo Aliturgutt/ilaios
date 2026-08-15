@@ -23,6 +23,8 @@ from .gates import (
 _SENSITIVE_KEYS = {"api_key", "authorization", "password", "secret", "token"}
 _REFERENCE_PREFIXES = ("env://", "kms://", "vault://")
 _RISK_CLASSES = frozenset({"low", "medium", "high"})
+_ADMISSION_KEY = "_ilaios_admission"
+_ADMISSION_SCHEMA_VERSION = 1
 
 
 class GovernedRuntimeGateway:
@@ -53,12 +55,6 @@ class GovernedRuntimeGateway:
                 "capability TEXT NOT NULL, payload_json TEXT NOT NULL, "
                 "secret_ids_json TEXT NOT NULL, status TEXT NOT NULL, "
                 "result_json TEXT);"
-                "CREATE TABLE IF NOT EXISTS governed_admissions ("
-                "request_id TEXT PRIMARY KEY, risk_class TEXT NOT NULL, "
-                "admission_decision TEXT NOT NULL, "
-                "human_approval_required INTEGER NOT NULL, "
-                "admitted_at TEXT NOT NULL, "
-                "FOREIGN KEY(request_id) REFERENCES governed_work(request_id));"
             )
 
     def _connect(self) -> sqlite3.Connection:
@@ -99,8 +95,10 @@ class GovernedRuntimeGateway:
         if risk not in _RISK_CLASSES:
             raise GateError("unknown risk classification")
         self._reject_inline_secrets(payload)
-        approval_required = risk == "high"
-        admission_decision = "REQUIRE_APPROVAL" if approval_required else "ALLOW"
+        admission = _new_admission(risk)
+        stored_metadata = json.dumps(
+            {_ADMISSION_KEY: admission}, sort_keys=True, separators=(",", ":")
+        )
         with self._connect() as connection:
             registered = {
                 str(row["secret_id"])
@@ -113,7 +111,7 @@ class GovernedRuntimeGateway:
                 raise GateError("work references an unknown secret boundary")
             try:
                 connection.execute(
-                    "INSERT INTO governed_work VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NULL)",
+                    "INSERT INTO governed_work VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', ?)",
                     (
                         request_id,
                         requester_id,
@@ -122,41 +120,33 @@ class GovernedRuntimeGateway:
                         capability,
                         json.dumps(payload, sort_keys=True, separators=(",", ":")),
                         json.dumps(secret_ids),
-                    ),
-                )
-                connection.execute(
-                    "INSERT INTO governed_admissions VALUES (?, ?, ?, ?, ?)",
-                    (
-                        request_id,
-                        risk,
-                        admission_decision,
-                        int(approval_required),
-                        datetime.now(timezone.utc).isoformat(),
+                        stored_metadata,
                     ),
                 )
             except sqlite3.IntegrityError as error:
                 raise GateError("governed work request already exists") from error
+        approval_required = bool(admission["human_approval_required"])
         return {
             "request_id": request_id,
             "risk": risk,
             "meter": "runtime_execution",
             "quoted_minor": self._pricing.quote("runtime_execution", 1),
             "status": "pending_approval" if approval_required else "admitted",
-            "admission_decision": admission_decision,
+            "admission_decision": admission["admission_decision"],
             "human_approval_required": approval_required,
         }
 
     def decide(self, request_id: str, approver: str, decision: str) -> None:
         with self._connect() as connection:
             row = connection.execute(
-                "SELECT w.requester_id, w.status, a.human_approval_required "
-                "FROM governed_work AS w JOIN governed_admissions AS a "
-                "ON a.request_id = w.request_id WHERE w.request_id = ?",
+                "SELECT requester_id, status, result_json FROM governed_work "
+                "WHERE request_id = ?",
                 (request_id,),
             ).fetchone()
         if row is None:
             raise GateError("unknown governed work request")
-        if not bool(row["human_approval_required"]):
+        admission = _read_admission(row["result_json"])
+        if not bool(admission["human_approval_required"]):
             raise GateError("governed work does not require human approval")
         if not approver or approver == row["requester_id"]:
             raise GateError("independent human approver is required")
@@ -209,17 +199,16 @@ class GovernedRuntimeGateway:
         """Reserve server-metered execution using persisted admission risk."""
         with self._connect() as connection:
             row = connection.execute(
-                "SELECT w.status, a.risk_class, a.admission_decision "
-                "FROM governed_work AS w JOIN governed_admissions AS a "
-                "ON a.request_id = w.request_id WHERE w.request_id = ?",
+                "SELECT status, result_json FROM governed_work WHERE request_id = ?",
                 (request_id,),
             ).fetchone()
         if row is None:
-            raise GateError("unknown governed work request or admission")
+            raise GateError("unknown governed work request")
         if row["status"] != "pending":
             raise GateError("governed work cannot execute more than once")
-        risk = str(row["risk_class"])
-        decision = str(row["admission_decision"])
+        admission = _read_admission(row["result_json"])
+        risk = str(admission["risk"])
+        decision = str(admission["admission_decision"])
         if risk in {"low", "medium"} and decision != "ALLOW":
             raise GateError("governed work lacks executable admission")
         if risk == "high" and decision != "REQUIRE_APPROVAL":
@@ -238,44 +227,37 @@ class GovernedRuntimeGateway:
     ) -> None:
         if status not in {"executed", "failed"}:
             raise GateError("invalid governed work terminal status")
+        admission = self._persisted_admission(request_id)
+        stored_result: dict[str, object] = {_ADMISSION_KEY: admission}
+        if result is not None:
+            stored_result["result"] = result
         self._ledger.reconcile(request_id, actual_minor)
         with self._connect() as connection:
             connection.execute(
                 "UPDATE governed_work SET status = ?, result_json = ? WHERE request_id = ?",
-                (
-                    status,
-                    None if result is None else json.dumps(result, sort_keys=True),
-                    request_id,
-                ),
+                (status, json.dumps(stored_result, sort_keys=True), request_id),
             )
 
     def state(self) -> dict[str, object]:
         with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT request_id, requester_id, status, result_json "
+                "FROM governed_work ORDER BY request_id"
+            ).fetchall()
             work = [
                 {
                     "request_id": row["request_id"],
                     "requester_id": row["requester_id"],
                     "status": row["status"],
                 }
-                for row in connection.execute(
-                    "SELECT request_id, requester_id, status FROM governed_work "
-                    "ORDER BY request_id"
-                ).fetchall()
+                for row in rows
             ]
             admissions = [
                 {
                     "request_id": row["request_id"],
-                    "risk": row["risk_class"],
-                    "admission_decision": row["admission_decision"],
-                    "human_approval_required": bool(
-                        row["human_approval_required"]
-                    ),
+                    **_public_admission(_read_admission(row["result_json"])),
                 }
-                for row in connection.execute(
-                    "SELECT request_id, risk_class, admission_decision, "
-                    "human_approval_required FROM governed_admissions "
-                    "ORDER BY request_id"
-                ).fetchall()
+                for row in rows
             ]
             references = [
                 {"secret_id": row["secret_id"], "reference": row["reference"]}
@@ -292,18 +274,11 @@ class GovernedRuntimeGateway:
 
     def admission_snapshot(self, request_id: str) -> dict[str, object]:
         """Return the persisted server-authoritative admission for evidence."""
-        with self._connect() as connection:
-            row = connection.execute(
-                "SELECT risk_class, admission_decision, human_approval_required "
-                "FROM governed_admissions WHERE request_id = ?",
-                (request_id,),
-            ).fetchone()
-        if row is None:
-            raise GateError("governed admission is unavailable")
+        admission = self._persisted_admission(request_id)
         approval_proven = self._approvals.is_approved(request_id)
-        risk = str(row["risk_class"])
-        decision = str(row["admission_decision"])
-        required = bool(row["human_approval_required"])
+        risk = str(admission["risk"])
+        decision = str(admission["admission_decision"])
+        required = bool(admission["human_approval_required"])
         admitted = (risk in {"low", "medium"} and decision == "ALLOW") or (
             risk == "high" and decision == "REQUIRE_APPROVAL" and approval_proven
         )
@@ -322,6 +297,16 @@ class GovernedRuntimeGateway:
         """Read durable human approval without implying it is always required."""
         return self._approvals.is_approved(request_id)
 
+    def _persisted_admission(self, request_id: str) -> dict[str, object]:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT result_json FROM governed_work WHERE request_id = ?",
+                (request_id,),
+            ).fetchone()
+        if row is None:
+            raise GateError("governed admission is unavailable")
+        return _read_admission(row["result_json"])
+
     @classmethod
     def _reject_inline_secrets(cls, value: object) -> None:
         if isinstance(value, dict):
@@ -332,3 +317,70 @@ class GovernedRuntimeGateway:
         elif isinstance(value, list):
             for item in value:
                 cls._reject_inline_secrets(item)
+
+
+def _new_admission(risk: str) -> dict[str, object]:
+    approval_required = risk == "high"
+    return {
+        "schema_version": _ADMISSION_SCHEMA_VERSION,
+        "risk": risk,
+        "admission_decision": "REQUIRE_APPROVAL" if approval_required else "ALLOW",
+        "human_approval_required": approval_required,
+        "admitted_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _legacy_admission() -> dict[str, object]:
+    return {
+        "schema_version": 0,
+        "risk": "high",
+        "admission_decision": "REQUIRE_APPROVAL",
+        "human_approval_required": True,
+        "admitted_at": None,
+    }
+
+
+def _read_admission(raw: object) -> dict[str, object]:
+    if raw is None:
+        return _legacy_admission()
+    try:
+        value = json.loads(str(raw))
+    except (TypeError, ValueError, json.JSONDecodeError) as error:
+        raise GateError("stored governed admission is malformed") from error
+    if not isinstance(value, dict):
+        raise GateError("stored governed admission is malformed")
+    candidate = value.get(_ADMISSION_KEY)
+    if candidate is None:
+        return _legacy_admission()
+    if not isinstance(candidate, dict):
+        raise GateError("stored governed admission is malformed")
+    version = candidate.get("schema_version")
+    risk = candidate.get("risk")
+    decision = candidate.get("admission_decision")
+    required = candidate.get("human_approval_required")
+    admitted_at = candidate.get("admitted_at")
+    if version != _ADMISSION_SCHEMA_VERSION:
+        raise GateError("stored governed admission schema is unsupported")
+    if risk not in _RISK_CLASSES:
+        raise GateError("stored governed admission risk is invalid")
+    expected_required = risk == "high"
+    expected_decision = "REQUIRE_APPROVAL" if expected_required else "ALLOW"
+    if required is not expected_required or decision != expected_decision:
+        raise GateError("stored governed admission policy is inconsistent")
+    if not isinstance(admitted_at, str) or not admitted_at:
+        raise GateError("stored governed admission timestamp is invalid")
+    return {
+        "schema_version": version,
+        "risk": risk,
+        "admission_decision": decision,
+        "human_approval_required": required,
+        "admitted_at": admitted_at,
+    }
+
+
+def _public_admission(admission: dict[str, object]) -> dict[str, object]:
+    return {
+        "risk": admission["risk"],
+        "admission_decision": admission["admission_decision"],
+        "human_approval_required": admission["human_approval_required"],
+    }
