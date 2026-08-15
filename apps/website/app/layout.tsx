@@ -13,6 +13,7 @@ import "./canonical-detail.css";
 import "./visual-redteam-fixes.css";
 import "./brand-palette.css";
 import "./live-density-fixes.css";
+import "./final-interaction-redteam.css";
 import SiteChrome from "./SiteChrome";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ilaios.com";
