@@ -11,6 +11,7 @@ from services.rag14_canary_approval import (
     RAG14CanaryApprovalError,
     load_and_validate_canary_approval,
 )
+from services.rag14_embedding_provider import PRODUCTION_EMBEDDING_MODE
 
 
 SOURCE_SHA = "9" * 40
@@ -55,6 +56,24 @@ def test_valid_approval_binds_source_image_network_and_terraform_values(tmp_path
     assert environment["TF_VAR_knowledge_enabled"] == "true"
     assert environment["TF_VAR_image_digest"] == IMAGE_DIGEST
     assert environment["TF_VAR_knowledge_embedding_mode"] == "verification_hash_v1"
+
+
+def test_pinned_production_provider_is_allowed_for_canary_evidence(tmp_path: Path) -> None:
+    path = tmp_path / "approval.json"
+    payload = _approval()
+    payload["embedding_mode"] = PRODUCTION_EMBEDDING_MODE
+    _write(path, payload)
+
+    approval = load_and_validate_canary_approval(
+        path,
+        expected_runtime_source_sha=SOURCE_SHA,
+        expected_image_digest=IMAGE_DIGEST,
+    )
+
+    assert approval.embedding_mode == PRODUCTION_EMBEDDING_MODE
+    assert approval.terraform_environment()["TF_VAR_knowledge_embedding_mode"] == (
+        PRODUCTION_EMBEDDING_MODE
+    )
 
 
 def test_stale_source_or_image_binding_is_rejected(tmp_path: Path) -> None:
@@ -134,7 +153,7 @@ def test_unknown_fields_or_unimplemented_embedding_are_rejected(tmp_path: Path) 
     payload = _approval()
     payload["embedding_mode"] = "future-unverified-provider"
     _write(path, payload)
-    with pytest.raises(RAG14CanaryApprovalError, match="verification embedding"):
+    with pytest.raises(RAG14CanaryApprovalError, match="implemented staged provider"):
         load_and_validate_canary_approval(
             path,
             expected_runtime_source_sha=SOURCE_SHA,
