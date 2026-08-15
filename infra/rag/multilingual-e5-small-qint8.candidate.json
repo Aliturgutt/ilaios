@@ -17,8 +17,7 @@
     },
     {
       "path": "tokenizer.json",
-      "sha256": "0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39",
-      "size_bytes": 17100000
+      "sha256": "0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39"
     }
   ],
   "certification_runtime": {
