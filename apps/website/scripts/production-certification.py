@@ -57,6 +57,7 @@ class BrowserCheck:
     console_errors: list[str]
     page_errors: list[str]
     failed_same_origin_requests: list[str]
+    cancelled_rsc_prefetches: list[str]
 
 
 def http_get(url: str, *, timeout: int = 30) -> tuple[int, dict[str, str], bytes]:
@@ -151,11 +152,26 @@ def route_path(url: str) -> str:
     return parsed.path or "/"
 
 
+def is_cancelled_rsc_prefetch(url: str, failure: object) -> bool:
+    """Classify only browser-cancelled Next.js RSC prefetches as non-blocking.
+
+    Chromium reports speculative Next.js route prefetch cancellation as
+    ``net::ERR_ABORTED`` when navigation/rendering makes the prefetch unnecessary.
+    This is not an HTTP/network delivery failure. Any other same-origin request
+    failure remains fatal.
+    """
+
+    parsed = urllib.parse.urlparse(url)
+    query = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
+    return "_rsc" in query and "ERR_ABORTED" in str(failure)
+
+
 def check_page(page: Page, url: str, width: int, height: int) -> BrowserCheck:
     page.set_viewport_size({"width": width, "height": height})
     console_errors: list[str] = []
     page_errors: list[str] = []
     request_failures: list[str] = []
+    cancelled_rsc_prefetches: list[str] = []
 
     def on_console(message: Any) -> None:
         if message.type == "error":
@@ -168,7 +184,11 @@ def check_page(page: Page, url: str, width: int, height: int) -> BrowserCheck:
         parsed = urllib.parse.urlparse(request.url)
         if parsed.hostname in {"ilaios.com", "www.ilaios.com"}:
             failure = request.failure
-            request_failures.append(f"{request.method} {request.url}: {failure}")
+            rendered = f"{request.method} {request.url}: {failure}"
+            if is_cancelled_rsc_prefetch(request.url, failure):
+                cancelled_rsc_prefetches.append(rendered)
+                return
+            request_failures.append(rendered)
 
     page.on("console", on_console)
     page.on("pageerror", on_page_error)
@@ -237,6 +257,7 @@ def check_page(page: Page, url: str, width: int, height: int) -> BrowserCheck:
         console_errors=console_errors,
         page_errors=page_errors,
         failed_same_origin_requests=request_failures,
+        cancelled_rsc_prefetches=cancelled_rsc_prefetches,
     )
 
     page.remove_listener("console", on_console)
@@ -345,6 +366,7 @@ def main() -> int:
         evidence["completedAt"] = datetime.now(timezone.utc).isoformat()
 
         vercel_ids = sorted({check.x_vercel_id for check in checks if check.x_vercel_id})
+        cancelled_prefetch_count = sum(len(check.cancelled_rsc_prefetches) for check in checks)
         summary = [
             "# ILAIOS Production Website Certification",
             "",
@@ -356,6 +378,7 @@ def main() -> int:
             f"- Sitemap routes: `{len(urls)}`",
             f"- Browser route/viewport checks: `{len(checks)}`",
             f"- Distinct x-vercel-id responses observed: `{len(vercel_ids)}`",
+            f"- Browser-cancelled speculative Next.js RSC prefetches: `{cancelled_prefetch_count}` (recorded, non-blocking)",
             "- Mobile menu open/Escape-close: `PASS` for EN and TR",
             "- Horizontal overflow: `0 blocking findings`",
             "- Console/page/same-origin request failures: `0 blocking findings`",
