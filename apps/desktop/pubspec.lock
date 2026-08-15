@@ -149,7 +149,7 @@ packages:
     version: "1.9.1"
   sky_engine:
     dependency: transitive
-    description: sky_engine
+    description: flutter
     source: sdk
     version: "0.0.0"
   source_span:
