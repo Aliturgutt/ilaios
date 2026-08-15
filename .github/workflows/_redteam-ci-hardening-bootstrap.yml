@@ -10,7 +10,7 @@ on:
       - '.redteam-ci-hardening-trigger'
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: redteam-ci-final-hardening-bootstrap
@@ -26,6 +26,7 @@ jobs:
         with:
           ref: redteam/ci-final-hardening
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Apply deterministic hardening
         run: python tools/_redteam_ci_harden.py
@@ -39,13 +40,13 @@ jobs:
           python -m services.github_workflow_security_audit --repository-root .
           git diff --check
 
-      - name: Commit hardened CI surface
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name 'ILAIOS CI Red Team'
-          git config user.email '98952443+Aliturgutt@users.noreply.github.com'
-          git add -A
-          git diff --cached --quiet && exit 0
-          git commit -m 'ci: red-team harden and unify validation gates'
-          git push origin HEAD:redteam/ci-final-hardening
+      - name: Export validated hardening payload
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ci-redteam-hardening-payload
+          path: |
+            .github/workflows
+            services/github_workflow_security_audit.py
+            tests/test_github_workflow_security_audit.py
+          if-no-files-found: error
+          retention-days: 1
