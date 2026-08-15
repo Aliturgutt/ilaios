@@ -384,7 +384,7 @@ class ExecutionCoordinator:
             ).rowcount
         if changed != 1:
             raise ExecutionCoordinatorError("execution completion state was lost")
-        return manifest
+        return cast(dict[str, object], json.loads(serialized))
 
     def get(self, request_id: str) -> dict[str, object]:
         row = self._request_row(request_id)
