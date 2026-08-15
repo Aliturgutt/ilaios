@@ -1,0 +1,45 @@
+name: Red-team OpenTofu Formatter
+
+on:
+  push:
+    branches:
+      - redteam/fix-opentofu-format
+    paths:
+      - '.github/workflows/_redteam-opentofu-format.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout formatter branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: redteam/fix-opentofu-format
+          fetch-depth: 0
+
+      - name: Install exact OpenTofu
+        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f
+        with:
+          tofu_version: 1.10.6
+
+      - name: Format and verify R01 configuration
+        working-directory: infra/aws/r01-canary
+        run: |
+          set -euo pipefail
+          tofu fmt knowledge.tf main.tf
+          tofu fmt -check -recursive
+
+      - name: Commit only formatted OpenTofu files
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'ILAIOS CI Red Team'
+          git config user.email '98952443+Aliturgutt@users.noreply.github.com'
+          git add infra/aws/r01-canary/knowledge.tf infra/aws/r01-canary/main.tf
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: format R01 OpenTofu configuration'
+          git push origin HEAD:redteam/fix-opentofu-format
