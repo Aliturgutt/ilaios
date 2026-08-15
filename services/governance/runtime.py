@@ -22,10 +22,11 @@ from .gates import (
 
 _SENSITIVE_KEYS = {"api_key", "authorization", "password", "secret", "token"}
 _REFERENCE_PREFIXES = ("env://", "kms://", "vault://")
+_RISK_CLASSES = frozenset({"low", "medium", "high"})
 
 
 class GovernedRuntimeGateway:
-    """Persist work intent and enforce DLP, HITL, and credits before execution."""
+    """Persist work intent and enforce DLP, HITL, admission, and credits."""
 
     def __init__(
         self,
@@ -52,6 +53,12 @@ class GovernedRuntimeGateway:
                 "capability TEXT NOT NULL, payload_json TEXT NOT NULL, "
                 "secret_ids_json TEXT NOT NULL, status TEXT NOT NULL, "
                 "result_json TEXT);"
+                "CREATE TABLE IF NOT EXISTS governed_admissions ("
+                "request_id TEXT PRIMARY KEY, risk_class TEXT NOT NULL, "
+                "admission_decision TEXT NOT NULL, "
+                "human_approval_required INTEGER NOT NULL, "
+                "admitted_at TEXT NOT NULL, "
+                "FOREIGN KEY(request_id) REFERENCES governed_work(request_id));"
             )
 
     def _connect(self) -> sqlite3.Connection:
@@ -84,10 +91,16 @@ class GovernedRuntimeGateway:
         capability: str,
         payload: dict[str, Any],
         secret_ids: tuple[str, ...],
+        *,
+        risk: str = "high",
     ) -> dict[str, object]:
         if not all((request_id, requester_id, agent_id, skill_id, capability)):
             raise GateError("governed work identifiers are required")
+        if risk not in _RISK_CLASSES:
+            raise GateError("unknown risk classification")
         self._reject_inline_secrets(payload)
+        approval_required = risk == "high"
+        admission_decision = "REQUIRE_APPROVAL" if approval_required else "ALLOW"
         with self._connect() as connection:
             registered = {
                 str(row["secret_id"])
@@ -111,24 +124,40 @@ class GovernedRuntimeGateway:
                         json.dumps(secret_ids),
                     ),
                 )
+                connection.execute(
+                    "INSERT INTO governed_admissions VALUES (?, ?, ?, ?, ?)",
+                    (
+                        request_id,
+                        risk,
+                        admission_decision,
+                        int(approval_required),
+                        datetime.now(timezone.utc).isoformat(),
+                    ),
+                )
             except sqlite3.IntegrityError as error:
                 raise GateError("governed work request already exists") from error
         return {
             "request_id": request_id,
-            "risk": "high",
+            "risk": risk,
             "meter": "runtime_execution",
             "quoted_minor": self._pricing.quote("runtime_execution", 1),
-            "status": "pending_approval",
+            "status": "pending_approval" if approval_required else "admitted",
+            "admission_decision": admission_decision,
+            "human_approval_required": approval_required,
         }
 
     def decide(self, request_id: str, approver: str, decision: str) -> None:
         with self._connect() as connection:
             row = connection.execute(
-                "SELECT requester_id, status FROM governed_work WHERE request_id = ?",
+                "SELECT w.requester_id, w.status, a.human_approval_required "
+                "FROM governed_work AS w JOIN governed_admissions AS a "
+                "ON a.request_id = w.request_id WHERE w.request_id = ?",
                 (request_id,),
             ).fetchone()
         if row is None:
             raise GateError("unknown governed work request")
+        if not bool(row["human_approval_required"]):
+            raise GateError("governed work does not require human approval")
         if not approver or approver == row["requester_id"]:
             raise GateError("independent human approver is required")
         if row["status"] != "pending":
@@ -138,6 +167,12 @@ class GovernedRuntimeGateway:
         self._approvals.decide(
             request_id, approved=decision == "approved", approver=approver
         )
+        if decision == "denied":
+            with self._connect() as connection:
+                connection.execute(
+                    "UPDATE governed_work SET status = 'denied' WHERE request_id = ?",
+                    (request_id,),
+                )
 
     def execute(self, request_id: str) -> dict[str, object]:
         amount = self.authorize_billable(request_id)
@@ -171,17 +206,26 @@ class GovernedRuntimeGateway:
         }
 
     def authorize_billable(self, request_id: str) -> int:
-        """Reserve one server-metered execution after durable HITL approval."""
+        """Reserve server-metered execution using persisted admission risk."""
         with self._connect() as connection:
             row = connection.execute(
-                "SELECT status FROM governed_work WHERE request_id = ?", (request_id,)
+                "SELECT w.status, a.risk_class, a.admission_decision "
+                "FROM governed_work AS w JOIN governed_admissions AS a "
+                "ON a.request_id = w.request_id WHERE w.request_id = ?",
+                (request_id,),
             ).fetchone()
         if row is None:
-            raise GateError("unknown governed work request")
+            raise GateError("unknown governed work request or admission")
         if row["status"] != "pending":
             raise GateError("governed work cannot execute more than once")
+        risk = str(row["risk_class"])
+        decision = str(row["admission_decision"])
+        if risk in {"low", "medium"} and decision != "ALLOW":
+            raise GateError("governed work lacks executable admission")
+        if risk == "high" and decision != "REQUIRE_APPROVAL":
+            raise GateError("high-risk work has invalid admission state")
         return self._gate.authorize(
-            WorkRequest(request_id, "high", "runtime_execution", 1)
+            WorkRequest(request_id, risk, "runtime_execution", 1)
         )
 
     def reconcile_billable(
@@ -230,8 +274,36 @@ class GovernedRuntimeGateway:
             "ledger": self._ledger.state(),
         }
 
+    def admission_snapshot(self, request_id: str) -> dict[str, object]:
+        """Return the persisted server-authoritative admission for evidence."""
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT risk_class, admission_decision, human_approval_required "
+                "FROM governed_admissions WHERE request_id = ?",
+                (request_id,),
+            ).fetchone()
+        if row is None:
+            raise GateError("governed admission is unavailable")
+        approval_proven = self._approvals.is_approved(request_id)
+        risk = str(row["risk_class"])
+        decision = str(row["admission_decision"])
+        required = bool(row["human_approval_required"])
+        admitted = (risk in {"low", "medium"} and decision == "ALLOW") or (
+            risk == "high" and decision == "REQUIRE_APPROVAL" and approval_proven
+        )
+        return {
+            "risk": risk,
+            "admission_decision": decision,
+            "human_approval_required": required,
+            "approval_proven": approval_proven,
+            "admission_proven": admitted,
+        }
+
+    def admission_proven(self, request_id: str) -> bool:
+        return bool(self.admission_snapshot(request_id)["admission_proven"])
+
     def approval_proven(self, request_id: str) -> bool:
-        """Read the durable independent approval used by the execution gate."""
+        """Read durable human approval without implying it is always required."""
         return self._approvals.is_approved(request_id)
 
     @classmethod
