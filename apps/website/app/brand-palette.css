@@ -1,19 +1,32 @@
-/* Canonical ILAIOS brand palette.
-   Distribution target: Carbon 70%, Charcoal/Graphite 20%, Cyan 10%.
+/* Canonical ILAIOS brand color system.
+   Source authority: 01-ilaios-brand-color-system.html.
+   Recommended distribution: 60% foundation, 30% content, 10% accent.
+   Cyan leads identity, Core Blue is functional/action state, Violet is selective.
    This layer changes color hierarchy only; layout, copy and route behavior stay unchanged. */
 
 :root {
   --brand-carbon: #0B0F14;
   --brand-charcoal: #111827;
   --brand-graphite: #1F2937;
-  --brand-cyan: #00C2D1;
   --brand-white: #FFFFFF;
-  --brand-text-soft: #D7DEE3;
-  --brand-muted: #9AA6AF;
-  --brand-line: #2B3642;
-  --brand-line-strong: #465461;
+
+  --brand-cyan: #00C2D1;
+  --brand-blue: #146BFF;
+  --brand-violet: #5C58FE;
+
+  --brand-text-soft: #AFC0D2;
+  --brand-muted: #8FA2B8;
+  --brand-muted-deep: #64758A;
+  --brand-line: #2B3748;
+  --brand-line-strong: #344154;
+  --brand-panel-dark: #080D13;
+  --brand-panel-deep: #0A1018;
+
   --brand-cyan-soft: rgba(0, 194, 209, .10);
   --brand-cyan-line: rgba(0, 194, 209, .42);
+  --brand-blue-soft: rgba(20, 107, 255, .10);
+  --brand-blue-line: rgba(20, 107, 255, .42);
+  --brand-violet-soft: rgba(92, 88, 254, .08);
 
   --bg: var(--brand-carbon);
   --surface: var(--brand-charcoal);
@@ -31,7 +44,7 @@ body {
   color: var(--brand-white);
 }
 
-/* Brand hierarchy: carbon canvas, charcoal/graphite structural surfaces. */
+/* Foundation: Carbon leads; Charcoal and Graphite define surfaces. */
 .site-header,
 .site-footer {
   background: var(--brand-carbon);
@@ -58,27 +71,32 @@ body {
 .goal-composer textarea,
 .explore-menu-panel,
 .nav-panel {
-  background-color: var(--brand-carbon);
+  background-color: var(--brand-panel-dark);
   border-color: var(--brand-line);
 }
 
-/* Cyan is an intentional 10% signal color, never a full-page wash. */
+/* Identity accent: Cyan first. Keep it intentional rather than washing pages. */
 .eyebrow,
 .text-link,
-.status-chip,
 .panel-kicker,
 .micro-label,
 .detail-link-card > span,
 .plane-card span,
 .security-chain article > span,
 .stack-layer span,
-.runtime-steps span,
 .canonical-linear > div > span,
 .canonical-dual > div > span,
-.core-node span,
 .process-ledger > article > span,
 .verification-list span {
   color: var(--brand-cyan);
+}
+
+/* Functional state: Core Blue is reserved for action/system state. */
+.status-chip,
+.runtime-steps span,
+.core-node span,
+.execution-status-line strong {
+  color: var(--brand-blue);
 }
 
 .nav-primary a[aria-current="page"],
@@ -95,6 +113,7 @@ body {
   box-shadow: inset 0 0 0 1px var(--brand-cyan-line);
 }
 
+/* Primary identity action = Cyan. Functional/system actions may use Core Blue. */
 .button {
   background: var(--brand-cyan);
   border-color: var(--brand-cyan);
@@ -102,8 +121,8 @@ body {
 }
 
 .button:hover {
-  background: #20D3DF;
-  border-color: #20D3DF;
+  background: #16CEDC;
+  border-color: #16CEDC;
   color: var(--brand-carbon);
 }
 
@@ -115,12 +134,12 @@ body {
 
 .button.secondary:hover {
   background: var(--brand-graphite);
-  border-color: var(--brand-cyan-line);
+  border-color: var(--brand-blue-line);
   color: var(--brand-white);
 }
 
 :where(a,button,input,textarea,summary):focus-visible {
-  outline-color: var(--brand-cyan);
+  outline-color: var(--brand-blue);
 }
 
 ::selection {
@@ -128,7 +147,7 @@ body {
   color: var(--brand-carbon);
 }
 
-/* Structural separators use graphite, with cyan reserved for active states. */
+/* Structural separators use canonical graphite/border tones. */
 .section,
 .grid,
 .detail-link-grid,
@@ -165,23 +184,37 @@ body {
   border-color: var(--brand-cyan-line);
 }
 
+/* Authority stays identity-linked; runtime state gets the functional blue cue. */
 .authority-layer,
 .boundary-core {
   background: linear-gradient(90deg, var(--brand-charcoal), rgba(0, 194, 209, .06));
   border-color: var(--brand-cyan-line);
 }
 
-.execution-rail .is-active,
+.execution-rail .is-active {
+  background: var(--brand-blue-soft);
+}
+
+.execution-rail .is-active span {
+  color: var(--brand-blue);
+}
+
 .execution-rail .is-complete {
   background: var(--brand-cyan-soft);
 }
 
-.execution-rail .is-active span,
 .execution-rail .is-complete span {
   color: var(--brand-cyan);
 }
 
-/* Typography remains mostly neutral white/soft gray for readability. */
+/* Violet is canonical but selective: use only for tertiary/selective emphasis. */
+[data-visual-role="capability-maturity-model"] .canonical-linear > div:last-child,
+[data-visual-role="finops-routing-flow"] .canonical-linear > div:last-child {
+  background: linear-gradient(180deg, var(--brand-panel-dark), var(--brand-violet-soft));
+  border-bottom-color: rgba(92, 88, 254, .38);
+}
+
+/* Content: White carries primary information; supporting copy uses canonical neutrals. */
 h1,
 h2,
 h3,
@@ -197,6 +230,12 @@ small,
 
 .lead {
   color: var(--brand-text-soft);
+}
+
+.footer-row,
+.section-note,
+.meta {
+  color: var(--brand-muted-deep);
 }
 
 @media (prefers-reduced-motion: reduce) {
