@@ -27,6 +27,7 @@ from services.control_plane.proposals import (
 from services.governance import GateError, GovernedRuntimeGateway
 from services.integrations.product_runtime import (
     DurableVideoProductRuntime,
+    ProductFinalizationPending,
     ProductRuntimeError,
 )
 from services.integrations.software_product_runtime import SoftwareProductRuntimeError
@@ -439,6 +440,8 @@ class ExecutionCoordinator:
                 token=token,
                 now=now,
             )
+        except ProductFinalizationPending:
+            raise
         except Exception as error:
             reason = _failure_reason(error)
             with self._connect() as connection:
@@ -555,6 +558,17 @@ class ExecutionCoordinator:
             product_state = runtime.get_state(request_id)
         except (ProductRuntimeError, SoftwareProductRuntimeError) as error:
             raise ExecutionCoordinatorError(str(error)) from error
+
+        if product_state["status"] == "finalizing":
+            if row["capability_id"] != _VIDEO or row["adapter_id"] != _VIDEO_ADAPTER:
+                raise ExecutionCoordinatorError(
+                    "unsupported finished-product finalization state"
+                )
+            try:
+                self._video.recover_finalizing(request_id, token=token, now=now)
+                product_state = self._video.get_state(request_id)
+            except ProductRuntimeError as error:
+                raise ExecutionCoordinatorError(str(error)) from error
 
         if product_state["status"] == "accepted":
             manifest = runtime.get_manifest(request_id)
