@@ -21,7 +21,7 @@ from services.desktop_oidc import DesktopIdentityError, DesktopOIDCService
 from services.evidence import EvidenceStore
 from services.execution_coordinator import ExecutionCoordinator
 from services.governance import GovernedRuntimeGateway
-from services.integrations import DurableVideoProductRuntime
+from services.integrations import DurableVideoProductRuntime, DurableWebProductRuntime
 from services.integrations.desktop_video_runtime import DesktopPromptVideoRuntime
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 
@@ -52,17 +52,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     workflow_store = WorkflowStore(WorkflowStoreConfig(database))
     live_state = LiveStateTransport(database)
     governed_runtime = GovernedRuntime(database)
-    scheduler = DurableWorkerScheduler(
-        database,
-        lease_duration=timedelta(seconds=arguments.lease_seconds),
-    )
+    scheduler = DurableWorkerScheduler(database, lease_duration=timedelta(seconds=arguments.lease_seconds))
     grant_policy = DurableGrantPolicy(database)
     evidence_store = EvidenceStore(root / "evidence")
-    governance = GovernedRuntimeGateway(
-        root / "governance.sqlite3",
-        governed_runtime,
-        hard_cap_minor=arguments.hard_cap_minor,
-    )
+    governance = GovernedRuntimeGateway(root / "governance.sqlite3", governed_runtime, hard_cap_minor=arguments.hard_cap_minor)
 
     def resolve_objective(job_id: str) -> str:
         job = control_plane.get_job(token, job_id)
@@ -86,12 +79,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         governance,
         video_runtime,
     )
+    web_runtime = DurableWebProductRuntime(
+        root / "web-product.sqlite3",
+        control_plane,
+        grant_policy,
+        governance,
+        root / "web",
+    )
     coordinator = ExecutionCoordinator(
         root / "execution-coordinator.sqlite3",
         control_plane,
         governance,
         grant_policy,
         product_runtime,
+        web_runtime,
     )
     control_server = ControlPlaneHTTPServer(
         ("127.0.0.1", 0),
@@ -114,19 +115,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         control_server.server_close()
         raise SystemExit(f"Desktop identity configuration rejected: {error}") from error
 
-    identity_server = DesktopIdentityHTTPServer(
-        ("127.0.0.1", 0),
-        bearer_token=token,
-        identity=identity,
-        coordinator=coordinator,
-    )
+    identity_server = DesktopIdentityHTTPServer(("127.0.0.1", 0), bearer_token=token, identity=identity, coordinator=coordinator)
     identity_host, identity_port = identity_server.server_address[:2]
 
-    control_thread = threading.Thread(
-        target=control_server.serve_forever,
-        name="ilaios-control-plane",
-        daemon=True,
-    )
+    control_thread = threading.Thread(target=control_server.serve_forever, name="ilaios-control-plane", daemon=True)
     control_thread.start()
 
     ready = {
@@ -138,10 +130,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "account_sign_in_configured": identity is not None,
         "governed_execution_configured": identity is not None,
         "video_finished_product_configured": True,
+        "web_finished_product_configured": True,
     }
-    arguments.ready_file.write_text(
-        json.dumps(ready, sort_keys=True), encoding="utf-8"
-    )
+    arguments.ready_file.write_text(json.dumps(ready, sort_keys=True), encoding="utf-8")
     print(json.dumps({"event": "desktop_ready", **ready}, sort_keys=True), flush=True)
 
     def stop_identity_if_control_plane_exits() -> None:
@@ -155,16 +146,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             pass
         identity_server.shutdown()
 
-    control_watchdog = threading.Thread(
-        target=stop_identity_if_control_plane_exits,
-        name="ilaios-control-plane-watchdog",
-        daemon=True,
-    )
-    parent_watchdog = threading.Thread(
-        target=stop_identity_if_parent_pipe_closes,
-        name="ilaios-desktop-parent-watchdog",
-        daemon=True,
-    )
+    control_watchdog = threading.Thread(target=stop_identity_if_control_plane_exits, name="ilaios-control-plane-watchdog", daemon=True)
+    parent_watchdog = threading.Thread(target=stop_identity_if_parent_pipe_closes, name="ilaios-desktop-parent-watchdog", daemon=True)
     control_watchdog.start()
     parent_watchdog.start()
 
