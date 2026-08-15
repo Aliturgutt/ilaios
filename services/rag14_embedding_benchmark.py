@@ -15,13 +15,13 @@ import json
 import math
 import platform
 import resource
-import statistics
 import sys
 import time
 import urllib.request
 from collections.abc import Sequence
+from dataclasses import asdict
 from pathlib import Path
-from typing import Any, cast
+from typing import Any
 
 from services.rag14_embedding_certification import (
     EmbeddingCandidate,
@@ -141,7 +141,9 @@ def _runtime_modules() -> tuple[Any, Any, Any]:
     return numpy, onnxruntime, tokenizers
 
 
-def _package_versions(candidate: EmbeddingCandidate, modules: tuple[Any, Any, Any]) -> dict[str, str]:
+def _package_versions(
+    candidate: EmbeddingCandidate, modules: tuple[Any, Any, Any]
+) -> dict[str, str]:
     numpy, onnxruntime, tokenizers = modules
     measured = {
         "python": f"{sys.version_info.major}.{sys.version_info.minor}",
@@ -157,14 +159,20 @@ def _package_versions(candidate: EmbeddingCandidate, modules: tuple[Any, Any, An
 
 
 def _model_path(candidate: EmbeddingCandidate, work_dir: Path) -> Path:
-    matches = [artifact.path for artifact in candidate.artifacts if artifact.path.endswith(".onnx")]
+    matches = [
+        artifact.path for artifact in candidate.artifacts if artifact.path.endswith(".onnx")
+    ]
     if len(matches) != 1:
         raise EmbeddingBenchmarkError("candidate must contain exactly one ONNX model")
     return work_dir / matches[0]
 
 
 def _tokenizer_path(candidate: EmbeddingCandidate, work_dir: Path) -> Path:
-    matches = [artifact.path for artifact in candidate.artifacts if artifact.path.endswith("tokenizer.json")]
+    matches = [
+        artifact.path
+        for artifact in candidate.artifacts
+        if artifact.path.endswith("tokenizer.json")
+    ]
     if len(matches) != 1:
         raise EmbeddingBenchmarkError("candidate must contain exactly one tokenizer.json")
     return work_dir / matches[0]
@@ -213,7 +221,11 @@ def _encode(
         "attention_mask": numpy.asarray(attention_masks, dtype=numpy.int64),
         "token_type_ids": numpy.asarray(type_ids, dtype=numpy.int64),
     }
-    model_inputs = {item.name: arrays[item.name] for item in session.get_inputs() if item.name in arrays}
+    model_inputs = {
+        item.name: arrays[item.name]
+        for item in session.get_inputs()
+        if item.name in arrays
+    }
     if "input_ids" not in model_inputs or "attention_mask" not in model_inputs:
         raise EmbeddingBenchmarkError("ONNX model inputs are incompatible with E5 benchmark")
     outputs = session.run(None, model_inputs)
@@ -267,7 +279,9 @@ def run_benchmark(candidate: EmbeddingCandidate, work_dir: Path) -> dict[str, ob
         scores = corpus_embeddings @ query_embedding
         ordered = list(numpy.argsort(scores)[::-1])
         if len(ordered) < 2:
-            raise EmbeddingBenchmarkError("benchmark corpus must have at least two passages")
+            raise EmbeddingBenchmarkError(
+                "benchmark corpus must have at least two passages"
+            )
         top_index = int(ordered[0])
         runner_up = int(ordered[1])
         case_reports.append(
@@ -317,7 +331,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
     decision = evaluate_measured_report(candidate, arguments.output)
-    print(json.dumps(decision.__dict__, sort_keys=True, default=list))
+    print(json.dumps(asdict(decision), sort_keys=True))
     return 0 if decision.status == "HOST_CERTIFIED_CANDIDATE" else 1
 
 
