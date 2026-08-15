@@ -81,29 +81,23 @@ def test_design_strategy_differs_for_visual_business_context(tmp_path: Path) -> 
     assert "assets/site.css" in {row.relative_path for row in result.files}
 
 
-@pytest.mark.parametrize(
-    ("request_id", "objective"),
-    (
+def test_generated_site_accepts_multiple_context_specific_compositions(tmp_path: Path) -> None:
+    cases: tuple[tuple[str, str], ...] = (
         ("web-e2e-saas", "Build a website for a SaaS software company serving enterprise teams."),
         ("web-e2e-restaurant", "Build a visual website for a premium restaurant."),
         ("web-e2e-health", "Build a trusted website for a healthcare clinic."),
-    ),
-)
-def test_generated_site_accepts_multiple_context_specific_compositions(
-    tmp_path: Path,
-    request_id: str,
-    objective: str,
-) -> None:
-    now = datetime(2026, 8, 16, 0, 0, tzinfo=timezone.utc)
-    spec = derive_website_spec(request_id, objective)
-    result = GovernedWebFactory(GrantPolicy(), tmp_path / request_id).build_generated_site(
-        spec,
-        grant=_grant(spec.site_id, now),
-        now=now,
     )
-    assert result.accepted is True
-    assert result.design_strategy is not None
-    assert result.qa is not None and result.qa["passed"] is True
+    now = datetime(2026, 8, 16, 0, 0, tzinfo=timezone.utc)
+    for request_id, objective in cases:
+        spec = derive_website_spec(request_id, objective)
+        result = GovernedWebFactory(GrantPolicy(), tmp_path / request_id).build_generated_site(
+            spec,
+            grant=_grant(spec.site_id, now),
+            now=now,
+        )
+        assert result.accepted is True
+        assert result.design_strategy is not None
+        assert result.qa is not None and result.qa["passed"] is True
 
 
 def test_generated_site_renders_in_real_headless_browser_at_required_viewports(tmp_path: Path) -> None:
@@ -112,6 +106,7 @@ def test_generated_site_renders_in_real_headless_browser_at_required_viewports(t
         if os.environ.get("CI"):
             pytest.fail("CI must provide Chromium/Chrome for Web Factory browser evidence")
         pytest.skip("local Chrome/Chromium is unavailable")
+    assert chrome is not None
 
     now = datetime(2026, 8, 16, 0, 0, tzinfo=timezone.utc)
     spec = derive_website_spec(
