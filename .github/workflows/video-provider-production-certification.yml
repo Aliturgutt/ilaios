@@ -2,6 +2,11 @@ name: Video Provider Production Certification
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/video-provider-production-certification.trigger
 
 permissions:
   contents: read
