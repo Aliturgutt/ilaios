@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, cast
 
 from services.rag14_rollback_probe import _BAD_MODE, _bad_registration
 
 
 def test_bad_registration_changes_only_embedding_mode_in_runtime_environment() -> None:
-    current = {
+    current: dict[str, Any] = {
         "family": "ilaios-r01-canary",
         "cpu": "256",
         "memory": "1024",
@@ -27,18 +28,22 @@ def test_bad_registration_changes_only_embedding_mode_in_runtime_environment() -
         ],
     }
 
-    bad = _bad_registration(current)
+    bad = cast(dict[str, Any], _bad_registration(current))
 
     assert bad["cpu"] == "256"
     assert bad["memory"] == "1024"
-    container = bad["containerDefinitions"][0]
-    assert container["image"] == current["containerDefinitions"][0]["image"]
-    environment = {item["name"]: item["value"] for item in container["environment"]}
+    container = cast(dict[str, Any], bad["containerDefinitions"][0])
+    original_container = cast(dict[str, Any], current["containerDefinitions"][0])
+    assert container["image"] == original_container["image"]
+    environment = {
+        str(item["name"]): str(item["value"])
+        for item in cast(list[dict[str, object]], container["environment"])
+    }
     assert environment["ILAIOS_RELEASE_STATE"] == "CANARY"
     assert environment["ILAIOS_KNOWLEDGE_EMBEDDING_MODE"] == _BAD_MODE
     original_environment = {
-        item["name"]: item["value"]
-        for item in current["containerDefinitions"][0]["environment"]
+        str(item["name"]): str(item["value"])
+        for item in cast(list[dict[str, object]], original_container["environment"])
     }
     assert original_environment["ILAIOS_KNOWLEDGE_EMBEDDING_MODE"] == (
         "multilingual_e5_small_qint8_v1"
