@@ -3,6 +3,8 @@ import 'dart:io';
 
 import '../control_plane/client.dart';
 
+typedef IdentityRetryDelay = Future<void> Function(Duration duration);
+
 class IdentityProviderOption {
   const IdentityProviderOption({
     required this.providerId,
@@ -67,13 +69,18 @@ class IdentityClient {
     required Uri baseUri,
     required String transportToken,
     ControlPlaneTransport? transport,
+    IdentityRetryDelay? retryDelay,
   })  : _baseUri = _validatedBaseUri(baseUri),
         _transportToken = _validatedToken(transportToken),
-        _transport = transport ?? const IoControlPlaneTransport();
+        _transport = transport ?? const IoControlPlaneTransport(),
+        _retryDelay = retryDelay ?? _defaultRetryDelay;
+
+  static const Duration _startupRetryDelay = Duration(milliseconds: 350);
 
   final Uri _baseUri;
   final String _transportToken;
   final ControlPlaneTransport _transport;
+  final IdentityRetryDelay _retryDelay;
 
   Future<List<IdentityProviderOption>> fetchProviders() async {
     final payload = await _get('/v1/auth/providers', 'identity providers');
@@ -118,6 +125,7 @@ class IdentityClient {
       <String, Object?>{'provider_id': normalized},
       'sign-in start',
       expectedStatus: HttpStatus.created,
+      retryTransportAuthentication: true,
     );
     final state = payload['state'];
     final authorizationUrl = payload['authorization_url'];
@@ -317,13 +325,15 @@ class IdentityClient {
   }
 
   Future<Map<String, dynamic>> _get(String path, String label) async {
-    final response = await _transport.get(
-      _baseUri.resolve(path),
-      headers: <String, String>{'Authorization': 'Bearer $_transportToken'},
-    );
+    final uri = _baseUri.resolve(path);
+    final headers = <String, String>{'Authorization': 'Bearer $_transportToken'};
+    var response = await _transport.get(uri, headers: headers);
+    if (_isTransportAuthenticationFailure(response)) {
+      await _retryDelay(_startupRetryDelay);
+      response = await _transport.get(uri, headers: headers);
+    }
     final payload = _decode(response, label);
-    if (response.statusCode == HttpStatus.unauthorized ||
-        response.statusCode == HttpStatus.forbidden) {
+    if (_isTransportAuthenticationFailure(response)) {
       throw const IdentityClientException(
         'Desktop identity transport authentication failed',
       );
@@ -354,12 +364,32 @@ class IdentityClient {
     Map<String, Object?> body,
     String label, {
     required int expectedStatus,
+    bool retryTransportAuthentication = false,
   }) async {
-    final response = await _transport.post(
-      _baseUri.resolve(path),
-      body: jsonEncode(body),
-      headers: <String, String>{'Authorization': 'Bearer $_transportToken'},
+    final uri = _baseUri.resolve(path);
+    final encodedBody = jsonEncode(body);
+    final headers = <String, String>{'Authorization': 'Bearer $_transportToken'};
+    var response = await _transport.post(
+      uri,
+      body: encodedBody,
+      headers: headers,
     );
+    if (retryTransportAuthentication &&
+        _isTransportAuthenticationFailure(response)) {
+      await _retryDelay(_startupRetryDelay);
+      response = await _transport.post(
+        uri,
+        body: encodedBody,
+        headers: headers,
+      );
+    }
+    if (retryTransportAuthentication &&
+        _isTransportAuthenticationFailure(response)) {
+      _decode(response, label);
+      throw const IdentityClientException(
+        'Desktop identity transport authentication failed',
+      );
+    }
     return _checkedPayload(response, label, expectedStatus);
   }
 
@@ -399,6 +429,15 @@ class IdentityClient {
     }
     return payload;
   }
+
+  static bool _isTransportAuthenticationFailure(
+    ControlPlaneResponse response,
+  ) =>
+      response.statusCode == HttpStatus.unauthorized ||
+      response.statusCode == HttpStatus.forbidden;
+
+  static Future<void> _defaultRetryDelay(Duration duration) =>
+      Future<void>.delayed(duration);
 
   static Map<String, dynamic> _decode(
     ControlPlaneResponse response,

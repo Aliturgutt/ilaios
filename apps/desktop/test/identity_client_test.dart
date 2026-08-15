@@ -37,6 +37,44 @@ class _FakeTransport implements ControlPlaneTransport {
   }
 }
 
+class _SequencedTransport implements ControlPlaneTransport {
+  _SequencedTransport({
+    List<ControlPlaneResponse> getResponses = const <ControlPlaneResponse>[],
+    List<ControlPlaneResponse> postResponses = const <ControlPlaneResponse>[],
+  })  : _getResponses = List<ControlPlaneResponse>.of(getResponses),
+        _postResponses = List<ControlPlaneResponse>.of(postResponses);
+
+  final List<ControlPlaneResponse> _getResponses;
+  final List<ControlPlaneResponse> _postResponses;
+  final List<({String method, Uri uri, Map<String, String> headers, String? body})>
+      requests = [];
+
+  @override
+  Future<ControlPlaneResponse> get(
+    Uri uri, {
+    Map<String, String> headers = const <String, String>{},
+  }) async {
+    requests.add((method: 'GET', uri: uri, headers: Map.of(headers), body: null));
+    if (_getResponses.isEmpty) {
+      throw StateError('No queued GET response');
+    }
+    return _getResponses.removeAt(0);
+  }
+
+  @override
+  Future<ControlPlaneResponse> post(
+    Uri uri, {
+    required String body,
+    Map<String, String> headers = const <String, String>{},
+  }) async {
+    requests.add((method: 'POST', uri: uri, headers: Map.of(headers), body: body));
+    if (_postResponses.isEmpty) {
+      throw StateError('No queued POST response');
+    }
+    return _postResponses.removeAt(0);
+  }
+}
+
 const _session = DesktopUserSession(
   sessionId: 'session-1',
   providerId: 'google',
@@ -68,6 +106,94 @@ void main() {
       transport.requests.single.headers['Authorization'],
       'Bearer local-transport-token',
     );
+  });
+
+  test('retries one transient provider transport-auth failure during startup', () async {
+    final transport = _SequencedTransport(
+      getResponses: const <ControlPlaneResponse>[
+        ControlPlaneResponse(
+          statusCode: 401,
+          body: '{"error":"Desktop identity transport authentication failed"}',
+        ),
+        ControlPlaneResponse(
+          statusCode: 200,
+          body: '{"providers":[{"provider_id":"google","display_name":"Google"}]}',
+        ),
+      ],
+    );
+    final client = IdentityClient(
+      baseUri: Uri.parse('http://127.0.0.1:43123'),
+      transportToken: 'local-transport-token',
+      transport: transport,
+      retryDelay: (_) async {},
+    );
+
+    final providers = await client.fetchProviders();
+
+    expect(providers.single.providerId, 'google');
+    expect(transport.requests, hasLength(2));
+    expect(transport.requests.every((request) => request.method == 'GET'), isTrue);
+  });
+
+  test('retries one transient sign-in start transport-auth failure', () async {
+    final transport = _SequencedTransport(
+      postResponses: const <ControlPlaneResponse>[
+        ControlPlaneResponse(
+          statusCode: 401,
+          body: '{"error":"Desktop identity transport authentication failed"}',
+        ),
+        ControlPlaneResponse(
+          statusCode: 201,
+          body:
+              '{"provider_id":"google","state":"state-1","authorization_url":"https://accounts.example.test/authorize?state=state-1"}',
+        ),
+      ],
+    );
+    final client = IdentityClient(
+      baseUri: Uri.parse('http://127.0.0.1:43123'),
+      transportToken: 'local-transport-token',
+      transport: transport,
+      retryDelay: (_) async {},
+    );
+
+    final started = await client.start('google');
+
+    expect(started.state, 'state-1');
+    expect(transport.requests, hasLength(2));
+    expect(transport.requests.every((request) => request.method == 'POST'), isTrue);
+  });
+
+  test('persistent startup transport-auth failure remains fail closed after one retry', () async {
+    final transport = _SequencedTransport(
+      getResponses: const <ControlPlaneResponse>[
+        ControlPlaneResponse(
+          statusCode: 401,
+          body: '{"error":"Desktop identity transport authentication failed"}',
+        ),
+        ControlPlaneResponse(
+          statusCode: 401,
+          body: '{"error":"Desktop identity transport authentication failed"}',
+        ),
+      ],
+    );
+    final client = IdentityClient(
+      baseUri: Uri.parse('http://127.0.0.1:43123'),
+      transportToken: 'local-transport-token',
+      transport: transport,
+      retryDelay: (_) async {},
+    );
+
+    await expectLater(
+      client.fetchProviders(),
+      throwsA(
+        isA<IdentityClientException>().having(
+          (error) => error.message,
+          'message',
+          'Desktop identity transport authentication failed',
+        ),
+      ),
+    );
+    expect(transport.requests, hasLength(2));
   });
 
   test('starts HTTPS browser authorization and accepts only ILAIOS session metadata', () async {
