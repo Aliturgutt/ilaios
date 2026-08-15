@@ -1,6 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
+bool isExplicitLoopbackHttpEndpoint(Uri uri) {
+  final loopbackHost =
+      uri.host == '127.0.0.1' || uri.host == '::1' || uri.host == 'localhost';
+  return uri.scheme == 'http' && loopbackHost && uri.hasPort;
+}
+
 class ControlPlaneConfig {
   const ControlPlaneConfig({
     required this.baseUri,
