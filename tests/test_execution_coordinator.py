@@ -71,7 +71,7 @@ def _coordinator(
 def test_route_selection_is_conservative_and_canonical() -> None:
     video = classify_execution_route("Create a 60 second launch video and final MP4")
     assert video.capability_id == "ilaios.capability.video-media-factory"
-    assert video.adapter_id == "video.product-runtime.v1"
+    assert video.adapter_id is None
 
     web = classify_execution_route("Build a premium website for a furniture company")
     assert web.capability_id == "ilaios.capability.web-factory"
@@ -123,6 +123,7 @@ def test_medium_video_is_admitted_without_human_approval_or_early_lease(
 
     assert prepared["execution_status"] == "ADMITTED"
     assert prepared["capability_id"] == "ilaios.capability.video-media-factory"
+    assert prepared["adapter_id"] == "video.product-runtime.v1"
     assert scheduler.state()["leases"] == []
     assert governance.approval_proven("exec-video-1") is False
     assert governance.admission_snapshot("exec-video-1") == {

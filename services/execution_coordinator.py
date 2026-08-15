@@ -24,6 +24,10 @@ from services.control_plane.proposals import (
     ProposedTask,
     RiskClass,
 )
+from services.finished_product_adapters import (
+    FinishedProductAdapterRegistry,
+    VideoFinishedProductAdapter,
+)
 from services.governance import GateError, GovernedRuntimeGateway
 from services.integrations.product_runtime import DurableVideoProductRuntime
 from services.runtime import BlastRadiusBudget, DurableGrantPolicy, ExecutionGrant
@@ -36,7 +40,7 @@ class ExecutionCoordinatorError(RuntimeError):
 @dataclass(frozen=True, slots=True)
 class ExecutionRoute:
     capability_id: str
-    adapter_id: str | None
+    adapter_id: str | None = None
 
 
 _VIDEO = "ilaios.capability.video-media-factory"
@@ -135,12 +139,16 @@ class ExecutionCoordinator:
         governance: GovernedRuntimeGateway,
         grants: DurableGrantPolicy,
         video: DurableVideoProductRuntime,
+        *,
+        adapter_registry: FinishedProductAdapterRegistry | None = None,
     ) -> None:
         self._database_path = database_path
         self._control_plane = control_plane
         self._governance = governance
         self._grants = grants
-        self._video = video
+        self._adapters = adapter_registry or FinishedProductAdapterRegistry(
+            (VideoFinishedProductAdapter(video),)
+        )
         database_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as connection:
             connection.execute(
@@ -184,24 +192,22 @@ class ExecutionCoordinator:
                 raise ExecutionCoordinatorError("execution request already exists")
 
         route = classify_execution_route(objective)
-        if (
-            route.capability_id == _VIDEO
-            and route.adapter_id == "video.product-runtime.v1"
-        ):
-            prepared = self._video.prepare(
+        adapter = self._adapters.resolve(route.capability_id)
+        adapter_id = None if adapter is None else adapter.descriptor.adapter_id
+        if adapter is not None:
+            prepared = adapter.prepare(
                 request_id,
                 objective,
                 token=token,
-                now=now,
-                requester_id=principal_id,
+                principal_id=principal_id,
                 tenant_id=tenant_id,
-                defer_lease=True,
+                now=now,
             )
             goal_id = _result_text(prepared, "goal_id")
             job_id = _result_text(prepared, "job_id")
             proposal_id = _result_text(prepared, "proposal_id")
             if prepared.get("admission_decision") != "ALLOW":
-                raise ExecutionCoordinatorError("video execution was not admitted")
+                raise ExecutionCoordinatorError("finished-product execution was not admitted")
             status = "ADMITTED"
         else:
             goal = self._control_plane.create_goal(token, objective)
@@ -233,7 +239,7 @@ class ExecutionCoordinator:
             "principal_id": principal_id,
             "tenant_id": tenant_id,
             "capability_id": route.capability_id,
-            "adapter_id": route.adapter_id,
+            "adapter_id": adapter_id,
             "goal_id": goal_id,
             "job_id": job_id,
             "proposal_id": proposal_id,
@@ -251,7 +257,7 @@ class ExecutionCoordinator:
                     tenant_id,
                     objective,
                     route.capability_id,
-                    route.adapter_id,
+                    adapter_id,
                     goal_id,
                     job_id,
                     proposal_id,
@@ -329,25 +335,31 @@ class ExecutionCoordinator:
         current_status = str(row["status"])
         if current_status not in {"ADMITTED", "APPROVED"}:
             raise ExecutionCoordinatorError("execution request is not resumable")
-        if (
-            row["capability_id"] != _VIDEO
-            or row["adapter_id"] != "video.product-runtime.v1"
-        ):
+        adapter_id = None if row["adapter_id"] is None else str(row["adapter_id"])
+        adapter = self._adapters.resolve(
+            str(row["capability_id"]), adapter_id=adapter_id
+        )
+        if adapter is None or adapter_id is None:
             raise ExecutionCoordinatorError(
                 "selected capability has no executable adapter"
             )
         if not self._governance.admission_proven(request_id):
             raise ExecutionCoordinatorError("governed execution admission is required")
 
+        descriptor = adapter.descriptor
+        grant_requirements = descriptor.grant
         job_id = str(row["job_id"])
         grant_id = _grant_id(request_id)
         grant = ExecutionGrant(
             grant_id,
-            "worker-video",
-            frozenset({"video.execute"}),
+            grant_requirements.worker_id,
+            grant_requirements.actions,
             frozenset({job_id}),
-            now + timedelta(minutes=10),
-            BlastRadiusBudget(max_side_effects=1, max_resources=1),
+            now + timedelta(seconds=grant_requirements.ttl_seconds),
+            BlastRadiusBudget(
+                max_side_effects=grant_requirements.max_side_effects,
+                max_resources=grant_requirements.max_resources,
+            ),
         )
         with self._connect() as connection:
             changed = connection.execute(
@@ -360,12 +372,16 @@ class ExecutionCoordinator:
 
         try:
             self._grants.register(grant)
-            manifest = self._video.execute(
+            manifest = adapter.resume(
                 request_id,
                 grant_id,
                 token=token,
                 now=now,
             )
+            if manifest.get("accepted") is not True:
+                raise ExecutionCoordinatorError(
+                    "finished-product adapter did not return accepted evidence"
+                )
         except Exception:
             with self._connect() as connection:
                 connection.execute(
@@ -444,8 +460,9 @@ def classify_execution_route(objective: str) -> ExecutionRoute:
     capability_id = unique[0]
     if capability_id not in _KNOWN_CAPABILITY_IDS:
         raise ExecutionCoordinatorError("selected capability is not canonical")
-    adapter_id = "video.product-runtime.v1" if capability_id == _VIDEO else None
-    return ExecutionRoute(capability_id, adapter_id)
+    # Intent routing selects only the canonical capability. Executability and
+    # adapter identity are authoritative registry decisions made during prepare.
+    return ExecutionRoute(capability_id)
 
 
 def _grant_id(request_id: str) -> str:
