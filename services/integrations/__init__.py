@@ -7,7 +7,11 @@ from .product_proof import (
     GovernedVideoProductProof,
     ProductProofError,
 )
-from .product_runtime import DurableVideoProductRuntime, ProductRuntimeError
+from .product_runtime import (
+    DurableVideoProductRuntime,
+    ProductFinalizationPending,
+    ProductRuntimeError,
+)
 from .video import VideoChainAdapter, VideoIntegrationError, VideoIntegrationResult
 from .video_runtime import DeterministicLocalVideoRuntime, VideoRuntimeError
 from .web_factory import GovernedWebFactory, WebsiteAcceptance, WebsiteFile
@@ -20,6 +24,7 @@ __all__ = [
     "DurableVideoProductRuntime",
     "GovernedVideoProductProof",
     "GovernedWebFactory",
+    "ProductFinalizationPending",
     "ProductProofError",
     "ProductRuntimeError",
     "VideoChainAdapter",
