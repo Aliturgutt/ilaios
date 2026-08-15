@@ -7,7 +7,11 @@ from .product_proof import (
     GovernedVideoProductProof,
     ProductProofError,
 )
-from .product_runtime import DurableVideoProductRuntime, ProductRuntimeError
+from .product_runtime import (
+    DurableVideoProductRuntime,
+    ProductFinalizationPending,
+    ProductRuntimeError,
+)
 from .software_product_runtime import (
     DurableSoftwareProductRuntime,
     FinishedSoftwareBuilder,
@@ -28,6 +32,7 @@ __all__ = [
     "FinishedSoftwareBuilder",
     "GovernedVideoProductProof",
     "GovernedWebFactory",
+    "ProductFinalizationPending",
     "ProductProofError",
     "ProductRuntimeError",
     "RecoverableSoftwareProductRuntime",
