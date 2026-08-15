@@ -41,6 +41,19 @@ class DesktopUserSession {
   final String? displayIdentity;
 }
 
+class GovernedPromptSubmission extends PromptSubmission {
+  const GovernedPromptSubmission({
+    required super.goalId,
+    required super.jobId,
+    required super.state,
+    required this.requestId,
+    required this.executionStatus,
+  });
+
+  final String requestId;
+  final String executionStatus;
+}
+
 class IdentityClientException implements Exception {
   const IdentityClientException(this.message);
   final String message;
@@ -171,7 +184,7 @@ class IdentityClient {
     );
   }
 
-  Future<PromptSubmission> submitPrompt(
+  Future<GovernedPromptSubmission> submitPrompt(
     String objective,
     DesktopUserSession session,
   ) async {
@@ -192,17 +205,29 @@ class IdentityClient {
     final goalId = payload['goal_id'];
     final jobId = payload['job_id'];
     final state = payload['state'];
+    final requestId = payload['request_id'];
+    final executionStatus = payload['execution_status'];
     if (goalId is! String ||
         goalId.isEmpty ||
         jobId is! String ||
         jobId.isEmpty ||
         state is! String ||
-        state.isEmpty) {
+        state.isEmpty ||
+        requestId is! String ||
+        requestId.isEmpty ||
+        executionStatus is! String ||
+        executionStatus.isEmpty) {
       throw const IdentityClientException(
         'Authenticated intent response is malformed',
       );
     }
-    return PromptSubmission(goalId: goalId, jobId: jobId, state: state);
+    return GovernedPromptSubmission(
+      goalId: goalId,
+      jobId: jobId,
+      state: state,
+      requestId: requestId,
+      executionStatus: executionStatus,
+    );
   }
 
   Future<String> decideExecution(
