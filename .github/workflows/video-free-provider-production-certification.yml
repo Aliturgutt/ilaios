@@ -1,0 +1,80 @@
+name: Video Free Provider Production Certification
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/video-free-provider-production-certification.trigger
+
+permissions:
+  contents: read
+
+concurrency:
+  group: video-free-provider-production-certification
+  cancel-in-progress: false
+
+jobs:
+  free-provider-proof:
+    name: Real zero-cost AI video provider proof
+    runs-on: ubuntu-latest
+    environment: Production
+    timeout-minutes: 15
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      VIDEO_FREE_PROVIDER_PROOF_DIR: artifacts/video-free-provider-proof
+      VIDEO_FREE_PROVIDER_MODELS: bytedance/seedance-2.0-fast:free,bytedance/seedance-2.0:free,bytedance/seedance-1-5-pro:free
+
+    steps:
+      - name: Checkout exact source revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Run real free-only provider certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m src.video_automation.free_provider_production_certification
+
+      - name: Publish free-provider proof summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "## Video Free Provider Production Certification" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f "$VIDEO_FREE_PROVIDER_PROOF_DIR/free-provider-receipt.json" ]]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          proof_dir = Path(os.environ["VIDEO_FREE_PROVIDER_PROOF_DIR"])
+          receipt = json.loads(
+              (proof_dir / "free-provider-receipt.json").read_text(encoding="utf-8")
+          )
+          artifact = receipt.get("artifact") or {}
+          print(f"- Status: `{receipt.get('status')}`")
+          print(f"- Revision: `{receipt.get('revision_sha')}`")
+          print(f"- Model: `{receipt.get('selected_model', 'n/a')}`")
+          print(f"- External job: `{receipt.get('external_job_id', 'n/a')}`")
+          print(f"- Provider-reported cost USD: `{receipt.get('provider_reported_cost_usd', 'n/a')}`")
+          print(f"- Artifact SHA-256: `{artifact.get('sha256', 'n/a')}`")
+          print(f"- Artifact bytes: `{artifact.get('bytes', 'n/a')}`")
+          print("- Paid fallback allowed: `FALSE`")
+          print("- Only explicit `:free` model IDs may reach the provider POST boundary.")
+          print("- Credential material is never written to evidence or logs.")
+          PY
+          else
+            echo "- Status: `NO_RECEIPT`" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload immutable free-provider proof evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: video-free-provider-proof-${{ github.sha }}-${{ github.run_id }}
+          path: artifacts/video-free-provider-proof
+          if-no-files-found: warn
+          retention-days: 30
