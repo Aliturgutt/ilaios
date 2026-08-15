@@ -193,6 +193,88 @@ jobs:
           set -euo pipefail
           python -m services.rag14_canary_evidence
 
+      - name: Prove cross-tenant state binding on Fargate
+        run: |
+          set -euo pipefail
+          TASK_DEFINITION="$(aws ecs describe-services --cluster ilaios-r01-canary --services ilaios-r01-canary --region eu-central-1 --query 'services[0].taskDefinition' --output text)"
+          aws ecs describe-services --cluster ilaios-r01-canary --services ilaios-r01-canary --region eu-central-1 --query 'services[0].networkConfiguration.awsvpcConfiguration' --output json > /tmp/rag14-cross-tenant-network.json
+          python - "$TASK_DEFINITION" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          network = json.loads(Path("/tmp/rag14-cross-tenant-network.json").read_text(encoding="utf-8"))
+          request = {
+              "cluster": "ilaios-r01-canary",
+              "taskDefinition": sys.argv[1],
+              "launchType": "FARGATE",
+              "count": 1,
+              "startedBy": "rag14-cross-tenant-probe",
+              "networkConfiguration": {"awsvpcConfiguration": network},
+              "overrides": {
+                  "containerOverrides": [
+                      {
+                          "name": "runtime",
+                          "environment": [
+                              {
+                                  "name": "ILAIOS_KNOWLEDGE_TENANT_ID",
+                                  "value": "rag14-canary-tenant-b",
+                              }
+                          ],
+                      }
+                  ]
+              },
+          }
+          Path("/tmp/rag14-cross-tenant-run-task.json").write_text(
+              json.dumps(request), encoding="utf-8"
+          )
+          PY
+          TASK_ARN="$(aws ecs run-task --cli-input-json file:///tmp/rag14-cross-tenant-run-task.json --region eu-central-1 --query 'tasks[0].taskArn' --output text)"
+          test -n "$TASK_ARN"
+          test "$TASK_ARN" != "None"
+          aws ecs wait tasks-stopped --cluster ilaios-r01-canary --tasks "$TASK_ARN" --region eu-central-1
+          EXIT_CODE="$(aws ecs describe-tasks --cluster ilaios-r01-canary --tasks "$TASK_ARN" --region eu-central-1 --query 'tasks[0].containers[0].exitCode' --output text)"
+          if [ "$EXIT_CODE" = "0" ]; then
+            echo 'Cross-tenant Fargate probe unexpectedly started with tenant B against tenant A state.'
+            exit 1
+          fi
+          TASK_ID="${TASK_ARN##*/}"
+          STREAM="runtime/runtime/${TASK_ID}"
+          PROOF=''
+          for _ in $(seq 1 30); do
+            PROOF="$(aws logs get-log-events --log-group-name '/ilaios/r01/canary/runtime' --log-stream-name "$STREAM" --start-from-head --region eu-central-1 --query 'events[].message' --output text 2>/dev/null || true)"
+            if printf '%s' "$PROOF" | grep -Fq 'scope binding mismatch'; then
+              break
+            fi
+            sleep 3
+          done
+          if ! printf '%s' "$PROOF" | grep -Fq 'scope binding mismatch'; then
+            echo 'Cross-tenant task failed, but the fail-closed scope-binding reason was not proven.'
+            exit 1
+          fi
+          python - "$TASK_ARN" "$EXIT_CODE" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          Path("rag14-evidence/cross-tenant-fargate.json").write_text(
+              json.dumps(
+                  {
+                      "status": "PASS",
+                      "task_arn": sys.argv[1],
+                      "exit_code": int(sys.argv[2]),
+                      "attempted_tenant_id": "rag14-canary-tenant-b",
+                      "expected_bound_tenant_id": "rag14-canary-tenant",
+                      "scope_binding_rejected": True,
+                      "production_authority": False,
+                  },
+                  sort_keys=True,
+                  indent=2,
+              ) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
       - name: Collect live RAG.14 recovery observability FinOps and rollback evidence
         run: |
           set -euo pipefail
