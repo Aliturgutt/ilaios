@@ -228,7 +228,7 @@ class ExecutionCoordinator:
             proposal_id = str(proposal["proposal_id"])
             status = "BLOCKED_ADAPTER_UNAVAILABLE"
 
-        result = {
+        result: dict[str, object] = {
             "request_id": request_id,
             "principal_id": principal_id,
             "tenant_id": tenant_id,
