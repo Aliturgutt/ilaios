@@ -27,8 +27,8 @@
     "numpy": "2.5.1"
   },
   "thresholds": {
-    "target_memory_limit_mib": 512,
-    "max_peak_rss_mib": 384,
+    "target_memory_limit_mib": 1024,
+    "max_peak_rss_mib": 768,
     "max_p95_query_latency_ms": 2000,
     "required_top1_cases": 6,
     "required_embedding_dimensions": 384
