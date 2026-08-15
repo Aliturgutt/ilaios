@@ -1,0 +1,359 @@
+name: Video Real Provider Proof 2026-08-15
+
+on:
+  push:
+    branches:
+      - codex/video-real-provider-proof-20260815
+    paths:
+      - .github/workflows/video-real-provider-proof-20260815.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: video-real-provider-proof-20260815
+  cancel-in-progress: false
+
+jobs:
+  seedance-proof:
+    name: Bounded credentialed Seedance generation proof
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      PROOF_DIR: artifacts/video-real-provider-proof
+      MODEL: bytedance/seedance-2.0-fast
+      DURATION_SECONDS: "4"
+      RESOLUTION: 480p
+      ASPECT_RATIO: "16:9"
+      MAX_UNIT_PRICE_USD: "0.15"
+      MAX_TOTAL_COST_USD: "0.60"
+
+    steps:
+      - name: Generate one bounded real provider artifact and receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$PROOF_DIR"
+          python - <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          import json
+          import os
+          import sys
+          import time
+          import urllib.error
+          import urllib.request
+          from datetime import datetime, timezone
+          from decimal import Decimal, InvalidOperation
+          from pathlib import Path
+          from typing import Any
+
+          api_key = os.environ.get("OPENROUTER_API_KEY", "")
+          proof_dir = Path(os.environ["PROOF_DIR"])
+          proof_dir.mkdir(parents=True, exist_ok=True)
+          receipt_path = proof_dir / "provider-receipt.json"
+          video_path = proof_dir / "provider-proof.mp4"
+          model_id = os.environ["MODEL"]
+          duration = int(os.environ["DURATION_SECONDS"])
+          resolution = os.environ["RESOLUTION"]
+          aspect_ratio = os.environ["ASPECT_RATIO"]
+          max_unit_price = Decimal(os.environ["MAX_UNIT_PRICE_USD"])
+          max_total_cost = Decimal(os.environ["MAX_TOTAL_COST_USD"])
+          revision_sha = os.environ.get("GITHUB_SHA", "")
+          run_id = os.environ.get("GITHUB_RUN_ID", "")
+          run_attempt = os.environ.get("GITHUB_RUN_ATTEMPT", "")
+          started_at = datetime.now(timezone.utc).isoformat()
+
+          receipt: dict[str, Any] = {
+              "schema": "ilaios.video.real-provider-proof.v1",
+              "status": "STARTED",
+              "revision_sha": revision_sha,
+              "workflow_run_id": run_id,
+              "workflow_run_attempt": run_attempt,
+              "provider": "openrouter",
+              "model": model_id,
+              "credential_reference": "github-actions-secret://OPENROUTER_API_KEY",
+              "request": {
+                  "duration_seconds": duration,
+                  "resolution": resolution,
+                  "aspect_ratio": aspect_ratio,
+                  "generate_audio": False,
+              },
+              "budget_guard": {
+                  "max_unit_price_usd": str(max_unit_price),
+                  "max_total_cost_usd": str(max_total_cost),
+              },
+              "started_at": started_at,
+          }
+
+          def persist() -> None:
+              receipt_path.write_text(
+                  json.dumps(receipt, indent=2, sort_keys=True) + "\n",
+                  encoding="utf-8",
+              )
+
+          def fail(status: str, message: str, *, exit_code: int = 1) -> None:
+              receipt["status"] = status
+              receipt["error"] = message
+              receipt["finished_at"] = datetime.now(timezone.utc).isoformat()
+              persist()
+              print(f"PROVIDER_PROOF_STATUS={status}")
+              print(message)
+              raise SystemExit(exit_code)
+
+          def request_json(
+              url: str,
+              *,
+              method: str = "GET",
+              payload: dict[str, Any] | None = None,
+              authenticated: bool = False,
+              timeout: int = 30,
+          ) -> tuple[int, dict[str, Any]]:
+              body = None
+              headers = {"Accept": "application/json"}
+              if payload is not None:
+                  body = json.dumps(payload).encode("utf-8")
+                  headers["Content-Type"] = "application/json"
+              if authenticated:
+                  headers["Authorization"] = f"Bearer {api_key}"
+              req = urllib.request.Request(url, data=body, headers=headers, method=method)
+              try:
+                  with urllib.request.urlopen(req, timeout=timeout) as response:
+                      raw = response.read().decode("utf-8")
+                      parsed = json.loads(raw) if raw else {}
+                      return int(response.status), parsed
+              except urllib.error.HTTPError as exc:
+                  raw = exc.read().decode("utf-8", errors="replace")
+                  try:
+                      parsed = json.loads(raw) if raw else {}
+                  except json.JSONDecodeError:
+                      parsed = {"error": raw[:1000]}
+                  return int(exc.code), parsed
+
+          if not api_key:
+              fail(
+                  "BLOCKED_MISSING_SECRET",
+                  "OPENROUTER_API_KEY is not available to this GitHub Actions run; no provider request was submitted.",
+              )
+
+          models_status, models_payload = request_json(
+              "https://openrouter.ai/api/v1/videos/models",
+              timeout=30,
+          )
+          if models_status != 200:
+              fail(
+                  "BLOCKED_MODEL_DISCOVERY",
+                  f"Video model discovery returned HTTP {models_status}; no paid request was submitted.",
+              )
+
+          model = next(
+              (
+                  item
+                  for item in models_payload.get("data", [])
+                  if isinstance(item, dict) and item.get("id") == model_id
+              ),
+              None,
+          )
+          if not isinstance(model, dict):
+              fail(
+                  "BLOCKED_MODEL_UNAVAILABLE",
+                  f"Required model {model_id} is not currently advertised by the video model endpoint.",
+              )
+
+          durations = model.get("supported_durations") or []
+          resolutions = model.get("supported_resolutions") or []
+          aspect_ratios = model.get("supported_aspect_ratios") or []
+          if duration not in durations or resolution not in resolutions or aspect_ratio not in aspect_ratios:
+              fail(
+                  "BLOCKED_CAPABILITY_CHANGED",
+                  "Required 4-second/480p/16:9 bounded proof shape is not currently supported; no paid request was submitted.",
+              )
+
+          pricing_skus = model.get("pricing_skus")
+          if not isinstance(pricing_skus, dict) or "generate" not in pricing_skus:
+              fail(
+                  "BLOCKED_PRICE_UNPROVEN",
+                  "Model metadata did not expose pricing_skus.generate; no paid request was submitted.",
+              )
+          try:
+              unit_price = Decimal(str(pricing_skus["generate"]).replace("$", "").strip())
+          except (InvalidOperation, ValueError):
+              fail(
+                  "BLOCKED_PRICE_UNPROVEN",
+                  "Model pricing could not be parsed deterministically; no paid request was submitted.",
+              )
+          estimated_total = unit_price * Decimal(duration)
+          receipt["model_metadata"] = {
+              "supported_durations": durations,
+              "supported_resolutions": resolutions,
+              "supported_aspect_ratios": aspect_ratios,
+              "pricing_skus": pricing_skus,
+          }
+          receipt["budget_guard"]["observed_unit_price_usd"] = str(unit_price)
+          receipt["budget_guard"]["estimated_total_usd"] = str(estimated_total)
+          persist()
+          if unit_price > max_unit_price or estimated_total > max_total_cost:
+              fail(
+                  "BLOCKED_COST_GUARD",
+                  "Current provider pricing exceeds the bounded proof budget; no paid request was submitted.",
+              )
+
+          prompt = (
+              "A four-second cinematic abstract technology shot for infrastructure validation: "
+              "soft cyan light travels across a dark graphite geometric surface, subtle depth, "
+              "slow controlled dolly motion, clean background, no people, no text, no logos."
+          )
+          payload = {
+              "model": model_id,
+              "prompt": prompt,
+              "duration": duration,
+              "resolution": resolution,
+              "aspect_ratio": aspect_ratio,
+              "generate_audio": False,
+          }
+          submitted_at = datetime.now(timezone.utc).isoformat()
+          submit_status, submit_payload = request_json(
+              "https://openrouter.ai/api/v1/videos",
+              method="POST",
+              payload=payload,
+              authenticated=True,
+              timeout=60,
+          )
+          receipt["submitted_at"] = submitted_at
+          receipt["submit_http_status"] = submit_status
+          receipt["submit_receipt"] = {
+              key: submit_payload.get(key)
+              for key in ("id", "status", "generation_id", "error")
+              if submit_payload.get(key) is not None
+          }
+          persist()
+          if submit_status != 202:
+              fail(
+                  "FAILED_PROVIDER_SUBMIT",
+                  f"Credentialed video submission returned HTTP {submit_status}.",
+              )
+
+          job_id = submit_payload.get("id")
+          polling_url = submit_payload.get("polling_url")
+          if not isinstance(job_id, str) or not job_id.strip():
+              fail("FAILED_PROVIDER_RECEIPT", "Provider submission omitted a job id.")
+          if not isinstance(polling_url, str) or not polling_url.strip():
+              polling_url = f"/api/v1/videos/{job_id}"
+          if polling_url.startswith("/"):
+              polling_url = "https://openrouter.ai" + polling_url
+          receipt["external_job_id"] = job_id
+          receipt["polling_reference"] = f"openrouter://videos/{job_id}"
+          persist()
+
+          deadline = time.monotonic() + 12 * 60
+          statuses: list[str] = []
+          final_payload: dict[str, Any] = {}
+          while time.monotonic() < deadline:
+              poll_status, poll_payload = request_json(
+                  polling_url,
+                  authenticated=True,
+                  timeout=45,
+              )
+              if poll_status != 200:
+                  fail(
+                      "FAILED_PROVIDER_POLL",
+                      f"Provider polling returned HTTP {poll_status}.",
+                  )
+              status = str(poll_payload.get("status", "unknown"))
+              statuses.append(status)
+              final_payload = poll_payload
+              receipt["poll_statuses"] = statuses
+              persist()
+              if status == "completed":
+                  break
+              if status == "failed":
+                  receipt["provider_error"] = poll_payload.get("error")
+                  fail("FAILED_PROVIDER_GENERATION", "Provider reported failed generation.")
+              time.sleep(5)
+          else:
+              fail("FAILED_PROVIDER_TIMEOUT", "Provider job did not finish inside the 12-minute bound.")
+
+          usage = final_payload.get("usage")
+          receipt["generation_id"] = final_payload.get("generation_id")
+          receipt["usage"] = usage if isinstance(usage, dict) else None
+
+          content_url = f"https://openrouter.ai/api/v1/videos/{job_id}/content"
+          req = urllib.request.Request(
+              content_url,
+              headers={"Authorization": f"Bearer {api_key}"},
+              method="GET",
+          )
+          try:
+              with urllib.request.urlopen(req, timeout=120) as response:
+                  content_type = response.headers.get("Content-Type", "")
+                  media = response.read()
+                  content_status = int(response.status)
+          except urllib.error.HTTPError as exc:
+              fail(
+                  "FAILED_ARTIFACT_DOWNLOAD",
+                  f"Provider content download returned HTTP {exc.code}.",
+              )
+
+          if content_status != 200 or not media:
+              fail("FAILED_ARTIFACT_DOWNLOAD", "Provider returned no video bytes.")
+          if "video" not in content_type.lower() and not media.startswith(b"\x00\x00"):
+              fail(
+                  "FAILED_ARTIFACT_TYPE",
+                  f"Downloaded provider artifact has unexpected content type {content_type!r}.",
+              )
+
+          video_path.write_bytes(media)
+          artifact_sha = hashlib.sha256(media).hexdigest()
+          receipt["status"] = "PASS"
+          receipt["artifact"] = {
+              "path": video_path.name,
+              "sha256": artifact_sha,
+              "bytes": len(media),
+              "content_type": content_type,
+          }
+          receipt["artifact_receipt_ref"] = f"sha256:{artifact_sha}"
+          receipt["generation_receipt_ref"] = f"openrouter://videos/{job_id}"
+          receipt["finished_at"] = datetime.now(timezone.utc).isoformat()
+          persist()
+          print("PROVIDER_PROOF_STATUS=PASS")
+          print(f"PROVIDER_JOB_ID={job_id}")
+          print(f"PROVIDER_ARTIFACT_SHA256={artifact_sha}")
+          print(f"PROVIDER_ARTIFACT_BYTES={len(media)}")
+          PY
+
+      - name: Publish provider proof summary
+        if: always()
+        shell: bash
+        run: |
+          echo "## Video Real Provider Proof" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f "$PROOF_DIR/provider-receipt.json" ]]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+          receipt = json.loads((Path(os.environ["PROOF_DIR"]) / "provider-receipt.json").read_text())
+          print(f"- Status: `{receipt.get('status')}`")
+          print(f"- Revision: `{receipt.get('revision_sha')}`")
+          print(f"- Provider/model: `{receipt.get('provider')}` / `{receipt.get('model')}`")
+          print(f"- External job: `{receipt.get('external_job_id', 'n/a')}`")
+          artifact = receipt.get("artifact") or {}
+          print(f"- Artifact SHA-256: `{artifact.get('sha256', 'n/a')}`")
+          print(f"- Artifact bytes: `{artifact.get('bytes', 'n/a')}`")
+          usage = receipt.get("usage")
+          print(f"- Provider usage: `{usage if usage is not None else 'n/a'}`")
+          print("- Credential material is never written to evidence or logs.")
+          PY
+          else
+            echo "- Status: `NO_RECEIPT`" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload immutable provider proof evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: video-real-provider-proof-${{ github.sha }}
+          path: artifacts/video-real-provider-proof
+          if-no-files-found: warn
+          retention-days: 30
