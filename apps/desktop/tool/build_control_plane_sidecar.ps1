@@ -8,11 +8,13 @@ Set-StrictMode -Version Latest
 $desktopRoot = Split-Path -Parent $PSScriptRoot
 $repoRoot = Resolve-Path (Join-Path $desktopRoot '..\..')
 $entrypoint = Join-Path $desktopRoot 'sidecar\ilaios_control_plane_sidecar.py'
+$brandLogo = Join-Path $repoRoot 'brand\assets\03-ilaios-symbol-dark.jpg'
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
   $OutputDirectory = Join-Path $desktopRoot 'build\windows\x64\runner\Release'
 }
 
 if (-not (Test-Path $entrypoint)) { throw "Sidecar entrypoint missing: $entrypoint" }
+if (-not (Test-Path $brandLogo)) { throw "Official ILAIOS brand logo missing: $brandLogo" }
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 
 python -m pip install --disable-pip-version-check `
@@ -30,20 +32,27 @@ Remove-Item (Join-Path $desktopRoot 'build\sidecar') -Recurse -Force -ErrorActio
 New-Item -ItemType Directory -Force -Path $work, $spec, $dist | Out-Null
 
 $env:PYTHONPATH = $repoRoot
-python -m PyInstaller `
-  --noconfirm `
-  --clean `
-  --onefile `
-  --console `
-  --name ilaios_control_plane `
-  --paths $repoRoot `
-  --hidden-import jwt `
-  --hidden-import jwt.algorithms `
-  --workpath $work `
-  --specpath $spec `
-  --distpath $dist `
-  $entrypoint
-if ($LASTEXITCODE -ne 0) { throw 'PyInstaller failed to build the ILAIOS control-plane sidecar.' }
+Push-Location $repoRoot
+try {
+  python -m PyInstaller `
+    --noconfirm `
+    --clean `
+    --onefile `
+    --console `
+    --name ilaios_control_plane `
+    --paths $repoRoot `
+    --hidden-import jwt `
+    --hidden-import jwt.algorithms `
+    --add-data "$brandLogo;brand/assets" `
+    --workpath $work `
+    --specpath $spec `
+    --distpath $dist `
+    $entrypoint
+  if ($LASTEXITCODE -ne 0) { throw 'PyInstaller failed to build the ILAIOS control-plane sidecar.' }
+}
+finally {
+  Pop-Location
+}
 
 $built = Join-Path $dist 'ilaios_control_plane.exe'
 if (-not (Test-Path $built)) { throw "Sidecar executable missing: $built" }

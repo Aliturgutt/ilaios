@@ -41,6 +41,19 @@ class DesktopUserSession {
   final String? displayIdentity;
 }
 
+class GovernedPromptSubmission extends PromptSubmission {
+  const GovernedPromptSubmission({
+    required super.goalId,
+    required super.jobId,
+    required super.state,
+    required this.requestId,
+    required this.executionStatus,
+  });
+
+  final String requestId;
+  final String executionStatus;
+}
+
 class IdentityClientException implements Exception {
   const IdentityClientException(this.message);
   final String message;
@@ -171,7 +184,7 @@ class IdentityClient {
     );
   }
 
-  Future<PromptSubmission> submitPrompt(
+  Future<GovernedPromptSubmission> submitPrompt(
     String objective,
     DesktopUserSession session,
   ) async {
@@ -182,38 +195,116 @@ class IdentityClient {
     if (normalized.length > 20000) {
       throw const IdentityClientException('Prompt exceeds the Desktop input limit');
     }
-    final response = await _transport.post(
-      _baseUri.resolve('/v1/desktop/intent'),
-      body: jsonEncode(<String, Object?>{'objective': normalized}),
-      headers: <String, String>{
-        'Authorization': 'Bearer $_transportToken',
-        'X-ILAIOS-Session': session.sessionId,
-      },
+    final payload = await _sessionPost(
+      '/v1/desktop/intent',
+      <String, Object?>{'objective': normalized},
+      'authenticated intent',
+      session,
+      expectedStatus: HttpStatus.created,
     );
-    final payload = _decode(response, 'authenticated intent');
-    if (response.statusCode == HttpStatus.unauthorized ||
-        response.statusCode == HttpStatus.forbidden) {
-      throw const IdentityClientException('Desktop session is invalid or expired');
-    }
-    if (response.statusCode != HttpStatus.created) {
-      throw const IdentityClientException(
-        'Authenticated intent submission failed',
-      );
-    }
     final goalId = payload['goal_id'];
     final jobId = payload['job_id'];
     final state = payload['state'];
+    final requestId = payload['request_id'];
+    final executionStatus = payload['execution_status'];
     if (goalId is! String ||
         goalId.isEmpty ||
         jobId is! String ||
         jobId.isEmpty ||
         state is! String ||
-        state.isEmpty) {
+        state.isEmpty ||
+        requestId is! String ||
+        requestId.isEmpty ||
+        executionStatus is! String ||
+        executionStatus.isEmpty) {
       throw const IdentityClientException(
         'Authenticated intent response is malformed',
       );
     }
-    return PromptSubmission(goalId: goalId, jobId: jobId, state: state);
+    return GovernedPromptSubmission(
+      goalId: goalId,
+      jobId: jobId,
+      state: state,
+      requestId: requestId,
+      executionStatus: executionStatus,
+    );
+  }
+
+  Future<String> decideExecution(
+    String requestId,
+    GovernanceDecision decision,
+    DesktopUserSession session,
+  ) async {
+    final normalized = requestId.trim();
+    if (normalized.isEmpty) {
+      throw const IdentityClientException('Execution request is required');
+    }
+    final expectedStatus = decision == GovernanceDecision.approved
+        ? HttpStatus.accepted
+        : HttpStatus.ok;
+    final payload = await _sessionPost(
+      '/v1/execution/decision',
+      <String, Object?>{
+        'request_id': normalized,
+        'decision': decision.name,
+      },
+      'execution decision',
+      session,
+      expectedStatus: expectedStatus,
+    );
+    if (payload['request_id'] != normalized) {
+      throw const IdentityClientException('Execution decision response is malformed');
+    }
+    final status = payload['execution_status'];
+    if (status is! String ||
+        (status != 'EXECUTION_STARTED' && status != 'DENIED')) {
+      throw const IdentityClientException('Execution decision response is malformed');
+    }
+    return status;
+  }
+
+  Future<void> resumeExecution(
+    String requestId,
+    DesktopUserSession session,
+  ) async {
+    final normalized = requestId.trim();
+    if (normalized.isEmpty) {
+      throw const IdentityClientException('Execution request is required');
+    }
+    final payload = await _sessionPost(
+      '/v1/execution/resume',
+      <String, Object?>{'request_id': normalized},
+      'execution resume',
+      session,
+      expectedStatus: HttpStatus.accepted,
+    );
+    if (payload['request_id'] != normalized ||
+        payload['execution_status'] != 'RESUME_REQUESTED') {
+      throw const IdentityClientException('Execution resume response is malformed');
+    }
+  }
+
+  Future<String> fetchExecutionStatus(
+    String requestId,
+    DesktopUserSession session,
+  ) async {
+    final normalized = requestId.trim();
+    if (normalized.isEmpty) {
+      throw const IdentityClientException('Execution request is required');
+    }
+    final path = Uri(
+      path: '/v1/execution/status',
+      queryParameters: <String, String>{'request_id': normalized},
+    ).toString();
+    final payload = await _sessionGet(path, 'execution status', session);
+    if (payload['request_id'] != normalized) {
+      throw const IdentityClientException('Execution status response is malformed');
+    }
+    final status = payload['execution_status'];
+    if (status is! String || status.isEmpty) {
+      throw const IdentityClientException('Execution status response is malformed');
+    }
+    return status;
   }
 
   Future<void> logout(DesktopUserSession session) async {
@@ -243,6 +334,21 @@ class IdentityClient {
     return payload;
   }
 
+  Future<Map<String, dynamic>> _sessionGet(
+    String path,
+    String label,
+    DesktopUserSession session,
+  ) async {
+    final response = await _transport.get(
+      _baseUri.resolve(path),
+      headers: <String, String>{
+        'Authorization': 'Bearer $_transportToken',
+        'X-ILAIOS-Session': session.sessionId,
+      },
+    );
+    return _checkedPayload(response, label, HttpStatus.ok);
+  }
+
   Future<Map<String, dynamic>> _post(
     String path,
     Map<String, Object?> body,
@@ -254,15 +360,42 @@ class IdentityClient {
       body: jsonEncode(body),
       headers: <String, String>{'Authorization': 'Bearer $_transportToken'},
     );
+    return _checkedPayload(response, label, expectedStatus);
+  }
+
+  Future<Map<String, dynamic>> _sessionPost(
+    String path,
+    Map<String, Object?> body,
+    String label,
+    DesktopUserSession session, {
+    required int expectedStatus,
+  }) async {
+    final response = await _transport.post(
+      _baseUri.resolve(path),
+      body: jsonEncode(body),
+      headers: <String, String>{
+        'Authorization': 'Bearer $_transportToken',
+        'X-ILAIOS-Session': session.sessionId,
+      },
+    );
+    return _checkedPayload(response, label, expectedStatus);
+  }
+
+  Map<String, dynamic> _checkedPayload(
+    ControlPlaneResponse response,
+    String label,
+    int expectedStatus,
+  ) {
     final payload = _decode(response, label);
     if (response.statusCode == HttpStatus.unauthorized ||
         response.statusCode == HttpStatus.forbidden) {
-      throw const IdentityClientException(
-        'Desktop identity transport authentication failed',
-      );
+      throw const IdentityClientException('Desktop session is invalid or expired');
     }
     if (response.statusCode != expectedStatus) {
-      throw IdentityClientException('Desktop $label failed');
+      final error = payload['error'];
+      throw IdentityClientException(
+        error is String && error.isNotEmpty ? error : 'Desktop $label failed',
+      );
     }
     return payload;
   }
