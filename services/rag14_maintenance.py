@@ -104,11 +104,12 @@ def run_backup_restore_drill(state_root: Path) -> dict[str, object]:
                 "restored backup manifest differs from source manifest"
             )
 
+        policy = _policy()
         restored_runtime = DurableKnowledgeRuntime(
             KnowledgeRuntimeConfig(
                 metadata_database=restored / "knowledge" / "knowledge.sqlite3",
                 vector_database=restored / "knowledge" / "vectors.sqlite3",
-                policy=_policy(),
+                policy=policy,
             )
         )
         verification = restored_runtime.verify()
@@ -120,6 +121,22 @@ def run_backup_restore_drill(state_root: Path) -> dict[str, object]:
         if verification.get("vector_index_integrity") is not True:
             raise RAG14MaintenanceError(
                 "restored vector index failed integrity verification"
+            )
+        if state.get("tenant_id") != policy.tenant_id or state.get("project_id") != policy.project_id:
+            raise RAG14MaintenanceError("restored Knowledge scope binding drifted")
+        provider_id = str(state.get("embedding_provider_id", ""))
+        if not provider_id.startswith("ilaios.embedding.multilingual-e5-small.qint8.v1@"):
+            raise RAG14MaintenanceError(
+                "restored runtime is not using the pinned production provider"
+            )
+
+        vector_state = state.get("vector_index")
+        vector_row_count = (
+            vector_state.get("row_count") if isinstance(vector_state, dict) else None
+        )
+        if vector_row_count != 0:
+            raise RAG14MaintenanceError(
+                "deleted/revoked Knowledge vectors resurrected after backup restore"
             )
 
         corrupted = root / "runtime-backup-corrupted.zip"
@@ -135,14 +152,13 @@ def run_backup_restore_drill(state_root: Path) -> dict[str, object]:
         archive_bytes = archive.read_bytes()
         files = manifest.get("files")
         file_count = len(files) if isinstance(files, dict) else 0
-        vector_state = state.get("vector_index")
-        vector_row_count = (
-            vector_state.get("row_count") if isinstance(vector_state, dict) else None
-        )
         report: dict[str, object] = {
             "event": "rag14_backup_restore",
             "status": "PASS",
             "release_state": "CANARY",
+            "tenant_id": state.get("tenant_id"),
+            "project_id": state.get("project_id"),
+            "embedding_provider_id": provider_id,
             "archive_sha256": hashlib.sha256(archive_bytes).hexdigest(),
             "archive_size_bytes": len(archive_bytes),
             "manifest_file_count": file_count,
