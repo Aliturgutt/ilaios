@@ -198,3 +198,138 @@
     height: auto !important;
   }
 }
+
+/* iPhone / narrow-mobile live correction. The earlier mobile layer correctly
+   changed these systems to vertical flow, but inherited desktop internal grids
+   still compressed Turkish labels into word fragments. Keep every semantic
+   label intact and let explanatory copy use the full remaining width. */
+@media (max-width: 760px) {
+  .process-rail {
+    width: calc(100% - 13px) !important;
+    margin-left: 13px !important;
+  }
+
+  .process-rail > article {
+    display: block !important;
+    grid-template-columns: none !important;
+    grid-template-areas: none !important;
+    position: relative !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 12px 8px 18px 54px !important;
+    overflow: visible !important;
+  }
+
+  .process-rail > article > span {
+    left: -14px !important;
+    top: 11px !important;
+  }
+
+  .process-rail > article > strong,
+  .process-rail > article > p {
+    display: block !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    grid-column: auto !important;
+    grid-row: auto !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    hyphens: none !important;
+  }
+
+  .process-rail > article > strong {
+    margin: 0 0 5px !important;
+    font-size: 1rem !important;
+    line-height: 1.25 !important;
+    white-space: normal !important;
+  }
+
+  .process-rail > article > p {
+    margin: 0 !important;
+    font-size: .94rem !important;
+    line-height: 1.52 !important;
+  }
+
+  .spatial-map {
+    overflow: visible !important;
+  }
+
+  .spatial-stage {
+    width: 100% !important;
+  }
+
+  .spatial-node {
+    display: grid !important;
+    grid-template-columns: 42px minmax(0, 1fr) !important;
+    grid-template-areas:
+      "num title"
+      "num detail" !important;
+    column-gap: 14px !important;
+    row-gap: 4px !important;
+    align-items: start !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    padding: 15px 14px !important;
+    text-align: left !important;
+  }
+
+  .spatial-node > span {
+    grid-area: num !important;
+    align-self: start !important;
+    padding-top: 2px !important;
+  }
+
+  .spatial-node > strong {
+    grid-area: title !important;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    font-size: 1rem !important;
+    line-height: 1.28 !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    hyphens: none !important;
+  }
+
+  .spatial-node > small {
+    grid-area: detail !important;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    font-size: .86rem !important;
+    line-height: 1.45 !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    hyphens: none !important;
+  }
+
+  .spatial-node > i {
+    display: none !important;
+  }
+
+  .architecture-story-copy,
+  .architecture-story-copy p,
+  .architecture-story-copy h2 {
+    max-width: 100% !important;
+  }
+
+  .architecture-story-copy p {
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    hyphens: none !important;
+  }
+
+  /* iOS Safari can zoom/shift narrow controls when inherited line breaking is
+     aggressive. Keep interactive text at readable sizes and full-width flow. */
+  .factory-index button > strong,
+  .factory-index button > small,
+  .evidence-control strong,
+  .evidence-control p {
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    hyphens: none !important;
+  }
+}
