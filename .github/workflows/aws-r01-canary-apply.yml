@@ -12,6 +12,11 @@ on:
         required: true
         default: false
         type: boolean
+      max_canary_usd:
+        description: Hard maximum estimated RAG.14 canary resource spend in USD
+        required: true
+        default: '1.00'
+        type: string
 
 permissions:
   contents: read
@@ -33,6 +38,7 @@ jobs:
       TF_VAR_control_plane_secret_arn: arn:aws:secretsmanager:eu-central-1:101180464425:secret:ilaios/r01/canary/control-plane-token-BgIO2G
       GH_TOKEN: ${{ github.token }}
       RAG14_EVIDENCE_ROOT: rag14-evidence
+      RAG14_MAX_CANARY_USD: ${{ inputs.max_canary_usd }}
     steps:
       - name: Checkout exact requested source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -279,6 +285,11 @@ jobs:
         run: |
           set -euo pipefail
           python -m services.rag14_operational_evidence
+
+      - name: Collect live RAG.14 observed-cost FinOps evidence
+        run: |
+          set -euo pipefail
+          python -m services.rag14_finops_evidence
 
       - name: Simulate failed RAG.14 deployment and prove rollback
         run: |
