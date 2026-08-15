@@ -1,0 +1,11 @@
+.spatial-stage .spatial-node{font:inherit;color:inherit;text-align:left;cursor:pointer;appearance:none;-webkit-appearance:none}
+.spatial-stage .spatial-node:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;z-index:3}
+.spatial-stage .spatial-node.is-active{background:#121c23!important;border-color:#65747e!important}
+.spatial-stage .spatial-node.is-active strong{color:#fff}
+.spatial-stage .spatial-node:hover{background:#10181f!important}
+.spatial-detail{display:grid;grid-template-columns:minmax(180px,.55fr) minmax(280px,1.45fr);gap:20px 34px;margin-top:14px;padding:18px 20px;border:1px solid var(--line);background:#0c1217}
+.spatial-detail h3{margin:5px 0 0;font-size:1rem}
+.spatial-detail p{margin:0;color:var(--muted);font-size:.84rem;line-height:1.55;max-width:72ch}
+.spatial-detail>small{grid-column:2;color:#84929c;font-size:.68rem;line-height:1.45}
+.spatial-detail>small strong{color:#b8c2c8}
+@media(max-width:760px){.spatial-detail{grid-template-columns:1fr;gap:9px;margin-top:12px;padding:14px}.spatial-detail>small{grid-column:1}.spatial-stage .spatial-node{width:100%;display:block}.spatial-stage .spatial-node.is-active{border-left:2px solid var(--accent)!important}}
