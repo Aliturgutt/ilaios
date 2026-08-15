@@ -86,11 +86,21 @@ class DurableVideoProductRuntime:
         requester_id: str = "windows-desktop-user",
         tenant_id: str | None = None,
         defer_lease: bool = False,
+        risk: str = "medium",
+        data_class: DataClass = DataClass.INTERNAL,
+        budget: BudgetEnvelope | None = None,
     ) -> dict[str, object]:
         _require_identity(request_id, "request_id")
         _require_actor(requester_id, "requester_id")
         if tenant_id is not None:
             _require_actor(tenant_id, "tenant_id")
+        if risk not in {"low", "medium", "high"}:
+            raise ProductRuntimeError("unknown product risk classification")
+        if not isinstance(data_class, DataClass):
+            raise ProductRuntimeError("unknown product data classification")
+        execution_budget = budget or BudgetEnvelope(1, 60, 10)
+        risk_class = RiskClass(risk)
+
         goal = self._control_plane.create_goal(token, objective)
         job = self._control_plane.create_job(token, goal.goal_id)
         proposal = self._control_plane.create_proposal(
@@ -100,9 +110,9 @@ class DurableVideoProductRuntime:
                 "Canonical governed video workflow completes",
                 "Verified delivery and AcceptanceManifest exist",
             ),
-            risk_class=RiskClass.MEDIUM,
-            data_class=DataClass.INTERNAL,
-            budget=BudgetEnvelope(1, 60, 10),
+            risk_class=risk_class,
+            data_class=data_class,
+            budget=execution_budget,
             tasks=(
                 ProposedTask("video", "Execute governed local video"),
                 ProposedTask(
@@ -139,15 +149,23 @@ class DurableVideoProductRuntime:
             "video",
             governance_payload,
             (),
-            risk="medium",
+            risk=risk,
         )
-        if (
-            admission.get("admission_decision") != "ALLOW"
-            or admission.get("human_approval_required") is not False
-        ):
+        admission_decision = admission.get("admission_decision")
+        human_approval_required = admission.get("human_approval_required")
+        valid_admission = (
+            risk in {"low", "medium"}
+            and admission_decision == "ALLOW"
+            and human_approval_required is False
+        ) or (
+            risk == "high"
+            and admission_decision == "REQUIRE_APPROVAL"
+            and human_approval_required is True
+        )
+        if not valid_admission:
             if lease is not None:
                 self._scheduler.release(lease)
-            raise ProductRuntimeError("medium video admission did not fail closed")
+            raise ProductRuntimeError("product admission policy is inconsistent")
         lease_json = (
             "{}" if lease is None else json.dumps(_lease_json(lease), sort_keys=True)
         )
@@ -184,9 +202,18 @@ class DurableVideoProductRuntime:
             "workflow_id": workflow_id,
             "worker_id": worker_id,
             "lease": None if lease is None else _lease_json(lease),
-            "risk": "medium",
-            "admission_decision": "ALLOW",
-            "status": "admitted_pending_grant",
+            "risk": risk,
+            "data_class": data_class.value,
+            "budget": {
+                "max_attempts": execution_budget.max_attempts,
+                "max_runtime_seconds": execution_budget.max_runtime_seconds,
+                "max_external_spend_minor": execution_budget.max_external_spend_minor,
+            },
+            "admission_decision": admission_decision,
+            "human_approval_required": human_approval_required,
+            "status": "pending_approval"
+            if human_approval_required is True
+            else "admitted_pending_grant",
         }
 
     def execute(
@@ -334,11 +361,15 @@ class DurableVideoProductRuntime:
                 raise ProductRuntimeError("worker lease disappeared before product closure")
             lease = None
             with self._connect() as connection:
-                connection.execute(
+                changed = connection.execute(
                     "UPDATE product_proofs SET status = 'accepted', manifest_json = ? "
                     "WHERE request_id = ? AND status = 'pending'",
                     (json.dumps(manifest, sort_keys=True), request_id),
-                )
+                ).rowcount
+                if changed != 1:
+                    raise ProductRuntimeError(
+                        "product proof terminal state changed concurrently"
+                    )
                 connection.execute(
                     "INSERT INTO product_proof_closure VALUES (?, 'accepted', ?, ?)",
                     (
