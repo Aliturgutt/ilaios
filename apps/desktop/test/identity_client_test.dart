@@ -183,8 +183,8 @@ void main() {
       retryDelay: (_) async {},
     );
 
-    expect(
-      client.fetchProviders,
+    await expectLater(
+      client.fetchProviders(),
       throwsA(
         isA<IdentityClientException>().having(
           (error) => error.message,
