@@ -1,0 +1,312 @@
+/* Final interaction/density red-team layer.
+   Loaded last so live system visuals are compact, interactive and mobile-safe. */
+
+/* A 2x2 grid must not stretch the shorter card to the height of its taller peer. */
+.system-visuals.is-grid {
+  align-items: start !important;
+}
+
+.system-visual {
+  align-self: start !important;
+  height: auto !important;
+  min-height: 0 !important;
+}
+
+.system-visual-instruction {
+  margin: -4px 0 10px !important;
+  color: var(--brand-muted) !important;
+  font-size: .72rem !important;
+  line-height: 1.4 !important;
+}
+
+/* All system-diagram elements are real controls, not decorative boxes. */
+.system-visual-control {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  font: inherit !important;
+  color: inherit !important;
+  cursor: pointer !important;
+  text-align: left !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
+.system-visual-control:focus-visible {
+  border-color: var(--brand-cyan) !important;
+  outline: 2px solid var(--brand-cyan-line) !important;
+  outline-offset: 2px !important;
+}
+
+.system-visual-control.is-active {
+  background: var(--brand-charcoal) !important;
+  border-color: var(--brand-cyan) !important;
+  box-shadow: inset 0 -2px 0 var(--brand-cyan) !important;
+}
+
+.node-flow .node.system-visual-control {
+  border-left: 0 !important;
+}
+
+.node-flow .node.system-visual-control:first-child {
+  border-left: 1px solid var(--brand-line) !important;
+}
+
+.node-flow .node.system-visual-control:hover,
+.plane-box.system-visual-control:hover,
+.lifecycle-step.system-visual-control:hover,
+.trust-node.system-visual-control:hover {
+  background: var(--brand-charcoal) !important;
+  border-color: var(--brand-cyan-line) !important;
+}
+
+.plane-box.system-visual-control {
+  width: 100% !important;
+  min-width: 0 !important;
+}
+
+.lifecycle-flow > .lifecycle-step {
+  min-width: 0 !important;
+  padding: 11px 9px !important;
+  border: 0 !important;
+  border-right: 1px solid var(--brand-line) !important;
+  background: transparent !important;
+}
+
+.lifecycle-flow > .lifecycle-step:last-child {
+  border-right: 0 !important;
+}
+
+.lifecycle-step span {
+  display: block !important;
+  color: var(--brand-muted) !important;
+  font-size: .58rem !important;
+}
+
+.lifecycle-step strong {
+  display: block !important;
+  margin-top: 6px !important;
+  font-size: .76rem !important;
+  line-height: 1.3 !important;
+}
+
+.trust-visual {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+.trust-node-wrap {
+  display: flex !important;
+  align-items: stretch !important;
+  min-width: 0 !important;
+}
+
+.trust-node {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  padding: 12px !important;
+  border: 1px solid var(--brand-line) !important;
+  border-radius: 3px !important;
+  background: var(--brand-panel-dark) !important;
+}
+
+.trust-node.is-core {
+  background: var(--brand-charcoal) !important;
+  border-color: var(--brand-line-strong) !important;
+}
+
+.trust-node strong,
+.trust-node small {
+  display: block !important;
+}
+
+.trust-node small {
+  margin-top: 5px !important;
+  color: var(--brand-muted) !important;
+  font-size: .68rem !important;
+  line-height: 1.4 !important;
+}
+
+.trust-node-wrap > i {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 18px !important;
+  color: var(--brand-muted) !important;
+  font-style: normal !important;
+}
+
+.trust-node-wrap:last-child > i {
+  display: none !important;
+}
+
+/* Selected content fills the card with useful product explanation instead of dead space. */
+.system-inline-detail {
+  display: grid !important;
+  grid-template-columns: minmax(110px, .28fr) minmax(160px, .45fr) minmax(0, 1fr) !important;
+  gap: 12px 18px !important;
+  align-items: start !important;
+  margin-top: 12px !important;
+  padding: 12px 0 0 !important;
+  border-top: 1px solid var(--brand-line) !important;
+}
+
+.system-inline-detail > span,
+.system-inline-detail > strong,
+.system-inline-detail > p {
+  margin: 0 !important;
+  min-width: 0 !important;
+}
+
+.system-inline-detail > strong {
+  font-size: .86rem !important;
+  line-height: 1.35 !important;
+}
+
+.system-inline-detail > p {
+  color: var(--brand-muted) !important;
+  font-size: .76rem !important;
+  line-height: 1.48 !important;
+}
+
+/* Keep architecture/governance detail panels compact and product-facing. */
+.spatial-map-detail,
+.governance-evidence-detail {
+  min-height: 0 !important;
+  height: auto !important;
+}
+
+.spatial-map-detail p,
+.governance-evidence-detail p {
+  max-width: 82ch !important;
+}
+
+@media (max-width: 1020px) {
+  .system-visuals.is-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .system-inline-detail {
+    grid-template-columns: 120px minmax(150px, .42fr) minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .system-visual {
+    padding: 13px !important;
+  }
+
+  .system-visual header {
+    margin-bottom: 9px !important;
+  }
+
+  .system-visual-instruction {
+    margin: 0 0 9px !important;
+    font-size: .78rem !important;
+  }
+
+  .node-flow {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    overflow: visible !important;
+    border-top: 1px solid var(--brand-line) !important;
+  }
+
+  .node-flow .node.system-visual-control {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    padding: 11px 10px !important;
+    border: 0 !important;
+    border-bottom: 1px solid var(--brand-line) !important;
+  }
+
+  .node-flow .node.system-visual-control:first-child {
+    border-left: 0 !important;
+  }
+
+  .node-flow .node strong,
+  .node-flow .node small {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .node-flow .node i {
+    display: none !important;
+  }
+
+  .node-flow .node strong,
+  .node-flow .node small,
+  .plane-box b,
+  .plane-box span,
+  .lifecycle-step strong,
+  .trust-node strong,
+  .trust-node small {
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    hyphens: none !important;
+  }
+
+  .plane-visual {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  .plane-column {
+    gap: 7px !important;
+  }
+
+  .lifecycle-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .lifecycle-flow > .lifecycle-step {
+    border-right: 1px solid var(--brand-line) !important;
+    border-bottom: 1px solid var(--brand-line) !important;
+    min-height: 70px !important;
+  }
+
+  .lifecycle-flow > .lifecycle-step:nth-child(2n) {
+    border-right: 0 !important;
+  }
+
+  .trust-visual {
+    grid-template-columns: 1fr !important;
+  }
+
+  .trust-node-wrap {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+  }
+
+  .trust-node-wrap > i {
+    width: auto !important;
+    height: 20px !important;
+    transform: rotate(90deg) !important;
+  }
+
+  .system-inline-detail {
+    grid-template-columns: 1fr !important;
+    gap: 5px !important;
+    margin-top: 10px !important;
+    padding-top: 10px !important;
+  }
+
+  .system-inline-detail > p {
+    font-size: .88rem !important;
+    line-height: 1.5 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .lifecycle-flow {
+    grid-template-columns: 1fr !important;
+  }
+
+  .lifecycle-flow > .lifecycle-step,
+  .lifecycle-flow > .lifecycle-step:nth-child(2n) {
+    border-right: 0 !important;
+  }
+}
