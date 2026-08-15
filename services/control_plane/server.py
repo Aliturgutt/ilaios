@@ -45,11 +45,19 @@ from services.control_plane.workflows import (
 )
 from services.evidence import EvidenceError, EvidenceStore, ProvenanceRecord
 from services.governance import GateError, GovernedRuntimeGateway
+from services.identity import IdentityError
 from services.integrations import (
     DeterministicLocalVideoRuntime,
     DurableVideoProductRuntime,
     ProductRuntimeError,
     VideoRuntimeError,
+)
+from services.knowledge_rag import KnowledgeRAGError
+from services.knowledge_runtime import (
+    DurableKnowledgeRuntime,
+    KnowledgeRuntimeConfig,
+    KnowledgeRuntimeError,
+    KnowledgeRuntimePolicy,
 )
 from services.runtime import (
     BlastRadiusBudget,
@@ -83,6 +91,7 @@ class ControlPlaneHTTPServer(ThreadingHTTPServer):
         governance: GovernedRuntimeGateway,
         video_runtime: DeterministicLocalVideoRuntime,
         product_runtime: DurableVideoProductRuntime,
+        knowledge_runtime: DurableKnowledgeRuntime | None = None,
     ) -> None:
         super().__init__(server_address, ControlPlaneRequestHandler)
         self.control_plane = control_plane
@@ -95,6 +104,7 @@ class ControlPlaneHTTPServer(ThreadingHTTPServer):
         self.governance = governance
         self.video_runtime = video_runtime
         self.product_runtime = product_runtime
+        self.knowledge_runtime = knowledge_runtime
 
 
 class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
@@ -114,7 +124,14 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                         self.server.control_plane.database_path
                     )
                     self.server.evidence_store.verify()
-                except (EvidenceError, OSError):
+                    if self.server.knowledge_runtime is not None:
+                        self.server.knowledge_runtime.verify()
+                except (
+                    EvidenceError,
+                    KnowledgeRAGError,
+                    KnowledgeRuntimeError,
+                    OSError,
+                ):
                     self._send_json(
                         HTTPStatus.SERVICE_UNAVAILABLE, {"status": "not_ready"}
                     )
@@ -128,12 +145,25 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                         "dependencies": {
                             "artifact_store": "ready",
                             "control_database": "ready" if ready else "not_ready",
+                            "knowledge_store": (
+                                "ready"
+                                if self.server.knowledge_runtime is not None
+                                else "disabled"
+                            ),
                         },
                     },
                 )
                 return
             token = self._bearer_token()
             self.server.control_plane.authenticate(token)
+            if path == "/v1/knowledge/state":
+                knowledge = self._require_knowledge_runtime()
+                self._send_json(HTTPStatus.OK, knowledge.state())
+                return
+            if path == "/v1/knowledge/verify":
+                knowledge = self._require_knowledge_runtime()
+                self._send_json(HTTPStatus.OK, knowledge.verify())
+                return
             if path == "/v1/live/events":
                 query = parse_qs(urlparse(self.path).query)
                 after_sequence = _optional_query_int(query, "after_sequence", default=0)
@@ -262,6 +292,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self._send_error(HTTPStatus.NOT_FOUND, "unknown endpoint")
         except AuthenticationError as error:
             self._send_error(HTTPStatus.UNAUTHORIZED, str(error))
+        except IdentityError as error:
+            self._send_error(HTTPStatus.FORBIDDEN, str(error))
         except ControlPlaneError as error:
             self._send_error(HTTPStatus.NOT_FOUND, str(error))
         except WorkflowError as error:
@@ -282,6 +314,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except ProductRuntimeError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except (KnowledgeRAGError, KnowledgeRuntimeError) as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except ValueError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
 
@@ -291,6 +325,9 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self.server.control_plane.authenticate(token)
             body = self._read_json()
             path = urlparse(self.path).path
+            if path == "/v1/knowledge/commands":
+                self._send_json(HTTPStatus.OK, self._knowledge_command(body))
+                return
             if path == "/v1/workflow/commands":
                 self._send_json(HTTPStatus.OK, self._workflow_command(body))
                 return
@@ -350,6 +387,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self._send_json(HTTPStatus.CREATED, _record_json(record))
         except AuthenticationError as error:
             self._send_error(HTTPStatus.UNAUTHORIZED, str(error))
+        except IdentityError as error:
+            self._send_error(HTTPStatus.FORBIDDEN, str(error))
         except ControlPlaneError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except WorkflowError as error:
@@ -369,6 +408,8 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
         except VideoRuntimeError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except ProductRuntimeError as error:
+            self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+        except (KnowledgeRAGError, KnowledgeRuntimeError) as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
         except (
             json.JSONDecodeError,
@@ -422,6 +463,12 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             raise ValueError("resource identifier is required")
         return parts[1], parts[2]
 
+    def _require_knowledge_runtime(self) -> DurableKnowledgeRuntime:
+        runtime = self.server.knowledge_runtime
+        if runtime is None:
+            raise KnowledgeRuntimeError("knowledge runtime is disabled")
+        return runtime
+
     def _send_error(self, status: HTTPStatus, message: str) -> None:
         self._send_json(status, {"error": message})
 
@@ -432,6 +479,45 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+    def _knowledge_command(self, payload: dict[str, Any]) -> dict[str, object]:
+        if "tenant_id" in payload or "project_id" in payload:
+            raise KnowledgeRuntimeError("tenant and project scope are server-resolved")
+        runtime = self._require_knowledge_runtime()
+        operation = _required_string(payload, "operation")
+        if operation == "ingest_source":
+            return runtime.ingest_source(
+                source_id=_required_string(payload, "source_id"),
+                locator=_required_string(payload, "locator"),
+                content=_required_string(payload, "content"),
+                trusted=_optional_bool(payload, "trusted", default=False),
+                classifications=frozenset(_string_tuple(payload, "classifications")),
+                purposes=frozenset(_string_tuple(payload, "purposes")),
+                residency=_required_string(payload, "residency"),
+            )
+        if operation == "update_source":
+            return runtime.update_source(
+                source_id=_required_string(payload, "source_id"),
+                content=_required_string(payload, "content"),
+            )
+        if operation == "revoke_source":
+            return runtime.revoke_source(
+                source_id=_required_string(payload, "source_id")
+            )
+        if operation == "delete_source":
+            return runtime.delete_source(
+                source_id=_required_string(payload, "source_id")
+            )
+        if operation == "retrieve":
+            return runtime.retrieve(
+                retrieval_id=_required_string(payload, "retrieval_id"),
+                query=_required_string(payload, "query"),
+                purpose=_required_string(payload, "purpose"),
+                top_k=_required_int(payload, "top_k"),
+                candidate_limit=_required_int(payload, "candidate_limit"),
+                max_context_chars=_required_int(payload, "max_context_chars"),
+            )
+        raise ValueError("unknown knowledge operation")
 
     def _workflow_command(self, payload: dict[str, Any]) -> dict[str, Any]:
         operation = _required_string(payload, "operation")
@@ -834,6 +920,13 @@ def _string_tuple(payload: dict[str, Any], key: str) -> tuple[str, ...]:
     return tuple(value)
 
 
+def _csv_set(value: str) -> frozenset[str]:
+    items = tuple(item.strip() for item in value.split(",") if item.strip())
+    if not items:
+        raise KnowledgeRuntimeError("knowledge policy lists must not be empty")
+    return frozenset(items)
+
+
 def _budget(payload: dict[str, Any]) -> BudgetEnvelope:
     value = _required_object(payload, "budget")
     return BudgetEnvelope(
@@ -875,6 +968,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--video-root", type=Path, required=True)
     parser.add_argument("--product-proof-database", type=Path, required=True)
     parser.add_argument("--lease-seconds", type=int, default=30)
+    parser.add_argument("--knowledge-database", type=Path)
+    parser.add_argument("--knowledge-vector-database", type=Path)
+    parser.add_argument("--knowledge-principal-id")
+    parser.add_argument("--knowledge-tenant-id")
+    parser.add_argument("--knowledge-project-id")
+    parser.add_argument("--knowledge-classifications")
+    parser.add_argument("--knowledge-purposes")
+    parser.add_argument("--knowledge-residencies")
     arguments = parser.parse_args(argv)
     if arguments.host not in {"127.0.0.1", "::1", "localhost"}:
         parser.error("control plane must bind to a loopback host")
@@ -905,6 +1006,38 @@ def main(argv: Sequence[str] | None = None) -> int:
         governance,
         video_runtime,
     )
+    knowledge_values = (
+        arguments.knowledge_database,
+        arguments.knowledge_vector_database,
+        arguments.knowledge_principal_id,
+        arguments.knowledge_tenant_id,
+        arguments.knowledge_project_id,
+        arguments.knowledge_classifications,
+        arguments.knowledge_purposes,
+        arguments.knowledge_residencies,
+    )
+    knowledge_runtime: DurableKnowledgeRuntime | None = None
+    if any(value is not None for value in knowledge_values):
+        if any(value is None for value in knowledge_values):
+            parser.error("all Knowledge runtime arguments are required when enabled")
+        knowledge_runtime = DurableKnowledgeRuntime(
+            KnowledgeRuntimeConfig(
+                metadata_database=cast(Path, arguments.knowledge_database),
+                vector_database=cast(Path, arguments.knowledge_vector_database),
+                policy=KnowledgeRuntimePolicy(
+                    principal_id=cast(str, arguments.knowledge_principal_id),
+                    tenant_id=cast(str, arguments.knowledge_tenant_id),
+                    project_id=cast(str, arguments.knowledge_project_id),
+                    allowed_classifications=_csv_set(
+                        cast(str, arguments.knowledge_classifications)
+                    ),
+                    allowed_purposes=_csv_set(cast(str, arguments.knowledge_purposes)),
+                    allowed_residencies=_csv_set(
+                        cast(str, arguments.knowledge_residencies)
+                    ),
+                ),
+            )
+        )
     server = ControlPlaneHTTPServer(
         (arguments.host, arguments.port),
         control_plane,
@@ -917,12 +1050,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         governance,
         video_runtime,
         product_runtime,
+        knowledge_runtime,
     )
     host, port = server.server_address[:2]
     ready = {
         "host": host,
         "port": port,
         "schema_version": current_schema_version(arguments.database),
+        "knowledge_enabled": knowledge_runtime is not None,
     }
     arguments.ready_file.parent.mkdir(parents=True, exist_ok=True)
     arguments.ready_file.write_text(json.dumps(ready, sort_keys=True), encoding="utf-8")

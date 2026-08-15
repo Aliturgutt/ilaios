@@ -87,6 +87,12 @@ class SQLiteVectorIndex:
                 ((unit_id,) for unit_id in sorted(unit_ids)),
             )
 
+    def reset(self) -> None:
+        """Clear derived vector rows before deterministic rebuild from source truth."""
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute("DELETE FROM rag_vectors")
+
     def search(
         self,
         query_vector: tuple[float, ...],
