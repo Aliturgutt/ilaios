@@ -22,6 +22,7 @@ _HOP_BY_HOP_HEADERS = {
     "transfer-encoding",
     "upgrade",
 }
+_VERIFICATION_EMBEDDING_MODE = "verification_hash_v1"
 
 
 class _ReverseProxyServer(ThreadingHTTPServer):
@@ -76,12 +77,22 @@ def _knowledge_arguments(state_root: Path) -> tuple[str, ...]:
         "classifications": os.environ.get("ILAIOS_KNOWLEDGE_CLASSIFICATIONS", ""),
         "purposes": os.environ.get("ILAIOS_KNOWLEDGE_PURPOSES", ""),
         "residencies": os.environ.get("ILAIOS_KNOWLEDGE_RESIDENCIES", ""),
+        "embedding_mode": os.environ.get("ILAIOS_KNOWLEDGE_EMBEDDING_MODE", ""),
     }
     enabled = any(values.values())
     if not enabled:
         return ()
     if not all(values.values()):
         raise ValueError("all ILAIOS_KNOWLEDGE_* policy variables are required when enabled")
+    if values["embedding_mode"] != _VERIFICATION_EMBEDDING_MODE:
+        raise ValueError("configured Knowledge embedding mode is not implemented")
+    release_state = os.environ.get("ILAIOS_RELEASE_STATE", "NOT_DEPLOYED")
+    if release_state == "PRODUCTION":
+        raise ValueError(
+            "Knowledge production requires a separately certified production embedding provider"
+        )
+    if release_state not in {"NOT_DEPLOYED", "CANARY", "LIMITED"}:
+        raise ValueError("Knowledge runtime received an unsupported release state")
     knowledge_root = state_root / "knowledge"
     return (
         "--knowledge-database",
