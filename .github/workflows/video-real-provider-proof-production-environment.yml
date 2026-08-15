@@ -1,0 +1,107 @@
+name: Video Real Provider Proof Production Environment
+
+on:
+  push:
+    branches:
+      - codex/video-real-provider-proof-20260815
+    paths:
+      - .github/workflows/video-real-provider-proof-production-environment.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: video-real-provider-proof-production-environment
+  cancel-in-progress: false
+
+jobs:
+  seedance-proof:
+    name: Bounded credentialed Seedance proof via Production environment
+    runs-on: ubuntu-latest
+    environment: Production
+    timeout-minutes: 15
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      PROOF_DIR: artifacts/video-real-provider-proof-production-environment
+      MODEL: bytedance/seedance-2.0-fast
+      DURATION_SECONDS: "4"
+      RESOLUTION: 480p
+      ASPECT_RATIO: "16:9"
+      MAX_UNIT_PRICE_USD: "0.15"
+      MAX_TOTAL_COST_USD: "0.60"
+
+    steps:
+      - name: Checkout exact proof revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Extract reviewed bounded proof runner
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'EXTRACT'
+          from pathlib import Path
+
+          source = Path('.github/workflows/video-real-provider-proof-20260815.yml').read_text(
+              encoding='utf-8'
+          )
+          marker = "          python - <<'PY'\n"
+          start = source.index(marker) + len(marker)
+          end = source.index("\n          PY\n", start)
+          lines = source[start:end].splitlines()
+          script = "\n".join(
+              line[10:] if line.startswith("          ") else line for line in lines
+          )
+          Path('/tmp/video_provider_proof.py').write_text(
+              script + "\n",
+              encoding='utf-8',
+          )
+          EXTRACT
+
+      - name: Run one bounded real provider proof
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$PROOF_DIR"
+          python /tmp/video_provider_proof.py
+
+      - name: Publish proof status
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "## Video Real Provider Proof — Production Environment" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f "$PROOF_DIR/provider-receipt.json" ]]; then
+            python - <<'SUMMARY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          receipt = json.loads(
+              (Path(os.environ['PROOF_DIR']) / 'provider-receipt.json').read_text(
+                  encoding='utf-8'
+              )
+          )
+          print(f"- Status: `{receipt.get('status')}`")
+          print(f"- Revision: `{receipt.get('revision_sha')}`")
+          print(f"- Provider/model: `{receipt.get('provider')}` / `{receipt.get('model')}`")
+          print(f"- External job: `{receipt.get('external_job_id', 'n/a')}`")
+          artifact = receipt.get('artifact') or {}
+          print(f"- Artifact SHA-256: `{artifact.get('sha256', 'n/a')}`")
+          print(f"- Artifact bytes: `{artifact.get('bytes', 'n/a')}`")
+          print('- Credential material is never written to evidence or logs.')
+          SUMMARY
+          else
+            echo "- Status: `NO_RECEIPT`" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload immutable provider proof evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: video-real-provider-proof-production-environment-${{ github.sha }}
+          path: artifacts/video-real-provider-proof-production-environment
+          if-no-files-found: warn
+          retention-days: 30
