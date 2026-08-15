@@ -1,89 +1,36 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import "./spatial-drilldown.css";
 
 type Locale = "en" | "tr";
 type Tilt = { x: number; y: number };
 type NodeCopy = { title: string; detail: string; explanation: string; source: string };
 
 const copy: Record<Locale, { label: string; aria: string; hint: string; sourceLabel: string; nodes: readonly NodeCopy[] }> = {
-  en: {
-    label: "Governed execution map",
-    aria: "ILAIOS governed execution architecture from goal through policy, routing, factory execution, validation, evidence and result",
-    hint: "Select a stage to inspect its responsibility and canonical source.",
-    sourceLabel: "Canonical source",
-    nodes: [
-      { title: "Goal", detail: "Authenticated intent", explanation: "The request becomes governed work only after identity, tenant/project context, requirements and acceptance criteria are explicit. Authorized context is bound before a bounded plan or DAG is admitted.", source: "PRODUCT_REQUIREMENTS.md · IMPLEMENTATION_SPEC.md" },
-      { title: "Policy", detail: "Authority boundary", explanation: "Authorization constrains what may execute before optimization begins: tenant isolation, privacy/residency, DLP and secrets, tool permission, risk, quality floor, budget and required approvals are evaluated here.", source: "SECURITY_ARCHITECTURE.md · GOVERNANCE.md" },
-      { title: "Router", detail: "ONE RoutingDecision", explanation: "Only the policy-eligible set reaches routing. A single RoutingDecision truth selects the worker class, approved adapter and replaceable provider without creating a second routing authority inside a factory or provider.", source: "ADR-0003-ONE-ROUTING-DECISION-TRUTH.md · API_CONTRACTS.md" },
-      { title: "Factory", detail: "Bounded execution", explanation: "The selected native factory executes a bounded workflow through governed runtime, approved skills, permissioned tools and provider adapters. Factories do not own hidden policy, routing or runtime authority.", source: "SYSTEM_ARCHITECTURE.md · DEPENDENCY_GRAPH.md" },
-      { title: "Validation", detail: "Acceptance checks", explanation: "Deterministic checks and independent evaluation compare the produced artifact with explicit acceptance criteria. Failure enters bounded repair, re-admission and re-evaluation rather than an unlimited autonomous loop.", source: "TESTING_AND_EVALUATION.md · FAILURE_RECOVERY.md" },
-      { title: "Evidence", detail: "Reviewable proof", explanation: "Execution, validation, artifacts, provenance, routing and relevant cost/recovery context remain linked as continuous reviewable evidence. Evidence is a canonical truth boundary, not decorative logging.", source: "DATA_ARCHITECTURE.md · OBSERVABILITY.md" },
-      { title: "Result", detail: "Verified finished product", explanation: "Delivery occurs only after the acceptance path succeeds. The result is the accepted artifact plus sufficient evidence to explain what ran, under which authority, how it was validated and why it was accepted.", source: "IMPLEMENTATION_SPEC.md · GOVERNANCE.md" },
-    ],
-  },
-  tr: {
-    label: "Yönetilen yürütme haritası",
-    aria: "Hedeften politika, yönlendirme, üretim, doğrulama, kanıt ve kabul edilmiş sonuca uzanan ILAIOS yönetilen yürütme mimarisi",
-    hint: "Sorumluluğunu ve kanonik kaynağını görmek için bir aşama seçin.",
-    sourceLabel: "Kanonik kaynak",
-    nodes: [
-      { title: "Hedef", detail: "Kimliği doğrulanmış niyet", explanation: "İstek; kimlik, tenant/proje bağlamı, gereksinimler ve kabul ölçütleri açık hale geldikten sonra yönetilen işe dönüşür. Yetkili bağlam, sınırlandırılmış plan veya DAG kabul edilmeden önce bağlanır.", source: "PRODUCT_REQUIREMENTS.md · IMPLEMENTATION_SPEC.md" },
-      { title: "Politika", detail: "Yetki sınırı", explanation: "Optimizasyondan önce neyin yürütülebileceğini yetki belirler: tenant isolation, gizlilik/residency, DLP ve secrets, araç izni, risk, kalite tabanı, bütçe ve gerekli onaylar burada değerlendirilir.", source: "SECURITY_ARCHITECTURE.md · GOVERNANCE.md" },
-      { title: "Yönlendirici", detail: "TEK RoutingDecision", explanation: "Yalnız politika açısından uygun küme routing'e ulaşır. Tek RoutingDecision gerçeği worker sınıfını, onaylı adapter'ı ve değiştirilebilir sağlayıcıyı seçer; factory veya provider içinde ikinci bir routing otoritesi oluşmaz.", source: "ADR-0003-ONE-ROUTING-DECISION-TRUTH.md · API_CONTRACTS.md" },
-      { title: "Üretim", detail: "Sınırlandırılmış yürütme", explanation: "Seçilen yerleşik factory; yönetilen runtime, onaylı skill'ler, izinli araçlar ve provider adapter'ları üzerinden sınırlandırılmış iş akışını yürütür. Factory gizli politika, routing veya runtime otoritesi sahiplenmez.", source: "SYSTEM_ARCHITECTURE.md · DEPENDENCY_GRAPH.md" },
-      { title: "Doğrulama", detail: "Kabul kontrolleri", explanation: "Deterministik kontroller ve bağımsız değerlendirme üretilen artifact'i açık kabul ölçütleriyle karşılaştırır. Hata, sınırsız otonom döngü yerine bounded repair, yeniden admission ve yeniden değerlendirmeye girer.", source: "TESTING_AND_EVALUATION.md · FAILURE_RECOVERY.md" },
-      { title: "Kanıt", detail: "İncelenebilir kanıt", explanation: "Yürütme, doğrulama, artifact, provenance, routing ve ilgili maliyet/kurtarma bağlamı sürekli ve incelenebilir kanıt olarak bağlı kalır. Evidence yalnız dekoratif log değil, kanonik gerçeklik sınırıdır.", source: "DATA_ARCHITECTURE.md · OBSERVABILITY.md" },
-      { title: "Sonuç", detail: "Doğrulanmış bitmiş ürün", explanation: "Teslim yalnız kabul yolu başarıyla tamamlandığında gerçekleşir. Sonuç; kabul edilmiş artifact ile neyin, hangi yetki altında çalıştığını, nasıl doğrulandığını ve neden kabul edildiğini açıklayan yeterli kanıtı birlikte taşır.", source: "IMPLEMENTATION_SPEC.md · GOVERNANCE.md" },
-    ],
-  },
+  en: { label: "Governed execution map", aria: "ILAIOS governed execution architecture from goal through policy, routing, factory execution, validation, evidence and result", hint: "Select a stage to inspect its responsibility and canonical source.", sourceLabel: "Canonical source", nodes: [
+    { title: "Goal", detail: "Authenticated intent", explanation: "The request becomes governed work only after identity, tenant/project context, requirements and acceptance criteria are explicit. Authorized context is bound before a bounded plan or DAG is admitted.", source: "PRODUCT_REQUIREMENTS.md · IMPLEMENTATION_SPEC.md" },
+    { title: "Policy", detail: "Authority boundary", explanation: "Authorization constrains what may execute before optimization begins: tenant isolation, privacy/residency, DLP and secrets, tool permission, risk, quality floor, budget and required approvals are evaluated here.", source: "SECURITY_ARCHITECTURE.md · GOVERNANCE.md" },
+    { title: "Router", detail: "ONE RoutingDecision", explanation: "Only the policy-eligible set reaches routing. A single RoutingDecision truth selects the worker class, approved adapter and replaceable provider without creating a second routing authority inside a factory or provider.", source: "ADR-0003-ONE-ROUTING-DECISION-TRUTH.md · API_CONTRACTS.md" },
+    { title: "Factory", detail: "Bounded execution", explanation: "The selected native factory executes a bounded workflow through governed runtime, approved skills, permissioned tools and provider adapters. Factories do not own hidden policy, routing or runtime authority.", source: "SYSTEM_ARCHITECTURE.md · DEPENDENCY_GRAPH.md" },
+    { title: "Validation", detail: "Acceptance checks", explanation: "Deterministic checks and independent evaluation compare the produced artifact with explicit acceptance criteria. Failure enters bounded repair, re-admission and re-evaluation rather than an unlimited autonomous loop.", source: "TESTING_AND_EVALUATION.md · FAILURE_RECOVERY.md" },
+    { title: "Evidence", detail: "Reviewable proof", explanation: "Execution, validation, artifacts, provenance, routing and relevant cost/recovery context remain linked as continuous reviewable evidence. Evidence is a canonical truth boundary, not decorative logging.", source: "DATA_ARCHITECTURE.md · OBSERVABILITY.md" },
+    { title: "Result", detail: "Verified finished product", explanation: "Delivery occurs only after the acceptance path succeeds. The result is the accepted artifact plus sufficient evidence to explain what ran, under which authority, how it was validated and why it was accepted.", source: "IMPLEMENTATION_SPEC.md · GOVERNANCE.md" },
+  ]},
+  tr: { label: "Yönetilen yürütme haritası", aria: "Hedeften politika, yönlendirme, üretim, doğrulama, kanıt ve kabul edilmiş sonuca uzanan ILAIOS yönetilen yürütme mimarisi", hint: "Sorumluluğunu ve kanonik kaynağını görmek için bir aşama seçin.", sourceLabel: "Kanonik kaynak", nodes: [
+    { title: "Hedef", detail: "Kimliği doğrulanmış niyet", explanation: "İstek; kimlik, tenant/proje bağlamı, gereksinimler ve kabul ölçütleri açık hale geldikten sonra yönetilen işe dönüşür. Yetkili bağlam, sınırlandırılmış plan veya DAG kabul edilmeden önce bağlanır.", source: "PRODUCT_REQUIREMENTS.md · IMPLEMENTATION_SPEC.md" },
+    { title: "Politika", detail: "Yetki sınırı", explanation: "Optimizasyondan önce neyin yürütülebileceğini yetki belirler: tenant isolation, gizlilik/residency, DLP ve secrets, araç izni, risk, kalite tabanı, bütçe ve gerekli onaylar burada değerlendirilir.", source: "SECURITY_ARCHITECTURE.md · GOVERNANCE.md" },
+    { title: "Yönlendirici", detail: "TEK RoutingDecision", explanation: "Yalnız politika açısından uygun küme routing'e ulaşır. Tek RoutingDecision gerçeği worker sınıfını, onaylı adapter'ı ve değiştirilebilir sağlayıcıyı seçer; factory veya provider içinde ikinci bir routing otoritesi oluşmaz.", source: "ADR-0003-ONE-ROUTING-DECISION-TRUTH.md · API_CONTRACTS.md" },
+    { title: "Üretim", detail: "Sınırlandırılmış yürütme", explanation: "Seçilen yerleşik factory; yönetilen runtime, onaylı skill'ler, izinli araçlar ve provider adapter'ları üzerinden sınırlandırılmış iş akışını yürütür. Factory gizli politika, routing veya runtime otoritesi sahiplenmez.", source: "SYSTEM_ARCHITECTURE.md · DEPENDENCY_GRAPH.md" },
+    { title: "Doğrulama", detail: "Kabul kontrolleri", explanation: "Deterministik kontroller ve bağımsız değerlendirme üretilen artifact'i açık kabul ölçütleriyle karşılaştırır. Hata, sınırsız otonom döngü yerine bounded repair, yeniden admission ve yeniden değerlendirmeye girer.", source: "TESTING_AND_EVALUATION.md · FAILURE_RECOVERY.md" },
+    { title: "Kanıt", detail: "İncelenebilir kanıt", explanation: "Yürütme, doğrulama, artifact, provenance, routing ve ilgili maliyet/kurtarma bağlamı sürekli ve incelenebilir kanıt olarak bağlı kalır. Evidence yalnız dekoratif log değil, kanonik gerçeklik sınırıdır.", source: "DATA_ARCHITECTURE.md · OBSERVABILITY.md" },
+    { title: "Sonuç", detail: "Doğrulanmış bitmiş ürün", explanation: "Teslim yalnız kabul yolu başarıyla tamamlandığında gerçekleşir. Sonuç; kabul edilmiş artifact ile neyin, hangi yetki altında çalıştığını, nasıl doğrulandığını ve neden kabul edildiğini açıklayan yeterli kanıtı birlikte taşır.", source: "IMPLEMENTATION_SPEC.md · GOVERNANCE.md" },
+  ]},
 };
-
-function applyStageTransform(stage: HTMLDivElement | null, tilt: Tilt, scrollDepth: number) {
-  if (!stage) return;
-  stage.style.transform = `perspective(900px) rotateX(${tilt.y + scrollDepth}deg) rotateY(${tilt.x}deg)`;
-}
-
+function applyStageTransform(stage: HTMLDivElement | null, tilt: Tilt, scrollDepth: number) { if (stage) stage.style.transform = `perspective(900px) rotateX(${tilt.y + scrollDepth}deg) rotateY(${tilt.x}deg)`; }
 export default function SpatialArchitecture({ locale, compact = false }: { locale: Locale; compact?: boolean }) {
-  const c = copy[locale];
-  const [active, setActive] = useState(0);
-  const wrapperRef = useRef<HTMLDivElement | null>(null);
-  const stageRef = useRef<HTMLDivElement | null>(null);
-  const tiltRef = useRef<Tilt>({ x: 0, y: 0 });
-  const scrollDepthRef = useRef(0);
-
-  useEffect(() => {
-    const update = () => {
-      const wrapper = wrapperRef.current;
-      const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      if (!wrapper || window.innerWidth < 760 || reduced) {
-        scrollDepthRef.current = 0;
-        applyStageTransform(stageRef.current, tiltRef.current, 0);
-        return;
-      }
-      const rect = wrapper.getBoundingClientRect();
-      const viewportCenter = window.innerHeight / 2;
-      const elementCenter = rect.top + rect.height / 2;
-      const normalized = Math.max(-1, Math.min(1, (viewportCenter - elementCenter) / Math.max(window.innerHeight, 1)));
-      scrollDepthRef.current = normalized * 1.6;
-      applyStageTransform(stageRef.current, tiltRef.current, scrollDepthRef.current);
-    };
-    update();
-    window.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => { window.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
-  }, []);
-
-  const selected = c.nodes[active];
-  return <div ref={wrapperRef} className={`spatial-map ${compact ? "is-compact" : ""}`} data-visual-role="architecture-spatial-map">
-    <div className="spatial-map-head"><span className="micro-label">{c.label}</span><small>{c.hint}</small></div>
-    <div ref={stageRef} className="spatial-stage" aria-label={c.aria} style={{ transform: "perspective(900px) rotateX(0deg) rotateY(0deg)" }} onPointerMove={event => { const rect = event.currentTarget.getBoundingClientRect(); tiltRef.current = { x: ((event.clientX - rect.left) / rect.width - 0.5) * 4, y: -((event.clientY - rect.top) / rect.height - 0.5) * 3 }; applyStageTransform(stageRef.current, tiltRef.current, scrollDepthRef.current); }} onPointerLeave={() => { tiltRef.current = { x: 0, y: 0 }; applyStageTransform(stageRef.current, tiltRef.current, scrollDepthRef.current); }}>
-      {c.nodes.map((node, index) => <button type="button" className={`spatial-node spatial-node-${index + 1} ${active === index ? "is-active" : ""}`} key={node.title} aria-pressed={active === index} aria-controls="governed-execution-detail" onClick={() => setActive(index)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{node.title}</strong><small>{node.detail}</small>{index < c.nodes.length - 1 && <i aria-hidden="true" />}</button>)}
-    </div>
-    <article id="governed-execution-detail" className="spatial-detail" aria-live="polite">
-      <div><span className="micro-label">{String(active + 1).padStart(2, "0")} · {selected.title}</span><h3>{selected.detail}</h3></div>
-      <p>{selected.explanation}</p>
-      <small><strong>{c.sourceLabel}:</strong> {selected.source}</small>
-    </article>
-  </div>;
+  const c = copy[locale]; const [active,setActive]=useState(0); const wrapperRef=useRef<HTMLDivElement|null>(null); const stageRef=useRef<HTMLDivElement|null>(null); const tiltRef=useRef<Tilt>({x:0,y:0}); const scrollDepthRef=useRef(0);
+  useEffect(()=>{ const update=()=>{const wrapper=wrapperRef.current; const reduced=window.matchMedia("(prefers-reduced-motion: reduce)").matches; if(!wrapper||window.innerWidth<760||reduced){scrollDepthRef.current=0;applyStageTransform(stageRef.current,tiltRef.current,0);return;} const rect=wrapper.getBoundingClientRect(); const normalized=Math.max(-1,Math.min(1,(window.innerHeight/2-(rect.top+rect.height/2))/Math.max(window.innerHeight,1))); scrollDepthRef.current=normalized*1.6;applyStageTransform(stageRef.current,tiltRef.current,scrollDepthRef.current);}; update();window.addEventListener("scroll",update,{passive:true});window.addEventListener("resize",update);return()=>{window.removeEventListener("scroll",update);window.removeEventListener("resize",update);};},[]);
+  const selected=c.nodes[active];
+  return <div ref={wrapperRef} className={`spatial-map ${compact?"is-compact":""}`} data-visual-role="architecture-spatial-map"><div className="spatial-map-head"><span className="micro-label">{c.label}</span><small>{c.hint}</small></div><div ref={stageRef} className="spatial-stage" aria-label={c.aria} style={{transform:"perspective(900px) rotateX(0deg) rotateY(0deg)"}} onPointerMove={event=>{const rect=event.currentTarget.getBoundingClientRect();tiltRef.current={x:((event.clientX-rect.left)/rect.width-.5)*4,y:-((event.clientY-rect.top)/rect.height-.5)*3};applyStageTransform(stageRef.current,tiltRef.current,scrollDepthRef.current);}} onPointerLeave={()=>{tiltRef.current={x:0,y:0};applyStageTransform(stageRef.current,tiltRef.current,scrollDepthRef.current);}}>{c.nodes.map((node,index)=><button type="button" className={`spatial-node spatial-node-${index+1} ${active===index?"is-active":""}`} key={node.title} aria-pressed={active===index} aria-controls="governed-execution-detail" onClick={()=>setActive(index)}><span>{String(index+1).padStart(2,"0")}</span><strong>{node.title}</strong><small>{node.detail}</small>{index<c.nodes.length-1&&<i aria-hidden="true"/>}</button>)}</div><article id="governed-execution-detail" className="spatial-detail" aria-live="polite"><div><span className="micro-label">{String(active+1).padStart(2,"0")} · {selected.title}</span><h3>{selected.detail}</h3></div><p>{selected.explanation}</p><small><strong>{c.sourceLabel}:</strong> {selected.source}</small></article></div>;
 }
