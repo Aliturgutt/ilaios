@@ -24,6 +24,9 @@ from services.knowledge_rag_production import (
 )
 
 
+_EXACT_SCOPE = "source:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa@image:sha256:bbbb"
+
+
 def _sha(label: str) -> str:
     return hashlib.sha256(label.encode("utf-8")).hexdigest()
 
@@ -153,6 +156,7 @@ def test_rag14_gate_stays_blocked_until_every_required_proof_exists() -> None:
         evidence_ref="evidence://embedding/provider",
         evidence_sha256=_sha("embedding"),
         verified_by="ilaios.governance.production-evidence",
+        exact_release_scope=_EXACT_SCOPE,
     )
 
     report = RAG14PromotionGate().evaluate((first,))
@@ -163,12 +167,13 @@ def test_rag14_gate_stays_blocked_until_every_required_proof_exists() -> None:
     assert report.production_approved is False
 
 
-def test_rag14_gate_rejects_duplicate_or_malformed_evidence() -> None:
+def test_rag14_gate_rejects_duplicate_malformed_or_cross_scope_evidence() -> None:
     valid = RAG14EvidenceItem(
         requirement=RAG14_REQUIREMENTS[0],
         evidence_ref="evidence://embedding/provider",
         evidence_sha256=_sha("embedding"),
         verified_by="ilaios.governance.production-evidence",
+        exact_release_scope=_EXACT_SCOPE,
     )
     with pytest.raises(RAGProductionReadinessError, match="duplicate"):
         RAG14PromotionGate().evaluate((valid, valid))
@@ -179,7 +184,18 @@ def test_rag14_gate_rejects_duplicate_or_malformed_evidence() -> None:
             evidence_ref="evidence://vector/index",
             evidence_sha256="not-a-sha",
             verified_by="ilaios.governance.production-evidence",
+            exact_release_scope=_EXACT_SCOPE,
         )
+
+    other_scope = RAG14EvidenceItem(
+        requirement=RAG14_REQUIREMENTS[1],
+        evidence_ref="evidence://vector/index",
+        evidence_sha256=_sha("vector"),
+        verified_by="ilaios.governance.production-evidence",
+        exact_release_scope="source:cccc@image:sha256:dddd",
+    )
+    with pytest.raises(RAGProductionReadinessError, match="one exact release scope"):
+        RAG14PromotionGate().evaluate((valid, other_scope))
 
 
 def test_complete_rag14_evidence_only_allows_governed_review_not_auto_production() -> None:
@@ -189,6 +205,7 @@ def test_complete_rag14_evidence_only_allows_governed_review_not_auto_production
             evidence_ref=f"evidence://rag14/{requirement}",
             evidence_sha256=_sha(requirement),
             verified_by="ilaios.governance.production-evidence",
+            exact_release_scope=_EXACT_SCOPE,
         )
         for requirement in RAG14_REQUIREMENTS
     )
