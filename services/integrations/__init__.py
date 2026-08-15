@@ -1,5 +1,6 @@
 """Adapters between proven domain chains and ILAIOS platform contracts."""
 
+from .desktop_video_runtime import DesktopPromptVideoRuntime
 from .product_proof import (
     AcceptanceManifest,
     DesktopGoalRequest,
@@ -14,6 +15,7 @@ from .web_factory import GovernedWebFactory, WebsiteAcceptance, WebsiteFile
 __all__ = [
     "AcceptanceManifest",
     "DesktopGoalRequest",
+    "DesktopPromptVideoRuntime",
     "DeterministicLocalVideoRuntime",
     "DurableVideoProductRuntime",
     "GovernedVideoProductProof",

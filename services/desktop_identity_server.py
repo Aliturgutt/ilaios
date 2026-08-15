@@ -1,26 +1,31 @@
-"""Loopback HTTP boundary for ILAIOS Desktop human identity and sessions."""
+"""Loopback HTTP boundary for ILAIOS Desktop human identity and execution sessions."""
 
 from __future__ import annotations
 
 import hmac
 import json
+import secrets
 import threading
+from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any, cast
 from urllib.parse import parse_qs, urlparse
-
-import requests
 
 from services.desktop_oidc import (
     DesktopAuthStatus,
     DesktopIdentityError,
     DesktopOIDCService,
 )
+from services.execution_coordinator import (
+    ExecutionCoordinator,
+    ExecutionCoordinatorError,
+)
+from services.identity import Session
 
 
 class DesktopIdentityHTTPServer(ThreadingHTTPServer):
-    """Human identity adapter; execution authority remains in the control plane."""
+    """Human identity adapter; execution authority remains in canonical services."""
 
     daemon_threads = True
 
@@ -29,20 +34,15 @@ class DesktopIdentityHTTPServer(ThreadingHTTPServer):
         server_address: tuple[str, int],
         *,
         bearer_token: str,
-        control_plane_base_url: str,
         identity: DesktopOIDCService | None,
+        coordinator: ExecutionCoordinator,
     ) -> None:
         if not bearer_token:
             raise DesktopIdentityError("Desktop identity transport token is required")
         super().__init__(server_address, DesktopIdentityRequestHandler)
         self.bearer_token = bearer_token
-        self.control_plane_base_url = control_plane_base_url.rstrip("/")
         self.identity = identity
-        self.http = requests.Session()
-
-    def server_close(self) -> None:
-        self.http.close()
-        super().server_close()
+        self.coordinator = coordinator
 
 
 class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
@@ -57,6 +57,7 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                     {
                         "status": "ready",
                         "providers_configured": self.server.identity is not None,
+                        "governed_execution": self.server.identity is not None,
                     },
                 )
                 return
@@ -78,9 +79,18 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                 state = _single_query(parse_qs(parsed.query), "state")
                 self._send_json(HTTPStatus.OK, _status_json(identity.status(state)))
                 return
+            if parsed.path == "/v1/execution/status":
+                session = self._authenticated_session()
+                request_id = _single_query(parse_qs(parsed.query), "request_id")
+                execution = self.server.coordinator.get(request_id)
+                self._require_execution_owner(execution, session)
+                self._send_json(HTTPStatus.OK, execution)
+                return
             self._send_error(HTTPStatus.NOT_FOUND, "unknown endpoint")
         except DesktopIdentityError as error:
             self._send_error(HTTPStatus.UNAUTHORIZED, str(error))
+        except ExecutionCoordinatorError as error:
+            self._send_error(HTTPStatus.CONFLICT, str(error))
         except ValueError as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
 
@@ -121,9 +131,17 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             if path == "/v1/desktop/intent":
                 self._submit_authenticated_intent(body)
                 return
+            if path == "/v1/execution/decision":
+                self._decide_authenticated_execution(body)
+                return
+            if path == "/v1/execution/resume":
+                self._resume_authenticated_execution(body)
+                return
             self._send_error(HTTPStatus.NOT_FOUND, "unknown endpoint")
         except DesktopIdentityError as error:
             self._send_error(HTTPStatus.UNAUTHORIZED, str(error))
+        except ExecutionCoordinatorError as error:
+            self._send_error(HTTPStatus.CONFLICT, str(error))
         except (ValueError, TypeError, json.JSONDecodeError) as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
 
@@ -159,57 +177,102 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
         )
 
     def _submit_authenticated_intent(self, body: dict[str, Any]) -> None:
+        session = self._authenticated_session()
+        objective = _required_string(body, "objective")
+        if len(objective) > 20_000:
+            raise ValueError("objective exceeds Desktop input limit")
+        request_id = f"exec-{secrets.token_hex(16)}"
+        execution = self.server.coordinator.prepare(
+            request_id,
+            objective,
+            token=self.server.bearer_token,
+            principal_id=session.principal_id,
+            tenant_id=session.tenant_id,
+            now=datetime.now(timezone.utc),
+        )
+        if execution.get("execution_status") == "ADMITTED":
+            self._start_execution(request_id)
+        self._send_json(HTTPStatus.CREATED, execution)
+
+    def _decide_authenticated_execution(self, body: dict[str, Any]) -> None:
+        session = self._authenticated_session()
+        request_id = _required_string(body, "request_id")
+        decision = _required_string(body, "decision")
+        status = self.server.coordinator.decide(
+            request_id,
+            approver_id=session.principal_id,
+            tenant_id=session.tenant_id,
+            decision=decision,
+            now=datetime.now(timezone.utc),
+        )
+        if status == "DENIED":
+            self._send_json(
+                HTTPStatus.OK,
+                {"request_id": request_id, "execution_status": "DENIED"},
+            )
+            return
+        self._start_execution(request_id)
+        self._send_json(
+            HTTPStatus.ACCEPTED,
+            {"request_id": request_id, "execution_status": "EXECUTION_STARTED"},
+        )
+
+    def _resume_authenticated_execution(self, body: dict[str, Any]) -> None:
+        session = self._authenticated_session()
+        request_id = _required_string(body, "request_id")
+        execution = self.server.coordinator.get(request_id)
+        self._require_execution_owner(execution, session)
+        self._start_execution(request_id)
+        self._send_json(
+            HTTPStatus.ACCEPTED,
+            {"request_id": request_id, "execution_status": "RESUME_REQUESTED"},
+        )
+
+    def _start_execution(self, request_id: str) -> None:
+        thread = threading.Thread(
+            target=self._run_execution,
+            args=(request_id,),
+            name=f"ilaios-execution-{request_id}",
+            daemon=True,
+        )
+        thread.start()
+
+    def _run_execution(self, request_id: str) -> None:
+        try:
+            self.server.coordinator.resume(
+                request_id,
+                token=self.server.bearer_token,
+                now=datetime.now(timezone.utc),
+            )
+        except Exception as error:
+            print(
+                json.dumps(
+                    {
+                        "component": "desktop_identity",
+                        "event": "execution_resume_failed",
+                        "request_id": request_id,
+                        "error_type": type(error).__name__,
+                    },
+                    sort_keys=True,
+                ),
+                flush=True,
+            )
+
+    def _authenticated_session(self) -> Session:
         identity = self._require_identity()
         session_id = self.headers.get("X-ILAIOS-Session", "").strip()
         if not session_id:
             raise DesktopIdentityError("Desktop session is required")
-        session = identity.validate_session(session_id)
-        objective = _required_string(body, "objective")
-        if len(objective) > 20_000:
-            raise ValueError("objective exceeds Desktop input limit")
-        headers = {
-            "Authorization": f"Bearer {self.server.bearer_token}",
-            "Accept": "application/json",
-        }
-        try:
-            goal_response = self.server.http.post(
-                f"{self.server.control_plane_base_url}/v1/goals",
-                json={"objective": objective},
-                headers=headers,
-                timeout=5,
-            )
-            goal_response.raise_for_status()
-            goal = goal_response.json()
-            if not isinstance(goal, dict) or not isinstance(goal.get("goal_id"), str):
-                raise DesktopIdentityError("control plane returned malformed goal")
-            job_response = self.server.http.post(
-                f"{self.server.control_plane_base_url}/v1/jobs",
-                json={"goal_id": goal["goal_id"]},
-                headers=headers,
-                timeout=5,
-            )
-            job_response.raise_for_status()
-            job = job_response.json()
-        except (requests.RequestException, ValueError) as error:
-            raise DesktopIdentityError(
-                "authoritative control-plane intent submission failed"
-            ) from error
+        return identity.validate_session(session_id)
+
+    def _require_execution_owner(
+        self, execution: dict[str, object], session: Session
+    ) -> None:
         if (
-            not isinstance(job, dict)
-            or not isinstance(job.get("job_id"), str)
-            or not isinstance(job.get("state"), str)
+            execution.get("principal_id") != session.principal_id
+            or execution.get("tenant_id") != session.tenant_id
         ):
-            raise DesktopIdentityError("control plane returned malformed job")
-        self._send_json(
-            HTTPStatus.CREATED,
-            {
-                "goal_id": goal["goal_id"],
-                "job_id": job["job_id"],
-                "state": job["state"],
-                "principal_id": session.principal_id,
-                "tenant_id": session.tenant_id,
-            },
-        )
+            raise DesktopIdentityError("execution does not belong to Desktop session")
 
     def _authenticate_transport(self) -> None:
         header = self.headers.get("Authorization", "")

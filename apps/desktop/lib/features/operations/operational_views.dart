@@ -160,14 +160,37 @@ class GovernanceView extends StatelessWidget {
     return value is List<Object?> ? value.length : 0;
   }
 
+  Set<String>? _approvalRequiredRequestIds() {
+    final raw = snapshot.governanceState['admissions'];
+    if (raw is! List<Object?>) return null;
+    final required = <String>{};
+    for (final item in raw) {
+      if (item is Map<String, dynamic> &&
+          item['human_approval_required'] == true) {
+        final requestId = item['request_id'];
+        if (requestId is String && requestId.isNotEmpty) {
+          required.add(requestId);
+        }
+      }
+    }
+    return required;
+  }
+
   List<Map<String, Object?>> _pendingWork() {
     final raw = snapshot.governanceState['work'];
     if (raw is! List<Object?>) return const <Map<String, Object?>>[];
+    final required = _approvalRequiredRequestIds();
     final pending = <Map<String, Object?>>[];
     for (final item in raw) {
-      if (item is Map<String, dynamic> && item['status'] == 'pending') {
-        pending.add(Map<String, Object?>.from(item));
+      if (item is! Map<String, dynamic> || item['status'] != 'pending') {
+        continue;
       }
+      final requestId = item['request_id'];
+      if (required != null &&
+          (requestId is! String || !required.contains(requestId))) {
+        continue;
+      }
+      pending.add(Map<String, Object?>.from(item));
     }
     return pending;
   }
@@ -180,7 +203,7 @@ class GovernanceView extends StatelessWidget {
       icon: Icons.admin_panel_settings_outlined,
       status: status,
       footer:
-          'Approve/Deny sends only a decision to the authoritative governance gateway. Desktop cannot execute governed work, bypass independent approval, or expose secret references.',
+          'Approval controls are rendered only for backend-admitted work whose persisted policy requires human approval. Desktop cannot change risk class, execute work directly, bypass admission, or expose secret references.',
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 14, runSpacing: 14, children: [
           _OperationalCard(
