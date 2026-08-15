@@ -234,9 +234,9 @@ resource "aws_ecs_task_definition" "runtime" {
     }
   }
   container_definitions = jsonencode([{
-    name         = "runtime", image = "${aws_ecr_repository.runtime.repository_url}@${var.image_digest}", essential = true,
-    user         = "1000:1000", readonlyRootFilesystem = true,
-    portMappings = [{ containerPort = 8080, hostPort = 8080, protocol = "tcp" }],
+    name             = "runtime", image = "${aws_ecr_repository.runtime.repository_url}@${var.image_digest}", essential = true,
+    user             = "1000:1000", readonlyRootFilesystem = true,
+    portMappings     = [{ containerPort = 8080, hostPort = 8080, protocol = "tcp" }],
     environment      = local.runtime_environment,
     secrets          = [{ name = "ILAIOS_CONTROL_PLANE_TOKEN", valueFrom = var.control_plane_secret_arn }],
     mountPoints      = [{ sourceVolume = "state", containerPath = "/var/lib/ilaios", readOnly = false }],
@@ -288,7 +288,7 @@ resource "aws_ecs_service" "runtime" {
   task_definition = aws_ecs_task_definition.runtime[0].arn
   desired_count   = var.desired_count
   launch_type     = "FARGATE"
-  tags             = local.tags
+  tags            = local.tags
   deployment_circuit_breaker {
     enable   = true
     rollback = true
