@@ -55,6 +55,7 @@ def _text(name: str, value: str) -> None:
 def free_model_candidates(raw: str | None) -> tuple[str, ...]:
     """Normalize an explicit free-only candidate list and reject paid IDs."""
 
+    candidates: tuple[str, ...]
     if raw is None or not raw.strip():
         candidates = FREE_MODEL_CANDIDATES
     else:
