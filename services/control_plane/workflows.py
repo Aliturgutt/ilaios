@@ -40,7 +40,6 @@ class OutboxRecord:
 _TERMINAL_WORKFLOW_STATES = frozenset(
     {"completed", "failed", "cancelled", "partial", "timed_out"}
 )
-_TERMINAL_ATTEMPT_STATES = frozenset({"completed", "failed", "timed_out", "cancelled"})
 
 
 class WorkflowStore:
@@ -52,7 +51,7 @@ class WorkflowStore:
         self._initialize()
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self._config.database_path)
+        connection = sqlite3.connect(self._config.database_path, timeout=10)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         return connection
@@ -168,6 +167,7 @@ class WorkflowStore:
         if deadline.tzinfo is None:
             raise WorkflowError("deadline must be timezone-aware")
         with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
             workflow = connection.execute(
                 "SELECT status FROM workflows WHERE workflow_id = ?", (workflow_id,)
             ).fetchone()
@@ -243,6 +243,7 @@ class WorkflowStore:
     def complete_attempt(self, attempt_id: str) -> None:
         terminal_at = datetime.now(timezone.utc)
         with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
             attempt = self._attempt(connection, attempt_id)
             if attempt["status"] == "completed":
                 return
@@ -305,6 +306,7 @@ class WorkflowStore:
         if now.tzinfo is None:
             raise WorkflowError("now must be timezone-aware")
         with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
             existing = self._closure(connection, workflow_id)
             if existing is not None:
                 return str(existing["terminal_status"])
@@ -445,6 +447,7 @@ class WorkflowStore:
         if at.tzinfo is None:
             raise WorkflowError("terminal time must be timezone-aware")
         with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
             attempt = self._attempt(connection, attempt_id)
             if attempt["status"] == status:
                 task = connection.execute(
