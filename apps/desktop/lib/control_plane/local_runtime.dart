@@ -148,6 +148,18 @@ class DesktopRuntime {
                 token: token,
               );
 
+              // The ready file is an untrusted process hand-off boundary. Do
+              // not send the per-process bearer anywhere until both published
+              // endpoints are explicitly loopback HTTP endpoints. This keeps a
+              // tampered/stale ready file from turning the readiness probe into
+              // a bearer-token exfiltration request.
+              final identityUri = config.identityUri;
+              if (!isExplicitLoopbackHttpEndpoint(config.baseUri) ||
+                  identityUri == null ||
+                  !isExplicitLoopbackHttpEndpoint(identityUri)) {
+                continue;
+              }
+
               // The ready file proves only that the child published ports. Do
               // not expose the Desktop UI until the identity endpoint accepts
               // this exact process token. This closes the publish-before-
