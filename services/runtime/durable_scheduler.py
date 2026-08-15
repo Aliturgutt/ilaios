@@ -112,6 +112,31 @@ class DurableWorkerScheduler:
             raise SchedulingError("task lease is not expired")
         return self.schedule(task_id, capability, now=now)
 
+    def cancel(self, task_id: str, *, now: datetime) -> bool:
+        """Invalidate any active lease and advance its fence atomically."""
+        _require_aware(now, "now")
+        if not task_id:
+            raise SchedulingError("task_id is required")
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            lease = connection.execute(
+                "SELECT 1 FROM scheduler_leases WHERE task_id = ?", (task_id,)
+            ).fetchone()
+            fence_row = connection.execute(
+                "SELECT fencing_token FROM scheduler_fences WHERE task_id = ?",
+                (task_id,),
+            ).fetchone()
+            fence = 1 if fence_row is None else int(fence_row[0]) + 1
+            connection.execute(
+                "INSERT INTO scheduler_fences VALUES (?, ?) "
+                "ON CONFLICT(task_id) DO UPDATE SET fencing_token=excluded.fencing_token",
+                (task_id, fence),
+            )
+            connection.execute(
+                "DELETE FROM scheduler_leases WHERE task_id = ?", (task_id,)
+            )
+        return lease is not None
+
     def record_side_effect(
         self, lease: Lease, *, now: datetime, payload: dict[str, Any]
     ) -> None:
@@ -135,12 +160,18 @@ class DurableWorkerScheduler:
 
     def state(self) -> dict[str, Any]:
         with self._connect() as connection:
-            leases = [dict(row) for row in connection.execute(
-                "SELECT * FROM scheduler_leases ORDER BY task_id"
-            )]
-            effects = [dict(row) for row in connection.execute(
-                "SELECT * FROM scheduler_effects ORDER BY task_id, fencing_token"
-            )]
+            leases = [
+                dict(row)
+                for row in connection.execute(
+                    "SELECT * FROM scheduler_leases ORDER BY task_id"
+                )
+            ]
+            effects = [
+                dict(row)
+                for row in connection.execute(
+                    "SELECT * FROM scheduler_effects ORDER BY task_id, fencing_token"
+                )
+            ]
         return {"leases": leases, "effects": effects}
 
     @staticmethod
