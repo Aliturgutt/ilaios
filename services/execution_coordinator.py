@@ -545,9 +545,41 @@ class ExecutionCoordinator:
             self._grants.revoke(_grant_id(request_id), now=now)
             return None
 
+        if product_state["status"] == "interrupted":
+            reason = str(
+                product_state.get("reason")
+                or "finished-product execution interrupted"
+            )
+            with self._connect() as connection:
+                changed = connection.execute(
+                    "UPDATE execution_requests SET status = 'INTERRUPTED', updated_at = ? "
+                    "WHERE request_id = ? AND status = 'EXECUTING'",
+                    (now.isoformat(), request_id),
+                ).rowcount
+                if changed == 1:
+                    self._record_closure(
+                        connection, request_id, "INTERRUPTED", reason, now
+                    )
+            self._grants.revoke(_grant_id(request_id), now=now)
+            return None
+
         updated_at = datetime.fromisoformat(str(row["updated_at"]))
         if now - updated_at < _STALE_EXECUTION_AFTER:
             raise ExecutionCoordinatorError("execution request is already executing")
+        interruption_reason = (
+            "execution exceeded recovery window without durable product terminal evidence"
+        )
+        try:
+            interrupted = self._video.interrupt(
+                request_id,
+                token=token,
+                now=now,
+                reason=interruption_reason,
+            )
+        except ProductRuntimeError as error:
+            raise ExecutionCoordinatorError(str(error)) from error
+        if interrupted["status"] != "interrupted":
+            raise ExecutionCoordinatorError("product interruption did not close durably")
         with self._connect() as connection:
             changed = connection.execute(
                 "UPDATE execution_requests SET status = 'INTERRUPTED', updated_at = ? "
@@ -559,7 +591,7 @@ class ExecutionCoordinator:
                     connection,
                     request_id,
                     "INTERRUPTED",
-                    "execution exceeded recovery window without durable product terminal evidence",
+                    interruption_reason,
                     now,
                 )
         self._grants.revoke(_grant_id(request_id), now=now)
