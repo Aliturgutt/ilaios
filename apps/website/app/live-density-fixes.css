@@ -1,0 +1,200 @@
+/* Live visual-density corrections from the 2026-08-15 desktop red-team.
+   This is a final override layer only: no product truth, route or authority changes. */
+
+/* Interactive architecture buttons must look like ILAIOS system nodes, never
+   browser-default grey controls. */
+.spatial-node {
+  background: var(--brand-panel-dark) !important;
+  border-color: var(--brand-line) !important;
+  box-shadow: none !important;
+  color: var(--brand-white) !important;
+}
+
+.spatial-node > span,
+.spatial-node > small {
+  color: var(--brand-muted) !important;
+}
+
+.spatial-node:hover,
+.spatial-node:focus-visible {
+  background: var(--brand-charcoal) !important;
+  border-color: var(--brand-cyan-line) !important;
+}
+
+.spatial-node.is-active {
+  background: var(--brand-charcoal) !important;
+  border-color: var(--brand-cyan) !important;
+  box-shadow: inset 0 -2px 0 var(--brand-cyan) !important;
+}
+
+/* Factory Explorer: the previous 2-column composition inherited the height of
+   nine stacked factory rows, leaving a large empty right-hand field. On wide
+   screens the selector becomes a compact 3x3 matrix and the selected factory
+   detail uses the full width below it. */
+@media (min-width: 901px) {
+  .factory-explorer-heading {
+    grid-template-columns: minmax(0, .95fr) minmax(320px, .55fr) !important;
+    gap: 28px !important;
+    align-items: end !important;
+    margin-bottom: 18px !important;
+  }
+
+  .factory-explorer-layout {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 16px !important;
+    align-items: start !important;
+  }
+
+  .factory-index {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    border-top: 1px solid var(--brand-line) !important;
+    border-left: 1px solid var(--brand-line) !important;
+  }
+
+  .factory-index button {
+    display: grid !important;
+    grid-template-columns: 30px minmax(0, 1fr) !important;
+    grid-template-areas: "num title" "num meta" !important;
+    align-content: center !important;
+    gap: 2px 10px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 72px !important;
+    padding: 11px 13px !important;
+    border: 0 !important;
+    border-right: 1px solid var(--brand-line) !important;
+    border-bottom: 1px solid var(--brand-line) !important;
+    background: transparent !important;
+    text-align: left !important;
+  }
+
+  .factory-index button > span { grid-area: num !important; }
+  .factory-index button > strong { grid-area: title !important; }
+  .factory-index button > small { grid-area: meta !important; white-space: normal !important; }
+
+  .factory-index button:hover,
+  .factory-index button:focus-visible,
+  .factory-index button.is-active {
+    background: var(--brand-charcoal) !important;
+    box-shadow: inset 3px 0 0 var(--brand-cyan) !important;
+  }
+
+  .factory-detail {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+    min-height: 0 !important;
+    height: auto !important;
+    padding: 18px 20px !important;
+    border: 1px solid var(--brand-line) !important;
+    background: var(--brand-panel-dark) !important;
+  }
+
+  .factory-detail-top {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) auto !important;
+    gap: 18px !important;
+    align-items: start !important;
+  }
+
+  .factory-pipeline,
+  .factory-boundary {
+    margin: 0 !important;
+  }
+
+  .factory-pipeline ol {
+    display: grid !important;
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+
+  .factory-boundary {
+    display: grid !important;
+    grid-template-columns: 132px minmax(0, 1fr) !important;
+    gap: 18px !important;
+    align-items: start !important;
+    padding-top: 12px !important;
+    border-top: 1px solid var(--brand-line) !important;
+  }
+}
+
+/* Governance: the old editorial 30/70 split left an empty column under a short
+   heading. Make the heading full-width and use a compact four-control ledger. */
+@media (min-width: 1101px) {
+  .evidence-story-interactive {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+
+  .evidence-story-copy {
+    max-width: 760px !important;
+  }
+
+  .governance-evidence {
+    width: 100% !important;
+  }
+
+  .evidence-ledger-interactive {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .evidence-control {
+    min-height: 118px !important;
+    padding: 16px !important;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1100px) {
+  .evidence-story-interactive {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 18px !important;
+  }
+
+  .evidence-story-copy {
+    max-width: 720px !important;
+  }
+
+  .evidence-ledger-interactive {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+/* Keep the architecture explanation compact while preserving the interactive
+   map as the dominant visual. */
+@media (min-width: 901px) {
+  .architecture-story {
+    grid-template-columns: minmax(260px, .5fr) minmax(0, 1.5fr) !important;
+    gap: 28px !important;
+  }
+
+  .architecture-story-copy {
+    align-self: center !important;
+  }
+}
+
+/* Tablet Factory Explorer: two-column selector, full-width detail. */
+@media (min-width: 761px) and (max-width: 900px) {
+  .factory-explorer-layout {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 14px !important;
+  }
+
+  .factory-index {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .factory-index button {
+    min-width: 0 !important;
+    height: auto !important;
+  }
+
+  .factory-detail {
+    min-height: 0 !important;
+    height: auto !important;
+  }
+}
