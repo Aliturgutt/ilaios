@@ -85,6 +85,7 @@ jobs:
           tests/test_web_product_runtime.py
           tests/test_web_project.py
           tests/test_web_deployment.py
+          tests/test_web_repair.py
 
       - name: Upload generated-site build and browser evidence
         if: always()
