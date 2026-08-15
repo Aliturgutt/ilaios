@@ -1,0 +1,208 @@
+/* Canonical ILAIOS brand palette.
+   Distribution target: Carbon 70%, Charcoal/Graphite 20%, Cyan 10%.
+   This layer changes color hierarchy only; layout, copy and route behavior stay unchanged. */
+
+:root {
+  --brand-carbon: #0B0F14;
+  --brand-charcoal: #111827;
+  --brand-graphite: #1F2937;
+  --brand-cyan: #00C2D1;
+  --brand-white: #FFFFFF;
+  --brand-text-soft: #D7DEE3;
+  --brand-muted: #9AA6AF;
+  --brand-line: #2B3642;
+  --brand-line-strong: #465461;
+  --brand-cyan-soft: rgba(0, 194, 209, .10);
+  --brand-cyan-line: rgba(0, 194, 209, .42);
+
+  --bg: var(--brand-carbon);
+  --surface: var(--brand-charcoal);
+  --surface-2: var(--brand-graphite);
+  --text: var(--brand-white);
+  --text-soft: var(--brand-text-soft);
+  --muted: var(--brand-muted);
+  --line: var(--brand-line);
+  --line-strong: var(--brand-line-strong);
+  --accent: var(--brand-cyan);
+}
+
+body {
+  background: var(--brand-carbon);
+  color: var(--brand-white);
+}
+
+/* Brand hierarchy: carbon canvas, charcoal/graphite structural surfaces. */
+.site-header,
+.site-footer {
+  background: var(--brand-carbon);
+  border-color: var(--brand-line);
+}
+
+.surface-section,
+.architecture-section,
+.evidence-section {
+  background: var(--brand-charcoal);
+}
+
+.canonical-detail-panel,
+.explorer-panel,
+.detail-nav-link,
+.product-experience,
+.boundary-core,
+.authority-layer {
+  background-color: var(--brand-charcoal);
+  border-color: var(--brand-line);
+}
+
+.canonical-linear > div,
+.goal-composer textarea,
+.explore-menu-panel,
+.nav-panel {
+  background-color: var(--brand-carbon);
+  border-color: var(--brand-line);
+}
+
+/* Cyan is an intentional 10% signal color, never a full-page wash. */
+.eyebrow,
+.text-link,
+.status-chip,
+.panel-kicker,
+.micro-label,
+.detail-link-card > span,
+.plane-card span,
+.security-chain article > span,
+.stack-layer span,
+.runtime-steps span,
+.canonical-linear > div > span,
+.canonical-dual > div > span,
+.core-node span,
+.process-ledger > article > span,
+.verification-list span {
+  color: var(--brand-cyan);
+}
+
+.nav-primary a[aria-current="page"],
+.nav-utility > a[aria-current="page"],
+.explore-menu summary.is-active,
+.product-mode-tabs button.is-active {
+  color: var(--brand-white);
+  border-color: var(--brand-cyan);
+}
+
+.language-switch strong {
+  background: var(--brand-cyan-soft);
+  color: var(--brand-white);
+  box-shadow: inset 0 0 0 1px var(--brand-cyan-line);
+}
+
+.button {
+  background: var(--brand-cyan);
+  border-color: var(--brand-cyan);
+  color: var(--brand-carbon);
+}
+
+.button:hover {
+  background: #20D3DF;
+  border-color: #20D3DF;
+  color: var(--brand-carbon);
+}
+
+.button.secondary {
+  background: transparent;
+  border-color: var(--brand-line-strong);
+  color: var(--brand-white);
+}
+
+.button.secondary:hover {
+  background: var(--brand-graphite);
+  border-color: var(--brand-cyan-line);
+  color: var(--brand-white);
+}
+
+:where(a,button,input,textarea,summary):focus-visible {
+  outline-color: var(--brand-cyan);
+}
+
+::selection {
+  background: var(--brand-cyan);
+  color: var(--brand-carbon);
+}
+
+/* Structural separators use graphite, with cyan reserved for active states. */
+.section,
+.grid,
+.detail-link-grid,
+.journey-grid,
+.flow-grid,
+.security-chain,
+.plane-grid,
+.boundary-ledger,
+.process-ledger,
+.verification-list,
+.core-diagram,
+.architecture-layer-list,
+.about-principles,
+.contact-directory {
+  border-color: var(--brand-line);
+}
+
+.card,
+.detail-link-card,
+.journey-card,
+.flow-card,
+.plane-card,
+.security-chain article,
+.core-node,
+.contact-directory article {
+  border-color: var(--brand-line);
+}
+
+.detail-link-card:hover,
+.core-node:hover,
+.pathway-card:hover,
+.destination-card:hover {
+  background: var(--brand-charcoal);
+  border-color: var(--brand-cyan-line);
+}
+
+.authority-layer,
+.boundary-core {
+  background: linear-gradient(90deg, var(--brand-charcoal), rgba(0, 194, 209, .06));
+  border-color: var(--brand-cyan-line);
+}
+
+.execution-rail .is-active,
+.execution-rail .is-complete {
+  background: var(--brand-cyan-soft);
+}
+
+.execution-rail .is-active span,
+.execution-rail .is-complete span {
+  color: var(--brand-cyan);
+}
+
+/* Typography remains mostly neutral white/soft gray for readability. */
+h1,
+h2,
+h3,
+strong {
+  color: var(--brand-white);
+}
+
+p,
+small,
+.muted {
+  color: var(--brand-muted);
+}
+
+.lead {
+  color: var(--brand-text-soft);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .button,
+  .detail-link-card,
+  .core-node {
+    transition: none;
+  }
+}
