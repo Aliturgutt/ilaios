@@ -185,6 +185,7 @@ class RAG14EvidenceItem:
     evidence_ref: str
     evidence_sha256: str
     verified_by: str
+    exact_release_scope: str
 
     def __post_init__(self) -> None:
         if self.requirement not in RAG14_REQUIREMENTS:
@@ -192,6 +193,7 @@ class RAG14EvidenceItem:
         _require_id(self.evidence_ref, "evidence_ref")
         _require_sha256(self.evidence_sha256, "evidence_sha256")
         _require_id(self.verified_by, "verified_by")
+        _require_id(self.exact_release_scope, "exact_release_scope")
 
 
 @dataclass(frozen=True, slots=True)
@@ -212,10 +214,16 @@ class RAG14PromotionGate:
 
     def evaluate(self, items: tuple[RAG14EvidenceItem, ...]) -> RAG14ReadinessReport:
         by_requirement: dict[str, RAG14EvidenceItem] = {}
+        release_scopes: set[str] = set()
         for item in items:
             if item.requirement in by_requirement:
                 raise RAGProductionReadinessError("duplicate RAG.14 evidence requirement")
             by_requirement[item.requirement] = item
+            release_scopes.add(item.exact_release_scope)
+        if len(release_scopes) > 1:
+            raise RAGProductionReadinessError(
+                "RAG.14 evidence items must bind one exact release scope"
+            )
 
         satisfied = tuple(
             requirement
@@ -228,7 +236,8 @@ class RAG14PromotionGate:
             if requirement not in by_requirement
         )
         evidence_material = "|".join(
-            f"{item.requirement}:{item.evidence_ref}:{item.evidence_sha256}:{item.verified_by}"
+            f"{item.requirement}:{item.evidence_ref}:{item.evidence_sha256}:"
+            f"{item.verified_by}:{item.exact_release_scope}"
             for item in sorted(items, key=lambda current: current.requirement)
         )
         evidence_sha = hashlib.sha256(evidence_material.encode("utf-8")).hexdigest()
@@ -265,7 +274,9 @@ def _encode_vector(vector: tuple[float, ...]) -> str:
     return json.dumps(validated, separators=(",", ":"), allow_nan=False)
 
 
-def _decode_verified_vector(payload: str, expected_sha256: str, dimension: int) -> tuple[float, ...]:
+def _decode_verified_vector(
+    payload: str, expected_sha256: str, dimension: int
+) -> tuple[float, ...]:
     if dimension < 1:
         raise RAGProductionReadinessError("stored vector dimension is invalid")
     _require_sha256(expected_sha256, "stored vector SHA")
