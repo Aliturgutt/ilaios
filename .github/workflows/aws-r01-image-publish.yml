@@ -2,16 +2,16 @@ name: AWS R01 image publish
 
 on:
   workflow_dispatch:
-  push:
-    branches: [master]
-    paths:
-      - '.github/workflows/aws-r01-image-publish.yml'
-      - 'infra/aws/r01-canary/Dockerfile.runtime'
-      - 'services/deployment/runtime.py'
-      - 'services/control_plane/**'
-      - 'services/**'
-      - 'src/**'
-      - 'packages/**'
+    inputs:
+      source_sha:
+        description: Exact 40-character source commit SHA to build and publish
+        required: true
+        type: string
+      confirm_external_mutation:
+        description: Confirm this run may write a new immutable image/signing state to AWS ECR
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -19,15 +19,39 @@ permissions:
 
 concurrency:
   group: release-r01-image-publish
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   publish:
+    if: ${{ inputs.confirm_external_mutation == true }}
     runs-on: ubuntu-24.04
+    env:
+      SOURCE_SHA: ${{ inputs.source_sha }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Validate exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]] || {
+            echo 'source_sha must be an exact lowercase 40-character Git commit SHA.'
+            exit 1
+          }
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact checkout
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a # v4
         with:
           role-to-assume: arn:aws:iam::101180464425:role/ILAIOS-GitHub-Deploy-Role
           aws-region: eu-central-1
@@ -82,7 +106,7 @@ jobs:
             --platform linux/amd64 \
             --pull \
             --file infra/aws/r01-canary/Dockerfile.runtime \
-            --tag ilaios-r01-runtime:${GITHUB_SHA} \
+            --tag ilaios-r01-runtime:${SOURCE_SHA} \
             .
 
       - name: Smoke-test container runtime before publish
@@ -99,7 +123,7 @@ jobs:
             -e ILAIOS_HOST=0.0.0.0 \
             -e ILAIOS_PORT=8080 \
             -p 127.0.0.1:18081:8080 \
-            ilaios-r01-runtime:${GITHUB_SHA})"
+            ilaios-r01-runtime:${SOURCE_SHA})"
           cleanup() {
             docker logs "$CID" || true
             docker rm -f "$CID" >/dev/null 2>&1 || true
@@ -142,9 +166,9 @@ jobs:
           REPOSITORY: ilaios-r01-canary
         run: |
           set -euo pipefail
-          TAG="r01-${GITHUB_SHA}"
+          TAG="r01-${SOURCE_SHA}"
           aws ecr get-login-password --region eu-central-1 | docker login --username AWS --password-stdin "$REGISTRY"
-          docker tag "ilaios-r01-runtime:${GITHUB_SHA}" "${REGISTRY}/${REPOSITORY}:${TAG}"
+          docker tag "ilaios-r01-runtime:${SOURCE_SHA}" "${REGISTRY}/${REPOSITORY}:${TAG}"
           docker push "${REGISTRY}/${REPOSITORY}:${TAG}"
           DIGEST="$(aws ecr describe-images \
             --repository-name "$REPOSITORY" \
