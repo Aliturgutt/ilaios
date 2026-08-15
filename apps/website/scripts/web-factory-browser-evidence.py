@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import importlib
 import json
 import threading
 from datetime import datetime, timedelta, timezone
@@ -11,8 +12,6 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, cast
-
-from playwright.sync_api import ConsoleMessage, Error, Page, Request, sync_playwright
 
 from services.integrations import GovernedWebFactory, derive_website_spec
 from services.runtime import BlastRadiusBudget, ExecutionGrant, GrantPolicy
@@ -31,59 +30,106 @@ def _grant(site_id: str, now: datetime) -> ExecutionGrant:
     )
 
 
-def _quiet_handler(directory: str) -> type[SimpleHTTPRequestHandler]:
-    class QuietHandler(SimpleHTTPRequestHandler):
-        def log_message(self, format: str, *args: object) -> None:
-            del format, args
+class _QuietHandler(SimpleHTTPRequestHandler):
+    def log_message(self, format: str, *args: object) -> None:
+        del format, args
 
-    return cast(
-        type[SimpleHTTPRequestHandler],
-        partial(QuietHandler, directory=directory),
+
+def _measure(page: Any) -> dict[str, object]:
+    value = page.evaluate(
+        """
+        () => {
+          const visible = (el) => {
+            const style = getComputedStyle(el);
+            const rect = el.getBoundingClientRect();
+            return style.display !== 'none' && style.visibility !== 'hidden' &&
+              Number(style.opacity || 1) !== 0 && rect.width > 0 && rect.height > 0;
+          };
+          const overflow = [...document.querySelectorAll('*')]
+            .filter((el) => visible(el) && !el.classList.contains('skip-link'))
+            .filter((el) => {
+              const rect = el.getBoundingClientRect();
+              return rect.left < -1 || rect.right > window.innerWidth + 1;
+            })
+            .map((el) => ({
+              tag: el.tagName,
+              cls: el.className,
+              rect: el.getBoundingClientRect().toJSON(),
+            }));
+          const controls = [...document.querySelectorAll('.primary-action,button,input,textarea')]
+            .filter(visible)
+            .map((el) => {
+              const rect = el.getBoundingClientRect();
+              return {tag: el.tagName, width: rect.width, height: rect.height};
+            });
+          const main = document.querySelector('main');
+          const canonical = document.querySelector('link[rel="canonical"]');
+          return {
+            viewport: window.innerWidth,
+            documentOverflow: Math.max(
+              0,
+              document.documentElement.scrollWidth - document.documentElement.clientWidth,
+            ),
+            bodyOverflow: Math.max(0, document.body.scrollWidth - document.body.clientWidth),
+            overflowElements: overflow,
+            controls,
+            lang: document.documentElement.lang,
+            mainVisible: !!main && visible(main),
+            canonical: canonical ? canonical.href : null,
+            title: document.title,
+          };
+        }
+        """
     )
+    if not isinstance(value, dict):
+        raise RuntimeError("browser measurement payload is malformed")
+    return cast(dict[str, object], value)
 
 
-def _measure(page: Page) -> dict[str, Any]:
-    return cast(
-        dict[str, Any],
-        page.evaluate(
-            """
-            () => {
-              const visible = (el) => {
-                const style = getComputedStyle(el);
-                const rect = el.getBoundingClientRect();
-                return style.display !== 'none' && style.visibility !== 'hidden' &&
-                  Number(style.opacity || 1) !== 0 && rect.width > 0 && rect.height > 0;
-              };
-              const overflow = [...document.querySelectorAll('*')]
-                .filter((el) => visible(el) && !el.classList.contains('skip-link'))
-                .filter((el) => {
-                  const r = el.getBoundingClientRect();
-                  return r.left < -1 || r.right > window.innerWidth + 1;
-                })
-                .map((el) => ({tag: el.tagName, cls: el.className, rect: el.getBoundingClientRect().toJSON()}));
-              const controls = [...document.querySelectorAll('.primary-action,button,input,textarea')]
-                .filter(visible)
-                .map((el) => {
-                  const r = el.getBoundingClientRect();
-                  return {tag: el.tagName, width: r.width, height: r.height};
-                });
-              const main = document.querySelector('main');
-              const canonical = document.querySelector('link[rel="canonical"]');
-              return {
-                viewport: window.innerWidth,
-                documentOverflow: Math.max(0, document.documentElement.scrollWidth - document.documentElement.clientWidth),
-                bodyOverflow: Math.max(0, document.body.scrollWidth - document.body.clientWidth),
-                overflowElements: overflow,
-                controls,
-                lang: document.documentElement.lang,
-                mainVisible: !!main && visible(main),
-                canonical: canonical ? canonical.href : null,
-                title: document.title,
-              };
-            }
-            """
-        ),
-    )
+def _append_browser_findings(
+    findings: list[dict[str, object]],
+    *,
+    route: str,
+    locale: str,
+    width: int,
+    measured: dict[str, object],
+    console_errors: list[str],
+    page_errors: list[str],
+    request_failures: list[str],
+) -> None:
+    def add(finding: str) -> None:
+        findings.append({"route": route, "width": width, "finding": finding})
+
+    if measured.get("lang") != locale:
+        add("locale mismatch")
+    if measured.get("mainVisible") is not True:
+        add("main not visible")
+    if not measured.get("canonical"):
+        add("canonical missing")
+    if measured.get("documentOverflow") != 0 or measured.get("bodyOverflow") != 0:
+        add("horizontal overflow")
+    overflow = measured.get("overflowElements")
+    if isinstance(overflow, list) and overflow:
+        add("element exceeds viewport")
+    if console_errors or page_errors or request_failures:
+        add("browser runtime error")
+
+    controls = measured.get("controls")
+    if isinstance(controls, list):
+        for control_value in controls:
+            if not isinstance(control_value, dict):
+                add("malformed control measurement")
+                break
+            width_value = control_value.get("width")
+            height_value = control_value.get("height")
+            if not isinstance(width_value, (int, float)) or not isinstance(
+                height_value, (int, float)
+            ):
+                add("malformed control measurement")
+                break
+            if width_value < 32 or height_value < 32:
+                add("undersized primary control")
+                break
 
 
 def main() -> int:
@@ -96,6 +142,10 @@ def main() -> int:
         "trust presentation and responsive mobile design."
     )
 
+    sync_api = importlib.import_module("playwright.sync_api")
+    findings: list[dict[str, object]] = []
+    measurements: list[dict[str, object]] = []
+
     with TemporaryDirectory() as temporary:
         temp = Path(temporary)
         spec = derive_website_spec("web-browser-certification", objective)
@@ -105,15 +155,13 @@ def main() -> int:
             now=now,
         )
         bundle = Path(result.bundle_path)
-        handler = _quiet_handler(str(bundle))
+        handler = partial(_QuietHandler, directory=str(bundle))
         server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
         thread = threading.Thread(target=server.serve_forever, daemon=True)
         thread.start()
         port = int(server.server_address[1])
-        findings: list[dict[str, object]] = []
-        measurements: list[dict[str, object]] = []
         try:
-            with sync_playwright() as playwright:
+            with sync_api.sync_playwright() as playwright:
                 browser = playwright.chromium.launch(headless=True)
                 try:
                     for route in result.routes:
@@ -127,15 +175,15 @@ def main() -> int:
                             page_errors: list[str] = []
                             request_failures: list[str] = []
 
-                            def on_console(message: ConsoleMessage) -> None:
+                            def on_console(message: Any) -> None:
                                 if message.type == "error":
-                                    console_errors.append(message.text)
+                                    console_errors.append(str(message.text))
 
-                            def on_page_error(error: Error) -> None:
+                            def on_page_error(error: Any) -> None:
                                 page_errors.append(str(error))
 
-                            def on_request_failed(request: Request) -> None:
-                                request_failures.append(request.url)
+                            def on_request_failed(request: Any) -> None:
+                                request_failures.append(str(request.url))
 
                             page.on("console", on_console)
                             page.on("pageerror", on_page_error)
@@ -146,10 +194,15 @@ def main() -> int:
                             )
                             if response is None or response.status != 200:
                                 findings.append(
-                                    {"route": route, "width": width, "finding": "non-200 route"}
+                                    {
+                                        "route": route,
+                                        "width": width,
+                                        "finding": "non-200 route",
+                                    }
                                 )
                                 page.close()
                                 continue
+
                             measured = _measure(page)
                             measured.update(
                                 {
@@ -159,34 +212,43 @@ def main() -> int:
                                     "requestFailures": request_failures,
                                 }
                             )
-                            measurements.append(cast(dict[str, object], measured))
-                            if measured["lang"] != locale:
-                                findings.append({"route": route, "width": width, "finding": "locale mismatch"})
-                            if not measured["mainVisible"]:
-                                findings.append({"route": route, "width": width, "finding": "main not visible"})
-                            if not measured["canonical"]:
-                                findings.append({"route": route, "width": width, "finding": "canonical missing"})
-                            if measured["documentOverflow"] != 0 or measured["bodyOverflow"] != 0:
-                                findings.append({"route": route, "width": width, "finding": "horizontal overflow"})
-                            if measured["overflowElements"]:
-                                findings.append({"route": route, "width": width, "finding": "element exceeds viewport"})
-                            if console_errors or page_errors or request_failures:
-                                findings.append({"route": route, "width": width, "finding": "browser runtime error"})
-                            for control in cast(list[dict[str, float]], measured["controls"]):
-                                if control["height"] < 32 or control["width"] < 32:
-                                    findings.append({"route": route, "width": width, "finding": "undersized primary control"})
-                                    break
+                            measurements.append(measured)
+                            _append_browser_findings(
+                                findings,
+                                route=route,
+                                locale=locale,
+                                width=width,
+                                measured=measured,
+                                console_errors=console_errors,
+                                page_errors=page_errors,
+                                request_failures=request_failures,
+                            )
+
                             page.keyboard.press("Tab")
                             focused = page.evaluate(
-                                "document.activeElement !== document.body && document.activeElement !== document.documentElement"
+                                "document.activeElement !== document.body && "
+                                "document.activeElement !== document.documentElement"
                             )
-                            if not focused:
-                                findings.append({"route": route, "width": width, "finding": "keyboard focus missing"})
+                            if focused is not True:
+                                findings.append(
+                                    {
+                                        "route": route,
+                                        "width": width,
+                                        "finding": "keyboard focus missing",
+                                    }
+                                )
                             reduced = page.evaluate(
-                                "matchMedia('(prefers-reduced-motion: reduce)').matches && getComputedStyle(document.documentElement).scrollBehavior === 'auto'"
+                                "matchMedia('(prefers-reduced-motion: reduce)').matches && "
+                                "getComputedStyle(document.documentElement).scrollBehavior === 'auto'"
                             )
-                            if not reduced:
-                                findings.append({"route": route, "width": width, "finding": "reduced motion not honored"})
+                            if reduced is not True:
+                                findings.append(
+                                    {
+                                        "route": route,
+                                        "width": width,
+                                        "finding": "reduced motion not honored",
+                                    }
+                                )
                             if route.endswith("index.html"):
                                 page.screenshot(
                                     path=str(root / f"{locale}-{width}.png"),
@@ -200,7 +262,7 @@ def main() -> int:
             server.server_close()
             thread.join(timeout=5)
 
-    summary = {
+    summary: dict[str, object] = {
         "status": "PASS" if not findings else "FAIL",
         "artifact_digest": result.artifact_hash,
         "routes": result.routes,
@@ -212,7 +274,8 @@ def main() -> int:
     (root / "summary.json").write_text(
         json.dumps(summary, indent=2, sort_keys=True), encoding="utf-8"
     )
-    print(json.dumps({k: v for k, v in summary.items() if k != "measurements"}, sort_keys=True))
+    public_summary = {key: value for key, value in summary.items() if key != "measurements"}
+    print(json.dumps(public_summary, sort_keys=True))
     if findings:
         raise SystemExit("Web Factory browser evidence failed")
     return 0
