@@ -27,6 +27,7 @@ from services.control_plane.proposals import (
 from services.governance import GateError, GovernedRuntimeGateway
 from services.integrations.product_runtime import (
     DurableVideoProductRuntime,
+    ProductFinalizationPending,
     ProductRuntimeError,
 )
 from services.runtime import BlastRadiusBudget, DurableGrantPolicy, ExecutionGrant
@@ -391,6 +392,8 @@ class ExecutionCoordinator:
                 token=token,
                 now=now,
             )
+        except ProductFinalizationPending:
+            raise
         except Exception as error:
             reason = _failure_reason(error)
             with self._connect() as connection:
@@ -507,6 +510,13 @@ class ExecutionCoordinator:
             product_state = self._video.get_state(request_id)
         except ProductRuntimeError as error:
             raise ExecutionCoordinatorError(str(error)) from error
+
+        if product_state["status"] == "finalizing":
+            try:
+                self._video.recover_finalizing(request_id, token=token, now=now)
+                product_state = self._video.get_state(request_id)
+            except ProductRuntimeError as error:
+                raise ExecutionCoordinatorError(str(error)) from error
 
         if product_state["status"] == "accepted":
             manifest = self._video.get_manifest(request_id)
