@@ -37,6 +37,12 @@ class OutboxRecord:
     payload: dict[str, Any]
 
 
+_TERMINAL_WORKFLOW_STATES = frozenset(
+    {"completed", "failed", "cancelled", "partial", "timed_out"}
+)
+_TERMINAL_ATTEMPT_STATES = frozenset({"completed", "failed", "timed_out", "cancelled"})
+
+
 class WorkflowStore:
     """SQLite-backed workflow state that remains authoritative after restart."""
 
@@ -96,6 +102,27 @@ class WorkflowStore:
                     payload_json TEXT NOT NULL,
                     received_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS workflow_closure (
+                    workflow_id TEXT PRIMARY KEY REFERENCES workflows(workflow_id),
+                    terminal_status TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    terminal_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS attempt_termination (
+                    attempt_id TEXT PRIMARY KEY REFERENCES attempts(attempt_id),
+                    terminal_status TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    terminal_at TEXT NOT NULL
+                );
+                CREATE TABLE IF NOT EXISTS workflow_closure_events (
+                    sequence INTEGER PRIMARY KEY AUTOINCREMENT,
+                    workflow_id TEXT NOT NULL REFERENCES workflows(workflow_id),
+                    task_id TEXT,
+                    attempt_id TEXT,
+                    event_type TEXT NOT NULL,
+                    reason TEXT NOT NULL,
+                    occurred_at TEXT NOT NULL
+                );
                 """
             )
 
@@ -119,6 +146,13 @@ class WorkflowStore:
         if max_attempts < 1:
             raise WorkflowError("max_attempts must be positive")
         with self._connect() as connection:
+            workflow = connection.execute(
+                "SELECT status FROM workflows WHERE workflow_id = ?", (workflow_id,)
+            ).fetchone()
+            if workflow is None:
+                raise WorkflowError("unknown workflow")
+            if workflow["status"] != "active":
+                raise WorkflowError("cannot add task to a closed workflow")
             connection.execute(
                 "INSERT INTO workflow_tasks VALUES (?, ?, 'ready', ?, ?)",
                 (workflow_id, task_id, max_attempts, compensation_event_type),
@@ -134,6 +168,11 @@ class WorkflowStore:
         if deadline.tzinfo is None:
             raise WorkflowError("deadline must be timezone-aware")
         with self._connect() as connection:
+            workflow = connection.execute(
+                "SELECT status FROM workflows WHERE workflow_id = ?", (workflow_id,)
+            ).fetchone()
+            if workflow is None or workflow["status"] != "active":
+                raise WorkflowError("workflow is not active")
             task = connection.execute(
                 "SELECT status, max_attempts FROM workflow_tasks "
                 "WHERE workflow_id = ? AND task_id = ?",
@@ -202,8 +241,13 @@ class WorkflowStore:
         return dict(json.loads(row["payload_json"]))
 
     def complete_attempt(self, attempt_id: str) -> None:
+        terminal_at = datetime.now(timezone.utc)
         with self._connect() as connection:
-            attempt = self._running_attempt(connection, attempt_id)
+            attempt = self._attempt(connection, attempt_id)
+            if attempt["status"] == "completed":
+                return
+            if attempt["status"] != "running":
+                raise WorkflowError("attempt is not running")
             connection.execute(
                 "UPDATE attempts SET status = 'completed' WHERE attempt_id = ?",
                 (attempt_id,),
@@ -213,33 +257,217 @@ class WorkflowStore:
                 "WHERE workflow_id = ? AND task_id = ?",
                 (attempt["workflow_id"], attempt["task_id"]),
             )
+            self._record_attempt_termination(
+                connection,
+                attempt,
+                "completed",
+                "attempt completed",
+                terminal_at,
+            )
+            self._reconcile_workflow(
+                connection,
+                str(attempt["workflow_id"]),
+                terminal_hint="completed",
+                reason="all required workflow tasks completed",
+                now=terminal_at,
+            )
 
     def fail_attempt(self, attempt_id: str, *, reason: str) -> str:
         return self._terminate_attempt(attempt_id, "failed", reason)
 
     def timeout_attempt(self, attempt_id: str, *, now: datetime) -> str:
+        if now.tzinfo is None:
+            raise WorkflowError("now must be timezone-aware")
         with self._connect() as connection:
-            attempt = self._running_attempt(connection, attempt_id)
-            if now.tzinfo is None:
-                raise WorkflowError("now must be timezone-aware")
+            attempt = self._attempt(connection, attempt_id)
+            if attempt["status"] == "timed_out":
+                task = connection.execute(
+                    "SELECT status FROM workflow_tasks WHERE workflow_id = ? AND task_id = ?",
+                    (attempt["workflow_id"], attempt["task_id"]),
+                ).fetchone()
+                if task is None:
+                    raise WorkflowError("unknown task")
+                return str(task["status"])
+            if attempt["status"] != "running":
+                raise WorkflowError("attempt is not running")
             if now < datetime.fromisoformat(attempt["deadline"]):
                 raise WorkflowError("attempt deadline has not elapsed")
-        return self._terminate_attempt(attempt_id, "timed_out", "deadline elapsed")
+        return self._terminate_attempt(
+            attempt_id,
+            "timed_out",
+            "deadline elapsed",
+            terminal_at=now,
+        )
 
-    def _terminate_attempt(self, attempt_id: str, status: str, reason: str) -> str:
-        if not reason or reason != reason.strip():
-            raise WorkflowError("reason must be non-blank and trimmed")
+    def cancel_workflow(self, workflow_id: str, *, reason: str, now: datetime) -> str:
+        _require_identifier(workflow_id, "workflow_id")
+        _require_reason(reason)
+        if now.tzinfo is None:
+            raise WorkflowError("now must be timezone-aware")
         with self._connect() as connection:
-            attempt = self._running_attempt(connection, attempt_id)
+            existing = self._closure(connection, workflow_id)
+            if existing is not None:
+                return str(existing["terminal_status"])
+            workflow = connection.execute(
+                "SELECT status FROM workflows WHERE workflow_id = ?", (workflow_id,)
+            ).fetchone()
+            if workflow is None:
+                raise WorkflowError("unknown workflow")
+            running = connection.execute(
+                "SELECT * FROM attempts WHERE workflow_id = ? AND status = 'running'",
+                (workflow_id,),
+            ).fetchall()
+            for attempt in running:
+                connection.execute(
+                    "UPDATE attempts SET status = 'cancelled' WHERE attempt_id = ?",
+                    (attempt["attempt_id"],),
+                )
+                self._record_attempt_termination(
+                    connection, attempt, "cancelled", reason, now
+                )
+            completed = connection.execute(
+                "SELECT COUNT(*) FROM workflow_tasks "
+                "WHERE workflow_id = ? AND status = 'completed'",
+                (workflow_id,),
+            ).fetchone()[0]
+            connection.execute(
+                "UPDATE workflow_tasks SET status = 'cancelled' "
+                "WHERE workflow_id = ? AND status IN ('ready', 'running')",
+                (workflow_id,),
+            )
+            terminal = "partial" if int(completed) > 0 else "cancelled"
+            self._close_workflow(connection, workflow_id, terminal, reason, now)
+            return terminal
+
+    def recover_expired_attempts(self, *, now: datetime) -> tuple[str, ...]:
+        """Deterministically close attempts that were orphaned beyond their deadline."""
+        if now.tzinfo is None:
+            raise WorkflowError("now must be timezone-aware")
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT attempt_id, deadline FROM attempts WHERE status = 'running' "
+                "ORDER BY attempt_id"
+            ).fetchall()
+        expired = tuple(
+            str(row["attempt_id"])
+            for row in rows
+            if datetime.fromisoformat(row["deadline"]) <= now
+        )
+        for attempt_id in expired:
+            self.timeout_attempt(attempt_id, now=now)
+        return expired
+
+    def workflow_state(self, workflow_id: str) -> dict[str, Any]:
+        """Return the durable workflow terminal truth, including reasons and attempts."""
+        _require_identifier(workflow_id, "workflow_id")
+        with self._connect() as connection:
+            workflow = connection.execute(
+                "SELECT * FROM workflows WHERE workflow_id = ?", (workflow_id,)
+            ).fetchone()
+            if workflow is None:
+                raise WorkflowError("unknown workflow")
+            closure = self._closure(connection, workflow_id)
+            tasks = [
+                dict(row)
+                for row in connection.execute(
+                    "SELECT task_id, status, max_attempts FROM workflow_tasks "
+                    "WHERE workflow_id = ? ORDER BY task_id",
+                    (workflow_id,),
+                )
+            ]
+            attempts = [
+                dict(row)
+                for row in connection.execute(
+                    "SELECT a.attempt_id, a.task_id, a.number, a.status, a.deadline, "
+                    "t.reason, t.terminal_at FROM attempts a "
+                    "LEFT JOIN attempt_termination t ON t.attempt_id = a.attempt_id "
+                    "WHERE a.workflow_id = ? ORDER BY a.task_id, a.number",
+                    (workflow_id,),
+                )
+            ]
+        return {
+            "workflow_id": workflow_id,
+            "status": str(workflow["status"]),
+            "terminal": str(workflow["status"]) in _TERMINAL_WORKFLOW_STATES,
+            "reason": None if closure is None else str(closure["reason"]),
+            "terminal_at": None if closure is None else str(closure["terminal_at"]),
+            "tasks": tasks,
+            "attempts": attempts,
+        }
+
+    def closure_events(self, workflow_id: str) -> tuple[dict[str, Any], ...]:
+        _require_identifier(workflow_id, "workflow_id")
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT sequence, workflow_id, task_id, attempt_id, event_type, reason, occurred_at "
+                "FROM workflow_closure_events WHERE workflow_id = ? ORDER BY sequence",
+                (workflow_id,),
+            ).fetchall()
+        return tuple(dict(row) for row in rows)
+
+    def closure_metrics(self) -> dict[str, int]:
+        """Expose low-cardinality durable closure counters for operational telemetry."""
+        with self._connect() as connection:
+            counts = {
+                str(row["status"]): int(row["count"])
+                for row in connection.execute(
+                    "SELECT status, COUNT(*) AS count FROM workflows GROUP BY status"
+                )
+            }
+            retries = int(
+                connection.execute(
+                    "SELECT COUNT(*) FROM attempts WHERE number > 1"
+                ).fetchone()[0]
+            )
+            running = int(
+                connection.execute(
+                    "SELECT COUNT(*) FROM attempts WHERE status = 'running'"
+                ).fetchone()[0]
+            )
+        result = {state: counts.get(state, 0) for state in sorted(_TERMINAL_WORKFLOW_STATES)}
+        result["active"] = counts.get("active", 0)
+        result["retry_count"] = retries
+        result["running_attempt_count"] = running
+        return result
+
+    def _terminate_attempt(
+        self,
+        attempt_id: str,
+        status: str,
+        reason: str,
+        *,
+        terminal_at: datetime | None = None,
+    ) -> str:
+        if status not in {"failed", "timed_out"}:
+            raise WorkflowError("invalid attempt terminal status")
+        _require_reason(reason)
+        at = terminal_at or datetime.now(timezone.utc)
+        if at.tzinfo is None:
+            raise WorkflowError("terminal time must be timezone-aware")
+        with self._connect() as connection:
+            attempt = self._attempt(connection, attempt_id)
+            if attempt["status"] == status:
+                task = connection.execute(
+                    "SELECT status FROM workflow_tasks WHERE workflow_id = ? AND task_id = ?",
+                    (attempt["workflow_id"], attempt["task_id"]),
+                ).fetchone()
+                if task is None:
+                    raise WorkflowError("unknown task")
+                return str(task["status"])
+            if attempt["status"] != "running":
+                raise WorkflowError("attempt is not running")
             task = connection.execute(
                 "SELECT max_attempts, compensation_event_type FROM workflow_tasks "
                 "WHERE workflow_id = ? AND task_id = ?",
                 (attempt["workflow_id"], attempt["task_id"]),
             ).fetchone()
+            if task is None:
+                raise WorkflowError("unknown task")
             connection.execute(
                 "UPDATE attempts SET status = ? WHERE attempt_id = ?",
                 (status, attempt_id),
             )
+            self._record_attempt_termination(connection, attempt, status, reason, at)
             retry = attempt["number"] < task["max_attempts"]
             task_status = "ready" if retry else "failed"
             connection.execute(
@@ -258,19 +486,128 @@ class WorkflowStore:
                         "reason": reason,
                     },
                 )
+            if not retry:
+                self._reconcile_workflow(
+                    connection,
+                    str(attempt["workflow_id"]),
+                    terminal_hint=status,
+                    reason=reason,
+                    now=at,
+                )
         return task_status
 
     @staticmethod
-    def _running_attempt(
-        connection: sqlite3.Connection, attempt_id: str
-    ) -> sqlite3.Row:
+    def _attempt(connection: sqlite3.Connection, attempt_id: str) -> sqlite3.Row:
         attempt = connection.execute(
-            "SELECT * FROM attempts WHERE attempt_id = ? AND status = 'running'",
-            (attempt_id,),
+            "SELECT * FROM attempts WHERE attempt_id = ?", (attempt_id,)
         ).fetchone()
         if attempt is None:
-            raise WorkflowError("attempt is not running")
+            raise WorkflowError("unknown attempt")
         return cast(sqlite3.Row, attempt)
+
+    @staticmethod
+    def _closure(connection: sqlite3.Connection, workflow_id: str) -> sqlite3.Row | None:
+        return connection.execute(
+            "SELECT * FROM workflow_closure WHERE workflow_id = ?", (workflow_id,)
+        ).fetchone()
+
+    def _record_attempt_termination(
+        self,
+        connection: sqlite3.Connection,
+        attempt: sqlite3.Row,
+        status: str,
+        reason: str,
+        now: datetime,
+    ) -> None:
+        connection.execute(
+            "INSERT OR IGNORE INTO attempt_termination VALUES (?, ?, ?, ?)",
+            (attempt["attempt_id"], status, reason, now.isoformat()),
+        )
+        connection.execute(
+            "INSERT INTO workflow_closure_events "
+            "(workflow_id, task_id, attempt_id, event_type, reason, occurred_at) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (
+                attempt["workflow_id"],
+                attempt["task_id"],
+                attempt["attempt_id"],
+                f"attempt.{status}",
+                reason,
+                now.isoformat(),
+            ),
+        )
+
+    def _reconcile_workflow(
+        self,
+        connection: sqlite3.Connection,
+        workflow_id: str,
+        *,
+        terminal_hint: str,
+        reason: str,
+        now: datetime,
+    ) -> None:
+        if self._closure(connection, workflow_id) is not None:
+            return
+        rows = connection.execute(
+            "SELECT status FROM workflow_tasks WHERE workflow_id = ? ORDER BY task_id",
+            (workflow_id,),
+        ).fetchall()
+        if not rows:
+            return
+        states = tuple(str(row["status"]) for row in rows)
+        if all(state == "completed" for state in states):
+            self._close_workflow(
+                connection,
+                workflow_id,
+                "completed",
+                "all required workflow tasks completed",
+                now,
+            )
+            return
+        if "failed" not in states:
+            return
+        terminal = "partial" if "completed" in states else (
+            "timed_out" if terminal_hint == "timed_out" else "failed"
+        )
+        self._close_workflow(connection, workflow_id, terminal, reason, now)
+
+    @staticmethod
+    def _close_workflow(
+        connection: sqlite3.Connection,
+        workflow_id: str,
+        terminal_status: str,
+        reason: str,
+        now: datetime,
+    ) -> None:
+        if terminal_status not in _TERMINAL_WORKFLOW_STATES:
+            raise WorkflowError("invalid workflow terminal status")
+        changed = connection.execute(
+            "UPDATE workflows SET status = ? WHERE workflow_id = ? AND status = 'active'",
+            (terminal_status, workflow_id),
+        ).rowcount
+        if changed != 1:
+            existing = connection.execute(
+                "SELECT status FROM workflows WHERE workflow_id = ?", (workflow_id,)
+            ).fetchone()
+            if existing is None:
+                raise WorkflowError("unknown workflow")
+            if str(existing["status"]) != terminal_status:
+                raise WorkflowError("workflow terminal state changed concurrently")
+        connection.execute(
+            "INSERT OR IGNORE INTO workflow_closure VALUES (?, ?, ?, ?)",
+            (workflow_id, terminal_status, reason, now.isoformat()),
+        )
+        connection.execute(
+            "INSERT INTO workflow_closure_events "
+            "(workflow_id, task_id, attempt_id, event_type, reason, occurred_at) "
+            "VALUES (?, NULL, NULL, ?, ?, ?)",
+            (
+                workflow_id,
+                f"workflow.{terminal_status}",
+                reason,
+                now.isoformat(),
+            ),
+        )
 
     def receive_event(self, event_id: str, payload: dict[str, Any]) -> bool:
         """Persist an inbound event exactly once; duplicates are acknowledged safely."""
@@ -342,3 +679,8 @@ class WorkflowStore:
 def _require_identifier(value: str, field: str) -> None:
     if not value or value != value.strip():
         raise WorkflowError(f"{field} must be non-blank and trimmed")
+
+
+def _require_reason(reason: str) -> None:
+    if not reason or reason != reason.strip():
+        raise WorkflowError("reason must be non-blank and trimmed")
