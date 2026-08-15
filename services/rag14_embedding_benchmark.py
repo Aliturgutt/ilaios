@@ -37,7 +37,7 @@ class EmbeddingBenchmarkError(RuntimeError):
 _CORPUS: tuple[tuple[str, str], ...] = (
     (
         "tenant-isolation",
-        "passage: Tenant isolation prevents one customer's protected project data from being retrieved by another tenant.",
+        "passage: Tenant izolasyonu farklı müşterilere ait korumalı proje verilerinin birbirine karışmasını ve başka tenantlar tarafından alınmasını engeller.",
     ),
     (
         "video-captions",
