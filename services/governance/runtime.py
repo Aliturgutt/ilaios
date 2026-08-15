@@ -262,6 +262,21 @@ class GovernedRuntimeGateway:
                     "ORDER BY request_id"
                 ).fetchall()
             ]
+            admissions = [
+                {
+                    "request_id": row["request_id"],
+                    "risk": row["risk_class"],
+                    "admission_decision": row["admission_decision"],
+                    "human_approval_required": bool(
+                        row["human_approval_required"]
+                    ),
+                }
+                for row in connection.execute(
+                    "SELECT request_id, risk_class, admission_decision, "
+                    "human_approval_required FROM governed_admissions "
+                    "ORDER BY request_id"
+                ).fetchall()
+            ]
             references = [
                 {"secret_id": row["secret_id"], "reference": row["reference"]}
                 for row in connection.execute(
@@ -270,6 +285,7 @@ class GovernedRuntimeGateway:
             ]
         return {
             "work": work,
+            "admissions": admissions,
             "secret_references": references,
             "ledger": self._ledger.state(),
         }
