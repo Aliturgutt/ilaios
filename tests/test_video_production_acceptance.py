@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import replace
+
 import pytest
 
 from src.video_automation.production_acceptance import (
@@ -22,6 +24,7 @@ ARTIFACT_SHA = "b" * 64
 PROMPT_SHA = "c" * 64
 MANIFEST_SHA = "d" * 64
 CRITERIA_SHA = "e" * 64
+ASSET_INVENTORY_SHA = "f" * 64
 
 
 def _provider(*, fallback_required: bool = True) -> ProviderProductionProof:
@@ -120,6 +123,9 @@ def _legal() -> LegalProvenanceProductionProof:
         revision_sha=REVISION,
         product_id=PRODUCT_ID,
         artifact_sha256=ARTIFACT_SHA,
+        expected_asset_ids=("generated-shot-001", "voice-001"),
+        asset_inventory_ref="evidence://assets/inventory-001",
+        asset_inventory_sha256=ASSET_INVENTORY_SHA,
         rights=(
             RightsEvidence(
                 asset_id="generated-shot-001",
@@ -345,3 +351,40 @@ def test_operations_outside_slo_remain_blocked() -> None:
         "production operations SLO evidence is outside accepted thresholds"
         in decision.blockers
     )
+
+
+def test_single_good_slo_sample_cannot_promote_production() -> None:
+    operations = replace(_operations(), sample_count=1)
+    bundle = replace(_complete_bundle(), operations=operations)
+
+    decision = evaluate_video_production(bundle)
+
+    assert decision.state == "BLOCKED"
+    assert (
+        "production operations SLO evidence is outside accepted thresholds"
+        in decision.blockers
+    )
+
+
+def test_legal_inventory_must_exactly_match_rights_evidence() -> None:
+    legal = replace(
+        _legal(),
+        expected_asset_ids=("generated-shot-001", "voice-001", "music-001"),
+    )
+    bundle = replace(_complete_bundle(), legal_provenance=legal)
+
+    decision = evaluate_video_production(bundle)
+
+    assert decision.state == "BLOCKED"
+    assert (
+        "legal provenance inventory is incomplete or not commercially cleared"
+        in decision.blockers
+    )
+
+
+def test_legal_inventory_reference_must_be_cryptographically_bound() -> None:
+    with pytest.raises(
+        VideoProductionAcceptanceError,
+        match="asset_inventory_sha256 must be lowercase SHA-256",
+    ):
+        replace(_legal(), asset_inventory_sha256="not-a-sha")
