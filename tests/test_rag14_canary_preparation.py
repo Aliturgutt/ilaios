@@ -113,3 +113,12 @@ def test_terraform_keeps_knowledge_disabled_and_requires_pinned_provider_in_prod
     assert 'var.knowledge_embedding_mode == "multilingual_e5_small_qint8_v1"' in knowledge_tf
     assert '"ILAIOS_KNOWLEDGE_EMBEDDING_MODE"' in knowledge_tf
     assert "environment      = local.runtime_environment" in main_tf
+
+
+def test_rag14_task_memory_envelope_matches_measured_candidate_headroom() -> None:
+    repository = Path(__file__).resolve().parents[1]
+    main_tf = (repository / "infra/aws/r01-canary/main.tf").read_text(encoding="utf-8")
+
+    assert "cpu                      = 256" in main_tf
+    assert "memory                   = 1024" in main_tf
+    assert "memory                   = 512" not in main_tf
