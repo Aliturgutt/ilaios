@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "test:site": "node scripts/site-quality.mjs",
     "test:design": "node scripts/design-benchmark.mjs",
-    "test:quality": "npm run test:site && npm run test:design"
+    "test:redteam": "node scripts/public-ux-redteam.mjs",
+    "test:quality": "npm run test:site && npm run test:design && npm run test:redteam"
   },
   "dependencies": {
     "next": "16.2.11",
