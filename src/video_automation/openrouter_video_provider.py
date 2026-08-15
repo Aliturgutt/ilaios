@@ -466,6 +466,7 @@ def _normalize_poll_observation(
     status_map = {
         "pending": ProviderJobStatus.QUEUED,
         "queued": ProviderJobStatus.QUEUED,
+        "in_progress": ProviderJobStatus.RUNNING,
         "processing": ProviderJobStatus.RUNNING,
         "running": ProviderJobStatus.RUNNING,
         "completed": ProviderJobStatus.SUCCEEDED,
