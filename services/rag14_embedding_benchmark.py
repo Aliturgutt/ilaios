@@ -291,7 +291,6 @@ def run_benchmark(candidate: EmbeddingCandidate, work_dir: Path) -> dict[str, ob
                 "expected_source_id": expected_source_id,
                 "returned_source_id": corpus_ids[top_index],
                 "top1_score": float(scores[top_index]),
-                "runner_up_source_id": corpus_ids[runner_up],
                 "runner_up_score": float(scores[runner_up]),
             }
         )
