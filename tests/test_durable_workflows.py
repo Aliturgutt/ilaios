@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from threading import Barrier
 
 import pytest
 
@@ -96,6 +98,37 @@ def test_completed_attempt_and_workflow_closure_are_idempotent(tmp_path: Path) -
     assert state["attempts"][0]["status"] == "completed"
     assert state["attempts"][0]["reason"] == "attempt completed"
     assert [event["event_type"] for event in store.closure_events("workflow-complete")] == [
+        "attempt.completed",
+        "workflow.completed",
+    ]
+
+
+def test_concurrent_duplicate_closure_serializes_to_one_terminal_event_pair(
+    tmp_path: Path,
+) -> None:
+    store = _store(tmp_path)
+    store.create_workflow("workflow-concurrent")
+    store.add_task("workflow-concurrent", "task", max_attempts=1)
+    attempt = store.begin_attempt(
+        "workflow-concurrent",
+        "task",
+        deadline=datetime.now(timezone.utc) + timedelta(minutes=1),
+    )
+    barrier = Barrier(2)
+
+    def close_once() -> None:
+        concurrent_store = _store(tmp_path)
+        barrier.wait()
+        concurrent_store.complete_attempt(attempt.attempt_id)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(close_once) for _ in range(2)]
+        for future in futures:
+            future.result()
+
+    state = store.workflow_state("workflow-concurrent")
+    assert state["status"] == "completed"
+    assert [event["event_type"] for event in store.closure_events("workflow-concurrent")] == [
         "attempt.completed",
         "workflow.completed",
     ]
