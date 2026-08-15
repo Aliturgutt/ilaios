@@ -1,12 +1,12 @@
 # ILAIOS Capability Matrix
 
-Snapshot: 12 August 2026
+Snapshot: 15 August 2026
 
-Lifecycle vocabulary:
+Canonical capability maturity:
 
-`PLANNED -> SPECIFIED -> IMPLEMENTED -> VERIFIED -> PRODUCTION`
+`DESIGNED -> SPECIFIED -> IMPLEMENTED -> TESTED -> VERIFIED -> DEPLOYED / PRODUCTION`
 
-Release state is tracked separately from capability maturity.
+Planning, process, external-gate and assessment labels in this matrix (for example `PLANNED`, `NOT ASSESSED HERE`, or `PROCESS DEFINED`) are conservative annotations; they are not additional capability-maturity stages. Release state is tracked separately from capability maturity.
 
 This matrix is deliberately conservative. File presence alone cannot promote a capability to VERIFIED or PRODUCTION. Historical Hermes, ILAKOS and ILATEN designs are provenance; active capability identity is defined only by ILAIOS.
 
@@ -33,6 +33,7 @@ This matrix is deliberately conservative. File presence alone cannot promote a c
 | Code Intelligence | `src/code_intelligence`, targeted tests, `tests/test_intelligence_project_integration.py`, PR #24 + master Platform CI | VERIFIED foundation | Expand symbol/dependency intelligence and production-like repository exercises as needed |
 | Knowledge Graph | `src/knowledge_graph`, targeted tests, `tests/test_intelligence_project_integration.py`, PR #24 + master Platform CI | VERIFIED foundation | Durable graph persistence/query evidence before stronger runtime claims |
 | Project Manager | `src/project_manager`, targeted tests, `tests/test_intelligence_project_integration.py`, PR #24 + master Platform CI | VERIFIED foundation | Durable project/workspace lifecycle evidence before stronger runtime claims |
+| Knowledge / RAG | `services/knowledge_rag.py`, in-place `ilaios.capability.knowledge` registry binding, functional + adversarial tests, PR #111, Required CI Gate #185 PASS, merge `cb0fde61ba0fd74add11c227bf827cb62c01ff48` | VERIFIED bounded reference implementation | RAG.14 production evidence: approved production embedding/index persistence, production tenant/auth/DLP/leakage exercise, recovery/SLO and exact deploy/rollback evidence |
 | Web Factory integration | `services/integrations/web_factory.py`, deterministic artifact/tamper tests, cross-capability revalidation and Platform CI #17 | VERIFIED bounded factory | Production-like deployment/rollback/browser verification outside Website implementation workstream |
 | Software Factory | `services/software_factory.py`, isolated proposal/test/review E2E, production mutation forbidden, Platform CI #17 | VERIFIED bounded proposal factory | Broader language/build adapters and controlled external PR/review evidence |
 | Security Factory | `services/security_factory.py`, bounded SAST/secret/supply-chain/infra/local-DAST tests, merged PR #23 and master CI | VERIFIED bounded defensive factory | Production-safe exercises and independent external pentest where applicable |
@@ -46,7 +47,6 @@ This matrix is deliberately conservative. File presence alone cannot promote a c
 | Windows Desktop | Merged consolidated Desktop workstream exists | NOT ASSESSED HERE | Continue in Desktop/Store workstream |
 | Mobile Android/iOS | No implementation path found in repository audit | PLANNED | Post-v1 architecture/package definition |
 | Billing / subscription / entitlements | No obvious implementation found in repository audit | PLANNED | Product/commercial requirements and backend design |
-| RAG / embeddings / vector retrieval | No obvious implementation found in repository audit | PLANNED | Data/security architecture and bounded specification |
 | Formal GitHub release/version model | `docs/governance/RELEASE_VERSION_POLICY.md`, `GOVERNANCE.md`, policy regression tests | SPECIFIED / PROCESS DEFINED | Select first formal version in a dedicated release package; create immutable tag + GitHub Release only after governed approval and exact-head CI |
 | Default-branch protection | `master` reported unprotected during governance audit; protection API is not accessible to the connected integration | PLANNED OWNER POLICY | Enable appropriate GitHub protection rules in repository settings |
 | Repository security policy | `SECURITY.md` present on master | SPECIFIED / PROCESS ACTIVE | Enforce through protected review/CI process |
@@ -67,10 +67,16 @@ The generic governed runtime and named-agent bounded executor path are implement
 
 Security Factory v1 is defensive and fail-closed. It may analyze an explicitly authorized repository and validate supplied HTTP observations only for configured localhost/test targets. It does not exploit systems or authorize arbitrary external network scanning. Independent production penetration testing and external certification remain separate evidence requirements.
 
+## RAG verification boundary
+
+The Knowledge/RAG capability is VERIFIED only for the merged bounded reference implementation proven by PR #111 and Required CI Gate #185. The deterministic hash embedding adapter and in-memory vector index are verification/reference implementations. They do not establish production embedding quality, durable production vector persistence, production SLOs, or production deployment.
+
+RAG.14 remains an explicit production promotion NO-GO until the production evidence listed in the capability row and governed dependency graph is satisfied.
+
 ## Revalidation result
 
-Fresh repository evidence has revalidated the existing intelligence/platform foundations and promoted the bounded Research/Data, Creative/Document, Commerce/Growth, Personal Operations and App Factory platform boundaries without creating parallel runtimes. Enterprise hardening adds a shared fail-closed evidence gate rather than bypassing each factory's own controls.
+Fresh repository evidence has revalidated the existing intelligence/platform foundations and promoted the bounded Research/Data, Creative/Document, Commerce/Growth, Personal Operations, App Factory and Knowledge/RAG platform boundaries without creating parallel runtimes. Enterprise hardening adds a shared fail-closed evidence gate rather than bypassing each capability's own controls.
 
 ## Selected post-v1 direction
 
-The adopted **EXISTING_FACTORY_PROMOTION** workstream has reached its bounded implementation, hardening and lineage-red-team completion gate. Mobile, Website/Desktop implementation and Commercial SaaS/billing remain separate or dormant workstreams and are not implicitly activated by this completion.
+The selected **RAG_KNOWLEDGE** workstream has reached bounded implementation and verification through PR #111. Production promotion is intentionally not claimed; the next RAG decision remains RAG.14 production evidence and release gating.
