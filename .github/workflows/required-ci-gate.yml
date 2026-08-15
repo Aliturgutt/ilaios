@@ -2,6 +2,8 @@ name: Required CI Gate
 
 on:
   pull_request:
+  push:
+    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -50,7 +52,7 @@ jobs:
 
           for file in "${files[@]}"; do
             case "$file" in
-              src/*|services/*|packages/*|tests/*|apps/desktop/*|brand/assets/05-ilaios-app-icon.jpg|docs/governance/*|docs/migration/*|pyproject.toml|.pre-commit-config.yaml|.github/requirements/platform-ci.txt|.github/workflows/platform-ci.yml|.github/workflows/required-ci-gate.yml|.github/workflows/desktop-*.yml)
+              src/*|services/*|packages/*|tests/*|apps/desktop/*|brand/assets/05-ilaios-app-icon.jpg|docs/governance/*|docs/migration/*|pyproject.toml|.pre-commit-config.yaml|.github/requirements/platform-ci.txt|.github/workflows/*.yml)
                 platform=true
                 ;;
             esac
@@ -83,6 +85,7 @@ jobs:
           set -euo pipefail
           python -m services.software_factory_ci_supply_chain --repository-root .
           python -m services.desktop_ci_supply_chain --repository-root .
+          python -m services.github_workflow_security_audit --repository-root .
 
   secret-scan:
     name: Secret scanning
@@ -282,10 +285,14 @@ jobs:
     if: needs.classify.outputs.website == 'true'
     uses: ./.github/workflows/website-ci.yml
 
+  malware:
+    name: Repository malware scan
+    uses: ./.github/workflows/malware-scan.yml
+
   required-ci-gate:
     name: Required CI Gate
     if: always()
-    needs: [classify, supply-chain, secret-scan, db-migration-safety, api-contract-safety, operational-safety, assurance, final-closure-structure, platform, website]
+    needs: [classify, supply-chain, secret-scan, db-migration-safety, api-contract-safety, operational-safety, assurance, final-closure-structure, malware, platform, website]
     runs-on: ubuntu-latest
     steps:
       - name: Enforce relevant validation results
@@ -299,6 +306,7 @@ jobs:
           OPERATIONAL_SAFETY_RESULT: ${{ needs.operational-safety.result }}
           ASSURANCE_RESULT: ${{ needs.assurance.result }}
           FINAL_CLOSURE_STRUCTURE_RESULT: ${{ needs.final-closure-structure.result }}
+          MALWARE_RESULT: ${{ needs.malware.result }}
           PLATFORM_REQUIRED: ${{ needs.classify.outputs.platform }}
           PLATFORM_RESULT: ${{ needs.platform.result }}
           WEBSITE_REQUIRED: ${{ needs.classify.outputs.website }}
@@ -343,6 +351,11 @@ jobs:
 
           if [[ "$FINAL_CLOSURE_STRUCTURE_RESULT" != "success" ]]; then
             echo "Final closure structural audit failed: $FINAL_CLOSURE_STRUCTURE_RESULT"
+            exit 1
+          fi
+
+          if [[ "$MALWARE_RESULT" != "success" ]]; then
+            echo "Repository malware scan failed: $MALWARE_RESULT"
             exit 1
           fi
 

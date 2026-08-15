@@ -1,0 +1,101 @@
+"""Repository-wide deterministic GitHub Actions security audit."""
+
+from __future__ import annotations
+
+import argparse
+import re
+from dataclasses import dataclass
+from pathlib import Path
+
+_SHA = re.compile(r"^[0-9a-f]{40}$")
+_USES = re.compile(r"^\s*-?\s*uses:\s*([^#\s]+)")
+_TOP_PUSH = re.compile(r"(?m)^  push:\s*$")
+_TOP_PR = re.compile(r"(?m)^  pull_request:\s*$")
+_MANUAL_ONLY = frozenset({
+    "aws-r01-canary-apply.yml", "aws-r01-image-publish.yml",
+    "aws-r01-image-scan.yml", "aws-r01-preparation-resources.yml",
+    "aws-r02-limited-apply.yml", "aws-r03-production-apply.yml",
+    "desktop-msix-signed-release.yml", "video-provider-production-certification.yml",
+})
+_SECRET_ALLOWED = frozenset({
+    "desktop-msix-signed-release.yml", "video-provider-production-certification.yml",
+})
+
+@dataclass(frozen=True, slots=True)
+class WorkflowSecurityFinding:
+    path: str
+    rule: str
+    detail: str
+
+
+def _checkout_blocks(text: str) -> tuple[str, ...]:
+    lines = text.splitlines()
+    result: list[str] = []
+    for index, line in enumerate(lines):
+        if "uses: actions/checkout@" not in line:
+            continue
+        uses_indent = len(line) - len(line.lstrip())
+        step_indent = uses_indent if line.lstrip().startswith("- uses:") else max(0, uses_indent - 2)
+        block = [line]
+        for candidate in lines[index + 1:]:
+            stripped = candidate.lstrip()
+            indent = len(candidate) - len(stripped)
+            if indent == step_indent and stripped.startswith("- "):
+                break
+            block.append(candidate)
+        result.append("\n".join(block))
+    return tuple(result)
+
+
+def audit_repository(repository_root: Path) -> tuple[WorkflowSecurityFinding, ...]:
+    findings: list[WorkflowSecurityFinding] = []
+    for path in sorted((repository_root / ".github" / "workflows").glob("*.yml")):
+        if path.name.startswith("_redteam-"):
+            continue
+        relative = path.relative_to(repository_root).as_posix()
+        text = path.read_text(encoding="utf-8")
+        if "pull_request_target:" in text:
+            findings.append(WorkflowSecurityFinding(relative, "NO_PR_TARGET", "pull_request_target is forbidden"))
+        if "permissions: write-all" in text or re.search(r"(?m)^  contents:\s+write\s*$", text):
+            findings.append(WorkflowSecurityFinding(relative, "NO_REPO_WRITE", "permanent workflows may not grant contents write"))
+        if not re.search(r"(?m)^  contents:\s+read\s*$", text):
+            findings.append(WorkflowSecurityFinding(relative, "CONTENTS_READ", "explicit contents: read is required"))
+        if "secrets." in text and path.name not in _SECRET_ALLOWED:
+            findings.append(WorkflowSecurityFinding(relative, "SECRET_BOUNDARY", "secrets are forbidden in this workflow"))
+        for line in text.splitlines():
+            match = _USES.match(line)
+            if match is None:
+                continue
+            reference = match.group(1)
+            if reference.startswith("./"):
+                continue
+            _, sep, revision = reference.partition("@")
+            if not sep or _SHA.fullmatch(revision) is None:
+                findings.append(WorkflowSecurityFinding(relative, "IMMUTABLE_ACTION", reference))
+        for block in _checkout_blocks(text):
+            if "persist-credentials: false" not in block:
+                findings.append(WorkflowSecurityFinding(relative, "CHECKOUT_CREDENTIALS", "checkout credentials must not persist"))
+            if "ref:" not in block:
+                findings.append(WorkflowSecurityFinding(relative, "EXACT_CHECKOUT", "checkout requires explicit exact ref"))
+        if path.name in _MANUAL_ONLY:
+            if "workflow_dispatch:" not in text:
+                findings.append(WorkflowSecurityFinding(relative, "MANUAL_ONLY", "workflow_dispatch is required"))
+            if _TOP_PUSH.search(text) or _TOP_PR.search(text):
+                findings.append(WorkflowSecurityFinding(relative, "MANUAL_ONLY", "external mutation/spend cannot auto-trigger"))
+    return tuple(findings)
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--repository-root", default=".")
+    args = parser.parse_args(argv)
+    findings = audit_repository(Path(args.repository_root).resolve())
+    if not findings:
+        print("Repository-wide GitHub Actions security audit PASS")
+        return 0
+    for finding in findings:
+        print(f"BLOCK {finding.rule} {finding.path}: {finding.detail}")
+    return 1
+
+if __name__ == "__main__":
+    raise SystemExit(main())

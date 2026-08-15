@@ -2,10 +2,6 @@ name: AWS R01 image scan
 
 on:
   workflow_dispatch:
-  push:
-    branches: [master]
-    paths:
-      - '.github/workflows/aws-r01-image-scan.yml'
 
 permissions:
   contents: read
@@ -18,8 +14,11 @@ jobs:
       REPOSITORY: ilaios-r01-canary
       DIGEST: sha256:838d17fc73947582666699d7eecdee0c771a8d7b964607164ec756c851d05a0f
     steps:
-      - uses: actions/checkout@v4
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
         with:
           role-to-assume: arn:aws:iam::101180464425:role/ILAIOS-GitHub-Deploy-Role
           aws-region: eu-central-1
