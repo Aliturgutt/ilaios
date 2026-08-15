@@ -37,7 +37,7 @@ class EmbeddingBenchmarkError(RuntimeError):
 _CORPUS: tuple[tuple[str, str], ...] = (
     (
         "tenant-isolation",
-        "passage: Tenant isolation prevents one customer's protected project data from being retrieved by another tenant.",
+        "passage: Tenant izolasyonu farklı müşterilere ait korumalı proje verilerinin birbirine karışmasını ve başka tenantlar tarafından alınmasını engeller.",
     ),
     (
         "video-captions",
@@ -182,7 +182,7 @@ def _session(candidate: EmbeddingCandidate, work_dir: Path, onnxruntime: Any) ->
     options = onnxruntime.SessionOptions()
     options.intra_op_num_threads = 1
     options.inter_op_num_threads = 1
-    options.enable_cpu_mem_arena = True
+    options.enable_cpu_mem_arena = False
     return onnxruntime.InferenceSession(
         str(_model_path(candidate, work_dir)),
         sess_options=options,
@@ -327,9 +327,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     candidate = load_candidate(arguments.manifest)
     report = run_benchmark(candidate, arguments.work_dir)
     arguments.output.parent.mkdir(parents=True, exist_ok=True)
-    arguments.output.write_text(
-        json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
+    serialized_report = json.dumps(report, indent=2, sort_keys=True) + "\n"
+    arguments.output.write_text(serialized_report, encoding="utf-8")
+    print(serialized_report, end="")
     decision = evaluate_measured_report(candidate, arguments.output)
     print(json.dumps(asdict(decision), sort_keys=True))
     return 0 if decision.status == "HOST_CERTIFIED_CANDIDATE" else 1

@@ -49,7 +49,7 @@ def _report() -> dict[str, object]:
         },
         "runtime_versions": dict(candidate.runtime_versions),
         "embedding_dimensions": 384,
-        "peak_rss_mib": 300.0,
+        "peak_rss_mib": 500.0,
         "p95_query_latency_ms": 500.0,
         "cases": [
             _case("tr-tenant", "tr", "tenant-isolation"),
@@ -81,6 +81,8 @@ def test_candidate_manifest_is_pinned_nonproduction_and_has_memory_headroom() ->
     assert candidate.query_prefix == "query: "
     assert candidate.passage_prefix == "passage: "
     assert candidate.production_authority is False
+    assert candidate.thresholds.target_memory_limit_mib == 1024
+    assert candidate.thresholds.max_peak_rss_mib == 768
     assert candidate.thresholds.max_peak_rss_mib < candidate.thresholds.target_memory_limit_mib
     assert dict(candidate.runtime_versions) == {
         "python": "3.12",
@@ -108,7 +110,7 @@ def test_complete_measured_host_report_can_only_certify_candidate(tmp_path: Path
 def test_memory_latency_and_quality_fail_closed(tmp_path: Path) -> None:
     candidate = load_candidate(MANIFEST)
     payload = _report()
-    payload["peak_rss_mib"] = 500.0
+    payload["peak_rss_mib"] = 900.0
     payload["p95_query_latency_ms"] = 3000.0
     cases = payload["cases"]
     assert isinstance(cases, list)
