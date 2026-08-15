@@ -21,6 +21,18 @@ def _collector() -> str:
     )
 
 
+def _operational() -> str:
+    return (_repository() / "services/rag14_operational_evidence.py").read_text(
+        encoding="utf-8"
+    )
+
+
+def _maintenance() -> str:
+    return (_repository() / "services/rag14_maintenance.py").read_text(
+        encoding="utf-8"
+    )
+
+
 def test_rag14_canary_workflow_requires_exact_source_and_explicit_spend() -> None:
     workflow = _workflow()
 
@@ -38,7 +50,10 @@ def test_rag14_canary_workflow_rejects_historical_generic_approval_and_digest() 
 
     assert "RELEASE.R01 CANARY APPLY APPROVED" not in workflow
     assert ".github/r01-canary-apply-approval.json" not in workflow
-    assert "sha256:0b540cee1e9b7a8f6bf6573eb3a0b15b5e5dd374b693c2738f78c0670121428f" not in workflow
+    assert (
+        "sha256:0b540cee1e9b7a8f6bf6573eb3a0b15b5e5dd374b693c2738f78c0670121428f"
+        not in workflow
+    )
     assert "RAG.14 CANARY EVIDENCE APPROVED" in workflow
     assert "load_and_validate_canary_approval" in workflow
 
@@ -101,3 +116,38 @@ def test_rag14_live_collector_requires_latency_memory_and_artifact_evidence() ->
     assert "embedding_dimensions" in collector
     assert "top1_passes" in collector
     assert "production_authority" in collector
+
+
+def test_rag14_canary_runs_real_cross_tenant_fargate_probe() -> None:
+    workflow = _workflow()
+
+    assert "Prove cross-tenant state binding on Fargate" in workflow
+    assert '"value": "rag14-canary-tenant-b"' in workflow
+    assert "scope binding mismatch" in workflow
+    assert "cross-tenant-fargate.json" in workflow
+    assert '"scope_binding_rejected": True' in workflow
+
+
+def test_rag14_operational_evidence_covers_recovery_alerts_finops_and_rollback() -> None:
+    workflow = _workflow()
+    operational = _operational()
+    maintenance = _maintenance()
+
+    assert "python -m services.rag14_operational_evidence" in workflow
+    assert "RAG14_PREVIOUS_TASK_DEFINITION" in workflow
+    assert "rag14_backup_restore" in operational
+    assert "deployment-health-window.json" in operational
+    assert "EmbeddingFailureProbe" in operational
+    assert "AuthorizationAnomalyProbe" in operational
+    assert '"ALARM"' in operational
+    assert '"OK"' in operational
+    assert "finops-resource-meter.json" in operational
+    assert "vcpu_seconds" in operational
+    assert "memory_gib_seconds" in operational
+    assert "SELF_HOSTED_NO_EXTERNAL_EMBEDDING_API_FEE" in operational
+    assert "rollback-recovery.json" in operational
+    assert "Required CI Gate" in operational
+    assert "corrupt_restore_rejected" in maintenance
+    assert "restored_vector_row_count" in maintenance
+    assert "scope binding drifted" in maintenance
+    assert "production_authority" in maintenance
