@@ -280,6 +280,11 @@ jobs:
           set -euo pipefail
           python -m services.rag14_operational_evidence
 
+      - name: Simulate failed RAG.14 deployment and prove rollback
+        run: |
+          set -euo pipefail
+          python -m services.rag14_rollback_probe
+
       - name: Assemble fail-closed RAG.14 promotion package
         run: |
           set -euo pipefail
