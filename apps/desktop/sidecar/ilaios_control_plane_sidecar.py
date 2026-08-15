@@ -23,7 +23,8 @@ from services.control_plane.migrations import current_schema_version
 from services.control_plane.server import ControlPlaneHTTPServer
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
 from services.desktop_identity_server import DesktopIdentityHTTPServer
-from services.desktop_oidc import DesktopIdentityError, DesktopOIDCService
+from services.desktop_oidc import DesktopIdentityError
+from services.desktop_oidc_client_auth import desktop_oidc_service_from_environment
 from services.evidence import EvidenceStore
 from services.execution_coordinator import ExecutionCoordinator
 from services.governance import GovernedRuntimeGateway
@@ -109,7 +110,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     control_host, control_port = control_server.server_address[:2]
 
     try:
-        identity = DesktopOIDCService.from_environment()
+        identity = desktop_oidc_service_from_environment()
     except DesktopIdentityError as error:
         control_server.server_close()
         raise SystemExit(f"Desktop identity configuration rejected: {error}") from error
