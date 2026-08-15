@@ -234,7 +234,7 @@ class GovernanceView extends StatelessWidget {
                 approverId: approverId,
                 onDecision: onDecision),
         ],
-      ),
+      ]),
     );
   }
 }
