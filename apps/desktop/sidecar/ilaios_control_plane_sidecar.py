@@ -8,7 +8,7 @@ import os
 import sys
 import threading
 from collections.abc import Sequence
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from services.control_plane.api import ControlPlane, ControlPlaneConfig
@@ -92,7 +92,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         governance,
         grant_policy,
         product_runtime,
+        evidence_store,
     )
+    coordinator.recover(token=token, now=datetime.now(timezone.utc))
     control_server = ControlPlaneHTTPServer(
         ("127.0.0.1", 0),
         control_plane,
@@ -138,6 +140,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "account_sign_in_configured": identity is not None,
         "governed_execution_configured": identity is not None,
         "video_finished_product_configured": True,
+        "execution_recovery_configured": True,
     }
     arguments.ready_file.write_text(
         json.dumps(ready, sort_keys=True), encoding="utf-8"
