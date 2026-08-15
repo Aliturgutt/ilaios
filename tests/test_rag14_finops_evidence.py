@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from decimal import Decimal
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -43,11 +44,17 @@ def test_price_parser_accepts_one_exact_public_rate() -> None:
 
 
 def test_price_parser_fails_closed_on_ambiguous_rates() -> None:
-    payload = _price_list("EUC1-Fargate-vCPU-Hours:perCPU", "hours", "0.123")
-    payload["products"]["sku-2"] = {
+    payload = cast(
+        dict[str, Any],
+        _price_list("EUC1-Fargate-vCPU-Hours:perCPU", "hours", "0.123"),
+    )
+    products = cast(dict[str, Any], payload["products"])
+    products["sku-2"] = {
         "attributes": {"usagetype": "EUC1-Fargate-vCPU-Hours:perCPU"}
     }
-    payload["terms"]["OnDemand"]["sku-2"] = {
+    terms = cast(dict[str, Any], payload["terms"])
+    on_demand = cast(dict[str, Any], terms["OnDemand"])
+    on_demand["sku-2"] = {
         "term-2": {
             "priceDimensions": {
                 "dimension-2": {
@@ -60,7 +67,7 @@ def test_price_parser_fails_closed_on_ambiguous_rates() -> None:
 
     with pytest.raises(FinOpsEvidenceError, match="expected one AWS USD rate"):
         _usd_rate_for_usage(
-            payload,
+            cast(dict[str, object], payload),
             usage_contains="Fargate-vCPU-Hours",
             unit="hours",
         )
