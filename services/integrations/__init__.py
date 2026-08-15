@@ -26,7 +26,11 @@ from .web_factory import (
     WebsiteSpec,
     derive_website_spec,
 )
-from .web_product_runtime import DurableWebProductRuntime, WebProductRuntimeError
+from .web_product_runtime import (
+    DurableWebProductRuntime,
+    WebProductFinalizationPending,
+    WebProductRuntimeError,
+)
 from .web_project import WebProjectArtifact, WebProjectFile, materialize_next_project
 
 __all__ = [
@@ -47,6 +51,7 @@ __all__ = [
     "VideoRuntimeError",
     "WebDeploymentReceipt",
     "WebDeploymentReceiptError",
+    "WebProductFinalizationPending",
     "WebProductRuntimeError",
     "WebProjectArtifact",
     "WebProjectFile",

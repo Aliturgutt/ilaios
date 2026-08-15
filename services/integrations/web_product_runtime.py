@@ -1,182 +1,37 @@
-"""Durable one-prompt Web Factory finished-product adapter."""
+"""Crash-recoverable Web finished-product runtime.
+
+The implementation extends the previously reviewed Web runtime without creating a
+second execution authority.  The critical difference is the cross-store closure
+order: verified acceptance evidence is durably persisted as ``finalizing`` before
+the authoritative Control Plane job may become ``COMPLETED``.  Recovery then
+reconciles that state idempotently, mirroring the canonical Video product saga.
+"""
 
 from __future__ import annotations
 
 import json
 import os
-import sqlite3
 from datetime import datetime, timedelta
-from pathlib import Path
 from typing import cast
 
-from services.control_plane import (
-    BudgetEnvelope,
-    ControlPlane,
-    DataClass,
-    ProposedTask,
-    RiskClass,
-)
-from services.governance import GovernedRuntimeGateway
-from services.runtime import (
-    BlastRadiusBudget,
-    DurableGrantPolicy,
-    ExecutionGrant,
-    GrantPolicy,
-)
+from services.runtime import BlastRadiusBudget, ExecutionGrant
 from src.video_automation.models import JobState
 
-from .web_factory import GovernedWebFactory, WebsiteSpec, derive_website_spec
+from .product_runtime import ProductFinalizationPending
+from .web_factory import WebsiteSpec
+from .web_product_runtime_legacy import (
+    DurableWebProductRuntime as _LegacyDurableWebProductRuntime,
+    WebProductRuntimeError,
+)
 from .web_project import materialize_next_project
-from .web_repair import BoundedWebRepairPolicy, WebRepairAttempt, WebRepairError
-
-_VERIFIED_LOCAL_FEATURES = frozenset({"contact-form"})
 
 
-class WebProductRuntimeError(RuntimeError):
-    """Raised when the finished website cannot pass its bounded acceptance contract."""
+class WebProductFinalizationPending(ProductFinalizationPending):
+    """Durable Web acceptance is finalizing and must be reconciled, not failed."""
 
 
-class DurableWebProductRuntime:
-    """Compose canonical governance, grants, Web Factory, and delivery evidence."""
-
-    adapter_id = "web.product-runtime.v1"
-
-    def __init__(
-        self,
-        database_path: Path,
-        control_plane: ControlPlane,
-        grants: DurableGrantPolicy,
-        governance: GovernedRuntimeGateway,
-        artifact_root: Path,
-    ) -> None:
-        self._database_path = database_path
-        self._control_plane = control_plane
-        self._grants = grants
-        self._governance = governance
-        self._artifact_root = artifact_root
-        self._factory = GovernedWebFactory(GrantPolicy(), artifact_root)
-        self._repair = BoundedWebRepairPolicy()
-        database_path.parent.mkdir(parents=True, exist_ok=True)
-        with self._connect() as connection:
-            connection.execute(
-                "CREATE TABLE IF NOT EXISTS web_product_requests ("
-                "request_id TEXT PRIMARY KEY, goal_id TEXT NOT NULL, "
-                "job_id TEXT NOT NULL, proposal_id TEXT NOT NULL, "
-                "principal_id TEXT NOT NULL, tenant_id TEXT NOT NULL, "
-                "spec_json TEXT NOT NULL, status TEXT NOT NULL, "
-                "manifest_json TEXT)"
-            )
-            connection.execute(
-                "CREATE TABLE IF NOT EXISTS web_product_closure ("
-                "request_id TEXT PRIMARY KEY, terminal_status TEXT NOT NULL, "
-                "reason TEXT NOT NULL, terminal_at TEXT NOT NULL)"
-            )
-
-    def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self._database_path, timeout=10)
-        connection.row_factory = sqlite3.Row
-        return connection
-
-    def prepare(
-        self,
-        request_id: str,
-        objective: str,
-        *,
-        token: str,
-        now: datetime,
-        requester_id: str,
-        tenant_id: str,
-    ) -> dict[str, object]:
-        if now.tzinfo is None:
-            raise WebProductRuntimeError("web execution time must be timezone-aware")
-        spec = derive_website_spec(request_id, objective)
-        unsupported_features = tuple(
-            sorted(set(spec.features).difference(_VERIFIED_LOCAL_FEATURES))
-        )
-        if unsupported_features:
-            raise WebProductRuntimeError(
-                "requested web functionality has no verified finished-product adapter: "
-                + ", ".join(unsupported_features)
-            )
-
-        goal = self._control_plane.create_goal(token, objective)
-        job = self._control_plane.create_job(token, goal.goal_id)
-        proposal = self._control_plane.create_proposal(
-            token,
-            goal.goal_id,
-            acceptance_criteria=(
-                "Structured WebsiteSpec and context-derived design strategy exist",
-                "ILAIOS-owned Next.js/React/TypeScript source project is content addressed",
-                "Rendered preview bundle passes bounded quality gates",
-                "Bounded repair evidence is retained when a deterministic repair occurs",
-                "Acceptance manifest binds request, tenant, source, and artifact evidence",
-            ),
-            risk_class=RiskClass.MEDIUM,
-            data_class=DataClass.INTERNAL,
-            budget=BudgetEnvelope(1, 60, 0),
-            tasks=(
-                ProposedTask("web-build", "Build governed finished website artifact"),
-                ProposedTask(
-                    "web-validate",
-                    "Validate website artifact and acceptance evidence",
-                    ("web-build",),
-                ),
-            ),
-        )
-        proposal_id = str(proposal["proposal_id"])
-        admission = self._governance.submit(
-            request_id,
-            requester_id,
-            "web-agent",
-            "web-factory-finished-product-v1",
-            "web",
-            {
-                "goal_id": goal.goal_id,
-                "job_id": job.job_id,
-                "objective": objective,
-                "tenant_id": tenant_id,
-                "site_id": spec.site_id,
-            },
-            (),
-            risk="medium",
-        )
-        if (
-            admission.get("admission_decision") != "ALLOW"
-            or admission.get("human_approval_required") is not False
-        ):
-            raise WebProductRuntimeError("medium web admission did not fail closed")
-        with self._connect() as connection:
-            try:
-                connection.execute(
-                    "INSERT INTO web_product_requests VALUES "
-                    "(?, ?, ?, ?, ?, ?, ?, 'pending', NULL)",
-                    (
-                        request_id,
-                        goal.goal_id,
-                        job.job_id,
-                        proposal_id,
-                        requester_id,
-                        tenant_id,
-                        json.dumps(
-                            spec.to_dict(), sort_keys=True, separators=(",", ":")
-                        ),
-                    ),
-                )
-            except sqlite3.IntegrityError as error:
-                raise WebProductRuntimeError("web product request already exists") from error
-        return {
-            "request_id": request_id,
-            "requester_id": requester_id,
-            "tenant_id": tenant_id,
-            "goal_id": goal.goal_id,
-            "job_id": job.job_id,
-            "proposal_id": proposal_id,
-            "site_id": spec.site_id,
-            "adapter_id": self.adapter_id,
-            "risk": "medium",
-            "admission_decision": "ALLOW",
-            "status": "admitted_pending_grant",
-        }
+class DurableWebProductRuntime(_LegacyDurableWebProductRuntime):
+    """Web runtime with a crash-safe, idempotent cross-store acceptance saga."""
 
     def execute(
         self,
@@ -192,7 +47,9 @@ class DurableWebProductRuntime:
         try:
             admission = self._governance.admission_snapshot(request_id)
             if admission["admission_proven"] is not True:
-                raise WebProductRuntimeError("governed web execution admission is not proven")
+                raise WebProductRuntimeError(
+                    "governed web execution admission is not proven"
+                )
             spec_value = json.loads(str(row["spec_json"]))
             if not isinstance(spec_value, dict):
                 raise WebProductRuntimeError("stored WebsiteSpec is malformed")
@@ -220,7 +77,7 @@ class DurableWebProductRuntime:
                 now + timedelta(minutes=5),
                 BlastRadiusBudget(max_side_effects=1, max_resources=1),
             )
-            acceptance, spec, repair_attempts = self._build_with_bounded_repair(
+            acceptance, repaired_spec, repair_attempts = self._build_with_bounded_repair(
                 spec,
                 grant=local_grant,
                 now=now,
@@ -241,40 +98,40 @@ class DurableWebProductRuntime:
                 raise WebProductRuntimeError("web acceptance checks failed")
 
             source_project = materialize_next_project(
-                spec,
+                repaired_spec,
                 acceptance.design_strategy,
                 self._artifact_root / "source-projects",
             )
             if not source_project.digest or not source_project.files:
-                raise WebProductRuntimeError("generated Next.js source project is incomplete")
+                raise WebProductRuntimeError(
+                    "generated Next.js source project is incomplete"
+                )
 
-            grant_rows = cast(list[dict[str, object]], self._grants.state()["grants"])
+            grant_rows = cast(
+                list[dict[str, object]], self._grants.state()["grants"]
+            )
             grant_proven = any(
                 grant["grant_id"] == grant_id and grant["used_side_effects"] == 1
                 for grant in grant_rows
             )
-            completed_job = self._control_plane.transition_job(
-                token,
-                job_id,
-                JobState.COMPLETED,
-                reason="website source, preview artifact and acceptance evidence verified",
-                now=now,
-            )
+            validating_job = self._control_plane.get_job(token, job_id)
             if not all(
                 (
                     grant_proven,
-                    completed_job.state is JobState.COMPLETED,
+                    validating_job.state is JobState.VALIDATING,
                     acceptance.accepted,
                     bool(acceptance.artifact_hash),
                     bool(acceptance.spec_hash),
                     bool(source_project.digest),
                 )
             ):
-                raise WebProductRuntimeError("durable web AcceptanceManifest checks failed")
+                raise WebProductRuntimeError(
+                    "durable web AcceptanceManifest checks failed"
+                )
 
             source_sha = os.environ.get("ILAIOS_SOURCE_SHA", "UNBOUND")
             manifest: dict[str, object] = {
-                "manifest_version": "1.2",
+                "manifest_version": "1.3",
                 "adapter_id": self.adapter_id,
                 "request_id": request_id,
                 "requester_id": row["principal_id"],
@@ -284,7 +141,7 @@ class DurableWebProductRuntime:
                 "goal_id": row["goal_id"],
                 "job_id": job_id,
                 "proposal_id": row["proposal_id"],
-                "site_id": spec.site_id,
+                "site_id": repaired_spec.site_id,
                 "source_commit_sha": source_sha,
                 "source_commit_bound": source_sha != "UNBOUND",
                 "implementation_stack": "Next.js 16 / React 19 / TypeScript",
@@ -304,16 +161,14 @@ class DurableWebProductRuntime:
                 "bundle_path": acceptance.bundle_path,
                 "routes": acceptance.routes,
                 "spec_hash": acceptance.spec_hash,
-                "functional_features": spec.features,
+                "functional_features": repaired_spec.features,
                 "design_strategy": acceptance.design_strategy,
                 "qa": acceptance.qa,
                 "repair_policy": {
                     "max_attempts": self._repair.max_attempts,
                     "attempts_used": len(repair_attempts),
                 },
-                "repair_attempts": [
-                    attempt.to_dict() for attempt in repair_attempts
-                ],
+                "repair_attempts": [attempt.to_dict() for attempt in repair_attempts],
                 "grant_id": grant_id,
                 "grant_proven": grant_proven,
                 "risk": admission["risk"],
@@ -321,107 +176,165 @@ class DurableWebProductRuntime:
                 "human_approval_required": admission["human_approval_required"],
                 "approval_proven": admission["approval_proven"],
                 "admission_proven": admission["admission_proven"],
+                "job_state_proven": False,
                 "deployment_state": "NOT_DEPLOYED",
                 "deployment_contract": "web.deployment-receipt.v1",
                 "rollback_reference": acceptance.artifact_hash,
                 "verification_scope": "LOCAL_FINISHED_ARTIFACT_AND_SOURCE_PROJECT",
-                "accepted": True,
+                "finalization_status": "finalizing",
+                "accepted": False,
             }
+            serialized = json.dumps(manifest, sort_keys=True)
+            repaired_spec_json = json.dumps(
+                repaired_spec.to_dict(), sort_keys=True, separators=(",", ":")
+            )
             with self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
                 changed = connection.execute(
-                    "UPDATE web_product_requests SET status = 'accepted', "
-                    "manifest_json = ? WHERE request_id = ? AND status = 'pending'",
-                    (json.dumps(manifest, sort_keys=True), request_id),
+                    "UPDATE web_product_requests SET status = 'finalizing', "
+                    "spec_json = ?, manifest_json = ? "
+                    "WHERE request_id = ? AND status = 'pending'",
+                    (repaired_spec_json, serialized, request_id),
                 ).rowcount
-                if changed != 1:
-                    raise WebProductRuntimeError(
-                        "web product state changed during closure"
-                    )
-                connection.execute(
-                    "INSERT INTO web_product_closure VALUES (?, 'accepted', ?, ?)",
-                    (
-                        request_id,
-                        "website source, preview artifact and acceptance evidence verified",
-                        now.isoformat(),
-                    ),
+            if changed != 1:
+                raise WebProductRuntimeError(
+                    "web product finalization state changed concurrently"
                 )
-            return manifest
+            try:
+                return self.recover_finalizing(request_id, token=token, now=now)
+            except Exception as error:
+                raise WebProductFinalizationPending(
+                    "web product acceptance is durably finalizing and requires recovery"
+                ) from error
+        except WebProductFinalizationPending:
+            raise
         except Exception as error:
             self._fail_web_product(row, token=token, now=now, error=error)
             raise
 
-    def _build_with_bounded_repair(
+    def recover_finalizing(
         self,
-        spec: WebsiteSpec,
+        request_id: str,
         *,
-        grant: ExecutionGrant,
+        token: str,
         now: datetime,
-    ) -> tuple[object, WebsiteSpec, tuple[WebRepairAttempt, ...]]:
-        attempts: list[WebRepairAttempt] = []
-        try:
-            acceptance = self._factory.build_generated_site(
-                spec,
-                grant=grant,
-                now=now,
-            )
-            return acceptance, spec, tuple(attempts)
-        except ValueError as error:
-            try:
-                repaired, attempt = self._repair.repair_spec(
-                    spec,
-                    error,
-                    prior_attempts=len(attempts),
-                )
-            except WebRepairError as repair_error:
-                raise WebProductRuntimeError(str(repair_error)) from error
-            attempts.append(attempt)
-            acceptance = self._factory.build_generated_site(
-                repaired,
-                grant=grant,
-                now=now,
-            )
-            return acceptance, repaired, tuple(attempts)
-
-    def get_manifest(self, request_id: str) -> dict[str, object]:
+    ) -> dict[str, object]:
+        """Idempotently reconcile Web acceptance after a crash boundary."""
+        if now.tzinfo is None:
+            raise WebProductRuntimeError("web finalization time must be timezone-aware")
         with self._connect() as connection:
             row = connection.execute(
-                "SELECT status, manifest_json FROM web_product_requests "
-                "WHERE request_id = ?",
-                (request_id,),
-            ).fetchone()
-        if row is None or row["status"] != "accepted" or row["manifest_json"] is None:
-            raise WebProductRuntimeError("accepted web product is unavailable")
-        value = json.loads(str(row["manifest_json"]))
-        if not isinstance(value, dict):
-            raise WebProductRuntimeError("stored web AcceptanceManifest is malformed")
-        return cast(dict[str, object], value)
-
-    def get_state(self, request_id: str) -> dict[str, object]:
-        with self._connect() as connection:
-            row = connection.execute(
-                "SELECT principal_id, tenant_id, status FROM web_product_requests "
-                "WHERE request_id = ?",
-                (request_id,),
-            ).fetchone()
-            closure = connection.execute(
-                "SELECT terminal_status, reason, terminal_at FROM web_product_closure "
+                "SELECT status, job_id, manifest_json FROM web_product_requests "
                 "WHERE request_id = ?",
                 (request_id,),
             ).fetchone()
         if row is None:
             raise WebProductRuntimeError("unknown web product request")
-        return {
-            "request_id": request_id,
-            "requester_id": str(row["principal_id"]),
-            "tenant_id": str(row["tenant_id"]),
-            "status": str(row["status"]),
-            "terminal": closure is not None,
-            "terminal_status": None
-            if closure is None
-            else str(closure["terminal_status"]),
-            "reason": None if closure is None else str(closure["reason"]),
-            "terminal_at": None if closure is None else str(closure["terminal_at"]),
-        }
+        if row["status"] == "accepted":
+            return self.get_manifest(request_id)
+        if row["status"] != "finalizing" or row["manifest_json"] is None:
+            raise WebProductRuntimeError("web product is not finalizing")
+
+        value = json.loads(str(row["manifest_json"]))
+        if not isinstance(value, dict):
+            raise WebProductRuntimeError(
+                "stored finalizing Web AcceptanceManifest is malformed"
+            )
+        manifest = cast(dict[str, object], value)
+        qa = manifest.get("qa")
+        if not isinstance(qa, dict):
+            raise WebProductRuntimeError("stored finalizing Web QA evidence is malformed")
+        if not all(
+            (
+                manifest.get("adapter_id") == self.adapter_id,
+                manifest.get("request_id") == request_id,
+                manifest.get("job_id") == row["job_id"],
+                manifest.get("identity_proven") is True,
+                manifest.get("admission_proven") is True,
+                manifest.get("grant_proven") is True,
+                qa.get("passed") is True,
+                bool(manifest.get("artifact_digest")),
+                bool(manifest.get("spec_hash")),
+                bool(manifest.get("source_project_digest")),
+                manifest.get("deployment_state") == "NOT_DEPLOYED",
+                manifest.get("finalization_status") == "finalizing",
+                manifest.get("accepted") is False,
+            )
+        ):
+            raise WebProductRuntimeError(
+                "stored finalizing Web acceptance evidence is incomplete"
+            )
+
+        job_id = str(row["job_id"])
+        current = self._control_plane.get_job(token, job_id)
+        if current.state is JobState.VALIDATING:
+            try:
+                current = self._control_plane.transition_job(
+                    token,
+                    job_id,
+                    JobState.COMPLETED,
+                    reason="durable Web product finalization evidence verified",
+                    now=now,
+                )
+            except Exception as error:
+                current = self._control_plane.get_job(token, job_id)
+                if current.state is not JobState.COMPLETED:
+                    raise WebProductRuntimeError(
+                        "Web job completion could not be reconciled"
+                    ) from error
+        if current.state is not JobState.COMPLETED:
+            raise WebProductRuntimeError(
+                "finalizing Web product job is not completable"
+            )
+
+        manifest["job_state_proven"] = True
+        manifest["finalization_status"] = "accepted"
+        manifest["accepted"] = True
+        serialized = json.dumps(manifest, sort_keys=True)
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            current_row = connection.execute(
+                "SELECT status, manifest_json FROM web_product_requests "
+                "WHERE request_id = ?",
+                (request_id,),
+            ).fetchone()
+            if current_row is None:
+                raise WebProductRuntimeError("unknown web product request")
+            if current_row["status"] == "accepted":
+                stored = current_row["manifest_json"]
+                if stored is None:
+                    raise WebProductRuntimeError(
+                        "accepted Web product manifest is missing"
+                    )
+                accepted_value = json.loads(str(stored))
+                if not isinstance(accepted_value, dict):
+                    raise WebProductRuntimeError(
+                        "stored Web AcceptanceManifest is malformed"
+                    )
+                return cast(dict[str, object], accepted_value)
+            if current_row["status"] != "finalizing":
+                raise WebProductRuntimeError(
+                    "Web product finalization state changed concurrently"
+                )
+            changed = connection.execute(
+                "UPDATE web_product_requests SET status = 'accepted', manifest_json = ? "
+                "WHERE request_id = ? AND status = 'finalizing'",
+                (serialized, request_id),
+            ).rowcount
+            if changed != 1:
+                raise WebProductRuntimeError(
+                    "Web product finalization state changed concurrently"
+                )
+            connection.execute(
+                "INSERT OR IGNORE INTO web_product_closure VALUES "
+                "(?, 'accepted', ?, ?)",
+                (
+                    request_id,
+                    "website source, preview artifact and cross-store acceptance evidence verified",
+                    now.isoformat(),
+                ),
+            )
+        return manifest
 
     def interrupt(
         self,
@@ -431,105 +344,21 @@ class DurableWebProductRuntime:
         now: datetime,
         reason: str,
     ) -> dict[str, object]:
-        if now.tzinfo is None:
-            raise WebProductRuntimeError("interruption time must be timezone-aware")
-        if not reason or reason != reason.strip():
-            raise WebProductRuntimeError(
-                "interruption reason must be non-blank and trimmed"
-            )
-        with self._connect() as connection:
-            row = connection.execute(
-                "SELECT * FROM web_product_requests WHERE request_id = ?", (request_id,)
-            ).fetchone()
-        if row is None:
-            raise WebProductRuntimeError("unknown web product request")
-        if row["status"] != "pending":
+        """Never let cancellation/interruption overwrite durable finalization evidence."""
+        state = self.get_state(request_id)
+        if state["status"] == "finalizing":
+            self.recover_finalizing(request_id, token=token, now=now)
             return self.get_state(request_id)
-        current = self._control_plane.get_job(token, str(row["job_id"]))
-        if current.state not in {JobState.COMPLETED, JobState.FAILED, JobState.CANCELLED}:
-            self._control_plane.transition_job(
-                token,
-                str(row["job_id"]),
-                JobState.CANCELLED,
-                reason="finished web product execution interrupted",
-                now=now,
-            )
-        with self._connect() as connection:
-            changed = connection.execute(
-                "UPDATE web_product_requests SET status = 'interrupted' "
-                "WHERE request_id = ? AND status = 'pending'",
-                (request_id,),
-            ).rowcount
-            if changed == 1:
-                connection.execute(
-                    "INSERT OR IGNORE INTO web_product_closure VALUES "
-                    "(?, 'interrupted', ?, ?)",
-                    (request_id, reason, now.isoformat()),
-                )
-        return self.get_state(request_id)
-
-    def _pending(self, request_id: str) -> sqlite3.Row:
-        with self._connect() as connection:
-            row = connection.execute(
-                "SELECT * FROM web_product_requests WHERE request_id = ?",
-                (request_id,),
-            ).fetchone()
-        if row is None or row["status"] != "pending":
-            raise WebProductRuntimeError("web product request is not pending")
-        return cast(sqlite3.Row, row)
-
-    def _fail_web_product(
-        self,
-        row: sqlite3.Row,
-        *,
-        token: str,
-        now: datetime,
-        error: Exception,
-    ) -> None:
-        request_id = str(row["request_id"])
-        reason = _failure_reason(error)
-        try:
-            current = self._control_plane.get_job(token, str(row["job_id"]))
-            if current.state is JobState.PENDING:
-                self._control_plane.transition_job(
-                    token,
-                    str(row["job_id"]),
-                    JobState.CANCELLED,
-                    reason="web finished-product execution failed before start",
-                    now=now,
-                )
-            elif current.state in {
-                JobState.RUNNING,
-                JobState.WAITING_PROVIDER,
-                JobState.VALIDATING,
-                JobState.RETRY_PENDING,
-            }:
-                self._control_plane.transition_job(
-                    token,
-                    str(row["job_id"]),
-                    JobState.FAILED,
-                    reason="web finished-product execution failed closed",
-                    now=now,
-                )
-        except Exception as cleanup_error:
-            reason = (
-                f"{reason}; cleanup_failure={type(cleanup_error).__name__}"
-            )[:2048]
-        with self._connect() as connection:
-            connection.execute(
-                "UPDATE web_product_requests SET status = 'failed' "
-                "WHERE request_id = ? AND status = 'pending'",
-                (request_id,),
-            )
-            connection.execute(
-                "INSERT OR IGNORE INTO web_product_closure VALUES "
-                "(?, 'failed', ?, ?)",
-                (request_id, reason, now.isoformat()),
-            )
+        return super().interrupt(
+            request_id,
+            token=token,
+            now=now,
+            reason=reason,
+        )
 
 
-def _failure_reason(error: Exception) -> str:
-    message = " ".join(str(error).split())
-    if not message:
-        message = "web execution failed without an error message"
-    return f"{type(error).__name__}: {message}"[:2048]
+__all__ = [
+    "DurableWebProductRuntime",
+    "WebProductFinalizationPending",
+    "WebProductRuntimeError",
+]
