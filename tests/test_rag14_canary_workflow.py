@@ -27,6 +27,12 @@ def _operational() -> str:
     )
 
 
+def _finops() -> str:
+    return (_repository() / "services/rag14_finops_evidence.py").read_text(
+        encoding="utf-8"
+    )
+
+
 def _maintenance() -> str:
     return (_repository() / "services/rag14_maintenance.py").read_text(
         encoding="utf-8"
@@ -38,6 +44,8 @@ def test_rag14_canary_workflow_requires_exact_source_and_explicit_spend() -> Non
 
     assert "source_sha:" in workflow
     assert "confirm_external_spend:" in workflow
+    assert "max_canary_usd:" in workflow
+    assert "RAG14_MAX_CANARY_USD: ${{ inputs.max_canary_usd }}" in workflow
     assert "ref: ${{ inputs.source_sha }}" in workflow
     assert "fetch-depth: 0" in workflow
     assert "event=push&status=completed" in workflow
@@ -131,9 +139,11 @@ def test_rag14_canary_runs_real_cross_tenant_fargate_probe() -> None:
 def test_rag14_operational_evidence_covers_recovery_alerts_finops_and_rollback() -> None:
     workflow = _workflow()
     operational = _operational()
+    finops = _finops()
     maintenance = _maintenance()
 
     assert "python -m services.rag14_operational_evidence" in workflow
+    assert "python -m services.rag14_finops_evidence" in workflow
     assert "RAG14_PREVIOUS_TASK_DEFINITION" in workflow
     assert "rag14_backup_restore" in operational
     assert "deployment-health-window.json" in operational
@@ -141,10 +151,12 @@ def test_rag14_operational_evidence_covers_recovery_alerts_finops_and_rollback()
     assert "AuthorizationAnomalyProbe" in operational
     assert '"ALARM"' in operational
     assert '"OK"' in operational
-    assert "finops-resource-meter.json" in operational
-    assert "vcpu_seconds" in operational
-    assert "memory_gib_seconds" in operational
-    assert "SELF_HOSTED_NO_EXTERNAL_EMBEDDING_API_FEE" in operational
+    assert "pricing.us-east-1.amazonaws.com" in finops
+    assert "RAG14_MAX_CANARY_USD" in finops
+    assert '"budget_guard_active": True' in finops
+    assert '"currency_cost_claimed": True' in finops
+    assert '"aws_compute_cost_is_zero": False' in finops
+    assert "SELF_HOSTED_NO_EXTERNAL_EMBEDDING_API_FEE" in finops
     assert "rollback-recovery.json" in operational
     assert "Required CI Gate" in operational
     assert "corrupt_restore_rejected" in maintenance
