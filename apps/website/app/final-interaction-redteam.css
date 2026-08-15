@@ -213,11 +213,10 @@
   }
 
   .node-flow .node.system-visual-control {
-    display: grid !important;
-    grid-template-columns: 34px minmax(0, 1fr) !important;
-    grid-template-areas: "title title" "detail detail" !important;
+    display: block !important;
     width: 100% !important;
     min-width: 0 !important;
+    min-height: 0 !important;
     padding: 11px 10px !important;
     border: 0 !important;
     border-bottom: 1px solid var(--brand-line) !important;
@@ -225,6 +224,13 @@
 
   .node-flow .node.system-visual-control:first-child {
     border-left: 0 !important;
+  }
+
+  .node-flow .node strong,
+  .node-flow .node small {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
   }
 
   .node-flow .node i {
@@ -291,5 +297,16 @@
   .system-inline-detail > p {
     font-size: .88rem !important;
     line-height: 1.5 !important;
+  }
+}
+
+@media (max-width: 420px) {
+  .lifecycle-flow {
+    grid-template-columns: 1fr !important;
+  }
+
+  .lifecycle-flow > .lifecycle-step,
+  .lifecycle-flow > .lifecycle-step:nth-child(2n) {
+    border-right: 0 !important;
   }
 }
