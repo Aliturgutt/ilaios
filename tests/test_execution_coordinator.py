@@ -186,7 +186,7 @@ def test_medium_video_executes_to_verified_acceptance_with_fresh_grant_and_lease
     assert state["terminal"] is True
     assert state["terminal_reason"] == "finished product and acceptance evidence verified"
     assert isinstance(state["result_sha256"], str)
-    assert len(cast(str, state["result_sha256"])) == 64
+    assert len(state["result_sha256"]) == 64
     assert governance.admission_proven("exec-video-2") is True
     assert scheduler.state()["leases"] == []
     grant_state = grants.state()
