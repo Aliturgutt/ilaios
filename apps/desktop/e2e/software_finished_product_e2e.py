@@ -50,9 +50,9 @@ def main() -> int:
 
 
 def _run_finished_product_acceptance(*, root: Path, source_head: str) -> None:
-    token = "desktop-software-e2e-token"
+    local_credential = "ci-local-boundary"
     database = root / "control-plane.sqlite3"
-    control_plane = ControlPlane(ControlPlaneConfig(database, token))
+    control_plane = ControlPlane(ControlPlaneConfig(database, local_credential))
     workflows = WorkflowStore(WorkflowStoreConfig(database))
     scheduler = DurableWorkerScheduler(
         database,
@@ -107,7 +107,7 @@ def _run_finished_product_acceptance(*, root: Path, source_head: str) -> None:
     prepared = coordinator.prepare(
         request_id,
         objective,
-        token=token,
+        token=local_credential,
         principal_id="ci-desktop-software-user",
         tenant_id="ci-desktop-tenant",
         now=now,
@@ -119,7 +119,7 @@ def _run_finished_product_acceptance(*, root: Path, source_head: str) -> None:
 
     manifest = coordinator.resume(
         request_id,
-        token=token,
+        token=local_credential,
         now=now + timedelta(seconds=1),
     )
     if manifest.get("accepted") is not True:
