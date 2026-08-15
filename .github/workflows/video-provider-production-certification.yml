@@ -1,0 +1,82 @@
+name: Video Provider Production Certification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: video-provider-production-certification
+  cancel-in-progress: false
+
+jobs:
+  provider-proof:
+    name: Bounded real-provider production proof
+    runs-on: ubuntu-latest
+    environment: Production
+    timeout-minutes: 15
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      VIDEO_PROVIDER_PROOF_DIR: artifacts/video-provider-proof
+      VIDEO_PROVIDER_MODEL: bytedance/seedance-2.0-fast
+      VIDEO_PROVIDER_DURATION_SECONDS: "4"
+      VIDEO_PROVIDER_RESOLUTION: 480p
+      VIDEO_PROVIDER_ASPECT_RATIO: "16:9"
+      VIDEO_PROVIDER_MAX_UNIT_PRICE_USD: "0.15"
+      VIDEO_PROVIDER_MAX_TOTAL_COST_USD: "0.60"
+
+    steps:
+      - name: Checkout exact source revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+
+      - name: Run bounded proof through canonical managed provider path
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m src.video_automation.provider_production_certification
+
+      - name: Publish provider proof summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "## Video Provider Production Certification" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f "$VIDEO_PROVIDER_PROOF_DIR/provider-receipt.json" ]]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          receipt = json.loads(
+              (Path(os.environ["VIDEO_PROVIDER_PROOF_DIR"]) / "provider-receipt.json").read_text(
+                  encoding="utf-8"
+              )
+          )
+          artifact = receipt.get("artifact") or {}
+          terminal = receipt.get("provider_terminal_metadata") or {}
+          print(f"- Status: `{receipt.get('status')}`")
+          print(f"- Revision: `{receipt.get('revision_sha')}`")
+          print(f"- Provider/model: `{receipt.get('provider')}` / `{receipt.get('model')}`")
+          print(f"- Request: `{receipt.get('request_id', 'n/a')}`")
+          print(f"- External job: `{receipt.get('external_job_id', 'n/a')}`")
+          print(f"- Artifact SHA-256: `{artifact.get('sha256', 'n/a')}`")
+          print(f"- Artifact bytes: `{artifact.get('bytes', 'n/a')}`")
+          print(f"- Provider usage: `{terminal.get('usage_json', 'n/a')}`")
+          print("- Submit/poll/retrieval reuse the canonical managed OpenRouter boundaries.")
+          print("- Credential material is never written to evidence or logs.")
+          PY
+          else
+            echo "- Status: `NO_RECEIPT`" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload immutable provider proof evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: video-provider-production-proof-${{ github.sha }}-${{ github.run_id }}
+          path: artifacts/video-provider-proof
+          if-no-files-found: warn
+          retention-days: 30
