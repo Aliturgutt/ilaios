@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import cast
 
 from services.rag14_final_evidence import assemble
 
@@ -61,7 +62,11 @@ def _complete_except_finops_and_bad_rollback(root: Path) -> None:
     _write(
         root,
         "cross-tenant-fargate.json",
-        {"status": "PASS", "scope_binding_rejected": True, "production_authority": False},
+        {
+            "status": "PASS",
+            "scope_binding_rejected": True,
+            "production_authority": False,
+        },
     )
     for relative in (
         "live-redteam/unauthenticated.json",
@@ -94,7 +99,11 @@ def _complete_except_finops_and_bad_rollback(root: Path) -> None:
     _write(
         root,
         "observability-alerts.json",
-        {"status": "PASS", "all_rules_fired": True, "all_rules_recovered": True},
+        {
+            "status": "PASS",
+            "all_rules_fired": True,
+            "all_rules_recovered": True,
+        },
     )
     _write(
         root,
@@ -131,7 +140,9 @@ def test_partial_runtime_evidence_remains_blocked(tmp_path: Path) -> None:
 
     assert report["status"] == "BLOCKED"
     assert report["production_approved"] is False
-    assert set(report["missing_requirements"]) == {
+    missing = report["missing_requirements"]
+    assert isinstance(missing, list)
+    assert set(cast(list[str], missing)) == {
         "production_routing_finops",
         "rollback_recovery",
     }
@@ -167,5 +178,7 @@ def test_complete_evidence_can_only_reach_governed_review(tmp_path: Path) -> Non
     assert report["status"] == "READY_FOR_GOVERNED_PROMOTION_REVIEW"
     assert report["missing_requirements"] == []
     assert report["production_approved"] is False
-    for requirement in report["satisfied_requirements"]:
+    satisfied = report["satisfied_requirements"]
+    assert isinstance(satisfied, list)
+    for requirement in cast(list[str], satisfied):
         assert (tmp_path / "final-evidence-items" / f"{requirement}.json").is_file()
