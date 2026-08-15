@@ -54,68 +54,23 @@ def _project_files(
     spec: WebsiteSpec,
     design_strategy: Mapping[str, object],
 ) -> dict[str, bytes]:
-    serialized = json.dumps(
-        {
-            "spec": spec.to_dict(),
-            "design_strategy": dict(design_strategy),
-        },
-        sort_keys=True,
-        indent=2,
-        ensure_ascii=False,
-    )
     files: dict[str, bytes] = {
-        "package.json": json.dumps(
-            {
-                "name": f"@ilaios/generated-{spec.site_id}",
-                "version": "1.0.0",
-                "private": True,
-                "scripts": {
-                    "build": "next build",
-                    "start": "next start",
-                    "typecheck": "tsc --noEmit",
-                },
-                "dependencies": {
-                    "next": "16.2.11",
-                    "react": "19.2.0",
-                    "react-dom": "19.2.0",
-                },
-                "devDependencies": {
-                    "@types/node": "^24.0.0",
-                    "@types/react": "^19.2.0",
-                    "@types/react-dom": "^19.2.0",
-                    "typescript": "^5.9.0",
-                },
-            },
+        "package.json": _package_json(spec),
+        "tsconfig.json": _tsconfig(),
+        "next-env.d.ts": (
+            b'/// <reference types="next" />\n'
+            b'/// <reference types="next/image-types/global" />\n'
+        ),
+        "next.config.mjs": (
+            b"/** @type {import('next').NextConfig} */\n"
+            b"const config = { reactStrictMode: true };\nexport default config;\n"
+        ),
+        "site.json": json.dumps(
+            {"spec": spec.to_dict(), "design_strategy": dict(design_strategy)},
             sort_keys=True,
             indent=2,
-        ).encode(),
-        "tsconfig.json": json.dumps(
-            {
-                "compilerOptions": {
-                    "target": "ES2017",
-                    "lib": ["dom", "dom.iterable", "esnext"],
-                    "allowJs": False,
-                    "skipLibCheck": True,
-                    "strict": True,
-                    "noEmit": True,
-                    "esModuleInterop": True,
-                    "module": "esnext",
-                    "moduleResolution": "bundler",
-                    "resolveJsonModule": True,
-                    "isolatedModules": True,
-                    "jsx": "react-jsx",
-                    "incremental": True,
-                    "plugins": [{"name": "next"}],
-                },
-                "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-                "exclude": ["node_modules"],
-            },
-            sort_keys=True,
-            indent=2,
-        ).encode(),
-        "next-env.d.ts": b'/// <reference types="next" />\n/// <reference types="next/image-types/global" />\n',
-        "next.config.mjs": b"/** @type {import('next').NextConfig} */\nconst config = { reactStrictMode: true };\nexport default config;\n",
-        "site.json": serialized.encode("utf-8"),
+            ensure_ascii=False,
+        ).encode("utf-8"),
         "app/globals.css": _css().encode(),
         "app/layout.tsx": _layout_source(spec).encode(),
         "app/page.tsx": _root_source(spec).encode(),
@@ -132,27 +87,90 @@ def _project_files(
     return files
 
 
+def _package_json(spec: WebsiteSpec) -> bytes:
+    return json.dumps(
+        {
+            "name": f"@ilaios/generated-{spec.site_id}",
+            "version": "1.0.0",
+            "private": True,
+            "scripts": {
+                "build": "next build",
+                "start": "next start",
+                "typecheck": "tsc --noEmit",
+            },
+            "dependencies": {
+                "next": "16.2.11",
+                "react": "19.2.0",
+                "react-dom": "19.2.0",
+            },
+            "devDependencies": {
+                "@types/node": "^24.0.0",
+                "@types/react": "^19.2.0",
+                "@types/react-dom": "^19.2.0",
+                "typescript": "^5.9.0",
+            },
+        },
+        sort_keys=True,
+        indent=2,
+    ).encode()
+
+
+def _tsconfig() -> bytes:
+    return json.dumps(
+        {
+            "compilerOptions": {
+                "target": "ES2017",
+                "lib": ["dom", "dom.iterable", "esnext"],
+                "allowJs": False,
+                "skipLibCheck": True,
+                "strict": True,
+                "noEmit": True,
+                "esModuleInterop": True,
+                "module": "esnext",
+                "moduleResolution": "bundler",
+                "resolveJsonModule": True,
+                "isolatedModules": True,
+                "jsx": "react-jsx",
+                "incremental": True,
+                "plugins": [{"name": "next"}],
+            },
+            "include": [
+                "next-env.d.ts",
+                "**/*.ts",
+                "**/*.tsx",
+                ".next/types/**/*.ts",
+            ],
+            "exclude": ["node_modules"],
+        },
+        sort_keys=True,
+        indent=2,
+    ).encode()
+
+
 def _layout_source(spec: WebsiteSpec) -> str:
     title = json.dumps(spec.business_name, ensure_ascii=False)
     description = json.dumps(
         f"{spec.business_name} — {spec.business_category}", ensure_ascii=False
     )
+    locale = json.dumps(spec.locales[0])
     return f'''import type {{ Metadata }} from "next";
+import type {{ ReactNode }} from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {{ title: {title}, description: {description} }};
 
-export default function RootLayout({{ children }}: Readonly<{{ children: React.ReactNode }}>) {{
-  return <html lang={json.dumps(spec.locales[0])}><body>{{children}}</body></html>;
+export default function RootLayout({{ children }}: Readonly<{{ children: ReactNode }}>) {{
+  return <html lang={locale}><body>{{children}}</body></html>;
 }}
 '''
 
 
 def _root_source(spec: WebsiteSpec) -> str:
+    destination = json.dumps("/" + spec.locales[0])
     return f'''import {{ redirect }} from "next/navigation";
 
 export default function RootPage() {{
-  redirect({json.dumps('/' + spec.locales[0])});
+  redirect({destination});
 }}
 '''
 
@@ -169,7 +187,12 @@ def _page_source(spec: WebsiteSpec, locale: str, page: str) -> str:
         "headline": _headline(spec, locale, page),
         "copy": _copy(spec, locale, page),
     }
-    return f'''import {{ PageShell }} from "../../../components/PageShell";
+    import_path = (
+        "../../components/PageShell"
+        if page == "home"
+        else "../../../components/PageShell"
+    )
+    return f'''import {{ PageShell }} from {json.dumps(import_path)};
 
 const content = {json.dumps(props, ensure_ascii=False, indent=2)} as const;
 
@@ -201,6 +224,20 @@ function href(locale: string, page: string) {
   return page === "home" ? `/${locale}` : `/${locale}/${page}`;
 }
 
+function ContactForm({ locale }: { locale: string }) {
+  return (
+    <form className="contact-form" action="#" method="post">
+      <label htmlFor="name">{locale === "tr" ? "Ad" : "Name"}</label>
+      <input id="name" name="name" autoComplete="name" required />
+      <label htmlFor="email">{locale === "tr" ? "E-posta" : "Email"}</label>
+      <input id="email" name="email" type="email" autoComplete="email" required />
+      <label htmlFor="message">{locale === "tr" ? "Mesaj" : "Message"}</label>
+      <textarea id="message" name="message" required />
+      <button type="submit">{locale === "tr" ? "Talebi gönder" : "Send request"}</button>
+    </form>
+  );
+}
+
 export function PageShell(props: Props) {
   const t = labels[props.locale] ?? labels.en;
   return (
@@ -223,7 +260,8 @@ export function PageShell(props: Props) {
           <h1>{props.headline}</h1>
           <p className="lede">{props.copy}</p>
           {props.pageName === "home" && <a className="primary-action" href={href(props.locale, "contact")}>{props.locale === "tr" ? "Görüşme başlat" : "Start a conversation"}</a>}
-          {props.pageName !== "home" && <div className="evidence-line"><strong>{props.locale === "tr" ? "Odak" : "Built around"}</strong><span>{props.audience}</span></div>}
+          {props.pageName === "contact" && <ContactForm locale={props.locale} />}
+          {props.pageName !== "home" && props.pageName !== "contact" && <div className="evidence-line"><strong>{props.locale === "tr" ? "Odak" : "Built around"}</strong><span>{props.audience}</span></div>}
         </section>
       </main>
       <footer><p>{props.locale === "tr" ? "Netlik, güven ve ölçülebilir aksiyon için tasarlandı." : "Built for clarity, trust, and measurable action."}</p></footer>
@@ -275,19 +313,38 @@ def _copy(spec: WebsiteSpec, locale: str, page: str) -> str:
 
 def _label(page: str, locale: str) -> str:
     tr = {
-        "home": "Ana sayfa", "expertise": "Uzmanlık", "about": "Hakkımızda", "contact": "İletişim",
-        "capabilities": "Yetenekler", "trust": "Güven", "menu": "Menü", "story": "Hikâye",
-        "work": "Projeler", "studio": "Stüdyo", "collection": "Koleksiyon", "craft": "Zanaat",
-        "product": "Ürün", "developers": "Geliştiriciler", "security": "Güvenlik", "services": "Hizmetler",
-        "approach": "Yaklaşım", "care": "Bakım", "solutions": "Çözümler", "pricing": "Fiyatlandırma",
+        "home": "Ana sayfa",
+        "expertise": "Uzmanlık",
+        "about": "Hakkımızda",
+        "contact": "İletişim",
+        "capabilities": "Yetenekler",
+        "trust": "Güven",
+        "menu": "Menü",
+        "story": "Hikâye",
+        "work": "Projeler",
+        "studio": "Stüdyo",
+        "collection": "Koleksiyon",
+        "craft": "Zanaat",
+        "product": "Ürün",
+        "developers": "Geliştiriciler",
+        "security": "Güvenlik",
+        "services": "Hizmetler",
+        "approach": "Yaklaşım",
+        "care": "Bakım",
+        "solutions": "Çözümler",
+        "pricing": "Fiyatlandırma",
     }
-    return tr.get(page, page.replace("-", " ").title()) if locale == "tr" else page.replace("-", " ").title()
+    return (
+        tr.get(page, page.replace("-", " ").title())
+        if locale == "tr"
+        else page.replace("-", " ").title()
+    )
 
 
 def _css() -> str:
-    return '''
-:root{--ink:#101828;--muted:#475467;--line:#d0d5dd;--accent:#0b5fff;--max:1180px}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:#fff;line-height:1.55}a{color:inherit}a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.skip-link{position:absolute;left:-999px;top:0}.skip-link:focus{left:1rem;top:1rem;background:#fff;padding:.75rem;z-index:10}.site-header{max-width:var(--max);margin:auto;padding:1.2rem 1.5rem;display:grid;grid-template-columns:auto 1fr auto;gap:clamp(1.25rem,3vw,3rem);align-items:center;border-bottom:1px solid var(--line)}.brand{font-weight:800;text-decoration:none}nav{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}nav a,.languages a{display:inline-flex;align-items:center;min-height:40px;text-decoration:none}main{max-width:var(--max);margin:auto;padding:clamp(2rem,6vw,6rem) 1.5rem}.hero{min-height:58vh;display:grid;align-content:center}.hero h1,.content-block h1{font-size:clamp(2.6rem,7vw,6rem);line-height:1;letter-spacing:-.05em;max-width:13ch;margin:.4rem 0 1.4rem}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:.78rem;font-weight:700;color:var(--muted)}.lede{font-size:clamp(1.05rem,1.8vw,1.35rem);max-width:60ch}.primary-action{display:inline-flex;align-items:center;min-height:44px;width:max-content;margin-top:1.5rem;background:var(--ink);color:#fff;padding:.75rem 1rem;text-decoration:none}.content-block{max-width:850px}.evidence-line{display:grid;grid-template-columns:140px 1fr;gap:1rem;border-top:1px solid var(--line);padding-top:1rem;margin-top:3rem}footer{max-width:var(--max);margin:3rem auto 0;padding:2rem 1.5rem;border-top:1px solid var(--line);color:var(--muted)}@media(max-width:768px){.site-header{grid-template-columns:1fr;align-items:start}nav{justify-content:flex-start}.evidence-line{grid-template-columns:1fr}.hero h1,.content-block h1{font-size:clamp(2.5rem,11vw,4.7rem)}}@media(max-width:430px){main{padding-top:2.25rem}.site-header{padding:1rem}nav{display:grid;grid-template-columns:1fr 1fr;gap:.4rem}}@media(max-width:360px){nav{grid-template-columns:1fr}}@media(max-width:320px){body{font-size:15px}main{padding-left:1rem;padding-right:1rem}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
-'''.strip()
+    return """
+:root{--ink:#101828;--muted:#475467;--line:#d0d5dd;--accent:#0b5fff;--max:1180px}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:#fff;line-height:1.55}a{color:inherit}a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.skip-link{position:absolute;left:-999px;top:0}.skip-link:focus{left:1rem;top:1rem;background:#fff;padding:.75rem;z-index:10}.site-header{max-width:var(--max);margin:auto;padding:1.2rem 1.5rem;display:grid;grid-template-columns:auto 1fr auto;gap:clamp(1.25rem,3vw,3rem);align-items:center;border-bottom:1px solid var(--line)}.brand{font-weight:800;text-decoration:none}nav{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}nav a,.languages a{display:inline-flex;align-items:center;min-height:40px;text-decoration:none}main{max-width:var(--max);margin:auto;padding:clamp(2rem,6vw,6rem) 1.5rem}.hero{min-height:58vh;display:grid;align-content:center}.hero h1,.content-block h1{font-size:clamp(2.6rem,7vw,6rem);line-height:1;letter-spacing:-.05em;max-width:13ch;margin:.4rem 0 1.4rem}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:.78rem;font-weight:700;color:var(--muted)}.lede{font-size:clamp(1.05rem,1.8vw,1.35rem);max-width:60ch}.primary-action{display:inline-flex;align-items:center;min-height:44px;width:max-content;margin-top:1.5rem;background:var(--ink);color:#fff;padding:.75rem 1rem;text-decoration:none}.content-block{max-width:850px}.evidence-line{display:grid;grid-template-columns:140px 1fr;gap:1rem;border-top:1px solid var(--line);padding-top:1rem;margin-top:3rem}.contact-form{display:grid;gap:.65rem;margin-top:2rem;max-width:620px}.contact-form input,.contact-form textarea{font:inherit;padding:.8rem;border:1px solid var(--line)}.contact-form textarea{min-height:150px}.contact-form button{font:inherit;min-height:44px;padding:.75rem 1rem;border:0;background:var(--ink);color:#fff;width:max-content}footer{max-width:var(--max);margin:3rem auto 0;padding:2rem 1.5rem;border-top:1px solid var(--line);color:var(--muted)}@media(max-width:768px){.site-header{grid-template-columns:1fr;align-items:start}nav{justify-content:flex-start}.evidence-line{grid-template-columns:1fr}.hero h1,.content-block h1{font-size:clamp(2.5rem,11vw,4.7rem)}}@media(max-width:430px){main{padding-top:2.25rem}.site-header{padding:1rem}nav{display:grid;grid-template-columns:1fr 1fr;gap:.4rem}.contact-form button{width:100%}}@media(max-width:360px){nav{grid-template-columns:1fr}}@media(max-width:320px){body{font-size:15px}main{padding-left:1rem;padding-right:1rem}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+""".strip()
 
 
 def _content_hash(content: Mapping[str, bytes]) -> str:
