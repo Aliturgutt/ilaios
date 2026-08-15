@@ -1,12 +1,12 @@
 {
-  "approval": "RELEASE.R03 PRODUCTION PROMOTION APPROVED",
+  "approval": "REVOKED — FRESH EXACT RELEASE APPROVAL REQUIRED",
   "package_id": "RELEASE.R03.v1",
   "approved_by": "Ali Turgut",
-  "approval_source": "ChatGPT user instruction: R03 yap",
+  "approval_source": "Historical 2026-08-11 approval revoked after unrelated RAG.14 infrastructure changes triggered the guarded production workflow.",
   "approved_at": "2026-08-11T07:05:59+03:00",
-  "external_spend_approval": true,
+  "external_spend_approval": false,
   "production_desired_count": 2,
   "retain_ipv4_cidr": "176.217.181.22/32",
   "retain_tenant_id": "ilaios-r01-canary",
-  "constraint": "Promote the proven RELEASE.R02 runtime in place to PRODUCTION while retaining exactly two ECS tasks, the existing single approved IPv4 /32 boundary, tenant boundary, immutable signed image, TLS, health gates, serialized state, and automatic rollback to the prior R02 task definition. No public exposure expansion."
+  "constraint": "REVOKED. Do not reuse this historical approval for any future production mutation. A new governed approval must explicitly bind the intended current release scope before production apply."
 }
