@@ -42,5 +42,4 @@ RUN python -m services.rag14_embedding_benchmark \
 
 USER 1000:1000
 
-ENTRYPOINT ["python"]
-CMD ["-m", "services.deployment.runtime"]
+ENTRYPOINT ["python", "-m", "services.deployment.runtime"]
