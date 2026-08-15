@@ -73,7 +73,7 @@ check "knowledge_runtime_configuration" {
 }
 
 locals {
-  knowledge_runtime_environment = var.knowledge_enabled ? [
+  knowledge_runtime_environment = var.knowledge_enabled ? concat([
     { name = "ILAIOS_KNOWLEDGE_PRINCIPAL_ID", value = var.knowledge_principal_id },
     { name = "ILAIOS_KNOWLEDGE_TENANT_ID", value = var.knowledge_tenant_id },
     { name = "ILAIOS_KNOWLEDGE_PROJECT_ID", value = var.knowledge_project_id },
@@ -81,7 +81,9 @@ locals {
     { name = "ILAIOS_KNOWLEDGE_PURPOSES", value = join(",", var.knowledge_purposes) },
     { name = "ILAIOS_KNOWLEDGE_RESIDENCIES", value = join(",", var.knowledge_residencies) },
     { name = "ILAIOS_KNOWLEDGE_EMBEDDING_MODE", value = var.knowledge_embedding_mode }
-  ] : []
+  ], var.knowledge_embedding_mode == "multilingual_e5_small_qint8_v1" ? [
+    { name = "ILAIOS_KNOWLEDGE_STARTUP_SELFTEST_REQUIRED", value = "true" }
+  ] : []) : []
 
   runtime_environment = concat([
     { name = "ILAIOS_HOST", value = "0.0.0.0" },

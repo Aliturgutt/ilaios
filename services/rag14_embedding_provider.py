@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import importlib
+import json
 import math
 import os
 import sys
@@ -65,6 +66,9 @@ class PinnedE5EmbeddingProvider:
         probe = self._encode((self._candidate.passage_prefix + "runtime integrity probe",))
         if len(probe) != 1 or len(probe[0]) != self._candidate.embedding_dimensions:
             raise ProductionEmbeddingError("production embedding startup probe failed")
+        self._startup_selftest_report = self._run_startup_selftest_if_required(
+            manifest_path
+        )
 
     @property
     def provider_id(self) -> str:
@@ -76,6 +80,12 @@ class PinnedE5EmbeddingProvider:
     @property
     def artifact_hashes(self) -> dict[str, str]:
         return dict(self._artifact_hashes)
+
+    @property
+    def startup_selftest_report(self) -> dict[str, object] | None:
+        if self._startup_selftest_report is None:
+            return None
+        return dict(self._startup_selftest_report)
 
     def embed(self, text: str) -> tuple[float, ...]:
         if not text or not text.strip():
@@ -89,6 +99,40 @@ class PinnedE5EmbeddingProvider:
         prepared = text if text.startswith(prefix) else prefix + text
         encoded = self._encode((prepared,))
         return encoded[0]
+
+    def _run_startup_selftest_if_required(
+        self, manifest_path: Path
+    ) -> dict[str, object] | None:
+        raw = os.environ.get("ILAIOS_KNOWLEDGE_STARTUP_SELFTEST_REQUIRED", "false")
+        if raw not in {"false", "true"}:
+            raise ProductionEmbeddingError(
+                "ILAIOS_KNOWLEDGE_STARTUP_SELFTEST_REQUIRED must be true or false"
+            )
+        if raw == "false":
+            return None
+        from services.rag14_runtime_selftest import (
+            StartupSelfTestError,
+            run_startup_selftest,
+            thresholds_from_manifest,
+        )
+
+        try:
+            report = run_startup_selftest(
+                self,
+                thresholds=thresholds_from_manifest(manifest_path),
+            )
+        except StartupSelfTestError as error:
+            raise ProductionEmbeddingError(
+                f"production embedding live startup self-test failed: {error}"
+            ) from error
+        print(
+            json.dumps(
+                {"event": "rag14_startup_selftest", **report},
+                sort_keys=True,
+            ),
+            flush=True,
+        )
+        return report
 
     def _verify_artifacts(self) -> dict[str, str]:
         hashes: dict[str, str] = {}
