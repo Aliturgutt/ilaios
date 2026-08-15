@@ -6,6 +6,7 @@ import hmac
 import json
 import secrets
 import threading
+import time
 from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -22,6 +23,8 @@ from services.execution_coordinator import (
     ExecutionCoordinatorError,
 )
 from services.identity import Session
+
+_RECOVERY_SWEEP_SECONDS = 60.0
 
 
 class DesktopIdentityHTTPServer(ThreadingHTTPServer):
@@ -43,6 +46,44 @@ class DesktopIdentityHTTPServer(ThreadingHTTPServer):
         self.bearer_token = bearer_token
         self.identity = identity
         self.coordinator = coordinator
+        self._next_recovery_sweep = time.monotonic()
+
+    def service_actions(self) -> None:
+        """Run bounded crash/orphan reconciliation from the trusted server lifecycle."""
+        monotonic_now = time.monotonic()
+        if monotonic_now < self._next_recovery_sweep:
+            return
+        self._next_recovery_sweep = monotonic_now + _RECOVERY_SWEEP_SECONDS
+        try:
+            reconciled = self.coordinator.recover_stale(
+                token=self.bearer_token,
+                now=datetime.now(timezone.utc),
+            )
+        except Exception as error:
+            print(
+                json.dumps(
+                    {
+                        "component": "desktop_identity",
+                        "event": "execution_recovery_sweep_failed",
+                        "error_type": type(error).__name__,
+                    },
+                    sort_keys=True,
+                ),
+                flush=True,
+            )
+            return
+        if reconciled:
+            print(
+                json.dumps(
+                    {
+                        "component": "desktop_identity",
+                        "event": "execution_recovery_sweep",
+                        "reconciled_count": len(reconciled),
+                    },
+                    sort_keys=True,
+                ),
+                flush=True,
+            )
 
 
 class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
