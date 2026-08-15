@@ -1,7 +1,7 @@
 """Canonical one-prompt execution coordinator.
 
-The coordinator composes existing Control Plane, governance, scheduler, grant,
-and finished-product adapter boundaries. It is not a second runtime or factory.
+The coordinator composes existing Control Plane, governance, grant, and
+finished-product adapter boundaries. It is not a second runtime or factory.
 Capability selection is conservative and execution fails closed when no verified
 finished-product adapter exists.
 """
@@ -18,17 +18,10 @@ from typing import cast
 
 from services.capability_registry import CAPABILITIES
 from services.control_plane.api import ControlPlane
-from services.control_plane.proposals import (
-    BudgetEnvelope,
-    DataClass,
-    ProposedTask,
-    RiskClass,
-)
+from services.control_plane.proposals import BudgetEnvelope, DataClass, ProposedTask, RiskClass
 from services.governance import GateError, GovernedRuntimeGateway
-from services.integrations.product_runtime import (
-    DurableVideoProductRuntime,
-    ProductRuntimeError,
-)
+from services.integrations.product_runtime import DurableVideoProductRuntime, ProductRuntimeError
+from services.integrations.web_product_runtime import DurableWebProductRuntime, WebProductRuntimeError
 from services.runtime import BlastRadiusBudget, DurableGrantPolicy, ExecutionGrant
 
 
@@ -55,77 +48,15 @@ _KNOWN_CAPABILITY_IDS = frozenset(item.capability_id for item in CAPABILITIES)
 _STALE_EXECUTION_AFTER = timedelta(minutes=15)
 
 _ROUTE_TERMS: tuple[tuple[str, frozenset[str]], ...] = (
-    (
-        _VIDEO,
-        frozenset(
-            {
-                "video",
-                "mp4",
-                "reel",
-                "reels",
-                "short video",
-                "tanitim videosu",
-                "tanıtım videosu",
-                "youtube video",
-                "tiktok video",
-            }
-        ),
-    ),
-    (
-        _WEB,
-        frozenset(
-            {
-                "website",
-                "web site",
-                "web sitesi",
-                "landing page",
-                "internet sitesi",
-            }
-        ),
-    ),
-    (
-        _APP,
-        frozenset(
-            {
-                "mobile app",
-                "mobil uygulama",
-                "desktop app",
-                "masaustu uygulama",
-                "masaüstü uygulama",
-                "windows app",
-                "ios app",
-                "android app",
-            }
-        ),
-    ),
-    (
-        _SOFTWARE,
-        frozenset({"software", "yazilim", "yazılım", "codebase", "repository"}),
-    ),
-    (
-        _RESEARCH,
-        frozenset({"research", "arastir", "araştır", "dataset", "veri analizi"}),
-    ),
-    (
-        _DOCUMENT,
-        frozenset({"document", "dokuman", "doküman", "report", "rapor", "pdf"}),
-    ),
-    (
-        _COMMERCE,
-        frozenset(
-            {"campaign", "kampanya", "marketing", "pazarlama", "sales plan"}
-        ),
-    ),
-    (
-        _PERSONAL,
-        frozenset({"calendar", "takvim", "reminder", "hatirlatici", "hatırlatıcı"}),
-    ),
-    (
-        _SECURITY,
-        frozenset(
-            {"security review", "guvenlik", "güvenlik", "sast", "threat model"}
-        ),
-    ),
+    (_VIDEO, frozenset({"video", "mp4", "reel", "reels", "short video", "tanitim videosu", "tanıtım videosu", "youtube video", "tiktok video"})),
+    (_WEB, frozenset({"website", "web site", "web sitesi", "landing page", "internet sitesi"})),
+    (_APP, frozenset({"mobile app", "mobil uygulama", "desktop app", "masaustu uygulama", "masaüstü uygulama", "windows app", "ios app", "android app"})),
+    (_SOFTWARE, frozenset({"software", "yazilim", "yazılım", "codebase", "repository"})),
+    (_RESEARCH, frozenset({"research", "arastir", "araştır", "dataset", "veri analizi"})),
+    (_DOCUMENT, frozenset({"document", "dokuman", "doküman", "report", "rapor", "pdf"})),
+    (_COMMERCE, frozenset({"campaign", "kampanya", "marketing", "pazarlama", "sales plan"})),
+    (_PERSONAL, frozenset({"calendar", "takvim", "reminder", "hatirlatici", "hatırlatıcı"})),
+    (_SECURITY, frozenset({"security review", "guvenlik", "güvenlik", "sast", "threat model"})),
 )
 
 
@@ -139,12 +70,14 @@ class ExecutionCoordinator:
         governance: GovernedRuntimeGateway,
         grants: DurableGrantPolicy,
         video: DurableVideoProductRuntime,
+        web: DurableWebProductRuntime | None = None,
     ) -> None:
         self._database_path = database_path
         self._control_plane = control_plane
         self._governance = governance
         self._grants = grants
         self._video = video
+        self._web = web
         database_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as connection:
             connection.execute(
@@ -194,10 +127,7 @@ class ExecutionCoordinator:
                 raise ExecutionCoordinatorError("execution request already exists")
 
         route = classify_execution_route(objective)
-        if (
-            route.capability_id == _VIDEO
-            and route.adapter_id == "video.product-runtime.v1"
-        ):
+        if route.capability_id == _VIDEO and route.adapter_id == "video.product-runtime.v1":
             prepared = self._video.prepare(
                 request_id,
                 objective,
@@ -212,6 +142,25 @@ class ExecutionCoordinator:
             proposal_id = _result_text(prepared, "proposal_id")
             if prepared.get("admission_decision") != "ALLOW":
                 raise ExecutionCoordinatorError("video execution was not admitted")
+            status = "ADMITTED"
+        elif (
+            route.capability_id == _WEB
+            and route.adapter_id == "web.product-runtime.v1"
+            and self._web is not None
+        ):
+            prepared = self._web.prepare(
+                request_id,
+                objective,
+                token=token,
+                now=now,
+                requester_id=principal_id,
+                tenant_id=tenant_id,
+            )
+            goal_id = _result_text(prepared, "goal_id")
+            job_id = _result_text(prepared, "job_id")
+            proposal_id = _result_text(prepared, "proposal_id")
+            if prepared.get("admission_decision") != "ALLOW":
+                raise ExecutionCoordinatorError("web execution was not admitted")
             status = "ADMITTED"
         else:
             goal = self._control_plane.create_goal(token, objective)
@@ -281,7 +230,6 @@ class ExecutionCoordinator:
         decision: str,
         now: datetime,
     ) -> str:
-        """Resolve a coordinator request only when policy requires HITL."""
         _require_identity_text(approver_id, "approver_id")
         _require_identity_text(tenant_id, "tenant_id")
         if now.tzinfo is None:
@@ -293,7 +241,6 @@ class ExecutionCoordinator:
             raise ExecutionCoordinatorError("execution request is not awaiting approval")
         if row["tenant_id"] != tenant_id:
             raise ExecutionCoordinatorError("cross-tenant execution approval denied")
-
         with self._connect() as connection:
             changed = connection.execute(
                 "UPDATE execution_requests SET status = 'DECIDING', updated_at = ? "
@@ -307,12 +254,11 @@ class ExecutionCoordinator:
         except GateError as error:
             with self._connect() as connection:
                 connection.execute(
-                    "UPDATE execution_requests SET status = 'PENDING_APPROVAL', "
-                    "updated_at = ? WHERE request_id = ? AND status = 'DECIDING'",
+                    "UPDATE execution_requests SET status = 'PENDING_APPROVAL', updated_at = ? "
+                    "WHERE request_id = ? AND status = 'DECIDING'",
                     (now.isoformat(), request_id),
                 )
             raise ExecutionCoordinatorError(str(error)) from error
-
         final_status = "APPROVED" if decision == "approved" else "DENIED"
         with self._connect() as connection:
             changed = connection.execute(
@@ -352,25 +298,40 @@ class ExecutionCoordinator:
         current_status = str(row["status"])
         if current_status not in {"ADMITTED", "APPROVED"}:
             raise ExecutionCoordinatorError("execution request is not resumable")
-        if (
-            row["capability_id"] != _VIDEO
-            or row["adapter_id"] != "video.product-runtime.v1"
-        ):
-            raise ExecutionCoordinatorError(
-                "selected capability has no executable adapter"
-            )
+
+        capability_id = str(row["capability_id"])
+        adapter_id = row["adapter_id"]
+        is_video = capability_id == _VIDEO and adapter_id == "video.product-runtime.v1"
+        is_web = (
+            capability_id == _WEB
+            and adapter_id == "web.product-runtime.v1"
+            and self._web is not None
+        )
+        if not is_video and not is_web:
+            raise ExecutionCoordinatorError("selected capability has no executable adapter")
         if not self._governance.admission_proven(request_id):
             raise ExecutionCoordinatorError("governed execution admission is required")
 
         job_id = str(row["job_id"])
         grant_id = _grant_id(request_id)
-        grant = ExecutionGrant(
-            grant_id,
-            "worker-video",
-            frozenset({"video.execute"}),
-            frozenset({job_id}),
-            now + timedelta(minutes=10),
-            BlastRadiusBudget(max_side_effects=1, max_resources=1),
+        grant = (
+            ExecutionGrant(
+                grant_id,
+                "worker-video",
+                frozenset({"video.execute"}),
+                frozenset({job_id}),
+                now + timedelta(minutes=10),
+                BlastRadiusBudget(max_side_effects=1, max_resources=1),
+            )
+            if is_video
+            else ExecutionGrant(
+                grant_id,
+                "worker-web",
+                frozenset({"web.build"}),
+                frozenset({job_id}),
+                now + timedelta(minutes=10),
+                BlastRadiusBudget(max_side_effects=1, max_resources=1),
+            )
         )
         with self._connect() as connection:
             changed = connection.execute(
@@ -385,12 +346,23 @@ class ExecutionCoordinator:
         try:
             self._grants.register(grant)
             grant_registered = True
-            manifest = self._video.execute(
-                request_id,
-                grant_id,
-                token=token,
-                now=now,
-            )
+            if is_video:
+                manifest = self._video.execute(
+                    request_id,
+                    grant_id,
+                    token=token,
+                    now=now,
+                )
+            else:
+                web = self._web
+                if web is None:
+                    raise ExecutionCoordinatorError("web adapter disappeared during execution")
+                manifest = web.execute(
+                    request_id,
+                    grant_id,
+                    token=token,
+                    now=now,
+                )
         except Exception as error:
             reason = _failure_reason(error)
             with self._connect() as connection:
@@ -400,9 +372,7 @@ class ExecutionCoordinator:
                     (now.isoformat(), request_id),
                 ).rowcount
                 if changed == 1:
-                    self._record_closure(
-                        connection, request_id, "FAILED", reason, now
-                    )
+                    self._record_closure(connection, request_id, "FAILED", reason, now)
             raise
         finally:
             if grant_registered:
@@ -435,13 +405,11 @@ class ExecutionCoordinator:
         token: str,
         now: datetime,
     ) -> tuple[dict[str, str], ...]:
-        """Reconcile coordinator rows left EXECUTING after a process interruption."""
         if now.tzinfo is None:
             raise ExecutionCoordinatorError("execution time must be timezone-aware")
         with self._connect() as connection:
             rows = connection.execute(
-                "SELECT * FROM execution_requests WHERE status = 'EXECUTING' "
-                "ORDER BY request_id"
+                "SELECT * FROM execution_requests WHERE status = 'EXECUTING' ORDER BY request_id"
             ).fetchall()
         reconciled: list[dict[str, str]] = []
         for row in rows:
@@ -503,13 +471,39 @@ class ExecutionCoordinator:
         now: datetime,
     ) -> dict[str, object] | None:
         request_id = str(row["request_id"])
-        try:
-            product_state = self._video.get_state(request_id)
-        except ProductRuntimeError as error:
-            raise ExecutionCoordinatorError(str(error)) from error
+        capability_id = str(row["capability_id"])
+        adapter_id = row["adapter_id"]
+        is_video = capability_id == _VIDEO and adapter_id == "video.product-runtime.v1"
+        is_web = (
+            capability_id == _WEB
+            and adapter_id == "web.product-runtime.v1"
+            and self._web is not None
+        )
+        if not is_video and not is_web:
+            raise ExecutionCoordinatorError("executing request has no recoverable adapter")
+
+        if is_video:
+            try:
+                product_state = self._video.get_state(request_id)
+            except ProductRuntimeError as error:
+                raise ExecutionCoordinatorError(str(error)) from error
+        else:
+            web = self._web
+            if web is None:
+                raise ExecutionCoordinatorError("web adapter is unavailable during recovery")
+            try:
+                product_state = web.get_state(request_id)
+            except WebProductRuntimeError as error:
+                raise ExecutionCoordinatorError(str(error)) from error
 
         if product_state["status"] == "accepted":
-            manifest = self._video.get_manifest(request_id)
+            if is_video:
+                manifest = self._video.get_manifest(request_id)
+            else:
+                web = self._web
+                if web is None:
+                    raise ExecutionCoordinatorError("web adapter is unavailable during recovery")
+                manifest = web.get_manifest(request_id)
             serialized = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
             digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
             with self._connect() as connection:
@@ -539,17 +533,12 @@ class ExecutionCoordinator:
                     (now.isoformat(), request_id),
                 ).rowcount
                 if changed == 1:
-                    self._record_closure(
-                        connection, request_id, "FAILED", reason, now
-                    )
+                    self._record_closure(connection, request_id, "FAILED", reason, now)
             self._grants.revoke(_grant_id(request_id), now=now)
             return None
 
         if product_state["status"] == "interrupted":
-            reason = str(
-                product_state.get("reason")
-                or "finished-product execution interrupted"
-            )
+            reason = str(product_state.get("reason") or "finished-product execution interrupted")
             with self._connect() as connection:
                 changed = connection.execute(
                     "UPDATE execution_requests SET status = 'INTERRUPTED', updated_at = ? "
@@ -557,9 +546,7 @@ class ExecutionCoordinator:
                     (now.isoformat(), request_id),
                 ).rowcount
                 if changed == 1:
-                    self._record_closure(
-                        connection, request_id, "INTERRUPTED", reason, now
-                    )
+                    self._record_closure(connection, request_id, "INTERRUPTED", reason, now)
             self._grants.revoke(_grant_id(request_id), now=now)
             return None
 
@@ -570,13 +557,24 @@ class ExecutionCoordinator:
             "execution exceeded recovery window without durable product terminal evidence"
         )
         try:
-            interrupted = self._video.interrupt(
-                request_id,
-                token=token,
-                now=now,
-                reason=interruption_reason,
-            )
-        except ProductRuntimeError as error:
+            if is_video:
+                interrupted = self._video.interrupt(
+                    request_id,
+                    token=token,
+                    now=now,
+                    reason=interruption_reason,
+                )
+            else:
+                web = self._web
+                if web is None:
+                    raise ExecutionCoordinatorError("web adapter is unavailable during recovery")
+                interrupted = web.interrupt(
+                    request_id,
+                    token=token,
+                    now=now,
+                    reason=interruption_reason,
+                )
+        except (ProductRuntimeError, WebProductRuntimeError) as error:
             raise ExecutionCoordinatorError(str(error)) from error
         if interrupted["status"] != "interrupted":
             raise ExecutionCoordinatorError("product interruption did not close durably")
@@ -644,7 +642,12 @@ def classify_execution_route(objective: str) -> ExecutionRoute:
     capability_id = unique[0]
     if capability_id not in _KNOWN_CAPABILITY_IDS:
         raise ExecutionCoordinatorError("selected capability is not canonical")
-    adapter_id = "video.product-runtime.v1" if capability_id == _VIDEO else None
+    if capability_id == _VIDEO:
+        adapter_id = "video.product-runtime.v1"
+    elif capability_id == _WEB:
+        adapter_id = "web.product-runtime.v1"
+    else:
+        adapter_id = None
     return ExecutionRoute(capability_id, adapter_id)
 
 
@@ -669,8 +672,7 @@ def _failure_reason(error: Exception) -> str:
 
 def _require_identifier(value: str, field: str) -> None:
     if not value or any(
-        character
-        not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+        character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
         for character in value
     ):
         raise ExecutionCoordinatorError(f"invalid {field}")
