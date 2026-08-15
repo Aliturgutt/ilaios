@@ -14,7 +14,7 @@ import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import cast
+from typing import Protocol, cast
 
 from services.capability_registry import CAPABILITIES
 from services.control_plane.api import ControlPlane
@@ -29,6 +29,10 @@ from services.integrations.product_runtime import (
     DurableVideoProductRuntime,
     ProductRuntimeError,
 )
+from services.integrations.software_product_runtime import SoftwareProductRuntimeError
+from services.integrations.software_product_runtime_recovery import (
+    RecoverableSoftwareProductRuntime,
+)
 from services.runtime import BlastRadiusBudget, DurableGrantPolicy, ExecutionGrant
 
 
@@ -42,6 +46,37 @@ class ExecutionRoute:
     adapter_id: str | None
 
 
+class _FinishedProductRuntime(Protocol):
+    def prepare(
+        self,
+        request_id: str,
+        objective: str,
+        *,
+        token: str,
+        now: datetime,
+        requester_id: str,
+        tenant_id: str,
+        defer_lease: bool = False,
+    ) -> dict[str, object]: ...
+
+    def execute(
+        self, request_id: str, grant_id: str, *, token: str, now: datetime
+    ) -> dict[str, object]: ...
+
+    def get_state(self, request_id: str) -> dict[str, object]: ...
+
+    def get_manifest(self, request_id: str) -> dict[str, object]: ...
+
+    def interrupt(
+        self,
+        request_id: str,
+        *,
+        token: str,
+        now: datetime,
+        reason: str,
+    ) -> dict[str, object]: ...
+
+
 _VIDEO = "ilaios.capability.video-media-factory"
 _WEB = "ilaios.capability.web-factory"
 _APP = "ilaios.capability.app-factory"
@@ -51,6 +86,8 @@ _DOCUMENT = "ilaios.capability.creative-document"
 _COMMERCE = "ilaios.capability.commerce-growth"
 _PERSONAL = "ilaios.capability.personal-operations"
 _SECURITY = "ilaios.capability.security-factory"
+_VIDEO_ADAPTER = "video.product-runtime.v1"
+_SOFTWARE_ADAPTER = "software.product-runtime.v1"
 _KNOWN_CAPABILITY_IDS = frozenset(item.capability_id for item in CAPABILITIES)
 _STALE_EXECUTION_AFTER = timedelta(minutes=15)
 
@@ -100,7 +137,23 @@ _ROUTE_TERMS: tuple[tuple[str, frozenset[str]], ...] = (
     ),
     (
         _SOFTWARE,
-        frozenset({"software", "yazilim", "yazılım", "codebase", "repository"}),
+        frozenset(
+            {
+                "software",
+                "yazilim",
+                "yazılım",
+                "codebase",
+                "repository",
+                "task manager",
+                "task management",
+                "task management application",
+                "task management app",
+                "todo app",
+                "to-do app",
+                "görev yönetimi",
+                "gorev yonetimi",
+            }
+        ),
     ),
     (
         _RESEARCH,
@@ -139,12 +192,14 @@ class ExecutionCoordinator:
         governance: GovernedRuntimeGateway,
         grants: DurableGrantPolicy,
         video: DurableVideoProductRuntime,
+        software: RecoverableSoftwareProductRuntime | None = None,
     ) -> None:
         self._database_path = database_path
         self._control_plane = control_plane
         self._governance = governance
         self._grants = grants
         self._video = video
+        self._software = software
         database_path.parent.mkdir(parents=True, exist_ok=True)
         with self._connect() as connection:
             connection.execute(
@@ -194,11 +249,10 @@ class ExecutionCoordinator:
                 raise ExecutionCoordinatorError("execution request already exists")
 
         route = classify_execution_route(objective)
-        if (
-            route.capability_id == _VIDEO
-            and route.adapter_id == "video.product-runtime.v1"
-        ):
-            prepared = self._video.prepare(
+        runtime = self._runtime_for_route(route, objective=objective)
+        selected_adapter = route.adapter_id if runtime is not None else None
+        if runtime is not None:
+            prepared = runtime.prepare(
                 request_id,
                 objective,
                 token=token,
@@ -211,7 +265,7 @@ class ExecutionCoordinator:
             job_id = _result_text(prepared, "job_id")
             proposal_id = _result_text(prepared, "proposal_id")
             if prepared.get("admission_decision") != "ALLOW":
-                raise ExecutionCoordinatorError("video execution was not admitted")
+                raise ExecutionCoordinatorError("finished-product execution was not admitted")
             status = "ADMITTED"
         else:
             goal = self._control_plane.create_goal(token, objective)
@@ -243,7 +297,7 @@ class ExecutionCoordinator:
             "principal_id": principal_id,
             "tenant_id": tenant_id,
             "capability_id": route.capability_id,
-            "adapter_id": route.adapter_id,
+            "adapter_id": selected_adapter,
             "goal_id": goal_id,
             "job_id": job_id,
             "proposal_id": proposal_id,
@@ -261,7 +315,7 @@ class ExecutionCoordinator:
                     tenant_id,
                     objective,
                     route.capability_id,
-                    route.adapter_id,
+                    selected_adapter,
                     goal_id,
                     job_id,
                     proposal_id,
@@ -352,13 +406,7 @@ class ExecutionCoordinator:
         current_status = str(row["status"])
         if current_status not in {"ADMITTED", "APPROVED"}:
             raise ExecutionCoordinatorError("execution request is not resumable")
-        if (
-            row["capability_id"] != _VIDEO
-            or row["adapter_id"] != "video.product-runtime.v1"
-        ):
-            raise ExecutionCoordinatorError(
-                "selected capability has no executable adapter"
-            )
+        runtime, worker_id, action = self._runtime_binding(row)
         if not self._governance.admission_proven(request_id):
             raise ExecutionCoordinatorError("governed execution admission is required")
 
@@ -366,8 +414,8 @@ class ExecutionCoordinator:
         grant_id = _grant_id(request_id)
         grant = ExecutionGrant(
             grant_id,
-            "worker-video",
-            frozenset({"video.execute"}),
+            worker_id,
+            frozenset({action}),
             frozenset({job_id}),
             now + timedelta(minutes=10),
             BlastRadiusBudget(max_side_effects=1, max_resources=1),
@@ -385,7 +433,7 @@ class ExecutionCoordinator:
         try:
             self._grants.register(grant)
             grant_registered = True
-            manifest = self._video.execute(
+            manifest = runtime.execute(
                 request_id,
                 grant_id,
                 token=token,
@@ -444,12 +492,11 @@ class ExecutionCoordinator:
                 "ORDER BY request_id"
             ).fetchall()
         reconciled: list[dict[str, str]] = []
-        for row in rows:
+        for raw_row in rows:
+            row = cast(sqlite3.Row, raw_row)
             request_id = str(row["request_id"])
             try:
-                result = self._reconcile_executing(
-                    cast(sqlite3.Row, row), token=token, now=now
-                )
+                result = self._reconcile_executing(row, token=token, now=now)
                 status = "ACCEPTED" if result is not None else str(
                     self._request_row(request_id)["status"]
                 )
@@ -503,13 +550,14 @@ class ExecutionCoordinator:
         now: datetime,
     ) -> dict[str, object] | None:
         request_id = str(row["request_id"])
+        runtime, _, _ = self._runtime_binding(row)
         try:
-            product_state = self._video.get_state(request_id)
-        except ProductRuntimeError as error:
+            product_state = runtime.get_state(request_id)
+        except (ProductRuntimeError, SoftwareProductRuntimeError) as error:
             raise ExecutionCoordinatorError(str(error)) from error
 
         if product_state["status"] == "accepted":
-            manifest = self._video.get_manifest(request_id)
+            manifest = runtime.get_manifest(request_id)
             serialized = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
             digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
             with self._connect() as connection:
@@ -570,13 +618,13 @@ class ExecutionCoordinator:
             "execution exceeded recovery window without durable product terminal evidence"
         )
         try:
-            interrupted = self._video.interrupt(
+            interrupted = runtime.interrupt(
                 request_id,
                 token=token,
                 now=now,
                 reason=interruption_reason,
             )
-        except ProductRuntimeError as error:
+        except (ProductRuntimeError, SoftwareProductRuntimeError) as error:
             raise ExecutionCoordinatorError(str(error)) from error
         if interrupted["status"] != "interrupted":
             raise ExecutionCoordinatorError("product interruption did not close durably")
@@ -596,6 +644,39 @@ class ExecutionCoordinator:
                 )
         self._grants.revoke(_grant_id(request_id), now=now)
         return None
+
+    def _runtime_for_route(
+        self, route: ExecutionRoute, *, objective: str
+    ) -> _FinishedProductRuntime | None:
+        if route.capability_id == _VIDEO and route.adapter_id == _VIDEO_ADAPTER:
+            return cast(_FinishedProductRuntime, self._video)
+        if (
+            route.capability_id == _SOFTWARE
+            and route.adapter_id == _SOFTWARE_ADAPTER
+            and self._software is not None
+            and self._software.supports(objective)
+        ):
+            return cast(_FinishedProductRuntime, self._software)
+        return None
+
+    def _runtime_binding(
+        self, row: sqlite3.Row
+    ) -> tuple[_FinishedProductRuntime, str, str]:
+        capability_id = str(row["capability_id"])
+        adapter_id = row["adapter_id"]
+        if capability_id == _VIDEO and adapter_id == _VIDEO_ADAPTER:
+            return cast(_FinishedProductRuntime, self._video), "worker-video", "video.execute"
+        if (
+            capability_id == _SOFTWARE
+            and adapter_id == _SOFTWARE_ADAPTER
+            and self._software is not None
+        ):
+            return (
+                cast(_FinishedProductRuntime, self._software),
+                "worker-software",
+                "software.execute",
+            )
+        raise ExecutionCoordinatorError("selected capability has no executable adapter")
 
     @staticmethod
     def _record_closure(
@@ -644,7 +725,12 @@ def classify_execution_route(objective: str) -> ExecutionRoute:
     capability_id = unique[0]
     if capability_id not in _KNOWN_CAPABILITY_IDS:
         raise ExecutionCoordinatorError("selected capability is not canonical")
-    adapter_id = "video.product-runtime.v1" if capability_id == _VIDEO else None
+    if capability_id == _VIDEO:
+        adapter_id = _VIDEO_ADAPTER
+    elif capability_id == _SOFTWARE:
+        adapter_id = _SOFTWARE_ADAPTER
+    else:
+        adapter_id = None
     return ExecutionRoute(capability_id, adapter_id)
 
 

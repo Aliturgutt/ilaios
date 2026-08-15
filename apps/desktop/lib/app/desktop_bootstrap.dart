@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../control_plane/artifact_delivery.dart';
 import '../control_plane/client.dart';
 import '../control_plane/config.dart';
 import '../control_plane/evidence_record.dart';
@@ -263,8 +264,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     await root.create(recursive: true);
     final safeExecution =
         record.executionId.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
-    final extension =
-        record.action.toLowerCase().contains('video') ? '.mp4' : '.bin';
+    final extension = artifactFileExtension(record.action);
     final filename =
         'ILAIOS-$safeExecution-${artifact.digest.substring(0, 16)}$extension';
     final output = File('${root.path}\\$filename');

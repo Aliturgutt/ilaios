@@ -5,10 +5,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
+import subprocess
 import sys
 import threading
 from collections.abc import Sequence
-from datetime import timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from services.control_plane.api import ControlPlane, ControlPlaneConfig
@@ -21,7 +23,7 @@ from services.desktop_oidc_threaded import DesktopIdentityError, DesktopOIDCServ
 from services.evidence import EvidenceStore
 from services.execution_coordinator import ExecutionCoordinator
 from services.governance import GovernedRuntimeGateway
-from services.integrations import DurableVideoProductRuntime
+from services.integrations import DurableVideoProductRuntime, RecoverableSoftwareProductRuntime
 from services.integrations.desktop_video_runtime import DesktopPromptVideoRuntime
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 
@@ -86,13 +88,26 @@ def main(argv: Sequence[str] | None = None) -> int:
         governance,
         video_runtime,
     )
+    software_runtime = RecoverableSoftwareProductRuntime(
+        root / "software-product-proof.sqlite3",
+        control_plane,
+        workflow_store,
+        scheduler,
+        grant_policy,
+        governance,
+        evidence_store,
+        root / "software",
+        source_head_sha=_source_head_sha(),
+    )
     coordinator = ExecutionCoordinator(
         root / "execution-coordinator.sqlite3",
         control_plane,
         governance,
         grant_policy,
         product_runtime,
+        software_runtime,
     )
+    coordinator.recover_stale(token=token, now=datetime.now(timezone.utc))
     control_server = ControlPlaneHTTPServer(
         ("127.0.0.1", 0),
         control_plane,
@@ -138,6 +153,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "account_sign_in_configured": identity is not None,
         "governed_execution_configured": identity is not None,
         "video_finished_product_configured": True,
+        "software_finished_product_configured": True,
+        "execution_recovery_configured": True,
+        "source_head_sha": _source_head_sha(),
     }
     arguments.ready_file.write_text(
         json.dumps(ready, sort_keys=True), encoding="utf-8"
@@ -190,6 +208,30 @@ def _official_brand_logo() -> Path:
     if not logo.is_file():
         raise RuntimeError("official ILAIOS brand logo is missing from Desktop runtime")
     return logo
+
+
+def _source_head_sha() -> str:
+    if getattr(sys, "frozen", False):
+        path = Path(getattr(sys, "_MEIPASS")) / "build-metadata" / "source-head.txt"
+        if not path.is_file():
+            raise RuntimeError("Desktop source-head provenance is missing")
+        value = path.read_text(encoding="utf-8").strip()
+    else:
+        repository = Path(__file__).resolve().parents[3]
+        completed = subprocess.run(
+            ("git", "rev-parse", "HEAD"),
+            cwd=repository,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+        )
+        if completed.returncode != 0:
+            raise RuntimeError("Desktop source-head provenance is unavailable")
+        value = completed.stdout.strip()
+    if re.fullmatch(r"[0-9a-f]{40}", value) is None:
+        raise RuntimeError("Desktop source-head provenance is malformed")
+    return value
 
 
 if __name__ == "__main__":
