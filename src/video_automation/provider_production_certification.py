@@ -16,7 +16,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal, InvalidOperation, ROUND_CEILING
 from pathlib import Path
 from typing import NoReturn
 
@@ -83,6 +83,7 @@ class CertificationShape:
 class CertificationPrice:
     sku: str
     unit_price_usd: Decimal
+    estimated_units: Decimal
     estimated_total_usd: Decimal
     estimated_total_microusd: int
 
@@ -126,29 +127,7 @@ def select_certification_model(
     return selected
 
 
-def certification_price(
-    model: OpenRouterVideoModel,
-    shape: CertificationShape,
-) -> CertificationPrice:
-    """Derive a conservative bounded quote from recognized live video-price SKUs."""
-
-    recognized_skus = (
-        f"per-video-second-{shape.resolution}",
-        "per-video-second",
-        "generate",
-    )
-    selected_sku: str | None = None
-    raw_price: str | None = None
-    for sku in recognized_skus:
-        candidate = model.pricing_skus.get(sku)
-        if candidate is not None:
-            selected_sku = sku
-            raw_price = candidate
-            break
-    if selected_sku is None or raw_price is None:
-        raise ProviderProductionCertificationError(
-            "live catalog lacks a recognized bounded video price SKU"
-        )
+def _catalog_decimal_price(raw_price: str) -> Decimal:
     try:
         unit_price = Decimal(raw_price)
     except InvalidOperation as exc:
@@ -159,24 +138,100 @@ def certification_price(
         raise ProviderProductionCertificationError(
             "live catalog video price must be finite and non-negative"
         )
+    return unit_price
 
-    # Per-second SKUs are multiplied directly. The generic `generate` field is
-    # also multiplied by duration as a conservative upper bound so this proof
-    # cannot under-authorize provider spend when metadata semantics are broader.
-    total = unit_price * Decimal(shape.duration_seconds)
-    if unit_price > shape.max_unit_price_usd:
+
+def _certification_video_token_units(shape: CertificationShape) -> Decimal:
+    """Return a conservative whole-token estimate for an explicitly proven shape.
+
+    OpenRouter documents ByteDance video-token quantity as
+    ``height * width * duration * 24 / 1024``. Production certification keeps
+    the pixel mapping deliberately narrow: only the exact 480p/16:9 proof shape
+    is admitted until another shape is independently evidenced.
+    """
+
+    dimensions = {
+        ("480p", "16:9"): (854, 480),
+    }.get((shape.resolution, shape.aspect_ratio))
+    if dimensions is None:
         raise ProviderProductionCertificationError(
-            "live unit price exceeds certification cost ceiling"
+            "token-priced certification lacks an approved pixel mapping"
         )
-    if total > shape.max_total_cost_usd:
+    width, height = dimensions
+    numerator = Decimal(width * height * shape.duration_seconds * 24)
+    units = (numerator / Decimal(1024)).to_integral_value(rounding=ROUND_CEILING)
+    if units <= 0:
         raise ProviderProductionCertificationError(
-            "live total price exceeds certification cost ceiling"
+            "token-priced certification produced invalid video-token quantity"
         )
-    return CertificationPrice(
-        sku=selected_sku,
-        unit_price_usd=unit_price,
-        estimated_total_usd=total,
-        estimated_total_microusd=usd_to_microusd(total),
+    return units
+
+
+def certification_price(
+    model: OpenRouterVideoModel,
+    shape: CertificationShape,
+) -> CertificationPrice:
+    """Derive a conservative bounded quote from recognized live video-price SKUs."""
+
+    per_second_skus = (
+        f"per-video-second-{shape.resolution}",
+        "per-video-second",
+        "generate",
+    )
+    for sku in per_second_skus:
+        raw_price = model.pricing_skus.get(sku)
+        if raw_price is None:
+            continue
+        unit_price = _catalog_decimal_price(raw_price)
+        estimated_units = Decimal(shape.duration_seconds)
+        total = unit_price * estimated_units
+        if unit_price > shape.max_unit_price_usd:
+            raise ProviderProductionCertificationError(
+                "live unit price exceeds certification cost ceiling"
+            )
+        if total > shape.max_total_cost_usd:
+            raise ProviderProductionCertificationError(
+                "live total price exceeds certification cost ceiling"
+            )
+        return CertificationPrice(
+            sku=sku,
+            unit_price_usd=unit_price,
+            estimated_units=estimated_units,
+            estimated_total_usd=total,
+            estimated_total_microusd=usd_to_microusd(total),
+        )
+
+    token_skus = (
+        ("video_tokens",)
+        if shape.generate_audio
+        else ("video_tokens_without_audio", "video_tokens")
+    )
+    for sku in token_skus:
+        raw_price = model.pricing_skus.get(sku)
+        if raw_price is None:
+            continue
+        unit_price = _catalog_decimal_price(raw_price)
+        estimated_units = _certification_video_token_units(shape)
+        total = unit_price * estimated_units
+        effective_per_second = total / Decimal(shape.duration_seconds)
+        if effective_per_second > shape.max_unit_price_usd:
+            raise ProviderProductionCertificationError(
+                "live effective per-second price exceeds certification cost ceiling"
+            )
+        if total > shape.max_total_cost_usd:
+            raise ProviderProductionCertificationError(
+                "live total price exceeds certification cost ceiling"
+            )
+        return CertificationPrice(
+            sku=sku,
+            unit_price_usd=unit_price,
+            estimated_units=estimated_units,
+            estimated_total_usd=total,
+            estimated_total_microusd=usd_to_microusd(total),
+        )
+
+    raise ProviderProductionCertificationError(
+        "live catalog lacks a recognized bounded video price SKU"
     )
 
 
@@ -298,6 +353,7 @@ def run_certification(
         "observed_at_epoch_s": snapshot.observed_at_epoch_s,
         "pricing_sku": price.sku,
         "unit_price_usd": str(price.unit_price_usd),
+        "estimated_units": str(price.estimated_units),
         "estimated_total_usd": str(price.estimated_total_usd),
     }
 
