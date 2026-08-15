@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import hmac
 import json
 import secrets
@@ -64,7 +65,6 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             if parsed.path == "/oauth/callback":
                 self._complete_browser_callback(parse_qs(parsed.query))
                 return
-
             self._authenticate_transport()
             if parsed.path == "/v1/auth/providers":
                 providers = (
@@ -82,8 +82,11 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             if parsed.path == "/v1/execution/status":
                 session = self._authenticated_session()
                 request_id = _single_query(parse_qs(parsed.query), "request_id")
-                execution = self.server.coordinator.get(request_id)
-                self._require_execution_owner(execution, session)
+                execution = self.server.coordinator.get(
+                    request_id,
+                    principal_id=session.principal_id,
+                    tenant_id=session.tenant_id,
+                )
                 self._send_json(HTTPStatus.OK, execution)
                 return
             self._send_error(HTTPStatus.NOT_FOUND, "unknown endpoint")
@@ -137,6 +140,9 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             if path == "/v1/execution/resume":
                 self._resume_authenticated_execution(body)
                 return
+            if path == "/v1/execution/cancel":
+                self._cancel_authenticated_execution(body)
+                return
             self._send_error(HTTPStatus.NOT_FOUND, "unknown endpoint")
         except DesktopIdentityError as error:
             self._send_error(HTTPStatus.UNAUTHORIZED, str(error))
@@ -181,7 +187,12 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
         objective = _required_string(body, "objective")
         if len(objective) > 20_000:
             raise ValueError("objective exceeds Desktop input limit")
-        request_id = f"exec-{secrets.token_hex(16)}"
+        idempotency_key = _optional_string(body, "idempotency_key")
+        request_id = (
+            _idempotent_request_id(session, idempotency_key)
+            if idempotency_key is not None
+            else f"exec-{secrets.token_hex(16)}"
+        )
         execution = self.server.coordinator.prepare(
             request_id,
             objective,
@@ -191,7 +202,11 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             now=datetime.now(timezone.utc),
         )
         if execution.get("execution_status") == "ADMITTED":
-            self._start_execution(request_id)
+            self._start_execution(
+                request_id,
+                principal_id=session.principal_id,
+                tenant_id=session.tenant_id,
+            )
         self._send_json(HTTPStatus.CREATED, execution)
 
     def _decide_authenticated_execution(self, body: dict[str, Any]) -> None:
@@ -200,6 +215,7 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
         decision = _required_string(body, "decision")
         status = self.server.coordinator.decide(
             request_id,
+            token=self.server.bearer_token,
             approver_id=session.principal_id,
             tenant_id=session.tenant_id,
             decision=decision,
@@ -211,7 +227,12 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                 {"request_id": request_id, "execution_status": "DENIED"},
             )
             return
-        self._start_execution(request_id)
+        execution = self.server.coordinator.get(request_id)
+        self._start_execution(
+            request_id,
+            principal_id=str(execution["principal_id"]),
+            tenant_id=str(execution["tenant_id"]),
+        )
         self._send_json(
             HTTPStatus.ACCEPTED,
             {"request_id": request_id, "execution_status": "EXECUTION_STARTED"},
@@ -220,29 +241,64 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
     def _resume_authenticated_execution(self, body: dict[str, Any]) -> None:
         session = self._authenticated_session()
         request_id = _required_string(body, "request_id")
-        execution = self.server.coordinator.get(request_id)
-        self._require_execution_owner(execution, session)
-        self._start_execution(request_id)
+        self.server.coordinator.get(
+            request_id,
+            principal_id=session.principal_id,
+            tenant_id=session.tenant_id,
+        )
+        self._start_execution(
+            request_id,
+            principal_id=session.principal_id,
+            tenant_id=session.tenant_id,
+        )
         self._send_json(
             HTTPStatus.ACCEPTED,
             {"request_id": request_id, "execution_status": "RESUME_REQUESTED"},
         )
 
-    def _start_execution(self, request_id: str) -> None:
+    def _cancel_authenticated_execution(self, body: dict[str, Any]) -> None:
+        session = self._authenticated_session()
+        request_id = _required_string(body, "request_id")
+        status = self.server.coordinator.cancel(
+            request_id,
+            token=self.server.bearer_token,
+            actor_id=session.principal_id,
+            tenant_id=session.tenant_id,
+            now=datetime.now(timezone.utc),
+        )
+        self._send_json(
+            HTTPStatus.OK,
+            {"request_id": request_id, "execution_status": status},
+        )
+
+    def _start_execution(
+        self,
+        request_id: str,
+        *,
+        principal_id: str,
+        tenant_id: str,
+    ) -> None:
         thread = threading.Thread(
             target=self._run_execution,
-            args=(request_id,),
+            args=(request_id, principal_id, tenant_id),
             name=f"ilaios-execution-{request_id}",
             daemon=True,
         )
         thread.start()
 
-    def _run_execution(self, request_id: str) -> None:
+    def _run_execution(
+        self,
+        request_id: str,
+        principal_id: str,
+        tenant_id: str,
+    ) -> None:
         try:
             self.server.coordinator.resume(
                 request_id,
                 token=self.server.bearer_token,
                 now=datetime.now(timezone.utc),
+                principal_id=principal_id,
+                tenant_id=tenant_id,
             )
         except Exception as error:
             print(
@@ -264,15 +320,6 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
         if not session_id:
             raise DesktopIdentityError("Desktop session is required")
         return identity.validate_session(session_id)
-
-    def _require_execution_owner(
-        self, execution: dict[str, object], session: Session
-    ) -> None:
-        if (
-            execution.get("principal_id") != session.principal_id
-            or execution.get("tenant_id") != session.tenant_id
-        ):
-            raise DesktopIdentityError("execution does not belong to Desktop session")
 
     def _authenticate_transport(self) -> None:
         header = self.headers.get("Authorization", "")
@@ -338,6 +385,11 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
 
+def _idempotent_request_id(session: Session, key: str) -> str:
+    material = "\0".join((session.principal_id, session.tenant_id, key)).encode("utf-8")
+    return "exec-" + hashlib.sha256(material).hexdigest()[:32]
+
+
 def _server_endpoint(address: tuple[str | bytes, int]) -> tuple[str, int]:
     host, port = address
     if not isinstance(host, str):
@@ -365,6 +417,15 @@ def _required_string(payload: dict[str, Any], key: str) -> str:
     value = payload.get(key)
     if not isinstance(value, str) or not value.strip():
         raise TypeError(f"{key} must be a non-empty string")
+    return value.strip()
+
+
+def _optional_string(payload: dict[str, Any], key: str) -> str | None:
+    value = payload.get(key)
+    if value is None:
+        return None
+    if not isinstance(value, str) or not value.strip() or len(value.strip()) > 512:
+        raise TypeError(f"{key} must be a bounded non-empty string")
     return value.strip()
 
 
