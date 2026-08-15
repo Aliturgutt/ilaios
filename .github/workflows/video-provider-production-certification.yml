@@ -72,6 +72,21 @@ jobs:
           print(f"- Provider usage: `{terminal.get('usage_json', 'n/a')}`")
           print("- Submit/poll/retrieval reuse the canonical managed OpenRouter boundaries.")
           print("- Credential material is never written to evidence or logs.")
+
+          if receipt.get("status") == "BLOCKED_CATALOG_CAPABILITY_OR_PRICE":
+              from src.video_automation.openrouter_video_catalog import OpenRouterVideoCatalogClient
+              from src.video_automation.openrouter_video_provider import UrllibOpenRouterTransport
+
+              api_key = os.environ.get("OPENROUTER_API_KEY", "")
+              if api_key:
+                  observation = OpenRouterVideoCatalogClient(
+                      api_key,
+                      transport=UrllibOpenRouterTransport(),
+                  ).refresh()
+                  print(f"- Catalog diagnostic health: `{observation.health.value}`")
+                  print(f"- Catalog diagnostic detail: `{observation.detail}`")
+              else:
+                  print("- Catalog diagnostic: `SECRET_UNAVAILABLE`")
           PY
           else
             echo "- Status: `NO_RECEIPT`" >> "$GITHUB_STEP_SUMMARY"
