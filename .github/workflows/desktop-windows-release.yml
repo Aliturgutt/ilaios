@@ -10,6 +10,7 @@ on:
       - 'services/execution_coordinator.py'
       - 'services/governance/**'
       - 'services/integrations/**'
+      - 'services/software_factory_secret_scanning.py'
       - 'src/video_automation/**'
       - 'brand/assets/03-ilaios-symbol-dark.jpg'
       - 'brand/assets/05-ilaios-app-icon.jpg'
@@ -110,6 +111,12 @@ jobs:
         env:
           PYTHONPATH: ${{ github.workspace }}
         run: python apps/desktop/e2e/video_finished_product_e2e.py
+
+      - name: Real Software Factory finished-product E2E
+        shell: pwsh
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python apps/desktop/e2e/software_finished_product_e2e.py
 
       - name: Verify release executable metadata and sidecar
         working-directory: apps/desktop

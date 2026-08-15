@@ -28,8 +28,16 @@ if ($LASTEXITCODE -ne 0) { throw 'Desktop sidecar build dependencies failed to i
 $work = Join-Path $desktopRoot 'build\sidecar\work'
 $spec = Join-Path $desktopRoot 'build\sidecar\spec'
 $dist = Join-Path $desktopRoot 'build\sidecar\dist'
+$metadata = Join-Path $desktopRoot 'build\sidecar\metadata'
 Remove-Item (Join-Path $desktopRoot 'build\sidecar') -Recurse -Force -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Force -Path $work, $spec, $dist | Out-Null
+New-Item -ItemType Directory -Force -Path $work, $spec, $dist, $metadata | Out-Null
+
+$sourceHead = (& git -C $repoRoot rev-parse HEAD).Trim().ToLowerInvariant()
+if ($LASTEXITCODE -ne 0 -or $sourceHead -notmatch '^[0-9a-f]{40}$') {
+  throw 'Unable to bind Desktop sidecar to an exact source HEAD SHA.'
+}
+$sourceHeadFile = Join-Path $metadata 'source-head.txt'
+[System.IO.File]::WriteAllText($sourceHeadFile, $sourceHead, [System.Text.UTF8Encoding]::new($false))
 
 $env:PYTHONPATH = $repoRoot
 Push-Location $repoRoot
@@ -44,6 +52,7 @@ try {
     --hidden-import jwt `
     --hidden-import jwt.algorithms `
     --add-data "$brandLogo;brand/assets" `
+    --add-data "$sourceHeadFile;build-metadata" `
     --workpath $work `
     --specpath $spec `
     --distpath $dist `
@@ -62,4 +71,5 @@ if ((Get-Item $target).Length -le 0) { throw 'Bundled control-plane executable i
 $hash = (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant()
 Write-Host "ILAIOS_DESKTOP_SIDECAR_PATH=$target"
 Write-Host "ILAIOS_DESKTOP_SIDECAR_SHA256=$hash"
+Write-Host "ILAIOS_DESKTOP_SOURCE_HEAD=$sourceHead"
 Write-Host 'ILAIOS_DESKTOP_SIDECAR_BUILD=PASS'

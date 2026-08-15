@@ -17,7 +17,11 @@ from services.execution_coordinator import (
     classify_execution_route,
 )
 from services.governance import GovernedRuntimeGateway
-from services.integrations import DeterministicLocalVideoRuntime, DurableVideoProductRuntime
+from services.integrations import (
+    DeterministicLocalVideoRuntime,
+    DurableSoftwareProductRuntime,
+    DurableVideoProductRuntime,
+)
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 
 
@@ -39,13 +43,14 @@ def _coordinator(
         GovernedRuntime(state),
         hard_cap_minor=100,
     )
+    evidence = EvidenceStore(tmp_path / "evidence")
     video = DeterministicLocalVideoRuntime(
         tmp_path / "video",
         grants,
         governance,
-        EvidenceStore(tmp_path / "evidence"),
+        evidence,
     )
-    product = DurableVideoProductRuntime(
+    video_product = DurableVideoProductRuntime(
         tmp_path / "product.sqlite3",
         control,
         workflows,
@@ -54,13 +59,25 @@ def _coordinator(
         governance,
         video,
     )
+    software_product = DurableSoftwareProductRuntime(
+        tmp_path / "software-product.sqlite3",
+        control,
+        workflows,
+        scheduler,
+        grants,
+        governance,
+        evidence,
+        tmp_path / "software",
+        source_head_sha="a" * 40,
+    )
     return (
         ExecutionCoordinator(
             tmp_path / "coordinator.sqlite3",
             control,
             governance,
             grants,
-            product,
+            video_product,
+            software_product,
         ),
         governance,
         scheduler,
@@ -72,6 +89,12 @@ def test_route_selection_is_conservative_and_canonical() -> None:
     video = classify_execution_route("Create a 60 second launch video and final MP4")
     assert video.capability_id == "ilaios.capability.video-media-factory"
     assert video.adapter_id == "video.product-runtime.v1"
+
+    software = classify_execution_route(
+        "Build me a simple production-quality task management application"
+    )
+    assert software.capability_id == "ilaios.capability.software-factory"
+    assert software.adapter_id == "software.product-runtime.v1"
 
     web = classify_execution_route("Build a premium website for a furniture company")
     assert web.capability_id == "ilaios.capability.web-factory"
@@ -102,6 +125,25 @@ def test_unverified_finished_product_adapter_fails_closed(tmp_path: Path) -> Non
     assert governance.state()["work"] == []
     with pytest.raises(ExecutionCoordinatorError, match="not resumable"):
         coordinator.resume("exec-web-1", token="token", now=now)
+
+
+def test_unsupported_software_request_fails_closed_before_execution(tmp_path: Path) -> None:
+    coordinator, governance, _, _ = _coordinator(tmp_path)
+    now = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
+
+    prepared = coordinator.prepare(
+        "exec-software-unsupported",
+        "Build accounting software for a multinational company",
+        token="token",
+        principal_id="oidc|user@example.test",
+        tenant_id="tenant/example",
+        now=now,
+    )
+
+    assert prepared["capability_id"] == "ilaios.capability.software-factory"
+    assert prepared["adapter_id"] is None
+    assert prepared["execution_status"] == "BLOCKED_ADAPTER_UNAVAILABLE"
+    assert governance.state()["work"] == []
 
 
 def test_medium_video_is_admitted_without_human_approval_or_early_lease(
@@ -181,7 +223,58 @@ def test_medium_video_executes_to_verified_acceptance_with_fresh_grant_and_lease
     assert scheduler.state()["leases"]
     grant_state = grants.state()
     grant_rows = cast(list[dict[str, object]], grant_state["grants"])
-    assert grant_rows[0]["used_side_effects"] == 1
+    assert any(row["used_side_effects"] == 1 for row in grant_rows)
+
+
+def test_task_manager_software_executes_to_real_finished_zip(tmp_path: Path) -> None:
+    coordinator, governance, scheduler, grants = _coordinator(tmp_path)
+    now = datetime(2026, 8, 15, 9, 0, tzinfo=timezone.utc)
+
+    prepared = coordinator.prepare(
+        "exec-software-1",
+        "Build me a simple production-quality task management application",
+        token="token",
+        principal_id="oidc|software-user@example.test",
+        tenant_id="tenant/global-example",
+        now=now,
+    )
+    assert prepared["execution_status"] == "ADMITTED"
+    assert prepared["adapter_id"] == "software.product-runtime.v1"
+    assert scheduler.state()["leases"] == []
+
+    manifest = coordinator.resume(
+        "exec-software-1",
+        token="token",
+        now=now + timedelta(seconds=1),
+    )
+
+    assert manifest["accepted"] is True
+    assert manifest["final_disposition"] == "ACCEPT"
+    assert manifest["factory"] == "ilaios.capability.software-factory"
+    assert manifest["source_head_sha"] == "a" * 40
+    assert manifest["external_provider_cost_minor"] == 0
+    assert manifest["generated_files"] == [
+        "index.html",
+        "app.js",
+        "styles.css",
+        "README.txt",
+    ]
+    assert cast(dict[str, object], manifest["security_result"])["passed"] is True
+    assert cast(dict[str, object], manifest["test_result"])["passed"] is True
+    assert cast(dict[str, object], manifest["build_result"])["passed"] is True
+    runtime = cast(dict[str, object], manifest["runtime_result"])
+    assert runtime["passed"] is True
+    assert runtime["external_network_used"] is False
+    assert manifest["artifact_sha256"]
+    assert Path(str(manifest["artifact_path"])).is_file()
+    assert coordinator.get("exec-software-1")["execution_status"] == "ACCEPTED"
+    assert governance.admission_proven("exec-software-1") is True
+    assert scheduler.state()["leases"]
+    grant_rows = cast(list[dict[str, object]], grants.state()["grants"])
+    assert any(
+        row["grant_id"] and row["used_side_effects"] == 1
+        for row in grant_rows
+    )
 
 
 def test_execution_is_single_use_after_acceptance(tmp_path: Path) -> None:
