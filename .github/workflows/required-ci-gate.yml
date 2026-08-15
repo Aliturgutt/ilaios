@@ -240,6 +240,36 @@ jobs:
             --base-sha "$base" \
             --head-sha "$head"
 
+  final-closure-structure:
+    name: Final closure structural audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Audit final closure prerequisites
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          base="$PR_BASE_SHA"
+          head="$PR_HEAD_SHA"
+          if [[ -z "$base" || -z "$head" ]]; then
+            head="$(git rev-parse HEAD)"
+            base="$(git rev-parse HEAD^)"
+          fi
+          python -m services.software_factory_final_reconciliation \
+            --repository-root . \
+            --base-sha "$base" \
+            --head-sha "$head"
+
   platform:
     name: Platform validation
     needs: classify
@@ -255,7 +285,7 @@ jobs:
   required-ci-gate:
     name: Required CI Gate
     if: always()
-    needs: [classify, supply-chain, secret-scan, db-migration-safety, api-contract-safety, operational-safety, assurance, platform, website]
+    needs: [classify, supply-chain, secret-scan, db-migration-safety, api-contract-safety, operational-safety, assurance, final-closure-structure, platform, website]
     runs-on: ubuntu-latest
     steps:
       - name: Enforce relevant validation results
@@ -268,6 +298,7 @@ jobs:
           API_CONTRACT_SAFETY_RESULT: ${{ needs.api-contract-safety.result }}
           OPERATIONAL_SAFETY_RESULT: ${{ needs.operational-safety.result }}
           ASSURANCE_RESULT: ${{ needs.assurance.result }}
+          FINAL_CLOSURE_STRUCTURE_RESULT: ${{ needs.final-closure-structure.result }}
           PLATFORM_REQUIRED: ${{ needs.classify.outputs.platform }}
           PLATFORM_RESULT: ${{ needs.platform.result }}
           WEBSITE_REQUIRED: ${{ needs.classify.outputs.website }}
@@ -307,6 +338,11 @@ jobs:
 
           if [[ "$ASSURANCE_RESULT" != "success" ]]; then
             echo "SF-29-31 assurance failed: $ASSURANCE_RESULT"
+            exit 1
+          fi
+
+          if [[ "$FINAL_CLOSURE_STRUCTURE_RESULT" != "success" ]]; then
+            echo "Final closure structural audit failed: $FINAL_CLOSURE_STRUCTURE_RESULT"
             exit 1
           fi
 
