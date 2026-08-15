@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import cast
@@ -18,7 +19,12 @@ from services.execution_coordinator import (
 )
 from services.governance import GovernedRuntimeGateway
 from services.integrations import DeterministicLocalVideoRuntime, DurableVideoProductRuntime
-from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
+from services.runtime import (
+    DurableGrantPolicy,
+    DurableWorkerScheduler,
+    GovernedRuntime,
+    GrantError,
+)
 
 
 def _coordinator(
@@ -177,11 +183,17 @@ def test_medium_video_executes_to_verified_acceptance_with_fresh_grant_and_lease
     assert state["execution_status"] == "ACCEPTED"
     assert state["principal_id"] == principal_id
     assert state["tenant_id"] == tenant_id
+    assert state["terminal"] is True
+    assert state["terminal_reason"] == "finished product and acceptance evidence verified"
+    assert isinstance(state["result_sha256"], str)
+    assert len(cast(str, state["result_sha256"])) == 64
     assert governance.admission_proven("exec-video-2") is True
-    assert scheduler.state()["leases"]
+    assert scheduler.state()["leases"] == []
     grant_state = grants.state()
     grant_rows = cast(list[dict[str, object]], grant_state["grants"])
     assert grant_rows[0]["used_side_effects"] == 1
+    revoked = cast(list[dict[str, object]], grant_state["revoked"])
+    assert revoked[0]["grant_id"] == grant_rows[0]["grant_id"]
 
 
 def test_execution_is_single_use_after_acceptance(tmp_path: Path) -> None:
@@ -202,3 +214,90 @@ def test_execution_is_single_use_after_acceptance(tmp_path: Path) -> None:
         "exec-video-3", token="token", now=now + timedelta(seconds=2)
     )
     assert second == first
+
+
+def test_failure_closes_product_execution_and_releases_resources(tmp_path: Path) -> None:
+    coordinator, _, scheduler, grants = _coordinator(tmp_path)
+    now = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
+    coordinator.prepare(
+        "exec-video-fail",
+        "Create a launch video and final MP4",
+        token="token",
+        principal_id="oidc|user@example.test",
+        tenant_id="tenant/example",
+        now=now,
+    )
+    grants.kill("worker-video", now=now)
+
+    with pytest.raises(GrantError, match="stopped"):
+        coordinator.resume(
+            "exec-video-fail", token="token", now=now + timedelta(seconds=1)
+        )
+
+    state = coordinator.get("exec-video-fail")
+    assert state["execution_status"] == "FAILED"
+    assert state["terminal"] is True
+    assert "GrantError" in cast(str, state["terminal_reason"])
+    assert scheduler.state()["leases"] == []
+    grant_state = grants.state()
+    revoked = cast(list[dict[str, object]], grant_state["revoked"])
+    assert len(revoked) == 1
+
+
+def test_stale_executing_request_closes_as_interrupted(tmp_path: Path) -> None:
+    coordinator, _, _, grants = _coordinator(tmp_path)
+    prepared_at = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
+    coordinator.prepare(
+        "exec-video-stale",
+        "Create a launch video and final MP4",
+        token="token",
+        principal_id="oidc|user@example.test",
+        tenant_id="tenant/example",
+        now=prepared_at,
+    )
+    with sqlite3.connect(tmp_path / "coordinator.sqlite3") as connection:
+        connection.execute(
+            "UPDATE execution_requests SET status = 'EXECUTING', updated_at = ? "
+            "WHERE request_id = ?",
+            (prepared_at.isoformat(), "exec-video-stale"),
+        )
+
+    reconciled = coordinator.recover_stale(
+        token="token", now=prepared_at + timedelta(minutes=16)
+    )
+    assert reconciled == (
+        {"request_id": "exec-video-stale", "status": "INTERRUPTED"},
+    )
+    state = coordinator.get("exec-video-stale")
+    assert state["execution_status"] == "INTERRUPTED"
+    assert state["terminal"] is True
+    assert "recovery window" in cast(str, state["terminal_reason"])
+    revoked = cast(list[dict[str, object]], grants.state()["revoked"])
+    assert len(revoked) == 1
+
+
+def test_fresh_executing_request_is_not_falsely_closed(tmp_path: Path) -> None:
+    coordinator, _, _, _ = _coordinator(tmp_path)
+    now = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
+    coordinator.prepare(
+        "exec-video-active",
+        "Create a launch video and final MP4",
+        token="token",
+        principal_id="oidc|user@example.test",
+        tenant_id="tenant/example",
+        now=now,
+    )
+    with sqlite3.connect(tmp_path / "coordinator.sqlite3") as connection:
+        connection.execute(
+            "UPDATE execution_requests SET status = 'EXECUTING', updated_at = ? "
+            "WHERE request_id = ?",
+            (now.isoformat(), "exec-video-active"),
+        )
+
+    with pytest.raises(ExecutionCoordinatorError, match="already executing"):
+        coordinator.resume(
+            "exec-video-active", token="token", now=now + timedelta(minutes=1)
+        )
+    state = coordinator.get("exec-video-active")
+    assert state["execution_status"] == "EXECUTING"
+    assert state["terminal"] is False
