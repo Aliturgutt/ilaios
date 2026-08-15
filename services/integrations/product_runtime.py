@@ -393,6 +393,60 @@ class DurableVideoProductRuntime:
             "terminal_at": None if closure is None else str(closure["terminal_at"]),
         }
 
+    def interrupt(
+        self,
+        request_id: str,
+        *,
+        token: str,
+        now: datetime,
+        reason: str,
+    ) -> dict[str, object]:
+        """Close a stale product proof and every owned durable runtime resource."""
+        _require_actor(reason, "reason")
+        if now.tzinfo is None:
+            raise ProductRuntimeError("interruption time must be timezone-aware")
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM product_proofs WHERE request_id = ?", (request_id,)
+            ).fetchone()
+        if row is None:
+            raise ProductRuntimeError("unknown product proof")
+        if row["status"] != "pending":
+            return self.get_state(request_id)
+
+        lease = _optional_lease(str(row["lease_json"]))
+        if lease is not None:
+            try:
+                self._scheduler.release(lease)
+            except Exception as error:
+                raise ProductRuntimeError(
+                    "worker lease cleanup failed during interruption"
+                ) from error
+        self._workflows.cancel_workflow(
+            str(row["workflow_id"]), reason=reason, now=now
+        )
+        current = self._control_plane.get_job(token, str(row["job_id"]))
+        if current.state not in {JobState.COMPLETED, JobState.FAILED, JobState.CANCELLED}:
+            self._control_plane.transition_job(
+                token,
+                str(row["job_id"]),
+                JobState.CANCELLED,
+                reason="finished-product execution interrupted",
+                now=now,
+            )
+        with self._connect() as connection:
+            changed = connection.execute(
+                "UPDATE product_proofs SET status = 'interrupted' "
+                "WHERE request_id = ? AND status = 'pending'",
+                (request_id,),
+            ).rowcount
+            if changed == 1:
+                connection.execute(
+                    "INSERT OR IGNORE INTO product_proof_closure VALUES (?, 'interrupted', ?, ?)",
+                    (request_id, reason, now.isoformat()),
+                )
+        return self.get_state(request_id)
+
     def _pending(self, request_id: str) -> sqlite3.Row:
         with self._connect() as connection:
             row = connection.execute(
@@ -427,10 +481,11 @@ class DurableVideoProductRuntime:
         job_id = str(row["job_id"])
         workflow_id = str(row["workflow_id"])
         reason = _failure_reason(error)
+        cleanup_failures: list[str] = []
         try:
             self._workflows.cancel_workflow(workflow_id, reason=reason, now=now)
-        except Exception:
-            pass
+        except Exception as cleanup_error:
+            cleanup_failures.append(f"workflow={type(cleanup_error).__name__}")
         try:
             current = self._control_plane.get_job(token, job_id)
             if current.state is JobState.PENDING:
@@ -454,8 +509,11 @@ class DurableVideoProductRuntime:
                     reason="finished-product execution failed closed",
                     now=now,
                 )
-        except Exception:
-            pass
+        except Exception as cleanup_error:
+            cleanup_failures.append(f"job={type(cleanup_error).__name__}")
+        closure_reason = reason
+        if cleanup_failures:
+            closure_reason = f"{reason}; cleanup_failures={','.join(cleanup_failures)}"[:2048]
         with self._connect() as connection:
             connection.execute(
                 "UPDATE product_proofs SET status = 'failed' "
@@ -464,7 +522,7 @@ class DurableVideoProductRuntime:
             )
             connection.execute(
                 "INSERT OR IGNORE INTO product_proof_closure VALUES (?, 'failed', ?, ?)",
-                (request_id, reason, now.isoformat()),
+                (request_id, closure_reason, now.isoformat()),
             )
 
     def _execution_lease(self, row: sqlite3.Row, *, now: datetime) -> Lease:
@@ -499,6 +557,27 @@ class DurableVideoProductRuntime:
                 "UPDATE product_proofs SET lease_json = ? WHERE request_id = ?",
                 (json.dumps(_lease_json(lease), sort_keys=True), request_id),
             )
+
+
+def _optional_lease(raw_json: str) -> Lease | None:
+    try:
+        raw = json.loads(raw_json)
+    except (TypeError, ValueError, json.JSONDecodeError) as error:
+        raise ProductRuntimeError("stored product lease is malformed") from error
+    if not isinstance(raw, dict):
+        raise ProductRuntimeError("stored product lease is malformed")
+    required = {"task_id", "worker_id", "fencing_token", "expires_at"}
+    if not required <= raw.keys():
+        return None
+    try:
+        return Lease(
+            str(raw["task_id"]),
+            str(raw["worker_id"]),
+            int(raw["fencing_token"]),
+            datetime.fromisoformat(str(raw["expires_at"])),
+        )
+    except (TypeError, ValueError) as error:
+        raise ProductRuntimeError("stored product lease is malformed") from error
 
 
 def _lease_json(lease: Lease) -> dict[str, object]:
