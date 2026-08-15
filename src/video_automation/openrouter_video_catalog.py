@@ -296,9 +296,16 @@ def _parse_model(raw: Mapping[object, object]) -> OpenRouterVideoModel:
     model_id = _mapping_string(raw, "id")
     canonical_slug = _mapping_string(raw, "canonical_slug")
     name = _mapping_string(raw, "name")
-    generate_audio = raw.get("generate_audio", False)
-    if not isinstance(generate_audio, bool):
-        raise OpenRouterCatalogError("generate_audio must be boolean")
+    generate_audio_raw = raw.get("generate_audio")
+    if generate_audio_raw is None:
+        # A null capability is not affirmative evidence that audio generation is
+        # supported. Normalize it conservatively to False while still rejecting
+        # malformed non-null values.
+        generate_audio = False
+    elif isinstance(generate_audio_raw, bool):
+        generate_audio = generate_audio_raw
+    else:
+        raise OpenRouterCatalogError("generate_audio must be boolean or null")
     pricing_raw = raw.get("pricing_skus")
     if pricing_raw is None:
         pricing: dict[str, str] = {}
