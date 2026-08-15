@@ -1,5 +1,6 @@
 import Link from "next/link";
 import FactoryExplorer from "./FactoryExplorer";
+import GovernanceEvidence from "./GovernanceEvidence";
 import ProductExperience from "./ProductExperience";
 import SpatialArchitecture from "./SpatialArchitecture";
 import SystemVisuals from "./SystemVisuals";
@@ -25,7 +26,6 @@ const copy = {
     archText: "Goal → Policy → Router → Factory → Validation → Evidence → Result is the visual and operational spine of the product.",
     evidenceEyebrow: "Why governance matters",
     evidenceTitle: "Generated is not the same as finished.",
-    evidence: [["Authority", "Requests and model output do not silently widen permissions."], ["Validation", "Deterministic checks and explicit criteria decide acceptance."], ["Evidence", "Material outcomes remain inspectable and attributable."], ["Recovery", "Repair and retry stay bounded; unresolved work stops or escalates."]],
     ctaEyebrow: "Provider independent",
     ctaTitle: "Models, tools and providers can change. The ILAIOS product boundary does not.",
     architecture: "Architecture",
@@ -49,7 +49,6 @@ const copy = {
     archText: "Hedef → Politika → Yönlendirme → Üretim → Doğrulama → Kanıt → Sonuç, ürünün görsel ve operasyonel omurgasıdır.",
     evidenceEyebrow: "Yönetim neden önemli?",
     evidenceTitle: "Üretilmiş olmak, bitmiş olmak değildir.",
-    evidence: [["Yetki", "İstekler ve model çıktısı izinleri sessizce genişletmez."], ["Doğrulama", "Deterministik kontroller ve açık ölçütler kabulü belirler."], ["Kanıt", "Önemli sonuçlar incelenebilir ve eşleştirilebilir kalır."], ["Kurtarma", "Düzeltme ve yeniden deneme sınırlandırılır; çözülemeyen iş durur veya yükseltilir."]],
     ctaEyebrow: "Sağlayıcı bağımsızlığı",
     ctaTitle: "Modeller, araçlar ve sağlayıcılar değişebilir. ILAIOS ürün sınırı değişmez.",
     architecture: "Mimari",
@@ -90,9 +89,9 @@ export default function HomePage({ locale }: { locale: Locale }) {
       <SpatialArchitecture locale={locale} compact />
     </div></section>
 
-    <section className="section evidence-section"><div className="shell evidence-story">
-      <div><div className="eyebrow">{c.evidenceEyebrow}</div><h2>{c.evidenceTitle}</h2></div>
-      <div className="evidence-ledger">{c.evidence.map(([title, text], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{text}</p></div></article>)}</div>
+    <section className="section evidence-section"><div className="shell evidence-story evidence-story-interactive">
+      <div className="evidence-story-copy"><div className="eyebrow">{c.evidenceEyebrow}</div><h2>{c.evidenceTitle}</h2></div>
+      <GovernanceEvidence locale={locale} />
     </div></section>
 
     <section className="section compact-section"><div className="shell compact-cta"><div><div className="eyebrow">{c.ctaEyebrow}</div><h2>{c.ctaTitle}</h2></div><div className="actions"><Link className="button" href={`${base}/architecture`}>{c.architecture}</Link><Link className="button secondary" href={`${base}/factories`}>{c.factories}</Link></div></div></section>

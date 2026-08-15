@@ -1,38 +1,45 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type Locale = "en" | "tr";
 type Tilt = { x: number; y: number };
+type Node = { title: string; detail: string; description: string; source: string };
 
-const copy = {
+const copy: Record<Locale, { label: string; aria: string; hint: string; close: string; sourceLabel: string; nodes: Node[] }> = {
   en: {
     label: "Governed execution map",
     aria: "ILAIOS governed execution architecture from goal through policy, routing, factory execution, validation, evidence and result",
+    hint: "Select a stage to see its responsibility and canonical source.",
+    close: "Close detail",
+    sourceLabel: "Canonical source",
     nodes: [
-      ["Goal", "Authenticated intent"],
-      ["Policy", "Authority boundary"],
-      ["Router", "Capability selection"],
-      ["Factory", "Bounded execution"],
-      ["Validation", "Acceptance checks"],
-      ["Evidence", "Reviewable proof"],
-      ["Result", "Accepted outcome"],
+      { title: "Goal", detail: "Authenticated intent", description: "Turns the signed-in user's requested outcome, tenant/project context, acceptance criteria and authorized context into bounded work. The goal describes the outcome; it does not grant itself authority.", source: "PRODUCT_REQUIREMENTS.md · IMPLEMENTATION_SPEC.md" },
+      { title: "Policy", detail: "Authority boundary", description: "Applies identity, tenant isolation, permissions, privacy/residency, DLP/secrets, tool scope, risk, approval and budget boundaries before execution is admitted. Policy is authoritative; models are not.", source: "SECURITY_ARCHITECTURE.md · IMPLEMENTATION_SPEC.md" },
+      { title: "Router", detail: "Capability selection", description: "Produces the single governed RoutingDecision that selects an eligible capability, model, tool or provider inside the admitted scope. Routing may optimize execution but cannot widen permissions.", source: "SYSTEM_ARCHITECTURE.md · IMPLEMENTATION_SPEC.md · FINOPS.md" },
+      { title: "Factory", detail: "Bounded execution", description: "Executes the approved bounded DAG through the appropriate native factory and governed worker/tool/provider path. Factories remain domain execution surfaces, not parallel control planes.", source: "AUTONOMOUS_NODE_ARCHITECTURE.md · DEPENDENCY_GRAPH.md · IMPLEMENTATION_SPEC.md" },
+      { title: "Validation", detail: "Acceptance checks", description: "Runs deterministic checks, security gates and explicit acceptance criteria before an output can advance. A generated artifact is not treated as finished merely because generation completed.", source: "TESTING_AND_EVALUATION.md · IMPLEMENTATION_SPEC.md" },
+      { title: "Evidence", detail: "Reviewable proof", description: "Preserves validation results, important events, provenance and execution lineage so the outcome can be reviewed, audited, recovered and explained without relying on model assertions.", source: "GOVERNANCE.md · OBSERVABILITY.md · IMPLEMENTATION_SPEC.md" },
+      { title: "Result", detail: "Accepted outcome", description: "Represents the finished product only after required acceptance gates pass. Delivery or external side effects occur within the authorized scope, with checkpoint/resume and bounded repair available where the workflow permits them.", source: "PRODUCT_REQUIREMENTS.md · FAILURE_RECOVERY.md · IMPLEMENTATION_SPEC.md" },
     ],
   },
   tr: {
     label: "Yönetilen yürütme haritası",
     aria: "Hedeften politika, yönlendirme, üretim, doğrulama, kanıt ve kabul edilmiş sonuca uzanan ILAIOS yönetilen yürütme mimarisi",
+    hint: "Sorumluluğunu ve kanonik kaynağını görmek için bir aşama seçin.",
+    close: "Detayı kapat",
+    sourceLabel: "Kanonik kaynak",
     nodes: [
-      ["Hedef", "Kimliği doğrulanmış niyet"],
-      ["Politika", "Yetki sınırı"],
-      ["Yönlendirici", "Yetenek seçimi"],
-      ["Üretim", "Sınırlandırılmış yürütme"],
-      ["Doğrulama", "Kabul kontrolleri"],
-      ["Kanıt", "İncelenebilir kanıt"],
-      ["Sonuç", "Kabul edilmiş çıktı"],
+      { title: "Hedef", detail: "Kimliği doğrulanmış niyet", description: "Oturum açmış kullanıcının istediği sonucu; tenant/proje bağlamı, kabul kriterleri ve yetkili bağlam ile birlikte sınırlandırılmış işe dönüştürür. Hedef sonucu tarif eder; kendi kendine yetki vermez.", source: "PRODUCT_REQUIREMENTS.md · IMPLEMENTATION_SPEC.md" },
+      { title: "Politika", detail: "Yetki sınırı", description: "Yürütme kabul edilmeden önce kimlik, tenant izolasyonu, izinler, gizlilik/residency, DLP/secrets, araç kapsamı, risk, onay ve bütçe sınırlarını uygular. Yetki politikadadır; modelde değildir.", source: "SECURITY_ARCHITECTURE.md · IMPLEMENTATION_SPEC.md" },
+      { title: "Yönlendirici", detail: "Yetenek seçimi", description: "Kabul edilmiş kapsam içinde uygun yetenek, model, araç veya sağlayıcıyı seçen tek yönetilen RoutingDecision üretir. Yönlendirme yürütmeyi optimize edebilir ancak izinleri genişletemez.", source: "SYSTEM_ARCHITECTURE.md · IMPLEMENTATION_SPEC.md · FINOPS.md" },
+      { title: "Üretim", detail: "Sınırlandırılmış yürütme", description: "Onaylı sınırlandırılmış DAG'ı uygun yerleşik factory ve yönetilen worker/araç/sağlayıcı yolu üzerinden yürütür. Factory'ler alan yürütme yüzeyleridir; paralel kontrol düzlemleri değildir.", source: "AUTONOMOUS_NODE_ARCHITECTURE.md · DEPENDENCY_GRAPH.md · IMPLEMENTATION_SPEC.md" },
+      { title: "Doğrulama", detail: "Kabul kontrolleri", description: "Bir çıktının ilerleyebilmesi için deterministik kontrolleri, güvenlik kapılarını ve açık kabul kriterlerini çalıştırır. Yalnızca üretilmiş olması bir çıktıyı bitmiş ürün yapmaz.", source: "TESTING_AND_EVALUATION.md · IMPLEMENTATION_SPEC.md" },
+      { title: "Kanıt", detail: "İncelenebilir kanıt", description: "Sonucun model iddialarına güvenmeden incelenebilmesi, denetlenebilmesi, kurtarılabilmesi ve açıklanabilmesi için doğrulama sonuçlarını, önemli olayları, provenance ve yürütme soyunu korur.", source: "GOVERNANCE.md · OBSERVABILITY.md · IMPLEMENTATION_SPEC.md" },
+      { title: "Sonuç", detail: "Kabul edilmiş çıktı", description: "Yalnız gerekli kabul kapıları geçildikten sonra bitmiş ürünü temsil eder. Teslim veya dış yan etkiler yetkili kapsam içinde gerçekleşir; iş akışının izin verdiği yerde checkpoint/resume ve bounded repair kullanılabilir.", source: "PRODUCT_REQUIREMENTS.md · FAILURE_RECOVERY.md · IMPLEMENTATION_SPEC.md" },
     ],
   },
-} as const;
+};
 
 function applyStageTransform(stage: HTMLDivElement | null, tilt: Tilt, scrollDepth: number) {
   if (!stage) return;
@@ -41,6 +48,7 @@ function applyStageTransform(stage: HTMLDivElement | null, tilt: Tilt, scrollDep
 
 export default function SpatialArchitecture({ locale, compact = false }: { locale: Locale; compact?: boolean }) {
   const c = copy[locale];
+  const [active, setActive] = useState<number | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<HTMLDivElement | null>(null);
   const tiltRef = useRef<Tilt>({ x: 0, y: 0 });
@@ -65,34 +73,15 @@ export default function SpatialArchitecture({ locale, compact = false }: { local
     update();
     window.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
-    return () => {
-      window.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
+    return () => { window.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
   }, []);
 
+  const selected = active === null ? null : c.nodes[active];
   return <div ref={wrapperRef} className={`spatial-map ${compact ? "is-compact" : ""}`} data-visual-role="architecture-spatial-map">
-    <div className="spatial-map-head"><span className="micro-label">{c.label}</span><small>{locale === "tr" ? "Masaüstünde imleç ve kaydırma katman ilişkisini gösterir. Mobilde düzleştirilir." : "Pointer and scroll expose layer relationships on desktop. The map flattens on mobile."}</small></div>
-    <div
-      ref={stageRef}
-      className="spatial-stage"
-      role="img"
-      aria-label={c.aria}
-      style={{ transform: "perspective(900px) rotateX(0deg) rotateY(0deg)" }}
-      onPointerMove={event => {
-        const rect = event.currentTarget.getBoundingClientRect();
-        tiltRef.current = {
-          x: ((event.clientX - rect.left) / rect.width - 0.5) * 4,
-          y: -((event.clientY - rect.top) / rect.height - 0.5) * 3,
-        };
-        applyStageTransform(stageRef.current, tiltRef.current, scrollDepthRef.current);
-      }}
-      onPointerLeave={() => {
-        tiltRef.current = { x: 0, y: 0 };
-        applyStageTransform(stageRef.current, tiltRef.current, scrollDepthRef.current);
-      }}
-    >
-      {c.nodes.map(([title, detail], index) => <div className={`spatial-node spatial-node-${index + 1}`} key={title}><span>{String(index + 1).padStart(2, "0")}</span><strong>{title}</strong><small>{detail}</small>{index < c.nodes.length - 1 && <i aria-hidden="true" />}</div>)}
+    <div className="spatial-map-head"><span className="micro-label">{c.label}</span><small>{c.hint}</small></div>
+    <div ref={stageRef} className="spatial-stage" aria-label={c.aria} style={{ transform: "perspective(900px) rotateX(0deg) rotateY(0deg)" }} onPointerMove={event => { const rect = event.currentTarget.getBoundingClientRect(); tiltRef.current = { x: ((event.clientX - rect.left) / rect.width - 0.5) * 4, y: -((event.clientY - rect.top) / rect.height - 0.5) * 3 }; applyStageTransform(stageRef.current, tiltRef.current, scrollDepthRef.current); }} onPointerLeave={() => { tiltRef.current = { x: 0, y: 0 }; applyStageTransform(stageRef.current, tiltRef.current, scrollDepthRef.current); }}>
+      {c.nodes.map((node, index) => <button type="button" className={`spatial-node spatial-node-${index + 1}${active === index ? " is-active" : ""}`} key={node.title} aria-expanded={active === index} aria-controls="spatial-map-detail" onClick={() => setActive(active === index ? null : index)}><span>{String(index + 1).padStart(2, "0")}</span><strong>{node.title}</strong><small>{node.detail}</small>{index < c.nodes.length - 1 && <i aria-hidden="true" />}</button>)}
     </div>
+    {selected && <section id="spatial-map-detail" className="spatial-map-detail" aria-live="polite"><div><span className="micro-label">{String(active! + 1).padStart(2, "0")} · {selected.title}</span><h3>{selected.detail}</h3><p>{selected.description}</p><small><strong>{c.sourceLabel}:</strong> {selected.source}</small></div><button type="button" className="text-link" onClick={() => setActive(null)} aria-label={c.close}>×</button></section>}
   </div>;
 }
