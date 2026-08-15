@@ -58,6 +58,7 @@ jobs:
           {
             echo "RAG14_SOURCE_SHA=$SOURCE_SHA"
             echo "RAG14_CANARY_STARTED_AT_MS=$(($(date +%s) * 1000))"
+            echo "RAG14_EXTERNAL_SPEND_APPROVED=true"
           } >> "$GITHUB_ENV"
 
       - name: Configure bounded AWS identity
@@ -147,6 +148,18 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ steps.prior.outputs.run_id }}
 
+      - name: Capture previous verified task candidate
+        run: |
+          set -euo pipefail
+          PREVIOUS="$(aws ecs describe-services --cluster ilaios-r01-canary --services ilaios-r01-canary --region eu-central-1 --query 'services[0].taskDefinition' --output text 2>/dev/null || true)"
+          if [ -n "$PREVIOUS" ] && [ "$PREVIOUS" != "None" ]; then
+            echo "RAG14_PREVIOUS_TASK_DEFINITION=$PREVIOUS" >> "$GITHUB_ENV"
+            echo "RAG14_PREVIOUS_TASK_DEFINITION=$PREVIOUS"
+          else
+            echo 'BLOCKED: no previous task definition exists for the required rollback exercise.'
+            exit 1
+          fi
+
       - name: Plan and apply exact RAG.14 canary
         working-directory: infra/aws/r01-canary
         run: |
@@ -175,10 +188,15 @@ jobs:
           aws logs tail '/ilaios/r01/canary/runtime' --region eu-central-1 --since 30m --format short || true
           exit 1
 
-      - name: Collect live RAG.14 evidence and red-team runtime
+      - name: Collect live RAG.14 embedding security and lifecycle evidence
         run: |
           set -euo pipefail
           python -m services.rag14_canary_evidence
+
+      - name: Collect live RAG.14 recovery observability FinOps and rollback evidence
+        run: |
+          set -euo pipefail
+          python -m services.rag14_operational_evidence
 
       - name: Preserve RAG.14 canary evidence
         if: always()
