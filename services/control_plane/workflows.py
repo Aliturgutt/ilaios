@@ -507,9 +507,10 @@ class WorkflowStore:
 
     @staticmethod
     def _closure(connection: sqlite3.Connection, workflow_id: str) -> sqlite3.Row | None:
-        return connection.execute(
+        row = connection.execute(
             "SELECT * FROM workflow_closure WHERE workflow_id = ?", (workflow_id,)
         ).fetchone()
+        return None if row is None else cast(sqlite3.Row, row)
 
     def _record_attempt_termination(
         self,
