@@ -258,4 +258,59 @@ void main() {
     expect(decidedRequest, 'request-7');
     expect(decidedValue, GovernanceDecision.approved);
   });
+
+  testWidgets('medium admitted work is never rendered as pending approval', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(IlaiosDesktopApp(
+      projection: const ControlPlaneProjection(
+        connected: true,
+        status: 'Connected to authoritative control plane',
+        goalCount: 1,
+        jobCount: 1,
+        lastEvent: 'job.updated',
+        schemaVersion: '1',
+      ),
+      operationalSnapshot: const OperationalSnapshot(
+        runtimeRoutes: <Map<String, Object?>>[],
+        schedulerState: <String, Object?>{},
+        grantsState: <String, Object?>{
+          'grants': <Object?>[],
+          'revoked': <Object?>[],
+          'stopped': <Object?>[],
+        },
+        governanceState: <String, Object?>{
+          'work': <Object?>[
+            <String, Object?>{
+              'request_id': 'exec-medium',
+              'requester_id': 'principal-a',
+              'status': 'pending',
+            },
+          ],
+          'admissions': <Object?>[
+            <String, Object?>{
+              'request_id': 'exec-medium',
+              'risk': 'medium',
+              'admission_decision': 'ALLOW',
+              'human_approval_required': false,
+            },
+          ],
+          'secret_references': <Object?>[],
+          'ledger': <String, Object?>{},
+        },
+        evidenceRecords: <EvidenceRecord>[],
+        liveEvents: <Map<String, Object?>>[],
+      ),
+      operationalStatus: 'Operational APIs connected',
+      approverId: 'approver-b',
+      onGovernanceDecision: (requestId, decision) async {},
+    ));
+    await tester.tap(find.byKey(const ValueKey('nav-governance')));
+    await tester.pumpAndSettle();
+    expect(find.text('No pending governed work.'), findsOneWidget);
+    expect(find.byKey(const ValueKey('approve-exec-medium')), findsNothing);
+    expect(find.byKey(const ValueKey('deny-exec-medium')), findsNothing);
+  });
 }
