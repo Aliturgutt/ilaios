@@ -9,18 +9,21 @@ from src.video_automation.models import JobState
 
 from .software_product_runtime import (
     DurableSoftwareProductRuntime,
+    SoftwareProductFinalizationPending,
     SoftwareProductRuntimeError,
 )
 
 
 class RecoverableSoftwareProductRuntime(DurableSoftwareProductRuntime):
-    """Add durable terminal/recovery semantics without creating a second Software Factory."""
+    """Add durable terminal/recovery semantics without a second Software Factory."""
 
     def execute(
         self, request_id: str, grant_id: str, *, token: str, now: datetime
     ) -> dict[str, object]:
         try:
             return super().execute(request_id, grant_id, token=token, now=now)
+        except SoftwareProductFinalizationPending:
+            raise
         except Exception as error:
             reason = _failure_reason(error)
             with self._connect() as connection:
@@ -28,6 +31,11 @@ class RecoverableSoftwareProductRuntime(DurableSoftwareProductRuntime):
                     "UPDATE software_product_proofs SET status='failed', manifest_json=? "
                     "WHERE request_id=? AND status='pending'",
                     (json.dumps({"reason": reason}, sort_keys=True), request_id),
+                )
+                connection.execute(
+                    "INSERT OR IGNORE INTO software_product_closure VALUES "
+                    "(?, 'failed', ?, ?)",
+                    (request_id, reason, now.isoformat()),
                 )
             raise
 
@@ -37,9 +45,20 @@ class RecoverableSoftwareProductRuntime(DurableSoftwareProductRuntime):
                 "SELECT status, manifest_json FROM software_product_proofs WHERE request_id=?",
                 (request_id,),
             ).fetchone()
+            closure = connection.execute(
+                "SELECT terminal_status, reason, terminal_at FROM software_product_closure "
+                "WHERE request_id=?",
+                (request_id,),
+            ).fetchone()
         if row is None:
             raise SoftwareProductRuntimeError("software proof request is unavailable")
-        result: dict[str, object] = {"status": str(row["status"])}
+        result: dict[str, object] = {
+            "status": str(row["status"]),
+            "terminal": closure is not None,
+            "terminal_status": None if closure is None else str(closure["terminal_status"]),
+            "reason": None if closure is None else str(closure["reason"]),
+            "terminal_at": None if closure is None else str(closure["terminal_at"]),
+        }
         raw = row["manifest_json"]
         if raw is not None:
             value = json.loads(str(raw))
@@ -60,41 +79,42 @@ class RecoverableSoftwareProductRuntime(DurableSoftwareProductRuntime):
         normalized_reason = " ".join(reason.split())
         if not normalized_reason:
             raise SoftwareProductRuntimeError("interruption reason is required")
+        state = self.get_state(request_id)
+        status = str(state["status"])
+        if status == "accepted":
+            return state
+        if status == "finalizing":
+            self.recover_finalizing(request_id, token=token, now=now)
+            return self.get_state(request_id)
+        if status in {"failed", "interrupted"}:
+            return state
+        if status != "pending":
+            raise SoftwareProductRuntimeError("software proof cannot be interrupted")
+
         with self._connect() as connection:
             row = connection.execute(
-                "SELECT job_id, workflow_id, status, manifest_json "
-                "FROM software_product_proofs WHERE request_id=?",
+                "SELECT job_id, workflow_id FROM software_product_proofs WHERE request_id=?",
                 (request_id,),
             ).fetchone()
         if row is None:
             raise SoftwareProductRuntimeError("software proof request is unavailable")
-        status = str(row["status"])
-        if status == "accepted":
-            return {"status": "accepted"}
-        if status in {"failed", "interrupted"}:
-            return self.get_state(request_id)
-        if status != "pending":
-            raise SoftwareProductRuntimeError("software proof cannot be interrupted")
-
         self._workflows.recover_expired_attempts(now=now)
         workflow_state = self._workflows.workflow_state(str(row["workflow_id"]))
         if not bool(workflow_state["terminal"]):
             self._workflows.cancel_workflow(
-                str(row["workflow_id"]),
-                reason=normalized_reason,
-                now=now,
+                str(row["workflow_id"]), reason=normalized_reason, now=now
             )
         try:
-            self._control_plane.transition_job(
-                token,
-                str(row["job_id"]),
-                JobState.FAILED,
-                reason=normalized_reason,
-                now=now,
-            )
+            current = self._control_plane.get_job(token, str(row["job_id"]))
+            if current.state not in {JobState.COMPLETED, JobState.FAILED, JobState.CANCELLED}:
+                self._control_plane.transition_job(
+                    token,
+                    str(row["job_id"]),
+                    JobState.FAILED,
+                    reason=normalized_reason,
+                    now=now,
+                )
         except Exception:
-            # The Control Plane may already hold a terminal state; durable Software proof
-            # closure remains authoritative for this bounded interruption operation.
             pass
         payload = json.dumps({"reason": normalized_reason}, sort_keys=True)
         with self._connect() as connection:
@@ -103,12 +123,18 @@ class RecoverableSoftwareProductRuntime(DurableSoftwareProductRuntime):
                 "WHERE request_id=? AND status='pending'",
                 (payload, request_id),
             ).rowcount
+            if changed == 1:
+                connection.execute(
+                    "INSERT OR IGNORE INTO software_product_closure VALUES "
+                    "(?, 'interrupted', ?, ?)",
+                    (request_id, normalized_reason, now.isoformat()),
+                )
         if changed != 1:
             latest = self.get_state(request_id)
             if latest["status"] in {"accepted", "failed", "interrupted"}:
                 return latest
             raise SoftwareProductRuntimeError("software interruption state was lost")
-        return {"status": "interrupted", "reason": normalized_reason}
+        return self.get_state(request_id)
 
 
 def _failure_reason(error: Exception) -> str:
