@@ -6,6 +6,12 @@ on:
       - master
     paths:
       - 'apps/desktop/**'
+      - 'services/desktop_identity_server.py'
+      - 'services/execution_coordinator.py'
+      - 'services/governance/**'
+      - 'services/integrations/**'
+      - 'src/video_automation/**'
+      - 'brand/assets/03-ilaios-symbol-dark.jpg'
       - 'brand/assets/05-ilaios-app-icon.jpg'
       - '.github/workflows/desktop-windows-release.yml'
   workflow_dispatch:
@@ -41,12 +47,27 @@ jobs:
           }
           (Join-Path $flutter 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
+      - name: Install pinned FFmpeg
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          choco install ffmpeg --version=7.1.1 -y --no-progress
+          if ($LASTEXITCODE -ne 0) {
+            throw "Pinned FFmpeg install failed with exit code $LASTEXITCODE"
+          }
+          $ffmpeg = Get-Command ffmpeg -ErrorAction Stop
+          $ffprobe = Get-Command ffprobe -ErrorAction Stop
+          Write-Host "FFMPEG_PATH=$($ffmpeg.Source)"
+          Write-Host "FFPROBE_PATH=$($ffprobe.Source)"
+
       - name: Verify toolchains
         shell: pwsh
         run: |
           flutter --version
           dart --version
           python --version
+          ffmpeg -version
+          ffprobe -version
 
       - name: Resolve locked dependencies
         working-directory: apps/desktop
@@ -79,6 +100,12 @@ jobs:
         env:
           ILAIOS_E2E_SIDECAR_PATH: ${{ github.workspace }}\apps\desktop\build\windows\x64\runner\Release\ilaios_control_plane.exe
         run: flutter test e2e/control_plane_e2e_test.dart
+
+      - name: Real 20s finished-product video E2E
+        shell: pwsh
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python apps/desktop/e2e/video_finished_product_e2e.py
 
       - name: Verify release executable metadata and sidecar
         working-directory: apps/desktop
