@@ -242,11 +242,11 @@ class DurableVideoProductRuntime:
             reason="delivery and acceptance evidence verified",
             now=now,
         )
-        workflow_tasks = self._workflows.task_state(str(row["workflow_id"]))
-        dag_proven = workflow_tasks == (
+        workflow_tasks = list(self._workflows.task_state(str(row["workflow_id"])))
+        dag_proven = workflow_tasks == [
             {"task_id": "delivery", "status": "completed"},
             {"task_id": "video", "status": "completed"},
-        )
+        ]
         scheduler_state = self._scheduler.state()
         worker_lease_proven = any(
             effect["task_id"] == row["job_id"]
