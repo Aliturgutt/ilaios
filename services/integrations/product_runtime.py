@@ -62,13 +62,17 @@ class DurableVideoProductRuntime:
                 "lease_json TEXT NOT NULL, status TEXT NOT NULL, manifest_json TEXT)"
             )
             connection.execute(
+                "CREATE TABLE IF NOT EXISTS product_proof_identity ("
+                "request_id TEXT PRIMARY KEY, requester_id TEXT NOT NULL, tenant_id TEXT)"
+            )
+            connection.execute(
                 "CREATE TABLE IF NOT EXISTS product_proof_closure ("
                 "request_id TEXT PRIMARY KEY, terminal_status TEXT NOT NULL, "
                 "reason TEXT NOT NULL, terminal_at TEXT NOT NULL)"
             )
 
     def _connect(self) -> sqlite3.Connection:
-        connection = sqlite3.connect(self._database_path)
+        connection = sqlite3.connect(self._database_path, timeout=10)
         connection.row_factory = sqlite3.Row
         return connection
 
@@ -162,12 +166,18 @@ class DurableVideoProductRuntime:
                         lease_json,
                     ),
                 )
+                connection.execute(
+                    "INSERT INTO product_proof_identity VALUES (?, ?, ?)",
+                    (request_id, requester_id, tenant_id),
+                )
             except sqlite3.IntegrityError as error:
                 if lease is not None:
                     self._scheduler.release(lease)
                 raise ProductRuntimeError("product proof request already exists") from error
         return {
             "request_id": request_id,
+            "requester_id": requester_id,
+            "tenant_id": tenant_id,
             "goal_id": goal.goal_id,
             "job_id": job.job_id,
             "proposal_id": proposal_id,
@@ -183,11 +193,15 @@ class DurableVideoProductRuntime:
         self, request_id: str, grant_id: str, *, token: str, now: datetime
     ) -> dict[str, object]:
         row = self._pending(request_id)
+        identity = self._identity(request_id)
         lease: Lease | None = None
         try:
             admission = self._governance.admission_snapshot(request_id)
             if admission["admission_proven"] is not True:
                 raise ProductRuntimeError("governed execution admission is not proven")
+            identity_proven = bool(identity["requester_id"])
+            if not identity_proven:
+                raise ProductRuntimeError("product proof identity is not durable")
             lease = self._execution_lease(row, now=now)
             self._scheduler.authorize(lease, now=now)
             self._control_plane.transition_job(
@@ -235,6 +249,8 @@ class DurableVideoProductRuntime:
                 now=now,
                 payload={
                     "request_id": request_id,
+                    "requester_id": identity["requester_id"],
+                    "tenant_id": identity["tenant_id"],
                     "delivery_id": verified_delivery["delivery_id"],
                     "artifact_digest": video["artifact_digest"],
                 },
@@ -271,6 +287,7 @@ class DurableVideoProductRuntime:
             accepted = all(
                 (
                     admission_proven,
+                    identity_proven,
                     dag_proven,
                     worker_lease_proven,
                     grant_proven,
@@ -285,6 +302,9 @@ class DurableVideoProductRuntime:
             manifest: dict[str, object] = {
                 "manifest_version": "1.0",
                 "request_id": request_id,
+                "requester_id": identity["requester_id"],
+                "tenant_id": identity["tenant_id"],
+                "identity_proven": identity_proven,
                 "goal_id": row["goal_id"],
                 "job_id": row["job_id"],
                 "proposal_id": row["proposal_id"],
@@ -313,7 +333,6 @@ class DurableVideoProductRuntime:
             if not self._scheduler.release(lease):
                 raise ProductRuntimeError("worker lease disappeared before product closure")
             lease = None
-            terminal_at = datetime.now().astimezone().isoformat()
             with self._connect() as connection:
                 connection.execute(
                     "UPDATE product_proofs SET status = 'accepted', manifest_json = ? "
@@ -322,7 +341,11 @@ class DurableVideoProductRuntime:
                 )
                 connection.execute(
                     "INSERT INTO product_proof_closure VALUES (?, 'accepted', ?, ?)",
-                    (request_id, "delivery and acceptance evidence verified", terminal_at),
+                    (
+                        request_id,
+                        "delivery, identity, and acceptance evidence verified",
+                        now.isoformat(),
+                    ),
                 )
             return manifest
         except Exception as error:
@@ -347,6 +370,7 @@ class DurableVideoProductRuntime:
 
     def get_state(self, request_id: str) -> dict[str, object]:
         """Return product-proof terminal truth without treating failure as acceptance."""
+        identity = self._identity(request_id)
         with self._connect() as connection:
             row = connection.execute(
                 "SELECT status FROM product_proofs WHERE request_id = ?", (request_id,)
@@ -360,6 +384,8 @@ class DurableVideoProductRuntime:
             raise ProductRuntimeError("unknown product proof")
         return {
             "request_id": request_id,
+            "requester_id": identity["requester_id"],
+            "tenant_id": identity["tenant_id"],
             "status": str(row["status"]),
             "terminal": closure is not None,
             "terminal_status": None if closure is None else str(closure["terminal_status"]),
@@ -376,6 +402,19 @@ class DurableVideoProductRuntime:
             raise ProductRuntimeError("product proof is not pending")
         return cast(sqlite3.Row, row)
 
+    def _identity(self, request_id: str) -> dict[str, str | None]:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT requester_id, tenant_id FROM product_proof_identity WHERE request_id = ?",
+                (request_id,),
+            ).fetchone()
+        if row is None:
+            raise ProductRuntimeError("product proof identity is unavailable")
+        return {
+            "requester_id": str(row["requester_id"]),
+            "tenant_id": None if row["tenant_id"] is None else str(row["tenant_id"]),
+        }
+
     def _fail_product_proof(
         self,
         row: sqlite3.Row,
@@ -386,10 +425,23 @@ class DurableVideoProductRuntime:
     ) -> None:
         request_id = str(row["request_id"])
         job_id = str(row["job_id"])
+        workflow_id = str(row["workflow_id"])
         reason = _failure_reason(error)
         try:
+            self._workflows.cancel_workflow(workflow_id, reason=reason, now=now)
+        except Exception:
+            pass
+        try:
             current = self._control_plane.get_job(token, job_id)
-            if current.state in {
+            if current.state is JobState.PENDING:
+                self._control_plane.transition_job(
+                    token,
+                    job_id,
+                    JobState.CANCELLED,
+                    reason="finished-product execution failed before start",
+                    now=now,
+                )
+            elif current.state in {
                 JobState.RUNNING,
                 JobState.WAITING_PROVIDER,
                 JobState.VALIDATING,
@@ -412,7 +464,7 @@ class DurableVideoProductRuntime:
             )
             connection.execute(
                 "INSERT OR IGNORE INTO product_proof_closure VALUES (?, 'failed', ?, ?)",
-                (request_id, reason, datetime.now().astimezone().isoformat()),
+                (request_id, reason, now.isoformat()),
             )
 
     def _execution_lease(self, row: sqlite3.Row, *, now: datetime) -> Lease:
