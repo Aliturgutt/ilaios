@@ -91,6 +91,7 @@ def test_production_process_health_backup_restore_and_configuration(
             "dependencies": {
                 "artifact_store": "ready",
                 "control_database": "ready",
+                "knowledge_store": "disabled",
             },
         }
         status, goal = _json_request(
