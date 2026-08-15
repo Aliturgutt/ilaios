@@ -9,6 +9,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import cast
 
+from services.rag14_embedding_provider import (
+    PRODUCTION_EMBEDDING_MODE,
+    VERIFICATION_EMBEDDING_MODE,
+)
+
 
 class RAG14CanaryApprovalError(ValueError):
     """The canary approval is absent, stale for the release, or malformed."""
@@ -103,8 +108,8 @@ def load_and_validate_canary_approval(
     purposes = _string_tuple(data.get("purposes"), "purposes")
     residencies = _string_tuple(data.get("residencies"), "residencies")
     embedding_mode = _string(data.get("embedding_mode"), "embedding_mode")
-    if embedding_mode != "verification_hash_v1":
-        raise RAG14CanaryApprovalError("only the bounded verification embedding mode is allowed in canary")
+    if embedding_mode not in {VERIFICATION_EMBEDDING_MODE, PRODUCTION_EMBEDDING_MODE}:
+        raise RAG14CanaryApprovalError("embedding mode is not an implemented staged provider")
 
     evidence_material = json.dumps(data, sort_keys=True, separators=(",", ":"))
     return RAG14CanaryApproval(

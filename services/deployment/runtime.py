@@ -10,6 +10,10 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from services.control_plane.server import main as control_plane_main
+from services.rag14_embedding_provider import (
+    PRODUCTION_EMBEDDING_MODE,
+    VERIFICATION_EMBEDDING_MODE,
+)
 
 
 _HOP_BY_HOP_HEADERS = {
@@ -22,7 +26,10 @@ _HOP_BY_HOP_HEADERS = {
     "transfer-encoding",
     "upgrade",
 }
-_VERIFICATION_EMBEDDING_MODE = "verification_hash_v1"
+_ALLOWED_EMBEDDING_MODES = {
+    VERIFICATION_EMBEDDING_MODE,
+    PRODUCTION_EMBEDDING_MODE,
+}
 
 
 class _ReverseProxyServer(ThreadingHTTPServer):
@@ -84,15 +91,18 @@ def _knowledge_arguments(state_root: Path) -> tuple[str, ...]:
         return ()
     if not all(values.values()):
         raise ValueError("all ILAIOS_KNOWLEDGE_* policy variables are required when enabled")
-    if values["embedding_mode"] != _VERIFICATION_EMBEDDING_MODE:
+    if values["embedding_mode"] not in _ALLOWED_EMBEDDING_MODES:
         raise ValueError("configured Knowledge embedding mode is not implemented")
     release_state = os.environ.get("ILAIOS_RELEASE_STATE", "NOT_DEPLOYED")
-    if release_state == "PRODUCTION":
-        raise ValueError(
-            "Knowledge production requires a separately certified production embedding provider"
-        )
-    if release_state not in {"NOT_DEPLOYED", "CANARY", "LIMITED"}:
+    if release_state not in {"NOT_DEPLOYED", "CANARY", "LIMITED", "PRODUCTION"}:
         raise ValueError("Knowledge runtime received an unsupported release state")
+    if (
+        release_state == "PRODUCTION"
+        and values["embedding_mode"] != PRODUCTION_EMBEDDING_MODE
+    ):
+        raise ValueError(
+            "Knowledge production requires the pinned certified production embedding provider"
+        )
     knowledge_root = state_root / "knowledge"
     return (
         "--knowledge-database",

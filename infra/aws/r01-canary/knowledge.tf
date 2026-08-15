@@ -1,16 +1,19 @@
 variable "knowledge_enabled" {
   type        = bool
-  description = "Enable the bounded Knowledge/RAG runtime only for explicitly configured staged evidence exercises."
+  description = "Enable the governed Knowledge/RAG runtime only for explicitly configured release stages."
   default     = false
 }
 
 variable "knowledge_embedding_mode" {
   type        = string
-  description = "Embedding implementation identity. Only the bounded verification adapter is currently implemented."
+  description = "Exact embedding implementation identity selected for the governed Knowledge runtime."
   default     = "verification_hash_v1"
   validation {
-    condition     = var.knowledge_embedding_mode == "verification_hash_v1"
-    error_message = "Only verification_hash_v1 is implemented; production requires a separately certified provider."
+    condition = contains([
+      "verification_hash_v1",
+      "multilingual_e5_small_qint8_v1"
+    ], var.knowledge_embedding_mode)
+    error_message = "Knowledge embedding mode must be an implemented, explicitly allowlisted adapter."
   }
 }
 
@@ -53,16 +56,19 @@ variable "knowledge_residencies" {
 check "knowledge_runtime_configuration" {
   assert {
     condition = !var.knowledge_enabled || (
-      var.release_state != "PRODUCTION" &&
       length(trimspace(var.knowledge_principal_id)) > 0 &&
       length(trimspace(var.knowledge_tenant_id)) > 0 &&
       length(trimspace(var.knowledge_project_id)) > 0 &&
       length(var.knowledge_classifications) > 0 &&
       length(var.knowledge_purposes) > 0 &&
       length(var.knowledge_residencies) > 0 &&
-      alltrue([for value in concat(var.knowledge_classifications, var.knowledge_purposes, var.knowledge_residencies) : length(trimspace(value)) > 0])
+      alltrue([for value in concat(var.knowledge_classifications, var.knowledge_purposes, var.knowledge_residencies) : length(trimspace(value)) > 0]) &&
+      (
+        var.release_state != "PRODUCTION" ||
+        var.knowledge_embedding_mode == "multilingual_e5_small_qint8_v1"
+      )
     )
-    error_message = "Knowledge canary requires complete server-side policy and is forbidden in PRODUCTION while only the verification embedding adapter exists."
+    error_message = "Knowledge requires complete server-side policy; PRODUCTION additionally requires the pinned multilingual E5 provider."
   }
 }
 

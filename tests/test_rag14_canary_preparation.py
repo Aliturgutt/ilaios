@@ -1,4 +1,4 @@
-"""Fail-closed RAG.14 canary preparation proofs."""
+"""Fail-closed RAG.14 canary and production provider preparation proofs."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from services.deployment import runtime as deployment_runtime
+from services.rag14_embedding_provider import PRODUCTION_EMBEDDING_MODE
 
 
 _KNOWLEDGE_ENV = {
@@ -54,8 +55,28 @@ def test_production_rejects_verification_embedding_even_with_complete_policy(
     _set_knowledge_env(monkeypatch)
     monkeypatch.setenv("ILAIOS_RELEASE_STATE", "PRODUCTION")
 
-    with pytest.raises(ValueError, match="certified production embedding provider"):
+    with pytest.raises(ValueError, match="pinned certified production embedding provider"):
         deployment_runtime._knowledge_arguments(tmp_path)
+
+
+def test_production_allows_only_exact_pinned_provider_mode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _set_knowledge_env(monkeypatch)
+    monkeypatch.setenv("ILAIOS_KNOWLEDGE_EMBEDDING_MODE", PRODUCTION_EMBEDDING_MODE)
+    monkeypatch.setenv("ILAIOS_RELEASE_STATE", "PRODUCTION")
+
+    assert deployment_runtime._knowledge_arguments(tmp_path)
+
+
+def test_canary_allows_exact_pinned_provider_mode(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _set_knowledge_env(monkeypatch)
+    monkeypatch.setenv("ILAIOS_KNOWLEDGE_EMBEDDING_MODE", PRODUCTION_EMBEDDING_MODE)
+    monkeypatch.setenv("ILAIOS_RELEASE_STATE", "CANARY")
+
+    assert deployment_runtime._knowledge_arguments(tmp_path)
 
 
 def test_partial_knowledge_configuration_fails_closed(
@@ -79,7 +100,7 @@ def test_unknown_embedding_mode_fails_closed(
         deployment_runtime._knowledge_arguments(tmp_path)
 
 
-def test_canary_terraform_keeps_knowledge_disabled_by_default_and_production_blocked() -> None:
+def test_terraform_keeps_knowledge_disabled_and_requires_pinned_provider_in_production() -> None:
     repository = Path(__file__).resolve().parents[1]
     knowledge_tf = (repository / "infra/aws/r01-canary/knowledge.tf").read_text(
         encoding="utf-8"
@@ -88,6 +109,7 @@ def test_canary_terraform_keeps_knowledge_disabled_by_default_and_production_blo
 
     assert 'variable "knowledge_enabled"' in knowledge_tf
     assert "default     = false" in knowledge_tf
-    assert 'var.release_state != "PRODUCTION"' in knowledge_tf
+    assert 'var.release_state != "PRODUCTION" ||' in knowledge_tf
+    assert 'var.knowledge_embedding_mode == "multilingual_e5_small_qint8_v1"' in knowledge_tf
     assert '"ILAIOS_KNOWLEDGE_EMBEDDING_MODE"' in knowledge_tf
     assert "environment      = local.runtime_environment" in main_tf

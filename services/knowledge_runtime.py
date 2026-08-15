@@ -19,6 +19,7 @@ from services.identity import (
 )
 from services.knowledge_rag import (
     AuthorizedContext,
+    EmbeddingProvider,
     InMemoryVectorIndex,
     KnowledgeRAG,
     PrincipalScope,
@@ -26,6 +27,10 @@ from services.knowledge_rag import (
     RetrievalResult,
 )
 from services.knowledge_rag_production import SQLiteVectorIndex
+from services.rag14_embedding_provider import (
+    embedding_provider_from_environment,
+    query_embedding_context,
+)
 
 
 class KnowledgeRuntimeError(ValueError):
@@ -109,6 +114,9 @@ class DurableKnowledgeRuntime:
                 for action in self._ACTIONS
             )
         )
+        self._embedding_provider: EmbeddingProvider | None = (
+            embedding_provider_from_environment()
+        )
         self._index = SQLiteVectorIndex(config.vector_database)
         with self._connect() as connection:
             connection.executescript(
@@ -123,7 +131,10 @@ class DurableKnowledgeRuntime:
                 "context_evidence_sha256 TEXT NOT NULL, "
                 "citation_json TEXT NOT NULL, occurred_at TEXT NOT NULL);"
             )
-        self._rag = KnowledgeRAG(vector_index=self._index)
+        self._rag = KnowledgeRAG(
+            embedding_provider=self._embedding_provider,
+            vector_index=self._index,
+        )
         self._rebuild()
 
     @property
@@ -215,7 +226,8 @@ class DurableKnowledgeRuntime:
             candidate_limit=candidate_limit,
             max_context_chars=max_context_chars,
         )
-        result = self._rag.retrieve(request)
+        with query_embedding_context():
+            result = self._rag.retrieve(request)
         context = self._rag.build_authorized_context(request, result)
         self._record_retrieval(result, context)
         return self._context_json(context, result)
@@ -232,6 +244,7 @@ class DurableKnowledgeRuntime:
             "status": "ready",
             "tenant_id": self.tenant_id,
             "project_id": self.project_id,
+            "embedding_provider_id": self._rag.embedding_provider_id,
             "event_count": len(events),
             "retrieval_count": retrieval_count,
             "vector_index": {
@@ -259,6 +272,7 @@ class DurableKnowledgeRuntime:
         return {
             "event_chain": "verified",
             "event_count": len(events),
+            "embedding_provider_id": self._rag.embedding_provider_id,
             "vector_index_integrity": health.integrity_ok,
             "vector_index_evidence_sha256": health.evidence_sha256,
         }
@@ -352,7 +366,8 @@ class DurableKnowledgeRuntime:
         persistent: bool,
     ) -> KnowledgeRAG:
         rag = KnowledgeRAG(
-            vector_index=self._index if persistent else InMemoryVectorIndex()
+            embedding_provider=self._embedding_provider,
+            vector_index=self._index if persistent else InMemoryVectorIndex(),
         )
         for operation, payload in events:
             source_id = self._payload_string(payload, "source_id")
