@@ -59,10 +59,16 @@ class DesktopRuntime {
         : (fallback?.isNotEmpty == true ? fallback! : executableDirectory.path);
     final dataRoot = Directory('$base\\ILAIOS\\control-plane');
     await dataRoot.create(recursive: true);
-    final readyFile = File('${dataRoot.path}\\control-plane-ready.json');
-    if (await readyFile.exists()) {
-      await readyFile.delete();
-    }
+
+    // Bundled Desktop instances must never share readiness state. A fixed
+    // ready-file path lets a concurrently starting or exiting sidecar publish
+    // ports that belong to a different bearer token. That cross-process race
+    // presents exactly like a transport-authentication failure. Keep the data
+    // root durable, but make the hand-off file private to this Desktop process.
+    final readyFile = File(
+      '${dataRoot.path}\\control-plane-ready-$pid-'
+      '${DateTime.now().microsecondsSinceEpoch}.json',
+    );
 
     final token = _randomBearerToken();
     final environment = Map<String, String>.from(Platform.environment)
@@ -99,6 +105,14 @@ class DesktopRuntime {
         await _waitForExit(process, const Duration(seconds: 2));
       }
       rethrow;
+    } finally {
+      try {
+        if (await readyFile.exists()) {
+          await readyFile.delete();
+        }
+      } on FileSystemException {
+        // The hand-off file is non-authoritative after readiness succeeds.
+      }
     }
   }
 
@@ -124,7 +138,7 @@ class DesktopRuntime {
                 identityPort is int &&
                 identityPort > 0 &&
                 identityPort <= 65535) {
-              return ControlPlaneConfig(
+              final config = ControlPlaneConfig(
                 baseUri: Uri(scheme: 'http', host: host, port: port),
                 identityUri: Uri(
                   scheme: 'http',
@@ -133,6 +147,15 @@ class DesktopRuntime {
                 ),
                 token: token,
               );
+
+              // The ready file proves only that the child published ports. Do
+              // not expose the Desktop UI until the identity endpoint accepts
+              // this exact process token. This closes the publish-before-
+              // serve_forever window and detects any accidental cross-process
+              // readiness mix-up before the user can click Google.
+              if (await _probeIdentityTransport(config)) {
+                return config;
+              }
             }
           }
         } on FormatException {
@@ -144,8 +167,34 @@ class DesktopRuntime {
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
     throw const DesktopRuntimeException(
-      'Bundled local control plane did not become ready',
+      'Bundled local control plane did not become identity-ready',
     );
+  }
+
+  static Future<bool> _probeIdentityTransport(ControlPlaneConfig config) async {
+    final identityUri = config.identityUri;
+    if (identityUri == null) return false;
+
+    final client = HttpClient()
+      ..connectionTimeout = const Duration(milliseconds: 500);
+    try {
+      final request = await client
+          .getUrl(identityUri.resolve('/v1/auth/providers'))
+          .timeout(const Duration(milliseconds: 500));
+      request.headers.set(
+        HttpHeaders.authorizationHeader,
+        'Bearer ${config.token}',
+      );
+      final response = await request.close().timeout(
+            const Duration(milliseconds: 500),
+          );
+      await response.drain<void>().timeout(const Duration(milliseconds: 500));
+      return response.statusCode == HttpStatus.ok;
+    } on Object {
+      return false;
+    } finally {
+      client.close(force: true);
+    }
   }
 
   static String _randomBearerToken() {
