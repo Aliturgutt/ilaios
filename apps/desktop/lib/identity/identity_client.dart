@@ -194,8 +194,9 @@ class IdentityClient {
 
   Future<GovernedPromptSubmission> submitPrompt(
     String objective,
-    DesktopUserSession session,
-  ) async {
+    DesktopUserSession session, {
+    String? idempotencyKey,
+  }) async {
     final normalized = objective.trim();
     if (normalized.isEmpty) {
       throw const IdentityClientException('Prompt must not be empty');
@@ -203,9 +204,19 @@ class IdentityClient {
     if (normalized.length > 20000) {
       throw const IdentityClientException('Prompt exceeds the Desktop input limit');
     }
+    final body = <String, Object?>{'objective': normalized};
+    if (idempotencyKey != null) {
+      final normalizedKey = idempotencyKey.trim();
+      if (normalizedKey.isEmpty || normalizedKey.length > 512) {
+        throw const IdentityClientException(
+          'Idempotency key must be a bounded non-empty string',
+        );
+      }
+      body['idempotency_key'] = normalizedKey;
+    }
     final payload = await _sessionPost(
       '/v1/desktop/intent',
-      <String, Object?>{'objective': normalized},
+      body,
       'authenticated intent',
       session,
       expectedStatus: HttpStatus.created,
@@ -290,6 +301,35 @@ class IdentityClient {
         payload['execution_status'] != 'RESUME_REQUESTED') {
       throw const IdentityClientException('Execution resume response is malformed');
     }
+  }
+
+  Future<String> cancelExecution(
+    String requestId,
+    DesktopUserSession session,
+  ) async {
+    final normalized = requestId.trim();
+    if (normalized.isEmpty) {
+      throw const IdentityClientException('Execution request is required');
+    }
+    final payload = await _sessionPost(
+      '/v1/execution/cancel',
+      <String, Object?>{'request_id': normalized},
+      'execution cancellation',
+      session,
+      expectedStatus: HttpStatus.ok,
+    );
+    if (payload['request_id'] != normalized) {
+      throw const IdentityClientException(
+        'Execution cancellation response is malformed',
+      );
+    }
+    final status = payload['execution_status'];
+    if (status is! String || status != 'CANCELLED') {
+      throw const IdentityClientException(
+        'Execution cancellation response is malformed',
+      );
+    }
+    return status;
   }
 
   Future<String> fetchExecutionStatus(
