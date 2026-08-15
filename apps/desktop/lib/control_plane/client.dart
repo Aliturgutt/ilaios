@@ -3,6 +3,8 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'package:crypto/crypto.dart' as crypto;
+
 import 'evidence_record.dart';
 import 'operational_snapshot.dart';
 import 'projection.dart';
@@ -209,6 +211,12 @@ class ControlPlaneClient {
     if (bytes.length != size) {
       throw const ControlPlaneClientException(
         'Control plane returned inconsistent artifact size',
+      );
+    }
+    final computedDigest = crypto.sha256.convert(bytes).toString();
+    if (computedDigest != normalized) {
+      throw const ControlPlaneClientException(
+        'Control plane returned artifact content that does not match its verified digest',
       );
     }
     return VerifiedArtifact(digest: normalized, size: size, bytes: bytes);

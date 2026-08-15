@@ -137,6 +137,57 @@ void main() {
     );
   });
 
+  test('verified artifact bytes must match evidence SHA-256', () async {
+    const digest =
+        'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
+    final transport = _FakeTransport(<String, ControlPlaneResponse>{
+      '/v1/evidence/artifacts/$digest': const ControlPlaneResponse(
+        statusCode: 200,
+        body:
+            '{"digest":"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad","size":3,"content_base64":"YWJj"}',
+      ),
+    });
+    final client = ControlPlaneClient(
+      baseUri: Uri.parse('http://127.0.0.1:4123'),
+      token: 'runtime-secret',
+      transport: transport,
+    );
+
+    final artifact = await client.fetchVerifiedArtifact(digest);
+
+    expect(artifact.digest, digest);
+    expect(artifact.size, 3);
+    expect(artifact.bytes, orderedEquals(<int>[97, 98, 99]));
+  });
+
+  test('verified artifact digest mismatch fails closed', () async {
+    const digest =
+        'ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad';
+    final transport = _FakeTransport(<String, ControlPlaneResponse>{
+      '/v1/evidence/artifacts/$digest': const ControlPlaneResponse(
+        statusCode: 200,
+        body:
+            '{"digest":"ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad","size":3,"content_base64":"YWJk"}',
+      ),
+    });
+    final client = ControlPlaneClient(
+      baseUri: Uri.parse('http://127.0.0.1:4123'),
+      token: 'runtime-secret',
+      transport: transport,
+    );
+
+    await expectLater(
+      client.fetchVerifiedArtifact(digest),
+      throwsA(
+        isA<ControlPlaneClientException>().having(
+          (error) => error.message,
+          'message',
+          contains('does not match its verified digest'),
+        ),
+      ),
+    );
+  });
+
   test('sends only backend-defined governance decision command', () async {
     final transport = _FakeTransport(<String, ControlPlaneResponse>{
       '/v1/governance/commands': const ControlPlaneResponse(

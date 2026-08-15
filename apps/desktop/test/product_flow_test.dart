@@ -73,7 +73,8 @@ void main() {
   });
 
   test('verified artifact retrieval accepts only server-verified payload shape', () async {
-    final digest = List<String>.filled(64, 'a').join();
+    const digest =
+        '9f64a747e1b97f131fabb6b447296c9b6f0201e79fb3c5356e6c77e89b6a806a';
     final encoded = base64Encode(<int>[1, 2, 3, 4]);
     final transport = _FakeTransport(<String, ControlPlaneResponse>{
       '/v1/evidence/artifacts/$digest': ControlPlaneResponse(
