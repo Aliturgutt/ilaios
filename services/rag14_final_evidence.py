@@ -162,12 +162,11 @@ def _satisfied_checks(root: Path) -> dict[str, tuple[bool, tuple[str, ...]]]:
         isinstance(metrics, dict)
         and (_integer(metrics.get("quarantined_units")) or 0) >= 2
     )
-    leakage_sources = {
-        str(unit.get("source_id"))
-        for item in units if isinstance(units, list)
-        for unit in [cast(dict[str, object], item)]
-        if isinstance(item, dict)
-    }
+    leakage_sources: set[str] = set()
+    if isinstance(units, list):
+        for item in units:
+            if isinstance(item, dict):
+                leakage_sources.add(str(item.get("source_id")))
     leakage_ok = (
         isinstance(units, list)
         and leakage_sources == {"safe-source"}
