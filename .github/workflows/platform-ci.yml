@@ -2,24 +2,14 @@ name: Platform CI
 
 on:
   workflow_call:
-  push:
-    branches: [master]
-    paths:
-      - "src/**"
-      - "services/**"
-      - "packages/**"
-      - "tests/**"
-      - "docs/governance/**"
-      - "docs/migration/**"
-      - "pyproject.toml"
-      - ".pre-commit-config.yaml"
-      - ".github/requirements/platform-ci.txt"
-      - ".github/workflows/platform-ci.yml"
-      - ".github/workflows/required-ci-gate.yml"
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: platform-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   quality:
@@ -132,6 +122,9 @@ jobs:
 
       - name: Mypy strict
         run: mypy --strict src tests
+
+      - name: Verify pre-commit checks did not mutate source
+        run: git diff --exit-code
 
       - name: Diff hygiene
         run: git diff --check

@@ -2,11 +2,6 @@ name: Video Provider Production Certification
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - master
-    paths:
-      - .github/video-provider-production-certification.trigger
 
 permissions:
   contents: read
@@ -35,6 +30,7 @@ jobs:
       - name: Checkout exact source revision
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Run bounded proof through canonical managed provider path

@@ -2,12 +2,6 @@ name: AWS R03 guarded PRODUCTION apply
 
 on:
   workflow_dispatch:
-  push:
-    branches: [master]
-    paths:
-      - '.github/r03-production-promotion-approval.json'
-      - '.github/workflows/aws-r03-production-apply.yml'
-      - 'infra/aws/r01-canary/**'
 
 permissions:
   contents: read
@@ -30,7 +24,10 @@ jobs:
       SIGNING_PROFILE: ILAIOS_R01_ECR
       GH_TOKEN: ${{ github.token }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
 
       - name: Validate exact R03 human approval and bounded production scope
         run: |
@@ -65,7 +62,7 @@ jobs:
           grep -Fxq 'network_exposure_broadened: false' "$E"
           echo 'R02_DEPENDENCY_EVIDENCE_PASS'
 
-      - uses: aws-actions/configure-aws-credentials@v4
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
         with:
           role-to-assume: arn:aws:iam::101180464425:role/ILAIOS-GitHub-Deploy-Role
           aws-region: eu-central-1
@@ -114,7 +111,7 @@ jobs:
           } >> "$GITHUB_ENV"
           echo 'R03_LIVE_R02_BASELINE_PASS'
 
-      - uses: opentofu/setup-opentofu@v1
+      - uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f
         with:
           tofu_version: 1.10.6
 
@@ -129,7 +126,7 @@ jobs:
           echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
         with:
           name: ${{ steps.prior_state.outputs.name }}
           path: infra/aws/r01-canary
@@ -235,7 +232,7 @@ jobs:
 
       - name: Preserve serialized R03 OpenTofu state
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: r03-tofu-state
           path: infra/aws/r01-canary/terraform.tfstate
@@ -244,7 +241,7 @@ jobs:
 
       - name: Preserve R03 deployment evidence
         if: success()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: r03-deployment-evidence
           path: /tmp/r03-decision.yaml

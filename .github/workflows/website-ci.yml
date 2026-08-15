@@ -2,19 +2,6 @@ name: Website CI
 
 on:
   workflow_call:
-  push:
-    branches: [master]
-    paths:
-      - "apps/website/**"
-      - "tools/design-intelligence/**"
-      - "services/design_quality.py"
-      - "services/integrations/web_factory.py"
-      - "tests/test_design_quality.py"
-      - "tests/test_web_factory.py"
-      - ".github/requirements/website-ci.txt"
-      - ".github/workflows/website-ci.yml"
-      - ".github/workflows/required-ci-gate.yml"
-      - ".github/workflows/website-production-certification.yml"
   workflow_dispatch:
 
 permissions:
