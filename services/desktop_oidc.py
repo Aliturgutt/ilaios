@@ -33,6 +33,7 @@ from services.identity import (
 )
 
 _PROVIDER_ID = re.compile(r"^[a-z][a-z0-9_-]{1,31}$")
+_PROVIDER_ERROR_CODE = re.compile(r"^[a-z][a-z0-9_.-]{0,63}$")
 _ALLOWED_ALGORITHMS = frozenset({"RS256", "PS256", "ES256"})
 _FLOW_LIFETIME = timedelta(minutes=5)
 _SESSION_LIFETIME = timedelta(hours=8)
@@ -243,10 +244,27 @@ class DesktopOIDCService:
                 headers={"Accept": "application/json"},
                 timeout=10,
             )
-            response.raise_for_status()
-            payload = response.json()
-        except (requests.RequestException, ValueError) as error:
+        except requests.RequestException as error:
             raise DesktopIdentityError("OIDC token exchange failed") from error
+
+        try:
+            payload = response.json()
+        except ValueError as error:
+            try:
+                response.raise_for_status()
+            except requests.RequestException as status_error:
+                raise DesktopIdentityError("OIDC token exchange failed") from status_error
+            raise DesktopIdentityError("OIDC token response is malformed") from error
+
+        try:
+            response.raise_for_status()
+        except requests.RequestException as error:
+            provider_error = _safe_provider_error_code(payload)
+            detail = f": {provider_error}" if provider_error is not None else ""
+            raise DesktopIdentityError(
+                f"OIDC token exchange failed{detail}"
+            ) from error
+
         if not isinstance(payload, dict):
             raise DesktopIdentityError("OIDC token response is malformed")
         encoded_token = payload.get("id_token")
@@ -474,6 +492,18 @@ def _required_text(document: Mapping[str, Any], name: str) -> str:
     if not isinstance(value, str) or not value.strip():
         raise DesktopIdentityError(f"Desktop OIDC {name} is required")
     return value.strip()
+
+
+def _safe_provider_error_code(payload: object) -> str | None:
+    if not isinstance(payload, dict):
+        return None
+    value = payload.get("error")
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip().casefold()
+    if _PROVIDER_ERROR_CODE.fullmatch(normalized) is None:
+        return None
+    return normalized
 
 
 def _base64url(value: bytes) -> str:
