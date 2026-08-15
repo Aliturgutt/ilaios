@@ -55,10 +55,9 @@ jobs:
           import os
           from pathlib import Path
 
+          proof_dir = Path(os.environ["VIDEO_PROVIDER_PROOF_DIR"])
           receipt = json.loads(
-              (Path(os.environ["VIDEO_PROVIDER_PROOF_DIR"]) / "provider-receipt.json").read_text(
-                  encoding="utf-8"
-              )
+              (proof_dir / "provider-receipt.json").read_text(encoding="utf-8")
           )
           artifact = receipt.get("artifact") or {}
           terminal = receipt.get("provider_terminal_metadata") or {}
@@ -83,6 +82,17 @@ jobs:
                       api_key,
                       transport=UrllibOpenRouterTransport(),
                   ).refresh()
+                  diagnostic = {
+                      "schema": "ilaios.video.catalog-diagnostic.v1",
+                      "health": observation.health.value,
+                      "detail": observation.detail,
+                      "raw_payload_recorded": False,
+                      "credential_recorded": False,
+                  }
+                  (proof_dir / "catalog-diagnostic.json").write_text(
+                      json.dumps(diagnostic, sort_keys=True, indent=2) + "\n",
+                      encoding="utf-8",
+                  )
                   print(f"- Catalog diagnostic health: `{observation.health.value}`")
                   print(f"- Catalog diagnostic detail: `{observation.detail}`")
               else:
