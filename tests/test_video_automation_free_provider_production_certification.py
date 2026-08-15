@@ -19,6 +19,8 @@ from src.video_automation.openrouter_video_provider import (
     OpenRouterTransport,
 )
 
+SENTINEL_API_KEY = "literal-openrouter-credential-value-123"
+
 
 class _Transport(OpenRouterTransport):
     def __init__(self, *, reported_cost: float = 0.0) -> None:
@@ -100,7 +102,7 @@ def test_request_is_bound_to_explicit_free_model() -> None:
 def test_real_free_proof_path_requires_zero_reported_cost(tmp_path: Path) -> None:
     transport = _Transport(reported_cost=0.0)
     receipt = run_free_certification(
-        api_key="secret",
+        api_key=SENTINEL_API_KEY,
         proof_dir=tmp_path,
         revision_sha="a" * 40,
         run_id="123",
@@ -117,16 +119,15 @@ def test_real_free_proof_path_requires_zero_reported_cost(tmp_path: Path) -> Non
     assert len(transport.post_calls) == 1
     assert transport.post_calls[0][2]["model"] == SEEDANCE_FREE_MODEL_ID
     assert (tmp_path / "free-provider-proof.mp4").exists()
-    assert "secret" not in (tmp_path / "free-provider-receipt.json").read_text(
-        encoding="utf-8"
-    )
+    evidence = (tmp_path / "free-provider-receipt.json").read_text(encoding="utf-8")
+    assert SENTINEL_API_KEY not in evidence
 
 
 def test_nonzero_provider_cost_fails_closed(tmp_path: Path) -> None:
     transport = _Transport(reported_cost=0.01)
     with pytest.raises(FreeProviderCertificationError, match="non-zero cost"):
         run_free_certification(
-            api_key="secret",
+            api_key=SENTINEL_API_KEY,
             proof_dir=tmp_path,
             revision_sha="a" * 40,
             run_id="124",
@@ -137,6 +138,7 @@ def test_nonzero_provider_cost_fails_closed(tmp_path: Path) -> None:
             sleep=lambda _: None,
         )
     receipt = (tmp_path / "free-provider-receipt.json").read_text(encoding="utf-8")
+    assert SENTINEL_API_KEY not in receipt
     assert '"status": "COST_POLICY_VIOLATION"' in receipt
     assert not (tmp_path / "free-provider-proof.mp4").exists()
 
