@@ -21,7 +21,7 @@ from services.desktop_oidc_threaded import DesktopIdentityError, DesktopOIDCServ
 from services.evidence import EvidenceStore
 from services.execution_coordinator import ExecutionCoordinator
 from services.governance import GovernedRuntimeGateway
-from services.integrations import DurableVideoProductRuntime
+from services.integrations import DurableVideoProductRuntime, DurableWebProductRuntime
 from services.integrations.desktop_video_runtime import DesktopPromptVideoRuntime
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 
@@ -86,12 +86,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         governance,
         video_runtime,
     )
+    web_runtime = DurableWebProductRuntime(
+        root / "web-product.sqlite3",
+        control_plane,
+        grant_policy,
+        governance,
+        root / "web",
+    )
     coordinator = ExecutionCoordinator(
         root / "execution-coordinator.sqlite3",
         control_plane,
         governance,
         grant_policy,
         product_runtime,
+        web_runtime,
     )
     control_server = ControlPlaneHTTPServer(
         ("127.0.0.1", 0),
@@ -138,6 +146,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "account_sign_in_configured": identity is not None,
         "governed_execution_configured": identity is not None,
         "video_finished_product_configured": True,
+        "web_finished_product_configured": True,
     }
     arguments.ready_file.write_text(
         json.dumps(ready, sort_keys=True), encoding="utf-8"
