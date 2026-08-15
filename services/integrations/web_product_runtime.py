@@ -27,6 +27,8 @@ from src.video_automation.models import JobState
 
 from .web_factory import GovernedWebFactory, WebsiteSpec, derive_website_spec
 
+_VERIFIED_LOCAL_FEATURES = frozenset({"contact-form"})
+
 
 class WebProductRuntimeError(RuntimeError):
     """Raised when the finished website cannot pass its bounded acceptance contract."""
@@ -79,6 +81,14 @@ class DurableWebProductRuntime:
         if now.tzinfo is None:
             raise WebProductRuntimeError("web execution time must be timezone-aware")
         spec = derive_website_spec(request_id, objective)
+        unsupported_features = tuple(
+            sorted(set(spec.features).difference(_VERIFIED_LOCAL_FEATURES))
+        )
+        if unsupported_features:
+            raise WebProductRuntimeError(
+                "requested web functionality has no verified finished-product adapter: "
+                + ", ".join(unsupported_features)
+            )
         goal = self._control_plane.create_goal(token, objective)
         job = self._control_plane.create_job(token, goal.goal_id)
         proposal = self._control_plane.create_proposal(
@@ -263,6 +273,7 @@ class DurableWebProductRuntime:
             "bundle_path": acceptance.bundle_path,
             "routes": acceptance.routes,
             "spec_hash": acceptance.spec_hash,
+            "functional_features": spec.features,
             "design_strategy": acceptance.design_strategy,
             "qa": acceptance.qa,
             "grant_id": grant_id,
@@ -273,6 +284,7 @@ class DurableWebProductRuntime:
             "approval_proven": admission["approval_proven"],
             "admission_proven": admission["admission_proven"],
             "deployment_state": "NOT_DEPLOYED",
+            "deployment_contract": "web.deployment-receipt.v1",
             "rollback_reference": acceptance.artifact_hash,
             "verification_scope": "LOCAL_FINISHED_ARTIFACT",
             "accepted": True,
