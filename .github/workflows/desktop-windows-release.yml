@@ -105,11 +105,22 @@ jobs:
           ILAIOS_E2E_SIDECAR_PATH: ${{ github.workspace }}\apps\desktop\build\windows\x64\runner\Release\ilaios_control_plane.exe
         run: flutter test e2e/control_plane_e2e_test.dart
 
-      - name: Real 20s finished-product video E2E
+      - name: Real 20s finished-product video E2E with persisted evidence
         shell: pwsh
         env:
           PYTHONPATH: ${{ github.workspace }}
-        run: python apps/desktop/e2e/video_finished_product_e2e.py
+          ILAIOS_VIDEO_E2E_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/video-local-finished-product
+          ILAIOS_VIDEO_E2E_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: python apps/desktop/e2e/video_finished_product_artifact_e2e.py
+
+      - name: Upload exact finished-product evidence
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: video-local-finished-product-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}
+          path: artifacts/video-local-finished-product
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Verify release executable metadata and sidecar
         working-directory: apps/desktop
