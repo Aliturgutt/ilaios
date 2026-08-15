@@ -18,6 +18,7 @@ class VideoProductionAcceptanceError(ValueError):
 
 
 _REQUIRED_PERCEPTUAL_DOMAINS = frozenset({"VISUAL", "AUDIO", "BRAND"})
+_MINIMUM_PRODUCTION_SLO_SAMPLES = 20
 _REQUIRED_E2E_STAGES = (
     "AUTHENTICATED",
     "PROMPT_ACCEPTED",
@@ -257,7 +258,8 @@ class OperationsSloProductionProof:
     @property
     def passed(self) -> bool:
         return (
-            self.cost_usd <= self.cost_budget_usd
+            self.sample_count >= _MINIMUM_PRODUCTION_SLO_SAMPLES
+            and self.cost_usd <= self.cost_budget_usd
             and self.p95_latency_ms <= self.p95_latency_target_ms
             and self.availability_ratio >= self.availability_target_ratio
             and self.quality_pass_ratio >= self.quality_target_ratio
@@ -291,6 +293,9 @@ class LegalProvenanceProductionProof:
     revision_sha: str
     product_id: str
     artifact_sha256: str
+    expected_asset_ids: tuple[str, ...]
+    asset_inventory_ref: str
+    asset_inventory_sha256: str
     rights: tuple[RightsEvidence, ...]
     complete_asset_inventory: bool
     model_output_terms_ref: str
@@ -299,26 +304,42 @@ class LegalProvenanceProductionProof:
 
     def __post_init__(self) -> None:
         _identity(self.revision_sha, self.product_id, self.artifact_sha256)
+        _text("asset_inventory_ref", self.asset_inventory_ref)
+        _sha256("asset_inventory_sha256", self.asset_inventory_sha256)
         for name, value in (
             ("model_output_terms_ref", self.model_output_terms_ref),
             ("rights_manifest_ref", self.rights_manifest_ref),
             ("legal_release_ref", self.legal_release_ref),
         ):
             _text(name, value)
+        if not self.expected_asset_ids:
+            raise VideoProductionAcceptanceError(
+                "legal provenance proof requires an expected production asset inventory"
+            )
+        for asset_id in self.expected_asset_ids:
+            _text("expected_asset_id", asset_id)
+        if len(self.expected_asset_ids) != len(set(self.expected_asset_ids)):
+            raise VideoProductionAcceptanceError(
+                "expected production asset IDs must be unique"
+            )
         if not self.rights:
             raise VideoProductionAcceptanceError(
                 "legal provenance proof requires at least one rights record"
             )
-        asset_ids = [item.asset_id for item in self.rights]
-        if len(asset_ids) != len(set(asset_ids)):
+        rights_asset_ids = [item.asset_id for item in self.rights]
+        if len(rights_asset_ids) != len(set(rights_asset_ids)):
             raise VideoProductionAcceptanceError(
                 "legal provenance asset IDs must be unique"
             )
 
     @property
     def passed(self) -> bool:
-        return self.complete_asset_inventory and all(
-            item.commercial_use_allowed for item in self.rights
+        expected = set(self.expected_asset_ids)
+        evidenced = {item.asset_id for item in self.rights}
+        return (
+            self.complete_asset_inventory
+            and expected == evidenced
+            and all(item.commercial_use_allowed for item in self.rights)
         )
 
 
