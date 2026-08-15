@@ -60,7 +60,9 @@ def _permissive_thresholds() -> StartupSelfTestThresholds:
 
 def test_semantic_startup_selftest_produces_bounded_live_evidence() -> None:
     report = run_startup_selftest(
-        SemanticFakeProvider(), thresholds=_permissive_thresholds()
+        SemanticFakeProvider(),
+        thresholds=_permissive_thresholds(),
+        cold_start_ms=123.456,
     )
 
     assert report["status"] == "PASS"
@@ -69,6 +71,13 @@ def test_semantic_startup_selftest_produces_bounded_live_evidence() -> None:
     assert report["embedding_dimensions"] == 384
     assert report["provider_id"] == "test.semantic.provider"
     assert report["production_authority"] is False
+    assert report["cold_start_ms"] == 123.456
+    assert report["warm_inference_sample_count"] == 6
+    assert isinstance(report["p50_query_latency_ms"], float)
+    assert isinstance(report["p95_query_latency_ms"], float)
+    assert isinstance(report["p99_query_latency_ms"], float)
+    assert report["p50_query_latency_ms"] <= report["p95_query_latency_ms"]
+    assert report["p95_query_latency_ms"] <= report["p99_query_latency_ms"]
     cases = report["cases"]
     assert isinstance(cases, list)
     assert len(cases) == 6
@@ -77,6 +86,15 @@ def test_semantic_startup_selftest_produces_bounded_live_evidence() -> None:
 def test_semantic_startup_selftest_fails_closed_on_wrong_retrieval() -> None:
     with pytest.raises(StartupSelfTestError, match="semantic top1"):
         run_startup_selftest(BrokenProvider(), thresholds=_permissive_thresholds())
+
+
+def test_invalid_cold_start_evidence_fails_closed() -> None:
+    with pytest.raises(StartupSelfTestError, match="cold start"):
+        run_startup_selftest(
+            SemanticFakeProvider(),
+            thresholds=_permissive_thresholds(),
+            cold_start_ms=-1.0,
+        )
 
 
 def test_candidate_manifest_drives_live_slo_thresholds() -> None:

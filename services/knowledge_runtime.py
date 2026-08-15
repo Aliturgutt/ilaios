@@ -130,7 +130,12 @@ class DurableKnowledgeRuntime:
                 "result_evidence_sha256 TEXT NOT NULL, "
                 "context_evidence_sha256 TEXT NOT NULL, "
                 "citation_json TEXT NOT NULL, occurred_at TEXT NOT NULL);"
+                "CREATE TABLE IF NOT EXISTS knowledge_runtime_scope ("
+                "scope_id INTEGER PRIMARY KEY CHECK (scope_id = 1), "
+                "principal_id TEXT NOT NULL, tenant_id TEXT NOT NULL, "
+                "project_id TEXT NOT NULL, binding_sha256 TEXT NOT NULL);"
             )
+            self._bind_or_verify_scope(connection)
         self._rag = KnowledgeRAG(
             embedding_provider=self._embedding_provider,
             vector_index=self._index,
@@ -157,6 +162,75 @@ class DurableKnowledgeRuntime:
         connection = sqlite3.connect(self._config.metadata_database)
         connection.row_factory = sqlite3.Row
         return connection
+
+    def _scope_binding(self) -> tuple[str, str, str, str]:
+        policy = self._config.policy
+        payload = {
+            "principal_id": policy.principal_id,
+            "project_id": policy.project_id,
+            "tenant_id": policy.tenant_id,
+        }
+        material = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        return (
+            policy.principal_id,
+            policy.tenant_id,
+            policy.project_id,
+            hashlib.sha256(material.encode("utf-8")).hexdigest(),
+        )
+
+    def _bind_or_verify_scope(self, connection: sqlite3.Connection) -> None:
+        expected = self._scope_binding()
+        row = connection.execute(
+            "SELECT principal_id, tenant_id, project_id, binding_sha256 "
+            "FROM knowledge_runtime_scope WHERE scope_id = 1"
+        ).fetchone()
+        if row is None:
+            event_count = int(
+                connection.execute("SELECT COUNT(*) FROM knowledge_events").fetchone()[0]
+            )
+            retrieval_count = int(
+                connection.execute("SELECT COUNT(*) FROM knowledge_retrievals").fetchone()[0]
+            )
+            if event_count or retrieval_count or self._index.health().row_count:
+                raise KnowledgeRuntimeError(
+                    "legacy Knowledge state lacks an immutable runtime scope binding"
+                )
+            connection.execute(
+                "INSERT INTO knowledge_runtime_scope "
+                "(scope_id, principal_id, tenant_id, project_id, binding_sha256) "
+                "VALUES (1, ?, ?, ?, ?)",
+                expected,
+            )
+            return
+        actual = (
+            str(row["principal_id"]),
+            str(row["tenant_id"]),
+            str(row["project_id"]),
+            str(row["binding_sha256"]),
+        )
+        if actual != expected:
+            raise KnowledgeRuntimeError(
+                "persisted Knowledge runtime scope binding mismatch or integrity failure"
+            )
+
+    def _verify_scope_binding(self) -> None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT principal_id, tenant_id, project_id, binding_sha256 "
+                "FROM knowledge_runtime_scope WHERE scope_id = 1"
+            ).fetchone()
+        if row is None:
+            raise KnowledgeRuntimeError("persisted Knowledge runtime scope binding is missing")
+        actual = (
+            str(row["principal_id"]),
+            str(row["tenant_id"]),
+            str(row["project_id"]),
+            str(row["binding_sha256"]),
+        )
+        if actual != self._scope_binding():
+            raise KnowledgeRuntimeError(
+                "persisted Knowledge runtime scope binding mismatch or integrity failure"
+            )
 
     def ingest_source(
         self,
@@ -278,6 +352,7 @@ class DurableKnowledgeRuntime:
         }
 
     def _authorize(self, action: str) -> None:
+        self._verify_scope_binding()
         self._authorization.authorize(
             self._principal,
             AccessRequest(
@@ -323,6 +398,7 @@ class DurableKnowledgeRuntime:
         self._rebuild()
 
     def _verified_events(self) -> tuple[tuple[str, dict[str, object]], ...]:
+        self._verify_scope_binding()
         with self._connect() as connection:
             rows = connection.execute(
                 "SELECT operation, payload_json, occurred_at, previous_hash, record_hash "
