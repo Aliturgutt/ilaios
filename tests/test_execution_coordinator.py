@@ -13,7 +13,12 @@ from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
 from services.evidence import EvidenceStore
 from services.execution_coordinator import ExecutionCoordinator, ExecutionCoordinatorError, classify_execution_route
 from services.governance import GovernedRuntimeGateway
-from services.integrations import DeterministicLocalVideoRuntime, DurableVideoProductRuntime, DurableWebProductRuntime
+from services.integrations import (
+    DeterministicLocalVideoRuntime,
+    DurableVideoProductRuntime,
+    DurableWebProductRuntime,
+    WebProductRuntimeError,
+)
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 
 
@@ -72,6 +77,7 @@ def test_medium_web_executes_to_finished_artifact_without_human_approval(tmp_pat
     assert manifest["admission_proven"] is True
     assert manifest["grant_proven"] is True
     assert manifest["deployment_state"] == "NOT_DEPLOYED"
+    assert manifest["deployment_contract"] == "web.deployment-receipt.v1"
     assert sorted(cast(list[str], manifest["routes"])) == [
         "en/about.html",
         "en/contact.html",
@@ -85,6 +91,22 @@ def test_medium_web_executes_to_finished_artifact_without_human_approval(tmp_pat
     assert coordinator.get("exec-web-1")["execution_status"] == "ACCEPTED"
     grant_rows = cast(list[dict[str, object]], grants.state()["grants"])
     assert grant_rows[0]["used_side_effects"] == 1
+
+
+def test_web_unverified_dynamic_feature_fails_closed_before_admission(tmp_path: Path) -> None:
+    coordinator, governance, _, _ = _coordinator(tmp_path)
+    now = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
+    with pytest.raises(WebProductRuntimeError, match="no verified finished-product adapter"):
+        coordinator.prepare(
+            "exec-web-search",
+            "Build a website for a law firm with a newsletter and site search",
+            token="token",
+            principal_id="oidc|user@example.test",
+            tenant_id="tenant/example",
+            now=now,
+        )
+    assert coordinator.contains("exec-web-search") is False
+    assert governance.admission_proven("exec-web-search") is False
 
 
 def test_medium_video_is_admitted_without_human_approval_or_early_lease(tmp_path: Path) -> None:
