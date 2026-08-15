@@ -10,7 +10,20 @@ from .product_proof import (
 from .product_runtime import DurableVideoProductRuntime, ProductRuntimeError
 from .video import VideoChainAdapter, VideoIntegrationError, VideoIntegrationResult
 from .video_runtime import DeterministicLocalVideoRuntime, VideoRuntimeError
-from .web_factory import GovernedWebFactory, WebsiteAcceptance, WebsiteFile
+from .web_deployment import (
+    WebDeploymentReceipt,
+    WebDeploymentReceiptError,
+    validate_web_deployment_receipt,
+)
+from .web_factory import (
+    GovernedWebFactory,
+    WebsiteAcceptance,
+    WebsiteFile,
+    WebsiteSpec,
+    derive_website_spec,
+)
+from .web_product_runtime import DurableWebProductRuntime, WebProductRuntimeError
+from .web_project import WebProjectArtifact, WebProjectFile, materialize_next_project
 
 __all__ = [
     "AcceptanceManifest",
@@ -18,6 +31,7 @@ __all__ = [
     "DesktopPromptVideoRuntime",
     "DeterministicLocalVideoRuntime",
     "DurableVideoProductRuntime",
+    "DurableWebProductRuntime",
     "GovernedVideoProductProof",
     "GovernedWebFactory",
     "ProductProofError",
@@ -26,6 +40,15 @@ __all__ = [
     "VideoIntegrationError",
     "VideoIntegrationResult",
     "VideoRuntimeError",
+    "WebDeploymentReceipt",
+    "WebDeploymentReceiptError",
+    "WebProductRuntimeError",
+    "WebProjectArtifact",
+    "WebProjectFile",
     "WebsiteAcceptance",
     "WebsiteFile",
+    "WebsiteSpec",
+    "derive_website_spec",
+    "materialize_next_project",
+    "validate_web_deployment_receipt",
 ]

@@ -18,7 +18,12 @@ from services.execution_coordinator import (
     classify_execution_route,
 )
 from services.governance import GovernedRuntimeGateway
-from services.integrations import DeterministicLocalVideoRuntime, DurableVideoProductRuntime
+from services.integrations import (
+    DeterministicLocalVideoRuntime,
+    DurableVideoProductRuntime,
+    DurableWebProductRuntime,
+    WebProductRuntimeError,
+)
 from services.runtime import (
     DurableGrantPolicy,
     DurableWorkerScheduler,
@@ -60,6 +65,13 @@ def _coordinator(
         governance,
         video,
     )
+    web = DurableWebProductRuntime(
+        tmp_path / "web-product.sqlite3",
+        control,
+        grants,
+        governance,
+        tmp_path / "web",
+    )
     return (
         ExecutionCoordinator(
             tmp_path / "coordinator.sqlite3",
@@ -67,6 +79,7 @@ def _coordinator(
             governance,
             grants,
             product,
+            web,
         ),
         governance,
         scheduler,
@@ -81,7 +94,7 @@ def test_route_selection_is_conservative_and_canonical() -> None:
 
     web = classify_execution_route("Build a premium website for a furniture company")
     assert web.capability_id == "ilaios.capability.web-factory"
-    assert web.adapter_id is None
+    assert web.adapter_id == "web.product-runtime.v1"
 
     with pytest.raises(ExecutionCoordinatorError, match="could not be selected"):
         classify_execution_route("Make something excellent")
@@ -89,25 +102,119 @@ def test_route_selection_is_conservative_and_canonical() -> None:
         classify_execution_route("Build a website and a launch video")
 
 
-def test_unverified_finished_product_adapter_fails_closed(tmp_path: Path) -> None:
-    coordinator, governance, _, _ = _coordinator(tmp_path)
+def test_medium_web_executes_to_finished_artifact_and_terminal_closure(tmp_path: Path) -> None:
+    coordinator, governance, _, grants = _coordinator(tmp_path)
     now = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
+    principal_id = "oidc|user@example.test"
+    tenant_id = "tenant/example"
 
     prepared = coordinator.prepare(
         "exec-web-1",
-        "Build a premium website for my furniture company",
+        "Build a premium bilingual Turkish/English website for a corporate law firm",
+        token="token",
+        principal_id=principal_id,
+        tenant_id=tenant_id,
+        now=now,
+    )
+    assert prepared["capability_id"] == "ilaios.capability.web-factory"
+    assert prepared["adapter_id"] == "web.product-runtime.v1"
+    assert prepared["execution_status"] == "ADMITTED"
+    assert governance.admission_proven("exec-web-1") is True
+
+    manifest = coordinator.resume(
+        "exec-web-1", token="token", now=now + timedelta(seconds=1)
+    )
+    assert manifest["accepted"] is True
+    assert manifest["adapter_id"] == "web.product-runtime.v1"
+    assert manifest["requester_id"] == principal_id
+    assert manifest["tenant_id"] == tenant_id
+    assert manifest["identity_proven"] is True
+    assert manifest["admission_proven"] is True
+    assert manifest["grant_proven"] is True
+    assert manifest["deployment_state"] == "NOT_DEPLOYED"
+    assert manifest["deployment_contract"] == "web.deployment-receipt.v1"
+    assert sorted(cast(list[str], manifest["routes"])) == [
+        "en/about.html",
+        "en/contact.html",
+        "en/expertise.html",
+        "en/index.html",
+        "tr/about.html",
+        "tr/contact.html",
+        "tr/expertise.html",
+        "tr/index.html",
+    ]
+
+    state = coordinator.get("exec-web-1")
+    assert state["execution_status"] == "ACCEPTED"
+    assert state["terminal"] is True
+    assert state["terminal_reason"] == "finished product and acceptance evidence verified"
+    assert isinstance(state["result_sha256"], str)
+    assert len(cast(str, state["result_sha256"])) == 64
+    grant_state = grants.state()
+    grant_rows = cast(list[dict[str, object]], grant_state["grants"])
+    assert grant_rows[0]["used_side_effects"] == 1
+    revoked = cast(list[dict[str, object]], grant_state["revoked"])
+    assert revoked[0]["grant_id"] == grant_rows[0]["grant_id"]
+
+
+def test_web_unverified_dynamic_feature_fails_closed_before_admission(tmp_path: Path) -> None:
+    coordinator, governance, _, _ = _coordinator(tmp_path)
+    now = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
+
+    with pytest.raises(WebProductRuntimeError, match="no verified finished-product adapter"):
+        coordinator.prepare(
+            "exec-web-search",
+            "Build a website for a law firm with a newsletter and site search",
+            token="token",
+            principal_id="oidc|user@example.test",
+            tenant_id="tenant/example",
+            now=now,
+        )
+    assert coordinator.contains("exec-web-search") is False
+    assert governance.admission_proven("exec-web-search") is False
+
+
+def test_stale_web_execution_closes_as_interrupted(tmp_path: Path) -> None:
+    coordinator, _, _, grants = _coordinator(tmp_path)
+    prepared_at = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
+    coordinator.prepare(
+        "exec-web-stale",
+        "Build a bilingual Turkish/English website for a corporate law firm",
         token="token",
         principal_id="oidc|user@example.test",
         tenant_id="tenant/example",
-        now=now,
+        now=prepared_at,
     )
+    with sqlite3.connect(tmp_path / "coordinator.sqlite3") as connection:
+        connection.execute(
+            "UPDATE execution_requests SET status = 'EXECUTING', updated_at = ? "
+            "WHERE request_id = ?",
+            (prepared_at.isoformat(), "exec-web-stale"),
+        )
 
-    assert prepared["capability_id"] == "ilaios.capability.web-factory"
-    assert prepared["adapter_id"] is None
-    assert prepared["execution_status"] == "BLOCKED_ADAPTER_UNAVAILABLE"
-    assert governance.state()["work"] == []
-    with pytest.raises(ExecutionCoordinatorError, match="not resumable"):
-        coordinator.resume("exec-web-1", token="token", now=now)
+    reconciled = coordinator.recover_stale(
+        token="token", now=prepared_at + timedelta(minutes=16)
+    )
+    assert reconciled == (
+        {"request_id": "exec-web-stale", "status": "INTERRUPTED"},
+    )
+    state = coordinator.get("exec-web-stale")
+    assert state["execution_status"] == "INTERRUPTED"
+    assert state["terminal"] is True
+    assert "recovery window" in cast(str, state["terminal_reason"])
+    with sqlite3.connect(tmp_path / "web-product.sqlite3") as connection:
+        runtime_status = connection.execute(
+            "SELECT status FROM web_product_requests WHERE request_id = ?",
+            ("exec-web-stale",),
+        ).fetchone()
+        runtime_closure = connection.execute(
+            "SELECT terminal_status FROM web_product_closure WHERE request_id = ?",
+            ("exec-web-stale",),
+        ).fetchone()
+    assert runtime_status == ("interrupted",)
+    assert runtime_closure == ("interrupted",)
+    revoked = cast(list[dict[str, object]], grants.state()["revoked"])
+    assert len(revoked) == 1
 
 
 def test_medium_video_is_admitted_without_human_approval_or_early_lease(
@@ -189,7 +296,7 @@ def test_medium_video_executes_to_verified_acceptance_with_fresh_grant_and_lease
     assert state["terminal"] is True
     assert state["terminal_reason"] == "finished product and acceptance evidence verified"
     assert isinstance(state["result_sha256"], str)
-    assert len(state["result_sha256"]) == 64
+    assert len(cast(str, state["result_sha256"])) == 64
     assert governance.admission_proven("exec-video-2") is True
     assert scheduler.state()["leases"] == []
     assert not (tmp_path / "video" / "exec-video-2").exists()
