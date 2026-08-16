@@ -21,58 +21,67 @@ class LiveWorkspaceView extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.all(22),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Row(
                 children: [
-                  const Icon(Icons.developer_mode_outlined, color: IlaiosTheme.cyan),
-                  const SizedBox(width: 10),
-                  Text(
-                    _surface(context, 'workspace.title'),
-                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: IlaiosTheme.coreBlue.withValues(alpha: .12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(
+                      Icons.developer_mode_outlined,
+                      color: IlaiosTheme.coreBlue,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _surface(context, 'workspace.title'),
+                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          _localizedStatus(context, status),
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
-              ),
-              const SizedBox(height: 5),
-              Text(
-                status,
-                style: const TextStyle(color: IlaiosTheme.muted, fontSize: 12),
               ),
               const SizedBox(height: 16),
               Container(
                 decoration: BoxDecoration(
-                  color: IlaiosTheme.surface,
-                  borderRadius: BorderRadius.circular(11),
-                  border: Border.all(color: IlaiosTheme.border),
+                  color: Theme.of(context).colorScheme.surfaceContainerLow,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                 ),
                 child: TabBar(
                   isScrollable: true,
                   tabAlignment: TabAlignment.start,
+                  labelColor: IlaiosTheme.enterpriseCyan,
+                  unselectedLabelColor: Theme.of(context).colorScheme.onSurfaceVariant,
+                  indicatorColor: IlaiosTheme.enterpriseCyan,
+                  indicatorWeight: 3,
+                  dividerColor: Colors.transparent,
                   tabs: [
-                    Tab(
-                      icon: const Icon(Icons.code, size: 17),
-                      text: _surface(context, 'workspace.liveCode'),
-                    ),
-                    Tab(
-                      icon: const Icon(Icons.terminal, size: 17),
-                      text: _surface(context, 'workspace.terminal'),
-                    ),
-                    Tab(
-                      icon: const Icon(Icons.language, size: 17),
-                      text: _surface(context, 'workspace.browser'),
-                    ),
-                    Tab(
-                      icon: const Icon(Icons.folder_outlined, size: 17),
-                      text: _surface(context, 'workspace.files'),
-                    ),
-                    Tab(
-                      icon: const Icon(Icons.list_alt, size: 17),
-                      text: _surface(context, 'workspace.logs'),
-                    ),
-                    Tab(
-                      icon: const Icon(Icons.bolt_outlined, size: 17),
-                      text: _surface(context, 'workspace.events'),
-                    ),
+                    _tab(context, Icons.code, 'workspace.liveCode'),
+                    _tab(context, Icons.terminal, 'workspace.terminal'),
+                    _tab(context, Icons.language, 'workspace.browser'),
+                    _tab(context, Icons.folder_outlined, 'workspace.files'),
+                    _tab(context, Icons.list_alt, 'workspace.logs'),
+                    _tab(context, Icons.bolt_outlined, 'workspace.events'),
                   ],
                 ),
               ),
@@ -81,29 +90,35 @@ class LiveWorkspaceView extends StatelessWidget {
                 child: Container(
                   width: double.infinity,
                   decoration: BoxDecoration(
-                    color: IlaiosTheme.surface,
-                    borderRadius: BorderRadius.circular(11),
-                    border: Border.all(color: IlaiosTheme.border),
+                    color: Theme.of(context).colorScheme.surfaceContainerLow,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                    ),
                   ),
                   child: TabBarView(
                     children: [
                       _UnavailableWorkspacePane(
                         icon: Icons.code,
+                        accent: IlaiosTheme.enterpriseCyan,
                         title: _surface(context, 'workspace.liveCode'),
                         message: _surface(context, 'workspace.codeUnavailable'),
                       ),
                       _UnavailableWorkspacePane(
                         icon: Icons.terminal,
+                        accent: IlaiosTheme.violet,
                         title: _surface(context, 'workspace.terminal'),
                         message: _surface(context, 'workspace.terminalUnavailable'),
                       ),
                       _UnavailableWorkspacePane(
                         icon: Icons.language,
+                        accent: IlaiosTheme.coreBlue,
                         title: _surface(context, 'workspace.browser'),
                         message: _surface(context, 'workspace.browserUnavailable'),
                       ),
                       _UnavailableWorkspacePane(
                         icon: Icons.folder_outlined,
+                        accent: IlaiosTheme.enterpriseCyan,
                         title: _surface(context, 'workspace.files'),
                         message: _surface(context, 'workspace.filesUnavailable'),
                       ),
@@ -117,41 +132,79 @@ class LiveWorkspaceView extends StatelessWidget {
           ),
         ),
       );
+
+  Tab _tab(BuildContext context, IconData icon, String key) => Tab(
+        icon: Icon(icon, size: 18),
+        text: _surface(context, key),
+      );
 }
 
 class _UnavailableWorkspacePane extends StatelessWidget {
   const _UnavailableWorkspacePane({
     required this.icon,
+    required this.accent,
     required this.title,
     required this.message,
   });
 
   final IconData icon;
+  final Color accent;
   final String title;
   final String message;
 
   @override
   Widget build(BuildContext context) => Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 480),
-          child: Padding(
-            padding: const EdgeInsets.all(28),
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: Container(
+            margin: const EdgeInsets.all(28),
+            padding: const EdgeInsets.all(26),
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: .055),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: accent.withValues(alpha: .24)),
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, size: 34, color: IlaiosTheme.muted),
-                const SizedBox(height: 12),
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+                Container(
+                  width: 58,
+                  height: 58,
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: .13),
+                    borderRadius: BorderRadius.circular(17),
+                  ),
+                  child: Icon(icon, size: 30, color: accent),
+                ),
+                const SizedBox(height: 14),
+                Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                ),
                 const SizedBox(height: 8),
                 Text(
                   message,
                   textAlign: TextAlign.center,
-                  style: const TextStyle(color: IlaiosTheme.muted, height: 1.5),
+                  style: Theme.of(context).textTheme.bodyMedium,
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  _surface(context, 'workspace.noFabrication'),
-                  style: const TextStyle(color: IlaiosTheme.cyan, fontSize: 11),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: IlaiosTheme.enterpriseCyan.withValues(alpha: .08),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Text(
+                    _surface(context, 'workspace.noFabrication'),
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: IlaiosTheme.enterpriseCyan,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -162,19 +215,19 @@ class _UnavailableWorkspacePane extends StatelessWidget {
 
 class _LogsPane extends StatelessWidget {
   const _LogsPane({required this.events});
+
   final List<Map<String, Object?>> events;
 
   @override
   Widget build(BuildContext context) {
     final logs = <Map<String, Object?>>[];
     for (final event in events) {
-      if (_firstText(event, const ['message', 'log', 'detail']) != null) {
-        logs.add(event);
-      }
+      if (_firstText(event, const ['message', 'log', 'detail']) != null) logs.add(event);
     }
     if (logs.isEmpty) {
       return _UnavailableWorkspacePane(
         icon: Icons.list_alt,
+        accent: IlaiosTheme.violet,
         title: _surface(context, 'workspace.logs'),
         message: _surface(context, 'workspace.logsUnavailable'),
       );
@@ -185,12 +238,14 @@ class _LogsPane extends StatelessWidget {
 
 class _EventsPane extends StatelessWidget {
   const _EventsPane({required this.events});
+
   final List<Map<String, Object?>> events;
 
   @override
   Widget build(BuildContext context) => events.isEmpty
       ? _UnavailableWorkspacePane(
           icon: Icons.bolt_outlined,
+          accent: IlaiosTheme.coreBlue,
           title: _surface(context, 'workspace.events'),
           message: _surface(context, 'workspace.eventsUnavailable'),
         )
@@ -199,6 +254,7 @@ class _EventsPane extends StatelessWidget {
 
 class _EventList extends StatelessWidget {
   const _EventList({required this.events, required this.showMessage});
+
   final List<Map<String, Object?>> events;
   final bool showMessage;
 
@@ -221,17 +277,20 @@ class _EventList extends StatelessWidget {
               : '${_surface(context, 'workspace.runtimeEvent')} $type, ${_surface(context, 'workspace.state')} $state';
           return Semantics(
             label: semantics,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.only(top: 5),
-                    child: Icon(
-                      Icons.circle,
-                      size: 7,
-                      color: state == null ? IlaiosTheme.muted : _stateColor(state),
+                  Container(
+                    margin: const EdgeInsets.only(top: 5),
+                    width: 8,
+                    height: 8,
+                    decoration: BoxDecoration(
+                      color: state == null
+                          ? Theme.of(context).colorScheme.outline
+                          : _stateColor(state),
+                      shape: BoxShape.circle,
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -241,17 +300,11 @@ class _EventList extends StatelessWidget {
                       children: [
                         Text(
                           state == null ? type : '$type · $state',
-                          style: const TextStyle(fontWeight: FontWeight.w600),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
                         ),
                         if (showMessage && message != null) ...[
                           const SizedBox(height: 4),
-                          Text(
-                            message,
-                            style: const TextStyle(
-                              color: IlaiosTheme.muted,
-                              fontSize: 12,
-                            ),
-                          ),
+                          Text(message, style: Theme.of(context).textTheme.bodySmall),
                         ],
                       ],
                     ),
@@ -259,15 +312,12 @@ class _EventList extends StatelessWidget {
                   if (timestamp != null) ...[
                     const SizedBox(width: 12),
                     ConstrainedBox(
-                      constraints: const BoxConstraints(maxWidth: 180),
+                      constraints: const BoxConstraints(maxWidth: 190),
                       child: Text(
                         timestamp,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          color: IlaiosTheme.muted,
-                          fontSize: 11,
-                        ),
+                        style: Theme.of(context).textTheme.bodySmall,
                       ),
                     ),
                   ],
@@ -310,9 +360,18 @@ Color _stateColor(String value) {
   if (normalized.contains('running') ||
       normalized.contains('active') ||
       normalized.contains('working')) {
-    return IlaiosTheme.cyan;
+    return IlaiosTheme.enterpriseCyan;
   }
-  return IlaiosTheme.muted;
+  return IlaiosTheme.coreBlue;
+}
+
+String _localizedStatus(BuildContext context, String value) {
+  if (context.ilaiosLocale.locale != IlaiosLocale.turkish) return value;
+  return switch (value) {
+    'Operational APIs connected' => 'Operasyon API’leri bağlı',
+    'Connected to authoritative control plane' => 'Yetkili kontrol düzlemine bağlı',
+    _ => value,
+  };
 }
 
 String _surface(BuildContext context, String key) =>
