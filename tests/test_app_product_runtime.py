@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 import services.execution_coordinator as coordinator_module
+import services.software_factory_runtime as runtime_module
 from services.control_plane import ControlPlane, ControlPlaneConfig
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
 from services.evidence import EvidenceStore
@@ -85,6 +86,18 @@ class _FakeWindowsBoundary:
         )
 
 
+def _allow_fake_flutter_detection(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep unit tests hermetic while real Windows E2E still proves Flutter exists."""
+    original_which = runtime_module.shutil.which
+
+    def _which(executable: str) -> str | None:
+        if executable == "flutter":
+            return "C:/test-only/flutter.exe"
+        return original_which(executable)
+
+    monkeypatch.setattr(runtime_module.shutil, "which", _which)
+
+
 def _stack(
     tmp_path: Path,
 ) -> tuple[ExecutionCoordinator, DurableAppProductRuntime, _FakeWindowsBoundary]:
@@ -150,6 +163,7 @@ def test_windows_task_app_accepts_real_artifact_evidence_through_coordinator(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    _allow_fake_flutter_detection(monkeypatch)
     coordinator, runtime, boundary = _stack(tmp_path)
     _install_app_runtime(monkeypatch, coordinator, runtime)
     now = datetime(2026, 8, 16, 12, 0, tzinfo=timezone.utc)
@@ -240,7 +254,11 @@ def test_default_app_descriptor_remains_review_only_without_runtime_injection() 
     assert descriptor.blocker_code == "APP_FACTORY_REVIEW_ONLY"
 
 
-def test_executor_rejects_duplicate_or_unbounded_workspace_requests(tmp_path: Path) -> None:
+def test_executor_rejects_duplicate_or_unbounded_workspace_requests(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _allow_fake_flutter_detection(monkeypatch)
     boundary = _FakeWindowsBoundary()
     executor = WindowsFlutterAppExecutor(tmp_path / "app-artifacts", boundary)
     evidence = executor.build(
