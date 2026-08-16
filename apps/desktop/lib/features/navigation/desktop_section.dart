@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app/ilaios_locale.dart';
+
 enum DesktopSection {
   home('Home', Icons.home_outlined),
   goals('Goals', Icons.track_changes_outlined),
@@ -16,4 +18,6 @@ enum DesktopSection {
 
   final String label;
   final IconData icon;
+
+  String localizedLabel(BuildContext context) => context.tr('nav.$name');
 }
