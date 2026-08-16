@@ -162,6 +162,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         raise ValueError("ILAIOS_STATE_ROOT must be absolute")
     state_root.mkdir(parents=True, exist_ok=True)
 
+    maintenance_mode = os.environ.get("ILAIOS_RAG14_MAINTENANCE_MODE", "").strip()
+    if maintenance_mode:
+        from services.rag14_maintenance import main as rag14_maintenance_main
+
+        return rag14_maintenance_main()
+
     requested_host = os.environ.get("ILAIOS_HOST", "127.0.0.1")
     requested_port = os.environ.get("ILAIOS_PORT", "0")
     if requested_host != "0.0.0.0":

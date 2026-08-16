@@ -38,7 +38,7 @@ RUN python -m services.rag14_embedding_benchmark \
     && python -c "from pathlib import Path; from services.rag14_embedding_provider import PinnedE5EmbeddingProvider; p=PinnedE5EmbeddingProvider(manifest_path=Path('/opt/ilaios/infra/rag/multilingual-e5-small-qint8.candidate.json'), artifact_root=Path('/opt/ilaios/models/rag14-e5')); assert p.provider_id.startswith('ilaios.embedding.multilingual-e5-small.qint8.v1@'); print('RAG14_E5_PROVIDER_OK')" \
     && find /opt/ilaios/models/rag14-e5 -type f -exec chmod 0444 {} + \
     && chmod 0444 /opt/ilaios/infra/rag/multilingual-e5-small-qint8.candidate.json \
-    && python -c "import sqlite3; import services.deployment.runtime; print('R01_RUNTIME_IMPORT_OK')"
+    && python -c "import sqlite3; import services.deployment.runtime; import services.rag14_maintenance; print('R01_RUNTIME_IMPORT_OK')"
 
 USER 1000:1000
 
