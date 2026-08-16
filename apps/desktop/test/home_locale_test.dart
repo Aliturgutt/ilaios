@@ -11,7 +11,17 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
-      const IlaiosDesktopApp(locale: IlaiosLocale.turkish),
+      const IlaiosDesktopApp(
+        locale: IlaiosLocale.turkish,
+        projection: ControlPlaneProjection(
+          connected: true,
+          status: 'Connected to authoritative control plane',
+          goalCount: 0,
+          jobCount: 0,
+          lastEvent: null,
+          schemaVersion: '1',
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
