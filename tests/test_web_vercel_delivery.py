@@ -136,7 +136,10 @@ def test_vercel_deploy_binds_provenance_promotes_and_probes_https(
     assert receipt.health == "HEALTHY_PUBLIC_PRODUCTION"
     assert receipt.rollback_reference == "dpl_previous"
     assert receipt.public_production_proven is True
-    assert transport.probes == ["https://customer-site.vercel.app"]
+    assert transport.probes == [
+        "https://generated-preview.vercel.app",
+        "https://customer-site.vercel.app",
+    ]
 
     create = transport.calls[0]
     assert create[0:2] == ("POST", "/v13/deployments")
@@ -258,7 +261,7 @@ def test_vercel_deploy_rejects_environment_secret_files(tmp_path: Path) -> None:
     assert transport.calls == []
 
 
-def test_vercel_deploy_does_not_promote_when_public_health_fails(
+def test_vercel_deploy_does_not_promote_when_preview_health_fails(
     tmp_path: Path,
 ) -> None:
     root = _project(tmp_path)
@@ -276,8 +279,6 @@ def test_vercel_deploy_does_not_promote_when_public_health_fails(
                     artifact_sha=artifact_sha,
                 ),
             ),
-            (202, {}),
-            (200, {"aliases": [{"alias": "broken.vercel.app"}]}),
         ],
         probe_status=503,
         probe_url="https://broken.vercel.app/",
@@ -291,6 +292,11 @@ def test_vercel_deploy_does_not_promote_when_public_health_fails(
             authorization_proven=True,
             budget_proven=True,
         )
+
+    assert [call[1] for call in transport.calls] == [
+        "/v13/deployments",
+        f"/v13/deployments/{deployment_id}",
+    ]
 
 
 def test_vercel_rollback_reconciles_target_provenance_and_health() -> None:
@@ -328,6 +334,10 @@ def test_vercel_rollback_reconciles_target_provenance_and_health() -> None:
     assert receipt.rollback_reference == "dpl_broken"
     assert receipt.live_url == "https://restored.vercel.app"
     assert receipt.public_production_proven is True
+    assert transport.probes == [
+        "https://generated-preview.vercel.app",
+        "https://restored.vercel.app",
+    ]
     assert transport.calls[0][0:2] == (
         "POST",
         f"/v1/projects/prj_test/rollback/{deployment_id}",
