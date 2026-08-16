@@ -1,1 +1,0 @@
-This directory contains implementation-only notes for PR #260. Runtime and CI evidence remain authoritative.
