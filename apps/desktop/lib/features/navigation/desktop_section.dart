@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 
 enum DesktopSection {
-  create('Create', Icons.auto_awesome_outlined),
-  controlCenter('Control Center', Icons.dashboard_outlined),
-  liveExecution('Live Execution', Icons.play_circle_outline),
-  deliveries('Deliveries', Icons.inventory_2_outlined),
-  evidence('Evidence', Icons.fact_check_outlined),
-  governance('Governance', Icons.admin_panel_settings_outlined);
+  home('Home', Icons.home_outlined),
+  goals('Goals', Icons.track_changes_outlined),
+  workflows('Workflows', Icons.account_tree_outlined),
+  agents('Agents', Icons.groups_2_outlined),
+  liveWorkspace('Live Workspace', Icons.developer_mode_outlined),
+  artifacts('Artifacts', Icons.inventory_2_outlined),
+  approvals('Approvals', Icons.task_alt_outlined),
+  evidence('Evidence', Icons.verified_user_outlined),
+  costs('Costs', Icons.paid_outlined),
+  settings('Settings', Icons.settings_outlined);
 
   const DesktopSection(this.label, this.icon);
 

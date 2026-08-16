@@ -15,10 +15,14 @@ const _evidence = EvidenceRecord(
 );
 
 void main() {
-  testWidgets('disconnected shell disables one-prompt submission', (
+  testWidgets('disconnected goals surface disables one-prompt submission', (
     WidgetTester tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.tap(find.byKey(const ValueKey('nav-goals')));
+    await tester.pumpAndSettle();
     expect(find.text('What do you want ILAIOS to build?'), findsOneWidget);
     expect(
       tester
@@ -29,9 +33,11 @@ void main() {
     expect(find.byKey(const Key('one-prompt-accepted')), findsNothing);
   });
 
-  testWidgets('connected shell submits one prompt without claiming completion', (
+  testWidgets('connected goals surface submits without claiming completion', (
     WidgetTester tester,
   ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
     String? submitted;
     await tester.pumpWidget(IlaiosDesktopApp(
       projection: const ControlPlaneProjection(
@@ -52,6 +58,8 @@ void main() {
         );
       },
     ));
+    await tester.tap(find.byKey(const ValueKey('nav-goals')));
+    await tester.pumpAndSettle();
 
     await tester.enterText(
       find.byKey(const Key('one-prompt-input')),
@@ -68,6 +76,20 @@ void main() {
     expect(find.text('Job: job-00000006'), findsOneWidget);
     expect(find.text('Authoritative state: PENDING'), findsOneWidget);
     expect(find.textContaining('does not treat submission as completion'), findsOneWidget);
+  });
+
+  testWidgets('home renders truthful empty state without synthetic telemetry', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    expect(find.text('Active Workflow'), findsOneWidget);
+    expect(find.text('No active worker leases are exposed by the scheduler.'), findsOneWidget);
+    expect(find.textContaining(r'$3.21'), findsNothing);
+    expect(find.text('73%'), findsNothing);
+    expect(find.text('7 / 25'), findsNothing);
+    expect(find.text('Unavailable'), findsWidgets);
   });
 
   testWidgets('control center still projects query state and refresh', (
@@ -87,7 +109,7 @@ void main() {
       ),
       onRefreshRequested: () => refreshRequests += 1,
     ));
-    await tester.tap(find.byKey(const ValueKey('nav-controlCenter')));
+    await tester.tap(find.byKey(const ValueKey('nav-workflows')));
     await tester.pumpAndSettle();
     expect(find.text('2'), findsOneWidget);
     expect(find.text('5'), findsOneWidget);
@@ -97,20 +119,40 @@ void main() {
     expect(refreshRequests, 1);
   });
 
-  testWidgets('wide navigation exposes governed product surfaces', (
+  testWidgets('wide navigation exposes target information architecture', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const IlaiosDesktopApp());
-    expect(find.byKey(const ValueKey('nav-create')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav-controlCenter')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav-liveExecution')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav-deliveries')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-goals')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-workflows')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-agents')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-liveWorkspace')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-artifacts')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-approvals')), findsOneWidget);
     expect(find.byKey(const ValueKey('nav-evidence')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav-governance')), findsOneWidget);
-    expect(find.text('Agents'), findsNothing);
-    expect(find.text('Approvals'), findsNothing);
+    expect(find.byKey(const ValueKey('nav-costs')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-settings')), findsOneWidget);
+  });
+
+  testWidgets('live workspace stays read-only when projections are unavailable', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.tap(find.byKey(const ValueKey('nav-liveWorkspace')));
+    await tester.pumpAndSettle();
+    expect(find.text('Live Workspace'), findsWidgets);
+    expect(find.text('Live Code'), findsWidgets);
+    expect(find.text('Terminal'), findsWidgets);
+    expect(find.text('Browser'), findsWidgets);
+    expect(find.text('Files'), findsWidgets);
+    expect(find.text('Logs'), findsWidgets);
+    expect(find.text('Events'), findsWidgets);
+    expect(find.textContaining('no data is fabricated'), findsOneWidget);
   });
 
   testWidgets('verified evidence renders provenance metadata only', (
@@ -162,7 +204,7 @@ void main() {
     expect(find.textContaining('content_base64'), findsNothing);
   });
 
-  testWidgets('deliveries save only verified evidence artifacts', (
+  testWidgets('artifacts save only verified evidence artifacts', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
@@ -191,7 +233,7 @@ void main() {
         return r'C:\Users\test\Downloads\ILAIOS\artifact.mp4';
       },
     ));
-    await tester.tap(find.byKey(const ValueKey('nav-deliveries')));
+    await tester.tap(find.byKey(const ValueKey('nav-artifacts')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('save-artifact-1')));
     await tester.pumpAndSettle();
@@ -199,7 +241,7 @@ void main() {
     expect(find.byKey(const Key('delivery-message')), findsOneWidget);
   });
 
-  testWidgets('governance decisions require independent approver', (
+  testWidgets('approval decisions require independent approver', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
@@ -249,7 +291,7 @@ void main() {
         decidedValue = decision;
       },
     ));
-    await tester.tap(find.byKey(const ValueKey('nav-governance')));
+    await tester.tap(find.byKey(const ValueKey('nav-approvals')));
     await tester.pumpAndSettle();
     expect(find.textContaining('vault://must-never-render'), findsNothing);
     final approve = find.byKey(const ValueKey('approve-request-7'));
@@ -307,7 +349,7 @@ void main() {
       approverId: 'approver-b',
       onGovernanceDecision: (requestId, decision) async {},
     ));
-    await tester.tap(find.byKey(const ValueKey('nav-governance')));
+    await tester.tap(find.byKey(const ValueKey('nav-approvals')));
     await tester.pumpAndSettle();
     expect(find.text('No pending governed work.'), findsOneWidget);
     expect(find.byKey(const ValueKey('approve-exec-medium')), findsNothing);
