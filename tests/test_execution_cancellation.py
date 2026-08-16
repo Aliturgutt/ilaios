@@ -5,7 +5,6 @@ from __future__ import annotations
 import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import cast
 
 import pytest
 
@@ -25,7 +24,7 @@ from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, Governe
 
 def _coordinator(
     tmp_path: Path,
-) -> tuple[ExecutionCoordinator, DurableWorkerScheduler]:
+) -> tuple[ExecutionCoordinator, DurableWorkerScheduler, DurableVideoProductRuntime]:
     state = tmp_path / "state.sqlite3"
     control = ControlPlane(ControlPlaneConfig(state, "token"))
     workflows = WorkflowStore(WorkflowStoreConfig(state))
@@ -58,11 +57,11 @@ def _coordinator(
         grants,
         product,
     )
-    return coordinator, scheduler
+    return coordinator, scheduler, product
 
 
 def test_owned_admitted_video_can_be_cancelled_idempotently(tmp_path: Path) -> None:
-    coordinator, scheduler = _coordinator(tmp_path)
+    coordinator, scheduler, _ = _coordinator(tmp_path)
     now = datetime(2026, 8, 16, 1, 0, tzinfo=timezone.utc)
     principal = "oidc|user@example.test"
     tenant = "tenant/example"
@@ -87,7 +86,7 @@ def test_owned_admitted_video_can_be_cancelled_idempotently(tmp_path: Path) -> N
     )
     assert cancelled["execution_status"] == "CANCELLED"
     assert cancelled["terminal"] is True
-    assert cancelled["terminal_reason"] == "user requested cancellation"
+    assert cancelled["terminal_reason"] == "cancelled by authenticated owner"
     assert scheduler.state()["leases"] == []
     assert scheduler.state()["workers"] == []
 
@@ -129,7 +128,7 @@ def test_owned_admitted_video_can_be_cancelled_idempotently(tmp_path: Path) -> N
 
 
 def test_cross_tenant_cancellation_fails_closed(tmp_path: Path) -> None:
-    coordinator, scheduler = _coordinator(tmp_path)
+    coordinator, scheduler, _ = _coordinator(tmp_path)
     now = datetime(2026, 8, 16, 1, 0, tzinfo=timezone.utc)
     coordinator.prepare(
         "exec-cancel-tenant",
@@ -145,7 +144,7 @@ def test_cross_tenant_cancellation_fails_closed(tmp_path: Path) -> None:
             coordinator,
             "exec-cancel-tenant",
             token="token",
-            principal_id="oidc|attacker@example.test",
+            principal_id="oidc|owner@example.test",
             tenant_id="tenant/other",
             reason="unauthorized cancellation",
             now=now + timedelta(seconds=1),
@@ -155,7 +154,7 @@ def test_cross_tenant_cancellation_fails_closed(tmp_path: Path) -> None:
 
 
 def test_verified_acceptance_cannot_be_overwritten_by_cancel(tmp_path: Path) -> None:
-    coordinator, scheduler = _coordinator(tmp_path)
+    coordinator, scheduler, _ = _coordinator(tmp_path)
     now = datetime(2026, 8, 16, 1, 0, tzinfo=timezone.utc)
     principal = "oidc|user@example.test"
     tenant = "tenant/example"
@@ -174,7 +173,7 @@ def test_verified_acceptance_cannot_be_overwritten_by_cancel(tmp_path: Path) -> 
     )
     assert manifest["accepted"] is True
 
-    with pytest.raises(ExecutionCoordinatorError, match="terminal execution"):
+    with pytest.raises(ExecutionCoordinatorError, match="immutable"):
         cancel_execution(
             coordinator,
             "exec-cancel-accepted",
@@ -191,7 +190,7 @@ def test_verified_acceptance_cannot_be_overwritten_by_cancel(tmp_path: Path) -> 
 
 
 def test_terminal_cleanup_skips_worker_that_still_owns_a_lease(tmp_path: Path) -> None:
-    coordinator, scheduler = _coordinator(tmp_path)
+    coordinator, scheduler, product = _coordinator(tmp_path)
     now = datetime(2026, 8, 16, 1, 0, tzinfo=timezone.utc)
     coordinator.prepare(
         "exec-cleanup-lease",
@@ -201,7 +200,6 @@ def test_terminal_cleanup_skips_worker_that_still_owns_a_lease(tmp_path: Path) -
         tenant_id="tenant/example",
         now=now,
     )
-    product = cast(DurableVideoProductRuntime, getattr(coordinator, "_video"))
     with sqlite3.connect(tmp_path / "product.sqlite3") as connection:
         connection.execute(
             "UPDATE product_proofs SET status = 'failed' WHERE request_id = ?",
