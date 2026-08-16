@@ -12,7 +12,7 @@ import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from playwright.sync_api import ConsoleMessage, Page, sync_playwright
+from playwright.sync_api import BrowserContext, ConsoleMessage, Page, sync_playwright
 
 from services.control_plane import ControlPlane, ControlPlaneConfig
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
@@ -308,26 +308,39 @@ def _browser_certify(
                         f"{base_url}{route}", wait_until="networkidle", timeout=30_000
                     )
                     if response is None or response.status >= 400:
-                        raise RuntimeError(f"browser navigation failed for {route} at {viewport}")
+                        raise RuntimeError(
+                            f"browser navigation failed for {route} at {viewport}"
+                        )
                     _assert_security_headers(response.headers, route)
                     _assert_page_quality(page, route, viewport)
                     if console_errors:
-                        raise RuntimeError(f"console errors for {route} at {viewport}: {console_errors}")
+                        raise RuntimeError(
+                            f"console errors for {route} at {viewport}: {console_errors}"
+                        )
                     if page_errors:
-                        raise RuntimeError(f"page errors for {route} at {viewport}: {page_errors}")
+                        raise RuntimeError(
+                            f"page errors for {route} at {viewport}: {page_errors}"
+                        )
                     checks.append(
                         {
                             "route": route,
                             "viewport": viewport,
                             "status": response.status,
                             "horizontal_overflow_px": float(
-                                page.evaluate("document.documentElement.scrollWidth - window.innerWidth")
+                                page.evaluate(
+                                    "document.documentElement.scrollWidth - window.innerWidth"
+                                )
                             ),
                             "console_errors": 0,
                             "page_errors": 0,
                         }
                     )
-                    if route in {"/en", "/tr"} and viewport["width"] in {320, 390, 430, 1440}:
+                    if route in {"/en", "/tr"} and viewport["width"] in {
+                        320,
+                        390,
+                        430,
+                        1440,
+                    }:
                         locale = route.removeprefix("/")
                         page.screenshot(
                             path=str(
@@ -369,9 +382,15 @@ def _browser_certify(
 
 
 def _assert_page_quality(page: Page, route: str, viewport: dict[str, int]) -> None:
-    if page.locator("main#main h1").count() != 1 or not page.locator("main#main h1").is_visible():
+    if page.locator("main#main h1").count() != 1 or not page.locator(
+        "main#main h1"
+    ).is_visible():
         raise RuntimeError(f"main H1 missing or hidden for {route}")
-    overflow = float(page.evaluate("document.documentElement.scrollWidth - window.innerWidth"))
+    if page.locator("main#main").count() != 1:
+        raise RuntimeError(f"semantic main landmark missing for {route}")
+    overflow = float(
+        page.evaluate("document.documentElement.scrollWidth - window.innerWidth")
+    )
     if overflow > 1:
         raise RuntimeError(f"horizontal overflow for {route} at {viewport}: {overflow}")
     if page.locator('meta[name="description"]').count() != 1:
@@ -391,7 +410,9 @@ def _assert_page_quality(page: Page, route: str, viewport: dict[str, int]) -> No
             raise RuntimeError(f"locale-specific navigation copy missing for {route}")
     if page.locator(".skip-link").count():
         page.keyboard.press("Tab")
-        active = page.evaluate("document.activeElement && document.activeElement.className")
+        active = page.evaluate(
+            "document.activeElement && document.activeElement.className"
+        )
         if "skip-link" not in str(active):
             raise RuntimeError(f"keyboard focus did not enter skip link for {route}")
         outline = page.locator(".skip-link").evaluate(
@@ -406,46 +427,101 @@ def _assert_page_quality(page: Page, route: str, viewport: dict[str, int]) -> No
             if not element.is_visible():
                 continue
             box = element.bounding_box()
-            if box is not None and float(box["height"]) < 40:
+            if box is not None and float(box["height"]) < 44:
                 raise RuntimeError(f"touch target too small for {selector} on {route}")
+            element_id = element.get_attribute("id")
+            if selector in {"input", "textarea"} and element_id:
+                if page.locator(f'label[for="{element_id}"]').count() != 1:
+                    raise RuntimeError(f"form label missing for {element_id} on {route}")
 
 
-def _assert_global_seo(context: object, base_url: str) -> None:
-    page = context.new_page()  # type: ignore[attr-defined]
+def _assert_global_seo(context: BrowserContext, base_url: str) -> None:
+    page = context.new_page()
     try:
-        for path, marker in (("/robots.txt", "sitemap"), ("/sitemap.xml", "<urlset")):
-            response = page.goto(f"{base_url}{path}", wait_until="networkidle", timeout=30_000)
+        for path, marker in (
+            ("/robots.txt", "sitemap"),
+            ("/sitemap.xml", "<urlset"),
+        ):
+            response = page.goto(
+                f"{base_url}{path}", wait_until="networkidle", timeout=30_000
+            )
             if response is None or response.status != 200:
                 raise RuntimeError(f"SEO endpoint failed: {path}")
             body = page.locator("body").inner_text().lower()
             if marker not in body and marker not in page.content().lower():
-                raise RuntimeError(f"SEO endpoint content missing marker {marker}: {path}")
+                raise RuntimeError(
+                    f"SEO endpoint content missing marker {marker}: {path}"
+                )
     finally:
         page.close()
 
 
-def _assert_functional_modules(context: object, base_url: str, features: tuple[str, ...]) -> None:
-    page = context.new_page()  # type: ignore[attr-defined]
+def _assert_functional_modules(
+    context: BrowserContext,
+    base_url: str,
+    features: tuple[str, ...],
+) -> None:
+    page = context.new_page()
     try:
         if "contact-form" in features:
             page.goto(f"{base_url}/en/contact", wait_until="networkidle")
-            for selector, value in (
-                ("#name", "Test User"),
-                ("#email", "test@example.test"),
-                ("#message", "A governed test submission"),
-            ):
+            form = page.locator(".contact-form")
+            if form.count() != 1 or form.get_attribute("action") != "/api/contact":
+                raise RuntimeError("contact form is not bound to the governed local API")
+            for selector in ("#name", "#email", "#message"):
                 if page.locator(selector).count() != 1:
                     raise RuntimeError(f"contact control missing: {selector}")
-                page.locator(selector).fill(value)
-            page.locator('button[type="submit"]').click()
-            page.wait_for_url("**/en/contact?submitted=1", timeout=15_000)
+            response = context.request.post(
+                f"{base_url}/api/contact",
+                form={
+                    "name": "Test User",
+                    "email": "test@example.test",
+                    "message": "A governed test submission",
+                    "locale": "en",
+                },
+                max_redirects=0,
+            )
+            if response.status != 303:
+                raise RuntimeError(
+                    f"contact API did not return deterministic 303: {response.status}"
+                )
+            location = response.headers.get("location", "")
+            if "/en/contact?submitted=1" not in location:
+                raise RuntimeError(f"contact API redirect target is invalid: {location}")
+            invalid = context.request.post(
+                f"{base_url}/api/contact",
+                form={
+                    "name": "x",
+                    "email": "not-an-email",
+                    "message": "x",
+                    "locale": "en",
+                },
+                max_redirects=0,
+            )
+            if invalid.status != 400:
+                raise RuntimeError("contact API accepted invalid input")
         if "newsletter" in features:
             page.goto(f"{base_url}/en", wait_until="networkidle")
-            if page.locator(".newsletter-form").count() != 1:
-                raise RuntimeError("newsletter form missing")
-            page.locator(".newsletter-form input[type=email]").fill("reader@example.test")
-            page.locator(".newsletter-form button[type=submit]").click()
-            page.wait_for_url("**/en?subscribed=1", timeout=15_000)
+            form = page.locator(".newsletter-form")
+            if form.count() != 1 or form.get_attribute("action") != "/api/newsletter":
+                raise RuntimeError("newsletter form is not bound to the governed local API")
+            response = context.request.post(
+                f"{base_url}/api/newsletter",
+                form={"email": "reader@example.test", "locale": "en"},
+                max_redirects=0,
+            )
+            if response.status != 303:
+                raise RuntimeError(
+                    f"newsletter API did not return deterministic 303: {response.status}"
+                )
+            location = response.headers.get("location", "")
+            if "/en?subscribed=1" not in location:
+                raise RuntimeError(
+                    f"newsletter API redirect target is invalid: {location}"
+                )
+            page.goto(f"{base_url}/en/contact", wait_until="networkidle")
+            if page.locator(".newsletter-form").count() != 0:
+                raise RuntimeError("newsletter module leaked onto a non-requested page surface")
         if "content" in features:
             response = page.goto(f"{base_url}/en/insights", wait_until="networkidle")
             if response is None or response.status != 200:
@@ -482,7 +558,9 @@ def _deployment_and_rollback_proof(
     )
     probe = artifact_root / "rollback-probe-source"
     shutil.copytree(project_root, probe)
-    (probe / ".ilaios-rollback-probe").write_text("candidate-two\n", encoding="utf-8")
+    (probe / ".ilaios-rollback-probe").write_text(
+        "candidate-two\n", encoding="utf-8"
+    )
     second = adapter.deploy(probe, source_commit_sha=source_head)
     rollback = adapter.rollback(first.deployment_id, source_commit_sha=source_head)
     current = adapter.current()
@@ -506,9 +584,13 @@ def _wait_for_http(url: str, process: subprocess.Popen[str]) -> None:
     while time.monotonic() < deadline:
         if process.poll() is not None:
             output = "" if process.stdout is None else process.stdout.read()
-            raise RuntimeError(f"generated Next.js server exited early:\n{output[-4000:]}")
+            raise RuntimeError(
+                f"generated Next.js server exited early:\n{output[-4000:]}"
+            )
         try:
-            with urllib.request.urlopen(url, timeout=2) as response:  # noqa: S310 - localhost only
+            with urllib.request.urlopen(  # noqa: S310 - localhost only
+                url, timeout=2
+            ) as response:
                 if response.status < 400:
                     return
         except Exception as error:  # noqa: BLE001 - bounded readiness polling
