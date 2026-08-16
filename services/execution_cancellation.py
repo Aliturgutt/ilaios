@@ -86,9 +86,9 @@ def cancellation_metrics(coordinator: ExecutionCoordinator) -> dict[str, int]:
     metrics = coordinator.metrics()
     states = cast(dict[str, int], metrics.get("states", {}))
     return {
-        "cancelled": int(metrics.get("cancelled", 0)),
-        "accepted": int(metrics.get("accepted", 0)),
-        "failed": int(metrics.get("failed", 0)),
+        "cancelled": int(str(metrics.get("cancelled", 0))),
+        "accepted": int(str(metrics.get("accepted", 0))),
+        "failed": int(str(metrics.get("failed", 0))),
         "executing": int(states.get(ExecutionState.EXECUTING.value, 0)),
         "cancelling": int(states.get(ExecutionState.CANCELLING.value, 0)),
         "retryable": int(states.get(ExecutionState.FAILED_RETRYABLE.value, 0)),
