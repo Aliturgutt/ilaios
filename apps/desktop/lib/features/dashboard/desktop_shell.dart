@@ -14,7 +14,7 @@ import '../operations/live_workspace_view.dart';
 import '../operations/operational_views.dart';
 import '../operations/support_views.dart';
 import 'control_center_view.dart';
-import 'home_dashboard_view.dart';
+import 'home_dashboard_v2.dart';
 
 class DesktopShell extends StatefulWidget {
   const DesktopShell({
@@ -25,6 +25,8 @@ class DesktopShell extends StatefulWidget {
     this.identityProviders = const <IdentityProviderOption>[],
     this.userSession,
     this.identityStatus = 'Account sign-in is not configured',
+    this.themeMode = ThemeMode.dark,
+    this.onThemeModeChanged,
     this.onSignIn,
     this.onLogout,
     this.onPromptSubmit,
@@ -41,6 +43,8 @@ class DesktopShell extends StatefulWidget {
   final List<IdentityProviderOption> identityProviders;
   final DesktopUserSession? userSession;
   final String identityStatus;
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
   final Future<void> Function(String providerId)? onSignIn;
   final Future<void> Function()? onLogout;
   final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
@@ -56,33 +60,42 @@ class DesktopShell extends StatefulWidget {
 class _DesktopShellState extends State<DesktopShell> {
   DesktopSection _section = DesktopSection.home;
 
+  void _selectSection(DesktopSection section) {
+    if (_section != section) setState(() => _section = section);
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
         body: LayoutBuilder(
           builder: (context, constraints) {
             final compact = constraints.maxWidth < 900;
-            final body = Column(
+            final content = Column(
               children: [
-                if (compact)
-                  _CompactTopBar(
-                    projection: widget.projection,
-                    section: _section,
-                    onSectionSelected: _selectSection,
-                  )
-                else
-                  _TopBar(
-                    projection: widget.projection,
-                    snapshot: widget.operationalSnapshot,
-                    userSession: widget.userSession,
-                  ),
+                compact
+                    ? _CompactTopBar(
+                        projection: widget.projection,
+                        section: _section,
+                        onSectionSelected: _selectSection,
+                        themeMode: widget.themeMode,
+                        onThemeModeChanged: widget.onThemeModeChanged,
+                      )
+                    : _TopBar(
+                        projection: widget.projection,
+                        snapshot: widget.operationalSnapshot,
+                        userSession: widget.userSession,
+                        themeMode: widget.themeMode,
+                        onThemeModeChanged: widget.onThemeModeChanged,
+                        onNavigate: _selectSection,
+                      ),
                 Expanded(child: _buildSection()),
                 _BottomStatusBar(
                   projection: widget.projection,
                   snapshot: widget.operationalSnapshot,
+                  onNavigate: _selectSection,
                 ),
               ],
             );
-            if (compact) return body;
+            if (compact) return content;
             return Row(
               children: [
                 _NavigationRail(
@@ -93,25 +106,22 @@ class _DesktopShellState extends State<DesktopShell> {
                 VerticalDivider(
                   width: 1,
                   thickness: 1,
-                  color: IlaiosTheme.blue.withValues(alpha: .46),
+                  color: Theme.of(context).colorScheme.outlineVariant,
                 ),
-                Expanded(child: body),
+                Expanded(child: content),
               ],
             );
           },
         ),
       );
 
-  void _selectSection(DesktopSection section) {
-    if (_section != section) setState(() => _section = section);
-  }
-
   Widget _buildSection() => switch (_section) {
-        DesktopSection.home => HomeDashboardView(
+        DesktopSection.home => InteractiveHomeDashboardView(
             projection: widget.projection,
             snapshot: widget.operationalSnapshot,
             status: widget.operationalStatus,
             userSession: widget.userSession,
+            onNavigate: _selectSection,
             onRefreshRequested: widget.onRefreshRequested,
           ),
         DesktopSection.goals => CreateView(
@@ -179,222 +189,237 @@ class _NavigationRail extends StatelessWidget {
   final ValueChanged<DesktopSection> onSelected;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-        container: true,
-        label: context.tr('shell.primaryNavigation'),
-        child: Material(
-          color: IlaiosTheme.sidebar,
-          child: SizedBox(
-            width: 242,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(14, 18, 14, 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const _BrandHeader(),
-                  const SizedBox(height: 20),
-                  Expanded(
-                    child: ListView(
-                      padding: EdgeInsets.zero,
-                      children: [
-                        for (final section in DesktopSection.values)
-                          _NavItem(
-                            section: section,
-                            selected: selected == section,
-                            onTap: () => onSelected(section),
-                          ),
-                      ],
-                    ),
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      container: true,
+      label: context.tr('shell.primaryNavigation'),
+      child: Material(
+        color: scheme.surfaceContainerLow,
+        child: SizedBox(
+          width: 258,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const _BrandHeader(),
+                const SizedBox(height: 18),
+                Expanded(
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: [
+                      for (final section in DesktopSection.values)
+                        _NavItem(
+                          section: section,
+                          selected: selected == section,
+                          onTap: () => onSelected(section),
+                        ),
+                    ],
                   ),
-                  const SizedBox(height: 10),
-                  _TenantSummary(userSession: userSession),
-                ],
-              ),
+                ),
+                const SizedBox(height: 10),
+                _TenantSummary(userSession: userSession),
+              ],
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _BrandHeader extends StatelessWidget {
   const _BrandHeader();
 
+  static const _wordmark =
+      '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
+
   @override
-  Widget build(BuildContext context) => const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _BrandWordmark(),
-          SizedBox(height: 6),
-          Padding(
-            padding: EdgeInsets.only(left: 2),
-            child: Text(
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Semantics(
+      label: 'ILAIOS',
+      image: true,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.fromLTRB(10, 10, 10, 11),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0B0F14),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: IlaiosTheme.coreBlue.withValues(alpha: .34),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            SizedBox(
+              width: 205,
+              height: 54,
+              child: Image.asset(
+                _wordmark,
+                fit: BoxFit.contain,
+                alignment: Alignment.centerLeft,
+                filterQuality: FilterQuality.high,
+                excludeFromSemantics: true,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
               'Integrated Learning, Autonomous\nIntelligence & Orchestration Systems',
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
-                fontSize: 7.4,
+                fontSize: 7.5,
                 height: 1.35,
-                color: IlaiosTheme.muted,
-                letterSpacing: .15,
+                color: Colors.white.withValues(alpha: .62),
+                letterSpacing: .14,
               ),
             ),
-          ),
-          SizedBox(height: 10),
-          _BrandAccentStrip(),
-        ],
-      );
-}
-
-class _BrandAccentStrip extends StatelessWidget {
-  const _BrandAccentStrip();
-
-  @override
-  Widget build(BuildContext context) => ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: const SizedBox(
-          height: 3,
-          width: 188,
-          child: Row(
-            children: [
-              Expanded(flex: 5, child: ColoredBox(color: IlaiosTheme.cyan)),
-              Expanded(flex: 3, child: ColoredBox(color: IlaiosTheme.blue)),
-              Expanded(
-                flex: 2,
-                child: ColoredBox(color: IlaiosTheme.selectiveAccent),
+            const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: const SizedBox(
+                height: 4,
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: 5,
+                      child: ColoredBox(color: IlaiosTheme.enterpriseCyan),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: ColoredBox(color: IlaiosTheme.coreBlue),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: ColoredBox(color: IlaiosTheme.violet),
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-        ),
-      );
-}
-
-class _BrandWordmark extends StatelessWidget {
-  const _BrandWordmark();
-  static const _asset = '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-        label: 'ILAIOS',
-        image: true,
-        child: SizedBox(
-          width: 186,
-          height: 48,
-          child: Image.asset(
-            _asset,
-            fit: BoxFit.contain,
-            alignment: Alignment.centerLeft,
-            filterQuality: FilterQuality.high,
-            excludeFromSemantics: true,
-          ),
-        ),
-      );
-}
-
-class _BrandMark extends StatelessWidget {
-  const _BrandMark({this.size = 36});
-  final double size;
-  static const _asset = '../../brand/assets/05-ilaios-app-icon.jpg';
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-        label: 'ILAIOS',
-        image: true,
-        child: DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: IlaiosTheme.cyan.withValues(alpha: .62)),
-            boxShadow: [
-              BoxShadow(
-                color: IlaiosTheme.blue.withValues(alpha: .14),
-                blurRadius: 10,
-              ),
-            ],
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(7),
-            child: Image.asset(
-              _asset,
-              width: size,
-              height: size,
-              fit: BoxFit.contain,
-              filterQuality: FilterQuality.high,
-              excludeFromSemantics: true,
             ),
-          ),
+            if (Theme.of(context).brightness == Brightness.light)
+              Padding(
+                padding: const EdgeInsets.only(top: 5),
+                child: Text(
+                  'ILAIOS',
+                  style: TextStyle(
+                    fontSize: 8,
+                    color: scheme.primary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+          ],
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _NavItem extends StatelessWidget {
-  const _NavItem({required this.section, required this.selected, required this.onTap});
+  const _NavItem({
+    required this.section,
+    required this.selected,
+    required this.onTap,
+  });
 
   final DesktopSection section;
   final bool selected;
   final VoidCallback onTap;
 
+  Color _accent() => switch (section) {
+        DesktopSection.home || DesktopSection.goals =>
+          IlaiosTheme.enterpriseCyan,
+        DesktopSection.workflows || DesktopSection.liveWorkspace =>
+          IlaiosTheme.coreBlue,
+        DesktopSection.agents || DesktopSection.approvals => IlaiosTheme.violet,
+        DesktopSection.artifacts || DesktopSection.evidence =>
+          IlaiosTheme.enterpriseCyan,
+        DesktopSection.costs || DesktopSection.settings => IlaiosTheme.coreBlue,
+      };
+
   @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 5),
-        child: Material(
-          color: selected ? IlaiosTheme.cyanWash : Colors.transparent,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(7),
-            side: selected
-                ? BorderSide(color: IlaiosTheme.cyan.withValues(alpha: .72))
-                : BorderSide.none,
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: ListTile(
-            key: ValueKey('nav-${section.name}'),
-            minTileHeight: 43,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 10),
-            dense: true,
-            onTap: onTap,
-            leading: Container(
-              width: 28,
-              height: 28,
-              decoration: BoxDecoration(
-                color: selected
-                    ? IlaiosTheme.blueWash
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(7),
-              ),
-              child: Icon(
-                section.icon,
-                size: 19,
-                color: selected ? IlaiosTheme.cyan : IlaiosTheme.muted,
-              ),
-            ),
-            title: Text(
-              section.localizedLabel(context),
-              style: TextStyle(
-                color: selected ? IlaiosTheme.text : IlaiosTheme.mutedStrong,
-                fontSize: 12.5,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
-              ),
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final accent = _accent();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 5),
+      child: Material(
+        color: selected ? accent.withValues(alpha: .13) : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: selected
+              ? BorderSide(color: accent.withValues(alpha: .72))
+              : const BorderSide(color: Colors.transparent),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: ValueKey('nav-${section.name}'),
+          onTap: onTap,
+          overlayColor: WidgetStatePropertyAll(accent.withValues(alpha: .10)),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+            child: Row(
+              children: [
+                Container(
+                  width: 31,
+                  height: 31,
+                  decoration: BoxDecoration(
+                    color: selected
+                        ? accent.withValues(alpha: .16)
+                        : scheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(9),
+                  ),
+                  child: Icon(
+                    section.icon,
+                    size: 19,
+                    color: selected ? accent : scheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    section.localizedLabel(context),
+                    style: TextStyle(
+                      color: scheme.onSurface,
+                      fontSize: 12.5,
+                      fontWeight: selected ? FontWeight.w800 : FontWeight.w500,
+                    ),
+                  ),
+                ),
+                if (selected)
+                  Icon(Icons.chevron_right, size: 17, color: accent),
+              ],
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
 }
 
 class _TenantSummary extends StatelessWidget {
   const _TenantSummary({required this.userSession});
+
   final DesktopUserSession? userSession;
 
   @override
   Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
     final tenant = userSession?.tenantId;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(11),
       decoration: BoxDecoration(
-        color: IlaiosTheme.canvas.withValues(alpha: .58),
-        borderRadius: BorderRadius.circular(8),
+        color: scheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(11),
         border: Border.all(
           color: tenant == null
-              ? IlaiosTheme.border
-              : IlaiosTheme.selectiveAccent.withValues(alpha: .42),
+              ? scheme.outlineVariant
+              : IlaiosTheme.violet.withValues(alpha: .42),
         ),
       ),
       child: Column(
@@ -402,13 +427,9 @@ class _TenantSummary extends StatelessWidget {
         children: [
           Text(
             context.tr('shell.tenant'),
-            style: TextStyle(
-              color: tenant == null
-                  ? IlaiosTheme.muted
-                  : IlaiosTheme.selectiveAccent,
-              fontSize: 9,
-              fontWeight: FontWeight.w600,
-            ),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                  color: tenant == null ? null : IlaiosTheme.violet,
+                ),
           ),
           const SizedBox(height: 4),
           Row(
@@ -418,19 +439,17 @@ class _TenantSummary extends StatelessWidget {
                   tenant ?? context.tr('shell.unavailable'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600),
+                  style: Theme.of(context).textTheme.labelMedium,
                 ),
               ),
-              if (tenant != null) ...[
-                const SizedBox(width: 6),
-                const Icon(Icons.circle, size: 6, color: IlaiosTheme.success),
-              ],
+              if (tenant != null)
+                const Icon(Icons.circle, size: 7, color: IlaiosTheme.success),
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 7),
           Text(
             context.tr('shell.regionPlan'),
-            style: const TextStyle(color: IlaiosTheme.muted, fontSize: 9),
+            style: Theme.of(context).textTheme.bodySmall,
           ),
         ],
       ),
@@ -443,21 +462,25 @@ class _CompactTopBar extends StatelessWidget {
     required this.projection,
     required this.section,
     required this.onSectionSelected,
+    required this.themeMode,
+    required this.onThemeModeChanged,
   });
 
   final ControlPlaneProjection projection;
   final DesktopSection section;
   final ValueChanged<DesktopSection> onSectionSelected;
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
 
   @override
   Widget build(BuildContext context) => Container(
         height: 64,
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
-          color: IlaiosTheme.surface,
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
           border: Border(
             bottom: BorderSide(
-              color: IlaiosTheme.blue.withValues(alpha: .48),
+              color: Theme.of(context).colorScheme.outlineVariant,
             ),
           ),
         ),
@@ -485,22 +508,51 @@ class _CompactTopBar extends StatelessWidget {
                   const SizedBox(width: 9),
                   Text(
                     section.localizedLabel(context),
-                    style: const TextStyle(fontWeight: FontWeight.w700),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
                   ),
                   const SizedBox(width: 4),
                   const Icon(
                     Icons.expand_more,
                     size: 17,
-                    color: IlaiosTheme.cyan,
+                    color: IlaiosTheme.enterpriseCyan,
                   ),
                 ],
               ),
             ),
             const Spacer(),
-            _LanguageMenu(compact: true),
-            const SizedBox(width: 8),
+            const _LanguageMenu(compact: true),
+            const SizedBox(width: 7),
+            _ThemeButton(
+              compact: true,
+              themeMode: themeMode,
+              onChanged: onThemeModeChanged,
+            ),
+            const SizedBox(width: 7),
             _ConnectionPill(projection: projection, compact: true),
           ],
+        ),
+      );
+}
+
+class _BrandMark extends StatelessWidget {
+  const _BrandMark({this.size = 36});
+
+  final double size;
+  static const _asset = '../../brand/assets/05-ilaios-app-icon.jpg';
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        label: 'ILAIOS',
+        image: true,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(9),
+          child: Image.asset(
+            _asset,
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+          ),
         ),
       );
 }
@@ -510,119 +562,125 @@ class _TopBar extends StatelessWidget {
     required this.projection,
     required this.snapshot,
     required this.userSession,
+    required this.themeMode,
+    required this.onThemeModeChanged,
+    required this.onNavigate,
   });
 
   final ControlPlaneProjection projection;
   final OperationalSnapshot snapshot;
   final DesktopUserSession? userSession;
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
+  final ValueChanged<DesktopSection> onNavigate;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, constraints) {
-          final project = _projectLabel(snapshot);
-          return Container(
-            height: 78,
-            padding: const EdgeInsets.symmetric(horizontal: 18),
-            decoration: BoxDecoration(
-              color: IlaiosTheme.surface.withValues(alpha: .97),
-              border: Border(
-                bottom: BorderSide(
-                  color: IlaiosTheme.blue.withValues(alpha: .48),
-                ),
+        builder: (context, constraints) => Container(
+          height: 78,
+          padding: const EdgeInsets.symmetric(horizontal: 18),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surfaceContainerLow,
+            border: Border(
+              bottom: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant,
               ),
-              boxShadow: [
-                BoxShadow(
-                  color: IlaiosTheme.cyan.withValues(alpha: .045),
-                  blurRadius: 16,
-                  offset: const Offset(0, 4),
-                ),
-              ],
             ),
-            child: Row(
-              children: [
-                _ProjectSelector(project: project),
-                const Spacer(),
-                if (constraints.maxWidth >= 900) ...[
-                  const _SearchField(),
-                  const SizedBox(width: 18),
-                ],
-                _TopIcon(
-                  icon: Icons.notifications_none,
-                  tooltip: context.tr('shell.notifications'),
-                  color: IlaiosTheme.blue,
-                ),
-                const SizedBox(width: 14),
-                const _LanguageMenu(),
-                const SizedBox(width: 14),
-                _TopIcon(
-                  icon: Icons.light_mode_outlined,
-                  tooltip: context.tr('shell.darkTheme'),
-                  color: IlaiosTheme.selectiveAccent,
-                ),
-                const SizedBox(width: 17),
-                if (constraints.maxWidth >= 820) ...[
-                  _ProfileSummary(userSession: userSession),
-                  const SizedBox(width: 14),
-                ],
-                _ConnectionPill(projection: projection),
+          ),
+          child: Row(
+            children: [
+              _ProjectSelector(
+                project: _projectLabel(snapshot),
+                onTap: () => onNavigate(DesktopSection.goals),
+              ),
+              const Spacer(),
+              if (constraints.maxWidth >= 1180) ...[
+                _SearchButton(onNavigate: onNavigate),
+                const SizedBox(width: 12),
               ],
-            ),
-          );
-        },
+              _TopActionButton(
+                icon: Icons.notifications_none_rounded,
+                tooltip: context.tr('shell.notifications'),
+                accent: IlaiosTheme.coreBlue,
+                onPressed: () => _showNotifications(context),
+              ),
+              const SizedBox(width: 9),
+              const _LanguageMenu(),
+              const SizedBox(width: 9),
+              _ThemeButton(
+                themeMode: themeMode,
+                onChanged: onThemeModeChanged,
+              ),
+              const SizedBox(width: 12),
+              if (constraints.maxWidth >= 1080) ...[
+                _ProfileSummary(
+                  userSession: userSession,
+                  onTap: () => onNavigate(DesktopSection.settings),
+                ),
+                const SizedBox(width: 11),
+              ],
+              _ConnectionPill(
+                projection: projection,
+                onTap: () => onNavigate(DesktopSection.workflows),
+              ),
+            ],
+          ),
+        ),
       );
 }
 
 class _ProjectSelector extends StatelessWidget {
-  const _ProjectSelector({required this.project});
+  const _ProjectSelector({required this.project, required this.onTap});
+
   final String? project;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        width: 210,
+        width: 220,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               context.tr('shell.project'),
-              style: const TextStyle(color: IlaiosTheme.muted, fontSize: 9),
+              style: Theme.of(context).textTheme.labelSmall,
             ),
             const SizedBox(height: 4),
-            Container(
-              height: 36,
-              padding: const EdgeInsets.symmetric(horizontal: 11),
-              decoration: BoxDecoration(
-                color: project == null
-                    ? IlaiosTheme.canvas
-                    : IlaiosTheme.blueWash,
-                borderRadius: BorderRadius.circular(7),
-                border: Border.all(
+            Material(
+              color: project == null
+                  ? Theme.of(context).colorScheme.surfaceContainerLowest
+                  : IlaiosTheme.coreBlue.withValues(alpha: .08),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(9),
+                side: BorderSide(
                   color: project == null
-                      ? IlaiosTheme.border
-                      : IlaiosTheme.blue.withValues(alpha: .62),
+                      ? Theme.of(context).colorScheme.outlineVariant
+                      : IlaiosTheme.coreBlue.withValues(alpha: .52),
                 ),
               ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      project ?? context.tr('shell.unavailable'),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w600,
-                        color: project == null ? IlaiosTheme.muted : IlaiosTheme.text,
-                      ),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: onTap,
+                child: SizedBox(
+                  height: 38,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 11),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            project ?? context.tr('shell.unavailable'),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.labelMedium,
+                          ),
+                        ),
+                        const Icon(Icons.expand_more_rounded, size: 17),
+                      ],
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Icon(
-                    Icons.expand_more,
-                    size: 15,
-                    color: project == null ? IlaiosTheme.muted : IlaiosTheme.blue,
-                  ),
-                ],
+                ),
               ),
             ),
           ],
@@ -630,65 +688,71 @@ class _ProjectSelector extends StatelessWidget {
       );
 }
 
-class _SearchField extends StatelessWidget {
-  const _SearchField();
+class _SearchButton extends StatelessWidget {
+  const _SearchButton({required this.onNavigate});
+
+  final ValueChanged<DesktopSection> onNavigate;
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: 220,
-        height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 11),
-        decoration: BoxDecoration(
-          color: IlaiosTheme.canvas,
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(
-            color: IlaiosTheme.blue.withValues(alpha: .42),
+  Widget build(BuildContext context) => SizedBox(
+        width: 260,
+        child: OutlinedButton(
+          onPressed: () => _showCommandPalette(context, onNavigate),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
+            side: BorderSide(
+              color: IlaiosTheme.coreBlue.withValues(alpha: .55),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.search, size: 16, color: IlaiosTheme.cyan),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                context.tr('shell.search'),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: IlaiosTheme.muted, fontSize: 10),
+          child: Row(
+            children: [
+              const Icon(
+                Icons.search,
+                color: IlaiosTheme.enterpriseCyan,
+                size: 18,
               ),
-            ),
-            const Text(
-              '⌘K',
-              style: TextStyle(color: IlaiosTheme.blue, fontSize: 9),
-            ),
-          ],
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  context.tr('shell.search'),
+                  textAlign: TextAlign.left,
+                ),
+              ),
+              Text(
+                '⌘K',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: IlaiosTheme.coreBlue,
+                    ),
+              ),
+            ],
+          ),
         ),
       );
 }
 
-class _TopIcon extends StatelessWidget {
-  const _TopIcon({
+class _TopActionButton extends StatelessWidget {
+  const _TopActionButton({
     required this.icon,
     required this.tooltip,
-    this.color = IlaiosTheme.mutedStrong,
+    required this.accent,
+    required this.onPressed,
   });
+
   final IconData icon;
   final String tooltip;
-  final Color color;
+  final Color accent;
+  final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) => Tooltip(
-        message: tooltip,
-        child: Container(
-          width: 29,
-          height: 29,
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: .08),
-            borderRadius: BorderRadius.circular(7),
-            border: Border.all(color: color.withValues(alpha: .22)),
-          ),
-          child: Icon(icon, size: 18, color: color),
+  Widget build(BuildContext context) => IconButton(
+        tooltip: tooltip,
+        onPressed: onPressed,
+        style: IconButton.styleFrom(
+          backgroundColor: accent.withValues(alpha: .10),
+          side: BorderSide(color: accent.withValues(alpha: .30)),
         ),
+        icon: Icon(icon, color: accent, size: 20),
       );
 }
 
@@ -704,218 +768,259 @@ class _LanguageMenu extends StatelessWidget {
       tooltip: context.tr('shell.language'),
       onSelected: scope.onChanged,
       itemBuilder: (context) => [
-        for (final locale in IlaiosLocale.values)
-          PopupMenuItem<IlaiosLocale>(
-            value: locale,
-            child: Row(
-              children: [
-                Icon(
-                  locale == scope.locale ? Icons.check : Icons.language,
-                  size: 17,
-                  color: locale == scope.locale ? IlaiosTheme.cyan : IlaiosTheme.muted,
-                ),
-                const SizedBox(width: 9),
-                Text(locale.displayName),
-              ],
-            ),
-          ),
+        PopupMenuItem(
+          value: IlaiosLocale.english,
+          child: Text(context.tr('language.english')),
+        ),
+        PopupMenuItem(
+          value: IlaiosLocale.turkish,
+          child: Text(context.tr('language.turkish')),
+        ),
       ],
       child: Container(
-        padding: EdgeInsets.all(compact ? 4 : 5),
+        width: compact ? 36 : 42,
+        height: compact ? 36 : 42,
         decoration: BoxDecoration(
-          color: IlaiosTheme.cyanWash,
-          borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: IlaiosTheme.cyan.withValues(alpha: .28)),
+          color: IlaiosTheme.enterpriseCyan.withValues(alpha: .11),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: IlaiosTheme.enterpriseCyan.withValues(alpha: .34),
+          ),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Icon(Icons.language, size: 18, color: IlaiosTheme.cyan),
-            if (compact) ...[
-              const SizedBox(width: 4),
-              Text(
-                scope.locale.code.toUpperCase(),
-                style: const TextStyle(
-                  color: IlaiosTheme.cyan,
-                  fontSize: 9,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ],
+        child: const Icon(
+          Icons.language,
+          color: IlaiosTheme.enterpriseCyan,
+          size: 20,
         ),
+      ),
+    );
+  }
+}
+
+class _ThemeButton extends StatelessWidget {
+  const _ThemeButton({
+    required this.themeMode,
+    required this.onChanged,
+    this.compact = false,
+  });
+
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode>? onChanged;
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final light = Theme.of(context).brightness == Brightness.light;
+    final tooltip = light
+        ? (_isTr(context) ? 'Koyu temaya geç' : 'Switch to dark theme')
+        : (_isTr(context) ? 'Açık temaya geç' : 'Switch to light theme');
+    return IconButton(
+      key: const Key('theme-toggle'),
+      tooltip: tooltip,
+      onPressed: onChanged == null
+          ? null
+          : () => onChanged!(light ? ThemeMode.dark : ThemeMode.light),
+      style: IconButton.styleFrom(
+        fixedSize: Size.square(compact ? 36 : 42),
+        backgroundColor: IlaiosTheme.violet.withValues(alpha: .10),
+        side: BorderSide(color: IlaiosTheme.violet.withValues(alpha: .32)),
+      ),
+      icon: Icon(
+        light ? Icons.dark_mode_outlined : Icons.light_mode_outlined,
+        color: IlaiosTheme.violet,
+        size: 20,
       ),
     );
   }
 }
 
 class _ProfileSummary extends StatelessWidget {
-  const _ProfileSummary({required this.userSession});
+  const _ProfileSummary({required this.userSession, required this.onTap});
+
   final DesktopUserSession? userSession;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final identity = userSession?.displayIdentity ?? userSession?.providerId;
-    return ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 175),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          CircleAvatar(
-            radius: 16,
-            backgroundColor: userSession == null
-                ? IlaiosTheme.surfaceRaised
-                : IlaiosTheme.blueWash,
-            child: Icon(
-              userSession == null ? Icons.person_outline : Icons.person,
-              size: 17,
-              color: userSession == null ? IlaiosTheme.muted : IlaiosTheme.cyan,
+    final identity =
+        userSession?.displayIdentity ?? context.tr('shell.signedOut');
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+        child: Row(
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: IlaiosTheme.coreBlue.withValues(alpha: .14),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.person,
+                color: IlaiosTheme.enterpriseCyan,
+                size: 20,
+              ),
             ),
-          ),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  identity ?? context.tr('shell.identityUnavailable'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600),
-                ),
-                Text(
-                  userSession == null
-                      ? context.tr('shell.signedOut')
-                      : context.tr('shell.authenticated'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: userSession == null
-                        ? IlaiosTheme.muted
-                        : IlaiosTheme.blue,
-                    fontSize: 9,
-                    fontWeight: userSession == null
-                        ? FontWeight.w400
-                        : FontWeight.w600,
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 135,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    identity,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelMedium,
                   ),
-                ),
-              ],
+                  Text(
+                    userSession == null
+                        ? context.tr('shell.signedOut')
+                        : context.tr('shell.authenticated'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: IlaiosTheme.coreBlue,
+                        ),
+                  ),
+                ],
+              ),
             ),
-          ),
-          const SizedBox(width: 4),
-          const Icon(Icons.expand_more, size: 14, color: IlaiosTheme.cyan),
-        ],
+            const Icon(Icons.expand_more, size: 15),
+          ],
+        ),
       ),
     );
   }
 }
 
 class _ConnectionPill extends StatelessWidget {
-  const _ConnectionPill({required this.projection, this.compact = false});
+  const _ConnectionPill({
+    required this.projection,
+    this.compact = false,
+    this.onTap,
+  });
+
   final ControlPlaneProjection projection;
   final bool compact;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     final connected = projection.connected;
-    final label = connected
-        ? context.tr('shell.connected')
-        : context.tr('shell.offline');
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 11, vertical: 7),
-      decoration: BoxDecoration(
-        color: connected ? IlaiosTheme.cyanWash : IlaiosTheme.surfaceRaised,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: connected
-              ? IlaiosTheme.cyan.withValues(alpha: .62)
-              : IlaiosTheme.border,
-        ),
-        boxShadow: connected
-            ? [
-                BoxShadow(
-                  color: IlaiosTheme.blue.withValues(alpha: .10),
-                  blurRadius: 10,
-                ),
-              ]
-            : null,
+    final accent = connected
+        ? IlaiosTheme.enterpriseCyan
+        : Theme.of(context).colorScheme.outline;
+    return Material(
+      color: accent.withValues(alpha: .10),
+      shape: StadiumBorder(
+        side: BorderSide(color: accent.withValues(alpha: .66)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.circle,
-            size: 7,
-            color: connected ? IlaiosTheme.success : IlaiosTheme.muted,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 9 : 12,
+            vertical: compact ? 7 : 9,
           ),
-          const SizedBox(width: 6),
-          Text(
-            label,
-            style: TextStyle(
-              color: connected ? IlaiosTheme.cyan : IlaiosTheme.text,
-              fontSize: 9,
-              fontWeight: FontWeight.w700,
-            ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.circle,
+                size: 7,
+                color: connected ? IlaiosTheme.success : accent,
+              ),
+              if (!compact) ...[
+                const SizedBox(width: 7),
+                Text(
+                  connected
+                      ? context.tr('shell.connected')
+                      : context.tr('shell.offline'),
+                  style: TextStyle(
+                    color: connected ? accent : null,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 10.5,
+                  ),
+                ),
+              ],
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 }
 
 class _BottomStatusBar extends StatelessWidget {
-  const _BottomStatusBar({required this.projection, required this.snapshot});
+  const _BottomStatusBar({
+    required this.projection,
+    required this.snapshot,
+    required this.onNavigate,
+  });
+
   final ControlPlaneProjection projection;
   final OperationalSnapshot snapshot;
+  final ValueChanged<DesktopSection> onNavigate;
+
+  int _listLength(Map<String, Object?> source, String key) {
+    final value = source[key];
+    return value is List<Object?> ? value.length : 0;
+  }
 
   @override
   Widget build(BuildContext context) {
-    final leases = _mapList(snapshot.schedulerState['leases']).length;
-    final queues = _queueCount(snapshot.schedulerState);
-    final wide = MediaQuery.sizeOf(context).width >= 980;
+    final scheme = Theme.of(context).colorScheme;
     return Container(
-      height: 38,
+      height: 30,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
-        color: IlaiosTheme.surface,
-        border: Border(
-          top: BorderSide(color: IlaiosTheme.blue.withValues(alpha: .46)),
-        ),
+        color: scheme.surfaceContainerLow,
+        border: Border(top: BorderSide(color: scheme.outlineVariant)),
       ),
       child: Row(
         children: [
-          _StatusCapsule(
+          _StatusLink(
             label: context.tr('shell.systemHealth'),
             value: projection.connected
                 ? context.tr('shell.healthy')
                 : context.tr('shell.offline'),
-            active: projection.connected,
+            accent: projection.connected
+                ? IlaiosTheme.success
+                : scheme.outline,
+            onTap: () => onNavigate(DesktopSection.workflows),
           ),
-          const SizedBox(width: 10),
-          _StatusCapsule(label: context.tr('shell.workers'), value: '$leases'),
-          const SizedBox(width: 10),
-          _StatusCapsule(
-            label: context.tr('shell.queues'),
-            value: queues?.toString() ?? '—',
+          const SizedBox(width: 18),
+          _StatusLink(
+            label: context.tr('shell.workers'),
+            value: '${_listLength(snapshot.schedulerState, 'leases')}',
+            accent: IlaiosTheme.violet,
+            onTap: () => onNavigate(DesktopSection.agents),
           ),
-          if (wide) ...[
-            const SizedBox(width: 10),
-            _StatusCapsule(label: context.tr('shell.eventsPerMinute'), value: '—'),
-          ],
+          const SizedBox(width: 18),
+          _StatusLink(
+            label: context.tr('shell.eventsPerMinute'),
+            value: '${snapshot.liveEventCount}',
+            accent: IlaiosTheme.coreBlue,
+            onTap: () => onNavigate(DesktopSection.liveWorkspace),
+          ),
           const Spacer(),
-          if (wide)
-            const Text(
-              '© ILAIOS',
-              style: TextStyle(color: IlaiosTheme.selectiveAccent, fontSize: 9),
-            ),
-          const Spacer(),
-          _StatusItem(
-            label: context.tr('shell.realTime'),
-            value: projection.connected
-                ? context.tr('shell.connected')
-                : context.tr('shell.offline'),
-            active: projection.connected,
+          Icon(
+            Icons.circle,
+            size: 6,
+            color: projection.connected
+                ? IlaiosTheme.enterpriseCyan
+                : scheme.outline,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            context.tr('shell.realTime'),
+            style: Theme.of(context).textTheme.labelSmall,
           ),
         ],
       ),
@@ -923,81 +1028,148 @@ class _BottomStatusBar extends StatelessWidget {
   }
 }
 
-class _StatusCapsule extends StatelessWidget {
-  const _StatusCapsule({required this.label, required this.value, this.active = false});
+class _StatusLink extends StatelessWidget {
+  const _StatusLink({
+    required this.label,
+    required this.value,
+    required this.accent,
+    required this.onTap,
+  });
+
   final String label;
   final String value;
-  final bool active;
+  final Color accent;
+  final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => Container(
-        height: 25,
-        padding: const EdgeInsets.symmetric(horizontal: 9),
-        decoration: BoxDecoration(
-          color: active
-              ? IlaiosTheme.blueWash
-              : IlaiosTheme.canvas.withValues(alpha: .7),
-          borderRadius: BorderRadius.circular(5),
-          border: Border.all(
-            color: active
-                ? IlaiosTheme.cyan.withValues(alpha: .48)
-                : IlaiosTheme.border,
+  Widget build(BuildContext context) => InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(6),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 3),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(label, style: Theme.of(context).textTheme.labelSmall),
+              const SizedBox(width: 6),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: accent,
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+            ],
           ),
         ),
-        child: Center(child: _StatusItem(label: label, value: value, active: active)),
       );
 }
 
-class _StatusItem extends StatelessWidget {
-  const _StatusItem({required this.label, required this.value, this.active = false});
-  final String label;
-  final String value;
-  final bool active;
-
-  @override
-  Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (active) ...[
-            const Icon(Icons.circle, size: 6, color: IlaiosTheme.success),
-            const SizedBox(width: 5),
-          ],
-          Text('$label  ', style: const TextStyle(color: IlaiosTheme.muted, fontSize: 8.5)),
-          Text(
-            value,
-            style: TextStyle(
-              color: active ? IlaiosTheme.cyan : IlaiosTheme.text,
-              fontSize: 8.5,
-              fontWeight: FontWeight.w600,
+Future<void> _showCommandPalette(
+  BuildContext context,
+  ValueChanged<DesktopSection> onNavigate,
+) async {
+  final controller = TextEditingController();
+  DesktopSection? selected;
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => StatefulBuilder(
+      builder: (context, setState) {
+        final query = controller.text.trim().toLowerCase();
+        final items = DesktopSection.values.where((section) {
+          final label = section.localizedLabel(context).toLowerCase();
+          return query.isEmpty ||
+              label.contains(query) ||
+              section.name.toLowerCase().contains(query);
+        }).toList();
+        return AlertDialog(
+          title: Text(_isTr(context) ? 'ILAIOS içinde ara' : 'Search ILAIOS'),
+          content: SizedBox(
+            width: 460,
+            height: 420,
+            child: Column(
+              children: [
+                TextField(
+                  autofocus: true,
+                  controller: controller,
+                  onChanged: (_) => setState(() {}),
+                  decoration: InputDecoration(
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: IlaiosTheme.enterpriseCyan,
+                    ),
+                    hintText: _isTr(context)
+                        ? 'Sayfa veya özellik ara'
+                        : 'Search pages or features',
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: ListView(
+                    children: [
+                      for (final section in items)
+                        ListTile(
+                          leading: Icon(
+                            section.icon,
+                            color: IlaiosTheme.coreBlue,
+                          ),
+                          title: Text(section.localizedLabel(context)),
+                          trailing: const Icon(Icons.arrow_forward, size: 16),
+                          onTap: () {
+                            selected = section;
+                            Navigator.of(dialogContext).pop();
+                          },
+                        ),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      );
+        );
+      },
+    ),
+  );
+  controller.dispose();
+  if (selected != null) onNavigate(selected!);
 }
+
+Future<void> _showNotifications(BuildContext context) => showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(
+          Icons.notifications_none,
+          color: IlaiosTheme.coreBlue,
+        ),
+        title: Text(_isTr(context) ? 'Bildirimler' : 'Notifications'),
+        content: Text(
+          _isTr(context)
+              ? 'Yetkili çalışma zamanı tarafından sunulmuş bir bildirim kaydı yok. Sentetik bildirim oluşturulmaz.'
+              : 'No notification records are exposed by the authoritative runtime. Synthetic notifications are not fabricated.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(_isTr(context) ? 'Kapat' : 'Close'),
+          ),
+        ],
+      ),
+    );
 
 String? _projectLabel(OperationalSnapshot snapshot) {
-  if (snapshot.liveEvents.isEmpty) return null;
-  final latest = snapshot.liveEvents.last;
-  for (final key in const <String>['project_name', 'project_id']) {
-    final value = latest[key];
-    if (value is String && value.trim().isNotEmpty) return value.trim();
+  for (final event in snapshot.liveEvents.reversed) {
+    for (final key in const [
+      'project',
+      'project_name',
+      'workspace',
+      'goal_title',
+    ]) {
+      final value = event[key];
+      if (value is String && value.trim().isNotEmpty) return value.trim();
+    }
   }
   return null;
 }
 
-List<Map<String, Object?>> _mapList(Object? value) {
-  if (value is! List<Object?>) return const <Map<String, Object?>>[];
-  return <Map<String, Object?>>[
-    for (final item in value)
-      if (item is Map<String, dynamic>) Map<String, Object?>.from(item),
-  ];
-}
-
-int? _queueCount(Map<String, Object?> scheduler) {
-  for (final key in const <String>['queue', 'queued', 'pending', 'tasks']) {
-    final value = scheduler[key];
-    if (value is List<Object?>) return value.length;
-    if (value is int && value >= 0) return value;
-  }
-  return null;
-}
+bool _isTr(BuildContext context) =>
+    context.ilaiosLocale.locale == IlaiosLocale.turkish;

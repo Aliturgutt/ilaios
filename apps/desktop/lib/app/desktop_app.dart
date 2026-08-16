@@ -1,3 +1,6 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../control_plane/client.dart';
@@ -8,8 +11,9 @@ import '../features/dashboard/desktop_shell.dart';
 import '../identity/identity_client.dart';
 import 'ilaios_locale.dart';
 import 'ilaios_theme.dart';
+import 'ilaios_theme_mode.dart';
 
-class IlaiosDesktopApp extends StatelessWidget {
+class IlaiosDesktopApp extends StatefulWidget {
   const IlaiosDesktopApp({
     super.key,
     this.projection = const ControlPlaneProjection.unavailable(),
@@ -20,7 +24,9 @@ class IlaiosDesktopApp extends StatelessWidget {
     this.userSession,
     this.identityStatus = 'Account sign-in is not configured',
     this.locale = IlaiosLocale.english,
+    this.themeMode = ThemeMode.dark,
     this.onLocaleChanged,
+    this.onThemeModeChanged,
     this.onSignIn,
     this.onLogout,
     this.onPromptSubmit,
@@ -37,7 +43,9 @@ class IlaiosDesktopApp extends StatelessWidget {
   final DesktopUserSession? userSession;
   final String identityStatus;
   final IlaiosLocale locale;
+  final ThemeMode themeMode;
   final ValueChanged<IlaiosLocale>? onLocaleChanged;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
   final Future<void> Function(String providerId)? onSignIn;
   final Future<void> Function()? onLogout;
   final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
@@ -47,28 +55,75 @@ class IlaiosDesktopApp extends StatelessWidget {
       onGovernanceDecision;
 
   @override
+  State<IlaiosDesktopApp> createState() => _IlaiosDesktopAppState();
+}
+
+class _IlaiosDesktopAppState extends State<IlaiosDesktopApp> {
+  late ThemeMode _localThemeMode = widget.themeMode;
+
+  @override
+  void initState() {
+    super.initState();
+    if (kReleaseMode && widget.onThemeModeChanged == null) {
+      unawaited(_loadTheme());
+    }
+  }
+
+  @override
+  void didUpdateWidget(covariant IlaiosDesktopApp oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.themeMode != oldWidget.themeMode &&
+        widget.onThemeModeChanged != null) {
+      _localThemeMode = widget.themeMode;
+    }
+  }
+
+  Future<void> _loadTheme() async {
+    final mode = await IlaiosThemeModeStore.load();
+    if (!mounted || widget.onThemeModeChanged != null || mode == _localThemeMode) {
+      return;
+    }
+    setState(() => _localThemeMode = mode);
+  }
+
+  void _changeTheme(ThemeMode mode) {
+    if (widget.onThemeModeChanged != null) {
+      widget.onThemeModeChanged!(mode);
+      return;
+    }
+    if (_localThemeMode != mode) setState(() => _localThemeMode = mode);
+    if (kReleaseMode) unawaited(IlaiosThemeModeStore.save(mode));
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final effectiveTheme =
+        widget.onThemeModeChanged == null ? _localThemeMode : widget.themeMode;
     return MaterialApp(
       title: 'ILAIOS Desktop',
       debugShowCheckedModeBanner: false,
-      theme: IlaiosTheme.dark,
+      theme: IlaiosTheme.light,
+      darkTheme: IlaiosTheme.dark,
+      themeMode: effectiveTheme,
       home: IlaiosLocaleScope(
-        locale: locale,
-        onChanged: (value) => onLocaleChanged?.call(value),
+        locale: widget.locale,
+        onChanged: (value) => widget.onLocaleChanged?.call(value),
         child: DesktopShell(
-          projection: projection,
-          operationalSnapshot: operationalSnapshot,
-          operationalStatus: operationalStatus,
-          approverId: approverId,
-          identityProviders: identityProviders,
-          userSession: userSession,
-          identityStatus: identityStatus,
-          onSignIn: onSignIn,
-          onLogout: onLogout,
-          onPromptSubmit: onPromptSubmit,
-          onSaveArtifact: onSaveArtifact,
-          onRefreshRequested: onRefreshRequested,
-          onGovernanceDecision: onGovernanceDecision,
+          projection: widget.projection,
+          operationalSnapshot: widget.operationalSnapshot,
+          operationalStatus: widget.operationalStatus,
+          approverId: widget.approverId,
+          identityProviders: widget.identityProviders,
+          userSession: widget.userSession,
+          identityStatus: widget.identityStatus,
+          themeMode: effectiveTheme,
+          onThemeModeChanged: _changeTheme,
+          onSignIn: widget.onSignIn,
+          onLogout: widget.onLogout,
+          onPromptSubmit: widget.onPromptSubmit,
+          onSaveArtifact: widget.onSaveArtifact,
+          onRefreshRequested: widget.onRefreshRequested,
+          onGovernanceDecision: widget.onGovernanceDecision,
         ),
       ),
     );
