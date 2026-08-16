@@ -1,6 +1,14 @@
 name: Video Provider Production Certification
 
 on:
+  pull_request:
+    paths:
+      - "services/integrations/provider_video_runtime.py"
+      - "src/video_automation/openrouter_perceptual_reviewer.py"
+      - "src/video_automation/openrouter_video_provider.py"
+      - "apps/desktop/sidecar/ilaios_control_plane_sidecar.py"
+      - "apps/desktop/e2e/provider_video_finished_product_e2e.py"
+      - ".github/workflows/video-provider-production-certification.yml"
   workflow_dispatch:
     inputs:
       proof_mode:
@@ -16,12 +24,13 @@ permissions:
   contents: read
 
 concurrency:
-  group: video-provider-production-certification
+  group: video-provider-production-certification-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
   provider-proof:
     name: Bounded real-provider production proof
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     environment: Production
     timeout-minutes: 15
@@ -118,54 +127,6 @@ jobs:
           print(f"- Provider usage: `{terminal.get('usage_json', 'n/a')}`")
           print("- Submit/poll/retrieval reuse the canonical managed OpenRouter boundaries.")
           print("- Credential material is never written to evidence or logs.")
-
-          if receipt.get("status") == "BLOCKED_CATALOG_CAPABILITY_OR_PRICE":
-              from src.video_automation.openrouter_video_catalog import OpenRouterVideoCatalogClient
-              from src.video_automation.openrouter_video_provider import UrllibOpenRouterTransport
-
-              api_key = os.environ.get("OPENROUTER_API_KEY", "")
-              if api_key:
-                  observation = OpenRouterVideoCatalogClient(
-                      api_key,
-                      transport=UrllibOpenRouterTransport(),
-                  ).refresh()
-                  selected = None
-                  if observation.snapshot is not None:
-                      target_model = os.environ.get("VIDEO_PROVIDER_MODEL", "")
-                      selected = next(
-                          (
-                              model
-                              for model in observation.snapshot.models
-                              if model.model_id == target_model
-                          ),
-                          None,
-                      )
-                  selected_model = None
-                  if selected is not None:
-                      selected_model = {
-                          "model_id": selected.model_id,
-                          "generate_audio": selected.generate_audio,
-                          "supported_aspect_ratios": list(selected.supported_aspect_ratios),
-                          "supported_durations": list(selected.supported_durations),
-                          "supported_resolutions": list(selected.supported_resolutions),
-                          "pricing_skus": dict(selected.pricing_skus),
-                      }
-                  diagnostic = {
-                      "schema": "ilaios.video.catalog-diagnostic.v2",
-                      "health": observation.health.value,
-                      "detail": observation.detail,
-                      "selected_model": selected_model,
-                      "raw_payload_recorded": False,
-                      "credential_recorded": False,
-                  }
-                  (proof_dir / "catalog-diagnostic.json").write_text(
-                      json.dumps(diagnostic, sort_keys=True, indent=2) + "\n",
-                      encoding="utf-8",
-                  )
-                  print(f"- Catalog diagnostic health: `{observation.health.value}`")
-                  print(f"- Catalog diagnostic detail: `{observation.detail}`")
-              else:
-                  print("- Catalog diagnostic: `SECRET_UNAVAILABLE`")
           PY
           else
             echo "- Status: `NO_RECEIPT`" >> "$GITHUB_STEP_SUMMARY"
@@ -186,5 +147,83 @@ jobs:
         with:
           name: video-provider-production-proof-${{ github.sha }}-${{ github.run_id }}
           path: artifacts/video-provider-proof
+          if-no-files-found: warn
+          retention-days: 30
+
+  desktop-provider-proof:
+    name: Real provider-backed Desktop one-prompt MP4 proof
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-latest
+    environment: Production
+    timeout-minutes: 25
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      ILAIOS_VIDEO_MODEL_ID: bytedance/seedance-2.0-fast:free
+      ILAIOS_VIDEO_QA_MODEL_ID: openrouter/free
+      ILAIOS_VIDEO_E2E_RESOLUTION: 480p
+      VIDEO_DESKTOP_PROVIDER_PROOF_DIR: artifacts/video-desktop-provider-proof
+
+    steps:
+      - name: Checkout exact pull-request head
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+
+      - name: Verify runtime dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python --version
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+          test -n "$OPENROUTER_API_KEY"
+          case "$ILAIOS_VIDEO_MODEL_ID" in
+            *:free) ;;
+            *) echo "Paid video model forbidden in PR proof" >&2; exit 1 ;;
+          esac
+
+      - name: Run real provider-backed Desktop finished-product E2E
+        shell: bash
+        run: |
+          set -euo pipefail
+          python apps/desktop/e2e/provider_video_finished_product_e2e.py
+
+      - name: Publish Desktop provider proof summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "## Desktop Provider-Backed Video Factory E2E" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f "$VIDEO_DESKTOP_PROVIDER_PROOF_DIR/receipt.json" ]]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          proof_dir = Path(os.environ["VIDEO_DESKTOP_PROVIDER_PROOF_DIR"])
+          receipt = json.loads((proof_dir / "receipt.json").read_text(encoding="utf-8"))
+          print(f"- Status: `{receipt.get('status')}`")
+          print(f"- Execution: `{receipt.get('execution_status')}`")
+          print(f"- Provider model: `{receipt.get('provider_model')}`")
+          print(f"- QA model: `{receipt.get('qa_model')}`")
+          print(f"- Semantic score/threshold: `{receipt.get('semantic_score')}` / `{receipt.get('semantic_threshold')}`")
+          print(f"- Generated shots: `{receipt.get('generated_shot_count')}`")
+          print(f"- Duration: `{receipt.get('duration_seconds')}` seconds")
+          print(f"- Video/audio: `{receipt.get('video_codec')}` / `{receipt.get('audio_codec')}`")
+          print(f"- Artifact SHA-256: `{receipt.get('artifact_sha256')}`")
+          print(f"- Artifact bytes: `{receipt.get('artifact_bytes')}`")
+          print(f"- Provider cost zero: `{receipt.get('provider_cost_zero')}`")
+          PY
+          else
+            echo "- Status: `NO_ACCEPTED_RECEIPT`" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload immutable Desktop provider finished-product proof
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-provider-video-proof-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: artifacts/video-desktop-provider-proof
           if-no-files-found: warn
           retention-days: 30
