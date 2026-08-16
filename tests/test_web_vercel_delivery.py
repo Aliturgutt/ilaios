@@ -181,15 +181,9 @@ def test_vercel_deploy_is_preview_first_then_promotes_exact_expected_alias(
     ]
 
 
-@pytest.mark.parametrize(
-    ("authorization_proven", "budget_proven", "message"),
-    [
-        (False, True, "authorization is not proven"),
-        (True, False, "budget is not proven"),
-    ],
-)
-def test_vercel_deploy_requires_governance_before_credential_or_network(
+def _assert_governance_rejection_before_credential(
     tmp_path: Path,
+    *,
     authorization_proven: bool,
     budget_proven: bool,
     message: str,
@@ -222,6 +216,28 @@ def test_vercel_deploy_requires_governance_before_credential_or_network(
 
     assert credential_reads == 0
     assert transport.calls == []
+
+
+def test_vercel_deploy_requires_authorization_before_credential_or_network(
+    tmp_path: Path,
+) -> None:
+    _assert_governance_rejection_before_credential(
+        tmp_path,
+        authorization_proven=False,
+        budget_proven=True,
+        message="authorization is not proven",
+    )
+
+
+def test_vercel_deploy_requires_budget_before_credential_or_network(
+    tmp_path: Path,
+) -> None:
+    _assert_governance_rejection_before_credential(
+        tmp_path,
+        authorization_proven=True,
+        budget_proven=False,
+        message="budget is not proven",
+    )
 
 
 def test_vercel_deploy_fails_closed_on_provider_provenance_mismatch(
