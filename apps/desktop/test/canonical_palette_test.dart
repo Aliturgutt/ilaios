@@ -27,4 +27,17 @@ void main() {
     expect(scheme.surface, IlaiosTheme.charcoal);
     expect(scheme.onSurface, IlaiosTheme.white);
   });
+
+  test('desktop vitality tokens remain canonical translucent accents', () {
+    expect(IlaiosTheme.cyanWash, const Color(0x2E00C2D1));
+    expect(IlaiosTheme.blueWash, const Color(0x2B146BFF));
+    expect(IlaiosTheme.violetWash, const Color(0x265C58FE));
+    expect(IlaiosTheme.focusRing, const Color(0xE600C2D1));
+
+    final theme = IlaiosTheme.dark;
+    expect(theme.focusColor, IlaiosTheme.cyanWash);
+    expect(theme.hoverColor, IlaiosTheme.blueWash);
+    expect(theme.highlightColor, IlaiosTheme.violetWash);
+    expect(theme.progressIndicatorTheme.color, IlaiosTheme.enterpriseCyan);
+  });
 }
