@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sqlite3
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import cast
@@ -13,6 +14,7 @@ from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
 from services.evidence import EvidenceStore
 from services.execution_adapters import register_web_runtime
 from services.execution_coordinator import (
+    ExecutionAdapter,
     ExecutionCoordinator,
     ExecutionCoordinatorError,
     ExecutionState,
@@ -194,13 +196,12 @@ def test_multi_resume_recovers_after_process_stops_between_accepted_steps(
     real_resolver = coordinator._verified_step_adapter  # noqa: SLF001
     interrupted = False
 
-    def simulate_process_stop(step: object) -> object:
+    def simulate_process_stop(step: sqlite3.Row) -> ExecutionAdapter:
         nonlocal interrupted
-        row = cast(object, step)
-        if not interrupted and int(row["step_index"]) == 1:  # type: ignore[index]
+        if not interrupted and int(str(step["step_index"])) == 1:
             interrupted = True
             raise ExecutionCoordinatorError("simulated process stop between steps")
-        return real_resolver(step)  # type: ignore[arg-type]
+        return real_resolver(step)
 
     monkeypatch.setattr(coordinator, "_verified_step_adapter", simulate_process_stop)
     with pytest.raises(ExecutionCoordinatorError, match="simulated process stop"):
