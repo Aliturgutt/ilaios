@@ -1,22 +1,15 @@
 name: Video Provider Production Certification
 
 on:
-  pull_request:
-    paths:
-      - "services/integrations/provider_video_runtime.py"
-      - "src/video_automation/openrouter_perceptual_reviewer.py"
-      - "src/video_automation/openrouter_video_provider.py"
-      - "apps/desktop/sidecar/ilaios_control_plane_sidecar.py"
-      - "apps/desktop/e2e/provider_video_finished_product_e2e.py"
-      - ".github/workflows/video-provider-production-certification.yml"
   workflow_dispatch:
     inputs:
       proof_mode:
         description: Video provider certification path
         required: true
-        default: free-only
+        default: desktop-one-prompt
         type: choice
         options:
+          - desktop-one-prompt
           - free-only
           - managed-bounded
 
@@ -30,10 +23,9 @@ concurrency:
 jobs:
   provider-proof:
     name: Bounded real-provider production proof
-    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: ubuntu-latest
     environment: Production
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       VIDEO_FREE_PROVIDER_PROOF_DIR: artifacts/video-free-provider-proof
@@ -45,6 +37,10 @@ jobs:
       VIDEO_PROVIDER_ASPECT_RATIO: "16:9"
       VIDEO_PROVIDER_MAX_UNIT_PRICE_USD: "0.15"
       VIDEO_PROVIDER_MAX_TOTAL_COST_USD: "0.60"
+      ILAIOS_VIDEO_MODEL_ID: bytedance/seedance-2.0-fast:free
+      ILAIOS_VIDEO_QA_MODEL_ID: openrouter/free
+      ILAIOS_VIDEO_E2E_RESOLUTION: 480p
+      VIDEO_DESKTOP_PROVIDER_PROOF_DIR: artifacts/video-desktop-provider-proof
 
     steps:
       - name: Checkout exact source revision
@@ -52,6 +48,35 @@ jobs:
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
+
+      - name: Install Desktop video runtime dependency
+        if: ${{ inputs.proof_mode == 'desktop-one-prompt' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg
+
+      - name: Verify Desktop provider proof safety boundary
+        if: ${{ inputs.proof_mode == 'desktop-one-prompt' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python --version
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+          test -n "$OPENROUTER_API_KEY"
+          case "$ILAIOS_VIDEO_MODEL_ID" in
+            *:free) ;;
+            *) echo "Paid video model forbidden in Desktop proof" >&2; exit 1 ;;
+          esac
+
+      - name: Run real provider-backed Desktop finished-product E2E
+        if: ${{ inputs.proof_mode == 'desktop-one-prompt' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python apps/desktop/e2e/provider_video_finished_product_e2e.py
 
       - name: Run real free-only provider certification
         if: ${{ inputs.proof_mode == 'free-only' }}
@@ -66,6 +91,36 @@ jobs:
         run: |
           set -euo pipefail
           python -m src.video_automation.provider_production_certification
+
+      - name: Publish Desktop provider proof summary
+        if: ${{ always() && inputs.proof_mode == 'desktop-one-prompt' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "## Desktop Provider-Backed Video Factory E2E" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f "$VIDEO_DESKTOP_PROVIDER_PROOF_DIR/receipt.json" ]]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          proof_dir = Path(os.environ["VIDEO_DESKTOP_PROVIDER_PROOF_DIR"])
+          receipt = json.loads((proof_dir / "receipt.json").read_text(encoding="utf-8"))
+          print(f"- Status: `{receipt.get('status')}`")
+          print(f"- Execution: `{receipt.get('execution_status')}`")
+          print(f"- Provider model: `{receipt.get('provider_model')}`")
+          print(f"- QA model: `{receipt.get('qa_model')}`")
+          print(f"- Semantic score/threshold: `{receipt.get('semantic_score')}` / `{receipt.get('semantic_threshold')}`")
+          print(f"- Generated shots: `{receipt.get('generated_shot_count')}`")
+          print(f"- Duration: `{receipt.get('duration_seconds')}` seconds")
+          print(f"- Video/audio: `{receipt.get('video_codec')}` / `{receipt.get('audio_codec')}`")
+          print(f"- Artifact SHA-256: `{receipt.get('artifact_sha256')}`")
+          print(f"- Artifact bytes: `{receipt.get('artifact_bytes')}`")
+          print(f"- Provider cost zero: `{receipt.get('provider_cost_zero')}`")
+          PY
+          else
+            printf '%s\n' '- Status: NO_ACCEPTED_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Publish free-provider proof summary
         if: ${{ always() && inputs.proof_mode == 'free-only' }}
@@ -132,6 +187,15 @@ jobs:
             printf '%s\n' '- Status: NO_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
           fi
 
+      - name: Upload immutable Desktop provider finished-product proof
+        if: ${{ always() && inputs.proof_mode == 'desktop-one-prompt' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-provider-video-proof-${{ github.sha }}-${{ github.run_id }}
+          path: artifacts/video-desktop-provider-proof
+          if-no-files-found: warn
+          retention-days: 30
+
       - name: Upload immutable free-provider proof evidence
         if: ${{ always() && inputs.proof_mode == 'free-only' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -147,90 +211,5 @@ jobs:
         with:
           name: video-provider-production-proof-${{ github.sha }}-${{ github.run_id }}
           path: artifacts/video-provider-proof
-          if-no-files-found: warn
-          retention-days: 30
-
-  desktop-provider-proof:
-    name: Real provider-backed Desktop one-prompt MP4 proof
-    if: ${{ github.event_name == 'pull_request' }}
-    runs-on: ubuntu-latest
-    environment: Production
-    timeout-minutes: 25
-    env:
-      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      ILAIOS_VIDEO_MODEL_ID: bytedance/seedance-2.0-fast:free
-      ILAIOS_VIDEO_QA_MODEL_ID: openrouter/free
-      ILAIOS_VIDEO_E2E_RESOLUTION: 480p
-      VIDEO_DESKTOP_PROVIDER_PROOF_DIR: artifacts/video-desktop-provider-proof
-
-    steps:
-      - name: Checkout exact pull-request head
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          persist-credentials: false
-
-      - name: Install FFmpeg runtime dependency
-        shell: bash
-        run: |
-          set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends ffmpeg
-
-      - name: Verify runtime dependencies
-        shell: bash
-        run: |
-          set -euo pipefail
-          python --version
-          ffmpeg -version | head -1
-          ffprobe -version | head -1
-          test -n "$OPENROUTER_API_KEY"
-          case "$ILAIOS_VIDEO_MODEL_ID" in
-            *:free) ;;
-            *) echo "Paid video model forbidden in PR proof" >&2; exit 1 ;;
-          esac
-
-      - name: Run real provider-backed Desktop finished-product E2E
-        shell: bash
-        run: |
-          set -euo pipefail
-          python apps/desktop/e2e/provider_video_finished_product_e2e.py
-
-      - name: Publish Desktop provider proof summary
-        if: ${{ always() }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "## Desktop Provider-Backed Video Factory E2E" >> "$GITHUB_STEP_SUMMARY"
-          if [[ -f "$VIDEO_DESKTOP_PROVIDER_PROOF_DIR/receipt.json" ]]; then
-            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
-          import json
-          import os
-          from pathlib import Path
-
-          proof_dir = Path(os.environ["VIDEO_DESKTOP_PROVIDER_PROOF_DIR"])
-          receipt = json.loads((proof_dir / "receipt.json").read_text(encoding="utf-8"))
-          print(f"- Status: `{receipt.get('status')}`")
-          print(f"- Execution: `{receipt.get('execution_status')}`")
-          print(f"- Provider model: `{receipt.get('provider_model')}`")
-          print(f"- QA model: `{receipt.get('qa_model')}`")
-          print(f"- Semantic score/threshold: `{receipt.get('semantic_score')}` / `{receipt.get('semantic_threshold')}`")
-          print(f"- Generated shots: `{receipt.get('generated_shot_count')}`")
-          print(f"- Duration: `{receipt.get('duration_seconds')}` seconds")
-          print(f"- Video/audio: `{receipt.get('video_codec')}` / `{receipt.get('audio_codec')}`")
-          print(f"- Artifact SHA-256: `{receipt.get('artifact_sha256')}`")
-          print(f"- Artifact bytes: `{receipt.get('artifact_bytes')}`")
-          print(f"- Provider cost zero: `{receipt.get('provider_cost_zero')}`")
-          PY
-          else
-            printf '%s\n' '- Status: NO_ACCEPTED_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Upload immutable Desktop provider finished-product proof
-        if: ${{ always() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: desktop-provider-video-proof-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
-          path: artifacts/video-desktop-provider-proof
           if-no-files-found: warn
           retention-days: 30
