@@ -156,6 +156,63 @@ class RecoverableWebProductRuntime(DurableWebProductRuntime):
             "status": "pending_approval" if human else "admitted_pending_grant",
         }
 
+    def _assert_accepted_assurance(
+        self,
+        request_id: str,
+        manifest: dict[str, object],
+    ) -> None:
+        assurance = manifest.get("source_assurance")
+        qa = manifest.get("qa")
+        build_result = manifest.get("build_result")
+        receipt_names = (
+            "design_acceptance",
+            "accessibility_evidence",
+            "seo_evidence",
+            "security_evidence",
+            "performance_evidence",
+        )
+        receipts_pass = all(
+            isinstance(manifest.get(name), dict)
+            and cast(dict[str, object], manifest[name]).get("status") == "PASS"
+            for name in receipt_names
+        )
+        if not all(
+            (
+                manifest.get("adapter_id") == self.adapter_id,
+                manifest.get("request_id") == request_id,
+                bool(manifest.get("job_id")),
+                manifest.get("accepted") is True,
+                manifest.get("finalization_status") == "accepted",
+                manifest.get("job_state_proven") is True,
+                isinstance(assurance, dict),
+                isinstance(assurance, dict) and assurance.get("passed") is True,
+                isinstance(qa, dict),
+                isinstance(qa, dict) and qa.get("source_assurance_passed") is True,
+                isinstance(build_result, dict),
+                isinstance(build_result, dict)
+                and build_result.get("status") == "SOURCE_CERTIFIED",
+                bool(manifest.get("source_project_path")),
+                bool(manifest.get("source_project_digest")),
+                bool(manifest.get("source_project_files")),
+                bool(manifest.get("certified_routes")),
+                receipts_pass,
+            )
+        ):
+            raise WebProductRuntimeError(
+                "accepted Web assurance evidence is incomplete"
+            )
+
+    def get_manifest(self, request_id: str) -> dict[str, object]:
+        manifest = super().get_manifest(request_id)
+        self._assert_accepted_assurance(request_id, manifest)
+        return manifest
+
+    def get_state(self, request_id: str) -> dict[str, object]:
+        state = super().get_state(request_id)
+        if state["status"] == "accepted":
+            self.get_manifest(request_id)
+        return state
+
     def recover_finalizing(
         self,
         request_id: str,
@@ -174,7 +231,7 @@ class RecoverableWebProductRuntime(DurableWebProductRuntime):
         if row is None:
             raise WebProductRuntimeError("unknown web product request")
         if row["status"] == "accepted":
-            return super().recover_finalizing(request_id, token=token, now=now)
+            return self.get_manifest(request_id)
         if row["status"] != "finalizing" or row["manifest_json"] is None:
             return super().recover_finalizing(request_id, token=token, now=now)
 
@@ -253,7 +310,9 @@ class RecoverableWebProductRuntime(DurableWebProductRuntime):
                     "Web assurance evidence could not be bound to finalization"
                 )
 
-        return super().recover_finalizing(request_id, token=token, now=now)
+        result = super().recover_finalizing(request_id, token=token, now=now)
+        self._assert_accepted_assurance(request_id, result)
+        return result
 
     def _fail_assurance(
         self,
