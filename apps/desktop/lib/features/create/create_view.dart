@@ -116,7 +116,8 @@ class _CreateViewState extends State<CreateView> {
 
   void _selectPreset(BuildContext context, _FactoryPreset preset) {
     final current = _controller.text.trim();
-    final starterTexts = _FactoryPreset.values.map((item) => _starterText(context, item)).toSet();
+    final starterTexts =
+        _FactoryPreset.values.map((item) => _starterText(context, item)).toSet();
     final shouldReplace = current.isEmpty || starterTexts.contains(current);
     setState(() {
       _selectedPreset = preset;
@@ -235,7 +236,9 @@ class _CreateViewState extends State<CreateView> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: Text(
-                            _isTr(context) ? 'Tek prompt çalışma alanı' : 'One-prompt workspace',
+                            _isTr(context)
+                                ? 'Tek prompt çalışma alanı'
+                                : 'One-prompt workspace',
                             style: Theme.of(context).textTheme.titleMedium?.copyWith(
                                   fontWeight: FontWeight.w800,
                                 ),
@@ -244,7 +247,10 @@ class _CreateViewState extends State<CreateView> {
                         if (_selectedPreset case final preset?)
                           Container(
                             key: const Key('selected-factory-route'),
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 6,
+                            ),
                             decoration: BoxDecoration(
                               color: _presetAccent(preset).withValues(alpha: .10),
                               borderRadius: BorderRadius.circular(999),
@@ -272,7 +278,6 @@ class _CreateViewState extends State<CreateView> {
                       maxLines: 10,
                       maxLength: 20000,
                       textInputAction: TextInputAction.newline,
-                      onChanged: (_) => setState(() {}),
                       decoration: InputDecoration(
                         hintText: context.tr('goals.example'),
                         alignLabelWithHint: true,
@@ -282,14 +287,14 @@ class _CreateViewState extends State<CreateView> {
                     const SizedBox(height: 6),
                     Text(
                       _isTr(context)
-                          ? 'İş türünü seç — seçim yalnızca doğru Factory rotasını açıkça sabitler.'
-                          : 'Choose the work type — the selection explicitly pins the intended Factory route.',
+                          ? 'İş türünü seç — seçim ilgili Factory niyetini ekler; Core nihai rotayı hedefe göre doğrular.'
+                          : 'Choose the work type — the selection adds explicit Factory intent; Core validates the final route from the objective.',
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
                     const SizedBox(height: 9),
                     LayoutBuilder(
                       builder: (context, constraints) {
-                        final width = constraints.maxWidth >= 780
+                        final width = constraints.maxWidth >= 620
                             ? (constraints.maxWidth - 20) / 3
                             : constraints.maxWidth;
                         return Wrap(
@@ -306,7 +311,8 @@ class _CreateViewState extends State<CreateView> {
                               subtitle: _isTr(context)
                                   ? 'Web sitesi oluşturma ve teslim'
                                   : 'Website build and delivery',
-                              onTap: () => _selectPreset(context, _FactoryPreset.web),
+                              onTap: () =>
+                                  _selectPreset(context, _FactoryPreset.web),
                             ),
                             _FactoryCard(
                               width: width,
@@ -318,19 +324,22 @@ class _CreateViewState extends State<CreateView> {
                               subtitle: _isTr(context)
                                   ? 'Video oluşturma ve doğrulama'
                                   : 'Video creation and verification',
-                              onTap: () => _selectPreset(context, _FactoryPreset.video),
+                              onTap: () =>
+                                  _selectPreset(context, _FactoryPreset.video),
                             ),
                             _FactoryCard(
                               width: width,
                               preset: _FactoryPreset.software,
-                              selected: _selectedPreset == _FactoryPreset.software,
+                              selected:
+                                  _selectedPreset == _FactoryPreset.software,
                               icon: Icons.code_outlined,
                               accent: IlaiosTheme.violet,
                               title: 'Software Factory',
                               subtitle: _isTr(context)
                                   ? 'Yazılım ürünü oluşturma ve test'
                                   : 'Software product build and test',
-                              onTap: () => _selectPreset(context, _FactoryPreset.software),
+                              onTap: () =>
+                                  _selectPreset(context, _FactoryPreset.software),
                             ),
                           ],
                         );
@@ -339,22 +348,27 @@ class _CreateViewState extends State<CreateView> {
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        FilledButton.icon(
-                          key: const Key('one-prompt-submit'),
-                          onPressed: enabled && !_submitting && _controller.text.trim().isNotEmpty
-                              ? _submit
-                              : null,
-                          icon: _submitting
-                              ? const SizedBox(
-                                  width: 16,
-                                  height: 16,
-                                  child: CircularProgressIndicator(strokeWidth: 2),
-                                )
-                              : const Icon(Icons.arrow_forward_rounded),
-                          label: Text(
-                            _submitting
-                                ? context.tr('goals.submitting')
-                                : context.tr('goals.startPrompt'),
+                        ValueListenableBuilder<TextEditingValue>(
+                          valueListenable: _controller,
+                          builder: (context, value, _) => FilledButton.icon(
+                            key: const Key('one-prompt-submit'),
+                            onPressed: enabled &&
+                                    !_submitting &&
+                                    value.text.trim().isNotEmpty
+                                ? _submit
+                                : null,
+                            icon: _submitting
+                                ? const SizedBox(
+                                    width: 16,
+                                    height: 16,
+                                    child: CircularProgressIndicator(strokeWidth: 2),
+                                  )
+                                : const Icon(Icons.arrow_forward_rounded),
+                            label: Text(
+                              _submitting
+                                  ? context.tr('goals.submitting')
+                                  : context.tr('goals.startPrompt'),
+                            ),
                           ),
                         ),
                         const SizedBox(width: 14),
@@ -388,7 +402,10 @@ class _CreateViewState extends State<CreateView> {
                     children: [
                       Row(
                         children: [
-                          const Icon(Icons.check_circle_outline, color: IlaiosTheme.success),
+                          const Icon(
+                            Icons.check_circle_outline,
+                            color: IlaiosTheme.success,
+                          ),
                           const SizedBox(width: 10),
                           Text(
                             context.tr('goals.accepted'),
@@ -397,11 +414,17 @@ class _CreateViewState extends State<CreateView> {
                         ],
                       ),
                       const SizedBox(height: 12),
-                      SelectableText('${context.tr('goals.goal')}: ${submission.goalId}'),
+                      SelectableText(
+                        '${context.tr('goals.goal')}: ${submission.goalId}',
+                      ),
                       const SizedBox(height: 5),
-                      SelectableText('${context.tr('goals.job')}: ${submission.jobId}'),
+                      SelectableText(
+                        '${context.tr('goals.job')}: ${submission.jobId}',
+                      ),
                       const SizedBox(height: 5),
-                      Text('${context.tr('goals.authoritativeState')}: ${submission.state}'),
+                      Text(
+                        '${context.tr('goals.authoritativeState')}: ${submission.state}',
+                      ),
                       const SizedBox(height: 12),
                       Text(
                         context.tr('goals.submissionNote'),
@@ -419,9 +442,14 @@ class _CreateViewState extends State<CreateView> {
                   decoration: BoxDecoration(
                     color: IlaiosTheme.danger.withValues(alpha: .08),
                     borderRadius: BorderRadius.circular(11),
-                    border: Border.all(color: IlaiosTheme.danger.withValues(alpha: .35)),
+                    border: Border.all(
+                      color: IlaiosTheme.danger.withValues(alpha: .35),
+                    ),
                   ),
-                  child: Text(error, style: const TextStyle(color: IlaiosTheme.danger)),
+                  child: Text(
+                    error,
+                    style: const TextStyle(color: IlaiosTheme.danger),
+                  ),
                 ),
               ],
             ],
@@ -526,8 +554,12 @@ class _FactoryCardState extends State<_FactoryCard> {
                     ),
                     const SizedBox(width: 6),
                     Icon(
-                      widget.selected ? Icons.check_circle : Icons.arrow_forward_ios_rounded,
-                      color: widget.selected ? widget.accent : Theme.of(context).colorScheme.outline,
+                      widget.selected
+                          ? Icons.check_circle
+                          : Icons.arrow_forward_ios_rounded,
+                      color: widget.selected
+                          ? widget.accent
+                          : Theme.of(context).colorScheme.outline,
                       size: widget.selected ? 20 : 14,
                     ),
                   ],
@@ -568,7 +600,9 @@ class _IdentityCard extends StatelessWidget {
       decoration: BoxDecoration(
         color: scheme.surfaceContainerLow,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: IlaiosTheme.enterpriseCyan.withValues(alpha: .28)),
+        border: Border.all(
+          color: IlaiosTheme.enterpriseCyan.withValues(alpha: .28),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -631,7 +665,9 @@ class _IdentityCard extends StatelessWidget {
                     children: [
                       for (final provider in providers)
                         OutlinedButton.icon(
-                          key: ValueKey('identity-provider-${provider.providerId}'),
+                          key: ValueKey(
+                            'identity-provider-${provider.providerId}',
+                          ),
                           onPressed: signingInProvider == null
                               ? () => onSignIn(provider.providerId)
                               : null,
@@ -666,7 +702,9 @@ class _IdentityCard extends StatelessWidget {
 }
 
 String _disabledPromptReason(BuildContext context, CreateView widget) {
-  if (!widget.projection.connected) return context.tr('goals.controlPlaneUnavailable');
+  if (!widget.projection.connected) {
+    return context.tr('goals.controlPlaneUnavailable');
+  }
   if (widget.identityProviders.isNotEmpty && widget.userSession == null) {
     return context.tr('goals.signInRequired');
   }
@@ -694,4 +732,5 @@ String _localizedIdentity(BuildContext context, String value) {
   };
 }
 
-bool _isTr(BuildContext context) => context.ilaiosLocale.locale == IlaiosLocale.turkish;
+bool _isTr(BuildContext context) =>
+    context.ilaiosLocale.locale == IlaiosLocale.turkish;
