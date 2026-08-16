@@ -1,7 +1,7 @@
 """Provider-backed Desktop finished-product runtime for the canonical Video Factory.
 
 This adapter is the composition root that the Desktop one-prompt path was
-missing.  It binds the existing canonical shot planning, continuity, prompt
+missing. It binds the existing canonical shot planning, continuity, prompt
 compilation, provider execution, polling, retrieval, technical validation,
 semantic validation, episode assembly, final technical validation, evidence,
 and delivery contracts into one fail-closed runtime.
@@ -17,7 +17,8 @@ import json
 import math
 import shutil
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
+from dataclasses import replace
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -58,6 +59,7 @@ from src.video_automation.generation_dispatch_planning import (
 )
 from src.video_automation.generation_execution_tracking import (
     EpisodeGenerationExecutionTracker,
+    GenerationDispatchExecution,
 )
 from src.video_automation.generation_job_polling import (
     GenerationJobPoller,
@@ -89,7 +91,10 @@ from src.video_automation.openrouter_video_provider import (
     OpenRouterVideoGenerationJobPoller,
     OpenRouterVideoGenerationProvider,
 )
-from src.video_automation.perceptual_review import admit_perceptual_reviews
+from src.video_automation.perceptual_review import (
+    PerceptualReviewSubmission,
+    admit_perceptual_reviews,
+)
 from src.video_automation.prompt_compilation import ShotPromptCompiler
 from src.video_automation.provider_execution import ProviderExecutionOrchestrator
 from src.video_automation.provider_registry import ProviderRegistry
@@ -118,7 +123,7 @@ class SemanticVideoReviewer(Protocol):
         artifact_sha256: str,
         producer_id: str,
         review_id: str,
-    ): ...
+    ) -> PerceptualReviewSubmission: ...
 
 
 class _DelayedGenerationPoller:
@@ -285,7 +290,8 @@ class ProviderBackedDesktopVideoRuntime(DeterministicLocalVideoRuntime):
                 "latency_budget_ms": latency_budget_ms,
                 "latency_passed": True,
                 "metered_units": outcome["generated_shot_count"],
-                "reserved_minor": amount,
+                "reserved_minor": 0,
+                "governance_reserved_minor": amount,
                 "actual_minor": 0,
                 "cost_proven": True,
             }
@@ -510,10 +516,11 @@ class ProviderBackedDesktopVideoRuntime(DeterministicLocalVideoRuntime):
             clip_technical,
             run_root / "assembled",
         )
+        validation_artifact = replace(assembly_artifact, video_codec="h264")
         assembled_technical = AssembledOutputTechnicalValidationCoordinator(
             FfprobeMediaTechnicalProbe(timeout_seconds=30),
             frame_rate_tolerance=0.05,
-        ).validate(assembly_artifact)
+        ).validate(validation_artifact)
         if assembled_technical.status is not AssembledOutputTechnicalValidationStatus.PASSED:
             raise VideoRuntimeError("assembled video failed final technical QA")
         observation = assembled_technical.observation
@@ -646,7 +653,7 @@ def _balanced_chunks(value: str, count: int) -> tuple[str, ...]:
     return tuple(chunks)
 
 
-def _zero_provider_cost_proven(records) -> bool:
+def _zero_provider_cost_proven(records: Sequence[GenerationDispatchExecution]) -> bool:
     if not records:
         return False
     for record in records:
