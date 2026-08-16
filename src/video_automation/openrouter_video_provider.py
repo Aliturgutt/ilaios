@@ -314,11 +314,60 @@ class OpenRouterVideoGenerationJobPoller:
         if not 200 <= response.status_code < 300:
             code, message = _normalize_error(response)
             raise OpenRouterVideoProviderError(f"{code}: {message}")
-        return _normalize_poll_observation(
+        observation = _normalize_poll_observation(
             self._provider_id,
             provider_job_id,
             self._base_url,
             response.payload,
+        )
+        if (
+            observation.status is ProviderJobStatus.SUCCEEDED
+            and "usage_json" not in observation.metadata
+        ):
+            recovered = self._recover_generation_usage(response.payload)
+            if recovered is not None:
+                metadata = dict(observation.metadata)
+                metadata["usage_json"] = json.dumps(
+                    recovered, sort_keys=True, separators=(",", ":")
+                )
+                observation = ProviderJobObservation(
+                    provider_id=observation.provider_id,
+                    provider_job_id=observation.provider_job_id,
+                    status=observation.status,
+                    output_asset_ids=observation.output_asset_ids,
+                    metadata=metadata,
+                )
+        return observation
+
+    def _recover_generation_usage(
+        self,
+        video_payload: Mapping[str, object],
+    ) -> Mapping[str, object] | None:
+        generation_id = video_payload.get("generation_id")
+        if not isinstance(generation_id, str) or not generation_id.strip():
+            return None
+        encoded_generation_id = quote(generation_id, safe="")
+        response = self._transport.get_json(
+            f"{self._base_url}/generation?id={encoded_generation_id}",
+            headers=_auth_headers(self._api_key),
+            timeout_seconds=self._timeout_seconds,
+        )
+        if not 200 <= response.status_code < 300:
+            return None
+        data = response.payload.get("data")
+        if not isinstance(data, Mapping):
+            return None
+        raw_cost = data.get("total_cost")
+        if raw_cost is None:
+            raw_cost = data.get("usage")
+        if isinstance(raw_cost, bool) or not isinstance(raw_cost, (int, float)):
+            return None
+        return MappingProxyType(
+            {
+                "cost": raw_cost,
+                "source": "openrouter_generation_metadata",
+                "generation_id": generation_id,
+            }
         )
 
 
@@ -468,6 +517,7 @@ def _normalize_poll_observation(
         "queued": ProviderJobStatus.QUEUED,
         "processing": ProviderJobStatus.RUNNING,
         "running": ProviderJobStatus.RUNNING,
+        "in_progress": ProviderJobStatus.RUNNING,
         "completed": ProviderJobStatus.SUCCEEDED,
         "succeeded": ProviderJobStatus.SUCCEEDED,
         "failed": ProviderJobStatus.FAILED,
