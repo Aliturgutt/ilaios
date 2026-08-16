@@ -204,7 +204,7 @@ class _NavigationRail extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const _BrandHeader(),
-                const SizedBox(height: 18),
+                const SizedBox(height: 12),
                 Expanded(
                   child: ListView(
                     padding: EdgeInsets.zero,
@@ -236,87 +236,65 @@ class _BrandHeader extends StatelessWidget {
       '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
 
   @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Semantics(
-      label: 'ILAIOS',
-      image: true,
-      child: Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(10, 10, 10, 11),
-        decoration: BoxDecoration(
-          color: const Color(0xFF0B0F14),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: IlaiosTheme.coreBlue.withValues(alpha: .34),
-          ),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SizedBox(
-              width: 205,
-              height: 54,
-              child: Image.asset(
-                _wordmark,
-                fit: BoxFit.contain,
-                alignment: Alignment.centerLeft,
-                filterQuality: FilterQuality.high,
-                excludeFromSemantics: true,
-              ),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Integrated Learning, Autonomous\nIntelligence & Orchestration Systems',
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 7.5,
-                height: 1.35,
-                color: Colors.white.withValues(alpha: .62),
-                letterSpacing: .14,
-              ),
-            ),
-            const SizedBox(height: 10),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: const SizedBox(
-                height: 4,
-                child: Row(
-                  children: [
-                    Expanded(
-                      flex: 5,
-                      child: ColoredBox(color: IlaiosTheme.enterpriseCyan),
-                    ),
-                    Expanded(
-                      flex: 3,
-                      child: ColoredBox(color: IlaiosTheme.coreBlue),
-                    ),
-                    Expanded(
-                      flex: 2,
-                      child: ColoredBox(color: IlaiosTheme.violet),
-                    ),
-                  ],
+  Widget build(BuildContext context) => Semantics(
+        label: 'ILAIOS',
+        image: true,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(2, 0, 2, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 186,
+                height: 42,
+                child: Image.asset(
+                  _wordmark,
+                  fit: BoxFit.contain,
+                  alignment: Alignment.centerLeft,
+                  filterQuality: FilterQuality.high,
+                  excludeFromSemantics: true,
                 ),
               ),
-            ),
-            if (Theme.of(context).brightness == Brightness.light)
-              Padding(
-                padding: const EdgeInsets.only(top: 5),
-                child: Text(
-                  'ILAIOS',
-                  style: TextStyle(
-                    fontSize: 8,
-                    color: scheme.primary,
-                    fontWeight: FontWeight.w700,
+              const SizedBox(height: 5),
+              Text(
+                'Integrated Learning, Autonomous\nIntelligence & Orchestration Systems',
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 7.25,
+                  height: 1.3,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  letterSpacing: .12,
+                ),
+              ),
+              const SizedBox(height: 9),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(10),
+                child: const SizedBox(
+                  width: 186,
+                  height: 3,
+                  child: Row(
+                    children: [
+                      Expanded(
+                        flex: 5,
+                        child: ColoredBox(color: IlaiosTheme.enterpriseCyan),
+                      ),
+                      Expanded(
+                        flex: 3,
+                        child: ColoredBox(color: IlaiosTheme.coreBlue),
+                      ),
+                      Expanded(
+                        flex: 2,
+                        child: ColoredBox(color: IlaiosTheme.violet),
+                      ),
+                    ],
                   ),
                 ),
               ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
-  }
+      );
 }
 
 class _NavItem extends StatelessWidget {
