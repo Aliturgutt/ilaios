@@ -7,7 +7,9 @@ owner-scoped state and performs best-effort cleanup of idle request workers.
 
 from __future__ import annotations
 
+import sqlite3
 from datetime import datetime
+from pathlib import Path
 from typing import Any, cast
 
 from services.execution_coordinator import ExecutionCoordinator, ExecutionState
@@ -46,16 +48,27 @@ def cancel_execution(
 
 
 def cleanup_terminal_resources(coordinator: ExecutionCoordinator) -> int:
-    """Best-effort removal of idle workers exposed by registered runtimes."""
+    """Best-effort removal of idle workers owned by registered runtimes.
+
+    Ownership is derived from each runtime's durable request table before any
+    scheduler mutation. This avoids treating every generic ``worker-*`` entry in
+    a shared scheduler as disposable while still recognizing the canonical Video
+    runtime's ``worker-<request_id>`` identities.
+    """
     adapters = cast(dict[str, Any], getattr(coordinator, "_adapters"))
-    removed = 0
-    seen_schedulers: set[int] = set()
+    schedulers: dict[int, tuple[Any, set[str]]] = {}
     for adapter in adapters.values():
         runtime = getattr(adapter, "_runtime", None)
         scheduler = getattr(runtime, "_scheduler", None)
-        if scheduler is None or id(scheduler) in seen_schedulers:
+        if scheduler is None:
             continue
-        seen_schedulers.add(id(scheduler))
+        key = id(scheduler)
+        if key not in schedulers:
+            schedulers[key] = (scheduler, set())
+        schedulers[key][1].update(_runtime_owned_worker_ids(runtime))
+
+    removed = 0
+    for scheduler, owned_workers in schedulers.values():
         try:
             state = scheduler.state()
         except Exception:
@@ -67,10 +80,11 @@ def cleanup_terminal_resources(coordinator: ExecutionCoordinator) -> int:
             worker_id = str(worker.get("worker_id", ""))
             if not worker_id or worker_id in leased_workers:
                 continue
-            if not any(
+            legacy_owned = any(
                 marker in worker_id
                 for marker in ("video-worker-", "web-worker-", "software-worker-")
-            ):
+            )
+            if worker_id not in owned_workers and not legacy_owned:
                 continue
             try:
                 if scheduler.unregister(worker_id):
@@ -79,6 +93,35 @@ def cleanup_terminal_resources(coordinator: ExecutionCoordinator) -> int:
                 if "with lease" not in str(error):
                     raise
     return removed
+
+
+def _runtime_owned_worker_ids(runtime: Any) -> set[str]:
+    """Read durable worker ownership without mutating runtime state."""
+    database_path = getattr(runtime, "_database_path", None)
+    if not isinstance(database_path, Path):
+        return set()
+    try:
+        with sqlite3.connect(database_path) as connection:
+            table = connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type='table' AND name='product_proofs'"
+            ).fetchone()
+            if table is None:
+                return set()
+            columns = {
+                str(row[1])
+                for row in connection.execute("PRAGMA table_info(product_proofs)").fetchall()
+            }
+            if "worker_id" not in columns:
+                return set()
+            return {
+                str(row[0])
+                for row in connection.execute(
+                    "SELECT worker_id FROM product_proofs WHERE worker_id IS NOT NULL"
+                ).fetchall()
+                if row[0]
+            }
+    except sqlite3.Error:
+        return set()
 
 
 def cancellation_metrics(coordinator: ExecutionCoordinator) -> dict[str, int]:
