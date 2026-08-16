@@ -19,9 +19,13 @@ from services.execution_coordinator import (
     ExecutionCoordinator,
     ExecutionCoordinatorError,
 )
+from services.integrations.software_product_runtime_recovery import (
+    RecoverableSoftwareProductRuntime,
+)
 from services.integrations.web_product_runtime import DurableWebProductRuntime
 
 _WEB = "ilaios.capability.web-factory"
+_SOFTWARE = "ilaios.capability.software-factory"
 
 
 class WebExecutionAdapter:
@@ -105,6 +109,95 @@ class WebExecutionAdapter:
         )
 
 
+class SoftwareExecutionAdapter:
+    """ExecutionAdapter over the bounded, locally proven Software runtime."""
+
+    descriptor = AdapterDescriptor(
+        "software.product-runtime.v1",
+        _SOFTWARE,
+        CapabilityMaturity.VERIFIED_FINISHED_PRODUCT_ADAPTER,
+        worker_subject="worker-software",
+        action="software.execute",
+        supports_cancellation=True,
+    )
+
+    def __init__(self, runtime: RecoverableSoftwareProductRuntime) -> None:
+        self._runtime = runtime
+
+    def prepare(
+        self,
+        request_id: str,
+        objective: str,
+        *,
+        token: str,
+        principal_id: str,
+        tenant_id: str,
+        now: datetime,
+        risk: str,
+        data_class: DataClass,
+        budget: BudgetEnvelope,
+    ) -> dict[str, object]:
+        if not self._runtime.supports(objective):
+            raise ExecutionCoordinatorError(
+                "software request is outside the verified finished-product scope"
+            )
+        if risk != "medium" or data_class is not DataClass.INTERNAL:
+            raise ExecutionCoordinatorError(
+                "verified Software adapter does not widen risk or data policy"
+            )
+        if budget.max_attempts < 1 or budget.max_runtime_seconds < 1:
+            raise ExecutionCoordinatorError("software execution budget is invalid")
+        return self._runtime.prepare(
+            request_id,
+            objective,
+            token=token,
+            now=now,
+            requester_id=principal_id,
+            tenant_id=tenant_id,
+            defer_lease=True,
+        )
+
+    def execute(
+        self,
+        request_id: str,
+        grant_id: str,
+        *,
+        token: str,
+        now: datetime,
+    ) -> dict[str, object]:
+        return self._runtime.execute(request_id, grant_id, token=token, now=now)
+
+    def accepted_result(self, request_id: str) -> dict[str, object]:
+        return self._runtime.get_manifest(request_id)
+
+    def state(self, request_id: str) -> dict[str, object]:
+        return self._runtime.get_state(request_id)
+
+    def recover_finalizing(
+        self,
+        request_id: str,
+        *,
+        token: str,
+        now: datetime,
+    ) -> dict[str, object]:
+        return self._runtime.recover_finalizing(request_id, token=token, now=now)
+
+    def interrupt(
+        self,
+        request_id: str,
+        *,
+        token: str,
+        now: datetime,
+        reason: str,
+    ) -> dict[str, object]:
+        return self._runtime.interrupt(
+            request_id,
+            token=token,
+            now=now,
+            reason=reason,
+        )
+
+
 def register_verified_adapter(
     coordinator: ExecutionCoordinator,
     adapter: ExecutionAdapter,
@@ -137,8 +230,17 @@ def register_web_runtime(
     register_verified_adapter(coordinator, WebExecutionAdapter(runtime))
 
 
+def register_software_runtime(
+    coordinator: ExecutionCoordinator,
+    runtime: RecoverableSoftwareProductRuntime,
+) -> None:
+    register_verified_adapter(coordinator, SoftwareExecutionAdapter(runtime))
+
+
 __all__ = [
+    "SoftwareExecutionAdapter",
     "WebExecutionAdapter",
+    "register_software_runtime",
     "register_verified_adapter",
     "register_web_runtime",
 ]
