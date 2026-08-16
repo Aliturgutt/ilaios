@@ -1,8 +1,7 @@
 import 'package:flutter/material.dart';
 
 abstract final class IlaiosTheme {
-  // Canonical ILAIOS brand palette. Product UI must derive its visual identity
-  // from these exact tokens instead of inventing feature-local colors.
+  // Canonical ILAIOS brand palette.
   static const Color carbon = Color(0xFF0B0F14);
   static const Color charcoal = Color(0xFF111827);
   static const Color graphite = Color(0xFF1F2937);
@@ -11,8 +10,6 @@ abstract final class IlaiosTheme {
   static const Color coreBlue = Color(0xFF146BFF);
   static const Color violet = Color(0xFF5C58FE);
 
-  // Desktop semantic aliases. Foundation stays neutral; canonical brand
-  // accents are deliberately more visible on interactive and selective state.
   static const Color canvas = carbon;
   static const Color sidebar = charcoal;
   static const Color surface = charcoal;
@@ -33,17 +30,33 @@ abstract final class IlaiosTheme {
   static const Color muted = Color(0x99FFFFFF);
   static const Color mutedStrong = Color(0xCCFFFFFF);
 
-  // Semantic status colors remain distinct from brand identity colors so
-  // success/warning/error meaning is never confused with branding.
+  static const Color lightCanvas = Color(0xFFF4F7FB);
+  static const Color lightSurface = Color(0xFFFFFFFF);
+  static const Color lightSurfaceRaised = Color(0xFFEAF0F7);
+  static const Color lightBorder = Color(0xFFD5DFEA);
+  static const Color lightText = Color(0xFF0B0F14);
+  static const Color lightMuted = Color(0xFF617084);
+
   static const Color success = Color(0xFF45D98B);
   static const Color warning = Color(0xFFF1BE45);
   static const Color danger = Color(0xFFFF6A78);
 
-  static ThemeData get dark {
+  static ThemeData get dark => _buildTheme(Brightness.dark);
+  static ThemeData get light => _buildTheme(Brightness.light);
+
+  static ThemeData _buildTheme(Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+    final canvasColor = isDark ? carbon : lightCanvas;
+    final surfaceColor = isDark ? charcoal : lightSurface;
+    final raisedColor = isDark ? graphite : lightSurfaceRaised;
+    final outlineColor = isDark ? graphite : lightBorder;
+    final foreground = isDark ? white : lightText;
+    final mutedColor = isDark ? muted : lightMuted;
+
     final scheme = ColorScheme.fromSeed(
       seedColor: enterpriseCyan,
-      brightness: Brightness.dark,
-      surface: surface,
+      brightness: brightness,
+      surface: surfaceColor,
     ).copyWith(
       primary: enterpriseCyan,
       onPrimary: carbon,
@@ -51,42 +64,50 @@ abstract final class IlaiosTheme {
       onSecondary: white,
       tertiary: violet,
       onTertiary: white,
-      surface: surface,
-      onSurface: white,
-      outline: border,
-      outlineVariant: border,
+      surface: surfaceColor,
+      onSurface: foreground,
+      surfaceContainerLowest: isDark ? carbon : white,
+      surfaceContainerLow: surfaceColor,
+      surfaceContainer: isDark ? const Color(0xFF151F2E) : const Color(0xFFF1F5FA),
+      surfaceContainerHigh: isDark ? const Color(0xFF192536) : const Color(0xFFEAF0F7),
+      surfaceContainerHighest: raisedColor,
+      outline: outlineColor,
+      outlineVariant: isDark ? const Color(0xFF26364B) : const Color(0xFFDCE5EF),
       error: danger,
       onError: carbon,
     );
+
     return ThemeData(
-      brightness: Brightness.dark,
+      brightness: brightness,
       colorScheme: scheme,
-      scaffoldBackgroundColor: canvas,
+      scaffoldBackgroundColor: canvasColor,
+      canvasColor: canvasColor,
       useMaterial3: true,
       fontFamily: 'Segoe UI',
-      dividerColor: border,
+      dividerColor: outlineColor,
       focusColor: cyanWash,
       hoverColor: blueWash,
       highlightColor: violetWash,
-      splashColor: cyanWash,
+      splashColor: enterpriseCyan.withValues(alpha: .12),
       splashFactory: InkSparkle.splashFactory,
-      iconTheme: const IconThemeData(color: mutedStrong),
-      progressIndicatorTheme: const ProgressIndicatorThemeData(
+      iconTheme: IconThemeData(color: isDark ? mutedStrong : lightMuted),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
         color: enterpriseCyan,
-        linearTrackColor: graphite,
-        circularTrackColor: graphite,
+        linearTrackColor: raisedColor,
+        circularTrackColor: raisedColor,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: carbon,
+        fillColor: isDark ? carbon : white,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        hintStyle: TextStyle(color: mutedColor),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: border),
+          borderRadius: BorderRadius.circular(9),
+          borderSide: BorderSide(color: outlineColor),
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: focusRing, width: 1.4),
+          borderRadius: BorderRadius.circular(9),
+          borderSide: const BorderSide(color: focusRing, width: 1.5),
         ),
         hoverColor: blueWash,
       ),
@@ -105,129 +126,139 @@ abstract final class IlaiosTheme {
           }),
           overlayColor: const WidgetStatePropertyAll(violetWash),
           shape: WidgetStatePropertyAll(
-            RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
           ),
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: ButtonStyle(
-          foregroundColor: const WidgetStatePropertyAll(enterpriseCyan),
-          side: WidgetStateProperty.resolveWith((states) => BorderSide(
-                color: states.contains(WidgetState.hovered)
-                    ? coreBlue
-                    : enterpriseCyan.withValues(alpha: .72),
-              )),
-          overlayColor: const WidgetStatePropertyAll(cyanWash),
+          foregroundColor: const WidgetStatePropertyAll(coreBlue),
+          side: WidgetStateProperty.resolveWith(
+            (states) => BorderSide(
+              color: states.contains(WidgetState.hovered)
+                  ? enterpriseCyan
+                  : coreBlue.withValues(alpha: .72),
+            ),
+          ),
+          overlayColor: const WidgetStatePropertyAll(blueWash),
+          shape: WidgetStatePropertyAll(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+          ),
         ),
       ),
       textButtonTheme: const TextButtonThemeData(
         style: ButtonStyle(
-          foregroundColor: WidgetStatePropertyAll(enterpriseCyan),
-          overlayColor: WidgetStatePropertyAll(cyanWash),
+          foregroundColor: WidgetStatePropertyAll(coreBlue),
+          overlayColor: WidgetStatePropertyAll(blueWash),
         ),
       ),
       switchTheme: SwitchThemeData(
-        thumbColor: WidgetStateProperty.resolveWith((states) =>
-            states.contains(WidgetState.selected) ? white : mutedStrong),
-        trackColor: WidgetStateProperty.resolveWith((states) =>
-            states.contains(WidgetState.selected) ? coreBlue : graphite),
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? white : foreground,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? coreBlue : raisedColor,
+        ),
       ),
       checkboxTheme: CheckboxThemeData(
-        fillColor: WidgetStateProperty.resolveWith((states) =>
-            states.contains(WidgetState.selected) ? enterpriseCyan : null),
+        fillColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected) ? enterpriseCyan : null,
+        ),
         checkColor: const WidgetStatePropertyAll(carbon),
       ),
-      textTheme: const TextTheme(
+      textTheme: TextTheme(
         headlineLarge: TextStyle(
-          color: text,
+          color: foreground,
           fontSize: 30,
           height: 1.12,
           fontWeight: FontWeight.w700,
           letterSpacing: -.6,
         ),
         headlineMedium: TextStyle(
-          color: text,
+          color: foreground,
           fontSize: 23,
           height: 1.15,
           fontWeight: FontWeight.w700,
           letterSpacing: -.4,
         ),
         titleLarge: TextStyle(
-          color: text,
+          color: foreground,
           fontSize: 18,
           height: 1.2,
           fontWeight: FontWeight.w700,
           letterSpacing: -.2,
         ),
         titleMedium: TextStyle(
-          color: text,
+          color: foreground,
           fontSize: 14.5,
           height: 1.25,
           fontWeight: FontWeight.w600,
         ),
         titleSmall: TextStyle(
-          color: text,
+          color: foreground,
           fontSize: 12.5,
           height: 1.25,
           fontWeight: FontWeight.w600,
           letterSpacing: .1,
         ),
         bodyLarge: TextStyle(
-          color: text,
+          color: foreground,
           fontSize: 13.5,
           height: 1.42,
           fontWeight: FontWeight.w400,
         ),
         bodyMedium: TextStyle(
-          color: muted,
+          color: mutedColor,
           fontSize: 12,
           height: 1.4,
           fontWeight: FontWeight.w400,
         ),
         bodySmall: TextStyle(
-          color: muted,
+          color: mutedColor,
           fontSize: 10.5,
           height: 1.35,
           fontWeight: FontWeight.w400,
         ),
         labelLarge: TextStyle(
-          color: text,
+          color: foreground,
           fontSize: 11.5,
           height: 1.2,
           fontWeight: FontWeight.w600,
           letterSpacing: .1,
         ),
         labelMedium: TextStyle(
-          color: mutedStrong,
+          color: isDark ? mutedStrong : const Color(0xFF334155),
           fontSize: 10,
           height: 1.2,
           fontWeight: FontWeight.w600,
           letterSpacing: .2,
         ),
         labelSmall: TextStyle(
-          color: muted,
+          color: mutedColor,
           fontSize: 9,
           height: 1.2,
           fontWeight: FontWeight.w600,
           letterSpacing: .35,
         ),
       ),
-      cardTheme: const CardThemeData(
-        color: surface,
+      cardTheme: CardThemeData(
+        color: surfaceColor,
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.all(Radius.circular(10)),
-          side: BorderSide(color: border),
+          borderRadius: const BorderRadius.all(Radius.circular(12)),
+          side: BorderSide(color: outlineColor),
         ),
       ),
       tooltipTheme: TooltipThemeData(
         decoration: BoxDecoration(
-          color: surfaceRaised,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: borderStrong),
+          color: isDark ? raisedColor : lightText,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(
+            color: isDark ? borderStrong : coreBlue.withValues(alpha: .45),
+          ),
         ),
-        textStyle: const TextStyle(color: text, fontSize: 11),
+        textStyle: const TextStyle(color: white, fontSize: 11),
       ),
     );
   }
