@@ -80,8 +80,6 @@ def cancel_execution(
     capability_id = str(execution["capability_id"])
     adapter = adapters.get(capability_id)
 
-    # A durable adapter may already have crossed its finalization point. Reconcile
-    # that race before changing coordinator state so accepted work is immutable.
     if adapter is not None:
         adapter_state = cast(dict[str, object], adapter.state(request_id))
         product_status = str(adapter_state.get("status", ""))
@@ -142,7 +140,6 @@ def cancel_execution(
         try:
             grants.revoke(_grant_id(request_id), now=now)
         except Exception:
-            # A request cancelled before grant issuance legitimately has no grant.
             pass
         cleanup_terminal_resources(coordinator)
 
@@ -162,7 +159,7 @@ def cancel_execution(
         )
         record_evidence = cast(Any, getattr(coordinator, "_record_evidence"))
         record_evidence(request_id, ExecutionState.CANCELLED, now)
-    except Exception:
+    except Exception as error:
         latest = coordinator.get(
             request_id,
             principal_id=principal_id,
@@ -170,15 +167,21 @@ def cancel_execution(
         )
         latest_state = ExecutionState(str(latest["execution_status"]))
         if latest_state is ExecutionState.CANCELLING:
-            # Restore only when the adapter has not already produced an immutable
-            # accepted result. This CAS transition preserves concurrent winners.
-            transition(
+            fail = cast(Any, getattr(coordinator, "_fail"))
+            fail(
                 request_id,
                 ExecutionState.CANCELLING,
-                state,
+                ExecutionState.FAILED_TERMINAL,
                 now,
-                {"reason": "cancellation failed before durable closure"},
-                allow_recovery=True,
+                {
+                    "error_code": "CANCELLATION_FAILED",
+                    "error_class": type(error).__name__,
+                    "retryable": False,
+                    "safe_message": "Cancellation could not close subordinate resources safely.",
+                    "failed_stage": "cancellation",
+                    "attempt": int(latest.get("attempt", 0)),
+                    "evidence_id": None,
+                },
             )
         raise
 
@@ -190,20 +193,16 @@ def cancel_execution(
 
 
 def cleanup_terminal_resources(coordinator: ExecutionCoordinator) -> int:
-    """Best-effort cleanup of request-owned workers for adapters that expose a scheduler."""
+    """Best-effort cleanup of request-owned workers exposed by verified adapters."""
     adapters = cast(dict[str, Any], getattr(coordinator, "_adapters"))
     removed = 0
     seen_schedulers: set[int] = set()
     for adapter in adapters.values():
         runtime = getattr(adapter, "_runtime", None)
         scheduler = getattr(runtime, "_scheduler", None)
-        database_path = getattr(runtime, "_database_path", None)
-        if scheduler is None or database_path is None or id(scheduler) in seen_schedulers:
+        if scheduler is None or id(scheduler) in seen_schedulers:
             continue
         seen_schedulers.add(id(scheduler))
-        # The durable scheduler itself is the authority for whether a worker may be
-        # removed. Enumerate only explicit request-owned worker identifiers exposed
-        # by known runtime proof rows when available.
         try:
             state = scheduler.state()
         except Exception:
@@ -215,7 +214,10 @@ def cleanup_terminal_resources(coordinator: ExecutionCoordinator) -> int:
             worker_id = str(worker.get("worker_id", ""))
             if not worker_id or worker_id in leased_workers:
                 continue
-            if not any(marker in worker_id for marker in ("video-worker-", "web-worker-", "software-worker-")):
+            if not any(
+                marker in worker_id
+                for marker in ("video-worker-", "web-worker-", "software-worker-")
+            ):
                 continue
             try:
                 if scheduler.unregister(worker_id):
@@ -228,14 +230,15 @@ def cleanup_terminal_resources(coordinator: ExecutionCoordinator) -> int:
 
 def cancellation_metrics(coordinator: ExecutionCoordinator) -> dict[str, int]:
     """Return low-cardinality coordinator lifecycle counters."""
-    metrics = cast(dict[str, int], coordinator.metrics())
+    metrics = coordinator.metrics()
+    states = cast(dict[str, int], metrics.get("states", {}))
     return {
         "cancelled": int(metrics.get("cancelled", 0)),
         "accepted": int(metrics.get("accepted", 0)),
-        "failed": int(metrics.get("failed_terminal", 0)),
-        "executing": int(metrics.get("executing", 0)),
-        "cancelling": int(metrics.get("cancelling", 0)),
-        "retryable": int(metrics.get("failed_retryable", 0)),
+        "failed": int(metrics.get("failed", 0)),
+        "executing": int(states.get(ExecutionState.EXECUTING.value, 0)),
+        "cancelling": int(states.get(ExecutionState.CANCELLING.value, 0)),
+        "retryable": int(states.get(ExecutionState.FAILED_RETRYABLE.value, 0)),
     }
 
 
