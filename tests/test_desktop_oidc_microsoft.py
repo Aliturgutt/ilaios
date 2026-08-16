@@ -127,6 +127,28 @@ class _JwksClient:
         }
 
 
+class _SigningKey:
+    key = object()
+
+
+class _VerifierJwksClient:
+    def __init__(self, uri: str) -> None:
+        self.uri = uri
+
+    def get_signing_key_from_jwt(self, encoded_token: str) -> _SigningKey:
+        return _SigningKey()
+
+    def fetch_data(self) -> dict[str, object]:
+        return {
+            "keys": [
+                {
+                    "kid": "key-1",
+                    "issuer": "https://login.microsoftonline.com/{tenantid}/v2.0",
+                }
+            ]
+        }
+
+
 def _claims(*, issuer: str = ISSUER, tid: str = TENANT) -> dict[str, object]:
     return {
         "iss": issuer,
@@ -198,6 +220,55 @@ def test_microsoft_signing_key_issuer_is_bound_to_token_tenant() -> None:
             _claims(),
             ISSUER,
         )
+
+
+def test_microsoft_interactive_verifier_rejects_nonce_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    claims = _claims()
+    claims["nonce"] = "wrong-nonce"
+    monkeypatch.setattr(
+        microsoft.jwt,
+        "get_unverified_header",
+        lambda token: {"alg": "RS256", "kid": "key-1"},
+    )
+    monkeypatch.setattr(microsoft.jwt, "PyJWKClient", _VerifierJwksClient)
+    monkeypatch.setattr(
+        microsoft.jwt,
+        "decode",
+        lambda *args, **kwargs: claims,
+    )
+
+    verifier = microsoft._MicrosoftOIDCTokenVerifier(
+        _provider(), expected_nonce="expected-nonce"
+    )
+    with pytest.raises(DesktopIdentityError, match="nonce validation failed"):
+        verifier.verify("signed-token")
+
+
+def test_microsoft_verifier_passes_client_id_as_audience_and_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    observed_audience: list[object] = []
+
+    def reject_audience(*args: object, **kwargs: object) -> dict[str, object]:
+        observed_audience.append(kwargs.get("audience"))
+        raise microsoft.jwt.InvalidAudienceError("audience mismatch")
+
+    monkeypatch.setattr(
+        microsoft.jwt,
+        "get_unverified_header",
+        lambda token: {"alg": "RS256", "kid": "key-1"},
+    )
+    monkeypatch.setattr(microsoft.jwt, "PyJWKClient", _VerifierJwksClient)
+    monkeypatch.setattr(microsoft.jwt, "decode", reject_audience)
+
+    verifier = microsoft._MicrosoftOIDCTokenVerifier(
+        _provider(), expected_nonce="nonce-1"
+    )
+    with pytest.raises(DesktopIdentityError, match="ID token verification failed"):
+        verifier.verify("signed-token")
+    assert observed_audience == [_provider().client_id]
 
 
 def test_successful_microsoft_callback_persists_refresh_credential(
