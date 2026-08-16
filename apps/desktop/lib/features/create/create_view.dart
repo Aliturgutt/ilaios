@@ -133,8 +133,17 @@ class _CreateViewState extends State<CreateView> {
 
   Future<void> _submit() async {
     final callback = widget.onSubmit;
+    if (callback == null || _submitting) return;
     final rawObjective = _controller.text.trim();
-    if (callback == null || rawObjective.isEmpty || _submitting) return;
+    if (rawObjective.isEmpty) {
+      setState(() {
+        _submission = null;
+        _error = _isTr(context)
+            ? 'Başlatmadan önce ne oluşturulacağını yaz.'
+            : 'Describe what should be built before starting.';
+      });
+      return;
+    }
     final preset = _selectedPreset;
     final objective = preset == null
         ? rawObjective
@@ -348,27 +357,20 @@ class _CreateViewState extends State<CreateView> {
                     const SizedBox(height: 16),
                     Row(
                       children: [
-                        ValueListenableBuilder<TextEditingValue>(
-                          valueListenable: _controller,
-                          builder: (context, value, _) => FilledButton.icon(
-                            key: const Key('one-prompt-submit'),
-                            onPressed: enabled &&
-                                    !_submitting &&
-                                    value.text.trim().isNotEmpty
-                                ? _submit
-                                : null,
-                            icon: _submitting
-                                ? const SizedBox(
-                                    width: 16,
-                                    height: 16,
-                                    child: CircularProgressIndicator(strokeWidth: 2),
-                                  )
-                                : const Icon(Icons.arrow_forward_rounded),
-                            label: Text(
-                              _submitting
-                                  ? context.tr('goals.submitting')
-                                  : context.tr('goals.startPrompt'),
-                            ),
+                        FilledButton.icon(
+                          key: const Key('one-prompt-submit'),
+                          onPressed: enabled && !_submitting ? _submit : null,
+                          icon: _submitting
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.arrow_forward_rounded),
+                          label: Text(
+                            _submitting
+                                ? context.tr('goals.submitting')
+                                : context.tr('goals.startPrompt'),
                           ),
                         ),
                         const SizedBox(width: 14),
