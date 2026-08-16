@@ -13,7 +13,9 @@ on:
       - 'services/integrations/web_project.py'
       - 'services/integrations/web_assurance.py'
       - 'services/integrations/web_delivery.py'
+      - 'services/integrations/web_vercel_delivery.py'
       - 'tests/test_web_assurance_delivery.py'
+      - 'tests/test_web_vercel_delivery.py'
       - 'apps/desktop/e2e/web_finished_product_browser_e2e.py'
       - '.github/workflows/web-factory-browser-e2e.yml'
   push:
@@ -28,7 +30,9 @@ on:
       - 'services/integrations/web_project.py'
       - 'services/integrations/web_assurance.py'
       - 'services/integrations/web_delivery.py'
+      - 'services/integrations/web_vercel_delivery.py'
       - 'tests/test_web_assurance_delivery.py'
+      - 'tests/test_web_vercel_delivery.py'
       - 'apps/desktop/e2e/web_finished_product_browser_e2e.py'
       - '.github/workflows/web-factory-browser-e2e.yml'
   workflow_dispatch:
@@ -72,10 +76,13 @@ jobs:
           python -m pip check
           python -m playwright install --with-deps chromium
 
-      - name: Run Web assurance and rollback unit/integration closure
+      - name: Run Web assurance, delivery and rollback unit/integration closure
         env:
           PYTHONPATH: ${{ github.workspace }}
-        run: python -m pytest -q tests/test_web_assurance_delivery.py
+        run: |
+          python -m pytest -q \
+            tests/test_web_assurance_delivery.py \
+            tests/test_web_vercel_delivery.py
 
       - name: Run Web finished-product E2E through Coordinator, Next.js and Chromium
         env:
