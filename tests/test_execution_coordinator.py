@@ -38,6 +38,7 @@ def _coordinator(
     GovernedRuntimeGateway,
     DurableWorkerScheduler,
     DurableGrantPolicy,
+    DurableVideoProductRuntime,
 ]:
     state = tmp_path / "state.sqlite3"
     control = ControlPlane(ControlPlaneConfig(state, "token"))
@@ -75,6 +76,7 @@ def _coordinator(
         governance,
         scheduler,
         grants,
+        product,
     )
 
 
@@ -94,7 +96,7 @@ def test_route_selection_is_conservative_and_canonical() -> None:
 
 
 def test_unverified_finished_product_adapter_fails_closed(tmp_path: Path) -> None:
-    coordinator, governance, _, _ = _coordinator(tmp_path)
+    coordinator, governance, _, _, _ = _coordinator(tmp_path)
     now = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
 
     prepared = coordinator.prepare(
@@ -108,7 +110,8 @@ def test_unverified_finished_product_adapter_fails_closed(tmp_path: Path) -> Non
 
     assert prepared["capability_id"] == "ilaios.capability.web-factory"
     assert prepared["adapter_id"] is None
-    assert prepared["execution_status"] == "BLOCKED_ADAPTER_UNAVAILABLE"
+    assert prepared["execution_status"] == "BLOCKED"
+    assert prepared["blocker_code"] == "GENERAL_PURPOSE_WEB_ADAPTER_UNAVAILABLE"
     assert governance.state()["work"] == []
     with pytest.raises(ExecutionCoordinatorError, match="not resumable"):
         coordinator.resume("exec-web-1", token="token", now=now)
@@ -117,7 +120,7 @@ def test_unverified_finished_product_adapter_fails_closed(tmp_path: Path) -> Non
 def test_medium_video_is_admitted_without_human_approval_or_early_lease(
     tmp_path: Path,
 ) -> None:
-    coordinator, governance, scheduler, _ = _coordinator(tmp_path)
+    coordinator, governance, scheduler, _, _ = _coordinator(tmp_path)
     prepared_at = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
     principal_id = "oidc|subject:user@example.test"
     tenant_id = "tenant/global-example"
@@ -155,7 +158,7 @@ def test_medium_video_is_admitted_without_human_approval_or_early_lease(
 def test_medium_video_executes_to_verified_acceptance_with_fresh_grant_and_lease(
     tmp_path: Path,
 ) -> None:
-    coordinator, governance, scheduler, grants = _coordinator(tmp_path)
+    coordinator, governance, scheduler, grants, _ = _coordinator(tmp_path)
     prepared_at = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
     principal_id = "oidc|subject:user@example.test"
     tenant_id = "tenant/global-example"
@@ -205,7 +208,7 @@ def test_medium_video_executes_to_verified_acceptance_with_fresh_grant_and_lease
 
 
 def test_execution_is_single_use_after_acceptance(tmp_path: Path) -> None:
-    coordinator, _, _, _ = _coordinator(tmp_path)
+    coordinator, _, _, _, _ = _coordinator(tmp_path)
     now = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
     coordinator.prepare(
         "exec-video-3",
@@ -225,7 +228,7 @@ def test_execution_is_single_use_after_acceptance(tmp_path: Path) -> None:
 
 
 def test_failure_closes_product_execution_and_releases_resources(tmp_path: Path) -> None:
-    coordinator, _, scheduler, grants = _coordinator(tmp_path)
+    coordinator, _, scheduler, grants, _ = _coordinator(tmp_path)
     now = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
     coordinator.prepare(
         "exec-video-fail",
@@ -243,9 +246,11 @@ def test_failure_closes_product_execution_and_releases_resources(tmp_path: Path)
         )
 
     state = coordinator.get("exec-video-fail")
-    assert state["execution_status"] == "FAILED"
+    assert state["execution_status"] == "FAILED_TERMINAL"
     assert state["terminal"] is True
-    assert "GrantError" in cast(str, state["terminal_reason"])
+    assert state["terminal_reason"] == "The governed execution adapter failed."
+    error = cast(dict[str, object], state["error"])
+    assert error["error_class"] == "GrantError"
     assert scheduler.state()["leases"] == []
     assert not (tmp_path / "video" / "exec-video-fail").exists()
     grant_state = grants.state()
@@ -257,7 +262,7 @@ def test_finalizing_product_recovers_after_cross_store_crash(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    coordinator, _, scheduler, grants = _coordinator(tmp_path)
+    coordinator, _, scheduler, grants, product = _coordinator(tmp_path)
     prepared_at = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
     request_id = "exec-video-finalize-recovery"
     coordinator.prepare(
@@ -268,7 +273,6 @@ def test_finalizing_product_recovers_after_cross_store_crash(
         tenant_id="tenant/example",
         now=prepared_at,
     )
-    product = cast(DurableVideoProductRuntime, getattr(coordinator, "_video"))
     real_recover = product.recover_finalizing
 
     def crash_boundary(
@@ -330,7 +334,7 @@ def test_finalizing_product_recovers_after_cross_store_crash(
 
 
 def test_stale_executing_request_closes_as_interrupted(tmp_path: Path) -> None:
-    coordinator, _, scheduler, grants = _coordinator(tmp_path)
+    coordinator, _, scheduler, grants, _ = _coordinator(tmp_path)
     prepared_at = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
     coordinator.prepare(
         "exec-video-stale",
@@ -356,7 +360,9 @@ def test_stale_executing_request_closes_as_interrupted(tmp_path: Path) -> None:
     state = coordinator.get("exec-video-stale")
     assert state["execution_status"] == "INTERRUPTED"
     assert state["terminal"] is True
-    assert "recovery window" in cast(str, state["terminal_reason"])
+    assert state["terminal_reason"] == (
+        "stale execution interrupted and subordinate resources closed"
+    )
     assert scheduler.state()["leases"] == []
     with sqlite3.connect(tmp_path / "product.sqlite3") as connection:
         product_status = connection.execute(
@@ -380,7 +386,7 @@ def test_stale_executing_request_closes_as_interrupted(tmp_path: Path) -> None:
 
 
 def test_fresh_executing_request_is_not_falsely_closed(tmp_path: Path) -> None:
-    coordinator, _, _, _ = _coordinator(tmp_path)
+    coordinator, _, _, _, _ = _coordinator(tmp_path)
     now = datetime(2026, 8, 15, 8, 0, tzinfo=timezone.utc)
     coordinator.prepare(
         "exec-video-active",
