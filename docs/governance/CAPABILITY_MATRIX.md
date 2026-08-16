@@ -1,6 +1,6 @@
 # ILAIOS Capability Matrix
 
-Snapshot: 15 August 2026
+Snapshot: 16 August 2026
 
 Canonical capability maturity:
 
@@ -17,6 +17,7 @@ This matrix is deliberately conservative. File presence alone cannot promote a c
 | Core validation/audit/evidence foundations | `src/core`, historical quality-gate evidence | VERIFIED | Revalidate when core semantics change |
 | Control Plane runtime | `services/control_plane`, production release package/evidence | PRODUCTION baseline | Capability-specific production SLO evidence |
 | Runtime execution / scheduler / grants | `services/runtime/*`, governed local agent/skill/provider execution, platform recovery evidence | VERIFIED | Capability-specific production exercise |
+| Canonical Execution Coordinator | PR #223, durable lifecycle/state machine, canonical-registry-aware routing, fail-closed ambiguity, cancellation/recovery, evidence/metrics and bounded DAG execution; exact-head Required CI PASS | VERIFIED coordinator | Capability adapters still require their own finished-product and production evidence |
 | Governance / approvals | `services/governance`, governance services and tests | VERIFIED | Production usage/effect evidence per governed action |
 | Evidence / provenance | `services/evidence`, release/recovery evidence chain | VERIFIED | Production retention/integrity operating evidence |
 | Identity / tenant boundary | `services/identity.py`, platform implementation evidence | VERIFIED | Dedicated production tenant-isolation evidence |
@@ -34,23 +35,24 @@ This matrix is deliberately conservative. File presence alone cannot promote a c
 | Knowledge Graph | `src/knowledge_graph`, targeted tests, `tests/test_intelligence_project_integration.py`, PR #24 + master Platform CI | VERIFIED foundation | Durable graph persistence/query evidence before stronger runtime claims |
 | Project Manager | `src/project_manager`, targeted tests, `tests/test_intelligence_project_integration.py`, PR #24 + master Platform CI | VERIFIED foundation | Durable project/workspace lifecycle evidence before stronger runtime claims |
 | Knowledge / RAG | `services/knowledge_rag.py`, in-place `ilaios.capability.knowledge` registry binding, functional + adversarial tests, PR #111, Required CI Gate #185 PASS, merge `cb0fde61ba0fd74add11c227bf827cb62c01ff48` | VERIFIED bounded reference implementation | RAG.14 production evidence: approved production embedding/index persistence, production tenant/auth/DLP/leakage exercise, recovery/SLO and exact deploy/rollback evidence |
-| Web Factory integration | `services/integrations/web_factory.py`, deterministic artifact/tamper tests, cross-capability revalidation and Platform CI #17 | VERIFIED bounded factory | Production-like deployment/rollback/browser verification outside Website implementation workstream |
-| Software Factory | `services/software_factory.py`, isolated proposal/test/review E2E, production mutation forbidden, Platform CI #17 | VERIFIED bounded proposal factory | Broader language/build adapters and controlled external PR/review evidence |
+| Web Factory integration | PR #223 registered `web.product-runtime.v1`; PR #227 added generated-artifact Chromium browser E2E covering EN/TR, desktop/tablet/mobile responsiveness, navigation, console/page errors, accessibility basics and SEO basics; exact-head Required CI and Web Factory Browser E2E PASS | VERIFIED bounded finished-product adapter | Governed public production deployment, live health and rollback evidence; broader real-user workload coverage |
+| Software Factory | PR #227 registered `software.product-runtime.v1`, crash-safe finalization/cancellation/recovery, exact source-HEAD provenance and real Windows finished-product E2E; exact-head Required CI and Software Factory Final Evidence PASS | VERIFIED bounded finished-product adapter | Expand beyond the currently verified local task-manager/todo scope; controlled external repository/build/provider and commercial release evidence before stronger claims |
 | Security Factory | `services/security_factory.py`, bounded SAST/secret/supply-chain/infra/local-DAST tests, merged PR #23 and master CI | VERIFIED bounded defensive factory | Production-safe exercises and independent external pentest where applicable |
-| App Factory platform capability | `services/app_factory.py`, capability-registry binding, review-only client request boundary and Platform CI | VERIFIED bounded platform factory | Separate client implementation/build/signing evidence remains in Desktop/Mobile workstreams |
+| App Factory platform capability | `services/app_factory.py`, capability-registry binding, review-only client request boundary and Platform CI | VERIFIED bounded platform factory | Issue #97: Windows-first finished-product adapter with real Flutter implementation/build/package evidence; Android/iOS only after platform-specific gates |
 | Research / Data Factory | `services/research_data_factory.py`, capability-registry binding, provenance/claim-gate tests, master Platform CI | VERIFIED bounded factory | Broader governed ingestion adapters, durable persistence and production-safe data-source exercises before stronger runtime claims |
 | Creative / Document Factory | `services/creative_document_factory.py`, trusted-source/provenance/approval tests and capability-registry binding | VERIFIED bounded factory | Broader document-format adapters and production-safe external publishing evidence before stronger claims |
 | Commerce / Growth Factory | `services/commerce_growth_factory.py`, trusted-evidence/approval/paid-spend-denial tests and capability-registry binding | VERIFIED bounded review-only factory | External channel adapters remain separately governed; no paid-spend authority is implied |
 | Personal Operations / Automation | `services/personal_operations_factory.py`, deterministic draft-plan/approval/external-mutation-denial tests and capability-registry binding | VERIFIED bounded review-only factory | External account execution remains separately governed and is not implied by this state |
 | Promoted factory enterprise hardening | `services/enterprise_hardening.py`, cross-cutting recovery/isolation/provenance/observability/security/cost gates and tests | VERIFIED bounded gate | Production-specific SLO, backup/restore and independent release evidence where applicable |
-| Website | Active separate workstream | NOT ASSESSED HERE | Continue in Website workstream |
-| Windows Desktop | Merged consolidated Desktop workstream exists | NOT ASSESSED HERE | Continue in Desktop/Store workstream |
-| Mobile Android/iOS | No implementation path found in repository audit | PLANNED | Post-v1 architecture/package definition |
-| Billing / subscription / entitlements | No obvious implementation found in repository audit | PLANNED | Product/commercial requirements and backend design |
-| Formal GitHub release/version model | `docs/governance/RELEASE_VERSION_POLICY.md`, `GOVERNANCE.md`, policy regression tests | SPECIFIED / PROCESS DEFINED | Select first formal version in a dedicated release package; create immutable tag + GitHub Release only after governed approval and exact-head CI |
-| Default-branch protection | `master` reported unprotected during governance audit; protection API is not accessible to the connected integration | PLANNED OWNER POLICY | Enable appropriate GitHub protection rules in repository settings |
+| Website | Active separate workstream; public Vercel production identity was not independently visible through the connected Vercel account during the 16 August truth-sync | NOT ASSESSED HERE / EXTERNAL PROOF PENDING | Exact-SHA public production deployment, live browser certification and domain/deployment linkage |
+| Windows Desktop | Merged consolidated Desktop workstream plus PR #228 OIDC launcher propagation, PR #229 fail-closed packaged-sidecar import smoke and PR #231 Python 3.12 build pin; corresponding Windows Gate/MSIX/Desktop CI evidence passed | TESTED / EXTERNAL ACCEPTANCE PENDING | Real Windows first-click OIDC acceptance with rebuilt sidecar, then signing/Partner Center/Store evidence |
+| Mobile Android/iOS | No implementation path found in repository audit | PLANNED | Post-v1 architecture/package definition after higher-priority closure |
+| Billing / subscription / entitlements | No obvious implementation found in repository audit | PLANNED | Product/commercial requirements and backend design; raise priority only when public SaaS launch requires it |
+| Formal GitHub release/version model | `docs/governance/RELEASE_VERSION_POLICY.md`, `GOVERNANCE.md`, policy regression tests; live GitHub tags and Releases are both empty on 16 August 2026 | SPECIFIED / PROCESS DEFINED | Select first formal version in a dedicated release package; create immutable tag + GitHub Release only after governed approval, licensing clearance and exact-head CI |
+| Default-branch protection | Active `ILAIOS Master Protection` ruleset: non-fast-forward/deletion protection, PR requirement, review-thread resolution and required `Required CI Gate`; no bypass actors; `.github/CODEOWNERS` exists | PROCESS ACTIVE | Human approving review count remains 0 and CODEOWNER/last-push approval are not enforced; add independent review only if it does not make the single-developer workflow unusable |
 | Repository security policy | `SECURITY.md` present on master | SPECIFIED / PROCESS ACTIVE | Enforce through protected review/CI process |
 | Repository governance policy | `GOVERNANCE.md` present on master | SPECIFIED / PROCESS ACTIVE | Enforce through protected review/CI process |
+| Repository licensing | `docs/governance/LICENSE_DECISION.md` records `PRIVATE / PROPRIETARY BY DEFAULT` licensing/reuse posture while repository visibility is public; GitHub metadata still reports `license: null`, so no OSI/open-source grant is implied | SPECIFIED / RELEASE CLEARANCE PENDING | For any commercial/public release, reconcile exact-release third-party notices, provider/model/generated-output rights and redistribution terms; change the repository-wide license grant only by explicit owner/legal decision |
 | External certification/compliance claims | No external certification assumed | PLANNED / EXTERNAL | Independent applicable certification process |
 
 ## Lineage consolidation rule
@@ -73,10 +75,14 @@ The Knowledge/RAG capability is VERIFIED only for the merged bounded reference i
 
 RAG.14 remains an explicit production promotion NO-GO until the production evidence listed in the capability row and governed dependency graph is satisfied.
 
+## Finished-product verification boundary
+
+The Web and Software rows record bounded finished-product adapter evidence only. PR #223/#227 prove coordinator composition, artifacts and CI/browser/Windows evidence within their stated scopes; they do not prove public Web deployment, arbitrary software generation, paid/external provider authority or commercial release readiness. Production promotion remains separate.
+
 ## Revalidation result
 
-Fresh repository evidence has revalidated the existing intelligence/platform foundations and promoted the bounded Research/Data, Creative/Document, Commerce/Growth, Personal Operations, App Factory and Knowledge/RAG platform boundaries without creating parallel runtimes. Enterprise hardening adds a shared fail-closed evidence gate rather than bypassing each capability's own controls.
+Fresh repository evidence has revalidated the existing intelligence/platform foundations and the bounded Research/Data, Creative/Document, Commerce/Growth, Personal Operations, App Factory and Knowledge/RAG platform boundaries without creating parallel runtimes. The canonical Coordinator now composes verified bounded Web and Software finished-product adapters in addition to the existing Video path. Enterprise hardening remains a shared fail-closed evidence gate rather than a bypass of capability-specific controls.
 
-## Selected post-v1 direction
+## Current product-integration direction
 
-The selected **RAG_KNOWLEDGE** workstream has reached bounded implementation and verification through PR #111. Production promotion is intentionally not claimed; the next RAG decision remains RAG.14 production evidence and release gating.
+The previous planning-only snapshot is superseded by live merged evidence. The next repository work is to preserve the single Core/Coordinator architecture, complete Desktop external OIDC/package acceptance, close App issue #97 with real packaged evidence, keep RAG.14 and public/external production promotions evidence-gated, and resolve formal release/licensing only when their exact external prerequisites are satisfied.
