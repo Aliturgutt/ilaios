@@ -11,9 +11,9 @@ from datetime import datetime, timedelta, timezone
 from functools import partial
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, cast
+from typing import cast
 
-from playwright.sync_api import ConsoleMessage, Error, Page, sync_playwright
+from playwright.sync_api import ConsoleMessage, sync_playwright
 
 from services.control_plane import ControlPlane, ControlPlaneConfig
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
@@ -110,10 +110,10 @@ def _build_through_coordinator(
     *,
     source_head: str,
 ) -> tuple[dict[str, object], dict[str, object]]:
-    token = "web-browser-e2e-local-boundary"
+    local_boundary = "fixture-control-plane-boundary"
     os.environ["ILAIOS_SOURCE_SHA"] = source_head
     database = root / "control-plane.sqlite3"
-    control = ControlPlane(ControlPlaneConfig(database, token))
+    control = ControlPlane(ControlPlaneConfig(database, local_boundary))
     workflows = WorkflowStore(WorkflowStoreConfig(database))
     scheduler = DurableWorkerScheduler(
         database,
@@ -167,7 +167,7 @@ def _build_through_coordinator(
     prepared = coordinator.prepare(
         request_id,
         objective,
-        token=token,
+        token=local_boundary,
         principal_id="ci-web-user",
         tenant_id="ci-web-tenant",
         now=now,
@@ -179,7 +179,7 @@ def _build_through_coordinator(
 
     manifest = coordinator.resume(
         request_id,
-        token=token,
+        token=local_boundary,
         now=now + timedelta(seconds=1),
         principal_id="ci-web-user",
         tenant_id="ci-web-tenant",
@@ -273,12 +273,19 @@ def _browser_certify(
                             f"horizontal overflow for {route} at {viewport}: {overflow}"
                         )
                     if route.endswith("contact.html"):
-                        for selector in ("#name", "#email", "#message", 'button[type="submit"]'):
+                        for selector in (
+                            "#name",
+                            "#email",
+                            "#message",
+                            'button[type="submit"]',
+                        ):
                             if page.locator(selector).count() != 1:
                                 raise RuntimeError(
                                     f"contact control {selector} missing for {route}"
                                 )
-                    if route.endswith("index.html") and len({r.split('/', 1)[0] for r in routes}) > 1:
+                    if route.endswith("index.html") and len(
+                        {r.split("/", 1)[0] for r in routes}
+                    ) > 1:
                         if page.locator(".language-link").count() != 1:
                             raise RuntimeError(
                                 f"language navigation missing for {route}"
