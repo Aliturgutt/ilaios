@@ -9,7 +9,7 @@ import '../identity/identity_client.dart';
 import 'ilaios_locale.dart';
 import 'ilaios_theme.dart';
 
-class IlaiosDesktopApp extends StatelessWidget {
+class IlaiosDesktopApp extends StatefulWidget {
   const IlaiosDesktopApp({
     super.key,
     this.projection = const ControlPlaneProjection.unavailable(),
@@ -51,32 +51,60 @@ class IlaiosDesktopApp extends StatelessWidget {
       onGovernanceDecision;
 
   @override
-  Widget build(BuildContext context) => MaterialApp(
-        title: 'ILAIOS Desktop',
-        debugShowCheckedModeBanner: false,
-        theme: IlaiosTheme.light,
-        darkTheme: IlaiosTheme.dark,
-        themeMode: themeMode,
-        home: IlaiosLocaleScope(
-          locale: locale,
-          onChanged: (value) => onLocaleChanged?.call(value),
-          child: DesktopShell(
-            projection: projection,
-            operationalSnapshot: operationalSnapshot,
-            operationalStatus: operationalStatus,
-            approverId: approverId,
-            identityProviders: identityProviders,
-            userSession: userSession,
-            identityStatus: identityStatus,
-            themeMode: themeMode,
-            onThemeModeChanged: onThemeModeChanged,
-            onSignIn: onSignIn,
-            onLogout: onLogout,
-            onPromptSubmit: onPromptSubmit,
-            onSaveArtifact: onSaveArtifact,
-            onRefreshRequested: onRefreshRequested,
-            onGovernanceDecision: onGovernanceDecision,
-          ),
+  State<IlaiosDesktopApp> createState() => _IlaiosDesktopAppState();
+}
+
+class _IlaiosDesktopAppState extends State<IlaiosDesktopApp> {
+  late ThemeMode _localThemeMode = widget.themeMode;
+
+  @override
+  void didUpdateWidget(covariant IlaiosDesktopApp oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.themeMode != oldWidget.themeMode &&
+        widget.onThemeModeChanged != null) {
+      _localThemeMode = widget.themeMode;
+    }
+  }
+
+  void _changeTheme(ThemeMode mode) {
+    if (widget.onThemeModeChanged != null) {
+      widget.onThemeModeChanged!(mode);
+      return;
+    }
+    if (_localThemeMode != mode) setState(() => _localThemeMode = mode);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final effectiveTheme =
+        widget.onThemeModeChanged == null ? _localThemeMode : widget.themeMode;
+    return MaterialApp(
+      title: 'ILAIOS Desktop',
+      debugShowCheckedModeBanner: false,
+      theme: IlaiosTheme.light,
+      darkTheme: IlaiosTheme.dark,
+      themeMode: effectiveTheme,
+      home: IlaiosLocaleScope(
+        locale: widget.locale,
+        onChanged: (value) => widget.onLocaleChanged?.call(value),
+        child: DesktopShell(
+          projection: widget.projection,
+          operationalSnapshot: widget.operationalSnapshot,
+          operationalStatus: widget.operationalStatus,
+          approverId: widget.approverId,
+          identityProviders: widget.identityProviders,
+          userSession: widget.userSession,
+          identityStatus: widget.identityStatus,
+          themeMode: effectiveTheme,
+          onThemeModeChanged: _changeTheme,
+          onSignIn: widget.onSignIn,
+          onLogout: widget.onLogout,
+          onPromptSubmit: widget.onPromptSubmit,
+          onSaveArtifact: widget.onSaveArtifact,
+          onRefreshRequested: widget.onRefreshRequested,
+          onGovernanceDecision: widget.onGovernanceDecision,
         ),
-      );
+      ),
+    );
+  }
 }
