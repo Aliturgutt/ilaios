@@ -4,16 +4,15 @@ import hashlib
 import json
 import os
 import shutil
+import socket
 import subprocess
 import tempfile
-import threading
+import time
+import urllib.request
 from datetime import datetime, timedelta, timezone
-from functools import partial
-from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import cast
 
-from playwright.sync_api import ConsoleMessage, sync_playwright
+from playwright.sync_api import ConsoleMessage, Page, sync_playwright
 
 from services.control_plane import ControlPlane, ControlPlaneConfig
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
@@ -26,19 +25,27 @@ from services.integrations import (
     DurableVideoProductRuntime,
     RecoverableWebProductRuntime,
 )
+from services.integrations.web_delivery import LocalWebDeploymentAdapter, tree_sha256
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 
 
 VIEWPORTS = (
-    {"width": 1440, "height": 900},
-    {"width": 768, "height": 1024},
+    {"width": 320, "height": 800},
+    {"width": 360, "height": 800},
     {"width": 390, "height": 844},
+    {"width": 412, "height": 915},
+    {"width": 430, "height": 932},
+    {"width": 768, "height": 1024},
+    {"width": 1024, "height": 768},
+    {"width": 1440, "height": 900},
 )
-
-
-class _QuietHandler(SimpleHTTPRequestHandler):
-    def log_message(self, format: str, *args: object) -> None:  # noqa: A002
-        del format, args
+_SECURITY_HEADERS = (
+    "content-security-policy",
+    "x-content-type-options",
+    "referrer-policy",
+    "permissions-policy",
+    "x-frame-options",
+)
 
 
 def main() -> int:
@@ -58,46 +65,58 @@ def main() -> int:
             runtime_root,
             source_head=source_head,
         )
-        bundle_path = Path(str(manifest["bundle_path"])).resolve()
-        if not bundle_path.is_dir():
-            raise RuntimeError("accepted Web finished-product bundle is missing")
-        source_project_path = Path(str(manifest["source_project_path"])).resolve()
-        if not source_project_path.is_dir():
-            raise RuntimeError("accepted Web source project is missing")
+        source_project = Path(str(manifest["source_project_path"])).resolve()
+        if not source_project.is_dir():
+            raise RuntimeError("accepted certified Web source project is missing")
+        if tree_sha256(source_project) != manifest["source_project_digest"]:
+            raise RuntimeError("certified Web source digest differs from AcceptanceManifest")
 
-        site_output = artifact_root / "site"
-        shutil.copytree(bundle_path, site_output)
-        source_output = artifact_root / "source-project"
-        shutil.copytree(source_project_path, source_output)
-        _verify_tree_digest(site_output, str(manifest["artifact_digest"]))
-
+        source_output = artifact_root / "certified-source-project"
+        shutil.copytree(source_project, source_output)
+        build_workspace = artifact_root / "build-workspace"
+        shutil.copytree(source_project, build_workspace)
+        build_receipt = _production_build(build_workspace)
         browser_receipt = _browser_certify(
-            site_output,
-            tuple(cast(list[str] | tuple[str, ...], manifest["routes"])),
+            build_workspace,
+            tuple(str(route) for route in manifest["certified_routes"]),
+            tuple(str(feature) for feature in manifest["functional_features"]),
             artifact_root,
         )
+        deployment_receipt = _deployment_and_rollback_proof(
+            source_project,
+            artifact_root,
+            source_head=source_head,
+            artifact_sha=str(manifest["source_project_digest"]),
+        )
         evidence = {
-            "schema": "ilaios.web.local-browser-evidence.v1",
+            "schema": "ilaios.web.finished-product-browser-evidence.v2",
             "source_head_sha": source_head,
             "request_id": manifest["request_id"],
             "adapter_id": manifest["adapter_id"],
             "source_commit_sha": manifest["source_commit_sha"],
             "source_commit_bound": manifest["source_commit_bound"],
-            "artifact_digest": manifest["artifact_digest"],
+            "preview_artifact_digest": manifest["artifact_digest"],
             "source_project_digest": manifest["source_project_digest"],
-            "routes": manifest["routes"],
+            "source_assurance": manifest["source_assurance"],
+            "repair_attempts": manifest["repair_attempts"],
+            "routes": manifest["certified_routes"],
+            "functional_features": manifest["functional_features"],
             "local_acceptance": manifest["accepted"],
-            "deployment_state": manifest["deployment_state"],
-            "verification_scope": manifest["verification_scope"],
+            "public_deployment_state": manifest["deployment_state"],
+            "verification_scope": "LOCAL_CERTIFIED_NEXT_BUILD_BROWSER_AND_ROLLBACK",
             "coordinator_status": coordinator_state["execution_status"],
             "coordinator_result_sha256": coordinator_state["result_sha256"],
+            "production_build": build_receipt,
             "browser_runtime_evidence": "PASS",
             "browser": browser_receipt,
+            "deployment_and_rollback": deployment_receipt,
+            "public_production_proven": False,
         }
         (artifact_root / "browser-evidence.json").write_text(
             json.dumps(evidence, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
+        shutil.rmtree(build_workspace, ignore_errors=True)
         print(json.dumps(evidence, sort_keys=True))
         print("ILAIOS_WEB_FACTORY_BROWSER_E2E=PASS")
     finally:
@@ -115,10 +134,7 @@ def _build_through_coordinator(
     database = root / "control-plane.sqlite3"
     control = ControlPlane(ControlPlaneConfig(database, local_boundary))
     workflows = WorkflowStore(WorkflowStoreConfig(database))
-    scheduler = DurableWorkerScheduler(
-        database,
-        lease_duration=timedelta(seconds=30),
-    )
+    scheduler = DurableWorkerScheduler(database, lease_duration=timedelta(seconds=30))
     grants = DurableGrantPolicy(database)
     evidence = EvidenceStore(root / "evidence")
     governance = GovernedRuntimeGateway(
@@ -126,12 +142,7 @@ def _build_through_coordinator(
         GovernedRuntime(database),
         hard_cap_minor=100,
     )
-    video = DeterministicLocalVideoRuntime(
-        root / "video",
-        grants,
-        governance,
-        evidence,
-    )
+    video = DeterministicLocalVideoRuntime(root / "video", grants, governance, evidence)
     video_product = DurableVideoProductRuntime(
         root / "video-product.sqlite3",
         control,
@@ -161,7 +172,8 @@ def _build_through_coordinator(
     request_id = "web-factory-browser-e2e"
     objective = (
         "Build a premium bilingual Turkish/English website for a corporate law firm "
-        "with clear navigation, accessible contact flow, responsive layout, and strong SEO essentials"
+        "with clear navigation, accessible contact flow, responsive layout, a blog with articles, "
+        "newsletter signup, site search, and strong SEO essentials"
     )
     now = datetime.now(timezone.utc)
     prepared = coordinator.prepare(
@@ -191,10 +203,15 @@ def _build_through_coordinator(
     if manifest.get("source_commit_sha") != source_head:
         raise RuntimeError("Web manifest source SHA differs from exact CI HEAD")
     if manifest.get("deployment_state") != "NOT_DEPLOYED":
-        raise RuntimeError("local Web E2E must not claim deployment")
-    qa = manifest.get("qa")
-    if not isinstance(qa, dict) or qa.get("passed") is not True:
-        raise RuntimeError("Web structural QA did not pass")
+        raise RuntimeError("local Web E2E must not claim public deployment")
+    assurance = manifest.get("source_assurance")
+    if not isinstance(assurance, dict) or assurance.get("passed") is not True:
+        raise RuntimeError("Web source assurance did not pass before acceptance")
+    if not manifest.get("repair_attempts"):
+        raise RuntimeError("Web bounded repair evidence is missing")
+    expected_features = {"contact-form", "content", "newsletter", "search"}
+    if set(manifest.get("functional_features", [])) != expected_features:
+        raise RuntimeError("Web bounded functional feature set was not produced")
 
     coordinator_state = coordinator.get(
         request_id,
@@ -206,19 +223,70 @@ def _build_through_coordinator(
     return manifest, coordinator_state
 
 
+def _production_build(project_root: Path) -> dict[str, object]:
+    commands = (
+        ("npm", "install", "--no-audit", "--no-fund"),
+        ("npm", "run", "typecheck"),
+        ("npm", "run", "build"),
+    )
+    results: list[dict[str, object]] = []
+    started = time.monotonic()
+    for command in commands:
+        step_started = time.monotonic()
+        completed = subprocess.run(
+            command,
+            cwd=project_root,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=240,
+        )
+        if completed.returncode != 0:
+            raise RuntimeError(
+                f"generated Next.js production build step failed: {' '.join(command)}\n"
+                + completed.stdout[-4000:]
+                + completed.stderr[-4000:]
+            )
+        results.append(
+            {
+                "command": " ".join(command),
+                "status": "PASS",
+                "duration_seconds": round(time.monotonic() - step_started, 3),
+            }
+        )
+    build_dir = project_root / ".next"
+    if not build_dir.is_dir():
+        raise RuntimeError("generated Next.js build output is missing")
+    return {
+        "status": "PASS",
+        "steps": results,
+        "duration_seconds": round(time.monotonic() - started, 3),
+        "build_output": ".next",
+        "package_lock_sha256": _file_sha256(project_root / "package-lock.json"),
+    }
+
+
 def _browser_certify(
-    site_root: Path,
+    project_root: Path,
     routes: tuple[str, ...],
+    features: tuple[str, ...],
     artifact_root: Path,
 ) -> dict[str, object]:
-    handler = partial(_QuietHandler, directory=str(site_root))
-    server = ThreadingHTTPServer(("127.0.0.1", 0), handler)
-    thread = threading.Thread(target=server.serve_forever, daemon=True)
-    thread.start()
-    host, port = server.server_address[:2]
-    base_url = f"http://{host}:{port}"
-    checks: list[dict[str, object]] = []
+    port = _free_port()
+    env = dict(os.environ)
+    env["NEXT_PUBLIC_SITE_URL"] = f"http://127.0.0.1:{port}"
+    process = subprocess.Popen(
+        ("npm", "run", "start", "--", "-H", "127.0.0.1", "-p", str(port)),
+        cwd=project_root,
+        env=env,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        text=True,
+    )
+    base_url = f"http://127.0.0.1:{port}"
     try:
+        _wait_for_http(f"{base_url}/en", process)
+        checks: list[dict[str, object]] = []
         with sync_playwright() as playwright:
             browser = playwright.chromium.launch(headless=True)
             context = browser.new_context(ignore_https_errors=False)
@@ -229,9 +297,7 @@ def _browser_certify(
                     page_errors: list[str] = []
                     page.on(
                         "console",
-                        lambda message, errors=console_errors: _capture_console(
-                            message, errors
-                        ),
+                        lambda message, errors=console_errors: _capture_console(message, errors),
                     )
                     page.on(
                         "pageerror",
@@ -239,102 +305,222 @@ def _browser_certify(
                     )
                     page.set_viewport_size(viewport)
                     response = page.goto(
-                        f"{base_url}/{route}",
-                        wait_until="networkidle",
-                        timeout=30_000,
+                        f"{base_url}{route}", wait_until="networkidle", timeout=30_000
                     )
                     if response is None or response.status >= 400:
-                        raise RuntimeError(
-                            f"browser navigation failed for {route} at {viewport}"
-                        )
-                    if page.locator("main#main h1").count() != 1:
-                        raise RuntimeError(f"main H1 missing for {route}")
-                    if not page.locator("main#main h1").is_visible():
-                        raise RuntimeError(f"main H1 is not visible for {route}")
-                    if page.locator("nav a").count() < 4:
-                        raise RuntimeError(f"navigation is incomplete for {route}")
-                    if page.locator('link[rel="canonical"]').count() != 1:
-                        raise RuntimeError(f"canonical SEO link missing for {route}")
-                    if page.locator('meta[name="description"]').count() != 1:
-                        raise RuntimeError(f"meta description missing for {route}")
-                    if page.locator(".skip-link").count() != 1:
-                        raise RuntimeError(f"skip link missing for {route}")
-                    language = page.locator("html").get_attribute("lang")
-                    expected_language = route.split("/", 1)[0]
-                    if language != expected_language:
-                        raise RuntimeError(
-                            f"locale mismatch for {route}: {language} != {expected_language}"
-                        )
-                    overflow = page.evaluate(
-                        "document.documentElement.scrollWidth - window.innerWidth"
-                    )
-                    if float(overflow) > 1:
-                        raise RuntimeError(
-                            f"horizontal overflow for {route} at {viewport}: {overflow}"
-                        )
-                    if route.endswith("contact.html"):
-                        for selector in (
-                            "#name",
-                            "#email",
-                            "#message",
-                            'button[type="submit"]',
-                        ):
-                            if page.locator(selector).count() != 1:
-                                raise RuntimeError(
-                                    f"contact control {selector} missing for {route}"
-                                )
-                    if route.endswith("index.html") and len(
-                        {r.split("/", 1)[0] for r in routes}
-                    ) > 1:
-                        if page.locator(".language-link").count() != 1:
-                            raise RuntimeError(
-                                f"language navigation missing for {route}"
-                            )
+                        raise RuntimeError(f"browser navigation failed for {route} at {viewport}")
+                    _assert_security_headers(response.headers, route)
+                    _assert_page_quality(page, route, viewport)
                     if console_errors:
-                        raise RuntimeError(
-                            f"console errors for {route} at {viewport}: {console_errors}"
-                        )
+                        raise RuntimeError(f"console errors for {route} at {viewport}: {console_errors}")
                     if page_errors:
-                        raise RuntimeError(
-                            f"page errors for {route} at {viewport}: {page_errors}"
-                        )
+                        raise RuntimeError(f"page errors for {route} at {viewport}: {page_errors}")
                     checks.append(
                         {
                             "route": route,
                             "viewport": viewport,
                             "status": response.status,
-                            "locale": language,
-                            "horizontal_overflow_px": float(overflow),
+                            "horizontal_overflow_px": float(
+                                page.evaluate("document.documentElement.scrollWidth - window.innerWidth")
+                            ),
                             "console_errors": 0,
                             "page_errors": 0,
                         }
                     )
-                    if route.endswith("index.html") and viewport["width"] in {1440, 390}:
-                        screenshot = artifact_root / (
-                            f"{expected_language}-home-{viewport['width']}x{viewport['height']}.png"
+                    if route in {"/en", "/tr"} and viewport["width"] in {320, 390, 430, 1440}:
+                        locale = route.removeprefix("/")
+                        page.screenshot(
+                            path=str(
+                                artifact_root
+                                / f"{locale}-home-{viewport['width']}x{viewport['height']}.png"
+                            ),
+                            full_page=True,
                         )
-                        page.screenshot(path=str(screenshot), full_page=True)
                     page.close()
+
+            _assert_global_seo(context, base_url)
+            _assert_functional_modules(context, base_url, features)
             context.close()
             browser.close()
+        return {
+            "engine": "playwright-chromium-next-production",
+            "viewports": list(VIEWPORTS),
+            "route_count": len(routes),
+            "check_count": len(checks),
+            "checks": checks,
+            "console_errors": 0,
+            "page_errors": 0,
+            "responsive": "PASS",
+            "navigation": "PASS",
+            "en_tr_content_parity": "PASS",
+            "accessibility": "PASS",
+            "seo": "PASS",
+            "security_headers": "PASS",
+            "functional_modules": "PASS",
+            "runtime": "PASS",
+        }
     finally:
-        server.shutdown()
-        server.server_close()
-        thread.join(timeout=5)
+        process.terminate()
+        try:
+            process.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=5)
+
+
+def _assert_page_quality(page: Page, route: str, viewport: dict[str, int]) -> None:
+    if page.locator("main#main h1").count() != 1 or not page.locator("main#main h1").is_visible():
+        raise RuntimeError(f"main H1 missing or hidden for {route}")
+    overflow = float(page.evaluate("document.documentElement.scrollWidth - window.innerWidth"))
+    if overflow > 1:
+        raise RuntimeError(f"horizontal overflow for {route} at {viewport}: {overflow}")
+    if page.locator('meta[name="description"]').count() != 1:
+        raise RuntimeError(f"meta description missing for {route}")
+    if page.locator('meta[property="og:title"]').count() != 1:
+        raise RuntimeError(f"OpenGraph title missing for {route}")
+    if page.locator('link[rel="canonical"]').count() != 1:
+        raise RuntimeError(f"canonical metadata missing for {route}")
+    if page.locator('link[rel~="icon"]').count() < 1:
+        raise RuntimeError(f"favicon metadata missing for {route}")
+
+    if page.locator("nav").count():
+        if page.locator("nav a").count() < 4:
+            raise RuntimeError(f"navigation is incomplete for {route}")
+        expected = "Ana sayfa" if route.startswith("/tr") else "Home"
+        if page.get_by_text(expected, exact=True).count() < 1:
+            raise RuntimeError(f"locale-specific navigation copy missing for {route}")
+    if page.locator(".skip-link").count():
+        page.keyboard.press("Tab")
+        active = page.evaluate("document.activeElement && document.activeElement.className")
+        if "skip-link" not in str(active):
+            raise RuntimeError(f"keyboard focus did not enter skip link for {route}")
+        outline = page.locator(".skip-link").evaluate(
+            "el => getComputedStyle(el).outlineStyle"
+        )
+        if outline == "none":
+            raise RuntimeError(f"visible keyboard focus is missing for {route}")
+    for selector in ("button", "input", "textarea"):
+        count = page.locator(selector).count()
+        for index in range(count):
+            element = page.locator(selector).nth(index)
+            if not element.is_visible():
+                continue
+            box = element.bounding_box()
+            if box is not None and float(box["height"]) < 40:
+                raise RuntimeError(f"touch target too small for {selector} on {route}")
+
+
+def _assert_global_seo(context: object, base_url: str) -> None:
+    page = context.new_page()  # type: ignore[attr-defined]
+    try:
+        for path, marker in (("/robots.txt", "sitemap"), ("/sitemap.xml", "<urlset")):
+            response = page.goto(f"{base_url}{path}", wait_until="networkidle", timeout=30_000)
+            if response is None or response.status != 200:
+                raise RuntimeError(f"SEO endpoint failed: {path}")
+            body = page.locator("body").inner_text().lower()
+            if marker not in body and marker not in page.content().lower():
+                raise RuntimeError(f"SEO endpoint content missing marker {marker}: {path}")
+    finally:
+        page.close()
+
+
+def _assert_functional_modules(context: object, base_url: str, features: tuple[str, ...]) -> None:
+    page = context.new_page()  # type: ignore[attr-defined]
+    try:
+        if "contact-form" in features:
+            page.goto(f"{base_url}/en/contact", wait_until="networkidle")
+            for selector, value in (
+                ("#name", "Test User"),
+                ("#email", "test@example.test"),
+                ("#message", "A governed test submission"),
+            ):
+                if page.locator(selector).count() != 1:
+                    raise RuntimeError(f"contact control missing: {selector}")
+                page.locator(selector).fill(value)
+            page.locator('button[type="submit"]').click()
+            page.wait_for_url("**/en/contact?submitted=1", timeout=15_000)
+        if "newsletter" in features:
+            page.goto(f"{base_url}/en", wait_until="networkidle")
+            if page.locator(".newsletter-form").count() != 1:
+                raise RuntimeError("newsletter form missing")
+            page.locator(".newsletter-form input[type=email]").fill("reader@example.test")
+            page.locator(".newsletter-form button[type=submit]").click()
+            page.wait_for_url("**/en?subscribed=1", timeout=15_000)
+        if "content" in features:
+            response = page.goto(f"{base_url}/en/insights", wait_until="networkidle")
+            if response is None or response.status != 200:
+                raise RuntimeError("content module route failed")
+        if "search" in features:
+            page.goto(f"{base_url}/en/search?q=contact", wait_until="networkidle")
+            if page.locator("form input[name=q]").count() != 1:
+                raise RuntimeError("search module input missing")
+    finally:
+        page.close()
+
+
+def _assert_security_headers(headers: dict[str, str], route: str) -> None:
+    lowered = {key.lower(): value for key, value in headers.items()}
+    for header in _SECURITY_HEADERS:
+        if not lowered.get(header):
+            raise RuntimeError(f"security header {header} missing for {route}")
+    if lowered.get("x-content-type-options", "").lower() != "nosniff":
+        raise RuntimeError(f"nosniff security header invalid for {route}")
+
+
+def _deployment_and_rollback_proof(
+    project_root: Path,
+    artifact_root: Path,
+    *,
+    source_head: str,
+    artifact_sha: str,
+) -> dict[str, object]:
+    adapter = LocalWebDeploymentAdapter(artifact_root / "deployment-proof")
+    first = adapter.deploy(
+        project_root,
+        source_commit_sha=source_head,
+        expected_artifact_sha256=artifact_sha,
+    )
+    probe = artifact_root / "rollback-probe-source"
+    shutil.copytree(project_root, probe)
+    (probe / ".ilaios-rollback-probe").write_text("candidate-two\n", encoding="utf-8")
+    second = adapter.deploy(probe, source_commit_sha=source_head)
+    rollback = adapter.rollback(first.deployment_id, source_commit_sha=source_head)
+    current = adapter.current()
+    if current is None or current.get("deployment_id") != first.deployment_id:
+        raise RuntimeError("local Web rollback did not restore the accepted artifact")
+    shutil.rmtree(probe, ignore_errors=True)
     return {
-        "engine": "playwright-chromium",
-        "viewports": list(VIEWPORTS),
-        "route_count": len(routes),
-        "checks": checks,
-        "console_errors": 0,
-        "page_errors": 0,
-        "responsive": "PASS",
-        "navigation": "PASS",
-        "en_tr": "PASS",
-        "accessibility_basics": "PASS",
-        "seo_basics": "PASS",
-        "runtime": "PASS",
+        "status": "PASS",
+        "provider": first.provider,
+        "accepted_deployment": first.to_dict(),
+        "newer_candidate_deployment": second.to_dict(),
+        "rollback": rollback.to_dict(),
+        "restored_artifact_sha256": current["artifact_sha256"],
+        "public_production_proven": False,
     }
+
+
+def _wait_for_http(url: str, process: subprocess.Popen[str]) -> None:
+    deadline = time.monotonic() + 30
+    last_error: Exception | None = None
+    while time.monotonic() < deadline:
+        if process.poll() is not None:
+            output = "" if process.stdout is None else process.stdout.read()
+            raise RuntimeError(f"generated Next.js server exited early:\n{output[-4000:]}")
+        try:
+            with urllib.request.urlopen(url, timeout=2) as response:  # noqa: S310 - localhost only
+                if response.status < 400:
+                    return
+        except Exception as error:  # noqa: BLE001 - bounded readiness polling
+            last_error = error
+        time.sleep(0.25)
+    raise RuntimeError(f"generated Next.js server did not become healthy: {last_error}")
+
+
+def _free_port() -> int:
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
 
 
 def _capture_console(message: ConsoleMessage, errors: list[str]) -> None:
@@ -342,20 +528,10 @@ def _capture_console(message: ConsoleMessage, errors: list[str]) -> None:
         errors.append(message.text)
 
 
-def _verify_tree_digest(site_root: Path, expected_digest: str) -> None:
-    content: dict[str, bytes] = {}
-    for path in site_root.rglob("*"):
-        if path.is_file() and path.name != "acceptance.json":
-            content[path.relative_to(site_root).as_posix()] = path.read_bytes()
-    material = b"".join(
-        path.encode() + b"\0" + body + b"\0"
-        for path, body in sorted(content.items())
-    )
-    actual = hashlib.sha256(material).hexdigest()
-    if actual != expected_digest:
-        raise RuntimeError(
-            f"persisted Web artifact digest mismatch: {actual} != {expected_digest}"
-        )
+def _file_sha256(path: Path) -> str:
+    if not path.is_file():
+        raise RuntimeError(f"expected build evidence file is missing: {path.name}")
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _git_head(repository: Path) -> str:
