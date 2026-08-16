@@ -113,7 +113,7 @@ def _run_finished_product_acceptance(
     register_software_runtime(coordinator, software_product)
 
     request_id = "desktop-software-task-manager-e2e"
-    objective = "Build me a simple production-quality task management application"
+    objective = "Build me a simple production-quality task manager software application"
     now = datetime.now(timezone.utc)
     prepared = coordinator.prepare(
         request_id,
