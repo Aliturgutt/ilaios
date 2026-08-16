@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import hashlib
+import shutil
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
 import services.execution_coordinator as coordinator_module
-import services.software_factory_runtime as runtime_module
 from services.control_plane import ControlPlane, ControlPlaneConfig
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
 from services.evidence import EvidenceStore
@@ -88,14 +88,14 @@ class _FakeWindowsBoundary:
 
 def _allow_fake_flutter_detection(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep unit tests hermetic while real Windows E2E still proves Flutter exists."""
-    original_which = runtime_module.shutil.which
+    original_which = shutil.which
 
     def _which(executable: str) -> str | None:
         if executable == "flutter":
             return "C:/test-only/flutter.exe"
         return original_which(executable)
 
-    monkeypatch.setattr(runtime_module.shutil, "which", _which)
+    monkeypatch.setattr(shutil, "which", _which)
 
 
 def _stack(
