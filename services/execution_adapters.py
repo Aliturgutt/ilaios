@@ -236,8 +236,13 @@ class AppExecutionAdapter:
             raise ExecutionCoordinatorError(
                 "verified App adapter does not widen risk or data policy"
             )
-        if budget.max_external_spend_minor != 0:
-            raise ExecutionCoordinatorError("verified App adapter is local/free only")
+        if budget.max_attempts < 1 or budget.max_runtime_seconds < 1:
+            raise ExecutionCoordinatorError("app execution budget is invalid")
+        local_budget = BudgetEnvelope(
+            budget.max_attempts,
+            budget.max_runtime_seconds,
+            0,
+        )
         return self._runtime.prepare(
             request_id,
             objective,
@@ -247,7 +252,7 @@ class AppExecutionAdapter:
             tenant_id=tenant_id,
             risk=risk,
             data_class=data_class,
-            budget=budget,
+            budget=local_budget,
         )
 
     def execute(
