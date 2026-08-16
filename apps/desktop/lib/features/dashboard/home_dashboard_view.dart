@@ -32,8 +32,7 @@ class HomeDashboardView extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         // Windows commonly runs at 125–150% scale. Keep the right rail visible
-        // at the user's target desktop width without forcing it onto 1024-wide
-        // layouts where it would cause clipping.
+        // at the target desktop width without forcing it onto 1024-wide layouts.
         final showRightRail = constraints.maxWidth >= 940;
         final contentPadding = constraints.maxWidth >= 1200 ? 16.0 : 12.0;
         final main = _MainDashboardColumn(
@@ -870,31 +869,34 @@ class _CostPanel extends StatelessWidget {
   final _DashboardModel model;
 
   @override
-  Widget build(BuildContext context) => _Panel(
-        title: 'COST & USAGE',
-        padding: const EdgeInsets.all(11),
-        child: Column(
-          children: [
-            _SideRow(label: 'Total cost', value: model.totalCostUsd ?? 'Unavailable'),
-            const SizedBox(height: 7),
-            _SideRow(label: 'Budget', value: model.budgetUsd ?? 'Unavailable'),
-            const SizedBox(height: 8),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: LinearProgressIndicator(
-                value: model.budgetRatio,
-                minHeight: 5,
-                backgroundColor: IlaiosTheme.surfaceRaised,
-                color: IlaiosTheme.cyan,
-              ),
+  Widget build(BuildContext context) {
+    final ratio = model.budgetRatio;
+    return _Panel(
+      title: 'COST & USAGE',
+      padding: const EdgeInsets.all(11),
+      child: Column(
+        children: [
+          _SideRow(label: 'Total cost', value: model.totalCostUsd ?? 'Unavailable'),
+          const SizedBox(height: 7),
+          _SideRow(label: 'Budget', value: model.budgetUsd ?? 'Unavailable'),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(10),
+            child: LinearProgressIndicator(
+              value: ratio ?? 0,
+              minHeight: 5,
+              backgroundColor: IlaiosTheme.surfaceRaised,
+              color: ratio == null ? IlaiosTheme.surfaceRaised : IlaiosTheme.cyan,
             ),
-            const SizedBox(height: 9),
-            const _SideRow(label: 'Token usage', value: 'Unavailable'),
-            const SizedBox(height: 7),
-            const _SideRow(label: 'GPU time', value: 'Unavailable'),
-          ],
-        ),
-      );
+          ),
+          const SizedBox(height: 9),
+          const _SideRow(label: 'Token usage', value: 'Unavailable'),
+          const SizedBox(height: 7),
+          const _SideRow(label: 'GPU time', value: 'Unavailable'),
+        ],
+      ),
+    );
+  }
 }
 
 class _SidePanel extends StatelessWidget {
