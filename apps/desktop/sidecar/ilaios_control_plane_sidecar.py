@@ -18,11 +18,11 @@ from services.control_plane.live_state import LiveStateTransport
 from services.control_plane.migrations import current_schema_version
 from services.control_plane.server import ControlPlaneHTTPServer
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
+from services.desktop_execution_coordinator import DesktopExecutionCoordinator
 from services.desktop_identity_server import DesktopIdentityHTTPServer
 from services.desktop_oidc_windows import DesktopIdentityError, DesktopOIDCService
 from services.evidence import EvidenceStore
 from services.execution_adapters import register_software_runtime, register_web_runtime
-from services.execution_coordinator import ExecutionCoordinator
 from services.governance import GovernedRuntimeGateway
 from services.integrations import (
     DurableVideoProductRuntime,
@@ -155,7 +155,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         root / "software",
         source_head_sha=source_head,
     )
-    coordinator = ExecutionCoordinator(
+    coordinator = DesktopExecutionCoordinator(
         root / "execution-coordinator.sqlite3",
         control_plane,
         governance,
