@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
@@ -10,6 +11,7 @@ void main() {
 
     for (final size in <Size>[
       const Size(1920, 1080),
+      const Size(1600, 900),
       const Size(2560, 1440),
       const Size(1280, 720),
       const Size(1024, 720),
@@ -89,6 +91,37 @@ void main() {
         isNull,
         reason: 'Desktop target layout failed at ${scale}x text scaling',
       );
+    }
+  });
+
+  testWidgets('Turkish target layout tolerates localized Windows scaling at supported widths', (
+    WidgetTester tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    for (final size in <Size>[
+      const Size(1600, 900),
+      const Size(1280, 720),
+      const Size(1024, 720),
+    ]) {
+      for (final scale in <double>[1.25, 1.5]) {
+        await tester.binding.setSurfaceSize(size);
+        await tester.pumpWidget(
+          MediaQuery(
+            data: MediaQueryData(textScaler: TextScaler.linear(scale)),
+            child: const IlaiosDesktopApp(locale: IlaiosLocale.turkish),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester.takeException(),
+          isNull,
+          reason:
+              'Turkish Desktop layout failed at ${size.width}x${size.height}, ${scale}x text scaling',
+        );
+        expect(find.text('Aktif İş Akışı'), findsOneWidget);
+        expect(find.text('Hedef Alımı'), findsOneWidget);
+      }
     }
   });
 }
