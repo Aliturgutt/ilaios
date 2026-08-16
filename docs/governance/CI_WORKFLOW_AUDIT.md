@@ -1,81 +1,83 @@
 # ILAIOS CI / Workflow Audit
 
-Snapshot: 11 August 2026
-Scope: `.github/workflows` inventory and repository-level safety assessment.
+Snapshot: 16 August 2026
+Scope: `.github/workflows` validation/release surface plus live default-branch enforcement.
 
-## Observed workflows
+## Authority boundary
 
-### AWS / release path
+This is a mutable CI/governance status projection. Workflow files, live GitHub rulesets, exact-head workflow runs and deployment evidence are stronger current-reality evidence than this prose.
 
-- `aws-r01-acm-status.yml`
-- `aws-r01-canary-apply.yml`
-- `aws-r01-discovery.yml`
-- `aws-r01-image-publish.yml`
-- `aws-r01-image-scan.yml`
-- `aws-r01-oidc-proof.yml`
-- `aws-r01-opentofu-readiness.yml`
-- `aws-r01-preparation-resources.yml`
-- `aws-r02-limited-apply.yml`
-- `aws-r02-limited-readiness.yml`
-- `aws-r02-live-status.yml`
-- `aws-r03-live-status.yml`
-- `aws-r03-production-apply.yml`
+## Current validation authority
 
-### Desktop path
+`Required CI Gate` is the stable required status check enforced on `master` by the active `ILAIOS Master Protection` ruleset.
 
-- `desktop-ci.yml`
-- `desktop-msix-packaging.yml`
-- `desktop-msix-signed-release.yml`
-- `desktop-windows-release.yml`
+The current required validation surface includes fail-closed jobs for the applicable change scope, including:
 
-## Assessment
+- changed-path classification and diff hygiene;
+- secret scanning;
+- CI supply-chain hardening;
+- DB migration safety;
+- API contract safety;
+- Software Factory operational/assurance/final-closure checks;
+- repository malware scanning with ClamAV;
+- full Platform validation (`pytest`, Ruff and strict mypy);
+- Website validation when Website paths require it.
 
-### Production/release workflows — KEEP
+Additional Desktop/Windows/MSIX and capability-specific workflows remain separate exact-head evidence gates where their scopes apply; they are not fabricated as universally required checks for unrelated documentation-only changes.
 
-The AWS workflows are tied to a proven R01-R03 release history and evidence chain. This governance package does not remove, rename or simplify them. Deleting a workflow merely because the release has already happened would destroy repeatability and recovery context.
+## Live default-branch enforcement
 
-Any future consolidation must first prove:
+Current GitHub ruleset evidence shows:
 
-1. which workflow is still invoked;
-2. which artifacts/evidence paths depend on its name;
-3. whether rollback/recovery documentation references it;
-4. whether replacement behavior has equivalent or stronger gates.
+- default branch: `master`;
+- pull request required;
+- `Required CI Gate` required;
+- review-thread resolution required;
+- non-fast-forward/force-style updates blocked;
+- default-branch deletion blocked;
+- no configured bypass actor;
+- `.github/CODEOWNERS` exists for default, canonical/governance/security/operations, workflow/infra and release-sensitive paths.
 
-### Desktop workflows — KEEP / separate workstream
+The remaining review-governance limitation is explicit: required approving review count is currently `0`; CODEOWNER approval and approval-after-last-push are not enforced. Required CI is therefore the current independent automated verifier, not evidence of an independent human approval.
 
-Desktop workflows belong to the Desktop workstream and are excluded from this package. They must not be changed as part of repository-governance cleanup.
+## AWS / external-mutation workflow posture
 
-## Main CI governance gap
+The R01-R03 deployment/recovery workflows are retained because they preserve release, rollback and evidence lineage. They must not be deleted merely because historical release evidence exists.
 
-GitHub currently reports `master` as unprotected and no required status checks are enforced through branch protection. This means repository conventions can be bypassed by a direct push even when workflow definitions themselves are strong.
+Current CI hardening keeps external mutation/spend paths separate from ordinary PR validation. In particular, guarded provider/AWS evidence workflows require explicit manual dispatch/approval inputs and exact source binding where configured. Repository CI success alone does not authorize cloud spend, production mutation or capability promotion.
 
-Recommended owner-level configuration after stable check names are confirmed:
+RAG.14's guarded AWS canary path is an example: repository-side readiness is merged, but the live canary/evidence run remains separately gated by exact source evidence and explicit bounded external-spend authority.
 
-- protect `master`;
-- require PRs for material changes;
-- require the stable platform checks appropriate to the changed scope;
-- disallow force pushes;
-- disallow deletion of `master`;
-- consider requiring resolved review conversations.
+## Desktop workflow posture
 
-Do not blindly require every Desktop/AWS workflow for every documentation or Website-only change; protection rules should match stable, generally applicable checks or use path-aware required checks.
+Desktop workflows remain a separate governed release surface. Current merged evidence covers Desktop CI, Windows Gate, unsigned MSIX/package validation, sidecar packaging smoke and bounded packaged E2E paths.
 
-## Workflow change policy for post-v1
+Those proofs do not establish:
+
+- real Windows Google/Microsoft/passwordless external OIDC acceptance;
+- Windows signing certificate/PFX authority;
+- Partner Center publisher/package identity;
+- Store submission/certification.
+
+Those remain external release evidence gates.
+
+## Workflow hardening policy
 
 Before adding or changing a workflow:
 
-- define the bounded purpose;
+- define the bounded purpose and exact source identity;
 - use least GitHub token permissions;
-- pin or deliberately version critical third-party actions where practical;
-- avoid secrets in logs;
-- avoid production mutation on ordinary pull-request events;
-- separate validation from promotion;
-- require explicit approval for production-sensitive jobs;
-- preserve evidence artifacts needed for audit/recovery;
-- test on a branch before modifying the production path.
+- pin critical third-party actions to immutable revisions where required by repository policy;
+- disable persisted checkout credentials unless explicitly required and justified;
+- never expose secrets in logs;
+- keep external mutation/spend off ordinary pull-request events;
+- separate validation, evidence collection, promotion and release authority;
+- preserve artifacts needed for audit/recovery;
+- fail closed when required state/evidence is unavailable;
+- never weaken or skip a failing gate merely to obtain green CI.
 
-## Current action
+## Current decision
 
-No workflow file is modified by this audit. This is intentional: no safe workflow deletion or behavior change is proven necessary from the current evidence.
+The old 11 August conclusion that `master` was unprotected is superseded by live ruleset evidence. Current result:
 
-Result: **workflow inventory healthy; branch-level enforcement needs owner hardening.**
+**workflow/CI validation authority is active and fail-closed; default-branch protection is active; independent human-review enforcement remains a deliberate governance gap; external mutation and production proof remain separate capability/release gates.**
