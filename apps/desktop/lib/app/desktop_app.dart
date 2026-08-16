@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../control_plane/client.dart';
@@ -8,6 +10,7 @@ import '../features/dashboard/desktop_shell.dart';
 import '../identity/identity_client.dart';
 import 'ilaios_locale.dart';
 import 'ilaios_theme.dart';
+import 'ilaios_theme_mode.dart';
 
 class IlaiosDesktopApp extends StatefulWidget {
   const IlaiosDesktopApp({
@@ -58,6 +61,12 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp> {
   late ThemeMode _localThemeMode = widget.themeMode;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.onThemeModeChanged == null) unawaited(_loadTheme());
+  }
+
+  @override
   void didUpdateWidget(covariant IlaiosDesktopApp oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (widget.themeMode != oldWidget.themeMode &&
@@ -66,12 +75,21 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp> {
     }
   }
 
+  Future<void> _loadTheme() async {
+    final mode = await IlaiosThemeModeStore.load();
+    if (!mounted || widget.onThemeModeChanged != null || mode == _localThemeMode) {
+      return;
+    }
+    setState(() => _localThemeMode = mode);
+  }
+
   void _changeTheme(ThemeMode mode) {
     if (widget.onThemeModeChanged != null) {
       widget.onThemeModeChanged!(mode);
       return;
     }
     if (_localThemeMode != mode) setState(() => _localThemeMode = mode);
+    unawaited(IlaiosThemeModeStore.save(mode));
   }
 
   @override
