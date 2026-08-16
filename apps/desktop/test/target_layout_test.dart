@@ -32,6 +32,26 @@ void main() {
     }
   });
 
+  testWidgets('premium target composition keeps operational right rail and workspace panes', (
+    WidgetTester tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.binding.setSurfaceSize(const Size(1600, 900));
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('STATUS'), findsOneWidget);
+    expect(find.text('COST & USAGE'), findsOneWidget);
+    expect(find.text('APPROVALS'), findsOneWidget);
+    expect(find.text('LATEST LOGS'), findsOneWidget);
+    expect(find.text('Live Code'), findsWidgets);
+    expect(find.text('Terminal'), findsWidgets);
+    expect(find.text('Browser'), findsWidgets);
+    expect(find.text('LATEST ARTIFACTS'), findsOneWidget);
+    expect(find.text('EVIDENCE & VERIFICATION'), findsOneWidget);
+  });
+
   testWidgets('target dashboard tolerates 125 and 150 percent text scaling', (
     WidgetTester tester,
   ) async {
