@@ -232,7 +232,8 @@ class _NavigationRail extends StatelessWidget {
 class _BrandHeader extends StatelessWidget {
   const _BrandHeader();
 
-  static const _wordmark = '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
+  static const _wordmark =
+      '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
 
   @override
   Widget build(BuildContext context) {
@@ -283,9 +284,18 @@ class _BrandHeader extends StatelessWidget {
                 height: 4,
                 child: Row(
                   children: [
-                    Expanded(flex: 5, child: ColoredBox(color: IlaiosTheme.enterpriseCyan)),
-                    Expanded(flex: 3, child: ColoredBox(color: IlaiosTheme.coreBlue)),
-                    Expanded(flex: 2, child: ColoredBox(color: IlaiosTheme.violet)),
+                    Expanded(
+                      flex: 5,
+                      child: ColoredBox(color: IlaiosTheme.enterpriseCyan),
+                    ),
+                    Expanded(
+                      flex: 3,
+                      child: ColoredBox(color: IlaiosTheme.coreBlue),
+                    ),
+                    Expanded(
+                      flex: 2,
+                      child: ColoredBox(color: IlaiosTheme.violet),
+                    ),
                   ],
                 ),
               ),
@@ -310,17 +320,24 @@ class _BrandHeader extends StatelessWidget {
 }
 
 class _NavItem extends StatelessWidget {
-  const _NavItem({required this.section, required this.selected, required this.onTap});
+  const _NavItem({
+    required this.section,
+    required this.selected,
+    required this.onTap,
+  });
 
   final DesktopSection section;
   final bool selected;
   final VoidCallback onTap;
 
   Color _accent() => switch (section) {
-        DesktopSection.home || DesktopSection.goals => IlaiosTheme.enterpriseCyan,
-        DesktopSection.workflows || DesktopSection.liveWorkspace => IlaiosTheme.coreBlue,
+        DesktopSection.home || DesktopSection.goals =>
+          IlaiosTheme.enterpriseCyan,
+        DesktopSection.workflows || DesktopSection.liveWorkspace =>
+          IlaiosTheme.coreBlue,
         DesktopSection.agents || DesktopSection.approvals => IlaiosTheme.violet,
-        DesktopSection.artifacts || DesktopSection.evidence => IlaiosTheme.enterpriseCyan,
+        DesktopSection.artifacts || DesktopSection.evidence =>
+          IlaiosTheme.enterpriseCyan,
         DesktopSection.costs || DesktopSection.settings => IlaiosTheme.coreBlue,
       };
 
@@ -336,7 +353,7 @@ class _NavItem extends StatelessWidget {
           borderRadius: BorderRadius.circular(10),
           side: selected
               ? BorderSide(color: accent.withValues(alpha: .72))
-              : BorderSide(color: Colors.transparent),
+              : const BorderSide(color: Colors.transparent),
         ),
         clipBehavior: Clip.antiAlias,
         child: InkWell(
@@ -430,7 +447,10 @@ class _TenantSummary extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 7),
-          Text(context.tr('shell.regionPlan'), style: Theme.of(context).textTheme.bodySmall),
+          Text(
+            context.tr('shell.regionPlan'),
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
         ],
       ),
     );
@@ -459,7 +479,9 @@ class _CompactTopBar extends StatelessWidget {
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerLow,
           border: Border(
-            bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+            bottom: BorderSide(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           ),
         ),
         child: Row(
@@ -484,9 +506,16 @@ class _CompactTopBar extends StatelessWidget {
                 children: [
                   const _BrandMark(size: 34),
                   const SizedBox(width: 9),
-                  Text(section.localizedLabel(context), style: const TextStyle(fontWeight: FontWeight.w800)),
+                  Text(
+                    section.localizedLabel(context),
+                    style: const TextStyle(fontWeight: FontWeight.w800),
+                  ),
                   const SizedBox(width: 4),
-                  const Icon(Icons.expand_more, size: 17, color: IlaiosTheme.enterpriseCyan),
+                  const Icon(
+                    Icons.expand_more,
+                    size: 17,
+                    color: IlaiosTheme.enterpriseCyan,
+                  ),
                 ],
               ),
             ),
@@ -553,7 +582,9 @@ class _TopBar extends StatelessWidget {
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surfaceContainerLow,
             border: Border(
-              bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+              bottom: BorderSide(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
             ),
           ),
           child: Row(
@@ -563,7 +594,7 @@ class _TopBar extends StatelessWidget {
                 onTap: () => onNavigate(DesktopSection.goals),
               ),
               const Spacer(),
-              if (constraints.maxWidth >= 860) ...[
+              if (constraints.maxWidth >= 1180) ...[
                 _SearchButton(onNavigate: onNavigate),
                 const SizedBox(width: 12),
               ],
@@ -581,7 +612,7 @@ class _TopBar extends StatelessWidget {
                 onChanged: onThemeModeChanged,
               ),
               const SizedBox(width: 12),
-              if (constraints.maxWidth >= 780) ...[
+              if (constraints.maxWidth >= 1080) ...[
                 _ProfileSummary(
                   userSession: userSession,
                   onTap: () => onNavigate(DesktopSection.settings),
@@ -611,7 +642,10 @@ class _ProjectSelector extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(context.tr('shell.project'), style: Theme.of(context).textTheme.labelSmall),
+            Text(
+              context.tr('shell.project'),
+              style: Theme.of(context).textTheme.labelSmall,
+            ),
             const SizedBox(height: 4),
             Material(
               color: project == null
@@ -666,17 +700,31 @@ class _SearchButton extends StatelessWidget {
           onPressed: () => _showCommandPalette(context, onNavigate),
           style: OutlinedButton.styleFrom(
             foregroundColor: Theme.of(context).colorScheme.onSurfaceVariant,
-            side: BorderSide(color: IlaiosTheme.coreBlue.withValues(alpha: .55)),
+            side: BorderSide(
+              color: IlaiosTheme.coreBlue.withValues(alpha: .55),
+            ),
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
           ),
           child: Row(
             children: [
-              const Icon(Icons.search, color: IlaiosTheme.enterpriseCyan, size: 18),
+              const Icon(
+                Icons.search,
+                color: IlaiosTheme.enterpriseCyan,
+                size: 18,
+              ),
               const SizedBox(width: 8),
               Expanded(
-                child: Text(context.tr('shell.search'), textAlign: TextAlign.left),
+                child: Text(
+                  context.tr('shell.search'),
+                  textAlign: TextAlign.left,
+                ),
               ),
-              Text('⌘K', style: Theme.of(context).textTheme.labelSmall?.copyWith(color: IlaiosTheme.coreBlue)),
+              Text(
+                '⌘K',
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: IlaiosTheme.coreBlue,
+                    ),
+              ),
             ],
           ),
         ),
@@ -739,7 +787,11 @@ class _LanguageMenu extends StatelessWidget {
             color: IlaiosTheme.enterpriseCyan.withValues(alpha: .34),
           ),
         ),
-        child: const Icon(Icons.language, color: IlaiosTheme.enterpriseCyan, size: 20),
+        child: const Icon(
+          Icons.language,
+          color: IlaiosTheme.enterpriseCyan,
+          size: 20,
+        ),
       ),
     );
   }
@@ -790,7 +842,8 @@ class _ProfileSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final identity = userSession?.displayIdentity ?? context.tr('shell.signedOut');
+    final identity =
+        userSession?.displayIdentity ?? context.tr('shell.signedOut');
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(10),
@@ -805,7 +858,11 @@ class _ProfileSummary extends StatelessWidget {
                 color: IlaiosTheme.coreBlue.withValues(alpha: .14),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(Icons.person, color: IlaiosTheme.enterpriseCyan, size: 20),
+              child: const Icon(
+                Icons.person,
+                color: IlaiosTheme.enterpriseCyan,
+                size: 20,
+              ),
             ),
             const SizedBox(width: 8),
             SizedBox(
@@ -821,10 +878,14 @@ class _ProfileSummary extends StatelessWidget {
                     style: Theme.of(context).textTheme.labelMedium,
                   ),
                   Text(
-                    userSession == null ? context.tr('shell.signedOut') : context.tr('shell.authenticated'),
+                    userSession == null
+                        ? context.tr('shell.signedOut')
+                        : context.tr('shell.authenticated'),
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(color: IlaiosTheme.coreBlue),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: IlaiosTheme.coreBlue,
+                        ),
                   ),
                 ],
               ),
@@ -838,7 +899,11 @@ class _ProfileSummary extends StatelessWidget {
 }
 
 class _ConnectionPill extends StatelessWidget {
-  const _ConnectionPill({required this.projection, this.compact = false, this.onTap});
+  const _ConnectionPill({
+    required this.projection,
+    this.compact = false,
+    this.onTap,
+  });
 
   final ControlPlaneProjection projection;
   final bool compact;
@@ -847,24 +912,41 @@ class _ConnectionPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final connected = projection.connected;
-    final accent = connected ? IlaiosTheme.enterpriseCyan : Theme.of(context).colorScheme.outline;
+    final accent = connected
+        ? IlaiosTheme.enterpriseCyan
+        : Theme.of(context).colorScheme.outline;
     return Material(
       color: accent.withValues(alpha: .10),
-      shape: StadiumBorder(side: BorderSide(color: accent.withValues(alpha: .66))),
+      shape: StadiumBorder(
+        side: BorderSide(color: accent.withValues(alpha: .66)),
+      ),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: EdgeInsets.symmetric(horizontal: compact ? 9 : 12, vertical: compact ? 7 : 9),
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 9 : 12,
+            vertical: compact ? 7 : 9,
+          ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.circle, size: 7, color: connected ? IlaiosTheme.success : accent),
+              Icon(
+                Icons.circle,
+                size: 7,
+                color: connected ? IlaiosTheme.success : accent,
+              ),
               if (!compact) ...[
                 const SizedBox(width: 7),
                 Text(
-                  connected ? context.tr('shell.connected') : context.tr('shell.offline'),
-                  style: TextStyle(color: connected ? accent : null, fontWeight: FontWeight.w800, fontSize: 10.5),
+                  connected
+                      ? context.tr('shell.connected')
+                      : context.tr('shell.offline'),
+                  style: TextStyle(
+                    color: connected ? accent : null,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 10.5,
+                  ),
                 ),
               ],
             ],
@@ -905,8 +987,12 @@ class _BottomStatusBar extends StatelessWidget {
         children: [
           _StatusLink(
             label: context.tr('shell.systemHealth'),
-            value: projection.connected ? context.tr('shell.healthy') : context.tr('shell.offline'),
-            accent: projection.connected ? IlaiosTheme.success : scheme.outline,
+            value: projection.connected
+                ? context.tr('shell.healthy')
+                : context.tr('shell.offline'),
+            accent: projection.connected
+                ? IlaiosTheme.success
+                : scheme.outline,
             onTap: () => onNavigate(DesktopSection.workflows),
           ),
           const SizedBox(width: 18),
@@ -924,9 +1010,18 @@ class _BottomStatusBar extends StatelessWidget {
             onTap: () => onNavigate(DesktopSection.liveWorkspace),
           ),
           const Spacer(),
-          Icon(Icons.circle, size: 6, color: projection.connected ? IlaiosTheme.enterpriseCyan : scheme.outline),
+          Icon(
+            Icons.circle,
+            size: 6,
+            color: projection.connected
+                ? IlaiosTheme.enterpriseCyan
+                : scheme.outline,
+          ),
           const SizedBox(width: 6),
-          Text(context.tr('shell.realTime'), style: Theme.of(context).textTheme.labelSmall),
+          Text(
+            context.tr('shell.realTime'),
+            style: Theme.of(context).textTheme.labelSmall,
+          ),
         ],
       ),
     );
@@ -957,7 +1052,13 @@ class _StatusLink extends StatelessWidget {
             children: [
               Text(label, style: Theme.of(context).textTheme.labelSmall),
               const SizedBox(width: 6),
-              Text(value, style: Theme.of(context).textTheme.labelSmall?.copyWith(color: accent, fontWeight: FontWeight.w800)),
+              Text(
+                value,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      color: accent,
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
             ],
           ),
         ),
@@ -977,7 +1078,9 @@ Future<void> _showCommandPalette(
         final query = controller.text.trim().toLowerCase();
         final items = DesktopSection.values.where((section) {
           final label = section.localizedLabel(context).toLowerCase();
-          return query.isEmpty || label.contains(query) || section.name.toLowerCase().contains(query);
+          return query.isEmpty ||
+              label.contains(query) ||
+              section.name.toLowerCase().contains(query);
         }).toList();
         return AlertDialog(
           title: Text(_isTr(context) ? 'ILAIOS içinde ara' : 'Search ILAIOS'),
@@ -991,8 +1094,13 @@ Future<void> _showCommandPalette(
                   controller: controller,
                   onChanged: (_) => setState(() {}),
                   decoration: InputDecoration(
-                    prefixIcon: const Icon(Icons.search, color: IlaiosTheme.enterpriseCyan),
-                    hintText: _isTr(context) ? 'Sayfa veya özellik ara' : 'Search pages or features',
+                    prefixIcon: const Icon(
+                      Icons.search,
+                      color: IlaiosTheme.enterpriseCyan,
+                    ),
+                    hintText: _isTr(context)
+                        ? 'Sayfa veya özellik ara'
+                        : 'Search pages or features',
                   ),
                 ),
                 const SizedBox(height: 12),
@@ -1001,7 +1109,10 @@ Future<void> _showCommandPalette(
                     children: [
                       for (final section in items)
                         ListTile(
-                          leading: Icon(section.icon, color: IlaiosTheme.coreBlue),
+                          leading: Icon(
+                            section.icon,
+                            color: IlaiosTheme.coreBlue,
+                          ),
                           title: Text(section.localizedLabel(context)),
                           trailing: const Icon(Icons.arrow_forward, size: 16),
                           onTap: () {
@@ -1026,7 +1137,10 @@ Future<void> _showCommandPalette(
 Future<void> _showNotifications(BuildContext context) => showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        icon: const Icon(Icons.notifications_none, color: IlaiosTheme.coreBlue),
+        icon: const Icon(
+          Icons.notifications_none,
+          color: IlaiosTheme.coreBlue,
+        ),
         title: Text(_isTr(context) ? 'Bildirimler' : 'Notifications'),
         content: Text(
           _isTr(context)
@@ -1034,14 +1148,22 @@ Future<void> _showNotifications(BuildContext context) => showDialog<void>(
               : 'No notification records are exposed by the authoritative runtime. Synthetic notifications are not fabricated.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.of(context).pop(), child: Text(_isTr(context) ? 'Kapat' : 'Close')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(_isTr(context) ? 'Kapat' : 'Close'),
+          ),
         ],
       ),
     );
 
 String? _projectLabel(OperationalSnapshot snapshot) {
   for (final event in snapshot.liveEvents.reversed) {
-    for (final key in const ['project', 'project_name', 'workspace', 'goal_title']) {
+    for (final key in const [
+      'project',
+      'project_name',
+      'workspace',
+      'goal_title',
+    ]) {
       final value = event[key];
       if (value is String && value.trim().isNotEmpty) return value.trim();
     }
@@ -1049,4 +1171,5 @@ String? _projectLabel(OperationalSnapshot snapshot) {
   return null;
 }
 
-bool _isTr(BuildContext context) => context.ilaiosLocale.locale == IlaiosLocale.turkish;
+bool _isTr(BuildContext context) =>
+    context.ilaiosLocale.locale == IlaiosLocale.turkish;
