@@ -233,7 +233,7 @@ class _BrandHeader extends StatelessWidget {
   const _BrandHeader();
 
   static const _wordmark =
-      '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
+      'assets/brand/02-ilaios-primary-horizontal-dark.jpg';
 
   @override
   Widget build(BuildContext context) => Semantics(
@@ -516,7 +516,7 @@ class _BrandMark extends StatelessWidget {
   const _BrandMark({this.size = 36});
 
   final double size;
-  static const _asset = '../../brand/assets/05-ilaios-app-icon.jpg';
+  static const _asset = 'assets/brand/05-ilaios-app-icon.jpg';
 
   @override
   Widget build(BuildContext context) => Semantics(
