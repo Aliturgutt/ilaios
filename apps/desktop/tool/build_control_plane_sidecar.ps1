@@ -17,6 +17,20 @@ if (-not (Test-Path $entrypoint)) { throw "Sidecar entrypoint missing: $entrypoi
 if (-not (Test-Path $brandLogo)) { throw "Official ILAIOS brand logo missing: $brandLogo" }
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 
+# The Windows sidecar source and CI contract target Python 3.12. Building with
+# an older local interpreter can fail while importing first-party modules (for
+# example, pre-PEP-701 f-string parsing) even though the exact source is valid
+# under the canonical Windows CI interpreter. Fail before dependency install or
+# packaging so local and CI builds cannot silently use different runtimes.
+$pythonVersion = (& python -c "import sys; print('%d.%d' % sys.version_info[:2])").Trim()
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($pythonVersion)) {
+  throw 'Unable to resolve the Python interpreter for Desktop sidecar build.'
+}
+if ($pythonVersion -ne '3.12') {
+  throw "Desktop sidecar build requires Python 3.12; resolved Python $pythonVersion."
+}
+Write-Host "ILAIOS_DESKTOP_PYTHON=$pythonVersion"
+
 python -m pip install --disable-pip-version-check `
   'pyinstaller==6.21.0' `
   'requests==2.34.2' `
