@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import shutil
 import subprocess
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -45,6 +46,7 @@ _SAFE_ENV = (
     "PROGRAMFILES(X86)",
     "PUB_CACHE",
     "FLUTTER_ROOT",
+    "COMSPEC",
 )
 
 
@@ -73,8 +75,29 @@ class _GitHubActionsWindowsBoundary:
             if (value := os.environ.get(key)) is not None
         }
         env["CI"] = "true"
+        resolved = shutil.which(command.argv[0], path=env.get("PATH"))
+        if resolved is None:
+            raise SoftwareFactoryError(
+                f"app Windows boundary could not resolve {command.argv[0]}"
+            )
+        invocation: tuple[str, ...]
+        if Path(resolved).suffix.casefold() in {".bat", ".cmd"}:
+            comspec = os.environ.get("COMSPEC", "").strip() or shutil.which("cmd.exe")
+            if not comspec:
+                raise SoftwareFactoryError(
+                    "app Windows boundary could not resolve command interpreter"
+                )
+            invocation = (
+                comspec,
+                "/d",
+                "/s",
+                "/c",
+                subprocess.list2cmdline((resolved, *command.argv[1:])),
+            )
+        else:
+            invocation = (resolved, *command.argv[1:])
         process = subprocess.run(
-            command.argv,
+            invocation,
             cwd=working,
             env=env,
             stdout=subprocess.PIPE,
