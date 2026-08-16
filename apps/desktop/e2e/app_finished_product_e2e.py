@@ -48,6 +48,7 @@ _SAFE_ENV = (
     "FLUTTER_ROOT",
     "COMSPEC",
 )
+_MAX_FAILURE_OUTPUT = 4000
 
 
 class _GitHubActionsWindowsBoundary:
@@ -105,13 +106,30 @@ class _GitHubActionsWindowsBoundary:
             timeout=policy.timeout_seconds,
             check=False,
         )
+        passed = process.returncode == 0
+        print(
+            "ILAIOS_APP_E2E_COMMAND "
+            f"stage={command.stage} executable={command.argv[0]} "
+            f"returncode={process.returncode} passed={str(passed).lower()}"
+        )
+        if not passed:
+            stdout_tail = process.stdout.decode("utf-8", errors="replace")[-_MAX_FAILURE_OUTPUT:]
+            stderr_tail = process.stderr.decode("utf-8", errors="replace")[-_MAX_FAILURE_OUTPUT:]
+            if stdout_tail:
+                print("ILAIOS_APP_E2E_STDOUT_TAIL_BEGIN")
+                print(stdout_tail)
+                print("ILAIOS_APP_E2E_STDOUT_TAIL_END")
+            if stderr_tail:
+                print("ILAIOS_APP_E2E_STDERR_TAIL_BEGIN")
+                print(stderr_tail)
+                print("ILAIOS_APP_E2E_STDERR_TAIL_END")
         return RuntimeStepResult(
             command.stage,
             command.argv,
             process.returncode,
             hashlib.sha256(process.stdout).hexdigest(),
             hashlib.sha256(process.stderr).hexdigest(),
-            process.returncode == 0,
+            passed,
         )
 
 
