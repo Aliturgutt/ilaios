@@ -79,6 +79,11 @@ class RecoverableSoftwareProductRuntime(DurableSoftwareProductRuntime):
         normalized_reason = " ".join(reason.split())
         if not normalized_reason:
             raise SoftwareProductRuntimeError("interruption reason is required")
+        terminal_status = (
+            "cancelled"
+            if normalized_reason == "cancelled by authenticated execution owner"
+            else "interrupted"
+        )
         state = self.get_state(request_id)
         status = str(state["status"])
         if status == "accepted":
@@ -86,7 +91,7 @@ class RecoverableSoftwareProductRuntime(DurableSoftwareProductRuntime):
         if status == "finalizing":
             self.recover_finalizing(request_id, token=token, now=now)
             return self.get_state(request_id)
-        if status in {"failed", "interrupted"}:
+        if status in {"failed", "interrupted", "cancelled"}:
             return state
         if status != "pending":
             raise SoftwareProductRuntimeError("software proof cannot be interrupted")
@@ -110,7 +115,9 @@ class RecoverableSoftwareProductRuntime(DurableSoftwareProductRuntime):
                 self._control_plane.transition_job(
                     token,
                     str(row["job_id"]),
-                    JobState.FAILED,
+                    JobState.CANCELLED
+                    if terminal_status == "cancelled"
+                    else JobState.FAILED,
                     reason=normalized_reason,
                     now=now,
                 )
@@ -119,19 +126,19 @@ class RecoverableSoftwareProductRuntime(DurableSoftwareProductRuntime):
         payload = json.dumps({"reason": normalized_reason}, sort_keys=True)
         with self._connect() as connection:
             changed = connection.execute(
-                "UPDATE software_product_proofs SET status='interrupted', manifest_json=? "
+                "UPDATE software_product_proofs SET status=?, manifest_json=? "
                 "WHERE request_id=? AND status='pending'",
-                (payload, request_id),
+                (terminal_status, payload, request_id),
             ).rowcount
             if changed == 1:
                 connection.execute(
                     "INSERT OR IGNORE INTO software_product_closure VALUES "
-                    "(?, 'interrupted', ?, ?)",
-                    (request_id, normalized_reason, now.isoformat()),
+                    "(?, ?, ?, ?)",
+                    (request_id, terminal_status, normalized_reason, now.isoformat()),
                 )
         if changed != 1:
             latest = self.get_state(request_id)
-            if latest["status"] in {"accepted", "failed", "interrupted"}:
+            if latest["status"] in {"accepted", "failed", "interrupted", "cancelled"}:
                 return latest
             raise SoftwareProductRuntimeError("software interruption state was lost")
         return self.get_state(request_id)
