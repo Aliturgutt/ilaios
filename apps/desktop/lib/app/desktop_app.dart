@@ -6,6 +6,7 @@ import '../control_plane/operational_snapshot.dart';
 import '../control_plane/projection.dart';
 import '../features/dashboard/desktop_shell.dart';
 import '../identity/identity_client.dart';
+import 'ilaios_locale.dart';
 import 'ilaios_theme.dart';
 
 class IlaiosDesktopApp extends StatelessWidget {
@@ -18,6 +19,8 @@ class IlaiosDesktopApp extends StatelessWidget {
     this.identityProviders = const <IdentityProviderOption>[],
     this.userSession,
     this.identityStatus = 'Account sign-in is not configured',
+    this.locale = IlaiosLocale.english,
+    this.onLocaleChanged,
     this.onSignIn,
     this.onLogout,
     this.onPromptSubmit,
@@ -33,6 +36,8 @@ class IlaiosDesktopApp extends StatelessWidget {
   final List<IdentityProviderOption> identityProviders;
   final DesktopUserSession? userSession;
   final String identityStatus;
+  final IlaiosLocale locale;
+  final ValueChanged<IlaiosLocale>? onLocaleChanged;
   final Future<void> Function(String providerId)? onSignIn;
   final Future<void> Function()? onLogout;
   final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
@@ -47,20 +52,24 @@ class IlaiosDesktopApp extends StatelessWidget {
       title: 'ILAIOS Desktop',
       debugShowCheckedModeBanner: false,
       theme: IlaiosTheme.dark,
-      home: DesktopShell(
-        projection: projection,
-        operationalSnapshot: operationalSnapshot,
-        operationalStatus: operationalStatus,
-        approverId: approverId,
-        identityProviders: identityProviders,
-        userSession: userSession,
-        identityStatus: identityStatus,
-        onSignIn: onSignIn,
-        onLogout: onLogout,
-        onPromptSubmit: onPromptSubmit,
-        onSaveArtifact: onSaveArtifact,
-        onRefreshRequested: onRefreshRequested,
-        onGovernanceDecision: onGovernanceDecision,
+      home: IlaiosLocaleScope(
+        locale: locale,
+        onChanged: (value) => onLocaleChanged?.call(value),
+        child: DesktopShell(
+          projection: projection,
+          operationalSnapshot: operationalSnapshot,
+          operationalStatus: operationalStatus,
+          approverId: approverId,
+          identityProviders: identityProviders,
+          userSession: userSession,
+          identityStatus: identityStatus,
+          onSignIn: onSignIn,
+          onLogout: onLogout,
+          onPromptSubmit: onPromptSubmit,
+          onSaveArtifact: onSaveArtifact,
+          onRefreshRequested: onRefreshRequested,
+          onGovernanceDecision: onGovernanceDecision,
+        ),
       ),
     );
   }

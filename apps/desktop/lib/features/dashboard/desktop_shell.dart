@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/ilaios_locale.dart';
 import '../../app/ilaios_theme.dart';
 import '../../control_plane/client.dart';
 import '../../control_plane/evidence_record.dart';
@@ -176,7 +177,7 @@ class _NavigationRail extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Semantics(
         container: true,
-        label: 'ILAIOS Desktop primary navigation',
+        label: context.tr('shell.primaryNavigation'),
         child: Material(
           color: IlaiosTheme.sidebar,
           child: SizedBox(
@@ -316,7 +317,7 @@ class _NavItem extends StatelessWidget {
               color: selected ? IlaiosTheme.cyan : IlaiosTheme.muted,
             ),
             title: Text(
-              section.label,
+              section.localizedLabel(context),
               style: TextStyle(
                 color: selected ? IlaiosTheme.text : IlaiosTheme.mutedStrong,
                 fontSize: 12.5,
@@ -346,13 +347,16 @@ class _TenantSummary extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Tenant', style: TextStyle(color: IlaiosTheme.muted, fontSize: 9)),
+          Text(
+            context.tr('shell.tenant'),
+            style: const TextStyle(color: IlaiosTheme.muted, fontSize: 9),
+          ),
           const SizedBox(height: 4),
           Row(
             children: [
               Expanded(
                 child: Text(
-                  tenant ?? 'Unavailable',
+                  tenant ?? context.tr('shell.unavailable'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600),
@@ -365,9 +369,9 @@ class _TenantSummary extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          const Text(
-            'Region —    Plan —',
-            style: TextStyle(color: IlaiosTheme.muted, fontSize: 9),
+          Text(
+            context.tr('shell.regionPlan'),
+            style: const TextStyle(color: IlaiosTheme.muted, fontSize: 9),
           ),
         ],
       ),
@@ -397,7 +401,7 @@ class _CompactTopBar extends StatelessWidget {
         child: Row(
           children: [
             PopupMenuButton<DesktopSection>(
-              tooltip: 'Navigate ILAIOS Desktop',
+              tooltip: context.tr('shell.navigate'),
               onSelected: onSectionSelected,
               itemBuilder: (context) => [
                 for (final item in DesktopSection.values)
@@ -407,7 +411,7 @@ class _CompactTopBar extends StatelessWidget {
                       children: [
                         Icon(item.icon, size: 18),
                         const SizedBox(width: 10),
-                        Text(item.label),
+                        Text(item.localizedLabel(context)),
                       ],
                     ),
                   ),
@@ -416,13 +420,18 @@ class _CompactTopBar extends StatelessWidget {
                 children: [
                   const _BrandMark(size: 34),
                   const SizedBox(width: 9),
-                  Text(section.label, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  Text(
+                    section.localizedLabel(context),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
                   const SizedBox(width: 4),
                   const Icon(Icons.expand_more, size: 17),
                 ],
               ),
             ),
             const Spacer(),
+            _LanguageMenu(compact: true),
+            const SizedBox(width: 8),
             _ConnectionPill(projection: projection, compact: true),
           ],
         ),
@@ -459,11 +468,17 @@ class _TopBar extends StatelessWidget {
                   const _SearchField(),
                   const SizedBox(width: 18),
                 ],
-                const _TopIcon(icon: Icons.notifications_none, tooltip: 'Notifications'),
+                _TopIcon(
+                  icon: Icons.notifications_none,
+                  tooltip: context.tr('shell.notifications'),
+                ),
                 const SizedBox(width: 14),
-                const _TopIcon(icon: Icons.language, tooltip: 'System locale'),
+                const _LanguageMenu(),
                 const SizedBox(width: 14),
-                const _TopIcon(icon: Icons.light_mode_outlined, tooltip: 'Dark theme'),
+                _TopIcon(
+                  icon: Icons.light_mode_outlined,
+                  tooltip: context.tr('shell.darkTheme'),
+                ),
                 const SizedBox(width: 17),
                 if (constraints.maxWidth >= 820) ...[
                   _ProfileSummary(userSession: userSession),
@@ -488,7 +503,10 @@ class _ProjectSelector extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Project', style: TextStyle(color: IlaiosTheme.muted, fontSize: 9)),
+            Text(
+              context.tr('shell.project'),
+              style: const TextStyle(color: IlaiosTheme.muted, fontSize: 9),
+            ),
             const SizedBox(height: 4),
             Container(
               height: 36,
@@ -502,7 +520,7 @@ class _ProjectSelector extends StatelessWidget {
                 children: [
                   Expanded(
                     child: Text(
-                      project ?? 'Unavailable',
+                      project ?? context.tr('shell.unavailable'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -535,19 +553,19 @@ class _SearchField extends StatelessWidget {
           borderRadius: BorderRadius.circular(7),
           border: Border.all(color: IlaiosTheme.border),
         ),
-        child: const Row(
+        child: Row(
           children: [
-            Icon(Icons.search, size: 16, color: IlaiosTheme.muted),
-            SizedBox(width: 8),
+            const Icon(Icons.search, size: 16, color: IlaiosTheme.muted),
+            const SizedBox(width: 8),
             Expanded(
               child: Text(
-                'Search',
+                context.tr('shell.search'),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: IlaiosTheme.muted, fontSize: 10),
+                style: const TextStyle(color: IlaiosTheme.muted, fontSize: 10),
               ),
             ),
-            Text('⌘K', style: TextStyle(color: IlaiosTheme.muted, fontSize: 9)),
+            const Text('⌘K', style: TextStyle(color: IlaiosTheme.muted, fontSize: 9)),
           ],
         ),
       );
@@ -563,6 +581,54 @@ class _TopIcon extends StatelessWidget {
         message: tooltip,
         child: Icon(icon, size: 19, color: IlaiosTheme.mutedStrong),
       );
+}
+
+class _LanguageMenu extends StatelessWidget {
+  const _LanguageMenu({this.compact = false});
+
+  final bool compact;
+
+  @override
+  Widget build(BuildContext context) {
+    final scope = context.ilaiosLocale;
+    return PopupMenuButton<IlaiosLocale>(
+      tooltip: context.tr('shell.language'),
+      onSelected: scope.onChanged,
+      itemBuilder: (context) => [
+        for (final locale in IlaiosLocale.values)
+          PopupMenuItem<IlaiosLocale>(
+            value: locale,
+            child: Row(
+              children: [
+                Icon(
+                  locale == scope.locale ? Icons.check : Icons.language,
+                  size: 17,
+                  color: locale == scope.locale ? IlaiosTheme.cyan : IlaiosTheme.muted,
+                ),
+                const SizedBox(width: 9),
+                Text(locale.displayName),
+              ],
+            ),
+          ),
+      ],
+      child: Padding(
+        padding: EdgeInsets.all(compact ? 3 : 1),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.language, size: 19, color: IlaiosTheme.mutedStrong),
+            if (compact) ...[
+              const SizedBox(width: 4),
+              Text(
+                scope.locale.code.toUpperCase(),
+                style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _ProfileSummary extends StatelessWidget {
@@ -593,13 +659,15 @@ class _ProfileSummary extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  identity ?? 'Identity unavailable',
+                  identity ?? context.tr('shell.identityUnavailable'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  userSession == null ? 'Signed out' : 'Authenticated',
+                  userSession == null
+                      ? context.tr('shell.signedOut')
+                      : context.tr('shell.authenticated'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: IlaiosTheme.muted, fontSize: 9),
@@ -623,7 +691,9 @@ class _ConnectionPill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final connected = projection.connected;
-    final label = connected ? 'Connected' : 'Offline';
+    final label = connected
+        ? context.tr('shell.connected')
+        : context.tr('shell.offline');
     return Container(
       padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 11, vertical: 7),
       decoration: BoxDecoration(
@@ -673,17 +743,22 @@ class _BottomStatusBar extends StatelessWidget {
       child: Row(
         children: [
           _StatusCapsule(
-            label: 'System Health',
-            value: projection.connected ? 'Healthy' : 'Offline',
+            label: context.tr('shell.systemHealth'),
+            value: projection.connected
+                ? context.tr('shell.healthy')
+                : context.tr('shell.offline'),
             active: projection.connected,
           ),
           const SizedBox(width: 10),
-          _StatusCapsule(label: 'Workers', value: '$leases'),
+          _StatusCapsule(label: context.tr('shell.workers'), value: '$leases'),
           const SizedBox(width: 10),
-          _StatusCapsule(label: 'Queues', value: queues?.toString() ?? '—'),
+          _StatusCapsule(
+            label: context.tr('shell.queues'),
+            value: queues?.toString() ?? '—',
+          ),
           if (wide) ...[
             const SizedBox(width: 10),
-            const _StatusCapsule(label: 'Events / min', value: '—'),
+            _StatusCapsule(label: context.tr('shell.eventsPerMinute'), value: '—'),
           ],
           const Spacer(),
           if (wide)
@@ -693,8 +768,10 @@ class _BottomStatusBar extends StatelessWidget {
             ),
           const Spacer(),
           _StatusItem(
-            label: 'Real-time',
-            value: projection.connected ? 'Connected' : 'Offline',
+            label: context.tr('shell.realTime'),
+            value: projection.connected
+                ? context.tr('shell.connected')
+                : context.tr('shell.offline'),
             active: projection.connected,
           ),
         ],
