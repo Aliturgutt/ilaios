@@ -86,7 +86,7 @@ def _prepare_video(
     )
 
 
-def test_unverified_capability_and_multi_capability_remain_fail_closed(
+def test_unverified_capability_and_mixed_plan_remain_fail_closed(
     tmp_path: Path,
 ) -> None:
     fixture = _Fixture(tmp_path)
@@ -110,7 +110,7 @@ def test_unverified_capability_and_multi_capability_remain_fail_closed(
         now=_now(),
     )
     assert mixed["execution_status"] == "BLOCKED"
-    assert mixed["blocker_code"] == "MULTI_CAPABILITY_EXECUTION_NOT_IMPLEMENTED"
+    assert mixed["blocker_code"] == "GENERAL_PURPOSE_WEB_ADAPTER_UNAVAILABLE"
 
 
 def test_high_risk_video_requires_independent_human_approval(tmp_path: Path) -> None:
