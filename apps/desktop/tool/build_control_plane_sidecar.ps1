@@ -9,13 +9,28 @@ $desktopRoot = Split-Path -Parent $PSScriptRoot
 $repoRoot = Resolve-Path (Join-Path $desktopRoot '..\..')
 $entrypoint = Join-Path $desktopRoot 'sidecar\ilaios_control_plane_sidecar.py'
 $brandLogo = Join-Path $repoRoot 'brand\assets\03-ilaios-symbol-dark.jpg'
+$identityProviders = Join-Path $desktopRoot 'packaging\identity\oidc-providers.public.json'
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
   $OutputDirectory = Join-Path $desktopRoot 'build\windows\x64\runner\Release'
 }
 
 if (-not (Test-Path $entrypoint)) { throw "Sidecar entrypoint missing: $entrypoint" }
 if (-not (Test-Path $brandLogo)) { throw "Official ILAIOS brand logo missing: $brandLogo" }
+if (-not (Test-Path $identityProviders)) { throw "Desktop public identity metadata missing: $identityProviders" }
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
+
+# Public OAuth client identifiers are registration metadata, not secrets. The
+# packaged metadata is audited separately and must never contain client_secret.
+$identityDocument = Get-Content -Raw $identityProviders | ConvertFrom-Json
+if ($null -eq $identityDocument) { throw 'Desktop public identity metadata is invalid.' }
+foreach ($provider in @($identityDocument)) {
+  if ($null -ne $provider.PSObject.Properties['client_secret']) {
+    throw 'Desktop public identity metadata must not contain client_secret.'
+  }
+  if ([string]::IsNullOrWhiteSpace([string]$provider.client_id)) {
+    throw 'Desktop public identity metadata contains an empty client_id.'
+  }
+}
 
 # The Windows sidecar source and CI contract target Python 3.12. Building with
 # an older local interpreter can fail while importing first-party modules (for
@@ -56,17 +71,19 @@ $sourceHeadFile = Join-Path $metadata 'source-head.txt'
 $env:PYTHONPATH = $repoRoot
 Push-Location $repoRoot
 try {
-  # Fail before packaging if a required first-party runtime module is absent
-  # or not importable in the active build environment.
-  python -c "import services.integrations.web_factory"
+  # Fail before packaging if a required first-party runtime or identity module
+  # is absent or not importable in the active Windows build environment.
+  python -c "import services.desktop_oidc_microsoft; import services.desktop_oidc_windows; import services.integrations.web_factory"
   if ($LASTEXITCODE -ne 0) {
-    throw 'Desktop sidecar source import smoke failed for services.integrations.web_factory.'
+    throw 'Desktop sidecar source import smoke failed for required identity/integration modules.'
   }
 
   # PyInstaller can miss package children on some local Python environments
   # even when imports are statically reachable through package __init__ files.
   # Collect the bounded first-party integrations package explicitly so local
-  # Windows builds and CI produce the same runnable composition root.
+  # Windows builds and CI produce the same runnable composition root. The OIDC
+  # Windows/Microsoft modules are statically imported by the sidecar entrypoint
+  # and the pre-package smoke above prevents an omitted source dependency.
   python -m PyInstaller `
     --noconfirm `
     --clean `
@@ -78,6 +95,7 @@ try {
     --hidden-import jwt.algorithms `
     --collect-submodules services.integrations `
     --add-data "$brandLogo;brand/assets" `
+    --add-data "$identityProviders;desktop-identity" `
     --add-data "$sourceHeadFile;build-metadata" `
     --workpath $work `
     --specpath $spec `
@@ -95,8 +113,8 @@ if ((Get-Item $built).Length -le 0) { throw 'Bundled control-plane executable is
 
 # A successful PyInstaller exit is not sufficient evidence that the frozen
 # composition root is runnable. --help imports the complete module graph before
-# argparse exits, so this catches missing first-party modules such as
-# services.integrations.web_factory without starting a runtime or using secrets.
+# argparse exits, so this catches missing first-party modules without starting a
+# runtime or using secrets.
 & $built --help *> $null
 if ($LASTEXITCODE -ne 0) {
   throw 'Packaged Desktop sidecar import smoke failed.'

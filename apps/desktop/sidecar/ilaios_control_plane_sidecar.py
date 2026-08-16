@@ -19,7 +19,7 @@ from services.control_plane.migrations import current_schema_version
 from services.control_plane.server import ControlPlaneHTTPServer
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
 from services.desktop_identity_server import DesktopIdentityHTTPServer
-from services.desktop_oidc_threaded import DesktopIdentityError, DesktopOIDCService
+from services.desktop_oidc_windows import DesktopIdentityError, DesktopOIDCService
 from services.evidence import EvidenceStore
 from services.execution_adapters import register_software_runtime, register_web_runtime
 from services.execution_coordinator import ExecutionCoordinator
@@ -141,8 +141,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     control_host, control_port = control_server.server_address[:2]
 
     try:
+        _ensure_packaged_identity_configuration()
         identity = DesktopOIDCService.from_environment()
-    except DesktopIdentityError as error:
+    except (DesktopIdentityError, RuntimeError) as error:
         control_server.server_close()
         raise SystemExit(f"Desktop identity configuration rejected: {error}") from error
 
@@ -215,6 +216,49 @@ def main(argv: Sequence[str] | None = None) -> int:
         control_server.server_close()
         control_thread.join(timeout=5)
     return 0
+
+
+def _identity_configuration_path() -> Path:
+    if getattr(sys, "frozen", False):
+        base = Path(getattr(sys, "_MEIPASS"))
+        return base / "desktop-identity" / "oidc-providers.public.json"
+    return (
+        Path(__file__).resolve().parents[1]
+        / "packaging"
+        / "identity"
+        / "oidc-providers.public.json"
+    )
+
+
+def _ensure_packaged_identity_configuration() -> None:
+    """Load non-secret provider registration metadata when no override exists."""
+    if os.environ.get("ILAIOS_DESKTOP_OIDC_PROVIDERS_JSON", "").strip():
+        return
+    path = _identity_configuration_path()
+    if not path.is_file():
+        return
+    try:
+        raw = path.read_text(encoding="utf-8")
+        document = json.loads(raw)
+    except (OSError, json.JSONDecodeError) as error:
+        raise RuntimeError("packaged Desktop identity metadata is unreadable") from error
+    if not isinstance(document, list) or not document:
+        raise RuntimeError("packaged Desktop identity metadata is invalid")
+    for provider in document:
+        if not isinstance(provider, dict):
+            raise RuntimeError("packaged Desktop identity provider is invalid")
+        if "client_secret" in provider:
+            raise RuntimeError(
+                "packaged Desktop identity metadata must not contain client secrets"
+            )
+        client_id = provider.get("client_id")
+        if not isinstance(client_id, str) or not client_id.strip():
+            raise RuntimeError("packaged Desktop identity client id is missing")
+    os.environ["ILAIOS_DESKTOP_OIDC_PROVIDERS_JSON"] = json.dumps(
+        document,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
 
 
 def _official_brand_logo() -> Path:
