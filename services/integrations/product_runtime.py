@@ -529,10 +529,15 @@ class DurableVideoProductRuntime:
         now: datetime,
         reason: str,
     ) -> dict[str, object]:
-        """Close a stale product proof and every owned durable runtime resource."""
+        """Close a stale or explicitly cancelled product proof and owned resources."""
         _require_actor(reason, "reason")
         if now.tzinfo is None:
             raise ProductRuntimeError("interruption time must be timezone-aware")
+        terminal_status = (
+            "cancelled"
+            if reason == "cancelled by authenticated execution owner"
+            else "interrupted"
+        )
         with self._connect() as connection:
             row = connection.execute(
                 "SELECT * FROM product_proofs WHERE request_id = ?", (request_id,)
@@ -559,19 +564,19 @@ class DurableVideoProductRuntime:
                 token,
                 str(row["job_id"]),
                 JobState.CANCELLED,
-                reason="finished-product execution interrupted",
+                reason=f"finished-product execution {terminal_status}",
                 now=now,
             )
         with self._connect() as connection:
             changed = connection.execute(
-                "UPDATE product_proofs SET status = 'interrupted' "
+                "UPDATE product_proofs SET status = ? "
                 "WHERE request_id = ? AND status = 'pending'",
-                (request_id,),
+                (terminal_status, request_id),
             ).rowcount
             if changed == 1:
                 connection.execute(
-                    "INSERT OR IGNORE INTO product_proof_closure VALUES (?, 'interrupted', ?, ?)",
-                    (request_id, reason, now.isoformat()),
+                    "INSERT OR IGNORE INTO product_proof_closure VALUES (?, ?, ?, ?)",
+                    (request_id, terminal_status, reason, now.isoformat()),
                 )
         return self.get_state(request_id)
 
