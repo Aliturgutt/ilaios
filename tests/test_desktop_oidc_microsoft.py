@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlparse
 
+import jwt
 import pytest
 
 import services.desktop_oidc_microsoft as microsoft
@@ -228,13 +229,13 @@ def test_microsoft_interactive_verifier_rejects_nonce_mismatch(
     claims = _claims()
     claims["nonce"] = "wrong-nonce"
     monkeypatch.setattr(
-        microsoft.jwt,
+        jwt,
         "get_unverified_header",
         lambda token: {"alg": "RS256", "kid": "key-1"},
     )
-    monkeypatch.setattr(microsoft.jwt, "PyJWKClient", _VerifierJwksClient)
+    monkeypatch.setattr(jwt, "PyJWKClient", _VerifierJwksClient)
     monkeypatch.setattr(
-        microsoft.jwt,
+        jwt,
         "decode",
         lambda *args, **kwargs: claims,
     )
@@ -253,15 +254,15 @@ def test_microsoft_verifier_passes_client_id_as_audience_and_fails_closed(
 
     def reject_audience(*args: object, **kwargs: object) -> dict[str, object]:
         observed_audience.append(kwargs.get("audience"))
-        raise microsoft.jwt.InvalidAudienceError("audience mismatch")
+        raise jwt.InvalidAudienceError("audience mismatch")
 
     monkeypatch.setattr(
-        microsoft.jwt,
+        jwt,
         "get_unverified_header",
         lambda token: {"alg": "RS256", "kid": "key-1"},
     )
-    monkeypatch.setattr(microsoft.jwt, "PyJWKClient", _VerifierJwksClient)
-    monkeypatch.setattr(microsoft.jwt, "decode", reject_audience)
+    monkeypatch.setattr(jwt, "PyJWKClient", _VerifierJwksClient)
+    monkeypatch.setattr(jwt, "decode", reject_audience)
 
     verifier = microsoft._MicrosoftOIDCTokenVerifier(
         _provider(), expected_nonce="nonce-1"
