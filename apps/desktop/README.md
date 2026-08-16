@@ -70,11 +70,19 @@ The bundled local control-plane bearer token is only an internal Desktop-to-side
 
 The adapter requires HTTPS provider authority, uses state, nonce and S256 PKCE, verifies signed ID tokens through provider JWKS, validates issuer/audience/token time claims, derives an ILAIOS principal/tenant projection, and issues an in-memory ILAIOS session whose lifetime cannot exceed the verified identity token. Raw identity-provider tokens are not returned to Flutter.
 
-Provider registration is external configuration supplied through `ILAIOS_DESKTOP_OIDC_PROVIDERS_JSON`; no provider client secret is accepted. Google and Microsoft may be configured as native public OIDC clients. Passwordless/email sign-in may be exposed through an approved OIDC identity broker that provides verified email federation. Without approved provider registration, Desktop truthfully reports account sign-in as not configured and does not invent an external identity.
+Packaged Windows builds include the approved **non-secret public registration metadata** needed for already-validated providers in `packaging/identity/oidc-providers.public.json`. Public OAuth client IDs are identifiers, not bearer credentials; the packaged metadata is audited to reject any `client_secret`. Trusted development/operations can override the packaged list with `ILAIOS_DESKTOP_OIDC_PROVIDERS_JSON` when a different test registration is deliberately required.
+
+The current packaged default contains the validated Google Desktop public registration. Microsoft support is code-ready for a native public client, but Microsoft is not added to the packaged default until the real Microsoft Application (client) ID is assigned and deliberately supplied. Microsoft Desktop registration rejects an embedded client secret and uses `offline_access` plus Windows DPAPI-protected refresh continuity.
+
+Passwordless/email sign-in may be exposed through an approved OIDC identity broker that provides verified email federation. Without approved provider registration, Desktop must truthfully report that provider as unavailable and must not invent an external identity.
+
+See `docs/platform/desktop/MICROSOFT_OIDC_SETUP.md` for the exact Microsoft external registration contract and the real-Windows acceptance boundary.
 
 ## Canonical branding
 
-Runtime UI branding uses the canonical repository asset `brand/assets/05-ilaios-app-icon.jpg`. The Windows `.ico` resource is generated during the Windows build by `tool/generate_windows_icon.ps1` using scale-only transforms; no crop, recolor, redraw, or geometry modification is permitted.
+The premium Desktop shell uses the canonical repository symbol `brand/assets/03-ilaios-symbol-dark.jpg`. Windows executable/MSIX icon derivation uses the canonical app-icon master `brand/assets/05-ilaios-app-icon.jpg`. The Windows `.ico` resource is generated during the Windows build by `tool/generate_windows_icon.ps1` using scale-only transforms; no crop, recolor, redraw, or geometry modification is permitted.
+
+Desktop theme tokens use the canonical ILAIOS palette rather than feature-local colors. Semantic success/warning/error colors remain distinct from brand accents so system meaning is not conflated with branding.
 
 ## Validation
 
@@ -91,8 +99,9 @@ The Windows Gate additionally:
 
 1. builds the bundled canonical control-plane/identity sidecar;
 2. starts that packaged executable in an isolated temporary data root;
-3. runs a real Dart client → packaged runtime E2E that validates the identity-adapter transport, creates an authoritative goal and job, and reads the job/projection back; and
-4. validates the Desktop executable metadata and sidecar presence.
+3. verifies packaged public identity provider metadata through the real loopback identity endpoint;
+4. runs a real Dart client → packaged runtime E2E that validates the identity-adapter transport, creates an authoritative goal and job, and reads the job/projection back; and
+5. validates the Desktop executable metadata and sidecar presence.
 
 Unsigned MSIX packaging builds the Desktop executable plus bundled control-plane executable, unpacks the result and validates the package structure. The resulting CI package is an internal validation artifact only; it is not a signed or Store-published release.
 
@@ -102,11 +111,11 @@ For a Windows-local release gate, run `tool/validate_windows_release.ps1` from t
 
 The repository has a fail-closed signed-MSIX workflow, but a signed release is not proven until trusted publisher identity, package identity and signing secrets are deliberately provisioned and that workflow passes for the exact release revision.
 
-Microsoft Store publication, account/provider registration, Store certification, restricted-capability approval, privacy/age-rating declarations and external compliance remain separate release dependencies. They must not be inferred from application, Windows Gate or unsigned-MSIX success.
+Microsoft Store publication, account/provider production approval where required, Store certification, restricted-capability approval, privacy/age-rating declarations and external compliance remain separate release dependencies. They must not be inferred from application, Windows Gate or unsigned-MSIX success.
 
 ## Known external/product dependencies
 
-- Google/Microsoft/passwordless-email account sign-in requires approved provider or broker registration and public client identifiers/configuration.
+- Microsoft account sign-in requires the real Microsoft App Registration / public Application (client) ID plus real-Windows acceptance; Google or other identity providers may also have provider-side production/publishing requirements independent of Desktop code.
 - Signed MSIX proof requires real publisher/package identity and protected signing material.
 - Microsoft Store publication requires Partner Center account/submission actions and certification.
 - Factory-specific native executors may have additional packaged-runtime dependencies; their availability must be proven by their own governed capability/release gates rather than inferred from the Desktop shell.
