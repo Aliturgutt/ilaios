@@ -4,13 +4,15 @@ The adapter implements the existing ``web.deployment-receipt.v1`` contract. It i
 not a routing, policy, approval, credential or budget authority. Callers must prove
 those decisions before invoking a public side effect. Production is considered
 proven only after Vercel reports READY, ILAIOS provenance metadata round-trips,
-production traffic is promoted, a production alias exists, and HTTPS health passes.
+the immutable deployment URL is healthy, production traffic is promoted, a
+production alias exists, and HTTPS health passes again on that alias.
 """
 
 from __future__ import annotations
 
 import base64
 import time
+from datetime import datetime
 from pathlib import Path
 from typing import Callable, Mapping, Protocol, cast
 
@@ -138,7 +140,7 @@ class VercelWebDeploymentAdapter:
         rollback_reference: str | None = None,
         authorization_proven: bool,
         budget_proven: bool,
-        now: object | None = None,
+        now: datetime | None = None,
     ) -> WebDeploymentReceipt:
         self._assert_public_side_effect_authorized(
             authorization_proven=authorization_proven,
@@ -191,6 +193,8 @@ class VercelWebDeploymentAdapter:
             source_commit_sha=source_commit_sha,
             artifact_sha256=artifact_sha,
         )
+        preview_url = self._deployment_url(ready)
+        self._assert_healthy_https(preview_url)
         self._promote(deployment_id, token=token)
         live_url = self._production_alias(deployment_id, token=token)
         self._assert_healthy_https(live_url)
@@ -203,7 +207,7 @@ class VercelWebDeploymentAdapter:
             live_url=live_url,
             health="HEALTHY_PUBLIC_PRODUCTION",
             rollback_reference=rollback_reference,
-            deployed_at=_timestamp(cast(object, now)),
+            deployed_at=_timestamp(now),
             public_production_proven=True,
         )
 
@@ -216,7 +220,7 @@ class VercelWebDeploymentAdapter:
         replaced_deployment_id: str | None = None,
         authorization_proven: bool,
         budget_proven: bool,
-        now: object | None = None,
+        now: datetime | None = None,
     ) -> WebDeploymentReceipt:
         self._assert_public_side_effect_authorized(
             authorization_proven=authorization_proven,
@@ -249,6 +253,8 @@ class VercelWebDeploymentAdapter:
             source_commit_sha=source_commit_sha,
             artifact_sha256=expected_artifact_sha256,
         )
+        preview_url = self._deployment_url(ready)
+        self._assert_healthy_https(preview_url)
         live_url = self._production_alias(deployment_id, token=token)
         self._assert_healthy_https(live_url)
         return WebDeploymentReceipt(
@@ -260,7 +266,7 @@ class VercelWebDeploymentAdapter:
             live_url=live_url,
             health="HEALTHY_PUBLIC_ROLLBACK",
             rollback_reference=replaced_deployment_id,
-            deployed_at=_timestamp(cast(object, now)),
+            deployed_at=_timestamp(now),
             public_production_proven=True,
         )
 
@@ -363,6 +369,12 @@ class VercelWebDeploymentAdapter:
             raise WebDeploymentError("Vercel deployment artifact provenance mismatch")
         if metadata.get("ilaiosDeploymentContract") != self.deployment_contract:
             raise WebDeploymentError("Vercel deployment contract provenance mismatch")
+
+    def _deployment_url(self, deployment: Mapping[str, object]) -> str:
+        value = deployment.get("url")
+        if not isinstance(value, str) or not value.strip():
+            raise WebDeploymentError("Vercel immutable deployment URL is missing")
+        return _https_url(value)
 
     def _promote(self, deployment_id: str, *, token: str) -> None:
         status, _ = self._transport.api(
