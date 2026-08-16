@@ -83,7 +83,9 @@ def _project_files(
                 if page == "home"
                 else f"app/{locale}/{page}/page.tsx"
             )
-            files[relative] = _page_source(spec, locale, page).encode()
+            files[relative] = _page_source(
+                spec, locale, page, design_strategy
+            ).encode()
     return files
 
 
@@ -175,7 +177,19 @@ export default function RootPage() {{
 '''
 
 
-def _page_source(spec: WebsiteSpec, locale: str, page: str) -> str:
+def _page_source(
+    spec: WebsiteSpec,
+    locale: str,
+    page: str,
+    design_strategy: Mapping[str, object],
+) -> str:
+    primary = str(design_strategy.get("primary_composition", "editorial-split"))
+    secondary_raw = design_strategy.get("secondary_compositions", ())
+    secondary = (
+        [str(item) for item in secondary_raw]
+        if isinstance(secondary_raw, (tuple, list))
+        else []
+    )
     props = {
         "locale": locale,
         "businessName": spec.business_name,
@@ -186,6 +200,10 @@ def _page_source(spec: WebsiteSpec, locale: str, page: str) -> str:
         "locales": list(spec.locales),
         "headline": _headline(spec, locale, page),
         "copy": _copy(spec, locale, page),
+        "primaryComposition": primary,
+        "secondaryCompositions": secondary,
+        "trustRequirement": spec.trust_requirement,
+        "informationDensity": spec.information_density,
     }
     import_path = (
         "../../components/PageShell"
@@ -213,11 +231,28 @@ def _page_shell_source() -> str:
   locales: readonly string[];
   headline: string;
   copy: string;
+  primaryComposition: string;
+  secondaryCompositions: readonly string[];
+  trustRequirement: string;
+  informationDensity: string;
 };
 
 const labels: Record<string, Record<string, string>> = {
   en: { home: "Home", expertise: "Expertise", about: "About", contact: "Contact", capabilities: "Capabilities", trust: "Trust", menu: "Menu", story: "Story", work: "Work", studio: "Studio", collection: "Collection", craft: "Craft", product: "Product", developers: "Developers", security: "Security", services: "Services", approach: "Approach", care: "Care", solutions: "Solutions", pricing: "Pricing" },
   tr: { home: "Ana sayfa", expertise: "Uzmanlık", about: "Hakkımızda", contact: "İletişim", capabilities: "Yetenekler", trust: "Güven", menu: "Menü", story: "Hikâye", work: "Projeler", studio: "Stüdyo", collection: "Koleksiyon", craft: "Zanaat", product: "Ürün", developers: "Geliştiriciler", security: "Güvenlik", services: "Hizmetler", approach: "Yaklaşım", care: "Bakım", solutions: "Çözümler", pricing: "Fiyatlandırma" },
+};
+
+const focusByCategory: Record<string, readonly string[]> = {
+  "law firm": ["Judgment", "Evidence", "Continuity"],
+  security: ["Threat model", "Controls", "Verification"],
+  restaurant: ["Menu", "Place", "Experience"],
+  "architecture studio": ["Context", "Material", "Craft"],
+  furniture: ["Material", "Proportion", "Longevity"],
+  "developer platform": ["Workflow", "Reliability", "Integration"],
+  "financial services": ["Risk", "Clarity", "Stewardship"],
+  healthcare: ["Care", "Access", "Trust"],
+  saas: ["Outcome", "Workflow", "Proof"],
+  "professional services": ["Expertise", "Approach", "Trust"],
 };
 
 function href(locale: string, page: string) {
@@ -238,8 +273,24 @@ function ContactForm({ locale }: { locale: string }) {
   );
 }
 
+function ContextSections(props: Props) {
+  const focus = focusByCategory[props.businessCategory] ?? focusByCategory["professional services"];
+  return (
+    <section className="context-grid" aria-label={props.locale === "tr" ? "Yaklaşım" : "Approach"}>
+      {focus.map((item, index) => (
+        <article className="context-block" key={item}>
+          <span className="context-index">0{index + 1}</span>
+          <h2>{item}</h2>
+          <p>{props.locale === "tr" ? `${props.businessName}, ${item.toLocaleLowerCase("tr-TR")} odağını ${props.audience} için net bir kullanıcı yoluna dönüştürür.` : `${props.businessName} turns ${item.toLowerCase()} into a clear user path for ${props.audience}.`}</p>
+        </article>
+      ))}
+    </section>
+  );
+}
+
 export function PageShell(props: Props) {
   const t = labels[props.locale] ?? labels.en;
+  const compositionClass = `composition-${props.primaryComposition}`;
   return (
     <>
       <a className="skip-link" href="#main">{props.locale === "tr" ? "İçeriğe geç" : "Skip to content"}</a>
@@ -250,19 +301,28 @@ export function PageShell(props: Props) {
         </nav>
         <div className="languages">
           {props.locales.filter((locale) => locale !== props.locale).map((locale) => (
-            <a key={locale} href={`/${locale}`} hrefLang={locale}>{locale.toUpperCase()}</a>
+            <a className="language-link" key={locale} href={`/${locale}`} hrefLang={locale}>{locale.toUpperCase()}</a>
           ))}
         </div>
       </header>
-      <main id="main">
+      <main id="main" className={compositionClass} data-composition={props.primaryComposition} data-density={props.informationDensity} data-trust={props.trustRequirement}>
         <section className={props.pageName === "home" ? "hero" : "content-block"}>
-          <p className="eyebrow">{props.businessCategory}</p>
-          <h1>{props.headline}</h1>
-          <p className="lede">{props.copy}</p>
-          {props.pageName === "home" && <a className="primary-action" href={href(props.locale, "contact")}>{props.locale === "tr" ? "Görüşme başlat" : "Start a conversation"}</a>}
+          <div className="hero-copy">
+            <p className="eyebrow">{props.businessCategory}</p>
+            <h1>{props.headline}</h1>
+            <p className="lede">{props.copy}</p>
+            {props.pageName === "home" && <a className="primary-action" href={href(props.locale, "contact")}>{props.locale === "tr" ? "Görüşme başlat" : "Start a conversation"}</a>}
+          </div>
+          {props.pageName === "home" && (
+            <aside className="composition-note" aria-label={props.locale === "tr" ? "Tasarım yaklaşımı" : "Design approach"}>
+              <strong>{props.primaryComposition.replaceAll("-", " ")}</strong>
+              <span>{props.secondaryCompositions.join(" · ")}</span>
+            </aside>
+          )}
           {props.pageName === "contact" && <ContactForm locale={props.locale} />}
           {props.pageName !== "home" && props.pageName !== "contact" && <div className="evidence-line"><strong>{props.locale === "tr" ? "Odak" : "Built around"}</strong><span>{props.audience}</span></div>}
         </section>
+        {props.pageName === "home" && <ContextSections {...props} />}
       </main>
       <footer><p>{props.locale === "tr" ? "Netlik, güven ve ölçülebilir aksiyon için tasarlandı." : "Built for clarity, trust, and measurable action."}</p></footer>
     </>
@@ -343,7 +403,10 @@ def _label(page: str, locale: str) -> str:
 
 def _css() -> str:
     return """
-:root{--ink:#101828;--muted:#475467;--line:#d0d5dd;--accent:#0b5fff;--max:1180px}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:#fff;line-height:1.55}a{color:inherit}a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.skip-link{position:absolute;left:-999px;top:0}.skip-link:focus{left:1rem;top:1rem;background:#fff;padding:.75rem;z-index:10}.site-header{max-width:var(--max);margin:auto;padding:1.2rem 1.5rem;display:grid;grid-template-columns:auto 1fr auto;gap:clamp(1.25rem,3vw,3rem);align-items:center;border-bottom:1px solid var(--line)}.brand{font-weight:800;text-decoration:none}nav{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}nav a,.languages a{display:inline-flex;align-items:center;min-height:40px;text-decoration:none}main{max-width:var(--max);margin:auto;padding:clamp(2rem,6vw,6rem) 1.5rem}.hero{min-height:58vh;display:grid;align-content:center}.hero h1,.content-block h1{font-size:clamp(2.6rem,7vw,6rem);line-height:1;letter-spacing:-.05em;max-width:13ch;margin:.4rem 0 1.4rem}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:.78rem;font-weight:700;color:var(--muted)}.lede{font-size:clamp(1.05rem,1.8vw,1.35rem);max-width:60ch}.primary-action{display:inline-flex;align-items:center;min-height:44px;width:max-content;margin-top:1.5rem;background:var(--ink);color:#fff;padding:.75rem 1rem;text-decoration:none}.content-block{max-width:850px}.evidence-line{display:grid;grid-template-columns:140px 1fr;gap:1rem;border-top:1px solid var(--line);padding-top:1rem;margin-top:3rem}.contact-form{display:grid;gap:.65rem;margin-top:2rem;max-width:620px}.contact-form input,.contact-form textarea{font:inherit;padding:.8rem;border:1px solid var(--line)}.contact-form textarea{min-height:150px}.contact-form button{font:inherit;min-height:44px;padding:.75rem 1rem;border:0;background:var(--ink);color:#fff;width:max-content}footer{max-width:var(--max);margin:3rem auto 0;padding:2rem 1.5rem;border-top:1px solid var(--line);color:var(--muted)}@media(max-width:768px){.site-header{grid-template-columns:1fr;align-items:start}nav{justify-content:flex-start}.evidence-line{grid-template-columns:1fr}.hero h1,.content-block h1{font-size:clamp(2.5rem,11vw,4.7rem)}}@media(max-width:430px){main{padding-top:2.25rem}.site-header{padding:1rem}nav{display:grid;grid-template-columns:1fr 1fr;gap:.4rem}.contact-form button{width:100%}}@media(max-width:360px){nav{grid-template-columns:1fr}}@media(max-width:320px){body{font-size:15px}main{padding-left:1rem;padding-right:1rem}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+:root{--ink:#101828;--muted:#475467;--line:#d0d5dd;--accent:#0b5fff;--surface:#f8fafc;--max:1180px}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:#fff;line-height:1.55}a{color:inherit}a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.skip-link{position:absolute;left:-999px;top:0}.skip-link:focus{left:1rem;top:1rem;background:#fff;padding:.75rem;z-index:10}.site-header{max-width:var(--max);margin:auto;padding:1.2rem 1.5rem;display:grid;grid-template-columns:auto 1fr auto;gap:clamp(1.25rem,3vw,3rem);align-items:center;border-bottom:1px solid var(--line)}.brand{font-weight:800;text-decoration:none}nav{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}nav a,.languages a{display:inline-flex;align-items:center;min-height:40px;text-decoration:none}main{max-width:var(--max);margin:auto;padding:clamp(2rem,6vw,6rem) 1.5rem}.hero{min-height:58vh;display:grid;align-content:center;gap:clamp(2rem,5vw,5rem)}.hero-copy{max-width:780px}.hero h1,.content-block h1{font-size:clamp(2.6rem,7vw,6rem);line-height:1;letter-spacing:-.05em;max-width:13ch;margin:.4rem 0 1.4rem}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:.78rem;font-weight:700;color:var(--muted)}.lede{font-size:clamp(1.05rem,1.8vw,1.35rem);max-width:60ch}.primary-action{display:inline-flex;align-items:center;min-height:44px;width:max-content;margin-top:1.5rem;background:var(--ink);color:#fff;padding:.75rem 1rem;text-decoration:none}.composition-note{border-left:1px solid var(--line);padding-left:1rem;display:grid;gap:.35rem;align-content:end;color:var(--muted);text-transform:capitalize}.composition-note strong{color:var(--ink)}.context-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);margin-top:clamp(1rem,4vw,4rem);border:1px solid var(--line)}.context-block{background:#fff;padding:clamp(1.25rem,3vw,2.5rem);min-height:220px}.context-index{font-size:.75rem;color:var(--muted)}.context-block h2{font-size:clamp(1.4rem,2.5vw,2.2rem);margin:2rem 0 .75rem}.content-block{max-width:850px}.evidence-line{display:grid;grid-template-columns:140px 1fr;gap:1rem;border-top:1px solid var(--line);padding-top:1rem;margin-top:3rem}.contact-form{display:grid;gap:.65rem;margin-top:2rem;max-width:620px}.contact-form input,.contact-form textarea{font:inherit;padding:.8rem;border:1px solid var(--line)}.contact-form textarea{min-height:150px}.contact-form button{font:inherit;min-height:44px;padding:.75rem 1rem;border:0;background:var(--ink);color:#fff;width:max-content}footer{max-width:var(--max);margin:3rem auto 0;padding:2rem 1.5rem;border-top:1px solid var(--line);color:var(--muted)}
+.composition-minimal-institutional .hero{grid-template-columns:minmax(0,1.5fr) minmax(220px,.5fr);align-items:end}.composition-minimal-institutional .context-grid{grid-template-columns:1.4fr 1fr 1fr}.composition-technical-flow .hero,.composition-layered-architecture .hero{grid-template-columns:minmax(0,1.15fr) minmax(260px,.85fr);background:linear-gradient(90deg,#fff 0 68%,var(--surface) 68%);padding-left:clamp(1rem,3vw,3rem);padding-right:clamp(1rem,3vw,3rem)}.composition-technical-flow .context-grid,.composition-layered-architecture .context-grid{grid-template-columns:repeat(3,minmax(0,1fr));counter-reset:step}.composition-product-showcase .hero{grid-template-columns:minmax(0,1fr) minmax(280px,.8fr)}.composition-product-showcase .composition-note{background:var(--surface);padding:2rem;border-left:0}.composition-visual-portfolio .hero,.composition-media-led .hero{min-height:70vh;grid-template-columns:minmax(0,.8fr) minmax(300px,1.2fr);align-items:end}.composition-visual-portfolio .context-grid,.composition-media-led .context-grid{grid-template-columns:1.6fr .7fr .7fr}.composition-editorial-split .hero,.composition-narrative-scroll .hero{grid-template-columns:minmax(0,1fr) minmax(240px,.6fr)}.composition-evidence-trust .context-grid{grid-template-columns:1fr 1fr 1fr}.composition-documentation-led .hero{min-height:46vh}.composition-documentation-led .context-grid{grid-template-columns:1fr}.composition-structured-comparison .context-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+[data-density="high"] .context-block{min-height:180px;padding:1.5rem}[data-trust="high"] .context-grid{border-top:3px solid var(--ink)}
+@media(max-width:768px){.site-header{grid-template-columns:1fr;align-items:start}nav{justify-content:flex-start}.evidence-line{grid-template-columns:1fr}.hero h1,.content-block h1{font-size:clamp(2.5rem,11vw,4.7rem)}.hero,.composition-minimal-institutional .hero,.composition-technical-flow .hero,.composition-layered-architecture .hero,.composition-product-showcase .hero,.composition-visual-portfolio .hero,.composition-media-led .hero,.composition-editorial-split .hero,.composition-narrative-scroll .hero{grid-template-columns:1fr;background:#fff;min-height:auto}.context-grid,.composition-minimal-institutional .context-grid,.composition-visual-portfolio .context-grid,.composition-media-led .context-grid{grid-template-columns:1fr 1fr}.composition-note{border-left:0;border-top:1px solid var(--line);padding:1rem 0 0}.context-block{min-height:auto}}@media(max-width:430px){main{padding-top:2.25rem}.site-header{padding:1rem}nav{display:grid;grid-template-columns:1fr 1fr;gap:.4rem}.context-grid,.composition-minimal-institutional .context-grid,.composition-visual-portfolio .context-grid,.composition-media-led .context-grid{grid-template-columns:1fr}.contact-form button{width:100%}}@media(max-width:360px){nav{grid-template-columns:1fr}}@media(max-width:320px){body{font-size:15px}main{padding-left:1rem;padding-right:1rem}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 """.strip()
 
 
