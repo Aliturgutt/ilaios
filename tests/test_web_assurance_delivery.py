@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -56,7 +57,9 @@ def test_source_assurance_repairs_into_new_content_addressed_project(tmp_path: P
     certified = Path(str(receipt["certified_project_path"]))
     assert certified != original
     assert certified.is_dir()
-    assert not (original / "app/robots.ts").exists(), "original content-addressed source must stay immutable"
+    assert not (original / "app/robots.ts").exists(), (
+        "original content-addressed source must stay immutable"
+    )
     assert (certified / "app/robots.ts").is_file()
     assert (certified / "app/sitemap.ts").is_file()
     assert (certified / "app/api/contact/route.ts").is_file()
@@ -64,13 +67,20 @@ def test_source_assurance_repairs_into_new_content_addressed_project(tmp_path: P
     assert (certified / "app/en/insights/page.tsx").is_file()
     assert (certified / "app/tr/search/page.tsx").is_file()
     assert tree_sha256(certified) == receipt["source_project_digest"]
-    assert "/en/insights" in receipt["certified_routes"]
-    assert "/tr/search" in receipt["certified_routes"]
-    assert receipt["accessibility"]["status"] == "PASS"
-    assert receipt["seo"]["status"] == "PASS"
-    assert receipt["security"]["status"] == "PASS"
-    assert receipt["performance"]["status"] == "PASS"
-    assert receipt["design"]["status"] == "PASS"
+
+    routes = cast(list[str], receipt["certified_routes"])
+    accessibility = cast(dict[str, object], receipt["accessibility"])
+    seo = cast(dict[str, object], receipt["seo"])
+    security = cast(dict[str, object], receipt["security"])
+    performance = cast(dict[str, object], receipt["performance"])
+    design = cast(dict[str, object], receipt["design"])
+    assert "/en/insights" in routes
+    assert "/tr/search" in routes
+    assert accessibility["status"] == "PASS"
+    assert seo["status"] == "PASS"
+    assert security["status"] == "PASS"
+    assert performance["status"] == "PASS"
+    assert design["status"] == "PASS"
 
 
 def test_source_assurance_fails_closed_on_unrepairable_unsafe_source(tmp_path: Path) -> None:
@@ -81,7 +91,11 @@ def test_source_assurance_fails_closed_on_unrepairable_unsafe_source(tmp_path: P
     )
     root = Path(source.root_path)
     shell = root / "components/PageShell.tsx"
-    shell.write_text(shell.read_text(encoding="utf-8") + '\nconst unsafe = "javascript:alert(1)";\n', encoding="utf-8")
+    shell.write_text(
+        shell.read_text(encoding="utf-8")
+        + '\nconst unsafe = "javascript:alert(1)";\n',
+        encoding="utf-8",
+    )
 
     with pytest.raises(WebAssuranceError, match="bounded assurance"):
         certify_with_bounded_repair(root, max_attempts=2)
@@ -107,7 +121,9 @@ def test_local_deployment_is_content_bound_and_rolls_back(tmp_path: Path) -> Non
     rollback = adapter.rollback(first.deployment_id, source_commit_sha=sha)
     assert rollback.health == "HEALTHY_LOCAL_ROLLBACK"
     assert rollback.deployment_id == first.deployment_id
-    assert adapter.current()["deployment_id"] == first.deployment_id
+    current = adapter.current()
+    assert current is not None
+    assert current["deployment_id"] == first.deployment_id
 
 
 def _coordinator(
@@ -124,7 +140,9 @@ def _coordinator(
         GovernedRuntime(state),
         hard_cap_minor=100,
     )
-    video = DeterministicLocalVideoRuntime(tmp_path / "video", grants, governance, evidence)
+    video = DeterministicLocalVideoRuntime(
+        tmp_path / "video", grants, governance, evidence
+    )
     video_product = DurableVideoProductRuntime(
         tmp_path / "video-product.sqlite3",
         control,
@@ -153,12 +171,15 @@ def _coordinator(
     return coordinator, web
 
 
-def test_recoverable_runtime_accepts_bounded_content_newsletter_and_search(tmp_path: Path) -> None:
+def test_recoverable_runtime_accepts_bounded_content_newsletter_and_search(
+    tmp_path: Path,
+) -> None:
     coordinator, _ = _coordinator(tmp_path)
     now = datetime(2026, 8, 16, 16, 0, tzinfo=timezone.utc)
     prepared = coordinator.prepare(
         "web-rich-bounded",
-        "Build a premium bilingual Turkish/English website for a corporate law firm with a blog, articles, newsletter and site search",
+        "Build a premium bilingual Turkish/English website for a corporate law firm "
+        "with a blog, articles, newsletter and site search",
         token="token",
         principal_id="oidc|web@example.test",
         tenant_id="tenant/web",
@@ -174,20 +195,28 @@ def test_recoverable_runtime_accepts_bounded_content_newsletter_and_search(tmp_p
     )
 
     assert manifest["accepted"] is True
-    assert set(manifest["functional_features"]) == {
+    features = cast(list[str] | tuple[str, ...], manifest["functional_features"])
+    assert set(features) == {
         "contact-form",
         "content",
         "newsletter",
         "search",
     }
-    assurance = manifest["source_assurance"]
+    assurance = cast(dict[str, object], manifest["source_assurance"])
+    build_result = cast(dict[str, object], manifest["build_result"])
+    accessibility = cast(dict[str, object], manifest["accessibility_evidence"])
+    seo = cast(dict[str, object], manifest["seo_evidence"])
+    security = cast(dict[str, object], manifest["security_evidence"])
+    performance = cast(dict[str, object], manifest["performance_evidence"])
+    design = cast(dict[str, object], manifest["design_acceptance"])
+    routes = cast(list[str], manifest["certified_routes"])
     assert assurance["passed"] is True
     assert assurance["repair_attempt_count"] == 1
-    assert manifest["build_result"]["status"] == "SOURCE_CERTIFIED"
-    assert manifest["accessibility_evidence"]["status"] == "PASS"
-    assert manifest["seo_evidence"]["status"] == "PASS"
-    assert manifest["security_evidence"]["status"] == "PASS"
-    assert manifest["performance_evidence"]["status"] == "PASS"
-    assert manifest["design_acceptance"]["status"] == "PASS"
-    assert "/en/insights" in manifest["certified_routes"]
-    assert "/tr/search" in manifest["certified_routes"]
+    assert build_result["status"] == "SOURCE_CERTIFIED"
+    assert accessibility["status"] == "PASS"
+    assert seo["status"] == "PASS"
+    assert security["status"] == "PASS"
+    assert performance["status"] == "PASS"
+    assert design["status"] == "PASS"
+    assert "/en/insights" in routes
+    assert "/tr/search" in routes
