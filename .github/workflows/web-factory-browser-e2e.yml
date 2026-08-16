@@ -11,6 +11,9 @@ on:
       - 'services/integrations/web_product_runtime.py'
       - 'services/integrations/web_product_runtime_recovery.py'
       - 'services/integrations/web_project.py'
+      - 'services/integrations/web_assurance.py'
+      - 'services/integrations/web_delivery.py'
+      - 'tests/test_web_assurance_delivery.py'
       - 'apps/desktop/e2e/web_finished_product_browser_e2e.py'
       - '.github/workflows/web-factory-browser-e2e.yml'
   push:
@@ -23,6 +26,9 @@ on:
       - 'services/integrations/web_product_runtime.py'
       - 'services/integrations/web_product_runtime_recovery.py'
       - 'services/integrations/web_project.py'
+      - 'services/integrations/web_assurance.py'
+      - 'services/integrations/web_delivery.py'
+      - 'tests/test_web_assurance_delivery.py'
       - 'apps/desktop/e2e/web_finished_product_browser_e2e.py'
       - '.github/workflows/web-factory-browser-e2e.yml'
   workflow_dispatch:
@@ -36,9 +42,9 @@ concurrency:
 
 jobs:
   browser-e2e:
-    name: Coordinator Web artifact + Chromium runtime
+    name: Coordinator Web certified Next.js + Chromium runtime
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
     steps:
       - name: Checkout exact source commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -46,6 +52,11 @@ jobs:
           ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -61,7 +72,12 @@ jobs:
           python -m pip check
           python -m playwright install --with-deps chromium
 
-      - name: Run Web finished-product E2E through canonical Coordinator and Chromium
+      - name: Run Web assurance and rollback unit/integration closure
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python -m pytest -q tests/test_web_assurance_delivery.py
+
+      - name: Run Web finished-product E2E through Coordinator, Next.js and Chromium
         env:
           PYTHONPATH: ${{ github.workspace }}
           ILAIOS_WEB_E2E_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/web-local-finished-product
