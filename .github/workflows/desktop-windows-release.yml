@@ -7,6 +7,9 @@ on:
     paths:
       - 'apps/desktop/**'
       - 'services/desktop_identity_server.py'
+      - 'services/desktop_oidc.py'
+      - 'services/desktop_oidc_threaded.py'
+      - 'services/identity.py'
       - 'services/execution_coordinator.py'
       - 'services/governance/**'
       - 'services/integrations/**'
