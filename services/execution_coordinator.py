@@ -1168,7 +1168,7 @@ class ExecutionCoordinator:
             )
         state = ExecutionState(str(row["status"]))
         if state is ExecutionState.CANCELLED:
-            return state.value
+            return str(state.value)
         if state is ExecutionState.ACCEPTED:
             raise ExecutionCoordinatorError(
                 "accepted execution results are immutable"
@@ -1660,9 +1660,9 @@ class ExecutionCoordinator:
             data_class = DataClass(str(plan["data_class"]))
             budget_value = cast(dict[str, object], plan["budget"])
             budget = BudgetEnvelope(
-                int(budget_value["max_attempts"]),
-                int(budget_value["max_runtime_seconds"]),
-                int(budget_value["max_external_spend_minor"]),
+                int(str(budget_value["max_attempts"])),
+                int(str(budget_value["max_runtime_seconds"])),
+                int(str(budget_value["max_external_spend_minor"])),
             )
         except (KeyError, TypeError, ValueError) as error:
             raise ExecutionCoordinatorError("stored multi-capability policy is malformed") from error
@@ -2170,7 +2170,7 @@ class ExecutionCoordinator:
         request_id = str(row["request_id"])
         state = ExecutionState(str(row["status"]))
         if state is ExecutionState.CANCELLED:
-            return state.value
+            return str(state.value)
         if state is ExecutionState.ACCEPTED:
             raise ExecutionCoordinatorError("accepted execution results are immutable")
         if state in {
