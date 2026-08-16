@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from typing import cast
 from urllib.parse import parse_qs, urlparse
 
 import jwt
@@ -206,7 +207,10 @@ def test_microsoft_tenant_template_binds_tid_to_issuer() -> None:
 
 def test_microsoft_signing_key_issuer_is_bound_to_token_tenant() -> None:
     microsoft._validate_microsoft_signing_key_issuer(
-        _JwksClient("https://login.microsoftonline.com/{tenantid}/v2.0"),
+        cast(
+            jwt.PyJWKClient,
+            _JwksClient("https://login.microsoftonline.com/{tenantid}/v2.0"),
+        ),
         "key-1",
         _claims(),
         ISSUER,
@@ -214,8 +218,11 @@ def test_microsoft_signing_key_issuer_is_bound_to_token_tenant() -> None:
 
     with pytest.raises(DesktopIdentityError, match="signing-key issuer binding"):
         microsoft._validate_microsoft_signing_key_issuer(
-            _JwksClient(
-                "https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000/v2.0"
+            cast(
+                jwt.PyJWKClient,
+                _JwksClient(
+                    "https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000/v2.0"
+                ),
             ),
             "key-1",
             _claims(),
