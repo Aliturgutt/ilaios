@@ -9,10 +9,16 @@ import 'package:ilaios_desktop/identity/identity_client.dart';
 void main() {
   test('packaged Desktop client talks to packaged authoritative runtime', () async {
     final sidecarPath = Platform.environment['ILAIOS_E2E_SIDECAR_PATH'];
+    final expectedSourceHead = Platform.environment['ILAIOS_E2E_SOURCE_SHA'];
     expect(
       sidecarPath,
       isNotNull,
       reason: 'Windows Gate must provide ILAIOS_E2E_SIDECAR_PATH',
+    );
+    expect(
+      expectedSourceHead,
+      isNotNull,
+      reason: 'Windows Gate must provide ILAIOS_E2E_SOURCE_SHA',
     );
     final sidecar = File(sidecarPath!);
     expect(sidecar.existsSync(), isTrue, reason: 'Packaged sidecar must exist');
@@ -109,6 +115,11 @@ void main() {
     expect(identityHost, isA<String>());
     expect(identityPort, isA<int>());
     expect(ready['account_sign_in_configured'], isFalse);
+    expect(ready['video_finished_product_configured'], isTrue);
+    expect(ready['web_finished_product_configured'], isTrue);
+    expect(ready['software_finished_product_configured'], isTrue);
+    expect(ready['execution_recovery_configured'], isTrue);
+    expect(ready['source_head_sha'], expectedSourceHead);
 
     final controlPlaneUri = Uri(
       scheme: 'http',
