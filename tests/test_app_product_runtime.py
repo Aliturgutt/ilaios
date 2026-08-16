@@ -184,7 +184,9 @@ def test_windows_task_app_accepts_real_artifact_evidence_through_coordinator(
     assert manifest["store_submitted"] is False
     assert manifest["commercial_release_pass"] is False
     assert len(str(manifest["artifact_sha256"])) == 64
-    assert int(manifest["artifact_size"]) > 0
+    artifact_size = manifest["artifact_size"]
+    assert isinstance(artifact_size, int)
+    assert artifact_size > 0
     assert [command.stage for command in boundary.commands] == [
         "scaffold",
         "prepare",
