@@ -183,7 +183,7 @@ def test_microsoft_tenant_template_binds_tid_to_issuer() -> None:
 
 def test_microsoft_signing_key_issuer_is_bound_to_token_tenant() -> None:
     microsoft._validate_microsoft_signing_key_issuer(
-        _JwksClient("https://login.microsoftonline.com/{tenantid}/v2.0"),  # type: ignore[arg-type]
+        _JwksClient("https://login.microsoftonline.com/{tenantid}/v2.0"),
         "key-1",
         _claims(),
         ISSUER,
@@ -193,7 +193,7 @@ def test_microsoft_signing_key_issuer_is_bound_to_token_tenant() -> None:
         microsoft._validate_microsoft_signing_key_issuer(
             _JwksClient(
                 "https://login.microsoftonline.com/00000000-0000-0000-0000-000000000000/v2.0"
-            ),  # type: ignore[arg-type]
+            ),
             "key-1",
             _claims(),
             ISSUER,
@@ -217,7 +217,7 @@ def test_successful_microsoft_callback_persists_refresh_credential(
     )
     service = microsoft.DesktopOIDCService(
         (_provider(),),
-        request_session=http,  # type: ignore[arg-type]
+        request_session=http,
         credential_store=store,
     )
     started = service.start(
@@ -252,7 +252,7 @@ def test_microsoft_restore_rotates_refresh_and_logout_clears_store(
     )
     service = microsoft.DesktopOIDCService(
         (_provider(),),
-        request_session=http,  # type: ignore[arg-type]
+        request_session=http,
         credential_store=store,
     )
 
