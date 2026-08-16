@@ -2,7 +2,7 @@
 
 Status snapshot: 17 August 2026
 Baseline branch: `master`
-Observed implementation baseline before this truth-only sync: `4d49a432659002a6c8ed8a759cf61f5d0d2f39f1`
+Observed implementation baseline before this truth-only sync: `26885fa4b1c585dbf24d446e6858caf7ab6de500`
 
 ## Authority rule
 
@@ -21,6 +21,7 @@ This file is a human-readable mutable status projection. It is not a canonical a
 - Verified bounded finished-product execution is wired for Video plus registered Web, Software and Windows-first App product runtimes. Wider arbitrary-product, external-provider and commercial-production claims remain evidence-gated.
 - Web Factory PR #248 is merged. Its bounded closure includes generated-source assurance, bounded repair, real Next.js production build/start, Chromium responsive E2E, accessibility/SEO/security checks, first-party contact/content/newsletter/search features and content-addressed local deployment/rollback evidence. It does not prove a current public Vercel production deployment.
 - Web durable-acceptance hardening PR #255 is merged at `4d49a432659002a6c8ed8a759cf61f5d0d2f39f1`. Its exact pre-merge head `37d8c6560aeeae32d1abae0f443217d7feb94f87` passed Required CI, Web Factory Browser E2E, Desktop Windows Gate and Software Factory Final Evidence. Accepted Web manifests now fail closed unless source assurance, QA source-assurance promotion, certified source/build binding and PASS design/accessibility/SEO/security/performance receipts are present.
+- Governed Vercel Web delivery boundary PR #258 is merged at `26885fa4b1c585dbf24d446e6858caf7ab6de500`. Its exact pre-merge head `a5222af70a8ef7189986a98cb414bb0be8082759` passed Required CI, Web Factory Browser E2E, Desktop Windows Gate and Software Factory Final Evidence. The adapter is preview-first, requires authorization and budget proof before credential/network access, rejects secret-bearing `.env*` source, binds exact source/artifact provenance, verifies immutable preview HTTPS health, promotes only after preview acceptance, requires the predeclared production alias, rejects off-host redirects, and revalidates exact provenance/alias/health on rollback. This proves the repository-side provider boundary only; it does not prove a current live ILAIOS Vercel production deployment.
 - Software Factory remains verified for its bounded local finished-product scope with real Windows evidence; arbitrary software generation and commercial external delivery are not implied.
 - App Factory PR #250 is merged. A bounded Windows task/checklist Flutter application is generated through the canonical Coordinator, formatted, analyzed, tested, built as a real Windows release, packaged, smoke-tested and persisted with exact-head content-addressed evidence. The exact pre-merge head `ddf6ca4e4a79c4dfb024788a4513bfa5f7eec6f4` passed Required CI, Desktop CI, MSIX Packaging, Windows Gate, Web Factory Browser E2E and Software Factory Final Evidence. Issue #97 is closed for this bounded Windows-first scope.
 - The exact App Windows evidence artifact for that head was `app-windows-finished-product-ddf6ca4e4a79c4dfb024788a4513bfa5f7eec6f4-31971331229`, size `113078073` bytes, digest `sha256:a6660940d445cb9067d6b1cdacf8300c801df48cad3177cd17723e29c172aff7`.
@@ -61,7 +62,8 @@ No new milestone ID is canonical merely because it appears in a planning documen
 - App finished-product issue #97 is closed with exact artifact evidence for the bounded Windows-first scope.
 - Desktop interactive closure PR #253 was rebuilt on current master; stale PR #251 was superseded. Exact-head repository, Desktop, Windows and MSIX gates passed before merge.
 - Web accepted-assurance hardening was rebuilt as PR #255 on post-Desktop master rather than using stale-base PR #254. The stale PR was closed and #255 was merged only after exact-head Required CI and browser/Windows evidence passed.
-- At this status snapshot there are no open GitHub issues in `Aliturgutt/ilaios`.
+- Vercel production-delivery adapter PR #257 was rejected as a merge authority after red-team review found premature production targeting, weak alias proof and a Windows regression. Successor PR #258 rebuilt the boundary on current master with preview-first promotion, exact expected-alias proof, strict HTTPS host checks and documented Vercel REST semantics; all exact-head gates passed before merge.
+- At this status snapshot there are no known open implementation issues from the previously audited P0/P1 closure set; a final live GitHub scan remains authoritative for newly-created work.
 
 ### Remaining governance/repository gaps
 
@@ -72,9 +74,10 @@ No new milestone ID is canonical merely because it appears in a planning documen
 
 ## External/public deployment truth
 
-- The connected Vercel API context does not currently resolve the `ilaios` project even though the GitHub Vercel integration has historical ILAIOS deployment records.
+- The repository now has a verified governed Vercel delivery adapter that can create a preview, reconcile exact source/artifact provenance, health-check it, promote it, prove the expected production alias and perform a provenance-checked rollback.
+- The connected Vercel API context did not resolve the `ilaios` project during the latest audit even though the GitHub Vercel integration has historical ILAIOS deployment records.
 - On 16 August 2026 the Vercel Git integration reported the Free-plan daily deployment limit (`api-deployments-free-per-day`) for new ILAIOS deployments. That is an external quota/account condition, not a repository code failure.
-- Therefore current Web Factory evidence remains `VERIFIED bounded/local finished-product` rather than `public production deployed` until an exact green master SHA is publicly deployed, canonical-domain linked, health/browser certified and rollback-proven.
+- Therefore current Web Factory evidence remains `VERIFIED bounded/local finished-product + VERIFIED provider delivery boundary` rather than `public production deployed` until an exact green master SHA is actually deployed through the correct Vercel project/team, canonical-domain linked, health/browser certified and rollback-proven.
 - The configured external quota/project-access watch may observe when a safe public deployment becomes possible; it must not change billing, plans, credentials or DNS automatically.
 
 ## Post-v1 product integration status
@@ -84,7 +87,7 @@ Product integration has advanced on `master` without creating a second Core, rou
 Current dependency-ordered direction:
 
 1. preserve the single canonical Coordinator and adapter registry;
-2. preserve the verified bounded Video/Web/Software/App Windows finished-product paths and fail-closed accepted-evidence semantics;
+2. preserve the verified bounded Video/Web/Software/App Windows finished-product paths, Web accepted-evidence fail-closed semantics and the governed Vercel delivery boundary;
 3. complete exact-SHA public Web deployment evidence when the Vercel quota/account-project blocker is resolved without inventing production state;
 4. complete Desktop external Microsoft App Registration/login acceptance, Partner Center identity, production signing, certification and Store publication through the separate governed release boundary;
 5. execute guarded RAG.14 live canary/evidence only with explicit approved external credentials/spend and exact deploy/rollback evidence;
@@ -120,4 +123,4 @@ Production AWS/DNS/deployment mutations remain governed by their explicit releas
 
 ## Current decision
 
-The platform v1 build/release chain has production deployment evidence and the canonical Coordinator now has verified bounded finished-product paths for Video, Web, Software and Windows-first App generation. Desktop interactive repository closure and Web accepted-assurance fail-closed hardening are merged and exact-head verified. Remaining work is external/public proof, production hardening, capability breadth, mobile/commercial layers and governed release closure on the existing architecture—not `Core 2`, a parallel Coordinator, an invented `PLATFORM.P21`, or an evidence-free `RELEASE.R04`.
+The platform v1 build/release chain has production deployment evidence and the canonical Coordinator now has verified bounded finished-product paths for Video, Web, Software and Windows-first App generation. Desktop interactive repository closure, Web accepted-assurance hardening and the governed Vercel delivery boundary are merged and exact-head verified. Remaining work is external/public proof, production hardening, capability breadth, mobile/commercial layers and governed release closure on the existing architecture—not `Core 2`, a parallel Coordinator, an invented `PLATFORM.P21`, or an evidence-free `RELEASE.R04`.
