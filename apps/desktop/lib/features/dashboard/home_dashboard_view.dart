@@ -28,16 +28,15 @@ class HomeDashboardView extends StatelessWidget {
       projection: projection,
       snapshot: snapshot,
       status: status,
-      userSession: userSession,
     );
     return LayoutBuilder(
       builder: (context, constraints) {
-        final narrow = constraints.maxWidth < 1180;
+        final stacked = constraints.maxWidth < 1180;
         return SingleChildScrollView(
           padding: EdgeInsets.fromLTRB(
-            narrow ? 18 : 22,
+            stacked ? 18 : 22,
             18,
-            narrow ? 18 : 22,
+            stacked ? 18 : 22,
             24,
           ),
           child: Column(
@@ -47,7 +46,7 @@ class HomeDashboardView extends StatelessWidget {
               const SizedBox(height: 16),
               _WorkflowPanel(model: model),
               const SizedBox(height: 16),
-              if (narrow) ...[
+              if (stacked) ...[
                 _LiveExecutionPanel(model: model),
                 const SizedBox(height: 16),
                 _WorkspacePreview(model: model),
@@ -58,7 +57,6 @@ class HomeDashboardView extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Expanded(
-                      flex: 7,
                       child: Column(
                         children: [
                           _LiveExecutionPanel(model: model),
@@ -86,152 +84,122 @@ class _DashboardModel {
     required this.projection,
     required this.snapshot,
     required this.status,
-    required this.userSession,
   });
 
   final ControlPlaneProjection projection;
   final OperationalSnapshot snapshot;
   final String status;
-  final DesktopUserSession? userSession;
 
   Map<String, Object?>? get latestEvent =>
       snapshot.liveEvents.isEmpty ? null : snapshot.liveEvents.last;
 
-  List<Map<String, Object?>> get leases =>
-      _mapList(snapshot.schedulerState['leases']);
-
-  List<Map<String, Object?>> get work =>
-      _mapList(snapshot.governanceState['work']);
-
-  List<Map<String, Object?>> get admissions =>
-      _mapList(snapshot.governanceState['admissions']);
-
-  String get projectLabel {
-    final event = latestEvent;
-    return _firstText(event, const <String>['project_name', 'project_id']) ??
-        'Current workspace';
-  }
+  List<Map<String, Object?>> get leases => _mapList(snapshot.schedulerState['leases']);
+  List<Map<String, Object?>>? get work => _optionalMapList(snapshot.governanceState['work']);
+  List<Map<String, Object?>>? get admissions =>
+      _optionalMapList(snapshot.governanceState['admissions']);
 
   String get jobId =>
-      _firstText(latestEvent, const <String>['job_id', 'request_id', 'execution_id']) ??
-      '—';
+      _firstText(latestEvent, const ['job_id', 'request_id', 'execution_id']) ?? '—';
 
   String get started =>
-      _firstText(latestEvent, const <String>['started_at', 'created_at', 'timestamp']) ??
-      '—';
+      _firstText(latestEvent, const ['started_at', 'created_at', 'timestamp']) ?? '—';
 
   String get elapsed =>
-      _firstText(latestEvent, const <String>['elapsed', 'elapsed_time']) ?? '—';
+      _firstText(latestEvent, const ['elapsed', 'elapsed_time']) ?? '—';
 
   String get currentPhase =>
-      _firstText(latestEvent, const <String>['phase', 'stage', 'workflow_phase']) ??
-      'Unavailable';
+      _firstText(latestEvent, const ['phase', 'stage', 'workflow_phase']) ?? 'Unavailable';
 
   String get executionStatus =>
-      _firstText(latestEvent, const <String>['state', 'status', 'execution_status']) ??
+      _firstText(latestEvent, const ['state', 'status', 'execution_status']) ??
       (projection.connected ? status : 'Offline');
 
-  String get progress {
+  double? get progressValue {
     final value = _firstNumber(
       latestEvent,
-      const <String>['progress', 'progress_percent', 'completion_percent'],
+      const ['progress', 'progress_percent', 'completion_percent'],
     );
-    if (value == null) return '—';
+    if (value == null) return null;
     final normalized = value <= 1 ? value * 100 : value;
-    if (normalized < 0 || normalized > 100) return '—';
-    return '${normalized.round()}%';
+    if (normalized < 0 || normalized > 100) return null;
+    return normalized / 100;
   }
 
-  int get pendingApprovals {
+  String get progressLabel {
+    final value = progressValue;
+    return value == null ? '—' : '${(value * 100).round()}%';
+  }
+
+  int? get pendingApprovals {
+    final projectedAdmissions = admissions;
+    final projectedWork = work;
+    if (projectedAdmissions == null || projectedWork == null) return null;
     final required = <String>{};
-    for (final admission in admissions) {
-      if (admission['human_approval_required'] == true) {
-        final id = admission['request_id'];
-        if (id is String && id.isNotEmpty) required.add(id);
-      }
+    for (final admission in projectedAdmissions) {
+      if (admission['human_approval_required'] != true) continue;
+      final id = admission['request_id'];
+      if (id is String && id.isNotEmpty) required.add(id);
     }
-    var count = 0;
-    for (final item in work) {
-      if (item['status'] != 'pending') continue;
+    return projectedWork.where((item) {
+      if (item['status'] != 'pending') return false;
       final id = item['request_id'];
-      if (required.isEmpty || (id is String && required.contains(id))) {
-        count += 1;
-      }
-    }
-    return count;
+      return id is String && required.contains(id);
+    }).length;
   }
 
-  int get approvedCount =>
-      work.where((item) => item['status'] == 'approved').length;
+  int? get approvedCount {
+    final projectedWork = work;
+    if (projectedWork == null) return null;
+    return projectedWork.where((item) => item['status'] == 'approved').length;
+  }
 
-  int get deniedCount => work.where((item) => item['status'] == 'denied').length;
+  int? get deniedCount {
+    final projectedWork = work;
+    if (projectedWork == null) return null;
+    return projectedWork.where((item) => item['status'] == 'denied').length;
+  }
 
   String stageState(String stage) {
     final event = latestEvent;
     if (event == null) return 'Unavailable';
-    final phase = _firstText(
-      event,
-      const <String>['phase', 'stage', 'workflow_phase'],
-    );
+    final phase = _firstText(event, const ['phase', 'stage', 'workflow_phase']);
     if (phase == null) return 'Unavailable';
     if (_normalizePhase(phase) != _normalizePhase(stage)) return '—';
-    return _firstText(
-          event,
-          const <String>['state', 'status', 'execution_status'],
-        ) ??
-        'Current';
+    return _firstText(event, const ['state', 'status', 'execution_status']) ?? 'Current';
   }
 
   String workerTitle(Map<String, Object?> worker, int index) =>
       _firstText(
         worker,
-        const <String>[
-          'role',
-          'worker_type',
-          'executor_type',
-          'worker_id',
-          'lease_id',
-        ],
+        const ['role', 'worker_type', 'executor_type', 'worker_id', 'lease_id'],
       ) ??
       'Worker ${index + 1}';
 
   String workerTask(Map<String, Object?> worker) =>
-      _firstText(
-        worker,
-        const <String>['task', 'task_id', 'current_task', 'request_id'],
-      ) ??
+      _firstText(worker, const ['task', 'task_id', 'current_task', 'request_id']) ??
       'Task unavailable';
 
   String workerState(Map<String, Object?> worker) =>
-      _firstText(worker, const <String>['state', 'status', 'health']) ?? 'Active lease';
+      _firstText(worker, const ['state', 'status', 'health']) ?? 'Active lease';
 
-  String? get totalCost => _costText(
-        const <String>['total_cost', 'cost', 'cost_usd', 'spent'],
-      );
+  List<Map<String, Object?>> get costSources => <Map<String, Object?>>[
+        snapshot.governanceState,
+        snapshot.schedulerState,
+        ..._mapList(snapshot.governanceState['costs']),
+      ];
 
-  String? get budget => _costText(
-        const <String>['budget', 'budget_usd', 'hard_cap', 'hard_cap_minor'],
-      );
-
-  String? _costText(List<String> keys) {
-    final candidates = <Map<String, Object?>>[
-      snapshot.governanceState,
-      snapshot.schedulerState,
-      ..._mapList(snapshot.governanceState['costs']),
-    ];
-    for (final candidate in candidates) {
-      for (final key in keys) {
-        final value = candidate[key];
-        if (value is num) return value.toString();
-        if (value is String && value.trim().isNotEmpty) return value.trim();
-      }
-    }
-    return null;
-  }
+  String? get totalCostUsd =>
+      _firstValue(costSources, const ['total_cost_usd', 'cost_usd']);
+  String? get totalCostMinor =>
+      _firstValue(costSources, const ['total_cost_minor', 'spent_minor', 'used_minor']);
+  String? get budgetUsd => _firstValue(costSources, const ['budget_usd']);
+  String? get budgetMinor =>
+      _firstValue(costSources, const ['budget_minor', 'hard_cap_minor']);
 }
 
 class _Header extends StatelessWidget {
   const _Header({required this.model, required this.onRefreshRequested});
+
   final _DashboardModel model;
   final VoidCallback? onRefreshRequested;
 
@@ -245,9 +213,12 @@ class _Header extends StatelessWidget {
               children: [
                 Row(
                   children: [
-                    const Text(
-                      'Active Workflow',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                    const Flexible(
+                      child: Text(
+                        'Active Workflow',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                      ),
                     ),
                     const SizedBox(width: 10),
                     _StatusBadge(
@@ -295,18 +266,19 @@ class _WorkflowPanel extends StatelessWidget {
           children: [
             LayoutBuilder(
               builder: (context, constraints) {
-                final width = constraints.maxWidth;
-                final columns = width >= 950 ? 5 : (width >= 560 ? 2 : 1);
-                final spacing = 10.0;
-                final cardWidth =
-                    (width - ((columns - 1) * spacing)) / columns;
+                final columns = constraints.maxWidth >= 950
+                    ? 5
+                    : (constraints.maxWidth >= 560 ? 2 : 1);
+                const spacing = 10.0;
+                final width =
+                    (constraints.maxWidth - ((columns - 1) * spacing)) / columns;
                 return Wrap(
                   spacing: spacing,
                   runSpacing: spacing,
                   children: [
                     for (final stage in _stages)
                       SizedBox(
-                        width: cardWidth,
+                        width: width,
                         child: _StageCard(
                           title: stage.$1,
                           icon: stage.$2,
@@ -326,20 +298,29 @@ class _WorkflowPanel extends StatelessWidget {
                 ),
                 const SizedBox(width: 14),
                 Expanded(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: LinearProgressIndicator(
-                      value: _progressValue(model.progress),
-                      minHeight: 5,
-                      backgroundColor: IlaiosTheme.surfaceRaised,
-                    ),
-                  ),
+                  child: model.progressValue == null
+                      ? Container(
+                          key: const Key('progress-unavailable-track'),
+                          height: 5,
+                          decoration: BoxDecoration(
+                            color: IlaiosTheme.surfaceRaised,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        )
+                      : ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: LinearProgressIndicator(
+                            value: model.progressValue,
+                            minHeight: 5,
+                            backgroundColor: IlaiosTheme.surfaceRaised,
+                          ),
+                        ),
                 ),
                 const SizedBox(width: 14),
                 SizedBox(
                   width: 42,
                   child: Text(
-                    model.progress,
+                    model.progressLabel,
                     textAlign: TextAlign.right,
                     style: const TextStyle(
                       color: IlaiosTheme.cyan,
@@ -352,41 +333,33 @@ class _WorkflowPanel extends StatelessWidget {
           ],
         ),
       );
-
-  static double? _progressValue(String progress) {
-    if (!progress.endsWith('%')) return null;
-    final parsed = double.tryParse(progress.substring(0, progress.length - 1));
-    if (parsed == null || parsed < 0 || parsed > 100) return null;
-    return parsed / 100;
-  }
 }
 
 class _StageCard extends StatelessWidget {
   const _StageCard({required this.title, required this.icon, required this.state});
+
   final String title;
   final IconData icon;
   final String state;
 
   @override
   Widget build(BuildContext context) {
-    final active = state != '—' && state != 'Unavailable';
+    final current = state != '—' && state != 'Unavailable';
     return Container(
       height: 84,
       padding: const EdgeInsets.all(13),
       decoration: BoxDecoration(
-        color: active
-            ? IlaiosTheme.cyan.withValues(alpha: .06)
-            : IlaiosTheme.canvas,
+        color: current ? IlaiosTheme.cyan.withValues(alpha: .06) : IlaiosTheme.canvas,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(
-          color: active
+          color: current
               ? IlaiosTheme.cyan.withValues(alpha: .55)
               : IlaiosTheme.border,
         ),
       ),
       child: Row(
         children: [
-          Icon(icon, color: active ? IlaiosTheme.cyan : IlaiosTheme.muted),
+          Icon(icon, color: current ? IlaiosTheme.cyan : IlaiosTheme.muted),
           const SizedBox(width: 10),
           Expanded(
             child: Column(
@@ -430,7 +403,7 @@ class _LiveExecutionPanel extends StatelessWidget {
             : LayoutBuilder(
                 builder: (context, constraints) {
                   final columns = constraints.maxWidth >= 800 ? 4 : 2;
-                  final spacing = 10.0;
+                  const spacing = 10.0;
                   final width =
                       (constraints.maxWidth - ((columns - 1) * spacing)) / columns;
                   return Wrap(
@@ -455,6 +428,7 @@ class _LiveExecutionPanel extends StatelessWidget {
 
 class _WorkerCard extends StatelessWidget {
   const _WorkerCard({required this.title, required this.task, required this.state});
+
   final String title;
   final String task;
   final String state;
@@ -551,11 +525,7 @@ class _WorkspacePreview extends StatelessWidget {
                     icon: Icons.bolt_outlined,
                     message: 'No authoritative live events are available.',
                   )
-                : Column(
-                    children: [
-                      for (final event in events) _EventRow(event: event),
-                    ],
-                  ),
+                : Column(children: [for (final event in events) _EventRow(event: event)]),
           ),
         ],
       ),
@@ -601,35 +571,32 @@ class _RightRail extends StatelessWidget {
           _SidePanel(
             title: 'COST & USAGE',
             rows: <(String, String)>[
-              ('Total cost', model.totalCost ?? 'Unavailable'),
-              ('Budget', model.budget ?? 'Unavailable'),
-              ('Token usage', 'Unavailable'),
-              ('GPU/runtime', 'Unavailable'),
+              ('Cost USD', model.totalCostUsd ?? 'Unavailable'),
+              ('Cost minor', model.totalCostMinor ?? 'Unavailable'),
+              ('Budget USD', model.budgetUsd ?? 'Unavailable'),
+              ('Budget minor', model.budgetMinor ?? 'Unavailable'),
+              ('Tokens', 'Unavailable'),
             ],
-            note: model.totalCost == null && model.budget == null
-                ? 'The current Desktop API exposes no authoritative cost projection.'
-                : null,
           ),
           const SizedBox(height: 12),
           _SidePanel(
             title: 'APPROVALS',
             rows: <(String, String)>[
-              ('Pending', '${model.pendingApprovals}'),
-              ('Approved', '${model.approvedCount}'),
-              ('Denied', '${model.deniedCount}'),
+              ('Pending', model.pendingApprovals?.toString() ?? 'Unavailable'),
+              ('Approved', model.approvedCount?.toString() ?? 'Unavailable'),
+              ('Denied', model.deniedCount?.toString() ?? 'Unavailable'),
             ],
           ),
           const SizedBox(height: 12),
-          _LatestLogs(model: model),
+          _LatestEvents(model: model),
         ],
       );
 }
 
 class _SidePanel extends StatelessWidget {
-  const _SidePanel({required this.title, required this.rows, this.note});
+  const _SidePanel({required this.title, required this.rows});
   final String title;
   final List<(String, String)> rows;
-  final String? note;
 
   @override
   Widget build(BuildContext context) => _Panel(
@@ -661,20 +628,13 @@ class _SidePanel extends StatelessWidget {
                   ],
                 ),
               ),
-            if (note != null) ...[
-              const Divider(height: 18),
-              Text(
-                note!,
-                style: const TextStyle(color: IlaiosTheme.muted, fontSize: 10, height: 1.4),
-              ),
-            ],
           ],
         ),
       );
 }
 
-class _LatestLogs extends StatelessWidget {
-  const _LatestLogs({required this.model});
+class _LatestEvents extends StatelessWidget {
+  const _LatestEvents({required this.model});
   final _DashboardModel model;
 
   @override
@@ -725,15 +685,13 @@ class _ArtifactsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final records = model.snapshot.evidenceRecords.reversed.take(4).toList();
     return _Panel(
-      title: 'LATEST VERIFIED ARTIFACTS',
+      title: 'LATEST EVIDENCE-BACKED ARTIFACTS',
       child: records.isEmpty
           ? const _EmptyState(
               icon: Icons.inventory_2_outlined,
               message: 'No verified artifact evidence is available.',
             )
-          : Column(
-              children: [for (final record in records) _ArtifactRow(record: record)],
-            ),
+          : Column(children: [for (final record in records) _ArtifactRow(record: record)]),
     );
   }
 }
@@ -793,10 +751,8 @@ class _EvidencePanel extends StatelessWidget {
             ),
             _VerificationRow(
               icon: Icons.policy_outlined,
-              label: 'Governance state',
-              value: model.snapshot.governanceState.isEmpty
-                  ? 'Unavailable'
-                  : 'Available',
+              label: 'Governance projection',
+              value: model.snapshot.governanceState.isEmpty ? 'Unavailable' : 'Available',
             ),
             _VerificationRow(
               icon: Icons.route_outlined,
@@ -842,9 +798,9 @@ class _EventRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final type = _firstText(event, const <String>['event_type', 'type']) ?? 'event';
-    final time = _firstText(event, const <String>['timestamp', 'created_at', 'occurred_at']);
-    final state = _firstText(event, const <String>['state', 'status']);
+    final type = _firstText(event, const ['event_type', 'type']) ?? 'event';
+    final time = _firstText(event, const ['timestamp', 'created_at', 'occurred_at']);
+    final state = _firstText(event, const ['state', 'status']);
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
@@ -957,8 +913,11 @@ class _EmptyState extends StatelessWidget {
       );
 }
 
-List<Map<String, Object?>> _mapList(Object? value) {
-  if (value is! List<Object?>) return const <Map<String, Object?>>[];
+List<Map<String, Object?>> _mapList(Object? value) =>
+    _optionalMapList(value) ?? const <Map<String, Object?>>[];
+
+List<Map<String, Object?>>? _optionalMapList(Object? value) {
+  if (value is! List<Object?>) return null;
   return <Map<String, Object?>>[
     for (final item in value)
       if (item is Map<String, dynamic>) Map<String, Object?>.from(item),
@@ -988,14 +947,19 @@ num? _firstNumber(Map<String, Object?>? source, List<String> keys) {
   return null;
 }
 
-String _normalizePhase(String value) => value
-    .toLowerCase()
-    .replaceAll(RegExp(r'[^a-z0-9]+'), '')
-    .replaceAll('goalintake', 'goalintake')
-    .replaceAll('planning', 'planning')
-    .replaceAll('execution', 'execution')
-    .replaceAll('verification', 'verification')
-    .replaceAll('delivery', 'delivery');
+String? _firstValue(List<Map<String, Object?>> sources, List<String> keys) {
+  for (final source in sources) {
+    for (final key in keys) {
+      final value = source[key];
+      if (value is num) return value.toString();
+      if (value is String && value.trim().isNotEmpty) return value.trim();
+    }
+  }
+  return null;
+}
+
+String _normalizePhase(String value) =>
+    value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '');
 
 String _short(String value) =>
     value.length <= 18 ? value : '${value.substring(0, 18)}…';
