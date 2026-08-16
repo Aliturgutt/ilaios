@@ -13,7 +13,6 @@ import time
 from datetime import datetime, timedelta
 from typing import cast
 
-from services.runtime import Lease
 from src.video_automation.models import JobState
 
 from .product_runtime import ProductFinalizationPending
