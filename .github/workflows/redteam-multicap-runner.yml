@@ -33,11 +33,33 @@ jobs:
           end = source.index(closer, start)
           raw = source[start:end]
           prefix = '          '
-          script = '\n'.join(
-              line[len(prefix):] if line.startswith(prefix) else line
-              for line in raw.splitlines()
-          )
+          script_lines = []
+          in_methods_literal = False
+          for original in raw.splitlines():
+              line = original
+              if not in_methods_literal and line.startswith(prefix):
+                  line = line[len(prefix):]
+              script_lines.append(line)
+              if not in_methods_literal and line == "methods = r'''":
+                  in_methods_literal = True
+              elif in_methods_literal and line == "'''":
+                  in_methods_literal = False
+          script = '\n'.join(script_lines)
           exec(compile(script, str(payload_path), 'exec'), {'__name__': '__main__'})
+
+          coordinator = Path('services/execution_coordinator.py')
+          generated = coordinator.read_text(encoding='utf-8')
+          old_admitted = '''    ExecutionState.ADMITTED: frozenset(\n        {ExecutionState.QUEUED, ExecutionState.CANCELLING}\n    ),'''
+          new_admitted = '''    ExecutionState.ADMITTED: frozenset(\n        {\n            ExecutionState.QUEUED,\n            ExecutionState.CANCELLING,\n            ExecutionState.FAILED_TERMINAL,\n        }\n    ),'''
+          if generated.count(old_admitted) != 1:
+              raise SystemExit('ADMITTED transition anchor missing or ambiguous')
+          generated = generated.replace(old_admitted, new_admitted, 1)
+
+          denied_cleanup = '''            if decision == "denied":\n                adapter = self._verified_step_adapter(step)\n                try:\n                    adapter.interrupt(\n                        child_request_id,\n                        token="",\n                        now=now,\n                        reason="multi-capability governance approval denied",\n                    )\n                except Exception:\n                    pass\n'''
+          if generated.count(denied_cleanup) != 1:
+              raise SystemExit('multi denial cleanup anchor missing or ambiguous')
+          generated = generated.replace(denied_cleanup, '', 1)
+          coordinator.write_text(generated, encoding='utf-8')
           PY
           python -m py_compile services/execution_coordinator.py
           rm -f .github/workflows/redteam-multicap-self-patch.yml
