@@ -444,8 +444,8 @@ class _DesktopFinishedProductExecution:
         logo_start = max(0.0, self._duration - 3.0)
         filter_complex = (
             f"[0:v]{filters}[base];"
-            "[1:v]scale=260:-2[logo];"
-            "[base][logo]overlay=(W-w)/2:115:"
+            "[1:v]scale=220:-2[logo];"
+            "[base][logo]overlay=(W-w)/2:110:"
             f"enable='between(t,0,3)+between(t,{logo_start:.3f},{self._duration:.3f})'[v];"
             "[2:a]volume=1.0[voice];[3:a]volume=0.55[music];"
             "[voice][music]amix=inputs=2:duration=longest:dropout_transition=0[a]"
@@ -622,26 +622,43 @@ def build_video_plan(objective: str, duration: float) -> DesktopVideoPlan:
     if "ilaios" in objective.casefold():
         titles = (
             ("ILAIOS", "GOVERNED AI OPERATING SYSTEM"),
-            ("ONE PROMPT.", "Build what I need."),
+            ("ONE PROMPT.", "From objective to coordinated execution."),
             ("GOVERNED AUTONOMOUS EXECUTION.", "SECURE  •  CONTROLLED  •  TRACEABLE"),
-            ("VERIFIED FINISHED PRODUCT.", "Not just generated. Verified."),
+            ("VERIFIED FINISHED PRODUCT.", "Quality gates before delivery."),
             ("ONE PROMPT. REAL EXECUTION.", "Built in Türkiye. Designed for the world.  •  ilaios.com"),
         )
         voiceover = (
-            "One goal. One governed execution path. "
-            "From intent to a verified finished product. ILAIOS."
+            "One goal becomes one governed execution path. "
+            "ILAIOS plans the work, coordinates autonomous execution, verifies every stage, "
+            "and delivers the finished product. Secure, controlled, and traceable from prompt "
+            "to result. ILAIOS."
+        )
+        caption_lines = (
+            "One goal becomes one governed execution path.",
+            "ILAIOS plans the work.",
+            "Coordinates autonomous execution.",
+            "Verifies every stage and delivers the finished product.",
+            "Secure, controlled, and traceable. ILAIOS.",
         )
     else:
         titles = (
             ("YOUR GOAL.", "One natural-language objective."),
-            ("ONE PROMPT.", "ILAIOS receives the finished outcome."),
+            ("ONE PROMPT.", "From objective to coordinated execution."),
             ("GOVERNED EXECUTION.", "Controlled, traceable, coordinated."),
             ("VALIDATED RESULT.", "Quality gates before delivery."),
             ("FINISHED PRODUCT.", "Delivered by ILAIOS."),
         )
         voiceover = (
-            "One goal. One governed execution path. "
-            "ILAIOS coordinates the work, validates the result, and delivers the finished product."
+            "One goal becomes one governed execution path. ILAIOS coordinates the work, "
+            "validates every stage, and delivers the finished product. Controlled, traceable, "
+            "and ready for use."
+        )
+        caption_lines = (
+            "One goal becomes one governed execution path.",
+            "ILAIOS coordinates the work.",
+            "Controlled and traceable execution.",
+            "Quality gates validate every stage.",
+            "A finished product, ready for use.",
         )
     weights = (0.15, 0.20, 0.30, 0.20, 0.15)
     scenes: list[DesktopVideoScene] = []
@@ -661,21 +678,9 @@ def build_video_plan(objective: str, duration: float) -> DesktopVideoPlan:
             )
         )
         cursor = end
-    narration = (
-        "One goal.",
-        "One governed execution path.",
-        "From intent to a verified finished product.",
-        "ILAIOS.",
-    )
-    ranges = (
-        (0.0, duration * 0.20),
-        (duration * 0.20, duration * 0.48),
-        (duration * 0.48, duration * 0.84),
-        (duration * 0.84, duration),
-    )
     captions = tuple(
-        DesktopCaptionCue(round(start, 3), round(end, 3), text)
-        for text, (start, end) in zip(narration, ranges, strict=True)
+        DesktopCaptionCue(scene.start, scene.end, text)
+        for scene, text in zip(scenes, caption_lines, strict=True)
     )
     return DesktopVideoPlan(voiceover, tuple(scenes), captions)
 
@@ -683,32 +688,54 @@ def build_video_plan(objective: str, duration: float) -> DesktopVideoPlan:
 def _visual_filters(plan: DesktopVideoPlan, font: Path, duration: float) -> str:
     font_value = _filter_path(font)
     filters = [
-        "drawgrid=w=120:h=120:t=1:c=0x15324A@0.22",
-        "drawbox=x=0:y=1016:w=1920:h=2:color=0x00C2D1@0.70:t=fill",
+        "drawgrid=w=120:h=120:t=1:c=0x15324A@0.16",
+        "drawbox=x=70:y=98:w=1780:h=1:color=0x00C2D1@0.28:t=fill",
+        "drawbox=x=0:y=1016:w=1920:h=2:color=0x00C2D1@0.72:t=fill",
+        "drawtext="
+        f"fontfile='{font_value}':text='ILAIOS / VERIFIED EXECUTION':"
+        "fontcolor=0x69849D:fontsize=18:x=w-text_w-70:y=60",
         f"fade=t=in:st=0:d=0.35,fade=t=out:st={max(0.0, duration - 0.45):.3f}:d=0.45",
     ]
-    for scene in plan.scenes:
+    scene_count = len(plan.scenes)
+    for index, scene in enumerate(plan.scenes, start=1):
         headline = _drawtext_escape(scene.headline)
         supporting = _drawtext_escape(scene.supporting_text)
-        filters.append(
-            "drawtext="
-            f"fontfile='{font_value}':text='{headline}':"
-            "fontcolor=white:fontsize=58:x=(w-text_w)/2:y=460:"
-            f"enable='between(t,{scene.start:.3f},{scene.end:.3f})'"
-        )
-        filters.append(
-            "drawtext="
-            f"fontfile='{font_value}':text='{supporting}':"
-            "fontcolor=0x9EB4C8:fontsize=26:x=(w-text_w)/2:y=548:"
-            f"enable='between(t,{scene.start:.3f},{scene.end:.3f})'"
+        scene_label = f"{index:02d} / {scene_count:02d}"
+        scene_number = f"{index:02d}"
+        enabled = f"enable='between(t,{scene.start:.3f},{scene.end:.3f})'"
+        filters.extend(
+            (
+                "drawbox=x=180:y=300:w=1560:h=410:color=0x081827@0.94:t=fill:"
+                + enabled,
+                "drawbox=x=220:y=350:w=5:h=255:color=0x00C2D1@0.90:t=fill:"
+                + enabled,
+                "drawbox=x=280:y=610:w=420:h=2:color=0x00C2D1@0.65:t=fill:"
+                + enabled,
+                "drawtext="
+                f"fontfile='{font_value}':text='{scene_label}':"
+                "fontcolor=0x00C2D1:fontsize=22:x=280:y=355:"
+                + enabled,
+                "drawtext="
+                f"fontfile='{font_value}':text='{scene_number}':"
+                "fontcolor=0x00C2D1@0.10:fontsize=210:x=1435:y=345:"
+                + enabled,
+                "drawtext="
+                f"fontfile='{font_value}':text='{headline}':"
+                "fontcolor=white:fontsize=64:x=280:y=430:"
+                + enabled,
+                "drawtext="
+                f"fontfile='{font_value}':text='{supporting}':"
+                "fontcolor=0xA9BED0:fontsize=32:x=280:y=535:"
+                + enabled,
+            )
         )
     for cue in plan.captions:
         text = _drawtext_escape(cue.text)
         filters.append(
             "drawtext="
             f"fontfile='{font_value}':text='{text}':"
-            "fontcolor=white:fontsize=30:box=1:boxcolor=0x000000@0.45:"
-            "boxborderw=12:x=(w-text_w)/2:y=900:"
+            "fontcolor=white:fontsize=34:box=1:boxcolor=0x000000@0.58:"
+            "boxborderw=14:x=(w-text_w)/2:y=890:"
             f"enable='between(t,{cue.start:.3f},{cue.end:.3f})'"
         )
     return ",".join(filters)

@@ -32,7 +32,10 @@ def test_ilaios_brand_plan_covers_script_storyboard_and_captions() -> None:
     plan = build_video_plan("Create a premium 20-second ILAIOS brand video", 20.0)
 
     assert len(plan.scenes) == 5
-    assert len(plan.captions) == 4
+    assert len(plan.captions) == len(plan.scenes)
+    assert tuple((cue.start, cue.end) for cue in plan.captions) == tuple(
+        (scene.start, scene.end) for scene in plan.scenes
+    )
     assert plan.voiceover.endswith("ILAIOS.")
     assert plan.scenes[0].headline == "ILAIOS"
     assert plan.scenes[-1].end == 20.0

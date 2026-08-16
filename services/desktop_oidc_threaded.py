@@ -8,12 +8,15 @@ flow nor a completed result and incorrectly fail the first sign-in attempt.
 
 This adapter keeps an in-flight provider marker around that completion window so
 status polling remains ``pending`` until the callback either publishes the
-verified session or actually fails. Raw tokens, authorization codes, and PKCE
-material remain owned by the base broker and are never exposed here.
+verified session or actually fails. Callback completion itself is serialized so
+a duplicate browser callback cannot consume the same one-time state concurrently
+or clear another callback's in-flight marker. Raw tokens, authorization codes,
+and PKCE material remain owned by the base broker and are never exposed here.
 """
 
 from __future__ import annotations
 
+import threading
 from datetime import datetime
 
 import requests
@@ -28,7 +31,7 @@ from services.desktop_oidc import (
 
 
 class DesktopOIDCService(_BaseDesktopOIDCService):
-    """Make OIDC completion safe for concurrent loopback status polling."""
+    """Make OIDC completion safe for concurrent loopback callbacks and polling."""
 
     def __init__(
         self,
@@ -43,6 +46,7 @@ class DesktopOIDCService(_BaseDesktopOIDCService):
             verifier_factory=verifier_factory,
         )
         self._completing_states: dict[str, str] = {}
+        self._completion_lock = threading.Lock()
 
     def complete(
         self,
@@ -50,13 +54,27 @@ class DesktopOIDCService(_BaseDesktopOIDCService):
         code: str,
         now: datetime | None = None,
     ) -> DesktopAuthStatus:
-        flow = self._flows.get(state)
-        if flow is not None:
-            self._completing_states[state] = flow.provider_id
-        try:
-            return super().complete(state, code, now=now)
-        finally:
-            self._completing_states.pop(state, None)
+        # Loopback callbacks can be delivered more than once. Serialize callback
+        # completion so a duplicate request cannot enter the base broker after
+        # the first request has consumed the state but before it has published
+        # the authenticated result.
+        with self._completion_lock:
+            existing = self._results.get(state)
+            if existing is not None:
+                return existing
+
+            flow = self._flows.get(state)
+            owns_marker = flow is not None
+            if flow is not None:
+                self._completing_states[state] = flow.provider_id
+            try:
+                return super().complete(state, code, now=now)
+            finally:
+                # Only the callback that installed the marker may remove it.
+                # Otherwise a duplicate callback can erase the first callback's
+                # marker and make concurrent polling fail as unknown/expired.
+                if owns_marker:
+                    self._completing_states.pop(state, None)
 
     def status(
         self,
