@@ -16,12 +16,13 @@ from typing import cast
 from services.control_plane import ControlPlane, ControlPlaneConfig
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
 from services.evidence import EvidenceStore
+from services.execution_adapters import register_software_runtime
 from services.execution_coordinator import ExecutionCoordinator
 from services.governance import GovernedRuntimeGateway
 from services.integrations import (
     DeterministicLocalVideoRuntime,
-    DurableSoftwareProductRuntime,
     DurableVideoProductRuntime,
+    RecoverableSoftwareProductRuntime,
 )
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 
@@ -81,7 +82,7 @@ def _run_finished_product_acceptance(*, root: Path, source_head: str) -> None:
         governance,
         video,
     )
-    software_product = DurableSoftwareProductRuntime(
+    software_product = RecoverableSoftwareProductRuntime(
         root / "software-product.sqlite3",
         control_plane,
         workflows,
@@ -98,8 +99,9 @@ def _run_finished_product_acceptance(*, root: Path, source_head: str) -> None:
         governance,
         grants,
         video_product,
-        software_product,
+        evidence,
     )
+    register_software_runtime(coordinator, software_product)
 
     request_id = "desktop-software-task-manager-e2e"
     objective = "Build me a simple production-quality task management application"
@@ -124,6 +126,8 @@ def _run_finished_product_acceptance(*, root: Path, source_head: str) -> None:
     )
     if manifest.get("accepted") is not True:
         raise RuntimeError(f"Software AcceptanceManifest did not pass: {manifest}")
+    if manifest.get("final_disposition") != "ACCEPT":
+        raise RuntimeError("Software final disposition is not ACCEPT")
     if manifest.get("source_head_sha") != source_head:
         raise RuntimeError("Software artifact provenance is not bound to exact CI HEAD")
     if manifest.get("external_provider_cost_minor") != 0:
