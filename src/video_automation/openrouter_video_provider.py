@@ -328,7 +328,7 @@ class OpenRouterVideoGenerationJobPoller:
             if recovered is not None:
                 metadata = dict(observation.metadata)
                 metadata["usage_json"] = json.dumps(
-                    recovered, sort_keys=True, separators=(",", ":")
+                    dict(recovered), sort_keys=True, separators=(",", ":")
                 )
                 observation = ProviderJobObservation(
                     provider_id=observation.provider_id,
