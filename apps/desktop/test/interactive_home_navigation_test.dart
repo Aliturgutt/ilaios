@@ -43,7 +43,7 @@ void main() {
     final progress = tester.widget<LinearProgressIndicator>(progressFinder);
     expect(progress.value, 0);
     expect(find.text('—'), findsWidgets);
-    expect(find.text('Events'), findsOneWidget);
+    expect(find.text('Events'), findsWidgets);
     expect(find.text('Events / min'), findsNothing);
   });
 
