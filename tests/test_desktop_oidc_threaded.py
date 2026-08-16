@@ -3,7 +3,13 @@ from __future__ import annotations
 import threading
 from datetime import datetime, timedelta, timezone
 
-from services.desktop_oidc import DesktopAuthStatus, OIDCProviderConfig
+import pytest
+
+from services.desktop_oidc import (
+    DesktopAuthStatus,
+    DesktopIdentityError,
+    OIDCProviderConfig,
+)
 from services.desktop_oidc_threaded import DesktopOIDCService
 from services.identity import IdentityKind, VerifiedOIDCClaims
 
@@ -66,6 +72,12 @@ class _Verifier:
             attributes=frozenset({("verified_email", "user@example.test")}),
             authentication_methods=frozenset({"pwd"}),
         )
+
+
+class _FailingVerifier(_Verifier):
+    def verify(self, encoded_token: str) -> VerifiedOIDCClaims:
+        del encoded_token
+        raise DesktopIdentityError("OIDC ID token verification failed")
 
 
 def _service(http: _BlockingHTTP) -> DesktopOIDCService:
@@ -160,3 +172,49 @@ def test_duplicate_callback_does_not_consume_state_or_clear_inflight_marker() ->
     authenticated = service.status(started.state, now=NOW)
     assert authenticated.status == "authenticated"
     assert authenticated.session_id == completed[0].session_id
+
+
+def test_first_callback_failure_is_not_masked_by_duplicate_callback() -> None:
+    http = _BlockingHTTP()
+    service = DesktopOIDCService(
+        (_provider(),),
+        request_session=http,  # type: ignore[arg-type]
+        verifier_factory=lambda provider, nonce: _FailingVerifier(provider, nonce),
+    )
+    started = service.start(
+        "google",
+        "http://127.0.0.1:43123/oauth/callback",
+        now=NOW,
+    )
+
+    first_error: list[BaseException] = []
+
+    def finish_first_callback() -> None:
+        try:
+            service.complete(started.state, "authorization-code", now=NOW)
+        except BaseException as error:  # pragma: no cover - asserted below
+            first_error.append(error)
+
+    first = threading.Thread(target=finish_first_callback)
+    first.start()
+    assert http.started.wait(timeout=2)
+    http.release.set()
+    first.join(timeout=5)
+
+    assert not first.is_alive()
+    assert len(first_error) == 1
+    assert str(first_error[0]) == "OIDC ID token verification failed"
+
+    with pytest.raises(
+        DesktopIdentityError,
+        match="OIDC ID token verification failed",
+    ):
+        service.complete(started.state, "duplicate-code", now=NOW)
+
+    with pytest.raises(
+        DesktopIdentityError,
+        match="OIDC ID token verification failed",
+    ):
+        service.status(started.state, now=NOW)
+
+    assert http.post_count == 1
