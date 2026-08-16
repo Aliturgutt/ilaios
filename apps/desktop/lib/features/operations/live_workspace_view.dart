@@ -32,7 +32,10 @@ class LiveWorkspaceView extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 5),
-              Text(status, style: const TextStyle(color: IlaiosTheme.muted, fontSize: 12)),
+              Text(
+                status,
+                style: const TextStyle(color: IlaiosTheme.muted, fontSize: 12),
+              ),
               const SizedBox(height: 16),
               Container(
                 decoration: BoxDecoration(
@@ -106,6 +109,7 @@ class _UnavailableWorkspacePane extends StatelessWidget {
     required this.title,
     required this.message,
   });
+
   final IconData icon;
   final String title;
   final String message;
@@ -148,7 +152,7 @@ class _LogsPane extends StatelessWidget {
   Widget build(BuildContext context) {
     final logs = <Map<String, Object?>>[];
     for (final event in events) {
-      if (_firstText(event, const <String>['message', 'log', 'detail']) != null) {
+      if (_firstText(event, const ['message', 'log', 'detail']) != null) {
         logs.add(event);
       }
     }
@@ -189,34 +193,45 @@ class _EventList extends StatelessWidget {
         separatorBuilder: (_, _) => const Divider(height: 1),
         itemBuilder: (context, index) {
           final event = events[events.length - 1 - index];
-          final type = _firstText(event, const <String>['event_type', 'type']) ?? 'event';
-          final message = _firstText(event, const <String>['message', 'log', 'detail']);
+          final type = _firstText(event, const ['event_type', 'type']) ?? 'event';
+          final message = _firstText(event, const ['message', 'log', 'detail']);
           final timestamp = _firstText(
             event,
-            const <String>['timestamp', 'created_at', 'occurred_at'],
+            const ['timestamp', 'created_at', 'occurred_at'],
           );
+          final state = _firstText(event, const ['state', 'status']);
           return Semantics(
-            label: 'Runtime event $type',
+            label: state == null ? 'Runtime event $type' : 'Runtime event $type, state $state',
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(top: 5),
-                    child: Icon(Icons.circle, size: 7, color: IlaiosTheme.success),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 5),
+                    child: Icon(
+                      Icons.circle,
+                      size: 7,
+                      color: state == null ? IlaiosTheme.muted : _stateColor(state),
+                    ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(type, style: const TextStyle(fontWeight: FontWeight.w600)),
+                        Text(
+                          state == null ? type : '$type · $state',
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
                         if (showMessage && message != null) ...[
                           const SizedBox(height: 4),
                           Text(
                             message,
-                            style: const TextStyle(color: IlaiosTheme.muted, fontSize: 12),
+                            style: const TextStyle(
+                              color: IlaiosTheme.muted,
+                              fontSize: 12,
+                            ),
                           ),
                         ],
                       ],
@@ -230,7 +245,10 @@ class _EventList extends StatelessWidget {
                         timestamp,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: IlaiosTheme.muted, fontSize: 11),
+                        style: const TextStyle(
+                          color: IlaiosTheme.muted,
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                   ],
@@ -249,4 +267,31 @@ String? _firstText(Map<String, Object?> source, List<String> keys) {
     if (value is num || value is bool) return value.toString();
   }
   return null;
+}
+
+Color _stateColor(String value) {
+  final normalized = value.toLowerCase();
+  if (normalized.contains('fail') ||
+      normalized.contains('error') ||
+      normalized.contains('unhealthy') ||
+      normalized.contains('denied')) {
+    return IlaiosTheme.danger;
+  }
+  if (normalized.contains('block') ||
+      normalized.contains('warn') ||
+      normalized.contains('pending')) {
+    return IlaiosTheme.warning;
+  }
+  if (normalized.contains('complete') ||
+      normalized.contains('success') ||
+      normalized.contains('healthy') ||
+      normalized.contains('passed')) {
+    return IlaiosTheme.success;
+  }
+  if (normalized.contains('running') ||
+      normalized.contains('active') ||
+      normalized.contains('working')) {
+    return IlaiosTheme.cyan;
+  }
+  return IlaiosTheme.muted;
 }
