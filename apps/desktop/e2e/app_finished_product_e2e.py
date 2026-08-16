@@ -1,6 +1,6 @@
 """Real Windows App finished-product E2E for GitHub Actions.
 
-The test generates a bounded Flutter task/checklist app, executes the canonical
+The test generates a bounded Flutter task-manager app, executes the canonical
 Windows Flutter lifecycle through the existing ExecutionCoordinator, and persists
 content-addressed evidence. It intentionally does not sign, deploy, publish, or
 contact a paid/external provider.
@@ -67,7 +67,11 @@ class _GitHubActionsWindowsBoundary:
             raise SoftwareFactoryError("app Windows boundary rejected executable")
         if not policy.secure_mode or policy.network_allowed or policy.secrets_allowed:
             raise SoftwareFactoryError("app Windows boundary requires secure local-only policy")
-        env = {key: value for key in _SAFE_ENV if (value := os.environ.get(key)) is not None}
+        env = {
+            key: value
+            for key in _SAFE_ENV
+            if (value := os.environ.get(key)) is not None
+        }
         env["CI"] = "true"
         process = subprocess.run(
             command.argv,
@@ -90,10 +94,15 @@ class _GitHubActionsWindowsBoundary:
 
 def main() -> None:
     source_sha = os.environ.get("ILAIOS_APP_E2E_SOURCE_SHA", "").strip()
-    if len(source_sha) != 40 or any(character not in "0123456789abcdef" for character in source_sha):
+    if len(source_sha) != 40 or any(
+        character not in "0123456789abcdef" for character in source_sha
+    ):
         raise SystemExit("ILAIOS_APP_E2E_SOURCE_SHA must be an exact lowercase SHA-1")
     artifact_root = Path(
-        os.environ.get("ILAIOS_APP_E2E_ARTIFACT_DIR", "artifacts/app-windows-finished-product")
+        os.environ.get(
+            "ILAIOS_APP_E2E_ARTIFACT_DIR",
+            "artifacts/app-windows-finished-product",
+        )
     ).resolve()
     artifact_root.mkdir(parents=True, exist_ok=True)
     state_root = artifact_root / "state"
@@ -152,7 +161,7 @@ def main() -> None:
     request_id = "app-windows-e2e"
     principal_id = "oidc|github-actions-app-e2e"
     tenant_id = "tenant/app-e2e"
-    objective = "Build a Windows desktop app task checklist for a product launch team"
+    objective = "Build a Windows desktop app task manager for a product launch team"
     prepared = coordinator.prepare(
         request_id,
         objective,
@@ -174,7 +183,8 @@ def main() -> None:
         manifest.get("accepted") is True,
         manifest.get("adapter_id") == "app.product-runtime.windows.v1",
         manifest.get("platform") == "windows",
-        manifest.get("verification_scope") == "BOUNDED_LOCAL_TASK_CHECKLIST_WINDOWS_APP",
+        manifest.get("verification_scope")
+        == "BOUNDED_LOCAL_TASK_CHECKLIST_WINDOWS_APP",
         manifest.get("source_head_sha") == source_sha,
         manifest.get("deployment_state") == "NOT_DEPLOYED",
         manifest.get("signed") is False,
@@ -184,7 +194,9 @@ def main() -> None:
         len(str(manifest.get("artifact_sha256", ""))) == 64,
     )
     if not all(required):
-        raise SystemExit("App E2E AcceptanceManifest is incomplete or overclaims release state")
+        raise SystemExit(
+            "App E2E AcceptanceManifest is incomplete or overclaims release state"
+        )
 
     canonical = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
     envelope = {
