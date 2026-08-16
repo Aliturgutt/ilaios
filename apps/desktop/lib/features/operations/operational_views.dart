@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app/ilaios_locale.dart';
+import '../../app/ilaios_surface_catalog.dart';
 import '../../app/ilaios_theme.dart';
 import '../../control_plane/client.dart';
 import '../../control_plane/evidence_record.dart';
@@ -30,26 +32,37 @@ class LiveExecutionView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => _SurfaceFrame(
-        title: 'Live Execution',
+        title: _surface(context, 'live.title'),
         icon: Icons.play_circle_outline,
         status: status,
-        footer:
-            'Displayed values are read-only projections of authenticated backend state. Desktop does not schedule or execute work from this surface.',
+        footer: _surface(context, 'live.footer'),
         child: Wrap(spacing: 14, runSpacing: 14, children: [
           _OperationalCard(
-              label: 'Runtime routes', value: '${snapshot.runtimeRouteCount}'),
+            label: _surface(context, 'live.runtimeRoutes'),
+            value: '${snapshot.runtimeRouteCount}',
+          ),
           _OperationalCard(
-              label: 'Live events', value: '${snapshot.liveEventCount}'),
+            label: _surface(context, 'live.liveEvents'),
+            value: '${snapshot.liveEventCount}',
+          ),
           _OperationalCard(
-              label: 'Active leases',
-              value: '${_listLength(snapshot.schedulerState, 'leases')}'),
+            label: _surface(context, 'live.activeLeases'),
+            value: '${_listLength(snapshot.schedulerState, 'leases')}',
+          ),
           _OperationalCard(
-              label: 'Recorded effects',
-              value: '${_listLength(snapshot.schedulerState, 'effects')}'),
-          _OperationalCard(label: 'Last live event', value: _lastEventType()),
+            label: _surface(context, 'live.recordedEffects'),
+            value: '${_listLength(snapshot.schedulerState, 'effects')}',
+          ),
           _OperationalCard(
-              label: 'Control plane',
-              value: projection.connected ? 'Connected' : 'Offline'),
+            label: _surface(context, 'live.lastEvent'),
+            value: _lastEventType(),
+          ),
+          _OperationalCard(
+            label: _surface(context, 'live.controlPlane'),
+            value: projection.connected
+                ? context.tr('shell.connected')
+                : context.tr('shell.offline'),
+          ),
         ]),
       );
 }
@@ -66,25 +79,33 @@ class EvidenceView extends StatelessWidget {
   Widget build(BuildContext context) {
     final records = snapshot.evidenceRecords.reversed.take(100).toList();
     return _SurfaceFrame(
-      title: 'Evidence & Audit',
+      title: _surface(context, 'evidence.title'),
       icon: Icons.fact_check_outlined,
       status: status,
-      footer:
-          'The backend verifies the provenance chain before these records are returned. Desktop displays metadata only; artifact bytes, base64 payloads and secret material are not requested or rendered.',
+      footer: _surface(context, 'evidence.footer'),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 14, runSpacing: 14, children: [
           _OperationalCard(
-              label: 'Verified records', value: '${snapshot.evidenceCount}'),
+            label: _surface(context, 'evidence.verifiedRecords'),
+            value: '${snapshot.evidenceCount}',
+          ),
           _OperationalCard(
-              label: 'Displayed records', value: '${records.length}'),
+            label: _surface(context, 'evidence.displayedRecords'),
+            value: '${records.length}',
+          ),
           _OperationalCard(
-              label: 'Verification',
-              value: status == 'Operational APIs connected' ? 'Verified' : 'Unavailable'),
+            label: _surface(context, 'evidence.verification'),
+            value: status == 'Operational APIs connected'
+                ? _surface(context, 'evidence.verified')
+                : _surface(context, 'evidence.unavailable'),
+          ),
         ]),
         const SizedBox(height: 22),
         if (records.isEmpty)
-          const Text('No verified evidence records available.',
-              style: TextStyle(color: IlaiosTheme.muted))
+          Text(
+            _surface(context, 'evidence.empty'),
+            style: const TextStyle(color: IlaiosTheme.muted),
+          )
         else
           for (final record in records) _EvidenceRow(record: record, short: _short),
       ]),
@@ -109,32 +130,42 @@ class _EvidenceRow extends StatelessWidget {
         child: Row(children: [
           SizedBox(
             width: 48,
-            child: Text('#${record.sequence}',
-                style: const TextStyle(
-                    color: IlaiosTheme.cyan, fontWeight: FontWeight.w700)),
+            child: Text(
+              '#${record.sequence}',
+              style: const TextStyle(
+                color: IlaiosTheme.cyan,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(record.action,
-                  style: const TextStyle(fontWeight: FontWeight.w700)),
+              Text(
+                record.action,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
               const SizedBox(height: 4),
-              Text('Execution: ${record.executionId}',
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                      color: IlaiosTheme.muted, fontSize: 12)),
+              Text(
+                '${_surface(context, 'evidence.execution')}: ${record.executionId}',
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: IlaiosTheme.muted, fontSize: 12),
+              ),
             ]),
           ),
           const SizedBox(width: 12),
           SizedBox(
             width: 185,
             child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text(short(record.artifactDigest),
-                  key: ValueKey('evidence-digest-${record.sequence}'),
-                  style: const TextStyle(fontSize: 12)),
+              Text(
+                short(record.artifactDigest),
+                key: ValueKey('evidence-digest-${record.sequence}'),
+                style: const TextStyle(fontSize: 12),
+              ),
               const SizedBox(height: 4),
-              Text('chain ${short(record.recordHash)}',
-                  style: const TextStyle(
-                      color: IlaiosTheme.muted, fontSize: 11)),
+              Text(
+                '${_surface(context, 'evidence.chain')} ${short(record.recordHash)}',
+                style: const TextStyle(color: IlaiosTheme.muted, fontSize: 11),
+              ),
             ]),
           ),
         ]),
@@ -199,40 +230,50 @@ class GovernanceView extends StatelessWidget {
   Widget build(BuildContext context) {
     final pending = _pendingWork();
     return _SurfaceFrame(
-      title: 'Governance',
+      title: _surface(context, 'governance.title'),
       icon: Icons.admin_panel_settings_outlined,
       status: status,
-      footer:
-          'Approval controls are rendered only for backend-admitted work whose persisted policy requires human approval. Desktop cannot change risk class, execute work directly, bypass admission, or expose secret references.',
+      footer: _surface(context, 'governance.footer'),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Wrap(spacing: 14, runSpacing: 14, children: [
           _OperationalCard(
-              label: 'Registered grants', value: '${_grantListLength('grants')}'),
+            label: _surface(context, 'governance.registeredGrants'),
+            value: '${_grantListLength('grants')}',
+          ),
           _OperationalCard(
-              label: 'Revoked grants', value: '${_grantListLength('revoked')}'),
+            label: _surface(context, 'governance.revokedGrants'),
+            value: '${_grantListLength('revoked')}',
+          ),
           _OperationalCard(
-              label: 'Stopped subjects', value: '${_grantListLength('stopped')}'),
+            label: _surface(context, 'governance.stoppedSubjects'),
+            value: '${_grantListLength('stopped')}',
+          ),
           _OperationalCard(
-              label: 'Pending approvals', value: '${pending.length}'),
+            label: _surface(context, 'governance.pendingApprovals'),
+            value: '${pending.length}',
+          ),
         ]),
         const SizedBox(height: 22),
         if (pending.isEmpty)
-          const Text('No pending governed work.',
-              style: TextStyle(color: IlaiosTheme.muted))
+          Text(
+            _surface(context, 'governance.empty'),
+            style: const TextStyle(color: IlaiosTheme.muted),
+          )
         else ...[
           if (approverId == null || onDecision == null)
-            const Padding(
-              padding: EdgeInsets.only(bottom: 12),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 12),
               child: Text(
-                'Independent approver identity is not configured. Decisions are disabled.',
-                style: TextStyle(color: IlaiosTheme.muted),
+                _surface(context, 'governance.noApprover'),
+                style: const TextStyle(color: IlaiosTheme.muted),
               ),
             ),
           for (final request in pending)
             _ApprovalRow(
-                request: request,
-                approverId: approverId,
-                onDecision: onDecision),
+              request: request,
+              approverId: approverId,
+              onDecision: onDecision,
+            ),
         ],
       ]),
     );
@@ -257,7 +298,9 @@ class _ApprovalRow extends StatelessWidget {
     final valid = requestId is String && requestId.isNotEmpty;
     final independent = approverId != null && approverId != requesterId;
     final enabled = valid && independent && onDecision != null;
-    final safeRequestId = valid ? requestId : 'Malformed request';
+    final safeRequestId = valid
+        ? requestId
+        : _surface(context, 'governance.malformed');
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -269,35 +312,40 @@ class _ApprovalRow extends StatelessWidget {
       child: Row(children: [
         Expanded(
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(safeRequestId,
-                style: const TextStyle(fontWeight: FontWeight.w700)),
+            Text(
+              safeRequestId,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
             const SizedBox(height: 4),
             Text(
-                requesterId is String
-                    ? 'Requester: $requesterId'
-                    : 'Requester unavailable',
-                style: const TextStyle(
-                    color: IlaiosTheme.muted, fontSize: 12)),
+              requesterId is String
+                  ? '${_surface(context, 'governance.requester')}: $requesterId'
+                  : _surface(context, 'governance.requesterUnavailable'),
+              style: const TextStyle(color: IlaiosTheme.muted, fontSize: 12),
+            ),
             if (!independent)
-              const Text('Independent approver required',
-                  style: TextStyle(
-                      color: IlaiosTheme.muted, fontSize: 12)),
+              Text(
+                _surface(context, 'governance.independentRequired'),
+                style: const TextStyle(color: IlaiosTheme.muted, fontSize: 12),
+              ),
           ]),
         ),
         const SizedBox(width: 12),
         OutlinedButton(
-            key: ValueKey('deny-$safeRequestId'),
-            onPressed: enabled
-                ? () => onDecision!(safeRequestId, GovernanceDecision.denied)
-                : null,
-            child: const Text('Deny')),
+          key: ValueKey('deny-$safeRequestId'),
+          onPressed: enabled
+              ? () => onDecision!(safeRequestId, GovernanceDecision.denied)
+              : null,
+          child: Text(_surface(context, 'governance.deny')),
+        ),
         const SizedBox(width: 8),
         FilledButton(
-            key: ValueKey('approve-$safeRequestId'),
-            onPressed: enabled
-                ? () => onDecision!(safeRequestId, GovernanceDecision.approved)
-                : null,
-            child: const Text('Approve')),
+          key: ValueKey('approve-$safeRequestId'),
+          onPressed: enabled
+              ? () => onDecision!(safeRequestId, GovernanceDecision.approved)
+              : null,
+          child: Text(_surface(context, 'governance.approve')),
+        ),
       ]),
     );
   }
@@ -331,19 +379,23 @@ class _SurfaceFrame extends StatelessWidget {
                   Row(children: [
                     Icon(icon, color: IlaiosTheme.cyan),
                     const SizedBox(width: 10),
-                    Text(title,
-                        style: const TextStyle(
-                            fontSize: 22, fontWeight: FontWeight.w700)),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
                   ]),
                   const SizedBox(height: 10),
-                  Text(status,
-                      style: const TextStyle(color: IlaiosTheme.muted)),
+                  Text(status, style: const TextStyle(color: IlaiosTheme.muted)),
                   const SizedBox(height: 22),
                   child,
                   const SizedBox(height: 20),
-                  Text(footer,
-                      style: const TextStyle(
-                          color: IlaiosTheme.muted, height: 1.5)),
+                  Text(
+                    footer,
+                    style: const TextStyle(color: IlaiosTheme.muted, height: 1.5),
+                  ),
                 ]),
               ),
             ),
@@ -367,15 +419,20 @@ class _OperationalCard extends StatelessWidget {
           border: Border.all(color: IlaiosTheme.border),
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(label,
-              style: const TextStyle(
-                  color: IlaiosTheme.muted, fontSize: 12)),
+          Text(
+            label,
+            style: const TextStyle(color: IlaiosTheme.muted, fontSize: 12),
+          ),
           const SizedBox(height: 8),
-          Text(value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+          Text(
+            value,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700),
+          ),
         ]),
       );
 }
+
+String _surface(BuildContext context, String key) =>
+    IlaiosSurfaceCatalog.text(context.ilaiosLocale.locale.code, key) ?? key;
