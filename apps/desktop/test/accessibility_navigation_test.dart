@@ -9,7 +9,6 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final semantics = tester.ensureSemantics();
-    addTearDown(semantics.dispose);
 
     await tester.pumpWidget(const IlaiosDesktopApp());
     await tester.pumpAndSettle();
@@ -45,5 +44,9 @@ void main() {
         reason: '$destination navigation threw during rendering',
       );
     }
+
+    // WidgetTester verifies semantics handles before tearDown callbacks run.
+    // Dispose explicitly while the test body is still active.
+    semantics.dispose();
   });
 }
