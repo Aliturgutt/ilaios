@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlparse
 
@@ -48,6 +49,19 @@ class _HTTP:
         return _Response()
 
 
+class _IssuingHTTP(_HTTP):
+    def __init__(self) -> None:
+        super().__init__()
+        self.issued_at: datetime | None = None
+
+    def post(self, url: str, **kwargs: object) -> _Response:
+        # Model a provider that creates the ID token during the network exchange,
+        # after the Desktop callback request has already arrived.
+        time.sleep(0.01)
+        self.issued_at = datetime.now(timezone.utc)
+        return super().post(url, **kwargs)
+
+
 class _Verifier:
     def __init__(self, provider: OIDCProviderConfig, nonce: str) -> None:
         self.provider = provider
@@ -67,6 +81,37 @@ class _Verifier:
             roles=frozenset({"user"}),
             attributes=frozenset({("verified_email", "user@example.test")}),
             authentication_methods=frozenset({"pwd", "mfa"}),
+        )
+
+
+class _FreshTokenVerifier:
+    def __init__(
+        self,
+        provider: OIDCProviderConfig,
+        nonce: str,
+        http: _IssuingHTTP,
+    ) -> None:
+        self.provider = provider
+        self.nonce = nonce
+        self.http = http
+        self.verified_expires_at: datetime | None = None
+
+    def verify(self, encoded_token: str) -> VerifiedOIDCClaims:
+        assert encoded_token == "signed-id-token"
+        issued_at = self.http.issued_at
+        assert issued_at is not None
+        self.verified_expires_at = issued_at + timedelta(minutes=30)
+        return VerifiedOIDCClaims(
+            issuer=self.provider.issuer,
+            audience=self.provider.client_id,
+            subject="fresh-user",
+            tenant_id="fresh-tenant",
+            expires_at=self.verified_expires_at,
+            issued_at=issued_at,
+            kind=IdentityKind.HUMAN,
+            roles=frozenset({"user"}),
+            attributes=frozenset(),
+            authentication_methods=frozenset({"pwd"}),
         )
 
 
@@ -146,6 +191,25 @@ def test_verified_federation_issues_session_no_longer_than_id_token() -> None:
     assert data["code"] == "authorization-code"
     assert isinstance(data["code_verifier"], str)
     assert len(data["code_verifier"]) >= 43
+
+
+def test_live_completion_uses_post_exchange_time_for_fresh_id_token() -> None:
+    http = _IssuingHTTP()
+    service = DesktopOIDCService(
+        (_provider(),),
+        request_session=http,  # type: ignore[arg-type]
+        verifier_factory=lambda provider, nonce: _FreshTokenVerifier(
+            provider, nonce, http
+        ),
+    )
+    started = service.start("google", "http://127.0.0.1:43123/oauth/callback")
+
+    result = service.complete(started.state, "authorization-code")
+
+    assert http.issued_at is not None
+    assert result.status == "authenticated"
+    assert result.principal_id == "fresh-user"
+    assert result.session_id is not None
 
 
 def test_state_is_single_use_and_logout_removes_cached_session_result() -> None:
