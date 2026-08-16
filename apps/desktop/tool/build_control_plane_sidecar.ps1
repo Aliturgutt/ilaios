@@ -42,6 +42,17 @@ $sourceHeadFile = Join-Path $metadata 'source-head.txt'
 $env:PYTHONPATH = $repoRoot
 Push-Location $repoRoot
 try {
+  # Fail before packaging if a required first-party runtime module is absent
+  # or not importable in the active build environment.
+  python -c "import services.integrations.web_factory"
+  if ($LASTEXITCODE -ne 0) {
+    throw 'Desktop sidecar source import smoke failed for services.integrations.web_factory.'
+  }
+
+  # PyInstaller can miss package children on some local Python environments
+  # even when imports are statically reachable through package __init__ files.
+  # Collect the bounded first-party integrations package explicitly so local
+  # Windows builds and CI produce the same runnable composition root.
   python -m PyInstaller `
     --noconfirm `
     --clean `
@@ -51,6 +62,7 @@ try {
     --paths $repoRoot `
     --hidden-import jwt `
     --hidden-import jwt.algorithms `
+    --collect-submodules services.integrations `
     --add-data "$brandLogo;brand/assets" `
     --add-data "$sourceHeadFile;build-metadata" `
     --workpath $work `
@@ -65,6 +77,18 @@ finally {
 
 $built = Join-Path $dist 'ilaios_control_plane.exe'
 if (-not (Test-Path $built)) { throw "Sidecar executable missing: $built" }
+if ((Get-Item $built).Length -le 0) { throw 'Bundled control-plane executable is empty.' }
+
+# A successful PyInstaller exit is not sufficient evidence that the frozen
+# composition root is runnable. --help imports the complete module graph before
+# argparse exits, so this catches missing first-party modules such as
+# services.integrations.web_factory without starting a runtime or using secrets.
+& $built --help *> $null
+if ($LASTEXITCODE -ne 0) {
+  throw 'Packaged Desktop sidecar import smoke failed.'
+}
+Write-Host 'ILAIOS_DESKTOP_SIDECAR_IMPORT_SMOKE=PASS'
+
 $target = Join-Path $OutputDirectory 'ilaios_control_plane.exe'
 Copy-Item $built $target -Force
 if ((Get-Item $target).Length -le 0) { throw 'Bundled control-plane executable is empty.' }
