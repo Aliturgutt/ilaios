@@ -12,21 +12,39 @@ from .product_runtime import (
     ProductFinalizationPending,
     ProductRuntimeError,
 )
+from .software_product_runtime import (
+    DurableSoftwareProductRuntime,
+    FinishedSoftwareBuilder,
+    SoftwareProductFinalizationPending,
+    SoftwareProductRuntimeError,
+    SoftwareProductSecurityError,
+    SoftwareProductValidationError,
+)
+from .software_product_runtime_recovery import RecoverableSoftwareProductRuntime
 from .video import VideoChainAdapter, VideoIntegrationError, VideoIntegrationResult
 from .video_runtime import DeterministicLocalVideoRuntime, VideoRuntimeError
 from .web_factory import GovernedWebFactory, WebsiteAcceptance, WebsiteFile
+from .web_product_runtime_recovery import RecoverableWebProductRuntime
 
 __all__ = [
     "AcceptanceManifest",
     "DesktopGoalRequest",
     "DesktopPromptVideoRuntime",
     "DeterministicLocalVideoRuntime",
+    "DurableSoftwareProductRuntime",
     "DurableVideoProductRuntime",
+    "FinishedSoftwareBuilder",
     "GovernedVideoProductProof",
     "GovernedWebFactory",
     "ProductFinalizationPending",
     "ProductProofError",
     "ProductRuntimeError",
+    "RecoverableSoftwareProductRuntime",
+    "RecoverableWebProductRuntime",
+    "SoftwareProductFinalizationPending",
+    "SoftwareProductRuntimeError",
+    "SoftwareProductSecurityError",
+    "SoftwareProductValidationError",
     "VideoChainAdapter",
     "VideoIntegrationError",
     "VideoIntegrationResult",
