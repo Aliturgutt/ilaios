@@ -17,14 +17,29 @@ class CostsView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cost = _firstValue(
-      <Map<String, Object?>>[snapshot.governanceState, snapshot.schedulerState],
-      const <String>['total_cost', 'cost', 'cost_usd', 'spent'],
+    final sources = <Map<String, Object?>>[
+      snapshot.governanceState,
+      snapshot.schedulerState,
+      ..._mapList(snapshot.governanceState['costs']),
+    ];
+    final costUsd = _firstValue(
+      sources,
+      const <String>['total_cost_usd', 'cost_usd'],
     );
-    final budget = _firstValue(
-      <Map<String, Object?>>[snapshot.governanceState, snapshot.schedulerState],
-      const <String>['budget', 'budget_usd', 'hard_cap', 'hard_cap_minor'],
+    final costMinor = _firstValue(
+      sources,
+      const <String>['total_cost_minor', 'spent_minor', 'used_minor'],
     );
+    final budgetUsd = _firstValue(sources, const <String>['budget_usd']);
+    final budgetMinor = _firstValue(
+      sources,
+      const <String>['budget_minor', 'hard_cap_minor'],
+    );
+    final anyCostTelemetry =
+        costUsd != null ||
+        costMinor != null ||
+        budgetUsd != null ||
+        budgetMinor != null;
     return _Surface(
       title: 'Costs & Usage',
       icon: Icons.paid_outlined,
@@ -33,16 +48,27 @@ class CostsView extends StatelessWidget {
         spacing: 12,
         runSpacing: 12,
         children: [
-          _Metric(label: 'Total cost', value: cost ?? 'Unavailable'),
-          _Metric(label: 'Budget', value: budget ?? 'Unavailable'),
+          _Metric(
+            label: 'Total cost (USD)',
+            value: costUsd ?? 'Unavailable',
+          ),
+          _Metric(
+            label: 'Total cost (minor units)',
+            value: costMinor ?? 'Unavailable',
+          ),
+          _Metric(label: 'Budget (USD)', value: budgetUsd ?? 'Unavailable'),
+          _Metric(
+            label: 'Budget/cap (minor units)',
+            value: budgetMinor ?? 'Unavailable',
+          ),
           const _Metric(label: 'Token usage', value: 'Unavailable'),
           const _Metric(label: 'GPU/runtime duration', value: 'Unavailable'),
           const _Metric(label: 'Provider/model usage', value: 'Unavailable'),
-          if (cost == null && budget == null)
+          if (!anyCostTelemetry)
             const SizedBox(
               width: 480,
               child: Text(
-                'The current authenticated Desktop projection does not expose authoritative cost telemetry. No synthetic cost or usage values are shown.',
+                'The current authenticated Desktop projection does not expose authoritative cost telemetry. No synthetic cost, currency conversion, token, GPU, or provider usage values are shown.',
                 style: TextStyle(color: IlaiosTheme.muted, height: 1.5),
               ),
             ),
@@ -232,4 +258,12 @@ String? _firstValue(List<Map<String, Object?>> sources, List<String> keys) {
     }
   }
   return null;
+}
+
+List<Map<String, Object?>> _mapList(Object? value) {
+  if (value is! List<Object?>) return const <Map<String, Object?>>[];
+  return <Map<String, Object?>>[
+    for (final item in value)
+      if (item is Map<String, dynamic>) Map<String, Object?>.from(item),
+  ];
 }
