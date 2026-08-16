@@ -37,6 +37,23 @@ class DurableWorkerScheduler:
                 ),
             )
 
+    def unregister(self, worker_id: str) -> bool:
+        """Remove a terminal worker only after all of its leases are released."""
+        if not worker_id or worker_id != worker_id.strip():
+            raise SchedulingError("worker_id must be non-blank and trimmed")
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            leased = connection.execute(
+                "SELECT 1 FROM scheduler_leases WHERE worker_id = ? LIMIT 1",
+                (worker_id,),
+            ).fetchone()
+            if leased is not None:
+                raise SchedulingError("cannot unregister worker with lease")
+            deleted = connection.execute(
+                "DELETE FROM scheduler_workers WHERE worker_id = ?", (worker_id,)
+            ).rowcount
+        return deleted == 1
+
     def schedule(self, task_id: str, capability: str, *, now: datetime) -> Lease:
         _require_aware(now, "now")
         with self._connect() as connection:
@@ -155,13 +172,25 @@ class DurableWorkerScheduler:
 
     def state(self) -> dict[str, Any]:
         with self._connect() as connection:
-            leases = [dict(row) for row in connection.execute(
-                "SELECT * FROM scheduler_leases ORDER BY task_id"
-            )]
-            effects = [dict(row) for row in connection.execute(
-                "SELECT * FROM scheduler_effects ORDER BY task_id, fencing_token"
-            )]
-        return {"leases": leases, "effects": effects}
+            workers = [
+                dict(row)
+                for row in connection.execute(
+                    "SELECT * FROM scheduler_workers ORDER BY worker_id"
+                )
+            ]
+            leases = [
+                dict(row)
+                for row in connection.execute(
+                    "SELECT * FROM scheduler_leases ORDER BY task_id"
+                )
+            ]
+            effects = [
+                dict(row)
+                for row in connection.execute(
+                    "SELECT * FROM scheduler_effects ORDER BY task_id, fencing_token"
+                )
+            ]
+        return {"workers": workers, "leases": leases, "effects": effects}
 
     @staticmethod
     def _authorize(
