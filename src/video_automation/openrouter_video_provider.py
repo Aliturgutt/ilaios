@@ -108,7 +108,7 @@ class UrllibOpenRouterTransport:
         body: Mapping[str, object],
         timeout_seconds: float,
     ) -> OpenRouterJsonResponse:
-        encoded = json.dumps(body, separators=(",", ":")).encode("utf-8")
+        encoded = json.dumps(dict(body), separators=(",", ":")).encode("utf-8")
         request = Request(url, data=encoded, headers=dict(headers), method="POST")
         return self._json_request(request, timeout_seconds)
 
