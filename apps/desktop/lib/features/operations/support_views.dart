@@ -675,20 +675,38 @@ Future<void> _showLocalePicker(BuildContext context) async {
   final scope = context.ilaiosLocale;
   final selected = await showDialog<IlaiosLocale>(
     context: context,
-    builder: (context) => SimpleDialog(
+    builder: (dialogContext) => SimpleDialog(
       title: Text(_isTr(context) ? 'Dil seç' : 'Choose language'),
       children: [
-        RadioListTile<IlaiosLocale>(
-          value: IlaiosLocale.turkish,
-          groupValue: scope.locale,
-          onChanged: (value) => Navigator.of(context).pop(value),
-          title: const Text('Türkçe'),
+        SimpleDialogOption(
+          onPressed: () => Navigator.of(dialogContext).pop(IlaiosLocale.turkish),
+          child: Row(
+            children: [
+              Icon(
+                scope.locale == IlaiosLocale.turkish
+                    ? Icons.check_circle
+                    : Icons.circle_outlined,
+                color: IlaiosTheme.enterpriseCyan,
+              ),
+              const SizedBox(width: 12),
+              const Text('Türkçe'),
+            ],
+          ),
         ),
-        RadioListTile<IlaiosLocale>(
-          value: IlaiosLocale.english,
-          groupValue: scope.locale,
-          onChanged: (value) => Navigator.of(context).pop(value),
-          title: const Text('English'),
+        SimpleDialogOption(
+          onPressed: () => Navigator.of(dialogContext).pop(IlaiosLocale.english),
+          child: Row(
+            children: [
+              Icon(
+                scope.locale == IlaiosLocale.english
+                    ? Icons.check_circle
+                    : Icons.circle_outlined,
+                color: IlaiosTheme.enterpriseCyan,
+              ),
+              const SizedBox(width: 12),
+              const Text('English'),
+            ],
+          ),
         ),
       ],
     ),
