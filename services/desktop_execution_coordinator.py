@@ -25,17 +25,20 @@ _NEGATED_EXTERNAL_SIDE_EFFECTS: tuple[re.Pattern[str], ...] = (
         flags=re.IGNORECASE | re.UNICODE,
     ),
     re.compile(
-        r"\b(?:do\s+not|don't|don’t|never)\s+upload\s+(?:this|the|any\s+)?"
-        r"(?:video|result|output|file)?\s*(?:to\s+)?youtube\b",
+        r"\b(?:do\s+not|don't|don’t|never)\s+upload\s+"
+        r"(?:(?:this|the|any)\s+)?(?:video|result|output|file)?"
+        r"\s*(?:to\s+)?youtube\b",
         flags=re.IGNORECASE | re.UNICODE,
     ),
     re.compile(
-        r"\b(?:do\s+not|don't|don’t|never)\s+post\s+(?:this|the|any\s+)?"
-        r"(?:video|result|output|file)?\s*(?:to\s+)?tiktok\b",
+        r"\b(?:do\s+not|don't|don’t|never)\s+post\s+"
+        r"(?:(?:this|the|any)\s+)?(?:video|result|output|file)?"
+        r"\s*(?:to\s+)?tiktok\b",
         flags=re.IGNORECASE | re.UNICODE,
     ),
     re.compile(
-        r"\b(?:do\s+not|don't|don’t|never)\s+(?:deploy\s+to\s+production|production\s+deploy)\b",
+        r"\b(?:do\s+not|don't|don’t|never)\s+"
+        r"(?:deploy\s+to\s+production|production\s+deploy)\b",
         flags=re.IGNORECASE | re.UNICODE,
     ),
 )
