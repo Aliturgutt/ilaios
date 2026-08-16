@@ -1,0 +1,58 @@
+name: Redteam Coordinator Type One-Shot Patch
+
+on:
+  push:
+    branches:
+      - redteam/execution-coordinator-final-current-master
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: redteam/execution-coordinator-final-current-master
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Apply exact typing repairs and self-clean
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('services/execution_coordinator.py')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = [
+              ('return state.value\n        if state is ExecutionState.ACCEPTED:', 'return str(state.value)\n        if state is ExecutionState.ACCEPTED:'),
+              ('int(budget_value["max_attempts"]),\n                int(budget_value["max_runtime_seconds"]),\n                int(budget_value["max_external_spend_minor"]),', 'int(str(budget_value["max_attempts"])),\n                int(str(budget_value["max_runtime_seconds"])),\n                int(str(budget_value["max_external_spend_minor"])),'),
+          ]
+          for old, new in replacements:
+              if text.count(old) != 1:
+                  raise SystemExit(f'expected exactly one typing anchor, got {text.count(old)}: {old[:40]}')
+              text = text.replace(old, new, 1)
+
+          # The multi-cancel method has the same enum-value return pattern.
+          marker = '    def _cancel_multi(\n'
+          start = text.index(marker)
+          tail = text[start:]
+          old = 'return state.value\n        if state is ExecutionState.ACCEPTED:'
+          if tail.count(old) != 1:
+              raise SystemExit(f'expected exactly one multi cancel return anchor, got {tail.count(old)}')
+          tail = tail.replace(old, 'return str(state.value)\n        if state is ExecutionState.ACCEPTED:', 1)
+          text = text[:start] + tail
+          path.write_text(text, encoding='utf-8')
+          PY
+          python -m py_compile services/execution_coordinator.py
+          rm .github/workflows/redteam-coordinator-type-patch.yml
+          git config user.name 'ILAIOS Redteam Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add services/execution_coordinator.py .github/workflows/redteam-coordinator-type-patch.yml
+          git diff --cached --check
+          git commit -m 'fix: make coordinator multi typing explicit [redteam-type-patch]'
+          git push origin HEAD:redteam/execution-coordinator-final-current-master
