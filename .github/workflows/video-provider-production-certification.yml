@@ -96,7 +96,7 @@ jobs:
           print("- Credential material is never written to evidence or logs.")
           PY
           else
-            echo "- Status: `NO_RECEIPT`" >> "$GITHUB_STEP_SUMMARY"
+            printf '%s\n' '- Status: NO_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Publish managed-provider proof summary
@@ -129,7 +129,7 @@ jobs:
           print("- Credential material is never written to evidence or logs.")
           PY
           else
-            echo "- Status: `NO_RECEIPT`" >> "$GITHUB_STEP_SUMMARY"
+            printf '%s\n' '- Status: NO_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Upload immutable free-provider proof evidence
@@ -169,6 +169,13 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
           persist-credentials: false
+
+      - name: Install FFmpeg runtime dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg
 
       - name: Verify runtime dependencies
         shell: bash
@@ -216,7 +223,7 @@ jobs:
           print(f"- Provider cost zero: `{receipt.get('provider_cost_zero')}`")
           PY
           else
-            echo "- Status: `NO_ACCEPTED_RECEIPT`" >> "$GITHUB_STEP_SUMMARY"
+            printf '%s\n' '- Status: NO_ACCEPTED_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Upload immutable Desktop provider finished-product proof
