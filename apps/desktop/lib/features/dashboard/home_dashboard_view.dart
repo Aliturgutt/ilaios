@@ -1306,8 +1306,8 @@ class _VerificationCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final available = value != 'Unavailable';
     return Container(
-      height: 84,
-      padding: const EdgeInsets.all(9),
+      height: 90,
+      padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
         color: IlaiosTheme.canvas,
         borderRadius: BorderRadius.circular(7),
