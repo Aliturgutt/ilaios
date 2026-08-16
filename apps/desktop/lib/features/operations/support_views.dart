@@ -23,60 +23,85 @@ class CostsView extends StatelessWidget {
       snapshot.schedulerState,
       ..._mapList(snapshot.governanceState['costs']),
     ];
-    final costUsd = _firstValue(
-      sources,
-      const <String>['total_cost_usd', 'cost_usd'],
-    );
+    final costUsd = _firstValue(sources, const ['total_cost_usd', 'cost_usd']);
     final costMinor = _firstValue(
       sources,
-      const <String>['total_cost_minor', 'spent_minor', 'used_minor'],
+      const ['total_cost_minor', 'spent_minor', 'used_minor'],
     );
-    final budgetUsd = _firstValue(sources, const <String>['budget_usd']);
+    final budgetUsd = _firstValue(sources, const ['budget_usd']);
     final budgetMinor = _firstValue(
       sources,
-      const <String>['budget_minor', 'hard_cap_minor'],
+      const ['budget_minor', 'hard_cap_minor'],
     );
     final anyCostTelemetry =
-        costUsd != null ||
-        costMinor != null ||
-        budgetUsd != null ||
-        budgetMinor != null;
+        costUsd != null || costMinor != null || budgetUsd != null || budgetMinor != null;
     final unavailable = context.tr('common.unavailable');
+
     return _Surface(
       title: context.tr('costs.title'),
       icon: Icons.paid_outlined,
-      status: status,
-      child: Wrap(
-        spacing: 12,
-        runSpacing: 12,
+      accent: IlaiosTheme.coreBlue,
+      status: _localizedStatus(context, status),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _Metric(
-            label: context.tr('costs.totalUsd'),
-            value: costUsd ?? unavailable,
-          ),
-          _Metric(
-            label: context.tr('costs.totalMinor'),
-            value: costMinor ?? unavailable,
-          ),
-          _Metric(
-            label: context.tr('costs.budgetUsd'),
-            value: budgetUsd ?? unavailable,
-          ),
-          _Metric(
-            label: context.tr('costs.budgetCapMinor'),
-            value: budgetMinor ?? unavailable,
-          ),
-          _Metric(label: context.tr('costs.tokenUsage'), value: unavailable),
-          _Metric(label: context.tr('costs.gpuRuntime'), value: unavailable),
-          _Metric(label: context.tr('costs.providerModel'), value: unavailable),
-          if (!anyCostTelemetry)
-            SizedBox(
-              width: 480,
-              child: Text(
-                context.tr('costs.noTelemetry'),
-                style: const TextStyle(color: IlaiosTheme.muted, height: 1.5),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: [
+              _Metric(
+                label: context.tr('costs.totalUsd'),
+                value: costUsd ?? unavailable,
+                icon: Icons.attach_money,
+                accent: IlaiosTheme.enterpriseCyan,
               ),
+              _Metric(
+                label: context.tr('costs.totalMinor'),
+                value: costMinor ?? unavailable,
+                icon: Icons.calculate_outlined,
+                accent: IlaiosTheme.coreBlue,
+              ),
+              _Metric(
+                label: context.tr('costs.budgetUsd'),
+                value: budgetUsd ?? unavailable,
+                icon: Icons.account_balance_wallet_outlined,
+                accent: IlaiosTheme.violet,
+              ),
+              _Metric(
+                label: context.tr('costs.budgetCapMinor'),
+                value: budgetMinor ?? unavailable,
+                icon: Icons.speed_outlined,
+                accent: IlaiosTheme.coreBlue,
+              ),
+              _Metric(
+                label: context.tr('costs.tokenUsage'),
+                value: unavailable,
+                icon: Icons.token_outlined,
+                accent: IlaiosTheme.enterpriseCyan,
+              ),
+              _Metric(
+                label: context.tr('costs.gpuRuntime'),
+                value: unavailable,
+                icon: Icons.memory_outlined,
+                accent: IlaiosTheme.violet,
+              ),
+              _Metric(
+                label: context.tr('costs.providerModel'),
+                value: unavailable,
+                icon: Icons.hub_outlined,
+                accent: IlaiosTheme.coreBlue,
+              ),
+            ],
+          ),
+          if (!anyCostTelemetry) ...[
+            const SizedBox(height: 18),
+            _InfoBanner(
+              icon: Icons.info_outline,
+              accent: IlaiosTheme.coreBlue,
+              title: _isTr(context) ? 'Yetkili telemetri bekleniyor' : 'Waiting for authoritative telemetry',
+              body: context.tr('costs.noTelemetry'),
             ),
+          ],
         ],
       ),
     );
@@ -100,47 +125,90 @@ class SettingsView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final locale = context.ilaiosLocale.locale;
+    final light = Theme.of(context).brightness == Brightness.light;
     return _Surface(
       title: context.tr('settings.title'),
       icon: Icons.settings_outlined,
-      status: projection.status,
+      accent: IlaiosTheme.enterpriseCyan,
+      status: _localizedStatus(context, projection.status),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _SettingsRow(
-            label: context.tr('settings.controlPlane'),
-            value: projection.connected
-                ? context.tr('shell.connected')
-                : context.tr('shell.offline'),
-          ),
-          _SettingsRow(label: context.tr('settings.identity'), value: identityStatus),
-          _SettingsRow(
-            label: context.tr('settings.tenant'),
-            value: userSession?.tenantId ?? context.tr('common.unavailable'),
-          ),
-          _SettingsRow(
-            label: context.tr('settings.principal'),
-            value: userSession?.principalId ?? context.tr('common.unavailable'),
-          ),
-          _SettingsRow(
-            label: context.tr('settings.provider'),
-            value: userSession?.providerId ??
-                (providers.isEmpty
-                    ? context.tr('common.notConfigured')
-                    : context.tr('common.signedOut')),
-          ),
-          _SettingsRow(
-            label: context.tr('settings.locale'),
-            value: locale.displayName,
-          ),
-          _SettingsRow(
-            label: context.tr('settings.theme'),
-            value: context.tr('settings.dark'),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final twoColumns = constraints.maxWidth >= 760;
+              final rows = <Widget>[
+                _SettingsTile(
+                  icon: Icons.dns_outlined,
+                  label: context.tr('settings.controlPlane'),
+                  value: projection.connected
+                      ? context.tr('shell.connected')
+                      : context.tr('shell.offline'),
+                  accent: IlaiosTheme.coreBlue,
+                ),
+                _SettingsTile(
+                  icon: Icons.verified_user_outlined,
+                  label: context.tr('settings.identity'),
+                  value: _localizedIdentity(context, identityStatus),
+                  accent: IlaiosTheme.enterpriseCyan,
+                ),
+                _SettingsTile(
+                  icon: Icons.apartment_outlined,
+                  label: context.tr('settings.tenant'),
+                  value: userSession?.tenantId ?? context.tr('common.unavailable'),
+                  accent: IlaiosTheme.violet,
+                ),
+                _SettingsTile(
+                  icon: Icons.badge_outlined,
+                  label: context.tr('settings.principal'),
+                  value: userSession?.principalId ?? context.tr('common.unavailable'),
+                  accent: IlaiosTheme.coreBlue,
+                ),
+                _SettingsTile(
+                  icon: Icons.account_circle_outlined,
+                  label: context.tr('settings.provider'),
+                  value: userSession?.providerId ??
+                      (providers.isEmpty
+                          ? context.tr('common.notConfigured')
+                          : context.tr('common.signedOut')),
+                  accent: IlaiosTheme.enterpriseCyan,
+                ),
+                _SettingsTile(
+                  icon: Icons.language,
+                  label: context.tr('settings.locale'),
+                  value: locale.displayName,
+                  accent: IlaiosTheme.coreBlue,
+                ),
+                _SettingsTile(
+                  icon: light ? Icons.light_mode_outlined : Icons.dark_mode_outlined,
+                  label: context.tr('settings.theme'),
+                  value: light
+                      ? (_isTr(context) ? 'Açık' : 'Light')
+                      : context.tr('settings.dark'),
+                  accent: IlaiosTheme.violet,
+                ),
+              ];
+              if (!twoColumns) {
+                return Column(
+                  children: [for (final row in rows) Padding(padding: const EdgeInsets.only(bottom: 10), child: row)],
+                );
+              }
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: [
+                  for (final row in rows)
+                    SizedBox(width: (constraints.maxWidth - 12) / 2, child: row),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 18),
-          Text(
-            context.tr('settings.authorityNote'),
-            style: const TextStyle(color: IlaiosTheme.muted, height: 1.5),
+          _InfoBanner(
+            icon: Icons.shield_outlined,
+            accent: IlaiosTheme.violet,
+            title: _isTr(context) ? 'Yetki sınırı' : 'Authority boundary',
+            body: context.tr('settings.authorityNote'),
           ),
         ],
       ),
@@ -152,11 +220,14 @@ class _Surface extends StatelessWidget {
   const _Surface({
     required this.title,
     required this.icon,
+    required this.accent,
     required this.status,
     required this.child,
   });
+
   final String title;
   final IconData icon;
+  final Color accent;
   final String status;
   final Widget child;
 
@@ -166,30 +237,45 @@ class _Surface extends StatelessWidget {
         child: Align(
           alignment: Alignment.topLeft,
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1180),
+            constraints: const BoxConstraints(maxWidth: 1240),
             child: Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(22),
+              padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: IlaiosTheme.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: IlaiosTheme.border),
+                color: Theme.of(context).colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(icon, color: IlaiosTheme.cyan),
-                      const SizedBox(width: 10),
-                      Text(
-                        title,
-                        style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w700),
+                      Container(
+                        width: 42,
+                        height: 42,
+                        decoration: BoxDecoration(
+                          color: accent.withValues(alpha: .12),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(icon, color: accent),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              title,
+                              style: Theme.of(context).textTheme.headlineMedium?.copyWith(fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(status, style: Theme.of(context).textTheme.bodySmall),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 7),
-                  Text(status, style: const TextStyle(color: IlaiosTheme.muted)),
                   const SizedBox(height: 22),
                   child,
                 ],
@@ -200,69 +286,191 @@ class _Surface extends StatelessWidget {
       );
 }
 
-class _Metric extends StatelessWidget {
-  const _Metric({required this.label, required this.value});
+class _Metric extends StatefulWidget {
+  const _Metric({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.accent,
+  });
+
   final String label;
   final String value;
+  final IconData icon;
+  final Color accent;
 
   @override
-  Widget build(BuildContext context) => Container(
-        width: 220,
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: IlaiosTheme.canvas,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: IlaiosTheme.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(label, style: const TextStyle(color: IlaiosTheme.muted, fontSize: 11)),
-            const SizedBox(height: 7),
-            Text(
-              value,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontWeight: FontWeight.w700),
+  State<_Metric> createState() => _MetricState();
+}
+
+class _MetricState extends State<_Metric> {
+  bool hovered = false;
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+        onEnter: (_) => setState(() => hovered = true),
+        onExit: (_) => setState(() => hovered = false),
+        child: Material(
+          color: hovered
+              ? widget.accent.withValues(alpha: .08)
+              : Theme.of(context).colorScheme.surfaceContainerLowest,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: hovered
+                  ? widget.accent.withValues(alpha: .55)
+                  : Theme.of(context).colorScheme.outlineVariant,
             ),
-          ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            onTap: () => _showValue(context, widget.label, widget.value, widget.icon, widget.accent),
+            child: SizedBox(
+              width: 230,
+              height: 112,
+              child: Padding(
+                padding: const EdgeInsets.all(15),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(widget.icon, color: widget.accent, size: 20),
+                        const Spacer(),
+                        Icon(Icons.arrow_outward, size: 15, color: hovered ? widget.accent : Theme.of(context).colorScheme.outline),
+                      ],
+                    ),
+                    const Spacer(),
+                    Text(widget.label, style: Theme.of(context).textTheme.bodySmall),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.value,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
         ),
       );
 }
 
-class _SettingsRow extends StatelessWidget {
-  const _SettingsRow({required this.label, required this.value});
+class _SettingsTile extends StatelessWidget {
+  const _SettingsTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+    required this.accent,
+  });
+
+  final IconData icon;
   final String label;
   final String value;
+  final Color accent;
 
   @override
   Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 9),
-        padding: const EdgeInsets.all(13),
+        padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: IlaiosTheme.canvas,
-          borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: IlaiosTheme.border),
+          color: Theme.of(context).colorScheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         ),
         child: Row(
           children: [
-            SizedBox(
-              width: 140,
-              child: Text(label, style: const TextStyle(color: IlaiosTheme.muted)),
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: .11),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, size: 19, color: accent),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                value,
-                textAlign: TextAlign.right,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 2,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: Theme.of(context).textTheme.bodySmall),
+                  const SizedBox(height: 3),
+                  Text(
+                    value,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(fontWeight: FontWeight.w800),
+                  ),
+                ],
               ),
             ),
           ],
         ),
       );
 }
+
+class _InfoBanner extends StatelessWidget {
+  const _InfoBanner({
+    required this.icon,
+    required this.accent,
+    required this.title,
+    required this.body,
+  });
+
+  final IconData icon;
+  final Color accent;
+  final String title;
+  final String body;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: accent.withValues(alpha: .055),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: accent.withValues(alpha: .22)),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: accent),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontWeight: FontWeight.w800)),
+                  const SizedBox(height: 4),
+                  Text(body, style: Theme.of(context).textTheme.bodySmall),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+Future<void> _showValue(
+  BuildContext context,
+  String label,
+  String value,
+  IconData icon,
+  Color accent,
+) => showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: Icon(icon, color: accent),
+        title: Text(label),
+        content: SelectableText(value),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(_isTr(context) ? 'Kapat' : 'Close'),
+          ),
+        ],
+      ),
+    );
 
 String? _firstValue(List<Map<String, Object?>> sources, List<String> keys) {
   for (final source in sources) {
@@ -282,3 +490,23 @@ List<Map<String, Object?>> _mapList(Object? value) {
       if (item is Map<String, dynamic>) Map<String, Object?>.from(item),
   ];
 }
+
+String _localizedStatus(BuildContext context, String value) {
+  if (!_isTr(context)) return value;
+  return switch (value) {
+    'Operational APIs connected' => 'Operasyon API’leri bağlı',
+    'Connected to authoritative control plane' => 'Yetkili kontrol düzlemine bağlı',
+    _ => value,
+  };
+}
+
+String _localizedIdentity(BuildContext context, String value) {
+  if (!_isTr(context)) return value;
+  if (value.startsWith('Signed in as ')) {
+    return 'Oturum açık: ${value.substring('Signed in as '.length)}';
+  }
+  if (value == 'Signed out') return 'Oturum kapalı';
+  return value;
+}
+
+bool _isTr(BuildContext context) => context.ilaiosLocale.locale == IlaiosLocale.turkish;
