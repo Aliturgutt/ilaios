@@ -114,7 +114,7 @@ void main() {
     expect(port, isA<int>());
     expect(identityHost, isA<String>());
     expect(identityPort, isA<int>());
-    expect(ready['account_sign_in_configured'], isFalse);
+    expect(ready['account_sign_in_configured'], isTrue);
     expect(ready['video_finished_product_configured'], isTrue);
     expect(ready['web_finished_product_configured'], isTrue);
     expect(ready['software_finished_product_configured'], isTrue);
@@ -148,7 +148,9 @@ void main() {
     final job = await client.fetchJob(submission.jobId);
     final projection = await client.fetchProjection();
 
-    expect(providers, isEmpty);
+    expect(providers, hasLength(1));
+    expect(providers.single.providerId, 'google');
+    expect(providers.single.displayName, 'Google');
     expect(submission.goalId, startsWith('goal-'));
     expect(submission.jobId, startsWith('job-'));
     expect(submission.state, 'PENDING');
