@@ -1,1 +1,0 @@
-Implementation notes will be replaced by code/evidence as the branch progresses. The branch exists to keep the live red-team repair isolated from master until CI and runtime proof pass.
