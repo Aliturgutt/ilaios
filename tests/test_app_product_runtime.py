@@ -153,7 +153,7 @@ def test_windows_task_app_accepts_real_artifact_evidence_through_coordinator(
     coordinator, runtime, boundary = _stack(tmp_path)
     _install_app_runtime(monkeypatch, coordinator, runtime)
     now = datetime(2026, 8, 16, 12, 0, tzinfo=timezone.utc)
-    objective = "Build a Windows desktop app task checklist for a launch team"
+    objective = "Build a Windows desktop app task manager for a launch team"
 
     prepared = coordinator.prepare(
         "app-windows-1",
@@ -196,7 +196,14 @@ def test_windows_task_app_accepts_real_artifact_evidence_through_coordinator(
         "package",
         "smoke_test",
     ]
-    assert (tmp_path / "app-artifacts" / "app-windows-1" / "project" / "lib" / "main.dart").is_file()
+    assert (
+        tmp_path
+        / "app-artifacts"
+        / "app-windows-1"
+        / "project"
+        / "lib"
+        / "main.dart"
+    ).is_file()
     assert not (tmp_path / "apps").exists()
 
 
@@ -218,21 +225,17 @@ def test_app_runtime_is_bounded_and_does_not_promote_arbitrary_apps(
             now=now,
         )
 
-    assert runtime.supports("Build a Windows desktop app task checklist") is True
-    assert runtime.supports("Build an Android app task checklist") is False
+    assert runtime.supports("Build a Windows desktop app task manager") is True
+    assert runtime.supports("Build an Android app task manager") is False
     assert runtime.supports("Build a Windows desktop 3D game") is False
 
 
 def test_default_app_descriptor_remains_review_only_without_runtime_injection() -> None:
     descriptor = coordinator_module._ADAPTER_DESCRIPTORS[_APP]
     assert descriptor.capability_id == _APP
-    assert descriptor.maturity in {
-        CapabilityMaturity.REVIEW_ONLY,
-        CapabilityMaturity.VERIFIED_FINISHED_PRODUCT_ADAPTER,
-    }
-    if descriptor.maturity is CapabilityMaturity.REVIEW_ONLY:
-        assert descriptor.adapter_id is None
-        assert descriptor.blocker_code == "APP_FACTORY_REVIEW_ONLY"
+    assert descriptor.maturity is CapabilityMaturity.REVIEW_ONLY
+    assert descriptor.adapter_id is None
+    assert descriptor.blocker_code == "APP_FACTORY_REVIEW_ONLY"
 
 
 def test_executor_rejects_duplicate_or_unbounded_workspace_requests(tmp_path: Path) -> None:
@@ -240,13 +243,13 @@ def test_executor_rejects_duplicate_or_unbounded_workspace_requests(tmp_path: Pa
     executor = WindowsFlutterAppExecutor(tmp_path / "app-artifacts", boundary)
     evidence = executor.build(
         "bounded-app",
-        "Build a Windows desktop app task checklist",
+        "Build a Windows desktop app task manager",
     )
     assert evidence.passed is True
     with pytest.raises(AppProductRuntimeError, match="already exists"):
         executor.build(
             "bounded-app",
-            "Build a Windows desktop app task checklist",
+            "Build a Windows desktop app task manager",
         )
     with pytest.raises(AppProductRuntimeError, match="outside the verified"):
         executor.build(
