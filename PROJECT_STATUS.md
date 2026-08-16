@@ -1,8 +1,8 @@
 # ILAIOS — Repository Project Status
 
-Status snapshot: 11 August 2026
+Status snapshot: 16 August 2026
 Baseline branch: `master`
-Baseline commit at audit start: `6c6a24b900f2c966ecc7acdff3a4656f6a5dd4c4`
+Baseline commit at this truth-sync rebuild: `c795422c6cbb072719adfa8c2ffe56711ed8aed9`
 
 ## Authority rule
 
@@ -17,7 +17,11 @@ This file is a human-readable status projection. It is not a canonical architect
 - `RELEASE.R03`: PRODUCTION deployment evidence records `PRODUCTION_DEPLOYED_HEALTHY`.
 - Production release evidence records TLS, OIDC, target health and rollback availability.
 - Repository includes Core, Code Intelligence, Knowledge Graph, Project Manager, Video Automation, Control Plane, governance, evidence, privacy, observability, operations and deployment implementations.
-- Website and Desktop are active product surfaces developed in separate bounded workstreams and are not governed by the post-v1 repository-governance package defined here.
+- The one canonical Execution Coordinator is merged with durable lifecycle, fail-closed routing, recovery/cancellation, evidence and bounded multi-capability DAG execution.
+- Verified bounded finished-product execution is currently wired for Video plus the registered Web and Software product runtimes; wider production/external claims remain evidence-gated.
+- Web finished-product browser evidence and Software finished-product Windows evidence are merged; public production deployment and arbitrary-software scope are not implied by those bounded proofs.
+- Desktop sidecar packaging is fail-closed and the Windows build contract is pinned to Python 3.12 after PR #231; real external Windows OIDC/signing/Store acceptance remains separately evidence-gated.
+- Website and Desktop remain active product surfaces with their own live/external acceptance boundaries.
 
 ## Canonical v1 completion
 
@@ -29,58 +33,72 @@ The canonical implementation namespace remains:
 4. `PLATFORM.P00` through `PLATFORM.P20`
 5. `RELEASE.R00` through `RELEASE.R03`
 
-No new milestone ID is considered canonical merely because it appears in a planning document. Post-v1 work must first be specified, dependency-ordered, bounded and approved through the existing governance model.
+No new milestone ID is considered canonical merely because it appears in a planning document. Post-v1 work must remain dependency-ordered, bounded and additive to the existing governance model.
 
 ## Current repository governance state
 
-### Completed during the 11 August 2026 truth-sync audit
+### Verified live controls
+
+- `ILAIOS Master Protection` repository ruleset is active on the default branch.
+- Non-fast-forward updates and branch deletion are blocked.
+- Pull requests are required.
+- Review-thread resolution is required.
+- `Required CI Gate` is a required status check.
+- No bypass actor is configured and the connected owner cannot bypass the ruleset.
+- `.github/CODEOWNERS` exists for the repository default, canonical documentation, governance/security/operations/ADR areas, workflows, infrastructure and release-sensitive automation files.
+
+### Completed truth/hygiene work
 
 - Stale Desktop PR chain identified as superseded by merged consolidation PRs.
-- Open duplicate Desktop PRs `#2` through `#11` closed after confirming merged PR `#12` consolidated D01-D10.
-- Open duplicate Store-readiness PR `#16` closed after confirming merged PR `#18` carries the same content.
-- Post-v1 repository-governance work moved to an isolated branch rather than direct writes to `master`.
+- Open duplicate Desktop PRs `#2` through `#11` were closed after confirming merged PR `#12` consolidated D01-D10.
+- Open duplicate Store-readiness PR `#16` was closed after confirming merged PR `#18` carries the same content.
+- Stale Execution Coordinator draft PR `#216` was closed after canonical successor work was merged.
+- Generic Web finished-product issue `#96` and Software finished-product issue `#98` were closed after their exact-head finished-product/CI evidence was verified.
 
-### Verified governance gaps
+### Remaining governance/repository gaps
 
-- The previous version of this file still described a pre-ILAIOS historical Core phase and was stale.
-- `POST_CORE_ROADMAP.md` was a historical pre-platform roadmap and was stale.
-- `master` is currently reported by GitHub as unprotected and has no required status-check contexts configured at branch-protection level.
-- Repository metadata still requires owner-level cleanup outside ordinary source-file changes: description, topics, license decision and branch-protection policy.
-- GitHub Releases currently has no formal release object even though production deployment evidence exists; release-tag policy must be defined before creating one.
+- Required approving review count is currently `0`; CODEOWNER approval and last-push approval are not enforced by the active ruleset. Required CI is therefore the current independent automated verifier, not a human-review guarantee.
+- Repository metadata still requires owner-level cleanup: the public description is stale and topics are empty.
+- `docs/governance/LICENSE_DECISION.md` records publicly visible source with a proprietary-by-default/no-open-source-grant posture. A release-specific legal/redistribution package, dependency notices and exact commercial distribution terms still require governed release review; no root OSI license should be inferred or invented.
+- GitHub Releases and immutable version tags remain empty even though platform production deployment evidence exists. The first formal product release must not be created until an exact release-ready SHA and release/licensing gates are satisfied.
 
-## Post-v1 status
+## Post-v1 product integration status
 
-Post-v1 product expansion is **not yet a new canonical implementation graph**. The safe next sequence is:
+The 11 August planning-only snapshot is no longer current. Product integration has advanced on `master` without creating a second Core, router, scheduler, policy engine or Coordinator.
 
-1. repository truth sync and governance baseline;
-2. capability maturity audit;
-3. CI/workflow audit;
-4. post-v1 dependency roadmap proposal;
-5. bounded automation plan proposal;
-6. only then, selection of the first new capability implementation package.
+Current proven direction:
+
+1. keep the canonical Coordinator and adapter registry singular;
+2. preserve the bounded Video/Web/Software finished-product paths already merged;
+3. complete real Desktop OIDC/packaged-sidecar acceptance on Windows;
+4. close the remaining App finished-product adapter issue `#97` only with real packaged application evidence;
+5. keep RAG.14, formal release/licensing, public deployment and other factory production promotions evidence-gated;
+6. continue truth-sync, observability/recovery and external production proof without converting bounded verification into a production claim.
 
 See:
 
-- `docs/governance/REPOSITORY_AUDIT_2026-08-11.md`
 - `docs/governance/CAPABILITY_MATRIX.md`
 - `docs/governance/CI_WORKFLOW_AUDIT.md`
 - `docs/governance/POST_V1_ROADMAP.md`
-- `docs/governance/OPENCLAW_POST_V1_AUTOMATION_PLAN.md`
+- `docs/governance/RELEASE_VERSION_POLICY.md`
+- `docs/governance/LICENSE_DECISION.md`
+- `.github/CODEOWNERS`
 
 ## Safety boundary
 
-The post-v1 governance package must not autonomously:
+Repository automation must not autonomously:
 
-- modify production AWS resources;
 - create or rotate secrets/credentials;
-- change billing/spend;
-- modify DNS/domain state;
-- submit Microsoft Store releases;
-- modify Website or Desktop implementation scope;
+- change billing/spend or authorize paid external effects;
+- accept legal terms or make an unresolved licensing decision;
+- submit Microsoft Store releases or bypass Store identity/signing controls;
 - force-push or rewrite Git history;
-- weaken tests or bypass dependencies;
-- redefine canonical architecture by prose.
+- weaken tests, branch rules or required CI;
+- redefine canonical architecture by prose;
+- label mock, fixture, synthetic, bounded-local or preview evidence as external production proof.
+
+Production AWS/DNS/deployment mutations remain governed by their explicit release/deployment authority and evidence requirements; repository source changes alone do not authorize them.
 
 ## Current decision
 
-The v1 build/release chain is complete through production evidence. The next repository-level activity is governed post-v1 planning and capability prioritization, not an invented continuation such as `PLATFORM.P21` or `RELEASE.R04`.
+The platform v1 build/release chain has production deployment evidence, while product-level finished-product coverage is still being expanded and externally proven. The correct next work is closure of real product/evidence gaps on the existing architecture—not an invented continuation such as `Core 2`, a parallel Coordinator, `PLATFORM.P21`, or an evidence-free `RELEASE.R04`.
