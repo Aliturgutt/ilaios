@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/ilaios_locale.dart';
 import '../../app/ilaios_theme.dart';
 import '../../control_plane/client.dart';
 import '../../control_plane/projection.dart';
@@ -112,14 +113,14 @@ class _CreateViewState extends State<CreateView> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'What do you want ILAIOS to build?',
-                style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
+              Text(
+                context.tr('goals.title'),
+                style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 8),
-              const Text(
-                'Describe the finished outcome. ILAIOS records the intent as an authoritative goal and durable job; provider, worker and privileged execution authority remain server-controlled.',
-                style: TextStyle(color: IlaiosTheme.muted, height: 1.5),
+              Text(
+                context.tr('goals.subtitle'),
+                style: const TextStyle(color: IlaiosTheme.muted, height: 1.5),
               ),
               const SizedBox(height: 20),
               _IdentityCard(
@@ -146,10 +147,9 @@ class _CreateViewState extends State<CreateView> {
                         maxLines: 10,
                         maxLength: 20000,
                         textInputAction: TextInputAction.newline,
-                        decoration: const InputDecoration(
-                          hintText:
-                              'Example: Build a premium website for my furniture company and deliver the finished result.',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          hintText: context.tr('goals.example'),
+                          border: const OutlineInputBorder(),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -166,7 +166,9 @@ class _CreateViewState extends State<CreateView> {
                                   )
                                 : const Icon(Icons.arrow_forward),
                             label: Text(
-                              _submitting ? 'Submitting…' : 'Start with one prompt',
+                              _submitting
+                                  ? context.tr('goals.submitting')
+                                  : context.tr('goals.startPrompt'),
                             ),
                           ),
                           const SizedBox(width: 14),
@@ -174,7 +176,7 @@ class _CreateViewState extends State<CreateView> {
                             child: Text(
                               enabled
                                   ? widget.status
-                                  : _disabledPromptReason(widget),
+                                  : _disabledPromptReason(context, widget),
                               style: const TextStyle(
                                 color: IlaiosTheme.muted,
                                 fontSize: 12,
@@ -196,29 +198,31 @@ class _CreateViewState extends State<CreateView> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Row(
+                        Row(
                           children: [
-                            Icon(
+                            const Icon(
                               Icons.check_circle_outline,
                               color: IlaiosTheme.success,
                             ),
-                            SizedBox(width: 10),
+                            const SizedBox(width: 10),
                             Text(
-                              'Accepted by the control plane',
-                              style: TextStyle(fontWeight: FontWeight.w700),
+                              context.tr('goals.accepted'),
+                              style: const TextStyle(fontWeight: FontWeight.w700),
                             ),
                           ],
                         ),
                         const SizedBox(height: 12),
-                        SelectableText('Goal: ${submission.goalId}'),
+                        SelectableText('${context.tr('goals.goal')}: ${submission.goalId}'),
                         const SizedBox(height: 5),
-                        SelectableText('Job: ${submission.jobId}'),
+                        SelectableText('${context.tr('goals.job')}: ${submission.jobId}'),
                         const SizedBox(height: 5),
-                        Text('Authoritative state: ${submission.state}'),
+                        Text(
+                          '${context.tr('goals.authoritativeState')}: ${submission.state}',
+                        ),
                         const SizedBox(height: 12),
-                        const Text(
-                          'Desktop does not treat submission as completion. Progress, governance, evidence and final artifacts must be proven by the authoritative runtime.',
-                          style: TextStyle(
+                        Text(
+                          context.tr('goals.submissionNote'),
+                          style: const TextStyle(
                             color: IlaiosTheme.muted,
                             height: 1.45,
                           ),
@@ -273,13 +277,13 @@ class _IdentityCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.verified_user_outlined, color: IlaiosTheme.cyan),
-                SizedBox(width: 10),
+                const Icon(Icons.verified_user_outlined, color: IlaiosTheme.cyan),
+                const SizedBox(width: 10),
                 Text(
-                  'Account',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  context.tr('goals.account'),
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
@@ -292,7 +296,7 @@ class _IdentityCard extends StatelessWidget {
               ),
               const SizedBox(height: 5),
               Text(
-                'Provider: ${current.providerId}',
+                '${context.tr('goals.provider')}: ${current.providerId}',
                 style: const TextStyle(color: IlaiosTheme.muted, fontSize: 12),
               ),
               const SizedBox(height: 12),
@@ -300,12 +304,16 @@ class _IdentityCard extends StatelessWidget {
                 key: const Key('identity-logout'),
                 onPressed: loggingOut ? null : onLogout,
                 icon: const Icon(Icons.logout),
-                label: Text(loggingOut ? 'Signing out…' : 'Sign out'),
+                label: Text(
+                  loggingOut
+                      ? context.tr('goals.signingOut')
+                      : context.tr('goals.signOut'),
+                ),
               ),
             ] else if (providers.isNotEmpty) ...[
-              const Text(
-                'Sign in before submitting governed work. Authentication opens in your browser; raw identity-provider tokens are kept out of the Flutter UI.',
-                style: TextStyle(color: IlaiosTheme.muted, height: 1.45),
+              Text(
+                context.tr('goals.signInNote'),
+                style: const TextStyle(color: IlaiosTheme.muted, height: 1.45),
               ),
               const SizedBox(height: 14),
               Wrap(
@@ -327,8 +335,8 @@ class _IdentityCard extends StatelessWidget {
                           : const Icon(Icons.login),
                       label: Text(
                         signingInProvider == provider.providerId
-                            ? 'Signing in…'
-                            : 'Continue with ${provider.displayName}',
+                            ? context.tr('goals.signingIn')
+                            : '${context.tr('goals.continueWith')} ${provider.displayName}',
                       ),
                     ),
                 ],
@@ -346,12 +354,12 @@ class _IdentityCard extends StatelessWidget {
   }
 }
 
-String _disabledPromptReason(CreateView widget) {
+String _disabledPromptReason(BuildContext context, CreateView widget) {
   if (!widget.projection.connected) {
-    return 'Authoritative control plane is unavailable';
+    return context.tr('goals.controlPlaneUnavailable');
   }
   if (widget.identityProviders.isNotEmpty && widget.userSession == null) {
-    return 'Sign in to submit governed work';
+    return context.tr('goals.signInRequired');
   }
   return widget.status;
 }
