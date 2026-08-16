@@ -224,10 +224,10 @@ class DesktopOIDCService:
         code: str,
         now: datetime | None = None,
     ) -> DesktopAuthStatus:
-        current = _utc(now)
-        self._purge(current)
+        callback_time = _utc(now)
+        self._purge(callback_time)
         flow = self._flows.pop(state, None)
-        if flow is None or flow.expires_at <= current:
+        if flow is None or flow.expires_at <= callback_time:
             raise DesktopIdentityError("Desktop OIDC state is invalid or expired")
         if not code or not code.strip():
             raise DesktopIdentityError("OIDC authorization code is required")
@@ -279,6 +279,10 @@ class DesktopOIDCService:
                 "OIDC token response did not contain an ID token"
             )
 
+        # A provider can issue the ID token during the network exchange above.
+        # Re-sample wall-clock time before validating iat/exp and issuing the
+        # local session; the callback-arrival timestamp can already be stale.
+        current = _utc(now)
         verifier = self._verifier_factory(provider, flow.nonce)
         principal = AuthenticationBoundary(
             verifier,
