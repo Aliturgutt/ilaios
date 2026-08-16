@@ -1,10 +1,11 @@
 # License Decision
 
 Status: CONTROLLED
-Decision: PUBLICLY VISIBLE SOURCE / PROPRIETARY BY DEFAULT
+Decision: PRIVATE / PROPRIETARY BY DEFAULT
+Repository visibility: PUBLIC
 
 ## Current repository posture
-The ILAIOS GitHub repository is publicly visible. Public visibility does not by itself grant an open-source license or permission to copy, modify, redistribute, sublicense, or commercially reuse the repository contents. No repository-wide OSI/open-source license grant is currently recorded in GitHub repository metadata or by a root `LICENSE` file. Copyright and other rights remain with their respective owner(s) unless a separate written agreement states otherwise.
+The ILAIOS GitHub repository is publicly visible. The `PRIVATE / PROPRIETARY BY DEFAULT` decision describes the licensing/reuse grant posture, not repository visibility. Public visibility does not by itself grant an open-source license or permission to copy, modify, redistribute, sublicense, or commercially reuse the repository contents. No repository-wide OSI/open-source license grant is currently recorded in GitHub repository metadata or by a root `LICENSE` file. Copyright and other rights remain with their respective owner(s) unless a separate written agreement states otherwise.
 
 This file records the intended licensing posture; it is not a substitute for release-specific third-party notices, dependency-license reconciliation, provider/model terms, generated-output rights review, or legal advice.
 
