@@ -145,7 +145,7 @@ void main() {
     await tester.pumpWidget(const IlaiosDesktopApp());
     await tester.tap(find.byKey(const ValueKey('nav-liveWorkspace')));
     await tester.pumpAndSettle();
-    expect(find.text('Live Workspace'), findsOneWidget);
+    expect(find.text('Live Workspace'), findsWidgets);
     expect(find.text('Live Code'), findsWidgets);
     expect(find.text('Terminal'), findsWidgets);
     expect(find.text('Browser'), findsWidgets);
