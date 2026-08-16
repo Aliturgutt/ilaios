@@ -42,6 +42,7 @@ abstract final class IlaiosLocaleStore {
     if (file == null) return;
     await file.parent.create(recursive: true);
     final temporary = File('${file.path}.tmp');
+    if (await temporary.exists()) await temporary.delete();
     await temporary.writeAsString(
       jsonEncode(<String, Object?>{
         'schema_version': 1,
@@ -124,6 +125,29 @@ abstract final class IlaiosStrings {
     'shell.realTime': 'Real-time',
     'language.english': 'English',
     'language.turkish': 'Türkçe',
+    'common.unavailable': 'Unavailable',
+    'common.notConfigured': 'Not configured',
+    'common.signedOut': 'Signed out',
+    'costs.title': 'Costs & Usage',
+    'costs.totalUsd': 'Total cost (USD)',
+    'costs.totalMinor': 'Total cost (minor units)',
+    'costs.budgetUsd': 'Budget (USD)',
+    'costs.budgetCapMinor': 'Budget/cap (minor units)',
+    'costs.tokenUsage': 'Token usage',
+    'costs.gpuRuntime': 'GPU/runtime duration',
+    'costs.providerModel': 'Provider/model usage',
+    'costs.noTelemetry': 'The current authenticated Desktop projection does not expose authoritative cost telemetry. No synthetic cost, currency conversion, token, GPU, or provider usage values are shown.',
+    'settings.title': 'Settings',
+    'settings.controlPlane': 'Control plane',
+    'settings.identity': 'Identity',
+    'settings.tenant': 'Tenant',
+    'settings.principal': 'Principal',
+    'settings.provider': 'Provider',
+    'settings.locale': 'Locale',
+    'settings.systemLocale': 'System locale',
+    'settings.theme': 'Theme',
+    'settings.dark': 'Dark',
+    'settings.authorityNote': 'Tenant authority, governance, execution and identity verification remain backend/session authoritative. This surface does not widen client authority.',
   };
 
   static const Map<String, String> _tr = <String, String>{
@@ -160,6 +184,29 @@ abstract final class IlaiosStrings {
     'shell.realTime': 'Gerçek zaman',
     'language.english': 'English',
     'language.turkish': 'Türkçe',
+    'common.unavailable': 'Kullanılamıyor',
+    'common.notConfigured': 'Yapılandırılmadı',
+    'common.signedOut': 'Oturum kapalı',
+    'costs.title': 'Maliyetler ve Kullanım',
+    'costs.totalUsd': 'Toplam maliyet (USD)',
+    'costs.totalMinor': 'Toplam maliyet (alt birim)',
+    'costs.budgetUsd': 'Bütçe (USD)',
+    'costs.budgetCapMinor': 'Bütçe/üst sınır (alt birim)',
+    'costs.tokenUsage': 'Token kullanımı',
+    'costs.gpuRuntime': 'GPU/çalışma süresi',
+    'costs.providerModel': 'Sağlayıcı/model kullanımı',
+    'costs.noTelemetry': 'Mevcut kimliği doğrulanmış Desktop projeksiyonu yetkili maliyet telemetrisi sunmuyor. Sentetik maliyet, para birimi dönüşümü, token, GPU veya sağlayıcı kullanım değerleri gösterilmez.',
+    'settings.title': 'Ayarlar',
+    'settings.controlPlane': 'Kontrol düzlemi',
+    'settings.identity': 'Kimlik',
+    'settings.tenant': 'Kiracı',
+    'settings.principal': 'Asıl kimlik',
+    'settings.provider': 'Sağlayıcı',
+    'settings.locale': 'Dil',
+    'settings.systemLocale': 'Sistem dili',
+    'settings.theme': 'Tema',
+    'settings.dark': 'Koyu',
+    'settings.authorityNote': 'Kiracı yetkisi, yönetişim, yürütme ve kimlik doğrulama arka uç/oturum tarafından belirlenmeye devam eder. Bu ekran istemci yetkisini genişletmez.',
   };
 
   static String text(IlaiosLocale locale, String key) {
