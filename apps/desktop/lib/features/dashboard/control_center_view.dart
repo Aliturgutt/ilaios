@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app/ilaios_locale.dart';
+import '../../app/ilaios_surface_catalog.dart';
 import '../../app/ilaios_theme.dart';
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
@@ -39,52 +41,50 @@ class ControlCenterView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Control Center',
-                style: TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
+              Text(
+                _surface(context, 'control.title'),
+                style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w700),
               ),
               const SizedBox(height: 6),
-              const Text(
-                'Authoritative execution visibility for ILAIOS operations.',
-              ),
+              Text(_surface(context, 'control.subtitle')),
               const SizedBox(height: 24),
               Wrap(
                 spacing: 14,
                 runSpacing: 14,
                 children: [
                   _MetricCard(
-                    label: 'Goals',
+                    label: _surface(context, 'control.goals'),
                     value: _count(projection.goalCount),
                     icon: Icons.flag_outlined,
                   ),
                   _MetricCard(
-                    label: 'Jobs',
+                    label: _surface(context, 'control.jobs'),
                     value: _count(projection.jobCount),
                     icon: Icons.work_outline,
                   ),
                   _MetricCard(
-                    label: 'Live events',
+                    label: _surface(context, 'control.liveEvents'),
                     value: operationalSnapshot.available
                         ? '${operationalSnapshot.liveEventCount}'
                         : '—',
                     icon: Icons.bolt_outlined,
                   ),
                   _MetricCard(
-                    label: 'Runtime routes',
+                    label: _surface(context, 'control.runtimeRoutes'),
                     value: operationalSnapshot.available
                         ? '${operationalSnapshot.runtimeRouteCount}'
                         : '—',
                     icon: Icons.route_outlined,
                   ),
                   _MetricCard(
-                    label: 'Evidence',
+                    label: _surface(context, 'control.evidence'),
                     value: operationalSnapshot.available
                         ? '${operationalSnapshot.evidenceCount}'
                         : '—',
                     icon: Icons.fact_check_outlined,
                   ),
                   _MetricCard(
-                    label: 'Schema',
+                    label: _surface(context, 'control.schema'),
                     value: projection.schemaVersion ?? '—',
                     icon: Icons.schema_outlined,
                   ),
@@ -218,19 +218,19 @@ class _ExecutionPanel extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.monitor_heart_outlined, color: IlaiosTheme.cyan),
-                SizedBox(width: 10),
+                const Icon(Icons.monitor_heart_outlined, color: IlaiosTheme.cyan),
+                const SizedBox(width: 10),
                 Text(
-                  'Live Execution',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  _surface(context, 'control.liveExecution'),
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
             const SizedBox(height: 18),
             Semantics(
-              label: 'Control plane connection status',
+              label: _surface(context, 'control.connectionStatus'),
               child: Text(
                 projection.status,
                 key: const Key('connection-status'),
@@ -254,13 +254,23 @@ class _ExecutionPanel extends StatelessWidget {
               child: projection.connected
                   ? Row(
                       children: [
-                        Expanded(child: _InlineStat(label: 'Leases', value: '$leaseCount')),
-                        Expanded(child: _InlineStat(label: 'Effects', value: '$effectCount')),
+                        Expanded(
+                          child: _InlineStat(
+                            label: _surface(context, 'control.leases'),
+                            value: '$leaseCount',
+                          ),
+                        ),
+                        Expanded(
+                          child: _InlineStat(
+                            label: _surface(context, 'control.effects'),
+                            value: '$effectCount',
+                          ),
+                        ),
                       ],
                     )
-                  : const Text(
-                      'No authoritative execution state available. ILAIOS Desktop will not fabricate jobs, agents, logs, or progress.',
-                      style: TextStyle(color: IlaiosTheme.muted, height: 1.5),
+                  : Text(
+                      _surface(context, 'control.noExecution'),
+                      style: const TextStyle(color: IlaiosTheme.muted, height: 1.5),
                     ),
             ),
             const SizedBox(height: 16),
@@ -268,7 +278,7 @@ class _ExecutionPanel extends StatelessWidget {
               key: const Key('refresh-command'),
               onPressed: projection.connected ? onRefreshRequested : null,
               icon: const Icon(Icons.refresh),
-              label: const Text('Refresh authoritative state'),
+              label: Text(_surface(context, 'control.refresh')),
             ),
           ],
         ),
@@ -314,22 +324,37 @@ class _GovernanceSummary extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Row(
+            Row(
               children: [
-                Icon(Icons.shield_outlined, color: IlaiosTheme.cyan),
-                SizedBox(width: 10),
+                const Icon(Icons.shield_outlined, color: IlaiosTheme.cyan),
+                const SizedBox(width: 10),
                 Text(
-                  'Governance',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  _surface(context, 'control.governance'),
+                  style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
                 ),
               ],
             ),
             const SizedBox(height: 18),
-            const _GovernanceRow(label: 'Authority', value: 'Backend / control plane'),
-            const _GovernanceRow(label: 'Client mode', value: 'Projection only'),
-            _GovernanceRow(label: 'Registered grants', value: '${_listLength('grants')}'),
-            _GovernanceRow(label: 'Revoked grants', value: '${_listLength('revoked')}'),
-            _GovernanceRow(label: 'Stopped subjects', value: '${_listLength('stopped')}'),
+            _GovernanceRow(
+              label: _surface(context, 'control.authority'),
+              value: _surface(context, 'control.backendAuthority'),
+            ),
+            _GovernanceRow(
+              label: _surface(context, 'control.clientMode'),
+              value: _surface(context, 'control.projectionOnly'),
+            ),
+            _GovernanceRow(
+              label: _surface(context, 'control.registeredGrants'),
+              value: '${_listLength('grants')}',
+            ),
+            _GovernanceRow(
+              label: _surface(context, 'control.revokedGrants'),
+              value: '${_listLength('revoked')}',
+            ),
+            _GovernanceRow(
+              label: _surface(context, 'control.stoppedSubjects'),
+              value: '${_listLength('stopped')}',
+            ),
           ],
         ),
       ),
@@ -369,3 +394,6 @@ class _GovernanceRow extends StatelessWidget {
     );
   }
 }
+
+String _surface(BuildContext context, String key) =>
+    IlaiosSurfaceCatalog.text(context.ilaiosLocale.locale.code, key) ?? key;

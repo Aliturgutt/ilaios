@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app/ilaios_locale.dart';
+import '../../app/ilaios_surface_catalog.dart';
 import '../../app/ilaios_theme.dart';
 import '../../control_plane/evidence_record.dart';
 import '../../control_plane/operational_snapshot.dart';
@@ -34,7 +36,7 @@ class _DeliveriesViewState extends State<DeliveriesView> {
     try {
       final path = await callback(record);
       if (!mounted) return;
-      setState(() => _message = 'Saved verified artifact to $path');
+      setState(() => _message = '${_surface(context, 'deliveries.savedPrefix')} $path');
     } on Object catch (error) {
       if (!mounted) return;
       setState(() => _message = error.toString());
@@ -58,13 +60,13 @@ class _DeliveriesViewState extends State<DeliveriesView> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Row(
+                  Row(
                     children: [
-                      Icon(Icons.inventory_2_outlined, color: IlaiosTheme.cyan),
-                      SizedBox(width: 10),
+                      const Icon(Icons.inventory_2_outlined, color: IlaiosTheme.cyan),
+                      const SizedBox(width: 10),
                       Text(
-                        'Deliveries',
-                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
+                        _surface(context, 'deliveries.title'),
+                        style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700),
                       ),
                     ],
                   ),
@@ -72,15 +74,15 @@ class _DeliveriesViewState extends State<DeliveriesView> {
                   Text(widget.status,
                       style: const TextStyle(color: IlaiosTheme.muted)),
                   const SizedBox(height: 12),
-                  const Text(
-                    'Only artifacts present in the verified evidence chain are offered here. Saving is an explicit user action; Desktop retrieves bytes from the authoritative evidence store and never fabricates a finished product.',
-                    style: TextStyle(color: IlaiosTheme.muted, height: 1.5),
+                  Text(
+                    _surface(context, 'deliveries.note'),
+                    style: const TextStyle(color: IlaiosTheme.muted, height: 1.5),
                   ),
                   const SizedBox(height: 22),
                   if (records.isEmpty)
-                    const Text(
-                      'No verified deliverable artifacts are available yet.',
-                      style: TextStyle(color: IlaiosTheme.muted),
+                    Text(
+                      _surface(context, 'deliveries.empty'),
+                      style: const TextStyle(color: IlaiosTheme.muted),
                     )
                   else
                     for (final record in records)
@@ -145,7 +147,7 @@ class _DeliveryRow extends StatelessWidget {
                       style: const TextStyle(fontWeight: FontWeight.w700)),
                   const SizedBox(height: 4),
                   Text(
-                    'Execution ${record.executionId} • SHA-256 ${_short(record.artifactDigest)}',
+                    '${_surface(context, 'deliveries.execution')} ${record.executionId} • SHA-256 ${_short(record.artifactDigest)}',
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       color: IlaiosTheme.muted,
@@ -166,9 +168,16 @@ class _DeliveryRow extends StatelessWidget {
                       child: CircularProgressIndicator(strokeWidth: 2),
                     )
                   : const Icon(Icons.download_outlined),
-              label: Text(saving ? 'Saving…' : 'Save'),
+              label: Text(
+                saving
+                    ? _surface(context, 'deliveries.saving')
+                    : _surface(context, 'deliveries.save'),
+              ),
             ),
           ],
         ),
       );
 }
+
+String _surface(BuildContext context, String key) =>
+    IlaiosSurfaceCatalog.text(context.ilaiosLocale.locale.code, key) ?? key;

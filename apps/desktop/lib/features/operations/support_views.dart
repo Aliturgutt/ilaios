@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/ilaios_locale.dart';
 import '../../app/ilaios_theme.dart';
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
@@ -40,8 +41,9 @@ class CostsView extends StatelessWidget {
         costMinor != null ||
         budgetUsd != null ||
         budgetMinor != null;
+    final unavailable = context.tr('common.unavailable');
     return _Surface(
-      title: 'Costs & Usage',
+      title: context.tr('costs.title'),
       icon: Icons.paid_outlined,
       status: status,
       child: Wrap(
@@ -49,27 +51,30 @@ class CostsView extends StatelessWidget {
         runSpacing: 12,
         children: [
           _Metric(
-            label: 'Total cost (USD)',
-            value: costUsd ?? 'Unavailable',
+            label: context.tr('costs.totalUsd'),
+            value: costUsd ?? unavailable,
           ),
           _Metric(
-            label: 'Total cost (minor units)',
-            value: costMinor ?? 'Unavailable',
+            label: context.tr('costs.totalMinor'),
+            value: costMinor ?? unavailable,
           ),
-          _Metric(label: 'Budget (USD)', value: budgetUsd ?? 'Unavailable'),
           _Metric(
-            label: 'Budget/cap (minor units)',
-            value: budgetMinor ?? 'Unavailable',
+            label: context.tr('costs.budgetUsd'),
+            value: budgetUsd ?? unavailable,
           ),
-          const _Metric(label: 'Token usage', value: 'Unavailable'),
-          const _Metric(label: 'GPU/runtime duration', value: 'Unavailable'),
-          const _Metric(label: 'Provider/model usage', value: 'Unavailable'),
+          _Metric(
+            label: context.tr('costs.budgetCapMinor'),
+            value: budgetMinor ?? unavailable,
+          ),
+          _Metric(label: context.tr('costs.tokenUsage'), value: unavailable),
+          _Metric(label: context.tr('costs.gpuRuntime'), value: unavailable),
+          _Metric(label: context.tr('costs.providerModel'), value: unavailable),
           if (!anyCostTelemetry)
-            const SizedBox(
+            SizedBox(
               width: 480,
               child: Text(
-                'The current authenticated Desktop projection does not expose authoritative cost telemetry. No synthetic cost, currency conversion, token, GPU, or provider usage values are shown.',
-                style: TextStyle(color: IlaiosTheme.muted, height: 1.5),
+                context.tr('costs.noTelemetry'),
+                style: const TextStyle(color: IlaiosTheme.muted, height: 1.5),
               ),
             ),
         ],
@@ -93,44 +98,54 @@ class SettingsView extends StatelessWidget {
   final List<IdentityProviderOption> providers;
 
   @override
-  Widget build(BuildContext context) => _Surface(
-        title: 'Settings',
-        icon: Icons.settings_outlined,
-        status: projection.status,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _SettingsRow(
-              label: 'Control plane',
-              value: projection.connected ? 'Connected' : 'Offline',
-            ),
-            _SettingsRow(label: 'Identity', value: identityStatus),
-            _SettingsRow(
-              label: 'Tenant',
-              value: userSession?.tenantId ?? 'Unavailable',
-            ),
-            _SettingsRow(
-              label: 'Principal',
-              value: userSession?.principalId ?? 'Unavailable',
-            ),
-            _SettingsRow(
-              label: 'Provider',
-              value: userSession?.providerId ??
-                  (providers.isEmpty ? 'Not configured' : 'Signed out'),
-            ),
-            const _SettingsRow(
-              label: 'Locale',
-              value: 'System locale',
-            ),
-            const _SettingsRow(label: 'Theme', value: 'Dark'),
-            const SizedBox(height: 18),
-            const Text(
-              'Tenant authority, governance, execution and identity verification remain backend/session authoritative. This surface does not widen client authority.',
-              style: TextStyle(color: IlaiosTheme.muted, height: 1.5),
-            ),
-          ],
-        ),
-      );
+  Widget build(BuildContext context) {
+    final locale = context.ilaiosLocale.locale;
+    return _Surface(
+      title: context.tr('settings.title'),
+      icon: Icons.settings_outlined,
+      status: projection.status,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _SettingsRow(
+            label: context.tr('settings.controlPlane'),
+            value: projection.connected
+                ? context.tr('shell.connected')
+                : context.tr('shell.offline'),
+          ),
+          _SettingsRow(label: context.tr('settings.identity'), value: identityStatus),
+          _SettingsRow(
+            label: context.tr('settings.tenant'),
+            value: userSession?.tenantId ?? context.tr('common.unavailable'),
+          ),
+          _SettingsRow(
+            label: context.tr('settings.principal'),
+            value: userSession?.principalId ?? context.tr('common.unavailable'),
+          ),
+          _SettingsRow(
+            label: context.tr('settings.provider'),
+            value: userSession?.providerId ??
+                (providers.isEmpty
+                    ? context.tr('common.notConfigured')
+                    : context.tr('common.signedOut')),
+          ),
+          _SettingsRow(
+            label: context.tr('settings.locale'),
+            value: locale.displayName,
+          ),
+          _SettingsRow(
+            label: context.tr('settings.theme'),
+            value: context.tr('settings.dark'),
+          ),
+          const SizedBox(height: 18),
+          Text(
+            context.tr('settings.authorityNote'),
+            style: const TextStyle(color: IlaiosTheme.muted, height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _Surface extends StatelessWidget {
