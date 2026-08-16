@@ -17,8 +17,8 @@ if str(REPO_ROOT) not in sys.path:
 
 from services.control_plane.api import ControlPlane, ControlPlaneConfig
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
+from services.desktop_execution_coordinator import DesktopExecutionCoordinator
 from services.evidence import EvidenceStore
-from services.execution_coordinator import ExecutionCoordinator
 from services.governance import GovernedRuntimeGateway
 from services.integrations.product_runtime import DurableVideoProductRuntime
 from services.integrations.provider_video_runtime import ProviderBackedDesktopVideoRuntime
@@ -109,7 +109,7 @@ def _run_finished_product_acceptance(
         governance,
         video,
     )
-    coordinator = ExecutionCoordinator(
+    coordinator = DesktopExecutionCoordinator(
         root / "execution-coordinator.sqlite3",
         control_plane,
         governance,
@@ -128,7 +128,8 @@ def _run_finished_product_acceptance(
         "skyline. Preserve the same world, weather, lighting, and drone design across the "
         "two shots. Use realistic motion, rain, reflections, atmospheric depth, and cinematic "
         "camera movement. The result must be continuous visual footage with audio, not title "
-        "cards, presentation slides, static text panels, or generic motion graphics."
+        "cards, presentation slides, static text panels, or generic motion graphics. "
+        "Do not publish anywhere."
     )
     now = datetime.now(timezone.utc)
     prepared = coordinator.prepare(
