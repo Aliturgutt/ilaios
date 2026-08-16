@@ -31,6 +31,7 @@ from services.desktop_oidc import (
     OIDCProviderConfig,
     VerifierFactory,
 )
+from services.identity import IdentityError
 
 
 class DesktopOIDCService(_BaseDesktopOIDCService):
@@ -83,12 +84,19 @@ class DesktopOIDCService(_BaseDesktopOIDCService):
                 # "state invalid or expired" and hide the actual first failure.
                 # Persist only the already-sanitized boundary message.
                 if owns_marker:
-                    self._completion_errors[state] = str(error)
-                    if len(self._completion_errors) > 100:
-                        oldest = next(iter(self._completion_errors))
-                        if oldest != state:
-                            self._completion_errors.pop(oldest, None)
+                    self._remember_completion_error(state, str(error))
                 raise
+            except IdentityError as error:
+                # Canonical identity policy/session validation uses IdentityError,
+                # not DesktopIdentityError. Convert that trusted internal boundary
+                # failure into the Desktop-safe error type before it can escape the
+                # loopback HTTP handler and leave a later retry showing only a
+                # consumed-state error. IdentityError messages never contain raw
+                # provider credentials or Desktop session material.
+                message = f"OIDC identity validation failed: {error}"
+                if owns_marker:
+                    self._remember_completion_error(state, message)
+                raise DesktopIdentityError(message) from error
             finally:
                 # Only the callback that installed the marker may remove it.
                 # Otherwise a duplicate callback can erase the first callback's
@@ -119,6 +127,13 @@ class DesktopOIDCService(_BaseDesktopOIDCService):
             # exception handler. Re-read exactly once before preserving the
             # original fail-closed unknown/expired behavior.
             return super().status(state, now=now)
+
+    def _remember_completion_error(self, state: str, message: str) -> None:
+        self._completion_errors[state] = message
+        if len(self._completion_errors) > 100:
+            oldest = next(iter(self._completion_errors))
+            if oldest != state:
+                self._completion_errors.pop(oldest, None)
 
 
 __all__ = ["DesktopIdentityError", "DesktopOIDCService"]
