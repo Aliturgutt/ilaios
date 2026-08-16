@@ -80,6 +80,23 @@ class _FailingVerifier(_Verifier):
         raise DesktopIdentityError("OIDC ID token verification failed")
 
 
+class _PolicyFailingVerifier(_Verifier):
+    def verify(self, encoded_token: str) -> VerifiedOIDCClaims:
+        assert encoded_token == "signed-id-token"
+        return VerifiedOIDCClaims(
+            issuer=self.provider.issuer,
+            audience=self.provider.client_id,
+            subject="user-123",
+            tenant_id="tenant-123",
+            expires_at=self.verified_expires_at,
+            issued_at=NOW + timedelta(minutes=1),
+            kind=IdentityKind.HUMAN,
+            roles=frozenset({"user"}),
+            attributes=frozenset({("verified_email", "user@example.test")}),
+            authentication_methods=frozenset({"pwd"}),
+        )
+
+
 def _service(http: _BlockingHTTP) -> DesktopOIDCService:
     return DesktopOIDCService(
         (_provider(),),
@@ -214,6 +231,43 @@ def test_first_callback_failure_is_not_masked_by_duplicate_callback() -> None:
     with pytest.raises(
         DesktopIdentityError,
         match="OIDC ID token verification failed",
+    ):
+        service.status(started.state, now=NOW)
+
+    assert http.post_count == 1
+
+
+def test_identity_policy_failure_is_converted_and_preserved_for_callback() -> None:
+    http = _BlockingHTTP()
+    service = DesktopOIDCService(
+        (_provider(),),
+        request_session=http,  # type: ignore[arg-type]
+        verifier_factory=lambda provider, nonce: _PolicyFailingVerifier(
+            provider, nonce
+        ),
+    )
+    started = service.start(
+        "google",
+        "http://127.0.0.1:43123/oauth/callback",
+        now=NOW,
+    )
+
+    http.release.set()
+    with pytest.raises(
+        DesktopIdentityError,
+        match="OIDC identity validation failed: token is not currently valid",
+    ):
+        service.complete(started.state, "authorization-code", now=NOW)
+
+    with pytest.raises(
+        DesktopIdentityError,
+        match="OIDC identity validation failed: token is not currently valid",
+    ):
+        service.complete(started.state, "duplicate-code", now=NOW)
+
+    with pytest.raises(
+        DesktopIdentityError,
+        match="OIDC identity validation failed: token is not currently valid",
     ):
         service.status(started.state, now=NOW)
 
