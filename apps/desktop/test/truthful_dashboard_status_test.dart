@@ -21,7 +21,7 @@ void main() {
           lastEvent: null,
           schemaVersion: '1',
         ),
-        operationalSnapshot: OperationalSnapshot.empty,
+        operationalSnapshot: OperationalSnapshot.unavailable(),
         operationalStatus: 'Operational APIs connected',
       ),
     );
