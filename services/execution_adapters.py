@@ -19,6 +19,7 @@ from services.execution_coordinator import (
     ExecutionCoordinator,
     ExecutionCoordinatorError,
 )
+from services.integrations.app_product_runtime import DurableAppProductRuntime
 from services.integrations.software_product_runtime_recovery import (
     RecoverableSoftwareProductRuntime,
 )
@@ -26,6 +27,7 @@ from services.integrations.web_product_runtime import DurableWebProductRuntime
 
 _WEB = "ilaios.capability.web-factory"
 _SOFTWARE = "ilaios.capability.software-factory"
+_APP = "ilaios.capability.app-factory"
 
 
 class WebExecutionAdapter:
@@ -198,6 +200,97 @@ class SoftwareExecutionAdapter:
         )
 
 
+class AppExecutionAdapter:
+    """ExecutionAdapter over the bounded Windows-first App product runtime."""
+
+    descriptor = AdapterDescriptor(
+        "app.product-runtime.windows.v1",
+        _APP,
+        CapabilityMaturity.VERIFIED_FINISHED_PRODUCT_ADAPTER,
+        worker_subject="worker-app",
+        action="app.build",
+        supports_cancellation=True,
+    )
+
+    def __init__(self, runtime: DurableAppProductRuntime) -> None:
+        self._runtime = runtime
+
+    def prepare(
+        self,
+        request_id: str,
+        objective: str,
+        *,
+        token: str,
+        principal_id: str,
+        tenant_id: str,
+        now: datetime,
+        risk: str,
+        data_class: DataClass,
+        budget: BudgetEnvelope,
+    ) -> dict[str, object]:
+        if not self._runtime.supports(objective):
+            raise ExecutionCoordinatorError(
+                "app request is outside the verified Windows task/checklist scope"
+            )
+        if risk != "medium" or data_class is not DataClass.INTERNAL:
+            raise ExecutionCoordinatorError(
+                "verified App adapter does not widen risk or data policy"
+            )
+        if budget.max_external_spend_minor != 0:
+            raise ExecutionCoordinatorError("verified App adapter is local/free only")
+        return self._runtime.prepare(
+            request_id,
+            objective,
+            token=token,
+            now=now,
+            requester_id=principal_id,
+            tenant_id=tenant_id,
+            risk=risk,
+            data_class=data_class,
+            budget=budget,
+        )
+
+    def execute(
+        self,
+        request_id: str,
+        grant_id: str,
+        *,
+        token: str,
+        now: datetime,
+    ) -> dict[str, object]:
+        return self._runtime.execute(request_id, grant_id, token=token, now=now)
+
+    def accepted_result(self, request_id: str) -> dict[str, object]:
+        return self._runtime.get_manifest(request_id)
+
+    def state(self, request_id: str) -> dict[str, object]:
+        return self._runtime.get_state(request_id)
+
+    def recover_finalizing(
+        self,
+        request_id: str,
+        *,
+        token: str,
+        now: datetime,
+    ) -> dict[str, object]:
+        return self._runtime.recover_finalizing(request_id, token=token, now=now)
+
+    def interrupt(
+        self,
+        request_id: str,
+        *,
+        token: str,
+        now: datetime,
+        reason: str,
+    ) -> dict[str, object]:
+        return self._runtime.interrupt(
+            request_id,
+            token=token,
+            now=now,
+            reason=reason,
+        )
+
+
 def register_verified_adapter(
     coordinator: ExecutionCoordinator,
     adapter: ExecutionAdapter,
@@ -237,9 +330,18 @@ def register_software_runtime(
     register_verified_adapter(coordinator, SoftwareExecutionAdapter(runtime))
 
 
+def register_app_runtime(
+    coordinator: ExecutionCoordinator,
+    runtime: DurableAppProductRuntime,
+) -> None:
+    register_verified_adapter(coordinator, AppExecutionAdapter(runtime))
+
+
 __all__ = [
+    "AppExecutionAdapter",
     "SoftwareExecutionAdapter",
     "WebExecutionAdapter",
+    "register_app_runtime",
     "register_software_runtime",
     "register_verified_adapter",
     "register_web_runtime",
