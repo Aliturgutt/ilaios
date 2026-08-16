@@ -24,9 +24,12 @@ from services.evidence import EvidenceStore
 from services.execution_adapters import register_software_runtime, register_web_runtime
 from services.execution_coordinator import ExecutionCoordinator
 from services.governance import GovernedRuntimeGateway
-from services.integrations import DurableVideoProductRuntime, RecoverableSoftwareProductRuntime
+from services.integrations import (
+    DurableVideoProductRuntime,
+    RecoverableSoftwareProductRuntime,
+    RecoverableWebProductRuntime,
+)
 from services.integrations.desktop_video_runtime import DesktopPromptVideoRuntime
-from services.integrations.web_product_runtime import DurableWebProductRuntime
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 
 
@@ -91,7 +94,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         governance,
         video_runtime,
     )
-    web_runtime = DurableWebProductRuntime(
+    web_runtime = RecoverableWebProductRuntime(
         root / "web-product.sqlite3",
         control_plane,
         grant_policy,
