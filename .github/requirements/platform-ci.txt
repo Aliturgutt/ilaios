@@ -1,4 +1,5 @@
 # SF-18 evidence-locked from successful Required CI Gate #59 on 2026-08-14.
+PyJWT==2.13.0
 PyYAML==6.0.3
 certifi==2026.7.22
 cfgv==3.5.0

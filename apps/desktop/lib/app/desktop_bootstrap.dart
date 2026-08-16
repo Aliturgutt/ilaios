@@ -81,12 +81,26 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     if (client == null) return;
     try {
       final providers = await client.fetchProviders();
+      DesktopUserSession? restoredSession;
+      if (providers.isNotEmpty) {
+        try {
+          restoredSession = await client.poll('__ilaios_restore__');
+        } on IdentityClientException {
+          // A missing, revoked, expired, or unreadable persistent credential must
+          // fail closed to the ordinary signed-out state without blocking startup.
+        }
+      }
       if (!mounted) return;
       setState(() {
         _identityProviders = providers;
-        _identityStatus = providers.isEmpty
-            ? 'Account sign-in is not configured; governed execution is disabled'
-            : 'Sign in to submit governed work';
+        _userSession = restoredSession;
+        _identityStatus = restoredSession != null
+            ? (restoredSession.displayIdentity == null
+                ? 'Signed in with ${restoredSession.providerId}'
+                : 'Signed in as ${restoredSession.displayIdentity}')
+            : (providers.isEmpty
+                ? 'Account sign-in is not configured; governed execution is disabled'
+                : 'Sign in to submit governed work');
       });
     } on IdentityClientException catch (error) {
       if (!mounted) return;
