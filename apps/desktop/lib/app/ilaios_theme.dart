@@ -10,9 +10,6 @@ abstract final class IlaiosTheme {
   static const Color coreBlue = Color(0xFF146BFF);
   static const Color violet = Color(0xFF5C58FE);
 
-  // Legacy dark semantic aliases remain canonical for existing components and
-  // regression tests. New/updated Desktop surfaces read Theme.of(context) so
-  // they adapt correctly to the light theme.
   static const Color canvas = carbon;
   static const Color sidebar = charcoal;
   static const Color surface = charcoal;
@@ -33,8 +30,6 @@ abstract final class IlaiosTheme {
   static const Color muted = Color(0x99FFFFFF);
   static const Color mutedStrong = Color(0xCCFFFFFF);
 
-  // Light foundation uses the same identity colors, never alternate brand
-  // colors. These are semantic application surfaces only.
   static const Color lightCanvas = Color(0xFFF4F7FB);
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightSurfaceRaised = Color(0xFFEAF0F7);
@@ -42,7 +37,6 @@ abstract final class IlaiosTheme {
   static const Color lightText = Color(0xFF0B0F14);
   static const Color lightMuted = Color(0xFF617084);
 
-  // Semantic state colors stay separate from brand identity.
   static const Color success = Color(0xFF45D98B);
   static const Color warning = Color(0xFFF1BE45);
   static const Color danger = Color(0xFFFF6A78);
@@ -74,11 +68,11 @@ abstract final class IlaiosTheme {
       onSurface: foreground,
       surfaceContainerLowest: isDark ? carbon : white,
       surfaceContainerLow: surfaceColor,
-      surfaceContainer: isDark ? Color(0xFF151F2E) : Color(0xFFF1F5FA),
-      surfaceContainerHigh: isDark ? Color(0xFF192536) : Color(0xFFEAF0F7),
+      surfaceContainer: isDark ? const Color(0xFF151F2E) : const Color(0xFFF1F5FA),
+      surfaceContainerHigh: isDark ? const Color(0xFF192536) : const Color(0xFFEAF0F7),
       surfaceContainerHighest: raisedColor,
       outline: outlineColor,
-      outlineVariant: isDark ? Color(0xFF26364B) : Color(0xFFDCE5EF),
+      outlineVariant: isDark ? const Color(0xFF26364B) : const Color(0xFFDCE5EF),
       error: danger,
       onError: carbon,
     );
@@ -91,9 +85,9 @@ abstract final class IlaiosTheme {
       useMaterial3: true,
       fontFamily: 'Segoe UI',
       dividerColor: outlineColor,
-      focusColor: enterpriseCyan.withValues(alpha: .18),
-      hoverColor: coreBlue.withValues(alpha: .10),
-      highlightColor: violet.withValues(alpha: .10),
+      focusColor: cyanWash,
+      hoverColor: blueWash,
+      highlightColor: violetWash,
       splashColor: enterpriseCyan.withValues(alpha: .12),
       splashFactory: InkSparkle.splashFactory,
       iconTheme: IconThemeData(color: isDark ? mutedStrong : lightMuted),
@@ -115,7 +109,7 @@ abstract final class IlaiosTheme {
           borderRadius: BorderRadius.circular(9),
           borderSide: const BorderSide(color: focusRing, width: 1.5),
         ),
-        hoverColor: coreBlue.withValues(alpha: .08),
+        hoverColor: blueWash,
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: ButtonStyle(
@@ -130,7 +124,7 @@ abstract final class IlaiosTheme {
             }
             return enterpriseCyan;
           }),
-          overlayColor: WidgetStatePropertyAll(violet.withValues(alpha: .16)),
+          overlayColor: const WidgetStatePropertyAll(violetWash),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
           ),
@@ -146,16 +140,16 @@ abstract final class IlaiosTheme {
                   : coreBlue.withValues(alpha: .72),
             ),
           ),
-          overlayColor: WidgetStatePropertyAll(coreBlue.withValues(alpha: .08)),
+          overlayColor: const WidgetStatePropertyAll(blueWash),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
           ),
         ),
       ),
-      textButtonTheme: TextButtonThemeData(
+      textButtonTheme: const TextButtonThemeData(
         style: ButtonStyle(
-          foregroundColor: const WidgetStatePropertyAll(coreBlue),
-          overlayColor: WidgetStatePropertyAll(coreBlue.withValues(alpha: .08)),
+          foregroundColor: WidgetStatePropertyAll(coreBlue),
+          overlayColor: WidgetStatePropertyAll(blueWash),
         ),
       ),
       switchTheme: SwitchThemeData(
@@ -233,7 +227,7 @@ abstract final class IlaiosTheme {
           letterSpacing: .1,
         ),
         labelMedium: TextStyle(
-          color: isDark ? mutedStrong : Color(0xFF334155),
+          color: isDark ? mutedStrong : const Color(0xFF334155),
           fontSize: 10,
           height: 1.2,
           fontWeight: FontWeight.w600,
