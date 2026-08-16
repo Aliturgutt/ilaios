@@ -10,6 +10,7 @@ on:
       - 'services/execution_coordinator.py'
       - 'services/governance/**'
       - 'services/integrations/**'
+      - 'services/software_factory_secret_scanning.py'
       - 'src/video_automation/**'
       - 'brand/assets/03-ilaios-symbol-dark.jpg'
       - 'brand/assets/05-ilaios-app-icon.jpg'
@@ -119,6 +120,22 @@ jobs:
         with:
           name: video-local-finished-product-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}
           path: artifacts/video-local-finished-product
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Real Software Factory finished-product E2E through canonical Coordinator
+        shell: pwsh
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ILAIOS_SOFTWARE_E2E_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/software-local-finished-product
+        run: python apps/desktop/e2e/software_finished_product_e2e.py
+
+      - name: Upload exact Software finished-product evidence
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: software-local-finished-product-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}
+          path: artifacts/software-local-finished-product
           if-no-files-found: error
           retention-days: 30
 
