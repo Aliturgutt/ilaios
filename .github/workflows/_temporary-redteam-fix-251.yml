@@ -1,0 +1,116 @@
+name: Temporary red-team fix 251
+
+on:
+  push:
+    branches:
+      - feat/desktop-interactive-polish-v2
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: feat/desktop-interactive-polish-v2
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Apply exact truthfulness fixes and regression coverage
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          home = Path('apps/desktop/lib/features/dashboard/home_dashboard_v2.dart')
+          text = home.read_text(encoding='utf-8')
+          old = '''                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: LinearProgressIndicator(
+                      value: model.progressValue,
+                      minHeight: 6,
+                      backgroundColor:
+                          Theme.of(context).colorScheme.surfaceContainerHighest,
+                      color: IlaiosTheme.enterpriseCyan,
+                    ),
+                  ),
+                ),'''
+          new = '''                Expanded(
+                  child: model.progressValue == null
+                      ? Container(
+                          key: const Key('home-progress-unavailable'),
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                        )
+                      : ClipRRect(
+                          borderRadius: BorderRadius.circular(20),
+                          child: LinearProgressIndicator(
+                            key: const Key('home-progress-authoritative'),
+                            value: model.progressValue,
+                            minHeight: 6,
+                            backgroundColor: Theme.of(context)
+                                .colorScheme
+                                .surfaceContainerHighest,
+                            color: IlaiosTheme.enterpriseCyan,
+                          ),
+                        ),
+                ),'''
+          if old not in text:
+              if "home-progress-unavailable" not in text:
+                  raise SystemExit('expected progress block not found')
+          else:
+              home.write_text(text.replace(old, new, 1), encoding='utf-8')
+
+          test = Path('apps/desktop/test/interactive_home_navigation_test.dart')
+          t = test.read_text(encoding='utf-8')
+          marker = "  testWidgets('theme control switches the application to light mode', ("
+          regression = '''  testWidgets('unknown progress and event count remain truth-preserving', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('home-progress-unavailable')), findsOneWidget);
+    expect(find.byKey(const Key('home-progress-authoritative')), findsNothing);
+    expect(find.text('—'), findsWidgets);
+    expect(find.text('Events'), findsOneWidget);
+    expect(find.text('Events / min'), findsNothing);
+  });
+
+'''
+          if 'unknown progress and event count remain truth-preserving' not in t:
+              if marker not in t:
+                  raise SystemExit('test insertion marker not found')
+              test.write_text(t.replace(marker, regression + marker, 1), encoding='utf-8')
+          PY
+      - name: Verify exact patch shape
+        shell: bash
+        run: |
+          grep -F "home-progress-unavailable" apps/desktop/lib/features/dashboard/home_dashboard_v2.dart
+          grep -F "home-progress-authoritative" apps/desktop/lib/features/dashboard/home_dashboard_v2.dart
+          grep -F "'shell.eventsPerMinute': 'Events'" apps/desktop/lib/app/ilaios_locale.dart
+          grep -F "'shell.eventsPerMinute': 'Olaylar'" apps/desktop/lib/app/ilaios_locale.dart
+          grep -F "unknown progress and event count remain truth-preserving" apps/desktop/test/interactive_home_navigation_test.dart
+      - name: Commit patch
+        shell: bash
+        run: |
+          if git diff --quiet; then
+            echo 'No patch required.'
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/desktop/lib/features/dashboard/home_dashboard_v2.dart apps/desktop/test/interactive_home_navigation_test.dart
+          git commit -m 'fix(desktop): preserve unknown runtime truth in Home'
+          git push origin HEAD:feat/desktop-interactive-polish-v2
