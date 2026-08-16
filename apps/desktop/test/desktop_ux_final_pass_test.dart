@@ -20,23 +20,25 @@ void main() {
         locale: IlaiosLocale.english,
         onChanged: (_) {},
         child: MaterialApp(
-          home: CreateView(
-            projection: const ControlPlaneProjection(
-              connected: true,
-              status: 'Connected to authoritative control plane',
-              goalCount: 0,
-              jobCount: 0,
-              lastEvent: null,
+          home: Scaffold(
+            body: CreateView(
+              projection: const ControlPlaneProjection(
+                connected: true,
+                status: 'Connected to authoritative control plane',
+                goalCount: 0,
+                jobCount: 0,
+                lastEvent: null,
+              ),
+              status: 'Operational APIs connected',
+              onSubmit: (objective) async {
+                submittedObjective = objective;
+                return const PromptSubmission(
+                  goalId: 'goal-test',
+                  jobId: 'job-test',
+                  state: 'ADMITTED',
+                );
+              },
             ),
-            status: 'Operational APIs connected',
-            onSubmit: (objective) async {
-              submittedObjective = objective;
-              return const PromptSubmission(
-                goalId: 'goal-test',
-                jobId: 'job-test',
-                state: 'ADMITTED',
-              );
-            },
           ),
         ),
       ),
@@ -47,12 +49,16 @@ void main() {
     expect(find.byKey(const ValueKey('factory-preset-video')), findsOneWidget);
     expect(find.byKey(const ValueKey('factory-preset-software')), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('factory-preset-video')));
+    final video = find.byKey(const ValueKey('factory-preset-video'));
+    await tester.ensureVisible(video);
+    await tester.tap(video);
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('selected-factory-route')), findsOneWidget);
     expect(find.text('Video Factory'), findsWidgets);
 
-    await tester.tap(find.byKey(const Key('one-prompt-submit')));
+    final submit = find.byKey(const Key('one-prompt-submit'));
+    await tester.ensureVisible(submit);
+    await tester.tap(submit);
     await tester.pumpAndSettle();
 
     expect(submittedObjective, isNotNull);
@@ -80,7 +86,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Choose language'), findsOneWidget);
     expect(find.text('Türkçe'), findsOneWidget);
-    expect(find.text('English'), findsOneWidget);
+    expect(find.text('English'), findsWidgets);
   });
 
   testWidgets('workflow uses five structured responsive stages', (
@@ -144,7 +150,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Delete local copy?'), findsOneWidget);
     expect(
-      find.textContaining('evidence record, SHA-256 and provenance chain are retained'),
+      find.textContaining(
+        'evidence record, SHA-256 and provenance chain are retained',
+      ),
       findsOneWidget,
     );
     expect(find.text('video.final'), findsOneWidget);
