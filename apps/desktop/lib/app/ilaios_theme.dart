@@ -1,31 +1,58 @@
 import 'package:flutter/material.dart';
 
 abstract final class IlaiosTheme {
-  // Premium control-center palette. Keep these tokens centralized so every
-  // Desktop surface stays visually coherent and no feature invents its own
-  // colors.
-  static const Color canvas = Color(0xFF030A12);
-  static const Color sidebar = Color(0xFF06131F);
-  static const Color surface = Color(0xFF081622);
-  static const Color surfaceRaised = Color(0xFF0C2030);
-  static const Color surfaceSoft = Color(0xFF0A1B29);
-  static const Color border = Color(0xFF173247);
-  static const Color borderStrong = Color(0xFF24516A);
-  static const Color primary = Color(0xFF00BFE8);
-  static const Color cyan = Color(0xFF19D3F3);
-  static const Color cyanSoft = Color(0xFF0B8EAF);
-  static const Color text = Color(0xFFF2F7FB);
-  static const Color muted = Color(0xFF8FA6B8);
-  static const Color mutedStrong = Color(0xFFB5C5D1);
+  // Canonical ILAIOS brand palette. Product UI must derive its visual identity
+  // from these exact tokens instead of inventing feature-local colors.
+  static const Color carbon = Color(0xFF0B0F14);
+  static const Color charcoal = Color(0xFF111827);
+  static const Color graphite = Color(0xFF1F2937);
+  static const Color white = Color(0xFFFFFFFF);
+  static const Color enterpriseCyan = Color(0xFF00C2D1);
+  static const Color coreBlue = Color(0xFF146BFF);
+  static const Color violet = Color(0xFF5C58FE);
+
+  // Desktop semantic aliases. Foundation stays neutral; brand accents are
+  // reserved for identity, interaction and real system state.
+  static const Color canvas = carbon;
+  static const Color sidebar = charcoal;
+  static const Color surface = charcoal;
+  static const Color surfaceRaised = graphite;
+  static const Color surfaceSoft = charcoal;
+  static const Color border = graphite;
+  static const Color borderStrong = Color(0x99146BFF);
+  static const Color primary = enterpriseCyan;
+  static const Color cyan = enterpriseCyan;
+  static const Color cyanSoft = Color(0x9900C2D1);
+  static const Color blue = coreBlue;
+  static const Color selectiveAccent = violet;
+  static const Color text = white;
+  static const Color muted = Color(0x99FFFFFF);
+  static const Color mutedStrong = Color(0xCCFFFFFF);
+
+  // Semantic status colors remain distinct from brand identity colors so
+  // success/warning/error meaning is never confused with branding.
   static const Color success = Color(0xFF45D98B);
   static const Color warning = Color(0xFFF1BE45);
   static const Color danger = Color(0xFFFF6A78);
 
   static ThemeData get dark {
     final scheme = ColorScheme.fromSeed(
-      seedColor: primary,
+      seedColor: enterpriseCyan,
       brightness: Brightness.dark,
       surface: surface,
+    ).copyWith(
+      primary: enterpriseCyan,
+      onPrimary: carbon,
+      secondary: coreBlue,
+      onSecondary: white,
+      tertiary: violet,
+      onTertiary: white,
+      surface: surface,
+      onSurface: white,
+      outline: border,
+      outlineVariant: border,
+      error: danger,
+      onError: carbon,
     );
     return ThemeData(
       brightness: Brightness.dark,
