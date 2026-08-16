@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../control_plane/client.dart';
@@ -63,7 +64,9 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp> {
   @override
   void initState() {
     super.initState();
-    if (widget.onThemeModeChanged == null) unawaited(_loadTheme());
+    if (kReleaseMode && widget.onThemeModeChanged == null) {
+      unawaited(_loadTheme());
+    }
   }
 
   @override
@@ -89,7 +92,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp> {
       return;
     }
     if (_localThemeMode != mode) setState(() => _localThemeMode = mode);
-    unawaited(IlaiosThemeModeStore.save(mode));
+    if (kReleaseMode) unawaited(IlaiosThemeModeStore.save(mode));
   }
 
   @override
