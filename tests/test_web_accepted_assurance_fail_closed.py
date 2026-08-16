@@ -19,15 +19,31 @@ class _AcceptedRuntime(RecoverableWebProductRuntime):
         self._connection.row_factory = sqlite3.Row
         self._connection.execute(
             "CREATE TABLE web_product_requests ("
-            "request_id TEXT PRIMARY KEY, status TEXT NOT NULL, "
+            "request_id TEXT PRIMARY KEY, principal_id TEXT NOT NULL, "
+            "tenant_id TEXT NOT NULL, status TEXT NOT NULL, "
             "job_id TEXT NOT NULL, manifest_json TEXT)"
         )
         self._connection.execute(
-            "INSERT INTO web_product_requests VALUES (?, 'accepted', ?, ?)",
+            "CREATE TABLE web_product_closure ("
+            "request_id TEXT PRIMARY KEY, terminal_status TEXT NOT NULL, "
+            "reason TEXT NOT NULL, terminal_at TEXT NOT NULL)"
+        )
+        self._connection.execute(
+            "INSERT INTO web_product_requests VALUES (?, ?, ?, 'accepted', ?, ?)",
             (
                 str(manifest["request_id"]),
+                "user-web-1",
+                "tenant-web-1",
                 str(manifest["job_id"]),
                 json.dumps(manifest, sort_keys=True, separators=(",", ":")),
+            ),
+        )
+        self._connection.execute(
+            "INSERT INTO web_product_closure VALUES (?, 'accepted', ?, ?)",
+            (
+                str(manifest["request_id"]),
+                "legacy accepted record",
+                datetime(2026, 8, 17, 0, 0, tzinfo=timezone.utc).isoformat(),
             ),
         )
 
