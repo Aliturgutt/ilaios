@@ -48,6 +48,10 @@ _FORBIDDEN_SOURCE_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
 _SECRET_PATTERN = re.compile(
     r"(?:sk-[A-Za-z0-9_-]{16,}|AKIA[0-9A-Z]{16}|BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY)"
 )
+_TOUCH_TARGET_CONTRACT = (
+    "button,input,textarea,.primary-action,.language-link{"
+    "min-height:44px!important;min-block-size:44px!important"
+)
 
 
 def certify_with_bounded_repair(
@@ -91,7 +95,7 @@ def certify_with_bounded_repair(
             attempts.append(
                 {
                     "attempt": attempt_number,
-                    "classification": sorted({str(item["category"]) for item in before}),
+                    "classification": sorted({item["category"] for item in before}),
                     "before": before,
                     "changed_files": sorted(changed),
                     "remaining": [item.to_dict() for item in findings],
@@ -119,7 +123,9 @@ def certify_with_bounded_repair(
         locales = tuple(str(item) for item in spec.get("locales", []))
         pages = tuple(str(item) for item in spec.get("pages", []))
         routes = _certified_routes(locales, pages, features)
-        total_bytes = sum(int(item["size"]) for item in files)
+        total_bytes = sum(
+            path.stat().st_size for path in certified.rglob("*") if path.is_file()
+        )
         client_components = _count_client_components(certified)
 
         return {
@@ -196,7 +202,10 @@ def _inspect(root: Path) -> list[WebAssuranceFinding]:
         if not _exists(root, relative):
             findings.append(
                 WebAssuranceFinding(
-                    "required-file-missing", "build", relative, "required source file is missing"
+                    "required-file-missing",
+                    "build",
+                    relative,
+                    "required source file is missing",
                 )
             )
     if findings:
@@ -210,7 +219,9 @@ def _inspect(root: Path) -> list[WebAssuranceFinding]:
         ("Permissions-Policy", "security-headers-missing"),
     ):
         if marker not in config:
-            findings.append(WebAssuranceFinding(code, "security", "next.config.mjs", marker))
+            findings.append(
+                WebAssuranceFinding(code, "security", "next.config.mjs", marker)
+            )
 
     layout = _read(root, "app/layout.tsx")
     for marker, code in (
@@ -227,17 +238,39 @@ def _inspect(root: Path) -> list[WebAssuranceFinding]:
         ("app/icon.svg", "favicon-missing"),
     ):
         if not _exists(root, relative):
-            findings.append(WebAssuranceFinding(code, "seo", relative, "SEO artifact missing"))
+            findings.append(
+                WebAssuranceFinding(code, "seo", relative, "SEO artifact missing")
+            )
 
     css = _read(root, "app/globals.css")
-    compact_css = css.replace(" ", "")
-    for marker, code in (
-        (":focus-visible", "visible-focus-missing"),
-        ("prefers-reduced-motion", "reduced-motion-missing"),
-        ("min-height:44px", "touch-target-contract-missing"),
-    ):
-        if marker not in compact_css:
-            findings.append(WebAssuranceFinding(code, "accessibility", "app/globals.css", marker))
+    compact_css = "".join(css.split())
+    if ":focus-visible" not in compact_css:
+        findings.append(
+            WebAssuranceFinding(
+                "visible-focus-missing",
+                "accessibility",
+                "app/globals.css",
+                "focus-visible contract",
+            )
+        )
+    if "prefers-reduced-motion" not in compact_css:
+        findings.append(
+            WebAssuranceFinding(
+                "reduced-motion-missing",
+                "accessibility",
+                "app/globals.css",
+                "reduced motion contract",
+            )
+        )
+    if _TOUCH_TARGET_CONTRACT not in compact_css:
+        findings.append(
+            WebAssuranceFinding(
+                "touch-target-contract-missing",
+                "accessibility",
+                "app/globals.css",
+                "all interactive controls require a 44px minimum block size",
+            )
+        )
 
     shell = _read(root, "components/PageShell.tsx")
     spec = _site_spec(root)
@@ -246,26 +279,38 @@ def _inspect(root: Path) -> list[WebAssuranceFinding]:
         if 'action="/api/contact"' not in shell:
             findings.append(
                 WebAssuranceFinding(
-                    "contact-action-missing", "functional", "components/PageShell.tsx", "contact form"
+                    "contact-action-missing",
+                    "functional",
+                    "components/PageShell.tsx",
+                    "contact form",
                 )
             )
         if not _exists(root, "app/api/contact/route.ts"):
             findings.append(
                 WebAssuranceFinding(
-                    "contact-api-missing", "security", "app/api/contact/route.ts", "contact API"
+                    "contact-api-missing",
+                    "security",
+                    "app/api/contact/route.ts",
+                    "contact API",
                 )
             )
     if "newsletter" in features:
         if "newsletter-form" not in shell:
             findings.append(
                 WebAssuranceFinding(
-                    "newsletter-ui-missing", "functional", "components/PageShell.tsx", "newsletter form"
+                    "newsletter-ui-missing",
+                    "functional",
+                    "components/PageShell.tsx",
+                    "newsletter form",
                 )
             )
         if not _exists(root, "app/api/newsletter/route.ts"):
             findings.append(
                 WebAssuranceFinding(
-                    "newsletter-api-missing", "security", "app/api/newsletter/route.ts", "newsletter API"
+                    "newsletter-api-missing",
+                    "security",
+                    "app/api/newsletter/route.ts",
+                    "newsletter API",
                 )
             )
     if "content" in features:
@@ -273,24 +318,36 @@ def _inspect(root: Path) -> list[WebAssuranceFinding]:
             relative = f"app/{locale}/insights/page.tsx"
             if not _exists(root, relative):
                 findings.append(
-                    WebAssuranceFinding("content-route-missing", "content", relative, "insights route")
+                    WebAssuranceFinding(
+                        "content-route-missing", "content", relative, "insights route"
+                    )
                 )
     if "search" in features:
         for locale in spec.get("locales", []):
             relative = f"app/{locale}/search/page.tsx"
             if not _exists(root, relative):
                 findings.append(
-                    WebAssuranceFinding("search-route-missing", "functional", relative, "search route")
+                    WebAssuranceFinding(
+                        "search-route-missing", "functional", relative, "search route"
+                    )
                 )
 
     for path in root.rglob("*"):
-        if not path.is_file() or path.suffix.lower() not in {".js", ".mjs", ".ts", ".tsx", ".html"}:
+        if not path.is_file() or path.suffix.lower() not in {
+            ".js",
+            ".mjs",
+            ".ts",
+            ".tsx",
+            ".html",
+        }:
             continue
         text = path.read_text(encoding="utf-8", errors="replace")
         relative = path.relative_to(root).as_posix()
         if _SECRET_PATTERN.search(text):
             findings.append(
-                WebAssuranceFinding("secret-pattern", "security", relative, "credential-like material")
+                WebAssuranceFinding(
+                    "secret-pattern", "security", relative, "credential-like material"
+                )
             )
         for code, pattern in _FORBIDDEN_SOURCE_PATTERNS:
             if pattern.search(text):
@@ -299,17 +356,27 @@ def _inspect(root: Path) -> list[WebAssuranceFinding]:
     total = sum(path.stat().st_size for path in root.rglob("*") if path.is_file())
     if total > 1_500_000:
         findings.append(
-            WebAssuranceFinding("source-budget-exceeded", "performance", ".", str(total))
+            WebAssuranceFinding(
+                "source-budget-exceeded", "performance", ".", str(total)
+            )
         )
     if _count_client_components(root) > 5:
         findings.append(
             WebAssuranceFinding(
-                "client-component-budget-exceeded", "performance", ".", "too many client components"
+                "client-component-budget-exceeded",
+                "performance",
+                ".",
+                "too many client components",
             )
         )
     if not _site_document(root).get("design_strategy"):
         findings.append(
-            WebAssuranceFinding("design-strategy-unbound", "design", "site.json", "design strategy missing")
+            WebAssuranceFinding(
+                "design-strategy-unbound",
+                "design",
+                "site.json",
+                "design strategy missing",
+            )
         )
     return findings
 
@@ -345,7 +412,11 @@ def _apply_repairs(root: Path, findings: list[WebAssuranceFinding]) -> set[str]:
     if codes & {"csp-missing", "security-headers-missing"}:
         _write(root, "next.config.mjs", _next_config())
         changed.add("next.config.mjs")
-    if codes & {"open-graph-missing", "canonical-metadata-missing", "favicon-metadata-missing"}:
+    if codes & {
+        "open-graph-missing",
+        "canonical-metadata-missing",
+        "favicon-metadata-missing",
+    }:
         _write(root, "app/layout.tsx", _layout(spec))
         changed.add("app/layout.tsx")
     if "robots-missing" in codes:
@@ -357,13 +428,18 @@ def _apply_repairs(root: Path, findings: list[WebAssuranceFinding]) -> set[str]:
     if "favicon-missing" in codes:
         _write(root, "app/icon.svg", _icon_svg(str(spec.get("business_name", "Site"))))
         changed.add("app/icon.svg")
-    if codes & {"visible-focus-missing", "reduced-motion-missing", "touch-target-contract-missing"}:
+    if codes & {
+        "visible-focus-missing",
+        "reduced-motion-missing",
+        "touch-target-contract-missing",
+    }:
         path = root / "app/globals.css"
         css = path.read_text(encoding="utf-8")
         marker = "/* ilaios:web-assurance:v1 */"
-        if marker not in css:
-            css += "\n" + _assurance_css()
-            path.write_text(css, encoding="utf-8")
+        if marker in css:
+            css = css.split(marker, 1)[0].rstrip() + "\n"
+        css += "\n" + _assurance_css()
+        path.write_text(css, encoding="utf-8")
         changed.add("app/globals.css")
 
     features = {str(item) for item in spec.get("features", [])}
@@ -382,9 +458,18 @@ def _apply_repairs(root: Path, findings: list[WebAssuranceFinding]) -> set[str]:
     if "newsletter" in features and "newsletter-ui-missing" in codes:
         insertion = _newsletter_component()
         if "function NewsletterForm" not in shell:
-            shell = shell.replace("\nexport function PageShell", insertion + "\nexport function PageShell")
-        footer = '<footer><p>{props.locale === "tr" ? "Netlik, güven ve ölçülebilir aksiyon için tasarlandı." : "Built for clarity, trust, and measurable action."}</p></footer>'
-        replacement = '<footer><NewsletterForm locale={props.locale} /><p>{props.locale === "tr" ? "Netlik, güven ve ölçülebilir aksiyon için tasarlandı." : "Built for clarity, trust, and measurable action."}</p></footer>'
+            shell = shell.replace(
+                "\nexport function PageShell", insertion + "\nexport function PageShell"
+            )
+        footer = (
+            '<footer><p>{props.locale === "tr" ? "Netlik, güven ve ölçülebilir aksiyon için tasarlandı." '
+            ': "Built for clarity, trust, and measurable action."}</p></footer>'
+        )
+        replacement = (
+            '<footer><NewsletterForm locale={props.locale} /><p>{props.locale === "tr" ? '
+            '"Netlik, güven ve ölçülebilir aksiyon için tasarlandı." : '
+            '"Built for clarity, trust, and measurable action."}</p></footer>'
+        )
         shell = shell.replace(footer, replacement)
         changed.add("components/PageShell.tsx")
     if "newsletter" in features and "newsletter-api-missing" in codes:
@@ -487,8 +572,8 @@ def _icon_svg(name: str) -> str:
 
 def _assurance_css() -> str:
     return '''/* ilaios:web-assurance:v1 */
-a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #0b5fff;outline-offset:3px}
-button,input,textarea,.primary-action,.language-link{min-height:44px}
+a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid #0b5fff!important;outline-offset:3px}
+button,input,textarea,.primary-action,.language-link{min-height:44px!important;min-block-size:44px!important}
 @media (prefers-reduced-motion: reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
 '''
 
@@ -559,11 +644,13 @@ def _search_page(spec: dict[str, Any], locale: str) -> str:
     pages = [str(item) for item in spec.get("pages", [])]
     labels = json.dumps(pages, ensure_ascii=False)
     title = "Site araması" if locale == "tr" else "Site search"
+    query_label = "Arama" if locale == "tr" else "Query"
+    button_label = "Ara" if locale == "tr" else "Search"
     return f'''const items = {labels} as const;
 export default async function SearchPage({{ searchParams }}: {{ searchParams: Promise<{{ q?: string }}> }}) {{
   const params = await searchParams; const query = (params.q ?? "").toLowerCase();
   const matches = query ? items.filter((item) => item.toLowerCase().includes(query)) : items;
-  return <main id="main"><h1>{title}</h1><form action="/{locale}/search"><label htmlFor="q">Query</label><input id="q" name="q" defaultValue={{params.q ?? ""}}/><button type="submit">Search</button></form><ul>{{matches.map((item) => <li key={{item}}>{{item}}</li>)}}</ul></main>;
+  return <main id="main"><h1>{title}</h1><form action="/{locale}/search"><label htmlFor="q">{query_label}</label><input id="q" name="q" defaultValue={{params.q ?? ""}}/><button type="submit">{button_label}</button></form><ul>{{matches.map((item) => <li key={{item}}>{{item}}</li>)}}</ul></main>;
 }}
 '''
 
@@ -601,7 +688,8 @@ def _count_client_components(root: Path) -> int:
         1
         for path in root.rglob("*.tsx")
         if path.is_file()
-        and '"use client"' in path.read_text(encoding="utf-8", errors="replace")[:200]
+        and '"use client"'
+        in path.read_text(encoding="utf-8", errors="replace")[:200]
     )
 
 
