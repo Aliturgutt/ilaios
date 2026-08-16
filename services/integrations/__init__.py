@@ -25,6 +25,11 @@ from .video import VideoChainAdapter, VideoIntegrationError, VideoIntegrationRes
 from .video_runtime import DeterministicLocalVideoRuntime, VideoRuntimeError
 from .web_factory import GovernedWebFactory, WebsiteAcceptance, WebsiteFile
 from .web_product_runtime_recovery import RecoverableWebProductRuntime
+from .web_vercel_delivery import (
+    RequestsVercelDeploymentTransport,
+    VercelDeploymentTransport,
+    VercelWebDeploymentAdapter,
+)
 
 __all__ = [
     "AcceptanceManifest",
@@ -41,10 +46,13 @@ __all__ = [
     "ProductRuntimeError",
     "RecoverableSoftwareProductRuntime",
     "RecoverableWebProductRuntime",
+    "RequestsVercelDeploymentTransport",
     "SoftwareProductFinalizationPending",
     "SoftwareProductRuntimeError",
     "SoftwareProductSecurityError",
     "SoftwareProductValidationError",
+    "VercelDeploymentTransport",
+    "VercelWebDeploymentAdapter",
     "VideoChainAdapter",
     "VideoIntegrationError",
     "VideoIntegrationResult",
