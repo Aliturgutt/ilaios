@@ -56,19 +56,24 @@ class _DesktopShellState extends State<DesktopShell> {
   DesktopSection _section = DesktopSection.home;
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact = constraints.maxWidth < 900;
-          if (compact) {
-            return Column(
+  Widget build(BuildContext context) => Scaffold(
+        body: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 900;
+            final content = Column(
               children: [
-                _CompactTopBar(
-                  projection: widget.projection,
-                  section: _section,
-                  onSectionSelected: _selectSection,
-                ),
+                if (compact)
+                  _CompactTopBar(
+                    projection: widget.projection,
+                    section: _section,
+                    onSectionSelected: _selectSection,
+                  )
+                else
+                  _TopBar(
+                    projection: widget.projection,
+                    snapshot: widget.operationalSnapshot,
+                    userSession: widget.userSession,
+                  ),
                 Expanded(child: _buildSection()),
                 _BottomStatusBar(
                   projection: widget.projection,
@@ -76,102 +81,84 @@ class _DesktopShellState extends State<DesktopShell> {
                 ),
               ],
             );
-          }
-          return Row(
-            children: [
-              _NavigationRail(
-                selected: _section,
-                userSession: widget.userSession,
-                onSelected: _selectSection,
-              ),
-              Expanded(
-                child: Column(
-                  children: [
-                    _TopBar(
-                      projection: widget.projection,
-                      snapshot: widget.operationalSnapshot,
-                      userSession: widget.userSession,
-                    ),
-                    Expanded(child: _buildSection()),
-                    _BottomStatusBar(
-                      projection: widget.projection,
-                      snapshot: widget.operationalSnapshot,
-                    ),
-                  ],
+            if (compact) return content;
+            return Row(
+              children: [
+                _NavigationRail(
+                  selected: _section,
+                  userSession: widget.userSession,
+                  onSelected: _selectSection,
                 ),
-              ),
-            ],
-          );
-        },
-      ),
-    );
-  }
+                Expanded(child: content),
+              ],
+            );
+          },
+        ),
+      );
 
   void _selectSection(DesktopSection section) {
     if (_section != section) setState(() => _section = section);
   }
 
-  Widget _buildSection() {
-    return switch (_section) {
-      DesktopSection.home => HomeDashboardView(
-          projection: widget.projection,
-          snapshot: widget.operationalSnapshot,
-          status: widget.operationalStatus,
-          userSession: widget.userSession,
-          onRefreshRequested: widget.onRefreshRequested,
-        ),
-      DesktopSection.goals => CreateView(
-          projection: widget.projection,
-          status: widget.operationalStatus,
-          identityProviders: widget.identityProviders,
-          userSession: widget.userSession,
-          identityStatus: widget.identityStatus,
-          onSignIn: widget.onSignIn,
-          onLogout: widget.onLogout,
-          onSubmit: widget.onPromptSubmit,
-        ),
-      DesktopSection.workflows => ControlCenterView(
-          projection: widget.projection,
-          operationalSnapshot: widget.operationalSnapshot,
-          operationalStatus: widget.operationalStatus,
-          onRefreshRequested: widget.onRefreshRequested,
-        ),
-      DesktopSection.agents => LiveExecutionView(
-          projection: widget.projection,
-          snapshot: widget.operationalSnapshot,
-          status: widget.operationalStatus,
-        ),
-      DesktopSection.liveWorkspace => LiveWorkspaceView(
-          snapshot: widget.operationalSnapshot,
-          status: widget.operationalStatus,
-        ),
-      DesktopSection.artifacts => DeliveriesView(
-          snapshot: widget.operationalSnapshot,
-          status: widget.operationalStatus,
-          onSaveArtifact: widget.onSaveArtifact,
-        ),
-      DesktopSection.approvals => GovernanceView(
-          snapshot: widget.operationalSnapshot,
-          status: widget.operationalStatus,
-          approverId: widget.approverId,
-          onDecision: widget.onGovernanceDecision,
-        ),
-      DesktopSection.evidence => EvidenceView(
-          snapshot: widget.operationalSnapshot,
-          status: widget.operationalStatus,
-        ),
-      DesktopSection.costs => CostsView(
-          snapshot: widget.operationalSnapshot,
-          status: widget.operationalStatus,
-        ),
-      DesktopSection.settings => SettingsView(
-          projection: widget.projection,
-          identityStatus: widget.identityStatus,
-          userSession: widget.userSession,
-          providers: widget.identityProviders,
-        ),
-    };
-  }
+  Widget _buildSection() => switch (_section) {
+        DesktopSection.home => HomeDashboardView(
+            projection: widget.projection,
+            snapshot: widget.operationalSnapshot,
+            status: widget.operationalStatus,
+            userSession: widget.userSession,
+            onRefreshRequested: widget.onRefreshRequested,
+          ),
+        DesktopSection.goals => CreateView(
+            projection: widget.projection,
+            status: widget.operationalStatus,
+            identityProviders: widget.identityProviders,
+            userSession: widget.userSession,
+            identityStatus: widget.identityStatus,
+            onSignIn: widget.onSignIn,
+            onLogout: widget.onLogout,
+            onSubmit: widget.onPromptSubmit,
+          ),
+        DesktopSection.workflows => ControlCenterView(
+            projection: widget.projection,
+            operationalSnapshot: widget.operationalSnapshot,
+            operationalStatus: widget.operationalStatus,
+            onRefreshRequested: widget.onRefreshRequested,
+          ),
+        DesktopSection.agents => LiveExecutionView(
+            projection: widget.projection,
+            snapshot: widget.operationalSnapshot,
+            status: widget.operationalStatus,
+          ),
+        DesktopSection.liveWorkspace => LiveWorkspaceView(
+            snapshot: widget.operationalSnapshot,
+            status: widget.operationalStatus,
+          ),
+        DesktopSection.artifacts => DeliveriesView(
+            snapshot: widget.operationalSnapshot,
+            status: widget.operationalStatus,
+            onSaveArtifact: widget.onSaveArtifact,
+          ),
+        DesktopSection.approvals => GovernanceView(
+            snapshot: widget.operationalSnapshot,
+            status: widget.operationalStatus,
+            approverId: widget.approverId,
+            onDecision: widget.onGovernanceDecision,
+          ),
+        DesktopSection.evidence => EvidenceView(
+            snapshot: widget.operationalSnapshot,
+            status: widget.operationalStatus,
+          ),
+        DesktopSection.costs => CostsView(
+            snapshot: widget.operationalSnapshot,
+            status: widget.operationalStatus,
+          ),
+        DesktopSection.settings => SettingsView(
+            projection: widget.projection,
+            identityStatus: widget.identityStatus,
+            userSession: widget.userSession,
+            providers: widget.identityProviders,
+          ),
+      };
 }
 
 class _NavigationRail extends StatelessWidget {
@@ -180,6 +167,7 @@ class _NavigationRail extends StatelessWidget {
     required this.userSession,
     required this.onSelected,
   });
+
   final DesktopSection selected;
   final DesktopUserSession? userSession;
   final ValueChanged<DesktopSection> onSelected;
@@ -218,97 +206,6 @@ class _NavigationRail extends StatelessWidget {
               ),
             ),
           ),
-        ),
-      );
-}
-
-class _TenantSummary extends StatelessWidget {
-  const _TenantSummary({required this.userSession});
-  final DesktopUserSession? userSession;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        width: double.infinity,
-        padding: const EdgeInsets.all(11),
-        decoration: BoxDecoration(
-          color: IlaiosTheme.canvas.withValues(alpha: .55),
-          borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: IlaiosTheme.border),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Tenant', style: TextStyle(color: IlaiosTheme.muted, fontSize: 10)),
-            const SizedBox(height: 4),
-            Text(
-              userSession?.tenantId ?? 'Unavailable',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            const Row(
-              children: [
-                Expanded(
-                  child: Text('Region  —', style: TextStyle(color: IlaiosTheme.muted, fontSize: 10)),
-                ),
-                Text('Plan  —', style: TextStyle(color: IlaiosTheme.muted, fontSize: 10)),
-              ],
-            ),
-          ],
-        ),
-      );
-}
-
-class _CompactTopBar extends StatelessWidget {
-  const _CompactTopBar({
-    required this.projection,
-    required this.section,
-    required this.onSectionSelected,
-  });
-  final ControlPlaneProjection projection;
-  final DesktopSection section;
-  final ValueChanged<DesktopSection> onSectionSelected;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        height: 64,
-        padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: const BoxDecoration(
-          color: IlaiosTheme.surface,
-          border: Border(bottom: BorderSide(color: IlaiosTheme.border)),
-        ),
-        child: Row(
-          children: [
-            PopupMenuButton<DesktopSection>(
-              tooltip: 'Navigate ILAIOS Desktop',
-              onSelected: onSectionSelected,
-              itemBuilder: (context) => [
-                for (final item in DesktopSection.values)
-                  PopupMenuItem(
-                    value: item,
-                    child: Row(
-                      children: [
-                        Icon(item.icon, size: 18),
-                        const SizedBox(width: 10),
-                        Text(item.label),
-                      ],
-                    ),
-                  ),
-              ],
-              child: Row(
-                children: [
-                  const _BrandMark(),
-                  const SizedBox(width: 9),
-                  Text(section.label, style: const TextStyle(fontWeight: FontWeight.w700)),
-                  const SizedBox(width: 4),
-                  const Icon(Icons.expand_more, size: 17),
-                ],
-              ),
-            ),
-            const Spacer(),
-            _ConnectionPill(projection: projection, compact: true),
-          ],
         ),
       );
 }
@@ -353,7 +250,6 @@ class _BrandHeader extends StatelessWidget {
 
 class _BrandMark extends StatelessWidget {
   const _BrandMark();
-
   static const _asset = '../../brand/assets/05-ilaios-app-icon.jpg';
 
   @override
@@ -375,11 +271,8 @@ class _BrandMark extends StatelessWidget {
 }
 
 class _NavItem extends StatelessWidget {
-  const _NavItem({
-    required this.section,
-    required this.selected,
-    required this.onTap,
-  });
+  const _NavItem({required this.section, required this.selected, required this.onTap});
+
   final DesktopSection section;
   final bool selected;
   final VoidCallback onTap;
@@ -428,108 +321,194 @@ class _NavItem extends StatelessWidget {
       );
 }
 
+class _TenantSummary extends StatelessWidget {
+  const _TenantSummary({required this.userSession});
+  final DesktopUserSession? userSession;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(11),
+        decoration: BoxDecoration(
+          color: IlaiosTheme.canvas.withValues(alpha: .55),
+          borderRadius: BorderRadius.circular(9),
+          border: Border.all(color: IlaiosTheme.border),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Tenant', style: TextStyle(color: IlaiosTheme.muted, fontSize: 10)),
+            const SizedBox(height: 4),
+            Text(
+              userSession?.tenantId ?? 'Unavailable',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Region —   Plan —',
+              style: TextStyle(color: IlaiosTheme.muted, fontSize: 10),
+            ),
+          ],
+        ),
+      );
+}
+
+class _CompactTopBar extends StatelessWidget {
+  const _CompactTopBar({
+    required this.projection,
+    required this.section,
+    required this.onSectionSelected,
+  });
+
+  final ControlPlaneProjection projection;
+  final DesktopSection section;
+  final ValueChanged<DesktopSection> onSectionSelected;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        height: 64,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        decoration: const BoxDecoration(
+          color: IlaiosTheme.surface,
+          border: Border(bottom: BorderSide(color: IlaiosTheme.border)),
+        ),
+        child: Row(
+          children: [
+            PopupMenuButton<DesktopSection>(
+              tooltip: 'Navigate ILAIOS Desktop',
+              onSelected: onSectionSelected,
+              itemBuilder: (context) => [
+                for (final item in DesktopSection.values)
+                  PopupMenuItem(
+                    value: item,
+                    child: Row(
+                      children: [
+                        Icon(item.icon, size: 18),
+                        const SizedBox(width: 10),
+                        Text(item.label),
+                      ],
+                    ),
+                  ),
+              ],
+              child: Row(
+                children: [
+                  const _BrandMark(),
+                  const SizedBox(width: 9),
+                  Text(section.label, style: const TextStyle(fontWeight: FontWeight.w700)),
+                  const SizedBox(width: 4),
+                  const Icon(Icons.expand_more, size: 17),
+                ],
+              ),
+            ),
+            const Spacer(),
+            _ConnectionPill(projection: projection, compact: true),
+          ],
+        ),
+      );
+}
+
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.projection,
     required this.snapshot,
     required this.userSession,
   });
+
   final ControlPlaneProjection projection;
   final OperationalSnapshot snapshot;
   final DesktopUserSession? userSession;
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, constraints) => Container(
-          height: 68,
-          padding: const EdgeInsets.symmetric(horizontal: 18),
-          decoration: const BoxDecoration(
-            color: IlaiosTheme.surface,
-            border: Border(bottom: BorderSide(color: IlaiosTheme.border)),
-          ),
-          child: Row(
-            children: [
-              ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 215),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Project', style: TextStyle(color: IlaiosTheme.muted, fontSize: 9)),
-                    const SizedBox(height: 3),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            _projectLabel(snapshot),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                        const SizedBox(width: 7),
-                        Icon(
-                          Icons.circle,
-                          size: 7,
-                          color: projection.connected ? IlaiosTheme.success : IlaiosTheme.muted,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const Spacer(),
-              if (constraints.maxWidth >= 880) ...[
-                Container(
-                  width: 210,
-                  height: 34,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(
-                    color: IlaiosTheme.canvas,
-                    borderRadius: BorderRadius.circular(7),
-                    border: Border.all(color: IlaiosTheme.border),
-                  ),
-                  child: const Row(
+        builder: (context, constraints) {
+          final project = _projectLabel(snapshot);
+          return Container(
+            height: 68,
+            padding: const EdgeInsets.symmetric(horizontal: 18),
+            decoration: const BoxDecoration(
+              color: IlaiosTheme.surface,
+              border: Border(bottom: BorderSide(color: IlaiosTheme.border)),
+            ),
+            child: Row(
+              children: [
+                ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 215),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Icon(Icons.search, size: 16, color: IlaiosTheme.muted),
-                      SizedBox(width: 7),
-                      Expanded(
-                        child: Text(
-                          'Global search unavailable',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(color: IlaiosTheme.muted, fontSize: 10),
+                      const Text(
+                        'Project',
+                        style: TextStyle(color: IlaiosTheme.muted, fontSize: 9),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        project ?? 'Unavailable',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: project == null ? IlaiosTheme.muted : IlaiosTheme.text,
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
-              ],
-              const Tooltip(
-                message: 'Notifications are not exposed by the current Desktop API',
-                child: Icon(Icons.notifications_none, size: 20, color: IlaiosTheme.muted),
-              ),
-              const SizedBox(width: 14),
-              const Tooltip(
-                message: 'Locale follows system settings',
-                child: Icon(Icons.language, size: 19, color: IlaiosTheme.muted),
-              ),
-              const SizedBox(width: 14),
-              const Tooltip(
-                message: 'Dark theme',
-                child: Icon(Icons.dark_mode_outlined, size: 19, color: IlaiosTheme.muted),
-              ),
-              const SizedBox(width: 16),
-              if (constraints.maxWidth >= 700) ...[
-                _ProfileSummary(userSession: userSession),
+                const Spacer(),
+                if (constraints.maxWidth >= 880) ...[
+                  Container(
+                    width: 210,
+                    height: 34,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: IlaiosTheme.canvas,
+                      borderRadius: BorderRadius.circular(7),
+                      border: Border.all(color: IlaiosTheme.border),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.search, size: 16, color: IlaiosTheme.muted),
+                        SizedBox(width: 7),
+                        Expanded(
+                          child: Text(
+                            'Global search unavailable',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: IlaiosTheme.muted, fontSize: 10),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                ],
+                const Tooltip(
+                  message: 'Notifications are not exposed by the current Desktop API',
+                  child: Icon(Icons.notifications_none, size: 20, color: IlaiosTheme.muted),
+                ),
                 const SizedBox(width: 14),
+                const Tooltip(
+                  message: 'Locale follows system settings',
+                  child: Icon(Icons.language, size: 19, color: IlaiosTheme.muted),
+                ),
+                const SizedBox(width: 14),
+                const Tooltip(
+                  message: 'Dark theme',
+                  child: Icon(Icons.dark_mode_outlined, size: 19, color: IlaiosTheme.muted),
+                ),
+                const SizedBox(width: 16),
+                if (constraints.maxWidth >= 700) ...[
+                  _ProfileSummary(userSession: userSession),
+                  const SizedBox(width: 14),
+                ],
+                _ConnectionPill(projection: projection),
               ],
-              _ConnectionPill(projection: projection),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       );
 }
 
@@ -539,7 +518,7 @@ class _ProfileSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final identity = userSession?.displayIdentity ?? userSession?.providerId ?? 'Signed out';
+    final identity = userSession?.displayIdentity ?? userSession?.providerId;
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 155),
       child: Row(
@@ -551,7 +530,7 @@ class _ProfileSummary extends StatelessWidget {
             child: Icon(
               userSession == null ? Icons.person_outline : Icons.person,
               size: 16,
-              color: IlaiosTheme.cyan,
+              color: userSession == null ? IlaiosTheme.muted : IlaiosTheme.cyan,
             ),
           ),
           const SizedBox(width: 8),
@@ -561,13 +540,13 @@ class _ProfileSummary extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  identity,
+                  identity ?? 'Identity unavailable',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
                 ),
                 Text(
-                  userSession == null ? 'Identity unavailable' : 'Authenticated',
+                  userSession == null ? 'Signed out' : 'Authenticated',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(color: IlaiosTheme.muted, fontSize: 9),
@@ -644,22 +623,21 @@ class _BottomStatusBar extends StatelessWidget {
       child: Row(
         children: [
           _StatusItem(
-            label: 'System',
-            value: projection.connected ? 'Healthy' : 'Offline',
+            label: 'Control plane',
+            value: projection.connected ? 'Ready' : 'Offline',
             active: projection.connected,
           ),
           const SizedBox(width: 18),
           _StatusItem(label: 'Workers', value: '$leases'),
           const SizedBox(width: 18),
           _StatusItem(label: 'Queues', value: queues?.toString() ?? '—'),
-          const SizedBox(width: 18),
-          const _StatusItem(label: 'Events/min', value: '—'),
+          if (MediaQuery.sizeOf(context).width >= 760) ...[
+            const SizedBox(width: 18),
+            const _StatusItem(label: 'Events/min', value: '—'),
+          ],
           const Spacer(),
-          _StatusItem(
-            label: 'Control plane',
-            value: projection.connected ? 'Connected' : 'Disconnected',
-            active: projection.connected,
-          ),
+          if (MediaQuery.sizeOf(context).width >= 980)
+            const _StatusItem(label: 'App version', value: 'Unavailable'),
         ],
       ),
     );
@@ -686,14 +664,14 @@ class _StatusItem extends StatelessWidget {
       );
 }
 
-String _projectLabel(OperationalSnapshot snapshot) {
-  if (snapshot.liveEvents.isEmpty) return 'Current workspace';
+String? _projectLabel(OperationalSnapshot snapshot) {
+  if (snapshot.liveEvents.isEmpty) return null;
   final latest = snapshot.liveEvents.last;
   for (final key in const <String>['project_name', 'project_id']) {
     final value = latest[key];
     if (value is String && value.trim().isNotEmpty) return value.trim();
   }
-  return 'Current workspace';
+  return null;
 }
 
 List<Map<String, Object?>> _mapList(Object? value) {
