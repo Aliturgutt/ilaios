@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -84,7 +85,8 @@ def test_web_is_registry_driven_and_accepts_verified_finished_product(tmp_path: 
     )
     assert prepared["execution_status"] == ExecutionState.ADMITTED.value
     assert prepared["adapter_id"] == "web.product-runtime.v1"
-    assert prepared["plan"]["capabilities"] == ["ilaios.capability.web-factory"]
+    plan = cast(dict[str, object], prepared["plan"])
+    assert plan["capabilities"] == ["ilaios.capability.web-factory"]
 
     manifest = coordinator.resume(
         "web-current-1",
@@ -96,7 +98,8 @@ def test_web_is_registry_driven_and_accepts_verified_finished_product(tmp_path: 
     assert manifest["accepted"] is True
     assert manifest["adapter_id"] == "web.product-runtime.v1"
     assert manifest["deployment_state"] == "NOT_DEPLOYED"
-    assert manifest["qa"]["passed"] is True
+    qa = cast(dict[str, object], manifest["qa"])
+    assert qa["passed"] is True
     assert manifest["source_project_digest"]
     state = coordinator.get(
         "web-current-1",
