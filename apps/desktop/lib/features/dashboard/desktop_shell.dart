@@ -451,7 +451,7 @@ class _TopBar extends StatelessWidget {
               children: [
                 _ProjectSelector(project: project),
                 const Spacer(),
-                if (constraints.maxWidth >= 760) ...[
+                if (constraints.maxWidth >= 900) ...[
                   const _SearchField(),
                   const SizedBox(width: 18),
                 ],
@@ -461,7 +461,7 @@ class _TopBar extends StatelessWidget {
                 const SizedBox(width: 14),
                 const _TopIcon(icon: Icons.light_mode_outlined, tooltip: 'Dark theme'),
                 const SizedBox(width: 17),
-                if (constraints.maxWidth >= 620) ...[
+                if (constraints.maxWidth >= 820) ...[
                   _ProfileSummary(userSession: userSession),
                   const SizedBox(width: 14),
                 ],
