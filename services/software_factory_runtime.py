@@ -93,8 +93,22 @@ class _CommandRuntimeAdapter:
     executable_name = ""
     root_hint = "."
 
-    def __init__(self, boundary: SecureCommandBoundary) -> None:
+    def __init__(
+        self,
+        boundary: SecureCommandBoundary,
+        *,
+        root_hint: str | None = None,
+    ) -> None:
         self._boundary = boundary
+        if root_hint is not None:
+            normalized = root_hint.strip().replace("\\", "/")
+            if (
+                not normalized
+                or normalized.startswith("/")
+                or ".." in normalized.split("/")
+            ):
+                raise ValueError("runtime root_hint must be a bounded relative path")
+            self.root_hint = normalized
 
     def detect(self, workspace: Path) -> RuntimeDetection:
         root = self._runtime_root(workspace)
@@ -116,33 +130,74 @@ class _CommandRuntimeAdapter:
         detection = self.detect(workspace)
         if not detection.detected:
             raise SoftwareFactoryError(f"{self.adapter_id} runtime is unavailable: {detection.reason}")
-        return self._run(workspace, policy, RuntimeCommand("prepare", self._prepare_command(), self.root_hint))
+        return self._run(
+            workspace,
+            policy,
+            RuntimeCommand("prepare", self._prepare_command(), self.root_hint),
+        )
 
     def resolve_dependencies(self, workspace: Path, policy: ExecutionPolicy) -> RuntimeStepResult:
-        return self._run(workspace, policy, RuntimeCommand("resolve_dependencies", self._dependency_command(), self.root_hint))
+        return self._run(
+            workspace,
+            policy,
+            RuntimeCommand("resolve_dependencies", self._dependency_command(), self.root_hint),
+        )
 
     def lint(self, workspace: Path, policy: ExecutionPolicy) -> RuntimeStepResult:
-        return self._run(workspace, policy, RuntimeCommand("lint", self._lint_command(), self.root_hint))
+        return self._run(
+            workspace,
+            policy,
+            RuntimeCommand("lint", self._lint_command(), self.root_hint),
+        )
 
     def typecheck(self, workspace: Path, policy: ExecutionPolicy) -> RuntimeStepResult:
-        return self._run(workspace, policy, RuntimeCommand("typecheck", self._typecheck_command(), self.root_hint))
+        return self._run(
+            workspace,
+            policy,
+            RuntimeCommand("typecheck", self._typecheck_command(), self.root_hint),
+        )
 
     def test(self, workspace: Path, policy: ExecutionPolicy) -> RuntimeStepResult:
-        return self._run(workspace, policy, RuntimeCommand("test", self._test_command(), self.root_hint))
+        return self._run(
+            workspace,
+            policy,
+            RuntimeCommand("test", self._test_command(), self.root_hint),
+        )
 
     def build(self, workspace: Path, policy: ExecutionPolicy) -> RuntimeStepResult:
-        return self._run(workspace, policy, RuntimeCommand("build", self._build_command(), self.root_hint))
+        return self._run(
+            workspace,
+            policy,
+            RuntimeCommand("build", self._build_command(), self.root_hint),
+        )
 
     def package(self, workspace: Path, policy: ExecutionPolicy) -> RuntimeStepResult:
-        return self._run(workspace, policy, RuntimeCommand("package", self._package_command(), self.root_hint))
+        return self._run(
+            workspace,
+            policy,
+            RuntimeCommand("package", self._package_command(), self.root_hint),
+        )
 
     def smoke_test(self, workspace: Path, policy: ExecutionPolicy) -> RuntimeStepResult:
-        return self._run(workspace, policy, RuntimeCommand("smoke_test", self._smoke_command(), self.root_hint))
+        return self._run(
+            workspace,
+            policy,
+            RuntimeCommand("smoke_test", self._smoke_command(), self.root_hint),
+        )
 
     def collect_evidence(
         self, workspace: Path, results: tuple[RuntimeStepResult, ...]
     ) -> RuntimeEvidence:
-        required = {"prepare", "resolve_dependencies", "lint", "typecheck", "test", "build", "package", "smoke_test"}
+        required = {
+            "prepare",
+            "resolve_dependencies",
+            "lint",
+            "typecheck",
+            "test",
+            "build",
+            "package",
+            "smoke_test",
+        }
         stages = {result.stage for result in results}
         if stages != required:
             raise SoftwareFactoryError("runtime evidence is incomplete")
@@ -197,14 +252,29 @@ class PythonRuntimeAdapter(_CommandRuntimeAdapter):
     manifest_name = "pyproject.toml"
     executable_name = "python"
 
-    def _prepare_command(self) -> tuple[str, ...]: return ("python", "-m", "compileall", "-q", "src", "services")
-    def _dependency_command(self) -> tuple[str, ...]: return ("python", "-m", "pip", "check")
-    def _lint_command(self) -> tuple[str, ...]: return ("python", "-m", "ruff", "check", "src", "services", "tests")
-    def _typecheck_command(self) -> tuple[str, ...]: return ("python", "-m", "mypy", "--strict", "src", "tests")
-    def _test_command(self) -> tuple[str, ...]: return ("python", "-m", "pytest", "-q")
-    def _build_command(self) -> tuple[str, ...]: return ("python", "-m", "build", "--wheel", "--no-isolation")
-    def _package_command(self) -> tuple[str, ...]: return ("python", "-m", "build", "--sdist", "--no-isolation")
-    def _smoke_command(self) -> tuple[str, ...]: return ("python", "-c", "import services.software_factory")
+    def _prepare_command(self) -> tuple[str, ...]:
+        return ("python", "-m", "compileall", "-q", "src", "services")
+
+    def _dependency_command(self) -> tuple[str, ...]:
+        return ("python", "-m", "pip", "check")
+
+    def _lint_command(self) -> tuple[str, ...]:
+        return ("python", "-m", "ruff", "check", "src", "services", "tests")
+
+    def _typecheck_command(self) -> tuple[str, ...]:
+        return ("python", "-m", "mypy", "--strict", "src", "tests")
+
+    def _test_command(self) -> tuple[str, ...]:
+        return ("python", "-m", "pytest", "-q")
+
+    def _build_command(self) -> tuple[str, ...]:
+        return ("python", "-m", "build", "--wheel", "--no-isolation")
+
+    def _package_command(self) -> tuple[str, ...]:
+        return ("python", "-m", "build", "--sdist", "--no-isolation")
+
+    def _smoke_command(self) -> tuple[str, ...]:
+        return ("python", "-c", "import services.software_factory")
 
 
 class NodeRuntimeAdapter(_CommandRuntimeAdapter):
@@ -213,14 +283,29 @@ class NodeRuntimeAdapter(_CommandRuntimeAdapter):
     executable_name = "pnpm"
     root_hint = "apps/website"
 
-    def _prepare_command(self) -> tuple[str, ...]: return ("pnpm", "--version")
-    def _dependency_command(self) -> tuple[str, ...]: return ("pnpm", "install", "--offline", "--frozen-lockfile")
-    def _lint_command(self) -> tuple[str, ...]: return ("pnpm", "run", "lint")
-    def _typecheck_command(self) -> tuple[str, ...]: return ("pnpm", "run", "typecheck")
-    def _test_command(self) -> tuple[str, ...]: return ("pnpm", "run", "test:site")
-    def _build_command(self) -> tuple[str, ...]: return ("pnpm", "run", "build")
-    def _package_command(self) -> tuple[str, ...]: return ("pnpm", "pack", "--dry-run")
-    def _smoke_command(self) -> tuple[str, ...]: return ("pnpm", "run", "test:site")
+    def _prepare_command(self) -> tuple[str, ...]:
+        return ("pnpm", "--version")
+
+    def _dependency_command(self) -> tuple[str, ...]:
+        return ("pnpm", "install", "--offline", "--frozen-lockfile")
+
+    def _lint_command(self) -> tuple[str, ...]:
+        return ("pnpm", "run", "lint")
+
+    def _typecheck_command(self) -> tuple[str, ...]:
+        return ("pnpm", "run", "typecheck")
+
+    def _test_command(self) -> tuple[str, ...]:
+        return ("pnpm", "run", "test:site")
+
+    def _build_command(self) -> tuple[str, ...]:
+        return ("pnpm", "run", "build")
+
+    def _package_command(self) -> tuple[str, ...]:
+        return ("pnpm", "pack", "--dry-run")
+
+    def _smoke_command(self) -> tuple[str, ...]:
+        return ("pnpm", "run", "test:site")
 
 
 class FlutterRuntimeAdapter(_CommandRuntimeAdapter):
@@ -229,21 +314,58 @@ class FlutterRuntimeAdapter(_CommandRuntimeAdapter):
     executable_name = "flutter"
     root_hint = "apps/desktop"
 
-    def _prepare_command(self) -> tuple[str, ...]: return ("flutter", "--version")
-    def _dependency_command(self) -> tuple[str, ...]: return ("flutter", "pub", "get", "--offline")
-    def _lint_command(self) -> tuple[str, ...]: return ("dart", "format", "--output=none", "--set-exit-if-changed", ".")
-    def _typecheck_command(self) -> tuple[str, ...]: return ("flutter", "analyze")
-    def _test_command(self) -> tuple[str, ...]: return ("flutter", "test")
-    def _build_command(self) -> tuple[str, ...]: return ("flutter", "build", "windows", "--debug")
-    def _package_command(self) -> tuple[str, ...]: return ("dart", "pub", "publish", "--dry-run")
-    def _smoke_command(self) -> tuple[str, ...]: return ("flutter", "test", "test/widget_test.dart")
+    def __init__(
+        self,
+        boundary: SecureCommandBoundary,
+        *,
+        root_hint: str | None = None,
+        build_mode: str = "debug",
+        package_command: tuple[str, ...] | None = None,
+    ) -> None:
+        super().__init__(boundary, root_hint=root_hint)
+        if build_mode not in {"debug", "release"}:
+            raise ValueError("Flutter build_mode must be debug or release")
+        if package_command is not None and not package_command:
+            raise ValueError("Flutter package_command cannot be empty")
+        self._build_mode = build_mode
+        self._package_command_override = package_command
+
+    def _prepare_command(self) -> tuple[str, ...]:
+        return ("flutter", "--version")
+
+    def _dependency_command(self) -> tuple[str, ...]:
+        return ("flutter", "pub", "get", "--offline")
+
+    def _lint_command(self) -> tuple[str, ...]:
+        return ("dart", "format", ".")
+
+    def _typecheck_command(self) -> tuple[str, ...]:
+        return ("flutter", "analyze")
+
+    def _test_command(self) -> tuple[str, ...]:
+        return ("flutter", "test")
+
+    def _build_command(self) -> tuple[str, ...]:
+        return ("flutter", "build", "windows", f"--{self._build_mode}")
+
+    def _package_command(self) -> tuple[str, ...]:
+        if self._package_command_override is not None:
+            return self._package_command_override
+        return ("dart", "pub", "publish", "--dry-run")
+
+    def _smoke_command(self) -> tuple[str, ...]:
+        return ("flutter", "test", "test/widget_test.dart")
 
 
 def _workspace_digest(root: Path) -> str:
     digest = hashlib.sha256()
-    for path in sorted(item for item in root.rglob("*") if item.is_file() and ".git" not in item.parts):
+    for path in sorted(
+        item for item in root.rglob("*") if item.is_file() and ".git" not in item.parts
+    ):
         if _secret_path(path.relative_to(root)):
-            raise SoftwareFactoryError("secret-bearing file is outside runtime evidence policy")
+            raise SoftwareFactoryError(
+                "secret-bearing file is outside runtime evidence policy"
+            )
         digest.update(path.relative_to(root).as_posix().encode() + b"\0")
         digest.update(path.read_bytes() + b"\0")
     return digest.hexdigest()
