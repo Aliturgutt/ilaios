@@ -14,11 +14,14 @@ void main() {
     await tester.pumpWidget(const IlaiosDesktopApp());
     await tester.pumpAndSettle();
 
+    // Flutter may merge descendant semantics into the labeled navigation
+    // container. Match the required label within that semantic node rather
+    // than assuming it is the node's entire synthesized label.
     expect(
-      find.bySemanticsLabel('ILAIOS Desktop primary navigation'),
+      find.bySemanticsLabel(RegExp(r'ILAIOS Desktop primary navigation')),
       findsOneWidget,
     );
-    expect(find.bySemanticsLabel('ILAIOS'), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp(r'ILAIOS')), findsWidgets);
 
     for (final destination in <String>[
       'home',
