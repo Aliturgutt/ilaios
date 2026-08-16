@@ -1,0 +1,81 @@
+name: Redteam Coordinator Type One-Shot Patch
+
+on:
+  push:
+    branches:
+      - redteam/execution-coordinator-final-current-master
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: redteam/execution-coordinator-final-current-master
+          fetch-depth: 0
+          persist-credentials: true
+      - name: Apply exact typing repairs and self-clean
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+
+          coordinator = Path('services/execution_coordinator.py')
+          text = coordinator.read_text(encoding='utf-8')
+          cancel_old = 'return state.value\n        if state is ExecutionState.ACCEPTED:'
+          cancel_new = 'return str(state.value)\n        if state is ExecutionState.ACCEPTED:'
+          if text.count(cancel_old) != 2:
+              raise SystemExit(f'expected exactly two cancel typing anchors, got {text.count(cancel_old)}')
+          text = text.replace(cancel_old, cancel_new, 2)
+          budget_old = 'int(budget_value["max_attempts"]),\n                int(budget_value["max_runtime_seconds"]),\n                int(budget_value["max_external_spend_minor"]),'
+          budget_new = 'int(str(budget_value["max_attempts"])),\n                int(str(budget_value["max_runtime_seconds"])),\n                int(str(budget_value["max_external_spend_minor"])),'
+          if text.count(budget_old) != 1:
+              raise SystemExit(f'expected exactly one budget typing anchor, got {text.count(budget_old)}')
+          coordinator.write_text(text.replace(budget_old, budget_new, 1), encoding='utf-8')
+
+          web_test = Path('tests/test_web_execution_coordinator_current.py')
+          web = web_test.read_text(encoding='utf-8')
+          import_anchor = 'from pathlib import Path\n\nimport pytest'
+          if web.count(import_anchor) != 1:
+              raise SystemExit('web cast import anchor missing')
+          web = web.replace(import_anchor, 'from pathlib import Path\nfrom typing import cast\n\nimport pytest', 1)
+          plan_old = '    assert prepared["plan"]["capabilities"] == ["ilaios.capability.web-factory"]'
+          plan_new = '    plan = cast(dict[str, object], prepared["plan"])\n    assert plan["capabilities"] == ["ilaios.capability.web-factory"]'
+          if web.count(plan_old) != 1:
+              raise SystemExit('web plan typing anchor missing')
+          web = web.replace(plan_old, plan_new, 1)
+          qa_old = '    assert manifest["qa"]["passed"] is True'
+          qa_new = '    qa = cast(dict[str, object], manifest["qa"])\n    assert qa["passed"] is True'
+          if web.count(qa_old) != 1:
+              raise SystemExit('web qa typing anchor missing')
+          web_test.write_text(web.replace(qa_old, qa_new, 1), encoding='utf-8')
+
+          multi_test = Path('tests/test_execution_coordinator_multicap.py')
+          multi = multi_test.read_text(encoding='utf-8')
+          multi_import = 'from __future__ import annotations\n\nfrom datetime import datetime, timedelta, timezone'
+          if multi.count(multi_import) != 1:
+              raise SystemExit('multi sqlite import anchor missing')
+          multi = multi.replace(multi_import, 'from __future__ import annotations\n\nimport sqlite3\nfrom datetime import datetime, timedelta, timezone', 1)
+          coordinator_import = '    ExecutionCoordinator,\n    ExecutionCoordinatorError,\n    ExecutionState,'
+          if multi.count(coordinator_import) != 1:
+              raise SystemExit('multi adapter import anchor missing')
+          multi = multi.replace(coordinator_import, '    ExecutionAdapter,\n    ExecutionCoordinator,\n    ExecutionCoordinatorError,\n    ExecutionState,', 1)
+          function_old = '''    def simulate_process_stop(step: object) -> object:\n        nonlocal interrupted\n        row = cast(object, step)\n        if not interrupted and int(row["step_index"]) == 1:  # type: ignore[index]\n            interrupted = True\n            raise ExecutionCoordinatorError("simulated process stop between steps")\n        return real_resolver(step)  # type: ignore[arg-type]\n'''
+          function_new = '''    def simulate_process_stop(step: sqlite3.Row) -> ExecutionAdapter:\n        nonlocal interrupted\n        if not interrupted and int(str(step["step_index"])) == 1:\n            interrupted = True\n            raise ExecutionCoordinatorError("simulated process stop between steps")\n        return real_resolver(step)\n'''
+          if multi.count(function_old) != 1:
+              raise SystemExit('multi callback typing anchor missing')
+          multi_test.write_text(multi.replace(function_old, function_new, 1), encoding='utf-8')
+          PY
+          python -m py_compile services/execution_coordinator.py tests/test_web_execution_coordinator_current.py tests/test_execution_coordinator_multicap.py
+          rm .github/workflows/redteam-coordinator-type-patch.yml
+          git config user.name 'ILAIOS Redteam Automation'
+          git config user.email 'actions@users.noreply.github.com'
+          git add services/execution_coordinator.py tests/test_web_execution_coordinator_current.py tests/test_execution_coordinator_multicap.py .github/workflows/redteam-coordinator-type-patch.yml
+          git diff --cached --check
+          git commit -m 'fix: make coordinator and tests strict-typing clean [redteam-type-patch]'
+          git push origin HEAD:redteam/execution-coordinator-final-current-master
