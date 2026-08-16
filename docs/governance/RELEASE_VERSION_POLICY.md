@@ -73,11 +73,11 @@ Formal Git tags and GitHub Releases therefore remain explicit governed release e
 
 `VERIFIED` does not mean `PRODUCTION` and a release tag does not automatically promote every capability to `PRODUCTION`.
 
-Capability maturity continues to use:
+Capability maturity continues to use the canonical chain:
 
-`PLANNED -> SPECIFIED -> IMPLEMENTED -> VERIFIED -> PRODUCTION`
+`DESIGNED -> SPECIFIED -> IMPLEMENTED -> TESTED -> VERIFIED -> DEPLOYED / PRODUCTION`
 
-Release state and capability maturity are recorded independently.
+Release state and capability maturity are recorded independently. A capability cannot skip an evidence-bearing maturity stage merely because a release object or deployment exists.
 
 ## First formal release
 
