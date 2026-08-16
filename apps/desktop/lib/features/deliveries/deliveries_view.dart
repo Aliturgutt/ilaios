@@ -47,7 +47,10 @@ class _DeliveriesViewState extends State<DeliveriesView> {
 
   @override
   Widget build(BuildContext context) {
-    final records = widget.snapshot.evidenceRecords.reversed.take(100).toList();
+    final records = widget.snapshot.evidenceRecords.reversed
+        .where(_isFinishedProductEvidence)
+        .take(100)
+        .toList();
     final scheme = Theme.of(context).colorScheme;
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
@@ -202,8 +205,8 @@ class _DeliveryEmptyState extends StatelessWidget {
                   const SizedBox(height: 5),
                   Text(
                     _isTr(context)
-                        ? 'Bir yürütme doğrulanmış çıktı ürettiğinde dosya, SHA-256 kimliği ve açık kaydetme eylemi burada görünür.'
-                        : 'When an execution produces a verified artifact, its file identity, SHA-256 digest and explicit save action appear here.',
+                        ? 'Bir yürütme doğrulanmış bitmiş ürün ürettiğinde dosya, SHA-256 kimliği ve açık kaydetme eylemi burada görünür. Yürütme/koordinatör kanıtları Kanıtlar ekranında kalır.'
+                        : 'When an execution produces a verified finished product, its file identity, SHA-256 digest and explicit save action appear here. Execution/coordinator evidence remains on the Evidence surface.',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                 ],
@@ -311,6 +314,9 @@ class _DeliveryRowState extends State<_DeliveryRow> {
         ),
       );
 }
+
+bool _isFinishedProductEvidence(EvidenceRecord record) =>
+    record.action.endsWith('.finished_product');
 
 String _localizedStatus(BuildContext context, String value) {
   if (!_isTr(context)) return value;
