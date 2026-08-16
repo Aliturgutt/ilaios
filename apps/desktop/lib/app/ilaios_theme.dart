@@ -11,6 +11,8 @@ abstract final class IlaiosTheme {
   static const Color text = Color(0xFFEAF2FA);
   static const Color muted = Color(0xFF8EA4B8);
   static const Color success = Color(0xFF45D49C);
+  static const Color warning = Color(0xFFF4C95D);
+  static const Color danger = Color(0xFFFF6B7A);
 
   static ThemeData get dark {
     final scheme = ColorScheme.fromSeed(
