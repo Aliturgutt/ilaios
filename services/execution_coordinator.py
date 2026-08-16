@@ -39,6 +39,8 @@ from services.runtime import (
     SchedulingError,
 )
 
+from src.video_automation.models import JobState
+
 
 class ExecutionCoordinatorError(RuntimeError):
     """Raised when one-prompt work cannot safely advance."""
@@ -367,7 +369,11 @@ _ALLOWED_TRANSITIONS: dict[ExecutionState, frozenset[ExecutionState]] = {
         }
     ),
     ExecutionState.ADMITTED: frozenset(
-        {ExecutionState.QUEUED, ExecutionState.CANCELLING}
+        {
+            ExecutionState.QUEUED,
+            ExecutionState.CANCELLING,
+            ExecutionState.FAILED_TERMINAL,
+        }
     ),
     ExecutionState.QUEUED: frozenset(
         {
@@ -384,6 +390,7 @@ _ALLOWED_TRANSITIONS: dict[ExecutionState, frozenset[ExecutionState]] = {
             ExecutionState.FAILED_TERMINAL,
             ExecutionState.CANCELLING,
             ExecutionState.ACCEPTED,
+            ExecutionState.PARTIAL,
             ExecutionState.INTERRUPTED,
         }
     ),
@@ -614,8 +621,24 @@ class ExecutionCoordinator:
                 "reason TEXT NOT NULL, terminal_at TEXT NOT NULL, "
                 "result_sha256 TEXT)"
             )
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS execution_steps ("
+                "request_id TEXT NOT NULL, step_index INTEGER NOT NULL, "
+                "step_id TEXT NOT NULL, capability_id TEXT NOT NULL, "
+                "adapter_id TEXT NOT NULL, child_request_id TEXT NOT NULL UNIQUE, "
+                "dependencies_json TEXT NOT NULL, status TEXT NOT NULL, "
+                "prepare_attempt INTEGER NOT NULL DEFAULT 1, "
+                "execution_attempt INTEGER NOT NULL DEFAULT 0, "
+                "prepared_json TEXT, result_json TEXT, result_sha256 TEXT, "
+                "input_evidence_json TEXT NOT NULL DEFAULT '[]', error_json TEXT, "
+                "updated_at TEXT NOT NULL, PRIMARY KEY(request_id, step_index))"
+            )
+            connection.execute(
+                "CREATE INDEX IF NOT EXISTS idx_execution_steps_request "
+                "ON execution_steps(request_id, step_index)"
+            )
             applied_at = datetime.now(timezone.utc).isoformat()
-            for version in (1, 2, 3, 4):
+            for version in (1, 2, 3, 4, 5):
                 connection.execute(
                     "INSERT OR IGNORE INTO execution_coordinator_schema "
                     "(version, applied_at) VALUES (?, ?)",
@@ -715,6 +738,13 @@ class ExecutionCoordinator:
                 raise ExecutionCoordinatorError(
                     "execution request identity conflicts with existing content"
                 )
+            if (
+                existing["capability_id"] == "ilaios.capability.multi"
+                and existing["status"] == ExecutionState.PENDING_ADMISSION.value
+            ):
+                return self._continue_multi_prepare(
+                    existing, token=token, now=now
+                )
             return self.get(
                 request_id, principal_id=principal_id, tenant_id=tenant_id
             )
@@ -723,6 +753,20 @@ class ExecutionCoordinator:
         risk, data_class, budget = classify_execution_policy(objective, plan)
         blockers = _plan_blockers(plan) + _scope_blockers(objective, plan)
         routes = plan.routes
+
+        if len(routes) > 1 and not blockers:
+            return self._prepare_multi(
+                request_id,
+                objective,
+                plan=plan,
+                token=token,
+                principal_id=principal_id,
+                tenant_id=tenant_id,
+                now=now,
+                risk=risk,
+                data_class=data_class,
+                budget=budget,
+            )
 
         if len(routes) == 1 and not blockers:
             route = routes[0]
@@ -781,11 +825,7 @@ class ExecutionCoordinator:
             job_id = job.job_id
             proposal_id = str(proposal["proposal_id"])
             status = ExecutionState.BLOCKED
-            blocker_code = (
-                "MULTI_CAPABILITY_EXECUTION_NOT_IMPLEMENTED"
-                if len(routes) > 1
-                else str(blockers[0]["blocker_code"])
-            )
+            blocker_code = str(blockers[0]["blocker_code"])
 
         deadline = now + _DEFAULT_DEADLINE
         plan_json = json.dumps(
@@ -901,6 +941,13 @@ class ExecutionCoordinator:
             raise ExecutionCoordinatorError(
                 "independent human approver is required"
             )
+        if row["capability_id"] == "ilaios.capability.multi":
+            return self._decide_multi(
+                row,
+                approver_id=approver_id,
+                decision=decision,
+                now=now,
+            )
         try:
             self._governance.decide(request_id, approver_id, decision)
         except GateError as error:
@@ -939,6 +986,8 @@ class ExecutionCoordinator:
         _require_aware(now, "execution time")
         row = self._request_row(request_id)
         self._require_owner(row, principal_id=principal_id, tenant_id=tenant_id)
+        if row["capability_id"] == "ilaios.capability.multi":
+            return self._resume_multi(row, token=token, now=now)
         state = ExecutionState(str(row["status"]))
         if state is ExecutionState.ACCEPTED:
             return self._accepted_result(row)
@@ -1113,6 +1162,10 @@ class ExecutionCoordinator:
         _require_aware(now, "cancellation time")
         row = self._request_row(request_id)
         self._require_owner(row, principal_id=actor_id, tenant_id=tenant_id)
+        if row["capability_id"] == "ilaios.capability.multi":
+            return self._cancel_multi(
+                row, token=token, actor_id=actor_id, now=now
+            )
         state = ExecutionState(str(row["status"]))
         if state is ExecutionState.CANCELLED:
             return state.value
@@ -1234,6 +1287,29 @@ class ExecutionCoordinator:
             row = cast(sqlite3.Row, raw_row)
             state = ExecutionState(str(row["status"]))
             request_id = str(row["request_id"])
+            if row["capability_id"] == "ilaios.capability.multi":
+                try:
+                    result = self._resume_multi(row, token=token, now=now)
+                    if result.get("accepted") is True:
+                        recovered.append(
+                            {
+                                "request_id": request_id,
+                                "status": ExecutionState.ACCEPTED.value,
+                            }
+                        )
+                except ProductFinalizationPending:
+                    pass
+                except ExecutionCoordinatorError:
+                    updated_at = _stored_datetime(row["updated_at"], "updated_at")
+                    if now - updated_at >= _STALE_EXECUTION_AFTER:
+                        self._interrupt_multi(row, token=token, now=now)
+                        recovered.append(
+                            {
+                                "request_id": request_id,
+                                "status": ExecutionState.INTERRUPTED.value,
+                            }
+                        )
+                continue
             adapter = self._adapters.get(str(row["capability_id"]))
             if adapter is None:
                 continue
@@ -1368,6 +1444,8 @@ class ExecutionCoordinator:
             result["evidence"] = _load_json_object(
                 row["evidence_json"], "stored execution evidence"
             )
+        if row["capability_id"] == "ilaios.capability.multi":
+            result["steps"] = self._multi_step_statuses(request_id)
         return result
 
     def contains(self, request_id: str) -> bool:
@@ -1385,8 +1463,12 @@ class ExecutionCoordinator:
                 "SELECT COALESCE(SUM(CASE WHEN attempt > 1 THEN attempt - 1 ELSE 0 END), 0) "
                 "FROM execution_requests"
             ).fetchone()
+            step_rows = connection.execute(
+                "SELECT status, COUNT(*) AS count FROM execution_steps GROUP BY status"
+            ).fetchall()
         counts = {str(row["status"]): int(row["count"]) for row in rows}
         retries = 0 if retry_row is None else int(retry_row[0])
+        step_counts = {str(row["status"]): int(row["count"]) for row in step_rows}
         active_states = (
             ExecutionState.QUEUED,
             ExecutionState.EXECUTING,
@@ -1404,6 +1486,7 @@ class ExecutionCoordinator:
             "interrupted": counts.get(ExecutionState.INTERRUPTED.value, 0),
             "denied": counts.get(ExecutionState.DENIED.value, 0),
             "retry_count": retries,
+            "multi_steps": step_counts,
         }
 
     def adapter_matrix(self) -> tuple[dict[str, object], ...]:
@@ -1418,6 +1501,973 @@ class ExecutionCoordinator:
             }
             for capability_id, descriptor in sorted(_ADAPTER_DESCRIPTORS.items())
         )
+
+
+    def _prepare_multi(
+        self,
+        request_id: str,
+        objective: str,
+        *,
+        plan: ExecutionPlan,
+        token: str,
+        principal_id: str,
+        tenant_id: str,
+        now: datetime,
+        risk: RiskClass,
+        data_class: DataClass,
+        budget: BudgetEnvelope,
+    ) -> dict[str, object]:
+        """Persist one bounded parent plan, then prepare verified child adapters."""
+        routes = plan.routes
+        selected = {route.capability_id for route in routes}
+        indexes = {route.capability_id: index for index, route in enumerate(routes)}
+        tasks: list[ProposedTask] = []
+        dependencies_by_step: list[tuple[str, ...]] = []
+        for index, route in enumerate(routes):
+            definition = _CAPABILITY_BY_ID[route.capability_id]
+            dependencies = tuple(
+                f"step-{indexes[dependency] + 1}"
+                for dependency in sorted(definition.dependencies & selected)
+            )
+            dependencies_by_step.append(dependencies)
+            tasks.append(
+                ProposedTask(
+                    f"step-{index + 1}",
+                    f"Execute verified capability {route.capability_id}",
+                    dependencies,
+                )
+            )
+        goal = self._control_plane.create_goal(token, objective)
+        job = self._control_plane.create_job(token, goal.goal_id)
+        proposal = self._control_plane.create_proposal(
+            token,
+            goal.goal_id,
+            acceptance_criteria=(
+                "Every planned capability uses a verified finished-product adapter",
+                "Every semantic dependency is accepted before its dependent step starts",
+                "Every step result is content-addressed and linked into aggregate evidence",
+                "Full acceptance requires every required step to be accepted",
+            ),
+            risk_class=risk,
+            data_class=data_class,
+            budget=budget,
+            tasks=tuple(tasks),
+        )
+        plan_json = json.dumps(
+            {
+                "capabilities": list(plan.capability_ids),
+                "routes": [
+                    {
+                        "capability_id": route.capability_id,
+                        "adapter_id": route.adapter_id,
+                    }
+                    for route in routes
+                ],
+                "blockers": [],
+                "risk": risk.value,
+                "data_class": data_class.value,
+                "budget": {
+                    "max_attempts": budget.max_attempts,
+                    "max_runtime_seconds": budget.max_runtime_seconds,
+                    "max_external_spend_minor": budget.max_external_spend_minor,
+                },
+                "routing_basis": "canonical_registry+deterministic_lexical_hints",
+                "execution_mode": "bounded_multi_capability_dag_v1",
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+        timestamp = now.isoformat()
+        deadline = now + _DEFAULT_DEADLINE
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            connection.execute(
+                "INSERT INTO execution_requests "
+                "(request_id, principal_id, tenant_id, objective, capability_id, "
+                "adapter_id, goal_id, job_id, proposal_id, status, result_json, "
+                "created_at, updated_at, plan_json, state_version, blocker_code, "
+                "error_json, attempt, max_attempts, deadline_at, result_sha256, evidence_json) "
+                "VALUES (?, ?, ?, ?, 'ilaios.capability.multi', NULL, ?, ?, ?, ?, NULL, "
+                "?, ?, ?, 0, NULL, NULL, 0, ?, ?, NULL, NULL)",
+                (
+                    request_id,
+                    principal_id,
+                    tenant_id,
+                    objective,
+                    goal.goal_id,
+                    job.job_id,
+                    str(proposal["proposal_id"]),
+                    ExecutionState.PENDING_ADMISSION.value,
+                    timestamp,
+                    timestamp,
+                    plan_json,
+                    _MAX_ATTEMPTS,
+                    deadline.isoformat(),
+                ),
+            )
+            for index, route in enumerate(routes):
+                if route.adapter_id is None:
+                    raise ExecutionCoordinatorError(
+                        "multi-capability plan contains an unbound adapter"
+                    )
+                connection.execute(
+                    "INSERT INTO execution_steps "
+                    "(request_id, step_index, step_id, capability_id, adapter_id, "
+                    "child_request_id, dependencies_json, status, prepare_attempt, "
+                    "execution_attempt, prepared_json, result_json, result_sha256, "
+                    "input_evidence_json, error_json, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, 'PLANNED', 1, 0, NULL, NULL, NULL, '[]', NULL, ?)",
+                    (
+                        request_id,
+                        index,
+                        f"step-{index + 1}",
+                        route.capability_id,
+                        route.adapter_id,
+                        f"{request_id}-step-{index + 1}-p1",
+                        json.dumps(dependencies_by_step[index], separators=(",", ":")),
+                        timestamp,
+                    ),
+                )
+            for state in (
+                ExecutionState.RECEIVED,
+                ExecutionState.ROUTED,
+                ExecutionState.PLANNED,
+                ExecutionState.PENDING_ADMISSION,
+            ):
+                self._insert_event(
+                    connection,
+                    request_id,
+                    state,
+                    {"capabilities": list(plan.capability_ids), "multi": True},
+                    now,
+                )
+        self._record_evidence(request_id, ExecutionState.PENDING_ADMISSION, now)
+        return self._continue_multi_prepare(
+            self._request_row(request_id), token=token, now=now
+        )
+
+    def _continue_multi_prepare(
+        self,
+        row: sqlite3.Row,
+        *,
+        token: str,
+        now: datetime,
+    ) -> dict[str, object]:
+        request_id = str(row["request_id"])
+        plan = _load_json_object(row["plan_json"], "stored multi-capability plan")
+        try:
+            risk = RiskClass(str(plan["risk"]))
+            data_class = DataClass(str(plan["data_class"]))
+            budget_value = cast(dict[str, object], plan["budget"])
+            budget = BudgetEnvelope(
+                int(budget_value["max_attempts"]),
+                int(budget_value["max_runtime_seconds"]),
+                int(budget_value["max_external_spend_minor"]),
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise ExecutionCoordinatorError("stored multi-capability policy is malformed") from error
+
+        for step in self._multi_step_rows(request_id):
+            status = str(step["status"])
+            if status in {"ADMITTED", "PENDING_APPROVAL"}:
+                continue
+            adapter = self._verified_step_adapter(step)
+            if status == "PREPARING":
+                old_child = str(step["child_request_id"])
+                try:
+                    adapter.state(old_child)
+                except Exception:
+                    pass
+                else:
+                    try:
+                        adapter.interrupt(
+                            old_child,
+                            token=token,
+                            now=now,
+                            reason="recovering orphaned multi-capability preparation",
+                        )
+                    except Exception as error:
+                        raise ExecutionCoordinatorError(
+                            "orphaned multi-capability preparation cleanup failed"
+                        ) from error
+                next_prepare = int(step["prepare_attempt"]) + 1
+                if next_prepare > _MAX_ATTEMPTS:
+                    payload = _error_payload(
+                        "MULTI_PREPARE_RETRY_EXHAUSTED",
+                        "prepare_recovery",
+                        False,
+                        "A multi-capability step could not be prepared safely.",
+                        "planning",
+                        next_prepare - 1,
+                    )
+                    self._fail(
+                        request_id,
+                        ExecutionState.PENDING_ADMISSION,
+                        ExecutionState.FAILED_TERMINAL,
+                        now,
+                        payload,
+                    )
+                    raise ExecutionCoordinatorError(
+                        "multi-capability preparation retry budget exhausted"
+                    )
+                child_request_id = (
+                    f"{request_id}-step-{int(step['step_index']) + 1}-p{next_prepare}"
+                )
+                with self._connect() as connection:
+                    connection.execute(
+                        "UPDATE execution_steps SET child_request_id=?, status='PLANNED', "
+                        "prepare_attempt=?, updated_at=? WHERE request_id=? AND step_index=? "
+                        "AND status='PREPARING'",
+                        (
+                            child_request_id,
+                            next_prepare,
+                            now.isoformat(),
+                            request_id,
+                            step["step_index"],
+                        ),
+                    )
+                step = self._multi_step_rows(request_id)[int(step["step_index"])]
+                status = "PLANNED"
+            if status != "PLANNED":
+                raise ExecutionCoordinatorError("multi-capability preparation state is invalid")
+            with self._connect() as connection:
+                changed = connection.execute(
+                    "UPDATE execution_steps SET status='PREPARING', updated_at=? "
+                    "WHERE request_id=? AND step_index=? AND status='PLANNED'",
+                    (now.isoformat(), request_id, step["step_index"]),
+                ).rowcount
+            if changed != 1:
+                raise ExecutionCoordinatorError("multi-capability preparation changed concurrently")
+            try:
+                prepared = adapter.prepare(
+                    str(step["child_request_id"]),
+                    str(row["objective"]),
+                    token=token,
+                    principal_id=str(row["principal_id"]),
+                    tenant_id=str(row["tenant_id"]),
+                    now=now,
+                    risk=risk.value,
+                    data_class=data_class,
+                    budget=budget,
+                )
+                decision = str(prepared.get("admission_decision", ""))
+                human = bool(prepared.get("human_approval_required", False))
+                if decision == "ALLOW" and not human:
+                    target = "ADMITTED"
+                elif decision == "REQUIRE_APPROVAL" and human:
+                    target = "PENDING_APPROVAL"
+                else:
+                    raise ExecutionCoordinatorError(
+                        "multi-capability adapter returned invalid admission state"
+                    )
+                serialized = json.dumps(prepared, sort_keys=True, separators=(",", ":"))
+                with self._connect() as connection:
+                    changed = connection.execute(
+                        "UPDATE execution_steps SET status=?, prepared_json=?, updated_at=? "
+                        "WHERE request_id=? AND step_index=? AND status='PREPARING'",
+                        (
+                            target,
+                            serialized,
+                            now.isoformat(),
+                            request_id,
+                            step["step_index"],
+                        ),
+                    ).rowcount
+                if changed != 1:
+                    raise ExecutionCoordinatorError(
+                        "multi-capability prepared state changed concurrently"
+                    )
+            except Exception as error:
+                with self._connect() as connection:
+                    connection.execute(
+                        "UPDATE execution_steps SET status='FAILED_TERMINAL', error_json=?, "
+                        "updated_at=? WHERE request_id=? AND step_index=?",
+                        (
+                            json.dumps(
+                                {
+                                    "error_class": type(error).__name__,
+                                    "safe_message": "Multi-capability step preparation failed.",
+                                },
+                                sort_keys=True,
+                                separators=(",", ":"),
+                            ),
+                            now.isoformat(),
+                            request_id,
+                            step["step_index"],
+                        ),
+                    )
+                payload = _error_payload(
+                    "MULTI_STEP_PREPARE_FAILED",
+                    type(error).__name__,
+                    False,
+                    "A required multi-capability step could not be prepared.",
+                    "planning",
+                    int(step["prepare_attempt"]),
+                )
+                self._fail(
+                    request_id,
+                    ExecutionState.PENDING_ADMISSION,
+                    ExecutionState.FAILED_TERMINAL,
+                    now,
+                    payload,
+                )
+                raise
+        steps = self._multi_step_rows(request_id)
+        target = (
+            ExecutionState.PENDING_APPROVAL
+            if any(str(step["status"]) == "PENDING_APPROVAL" for step in steps)
+            else ExecutionState.ADMITTED
+        )
+        current = self._request_row(request_id)
+        if current["status"] == ExecutionState.PENDING_ADMISSION.value:
+            self._transition(
+                request_id,
+                ExecutionState.PENDING_ADMISSION,
+                target,
+                now,
+                {"multi": True, "prepared_steps": len(steps)},
+            )
+            self._record_evidence(request_id, target, now)
+        return self.get(
+            request_id,
+            principal_id=str(row["principal_id"]),
+            tenant_id=str(row["tenant_id"]),
+        )
+
+    def _decide_multi(
+        self,
+        row: sqlite3.Row,
+        *,
+        approver_id: str,
+        decision: str,
+        now: datetime,
+    ) -> str:
+        request_id = str(row["request_id"])
+        for step in self._multi_step_rows(request_id):
+            if step["status"] != "PENDING_APPROVAL":
+                continue
+            child_request_id = str(step["child_request_id"])
+            try:
+                self._governance.decide(child_request_id, approver_id, decision)
+            except GateError as error:
+                raise ExecutionCoordinatorError(str(error)) from error
+            target = "ADMITTED" if decision == "approved" else "DENIED"
+            with self._connect() as connection:
+                changed = connection.execute(
+                    "UPDATE execution_steps SET status=?, updated_at=? WHERE request_id=? "
+                    "AND step_index=? AND status='PENDING_APPROVAL'",
+                    (target, now.isoformat(), request_id, step["step_index"]),
+                ).rowcount
+            if changed != 1:
+                raise ExecutionCoordinatorError("multi-capability approval changed concurrently")
+        target_state = (
+            ExecutionState.ADMITTED if decision == "approved" else ExecutionState.DENIED
+        )
+        self._transition(
+            request_id,
+            ExecutionState.PENDING_APPROVAL,
+            target_state,
+            now,
+            {"decision": decision, "approver_id": approver_id, "multi": True},
+        )
+        if target_state is ExecutionState.DENIED:
+            self._record_closure(
+                request_id,
+                target_state,
+                "multi-capability governance approval denied",
+                now,
+            )
+        self._record_evidence(request_id, target_state, now)
+        return target_state.value
+
+    def _resume_multi(
+        self,
+        row: sqlite3.Row,
+        *,
+        token: str,
+        now: datetime,
+    ) -> dict[str, object]:
+        request_id = str(row["request_id"])
+        state = ExecutionState(str(row["status"]))
+        if state is ExecutionState.ACCEPTED:
+            return self._accepted_result(row)
+        if state not in {
+            ExecutionState.ADMITTED,
+            ExecutionState.EXECUTING,
+            ExecutionState.VERIFYING,
+        }:
+            raise ExecutionCoordinatorError("multi-capability execution is not resumable")
+        deadline_at = _stored_datetime(row["deadline_at"], "execution deadline")
+        if now >= deadline_at:
+            payload = _error_payload(
+                "EXECUTION_DEADLINE_EXCEEDED",
+                "timeout",
+                False,
+                "Multi-capability execution deadline expired.",
+                "execution",
+                int(row["attempt"]),
+            )
+            self._fail(
+                request_id,
+                state,
+                ExecutionState.FAILED_TERMINAL,
+                now,
+                payload,
+            )
+            raise ExecutionCoordinatorError("multi-capability execution deadline expired")
+        if state is ExecutionState.ADMITTED:
+            parent_job = self._control_plane.get_job(token, str(row["job_id"]))
+            if parent_job.state is JobState.PENDING:
+                self._control_plane.transition_job(
+                    token,
+                    str(row["job_id"]),
+                    JobState.RUNNING,
+                    reason="bounded multi-capability execution started",
+                    now=now,
+                )
+            next_attempt = int(row["attempt"]) + 1
+            self._transition(
+                request_id,
+                ExecutionState.ADMITTED,
+                ExecutionState.QUEUED,
+                now,
+                {"attempt": next_attempt, "multi": True},
+                attempt=next_attempt,
+            )
+            self._transition(
+                request_id,
+                ExecutionState.QUEUED,
+                ExecutionState.EXECUTING,
+                now,
+                {"attempt": next_attempt, "multi": True},
+            )
+            state = ExecutionState.EXECUTING
+        if state is ExecutionState.VERIFYING:
+            return self._finalize_multi(
+                self._request_row(request_id), token=token, now=now
+            )
+
+        accepted_hashes: list[str] = []
+        for step in self._multi_step_rows(request_id):
+            step_id = str(step["step_id"])
+            dependencies = tuple(json.loads(str(step["dependencies_json"])))
+            current_steps = {str(item["step_id"]): item for item in self._multi_step_rows(request_id)}
+            if any(str(current_steps[dependency]["status"]) != "ACCEPTED" for dependency in dependencies):
+                raise ExecutionCoordinatorError(
+                    f"multi-capability dependency is not accepted for {step_id}"
+                )
+            if step["status"] == "ACCEPTED":
+                if step["result_sha256"] is None:
+                    raise ExecutionCoordinatorError("accepted multi-capability step lacks result digest")
+                accepted_hashes.append(str(step["result_sha256"]))
+                continue
+            adapter = self._verified_step_adapter(step)
+            if step["status"] == "EXECUTING":
+                product = adapter.state(str(step["child_request_id"]))
+                product_status = str(product.get("status", ""))
+                if product_status == "finalizing":
+                    manifest = adapter.recover_finalizing(
+                        str(step["child_request_id"]), token=token, now=now
+                    )
+                    self._store_multi_step_result(step, manifest, now=now)
+                    accepted_hashes.append(self._result_digest(manifest))
+                    continue
+                if product_status == "accepted":
+                    manifest = adapter.accepted_result(str(step["child_request_id"]))
+                    self._store_multi_step_result(step, manifest, now=now)
+                    accepted_hashes.append(self._result_digest(manifest))
+                    continue
+                if product_status in {"failed", "interrupted"}:
+                    self._close_multi_failure(
+                        row,
+                        step,
+                        now=now,
+                        token=token,
+                        error_class="product_runtime",
+                        safe_message="A required multi-capability step closed without acceptance.",
+                    )
+                    raise ExecutionCoordinatorError("multi-capability step failed")
+                updated_at = _stored_datetime(step["updated_at"], "multi step updated_at")
+                if now - updated_at < _STALE_EXECUTION_AFTER:
+                    raise ExecutionCoordinatorError("multi-capability step is already executing")
+                adapter.interrupt(
+                    str(step["child_request_id"]),
+                    token=token,
+                    now=now,
+                    reason="stale multi-capability step interrupted during recovery",
+                )
+                self._close_multi_failure(
+                    row,
+                    step,
+                    now=now,
+                    token=token,
+                    error_class="stale_execution",
+                    safe_message="A stale multi-capability step was interrupted safely.",
+                )
+                raise ExecutionCoordinatorError("stale multi-capability step interrupted")
+            if step["status"] != "ADMITTED":
+                raise ExecutionCoordinatorError("multi-capability step is not executable")
+            prepared = _load_json_object(step["prepared_json"], "stored step preparation")
+            job_id = _result_text(prepared, "job_id")
+            execution_attempt = int(step["execution_attempt"]) + 1
+            grant_id = _grant_id(str(step["child_request_id"]), execution_attempt)
+            input_evidence = json.dumps(accepted_hashes, separators=(",", ":"))
+            with self._connect() as connection:
+                changed = connection.execute(
+                    "UPDATE execution_steps SET status='EXECUTING', execution_attempt=?, "
+                    "input_evidence_json=?, updated_at=? WHERE request_id=? AND step_index=? "
+                    "AND status='ADMITTED'",
+                    (
+                        execution_attempt,
+                        input_evidence,
+                        now.isoformat(),
+                        request_id,
+                        step["step_index"],
+                    ),
+                ).rowcount
+            if changed != 1:
+                raise ExecutionCoordinatorError("multi-capability step changed concurrently")
+            descriptor = adapter.descriptor
+            if descriptor.worker_subject is None or descriptor.action is None:
+                raise ExecutionCoordinatorError("verified multi-capability adapter is incomplete")
+            grant = ExecutionGrant(
+                grant_id,
+                descriptor.worker_subject,
+                frozenset({descriptor.action}),
+                frozenset({job_id}),
+                min(now + timedelta(minutes=10), deadline_at),
+                BlastRadiusBudget(max_side_effects=1, max_resources=1),
+            )
+            registered = False
+            try:
+                self._grants.register(grant)
+                registered = True
+                manifest = adapter.execute(
+                    str(step["child_request_id"]), grant_id, token=token, now=now
+                )
+                if manifest.get("accepted") is not True:
+                    raise ExecutionCoordinatorError(
+                        "multi-capability adapter did not produce accepted evidence"
+                    )
+                refreshed = self._multi_step_rows(request_id)[int(step["step_index"])]
+                self._store_multi_step_result(refreshed, manifest, now=now)
+                accepted_hashes.append(self._result_digest(manifest))
+            except ProductFinalizationPending:
+                self._record_evidence(request_id, ExecutionState.EXECUTING, now)
+                raise
+            except Exception as error:
+                refreshed = self._multi_step_rows(request_id)[int(step["step_index"])]
+                self._close_multi_failure(
+                    self._request_row(request_id),
+                    refreshed,
+                    now=now,
+                    token=token,
+                    error_class=type(error).__name__,
+                    safe_message="A required multi-capability execution step failed.",
+                )
+                raise
+            finally:
+                if registered:
+                    self._grants.revoke(grant_id, now=now)
+        current = self._request_row(request_id)
+        if current["status"] == ExecutionState.EXECUTING.value:
+            self._transition(
+                request_id,
+                ExecutionState.EXECUTING,
+                ExecutionState.VERIFYING,
+                now,
+                {"multi": True, "accepted_steps": len(accepted_hashes)},
+            )
+        return self._finalize_multi(self._request_row(request_id), token=token, now=now)
+
+    def _finalize_multi(
+        self,
+        row: sqlite3.Row,
+        *,
+        token: str,
+        now: datetime,
+        expected_state: ExecutionState = ExecutionState.VERIFYING,
+    ) -> dict[str, object]:
+        request_id = str(row["request_id"])
+        steps = self._multi_step_rows(request_id)
+        if not steps or any(step["status"] != "ACCEPTED" for step in steps):
+            raise ExecutionCoordinatorError("multi-capability finalization requires all steps accepted")
+        manifest_steps: list[dict[str, object]] = []
+        for step in steps:
+            raw = str(step["result_json"])
+            digest = hashlib.sha256(raw.encode("utf-8")).hexdigest()
+            if digest != step["result_sha256"]:
+                raise ExecutionCoordinatorError("multi-capability step result integrity check failed")
+            result = _load_json_object(raw, "stored multi-capability step result")
+            manifest_steps.append(
+                {
+                    "step_id": step["step_id"],
+                    "capability_id": step["capability_id"],
+                    "adapter_id": step["adapter_id"],
+                    "child_request_id": step["child_request_id"],
+                    "dependencies": json.loads(str(step["dependencies_json"])),
+                    "input_evidence": json.loads(str(step["input_evidence_json"])),
+                    "result_sha256": digest,
+                    "result": result,
+                }
+            )
+        parent_job = self._control_plane.get_job(token, str(row["job_id"]))
+        if parent_job.state is JobState.PENDING:
+            parent_job = self._control_plane.transition_job(
+                token,
+                str(row["job_id"]),
+                JobState.RUNNING,
+                reason="multi-capability child evidence recovered",
+                now=now,
+            )
+        if parent_job.state is JobState.RUNNING:
+            parent_job = self._control_plane.transition_job(
+                token,
+                str(row["job_id"]),
+                JobState.VALIDATING,
+                reason="all multi-capability child acceptance evidence is durable",
+                now=now,
+            )
+        if parent_job.state is JobState.VALIDATING:
+            parent_job = self._control_plane.transition_job(
+                token,
+                str(row["job_id"]),
+                JobState.COMPLETED,
+                reason="aggregate multi-capability evidence verified",
+                now=now,
+            )
+        if parent_job.state is not JobState.COMPLETED:
+            raise ExecutionCoordinatorError("multi-capability coordination job is not completable")
+        manifest: dict[str, object] = {
+            "manifest_version": "multi.1",
+            "request_id": request_id,
+            "requester_id": row["principal_id"],
+            "tenant_id": row["tenant_id"],
+            "execution_mode": "bounded_multi_capability_dag_v1",
+            "capabilities": [step["capability_id"] for step in steps],
+            "steps": manifest_steps,
+            "job_id": row["job_id"],
+            "job_state_proven": True,
+            "all_steps_accepted": True,
+            "deployment_state": "NOT_DEPLOYED",
+            "accepted": True,
+        }
+        return self._accept(
+            request_id,
+            manifest,
+            now,
+            expected_state=expected_state,
+        )
+
+    def _cancel_multi(
+        self,
+        row: sqlite3.Row,
+        *,
+        token: str,
+        actor_id: str,
+        now: datetime,
+    ) -> str:
+        request_id = str(row["request_id"])
+        state = ExecutionState(str(row["status"]))
+        if state is ExecutionState.CANCELLED:
+            return state.value
+        if state is ExecutionState.ACCEPTED:
+            raise ExecutionCoordinatorError("accepted execution results are immutable")
+        if state in {
+            ExecutionState.FAILED_TERMINAL,
+            ExecutionState.DENIED,
+            ExecutionState.INTERRUPTED,
+            ExecutionState.PARTIAL,
+        }:
+            raise ExecutionCoordinatorError("terminal execution cannot be cancelled")
+        if state is ExecutionState.BLOCKED:
+            self._transition(
+                request_id, state, ExecutionState.CANCELLED, now, {"actor_id": actor_id, "multi": True}
+            )
+            self._record_closure(
+                request_id, ExecutionState.CANCELLED, "cancelled by authenticated owner", now
+            )
+            self._record_evidence(request_id, ExecutionState.CANCELLED, now)
+            return ExecutionState.CANCELLED.value
+        if state is not ExecutionState.CANCELLING:
+            self._transition(
+                request_id,
+                state,
+                ExecutionState.CANCELLING,
+                now,
+                {"actor_id": actor_id, "multi": True},
+            )
+        for step in self._multi_step_rows(request_id):
+            if step["status"] in {"ACCEPTED", "CANCELLED", "DENIED"}:
+                continue
+            adapter = self._verified_step_adapter(step)
+            execution_attempt = int(step["execution_attempt"])
+            if execution_attempt > 0:
+                self._grants.revoke(
+                    _grant_id(str(step["child_request_id"]), execution_attempt), now=now
+                )
+            product: dict[str, object] | None = None
+            try:
+                product = adapter.state(str(step["child_request_id"]))
+            except Exception:
+                product = None
+            if product is not None and str(product.get("status", "")) == "finalizing":
+                manifest = adapter.recover_finalizing(
+                    str(step["child_request_id"]), token=token, now=now
+                )
+                refreshed = self._multi_step_rows(request_id)[int(step["step_index"])]
+                self._store_multi_step_result(refreshed, manifest, now=now)
+                continue
+            if product is not None and str(product.get("status", "")) == "accepted":
+                manifest = adapter.accepted_result(str(step["child_request_id"]))
+                refreshed = self._multi_step_rows(request_id)[int(step["step_index"])]
+                self._store_multi_step_result(refreshed, manifest, now=now)
+                continue
+            if product is not None:
+                adapter.interrupt(
+                    str(step["child_request_id"]),
+                    token=token,
+                    now=now,
+                    reason="cancelled by authenticated multi-capability owner",
+                )
+            with self._connect() as connection:
+                connection.execute(
+                    "UPDATE execution_steps SET status='CANCELLED', updated_at=? "
+                    "WHERE request_id=? AND step_index=? AND status!='ACCEPTED'",
+                    (now.isoformat(), request_id, step["step_index"]),
+                )
+        steps = self._multi_step_rows(request_id)
+        if steps and all(step["status"] == "ACCEPTED" for step in steps):
+            self._finalize_multi(
+                self._request_row(request_id),
+                token=token,
+                now=now,
+                expected_state=ExecutionState.CANCELLING,
+            )
+            raise ExecutionCoordinatorError("execution completed before cancellation won the race")
+        parent_job = self._control_plane.get_job(token, str(row["job_id"]))
+        if parent_job.state not in {JobState.COMPLETED, JobState.FAILED, JobState.CANCELLED}:
+            self._control_plane.transition_job(
+                token,
+                str(row["job_id"]),
+                JobState.CANCELLED,
+                reason="multi-capability execution cancelled",
+                now=now,
+            )
+        self._transition(
+            request_id,
+            ExecutionState.CANCELLING,
+            ExecutionState.CANCELLED,
+            now,
+            {"actor_id": actor_id, "multi": True},
+        )
+        self._record_closure(
+            request_id, ExecutionState.CANCELLED, "cancelled by authenticated owner", now
+        )
+        self._record_evidence(request_id, ExecutionState.CANCELLED, now)
+        return ExecutionState.CANCELLED.value
+
+    def _interrupt_multi(
+        self,
+        row: sqlite3.Row,
+        *,
+        token: str,
+        now: datetime,
+    ) -> None:
+        request_id = str(row["request_id"])
+        state = ExecutionState(str(self._request_row(request_id)["status"]))
+        for step in self._multi_step_rows(request_id):
+            if step["status"] == "ACCEPTED":
+                continue
+            adapter = self._verified_step_adapter(step)
+            attempt = int(step["execution_attempt"])
+            if attempt > 0:
+                self._grants.revoke(_grant_id(str(step["child_request_id"]), attempt), now=now)
+            try:
+                adapter.interrupt(
+                    str(step["child_request_id"]),
+                    token=token,
+                    now=now,
+                    reason="stale multi-capability execution interrupted during recovery",
+                )
+            except Exception:
+                pass
+            with self._connect() as connection:
+                connection.execute(
+                    "UPDATE execution_steps SET status='INTERRUPTED', updated_at=? "
+                    "WHERE request_id=? AND step_index=? AND status!='ACCEPTED'",
+                    (now.isoformat(), request_id, step["step_index"]),
+                )
+        parent_job = self._control_plane.get_job(token, str(row["job_id"]))
+        if parent_job.state not in {JobState.COMPLETED, JobState.FAILED, JobState.CANCELLED}:
+            self._control_plane.transition_job(
+                token,
+                str(row["job_id"]),
+                JobState.CANCELLED,
+                reason="stale multi-capability coordination interrupted",
+                now=now,
+            )
+        self._transition(
+            request_id,
+            state,
+            ExecutionState.INTERRUPTED,
+            now,
+            {"recovered": True, "multi": True},
+        )
+        self._record_closure(
+            request_id,
+            ExecutionState.INTERRUPTED,
+            "stale multi-capability execution interrupted safely",
+            now,
+        )
+        self._record_evidence(request_id, ExecutionState.INTERRUPTED, now)
+
+    def _close_multi_failure(
+        self,
+        row: sqlite3.Row,
+        step: sqlite3.Row,
+        *,
+        now: datetime,
+        token: str,
+        error_class: str,
+        safe_message: str,
+    ) -> None:
+        request_id = str(row["request_id"])
+        with self._connect() as connection:
+            connection.execute(
+                "UPDATE execution_steps SET status='FAILED_TERMINAL', error_json=?, updated_at=? "
+                "WHERE request_id=? AND step_index=? AND status!='ACCEPTED'",
+                (
+                    json.dumps(
+                        {"error_class": error_class, "safe_message": safe_message},
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ),
+                    now.isoformat(),
+                    request_id,
+                    step["step_index"],
+                ),
+            )
+        accepted = any(item["status"] == "ACCEPTED" for item in self._multi_step_rows(request_id))
+        current = ExecutionState(str(self._request_row(request_id)["status"]))
+        parent_job = self._control_plane.get_job(token, str(row["job_id"]))
+        if parent_job.state not in {JobState.COMPLETED, JobState.FAILED, JobState.CANCELLED}:
+            self._control_plane.transition_job(
+                token,
+                str(row["job_id"]),
+                JobState.FAILED,
+                reason="required multi-capability step failed",
+                now=now,
+            )
+        if accepted:
+            self._transition(
+                request_id,
+                current,
+                ExecutionState.PARTIAL,
+                now,
+                {"failed_step": step["step_id"], "multi": True},
+            )
+            self._record_closure(
+                request_id,
+                ExecutionState.PARTIAL,
+                "multi-capability execution closed with explicit partial result",
+                now,
+            )
+            self._record_evidence(request_id, ExecutionState.PARTIAL, now)
+        else:
+            payload = _error_payload(
+                "MULTI_STEP_EXECUTION_FAILED",
+                error_class,
+                False,
+                safe_message,
+                "execution",
+                int(step["execution_attempt"]),
+            )
+            self._fail(
+                request_id,
+                current,
+                ExecutionState.FAILED_TERMINAL,
+                now,
+                payload,
+            )
+
+    def _store_multi_step_result(
+        self,
+        step: sqlite3.Row,
+        manifest: dict[str, object],
+        *,
+        now: datetime,
+    ) -> None:
+        if manifest.get("accepted") is not True:
+            raise ExecutionCoordinatorError("unaccepted multi-capability step cannot be committed")
+        serialized = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
+        digest = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+        request_id = str(step["request_id"])
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            current = connection.execute(
+                "SELECT status, result_sha256 FROM execution_steps WHERE request_id=? AND step_index=?",
+                (request_id, step["step_index"]),
+            ).fetchone()
+            if current is None:
+                raise ExecutionCoordinatorError("unknown multi-capability step")
+            if current["status"] == "ACCEPTED":
+                if current["result_sha256"] != digest:
+                    raise ExecutionCoordinatorError("accepted multi-capability step result changed")
+                return
+            if current["status"] != "EXECUTING":
+                raise ExecutionCoordinatorError("multi-capability step is not finalizable")
+            connection.execute(
+                "UPDATE execution_steps SET status='ACCEPTED', result_json=?, result_sha256=?, "
+                "updated_at=? WHERE request_id=? AND step_index=? AND status='EXECUTING'",
+                (serialized, digest, now.isoformat(), request_id, step["step_index"]),
+            )
+
+    def _verified_step_adapter(self, step: sqlite3.Row) -> ExecutionAdapter:
+        capability_id = str(step["capability_id"])
+        descriptor = _ADAPTER_DESCRIPTORS.get(capability_id)
+        adapter = self._adapters.get(capability_id)
+        if (
+            descriptor is None
+            or adapter is None
+            or descriptor.maturity is not CapabilityMaturity.VERIFIED_FINISHED_PRODUCT_ADAPTER
+            or descriptor.adapter_id != step["adapter_id"]
+            or adapter.descriptor.adapter_id != step["adapter_id"]
+        ):
+            raise ExecutionCoordinatorError("multi-capability step adapter is not verified")
+        return adapter
+
+    def _multi_step_rows(self, request_id: str) -> list[sqlite3.Row]:
+        with self._connect() as connection:
+            return cast(
+                list[sqlite3.Row],
+                connection.execute(
+                    "SELECT * FROM execution_steps WHERE request_id=? ORDER BY step_index",
+                    (request_id,),
+                ).fetchall(),
+            )
+
+    def _multi_step_statuses(self, request_id: str) -> list[dict[str, object]]:
+        return [
+            {
+                "step_id": step["step_id"],
+                "capability_id": step["capability_id"],
+                "adapter_id": step["adapter_id"],
+                "child_request_id": step["child_request_id"],
+                "dependencies": json.loads(str(step["dependencies_json"])),
+                "status": step["status"],
+                "prepare_attempt": step["prepare_attempt"],
+                "execution_attempt": step["execution_attempt"],
+                "input_evidence": json.loads(str(step["input_evidence_json"])),
+                "result_sha256": step["result_sha256"],
+            }
+            for step in self._multi_step_rows(request_id)
+        ]
+
+    @staticmethod
+    def _result_digest(manifest: dict[str, object]) -> str:
+        serialized = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(serialized.encode("utf-8")).hexdigest()
 
     def _reconcile_active(
         self, row: sqlite3.Row, *, token: str, now: datetime
@@ -1814,12 +2864,21 @@ def classify_execution_plan(objective: str) -> ExecutionPlan:
     normalized = " ".join(objective.casefold().split())
     if not normalized:
         raise ExecutionCoordinatorError("objective must be non-blank")
-    matched = [
+    lexical_matches = [
         capability_id
         for capability_id, terms in _ROUTE_TERMS
         if any(_contains_term(normalized, term) for term in terms)
     ]
-    unique = tuple(dict.fromkeys(matched))
+    registry_matches = [
+        definition.capability_id
+        for definition in CAPABILITIES
+        if definition.domain == "factory"
+        and (
+            definition.capability_id.casefold() in normalized
+            or _contains_term(normalized, definition.display_name)
+        )
+    ]
+    unique = tuple(dict.fromkeys((*registry_matches, *lexical_matches)))
     if not unique:
         raise ExecutionCoordinatorError(
             "one-prompt capability could not be selected with sufficient confidence"
@@ -1893,18 +2952,35 @@ def _plan_blockers(plan: ExecutionPlan) -> list[dict[str, object]]:
 def _scope_blockers(
     objective: str, plan: ExecutionPlan
 ) -> list[dict[str, object]]:
-    if plan.capability_ids != (_VIDEO,):
-        return []
     normalized = " ".join(objective.casefold().split())
-    if not any(
+    external_terms = (
+        "production deploy",
+        "deploy to production",
+        "publish",
+        "send email",
+        "email gönder",
+        "email gonder",
+        "payment",
+        "ödeme",
+        "odeme",
+    )
+    if not any(_contains_term(normalized, term) for term in external_terms):
+        return []
+    if _VIDEO in plan.capability_ids and any(
         _contains_term(normalized, term) for term in _VIDEO_EXTERNAL_MUTATION_TERMS
     ):
-        return []
+        return [
+            {
+                "capability_id": _VIDEO,
+                "maturity": CapabilityMaturity.EXECUTABLE_NOT_VERIFIED.value,
+                "blocker_code": "VIDEO_EXTERNAL_MUTATION_ADAPTER_UNAVAILABLE",
+            }
+        ]
     return [
         {
-            "capability_id": _VIDEO,
+            "capability_id": plan.capability_ids[0],
             "maturity": CapabilityMaturity.EXECUTABLE_NOT_VERIFIED.value,
-            "blocker_code": "VIDEO_EXTERNAL_MUTATION_ADAPTER_UNAVAILABLE",
+            "blocker_code": "UNVERIFIED_EXTERNAL_SIDE_EFFECT",
         }
     ]
 
