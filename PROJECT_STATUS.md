@@ -57,7 +57,8 @@ No new milestone ID is considered canonical merely because it appears in a plann
 ### Remaining governance/repository gaps
 
 - Required approving review count is currently `0`; CODEOWNER approval and last-push approval are not enforced by the active ruleset. Required CI is therefore the current independent automated verifier, not a human-review guarantee.
-- Repository metadata still requires owner-level cleanup: the public description is stale, topics are empty, and the repository license decision remains unresolved.
+- Repository metadata still requires owner-level cleanup: the public description is stale and topics are empty.
+- `docs/governance/LICENSE_DECISION.md` records publicly visible source with a proprietary-by-default/no-open-source-grant posture. A release-specific legal/redistribution package, dependency notices and exact commercial distribution terms still require governed release review; no root OSI license should be inferred or invented.
 - GitHub Releases and immutable version tags remain empty even though platform production deployment evidence exists. The first formal product release must not be created until an exact release-ready SHA and release/licensing gates are satisfied.
 
 ## Post-v1 product integration status
@@ -79,6 +80,7 @@ See:
 - `docs/governance/CI_WORKFLOW_AUDIT.md`
 - `docs/governance/POST_V1_ROADMAP.md`
 - `docs/governance/RELEASE_VERSION_POLICY.md`
+- `docs/governance/LICENSE_DECISION.md`
 - `.github/CODEOWNERS`
 
 ## Safety boundary
