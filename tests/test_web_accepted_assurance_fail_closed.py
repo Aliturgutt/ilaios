@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -12,37 +13,26 @@ from services.integrations.web_product_runtime import WebProductRuntimeError
 from services.integrations.web_product_runtime_recovery import RecoverableWebProductRuntime
 
 
-class _AcceptedConnection:
-    def __init__(self, row: dict[str, object]) -> None:
-        self._row = row
-
-    def __enter__(self) -> "_AcceptedConnection":
-        return self
-
-    def __exit__(self, *_args: object) -> None:
-        return None
-
-    def execute(self, *_args: object, **_kwargs: object) -> "_AcceptedConnection":
-        return self
-
-    def fetchone(self) -> dict[str, object]:
-        return self._row
-
-
 class _AcceptedRuntime(RecoverableWebProductRuntime):
     def __init__(self, manifest: dict[str, object]) -> None:
-        self._manifest = manifest
-
-    def _connect(self) -> _AcceptedConnection:
-        return _AcceptedConnection(
-            {
-                "status": "accepted",
-                "job_id": self._manifest["job_id"],
-                "manifest_json": json.dumps(
-                    self._manifest, sort_keys=True, separators=(",", ":")
-                ),
-            }
+        self._connection = sqlite3.connect(":memory:")
+        self._connection.row_factory = sqlite3.Row
+        self._connection.execute(
+            "CREATE TABLE web_product_requests ("
+            "request_id TEXT PRIMARY KEY, status TEXT NOT NULL, "
+            "job_id TEXT NOT NULL, manifest_json TEXT)"
         )
+        self._connection.execute(
+            "INSERT INTO web_product_requests VALUES (?, 'accepted', ?, ?)",
+            (
+                str(manifest["request_id"]),
+                str(manifest["job_id"]),
+                json.dumps(manifest, sort_keys=True, separators=(",", ":")),
+            ),
+        )
+
+    def _connect(self) -> sqlite3.Connection:
+        return self._connection
 
 
 def _accepted_manifest() -> dict[str, Any]:
@@ -84,7 +74,8 @@ def test_assured_accepted_manifest_remains_readable() -> None:
         token="unused",
         now=datetime(2026, 8, 17, 0, 0, tzinfo=timezone.utc),
     )
-    assert recovered["source_assurance"]["passed"] is True
+    assurance = cast(dict[str, object], recovered["source_assurance"])
+    assert assurance["passed"] is True
 
 
 def test_legacy_accepted_manifest_without_source_assurance_fails_closed() -> None:
