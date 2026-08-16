@@ -86,7 +86,7 @@ def test_task_manager_runs_through_registered_software_adapter(
 
     prepared = coordinator.prepare(
         "software-e2e-1",
-        "Build me a simple production-quality task management application",
+        "Build me a simple production-quality task manager software application",
         token="local-ci-boundary",
         principal_id="oidc|software-user",
         tenant_id="tenant/example",
@@ -151,7 +151,7 @@ def test_authenticated_software_cancellation_is_durably_cancelled(
     now = datetime(2026, 8, 16, 8, 0, tzinfo=timezone.utc)
     prepared = coordinator.prepare(
         "software-cancel-1",
-        "Build a task manager application",
+        "Build a task manager software application",
         token="local-ci-boundary",
         principal_id="oidc|software-user",
         tenant_id="tenant/example",
