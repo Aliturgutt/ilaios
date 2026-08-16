@@ -1,7 +1,7 @@
 """Crash-recoverable bounded Software finished-product runtime.
 
 This module preserves the reviewed local task-manager builder and composes it with
-a durable cross-store finalization saga.  Verified evidence is persisted under a
+a durable cross-store finalization saga. Verified evidence is persisted under a
 ``finalizing`` proof before the Control Plane may become ``COMPLETED``.
 """
 
@@ -11,8 +11,14 @@ import hashlib
 import json
 import time
 from datetime import datetime, timedelta
+from pathlib import Path
 from typing import cast
 
+from services.control_plane import ControlPlane
+from services.control_plane.workflows import WorkflowStore
+from services.evidence import EvidenceStore
+from services.governance import GovernedRuntimeGateway
+from services.runtime import DurableGrantPolicy, DurableWorkerScheduler
 from src.video_automation.models import JobState
 
 from .product_runtime import ProductFinalizationPending
@@ -32,8 +38,30 @@ class SoftwareProductFinalizationPending(ProductFinalizationPending):
 class DurableSoftwareProductRuntime(_LegacyDurableSoftwareProductRuntime):
     """Software runtime with crash-safe finalization and explicit lease closure."""
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        database_path: Path,
+        control_plane: ControlPlane,
+        workflows: WorkflowStore,
+        scheduler: DurableWorkerScheduler,
+        grants: DurableGrantPolicy,
+        governance: GovernedRuntimeGateway,
+        evidence: EvidenceStore,
+        product_root: Path,
+        *,
+        source_head_sha: str,
+    ) -> None:
+        super().__init__(
+            database_path,
+            control_plane,
+            workflows,
+            scheduler,
+            grants,
+            governance,
+            evidence,
+            product_root,
+            source_head_sha=source_head_sha,
+        )
         with self._connect() as connection:
             connection.execute(
                 "CREATE TABLE IF NOT EXISTS software_product_closure ("
@@ -82,7 +110,9 @@ class DurableSoftwareProductRuntime(_LegacyDurableSoftwareProductRuntime):
                 now=now,
             )
             product = self._builder.build(request_id, str(row["objective"]))
-            artifact = self._evidence.put_artifact(cast(bytes, product.pop("artifact_bytes")))
+            artifact = self._evidence.put_artifact(
+                cast(bytes, product.pop("artifact_bytes"))
+            )
             provenance = self._evidence.append_provenance(
                 str(row["job_id"]), artifact, "software.local.finished-product"
             )
@@ -96,13 +126,19 @@ class DurableSoftwareProductRuntime(_LegacyDurableSoftwareProductRuntime):
                 now=now,
             )
             delivery_attempt = self._workflows.begin_attempt(
-                str(row["workflow_id"]), "delivery", deadline=now + timedelta(minutes=5)
+                str(row["workflow_id"]),
+                "delivery",
+                deadline=now + timedelta(minutes=5),
             )
             if (
-                hashlib.sha256(self._evidence.get_artifact(artifact.digest)).hexdigest()
+                hashlib.sha256(
+                    self._evidence.get_artifact(artifact.digest)
+                ).hexdigest()
                 != artifact.digest
             ):
-                raise SoftwareProductRuntimeError("software delivery integrity failed")
+                raise SoftwareProductRuntimeError(
+                    "software delivery integrity failed"
+                )
             self._workflows.complete_attempt(delivery_attempt.attempt_id)
             delivery_done = True
             self._scheduler.record_side_effect(
@@ -121,7 +157,9 @@ class DurableSoftwareProductRuntime(_LegacyDurableSoftwareProductRuntime):
                 and effect["fencing_token"] == lease.fencing_token
                 for effect in scheduler_state["effects"]
             )
-            grants = cast(list[dict[str, object]], self._grants.state()["grants"])
+            grants = cast(
+                list[dict[str, object]], self._grants.state()["grants"]
+            )
             grant_proven = any(
                 item["grant_id"] == grant_id and item["used_side_effects"] == 1
                 for item in grants
@@ -139,8 +177,10 @@ class DurableSoftwareProductRuntime(_LegacyDurableSoftwareProductRuntime):
                     cast(dict[str, object], product["security_result"])["passed"]
                     is True,
                     cast(dict[str, object], product["test_result"])["passed"] is True,
-                    cast(dict[str, object], product["build_result"])["passed"] is True,
-                    cast(dict[str, object], product["runtime_result"])["passed"] is True,
+                    cast(dict[str, object], product["build_result"])["passed"]
+                    is True,
+                    cast(dict[str, object], product["runtime_result"])["passed"]
+                    is True,
                 )
             )
             if not finalization_ready:
@@ -271,7 +311,9 @@ class DurableSoftwareProductRuntime(_LegacyDurableSoftwareProductRuntime):
                 (request_id,),
             ).fetchone()
         if row is None:
-            raise SoftwareProductRuntimeError("software proof request is unavailable")
+            raise SoftwareProductRuntimeError(
+                "software proof request is unavailable"
+            )
         if row["status"] == "accepted":
             return self.get_manifest(request_id)
         if row["status"] != "finalizing" or row["manifest_json"] is None:
@@ -340,9 +382,14 @@ class DurableSoftwareProductRuntime(_LegacyDurableSoftwareProductRuntime):
         manifest["finalization_status"] = "accepted"
         manifest["final_disposition"] = "ACCEPT"
         manifest["accepted"] = True
+        actual_minor = manifest.get("governance_actual_minor")
+        if not isinstance(actual_minor, int) or isinstance(actual_minor, bool):
+            raise SoftwareProductRuntimeError(
+                "stored Software governance cost evidence is malformed"
+            )
         self._governance.reconcile_billable(
             request_id,
-            actual_minor=int(manifest["governance_actual_minor"]),
+            actual_minor=actual_minor,
             status="executed",
             result=manifest,
         )
