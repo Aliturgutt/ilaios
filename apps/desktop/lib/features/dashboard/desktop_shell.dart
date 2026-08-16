@@ -215,40 +215,22 @@ class _BrandHeader extends StatelessWidget {
   const _BrandHeader();
 
   @override
-  Widget build(BuildContext context) => Row(
+  Widget build(BuildContext context) => const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const _BrandMark(size: 42),
-          const SizedBox(width: 11),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 1),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    'ILAIOS',
-                    style: TextStyle(
-                      fontSize: 23,
-                      height: 1,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.8,
-                      color: IlaiosTheme.text,
-                    ),
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    'Integrated Learning, Autonomous\nIntelligence & Orchestration Systems',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 7.4,
-                      height: 1.35,
-                      color: IlaiosTheme.muted,
-                      letterSpacing: .15,
-                    ),
-                  ),
-                ],
+          _BrandWordmark(),
+          SizedBox(height: 6),
+          Padding(
+            padding: EdgeInsets.only(left: 2),
+            child: Text(
+              'Integrated Learning, Autonomous\nIntelligence & Orchestration Systems',
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 7.4,
+                height: 1.35,
+                color: IlaiosTheme.muted,
+                letterSpacing: .15,
               ),
             ),
           ),
@@ -256,10 +238,32 @@ class _BrandHeader extends StatelessWidget {
       );
 }
 
+class _BrandWordmark extends StatelessWidget {
+  const _BrandWordmark();
+  static const _asset = '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+        label: 'ILAIOS',
+        image: true,
+        child: SizedBox(
+          width: 186,
+          height: 48,
+          child: Image.asset(
+            _asset,
+            fit: BoxFit.contain,
+            alignment: Alignment.centerLeft,
+            filterQuality: FilterQuality.high,
+            excludeFromSemantics: true,
+          ),
+        ),
+      );
+}
+
 class _BrandMark extends StatelessWidget {
   const _BrandMark({this.size = 36});
   final double size;
-  static const _asset = '../../brand/assets/03-ilaios-symbol-dark.jpg';
+  static const _asset = '../../brand/assets/05-ilaios-app-icon.jpg';
 
   @override
   Widget build(BuildContext context) => Semantics(

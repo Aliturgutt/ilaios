@@ -52,6 +52,24 @@ void main() {
     expect(find.text('EVIDENCE & VERIFICATION'), findsOneWidget);
   });
 
+  testWidgets('wide shell renders the canonical horizontal ILAIOS wordmark', (
+    WidgetTester tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.binding.setSurfaceSize(const Size(1600, 900));
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.pumpAndSettle();
+
+    final wordmark = find.byWidgetPredicate((widget) {
+      if (widget is! Image || widget.image is! AssetImage) return false;
+      return (widget.image as AssetImage).assetName ==
+          '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
+    });
+
+    expect(tester.takeException(), isNull);
+    expect(wordmark, findsOneWidget);
+  });
+
   testWidgets('target dashboard tolerates 125 and 150 percent text scaling', (
     WidgetTester tester,
   ) async {

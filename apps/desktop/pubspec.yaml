@@ -20,5 +20,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - ../../brand/assets/02-ilaios-primary-horizontal-dark.jpg
     - ../../brand/assets/03-ilaios-symbol-dark.jpg
     - ../../brand/assets/05-ilaios-app-icon.jpg
