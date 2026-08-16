@@ -186,7 +186,7 @@ class _EventList extends StatelessWidget {
   Widget build(BuildContext context) => ListView.separated(
         padding: const EdgeInsets.all(14),
         itemCount: events.length,
-        separatorBuilder: (_, __) => const Divider(height: 1),
+        separatorBuilder: (_, _) => const Divider(height: 1),
         itemBuilder: (context, index) {
           final event = events[events.length - 1 - index];
           final type = _firstText(event, const <String>['event_type', 'type']) ?? 'event';
