@@ -98,6 +98,12 @@ void main() {
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
+    final previousErrorHandler = FlutterError.onError;
+    FlutterError.onError = (details) {
+      debugPrint(details.toString());
+      previousErrorHandler?.call(details);
+    };
+    addTearDown(() => FlutterError.onError = previousErrorHandler);
 
     for (final size in <Size>[
       const Size(1600, 900),
