@@ -147,7 +147,7 @@ class _MetricCard extends StatelessWidget {
     return Card(
       child: SizedBox(
         width: 220,
-        height: 116,
+        height: 128,
         child: Padding(
           padding: const EdgeInsets.all(18),
           child: Row(
@@ -169,6 +169,8 @@ class _MetricCard extends StatelessWidget {
                   children: [
                     Text(
                       label,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         color: IlaiosTheme.muted,
                         fontSize: 12,
