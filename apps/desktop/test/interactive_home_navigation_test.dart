@@ -47,4 +47,48 @@ void main() {
     scaffoldContext = tester.element(find.byType(Scaffold).first);
     expect(Theme.of(scaffoldContext).brightness, Brightness.light);
   });
+
+  testWidgets('every primary Desktop destination renders in real light theme', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const IlaiosDesktopApp(themeMode: ThemeMode.light),
+    );
+    await tester.pumpAndSettle();
+
+    expect(
+      Theme.of(tester.element(find.byType(Scaffold).first)).brightness,
+      Brightness.light,
+    );
+
+    for (final destination in <String>[
+      'home',
+      'goals',
+      'workflows',
+      'agents',
+      'liveWorkspace',
+      'artifacts',
+      'approvals',
+      'evidence',
+      'costs',
+      'settings',
+    ]) {
+      final navigation = find.byKey(ValueKey('nav-$destination'));
+      expect(navigation, findsOneWidget);
+      await tester.tap(navigation);
+      await tester.pumpAndSettle();
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: '$destination failed to render in light mode',
+      );
+      expect(
+        Theme.of(tester.element(find.byType(Scaffold).first)).brightness,
+        Brightness.light,
+      );
+    }
+  });
 }
