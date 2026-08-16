@@ -71,6 +71,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         hard_cap_minor=arguments.hard_cap_minor,
     )
     source_head = _source_head_sha()
+    os.environ["ILAIOS_SOURCE_SHA"] = source_head
 
     def resolve_objective(job_id: str) -> str:
         job = control_plane.get_job(token, job_id)
