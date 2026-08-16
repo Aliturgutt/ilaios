@@ -1,0 +1,1 @@
+Status intentionally not authoritative. See PR #260, CI, runtime evidence, and generated artifacts for current reality.
