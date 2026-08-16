@@ -4,7 +4,6 @@ import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/control_plane/evidence_record.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
-import 'package:ilaios_desktop/control_plane/projection.dart';
 import 'package:ilaios_desktop/features/create/create_view.dart';
 import 'package:ilaios_desktop/main.dart';
 
