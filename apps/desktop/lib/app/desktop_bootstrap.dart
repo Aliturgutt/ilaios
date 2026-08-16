@@ -11,6 +11,7 @@ import '../control_plane/operational_snapshot.dart';
 import '../control_plane/projection.dart';
 import '../identity/identity_client.dart';
 import 'desktop_app.dart';
+import 'ilaios_locale.dart';
 
 class DesktopBootstrap extends StatefulWidget {
   const DesktopBootstrap({
@@ -32,6 +33,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       const OperationalSnapshot.unavailable();
   String _operationalStatus = 'Operational APIs not connected';
   String _identityStatus = 'Account sign-in is not configured';
+  IlaiosLocale _locale = IlaiosLocaleStore.platformDefault();
   ControlPlaneClient? _client;
   IdentityClient? _identityClient;
   List<IdentityProviderOption> _identityProviders =
@@ -43,6 +45,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
   @override
   void initState() {
     super.initState();
+    unawaited(_loadLocale());
     final config = widget.config;
     if (config == null) {
       _operationalStatus =
@@ -74,6 +77,19 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
   void dispose() {
     widget.runtime?.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadLocale() async {
+    final locale = await IlaiosLocaleStore.load();
+    if (!mounted || locale == _locale) return;
+    setState(() => _locale = locale);
+  }
+
+  Future<void> _changeLocale(IlaiosLocale locale) async {
+    if (_locale != locale && mounted) {
+      setState(() => _locale = locale);
+    }
+    await IlaiosLocaleStore.save(locale);
   }
 
   Future<void> _loadIdentityProviders() async {
@@ -409,6 +425,8 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       identityProviders: _identityProviders,
       userSession: _userSession,
       identityStatus: _identityStatus,
+      locale: _locale,
+      onLocaleChanged: _changeLocale,
       onSignIn:
           _identityClient == null || _identityProviders.isEmpty ? null : _signIn,
       onLogout: _userSession == null ? null : _logout,
