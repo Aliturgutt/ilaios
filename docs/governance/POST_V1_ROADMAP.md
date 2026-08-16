@@ -1,153 +1,73 @@
-# ILAIOS Post-v1 Roadmap Proposal
+# ILAIOS Post-v1 Roadmap
 
-Status: **DRAFT / NON-CANONICAL**
+Status: **SUPERSEDED PLANNING SNAPSHOT / NON-CANONICAL**
+Truth-sync date: 16 August 2026
 
-This document proposes the next dependency order after the completed v1 release chain. It does not amend the canonical architecture, implementation specification, milestone manifest, OpenClaw controller or current release state.
+This file previously proposed a post-v1 selection sequence from an earlier repository audit. That proposal is no longer a reliable current-state plan: master protection is now active, Knowledge/RAG has a merged bounded implementation plus RAG.14 production-readiness machinery, and product integration has advanced through the canonical Execution Coordinator plus bounded Video/Web/Software finished-product paths.
 
-## Governing principle
+The historical proposal remains recoverable in Git history. It must not be used as current execution authority.
 
-The existing canonical graph ends at `RELEASE.R03`. Post-v1 work must not invent an implicit `PLATFORM.P21` or `RELEASE.R04`.
+## Current authority
 
-Before implementation, every active post-v1 package must define:
+For current reality, use evidence in this order:
 
-- exact objective and exit criteria;
-- dependencies;
-- allowed and forbidden paths;
-- validations and tests;
-- evidence requirements;
-- approvals;
-- budget policy where relevant;
-- rollback/recovery;
-- stop conditions;
-- commit/promotion policy.
+1. current `master` code and exact commit lineage;
+2. tests and Required CI;
+3. runtime/deployment/external evidence;
+4. `PROJECT_STATUS.md` and `docs/governance/CAPABILITY_MATRIX.md` as mutable projections;
+5. canonical architecture/specification documents for target truth.
 
-## Proposed dependency flow
+No roadmap prose may promote a capability beyond its observed evidence.
 
-### Stage 0 — Governance baseline
+## Current post-v1 direction
 
-Dependencies: proven v1 production baseline.
+The correct near-term strategy is **product-integration and production-evidence closure on the existing architecture**, not selection of a new Core, router, orchestrator or parallel factory generation.
 
-Deliverables:
-- repository truth synchronization;
-- security/governance policies;
-- stale PR cleanup;
-- CI/workflow inventory;
-- capability maturity matrix;
-- branch-protection and release-versioning owner decisions recorded.
+Dependency order is:
 
-Exit: repository planning state no longer contradicts current evidence.
+1. preserve the single canonical Execution Coordinator and adapter registry;
+2. preserve the merged bounded Video/Web/Software finished-product paths and close only their remaining real external/deployment evidence gaps;
+3. complete Desktop real Windows OIDC/package acceptance, then signing/Partner Center/Store evidence through the separate governed release boundary;
+4. execute the guarded RAG.14 live canary/evidence path only with explicit bounded external-spend authority and exact release evidence;
+5. close App finished-product issue `#97` only when a real Windows-first Flutter implementation/build/package artifact can pass the existing platform gates;
+6. keep Research/Data, Creative/Document and Security capabilities bounded until their required input/scope bindings and executable finished-product evidence exist;
+7. keep Commerce/Growth and Personal Operations review-only until governed external channel/account mutations and reconciliation are implemented;
+8. implement Mobile only after higher-priority product closure and platform-specific build/sign/store gates are available;
+9. implement the commercial plan/entitlement/usage/billing layer before public SaaS monetization requires it;
+10. create the first formal SemVer tag/GitHub Release only from an exact release-ready SHA after release-specific licensing/redistribution and required CI gates are satisfied.
 
-### Stage 1 — Capability revalidation
+## Existing architecture invariants
 
-Dependencies: Stage 0.
+Post-v1 work must not create:
 
-Revalidate existing implementation before rewriting it:
+- `Core 2`;
+- a second global router;
+- a second orchestration authority;
+- a second policy engine;
+- a second capability registry;
+- a factory-local parallel RAG authority;
+- an evidence-free `PLATFORM.P21` or `RELEASE.R04` merely to continue numbering.
 
-1. Code Intelligence;
-2. Knowledge Graph;
-3. Project Manager;
-4. Web/Software Factory foundations;
-5. privacy/cryptography service boundaries.
+Existing components evolve in place through bounded, tested and evidence-backed changes.
 
-Each capability is promoted only by fresh targeted + integration/regression evidence. Existing code that passes the new gates is preserved.
+## External-action boundary
 
-Exit: capability matrix is evidence-backed enough to choose the first net-new product package.
+The following remain separate governed/external actions when applicable:
 
-### Stage 2 — Post-v1 product selection gate
+- credentials, OAuth/provider registration and 2FA/CAPTCHA;
+- cloud/provider spend authorization;
+- production DNS/deployment mutation not already authorized by a release workflow;
+- signing certificates and signing secrets;
+- Partner Center / Store identity and final submissions;
+- paid channel spend;
+- legal terms and release-specific redistribution/licensing decisions.
 
-Dependencies: Stage 1.
+Repository code, tests or CI must not fabricate completion of those external proofs.
 
-Owner/product decision required. Candidate workstreams are ranked by architectural fit and repository gap, not by novelty.
+## Definition of done
 
-Current strongest candidates:
+This roadmap is only a dependency guide. A capability closes only through the canonical maturity chain:
 
-1. Mobile enablement — explicitly post-v1 in the architecture and no Android/iOS implementation path was found in the audit.
-2. Commercial account/billing/entitlement layer — no obvious implementation path was found in repository search.
-3. RAG/embedding/vector retrieval — architecture target, but no obvious current implementation was found in audit search.
-4. Existing factory capability promotion — implementation exists and should be revalidated before expansion.
+`DESIGNED -> SPECIFIED -> IMPLEMENTED -> TESTED -> VERIFIED -> DEPLOYED / PRODUCTION`
 
-Only one primary workstream should become active unless independence is explicitly proven.
-
-### Stage 3A — Mobile enablement candidate
-
-Dependencies: Stage 2 selection = Mobile; stable control-plane contracts; identity/tenant boundary verified.
-
-Proposed order:
-
-1. shared Flutter/Dart client architecture audit;
-2. Android project enablement without moving backend authority to client;
-3. authentication/control-plane connectivity;
-4. read-only operational projection;
-5. governed interactions using existing backend contracts;
-6. Android test/build/signing readiness;
-7. Play Store external-account readiness;
-8. iOS project enablement;
-9. TestFlight/App Store readiness.
-
-Signing, developer-account verification, payments, store declarations and final submissions remain explicit external actions.
-
-### Stage 3B — Commercial SaaS candidate
-
-Dependencies: Stage 2 selection = Commercial; identity/tenant behavior verified.
-
-Proposed order:
-
-1. product-plan/entitlement model;
-2. usage/quota metering;
-3. rate-limit policy integration;
-4. subscription/billing provider adapter;
-5. webhook/event reconciliation;
-6. invoice/payment-state projection;
-7. failure/refund/cancellation rules;
-8. security/privacy/FinOps verification;
-9. limited rollout before production.
-
-Provider-specific logic must remain replaceable behind ILAIOS-owned contracts.
-
-### Stage 3C — RAG / Knowledge candidate
-
-Dependencies: Stage 2 selection = RAG; privacy/data-classification requirements approved.
-
-Proposed order:
-
-1. data/source contract;
-2. tenant isolation model;
-3. ingestion and provenance;
-4. chunk/index lifecycle;
-5. embedding/provider adapter;
-6. retrieval/reranking;
-7. authorization-aware query path;
-8. evaluation and privacy leakage tests;
-9. bounded production rollout.
-
-### Stage 4 — Enterprise hardening
-
-Dependencies: first selected post-v1 capability VERIFIED.
-
-Cross-cutting gates:
-- backup/restore evidence where stateful data is introduced;
-- recovery drills;
-- tenant isolation regression;
-- security negative tests;
-- SBOM/build provenance where applicable;
-- observability/SLOs;
-- cost limits;
-- runbooks;
-- independent release verification.
-
-### Stage 5 — Further capability promotion
-
-Only after Stage 4, select the next candidate from the capability matrix. Do not open several speculative implementation tracks merely because they appear in the architecture.
-
-## Recommended immediate order
-
-1. merge governance baseline;
-2. owner enables appropriate `master` protection and decides repository metadata/license policy;
-3. run Stage 1 revalidation packages;
-4. select Mobile vs Commercial as the first net-new post-v1 track;
-5. formalize the selected track into a dedicated canonical amendment/package set;
-6. then execute automatically within bounded rules.
-
-## Definition of done for this roadmap
-
-This proposal is complete when it gives a safe dependency order. It is **not executable authority** until the selected post-v1 graph is explicitly adopted through the governed canonical process.
+`PRODUCTION` requires real runtime/external evidence where the capability has external effects. Current state remains governed by live evidence, not this file.
