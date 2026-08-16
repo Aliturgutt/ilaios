@@ -89,6 +89,17 @@ jobs:
           if (-not (Test-Path (Join-Path $unpack 'ilaios_desktop.exe'))) { throw 'Packaged executable missing.' }
           if (-not (Test-Path (Join-Path $unpack 'ilaios_control_plane.exe'))) { throw 'Packaged control-plane sidecar missing.' }
           if (-not (Test-Path (Join-Path $unpack 'AppxManifest.xml'))) { throw 'Packaged manifest missing.' }
+          $brandAssets = @(
+            'data\flutter_assets\assets\brand\02-ilaios-primary-horizontal-dark.jpg',
+            'data\flutter_assets\assets\brand\03-ilaios-symbol-dark.jpg',
+            'data\flutter_assets\assets\brand\05-ilaios-app-icon.jpg'
+          )
+          foreach ($asset in $brandAssets) {
+            if (-not (Test-Path (Join-Path $unpack $asset))) {
+              throw "Canonical Desktop brand asset missing from MSIX: $asset"
+            }
+          }
+          Write-Host 'ILAIOS_DESKTOP_CANONICAL_BRAND_ASSETS=PASS'
           Write-Host 'ILAIOS_DESKTOP_MSIX_INSPECTION=PASS'
 
       - name: Upload unsigned CI package
