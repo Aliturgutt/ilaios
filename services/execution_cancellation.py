@@ -1,41 +1,44 @@
-"""Closure helpers for authenticated cancellation and terminal resource cleanup.
+"""Authenticated cancellation and terminal resource cleanup for the canonical coordinator.
 
-This module extends the canonical ExecutionCoordinator without creating another
-execution authority. It only composes the coordinator's existing durable state,
-product interruption, job state machine, grant policy, and scheduler cleanup.
+This module is deliberately a thin composition layer. It does not own execution
+state and does not create a second runtime: state transitions, closure and evidence
+remain authoritative in ``ExecutionCoordinator`` while adapter-specific interruption
+is delegated through the coordinator's verified adapter registry.
 """
 
 from __future__ import annotations
 
 import hashlib
-import sqlite3
 from datetime import datetime
 from typing import Any, cast
 
 from services.execution_coordinator import (
     ExecutionCoordinator,
     ExecutionCoordinatorError,
+    ExecutionState,
 )
 from services.runtime import SchedulingError
-from src.video_automation.models import JobState
 
-_NONTERMINAL_CANCELLABLE = frozenset(
+_CANCELLABLE = frozenset(
     {
-        "ADMITTED",
-        "APPROVED",
-        "PENDING_APPROVAL",
-        "BLOCKED_ADAPTER_UNAVAILABLE",
-        "EXECUTING",
+        ExecutionState.PENDING_APPROVAL,
+        ExecutionState.ADMITTED,
+        ExecutionState.QUEUED,
+        ExecutionState.EXECUTING,
+        ExecutionState.VERIFYING,
+        ExecutionState.FAILED_RETRYABLE,
+        ExecutionState.BLOCKED,
     }
 )
-_TERMINAL_STATUSES = frozenset(
-    {"ACCEPTED", "FAILED", "DENIED", "INTERRUPTED", "CANCELLED"}
-)
-_PRODUCT_TERMINAL_STATUSES = (
-    "accepted",
-    "failed",
-    "interrupted",
-    "cancelled",
+_TERMINAL = frozenset(
+    {
+        ExecutionState.ACCEPTED,
+        ExecutionState.PARTIAL,
+        ExecutionState.CANCELLED,
+        ExecutionState.FAILED_TERMINAL,
+        ExecutionState.DENIED,
+        ExecutionState.INTERRUPTED,
+    }
 )
 
 
@@ -49,209 +52,191 @@ def cancel_execution(
     reason: str,
     now: datetime,
 ) -> dict[str, object]:
-    """Cancel one owned execution through existing fail-closed primitives.
-
-    Cancellation is idempotent for an already-cancelled request. Verified
-    acceptance and other terminal outcomes are never overwritten by cancellation.
-    """
+    """Cancel one owned request without overwriting verified acceptance."""
     if now.tzinfo is None:
         raise ExecutionCoordinatorError("cancellation time must be timezone-aware")
-    if not reason or reason != reason.strip():
-        raise ExecutionCoordinatorError("cancellation reason must be non-blank and trimmed")
-    if len(reason) > 2048:
+    normalized = " ".join(reason.split())
+    if not normalized:
+        raise ExecutionCoordinatorError("cancellation reason is required")
+    if len(normalized) > 2048:
         raise ExecutionCoordinatorError("cancellation reason exceeds limit")
 
-    execution = coordinator.get(request_id)
-    if (
-        execution.get("principal_id") != principal_id
-        or execution.get("tenant_id") != tenant_id
-    ):
-        raise ExecutionCoordinatorError("cross-tenant execution cancellation denied")
-
-    current_status = str(execution["execution_status"])
-    if current_status == "CANCELLED":
+    execution = coordinator.get(
+        request_id,
+        principal_id=principal_id,
+        tenant_id=tenant_id,
+    )
+    state = ExecutionState(str(execution["execution_status"]))
+    if state is ExecutionState.CANCELLED:
         return execution
-    if current_status in _TERMINAL_STATUSES:
+    if state in _TERMINAL:
         raise ExecutionCoordinatorError(
-            f"terminal execution cannot be cancelled from {current_status}"
+            f"terminal execution cannot be cancelled from {state.value}"
         )
-    if current_status not in _NONTERMINAL_CANCELLABLE:
+    if state not in _CANCELLABLE:
         raise ExecutionCoordinatorError("execution request is not cancellable")
 
-    video = cast(Any, getattr(coordinator, "_video"))
-    if execution.get("adapter_id") == "video.product-runtime.v1":
-        product_state = cast(dict[str, object], video.get_state(request_id))
-        product_status = str(product_state["status"])
+    adapters = cast(dict[str, Any], getattr(coordinator, "_adapters"))
+    capability_id = str(execution["capability_id"])
+    adapter = adapters.get(capability_id)
+
+    # A durable adapter may already have crossed its finalization point. Reconcile
+    # that race before changing coordinator state so accepted work is immutable.
+    if adapter is not None:
+        adapter_state = cast(dict[str, object], adapter.state(request_id))
+        product_status = str(adapter_state.get("status", ""))
         if product_status == "finalizing":
-            # Finalizing means durable acceptance evidence already exists. Never
-            # let a late cancellation overwrite a verified acceptance race.
-            manifest = video.recover_finalizing(request_id, token=token, now=now)
+            manifest = cast(
+                dict[str, object],
+                adapter.recover_finalizing(request_id, token=token, now=now),
+            )
             if manifest.get("accepted") is True:
                 raise ExecutionCoordinatorError(
                     "execution reached verified finalization before cancellation"
                 )
-        elif product_status == "accepted":
+        if product_status == "accepted":
             raise ExecutionCoordinatorError("accepted execution cannot be cancelled")
-        elif product_status in {"failed", "interrupted", "cancelled"}:
-            raise ExecutionCoordinatorError(
-                f"product execution is already terminal: {product_status}"
-            )
 
-    database_path = cast(Any, getattr(coordinator, "_database_path"))
-    with sqlite3.connect(database_path, timeout=10) as connection:
-        connection.execute("BEGIN IMMEDIATE")
-        changed = connection.execute(
-            "UPDATE execution_requests SET status = 'CANCELLING', updated_at = ? "
-            "WHERE request_id = ? AND status = ?",
-            (now.isoformat(), request_id, current_status),
-        ).rowcount
-    if changed != 1:
-        refreshed = coordinator.get(request_id)
-        if refreshed.get("execution_status") == "CANCELLED":
-            return refreshed
-        raise ExecutionCoordinatorError("execution cancellation lost a concurrent race")
-
+    transition = cast(Any, getattr(coordinator, "_transition"))
+    transition(
+        request_id,
+        state,
+        ExecutionState.CANCELLING,
+        now,
+        {"reason": normalized},
+    )
     try:
-        if execution.get("adapter_id") == "video.product-runtime.v1":
+        if adapter is not None:
+            descriptor = getattr(adapter, "descriptor")
+            if not bool(getattr(descriptor, "supports_cancellation", False)):
+                raise ExecutionCoordinatorError(
+                    "selected verified adapter does not support cancellation"
+                )
             interrupted = cast(
                 dict[str, object],
-                video.interrupt(
+                adapter.interrupt(
                     request_id,
                     token=token,
                     now=now,
-                    reason=f"user cancellation: {reason}",
+                    reason=f"user cancellation: {normalized}",
                 ),
             )
-            if interrupted.get("status") not in {"interrupted", "cancelled"}:
+            product_status = str(interrupted.get("status", ""))
+            if product_status == "accepted":
+                transition(
+                    request_id,
+                    ExecutionState.CANCELLING,
+                    ExecutionState.ACCEPTED,
+                    now,
+                    {"reason": "adapter finalized before cancellation"},
+                )
                 raise ExecutionCoordinatorError(
-                    "product cancellation did not close durably"
+                    "execution reached verified acceptance before cancellation"
                 )
-            _mark_product_cancelled(video, request_id, reason=reason, now=now)
-        else:
-            control = cast(Any, getattr(coordinator, "_control_plane"))
-            job = control.get_job(token, str(execution["job_id"]))
-            if job.state is JobState.PENDING:
-                control.transition_job(
-                    token,
-                    str(execution["job_id"]),
-                    JobState.CANCELLED,
-                    reason="execution cancelled before adapter availability",
-                    now=now,
-                )
-            elif job.state not in {JobState.CANCELLED, JobState.FAILED, JobState.COMPLETED}:
-                control.transition_job(
-                    token,
-                    str(execution["job_id"]),
-                    JobState.CANCELLED,
-                    reason="execution cancelled",
-                    now=now,
+            if product_status not in {"interrupted", "cancelled", "failed"}:
+                raise ExecutionCoordinatorError(
+                    "adapter cancellation did not reach a durable terminal state"
                 )
 
         grants = cast(Any, getattr(coordinator, "_grants"))
-        grants.revoke(_grant_id(request_id), now=now)
+        try:
+            grants.revoke(_grant_id(request_id), now=now)
+        except Exception:
+            # A request cancelled before grant issuance legitimately has no grant.
+            pass
         cleanup_terminal_resources(coordinator)
 
-        with sqlite3.connect(database_path, timeout=10) as connection:
-            connection.execute("BEGIN IMMEDIATE")
-            changed = connection.execute(
-                "UPDATE execution_requests SET status = 'CANCELLED', updated_at = ? "
-                "WHERE request_id = ? AND status = 'CANCELLING'",
-                (now.isoformat(), request_id),
-            ).rowcount
-            if changed != 1:
-                raise ExecutionCoordinatorError("execution cancellation state was lost")
-            connection.execute(
-                "INSERT OR IGNORE INTO execution_closure "
-                "(request_id, terminal_status, reason, terminal_at, result_sha256) "
-                "VALUES (?, 'CANCELLED', ?, ?, NULL)",
-                (request_id, reason, now.isoformat()),
-            )
+        transition(
+            request_id,
+            ExecutionState.CANCELLING,
+            ExecutionState.CANCELLED,
+            now,
+            {"reason": normalized},
+        )
+        record_closure = cast(Any, getattr(coordinator, "_record_closure"))
+        record_closure(
+            request_id,
+            ExecutionState.CANCELLED,
+            normalized,
+            now,
+        )
+        record_evidence = cast(Any, getattr(coordinator, "_record_evidence"))
+        record_evidence(request_id, ExecutionState.CANCELLED, now)
     except Exception:
-        with sqlite3.connect(database_path, timeout=10) as connection:
-            connection.execute(
-                "UPDATE execution_requests SET status = ?, updated_at = ? "
-                "WHERE request_id = ? AND status = 'CANCELLING'",
-                (current_status, now.isoformat(), request_id),
+        latest = coordinator.get(
+            request_id,
+            principal_id=principal_id,
+            tenant_id=tenant_id,
+        )
+        latest_state = ExecutionState(str(latest["execution_status"]))
+        if latest_state is ExecutionState.CANCELLING:
+            # Restore only when the adapter has not already produced an immutable
+            # accepted result. This CAS transition preserves concurrent winners.
+            transition(
+                request_id,
+                ExecutionState.CANCELLING,
+                state,
+                now,
+                {"reason": "cancellation failed before durable closure"},
+                allow_recovery=True,
             )
         raise
 
-    return coordinator.get(request_id)
+    return coordinator.get(
+        request_id,
+        principal_id=principal_id,
+        tenant_id=tenant_id,
+    )
 
 
 def cleanup_terminal_resources(coordinator: ExecutionCoordinator) -> int:
-    """Remove unleased request-owned workers for durably terminal product proofs."""
-    video = cast(Any, getattr(coordinator, "_video"))
-    product_database = cast(Any, getattr(video, "_database_path"))
-    scheduler = cast(Any, getattr(video, "_scheduler"))
-    placeholders = ",".join("?" for _ in _PRODUCT_TERMINAL_STATUSES)
-    with sqlite3.connect(product_database, timeout=10) as connection:
-        rows = connection.execute(
-            f"SELECT worker_id FROM product_proofs WHERE status IN ({placeholders}) "
-            "ORDER BY worker_id",
-            _PRODUCT_TERMINAL_STATUSES,
-        ).fetchall()
-
+    """Best-effort cleanup of request-owned workers for adapters that expose a scheduler."""
+    adapters = cast(dict[str, Any], getattr(coordinator, "_adapters"))
     removed = 0
-    for row in rows:
-        worker_id = str(row[0])
+    seen_schedulers: set[int] = set()
+    for adapter in adapters.values():
+        runtime = getattr(adapter, "_runtime", None)
+        scheduler = getattr(runtime, "_scheduler", None)
+        database_path = getattr(runtime, "_database_path", None)
+        if scheduler is None or database_path is None or id(scheduler) in seen_schedulers:
+            continue
+        seen_schedulers.add(id(scheduler))
+        # The durable scheduler itself is the authority for whether a worker may be
+        # removed. Enumerate only explicit request-owned worker identifiers exposed
+        # by known runtime proof rows when available.
         try:
-            if scheduler.unregister(worker_id):
-                removed += 1
-        except SchedulingError as error:
-            if "with lease" not in str(error):
-                raise
+            state = scheduler.state()
+        except Exception:
+            continue
+        workers = cast(list[dict[str, object]], state.get("workers", []))
+        leases = cast(list[dict[str, object]], state.get("leases", []))
+        leased_workers = {str(item.get("worker_id")) for item in leases}
+        for worker in workers:
+            worker_id = str(worker.get("worker_id", ""))
+            if not worker_id or worker_id in leased_workers:
+                continue
+            if not any(marker in worker_id for marker in ("video-worker-", "web-worker-", "software-worker-")):
+                continue
+            try:
+                if scheduler.unregister(worker_id):
+                    removed += 1
+            except SchedulingError as error:
+                if "with lease" not in str(error):
+                    raise
     return removed
 
 
 def cancellation_metrics(coordinator: ExecutionCoordinator) -> dict[str, int]:
-    """Expose low-cardinality durable coordinator closure counters."""
-    database_path = cast(Any, getattr(coordinator, "_database_path"))
-    with sqlite3.connect(database_path, timeout=10) as connection:
-        terminal = {
-            str(row[0]): int(row[1])
-            for row in connection.execute(
-                "SELECT terminal_status, COUNT(*) FROM execution_closure "
-                "GROUP BY terminal_status"
-            )
-        }
-        active = {
-            str(row[0]): int(row[1])
-            for row in connection.execute(
-                "SELECT status, COUNT(*) FROM execution_requests "
-                "GROUP BY status"
-            )
-        }
+    """Return low-cardinality coordinator lifecycle counters."""
+    metrics = cast(dict[str, int], coordinator.metrics())
     return {
-        "cancelled": terminal.get("CANCELLED", 0),
-        "accepted": terminal.get("ACCEPTED", 0),
-        "failed": terminal.get("FAILED", 0),
-        "interrupted": terminal.get("INTERRUPTED", 0),
-        "executing": active.get("EXECUTING", 0),
-        "cancelling": active.get("CANCELLING", 0),
+        "cancelled": int(metrics.get("cancelled", 0)),
+        "accepted": int(metrics.get("accepted", 0)),
+        "failed": int(metrics.get("failed_terminal", 0)),
+        "executing": int(metrics.get("executing", 0)),
+        "cancelling": int(metrics.get("cancelling", 0)),
+        "retryable": int(metrics.get("failed_retryable", 0)),
     }
-
-
-def _mark_product_cancelled(
-    video: Any,
-    request_id: str,
-    *,
-    reason: str,
-    now: datetime,
-) -> None:
-    database_path = cast(Any, getattr(video, "_database_path"))
-    with sqlite3.connect(database_path, timeout=10) as connection:
-        connection.execute("BEGIN IMMEDIATE")
-        connection.execute(
-            "UPDATE product_proofs SET status = 'cancelled' "
-            "WHERE request_id = ? AND status = 'interrupted'",
-            (request_id,),
-        )
-        connection.execute(
-            "UPDATE product_proof_closure "
-            "SET terminal_status = 'cancelled', reason = ?, terminal_at = ? "
-            "WHERE request_id = ? AND terminal_status = 'interrupted'",
-            (reason, now.isoformat(), request_id),
-        )
 
 
 def _grant_id(request_id: str) -> str:
