@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../app/ilaios_locale.dart';
+import '../../app/ilaios_surface_catalog.dart';
 import '../../app/ilaios_theme.dart';
 import '../../control_plane/operational_snapshot.dart';
 
@@ -21,13 +23,13 @@ class LiveWorkspaceView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.developer_mode_outlined, color: IlaiosTheme.cyan),
-                  SizedBox(width: 10),
+                  const Icon(Icons.developer_mode_outlined, color: IlaiosTheme.cyan),
+                  const SizedBox(width: 10),
                   Text(
-                    'Live Workspace',
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                    _surface(context, 'workspace.title'),
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
                   ),
                 ],
               ),
@@ -43,16 +45,34 @@ class LiveWorkspaceView extends StatelessWidget {
                   borderRadius: BorderRadius.circular(11),
                   border: Border.all(color: IlaiosTheme.border),
                 ),
-                child: const TabBar(
+                child: TabBar(
                   isScrollable: true,
                   tabAlignment: TabAlignment.start,
                   tabs: [
-                    Tab(icon: Icon(Icons.code, size: 17), text: 'Live Code'),
-                    Tab(icon: Icon(Icons.terminal, size: 17), text: 'Terminal'),
-                    Tab(icon: Icon(Icons.language, size: 17), text: 'Browser'),
-                    Tab(icon: Icon(Icons.folder_outlined, size: 17), text: 'Files'),
-                    Tab(icon: Icon(Icons.list_alt, size: 17), text: 'Logs'),
-                    Tab(icon: Icon(Icons.bolt_outlined, size: 17), text: 'Events'),
+                    Tab(
+                      icon: const Icon(Icons.code, size: 17),
+                      text: _surface(context, 'workspace.liveCode'),
+                    ),
+                    Tab(
+                      icon: const Icon(Icons.terminal, size: 17),
+                      text: _surface(context, 'workspace.terminal'),
+                    ),
+                    Tab(
+                      icon: const Icon(Icons.language, size: 17),
+                      text: _surface(context, 'workspace.browser'),
+                    ),
+                    Tab(
+                      icon: const Icon(Icons.folder_outlined, size: 17),
+                      text: _surface(context, 'workspace.files'),
+                    ),
+                    Tab(
+                      icon: const Icon(Icons.list_alt, size: 17),
+                      text: _surface(context, 'workspace.logs'),
+                    ),
+                    Tab(
+                      icon: const Icon(Icons.bolt_outlined, size: 17),
+                      text: _surface(context, 'workspace.events'),
+                    ),
                   ],
                 ),
               ),
@@ -67,29 +87,25 @@ class LiveWorkspaceView extends StatelessWidget {
                   ),
                   child: TabBarView(
                     children: [
-                      const _UnavailableWorkspacePane(
+                      _UnavailableWorkspacePane(
                         icon: Icons.code,
-                        title: 'Live Code',
-                        message:
-                            'The current Desktop API does not expose a safe working-file projection.',
+                        title: _surface(context, 'workspace.liveCode'),
+                        message: _surface(context, 'workspace.codeUnavailable'),
                       ),
-                      const _UnavailableWorkspacePane(
+                      _UnavailableWorkspacePane(
                         icon: Icons.terminal,
-                        title: 'Terminal',
-                        message:
-                            'No authorized terminal output stream is exposed by the current Desktop API.',
+                        title: _surface(context, 'workspace.terminal'),
+                        message: _surface(context, 'workspace.terminalUnavailable'),
                       ),
-                      const _UnavailableWorkspacePane(
+                      _UnavailableWorkspacePane(
                         icon: Icons.language,
-                        title: 'Browser',
-                        message:
-                            'No authoritative browser-session preview is exposed by the current Desktop API.',
+                        title: _surface(context, 'workspace.browser'),
+                        message: _surface(context, 'workspace.browserUnavailable'),
                       ),
-                      const _UnavailableWorkspacePane(
+                      _UnavailableWorkspacePane(
                         icon: Icons.folder_outlined,
-                        title: 'Files',
-                        message:
-                            'Workspace files are not exposed to Desktop by the current safe projection.',
+                        title: _surface(context, 'workspace.files'),
+                        message: _surface(context, 'workspace.filesUnavailable'),
                       ),
                       _LogsPane(events: snapshot.liveEvents),
                       _EventsPane(events: snapshot.liveEvents),
@@ -133,9 +149,9 @@ class _UnavailableWorkspacePane extends StatelessWidget {
                   style: const TextStyle(color: IlaiosTheme.muted, height: 1.5),
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'Unavailable — no data is fabricated.',
-                  style: TextStyle(color: IlaiosTheme.cyan, fontSize: 11),
+                Text(
+                  _surface(context, 'workspace.noFabrication'),
+                  style: const TextStyle(color: IlaiosTheme.cyan, fontSize: 11),
                 ),
               ],
             ),
@@ -157,10 +173,10 @@ class _LogsPane extends StatelessWidget {
       }
     }
     if (logs.isEmpty) {
-      return const _UnavailableWorkspacePane(
+      return _UnavailableWorkspacePane(
         icon: Icons.list_alt,
-        title: 'Logs',
-        message: 'No authoritative log-message stream is present in live events.',
+        title: _surface(context, 'workspace.logs'),
+        message: _surface(context, 'workspace.logsUnavailable'),
       );
     }
     return _EventList(events: logs, showMessage: true);
@@ -173,10 +189,10 @@ class _EventsPane extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => events.isEmpty
-      ? const _UnavailableWorkspacePane(
+      ? _UnavailableWorkspacePane(
           icon: Icons.bolt_outlined,
-          title: 'Events',
-          message: 'No authoritative runtime events are currently available.',
+          title: _surface(context, 'workspace.events'),
+          message: _surface(context, 'workspace.eventsUnavailable'),
         )
       : _EventList(events: events, showMessage: false);
 }
@@ -200,8 +216,11 @@ class _EventList extends StatelessWidget {
             const ['timestamp', 'created_at', 'occurred_at'],
           );
           final state = _firstText(event, const ['state', 'status']);
+          final semantics = state == null
+              ? '${_surface(context, 'workspace.runtimeEvent')} $type'
+              : '${_surface(context, 'workspace.runtimeEvent')} $type, ${_surface(context, 'workspace.state')} $state';
           return Semantics(
-            label: state == null ? 'Runtime event $type' : 'Runtime event $type, state $state',
+            label: semantics,
             child: Padding(
               padding: const EdgeInsets.symmetric(vertical: 10),
               child: Row(
@@ -295,3 +314,6 @@ Color _stateColor(String value) {
   }
   return IlaiosTheme.muted;
 }
+
+String _surface(BuildContext context, String key) =>
+    IlaiosSurfaceCatalog.text(context.ilaiosLocale.locale.code, key) ?? key;
