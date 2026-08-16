@@ -18,6 +18,7 @@ from services.desktop_oidc import (
     DesktopIdentityError,
     DesktopOIDCService,
 )
+from services.execution_cancellation import cancel_execution
 from services.execution_coordinator import (
     ExecutionCoordinator,
     ExecutionCoordinatorError,
@@ -123,8 +124,11 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             if parsed.path == "/v1/execution/status":
                 session = self._authenticated_session()
                 request_id = _single_query(parse_qs(parsed.query), "request_id")
-                execution = self.server.coordinator.get(request_id)
-                self._require_execution_owner(execution, session)
+                execution = self.server.coordinator.get(
+                    request_id,
+                    principal_id=session.principal_id,
+                    tenant_id=session.tenant_id,
+                )
                 self._send_json(HTTPStatus.OK, execution)
                 return
             self._send_error(HTTPStatus.NOT_FOUND, "unknown endpoint")
@@ -177,6 +181,9 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/v1/execution/resume":
                 self._resume_authenticated_execution(body)
+                return
+            if path == "/v1/execution/cancel":
+                self._cancel_authenticated_execution(body)
                 return
             self._send_error(HTTPStatus.NOT_FOUND, "unknown endpoint")
         except DesktopIdentityError as error:
@@ -261,13 +268,36 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
     def _resume_authenticated_execution(self, body: dict[str, Any]) -> None:
         session = self._authenticated_session()
         request_id = _required_string(body, "request_id")
-        execution = self.server.coordinator.get(request_id)
-        self._require_execution_owner(execution, session)
+        execution = self.server.coordinator.get(
+            request_id,
+            principal_id=session.principal_id,
+            tenant_id=session.tenant_id,
+        )
+        if execution.get("terminal") is True:
+            self._send_json(HTTPStatus.OK, execution)
+            return
         self._start_execution(request_id)
         self._send_json(
             HTTPStatus.ACCEPTED,
             {"request_id": request_id, "execution_status": "RESUME_REQUESTED"},
         )
+
+    def _cancel_authenticated_execution(self, body: dict[str, Any]) -> None:
+        session = self._authenticated_session()
+        request_id = _required_string(body, "request_id")
+        reason_value = body.get("reason", "user requested cancellation")
+        if not isinstance(reason_value, str) or not reason_value.strip():
+            raise TypeError("reason must be a non-empty string")
+        execution = cancel_execution(
+            self.server.coordinator,
+            request_id,
+            token=self.server.bearer_token,
+            principal_id=session.principal_id,
+            tenant_id=session.tenant_id,
+            reason=reason_value.strip(),
+            now=datetime.now(timezone.utc),
+        )
+        self._send_json(HTTPStatus.OK, execution)
 
     def _start_execution(self, request_id: str) -> None:
         thread = threading.Thread(
@@ -305,15 +335,6 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
         if not session_id:
             raise DesktopIdentityError("Desktop session is required")
         return identity.validate_session(session_id)
-
-    def _require_execution_owner(
-        self, execution: dict[str, object], session: Session
-    ) -> None:
-        if (
-            execution.get("principal_id") != session.principal_id
-            or execution.get("tenant_id") != session.tenant_id
-        ):
-            raise DesktopIdentityError("execution does not belong to Desktop session")
 
     def _authenticate_transport(self) -> None:
         header = self.headers.get("Authorization", "")

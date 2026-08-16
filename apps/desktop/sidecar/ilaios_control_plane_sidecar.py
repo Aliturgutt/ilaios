@@ -19,10 +19,12 @@ from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
 from services.desktop_identity_server import DesktopIdentityHTTPServer
 from services.desktop_oidc_threaded import DesktopIdentityError, DesktopOIDCService
 from services.evidence import EvidenceStore
+from services.execution_adapters import register_web_runtime
 from services.execution_coordinator import ExecutionCoordinator
 from services.governance import GovernedRuntimeGateway
 from services.integrations import DurableVideoProductRuntime
 from services.integrations.desktop_video_runtime import DesktopPromptVideoRuntime
+from services.integrations.web_product_runtime import DurableWebProductRuntime
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 
 
@@ -86,13 +88,23 @@ def main(argv: Sequence[str] | None = None) -> int:
         governance,
         video_runtime,
     )
+    web_runtime = DurableWebProductRuntime(
+        root / "web-product.sqlite3",
+        control_plane,
+        grant_policy,
+        governance,
+        root / "web",
+    )
     coordinator = ExecutionCoordinator(
         root / "execution-coordinator.sqlite3",
         control_plane,
         governance,
         grant_policy,
         product_runtime,
+        evidence_store,
     )
+    register_web_runtime(coordinator, web_runtime)
+
     control_server = ControlPlaneHTTPServer(
         ("127.0.0.1", 0),
         control_plane,
@@ -138,6 +150,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "account_sign_in_configured": identity is not None,
         "governed_execution_configured": identity is not None,
         "video_finished_product_configured": True,
+        "web_finished_product_configured": True,
     }
     arguments.ready_file.write_text(
         json.dumps(ready, sort_keys=True), encoding="utf-8"
