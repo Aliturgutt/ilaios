@@ -1,1 +1,0 @@
-Temporary implementation marker for PR #260.
