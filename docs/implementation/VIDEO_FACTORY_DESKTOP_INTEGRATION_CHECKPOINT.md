@@ -1,1 +1,0 @@
-Checkpoint: branch and issue created. Next code changes are isolated on this branch; do not treat this file as evidence of completion.
