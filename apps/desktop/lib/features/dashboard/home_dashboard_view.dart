@@ -525,7 +525,7 @@ class _LiveExecutionPanel extends StatelessWidget {
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: model.leases.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 8),
+                  separatorBuilder: (_, _) => const SizedBox(width: 8),
                   itemBuilder: (context, index) => SizedBox(
                     width: 132,
                     child: _WorkerCard(
@@ -1267,7 +1267,7 @@ class _Panel extends StatelessWidget {
                       style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700),
                     ),
                   ),
-                  if (trailing != null) trailing!,
+                  ?trailing,
                 ],
               ),
               const SizedBox(height: 9),
