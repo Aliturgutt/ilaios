@@ -337,7 +337,7 @@ class FlutterRuntimeAdapter(_CommandRuntimeAdapter):
         return ("flutter", "pub", "get", "--offline")
 
     def _lint_command(self) -> tuple[str, ...]:
-        return ("dart", "format", "--output=none", "--set-exit-if-changed", ".")
+        return ("dart", "format", ".")
 
     def _typecheck_command(self) -> tuple[str, ...]:
         return ("flutter", "analyze")
