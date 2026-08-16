@@ -20,7 +20,9 @@ class IlaiosDesktopApp extends StatelessWidget {
     this.userSession,
     this.identityStatus = 'Account sign-in is not configured',
     this.locale = IlaiosLocale.english,
+    this.themeMode = ThemeMode.dark,
     this.onLocaleChanged,
+    this.onThemeModeChanged,
     this.onSignIn,
     this.onLogout,
     this.onPromptSubmit,
@@ -37,7 +39,9 @@ class IlaiosDesktopApp extends StatelessWidget {
   final DesktopUserSession? userSession;
   final String identityStatus;
   final IlaiosLocale locale;
+  final ThemeMode themeMode;
   final ValueChanged<IlaiosLocale>? onLocaleChanged;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
   final Future<void> Function(String providerId)? onSignIn;
   final Future<void> Function()? onLogout;
   final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
@@ -47,30 +51,32 @@ class IlaiosDesktopApp extends StatelessWidget {
       onGovernanceDecision;
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'ILAIOS Desktop',
-      debugShowCheckedModeBanner: false,
-      theme: IlaiosTheme.dark,
-      home: IlaiosLocaleScope(
-        locale: locale,
-        onChanged: (value) => onLocaleChanged?.call(value),
-        child: DesktopShell(
-          projection: projection,
-          operationalSnapshot: operationalSnapshot,
-          operationalStatus: operationalStatus,
-          approverId: approverId,
-          identityProviders: identityProviders,
-          userSession: userSession,
-          identityStatus: identityStatus,
-          onSignIn: onSignIn,
-          onLogout: onLogout,
-          onPromptSubmit: onPromptSubmit,
-          onSaveArtifact: onSaveArtifact,
-          onRefreshRequested: onRefreshRequested,
-          onGovernanceDecision: onGovernanceDecision,
+  Widget build(BuildContext context) => MaterialApp(
+        title: 'ILAIOS Desktop',
+        debugShowCheckedModeBanner: false,
+        theme: IlaiosTheme.light,
+        darkTheme: IlaiosTheme.dark,
+        themeMode: themeMode,
+        home: IlaiosLocaleScope(
+          locale: locale,
+          onChanged: (value) => onLocaleChanged?.call(value),
+          child: DesktopShell(
+            projection: projection,
+            operationalSnapshot: operationalSnapshot,
+            operationalStatus: operationalStatus,
+            approverId: approverId,
+            identityProviders: identityProviders,
+            userSession: userSession,
+            identityStatus: identityStatus,
+            themeMode: themeMode,
+            onThemeModeChanged: onThemeModeChanged,
+            onSignIn: onSignIn,
+            onLogout: onLogout,
+            onPromptSubmit: onPromptSubmit,
+            onSaveArtifact: onSaveArtifact,
+            onRefreshRequested: onRefreshRequested,
+            onGovernanceDecision: onGovernanceDecision,
+          ),
         ),
-      ),
-    );
-  }
+      );
 }
