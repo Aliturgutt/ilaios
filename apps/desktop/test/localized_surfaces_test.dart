@@ -4,7 +4,7 @@ import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('Turkish locale reaches localized goal cost settings and delivery surfaces', (
+  testWidgets('Turkish locale reaches every primary Desktop surface', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -15,22 +15,42 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    await tester.tap(find.byKey(const ValueKey('nav-goals')));
-    await tester.pumpAndSettle();
+    Future<void> open(String section) async {
+      final nav = find.byKey(ValueKey('nav-$section'));
+      await tester.ensureVisible(nav);
+      await tester.tap(nav);
+      await tester.pumpAndSettle();
+      expect(tester.takeException(), isNull);
+    }
+
+    expect(find.text('Aktif İş Akışı'), findsOneWidget);
+
+    await open('goals');
     expect(find.text('ILAIOS’un ne oluşturmasını istiyorsun?'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('nav-artifacts')));
-    await tester.pumpAndSettle();
+    await open('workflows');
+    expect(find.text('Kontrol Merkezi'), findsOneWidget);
+
+    await open('agents');
+    expect(find.text('Canlı Yürütme'), findsOneWidget);
+
+    await open('liveWorkspace');
+    expect(find.text('Canlı Çalışma Alanı'), findsWidgets);
+
+    await open('artifacts');
     expect(find.text('Teslimatlar'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('nav-costs')));
-    await tester.pumpAndSettle();
+    await open('approvals');
+    expect(find.text('Yönetişim'), findsOneWidget);
+
+    await open('evidence');
+    expect(find.text('Kanıt ve Denetim'), findsOneWidget);
+
+    await open('costs');
     expect(find.text('Maliyetler ve Kullanım'), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('nav-settings')));
-    await tester.pumpAndSettle();
+    await open('settings');
     expect(find.text('Ayarlar'), findsWidgets);
     expect(find.text('Dil'), findsWidgets);
-    expect(tester.takeException(), isNull);
   });
 }
