@@ -29,6 +29,24 @@ void main() {
     expect(find.text('Live Execution'), findsOneWidget);
   });
 
+  testWidgets('unknown progress and event count remain truth-preserving', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.pumpAndSettle();
+
+    final progressFinder = find.byType(LinearProgressIndicator);
+    expect(progressFinder, findsOneWidget);
+    final progress = tester.widget<LinearProgressIndicator>(progressFinder);
+    expect(progress.value, 0);
+    expect(find.text('—'), findsWidgets);
+    expect(find.text('Events'), findsOneWidget);
+    expect(find.text('Events / min'), findsNothing);
+  });
+
   testWidgets('theme control switches the application to light mode', (
     WidgetTester tester,
   ) async {
