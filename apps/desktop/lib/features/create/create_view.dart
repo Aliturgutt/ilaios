@@ -32,6 +32,8 @@ class CreateView extends StatefulWidget {
   State<CreateView> createState() => _CreateViewState();
 }
 
+enum _FactoryPreset { web, video, software }
+
 class _CreateViewState extends State<CreateView> {
   final TextEditingController _controller = TextEditingController();
   bool _submitting = false;
@@ -39,6 +41,7 @@ class _CreateViewState extends State<CreateView> {
   bool _loggingOut = false;
   PromptSubmission? _submission;
   String? _error;
+  _FactoryPreset? _selectedPreset;
 
   @override
   void dispose() {
@@ -81,13 +84,64 @@ class _CreateViewState extends State<CreateView> {
     }
   }
 
+  String _starterText(BuildContext context, _FactoryPreset preset) {
+    final tr = _isTr(context);
+    return switch (preset) {
+      _FactoryPreset.web => tr
+          ? 'Şirketim için premium, responsive bir web sitesi oluştur; test et ve bitmiş ürünü teslim et.'
+          : 'Build a premium responsive website for my company, test it, and deliver the finished product.',
+      _FactoryPreset.video => tr
+          ? '20 saniyelik profesyonel bir ürün videosu oluştur, doğrula ve bitmiş videoyu teslim et.'
+          : 'Create a professional 20-second product video, verify it, and deliver the finished video.',
+      _FactoryPreset.software => tr
+          ? 'İhtiyacımı karşılayan çalışan bir yazılım ürünü oluştur, test et ve doğrulanmış çıktıyı teslim et.'
+          : 'Build a working software product for my requirement, test it, and deliver the verified output.',
+    };
+  }
+
+  String _routePrefix(BuildContext context, _FactoryPreset preset) {
+    final tr = _isTr(context);
+    return switch (preset) {
+      _FactoryPreset.web => tr ? 'Web sitesi oluşturma görevi:' : 'Website build task:',
+      _FactoryPreset.video => tr ? 'Video oluşturma görevi:' : 'Video creation task:',
+      _FactoryPreset.software => tr ? 'Yazılım oluşturma görevi:' : 'Software build task:',
+    };
+  }
+
+  String _presetLabel(BuildContext context, _FactoryPreset preset) => switch (preset) {
+        _FactoryPreset.web => _isTr(context) ? 'Web Factory' : 'Web Factory',
+        _FactoryPreset.video => _isTr(context) ? 'Video Factory' : 'Video Factory',
+        _FactoryPreset.software => _isTr(context) ? 'Software Factory' : 'Software Factory',
+      };
+
+  void _selectPreset(BuildContext context, _FactoryPreset preset) {
+    final current = _controller.text.trim();
+    final starterTexts = _FactoryPreset.values.map((item) => _starterText(context, item)).toSet();
+    final shouldReplace = current.isEmpty || starterTexts.contains(current);
+    setState(() {
+      _selectedPreset = preset;
+      _submission = null;
+      _error = null;
+      if (shouldReplace) {
+        final text = _starterText(context, preset);
+        _controller.text = text;
+        _controller.selection = TextSelection.collapsed(offset: text.length);
+      }
+    });
+  }
+
   Future<void> _submit() async {
     final callback = widget.onSubmit;
-    final objective = _controller.text.trim();
-    if (callback == null || objective.isEmpty || _submitting) return;
+    final rawObjective = _controller.text.trim();
+    if (callback == null || rawObjective.isEmpty || _submitting) return;
+    final preset = _selectedPreset;
+    final objective = preset == null
+        ? rawObjective
+        : '${_routePrefix(context, preset)} $rawObjective';
     setState(() {
       _submitting = true;
       _error = null;
+      _submission = null;
     });
     try {
       final submission = await callback(objective);
@@ -99,12 +153,6 @@ class _CreateViewState extends State<CreateView> {
     } finally {
       if (mounted) setState(() => _submitting = false);
     }
-  }
-
-  void _useStarter(String value) {
-    _controller.text = value;
-    _controller.selection = TextSelection.collapsed(offset: value.length);
-    setState(() {});
   }
 
   @override
@@ -185,12 +233,34 @@ class _CreateViewState extends State<CreateView> {
                           size: 20,
                         ),
                         const SizedBox(width: 8),
-                        Text(
-                          _isTr(context) ? 'Tek prompt çalışma alanı' : 'One-prompt workspace',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        Expanded(
+                          child: Text(
+                            _isTr(context) ? 'Tek prompt çalışma alanı' : 'One-prompt workspace',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w800,
+                                ),
+                          ),
+                        ),
+                        if (_selectedPreset case final preset?)
+                          Container(
+                            key: const Key('selected-factory-route'),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: _presetAccent(preset).withValues(alpha: .10),
+                              borderRadius: BorderRadius.circular(999),
+                              border: Border.all(
+                                color: _presetAccent(preset).withValues(alpha: .42),
+                              ),
+                            ),
+                            child: Text(
+                              _presetLabel(context, preset),
+                              style: TextStyle(
+                                color: _presetAccent(preset),
+                                fontSize: 11,
                                 fontWeight: FontWeight.w800,
                               ),
-                        ),
+                            ),
+                          ),
                       ],
                     ),
                     const SizedBox(height: 12),
@@ -209,54 +279,71 @@ class _CreateViewState extends State<CreateView> {
                         border: const OutlineInputBorder(),
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 6),
                     Text(
-                      _isTr(context) ? 'Hızlı başlangıç' : 'Quick start',
+                      _isTr(context)
+                          ? 'İş türünü seç — seçim yalnızca doğru Factory rotasını açıkça sabitler.'
+                          : 'Choose the work type — the selection explicitly pins the intended Factory route.',
                       style: Theme.of(context).textTheme.labelSmall,
                     ),
-                    const SizedBox(height: 7),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        _StarterChip(
-                          icon: Icons.language_outlined,
-                          accent: IlaiosTheme.enterpriseCyan,
-                          label: _isTr(context) ? 'Web sitesi' : 'Website',
-                          onTap: () => _useStarter(
-                            _isTr(context)
-                                ? 'Şirketim için premium, responsive bir web sitesi oluştur; test et ve bitmiş ürünü teslim et.'
-                                : 'Build a premium responsive website for my company, test it, and deliver the finished product.',
-                          ),
-                        ),
-                        _StarterChip(
-                          icon: Icons.movie_creation_outlined,
-                          accent: IlaiosTheme.coreBlue,
-                          label: _isTr(context) ? 'Video' : 'Video',
-                          onTap: () => _useStarter(
-                            _isTr(context)
-                                ? '20 saniyelik profesyonel bir ürün videosu oluştur, doğrula ve bitmiş videoyu teslim et.'
-                                : 'Create a professional 20-second product video, verify it, and deliver the finished video.',
-                          ),
-                        ),
-                        _StarterChip(
-                          icon: Icons.code_outlined,
-                          accent: IlaiosTheme.violet,
-                          label: _isTr(context) ? 'Yazılım' : 'Software',
-                          onTap: () => _useStarter(
-                            _isTr(context)
-                                ? 'İhtiyacımı karşılayan çalışan bir yazılım ürünü oluştur, test et ve doğrulanmış çıktıyı teslim et.'
-                                : 'Build a working software product for my requirement, test it, and deliver the verified output.',
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 9),
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final width = constraints.maxWidth >= 780
+                            ? (constraints.maxWidth - 20) / 3
+                            : constraints.maxWidth;
+                        return Wrap(
+                          spacing: 10,
+                          runSpacing: 10,
+                          children: [
+                            _FactoryCard(
+                              width: width,
+                              preset: _FactoryPreset.web,
+                              selected: _selectedPreset == _FactoryPreset.web,
+                              icon: Icons.language_outlined,
+                              accent: IlaiosTheme.enterpriseCyan,
+                              title: 'Web Factory',
+                              subtitle: _isTr(context)
+                                  ? 'Web sitesi oluşturma ve teslim'
+                                  : 'Website build and delivery',
+                              onTap: () => _selectPreset(context, _FactoryPreset.web),
+                            ),
+                            _FactoryCard(
+                              width: width,
+                              preset: _FactoryPreset.video,
+                              selected: _selectedPreset == _FactoryPreset.video,
+                              icon: Icons.movie_creation_outlined,
+                              accent: IlaiosTheme.coreBlue,
+                              title: 'Video Factory',
+                              subtitle: _isTr(context)
+                                  ? 'Video oluşturma ve doğrulama'
+                                  : 'Video creation and verification',
+                              onTap: () => _selectPreset(context, _FactoryPreset.video),
+                            ),
+                            _FactoryCard(
+                              width: width,
+                              preset: _FactoryPreset.software,
+                              selected: _selectedPreset == _FactoryPreset.software,
+                              icon: Icons.code_outlined,
+                              accent: IlaiosTheme.violet,
+                              title: 'Software Factory',
+                              subtitle: _isTr(context)
+                                  ? 'Yazılım ürünü oluşturma ve test'
+                                  : 'Software product build and test',
+                              onTap: () => _selectPreset(context, _FactoryPreset.software),
+                            ),
+                          ],
+                        );
+                      },
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
                     Row(
                       children: [
                         FilledButton.icon(
                           key: const Key('one-prompt-submit'),
-                          onPressed: enabled && !_submitting ? _submit : null,
+                          onPressed: enabled && !_submitting && _controller.text.trim().isNotEmpty
+                              ? _submit
+                              : null,
                           icon: _submitting
                               ? const SizedBox(
                                   width: 16,
@@ -345,26 +432,110 @@ class _CreateViewState extends State<CreateView> {
   }
 }
 
-class _StarterChip extends StatelessWidget {
-  const _StarterChip({
+Color _presetAccent(_FactoryPreset preset) => switch (preset) {
+      _FactoryPreset.web => IlaiosTheme.enterpriseCyan,
+      _FactoryPreset.video => IlaiosTheme.coreBlue,
+      _FactoryPreset.software => IlaiosTheme.violet,
+    };
+
+class _FactoryCard extends StatefulWidget {
+  const _FactoryCard({
+    required this.width,
+    required this.preset,
+    required this.selected,
     required this.icon,
     required this.accent,
-    required this.label,
+    required this.title,
+    required this.subtitle,
     required this.onTap,
   });
 
+  final double width;
+  final _FactoryPreset preset;
+  final bool selected;
   final IconData icon;
   final Color accent;
-  final String label;
+  final String title;
+  final String subtitle;
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => ActionChip(
-        onPressed: onTap,
-        avatar: Icon(icon, color: accent, size: 17),
-        label: Text(label),
-        side: BorderSide(color: accent.withValues(alpha: .35)),
-        backgroundColor: accent.withValues(alpha: .06),
+  State<_FactoryCard> createState() => _FactoryCardState();
+}
+
+class _FactoryCardState extends State<_FactoryCard> {
+  bool _hovered = false;
+
+  @override
+  Widget build(BuildContext context) => MouseRegion(
+        onEnter: (_) => setState(() => _hovered = true),
+        onExit: (_) => setState(() => _hovered = false),
+        child: Material(
+          color: widget.selected || _hovered
+              ? widget.accent.withValues(alpha: .10)
+              : Theme.of(context).colorScheme.surfaceContainerLowest,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(
+              color: widget.selected || _hovered
+                  ? widget.accent.withValues(alpha: .72)
+                  : Theme.of(context).colorScheme.outlineVariant,
+            ),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: InkWell(
+            key: ValueKey('factory-preset-${widget.preset.name}'),
+            onTap: widget.onTap,
+            child: SizedBox(
+              width: widget.width,
+              height: 88,
+              child: Padding(
+                padding: const EdgeInsets.all(13),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 38,
+                      decoration: BoxDecoration(
+                        color: widget.accent.withValues(alpha: .14),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(widget.icon, color: widget.accent, size: 20),
+                    ),
+                    const SizedBox(width: 11),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontWeight: FontWeight.w800),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            widget.subtitle,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    Icon(
+                      widget.selected ? Icons.check_circle : Icons.arrow_forward_ios_rounded,
+                      color: widget.selected ? widget.accent : Theme.of(context).colorScheme.outline,
+                      size: widget.selected ? 20 : 14,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
       );
 }
 
