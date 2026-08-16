@@ -90,7 +90,11 @@ class _DesktopShellState extends State<DesktopShell> {
                   userSession: widget.userSession,
                   onSelected: _selectSection,
                 ),
-                const VerticalDivider(width: 1, thickness: 1, color: IlaiosTheme.border),
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: IlaiosTheme.blue.withValues(alpha: .46),
+                ),
                 Expanded(child: body),
               ],
             );
@@ -235,7 +239,32 @@ class _BrandHeader extends StatelessWidget {
               ),
             ),
           ),
+          SizedBox(height: 10),
+          _BrandAccentStrip(),
         ],
+      );
+}
+
+class _BrandAccentStrip extends StatelessWidget {
+  const _BrandAccentStrip();
+
+  @override
+  Widget build(BuildContext context) => ClipRRect(
+        borderRadius: BorderRadius.circular(8),
+        child: const SizedBox(
+          height: 3,
+          width: 188,
+          child: Row(
+            children: [
+              Expanded(flex: 5, child: ColoredBox(color: IlaiosTheme.cyan)),
+              Expanded(flex: 3, child: ColoredBox(color: IlaiosTheme.blue)),
+              Expanded(
+                flex: 2,
+                child: ColoredBox(color: IlaiosTheme.selectiveAccent),
+              ),
+            ],
+          ),
+        ),
       );
 }
 
@@ -270,15 +299,27 @@ class _BrandMark extends StatelessWidget {
   Widget build(BuildContext context) => Semantics(
         label: 'ILAIOS',
         image: true,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(7),
-          child: Image.asset(
-            _asset,
-            width: size,
-            height: size,
-            fit: BoxFit.contain,
-            filterQuality: FilterQuality.high,
-            excludeFromSemantics: true,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: IlaiosTheme.cyan.withValues(alpha: .62)),
+            boxShadow: [
+              BoxShadow(
+                color: IlaiosTheme.blue.withValues(alpha: .14),
+                blurRadius: 10,
+              ),
+            ],
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(7),
+            child: Image.asset(
+              _asset,
+              width: size,
+              height: size,
+              fit: BoxFit.contain,
+              filterQuality: FilterQuality.high,
+              excludeFromSemantics: true,
+            ),
           ),
         ),
       );
@@ -295,33 +336,41 @@ class _NavItem extends StatelessWidget {
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.only(bottom: 5),
         child: Material(
-          color: selected
-              ? IlaiosTheme.cyan.withValues(alpha: .115)
-              : Colors.transparent,
+          color: selected ? IlaiosTheme.cyanWash : Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(7),
             side: selected
-                ? BorderSide(color: IlaiosTheme.cyan.withValues(alpha: .38))
+                ? BorderSide(color: IlaiosTheme.cyan.withValues(alpha: .72))
                 : BorderSide.none,
           ),
           clipBehavior: Clip.antiAlias,
           child: ListTile(
             key: ValueKey('nav-${section.name}'),
             minTileHeight: 43,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 10),
             dense: true,
             onTap: onTap,
-            leading: Icon(
-              section.icon,
-              size: 19,
-              color: selected ? IlaiosTheme.cyan : IlaiosTheme.muted,
+            leading: Container(
+              width: 28,
+              height: 28,
+              decoration: BoxDecoration(
+                color: selected
+                    ? IlaiosTheme.blueWash
+                    : Colors.transparent,
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Icon(
+                section.icon,
+                size: 19,
+                color: selected ? IlaiosTheme.cyan : IlaiosTheme.muted,
+              ),
             ),
             title: Text(
               section.localizedLabel(context),
               style: TextStyle(
                 color: selected ? IlaiosTheme.text : IlaiosTheme.mutedStrong,
                 fontSize: 12.5,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w400,
               ),
             ),
           ),
@@ -342,14 +391,24 @@ class _TenantSummary extends StatelessWidget {
       decoration: BoxDecoration(
         color: IlaiosTheme.canvas.withValues(alpha: .58),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: IlaiosTheme.border),
+        border: Border.all(
+          color: tenant == null
+              ? IlaiosTheme.border
+              : IlaiosTheme.selectiveAccent.withValues(alpha: .42),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             context.tr('shell.tenant'),
-            style: const TextStyle(color: IlaiosTheme.muted, fontSize: 9),
+            style: TextStyle(
+              color: tenant == null
+                  ? IlaiosTheme.muted
+                  : IlaiosTheme.selectiveAccent,
+              fontSize: 9,
+              fontWeight: FontWeight.w600,
+            ),
           ),
           const SizedBox(height: 4),
           Row(
@@ -394,9 +453,13 @@ class _CompactTopBar extends StatelessWidget {
   Widget build(BuildContext context) => Container(
         height: 64,
         padding: const EdgeInsets.symmetric(horizontal: 14),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           color: IlaiosTheme.surface,
-          border: Border(bottom: BorderSide(color: IlaiosTheme.border)),
+          border: Border(
+            bottom: BorderSide(
+              color: IlaiosTheme.blue.withValues(alpha: .48),
+            ),
+          ),
         ),
         child: Row(
           children: [
@@ -425,7 +488,11 @@ class _CompactTopBar extends StatelessWidget {
                     style: const TextStyle(fontWeight: FontWeight.w700),
                   ),
                   const SizedBox(width: 4),
-                  const Icon(Icons.expand_more, size: 17),
+                  const Icon(
+                    Icons.expand_more,
+                    size: 17,
+                    color: IlaiosTheme.cyan,
+                  ),
                 ],
               ),
             ),
@@ -458,7 +525,18 @@ class _TopBar extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 18),
             decoration: BoxDecoration(
               color: IlaiosTheme.surface.withValues(alpha: .97),
-              border: const Border(bottom: BorderSide(color: IlaiosTheme.border)),
+              border: Border(
+                bottom: BorderSide(
+                  color: IlaiosTheme.blue.withValues(alpha: .48),
+                ),
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: IlaiosTheme.cyan.withValues(alpha: .045),
+                  blurRadius: 16,
+                  offset: const Offset(0, 4),
+                ),
+              ],
             ),
             child: Row(
               children: [
@@ -471,6 +549,7 @@ class _TopBar extends StatelessWidget {
                 _TopIcon(
                   icon: Icons.notifications_none,
                   tooltip: context.tr('shell.notifications'),
+                  color: IlaiosTheme.blue,
                 ),
                 const SizedBox(width: 14),
                 const _LanguageMenu(),
@@ -478,6 +557,7 @@ class _TopBar extends StatelessWidget {
                 _TopIcon(
                   icon: Icons.light_mode_outlined,
                   tooltip: context.tr('shell.darkTheme'),
+                  color: IlaiosTheme.selectiveAccent,
                 ),
                 const SizedBox(width: 17),
                 if (constraints.maxWidth >= 820) ...[
@@ -512,9 +592,15 @@ class _ProjectSelector extends StatelessWidget {
               height: 36,
               padding: const EdgeInsets.symmetric(horizontal: 11),
               decoration: BoxDecoration(
-                color: IlaiosTheme.canvas,
+                color: project == null
+                    ? IlaiosTheme.canvas
+                    : IlaiosTheme.blueWash,
                 borderRadius: BorderRadius.circular(7),
-                border: Border.all(color: IlaiosTheme.border),
+                border: Border.all(
+                  color: project == null
+                      ? IlaiosTheme.border
+                      : IlaiosTheme.blue.withValues(alpha: .62),
+                ),
               ),
               child: Row(
                 children: [
@@ -531,7 +617,11 @@ class _ProjectSelector extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 6),
-                  const Icon(Icons.expand_more, size: 15, color: IlaiosTheme.muted),
+                  Icon(
+                    Icons.expand_more,
+                    size: 15,
+                    color: project == null ? IlaiosTheme.muted : IlaiosTheme.blue,
+                  ),
                 ],
               ),
             ),
@@ -551,11 +641,13 @@ class _SearchField extends StatelessWidget {
         decoration: BoxDecoration(
           color: IlaiosTheme.canvas,
           borderRadius: BorderRadius.circular(7),
-          border: Border.all(color: IlaiosTheme.border),
+          border: Border.all(
+            color: IlaiosTheme.blue.withValues(alpha: .42),
+          ),
         ),
         child: Row(
           children: [
-            const Icon(Icons.search, size: 16, color: IlaiosTheme.muted),
+            const Icon(Icons.search, size: 16, color: IlaiosTheme.cyan),
             const SizedBox(width: 8),
             Expanded(
               child: Text(
@@ -565,21 +657,38 @@ class _SearchField extends StatelessWidget {
                 style: const TextStyle(color: IlaiosTheme.muted, fontSize: 10),
               ),
             ),
-            const Text('⌘K', style: TextStyle(color: IlaiosTheme.muted, fontSize: 9)),
+            const Text(
+              '⌘K',
+              style: TextStyle(color: IlaiosTheme.blue, fontSize: 9),
+            ),
           ],
         ),
       );
 }
 
 class _TopIcon extends StatelessWidget {
-  const _TopIcon({required this.icon, required this.tooltip});
+  const _TopIcon({
+    required this.icon,
+    required this.tooltip,
+    this.color = IlaiosTheme.mutedStrong,
+  });
   final IconData icon;
   final String tooltip;
+  final Color color;
 
   @override
   Widget build(BuildContext context) => Tooltip(
         message: tooltip,
-        child: Icon(icon, size: 19, color: IlaiosTheme.mutedStrong),
+        child: Container(
+          width: 29,
+          height: 29,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: .08),
+            borderRadius: BorderRadius.circular(7),
+            border: Border.all(color: color.withValues(alpha: .22)),
+          ),
+          child: Icon(icon, size: 18, color: color),
+        ),
       );
 }
 
@@ -611,17 +720,26 @@ class _LanguageMenu extends StatelessWidget {
             ),
           ),
       ],
-      child: Padding(
-        padding: EdgeInsets.all(compact ? 3 : 1),
+      child: Container(
+        padding: EdgeInsets.all(compact ? 4 : 5),
+        decoration: BoxDecoration(
+          color: IlaiosTheme.cyanWash,
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(color: IlaiosTheme.cyan.withValues(alpha: .28)),
+        ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.language, size: 19, color: IlaiosTheme.mutedStrong),
+            const Icon(Icons.language, size: 18, color: IlaiosTheme.cyan),
             if (compact) ...[
               const SizedBox(width: 4),
               Text(
                 scope.locale.code.toUpperCase(),
-                style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  color: IlaiosTheme.cyan,
+                  fontSize: 9,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ],
@@ -645,7 +763,9 @@ class _ProfileSummary extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: IlaiosTheme.surfaceRaised,
+            backgroundColor: userSession == null
+                ? IlaiosTheme.surfaceRaised
+                : IlaiosTheme.blueWash,
             child: Icon(
               userSession == null ? Icons.person_outline : Icons.person,
               size: 17,
@@ -670,13 +790,21 @@ class _ProfileSummary extends StatelessWidget {
                       : context.tr('shell.authenticated'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(color: IlaiosTheme.muted, fontSize: 9),
+                  style: TextStyle(
+                    color: userSession == null
+                        ? IlaiosTheme.muted
+                        : IlaiosTheme.blue,
+                    fontSize: 9,
+                    fontWeight: userSession == null
+                        ? FontWeight.w400
+                        : FontWeight.w600,
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 4),
-          const Icon(Icons.expand_more, size: 14, color: IlaiosTheme.muted),
+          const Icon(Icons.expand_more, size: 14, color: IlaiosTheme.cyan),
         ],
       ),
     );
@@ -697,15 +825,21 @@ class _ConnectionPill extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 11, vertical: 7),
       decoration: BoxDecoration(
-        color: connected
-            ? IlaiosTheme.success.withValues(alpha: .08)
-            : IlaiosTheme.surfaceRaised,
+        color: connected ? IlaiosTheme.cyanWash : IlaiosTheme.surfaceRaised,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: connected
-              ? IlaiosTheme.success.withValues(alpha: .38)
+              ? IlaiosTheme.cyan.withValues(alpha: .62)
               : IlaiosTheme.border,
         ),
+        boxShadow: connected
+            ? [
+                BoxShadow(
+                  color: IlaiosTheme.blue.withValues(alpha: .10),
+                  blurRadius: 10,
+                ),
+              ]
+            : null,
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -716,7 +850,14 @@ class _ConnectionPill extends StatelessWidget {
             color: connected ? IlaiosTheme.success : IlaiosTheme.muted,
           ),
           const SizedBox(width: 6),
-          Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700)),
+          Text(
+            label,
+            style: TextStyle(
+              color: connected ? IlaiosTheme.cyan : IlaiosTheme.text,
+              fontSize: 9,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
         ],
       ),
     );
@@ -736,9 +877,11 @@ class _BottomStatusBar extends StatelessWidget {
     return Container(
       height: 38,
       padding: const EdgeInsets.symmetric(horizontal: 14),
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         color: IlaiosTheme.surface,
-        border: Border(top: BorderSide(color: IlaiosTheme.border)),
+        border: Border(
+          top: BorderSide(color: IlaiosTheme.blue.withValues(alpha: .46)),
+        ),
       ),
       child: Row(
         children: [
@@ -764,7 +907,7 @@ class _BottomStatusBar extends StatelessWidget {
           if (wide)
             const Text(
               '© ILAIOS',
-              style: TextStyle(color: IlaiosTheme.muted, fontSize: 9),
+              style: TextStyle(color: IlaiosTheme.selectiveAccent, fontSize: 9),
             ),
           const Spacer(),
           _StatusItem(
@@ -791,9 +934,15 @@ class _StatusCapsule extends StatelessWidget {
         height: 25,
         padding: const EdgeInsets.symmetric(horizontal: 9),
         decoration: BoxDecoration(
-          color: IlaiosTheme.canvas.withValues(alpha: .7),
+          color: active
+              ? IlaiosTheme.blueWash
+              : IlaiosTheme.canvas.withValues(alpha: .7),
           borderRadius: BorderRadius.circular(5),
-          border: Border.all(color: IlaiosTheme.border),
+          border: Border.all(
+            color: active
+                ? IlaiosTheme.cyan.withValues(alpha: .48)
+                : IlaiosTheme.border,
+          ),
         ),
         child: Center(child: _StatusItem(label: label, value: value, active: active)),
       );
@@ -814,7 +963,14 @@ class _StatusItem extends StatelessWidget {
             const SizedBox(width: 5),
           ],
           Text('$label  ', style: const TextStyle(color: IlaiosTheme.muted, fontSize: 8.5)),
-          Text(value, style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600)),
+          Text(
+            value,
+            style: TextStyle(
+              color: active ? IlaiosTheme.cyan : IlaiosTheme.text,
+              fontSize: 8.5,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ],
       );
 }
