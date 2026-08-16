@@ -16,6 +16,7 @@ import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Mapping
 
 
 class WebDeploymentError(RuntimeError):
@@ -94,7 +95,7 @@ class LocalWebDeploymentAdapter:
 
         current = self._current()
         rollback_reference = None if current is None else str(current["deployment_id"])
-        record = {
+        record: dict[str, object] = {
             "deployment_id": deployment_id,
             "artifact_sha256": artifact_sha,
             "source_commit_sha": source_commit_sha,
@@ -134,7 +135,7 @@ class LocalWebDeploymentAdapter:
             raise WebDeploymentError("Web rollback target identity does not match content")
         previous = self._current()
         previous_id = None if previous is None else str(previous["deployment_id"])
-        record = {
+        record: dict[str, object] = {
             "deployment_id": deployment_id,
             "artifact_sha256": artifact_sha,
             "source_commit_sha": source_commit_sha,
@@ -170,11 +171,11 @@ class LocalWebDeploymentAdapter:
             raise WebDeploymentError("Web deployment current pointer is malformed")
         return value
 
-    def _write_current(self, record: dict[str, object]) -> None:
+    def _write_current(self, record: Mapping[str, object]) -> None:
         self.root.mkdir(parents=True, exist_ok=True)
         temporary = self.root / "current.json.tmp"
         temporary.write_text(
-            json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n",
+            json.dumps(dict(record), sort_keys=True, separators=(",", ":")) + "\n",
             encoding="utf-8",
         )
         os.replace(temporary, self.root / "current.json")
