@@ -24,6 +24,7 @@ from .software_product_runtime_recovery import RecoverableSoftwareProductRuntime
 from .video import VideoChainAdapter, VideoIntegrationError, VideoIntegrationResult
 from .video_runtime import DeterministicLocalVideoRuntime, VideoRuntimeError
 from .web_factory import GovernedWebFactory, WebsiteAcceptance, WebsiteFile
+from .web_product_runtime_recovery import RecoverableWebProductRuntime
 
 __all__ = [
     "AcceptanceManifest",
@@ -39,6 +40,7 @@ __all__ = [
     "ProductProofError",
     "ProductRuntimeError",
     "RecoverableSoftwareProductRuntime",
+    "RecoverableWebProductRuntime",
     "SoftwareProductFinalizationPending",
     "SoftwareProductRuntimeError",
     "SoftwareProductSecurityError",
