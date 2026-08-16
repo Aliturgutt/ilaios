@@ -93,26 +93,34 @@ class _DashboardModel {
   Map<String, Object?>? get latestEvent =>
       snapshot.liveEvents.isEmpty ? null : snapshot.liveEvents.last;
 
+  bool get hasRuntimeEvent => latestEvent != null;
+
   List<Map<String, Object?>> get leases => _mapList(snapshot.schedulerState['leases']);
   List<Map<String, Object?>>? get work => _optionalMapList(snapshot.governanceState['work']);
   List<Map<String, Object?>>? get admissions =>
       _optionalMapList(snapshot.governanceState['admissions']);
 
-  String get jobId =>
-      _firstText(latestEvent, const ['job_id', 'request_id', 'execution_id']) ?? '—';
-
-  String get started =>
-      _firstText(latestEvent, const ['started_at', 'created_at', 'timestamp']) ?? '—';
-
+  String get jobId => _firstText(latestEvent, const ['job_id']) ?? '—';
+  String get started => _firstText(latestEvent, const ['started_at']) ?? '—';
   String get elapsed =>
       _firstText(latestEvent, const ['elapsed', 'elapsed_time']) ?? '—';
-
   String get currentPhase =>
       _firstText(latestEvent, const ['phase', 'stage', 'workflow_phase']) ?? 'Unavailable';
-
   String get executionStatus =>
-      _firstText(latestEvent, const ['state', 'status', 'execution_status']) ??
-      (projection.connected ? status : 'Offline');
+      _firstText(latestEvent, const ['state', 'status', 'execution_status']) ?? 'Unavailable';
+
+  String get workflowBadgeLabel {
+    if (!projection.connected) return 'OFFLINE';
+    if (!hasRuntimeEvent) return 'NO ACTIVE DATA';
+    return executionStatus == 'Unavailable'
+        ? 'STATE UNAVAILABLE'
+        : executionStatus.toUpperCase();
+  }
+
+  Color get workflowBadgeColor {
+    if (!projection.connected || !hasRuntimeEvent) return IlaiosTheme.muted;
+    return _stateColor(executionStatus);
+  }
 
   double? get progressValue {
     final value = _firstNumber(
@@ -165,7 +173,7 @@ class _DashboardModel {
     final phase = _firstText(event, const ['phase', 'stage', 'workflow_phase']);
     if (phase == null) return 'Unavailable';
     if (_normalizePhase(phase) != _normalizePhase(stage)) return '—';
-    return _firstText(event, const ['state', 'status', 'execution_status']) ?? 'Current';
+    return executionStatus;
   }
 
   String workerTitle(Map<String, Object?> worker, int index) =>
@@ -222,8 +230,8 @@ class _Header extends StatelessWidget {
                     ),
                     const SizedBox(width: 10),
                     _StatusBadge(
-                      label: model.projection.connected ? 'LIVE' : 'OFFLINE',
-                      active: model.projection.connected,
+                      label: model.workflowBadgeLabel,
+                      color: model.workflowBadgeColor,
                     ),
                   ],
                 ),
@@ -469,7 +477,7 @@ class _WorkerCard extends StatelessWidget {
             const Spacer(),
             Row(
               children: [
-                const Icon(Icons.circle, size: 7, color: IlaiosTheme.success),
+                Icon(Icons.circle, size: 7, color: _stateColor(state)),
                 const SizedBox(width: 6),
                 Expanded(
                   child: Text(
@@ -685,7 +693,7 @@ class _ArtifactsPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final records = model.snapshot.evidenceRecords.reversed.take(4).toList();
     return _Panel(
-      title: 'LATEST EVIDENCE-BACKED ARTIFACTS',
+      title: 'LATEST VERIFIED ARTIFACT EVIDENCE',
       child: records.isEmpty
           ? const _EmptyState(
               icon: Icons.inventory_2_outlined,
@@ -773,23 +781,26 @@ class _VerificationRow extends StatelessWidget {
   final String value;
 
   @override
-  Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.only(bottom: 9),
-        padding: const EdgeInsets.all(11),
-        decoration: BoxDecoration(
-          color: IlaiosTheme.canvas,
-          borderRadius: BorderRadius.circular(9),
-          border: Border.all(color: IlaiosTheme.border),
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 18, color: IlaiosTheme.success),
-            const SizedBox(width: 9),
-            Expanded(child: Text(label, style: const TextStyle(fontSize: 11))),
-            Text(value, style: const TextStyle(color: IlaiosTheme.muted, fontSize: 11)),
-          ],
-        ),
-      );
+  Widget build(BuildContext context) {
+    final available = value != 'Unavailable';
+    return Container(
+      margin: const EdgeInsets.only(bottom: 9),
+      padding: const EdgeInsets.all(11),
+      decoration: BoxDecoration(
+        color: IlaiosTheme.canvas,
+        borderRadius: BorderRadius.circular(9),
+        border: Border.all(color: IlaiosTheme.border),
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: available ? IlaiosTheme.cyan : IlaiosTheme.muted),
+          const SizedBox(width: 9),
+          Expanded(child: Text(label, style: const TextStyle(fontSize: 11))),
+          Text(value, style: const TextStyle(color: IlaiosTheme.muted, fontSize: 11)),
+        ],
+      ),
+    );
+  }
 }
 
 class _EventRow extends StatelessWidget {
@@ -805,7 +816,11 @@ class _EventRow extends StatelessWidget {
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(
         children: [
-          const Icon(Icons.circle, size: 7, color: IlaiosTheme.success),
+          Icon(
+            Icons.circle,
+            size: 7,
+            color: state == null ? IlaiosTheme.muted : _stateColor(state),
+          ),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
@@ -864,26 +879,22 @@ class _Panel extends StatelessWidget {
 }
 
 class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.label, required this.active});
+  const _StatusBadge({required this.label, required this.color});
   final String label;
-  final bool active;
+  final Color color;
 
   @override
   Widget build(BuildContext context) => Container(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
-          color: active
-              ? IlaiosTheme.success.withValues(alpha: .12)
-              : IlaiosTheme.surfaceRaised,
+          color: color.withValues(alpha: .12),
           borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
           label,
-          style: TextStyle(
-            color: active ? IlaiosTheme.success : IlaiosTheme.muted,
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.w700),
         ),
       );
 }
@@ -956,6 +967,34 @@ String? _firstValue(List<Map<String, Object?>> sources, List<String> keys) {
     }
   }
   return null;
+}
+
+Color _stateColor(String value) {
+  final normalized = value.toLowerCase();
+  if (normalized.contains('fail') ||
+      normalized.contains('error') ||
+      normalized.contains('unhealthy') ||
+      normalized.contains('denied')) {
+    return IlaiosTheme.danger;
+  }
+  if (normalized.contains('block') ||
+      normalized.contains('warn') ||
+      normalized.contains('pending')) {
+    return IlaiosTheme.warning;
+  }
+  if (normalized.contains('complete') ||
+      normalized.contains('success') ||
+      normalized.contains('healthy') ||
+      normalized.contains('passed')) {
+    return IlaiosTheme.success;
+  }
+  if (normalized.contains('running') ||
+      normalized.contains('active') ||
+      normalized.contains('working') ||
+      normalized.contains('lease')) {
+    return IlaiosTheme.cyan;
+  }
+  return IlaiosTheme.muted;
 }
 
 String _normalizePhase(String value) =>
