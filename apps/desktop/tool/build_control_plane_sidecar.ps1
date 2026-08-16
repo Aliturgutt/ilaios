@@ -56,17 +56,19 @@ $sourceHeadFile = Join-Path $metadata 'source-head.txt'
 $env:PYTHONPATH = $repoRoot
 Push-Location $repoRoot
 try {
-  # Fail before packaging if a required first-party runtime module is absent
-  # or not importable in the active build environment.
-  python -c "import services.integrations.web_factory"
+  # Fail before packaging if a required first-party runtime or identity module
+  # is absent or not importable in the active Windows build environment.
+  python -c "import services.desktop_oidc_microsoft; import services.desktop_oidc_windows; import services.integrations.web_factory"
   if ($LASTEXITCODE -ne 0) {
-    throw 'Desktop sidecar source import smoke failed for services.integrations.web_factory.'
+    throw 'Desktop sidecar source import smoke failed for required identity/integration modules.'
   }
 
   # PyInstaller can miss package children on some local Python environments
   # even when imports are statically reachable through package __init__ files.
   # Collect the bounded first-party integrations package explicitly so local
-  # Windows builds and CI produce the same runnable composition root.
+  # Windows builds and CI produce the same runnable composition root. The OIDC
+  # Windows/Microsoft modules are statically imported by the sidecar entrypoint
+  # and the pre-package smoke above prevents an omitted source dependency.
   python -m PyInstaller `
     --noconfirm `
     --clean `
@@ -95,8 +97,8 @@ if ((Get-Item $built).Length -le 0) { throw 'Bundled control-plane executable is
 
 # A successful PyInstaller exit is not sufficient evidence that the frozen
 # composition root is runnable. --help imports the complete module graph before
-# argparse exits, so this catches missing first-party modules such as
-# services.integrations.web_factory without starting a runtime or using secrets.
+# argparse exits, so this catches missing first-party modules without starting a
+# runtime or using secrets.
 & $built --help *> $null
 if ($LASTEXITCODE -ne 0) {
   throw 'Packaged Desktop sidecar import smoke failed.'
