@@ -24,7 +24,6 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          import textwrap
 
           payload_path = Path('.github/workflows/redteam-multicap-self-patch.yml')
           source = payload_path.read_text(encoding='utf-8')
@@ -32,7 +31,12 @@ jobs:
           closer = "\n          PY\n"
           start = source.index(opener) + len(opener)
           end = source.index(closer, start)
-          script = textwrap.dedent(source[start:end])
+          raw = source[start:end]
+          prefix = '          '
+          script = '\n'.join(
+              line[len(prefix):] if line.startswith(prefix) else line
+              for line in raw.splitlines()
+          )
           exec(compile(script, str(payload_path), 'exec'), {'__name__': '__main__'})
           PY
           python -m py_compile services/execution_coordinator.py
