@@ -41,10 +41,35 @@ def _spec(*, features: tuple[str, ...] = ("contact-form",)) -> WebsiteSpec:
     )
 
 
+def test_design_strategy_materializes_into_generated_react_source(tmp_path: Path) -> None:
+    strategy = {
+        "primary_composition": "minimal-institutional",
+        "secondary_compositions": ("evidence-trust", "structured-comparison"),
+        "type_behavior": "editorial-readable",
+    }
+    source = materialize_next_project(
+        _spec(), strategy, tmp_path / "source-projects"
+    )
+    root = Path(source.root_path)
+    home = (root / "app/en/page.tsx").read_text(encoding="utf-8")
+    shell = (root / "components/PageShell.tsx").read_text(encoding="utf-8")
+    css = (root / "app/globals.css").read_text(encoding="utf-8")
+    assert '"primaryComposition": "minimal-institutional"' in home
+    assert '"evidence-trust"' in home
+    assert "data-composition={props.primaryComposition}" in shell
+    assert "ContextSections" in shell
+    assert ".composition-minimal-institutional" in css
+    assert ".composition-technical-flow" in css
+    assert ".composition-visual-portfolio" in css
+
+
 def test_source_assurance_repairs_into_new_content_addressed_project(tmp_path: Path) -> None:
     source = materialize_next_project(
         _spec(features=("contact-form", "content", "newsletter", "search")),
-        {"visual_character": "premium", "composition": "editorial-split"},
+        {
+            "primary_composition": "minimal-institutional",
+            "secondary_compositions": ("evidence-trust", "structured-comparison"),
+        },
         tmp_path / "source-projects",
     )
     original = Path(source.root_path)
@@ -86,7 +111,10 @@ def test_source_assurance_repairs_into_new_content_addressed_project(tmp_path: P
 def test_source_assurance_fails_closed_on_unrepairable_unsafe_source(tmp_path: Path) -> None:
     source = materialize_next_project(
         _spec(),
-        {"visual_character": "premium"},
+        {
+            "primary_composition": "minimal-institutional",
+            "secondary_compositions": ("evidence-trust",),
+        },
         tmp_path / "source-projects",
     )
     root = Path(source.root_path)
