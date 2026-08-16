@@ -4,6 +4,7 @@ import gc
 import hashlib
 import io
 import json
+import os
 import shutil
 import subprocess
 import tempfile
@@ -30,11 +31,14 @@ from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, Governe
 def main() -> int:
     repo_root = Path(__file__).resolve().parents[3]
     source_head = _git_head(repo_root)
+    artifact_root_raw = os.environ.get("ILAIOS_SOFTWARE_E2E_ARTIFACT_DIR", "").strip()
+    artifact_root = None if not artifact_root_raw else Path(artifact_root_raw).resolve()
     temporary = Path(tempfile.mkdtemp(prefix="ilaios-software-e2e-"))
     try:
         _run_finished_product_acceptance(
             root=temporary,
             source_head=source_head,
+            artifact_root=artifact_root,
         )
     finally:
         gc.collect()
@@ -50,7 +54,12 @@ def main() -> int:
     return 0
 
 
-def _run_finished_product_acceptance(*, root: Path, source_head: str) -> None:
+def _run_finished_product_acceptance(
+    *,
+    root: Path,
+    source_head: str,
+    artifact_root: Path | None,
+) -> None:
     local_credential = "ci-local-boundary"
     database = root / "control-plane.sqlite3"
     control_plane = ControlPlane(ControlPlaneConfig(database, local_credential))
@@ -165,12 +174,46 @@ def _run_finished_product_acceptance(*, root: Path, source_head: str) -> None:
     if runtime_result.get("browser_javascript_execution_proven") is not False:
         raise RuntimeError("Software runtime truth boundary is malformed")
 
+    persisted_artifact: str | None = None
+    if artifact_root is not None:
+        output = artifact_root / source_head
+        output.mkdir(parents=True, exist_ok=True)
+        artifact_path = output / "finished-software.zip"
+        artifact_path.write_bytes(content)
+        if hashlib.sha256(artifact_path.read_bytes()).hexdigest() != digest:
+            raise RuntimeError("persisted Software artifact digest mismatch")
+        persisted_artifact = str(artifact_path)
+        evidence_payload = {
+            "request_id": request_id,
+            "source_head_sha": source_head,
+            "adapter_id": manifest["adapter_id"],
+            "factory": manifest["factory"],
+            "accepted": manifest["accepted"],
+            "final_disposition": manifest["final_disposition"],
+            "artifact_sha256": digest,
+            "artifact_size": len(content),
+            "generated_files": manifest["generated_files"],
+            "provenance_record_hash": manifest["provenance_record_hash"],
+            "external_provider_cost_minor": manifest["external_provider_cost_minor"],
+            "security_result": manifest["security_result"],
+            "test_result": manifest["test_result"],
+            "build_result": manifest["build_result"],
+            "runtime_result": manifest["runtime_result"],
+            "coordinator_result_sha256": coordinator_state["result_sha256"],
+            "closure_status": coordinator_state["execution_status"],
+        }
+        (output / "evidence.json").write_text(
+            json.dumps(evidence_payload, sort_keys=True, indent=2) + "\n",
+            encoding="utf-8",
+        )
+
     print(
         json.dumps(
             {
                 "acceptance_manifest": "PASS",
                 "adapter_id": manifest["adapter_id"],
                 "artifact_sha256": digest,
+                "artifact_path": persisted_artifact,
                 "external_provider_cost_minor": 0,
                 "generated_files": manifest["generated_files"],
                 "runtime_qa": "PASS",
