@@ -3,6 +3,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from urllib.parse import parse_qs, urlparse
 
+import pytest
+
 import services.desktop_oidc_threaded as threaded
 from services.desktop_oidc import OIDCProviderConfig
 from services.identity import IdentityKind, VerifiedOIDCClaims
@@ -109,7 +111,7 @@ def test_successful_google_callback_persists_refresh_credential() -> None:
         (_provider(),),
         request_session=http,  # type: ignore[arg-type]
         verifier_factory=lambda provider, nonce: _Verifier(provider, nonce),
-        credential_store=store,  # type: ignore[arg-type]
+        credential_store=store,
     )
     started = service.start(
         "google", "http://127.0.0.1:43123/oauth/callback", now=NOW
@@ -123,7 +125,9 @@ def test_successful_google_callback_persists_refresh_credential() -> None:
     assert store.record.refresh_token == "offline-refresh-token"
 
 
-def test_reserved_restore_state_refreshes_and_reissues_local_session(monkeypatch) -> None:
+def test_reserved_restore_state_refreshes_and_reissues_local_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     store = _Store()
     store.save("google", "offline-refresh-token")
     http = _HTTP()
@@ -135,7 +139,7 @@ def test_reserved_restore_state_refreshes_and_reissues_local_session(monkeypatch
     service = threaded.DesktopOIDCService(
         (_provider(),),
         request_session=http,  # type: ignore[arg-type]
-        credential_store=store,  # type: ignore[arg-type]
+        credential_store=store,
     )
 
     restored = service.status("__ilaios_restore__", now=NOW)
@@ -160,7 +164,7 @@ def test_reserved_restore_state_refreshes_and_reissues_local_session(monkeypatch
 def test_restore_without_persistent_credential_remains_signed_out() -> None:
     service = threaded.DesktopOIDCService(
         (_provider(),),
-        credential_store=_Store(),  # type: ignore[arg-type]
+        credential_store=_Store(),
     )
 
     restored = service.status("__ilaios_restore__", now=NOW)
