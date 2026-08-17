@@ -50,6 +50,18 @@ class _Transport(OpenRouterTransport):
         timeout_seconds: float,
     ) -> OpenRouterJsonResponse:
         self.get_calls.append((url, headers, timeout_seconds))
+        if url.endswith("/videos/models"):
+            return OpenRouterJsonResponse(
+                200,
+                {
+                    "data": [
+                        {
+                            "id": SEEDANCE_FREE_MODEL_ID,
+                            "pricing_skus": {"per-video-second": "0"},
+                        }
+                    ]
+                },
+            )
         return OpenRouterJsonResponse(
             200,
             {
@@ -118,6 +130,7 @@ def test_real_free_proof_path_requires_zero_reported_cost(tmp_path: Path) -> Non
     assert receipt["paid_fallback_allowed"] is False
     assert len(transport.post_calls) == 1
     assert transport.post_calls[0][2]["model"] == SEEDANCE_FREE_MODEL_ID
+    assert transport.get_calls[0][0].endswith("/videos/models")
     assert (tmp_path / "free-provider-proof.mp4").exists()
     evidence = (tmp_path / "free-provider-receipt.json").read_text(encoding="utf-8")
     assert SENTINEL_API_KEY not in evidence
