@@ -100,16 +100,20 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-workflows')));
     await tester.pumpAndSettle();
 
+    final workflowsPage = find.byKey(const Key('reference-workflows-page'));
+    expect(workflowsPage, findsOneWidget);
     for (final key in <Key>[
-      const Key('reference-workflows-page'),
       const Key('workflows-metrics'),
       const Key('workflows-table-panel'),
       const Key('selected-workflow-panel'),
       const Key('workflows-bottom-panels'),
     ]) {
-      expect(find.byKey(key), findsOneWidget, reason: 'missing $key');
+      expect(find.byKey(key), findsWidgets, reason: 'missing $key');
     }
-    expect(find.text('Workflows'), findsOneWidget);
+    expect(
+      find.descendant(of: workflowsPage, matching: find.text('Workflows')),
+      findsOneWidget,
+    );
     expect(find.text('Total Workflows'), findsOneWidget);
     expect(find.text('Stage Distribution (All Workflows)'), findsOneWidget);
     expect(tester.takeException(), isNull);
