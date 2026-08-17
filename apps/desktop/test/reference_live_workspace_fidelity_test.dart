@@ -72,6 +72,7 @@ const _snapshot = OperationalSnapshot(
       'message': 'Header review completed',
       'timestamp': '2026-08-17T10:35:48Z',
       'agent_id': 'test-01',
+      'project_name': 'Runtime Project',
     },
   ],
 );
