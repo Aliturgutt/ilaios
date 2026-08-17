@@ -12,7 +12,7 @@ import re
 import unicodedata
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Final, cast
+from typing import Final
 
 
 class UIDesignSkillError(ValueError):
@@ -285,6 +285,8 @@ def resolve_ui_design(payload: Mapping[str, object]) -> dict[str, object]:
         raise UIDesignSkillError("UI skill intent must be text")
     normalized = normalize_ui_intent(raw_intent)
     matches = _pattern_matches(normalized)
+    pattern: _Pattern
+    evidence: tuple[str, ...]
     if not matches:
         has_diagram = any(_contains(normalized, term) for term in _DIAGRAM_TERMS)
         if has_diagram:
@@ -401,5 +403,6 @@ def _assert_json_bounded(output: Mapping[str, object]) -> None:
     encoded = json.dumps(output, sort_keys=True, ensure_ascii=False)
     if len(encoded.encode("utf-8")) > 32_768:
         raise UIDesignSkillError("UI specification exceeds bounded output size")
-    if not isinstance(cast(Mapping[str, object], output["authority"]), Mapping):
+    authority = output.get("authority")
+    if not isinstance(authority, Mapping):
         raise UIDesignSkillError("UI authority contract is malformed")
