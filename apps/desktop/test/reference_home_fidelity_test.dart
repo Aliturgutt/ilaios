@@ -83,7 +83,9 @@ void main() {
     final artifacts = tester.getRect(find.byKey(const Key('command-center-artifacts')));
     final bottomStatus = tester.getRect(find.byKey(const Key('reference-bottom-status-v2')));
     expect(artifacts.bottom, lessThanOrEqualTo(bottomStatus.top + 1));
-    expect(bottomStatus.bottom, lessThanOrEqualTo(720));
+    // FittedBox can leave a sub-pixel floating-point residue at the exact edge.
+    // Keep a 0.01 logical-pixel tolerance without accepting a visible overflow.
+    expect(bottomStatus.bottom, lessThanOrEqualTo(720.01));
   });
 
   testWidgets('1640x890 Windows client keeps bottom row and status strip visible', (
@@ -104,7 +106,7 @@ void main() {
     expect(outputs.bottom, lessThanOrEqualTo(status.top + 1));
     expect(completed.bottom, lessThanOrEqualTo(status.top + 1));
     expect(quick.bottom, lessThanOrEqualTo(status.top + 1));
-    expect(status.bottom, lessThanOrEqualTo(890));
+    expect(status.bottom, lessThanOrEqualTo(890.01));
   });
 
   testWidgets('approved Turkish light reference renders without mixing dark state', (
