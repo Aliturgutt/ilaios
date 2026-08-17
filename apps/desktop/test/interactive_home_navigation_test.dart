@@ -18,7 +18,8 @@ void main() {
 
     await tester.tap(find.byKey(const Key('home-templates')));
     await tester.pumpAndSettle();
-    expect(find.text('Control Center'), findsOneWidget);
+    expect(find.text('Workflows'), findsOneWidget);
+    expect(find.byKey(const Key('reference-workflows-page')), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-home')));
     await tester.pumpAndSettle();

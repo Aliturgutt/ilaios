@@ -29,7 +29,8 @@ void main() {
     expect(find.text('ILAIOS’un ne oluşturmasını istiyorsun?'), findsOneWidget);
 
     await open('workflows');
-    expect(find.text('Kontrol Merkezi'), findsOneWidget);
+    expect(find.text('İş Akışları'), findsOneWidget);
+    expect(find.byKey(const Key('reference-workflows-page')), findsOneWidget);
 
     await open('agents');
     expect(find.text('Canlı Yürütme'), findsOneWidget);
