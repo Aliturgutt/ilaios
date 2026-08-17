@@ -11,10 +11,12 @@ import 'reference_desktop_shell_v5.dart';
 /// Hardened fixed-viewport Desktop routing guard for the approved reference.
 ///
 /// The normal Windows dashboard keeps the complete Home composition in one
-/// viewport without page-level scrolling. The reference UI uses a compact
-/// typography scaler so fixed-height agent/artifact cards remain overflow-free
-/// at the supported desktop geometry. Enlarged text deliberately falls back to
-/// the verified responsive shell for accessibility.
+/// viewport without page-level scrolling. Windows DPI scaling can reduce the
+/// Flutter logical height even when the app is physically full-screen; in that
+/// case the reference canvas is rendered at its verified 800 logical-pixel
+/// height and uniformly scaled to the available viewport rather than falling
+/// back to the web-like responsive dashboard. Enlarged accessibility text still
+/// deliberately uses the verified responsive shell.
 class ReferenceDesktopShellV8 extends StatelessWidget {
   const ReferenceDesktopShellV8({
     required this.projection,
@@ -77,25 +79,56 @@ class ReferenceDesktopShellV8 extends StatelessWidget {
 
     final sanitizedSnapshot = _withTruthfulProjectFallback(operationalSnapshot);
     final media = MediaQuery.of(context);
-    return MediaQuery(
-      data: media.copyWith(textScaler: const TextScaler.linear(.90)),
-      child: ReferenceDesktopShellV5(
-        projection: projection,
-        operationalSnapshot: sanitizedSnapshot,
-        operationalStatus: operationalStatus,
-        approverId: approverId,
-        identityProviders: identityProviders,
-        userSession: userSession,
-        identityStatus: identityStatus,
-        themeMode: themeMode,
-        onThemeModeChanged: onThemeModeChanged,
-        onSignIn: onSignIn,
-        onLogout: onLogout,
-        onPromptSubmit: onPromptSubmit,
-        onSaveArtifact: onSaveArtifact,
-        onRefreshRequested: onRefreshRequested,
-        onGovernanceDecision: onGovernanceDecision,
-      ),
+
+    Widget referenceShell() => MediaQuery(
+          data: media.copyWith(textScaler: const TextScaler.linear(.90)),
+          child: ReferenceDesktopShellV5(
+            projection: projection,
+            operationalSnapshot: sanitizedSnapshot,
+            operationalStatus: operationalStatus,
+            approverId: approverId,
+            identityProviders: identityProviders,
+            userSession: userSession,
+            identityStatus: identityStatus,
+            themeMode: themeMode,
+            onThemeModeChanged: onThemeModeChanged,
+            onSignIn: onSignIn,
+            onLogout: onLogout,
+            onPromptSubmit: onPromptSubmit,
+            onSaveArtifact: onSaveArtifact,
+            onRefreshRequested: onRefreshRequested,
+            onGovernanceDecision: onGovernanceDecision,
+          ),
+        );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWideDesktop = constraints.maxWidth >= 1180;
+        final isDpiCompressed = constraints.maxHeight > 0 &&
+            constraints.maxHeight < 800 &&
+            isWideDesktop;
+
+        if (!isDpiCompressed) return referenceShell();
+
+        const designHeight = 800.0;
+        final designWidth =
+            constraints.maxWidth * designHeight / constraints.maxHeight;
+
+        return ClipRect(
+          key: const Key('reference-dpi-scaled-viewport'),
+          child: SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.contain,
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: designWidth,
+                height: designHeight,
+                child: referenceShell(),
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 
