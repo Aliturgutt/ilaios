@@ -14,8 +14,10 @@ jobs:
     environment: Production
     env:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      ARK_API_KEY: ${{ secrets.ARK_API_KEY }}
+      BYTEPLUS_ARK_API_KEY: ${{ secrets.BYTEPLUS_ARK_API_KEY }}
     steps:
-      - name: Inspect authoritative video catalog without generation
+      - name: Inspect zero-cost provider readiness without generation
         shell: python
         run: |
           import json
@@ -23,12 +25,19 @@ jobs:
           from decimal import Decimal, InvalidOperation
           from urllib.request import Request, urlopen
 
-          key = os.environ.get('OPENROUTER_API_KEY', '').strip()
-          if not key:
+          openrouter_key = os.environ.get('OPENROUTER_API_KEY', '').strip()
+          ark_key = os.environ.get('ARK_API_KEY', '').strip()
+          byteplus_key = os.environ.get('BYTEPLUS_ARK_API_KEY', '').strip()
+          print('OPENROUTER_CREDENTIAL_PRESENT=' + str(bool(openrouter_key)).upper())
+          print('ARK_CREDENTIAL_PRESENT=' + str(bool(ark_key)).upper())
+          print('BYTEPLUS_ARK_CREDENTIAL_PRESENT=' + str(bool(byteplus_key)).upper())
+          print('GENERATION_POST_PERFORMED=FALSE')
+
+          if not openrouter_key:
               raise SystemExit('OPENROUTER_API_KEY is unavailable')
           request = Request(
               'https://openrouter.ai/api/v1/videos/models',
-              headers={'Authorization': f'Bearer {key}'},
+              headers={'Authorization': f'Bearer {openrouter_key}'},
               method='GET',
           )
           with urlopen(request, timeout=60) as response:
@@ -96,12 +105,14 @@ jobs:
           print('ANY_ZERO_PRICE_SKU_VIDEO_MODELS=' + json.dumps(any_zero_models, sort_keys=True))
           print('ALL_ZERO_PRICE_VIDEO_MODEL_COUNT=' + str(len(all_zero_models)))
           print('ANY_ZERO_PRICE_SKU_VIDEO_MODEL_COUNT=' + str(len(any_zero_models)))
-          print('GENERATION_POST_PERFORMED=FALSE')
 
           summary = os.environ.get('GITHUB_STEP_SUMMARY')
           if summary:
               with open(summary, 'a', encoding='utf-8') as handle:
-                  handle.write('## OpenRouter video catalog diagnostic\n\n')
+                  handle.write('## Zero-cost video provider diagnostic\n\n')
+                  handle.write(f'- OpenRouter credential present: `{bool(openrouter_key)}`\n')
+                  handle.write(f'- ARK_API_KEY present: `{bool(ark_key)}`\n')
+                  handle.write(f'- BYTEPLUS_ARK_API_KEY present: `{bool(byteplus_key)}`\n')
                   handle.write(f'- Catalog model count: `{len(models)}`\n')
                   handle.write(f'- Requested aliases/base records: `{json.dumps(selected, sort_keys=True)}`\n')
                   handle.write(f'- All-zero models: `{json.dumps(all_zero_models, sort_keys=True)}`\n')
