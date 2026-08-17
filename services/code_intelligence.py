@@ -37,8 +37,12 @@ class ILAIOSRepositoryIntelligence:
     def session(self, repository: Path, base_sha: str) -> CodeIntelligenceSession:
         """Create a revision-bound read-only intelligence session."""
 
+        if repository.is_symlink():
+            raise CodeIntelligenceAdmissionError(
+                "repository must not be a symbolic link"
+            )
         root = repository.resolve()
-        if not root.is_dir() or root.is_symlink():
+        if not root.is_dir():
             raise CodeIntelligenceAdmissionError(
                 "repository must be a regular directory"
             )
@@ -137,7 +141,14 @@ class ILAIOSRepositoryIntelligence:
 
 def _git_text(root: Path, *arguments: str) -> str:
     completed = subprocess.run(
-        ("git", *arguments),
+        (
+            "git",
+            "-c",
+            "core.fsmonitor=false",
+            "-c",
+            "core.untrackedCache=false",
+            *arguments,
+        ),
         cwd=root,
         check=False,
         capture_output=True,
@@ -156,7 +167,13 @@ def _tracked_files(root: Path) -> frozenset[str]:
 
 
 def _require_clean_worktree(root: Path) -> None:
-    status = _git_text(root, "status", "--porcelain=v1", "--untracked-files=all")
+    status = _git_text(
+        root,
+        "status",
+        "--porcelain=v1",
+        "--untracked-files=all",
+        "--ignore-submodules=all",
+    )
     if status:
         raise CodeIntelligenceAdmissionError(
             "repository worktree must be clean for revision-bound analysis"
