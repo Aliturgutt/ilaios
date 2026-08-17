@@ -7,7 +7,9 @@ import pytest
 from src.video_automation.commercial_admission import (
     CommercialAdmissionEngine,
     CommercialAdmissionError,
+    CommercialDispatchAuthority,
     CommercialPricingPolicy,
+    LockedVideoQuote,
     PaymentAuthorization,
     ProviderPricingSnapshot,
     TaxProfile,
@@ -17,7 +19,17 @@ from src.video_automation.commercial_store import CommercialAuthorityStore
 from src.video_automation.managed_credits import ProviderCostQuote
 
 
-def _commercial_setup(root: Path, *, provider_ceiling: int = 1_000_000):
+def _commercial_setup(
+    root: Path,
+    *,
+    provider_ceiling: int = 1_000_000,
+) -> tuple[
+    CommercialAuthorityStore,
+    LockedVideoQuote,
+    PaymentAuthorization,
+    CommercialDispatchAuthority,
+    ProviderCostQuote,
+]:
     engine = CommercialAdmissionEngine(CommercialPricingPolicy())
     pricing = ProviderPricingSnapshot(
         provider_name="openrouter-video-managed",
