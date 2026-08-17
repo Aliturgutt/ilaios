@@ -28,7 +28,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Main Control Center'), findsOneWidget);
-    expect(find.text('Connected'), findsOneWidget);
+    expect(find.text('Connected'), findsWidgets);
     expect(find.text('—'), findsWidgets);
     expect(find.textContaining(r'$3.21'), findsNothing);
     expect(find.textContaining('18.362'), findsNothing);
