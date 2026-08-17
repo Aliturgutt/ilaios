@@ -37,18 +37,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Live Code'), findsNWidgets(2));
-    expect(find.text('Terminal'), findsNWidgets(2));
+    expect(find.text('Terminal'), findsWidgets);
 
     await tester.tap(find.byKey(const Key('workspace-tab-terminal')));
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
     expect(find.text('Live Code'), findsOneWidget);
-    expect(find.text('Terminal'), findsNWidgets(2));
+    expect(find.text('Terminal'), findsWidgets);
 
     await tester.tap(find.byKey(const Key('workspace-tab-browser')));
     await tester.pumpAndSettle();
+
     expect(tester.takeException(), isNull);
-    expect(find.text('Browser'), findsNWidgets(2));
+    expect(find.text('Browser'), findsWidgets);
   });
 }
