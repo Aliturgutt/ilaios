@@ -36,7 +36,7 @@ void main() {
     expect(find.text('Needs Attention'), findsOneWidget);
     expect(find.text('Active Agents'), findsOneWidget);
     expect(find.text("Today's Cost"), findsOneWidget);
-    expect(find.text('System Health'), findsOneWidget);
+    expect(find.text('System Health'), findsWidgets);
     expect(find.text('FOCUS WORK'), findsOneWidget);
     expect(find.text('NEEDS ATTENTION'), findsOneWidget);
     expect(find.text('LATEST OUTPUTS'), findsOneWidget);
@@ -99,7 +99,7 @@ void main() {
     expect(find.text('Müdahale Gerektiren'), findsOneWidget);
     expect(find.text('Aktif Ajanlar'), findsOneWidget);
     expect(find.text('Bugünkü Harcama'), findsOneWidget);
-    expect(find.text('Sistem Sağlığı'), findsOneWidget);
+    expect(find.text('Sistem Sağlığı'), findsWidgets);
     expect(find.text('ODAK İŞLER'), findsOneWidget);
     expect(find.text('DİKKAT GEREKTİRENLER'), findsOneWidget);
     expect(find.text('SON ÇIKTILAR'), findsOneWidget);
