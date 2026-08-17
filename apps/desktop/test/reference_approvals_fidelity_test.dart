@@ -135,7 +135,8 @@ void main() {
     await tester.pumpAndSettle();
     await openApprovals(tester);
 
-    expect(find.byKey(const Key('reference-approvals-page')), findsOneWidget);
+    final page = find.byKey(const Key('reference-approvals-page'));
+    expect(page, findsOneWidget);
     expect(find.byKey(const Key('approvals-header')), findsOneWidget);
     expect(find.byKey(const Key('approvals-kpis')), findsOneWidget);
     expect(find.byKey(const Key('approvals-tabs')), findsOneWidget);
@@ -143,7 +144,10 @@ void main() {
     expect(find.byKey(const Key('approvals-table')), findsOneWidget);
     expect(find.byKey(const Key('approvals-selected-request')), findsOneWidget);
     expect(find.byKey(const Key('approvals-distribution')), findsOneWidget);
-    expect(find.text('Approvals'), findsOneWidget);
+    expect(
+      find.descendant(of: page, matching: find.text('Approvals')),
+      findsOneWidget,
+    );
     expect(find.text('Production Deployment Onayı'), findsWidgets);
     expect(find.text('5'), findsWidgets);
     expect(tester.takeException(), isNull);
