@@ -305,8 +305,20 @@ def _resolve_call_reference(
     if len(exact_qualified) > 1:
         return None, True
 
-    leaf_name = reference.rsplit(".", 1)[-1]
-    named = by_name.get(leaf_name, [])
+    if "." in reference:
+        suffix_matches = [
+            symbol
+            for qualified_name, symbols in by_qualified_name.items()
+            if qualified_name.endswith(f".{reference}")
+            for symbol in symbols
+        ]
+        if len(suffix_matches) == 1:
+            return suffix_matches[0], False
+        if len(suffix_matches) > 1:
+            return None, True
+        return None, False
+
+    named = by_name.get(reference, [])
     same_file = [
         symbol
         for symbol in named
