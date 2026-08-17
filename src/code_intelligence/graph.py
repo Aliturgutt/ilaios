@@ -334,12 +334,14 @@ def _coverage(snapshot: RepositorySnapshot, unknown_count: int) -> IndexCoverage
     semantic = [
         file_record
         for file_record in analyzable
-        if file_record.language.value == "python"
+        if file_record.language is not None
+        and file_record.language.value == "python"
     ]
     structural = [
         file_record
         for file_record in analyzable
-        if file_record.language.value != "python"
+        if file_record.language is not None
+        and file_record.language.value != "python"
     ]
     return IndexCoverage(
         total_files=len(snapshot.files),
