@@ -24,7 +24,8 @@ void main() {
       expect(
         tester.takeException(),
         isNull,
-        reason: 'Desktop target layout overflowed or threw at ${size.width}x${size.height}',
+        reason:
+            'Desktop target layout overflowed or threw at ${size.width}x${size.height}',
       );
       expect(find.text('Active Workflow'), findsOneWidget);
       expect(find.text('Goal Intake'), findsOneWidget);
@@ -34,7 +35,8 @@ void main() {
     }
   });
 
-  testWidgets('premium target composition keeps operational right rail and workspace panes', (
+  testWidgets(
+      'premium target composition keeps operational right rail and workspace panes', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -54,7 +56,7 @@ void main() {
     expect(find.text('EVIDENCE & VERIFICATION'), findsOneWidget);
   });
 
-  testWidgets('wide shell renders the canonical horizontal ILAIOS wordmark', (
+  testWidgets('wide shell renders visible canonical ILAIOS symbol and wordmark', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -62,14 +64,15 @@ void main() {
     await tester.pumpWidget(const IlaiosDesktopApp());
     await tester.pumpAndSettle();
 
-    final wordmark = find.byWidgetPredicate((widget) {
+    final symbol = find.byWidgetPredicate((widget) {
       if (widget is! Image || widget.image is! AssetImage) return false;
       return (widget.image as AssetImage).assetName ==
-          '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
+          '../../brand/assets/03-ilaios-symbol-dark.jpg';
     });
 
     expect(tester.takeException(), isNull);
-    expect(wordmark, findsOneWidget);
+    expect(symbol, findsOneWidget);
+    expect(find.text('ILAIOS'), findsOneWidget);
   });
 
   testWidgets('target dashboard tolerates 125 and 150 percent text scaling', (
@@ -94,7 +97,8 @@ void main() {
     }
   });
 
-  testWidgets('Turkish target layout tolerates localized Windows scaling at supported widths', (
+  testWidgets(
+      'Turkish target layout tolerates localized Windows scaling at supported widths', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));

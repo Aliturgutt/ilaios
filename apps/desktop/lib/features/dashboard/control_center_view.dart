@@ -31,6 +31,13 @@ class ControlCenterView extends StatelessWidget {
   Widget build(BuildContext context) {
     final leaseCount = _listLength(operationalSnapshot.schedulerState, 'leases');
     final effectCount = _listLength(operationalSnapshot.schedulerState, 'effects');
+    final latestEvent = operationalSnapshot.liveEvents.isEmpty
+        ? null
+        : operationalSnapshot.liveEvents.last;
+    final currentPhase = _firstText(
+      latestEvent,
+      const ['phase', 'stage', 'workflow_phase'],
+    );
     return SingleChildScrollView(
       padding: const EdgeInsets.all(24),
       child: Align(
@@ -92,6 +99,11 @@ class ControlCenterView extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 20),
+              _WorkflowPipeline(
+                connected: projection.connected,
+                currentPhase: currentPhase,
+              ),
+              const SizedBox(height: 16),
               Wrap(
                 spacing: 12,
                 runSpacing: 12,
@@ -175,6 +187,224 @@ class ControlCenterView extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _WorkflowPipeline extends StatelessWidget {
+  const _WorkflowPipeline({
+    required this.connected,
+    required this.currentPhase,
+  });
+
+  final bool connected;
+  final String? currentPhase;
+
+  static const _stages = <_PipelineStage>[
+    _PipelineStage('Goal', 'Hedef', Icons.track_changes_outlined, IlaiosTheme.enterpriseCyan),
+    _PipelineStage('Plan', 'Plan', Icons.account_tree_outlined, IlaiosTheme.coreBlue),
+    _PipelineStage('Execute', 'Yürüt', Icons.play_circle_outline, IlaiosTheme.violet),
+    _PipelineStage('Verify', 'Doğrula', Icons.verified_user_outlined, IlaiosTheme.enterpriseCyan),
+    _PipelineStage('Deliver', 'Teslim', Icons.inventory_2_outlined, IlaiosTheme.coreBlue),
+  ];
+
+  bool _active(_PipelineStage stage) {
+    final phase = currentPhase;
+    if (phase == null) return false;
+    final normalized = _normalize(phase);
+    return switch (stage.english) {
+      'Goal' => normalized.contains('goal') || normalized.contains('intent'),
+      'Plan' => normalized.contains('plan'),
+      'Execute' => normalized.contains('execut') || normalized.contains('run'),
+      'Verify' => normalized.contains('verif') || normalized.contains('test'),
+      'Deliver' => normalized.contains('deliver') || normalized.contains('accept'),
+      _ => false,
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) => _Panel(
+        accent: IlaiosTheme.coreBlue,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.route_outlined, color: IlaiosTheme.coreBlue),
+                const SizedBox(width: 9),
+                Expanded(
+                  child: Text(
+                    _isTr(context) ? 'İş akışı rotası' : 'Workflow route',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: connected
+                        ? IlaiosTheme.enterpriseCyan.withValues(alpha: .09)
+                        : Theme.of(context).colorScheme.surfaceContainerHighest,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(
+                      color: connected
+                          ? IlaiosTheme.enterpriseCyan.withValues(alpha: .32)
+                          : Theme.of(context).colorScheme.outlineVariant,
+                    ),
+                  ),
+                  child: Text(
+                    connected
+                        ? (_isTr(context) ? 'Yetkili rota' : 'Authoritative route')
+                        : (_isTr(context) ? 'Çevrimdışı' : 'Offline'),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: connected ? IlaiosTheme.enterpriseCyan : null,
+                          fontWeight: FontWeight.w800,
+                        ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth >= 1040) {
+                  return Row(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      for (var index = 0; index < _stages.length; index++) ...[
+                        Expanded(
+                          child: _PipelineStageCard(
+                            stage: _stages[index],
+                            active: _active(_stages[index]),
+                            connected: connected,
+                          ),
+                        ),
+                        if (index < _stages.length - 1)
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 7),
+                            child: Icon(
+                              Icons.arrow_forward_rounded,
+                              size: 18,
+                              color: Theme.of(context).colorScheme.outline,
+                            ),
+                          ),
+                      ],
+                    ],
+                  );
+                }
+                final cardWidth = constraints.maxWidth >= 620
+                    ? (constraints.maxWidth - 12) / 2
+                    : constraints.maxWidth;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: [
+                    for (final stage in _stages)
+                      SizedBox(
+                        width: cardWidth,
+                        child: _PipelineStageCard(
+                          stage: stage,
+                          active: _active(stage),
+                          connected: connected,
+                        ),
+                      ),
+                  ],
+                );
+              },
+            ),
+            const SizedBox(height: 12),
+            Text(
+              currentPhase == null
+                  ? (_isTr(context)
+                      ? 'Aktif bir çalışma aşaması yayınlanmıyorsa kartlar durum uydurmaz.'
+                      : 'When no active workflow phase is published, the cards do not fabricate state.')
+                  : '${_isTr(context) ? 'Yetkili aşama' : 'Authoritative phase'}: $currentPhase',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ],
+        ),
+      );
+}
+
+class _PipelineStage {
+  const _PipelineStage(this.english, this.turkish, this.icon, this.accent);
+
+  final String english;
+  final String turkish;
+  final IconData icon;
+  final Color accent;
+}
+
+class _PipelineStageCard extends StatelessWidget {
+  const _PipelineStageCard({
+    required this.stage,
+    required this.active,
+    required this.connected,
+  });
+
+  final _PipelineStage stage;
+  final bool active;
+  final bool connected;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = stage.accent;
+    return AnimatedContainer(
+      key: ValueKey('workflow-stage-${stage.english.toLowerCase()}'),
+      duration: const Duration(milliseconds: 160),
+      constraints: const BoxConstraints(minHeight: 88),
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: active
+            ? accent.withValues(alpha: .10)
+            : Theme.of(context).colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: active
+              ? accent.withValues(alpha: .75)
+              : Theme.of(context).colorScheme.outlineVariant,
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 38,
+            height: 38,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: active ? .16 : .08),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Icon(stage.icon, color: accent, size: 20),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  _isTr(context) ? stage.turkish : stage.english,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  !connected
+                      ? (_isTr(context) ? 'Çevrimdışı' : 'Offline')
+                      : active
+                          ? (_isTr(context) ? 'Aktif aşama' : 'Active phase')
+                          : '—',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: active ? accent : null,
+                      ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -537,6 +767,20 @@ Future<void> _showMetric(
         ],
       ),
     );
+
+String? _firstText(Map<String, Object?>? source, List<String> keys) {
+  if (source == null) return null;
+  for (final key in keys) {
+    final value = source[key];
+    if (value is String && value.trim().isNotEmpty) return value.trim();
+  }
+  return null;
+}
+
+String _normalize(String value) => value
+    .toLowerCase()
+    .replaceAll(RegExp(r'[^a-z0-9]+'), ' ')
+    .trim();
 
 String _localizedStatus(BuildContext context, String value) {
   if (!_isTr(context)) return value;

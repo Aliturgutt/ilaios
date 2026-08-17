@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../app/ilaios_locale.dart';
@@ -40,6 +42,89 @@ class _DeliveriesViewState extends State<DeliveriesView> {
     } on Object catch (error) {
       if (!mounted) return;
       setState(() => _message = error.toString());
+    } finally {
+      if (mounted) setState(() => _activeDigest = null);
+    }
+  }
+
+  File _localDeliveryFile(EvidenceRecord record) {
+    final userProfile = Platform.environment['USERPROFILE']?.trim();
+    final localAppData = Platform.environment['LOCALAPPDATA']?.trim();
+    final separator = Platform.pathSeparator;
+    final rootPath = userProfile?.isNotEmpty == true
+        ? '$userProfile${separator}Downloads${separator}ILAIOS'
+        : (localAppData?.isNotEmpty == true
+            ? '$localAppData${separator}ILAIOS${separator}Deliveries'
+            : '${Directory.systemTemp.path}${separator}ILAIOS${separator}Deliveries');
+    final safeExecution =
+        record.executionId.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    final extension =
+        record.action.toLowerCase().contains('video') ? '.mp4' : '.bin';
+    final digestPrefix = record.artifactDigest.length <= 16
+        ? record.artifactDigest
+        : record.artifactDigest.substring(0, 16);
+    return File('$rootPath$separator${'ILAIOS-$safeExecution-$digestPrefix$extension'}');
+  }
+
+  Future<void> _deleteLocalCopy(EvidenceRecord record) async {
+    if (_activeDigest != null) return;
+    final confirmed = await showDialog<bool>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            icon: const Icon(Icons.delete_outline, color: IlaiosTheme.danger),
+            title: Text(
+              _isTr(context) ? 'Yerel kopya silinsin mi?' : 'Delete local copy?',
+            ),
+            content: Text(
+              _isTr(context)
+                  ? 'Yalnızca bilgisayarına kaydedilmiş çıktı dosyası silinir. ILAIOS kanıt kaydı, SHA-256 ve provenance zinciri korunur.'
+                  : 'Only the delivery file saved on this computer is deleted. The ILAIOS evidence record, SHA-256 and provenance chain are retained.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(false),
+                child: Text(_isTr(context) ? 'Vazgeç' : 'Cancel'),
+              ),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(backgroundColor: IlaiosTheme.danger),
+                onPressed: () => Navigator.of(dialogContext).pop(true),
+                icon: const Icon(Icons.delete_outline),
+                label: Text(_isTr(context) ? 'Yerel kopyayı sil' : 'Delete local copy'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+    if (!confirmed || !mounted) return;
+
+    setState(() {
+      _activeDigest = record.artifactDigest;
+      _message = null;
+    });
+    try {
+      final file = _localDeliveryFile(record);
+      if (await file.exists()) {
+        await file.delete();
+        if (!mounted) return;
+        setState(() {
+          _message = _isTr(context)
+              ? 'Yerel çıktı silindi. Doğrulanmış kanıt kaydı korunuyor.'
+              : 'Local delivery deleted. Verified evidence is retained.';
+        });
+      } else if (mounted) {
+        setState(() {
+          _message = _isTr(context)
+              ? 'Bu çıktı için kaydedilmiş yerel dosya bulunamadı. Kanıt kaydı değişmedi.'
+              : 'No saved local file was found for this delivery. The evidence record was unchanged.';
+        });
+      }
+    } on FileSystemException catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _message = _isTr(context)
+            ? 'Yerel dosya silinemedi: ${error.message}'
+            : 'The local file could not be deleted: ${error.message}';
+      });
     } finally {
       if (mounted) setState(() => _activeDigest = null);
     }
@@ -136,7 +221,9 @@ class _DeliveriesViewState extends State<DeliveriesView> {
                       record: record,
                       saving: _activeDigest == record.artifactDigest,
                       enabled: widget.onSaveArtifact != null && _activeDigest == null,
+                      deleteEnabled: _activeDigest == null,
                       onSave: () => _save(record),
+                      onDelete: () => _deleteLocalCopy(record),
                     ),
                 if (_message case final message?) ...[
                   const SizedBox(height: 16),
@@ -227,13 +314,17 @@ class _DeliveryRow extends StatefulWidget {
     required this.record,
     required this.saving,
     required this.enabled,
+    required this.deleteEnabled,
     required this.onSave,
+    required this.onDelete,
   });
 
   final EvidenceRecord record;
   final bool saving;
   final bool enabled;
+  final bool deleteEnabled;
   final VoidCallback onSave;
+  final VoidCallback onDelete;
 
   @override
   State<_DeliveryRow> createState() => _DeliveryRowState();
@@ -293,21 +384,40 @@ class _DeliveryRowState extends State<_DeliveryRow> {
                 ),
               ),
               const SizedBox(width: 12),
-              FilledButton.icon(
-                key: ValueKey('save-artifact-${widget.record.sequence}'),
-                onPressed: widget.enabled ? widget.onSave : null,
-                icon: widget.saving
-                    ? const SizedBox(
-                        width: 15,
-                        height: 15,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.download_outlined),
-                label: Text(
-                  widget.saving
-                      ? _surface(context, 'deliveries.saving')
-                      : _surface(context, 'deliveries.save'),
-                ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  FilledButton.icon(
+                    key: ValueKey('save-artifact-${widget.record.sequence}'),
+                    onPressed: widget.enabled ? widget.onSave : null,
+                    icon: widget.saving
+                        ? const SizedBox(
+                            width: 15,
+                            height: 15,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : const Icon(Icons.download_outlined),
+                    label: Text(
+                      widget.saving
+                          ? _surface(context, 'deliveries.saving')
+                          : _surface(context, 'deliveries.save'),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    key: ValueKey('delete-local-artifact-${widget.record.sequence}'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: IlaiosTheme.danger,
+                      side: BorderSide(
+                        color: IlaiosTheme.danger.withValues(alpha: .55),
+                      ),
+                    ),
+                    onPressed: widget.deleteEnabled ? widget.onDelete : null,
+                    icon: const Icon(Icons.delete_outline),
+                    label: Text(_isTr(context) ? 'Yerel kopyayı sil' : 'Delete local copy'),
+                  ),
+                ],
               ),
             ],
           ),
