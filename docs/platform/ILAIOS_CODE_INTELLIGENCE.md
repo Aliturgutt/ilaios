@@ -26,9 +26,12 @@ Implemented candidate components are:
 
 - `src/code_intelligence/graph.py` — immutable graph model and deterministic graph builder.
 - `src/code_intelligence/engine.py` — bounded typed query engine.
-- `services/code_intelligence.py` — revision-bound adapter compatible with the Software Factory repository-intelligence port.
-- `tools/code-intelligence/` — capability contract, skill catalog, and machine-readable schemas.
+- `services/code_intelligence.py` — clean-worktree, revision-bound adapter compatible with the Software Factory repository-intelligence port.
+- `tools/code-intelligence/` — capability contract, skill catalog, provenance record, and machine-readable schemas.
 - `tests/test_code_intelligence_graph.py` — graph/query behavior tests.
+- `tests/test_code_intelligence_call_resolution.py` — fail-closed call-resolution tests.
+- `tests/test_code_intelligence_service.py` — Git/revision-boundary and SF-7 integration tests.
+- `tests/test_code_intelligence_contracts.py` — manifest/schema/provenance contract tests.
 
 These files are not PRODUCTION merely because they exist. Their maturity advances only when repository CI, review, and promotion evidence prove the required gates.
 
@@ -37,6 +40,8 @@ These files are not PRODUCTION merely because they exist. Their maturity advance
 The target is a governed repository-intelligence layer that can support Software Factory planning and review while remaining read-only, tenant-scoped, revision-bound, bounded in resource use, and explicit about uncertainty.
 
 Persistent graph storage, embeddings, generic graph-query languages, and cross-repository memory are intentionally outside this v1 implementation. They require separate governance, invalidation, tenant-isolation, privacy, resource-budget, and migration decisions.
+
+An immutable Git-tree reader is also a future hardening target. The current v1 adapter analyzes a live worktree only after clean/tracked-file admission checks and repeats revision/worktree verification after analysis. This materially reduces stale/dirty-tree risk but does not claim a race-free cryptographic binding of every byte read during the scan.
 
 ## 4. Integration path
 
@@ -52,11 +57,18 @@ RepositoryIntelligencePort
         v
 ILAIOSRepositoryIntelligence
         |
-        +--> verify requested base SHA
+        +--> reject symlink / non-root repository path
+        +--> validate exact requested base SHA
+        +--> verify HEAD == base SHA
+        +--> require clean worktree
+        +--> capture tracked-file set
         |
         +--> RepositoryAnalyzer.snapshot()
         |       |
         |       +--> files / symbols / dependencies / routes / tests / unknowns
+        |
+        +--> reject snapshot files not tracked by requested revision
+        +--> re-check clean worktree and HEAD == base SHA
         |
         +--> CodeIntelligenceGraphBuilder.build(snapshot)
         |       |
@@ -78,6 +90,8 @@ RepositoryAnalyzer.impact(snapshot, changed_files)
 ```
 
 The intelligence capability does not receive authority to write repository files, merge branches, mutate production, fetch secrets, enable network access, or bypass governance.
+
+Git verification calls are time-bounded and fail closed. Raw NUL-delimited tracked-file output is preserved without whitespace stripping so valid tracked paths are not silently rewritten by the adapter.
 
 ## 5. Graph schema
 
@@ -106,10 +120,11 @@ Call resolution deliberately prefers false negatives over false facts.
 2. Ignore unresolved external references rather than pretending they are internal calls.
 3. Mark dynamic call expressions as unknown.
 4. Resolve an exact unique qualified name first.
-5. Otherwise resolve a unique same-file symbol with the referenced leaf name.
-6. Otherwise resolve a globally unique symbol with that leaf name.
-7. If multiple internal candidates remain, emit an ambiguity unknown and create no `CALLS` edge.
-8. Propagate the weaker certainty of caller and target onto the resulting edge.
+5. If a reference is qualified (contains `.`), allow only a unique qualified-name suffix match; if no such match exists, do not fall back to its leaf name.
+6. For an unqualified bare name, resolve a unique same-file symbol first.
+7. Otherwise resolve a globally unique symbol with that bare name.
+8. If multiple internal candidates remain, emit an ambiguity unknown and create no `CALLS` edge.
+9. Propagate the weaker certainty of caller and target onto the resulting edge.
 
 This algorithm does not claim runtime call completeness for reflection, dependency injection, generated dispatch, framework magic, callbacks, monkey patching, dynamic imports, or external entry points.
 
@@ -164,8 +179,13 @@ Coverage is split instead of collapsed into one misleading percentage:
 
 | Threat / failure mode | Control in v1 |
 |---|---|
-| Stale index against changed repository | Session binds snapshot revision to the requested base SHA and rejects mismatch. |
-| False call edges from ambiguous names | Ambiguity produces `unknown`, not an edge. |
+| HEAD SHA reported while dirty/untracked worktree bytes are analyzed | Exact base SHA check plus clean-worktree admission before analysis; untracked files fail admission. |
+| Ignored supported source enters the live snapshot but is absent from Git revision | Snapshot paths are checked against `git ls-files`; ignored/untracked snapshot files fail closed. |
+| Repository changes while analysis is running | Clean-worktree and HEAD checks are repeated after snapshot construction. Residual TOCTOU risk remains until an immutable Git-tree reader exists. |
+| Symlinked or nested repository root changes the trust boundary | User-supplied symlink root and non-top-level Git roots are rejected. |
+| Git verification hangs | Git verification calls have a fixed timeout and fail closed. |
+| Tracked path is corrupted by text trimming | `git ls-files -z` is consumed as raw output; leading/trailing filename whitespace is preserved. |
+| False call edges from ambiguous names | Ambiguity produces `unknown`, not an edge. Qualified refs do not fall back unsafely to leaf names. |
 | Dynamic-language overclaim | Non-Python structural facts retain inferred/limited semantics. |
 | Graph explosion / denial of service | Typed operations plus result/depth/visited-node limits. |
 | Generic query injection | No Cypher/SQL/generic graph language in v1. |
@@ -175,7 +195,7 @@ Coverage is split instead of collapsed into one misleading percentage:
 | Embedding privacy/cost leakage | Embeddings and external semantic providers are excluded from v1. |
 | External-project lock-in | Zero runtime dependency on the inspected reference project. |
 | Benchmark laundering | External benchmark claims are not treated as ILAIOS evidence. ILAIOS must measure its own repositories in CI/evals. |
-| Repository mutation by intelligence | Graph builder/engine operate on immutable snapshot data; the adapter is read-only. |
+| Repository mutation by intelligence | Graph builder/engine operate on snapshot data; the adapter is read-only. |
 
 ## 12. Explicit non-goals for v1
 
@@ -188,6 +208,7 @@ The following are not implemented and must not be presented as current capabilit
 - automatic code deletion,
 - autonomous source mutation,
 - bypass of Software Factory policy or review,
+- immutable Git-object/tree byte reader,
 - production deployment or promotion,
 - performance claims copied from external projects.
 
@@ -202,7 +223,7 @@ Before this capability can be called VERIFIED, repository evidence must show at 
 - no existing Software Factory skill-registry invariant is broken,
 - no runtime dependency on `codebase-memory-mcp` or another external code-intelligence server is introduced,
 - deterministic graph tests pass,
-- ambiguity and bounded-traversal negative tests pass,
+- ambiguity, qualified-reference, revision-boundary, and bounded-traversal negative tests pass,
 - review confirms that unknown/certainty semantics are preserved.
 
 Only the normal ILAIOS maturity chain and evidence can promote the capability beyond its implemented candidate state.
