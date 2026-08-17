@@ -2,122 +2,122 @@
 
 Status snapshot: 17 August 2026
 Baseline branch: `master`
-Observed implementation baseline before this truth-only sync: `4d49a432659002a6c8ed8a759cf61f5d0d2f39f1`
+Observed implementation baseline before this truth-only sync: `1489183e6f5e19a50ba1d35f1c21955a63420f8d`
 
 ## Authority rule
 
-This file is a human-readable mutable status projection. It is not a canonical architecture or release authority. If this file conflicts with repository code, tests, CI, runtime evidence, deployment evidence, or canonical implementation authorities, the lower proven lifecycle state wins until the conflict is reconciled.
+This file is a mutable human-readable status projection, not canonical architecture or release authority. If it conflicts with code, tests, Required CI, runtime evidence, deployment evidence, or canonical implementation authorities, the lower proven lifecycle state wins until reconciled.
 
-## Current verified state
+Canonical maturity remains:
 
-- Master commercial/product identity: ILAIOS.
-- Canonical v1 execution chain is completed through `RELEASE.R03`.
-- `RELEASE.R01`: CANARY deployment evidence exists and is healthy.
-- `RELEASE.R02`: LIMITED deployment evidence exists and is healthy.
-- `RELEASE.R03`: PRODUCTION deployment evidence records `PRODUCTION_DEPLOYED_HEALTHY` for the governed platform release-chain scope.
-- Production release evidence records TLS, OIDC, target health and rollback availability for that platform release scope.
-- Repository includes Core, Code Intelligence, Knowledge Graph, Project Manager, Video Automation, Control Plane, governance, evidence, privacy, observability, operations and deployment implementations.
-- The one canonical Execution Coordinator is merged with durable lifecycle, fail-closed routing, recovery/cancellation, evidence and bounded multi-capability DAG execution.
-- Verified bounded finished-product execution is wired for Video plus registered Web, Software and Windows-first App product runtimes. Wider arbitrary-product, external-provider and commercial-production claims remain evidence-gated.
-- Web Factory PR #248 is merged. Its bounded closure includes generated-source assurance, bounded repair, real Next.js production build/start, Chromium responsive E2E, accessibility/SEO/security checks, first-party contact/content/newsletter/search features and content-addressed local deployment/rollback evidence. It does not prove a current public Vercel production deployment.
-- Web durable-acceptance hardening PR #255 is merged at `4d49a432659002a6c8ed8a759cf61f5d0d2f39f1`. Its exact pre-merge head `37d8c6560aeeae32d1abae0f443217d7feb94f87` passed Required CI, Web Factory Browser E2E, Desktop Windows Gate and Software Factory Final Evidence. Accepted Web manifests now fail closed unless source assurance, QA source-assurance promotion, certified source/build binding and PASS design/accessibility/SEO/security/performance receipts are present.
-- Software Factory remains verified for its bounded local finished-product scope with real Windows evidence; arbitrary software generation and commercial external delivery are not implied.
-- App Factory PR #250 is merged. A bounded Windows task/checklist Flutter application is generated through the canonical Coordinator, formatted, analyzed, tested, built as a real Windows release, packaged, smoke-tested and persisted with exact-head content-addressed evidence. The exact pre-merge head `ddf6ca4e4a79c4dfb024788a4513bfa5f7eec6f4` passed Required CI, Desktop CI, MSIX Packaging, Windows Gate, Web Factory Browser E2E and Software Factory Final Evidence. Issue #97 is closed for this bounded Windows-first scope.
-- The exact App Windows evidence artifact for that head was `app-windows-finished-product-ddf6ca4e4a79c4dfb024788a4513bfa5f7eec6f4-31971331229`, size `113078073` bytes, digest `sha256:a6660940d445cb9067d6b1cdacf8300c801df48cad3177cd17723e29c172aff7`.
-- Desktop interactive/current-master closure PR #253 is merged at `61a86f9c1cbb309d06a9df69c3fb48477936c253`. Its exact head `af333a8e6d72c7c02e0cc9b9f39960d0fcb72280` passed Required CI, Desktop CI, Windows Gate, MSIX Packaging and Software Factory Final Evidence. The Desktop shell now has real product navigation, persistent light/dark theme behavior, responsive shell/drawer behavior and truthful operational rendering: authoritative event counts are not mislabeled as rates and unknown progress is not rendered as implied activity.
-- Desktop repository readiness also preserves the earlier PR #249 EN/TR surfaces, MSIX language resources, package-identity regression coverage, responsive/scaling coverage and truthful Store-listing material. Real Microsoft App Registration/client ID, Microsoft external login acceptance, Partner Center identity, production signing, certification and Store publication remain separate external gates.
-- Website and Desktop remain active product surfaces with their own live/external acceptance boundaries.
+`DESIGNED -> SPECIFIED -> IMPLEMENTED -> TESTED -> VERIFIED -> DEPLOYED / PRODUCTION`
 
-## Canonical v1 completion
+`VERIFIED` never means `PRODUCTION` unless real production/external evidence exists for that capability.
 
-The canonical implementation namespace remains:
+## Current repository truth
 
-1. `PRE.S00`
-2. `VIDEO.V01` through `VIDEO.V30`
-3. `PRE.S01`
-4. `PLATFORM.P00` through `PLATFORM.P20`
-5. `RELEASE.R00` through `RELEASE.R03`
+- Commercial/product identity in the active repository is ILAIOS.
+- There is one canonical Core and one canonical Execution Coordinator. No `Core 2`, parallel coordinator, router, scheduler, policy engine, capability registry, or evidence authority has been introduced.
+- The canonical v1 implementation/release chain remains complete through `RELEASE.R03` for its governed platform release scope.
+- Bounded finished-product execution exists for Web, Software, Windows-first App, and Video, but each capability keeps its own external/provider/public-production boundary.
+- Repository branch governance remains fail-closed around Required CI, PR review flow, evidence/provenance, and non-bypass safety controls.
 
-No new milestone ID is canonical merely because it appears in a planning document. Post-v1 work remains dependency-ordered, bounded and additive to the existing governance model.
+## Latest closure evidence
 
-## Current repository governance state
+### Web Factory
 
-### Verified live controls
+- PR #248 is merged with bounded generated-source assurance, repair, real Next.js build/start, Chromium E2E, responsive checks, accessibility/SEO/security validation, first-party contact/content/newsletter/search behavior, and content-addressed local delivery/rollback evidence.
+- PR #255 hardened durable Web acceptance so accepted state fails closed unless source assurance, QA promotion, certified source/build binding, and PASS design/accessibility/SEO/security/performance receipts exist.
+- PR #258 added the governed Vercel delivery boundary: preview-first creation, authorization/budget checks before network effects, exact source/artifact provenance, same-host HTTPS health, explicit production-alias proof, documented promotion, and rollback revalidation.
+- These repository/provider-boundary proofs do **not** prove that the current exact ILAIOS master is publicly deployed on the canonical domain. Public Vercel production remains external-evidence gated.
 
-- `ILAIOS Master Protection` repository ruleset is active on the default branch.
-- Non-fast-forward updates and branch deletion are blocked.
-- Pull requests are required.
-- Review-thread resolution is required.
-- `Required CI Gate` is a required status check.
-- No bypass actor is configured and the connected owner cannot bypass the ruleset.
-- `.github/CODEOWNERS` covers repository default, canonical documentation, governance/security/operations/ADR areas, workflows, infrastructure and release-sensitive automation files.
+### Software Factory
 
-### Completed truth/hygiene work
+- Software Factory remains VERIFIED for its bounded local Windows finished-product scope with crash-safe finalization/recovery and exact source provenance.
+- Arbitrary software breadth, external repository/provider effects, and commercial release are not implied.
 
-- Stale Desktop PR chains were consolidated rather than treated as parallel authorities.
-- Generic Web finished-product issue #96 and Software finished-product issue #98 were closed after exact-head finished-product/CI evidence.
-- Web closure PR #248 was merged after exact-head Required CI and Web Factory Browser E2E passed; older parallel Web closure PR #238 was closed as superseded.
-- App closure PR #250 was rebuilt on the current post-Web master rather than merging stale PR #233. Exact-head Required CI and real Windows packaged-app evidence passed; #250 was squash-merged and #233 was closed as superseded.
-- App finished-product issue #97 is closed with exact artifact evidence for the bounded Windows-first scope.
-- Desktop interactive closure PR #253 was rebuilt on current master; stale PR #251 was superseded. Exact-head repository, Desktop, Windows and MSIX gates passed before merge.
-- Web accepted-assurance hardening was rebuilt as PR #255 on post-Desktop master rather than using stale-base PR #254. The stale PR was closed and #255 was merged only after exact-head Required CI and browser/Windows evidence passed.
-- At this status snapshot there are no open GitHub issues in `Aliturgutt/ilaios`.
+### App Factory
 
-### Remaining governance/repository gaps
+- PR #250 is merged. Its exact pre-merge head `ddf6ca4e4a79c4dfb024788a4513bfa5f7eec6f4` passed Required CI, Desktop CI, MSIX Packaging, Windows Gate, Web E2E, and Software evidence.
+- The bounded generated Flutter Windows task/checklist application was formatted, analyzed, tested, release-built, packaged, smoke-tested, and persisted with content-addressed evidence.
+- The recorded artifact remains `app-windows-finished-product-ddf6ca4e4a79c4dfb024788a4513bfa5f7eec6f4-31971331229`, size `113078073` bytes, digest `sha256:a6660940d445cb9067d6b1cdacf8300c801df48cad3177cd17723e29c172aff7`.
+- Android/iOS, production signing, Store publication, and arbitrary-app breadth remain separate gates.
 
-- Required approving review count is currently `0`; CODEOWNER approval and last-push approval are not enforced by the active ruleset. Required CI is therefore the current independent automated verifier, not a human-review guarantee.
-- Repository metadata still requires owner-level/API-capability cleanup where the connector cannot mutate repository description/homepage/topics.
-- `docs/governance/LICENSE_DECISION.md` records publicly visible source with a proprietary-by-default/no-open-source-grant posture. A release-specific legal/redistribution package, dependency notices and exact commercial distribution terms still require governed release review; no root OSI license is implied or invented.
-- GitHub Releases and immutable version tags remain empty even though platform production deployment evidence exists. The first formal product release must not be created until an exact release-ready SHA and release/licensing gates are satisfied.
+### Desktop
+
+- PR #253 closed the earlier interactive Desktop repository pass with truthful operational labels/progress and responsive navigation.
+- Subsequent current-master work finalized the approved reference Home composition and interactive workspace behavior, packaged the untouched canonical runtime brand assets, and added Windows DPI/reference-shell regression coverage.
+- Master commits `32df7fc56cd6eda39016205001579ef078804e65`, `678b2bbc933173da18a86e0d4f8cdd890f9bf35f`, and `c643871e64b641c961fc4de650291f258e1f8f88` are part of that current Desktop lineage.
+- Microsoft App Registration/client ID, external sign-in acceptance, Partner Center identity, production signing, certification, and Store publication remain external gates.
+
+### Video Factory P0 closure
+
+- Issue #259 identified a real false-acceptance defect: Desktop could mark a deterministic placeholder MP4 as `video.desktop.finished_product` even though the requested cinematic content had not been generated.
+- Clean current-master successor PR #267 is merged as `1489183e6f5e19a50ba1d35f1c21955a63420f8d`; stale PR #260 was closed rather than merged.
+- The exact combined pre-merge head `214720c5bd7ebff35e25ebaf71d4b3a15668d65d` passed Required CI, Desktop CI, Windows Gate, MSIX Packaging, and Software Factory Final Evidence.
+- Windows Gate on that exact combined head passed packaged Desktop -> control-plane E2E, real 20s finished-product video E2E with persisted evidence, Software Factory finished-product E2E, App Factory Windows finished-product E2E, and release executable/sidecar verification.
+- The Desktop production path no longer promotes the deterministic placeholder runtime as the requested finished product. Missing provider configuration fails closed.
+- Provider-backed Video execution now requires generation, media retrieval/assembly, technical validation, independent semantic/perceptual acceptance, zero-cost evidence, and final finished-product evidence before acceptance.
+- Deliveries exposes only `*.finished_product` evidence; coordinator/admission evidence remains evidence, not a user deliverable.
+- Explicit negated external-effect intent such as `do not publish` is handled as local-only intent without weakening positive publish/upload/deploy blocking.
+- Repeated equivalent requests under different goals no longer collide on one unscoped durable proposal identity.
+
+## Free-provider truth boundary
+
+The free-only rule is fail-closed.
+
+- A provider/model name ending in `:free` is not sufficient proof of zero cost.
+- A live OpenRouter attempt for `bytedance/seedance-2.0-fast:free` reported non-zero provider cost (`USD 0.1704948`). That route is therefore **not** accepted as evidence of a production-ready zero-cost provider.
+- Before any OpenRouter video generation POST, the exact requested model must be present in the authoritative video-model catalog and every `pricing_skus` value must parse to exactly zero.
+- Missing, malformed, negative, unknown, or non-zero catalog pricing blocks submission before generation spend.
+- Terminal provider evidence must independently resolve to exactly zero cost as well.
+- Live zero-cost external Video provider availability is currently `NOT_VERIFIED`. If no exact zero-priced provider is available, ILAIOS must report the capability unavailable/fail-closed rather than fabricate a finished product.
+- The Desktop sidecar currently consumes provider credentials at the platform/runtime boundary. Repository evidence does not by itself prove a production deployment in which end users never supply third-party provider credentials; that deployment/secrets boundary remains separately evidence-gated.
+
+## Repository governance state
+
+- P0 issue #259 is closed after #267 merged with exact combined-head evidence.
+- Stale implementation PR #260 is closed as superseded.
+- Stale Vercel-only truth PR #262 is closed; this document set replaces it with the later combined truth.
+- Required CI remains the mandatory automated verifier. Human approving-review count/CODEOWNER enforcement must not be inferred where the active ruleset does not require it.
+- Repository metadata still has owner-level cleanup gaps where the connected mutation surface cannot safely update description/homepage/topics.
+- `docs/governance/LICENSE_DECISION.md` remains proprietary-by-default/no-open-source-grant. No root OSI license, redistribution clearance, or commercial release right is invented.
+- No formal SemVer GitHub Release should be created until an exact release-ready SHA and licensing/redistribution/release gates are satisfied.
 
 ## External/public deployment truth
 
-- The connected Vercel API context does not currently resolve the `ilaios` project even though the GitHub Vercel integration has historical ILAIOS deployment records.
-- On 16 August 2026 the Vercel Git integration reported the Free-plan daily deployment limit (`api-deployments-free-per-day`) for new ILAIOS deployments. That is an external quota/account condition, not a repository code failure.
-- Therefore current Web Factory evidence remains `VERIFIED bounded/local finished-product` rather than `public production deployed` until an exact green master SHA is publicly deployed, canonical-domain linked, health/browser certified and rollback-proven.
-- The configured external quota/project-access watch may observe when a safe public deployment becomes possible; it must not change billing, plans, credentials or DNS automatically.
+### Website / Vercel
 
-## Post-v1 product integration status
+Repository code now contains a governed delivery adapter, but current public production proof remains incomplete. Required external proof still includes correct Vercel project/team resolution, available deployment quota, exact green master deployment identity, canonical-domain linkage, live browser/health evidence, and rollback evidence. Billing/plan changes, credentials, or DNS must not be mutated merely to manufacture this proof.
 
-Product integration has advanced on `master` without creating a second Core, router, scheduler, policy engine or Coordinator.
+### Microsoft Desktop
 
-Current dependency-ordered direction:
+Repository-side Desktop build/package behavior is tested. External completion still requires real Microsoft App Registration/client ID, authentication acceptance, Partner Center package/publisher identity, business verification where required, production signing material, Store declarations/markets/pricing decisions, signed candidate evidence, submission, and certification.
 
-1. preserve the single canonical Coordinator and adapter registry;
-2. preserve the verified bounded Video/Web/Software/App Windows finished-product paths and fail-closed accepted-evidence semantics;
-3. complete exact-SHA public Web deployment evidence when the Vercel quota/account-project blocker is resolved without inventing production state;
-4. complete Desktop external Microsoft App Registration/login acceptance, Partner Center identity, production signing, certification and Store publication through the separate governed release boundary;
-5. execute guarded RAG.14 live canary/evidence only with explicit approved external credentials/spend and exact deploy/rollback evidence;
-6. strengthen production tenant isolation, managed cryptography, observability/SLOs, recovery drills and provider-specific runtime evidence without weakening fail-closed controls;
-7. broaden Research/Data, Creative/Document, Security, Commerce/Growth and Personal Operations only with capability-specific executable/external evidence;
-8. implement Android/iOS only after platform-specific architecture/build/sign/store gates are available;
-9. implement commercial plan/entitlement/usage/billing capability before monetized public SaaS launch requires it;
-10. create the first formal SemVer tag/GitHub Release only from an exact release-ready SHA after licensing/redistribution clearance and required CI.
+### Knowledge / RAG
 
-See:
+Repository-side RAG.14 machinery remains bounded. Live production promotion still requires explicit approved credentials/spend scope and real production embedding/index persistence, tenant/auth/DLP/leakage evidence, recovery/SLO evidence, and exact deploy/rollback proof.
 
-- `docs/governance/CAPABILITY_MATRIX.md`
-- `docs/governance/CI_WORKFLOW_AUDIT.md`
-- `docs/governance/POST_V1_ROADMAP.md`
-- `docs/governance/RELEASE_VERSION_POLICY.md`
-- `docs/governance/LICENSE_DECISION.md`
-- `.github/CODEOWNERS`
+### Other production breadth
+
+Still evidence-gated: production tenant-isolation exercise, managed KMS/HSM and rotation operations, privacy/compliance evidence, SLO/alert operations, recurring backup/recovery drills, independent security/pentest where applicable, broader factory workloads, Android/iOS, billing/subscriptions/entitlements, formal SBOM/notices/attestation/release packaging, and legal/licensing launch clearance.
+
+## Current dependency-ordered direction
+
+1. Preserve the single Core, Coordinator, governance, evidence, and capability registry authorities.
+2. Preserve the merged Video P0 fail-closed behavior; do not replace it with a paid or unpriced fallback.
+3. Obtain live zero-cost Video-provider evidence only when an exact provider/model can be proven zero-cost before submission and at terminal accounting.
+4. Complete public Web exact-SHA deployment evidence only after Vercel project/quota/access permits it without billing or DNS shortcuts.
+5. Complete Microsoft external identity/signing/Store evidence through the governed release boundary.
+6. Execute RAG.14 live evidence only with explicit bounded external credentials/spend authority.
+7. Continue production-hardening evidence for tenant isolation, managed cryptography, observability/SLOs, recovery, and provider routing.
+8. Broaden factories, then mobile and commercial layers, only with capability-specific executable evidence.
+9. Create a formal release/tag only after exact release readiness and licensing/redistribution clearance.
 
 ## Safety boundary
 
-Repository automation must not autonomously:
-
-- create or rotate secrets/credentials;
-- change billing/spend or authorize paid external effects;
-- accept legal terms or make an unresolved licensing decision;
-- submit Microsoft Store releases or bypass Store identity/signing controls;
-- force-push or rewrite Git history;
-- weaken tests, branch rules or required CI;
-- redefine canonical architecture by prose;
-- label mock, fixture, synthetic, bounded-local or preview evidence as external production proof.
-
-Production AWS/DNS/deployment mutations remain governed by their explicit release/deployment authority and evidence requirements; repository source changes alone do not authorize them.
+Repository automation must not autonomously create/rotate credentials, authorize paid spend, accept legal terms, change billing/plans, force public DNS/deployment state, submit Store releases, use production signing secrets, force-push protected history, weaken Required CI, or label mock/fixture/synthetic/local/preview evidence as external production proof.
 
 ## Current decision
 
-The platform v1 build/release chain has production deployment evidence and the canonical Coordinator now has verified bounded finished-product paths for Video, Web, Software and Windows-first App generation. Desktop interactive repository closure and Web accepted-assurance fail-closed hardening are merged and exact-head verified. Remaining work is external/public proof, production hardening, capability breadth, mobile/commercial layers and governed release closure on the existing architecture—not `Core 2`, a parallel Coordinator, an invented `PLATFORM.P21`, or an evidence-free `RELEASE.R04`.
+Repository-side closure is now materially stronger: the current Desktop lineage is integrated, the Video placeholder false-acceptance P0 is closed on master, and Web/Software/App bounded paths remain evidence-backed. The remaining work is primarily external/public proof and production breadth/hardening on the existing architecture. No second Core, parallel Coordinator, invented milestone, paid-fallback shortcut, or evidence-free production promotion is authorized.
