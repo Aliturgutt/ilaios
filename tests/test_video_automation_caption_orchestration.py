@@ -7,7 +7,11 @@ from src.video_automation.caption_policy import resolve_caption_policy
 from src.video_automation.caption_post_processing import CaptionPostProcessor
 from src.video_automation.caption_subtitle import CaptionCue
 from src.video_automation.platform_profiles import PlatformProfileRegistry
-from src.video_automation.request_manifest import CaptionMode, EpisodeRequestManifestBuilder
+from src.video_automation.request_manifest import (
+    CaptionMode,
+    EpisodeRequestManifest,
+    EpisodeRequestManifestBuilder,
+)
 from src.video_automation.shot_request_planning import ShotGenerationRequest
 
 
@@ -25,7 +29,7 @@ class _FakeLocalRenderer:
         output.write_bytes(clean.read_bytes() + b"\nCAPTIONED\n" + subtitle.read_bytes())
 
 
-def _manifest(mode: CaptionMode = CaptionMode.OFF):
+def _manifest(mode: CaptionMode = CaptionMode.OFF) -> EpisodeRequestManifest:
     request = ShotGenerationRequest(
         request_id="request-001",
         idempotency_key="a" * 64,
