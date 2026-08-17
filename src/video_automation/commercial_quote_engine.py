@@ -93,7 +93,38 @@ class CommercialQuoteEngine:
             "expires_at_epoch_s": expires,
         }
         quote_hash = digest_material(*(f"{k}={v}" for k, v in data.items()))
-        return LockedVideoQuote(quote_sha256=quote_hash, **data)
+        return LockedVideoQuote(
+            quote_id=quote_id,
+            quote_sha256=quote_hash,
+            provider_name=pricing.provider_name,
+            model_id=pricing.model_id,
+            pricing_fingerprint=pricing.pricing_fingerprint,
+            cost_envelope_sha256=costs.fingerprint,
+            currency=currency,
+            tax_profile_id=tax_profile.profile_id,
+            tax_rate_bps=tax_profile.tax_rate_bps,
+            duration_seconds=duration_seconds,
+            aggregate_generated_seconds=aggregate_generated_seconds,
+            resolution=resolution,
+            shot_count=shot_count,
+            max_provider_attempts=self.policy.max_provider_attempts,
+            max_repair_generations=self.policy.max_repair_generations,
+            provider_cost_ceiling_microusd=costs.external_provider_ceiling_microusd,
+            retry_cost_ceiling_microusd=costs.retry_microusd,
+            repair_cost_ceiling_microusd=costs.repair_microusd,
+            protected_cost_microusd=protected,
+            net_price_ex_tax_microusd=net,
+            tax_microusd=tax,
+            gross_customer_price_microusd=gross,
+            expected_payment_fee_microusd=fee,
+            payment_fee_rate_bps=self.policy.payment_fee_rate_bps,
+            payment_fixed_fee_microusd=self.policy.payment_fixed_fee_microusd,
+            contingency_bps=self.policy.contingency_bps,
+            target_margin_bps=self.policy.target_margin_bps,
+            hard_min_margin_bps=self.policy.hard_min_margin_bps,
+            created_at_epoch_s=now_epoch_s,
+            expires_at_epoch_s=expires,
+        )
 
     def _minimum_safe_price(
         self, protected_cost_microusd: int, tax_rate_bps: int
