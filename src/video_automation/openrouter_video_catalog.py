@@ -3,6 +3,11 @@
 This module discovers capability/availability/pricing evidence. It deliberately
 DOES NOT select providers and therefore does not create a second ILAIOS routing
 authority. Canonical RouteDecision remains upstream of provider dispatch.
+
+New Seedance releases are admitted by live catalog evidence, not by guessed
+slugs or hard-coded prices. In particular, a future Seedance 2.5 model becomes
+a governed Seedance candidate automatically when the authoritative catalog
+returns an exact ``bytedance/seedance-2.5...`` model ID with usable pricing.
 """
 
 from __future__ import annotations
@@ -16,10 +21,7 @@ from decimal import Decimal, InvalidOperation
 from enum import Enum
 from types import MappingProxyType
 
-from .openrouter_video_provider import (
-    OpenRouterTransport,
-    UrllibOpenRouterTransport,
-)
+from .openrouter_video_provider import OpenRouterTransport, UrllibOpenRouterTransport
 
 _DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 
@@ -60,17 +62,9 @@ class OpenRouterVideoModel:
     family: ManagedVideoFamily | None
 
     def __post_init__(self) -> None:
-        for field_name, value in (
-            ("model_id", self.model_id),
-            ("canonical_slug", self.canonical_slug),
-            ("name", self.name),
-        ):
+        for field_name, value in (("model_id", self.model_id), ("canonical_slug", self.canonical_slug), ("name", self.name)):
             _text(field_name, value)
-        object.__setattr__(
-            self,
-            "pricing_skus",
-            MappingProxyType(dict(sorted(self.pricing_skus.items()))),
-        )
+        object.__setattr__(self, "pricing_skus", MappingProxyType(dict(sorted(self.pricing_skus.items()))))
 
     @property
     def has_valid_pricing(self) -> bool:
@@ -87,6 +81,41 @@ class OpenRouterVideoModel:
                 return False
         return True
 
+    @property
+    def is_seedance_25(self) -> bool:
+        """Capability fact only; this property never selects the model."""
+
+        return self.model_id.startswith("bytedance/seedance-2.5")
+
+    def quote_provider_cost_usd(self, *, duration_seconds: int, resolution: str) -> Decimal:
+        """Return an exact catalog-derived provider estimate or fail closed.
+
+        Only explicit per-video-second SKUs are accepted. OpenRouter documents
+        that SKU units can differ by provider, so generic/unknown SKU names are
+        never guessed into a production cost.
+        """
+
+        if duration_seconds <= 0:
+            raise OpenRouterCatalogError("duration_seconds must be positive")
+        _text("resolution", resolution)
+        if not self.has_valid_pricing:
+            raise OpenRouterCatalogError("provider cost blocked: pricing is invalid")
+        resolution_sku = f"per-video-second-{resolution}"
+        raw = self.pricing_skus.get(resolution_sku)
+        if raw is None:
+            raw = self.pricing_skus.get("per-video-second")
+        if raw is None:
+            raise OpenRouterCatalogError(
+                "provider cost blocked: catalog pricing SKU unit is not safely understood"
+            )
+        try:
+            per_second = Decimal(raw)
+        except InvalidOperation as exc:
+            raise OpenRouterCatalogError("provider cost blocked: catalog price is invalid") from exc
+        if not per_second.is_finite() or per_second < 0:
+            raise OpenRouterCatalogError("provider cost blocked: catalog price is invalid")
+        return per_second * Decimal(duration_seconds)
+
 
 @dataclass(frozen=True, slots=True)
 class OpenRouterCatalogSnapshot:
@@ -96,6 +125,12 @@ class OpenRouterCatalogSnapshot:
 
     def by_id(self) -> Mapping[str, OpenRouterVideoModel]:
         return MappingProxyType({model.model_id: model for model in self.models})
+
+    @property
+    def seedance_25_models(self) -> tuple[OpenRouterVideoModel, ...]:
+        """Return only Seedance 2.5 entries actually present in this snapshot."""
+
+        return tuple(model for model in self.models if model.is_seedance_25)
 
 
 @dataclass(frozen=True, slots=True)
@@ -109,17 +144,7 @@ class OpenRouterCatalogObservation:
 class OpenRouterVideoCatalogClient:
     """Bounded authenticated video-model discovery with TTL and LKG retention."""
 
-    def __init__(
-        self,
-        api_key: str,
-        *,
-        base_url: str = _DEFAULT_BASE_URL,
-        timeout_seconds: float = 30.0,
-        ttl_seconds: float = 300.0,
-        max_paid_staleness_seconds: float = 1800.0,
-        transport: OpenRouterTransport | None = None,
-        clock: Callable[[], float] = time.time,
-    ) -> None:
+    def __init__(self, api_key: str, *, base_url: str = _DEFAULT_BASE_URL, timeout_seconds: float = 30.0, ttl_seconds: float = 300.0, max_paid_staleness_seconds: float = 1800.0, transport: OpenRouterTransport | None = None, clock: Callable[[], float] = time.time) -> None:
         _text("api_key", api_key)
         _text("base_url", base_url)
         if timeout_seconds <= 0:
@@ -127,9 +152,7 @@ class OpenRouterVideoCatalogClient:
         if ttl_seconds <= 0:
             raise OpenRouterCatalogError("ttl_seconds must be positive")
         if max_paid_staleness_seconds < ttl_seconds:
-            raise OpenRouterCatalogError(
-                "max_paid_staleness_seconds must be >= ttl_seconds"
-            )
+            raise OpenRouterCatalogError("max_paid_staleness_seconds must be >= ttl_seconds")
         self._api_key = api_key
         self._base_url = base_url.rstrip("/")
         self._timeout_seconds = timeout_seconds
@@ -147,126 +170,60 @@ class OpenRouterVideoCatalogClient:
     def refresh(self) -> OpenRouterCatalogObservation:
         now = self._clock()
         try:
-            response = self._transport.get_json(
-                f"{self._base_url}/videos/models",
-                headers={"Authorization": f"Bearer {self._api_key}"},
-                timeout_seconds=self._timeout_seconds,
-            )
+            response = self._transport.get_json(f"{self._base_url}/videos/models", headers={"Authorization": f"Bearer {self._api_key}"}, timeout_seconds=self._timeout_seconds)
         except Exception as exc:  # noqa: BLE001
-            observation = OpenRouterCatalogObservation(
-                OpenRouterCatalogHealth.CATALOG_UNAVAILABLE,
-                None,
-                self._last_good,
-                f"catalog transport failure: {exc.__class__.__name__}",
-            )
+            observation = OpenRouterCatalogObservation(OpenRouterCatalogHealth.CATALOG_UNAVAILABLE, None, self._last_good, f"catalog transport failure: {exc.__class__.__name__}")
             self._last_observation = observation
             return observation
-
         if response.status_code in {401, 403}:
-            return self._record_failure(
-                OpenRouterCatalogHealth.AUTH_FAILED,
-                f"catalog authentication failed: HTTP {response.status_code}",
-            )
+            return self._record_failure(OpenRouterCatalogHealth.AUTH_FAILED, f"catalog authentication failed: HTTP {response.status_code}")
         if response.status_code == 429:
-            return self._record_failure(
-                OpenRouterCatalogHealth.RATE_LIMITED,
-                "catalog rate limited: HTTP 429",
-            )
+            return self._record_failure(OpenRouterCatalogHealth.RATE_LIMITED, "catalog rate limited: HTTP 429")
         if response.status_code >= 500:
-            return self._record_failure(
-                OpenRouterCatalogHealth.TEMPORARILY_UNAVAILABLE,
-                f"catalog temporarily unavailable: HTTP {response.status_code}",
-            )
+            return self._record_failure(OpenRouterCatalogHealth.TEMPORARILY_UNAVAILABLE, f"catalog temporarily unavailable: HTTP {response.status_code}")
         if not 200 <= response.status_code < 300:
-            return self._record_failure(
-                OpenRouterCatalogHealth.CATALOG_UNAVAILABLE,
-                f"catalog unavailable: HTTP {response.status_code}",
-            )
-
+            return self._record_failure(OpenRouterCatalogHealth.CATALOG_UNAVAILABLE, f"catalog unavailable: HTTP {response.status_code}")
         try:
             snapshot = _parse_snapshot(response.payload, observed_at=now)
         except OpenRouterCatalogError as exc:
-            return self._record_failure(
-                OpenRouterCatalogHealth.CATALOG_INVALID,
-                str(exc),
-            )
+            return self._record_failure(OpenRouterCatalogHealth.CATALOG_INVALID, str(exc))
         self._last_good = snapshot
-        observation = OpenRouterCatalogObservation(
-            OpenRouterCatalogHealth.CONNECTED,
-            snapshot,
-            snapshot,
-            "authenticated catalog validated",
-        )
+        observation = OpenRouterCatalogObservation(OpenRouterCatalogHealth.CONNECTED, snapshot, snapshot, "authenticated catalog validated")
         self._last_observation = observation
         return observation
 
     def observe(self) -> OpenRouterCatalogObservation:
-        """Use bounded TTL caching; refresh only when current evidence is old."""
-
         now = self._clock()
         if self._last_good is not None:
             age = now - self._last_good.observed_at_epoch_s
             if 0 <= age <= self._ttl_seconds:
-                observation = OpenRouterCatalogObservation(
-                    OpenRouterCatalogHealth.CONNECTED,
-                    self._last_good,
-                    self._last_good,
-                    "fresh cached catalog",
-                )
+                observation = OpenRouterCatalogObservation(OpenRouterCatalogHealth.CONNECTED, self._last_good, self._last_good, "fresh cached catalog")
                 self._last_observation = observation
                 return observation
         return self.refresh()
 
     def paid_eligible_models(self) -> tuple[OpenRouterVideoModel, ...]:
-        """Return candidate capability facts only; does not choose a route."""
-
         observation = self.observe()
         snapshot = observation.snapshot or observation.last_good_snapshot
         if snapshot is None:
-            raise OpenRouterCatalogError(
-                f"paid dispatch blocked: {observation.health.value}"
-            )
+            raise OpenRouterCatalogError(f"paid dispatch blocked: {observation.health.value}")
         age = self._clock() - snapshot.observed_at_epoch_s
         if age < 0 or age > self._max_paid_staleness_seconds:
             raise OpenRouterCatalogError("paid dispatch blocked: catalog pricing is stale")
-        if observation.health in {
-            OpenRouterCatalogHealth.AUTH_FAILED,
-            OpenRouterCatalogHealth.CATALOG_INVALID,
-        }:
-            raise OpenRouterCatalogError(
-                f"paid dispatch blocked: {observation.health.value}"
-            )
-        eligible = tuple(
-            model
-            for model in snapshot.models
-            if model.family is not None and model.has_valid_pricing
-        )
+        if observation.health in {OpenRouterCatalogHealth.AUTH_FAILED, OpenRouterCatalogHealth.CATALOG_INVALID}:
+            raise OpenRouterCatalogError(f"paid dispatch blocked: {observation.health.value}")
+        eligible = tuple(model for model in snapshot.models if model.family is not None and model.has_valid_pricing)
         if not eligible:
-            raise OpenRouterCatalogError(
-                "paid dispatch blocked: no governed candidate has valid pricing"
-            )
+            raise OpenRouterCatalogError("paid dispatch blocked: no governed candidate has valid pricing")
         return eligible
 
-    def _record_failure(
-        self,
-        health: OpenRouterCatalogHealth,
-        detail: str,
-    ) -> OpenRouterCatalogObservation:
-        observation = OpenRouterCatalogObservation(
-            health,
-            None,
-            self._last_good,
-            detail,
-        )
+    def _record_failure(self, health: OpenRouterCatalogHealth, detail: str) -> OpenRouterCatalogObservation:
+        observation = OpenRouterCatalogObservation(health, None, self._last_good, detail)
         self._last_observation = observation
         return observation
 
 
-def _parse_snapshot(
-    payload: Mapping[str, object],
-    *,
-    observed_at: float,
-) -> OpenRouterCatalogSnapshot:
+def _parse_snapshot(payload: Mapping[str, object], *, observed_at: float) -> OpenRouterCatalogSnapshot:
     data = payload.get("data")
     if not isinstance(data, Sequence) or isinstance(data, (str, bytes)):
         raise OpenRouterCatalogError("catalog schema requires data list")
@@ -277,18 +234,14 @@ def _parse_snapshot(
             raise OpenRouterCatalogError("catalog model entry must be an object")
         model = _parse_model(raw)
         if model.model_id in seen:
-            raise OpenRouterCatalogError(
-                f"catalog contains duplicate model id: {model.model_id}"
-            )
+            raise OpenRouterCatalogError(f"catalog contains duplicate model id: {model.model_id}")
         seen.add(model.model_id)
         models.append(model)
     if not models:
         raise OpenRouterCatalogError("catalog must contain at least one video model")
     models.sort(key=lambda item: item.model_id)
     canonical = [_model_material(model) for model in models]
-    digest = hashlib.sha256(
-        json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    ).hexdigest()
+    digest = hashlib.sha256(json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
     return OpenRouterCatalogSnapshot(observed_at, digest, tuple(models))
 
 
@@ -298,9 +251,6 @@ def _parse_model(raw: Mapping[object, object]) -> OpenRouterVideoModel:
     name = _mapping_string(raw, "name")
     generate_audio_raw = raw.get("generate_audio")
     if generate_audio_raw is None:
-        # A null capability is not affirmative evidence that audio generation is
-        # supported. Normalize it conservatively to False while still rejecting
-        # malformed non-null values.
         generate_audio = False
     elif isinstance(generate_audio_raw, bool):
         generate_audio = generate_audio_raw
@@ -317,31 +267,11 @@ def _parse_model(raw: Mapping[object, object]) -> OpenRouterVideoModel:
             pricing[key] = value
     else:
         raise OpenRouterCatalogError("pricing_skus must be an object or null")
-    return OpenRouterVideoModel(
-        model_id=model_id,
-        canonical_slug=canonical_slug,
-        name=name,
-        generate_audio=generate_audio,
-        supported_aspect_ratios=_string_tuple(raw, "supported_aspect_ratios"),
-        supported_durations=_int_tuple(raw, "supported_durations"),
-        supported_frame_images=_string_tuple(raw, "supported_frame_images"),
-        supported_resolutions=_string_tuple(raw, "supported_resolutions"),
-        supported_sizes=_string_tuple(raw, "supported_sizes"),
-        allowed_passthrough_parameters=_string_tuple(
-            raw, "allowed_passthrough_parameters"
-        ),
-        pricing_skus=pricing,
-        family=_managed_family(model_id),
-    )
+    return OpenRouterVideoModel(model_id=model_id, canonical_slug=canonical_slug, name=name, generate_audio=generate_audio, supported_aspect_ratios=_string_tuple(raw, "supported_aspect_ratios"), supported_durations=_int_tuple(raw, "supported_durations"), supported_frame_images=_string_tuple(raw, "supported_frame_images"), supported_resolutions=_string_tuple(raw, "supported_resolutions"), supported_sizes=_string_tuple(raw, "supported_sizes"), allowed_passthrough_parameters=_string_tuple(raw, "allowed_passthrough_parameters"), pricing_skus=pricing, family=_managed_family(model_id))
 
 
 def _managed_family(model_id: str) -> ManagedVideoFamily | None:
-    prefixes = (
-        ("bytedance/seedance-", ManagedVideoFamily.SEEDANCE),
-        ("kwaivgi/kling-", ManagedVideoFamily.KLING),
-        ("minimax/hailuo-", ManagedVideoFamily.HAILUO),
-        ("alibaba/wan-", ManagedVideoFamily.WAN),
-    )
+    prefixes = (("bytedance/seedance-", ManagedVideoFamily.SEEDANCE), ("kwaivgi/kling-", ManagedVideoFamily.KLING), ("minimax/hailuo-", ManagedVideoFamily.HAILUO), ("alibaba/wan-", ManagedVideoFamily.WAN))
     for prefix, family in prefixes:
         if model_id.startswith(prefix):
             return family
@@ -378,28 +308,13 @@ def _int_tuple(raw: Mapping[object, object], key: str) -> tuple[int, ...]:
     output: list[int] = []
     for item in value:
         if isinstance(item, bool) or not isinstance(item, int) or item <= 0:
-            raise OpenRouterCatalogError(
-                f"catalog model {key} entries must be positive integers"
-            )
+            raise OpenRouterCatalogError(f"catalog model {key} entries must be positive integers")
         output.append(item)
     return tuple(output)
 
 
 def _model_material(model: OpenRouterVideoModel) -> dict[str, object]:
-    return {
-        "id": model.model_id,
-        "canonical_slug": model.canonical_slug,
-        "name": model.name,
-        "generate_audio": model.generate_audio,
-        "supported_aspect_ratios": model.supported_aspect_ratios,
-        "supported_durations": model.supported_durations,
-        "supported_frame_images": model.supported_frame_images,
-        "supported_resolutions": model.supported_resolutions,
-        "supported_sizes": model.supported_sizes,
-        "allowed_passthrough_parameters": model.allowed_passthrough_parameters,
-        "pricing_skus": dict(model.pricing_skus),
-        "family": None if model.family is None else model.family.value,
-    }
+    return {"id": model.model_id, "canonical_slug": model.canonical_slug, "name": model.name, "generate_audio": model.generate_audio, "supported_aspect_ratios": model.supported_aspect_ratios, "supported_durations": model.supported_durations, "supported_frame_images": model.supported_frame_images, "supported_resolutions": model.supported_resolutions, "supported_sizes": model.supported_sizes, "allowed_passthrough_parameters": model.allowed_passthrough_parameters, "pricing_skus": dict(model.pricing_skus), "family": None if model.family is None else model.family.value}
 
 
 def _text(name: str, value: str) -> None:
