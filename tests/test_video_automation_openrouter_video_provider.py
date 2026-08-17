@@ -25,6 +25,7 @@ class _Transport(OpenRouterTransport):
         *,
         post_response: OpenRouterJsonResponse | None = None,
         get_response: OpenRouterJsonResponse | None = None,
+        catalog_response: OpenRouterJsonResponse | None = None,
         byte_response: OpenRouterByteResponse | None = None,
     ) -> None:
         self.post_response = post_response or OpenRouterJsonResponse(
@@ -34,6 +35,17 @@ class _Transport(OpenRouterTransport):
         self.get_response = get_response or OpenRouterJsonResponse(
             200,
             {"id": "job-001", "status": "completed"},
+        )
+        self.catalog_response = catalog_response or OpenRouterJsonResponse(
+            200,
+            {
+                "data": [
+                    {
+                        "id": SEEDANCE_FREE_MODEL_ID,
+                        "pricing_skus": {"per-video-second": "0"},
+                    }
+                ]
+            },
         )
         self.byte_response = byte_response or OpenRouterByteResponse(
             200,
@@ -66,6 +78,8 @@ class _Transport(OpenRouterTransport):
         timeout_seconds: float,
     ) -> OpenRouterJsonResponse:
         self.get_calls.append((url, headers, timeout_seconds))
+        if url.endswith("/videos/models"):
+            return self.catalog_response
         return self.get_response
 
     def get_bytes(
@@ -163,6 +177,7 @@ def test_submit_maps_seedance_free_request_with_free_only_policy() -> None:
     }
     assert result.metadata["cost_policy"] == "free_only"
     assert result.metadata["model_id"] == SEEDANCE_FREE_MODEL_ID
+    assert result.metadata["catalog_zero_cost"] is True
 
 
 def test_paid_seedance_model_is_rejected_before_network() -> None:
@@ -174,6 +189,7 @@ def test_paid_seedance_model_is_rejected_before_network() -> None:
     assert result.error_code == "invalid_request"
     assert ":free" in (result.error_message or "")
     assert transport.post_calls == []
+    assert transport.get_calls == []
 
 
 def test_any_nonfree_model_is_rejected_before_network() -> None:
@@ -185,16 +201,18 @@ def test_any_nonfree_model_is_rejected_before_network() -> None:
     assert result.error_code == "invalid_request"
     assert "paid or unpriced model IDs are forbidden" in (result.error_message or "")
     assert transport.post_calls == []
+    assert transport.get_calls == []
 
 
 def test_submit_respects_explicit_resolution_and_audio_policy() -> None:
     transport = _Transport()
-    OpenRouterVideoGenerationProvider(
+    result = OpenRouterVideoGenerationProvider(
         "secret",
         default_resolution="720p",
         generate_audio=True,
         transport=transport,
     ).execute(_request(resolution="720p"))
+    assert result.success
     body = transport.post_calls[0][2]
     assert body["resolution"] == "720p"
     assert body["generate_audio"] is True
@@ -235,7 +253,7 @@ def test_submit_normalizes_provider_error_without_leaking_key() -> None:
     assert "secret" not in str(result)
 
 
-def test_submit_rejects_fractional_duration_before_network() -> None:
+def test_submit_rejects_fractional_duration_before_generation_post() -> None:
     transport = _Transport()
     result = OpenRouterVideoGenerationProvider("secret", transport=transport).execute(
         _request(duration_seconds=4.5)
@@ -247,13 +265,26 @@ def test_submit_rejects_fractional_duration_before_network() -> None:
 
 
 def test_submit_rejects_provider_mismatch_and_multiple_outputs() -> None:
-    provider = OpenRouterVideoGenerationProvider("secret", transport=_Transport())
+    transport = _Transport()
+    provider = OpenRouterVideoGenerationProvider("secret", transport=transport)
     mismatch = provider.execute(_request(provider_name="openrouter-video"))
     assert not mismatch.success
     assert mismatch.error_code == "invalid_request"
+    assert transport.get_calls == []
     outputs = provider.execute(_request(output_count=2))
     assert not outputs.success
     assert "output_count=1" in (outputs.error_message or "")
+    assert transport.post_calls == []
+
+
+def test_catalog_preflight_happens_before_generation_post() -> None:
+    transport = _Transport()
+    result = OpenRouterVideoGenerationProvider("secret", transport=transport).execute(
+        _request()
+    )
+    assert result.success
+    assert transport.get_calls[0][0] == "https://openrouter.ai/api/v1/videos/models"
+    assert transport.post_calls[0][0] == "https://openrouter.ai/api/v1/videos"
 
 
 def test_poller_maps_pending_and_completed_states() -> None:
