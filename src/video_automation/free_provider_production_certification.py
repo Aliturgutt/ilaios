@@ -25,6 +25,7 @@ from .openrouter_video_provider import (
     OpenRouterTransport,
     OpenRouterVideoGenerationJobPoller,
     OpenRouterVideoGenerationProvider,
+    OpenRouterVideoProviderError,
     UrllibOpenRouterTransport,
 )
 
@@ -274,7 +275,37 @@ def run_free_certification(
     provider_cost: float | None = None
 
     while monotonic() < deadline:
-        observation = poller.poll(provider_job_id)
+        try:
+            observation = poller.poll(provider_job_id)
+        except OpenRouterVideoProviderError as exc:
+            diagnostic = str(exc)
+            receipt["provider_terminal_error"] = diagnostic
+            if diagnostic.startswith("PROVIDER_COST_NONZERO:"):
+                _fail(
+                    receipt_path,
+                    receipt,
+                    "COST_POLICY_VIOLATION",
+                    "provider reported non-zero cost for an explicitly-free model",
+                )
+            if diagnostic.startswith(
+                (
+                    "ZERO_COST_EVIDENCE_MISSING:",
+                    "ZERO_COST_EVIDENCE_UNKNOWN:",
+                    "PROVIDER_USAGE_UNAVAILABLE:",
+                )
+            ):
+                _fail(
+                    receipt_path,
+                    receipt,
+                    "BLOCKED_COST_EVIDENCE_MISSING",
+                    diagnostic,
+                )
+            _fail(
+                receipt_path,
+                receipt,
+                "FAILED_PROVIDER_POLL",
+                diagnostic,
+            )
         metadata = dict(observation.metadata)
         poll_observations.append(
             {
