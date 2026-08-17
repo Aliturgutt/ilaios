@@ -1,0 +1,811 @@
+import 'dart:math' as math;
+
+import 'package:flutter/material.dart';
+
+import '../../app/ilaios_locale.dart';
+import '../../app/ilaios_theme.dart';
+import '../../control_plane/client.dart';
+import '../../control_plane/evidence_record.dart';
+import '../../control_plane/operational_snapshot.dart';
+import '../../control_plane/projection.dart';
+import '../../identity/identity_client.dart';
+import '../create/create_view.dart';
+import '../deliveries/deliveries_view.dart';
+import '../navigation/desktop_section.dart';
+import '../operations/live_workspace_view.dart';
+import '../operations/operational_views.dart';
+import '../operations/support_views.dart';
+import 'control_center_view.dart';
+import 'reference_home_dashboard_v2.dart';
+
+/// Reference-faithful Desktop shell for the approved Home dark/light designs.
+///
+/// The shell never routes back to the legacy Home when the Windows window is
+/// restored or made smaller. Compact desktop windows scale the same visual
+/// family uniformly. Runtime values remain authority-derived; the reference
+/// screenshots provide layout/theme guidance only.
+class ReferenceDesktopShellV10 extends StatefulWidget {
+  const ReferenceDesktopShellV10({
+    required this.projection,
+    required this.operationalSnapshot,
+    required this.operationalStatus,
+    this.approverId,
+    this.identityProviders = const <IdentityProviderOption>[],
+    this.userSession,
+    this.identityStatus = 'Account sign-in is not configured',
+    this.themeMode = ThemeMode.dark,
+    this.onThemeModeChanged,
+    this.onSignIn,
+    this.onLogout,
+    this.onPromptSubmit,
+    this.onSaveArtifact,
+    this.onRefreshRequested,
+    this.onGovernanceDecision,
+    super.key,
+  });
+
+  final ControlPlaneProjection projection;
+  final OperationalSnapshot operationalSnapshot;
+  final String operationalStatus;
+  final String? approverId;
+  final List<IdentityProviderOption> identityProviders;
+  final DesktopUserSession? userSession;
+  final String identityStatus;
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
+  final Future<void> Function(String providerId)? onSignIn;
+  final Future<void> Function()? onLogout;
+  final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
+  final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
+  final VoidCallback? onRefreshRequested;
+  final Future<void> Function(String requestId, GovernanceDecision decision)?
+      onGovernanceDecision;
+
+  @override
+  State<ReferenceDesktopShellV10> createState() =>
+      _ReferenceDesktopShellV10State();
+}
+
+class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
+  DesktopSection _section = DesktopSection.home;
+
+  void _select(DesktopSection section) {
+    if (_section != section) setState(() => _section = section);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+
+    Widget canvas(double width, double height) => MediaQuery(
+          data: media.copyWith(textScaler: const TextScaler.linear(.90)),
+          child: SizedBox(
+            width: width,
+            height: height,
+            child: Scaffold(
+              body: Column(
+                children: [
+                  Expanded(
+                    child: Row(
+                      children: [
+                        _Sidebar(
+                          selected: _section,
+                          projection: widget.projection,
+                          snapshot: widget.operationalSnapshot,
+                          userSession: widget.userSession,
+                          onSelected: _select,
+                        ),
+                        VerticalDivider(
+                          width: 1,
+                          thickness: 1,
+                          color: Theme.of(context).colorScheme.outlineVariant,
+                        ),
+                        Expanded(
+                          child: Column(
+                            children: [
+                              _TopBar(
+                                projection: widget.projection,
+                                snapshot: widget.operationalSnapshot,
+                                userSession: widget.userSession,
+                                themeMode: widget.themeMode,
+                                onThemeModeChanged: widget.onThemeModeChanged,
+                                onNavigate: _select,
+                              ),
+                              Expanded(child: _buildSection()),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  _BottomStatusBar(
+                    projection: widget.projection,
+                    snapshot: widget.operationalSnapshot,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const minDesignWidth = 1180.0;
+        const minDesignHeight = 720.0;
+        final compact =
+            constraints.maxWidth < minDesignWidth || constraints.maxHeight < minDesignHeight;
+        if (!compact) {
+          return canvas(constraints.maxWidth, constraints.maxHeight);
+        }
+
+        final ratioMatchedWidth = constraints.maxHeight > 0
+            ? constraints.maxWidth * minDesignHeight / constraints.maxHeight
+            : minDesignWidth;
+        final designWidth = math.max(minDesignWidth, ratioMatchedWidth);
+
+        return ClipRect(
+          key: const Key('reference-scaled-viewport-v9'),
+          child: SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.contain,
+              alignment: Alignment.topLeft,
+              child: canvas(designWidth, minDesignHeight),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSection() => switch (_section) {
+        DesktopSection.home => ReferenceHomeDashboardV2(
+            projection: widget.projection,
+            snapshot: widget.operationalSnapshot,
+            status: widget.operationalStatus,
+            onNavigate: _select,
+            onRefreshRequested: widget.onRefreshRequested,
+          ),
+        DesktopSection.goals => CreateView(
+            projection: widget.projection,
+            status: widget.operationalStatus,
+            identityProviders: widget.identityProviders,
+            userSession: widget.userSession,
+            identityStatus: widget.identityStatus,
+            onSignIn: widget.onSignIn,
+            onLogout: widget.onLogout,
+            onSubmit: widget.onPromptSubmit,
+          ),
+        DesktopSection.workflows => ControlCenterView(
+            projection: widget.projection,
+            operationalSnapshot: widget.operationalSnapshot,
+            operationalStatus: widget.operationalStatus,
+            onRefreshRequested: widget.onRefreshRequested,
+          ),
+        DesktopSection.agents => LiveExecutionView(
+            projection: widget.projection,
+            snapshot: widget.operationalSnapshot,
+            status: widget.operationalStatus,
+          ),
+        DesktopSection.liveWorkspace => LiveWorkspaceView(
+            snapshot: widget.operationalSnapshot,
+            status: widget.operationalStatus,
+          ),
+        DesktopSection.artifacts => DeliveriesView(
+            snapshot: widget.operationalSnapshot,
+            status: widget.operationalStatus,
+            onSaveArtifact: widget.onSaveArtifact,
+          ),
+        DesktopSection.approvals => GovernanceView(
+            snapshot: widget.operationalSnapshot,
+            status: widget.operationalStatus,
+            approverId: widget.approverId,
+            onDecision: widget.onGovernanceDecision,
+          ),
+        DesktopSection.evidence => EvidenceView(
+            snapshot: widget.operationalSnapshot,
+            status: widget.operationalStatus,
+          ),
+        DesktopSection.costs => CostsView(
+            snapshot: widget.operationalSnapshot,
+            status: widget.operationalStatus,
+          ),
+        DesktopSection.settings => SettingsView(
+            projection: widget.projection,
+            identityStatus: widget.identityStatus,
+            userSession: widget.userSession,
+            providers: widget.identityProviders,
+          ),
+      };
+}
+
+class _Sidebar extends StatelessWidget {
+  const _Sidebar({
+    required this.selected,
+    required this.projection,
+    required this.snapshot,
+    required this.userSession,
+    required this.onSelected,
+  });
+
+  static const _darkLogo = 'assets/brand/02-ilaios-primary-horizontal-dark.jpg';
+  static const _lightLogo = 'assets/brand/13-ilaios-primary-horizontal-light.jpg';
+
+  final DesktopSection selected;
+  final ControlPlaneProjection projection;
+  final OperationalSnapshot snapshot;
+  final DesktopUserSession? userSession;
+  final ValueChanged<DesktopSection> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Semantics(
+      container: true,
+      label: context.tr('shell.primaryNavigation'),
+      child: Container(
+        key: const Key('reference-desktop-sidebar-v5'),
+        width: 222,
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Semantics(
+              label: 'ILAIOS canonical brand lockup',
+              image: true,
+              child: SizedBox(
+                key: const Key('reference-brand-lockup-v9'),
+                height: 62,
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Image.asset(
+                    isDark ? _darkLogo : _lightLogo,
+                    key: Key(isDark
+                        ? 'reference-brand-horizontal-dark'
+                        : 'reference-brand-horizontal-light'),
+                    width: 184,
+                    height: 50,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.centerLeft,
+                    filterQuality: FilterQuality.high,
+                    gaplessPlayback: true,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 5),
+            Expanded(
+              child: ListView(
+                padding: EdgeInsets.zero,
+                children: [
+                  for (final section in DesktopSection.values)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: _NavItem(
+                        section: section,
+                        selected: selected == section,
+                        onTap: () => onSelected(section),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+            _TenantSummary(
+              projection: projection,
+              snapshot: snapshot,
+              userSession: userSession,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NavItem extends StatelessWidget {
+  const _NavItem({
+    required this.section,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final DesktopSection section;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: selected
+            ? IlaiosTheme.enterpriseCyan.withValues(alpha: .12)
+            : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(5),
+          side: BorderSide(
+            color: selected
+                ? IlaiosTheme.enterpriseCyan.withValues(alpha: .56)
+                : Colors.transparent,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: ValueKey('nav-${section.name}'),
+          onTap: onTap,
+          child: SizedBox(
+            height: 42,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                children: [
+                  Icon(
+                    section.icon,
+                    size: 18,
+                    color: selected
+                        ? IlaiosTheme.enterpriseCyan
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Text(
+                      section.localizedLabel(context),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 12.4,
+                        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                        color: selected
+                            ? IlaiosTheme.enterpriseCyan
+                            : Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
+class _TenantSummary extends StatelessWidget {
+  const _TenantSummary({
+    required this.projection,
+    required this.snapshot,
+    required this.userSession,
+  });
+
+  final ControlPlaneProjection projection;
+  final OperationalSnapshot snapshot;
+  final DesktopUserSession? userSession;
+
+  @override
+  Widget build(BuildContext context) {
+    final region = _runtimeText(snapshot, const ['region', 'runtime_region', 'location']);
+    final plan = _runtimeText(
+      snapshot,
+      const ['plan', 'subscription_plan', 'tier', 'license_tier'],
+    );
+    return Container(
+      padding: const EdgeInsets.fromLTRB(11, 10, 11, 10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(_isTr(context) ? 'Klasör' : 'Folder', style: const TextStyle(fontSize: 8.3)),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  userSession?.tenantId ?? context.tr('shell.unavailable'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
+                ),
+              ),
+              Icon(
+                Icons.circle,
+                size: 6,
+                color: userSession == null
+                    ? Theme.of(context).colorScheme.outline
+                    : IlaiosTheme.success,
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(_isTr(context) ? 'Plan' : 'Plan', style: const TextStyle(fontSize: 8.3)),
+          const SizedBox(height: 3),
+          Text(
+            plan ?? context.tr('shell.unavailable'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 10),
+          Text(_isTr(context) ? 'Bölge' : 'Region', style: const TextStyle(fontSize: 8.3)),
+          const SizedBox(height: 3),
+          Text(
+            region ?? context.tr('shell.unavailable'),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            projection.schemaVersion == null ? '—' : 'v${projection.schemaVersion}',
+            style: const TextStyle(fontSize: 8.5),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TopBar extends StatelessWidget {
+  const _TopBar({
+    required this.projection,
+    required this.snapshot,
+    required this.userSession,
+    required this.themeMode,
+    required this.onThemeModeChanged,
+    required this.onNavigate,
+  });
+
+  final ControlPlaneProjection projection;
+  final OperationalSnapshot snapshot;
+  final DesktopUserSession? userSession;
+  final ThemeMode themeMode;
+  final ValueChanged<ThemeMode>? onThemeModeChanged;
+  final ValueChanged<DesktopSection> onNavigate;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        key: const Key('reference-desktop-topbar-v5'),
+        height: 60,
+        padding: const EdgeInsets.symmetric(horizontal: 22),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLow,
+          border: Border(
+            bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+          ),
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 230,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(context.tr('shell.project'), style: const TextStyle(fontSize: 8.5)),
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Material(
+                          color: Theme.of(context).colorScheme.surfaceContainerLowest,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(5),
+                            side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                          ),
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: () => onNavigate(DesktopSection.goals),
+                            child: SizedBox(
+                              height: 31,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 10),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        _projectLabel(snapshot) ?? context.tr('shell.unavailable'),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(fontSize: 10.2, fontWeight: FontWeight.w600),
+                                      ),
+                                    ),
+                                    const Icon(Icons.keyboard_arrow_down_rounded, size: 16),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 9),
+                      Icon(
+                        Icons.circle,
+                        size: 6,
+                        color: projection.connected
+                            ? IlaiosTheme.success
+                            : Theme.of(context).colorScheme.outline,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        projection.connected
+                            ? context.tr('shell.connected')
+                            : context.tr('shell.offline'),
+                        style: const TextStyle(fontSize: 8.4),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const Spacer(),
+            SizedBox(
+              width: 260,
+              height: 32,
+              child: OutlinedButton.icon(
+                onPressed: () => onNavigate(DesktopSection.goals),
+                icon: const Icon(Icons.search_rounded, size: 17),
+                label: Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(context.tr('shell.search'), style: const TextStyle(fontSize: 9.4)),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            IconButton(
+              tooltip: context.tr('shell.notifications'),
+              onPressed: () => _showNotice(context),
+              visualDensity: VisualDensity.compact,
+              icon: const Icon(Icons.notifications_none_rounded, size: 18),
+            ),
+            PopupMenuButton<IlaiosLocale>(
+              tooltip: context.tr('shell.language'),
+              icon: const Icon(Icons.language_rounded, size: 18),
+              onSelected: (locale) => IlaiosLocaleScope.of(context).onChanged(locale),
+              itemBuilder: (context) => [
+                for (final locale in IlaiosLocale.values)
+                  PopupMenuItem(value: locale, child: Text(locale.displayName)),
+              ],
+            ),
+            IconButton(
+              key: const Key('theme-toggle'),
+              tooltip: context.tr('shell.darkTheme'),
+              visualDensity: VisualDensity.compact,
+              onPressed: () => onThemeModeChanged?.call(
+                themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark,
+              ),
+              icon: Icon(
+                themeMode == ThemeMode.dark
+                    ? Icons.light_mode_outlined
+                    : Icons.dark_mode_outlined,
+                size: 18,
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              height: 38,
+              padding: const EdgeInsets.only(left: 10),
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+                ),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 14,
+                    backgroundColor: IlaiosTheme.enterpriseCyan.withValues(alpha: .12),
+                    child: const Icon(
+                      Icons.person_outline_rounded,
+                      size: 17,
+                      color: IlaiosTheme.enterpriseCyan,
+                    ),
+                  ),
+                  const SizedBox(width: 7),
+                  SizedBox(
+                    width: 132,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          userSession?.displayIdentity ??
+                              userSession?.principalId ??
+                              context.tr('shell.identityUnavailable'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 9.3, fontWeight: FontWeight.w700),
+                        ),
+                        Text(
+                          userSession == null
+                              ? context.tr('shell.signedOut')
+                              : context.tr('shell.authenticated'),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 8),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.keyboard_arrow_down_rounded, size: 15),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+
+  void _showNotice(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(context.tr('shell.notifications')),
+        content: Text(
+          _isTr(context)
+              ? 'Yetkili bildirim kaydı yok. ILAIOS sentetik bildirim üretmez.'
+              : 'No authoritative notification records are available. ILAIOS does not fabricate notifications.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+        ],
+      ),
+    );
+  }
+}
+
+class _BottomStatusBar extends StatelessWidget {
+  const _BottomStatusBar({required this.projection, required this.snapshot});
+
+  final ControlPlaneProjection projection;
+  final OperationalSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final leases = snapshot.schedulerState.containsKey('leases')
+        ? _mapList(snapshot.schedulerState['leases']).length.toString()
+        : '—';
+    final queues = _authoritativeCount(
+      snapshot.schedulerState,
+      const ['queue_count', 'queues'],
+    );
+    final eventsPerMinute = _runtimeText(
+      snapshot,
+      const ['events_per_minute', 'event_rate'],
+    );
+
+    return Container(
+      key: const Key('reference-bottom-status-v2'),
+      height: 44,
+      padding: const EdgeInsets.symmetric(horizontal: 14),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
+      ),
+      child: Row(
+        children: [
+          _FlatStatus(
+            label: context.tr('shell.systemHealth'),
+            value: projection.connected
+                ? context.tr('shell.healthy')
+                : context.tr('shell.offline'),
+            live: projection.connected,
+          ),
+          _divider(context),
+          _FlatStatus(label: context.tr('shell.workers'), value: leases),
+          _divider(context),
+          _FlatStatus(label: context.tr('shell.queues'), value: queues ?? '—'),
+          _divider(context),
+          _FlatStatus(
+            label: context.tr('shell.eventsPerMinute'),
+            value: eventsPerMinute ?? '—',
+          ),
+          const Spacer(),
+          Text(
+            '© 2026 ILAIOS. ${_isTr(context) ? 'Tüm hakları saklıdır.' : 'All rights reserved.'}',
+            style: TextStyle(
+              fontSize: 8.4,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const Spacer(),
+          Text(context.tr('shell.realTime'), style: const TextStyle(fontSize: 8.7)),
+          const SizedBox(width: 7),
+          Icon(
+            Icons.circle,
+            size: 6,
+            color: projection.connected
+                ? IlaiosTheme.success
+                : Theme.of(context).colorScheme.outline,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            projection.connected
+                ? context.tr('shell.connected')
+                : context.tr('shell.offline'),
+            style: const TextStyle(fontSize: 8.9, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _divider(BuildContext context) => Container(
+        width: 1,
+        height: 22,
+        margin: const EdgeInsets.symmetric(horizontal: 12),
+        color: Theme.of(context).colorScheme.outlineVariant,
+      );
+}
+
+class _FlatStatus extends StatelessWidget {
+  const _FlatStatus({required this.label, required this.value, this.live = false});
+
+  final String label;
+  final String value;
+  final bool live;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 8.4)),
+          const SizedBox(width: 8),
+          if (live) ...[
+            const Icon(Icons.circle, size: 6, color: IlaiosTheme.success),
+            const SizedBox(width: 5),
+          ],
+          Text(
+            value,
+            style: const TextStyle(fontSize: 8.8, fontWeight: FontWeight.w600),
+          ),
+        ],
+      );
+}
+
+bool _isTr(BuildContext context) =>
+    IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
+
+String? _projectLabel(OperationalSnapshot snapshot) {
+  if (snapshot.liveEvents.isEmpty) return null;
+  return _text(
+    snapshot.liveEvents.last,
+    const ['project_name', 'project', 'workspace', 'goal', 'objective'],
+  );
+}
+
+String? _runtimeText(OperationalSnapshot snapshot, List<String> keys) {
+  final sources = <Map<String, Object?>>[
+    if (snapshot.liveEvents.isNotEmpty) snapshot.liveEvents.last,
+    snapshot.schedulerState,
+    snapshot.governanceState,
+  ];
+  for (final source in sources) {
+    final value = _text(source, keys);
+    if (value != null) return value;
+  }
+  return null;
+}
+
+String? _authoritativeCount(Map<String, Object?> source, List<String> keys) {
+  for (final key in keys) {
+    final value = source[key];
+    if (value is num) return '$value';
+    if (value is List<Object?>) return '${value.length}';
+    if (value is String && value.trim().isNotEmpty) return value.trim();
+  }
+  return null;
+}
+
+String? _text(Map<String, Object?>? source, List<String> keys) {
+  if (source == null) return null;
+  for (final key in keys) {
+    final value = source[key];
+    if (value is String && value.trim().isNotEmpty) return value.trim();
+    if (value is num || value is bool) return '$value';
+  }
+  return null;
+}
+
+List<Map<String, Object?>> _mapList(Object? value) {
+  if (value is! List<Object?>) return const <Map<String, Object?>>[];
+  return value.whereType<Map<String, Object?>>().toList(growable: false);
+}
