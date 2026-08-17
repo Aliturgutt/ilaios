@@ -1,9 +1,19 @@
 # ILAIOS Native Skills
 
-This directory contains ILAIOS-owned skill contracts, operating rules, schemas and
-human-readable templates. Executable Python for a skill belongs under `src/` so it
-is covered by the repository's Python quality gates.
+This directory contains reusable, governed ILAIOS-native skills.
 
-A skill is a bounded capability contract, not an agent, provider, hidden runtime or
-parallel authority. Side-effecting work must still pass the canonical ILAIOS policy,
-budget, approval, execution and evidence boundaries.
+A skill is an execution capability used by a governed worker. It is **not** a second runtime, router, policy engine, factory, or source of execution authority.
+
+## Rules
+
+- Active IDs use the `ilaios.skill.*` namespace.
+- Skills execute only after normal capability/factory resolution, admission, policy, budget, approval, and routing.
+- Skills cannot expand their own permissions.
+- Provider/tool dependencies must be explicit and replaceable.
+- Native implementations should prefer deterministic, dependency-minimal execution where practical.
+- Current maturity must never be promoted beyond repository/runtime evidence.
+- Third-party repositories may be researched as references, but external implementation code or assets are not copied into ILAIOS-native skills unless explicitly approved and licensed.
+
+## Current skills
+
+- `ilaios-diagram-design` — deterministic architecture/flow/sequence/state/data/dependency/trust/capability diagrams with SVG/HTML output and evidence hashes.
