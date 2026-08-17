@@ -163,12 +163,14 @@ def test_orchestrator_auto_inserts_ui_design_before_frontend_coding(
 ) -> None:
     executor, repository_intelligence, runtime = _executor()
     intent = "sagdan acilan ayarlar paneli olustur"
+    invocation = _invocation(
+        FRONTEND_ID,
+        prompt="Create the requested settings UI through governed frontend skills.",
+        capability="frontend.propose",
+    )
+    assert invocation.caller_id == ORCHESTRATOR_ID
     task = EngineeringAgentTask(
-        invocation=_invocation(
-            FRONTEND_ID,
-            prompt="Create the requested settings UI through governed frontend skills.",
-            capability="frontend.propose",
-        ),
+        invocation=invocation,
         grant=_grant(FRONTEND_ID),
         repository=tmp_path.resolve(),
         base_sha=BASE_SHA,
@@ -179,7 +181,6 @@ def test_orchestrator_auto_inserts_ui_design_before_frontend_coding(
 
     result = executor.execute(task, now=NOW)
 
-    assert result.admission.caller_id == ORCHESTRATOR_ID
     assert result.admission.agent_id == FRONTEND_ID
     assert [item.skill_id for item in result.skill_results] == [
         "ilaios-ui-design",
