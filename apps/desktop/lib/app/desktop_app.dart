@@ -99,11 +99,19 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp> {
   Widget build(BuildContext context) {
     final effectiveTheme =
         widget.onThemeModeChanged == null ? _localThemeMode : widget.themeMode;
+    final darkDesktopTheme = IlaiosTheme.dark.copyWith(
+      colorScheme: IlaiosTheme.dark.colorScheme.copyWith(
+        // The approved dark horizontal JPG has the canonical Carbon backdrop.
+        // Keep shell/sidebar surfaces on the same Carbon tone so the untouched
+        // brand master renders seamlessly instead of as a visible black box.
+        surfaceContainerLow: IlaiosTheme.carbon,
+      ),
+    );
     return MaterialApp(
       title: 'ILAIOS Desktop',
       debugShowCheckedModeBanner: false,
       theme: IlaiosTheme.light,
-      darkTheme: IlaiosTheme.dark,
+      darkTheme: darkDesktopTheme,
       themeMode: effectiveTheme,
       home: IlaiosLocaleScope(
         locale: widget.locale,
