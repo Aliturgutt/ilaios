@@ -17,3 +17,4 @@ A skill is an execution capability used by a governed worker. It is **not** a se
 ## Current skills
 
 - `ilaios-diagram-design` — deterministic architecture/flow/sequence/state/data/dependency/trust/capability diagrams with SVG/HTML output and evidence hashes.
+- `ilaios-system-design` — deterministic capacity, scalability, bottleneck, failure, architecture-review and renderer-neutral system-design analysis.
