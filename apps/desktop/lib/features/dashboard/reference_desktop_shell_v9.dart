@@ -148,114 +148,46 @@ class ReferenceDesktopShellV9 extends StatelessWidget {
   }
 }
 
+/// Uses the untouched canonical horizontal masters from the ILAIOS brand
+/// catalog. No symbol redrawing, recoloring, masks, or synthetic lockups are
+/// permitted here. Theme switching selects the matching catalog master only.
 class _ReferenceBrandOverlay extends StatelessWidget {
   const _ReferenceBrandOverlay();
 
+  static const _darkAsset =
+      '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
+  static const _lightAsset =
+      '../../brand/assets/13-ilaios-primary-horizontal-light.jpg';
+
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+    final asset = isDark ? _darkAsset : _lightAsset;
+
     return IgnorePointer(
       child: Semantics(
-        label: 'ILAIOS',
+        label: 'ILAIOS canonical brand lockup',
         image: true,
         child: Container(
           key: const Key('reference-brand-lockup-v9'),
-          color: scheme.surfaceContainerLow,
-          padding: const EdgeInsets.fromLTRB(20, 17, 14, 15),
-          alignment: Alignment.topLeft,
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              SizedBox(
-                width: 45,
-                height: 45,
-                child: CustomPaint(
-                  painter: _IlaiosOrbitMarkPainter(
-                    foreground: scheme.onSurface,
-                    accent: const Color(0xFF00C2D1),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'ILAIOS',
-                  maxLines: 1,
-                  overflow: TextOverflow.clip,
-                  style: TextStyle(
-                    color: scheme.onSurface,
-                    fontSize: 22.5,
-                    height: 1,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 4.4,
-                  ),
-                ),
-              ),
-            ],
+          color: theme.colorScheme.surfaceContainerLow,
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
+          alignment: Alignment.centerLeft,
+          child: Image.asset(
+            asset,
+            key: Key(
+              isDark
+                  ? 'reference-brand-horizontal-dark'
+                  : 'reference-brand-horizontal-light',
+            ),
+            fit: BoxFit.contain,
+            alignment: Alignment.centerLeft,
+            filterQuality: FilterQuality.high,
+            gaplessPlayback: true,
           ),
         ),
       ),
     );
   }
-}
-
-class _IlaiosOrbitMarkPainter extends CustomPainter {
-  const _IlaiosOrbitMarkPainter({
-    required this.foreground,
-    required this.accent,
-  });
-
-  final Color foreground;
-  final Color accent;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final outer = Rect.fromCircle(center: center, radius: size.width * .40);
-    final inner = Rect.fromCircle(center: center, radius: size.width * .29);
-
-    final mainPaint = Paint()
-      ..color = foreground
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2
-      ..strokeCap = StrokeCap.round;
-    final accentPaint = Paint()
-      ..color = accent
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.2
-      ..strokeCap = StrokeCap.round;
-
-    canvas.drawArc(outer, -.78, 2.10, false, mainPaint);
-    canvas.drawArc(outer, 1.78, 1.48, false, mainPaint);
-    canvas.drawArc(outer, 3.55, .58, false, accentPaint);
-    canvas.drawArc(inner, -.28, 2.55, false, mainPaint);
-    canvas.drawArc(inner, 2.72, 1.55, false, mainPaint);
-
-    final stemX = center.dx;
-    canvas.drawLine(
-      Offset(stemX, size.height * .28),
-      Offset(stemX, size.height * .69),
-      accentPaint,
-    );
-    canvas.drawLine(
-      Offset(size.width * .42, size.height * .28),
-      Offset(size.width * .58, size.height * .28),
-      mainPaint,
-    );
-    canvas.drawLine(
-      Offset(size.width * .42, size.height * .70),
-      Offset(size.width * .58, size.height * .70),
-      mainPaint,
-    );
-
-    canvas.drawCircle(
-      Offset(size.width * .78, size.height * .25),
-      1.8,
-      Paint()..color = accent,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _IlaiosOrbitMarkPainter oldDelegate) =>
-      oldDelegate.foreground != foreground || oldDelegate.accent != accent;
 }
