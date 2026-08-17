@@ -114,8 +114,9 @@ def test_artifact_tampering_is_detected_before_execution() -> None:
         NativeSkillRuntime(registry).invoke("mutable", skill_id="ilaios.skill.mutable")
 
 
-def test_prompt_normalization_is_bounded_and_turkish_aware() -> None:
+def test_prompt_normalization_is_bounded_turkish_aware_and_token_safe() -> None:
     assert normalize_prompt("  SAĞDAN   AYARLAR  ") == "sagdan ayarlar"
+    assert normalize_prompt("Drawer, please! Right-side.") == "drawer please right side"
     with pytest.raises(SkillRuntimeError, match="blank"):
         normalize_prompt("   ")
     with pytest.raises(SkillRuntimeError, match="NUL"):
