@@ -61,7 +61,18 @@ def authorize_paid_dispatch(
         "expires_at_epoch_s": expires,
     }
     authority_hash = digest_material(*(f"{k}={v}" for k, v in data.items()))
-    return CommercialDispatchAuthority(authority_sha256=authority_hash, **data)
+    return CommercialDispatchAuthority(
+        authority_sha256=authority_hash,
+        quote_id=quote.quote_id,
+        quote_sha256=quote.quote_sha256,
+        payment_authorization_id=payment.payment_authorization_id,
+        provider_name=quote.provider_name,
+        model_id=quote.model_id,
+        pricing_fingerprint=quote.pricing_fingerprint,
+        provider_cost_ceiling_microusd=provider_quote.max_cost_microusd,
+        issued_at_epoch_s=now_epoch_s,
+        expires_at_epoch_s=expires,
+    )
 
 
 def reconcile_commercial_cost(
