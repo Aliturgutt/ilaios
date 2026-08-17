@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import subprocess
 from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
@@ -28,8 +29,9 @@ class ILAIOSRepositoryIntelligence:
     """First-party implementation of the SF-7 RepositoryIntelligencePort.
 
     The adapter is deliberately read-only. It verifies the repository revision,
-    builds a deterministic in-memory graph, and returns bounded evidence. More
-    specific queries use ``session`` and the typed ``CodeIntelligenceEngine``.
+    requires snapshot inputs to be clean tracked files, builds a deterministic
+    in-memory graph, and returns bounded evidence. More specific queries use
+    ``session`` and the typed ``CodeIntelligenceEngine``.
     """
 
     def session(self, repository: Path, base_sha: str) -> CodeIntelligenceSession:
@@ -40,15 +42,48 @@ class ILAIOSRepositoryIntelligence:
             raise CodeIntelligenceAdmissionError(
                 "repository must be a regular directory"
             )
-        if len(base_sha) != 40 or any(character not in "0123456789abcdef" for character in base_sha):
+        if len(base_sha) != 40 or any(
+            character not in "0123456789abcdef" for character in base_sha
+        ):
             raise CodeIntelligenceAdmissionError(
                 "base_sha must be a lowercase 40-character SHA-1"
             )
-        snapshot = RepositoryAnalyzer(root).snapshot()
-        if snapshot.revision != base_sha:
+
+        repository_root = _git_text(root, "rev-parse", "--show-toplevel")
+        if Path(repository_root).resolve() != root:
+            raise CodeIntelligenceAdmissionError(
+                "repository must be the Git worktree root"
+            )
+        head_sha = _git_text(root, "rev-parse", "HEAD")
+        if head_sha != base_sha:
             raise CodeIntelligenceAdmissionError(
                 "repository revision does not match requested base_sha"
             )
+        _require_clean_worktree(root)
+        tracked_files = _tracked_files(root)
+
+        snapshot = RepositoryAnalyzer(root).snapshot()
+
+        if snapshot.revision != base_sha:
+            raise CodeIntelligenceAdmissionError(
+                "repository revision changed during analysis"
+            )
+        untracked_snapshot_files = sorted(
+            file_record.path
+            for file_record in snapshot.files
+            if file_record.path not in tracked_files
+        )
+        if untracked_snapshot_files:
+            raise CodeIntelligenceAdmissionError(
+                "snapshot contains files not tracked by requested revision: "
+                + ", ".join(untracked_snapshot_files[:10])
+            )
+        _require_clean_worktree(root)
+        if _git_text(root, "rev-parse", "HEAD") != base_sha:
+            raise CodeIntelligenceAdmissionError(
+                "repository revision changed during analysis"
+            )
+
         index = CodeIntelligenceGraphBuilder().build(snapshot)
         return CodeIntelligenceSession(
             snapshot=snapshot,
@@ -98,3 +133,31 @@ class ILAIOSRepositoryIntelligence:
             },
             "unknowns": list(index.unknowns),
         }
+
+
+def _git_text(root: Path, *arguments: str) -> str:
+    completed = subprocess.run(
+        ("git", *arguments),
+        cwd=root,
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    if completed.returncode != 0:
+        raise CodeIntelligenceAdmissionError(
+            "repository Git verification failed"
+        )
+    return completed.stdout.strip()
+
+
+def _tracked_files(root: Path) -> frozenset[str]:
+    output = _git_text(root, "ls-files", "-z")
+    return frozenset(path for path in output.split("\0") if path)
+
+
+def _require_clean_worktree(root: Path) -> None:
+    status = _git_text(root, "status", "--porcelain=v1", "--untracked-files=all")
+    if status:
+        raise CodeIntelligenceAdmissionError(
+            "repository worktree must be clean for revision-bound analysis"
+        )
