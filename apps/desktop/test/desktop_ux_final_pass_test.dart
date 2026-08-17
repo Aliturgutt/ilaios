@@ -89,7 +89,7 @@ void main() {
     expect(find.text('English'), findsWidgets);
   });
 
-  testWidgets('workflow uses five structured responsive stages', (
+  testWidgets('Workflows keeps the approved reference hierarchy', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -100,13 +100,22 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-workflows')));
     await tester.pumpAndSettle();
 
-    for (final stage in <String>['goal', 'plan', 'execute', 'verify', 'deliver']) {
-      expect(
-        find.byKey(ValueKey('workflow-stage-$stage')),
-        findsOneWidget,
-        reason: '$stage workflow stage is missing',
-      );
+    final workflowsPage = find.byKey(const Key('reference-workflows-page'));
+    expect(workflowsPage, findsOneWidget);
+    for (final key in <Key>[
+      const Key('workflows-metrics'),
+      const Key('workflows-table-panel'),
+      const Key('selected-workflow-panel'),
+      const Key('workflows-bottom-panels'),
+    ]) {
+      expect(find.byKey(key), findsWidgets, reason: 'missing $key');
     }
+    expect(
+      find.descendant(of: workflowsPage, matching: find.text('Workflows')),
+      findsOneWidget,
+    );
+    expect(find.text('Total Workflows'), findsOneWidget);
+    expect(find.text('Stage Distribution (All Workflows)'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
