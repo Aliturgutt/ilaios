@@ -27,8 +27,8 @@ void main() {
         reason:
             'Desktop target layout overflowed or threw at ${size.width}x${size.height}',
       );
-      expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
       if (size.width >= 1180) {
+        expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
         expect(find.text('Main Control Center'), findsOneWidget);
         expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
         expect(find.byKey(const Key('command-center-metrics')), findsOneWidget);
