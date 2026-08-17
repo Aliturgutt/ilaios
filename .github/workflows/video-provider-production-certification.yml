@@ -6,12 +6,12 @@ on:
       proof_mode:
         description: Video provider certification path
         required: true
-        default: desktop-one-prompt
+        default: managed-bounded
         type: choice
         options:
+          - managed-bounded
           - desktop-one-prompt
           - free-only
-          - managed-bounded
 
 permissions:
   contents: read
@@ -57,7 +57,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends ffmpeg
 
-      - name: Verify Desktop provider proof safety boundary
+      - name: Verify Desktop free-route proof safety boundary
         if: ${{ inputs.proof_mode == 'desktop-one-prompt' }}
         shell: bash
         run: |
@@ -68,10 +68,10 @@ jobs:
           test -n "$OPENROUTER_API_KEY"
           case "$ILAIOS_VIDEO_MODEL_ID" in
             *:free) ;;
-            *) echo "Paid video model forbidden in Desktop proof" >&2; exit 1 ;;
+            *) echo "desktop-one-prompt is the explicit verified-free proof; use managed-bounded for paid E2E" >&2; exit 1 ;;
           esac
 
-      - name: Run real provider-backed Desktop finished-product E2E
+      - name: Run real provider-backed Desktop verified-free finished-product E2E
         if: ${{ inputs.proof_mode == 'desktop-one-prompt' }}
         shell: bash
         run: |
@@ -85,19 +85,19 @@ jobs:
           set -euo pipefail
           python -m src.video_automation.free_provider_production_certification
 
-      - name: Run bounded proof through canonical managed provider path
+      - name: Run bounded paid proof through canonical managed provider path
         if: ${{ inputs.proof_mode == 'managed-bounded' }}
         shell: bash
         run: |
           set -euo pipefail
           python -m src.video_automation.provider_production_certification
 
-      - name: Publish Desktop provider proof summary
+      - name: Publish Desktop verified-free provider proof summary
         if: ${{ always() && inputs.proof_mode == 'desktop-one-prompt' }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "## Desktop Provider-Backed Video Factory E2E" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Desktop Provider-Backed Video Factory — Verified Free Route" >> "$GITHUB_STEP_SUMMARY"
           if [[ -f "$VIDEO_DESKTOP_PROVIDER_PROOF_DIR/receipt.json" ]]; then
             python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
@@ -116,7 +116,8 @@ jobs:
           print(f"- Video/audio: `{receipt.get('video_codec')}` / `{receipt.get('audio_codec')}`")
           print(f"- Artifact SHA-256: `{receipt.get('artifact_sha256')}`")
           print(f"- Artifact bytes: `{receipt.get('artifact_bytes')}`")
-          print(f"- Provider cost zero: `{receipt.get('provider_cost_zero')}`")
+          print(f"- Verified free-route cost zero: `{receipt.get('provider_cost_zero')}`")
+          print("- This zero-cost assertion applies only to the explicit verified-free route.")
           PY
           else
             printf '%s\n' '- Status: NO_ACCEPTED_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
@@ -147,19 +148,19 @@ jobs:
           print(f"- Artifact SHA-256: `{artifact.get('sha256', 'n/a')}`")
           print(f"- Artifact bytes: `{artifact.get('bytes', 'n/a')}`")
           print("- Paid fallback allowed: `FALSE`")
-          print("- Only explicit `:free` model IDs may reach the provider POST boundary.")
+          print("- Only explicit `:free` model IDs may reach this provider POST boundary.")
           print("- Credential material is never written to evidence or logs.")
           PY
           else
             printf '%s\n' '- Status: NO_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Publish managed-provider proof summary
+      - name: Publish managed paid-provider proof summary
         if: ${{ always() && inputs.proof_mode == 'managed-bounded' }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "## Video Provider Production Certification" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Video Provider Production Certification — Commercial Bounded" >> "$GITHUB_STEP_SUMMARY"
           if [[ -f "$VIDEO_PROVIDER_PROOF_DIR/provider-receipt.json" ]]; then
             python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
@@ -171,16 +172,23 @@ jobs:
               (proof_dir / "provider-receipt.json").read_text(encoding="utf-8")
           )
           artifact = receipt.get("artifact") or {}
-          terminal = receipt.get("provider_terminal_metadata") or {}
+          quote = receipt.get("customer_quote") or {}
+          reconciliation = receipt.get("commercial_reconciliation") or {}
           print(f"- Status: `{receipt.get('status')}`")
+          print(f"- Cost mode: `{receipt.get('cost_mode')}`")
           print(f"- Revision: `{receipt.get('revision_sha')}`")
           print(f"- Provider/model: `{receipt.get('provider')}` / `{receipt.get('model')}`")
           print(f"- Request: `{receipt.get('request_id', 'n/a')}`")
+          print(f"- Quote ID: `{quote.get('quote_id', 'n/a')}`")
+          print(f"- Customer total before generation (microUSD): `{quote.get('gross_customer_price_microusd', 'n/a')}`")
+          print(f"- Locked provider ceiling (microUSD): `{quote.get('provider_cost_ceiling_microusd', 'n/a')}`")
+          print(f"- Actual provider cost (microUSD): `{reconciliation.get('actual_provider_cost_microusd', 'n/a')}`")
+          print(f"- Actual margin / hard floor (bps): `{reconciliation.get('actual_margin_bps', 'n/a')}` / `{reconciliation.get('hard_min_margin_bps', 'n/a')}`")
+          print(f"- Commercial cost proven: `{receipt.get('commercial_cost_proven', False)}`")
           print(f"- External job: `{receipt.get('external_job_id', 'n/a')}`")
           print(f"- Artifact SHA-256: `{artifact.get('sha256', 'n/a')}`")
           print(f"- Artifact bytes: `{artifact.get('bytes', 'n/a')}`")
-          print(f"- Provider usage: `{terminal.get('usage_json', 'n/a')}`")
-          print("- Submit/poll/retrieval reuse the canonical managed OpenRouter boundaries.")
+          print("- Positive provider cost is valid when it remains inside the locked quote and margin floor.")
           print("- Credential material is never written to evidence or logs.")
           PY
           else
