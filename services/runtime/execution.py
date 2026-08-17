@@ -18,6 +18,10 @@ from services.runtime.routing import (
     SkillRegistry,
     route_provider,
 )
+from services.runtime.system_design_adapter import (
+    SYSTEM_DESIGN_ADAPTER_KIND,
+    execute_system_design_payload,
+)
 
 
 class GovernedRuntime:
@@ -34,6 +38,7 @@ class GovernedRuntime:
         "uppercase-text": lambda payload: {
             "text": _required_payload_text(payload).upper()
         },
+        SYSTEM_DESIGN_ADAPTER_KIND: execute_system_design_payload,
     }
 
     def __init__(self, database_path: Path) -> None:
