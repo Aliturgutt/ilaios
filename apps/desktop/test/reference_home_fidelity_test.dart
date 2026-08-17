@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
+import 'package:ilaios_desktop/app/ilaios_theme.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
@@ -31,6 +32,13 @@ void main() {
     ]) {
       expect(find.byKey(key), findsOneWidget, reason: 'missing $key');
     }
+
+    final context = tester.element(find.byKey(const Key('reference-brand-lockup-v9')));
+    expect(
+      Theme.of(context).colorScheme.surfaceContainerLow,
+      IlaiosTheme.carbon,
+      reason: 'dark shell must match the untouched canonical dark-logo backdrop',
+    );
 
     expect(find.text('Main Control Center'), findsOneWidget);
     expect(find.text('Ongoing Work'), findsOneWidget);
@@ -76,6 +84,27 @@ void main() {
     final bottomStatus = tester.getRect(find.byKey(const Key('reference-bottom-status-v2')));
     expect(artifacts.bottom, lessThanOrEqualTo(bottomStatus.top + 1));
     expect(bottomStatus.bottom, lessThanOrEqualTo(720));
+  });
+
+  testWidgets('1640x890 Windows client keeps bottom row and status strip visible', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1640, 890));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsOneWidget);
+    final outputs = tester.getRect(find.byKey(const Key('command-center-artifacts')));
+    final completed = tester.getRect(find.byKey(const Key('command-center-completed')));
+    final quick = tester.getRect(find.byKey(const Key('command-center-quick-actions')));
+    final status = tester.getRect(find.byKey(const Key('reference-bottom-status-v2')));
+    expect(outputs.bottom, lessThanOrEqualTo(status.top + 1));
+    expect(completed.bottom, lessThanOrEqualTo(status.top + 1));
+    expect(quick.bottom, lessThanOrEqualTo(status.top + 1));
+    expect(status.bottom, lessThanOrEqualTo(890));
   });
 
   testWidgets('approved Turkish light reference renders without mixing dark state', (
