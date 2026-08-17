@@ -13,11 +13,12 @@ from services.software_factory import SoftwareFactoryError
 REQUIRED_SKILL_IDS = (
     "sf-requirements-analysis", "sf-repository-intelligence", "sf-change-impact-analysis",
     "sf-architecture-planning", "sf-implementation-planning", "sf-core-engineering",
-    "sf-backend-engineering", "sf-frontend-engineering", "sf-windows-desktop", "sf-integration-engineering",
-    "sf-database-migration", "sf-api-contract", "sf-test-design", "sf-test-generation",
-    "sf-debug-repair", "sf-refactor", "sf-migration", "sf-code-review", "sf-security-review",
-    "sf-dependency-governance", "sf-license-provenance", "sf-build", "sf-release-readiness",
-    "sf-runtime-qa", "sf-recovery",
+    "sf-backend-engineering", "sf-frontend-engineering", "ilaios-ui-design",
+    "sf-windows-desktop", "sf-integration-engineering", "sf-database-migration",
+    "sf-api-contract", "sf-test-design", "sf-test-generation", "sf-debug-repair",
+    "sf-refactor", "sf-migration", "sf-code-review", "sf-security-review",
+    "sf-dependency-governance", "sf-license-provenance", "sf-build",
+    "sf-release-readiness", "sf-runtime-qa", "sf-recovery",
 )
 REQUIRED_FILES = ("SKILL.md", "PROVENANCE.md", "manifest.yaml", "input.schema.json", "output.schema.json", "evals/evals.json")
 REQUIRED_EVAL_KINDS = frozenset({"GOLDEN", "NEGATIVE", "ADVERSARIAL", "MALFORMED", "REGRESSION"})
@@ -87,10 +88,12 @@ class SkillExecutionResult:
     runtime_evidence: Mapping[str, object] | None
     emitted_evidence: tuple[str, ...]
     independent_review_required: bool
+    output: Mapping[str, object] | None = None
+    output_sha256: str | None = None
 
 
 class SkillRegistry:
-    """Fail closed unless the complete 25-skill first-party family is valid."""
+    """Fail closed unless the complete first-party SF-7 skill family is valid."""
     def __init__(self, skills_root: Path) -> None:
         self._root = skills_root.resolve()
         self._packages = self._load_all()
@@ -165,7 +168,32 @@ class SkillExecutor:
         runtime_evidence: Mapping[str, object] | None = None
         if request.runtime_adapter is not None:
             runtime_evidence = self._runtime.validate(request.runtime_adapter, request.repository.resolve())
-        return SkillExecutionResult(package.manifest.skill_id, package.manifest.version, "READY", repository_evidence, runtime_evidence, tuple(sorted(package.manifest.emitted_evidence)), package.manifest.independent_review_required)
+        output: Mapping[str, object] | None = None
+        output_sha256: str | None = None
+        if request.skill_id == "ilaios-ui-design":
+            from services.ui_design_skill import (
+                UIDesignSkillError,
+                resolve_ui_design,
+                ui_spec_digest,
+            )
+
+            try:
+                output = resolve_ui_design(request.payload)
+            except UIDesignSkillError as error:
+                raise SoftwareFactoryError(str(error)) from error
+            self.validate_output(request.skill_id, output)
+            output_sha256 = ui_spec_digest(output)
+        return SkillExecutionResult(
+            package.manifest.skill_id,
+            package.manifest.version,
+            "READY",
+            repository_evidence,
+            runtime_evidence,
+            tuple(sorted(package.manifest.emitted_evidence)),
+            package.manifest.independent_review_required,
+            output,
+            output_sha256,
+        )
 
     def validate_output(self, skill_id: str, output: Mapping[str, object]) -> None:
         package = self._registry.resolve(skill_id)

@@ -35,6 +35,11 @@ from services.software_factory_skills import (
     SkillExecutor,
     SkillRegistry,
 )
+from services.ui_design_skill import (
+    is_ui_design_intent,
+    normalize_ui_intent,
+    ui_spec_digest,
+)
 
 
 class EngineeringAgentError(SoftwareFactoryError):
@@ -61,6 +66,7 @@ ENGINEERING_AGENT_SKILLS: Mapping[str, tuple[str, ...]] = {
         "sf-api-contract",
     ),
     "ilaios.agent.engineering.frontend.v1": (
+        "ilaios-ui-design",
         "sf-frontend-engineering",
         "sf-windows-desktop",
     ),
@@ -151,33 +157,80 @@ class EngineeringAgentExecutor:
         if allowed_skills is None:
             raise EngineeringAgentError("engineering agent has no SF-8 skill binding")
         if not task.steps:
-            raise EngineeringAgentError("engineering agent task requires at least one skill step")
+            raise EngineeringAgentError(
+                "engineering agent task requires at least one skill step"
+            )
 
-        requested_skill_ids = tuple(step.skill_id for step in task.steps)
+        steps = _expand_ui_design_steps(task.steps)
+        requested_skill_ids = tuple(step.skill_id for step in steps)
         if len(requested_skill_ids) != len(set(requested_skill_ids)):
-            raise EngineeringAgentError("engineering agent task cannot repeat a skill step")
+            raise EngineeringAgentError(
+                "engineering agent task cannot repeat a skill step"
+            )
         if not set(requested_skill_ids).issubset(allowed_skills):
-            raise EngineeringAgentError("engineering agent requested a skill outside its role")
+            raise EngineeringAgentError(
+                "engineering agent requested a skill outside its role"
+            )
 
         admission = self._firewall.admit(task.invocation, task.grant, now)
         results: list[SkillExecutionResult] = []
-        for step in task.steps:
-            results.append(
-                self._skill_executor.execute(
-                    SkillExecutionRequest(
-                        skill_id=step.skill_id,
-                        repository=task.repository.resolve(),
-                        base_sha=task.base_sha,
-                        actor_id=admission.agent_id,
-                        tenant_id=task.tenant_id,
-                        policy_allowed=task.policy_allowed,
-                        payload=step.payload,
-                        requested_capabilities=step.requested_capabilities,
-                        requested_actions=step.requested_actions,
-                        runtime_adapter=step.runtime_adapter,
+        ui_spec: Mapping[str, object] | None = None
+        ui_spec_sha256: str | None = None
+        ui_source_intent: str | None = None
+        for step in steps:
+            payload: dict[str, object] = dict(step.payload)
+            if step.skill_id == "sf-frontend-engineering":
+                intent = payload.get("intent")
+                ui_required = isinstance(intent, str) and is_ui_design_intent(intent)
+                if ui_required and (ui_spec is None or ui_spec_sha256 is None):
+                    raise EngineeringAgentError(
+                        "UI frontend engineering requires a verified ilaios-ui-design result"
                     )
+                if ui_required and ui_spec is not None:
+                    if ui_source_intent is None or not isinstance(intent, str):
+                        raise EngineeringAgentError(
+                            "UI design source intent evidence is unavailable"
+                        )
+                    if normalize_ui_intent(ui_source_intent) != normalize_ui_intent(intent):
+                        raise EngineeringAgentError(
+                            "UI design result does not match frontend intent"
+                        )
+                    payload["ui_design_spec"] = dict(ui_spec)
+                    payload["ui_design_spec_sha256"] = ui_spec_sha256
+
+            result = self._skill_executor.execute(
+                SkillExecutionRequest(
+                    skill_id=step.skill_id,
+                    repository=task.repository.resolve(),
+                    base_sha=task.base_sha,
+                    actor_id=admission.agent_id,
+                    tenant_id=task.tenant_id,
+                    policy_allowed=task.policy_allowed,
+                    payload=payload,
+                    requested_capabilities=step.requested_capabilities,
+                    requested_actions=step.requested_actions,
+                    runtime_adapter=step.runtime_adapter,
                 )
             )
+            if result.skill_id == "ilaios-ui-design":
+                if result.output is None or result.output_sha256 is None:
+                    raise EngineeringAgentError(
+                        "UI design result is missing structured output evidence"
+                    )
+                actual_digest = ui_spec_digest(result.output)
+                if actual_digest != result.output_sha256:
+                    raise EngineeringAgentError(
+                        "UI design output integrity check failed"
+                    )
+                source_intent = step.payload.get("intent")
+                if not isinstance(source_intent, str):
+                    raise EngineeringAgentError(
+                        "UI design source intent evidence is unavailable"
+                    )
+                ui_spec = result.output
+                ui_spec_sha256 = result.output_sha256
+                ui_source_intent = source_intent
+            results.append(result)
 
         immutable_results = tuple(results)
         review_required = any(
@@ -192,6 +245,37 @@ class EngineeringAgentExecutor:
                 admission, task.base_sha, immutable_results, status
             ),
         )
+
+
+def _expand_ui_design_steps(
+    steps: tuple[AgentSkillStep, ...],
+) -> tuple[AgentSkillStep, ...]:
+    """Insert UI design before frontend coding when intent requires it."""
+    explicit_ui = any(step.skill_id == "ilaios-ui-design" for step in steps)
+    expanded: list[AgentSkillStep] = []
+    for step in steps:
+        if step.skill_id == "sf-frontend-engineering":
+            intent = step.payload.get("intent")
+            if isinstance(intent, str) and is_ui_design_intent(intent):
+                if explicit_ui:
+                    if not any(
+                        item.skill_id == "ilaios-ui-design" for item in expanded
+                    ):
+                        raise EngineeringAgentError(
+                            "explicit ilaios-ui-design must precede UI frontend engineering"
+                        )
+                else:
+                    expanded.append(
+                        AgentSkillStep(
+                            skill_id="ilaios-ui-design",
+                            payload={"intent": intent},
+                            requested_capabilities=frozenset(
+                                {"repository_intelligence", "governance"}
+                            ),
+                        )
+                    )
+        expanded.append(step)
+    return tuple(expanded)
 
 
 def _validate_engineering_bindings(registry: SkillRegistry) -> None:
@@ -210,9 +294,13 @@ def _validate_engineering_bindings(registry: SkillRegistry) -> None:
         for skill_id in ENGINEERING_AGENT_SKILLS[agent_id]
     )
     if len(bound_skills) != len(set(bound_skills)):
-        raise EngineeringAgentError("SF-8 primary skill ownership must be unique")
+        raise EngineeringAgentError(
+            "SF-8 primary skill ownership must be unique"
+        )
     if set(bound_skills) != set(REQUIRED_SKILL_IDS):
-        raise EngineeringAgentError("SF-8 must assign every SF-7 skill exactly once")
+        raise EngineeringAgentError(
+            "SF-8 must assign every SF-7 skill exactly once"
+        )
     for skill_id in bound_skills:
         registry.resolve(skill_id)
 
@@ -236,9 +324,12 @@ def _evidence_digest(
                 "status": result.status,
                 "evidence": list(result.emitted_evidence),
                 "independent_review_required": result.independent_review_required,
+                "output_sha256": result.output_sha256,
             }
             for result in results
         ],
     }
-    encoded = json.dumps(material, sort_keys=True, separators=(",", ":")).encode()
+    encoded = json.dumps(
+        material, sort_keys=True, separators=(",", ":")
+    ).encode()
     return hashlib.sha256(encoded).hexdigest()

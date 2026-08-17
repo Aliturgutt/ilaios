@@ -93,6 +93,14 @@ def _backend_step(
     )
 
 
+def _frontend_step(intent: str) -> AgentSkillStep:
+    return AgentSkillStep(
+        skill_id="sf-frontend-engineering",
+        payload={"intent": intent, "changed_paths": ["apps/desktop/lib/settings.dart"]},
+        requested_capabilities=frozenset({"repository_intelligence", "governance"}),
+    )
+
+
 def _executor() -> tuple[EngineeringAgentExecutor, _RepositoryIntelligence, _Runtime]:
     registry = SkillRegistry(default_skills_root(ROOT))
     repository_intelligence = _RepositoryIntelligence()
@@ -115,9 +123,13 @@ def test_sf8_binds_exact_engineering_team_and_all_sf7_skills_once() -> None:
         for agent_id in sorted(ENGINEERING_AGENT_SKILLS)
         for skill_id in ENGINEERING_AGENT_SKILLS[agent_id]
     ]
-    assert len(bound) == len(set(bound)) == 25
+    assert len(bound) == len(set(bound)) == 26
     assert set(bound) == set(REQUIRED_SKILL_IDS)
+    assert "ilaios-ui-design" in ENGINEERING_AGENT_SKILLS[FRONTEND_ID]
     assert "sf-windows-desktop" in ENGINEERING_AGENT_SKILLS[FRONTEND_ID]
+    assert sum(
+        "ilaios-ui-design" in skills for skills in ENGINEERING_AGENT_SKILLS.values()
+    ) == 1
     assert sum(
         "sf-windows-desktop" in skills for skills in ENGINEERING_AGENT_SKILLS.values()
     ) == 1
@@ -144,6 +156,99 @@ def test_backend_agent_executes_only_through_admission_and_sf7(tmp_path: Path) -
     assert len(result.evidence_digest) == 64
     assert repository_intelligence.calls == [(tmp_path.resolve(), BASE_SHA)]
     assert runtime.calls == []
+
+
+def test_orchestrator_auto_inserts_ui_design_before_frontend_coding(
+    tmp_path: Path,
+) -> None:
+    executor, repository_intelligence, runtime = _executor()
+    intent = "sagdan acilan ayarlar paneli olustur"
+    invocation = _invocation(
+        FRONTEND_ID,
+        prompt="Create the requested settings UI through governed frontend skills.",
+        capability="frontend.propose",
+    )
+    assert invocation.caller_id == ORCHESTRATOR_ID
+    task = EngineeringAgentTask(
+        invocation=invocation,
+        grant=_grant(FRONTEND_ID),
+        repository=tmp_path.resolve(),
+        base_sha=BASE_SHA,
+        tenant_id="tenant-1",
+        policy_allowed=True,
+        steps=(_frontend_step(intent),),
+    )
+
+    result = executor.execute(task, now=NOW)
+
+    assert result.admission.agent_id == FRONTEND_ID
+    assert [item.skill_id for item in result.skill_results] == [
+        "ilaios-ui-design",
+        "sf-frontend-engineering",
+    ]
+    ui_result = result.skill_results[0]
+    assert ui_result.output is not None
+    assert ui_result.output["component"] == "drawer"
+    assert ui_result.output_sha256 is not None
+    assert len(ui_result.output_sha256) == 64
+    assert result.status == "REVIEW_REQUIRED"
+    assert len(result.evidence_digest) == 64
+    assert repository_intelligence.calls == [
+        (tmp_path.resolve(), BASE_SHA),
+        (tmp_path.resolve(), BASE_SHA),
+    ]
+    assert runtime.calls == []
+
+
+def test_non_ui_frontend_work_does_not_invoke_ui_skill(tmp_path: Path) -> None:
+    executor, _, _ = _executor()
+    task = EngineeringAgentTask(
+        invocation=_invocation(
+            FRONTEND_ID,
+            prompt="Perform the bounded frontend maintenance task.",
+            capability="frontend.propose",
+        ),
+        grant=_grant(FRONTEND_ID),
+        repository=tmp_path.resolve(),
+        base_sha=BASE_SHA,
+        tenant_id="tenant-1",
+        policy_allowed=True,
+        steps=(_frontend_step("rename exported helper in frontend module"),),
+    )
+
+    result = executor.execute(task, now=NOW)
+    assert [item.skill_id for item in result.skill_results] == [
+        "sf-frontend-engineering"
+    ]
+
+
+def test_explicit_ui_step_must_precede_frontend_coding(tmp_path: Path) -> None:
+    executor, repository_intelligence, _ = _executor()
+    task = EngineeringAgentTask(
+        invocation=_invocation(
+            FRONTEND_ID,
+            prompt="Create the requested UI through governed skills.",
+            capability="frontend.propose",
+        ),
+        grant=_grant(FRONTEND_ID),
+        repository=tmp_path.resolve(),
+        base_sha=BASE_SHA,
+        tenant_id="tenant-1",
+        policy_allowed=True,
+        steps=(
+            _frontend_step("sagdan acilan ayarlar paneli olustur"),
+            AgentSkillStep(
+                skill_id="ilaios-ui-design",
+                payload={"intent": "sagdan acilan ayarlar paneli olustur"},
+                requested_capabilities=frozenset(
+                    {"repository_intelligence", "governance"}
+                ),
+            ),
+        ),
+    )
+    with pytest.raises(EngineeringAgentError, match="must precede"):
+        executor.execute(task, now=NOW)
+    assert repository_intelligence.calls == []
 
 
 def test_engineering_agent_cannot_cross_role_skill_boundary(tmp_path: Path) -> None:
