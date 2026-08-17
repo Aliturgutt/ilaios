@@ -51,7 +51,7 @@ void main() {
     expect(find.text('Çıktılar'), findsWidgets);
 
     await open('approvals');
-    expect(find.text('Yönetişim'), findsOneWidget);
+    expect(find.text('Onaylar'), findsWidgets);
 
     await open('evidence');
     expect(find.text('Kanıt ve Denetim'), findsOneWidget);
