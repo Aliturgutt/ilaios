@@ -3,8 +3,6 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping
 
-import pytest
-
 from src.video_automation.models import ProviderRequest
 from src.video_automation.openrouter_video_provider import (
     SEEDANCE_FREE_MODEL_ID,
@@ -152,8 +150,7 @@ def test_base_paid_model_does_not_satisfy_exact_free_alias() -> None:
     assert "test-secret" not in str(result)
 
 
-@pytest.mark.parametrize("price", ["0.05", 0.01, "0.1704948"])
-def test_nonzero_catalog_price_blocks_before_post(price: object) -> None:
+def _assert_nonzero_price_blocks(price: object) -> None:
     transport = _CatalogTransport(
         catalog_payload={
             "data": [_catalog_entry(pricing_skus={"per-video-second": price})]
@@ -170,20 +167,19 @@ def test_nonzero_catalog_price_blocks_before_post(price: object) -> None:
     assert transport.post_count == 0
 
 
-@pytest.mark.parametrize(
-    "pricing_skus",
-    [
-        {},
-        None,
-        [],
-        {"per-video-second": "unknown"},
-        {"per-video-second": None},
-        {"per-video-second": -1},
-    ],
-)
-def test_missing_or_malformed_catalog_pricing_blocks_before_post(
-    pricing_skus: object,
-) -> None:
+def test_nonzero_string_catalog_price_blocks_before_post() -> None:
+    _assert_nonzero_price_blocks("0.05")
+
+
+def test_nonzero_float_catalog_price_blocks_before_post() -> None:
+    _assert_nonzero_price_blocks(0.01)
+
+
+def test_observed_provider_cost_catalog_price_blocks_before_post() -> None:
+    _assert_nonzero_price_blocks("0.1704948")
+
+
+def _assert_malformed_pricing_blocks(pricing_skus: object) -> None:
     entry: dict[str, object] = {"id": SEEDANCE_FREE_MODEL_ID}
     if pricing_skus is not None:
         entry["pricing_skus"] = pricing_skus
@@ -197,6 +193,30 @@ def test_missing_or_malformed_catalog_pricing_blocks_before_post(
     assert not result.success
     assert result.error_code == "FREE_VIDEO_PRICING_UNKNOWN"
     assert transport.post_count == 0
+
+
+def test_empty_catalog_pricing_blocks_before_post() -> None:
+    _assert_malformed_pricing_blocks({})
+
+
+def test_missing_catalog_pricing_blocks_before_post() -> None:
+    _assert_malformed_pricing_blocks(None)
+
+
+def test_list_catalog_pricing_blocks_before_post() -> None:
+    _assert_malformed_pricing_blocks([])
+
+
+def test_unknown_catalog_pricing_blocks_before_post() -> None:
+    _assert_malformed_pricing_blocks({"per-video-second": "unknown"})
+
+
+def test_null_catalog_pricing_blocks_before_post() -> None:
+    _assert_malformed_pricing_blocks({"per-video-second": None})
+
+
+def test_negative_catalog_pricing_blocks_before_post() -> None:
+    _assert_malformed_pricing_blocks({"per-video-second": -1})
 
 
 def test_catalog_http_failure_blocks_before_post() -> None:
