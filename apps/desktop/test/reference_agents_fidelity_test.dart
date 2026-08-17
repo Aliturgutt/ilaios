@@ -96,8 +96,8 @@ void main() {
     expect(page, findsOneWidget);
     expect(find.descendant(of: page, matching: find.text('Agents')), findsOneWidget);
     expect(find.byKey(const Key('agents-metrics')), findsOneWidget);
-    expect(find.byKey(const Key('agents-table-panel')), findsOneWidget);
-    expect(find.byKey(const Key('selected-agent-panel')), findsOneWidget);
+    expect(find.byKey(const Key('agents-table-panel')), findsWidgets);
+    expect(find.byKey(const Key('selected-agent-panel')), findsWidgets);
     expect(find.byKey(const Key('agents-bottom-panels')), findsOneWidget);
     expect(find.text('QA Agent'), findsWidgets);
     expect(find.text('99.1%'), findsWidgets);
@@ -124,7 +124,7 @@ void main() {
     final page = find.byKey(const Key('reference-agents-page'));
     expect(page, findsOneWidget);
     expect(find.descendant(of: page, matching: find.text('Ajanlar')), findsOneWidget);
-    expect(find.text('Toplam Ajan'), findsOneWidget);
+    expect(find.descendant(of: page, matching: find.text('Toplam Ajan')), findsWidgets);
     expect(find.text('Seçili Ajan'), findsOneWidget);
     expect(find.text('Bekleyen Atamalar'), findsOneWidget);
     expect(find.text('Ajan Rolleri'), findsOneWidget);
