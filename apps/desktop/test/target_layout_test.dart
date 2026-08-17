@@ -30,6 +30,7 @@ void main() {
       expect(find.byKey(const Key('command-center-home')), findsOneWidget);
       expect(find.text('Main Control Center'), findsOneWidget);
       expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
+      expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
 
       if (size.width < 1280 || size.height < 800) {
         expect(
@@ -60,7 +61,7 @@ void main() {
     expect(find.byKey(const Key('command-center-alerts')), findsOneWidget);
   });
 
-  testWidgets('shell renders the approved orbit-mark ILAIOS lockup', (
+  testWidgets('shell renders the canonical horizontal dark brand master', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -70,7 +71,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
-    expect(find.text('ILAIOS'), findsWidgets);
+    expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
   });
 
   testWidgets('target dashboard keeps command center under 125 and 150 percent text scaling', (
@@ -94,6 +95,7 @@ void main() {
       );
       expect(find.byKey(const Key('command-center-home')), findsOneWidget);
       expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
+      expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
     }
   });
 
@@ -122,6 +124,7 @@ void main() {
       expect(find.text('Ana Kontrol Merkezi'), findsOneWidget);
       expect(find.byKey(const Key('command-center-home')), findsOneWidget);
       expect(find.text('Aktif İş Akışı'), findsNothing);
+      expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
     }
   });
 }
