@@ -45,9 +45,9 @@ void main() {
       expect(find.text(role), findsOneWidget);
     }
 
-    expect(find.text('Live Code'), findsOneWidget);
-    expect(find.text('Terminal'), findsOneWidget);
-    expect(find.text('Browser'), findsOneWidget);
+    expect(find.text('Live Code'), findsWidgets);
+    expect(find.text('Terminal'), findsWidgets);
+    expect(find.text('Browser'), findsWidgets);
     expect(find.text('Files'), findsOneWidget);
     expect(find.text('Logs'), findsOneWidget);
     expect(find.text('Events'), findsWidgets);
@@ -84,7 +84,8 @@ void main() {
     expect(find.text('Teslimat'), findsOneWidget);
     expect(find.text('Genel İlerleme'), findsOneWidget);
     expect(find.text('CANLI YÜRÜTME'), findsOneWidget);
-    expect(find.text('Canlı Kod'), findsOneWidget);
+    expect(find.text('CANLI ÇALIŞMA ALANI'), findsOneWidget);
+    expect(find.text('Canlı Kod'), findsWidgets);
     expect(find.text('DURUM'), findsOneWidget);
     expect(find.text('MALİYET VE KULLANIM'), findsOneWidget);
     expect(find.text('ONAYLAR'), findsOneWidget);
