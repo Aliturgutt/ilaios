@@ -1,0 +1,86 @@
+name: Diagnostic Video Free Catalog
+
+on:
+  push:
+    branches:
+      - diag/video-free-catalog-20260817
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-24.04
+    environment: Production
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+    steps:
+      - name: Inspect authoritative video catalog without generation
+        shell: python
+        run: |
+          import json
+          import os
+          from decimal import Decimal, InvalidOperation
+          from urllib.request import Request, urlopen
+
+          key = os.environ.get('OPENROUTER_API_KEY', '').strip()
+          if not key:
+              raise SystemExit('OPENROUTER_API_KEY is unavailable')
+          request = Request(
+              'https://openrouter.ai/api/v1/videos/models',
+              headers={'Authorization': f'Bearer {key}'},
+              method='GET',
+          )
+          with urlopen(request, timeout=60) as response:
+              payload = json.loads(response.read().decode('utf-8'))
+          models = payload.get('data')
+          if not isinstance(models, list):
+              raise SystemExit('catalog data is not a list')
+
+          requested = {
+              'bytedance/seedance-2.0-fast:free',
+              'bytedance/seedance-2.0:free',
+              'bytedance/seedance-1-5-pro:free',
+              'bytedance/seedance-2.0-fast',
+              'bytedance/seedance-2.0',
+              'bytedance/seedance-1-5-pro',
+          }
+          selected = []
+          zero_models = []
+          for model in models:
+              if not isinstance(model, dict):
+                  continue
+              model_id = model.get('id')
+              pricing = model.get('pricing_skus')
+              if model_id in requested:
+                  selected.append({'id': model_id, 'pricing_skus': pricing})
+              if not isinstance(model_id, str) or not isinstance(pricing, dict) or not pricing:
+                  continue
+              parsed = []
+              valid = True
+              for value in pricing.values():
+                  try:
+                      amount = Decimal(str(value))
+                  except (InvalidOperation, ValueError):
+                      valid = False
+                      break
+                  if not amount.is_finite() or amount < 0:
+                      valid = False
+                      break
+                  parsed.append(amount)
+              if valid and parsed and all(amount == 0 for amount in parsed):
+                  zero_models.append({'id': model_id, 'pricing_skus': pricing})
+
+          print('CATALOG_MODEL_COUNT=' + str(len(models)))
+          print('REQUESTED_MODEL_RECORDS=' + json.dumps(selected, sort_keys=True))
+          print('ZERO_PRICE_VIDEO_MODELS=' + json.dumps(zero_models, sort_keys=True))
+          print('ZERO_PRICE_VIDEO_MODEL_COUNT=' + str(len(zero_models)))
+
+          summary = os.environ.get('GITHUB_STEP_SUMMARY')
+          if summary:
+              with open(summary, 'a', encoding='utf-8') as handle:
+                  handle.write('## OpenRouter video catalog diagnostic\n\n')
+                  handle.write(f'- Catalog model count: `{len(models)}`\n')
+                  handle.write(f'- Requested aliases/base records: `{json.dumps(selected, sort_keys=True)}`\n')
+                  handle.write(f'- Explicit zero-price models: `{json.dumps(zero_models, sort_keys=True)}`\n')
+                  handle.write('- Generation POST performed: `FALSE`\n')
