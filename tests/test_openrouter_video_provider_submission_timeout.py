@@ -17,7 +17,8 @@ from src.video_automation.openrouter_video_provider import (
 class _SubmissionTransport(OpenRouterTransport):
     def __init__(self, failure: Exception | None = None) -> None:
         self.failure = failure
-        self.timeouts: list[float] = []
+        self.post_timeouts: list[float] = []
+        self.catalog_timeouts: list[float] = []
 
     def post_json(
         self,
@@ -28,7 +29,7 @@ class _SubmissionTransport(OpenRouterTransport):
         timeout_seconds: float,
     ) -> OpenRouterJsonResponse:
         del url, headers, body
-        self.timeouts.append(timeout_seconds)
+        self.post_timeouts.append(timeout_seconds)
         if self.failure is not None:
             raise self.failure
         return OpenRouterJsonResponse(
@@ -43,7 +44,20 @@ class _SubmissionTransport(OpenRouterTransport):
         headers: Mapping[str, str],
         timeout_seconds: float,
     ) -> OpenRouterJsonResponse:
-        del url, headers, timeout_seconds
+        del headers
+        if url.endswith("/videos/models"):
+            self.catalog_timeouts.append(timeout_seconds)
+            return OpenRouterJsonResponse(
+                200,
+                {
+                    "data": [
+                        {
+                            "id": SEEDANCE_FREE_MODEL_ID,
+                            "pricing_skus": {"per-video-second": "0"},
+                        }
+                    ]
+                },
+            )
         raise AssertionError("submission timeout test must not poll")
 
     def get_bytes(
@@ -97,7 +111,8 @@ def test_default_submission_timeout_allows_slow_async_acknowledgement() -> None:
     ).execute(_request())
 
     assert result.success
-    assert transport.timeouts == [120.0]
+    assert transport.catalog_timeouts == [120.0]
+    assert transport.post_timeouts == [120.0]
 
 
 def test_explicit_submission_timeout_is_preserved() -> None:
@@ -110,7 +125,8 @@ def test_explicit_submission_timeout_is_preserved() -> None:
     ).execute(_request())
 
     assert result.success
-    assert transport.timeouts == [75.0]
+    assert transport.catalog_timeouts == [75.0]
+    assert transport.post_timeouts == [75.0]
 
 
 def test_direct_read_timeout_fails_closed_without_automatic_resubmission() -> None:
@@ -126,7 +142,8 @@ def test_direct_read_timeout_fails_closed_without_automatic_resubmission() -> No
     assert "120s" in (result.error_message or "")
     assert "automatic resubmission is forbidden" in (result.error_message or "")
     assert "test-secret" not in str(result)
-    assert transport.timeouts == [120.0]
+    assert transport.catalog_timeouts == [120.0]
+    assert transport.post_timeouts == [120.0]
 
 
 def test_wrapped_transport_timeout_uses_same_fail_closed_diagnostic() -> None:
@@ -145,4 +162,5 @@ def test_wrapped_transport_timeout_uses_same_fail_closed_diagnostic() -> None:
     assert result.error_code == "submission_timeout_uncertain"
     assert "automatic resubmission is forbidden" in (result.error_message or "")
     assert "test-secret" not in str(result)
-    assert transport.timeouts == [120.0]
+    assert transport.catalog_timeouts == [120.0]
+    assert transport.post_timeouts == [120.0]
