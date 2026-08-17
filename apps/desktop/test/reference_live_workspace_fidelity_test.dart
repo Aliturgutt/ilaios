@@ -112,7 +112,10 @@ void main() {
     expect(find.byKey(const Key('live-workspace-review-panel')), findsOneWidget);
     expect(find.byKey(const Key('live-workspace-open-files')), findsOneWidget);
     expect(find.byKey(const Key('live-workspace-evidence')), findsOneWidget);
-    expect(find.text('Live Workspace'), findsOneWidget);
+    expect(
+      find.descendant(of: page, matching: find.text('Live Workspace')),
+      findsOneWidget,
+    );
     expect(find.text('Runtime Project'), findsWidgets);
     expect(find.text('home.tsx'), findsWidgets);
     expect(tester.takeException(), isNull);
