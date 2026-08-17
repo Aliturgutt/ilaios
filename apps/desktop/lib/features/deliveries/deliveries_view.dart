@@ -857,7 +857,7 @@ class _TableHeader extends StatelessWidget {
             _HeaderCell(_copy(context, 'Durum', 'Status'), flex: 13),
             _HeaderCell(_copy(context, 'Oluşturulma Tarihi', 'Created'), flex: 15),
             _HeaderCell(_copy(context, 'Boyut', 'Size'), flex: 9),
-            const SizedBox(width: 26),
+            const SizedBox(width: 58),
           ],
         ),
       );
@@ -939,7 +939,7 @@ class _OutputRow extends StatelessWidget {
                           style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700),
                         ),
                         Text(
-                          '${_copy(context, 'Yürütme', 'Execution')} ${record.executionId}',
+                          record.action,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 7.5),
@@ -978,40 +978,40 @@ class _OutputRow extends StatelessWidget {
               child: Text(size, style: const TextStyle(fontSize: 8.5)),
             ),
             SizedBox(
-              width: 26,
-              child: PopupMenuButton<String>(
-                tooltip: _copy(context, 'Çıktı işlemleri', 'Output actions'),
-                padding: EdgeInsets.zero,
-                iconSize: 17,
-                enabled: actionsEnabled,
-                onSelected: (value) {
-                  if (value == 'save' && saveEnabled) onSave();
-                  if (value == 'delete') onDelete();
-                },
-                itemBuilder: (context) => [
-                  PopupMenuItem<String>(
-                    value: 'save',
-                    enabled: saveEnabled,
-                    child: Row(
-                      children: [
-                        const Icon(Icons.download_outlined, size: 17),
-                        const SizedBox(width: 8),
-                        Text(
-                          saving
-                              ? _surface(context, 'deliveries.saving')
-                              : _surface(context, 'deliveries.save'),
-                        ),
-                      ],
+              width: 58,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  SizedBox(
+                    width: 27,
+                    height: 30,
+                    child: IconButton(
+                      key: ValueKey('save-artifact-${record.sequence}'),
+                      tooltip: _surface(context, 'deliveries.save'),
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 15,
+                      onPressed: actionsEnabled && saveEnabled ? onSave : null,
+                      icon: saving
+                          ? const SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(strokeWidth: 1.5),
+                            )
+                          : const Icon(Icons.download_outlined),
                     ),
                   ),
-                  PopupMenuItem<String>(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        const Icon(Icons.delete_outline, size: 17, color: IlaiosTheme.danger),
-                        const SizedBox(width: 8),
-                        Text(_copy(context, 'Yerel kopyayı sil', 'Delete local copy')),
-                      ],
+                  SizedBox(
+                    width: 27,
+                    height: 30,
+                    child: IconButton(
+                      key: ValueKey('delete-local-artifact-${record.sequence}'),
+                      tooltip: _copy(context, 'Yerel kopyayı sil', 'Delete local copy'),
+                      padding: EdgeInsets.zero,
+                      visualDensity: VisualDensity.compact,
+                      iconSize: 15,
+                      onPressed: actionsEnabled ? onDelete : null,
+                      icon: const Icon(Icons.more_vert),
                     ),
                   ),
                 ],
