@@ -786,7 +786,7 @@ class _OutputsTable extends StatelessWidget {
                       child: ListView.separated(
                         padding: EdgeInsets.zero,
                         itemCount: records.length,
-                        separatorBuilder: (_, __) => Divider(
+                        separatorBuilder: (_, _) => Divider(
                           height: 1,
                           color: Theme.of(context)
                               .colorScheme
