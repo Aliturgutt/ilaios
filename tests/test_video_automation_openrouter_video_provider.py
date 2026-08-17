@@ -66,6 +66,18 @@ class _Transport(OpenRouterTransport):
         timeout_seconds: float,
     ) -> OpenRouterJsonResponse:
         self.get_calls.append((url, headers, timeout_seconds))
+        if url.endswith("/videos/models"):
+            return OpenRouterJsonResponse(
+                200,
+                {
+                    "data": [
+                        {
+                            "id": SEEDANCE_FREE_MODEL_ID,
+                            "pricing_skus": {"per-video-second": "0"},
+                        }
+                    ]
+                },
+            )
         return self.get_response
 
     def get_bytes(

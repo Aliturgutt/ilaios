@@ -14,6 +14,15 @@ const _evidence = EvidenceRecord(
   recordHash: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
 );
 
+const _finishedProductEvidence = EvidenceRecord(
+  sequence: 2,
+  executionId: 'exec-2',
+  artifactDigest: 'cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc',
+  action: 'video.desktop.finished_product',
+  previousHash: 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+  recordHash: 'dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd',
+);
+
 void main() {
   testWidgets('disconnected goals surface disables one-prompt submission', (
     WidgetTester tester,
@@ -204,7 +213,7 @@ void main() {
     expect(find.textContaining('content_base64'), findsNothing);
   });
 
-  testWidgets('artifacts save only verified evidence artifacts', (
+  testWidgets('deliveries save only verified finished products', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
@@ -224,7 +233,7 @@ void main() {
         schedulerState: <String, Object?>{},
         grantsState: <String, Object?>{},
         governanceState: <String, Object?>{},
-        evidenceRecords: <EvidenceRecord>[_evidence],
+        evidenceRecords: <EvidenceRecord>[_evidence, _finishedProductEvidence],
         liveEvents: <Map<String, Object?>>[],
       ),
       operationalStatus: 'Operational APIs connected',
@@ -235,9 +244,11 @@ void main() {
     ));
     await tester.tap(find.byKey(const ValueKey('nav-artifacts')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('save-artifact-1')));
+    expect(find.text('video.local.rendered'), findsNothing);
+    expect(find.text('video.desktop.finished_product'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('save-artifact-2')));
     await tester.pumpAndSettle();
-    expect(saved, _evidence);
+    expect(saved, _finishedProductEvidence);
     expect(find.byKey(const Key('delivery-message')), findsOneWidget);
   });
 

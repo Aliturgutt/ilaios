@@ -28,7 +28,8 @@ void main() {
     const token = 'placeholder-desktop-e2e-token';
     final environment = Map<String, String>.from(Platform.environment)
       ..['ILAIOS_CONTROL_PLANE_TOKEN'] = token
-      ..remove('ILAIOS_DESKTOP_OIDC_PROVIDERS_JSON');
+      ..remove('ILAIOS_DESKTOP_OIDC_PROVIDERS_JSON')
+      ..remove('OPENROUTER_API_KEY');
 
     final process = await Process.start(
       sidecar.path,
@@ -115,7 +116,11 @@ void main() {
     expect(identityHost, isA<String>());
     expect(identityPort, isA<int>());
     expect(ready['account_sign_in_configured'], isTrue);
-    expect(ready['video_finished_product_configured'], isTrue);
+    // This generic packaging gate deliberately strips provider credentials.
+    // Readiness must therefore fail closed instead of pretending cinematic
+    // generation is configured. Credentialed provider proof runs separately.
+    expect(ready['video_finished_product_configured'], isFalse);
+    expect(ready['video_provider'], 'unavailable');
     expect(ready['web_finished_product_configured'], isTrue);
     expect(ready['software_finished_product_configured'], isTrue);
     expect(ready['execution_recovery_configured'], isTrue);
