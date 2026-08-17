@@ -14,6 +14,18 @@ from .routing import (
     route_provider,
 )
 from .scheduler import Lease, SchedulingError, WorkerProfile, WorkerScheduler
+from .skill_runtime import (
+    NativeSkill,
+    NativeSkillRegistry,
+    NativeSkillRuntime,
+    SkillInvocation,
+    SkillManifest,
+    SkillMatch,
+    SkillRequest,
+    SkillRoute,
+    SkillRuntimeError,
+    normalize_prompt,
+)
 
 __all__ = [
     "AgentProfile",
@@ -25,13 +37,23 @@ __all__ = [
     "GrantError",
     "GrantPolicy",
     "Lease",
+    "NativeSkill",
+    "NativeSkillRegistry",
+    "NativeSkillRuntime",
     "ProviderProfile",
     "RouteDecision",
     "RuntimeError",
     "SchedulingError",
     "SkillArtifact",
+    "SkillInvocation",
+    "SkillManifest",
+    "SkillMatch",
     "SkillRegistry",
+    "SkillRequest",
+    "SkillRoute",
+    "SkillRuntimeError",
     "WorkerProfile",
     "WorkerScheduler",
+    "normalize_prompt",
     "route_provider",
 ]
