@@ -2,8 +2,10 @@
 
 This module implements provider-neutral submit, poll, and generated-asset
 retrieval against OpenRouter's asynchronous video API. The production safety
-policy is intentionally fail-closed: only model IDs ending in ``:free`` may be
-submitted. Paid model IDs are rejected before any network side effect.
+policy is intentionally fail-closed: an explicit ``:free`` model ID is only
+eligible after the dedicated OpenRouter video catalog independently proves that
+that exact model currently has explicit zero-valued pricing SKUs. Terminal
+provider cost is verified again after generation before any result can pass.
 """
 
 from __future__ import annotations
@@ -29,6 +31,7 @@ _DEFAULT_PROVIDER_NAME = "openrouter-video-free"
 _DEFAULT_RESOLUTION = "480p"
 _DEFAULT_SUBMISSION_TIMEOUT_SECONDS = 120.0
 _FREE_SUFFIX = ":free"
+_VIDEO_CATALOG_PATH = "/videos/models"
 SEEDANCE_FREE_MODEL_ID = "bytedance/seedance-2.0-fast:free"
 
 
@@ -168,7 +171,7 @@ class UrllibOpenRouterTransport:
 
 
 class OpenRouterVideoGenerationProvider:
-    """Submit one free-only Video Factory request to OpenRouter."""
+    """Submit one catalog-proven, zero-cost OpenRouter video job."""
 
     def __init__(
         self,
@@ -211,12 +214,32 @@ class OpenRouterVideoGenerationProvider:
         return self._capabilities
 
     def execute(self, request: ProviderRequest) -> ProviderResult:
-        """Submit exactly one asynchronous free OpenRouter video job."""
+        """Submit exactly one async job only after authoritative zero-cost preflight."""
 
         try:
             self._validate_request(request)
             model_id, item = _parse_single_item_payload(request.payload)
             _require_free_model_id(model_id)
+        except OpenRouterVideoProviderError as exc:
+            return _failure_result(request, "invalid_request", str(exc))
+        except Exception as exc:  # noqa: BLE001
+            message = str(exc).strip() or exc.__class__.__name__
+            return _failure_result(request, "invalid_request", message)
+
+        try:
+            catalog_evidence = self._catalog_zero_cost_evidence(model_id)
+        except OpenRouterVideoProviderError as exc:
+            code, message = _coded_error(str(exc), "FREE_VIDEO_CATALOG_UNAVAILABLE")
+            return _failure_result(request, code, message)
+        except Exception as exc:  # noqa: BLE001
+            message = str(exc).strip() or exc.__class__.__name__
+            return _failure_result(
+                request,
+                "FREE_VIDEO_CATALOG_UNAVAILABLE",
+                f"OpenRouter video catalog preflight failed: {message}",
+            )
+
+        try:
             body = _build_openrouter_request_body(
                 model_id,
                 item,
@@ -274,6 +297,11 @@ class OpenRouterVideoGenerationProvider:
             "submission_status": _string_or_default(
                 response.payload.get("status"), "accepted"
             ),
+            "catalog_zero_cost": True,
+            "catalog_zero_cost_evidence_json": json.dumps(
+                dict(catalog_evidence), sort_keys=True, separators=(",", ":")
+            ),
+            "catalog_zero_cost_evidence_source": "openrouter_videos_models",
         }
         generation_id = response.payload.get("generation_id")
         if isinstance(generation_id, str) and generation_id.strip():
@@ -284,6 +312,78 @@ class OpenRouterVideoGenerationProvider:
             success=True,
             external_id=job_id,
             metadata=metadata,
+        )
+
+    def _catalog_zero_cost_evidence(self, model_id: str) -> Mapping[str, object]:
+        """Prove exact video-model zero pricing before any generation POST."""
+
+        try:
+            response = self._transport.get_json(
+                f"{self._base_url}{_VIDEO_CATALOG_PATH}",
+                headers=_auth_headers(self._api_key),
+                timeout_seconds=self._timeout_seconds,
+            )
+        except Exception as exc:  # noqa: BLE001
+            message = str(exc).strip() or exc.__class__.__name__
+            raise OpenRouterVideoProviderError(
+                "FREE_VIDEO_CATALOG_UNAVAILABLE: OpenRouter video catalog lookup failed: "
+                f"{message}"
+            ) from exc
+        if not 200 <= response.status_code < 300:
+            raise OpenRouterVideoProviderError(
+                "FREE_VIDEO_CATALOG_UNAVAILABLE: OpenRouter video catalog returned "
+                f"HTTP {response.status_code}"
+            )
+        data = response.payload.get("data")
+        if not isinstance(data, list):
+            raise OpenRouterVideoProviderError(
+                "FREE_VIDEO_CATALOG_UNAVAILABLE: OpenRouter video catalog did not contain "
+                "a data list"
+            )
+
+        exact_model: Mapping[str, object] | None = None
+        for candidate in data:
+            if not isinstance(candidate, Mapping):
+                continue
+            candidate_id = candidate.get("id")
+            if isinstance(candidate_id, str) and candidate_id == model_id:
+                exact_model = cast(Mapping[str, object], candidate)
+                break
+        if exact_model is None:
+            raise OpenRouterVideoProviderError(
+                "FREE_VIDEO_MODEL_UNAVAILABLE: exact requested model is absent from the "
+                f"authoritative /videos/models catalog: {model_id}"
+            )
+
+        pricing = exact_model.get("pricing_skus")
+        if not isinstance(pricing, Mapping) or not pricing:
+            raise OpenRouterVideoProviderError(
+                "FREE_VIDEO_PRICING_UNKNOWN: exact video model does not expose non-empty "
+                "pricing_skus"
+            )
+        normalized_pricing: dict[str, object] = {}
+        for raw_name, raw_price in pricing.items():
+            sku_name = str(raw_name)
+            price = _decimal_cost(raw_price)
+            if price is None:
+                raise OpenRouterVideoProviderError(
+                    "FREE_VIDEO_PRICING_UNKNOWN: video catalog pricing_skus contains a "
+                    f"non-numeric or invalid price for {sku_name}"
+                )
+            normalized_pricing[sku_name] = _format_decimal(price)
+            if price != Decimal("0"):
+                raise OpenRouterVideoProviderError(
+                    "FREE_VIDEO_PRICING_NONZERO: authoritative video catalog price for "
+                    f"{model_id} / {sku_name} is {_format_decimal(price)} USD"
+                )
+
+        return MappingProxyType(
+            {
+                "source": "openrouter_videos_models",
+                "model_id": model_id,
+                "catalog_zero_cost": True,
+                "pricing_skus": normalized_pricing,
+            }
         )
 
     def _validate_request(self, request: ProviderRequest) -> None:
@@ -692,6 +792,13 @@ def _decimal_cost(value: object) -> Decimal | None:
     return cost
 
 
+def _format_decimal(value: Decimal) -> str:
+    normalized = format(value, "f")
+    if "." in normalized:
+        normalized = normalized.rstrip("0").rstrip(".")
+    return normalized or "0"
+
+
 def _sanitize_payload(value: object) -> object:
     if isinstance(value, Mapping):
         sanitized: dict[str, object] = {}
@@ -723,6 +830,13 @@ def _sensitive_key(key: str) -> bool:
             "password",
         )
     )
+
+
+def _coded_error(message: str, default_code: str) -> tuple[str, str]:
+    code, separator, detail = message.partition(":")
+    if separator and code and code.replace("_", "").isalnum() and code.upper() == code:
+        return code, detail.strip() or message
+    return default_code, message
 
 
 def _normalize_error(response: OpenRouterJsonResponse) -> tuple[str, str]:
