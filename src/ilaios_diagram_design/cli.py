@@ -55,7 +55,7 @@ def _integer(value: object, *, name: str, default: int) -> int:
 def _list(value: object, *, name: str) -> list[Any]:
     if not isinstance(value, list):
         raise DiagramInputError(f"{name} must be an array")
-    return cast(list[Any], value)
+    return value
 
 
 def load_spec(path: Path) -> DiagramSpec:
