@@ -15,6 +15,10 @@ from .managed_credit_store import ManagedCreditLedgerStore, ProviderSideEffectLe
 from .managed_credits import ManagedCreditAccount, ManagedCreditError, ProviderCostQuote
 from .managed_provider_execution import ManagedPaidVideoExecutionCoordinator
 from .models import ProviderRequest, ProviderResult
+from .openrouter_frame_references import (
+    FrameReferenceRoutingError,
+    validate_bound_frame_fields,
+)
 from .openrouter_managed_video_provider import (
     OPENROUTER_MANAGED_PROVIDER_NAME,
     OpenRouterManagedVideoGenerationProvider,
@@ -91,8 +95,6 @@ class OpenRouterManagedVideoGateway:
         except CommercialAdmissionError as exc:
             raise OpenRouterManagedVideoGatewayError(str(exc)) from exc
 
-        # A paid request identity is single-use. Even a deterministic FAILED
-        # provider result requires a fresh governed retry request/authorization.
         side_effect_ledger = ProviderSideEffectLedger(self._credit_store)
         try:
             side_effect_ledger.get(request.request_id)
@@ -134,7 +136,6 @@ class OpenRouterManagedVideoGateway:
             raise OpenRouterManagedVideoGatewayError(
                 "live pricing/capability catalog changed after quote; requote required"
             )
-        # Re-check TTL after live catalog I/O so an expiring quote cannot race POST.
         now_epoch_s = int(self._clock())
         try:
             commercial_authority.require_valid(now_epoch_s)
@@ -170,11 +171,8 @@ class OpenRouterManagedVideoGateway:
                 routing_decision_id=routing_decision_id,
             )
         except Exception:
-            # No provider submission was prepared; return seller-side quote budget.
             self._commercial_store.release_request(request.request_id)
             raise
-        # From this point onward transport ambiguity may represent real spend.
-        # Keep the commercial reservation until terminal provider cost reconciliation.
         result = coordinator.execute(provider=provider, plan=plan)
         if result.success:
             if result.external_id is None:
@@ -247,6 +245,10 @@ def _validate_capabilities(request: ProviderRequest, model: OpenRouterVideoModel
             "items_json must contain exactly one object"
         )
     item = cast(Mapping[str, object], parsed[0])
+    try:
+        validate_bound_frame_fields(item=item, model=model)
+    except FrameReferenceRoutingError as exc:
+        raise OpenRouterManagedVideoGatewayError(str(exc)) from exc
     duration = item.get("duration_seconds")
     if isinstance(duration, bool) or not isinstance(duration, (int, float)):
         raise OpenRouterManagedVideoGatewayError("duration_seconds must be numeric")
