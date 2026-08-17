@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
+import 'package:ilaios_desktop/control_plane/evidence_record.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
 import 'package:ilaios_desktop/main.dart';
 
@@ -67,7 +68,7 @@ const _snapshot = OperationalSnapshot(
       },
     ],
   },
-  evidenceRecords: <dynamic>[],
+  evidenceRecords: <EvidenceRecord>[],
   liveEvents: <Map<String, Object?>>[
     <String, Object?>{
       'agent_id': 'agent-test-01',
