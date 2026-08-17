@@ -8,6 +8,7 @@ from src.video_automation.commercial_admission import (
     CommercialAdmissionEngine,
     CommercialAdmissionError,
     CommercialPricingPolicy,
+    LockedVideoQuote,
     PaymentAuthorization,
     ProviderPricingSnapshot,
     TaxProfile,
@@ -28,7 +29,7 @@ def _pricing(*, fingerprint: str = "catalog-price-v1") -> ProviderPricingSnapsho
     )
 
 
-def _setup():
+def _setup() -> tuple[CommercialAdmissionEngine, LockedVideoQuote]:
     engine = CommercialAdmissionEngine(CommercialPricingPolicy())
     quote = engine.create_locked_quote(
         quote_id="quote-001",
@@ -59,7 +60,7 @@ def _provider_quote(*, maximum: int = 7_500_000) -> ProviderCostQuote:
     )
 
 
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # type: ignore[misc]
     ("payment", "message"),
     (
         (_payment(status="PENDING"), "not secured"),
