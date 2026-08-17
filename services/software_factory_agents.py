@@ -178,7 +178,7 @@ class EngineeringAgentExecutor:
         ui_spec_sha256: str | None = None
         ui_source_intent: str | None = None
         for step in steps:
-            payload = step.payload
+            payload: dict[str, object] = dict(step.payload)
             if step.skill_id == "sf-frontend-engineering":
                 intent = payload.get("intent")
                 ui_required = isinstance(intent, str) and is_ui_design_intent(intent)
@@ -195,7 +195,6 @@ class EngineeringAgentExecutor:
                         raise EngineeringAgentError(
                             "UI design result does not match frontend intent"
                         )
-                    payload = dict(payload)
                     payload["ui_design_spec"] = dict(ui_spec)
                     payload["ui_design_spec_sha256"] = ui_spec_sha256
 
