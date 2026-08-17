@@ -20,6 +20,15 @@ from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import NoReturn
 
+from .commercial_admission import (
+    CommercialAdmissionEngine,
+    CommercialPricingPolicy,
+    PaymentAuthorization,
+    ProviderPricingSnapshot,
+    TaxProfile,
+    VideoCostEnvelope,
+)
+from .commercial_store import CommercialAuthorityStore
 from .generation_job_polling import ProviderJobStatus
 from .managed_credit_policy import managed_credit_production_policy
 from .managed_credit_store import ManagedCreditLedgerStore
@@ -324,16 +333,78 @@ def run_certification(
         max_daily_cost=float(proof_shape.max_total_cost_usd),
         max_retry_cost=0.0,
     )
+
+    commercial_now = snapshot.observed_at_epoch_s
+    commercial_pricing = ProviderPricingSnapshot(
+        provider_name=OPENROUTER_MANAGED_PROVIDER_NAME,
+        model_id=proof_shape.model_id,
+        pricing_fingerprint=snapshot.catalog_digest,
+        observed_at_epoch_s=commercial_now,
+        expires_at_epoch_s=commercial_now + 300,
+        estimated_job_cost_microusd=price.estimated_total_microusd,
+        max_job_cost_microusd=price.estimated_total_microusd,
+    )
+    commercial_engine = CommercialAdmissionEngine(CommercialPricingPolicy())
+    locked_quote = commercial_engine.create_locked_quote(
+        quote_id=f"video-provider-cert-quote-{run_id}-{run_attempt}",
+        now_epoch_s=commercial_now,
+        tax_profile=TaxProfile(
+            "INTERNAL_CERTIFICATION_NO_SALE",
+            "INTERNAL",
+            0,
+        ),
+        pricing=commercial_pricing,
+        costs=VideoCostEnvelope(
+            provider_generation_microusd=price.estimated_total_microusd,
+        ),
+        duration_seconds=proof_shape.duration_seconds,
+        aggregate_generated_seconds=proof_shape.duration_seconds,
+        resolution=proof_shape.resolution,
+        shot_count=1,
+    )
+    payment = PaymentAuthorization(
+        payment_authorization_id=(
+            f"internal-certification-budget-{run_id}-{run_attempt}"
+        ),
+        quote_id=locked_quote.quote_id,
+        secured_amount_microusd=locked_quote.gross_customer_price_microusd,
+        secured_at_epoch_s=commercial_now,
+    )
+    commercial_authority = commercial_engine.authorize_paid_dispatch(
+        now_epoch_s=commercial_now,
+        quote=locked_quote,
+        payment=payment,
+        current_pricing=commercial_pricing,
+        provider_quote=quote,
+    )
+    commercial_store = CommercialAuthorityStore(
+        proof_dir / "commercial-authority"
+    )
+    commercial_store.record_quote(locked_quote)
+    commercial_store.record_payment(payment)
+    commercial_store.record_authority(commercial_authority)
+
     gateway = OpenRouterManagedVideoGateway(
         api_key=api_key,
         policy=policy,
         credit_store=credit_store,
+        commercial_store=commercial_store,
         catalog=catalog,
         transport=transport,
     )
     receipt["request_id"] = request.request_id
     receipt["routing_decision_id"] = routing_decision_id
     receipt["quoted_cost_microusd"] = price.estimated_total_microusd
+    receipt["commercial_admission"] = {
+        "funding_mode": "INTERNAL_CERTIFICATION_BUDGET",
+        "quote_id": locked_quote.quote_id,
+        "quote_sha256": locked_quote.quote_sha256,
+        "authority_sha256": commercial_authority.authority_sha256,
+        "tax_profile_id": locked_quote.tax_profile_id,
+        "provider_cost_ceiling_microusd": (
+            commercial_authority.provider_cost_ceiling_microusd
+        ),
+    }
     receipt["submitted_at"] = _utc_now()
     _persist(receipt_path, receipt)
 
@@ -342,6 +413,7 @@ def run_certification(
         request=request,
         quote=quote,
         routing_decision_id=routing_decision_id,
+        commercial_authority=commercial_authority,
     )
     receipt["provider_result"] = {
         "success": result.success,
