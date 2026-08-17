@@ -60,24 +60,22 @@ def _provider_quote(*, maximum: int = 7_500_000) -> ProviderCostQuote:
     )
 
 
-@pytest.mark.parametrize(
-    ("payment", "message"),
-    (
+def test_payment_gate_fails_closed() -> None:
+    engine, quote = _setup()
+    cases: tuple[tuple[PaymentAuthorization, str], ...] = (
         (_payment(status="PENDING"), "not secured"),
         (_payment(amount=16_499_999), "does not cover"),
         (replace(_payment(), quote_id="other"), "different quote"),
-    ),
-)
-def test_payment_gate_fails_closed(payment: PaymentAuthorization, message: str) -> None:
-    engine, quote = _setup()
-    with pytest.raises(CommercialAdmissionError, match=message):
-        engine.authorize_paid_dispatch(
-            now_epoch_s=1_010,
-            quote=quote,
-            payment=payment,
-            current_pricing=_pricing(),
-            provider_quote=_provider_quote(),
-        )
+    )
+    for payment, message in cases:
+        with pytest.raises(CommercialAdmissionError, match=message):
+            engine.authorize_paid_dispatch(
+                now_epoch_s=1_010,
+                quote=quote,
+                payment=payment,
+                current_pricing=_pricing(),
+                provider_quote=_provider_quote(),
+            )
 
 
 def test_changed_pricing_requires_requote_before_paid_dispatch() -> None:
