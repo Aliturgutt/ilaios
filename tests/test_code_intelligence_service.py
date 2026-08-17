@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import services.code_intelligence as code_intelligence_service
 from services.code_intelligence import (
     CodeIntelligenceAdmissionError,
     ILAIOSRepositoryIntelligence,
@@ -58,6 +59,22 @@ def _repository(tmp_path: Path) -> tuple[Path, str]:
         "fixture",
     )
     return repository, _git(repository, "rev-parse", "HEAD")
+
+
+def _commit_all(repository: Path, message: str) -> str:
+    _git(repository, "add", "-A")
+    _git(
+        repository,
+        "-c",
+        "user.name=ILAIOS CI",
+        "-c",
+        "user.email=ci@ilaios.invalid",
+        "commit",
+        "-q",
+        "-m",
+        message,
+    )
+    return _git(repository, "rev-parse", "HEAD")
 
 
 def test_adapter_binds_evidence_to_exact_repository_revision(tmp_path: Path) -> None:
@@ -124,6 +141,43 @@ def test_adapter_rejects_ignored_supported_source(tmp_path: Path) -> None:
         CodeIntelligenceAdmissionError,
         match="not tracked by requested revision",
     ):
+        ILAIOSRepositoryIntelligence().inspect(repository, revision)
+
+
+def test_adapter_preserves_tracked_paths_with_leading_whitespace(tmp_path: Path) -> None:
+    repository, _revision = _repository(tmp_path)
+    (repository / " spaced.py").write_text("value = 1\n", encoding="utf-8")
+    revision = _commit_all(repository, "whitespace path")
+
+    evidence = ILAIOSRepositoryIntelligence().inspect(repository, revision)
+
+    assert evidence["repository_revision"] == revision
+
+
+def test_adapter_rejects_symbolic_link_repository_root(tmp_path: Path) -> None:
+    repository, revision = _repository(tmp_path)
+    link = tmp_path / "repo-link"
+    try:
+        link.symlink_to(repository, target_is_directory=True)
+    except OSError:
+        pytest.skip("symbolic links are unavailable on this platform")
+
+    with pytest.raises(CodeIntelligenceAdmissionError, match="symbolic link"):
+        ILAIOSRepositoryIntelligence().inspect(link, revision)
+
+
+def test_adapter_fails_closed_when_git_verification_times_out(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    repository, revision = _repository(tmp_path)
+
+    def _timeout(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
+        raise subprocess.TimeoutExpired(cmd=("git",), timeout=10.0)
+
+    monkeypatch.setattr(code_intelligence_service.subprocess, "run", _timeout)
+
+    with pytest.raises(CodeIntelligenceAdmissionError, match="Git verification failed"):
         ILAIOSRepositoryIntelligence().inspect(repository, revision)
 
 
