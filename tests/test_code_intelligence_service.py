@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-import services.code_intelligence as code_intelligence_service
 from services.code_intelligence import (
     CodeIntelligenceAdmissionError,
     ILAIOSRepositoryIntelligence,
@@ -175,7 +174,7 @@ def test_adapter_fails_closed_when_git_verification_times_out(
     def _timeout(*args: object, **kwargs: object) -> subprocess.CompletedProcess[str]:
         raise subprocess.TimeoutExpired(cmd=("git",), timeout=10.0)
 
-    monkeypatch.setattr(code_intelligence_service.subprocess, "run", _timeout)
+    monkeypatch.setattr("services.code_intelligence.subprocess.run", _timeout)
 
     with pytest.raises(CodeIntelligenceAdmissionError, match="Git verification failed"):
         ILAIOSRepositoryIntelligence().inspect(repository, revision)
