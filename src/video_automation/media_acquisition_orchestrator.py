@@ -144,19 +144,17 @@ class MediaAcquisitionGenerationOrchestrator:
             execution_report = self._provider_execution.execute(dispatch_plan)
         except Exception as exc:
             raise MediaAcquisitionOrchestrationError(
-                "provider submission stage failed"
+                f"provider submission stage failed: {_safe_error(exc)}"
             ) from exc
 
         if not execution_report.all_submitted:
-            failed_dispatch_ids = tuple(
-                submission.dispatch_id
+            failures = tuple(
+                _submission_failure_detail(submission)
                 for submission in execution_report.submissions
                 if not submission.success
             )
-            joined = ",".join(failed_dispatch_ids)
             raise MediaAcquisitionOrchestrationError(
-                "provider submission failed for dispatches: "
-                f"{joined}"
+                "provider submission failed: " + "; ".join(failures)
             )
 
         for submission in execution_report.submissions:
@@ -184,7 +182,7 @@ class MediaAcquisitionGenerationOrchestrator:
                 )
             except Exception as exc:
                 raise MediaAcquisitionOrchestrationError(
-                    f"generation polling failed in round {poll_rounds}"
+                    f"generation polling failed in round {poll_rounds}: {_safe_error(exc)}"
                 ) from exc
 
             for update in updates:
@@ -205,12 +203,10 @@ class MediaAcquisitionGenerationOrchestrator:
             )
 
         try:
-            result_manifest = self._result_ingester.ingest(
-                execution_state
-            )
+            result_manifest = self._result_ingester.ingest(execution_state)
         except Exception as exc:
             raise MediaAcquisitionOrchestrationError(
-                "generation result ingestion failed"
+                f"generation result ingestion failed: {_safe_error(exc)}"
             ) from exc
 
         try:
@@ -220,7 +216,7 @@ class MediaAcquisitionGenerationOrchestrator:
             )
         except Exception as exc:
             raise MediaAcquisitionOrchestrationError(
-                "generated asset retrieval failed"
+                f"generated asset retrieval failed: {_safe_error(exc)}"
             ) from exc
 
         if retrieval_manifest.asset_count != len(result_manifest.assets):
@@ -236,3 +232,22 @@ class MediaAcquisitionGenerationOrchestrator:
             retrieval_manifest=retrieval_manifest,
             poll_rounds=poll_rounds,
         )
+
+
+def _submission_failure_detail(submission: object) -> str:
+    dispatch_id = str(getattr(submission, "dispatch_id", "unknown"))
+    code = str(getattr(submission, "error_code", None) or "provider_error")
+    message = str(getattr(submission, "error_message", None) or "provider submission failed")
+    return f"{dispatch_id}[{code}]={_bounded(message)}"
+
+
+def _safe_error(exc: Exception) -> str:
+    message = str(exc).strip() or exc.__class__.__name__
+    return _bounded(message)
+
+
+def _bounded(value: str, *, limit: int = 400) -> str:
+    normalized = " ".join(value.split())
+    if len(normalized) <= limit:
+        return normalized
+    return normalized[: limit - 1] + "…"

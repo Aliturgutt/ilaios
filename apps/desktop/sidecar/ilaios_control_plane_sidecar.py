@@ -18,19 +18,24 @@ from services.control_plane.live_state import LiveStateTransport
 from services.control_plane.migrations import current_schema_version
 from services.control_plane.server import ControlPlaneHTTPServer
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
+from services.desktop_execution_coordinator import DesktopExecutionCoordinator
 from services.desktop_identity_server import DesktopIdentityHTTPServer
 from services.desktop_oidc_windows import DesktopIdentityError, DesktopOIDCService
 from services.evidence import EvidenceStore
 from services.execution_adapters import register_software_runtime, register_web_runtime
-from services.execution_coordinator import ExecutionCoordinator
 from services.governance import GovernedRuntimeGateway
 from services.integrations import (
     DurableVideoProductRuntime,
     RecoverableSoftwareProductRuntime,
     RecoverableWebProductRuntime,
 )
-from services.integrations.desktop_video_runtime import DesktopPromptVideoRuntime
+from services.integrations.provider_video_runtime import (
+    ProviderBackedDesktopVideoRuntime,
+    UnavailableProviderVideoRuntime,
+)
+from services.integrations.video_runtime import VideoRuntimeError
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
+from src.video_automation.openrouter_video_provider import SEEDANCE_FREE_MODEL_ID
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -78,14 +83,51 @@ def main(argv: Sequence[str] | None = None) -> int:
         goal = control_plane.get_goal(token, job.goal_id)
         return goal.objective
 
-    video_runtime = DesktopPromptVideoRuntime(
-        root / "video",
-        grant_policy,
-        governance,
-        evidence_store,
-        objective_resolver=resolve_objective,
-        brand_logo=_official_brand_logo(),
-    )
+    provider_api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+    video_model_id = os.environ.get(
+        "ILAIOS_VIDEO_MODEL_ID",
+        SEEDANCE_FREE_MODEL_ID,
+    ).strip()
+    video_qa_model_id = os.environ.get(
+        "ILAIOS_VIDEO_QA_MODEL_ID",
+        "openrouter/free",
+    ).strip()
+    video_finished_product_configured = False
+    video_provider = "unavailable"
+    if provider_api_key:
+        try:
+            video_runtime = ProviderBackedDesktopVideoRuntime(
+                root / "video",
+                grant_policy,
+                governance,
+                evidence_store,
+                objective_resolver=resolve_objective,
+                api_key=provider_api_key,
+                model_id=video_model_id,
+                qa_model_id=video_qa_model_id,
+            )
+            video_finished_product_configured = True
+            video_provider = ProviderBackedDesktopVideoRuntime.PROVIDER_ID
+        except VideoRuntimeError as error:
+            video_runtime = UnavailableProviderVideoRuntime(
+                root / "video",
+                grant_policy,
+                governance,
+                evidence_store,
+                reason=f"Provider-backed Video Factory configuration rejected: {error}",
+            )
+    else:
+        video_runtime = UnavailableProviderVideoRuntime(
+            root / "video",
+            grant_policy,
+            governance,
+            evidence_store,
+            reason=(
+                "Provider-backed Video Factory is unavailable because "
+                "OPENROUTER_API_KEY is not configured"
+            ),
+        )
+
     product_runtime = DurableVideoProductRuntime(
         root / "product-proof.sqlite3",
         control_plane,
@@ -113,7 +155,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         root / "software",
         source_head_sha=source_head,
     )
-    coordinator = ExecutionCoordinator(
+    coordinator = DesktopExecutionCoordinator(
         root / "execution-coordinator.sqlite3",
         control_plane,
         governance,
@@ -170,7 +212,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "identity_port": identity_port,
         "account_sign_in_configured": identity is not None,
         "governed_execution_configured": identity is not None,
-        "video_finished_product_configured": True,
+        "video_finished_product_configured": video_finished_product_configured,
+        "video_provider": video_provider,
         "web_finished_product_configured": True,
         "software_finished_product_configured": True,
         "execution_recovery_configured": True,
