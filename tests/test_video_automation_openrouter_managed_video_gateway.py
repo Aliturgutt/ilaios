@@ -157,7 +157,9 @@ def _gateway(
     OpenRouterVideoCatalogClient,
     CommercialAuthorityStore,
 ]:
-    clock = lambda: float(_NOW)
+    def clock() -> float:
+        return float(_NOW)
+
     catalog = OpenRouterVideoCatalogClient(
         "server-secret", transport=transport, clock=clock
     )
