@@ -48,7 +48,7 @@ void main() {
     expect(find.text('Canlı Çalışma Alanı'), findsWidgets);
 
     await open('artifacts');
-    expect(find.text('Teslimatlar'), findsOneWidget);
+    expect(find.text('Çıktılar'), findsWidgets);
 
     await open('approvals');
     expect(find.text('Yönetişim'), findsOneWidget);
