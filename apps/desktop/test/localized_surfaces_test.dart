@@ -37,7 +37,12 @@ void main() {
     );
 
     await open('agents');
-    expect(find.text('Canlı Yürütme'), findsOneWidget);
+    final agentsPage = find.byKey(const Key('reference-agents-page'));
+    expect(agentsPage, findsOneWidget);
+    expect(
+      find.descendant(of: agentsPage, matching: find.text('Ajanlar')),
+      findsOneWidget,
+    );
 
     await open('liveWorkspace');
     expect(find.text('Canlı Çalışma Alanı'), findsWidgets);
