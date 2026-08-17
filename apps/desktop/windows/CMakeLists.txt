@@ -103,15 +103,16 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
 
 # Flutter preserves the repo-relative keys for ILAIOS canonical brand assets
-# in AssetManifest.bin (for example ../../brand/assets/03-ilaios-symbol-dark.jpg).
-# On Windows those keys resolve from data/flutter_assets back to a brand/assets
-# directory next to the executable. Explicitly install the untouched canonical
-# masters there so both portable builds and MSIX staging can render branding.
+# in AssetManifest.bin. On Windows those keys resolve from data/flutter_assets
+# back to a brand/assets directory next to the executable. Explicitly install
+# the untouched canonical masters there so portable builds and MSIX staging can
+# render the correct light/dark brand lockups without redrawing or recoloring.
 set(ILAIOS_BRAND_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../brand/assets")
 set(ILAIOS_RUNTIME_BRAND_ASSETS
   "${ILAIOS_BRAND_ASSET_DIR}/02-ilaios-primary-horizontal-dark.jpg"
   "${ILAIOS_BRAND_ASSET_DIR}/03-ilaios-symbol-dark.jpg"
   "${ILAIOS_BRAND_ASSET_DIR}/05-ilaios-app-icon.jpg"
+  "${ILAIOS_BRAND_ASSET_DIR}/13-ilaios-primary-horizontal-light.jpg"
 )
 foreach(ILAIOS_BRAND_ASSET IN LISTS ILAIOS_RUNTIME_BRAND_ASSETS)
   if(NOT EXISTS "${ILAIOS_BRAND_ASSET}")
