@@ -189,7 +189,7 @@ def test_terminal_evidence_sanitizes_secret_like_response_fields() -> None:
             "status": "completed",
             "generation_id": "gen-redacted",
             "usage": {"cost": 0},
-            "api_key": "sk-should-never-persist",
+            "api_key": "credential-should-never-persist",
             "nested": {"Authorization": "Bearer should-never-persist"},
         }
     )
@@ -198,7 +198,7 @@ def test_terminal_evidence_sanitizes_secret_like_response_fields() -> None:
     observation = poller.poll("job-redacted")
 
     serialized = observation.metadata["terminal_response_json"]
-    assert "sk-should-never-persist" not in serialized
+    assert "credential-should-never-persist" not in serialized
     assert "Bearer should-never-persist" not in serialized
     assert serialized.count("[REDACTED]") == 2
     evidence = poller.terminal_evidence["job-redacted"]
