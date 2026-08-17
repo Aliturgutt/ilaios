@@ -6,6 +6,7 @@ from src.video_automation.commercial_admission import (
     CommercialAdmissionEngine,
     CommercialAdmissionError,
     CommercialPricingPolicy,
+    LockedVideoQuote,
     ProviderPricingSnapshot,
     TaxProfile,
     VideoCostEnvelope,
@@ -24,7 +25,11 @@ def _pricing(*, expires_at: int = 2_000, maximum: int = 7_500_000) -> ProviderPr
     )
 
 
-def _create(*, policy: CommercialPricingPolicy | None = None, tax: TaxProfile | None = None):
+def _create(
+    *,
+    policy: CommercialPricingPolicy | None = None,
+    tax: TaxProfile | None = None,
+) -> tuple[CommercialAdmissionEngine, LockedVideoQuote]:
     engine = CommercialAdmissionEngine(policy or CommercialPricingPolicy())
     quote = engine.create_locked_quote(
         quote_id="quote-001",
