@@ -73,6 +73,14 @@ def _usage(observation: object) -> dict[str, object]:
     return cast(dict[str, object], json.loads(metadata["usage_json"]))
 
 
+def _evidence(observation: object) -> dict[str, object]:
+    metadata = cast(Mapping[str, str], getattr(observation, "metadata"))
+    return cast(
+        dict[str, object],
+        json.loads(metadata["provider_cost_evidence_json"]),
+    )
+
+
 def test_terminal_video_poll_accepts_exact_zero_cost_from_poll_usage() -> None:
     transport = _FakeTransport(
         video_payload={
@@ -87,9 +95,10 @@ def test_terminal_video_poll_accepts_exact_zero_cost_from_poll_usage() -> None:
 
     assert observation.status is ProviderJobStatus.SUCCEEDED
     usage = _usage(observation)
+    evidence = _evidence(observation)
     assert usage["cost"] == 0.0
-    assert usage["source"] == "openrouter_video_poll_usage"
-    assert usage["generation_id"] == "gen-poll-zero"
+    assert evidence["source"] == "openrouter_video_poll_usage"
+    assert evidence["generation_id"] == "gen-poll-zero"
     assert not any("/generation?id=" in url for url in transport.requested_urls)
 
 
@@ -108,9 +117,10 @@ def test_terminal_video_poll_recovers_exact_zero_when_poll_usage_lacks_cost() ->
 
     assert observation.status is ProviderJobStatus.SUCCEEDED
     usage = _usage(observation)
+    evidence = _evidence(observation)
     assert usage["cost"] == 0.0
-    assert usage["source"] == "openrouter_generation_metadata"
-    assert usage["generation_id"] == "gen-123"
+    assert evidence["source"] == "openrouter_generation_metadata"
+    assert evidence["generation_id"] == "gen-123"
     assert any("/generation?id=gen-123" in url for url in transport.requested_urls)
 
 
@@ -125,8 +135,9 @@ def test_terminal_video_poll_recovers_exact_zero_when_usage_is_missing() -> None
 
     assert observation.status is ProviderJobStatus.SUCCEEDED
     usage = _usage(observation)
+    evidence = _evidence(observation)
     assert usage["cost"] == 0.0
-    assert usage["source"] == "openrouter_generation_metadata"
+    assert evidence["source"] == "openrouter_generation_metadata"
 
 
 def test_terminal_video_poll_rejects_nonzero_authoritative_cost() -> None:
