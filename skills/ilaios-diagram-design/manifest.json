@@ -5,7 +5,12 @@
   "maturity": "IMPLEMENTED",
   "owner": "ILAIOS",
   "runtime": {
-    "python_module": "src.ilaios_diagram_design.cli",
+    "python_module": "services.runtime.diagram_design_adapter",
+    "cli_module": "src.ilaios_diagram_design.cli",
+    "adapter_kind": "ilaios-diagram-design-v1",
+    "agent_id": "ilaios.agent.web.asset.v1",
+    "capability": "web.asset",
+    "provider_id": "ilaios.provider.local.diagram-design.v1",
     "network_required": false,
     "shell_required": false,
     "external_runtime_dependencies": []
