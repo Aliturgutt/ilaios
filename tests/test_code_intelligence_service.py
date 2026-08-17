@@ -146,7 +146,7 @@ def test_adapter_rejects_ignored_supported_source(tmp_path: Path) -> None:
 
 def test_adapter_preserves_tracked_paths_with_leading_whitespace(tmp_path: Path) -> None:
     repository, _revision = _repository(tmp_path)
-    (repository / " spaced.py").write_text("value = 1\n", encoding="utf-8")
+    (repository / " config.json").write_text("{}\n", encoding="utf-8")
     revision = _commit_all(repository, "whitespace path")
 
     evidence = ILAIOSRepositoryIntelligence().inspect(repository, revision)
