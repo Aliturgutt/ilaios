@@ -247,6 +247,31 @@ def certification_price(
     )
 
 
+def certification_provider_cost_ceiling(
+    price: CertificationPrice,
+    shape: CertificationShape,
+    *,
+    contingency_bps: int,
+) -> int:
+    """Reserve bounded provider variance before dispatch without widening the hard cap."""
+
+    if contingency_bps < 0 or contingency_bps >= 10_000:
+        raise ProviderProductionCertificationError(
+            "provider reservation contingency must be between 0 and 9999 bps"
+        )
+    hard_cap_microusd = usd_to_microusd(shape.max_total_cost_usd)
+    estimated_microusd = price.estimated_total_microusd
+    buffered_microusd = (
+        estimated_microusd * (10_000 + contingency_bps) + 9_999
+    ) // 10_000
+    ceiling_microusd = min(buffered_microusd, hard_cap_microusd)
+    if ceiling_microusd < estimated_microusd:
+        raise ProviderProductionCertificationError(
+            "provider reservation hard cap is below the live estimated cost"
+        )
+    return ceiling_microusd
+
+
 def build_certification_request(
     *,
     shape: CertificationShape,
@@ -351,6 +376,13 @@ def run_certification(
             str(exc),
         )
 
+    commercial_policy = CommercialPricingPolicy()
+    provider_cost_ceiling_microusd = certification_provider_cost_ceiling(
+        price,
+        proof_shape,
+        contingency_bps=commercial_policy.contingency_bps,
+    )
+
     snapshot = catalog.last_good_snapshot
     if snapshot is None:
         _fail(
@@ -366,7 +398,9 @@ def run_certification(
         "unit_price_usd": str(price.unit_price_usd),
         "estimated_units": str(price.estimated_units),
         "estimated_total_usd": str(price.estimated_total_usd),
+        "reserved_provider_ceiling_microusd": provider_cost_ceiling_microusd,
     }
+    receipt["provider_reservation_contingency_bps"] = commercial_policy.contingency_bps
 
     request = build_certification_request(
         shape=proof_shape,
@@ -378,7 +412,7 @@ def run_certification(
         provider_name=OPENROUTER_MANAGED_PROVIDER_NAME,
         model_id=proof_shape.model_id,
         estimated_cost_microusd=price.estimated_total_microusd,
-        max_cost_microusd=price.estimated_total_microusd,
+        max_cost_microusd=provider_cost_ceiling_microusd,
     )
     credit_store = ManagedCreditLedgerStore(proof_dir / "managed-credit-ledger")
     account = ManagedCreditAccount(
@@ -400,9 +434,9 @@ def run_certification(
         observed_at_epoch_s=commercial_now,
         expires_at_epoch_s=commercial_now + 300,
         estimated_job_cost_microusd=price.estimated_total_microusd,
-        max_job_cost_microusd=price.estimated_total_microusd,
+        max_job_cost_microusd=provider_cost_ceiling_microusd,
     )
-    commercial_engine = CommercialAdmissionEngine(CommercialPricingPolicy())
+    commercial_engine = CommercialAdmissionEngine(commercial_policy)
     locked_quote = commercial_engine.create_locked_quote(
         quote_id=f"video-provider-cert-quote-{run_id}-{run_attempt}",
         now_epoch_s=commercial_now,
@@ -413,7 +447,7 @@ def run_certification(
         ),
         pricing=commercial_pricing,
         costs=VideoCostEnvelope(
-            provider_generation_microusd=price.estimated_total_microusd,
+            provider_generation_microusd=provider_cost_ceiling_microusd,
         ),
         duration_seconds=proof_shape.duration_seconds,
         aggregate_generated_seconds=proof_shape.duration_seconds,
@@ -443,6 +477,9 @@ def run_certification(
     receipt["request_id"] = request.request_id
     receipt["routing_decision_id"] = routing_decision_id
     receipt["quoted_provider_cost_microusd"] = price.estimated_total_microusd
+    receipt["reserved_provider_cost_ceiling_microusd"] = (
+        provider_cost_ceiling_microusd
+    )
     receipt["customer_quote"] = {
         "quote_id": locked_quote.quote_id,
         "quote_sha256": locked_quote.quote_sha256,
