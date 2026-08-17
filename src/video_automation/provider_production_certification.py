@@ -400,9 +400,7 @@ def run_certification(
         "estimated_total_usd": str(price.estimated_total_usd),
         "reserved_provider_ceiling_microusd": provider_cost_ceiling_microusd,
     }
-    receipt["budget_guard"]["provider_reservation_contingency_bps"] = (
-        commercial_policy.contingency_bps
-    )
+    receipt["provider_reservation_contingency_bps"] = commercial_policy.contingency_bps
 
     request = build_certification_request(
         shape=proof_shape,
