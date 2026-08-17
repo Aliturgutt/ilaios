@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -25,8 +26,46 @@ class DeliveriesView extends StatefulWidget {
 }
 
 class _DeliveriesViewState extends State<DeliveriesView> {
+  final TextEditingController _searchController = TextEditingController();
   String? _activeDigest;
   String? _message;
+  String _activeTab = 'all';
+  String _typeFilter = 'all';
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  List<EvidenceRecord> get _records => widget.snapshot.evidenceRecords.reversed
+      .where(_isFinishedProductEvidence)
+      .take(100)
+      .toList(growable: false);
+
+  List<EvidenceRecord> get _visibleRecords {
+    var records = _records;
+    if (_activeTab != 'all' && _activeTab != 'completed') {
+      return const <EvidenceRecord>[];
+    }
+    if (_typeFilter != 'all') {
+      records = records
+          .where((record) => _deliveryTypeCode(record) == _typeFilter)
+          .toList(growable: false);
+    }
+    final query = _searchController.text.trim().toLowerCase();
+    if (query.isNotEmpty) {
+      records = records
+          .where(
+            (record) =>
+                record.action.toLowerCase().contains(query) ||
+                record.executionId.toLowerCase().contains(query) ||
+                record.artifactDigest.toLowerCase().contains(query),
+          )
+          .toList(growable: false);
+    }
+    return records;
+  }
 
   Future<void> _save(EvidenceRecord record) async {
     final callback = widget.onSaveArtifact;
@@ -38,7 +77,9 @@ class _DeliveriesViewState extends State<DeliveriesView> {
     try {
       final path = await callback(record);
       if (!mounted) return;
-      setState(() => _message = '${_surface(context, 'deliveries.savedPrefix')} $path');
+      setState(
+        () => _message = '${_surface(context, 'deliveries.savedPrefix')} $path',
+      );
     } on Object catch (error) {
       if (!mounted) return;
       setState(() => _message = error.toString());
@@ -63,7 +104,9 @@ class _DeliveriesViewState extends State<DeliveriesView> {
     final digestPrefix = record.artifactDigest.length <= 16
         ? record.artifactDigest
         : record.artifactDigest.substring(0, 16);
-    return File('$rootPath$separator${'ILAIOS-$safeExecution-$digestPrefix$extension'}');
+    return File(
+      '$rootPath$separator${'ILAIOS-$safeExecution-$digestPrefix$extension'}',
+    );
   }
 
   Future<void> _deleteLocalCopy(EvidenceRecord record) async {
@@ -89,7 +132,9 @@ class _DeliveriesViewState extends State<DeliveriesView> {
                 style: FilledButton.styleFrom(backgroundColor: IlaiosTheme.danger),
                 onPressed: () => Navigator.of(dialogContext).pop(true),
                 icon: const Icon(Icons.delete_outline),
-                label: Text(_isTr(context) ? 'Yerel kopyayı sil' : 'Delete local copy'),
+                label: Text(
+                  _isTr(context) ? 'Yerel kopyayı sil' : 'Delete local copy',
+                ),
               ),
             ],
           ),
@@ -130,294 +175,924 @@ class _DeliveriesViewState extends State<DeliveriesView> {
     }
   }
 
+  void _clearFilters() {
+    _searchController.clear();
+    setState(() {
+      _activeTab = 'all';
+      _typeFilter = 'all';
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    final records = widget.snapshot.evidenceRecords.reversed
-        .where(_isFinishedProductEvidence)
-        .take(100)
-        .toList();
-    final scheme = Theme.of(context).colorScheme;
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
-      child: Align(
-        alignment: Alignment.topLeft,
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1240),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: scheme.surfaceContainerLow,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: scheme.outlineVariant),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
+    final records = _records;
+    final visibleRecords = _visibleRecords;
+    final categories = _categoryCounts(records);
+    final localStorage = _localStorage(records);
+
+    return Container(
+      key: const Key('reference-outputs-page'),
+      padding: const EdgeInsets.fromLTRB(18, 14, 18, 12),
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final showRightRail = constraints.maxWidth >= 960;
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Container(
-                      width: 44,
-                      height: 44,
-                      decoration: BoxDecoration(
-                        color: IlaiosTheme.enterpriseCyan.withValues(alpha: .12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(
-                        Icons.inventory_2_outlined,
-                        color: IlaiosTheme.enterpriseCyan,
-                      ),
+                    _Header(
+                      status: widget.status,
+                      total: records.length,
                     ),
-                    const SizedBox(width: 12),
+                    const SizedBox(height: 10),
+                    _MetricStrip(total: records.length),
+                    const SizedBox(height: 10),
+                    _Toolbar(
+                      activeTab: _activeTab,
+                      onTabChanged: (value) =>
+                          setState(() => _activeTab = value),
+                    ),
+                    const SizedBox(height: 8),
+                    _Filters(
+                      controller: _searchController,
+                      typeFilter: _typeFilter,
+                      onSearchChanged: (_) => setState(() {}),
+                      onTypeChanged: (value) =>
+                          setState(() => _typeFilter = value ?? 'all'),
+                      onClear: _clearFilters,
+                    ),
+                    const SizedBox(height: 8),
                     Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _surface(context, 'deliveries.title'),
-                            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                                  fontWeight: FontWeight.w800,
-                                ),
-                          ),
-                          const SizedBox(height: 3),
-                          Text(
-                            _localizedStatus(context, widget.status),
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
+                      child: _OutputsTable(
+                        records: visibleRecords,
+                        totalCount: records.length,
+                        activeDigest: _activeDigest,
+                        saveEnabled: widget.onSaveArtifact != null,
+                        localFileFor: _localDeliveryFile,
+                        onSave: _save,
+                        onDelete: _deleteLocalCopy,
                       ),
                     ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: IlaiosTheme.coreBlue.withValues(alpha: .08),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(
-                          color: IlaiosTheme.coreBlue.withValues(alpha: .25),
-                        ),
-                      ),
-                      child: Text(
-                        '${records.length} ${_isTr(context) ? 'doğrulanmış' : 'verified'}',
-                        style: const TextStyle(
-                          color: IlaiosTheme.coreBlue,
-                          fontSize: 10.5,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
+                    if (_message case final message?) ...[
+                      const SizedBox(height: 7),
+                      _InlineMessage(message: message),
+                    ],
                   ],
                 ),
-                const SizedBox(height: 14),
-                Text(
-                  _surface(context, 'deliveries.note'),
-                  style: Theme.of(context).textTheme.bodyMedium,
-                ),
-                const SizedBox(height: 20),
-                if (records.isEmpty)
-                  _DeliveryEmptyState(enabled: widget.onSaveArtifact != null)
-                else
-                  for (final record in records)
-                    _DeliveryRow(
-                      record: record,
-                      saving: _activeDigest == record.artifactDigest,
-                      enabled: widget.onSaveArtifact != null && _activeDigest == null,
-                      deleteEnabled: _activeDigest == null,
-                      onSave: () => _save(record),
-                      onDelete: () => _deleteLocalCopy(record),
-                    ),
-                if (_message case final message?) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(13),
-                    decoration: BoxDecoration(
-                      color: IlaiosTheme.enterpriseCyan.withValues(alpha: .07),
-                      borderRadius: BorderRadius.circular(10),
-                      border: Border.all(
-                        color: IlaiosTheme.enterpriseCyan.withValues(alpha: .28),
-                      ),
-                    ),
-                    child: SelectableText(
-                      message,
-                      key: const Key('delivery-message'),
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
+              ),
+              if (showRightRail) ...[
+                const SizedBox(width: 16),
+                SizedBox(
+                  width: 300,
+                  child: _RightRail(
+                    records: records,
+                    categories: categories,
+                    localStorage: localStorage,
                   ),
-                ],
+                ),
               ],
-            ),
-          ),
-        ),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
-class _DeliveryEmptyState extends StatelessWidget {
-  const _DeliveryEmptyState({required this.enabled});
+class _Header extends StatelessWidget {
+  const _Header({required this.status, required this.total});
 
-  final bool enabled;
+  final String status;
+  final int total;
 
   @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: IlaiosTheme.coreBlue.withValues(alpha: .045),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: IlaiosTheme.coreBlue.withValues(alpha: .20)),
-        ),
+  Widget build(BuildContext context) => SizedBox(
+        key: const Key('outputs-header'),
+        height: 54,
         child: Row(
           children: [
-            Container(
-              width: 54,
-              height: 54,
-              decoration: BoxDecoration(
-                color: IlaiosTheme.coreBlue.withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(15),
-              ),
-              child: const Icon(
-                Icons.inventory_2_outlined,
-                color: IlaiosTheme.coreBlue,
-                size: 28,
-              ),
-            ),
-            const SizedBox(width: 16),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    _surface(context, 'deliveries.empty'),
-                    style: const TextStyle(fontWeight: FontWeight.w800),
+                    _copy(context, 'Çıktılar', 'Outputs'),
+                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w700,
+                        ),
                   ),
-                  const SizedBox(height: 5),
+                  const SizedBox(height: 2),
                   Text(
-                    _isTr(context)
-                        ? 'Bir yürütme doğrulanmış bitmiş ürün ürettiğinde dosya, SHA-256 kimliği ve açık kaydetme eylemi burada görünür. Yürütme/koordinatör kanıtları Kanıtlar ekranında kalır.'
-                        : 'When an execution produces a verified finished product, its file identity, SHA-256 digest and explicit save action appear here. Execution/coordinator evidence remains on the Evidence surface.',
-                    style: Theme.of(context).textTheme.bodySmall,
+                    _copy(
+                      context,
+                      'Projede üretilen doğrulanmış çıktıları görüntüleyin, filtreleyin ve yönetin.',
+                      'View, filter and manage verified outputs produced by the project.',
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10.5),
                   ),
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            Icon(
-              enabled ? Icons.verified_outlined : Icons.lock_outline,
-              color: enabled ? IlaiosTheme.enterpriseCyan : Theme.of(context).colorScheme.outline,
+            const SizedBox(width: 10),
+            Container(
+              constraints: const BoxConstraints(maxWidth: 250),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: total > 0
+                    ? IlaiosTheme.success.withValues(alpha: .08)
+                    : Theme.of(context).colorScheme.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: total > 0
+                      ? IlaiosTheme.success.withValues(alpha: .30)
+                      : Theme.of(context).colorScheme.outlineVariant,
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.circle,
+                    size: 7,
+                    color: widgetStatusAvailable(status)
+                        ? IlaiosTheme.success
+                        : Theme.of(context).colorScheme.outline,
+                  ),
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      _localizedStatus(context, status),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       );
 }
 
-class _DeliveryRow extends StatefulWidget {
-  const _DeliveryRow({
+class _MetricStrip extends StatelessWidget {
+  const _MetricStrip({required this.total});
+
+  final int total;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        key: const Key('outputs-kpis'),
+        height: 78,
+        child: Row(
+          children: [
+            Expanded(
+              child: _MetricCard(
+                icon: Icons.grid_view_rounded,
+                accent: IlaiosTheme.coreBlue,
+                label: _copy(context, 'Toplam Çıktı', 'Total Outputs'),
+                value: '$total',
+                note: _copy(context, 'Doğrulanmış kanıt zinciri', 'Verified evidence chain'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _MetricCard(
+                icon: Icons.check_circle_outline,
+                accent: IlaiosTheme.success,
+                label: _copy(context, 'Tamamlanan', 'Completed'),
+                value: '$total',
+                note: _copy(context, 'Bitmiş ürün kanıtı', 'Finished-product evidence'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _MetricCard(
+                icon: Icons.hourglass_empty_rounded,
+                accent: IlaiosTheme.warning,
+                label: _copy(context, 'Taslak', 'Draft'),
+                value: '—',
+                note: _copy(context, 'Yetkili veri yok', 'No authoritative data'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _MetricCard(
+                icon: Icons.rate_review_outlined,
+                accent: IlaiosTheme.violet,
+                label: _copy(context, 'İncelemede', 'In Review'),
+                value: '—',
+                note: _copy(context, 'Yetkili veri yok', 'No authoritative data'),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: _MetricCard(
+                icon: Icons.cancel_outlined,
+                accent: IlaiosTheme.danger,
+                label: _copy(context, 'Reddedilen', 'Rejected'),
+                value: '—',
+                note: _copy(context, 'Yetkili veri yok', 'No authoritative data'),
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _MetricCard extends StatelessWidget {
+  const _MetricCard({
+    required this.icon,
+    required this.accent,
+    required this.label,
+    required this.value,
+    required this.note,
+  });
+
+  final IconData icon;
+  final Color accent;
+  final String label;
+  final String value;
+  final String note;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
+        decoration: _panelDecoration(context, radius: 8),
+        child: Row(
+          children: [
+            Container(
+              width: 34,
+              height: 34,
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: .10),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 18, color: accent),
+            ),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 9),
+                  ),
+                  Text(
+                    value,
+                    style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700),
+                  ),
+                  Text(
+                    note,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontSize: 7.8,
+                          color: accent,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _Toolbar extends StatelessWidget {
+  const _Toolbar({required this.activeTab, required this.onTabChanged});
+
+  final String activeTab;
+  final ValueChanged<String> onTabChanged;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        key: const Key('outputs-tabs'),
+        height: 44,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: _panelDecoration(context, radius: 8),
+        child: Row(
+          children: [
+            _Tab(
+              label: _copy(context, 'Tümü', 'All'),
+              value: 'all',
+              selected: activeTab == 'all',
+              onTap: onTabChanged,
+            ),
+            _Tab(
+              label: _copy(context, 'Tamamlanan', 'Completed'),
+              value: 'completed',
+              selected: activeTab == 'completed',
+              onTap: onTabChanged,
+            ),
+            _Tab(
+              label: _copy(context, 'Taslak', 'Draft'),
+              value: 'draft',
+              selected: activeTab == 'draft',
+              onTap: onTabChanged,
+            ),
+            _Tab(
+              label: _copy(context, 'İncelemede', 'In Review'),
+              value: 'review',
+              selected: activeTab == 'review',
+              onTap: onTabChanged,
+            ),
+            _Tab(
+              label: _copy(context, 'Reddedilen', 'Rejected'),
+              value: 'rejected',
+              selected: activeTab == 'rejected',
+              onTap: onTabChanged,
+            ),
+            _Tab(
+              label: _copy(context, 'Arşiv', 'Archive'),
+              value: 'archive',
+              selected: activeTab == 'archive',
+              onTap: onTabChanged,
+            ),
+            const Spacer(),
+            Tooltip(
+              message: _copy(
+                context,
+                'Yetkili dışa aktarma API’si bu görünümde sunulmuyor.',
+                'No authoritative export API is exposed on this surface.',
+              ),
+              child: OutlinedButton.icon(
+                onPressed: null,
+                icon: const Icon(Icons.ios_share_outlined, size: 15),
+                label: Text(_copy(context, 'Dışa Aktar', 'Export')),
+                style: OutlinedButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  textStyle: const TextStyle(fontSize: 9.5),
+                ),
+              ),
+            ),
+            const SizedBox(width: 7),
+            Tooltip(
+              message: _copy(
+                context,
+                'Yeni çıktı oluşturma yetkisi Desktop’a verilmemiştir.',
+                'Desktop has no authority to create a new output directly.',
+              ),
+              child: FilledButton.icon(
+                key: const Key('outputs-new-disabled'),
+                onPressed: null,
+                icon: const Icon(Icons.add, size: 15),
+                label: Text(_copy(context, 'Yeni Çıktı', 'New Output')),
+                style: FilledButton.styleFrom(
+                  visualDensity: VisualDensity.compact,
+                  textStyle: const TextStyle(fontSize: 9.5),
+                ),
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(Icons.more_vert, size: 18),
+          ],
+        ),
+      );
+}
+
+class _Tab extends StatelessWidget {
+  const _Tab({
+    required this.label,
+    required this.value,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final String value;
+  final bool selected;
+  final ValueChanged<String> onTap;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+        onTap: () => onTap(value),
+        child: Container(
+          height: 44,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: BoxDecoration(
+            border: Border(
+              bottom: BorderSide(
+                color: selected ? IlaiosTheme.enterpriseCyan : Colors.transparent,
+                width: 2,
+              ),
+            ),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 9.5,
+              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              color: selected
+                  ? IlaiosTheme.enterpriseCyan
+                  : Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      );
+}
+
+class _Filters extends StatelessWidget {
+  const _Filters({
+    required this.controller,
+    required this.typeFilter,
+    required this.onSearchChanged,
+    required this.onTypeChanged,
+    required this.onClear,
+  });
+
+  final TextEditingController controller;
+  final String typeFilter;
+  final ValueChanged<String> onSearchChanged;
+  final ValueChanged<String?> onTypeChanged;
+  final VoidCallback onClear;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        key: const Key('outputs-filters'),
+        height: 38,
+        child: Row(
+          children: [
+            SizedBox(
+              width: 185,
+              child: TextField(
+                controller: controller,
+                onChanged: onSearchChanged,
+                style: const TextStyle(fontSize: 9.5),
+                decoration: InputDecoration(
+                  hintText: _copy(context, 'Çıktı ara...', 'Search outputs...'),
+                  prefixIcon: const Icon(Icons.search, size: 16),
+                  isDense: true,
+                ),
+              ),
+            ),
+            const SizedBox(width: 7),
+            _FilterDropdown(
+              width: 105,
+              value: typeFilter,
+              onChanged: onTypeChanged,
+              items: <String, String>{
+                'all': _copy(context, 'Tür', 'Type'),
+                'document': _copy(context, 'Doküman', 'Document'),
+                'video': _copy(context, 'Video', 'Video'),
+                'visual': _copy(context, 'Görsel', 'Visual'),
+                'report': _copy(context, 'Rapor', 'Report'),
+                'table': _copy(context, 'Tablo', 'Table'),
+                'other': _copy(context, 'Diğer', 'Other'),
+              },
+            ),
+            const SizedBox(width: 7),
+            _DisabledFilter(label: _copy(context, 'Ajan', 'Agent')),
+            const SizedBox(width: 7),
+            _DisabledFilter(label: _copy(context, 'Sahip', 'Owner')),
+            const SizedBox(width: 7),
+            _DisabledFilter(label: _copy(context, 'Durum', 'Status')),
+            const SizedBox(width: 7),
+            _DisabledFilter(label: _copy(context, 'Tarih Aralığı', 'Date Range'), width: 118),
+            const Spacer(),
+            TextButton(
+              onPressed: onClear,
+              child: Text(
+                _copy(context, 'Filtreleri Temizle', 'Clear Filters'),
+                style: const TextStyle(fontSize: 9),
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _FilterDropdown extends StatelessWidget {
+  const _FilterDropdown({
+    required this.width,
+    required this.value,
+    required this.onChanged,
+    required this.items,
+  });
+
+  final double width;
+  final String value;
+  final ValueChanged<String?> onChanged;
+  final Map<String, String> items;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        width: width,
+        height: 36,
+        padding: const EdgeInsets.symmetric(horizontal: 9),
+        decoration: _fieldDecoration(context),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: value,
+            isExpanded: true,
+            iconSize: 16,
+            style: TextStyle(
+              fontSize: 9.5,
+              color: Theme.of(context).colorScheme.onSurface,
+            ),
+            onChanged: onChanged,
+            items: items.entries
+                .map(
+                  (entry) => DropdownMenuItem<String>(
+                    value: entry.key,
+                    child: Text(entry.value, overflow: TextOverflow.ellipsis),
+                  ),
+                )
+                .toList(growable: false),
+          ),
+        ),
+      );
+}
+
+class _DisabledFilter extends StatelessWidget {
+  const _DisabledFilter({required this.label, this.width = 92});
+
+  final String label;
+  final double width;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+        message: _copy(
+          context,
+          'Bu alan için yetkili metadata henüz sunulmuyor.',
+          'Authoritative metadata for this field is not exposed yet.',
+        ),
+        child: Container(
+          width: width,
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          decoration: _fieldDecoration(context),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 9.5),
+                ),
+              ),
+              const Icon(Icons.keyboard_arrow_down, size: 15),
+            ],
+          ),
+        ),
+      );
+}
+
+class _OutputsTable extends StatelessWidget {
+  const _OutputsTable({
+    required this.records,
+    required this.totalCount,
+    required this.activeDigest,
+    required this.saveEnabled,
+    required this.localFileFor,
+    required this.onSave,
+    required this.onDelete,
+  });
+
+  final List<EvidenceRecord> records;
+  final int totalCount;
+  final String? activeDigest;
+  final bool saveEnabled;
+  final File Function(EvidenceRecord record) localFileFor;
+  final Future<void> Function(EvidenceRecord record) onSave;
+  final Future<void> Function(EvidenceRecord record) onDelete;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        key: const Key('outputs-table'),
+        decoration: _panelDecoration(context, radius: 8),
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          children: [
+            _TableHeader(),
+            Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+            Expanded(
+              child: records.isEmpty
+                  ? _OutputsEmptyState(totalCount: totalCount)
+                  : Scrollbar(
+                      child: ListView.separated(
+                        padding: EdgeInsets.zero,
+                        itemCount: records.length,
+                        separatorBuilder: (_, __) => Divider(
+                          height: 1,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .outlineVariant
+                              .withValues(alpha: .65),
+                        ),
+                        itemBuilder: (context, index) {
+                          final record = records[index];
+                          return _OutputRow(
+                            record: record,
+                            saving: activeDigest == record.artifactDigest,
+                            actionsEnabled: activeDigest == null,
+                            saveEnabled: saveEnabled,
+                            localFile: localFileFor(record),
+                            onSave: () => onSave(record),
+                            onDelete: () => onDelete(record),
+                          );
+                        },
+                      ),
+                    ),
+            ),
+            Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+            SizedBox(
+              height: 34,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Row(
+                  children: [
+                    Text(
+                      records.isEmpty
+                          ? _copy(context, '0 sonuç', '0 results')
+                          : _copy(
+                              context,
+                              '1–${records.length} / $totalCount sonuç',
+                              '1–${records.length} / $totalCount results',
+                            ),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 9),
+                    ),
+                    const Spacer(),
+                    Text(
+                      _copy(context, '100 / sayfa', '100 / page'),
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 9),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.keyboard_arrow_down, size: 15),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _TableHeader extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Container(
+        key: const Key('outputs-table-header'),
+        height: 32,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        child: Row(
+          children: [
+            _HeaderCell(_copy(context, 'Çıktı Adı', 'Output'), flex: 28),
+            _HeaderCell(_copy(context, 'Tür', 'Type'), flex: 11),
+            _HeaderCell(_copy(context, 'Ajan', 'Agent'), flex: 14),
+            _HeaderCell(_copy(context, 'Sahip', 'Owner'), flex: 12),
+            _HeaderCell(_copy(context, 'Durum', 'Status'), flex: 13),
+            _HeaderCell(_copy(context, 'Oluşturulma Tarihi', 'Created'), flex: 15),
+            _HeaderCell(_copy(context, 'Boyut', 'Size'), flex: 9),
+            const SizedBox(width: 26),
+          ],
+        ),
+      );
+}
+
+class _HeaderCell extends StatelessWidget {
+  const _HeaderCell(this.label, {required this.flex});
+
+  final String label;
+  final int flex;
+
+  @override
+  Widget build(BuildContext context) => Expanded(
+        flex: flex,
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600),
+        ),
+      );
+}
+
+class _OutputRow extends StatelessWidget {
+  const _OutputRow({
     required this.record,
     required this.saving,
-    required this.enabled,
-    required this.deleteEnabled,
+    required this.actionsEnabled,
+    required this.saveEnabled,
+    required this.localFile,
     required this.onSave,
     required this.onDelete,
   });
 
   final EvidenceRecord record;
   final bool saving;
-  final bool enabled;
-  final bool deleteEnabled;
+  final bool actionsEnabled;
+  final bool saveEnabled;
+  final File localFile;
   final VoidCallback onSave;
   final VoidCallback onDelete;
 
   @override
-  State<_DeliveryRow> createState() => _DeliveryRowState();
-}
+  Widget build(BuildContext context) {
+    final type = _deliveryTypeCode(record);
+    final accent = _typeColor(type);
+    final exists = _safeExists(localFile);
+    final size = exists ? _safeFileSize(localFile) : '—';
 
-class _DeliveryRowState extends State<_DeliveryRow> {
-  bool hovered = false;
-
-  String _short(String value) =>
-      value.length <= 20 ? value : '${value.substring(0, 20)}…';
-
-  @override
-  Widget build(BuildContext context) => MouseRegion(
-        onEnter: (_) => setState(() => hovered = true),
-        onExit: (_) => setState(() => hovered = false),
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(15),
-          decoration: BoxDecoration(
-            color: hovered
-                ? IlaiosTheme.enterpriseCyan.withValues(alpha: .055)
-                : Theme.of(context).colorScheme.surfaceContainerLowest,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: hovered
-                  ? IlaiosTheme.enterpriseCyan.withValues(alpha: .42)
-                  : Theme.of(context).colorScheme.outlineVariant,
-            ),
-          ),
-          child: Row(
-            children: [
-              Container(
-                width: 42,
-                height: 42,
-                decoration: BoxDecoration(
-                  color: IlaiosTheme.success.withValues(alpha: .10),
-                  borderRadius: BorderRadius.circular(11),
-                ),
-                child: const Icon(Icons.verified_outlined, color: IlaiosTheme.success),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.record.action,
-                      style: const TextStyle(fontWeight: FontWeight.w800),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${_surface(context, 'deliveries.execution')} ${widget.record.executionId} • SHA-256 ${_short(widget.record.artifactDigest)}',
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
+    return SizedBox(
+      height: 48,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        child: Row(
+          children: [
+            Expanded(
+              flex: 28,
+              child: Row(
                 children: [
-                  FilledButton.icon(
-                    key: ValueKey('save-artifact-${widget.record.sequence}'),
-                    onPressed: widget.enabled ? widget.onSave : null,
-                    icon: widget.saving
-                        ? const SizedBox(
-                            width: 15,
-                            height: 15,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.download_outlined),
-                    label: Text(
-                      widget.saving
-                          ? _surface(context, 'deliveries.saving')
-                          : _surface(context, 'deliveries.save'),
+                  Container(
+                    width: 27,
+                    height: 27,
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: .10),
+                      borderRadius: BorderRadius.circular(6),
                     ),
+                    child: Icon(_typeIcon(type), size: 15, color: accent),
                   ),
-                  OutlinedButton.icon(
-                    key: ValueKey('delete-local-artifact-${widget.record.sequence}'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: IlaiosTheme.danger,
-                      side: BorderSide(
-                        color: IlaiosTheme.danger.withValues(alpha: .55),
-                      ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          _outputName(record),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700),
+                        ),
+                        Text(
+                          '${_copy(context, 'Yürütme', 'Execution')} ${record.executionId}',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 7.5),
+                        ),
+                      ],
                     ),
-                    onPressed: widget.deleteEnabled ? widget.onDelete : null,
-                    icon: const Icon(Icons.delete_outline),
-                    label: Text(_isTr(context) ? 'Yerel kopyayı sil' : 'Delete local copy'),
                   ),
                 ],
+              ),
+            ),
+            Expanded(
+              flex: 11,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _Pill(
+                  text: _typeLabel(context, type),
+                  color: accent,
+                ),
+              ),
+            ),
+            Expanded(flex: 14, child: _UnavailableCell()),
+            Expanded(flex: 12, child: _UnavailableCell()),
+            Expanded(
+              flex: 13,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: _Pill(
+                  text: _copy(context, 'Tamamlandı', 'Completed'),
+                  color: IlaiosTheme.success,
+                ),
+              ),
+            ),
+            Expanded(flex: 15, child: _UnavailableCell()),
+            Expanded(
+              flex: 9,
+              child: Text(size, style: const TextStyle(fontSize: 8.5)),
+            ),
+            SizedBox(
+              width: 26,
+              child: PopupMenuButton<String>(
+                tooltip: _copy(context, 'Çıktı işlemleri', 'Output actions'),
+                padding: EdgeInsets.zero,
+                iconSize: 17,
+                enabled: actionsEnabled,
+                onSelected: (value) {
+                  if (value == 'save' && saveEnabled) onSave();
+                  if (value == 'delete') onDelete();
+                },
+                itemBuilder: (context) => [
+                  PopupMenuItem<String>(
+                    value: 'save',
+                    enabled: saveEnabled,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.download_outlined, size: 17),
+                        const SizedBox(width: 8),
+                        Text(
+                          saving
+                              ? _surface(context, 'deliveries.saving')
+                              : _surface(context, 'deliveries.save'),
+                        ),
+                      ],
+                    ),
+                  ),
+                  PopupMenuItem<String>(
+                    value: 'delete',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.delete_outline, size: 17, color: IlaiosTheme.danger),
+                        const SizedBox(width: 8),
+                        Text(_copy(context, 'Yerel kopyayı sil', 'Delete local copy')),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _UnavailableCell extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Text(
+        '—',
+        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 9),
+      );
+}
+
+class _Pill extends StatelessWidget {
+  const _Pill({required this.text, required this.color});
+
+  final String text;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: .10),
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(color: color.withValues(alpha: .18)),
+        ),
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 7.8, fontWeight: FontWeight.w600, color: color),
+        ),
+      );
+}
+
+class _OutputsEmptyState extends StatelessWidget {
+  const _OutputsEmptyState({required this.totalCount});
+
+  final int totalCount;
+
+  @override
+  Widget build(BuildContext context) => Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 480),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                totalCount == 0 ? Icons.inventory_2_outlined : Icons.filter_alt_off_outlined,
+                size: 32,
+                color: IlaiosTheme.enterpriseCyan,
+              ),
+              const SizedBox(height: 9),
+              Text(
+                totalCount == 0
+                    ? _surface(context, 'deliveries.empty')
+                    : _copy(
+                        context,
+                        'Seçili filtrelerle eşleşen doğrulanmış çıktı yok.',
+                        'No verified outputs match the selected filters.',
+                      ),
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                _copy(
+                  context,
+                  'Ekran yalnızca yetkili kanıt zincirindeki bitmiş ürünleri gösterir; örnek çıktı veya sahte durum üretilmez.',
+                  'This surface shows only finished products from the authoritative evidence chain; sample outputs and synthetic states are never fabricated.',
+                ),
+                textAlign: TextAlign.center,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 9),
               ),
             ],
           ),
@@ -425,19 +1100,569 @@ class _DeliveryRowState extends State<_DeliveryRow> {
       );
 }
 
+class _RightRail extends StatelessWidget {
+  const _RightRail({
+    required this.records,
+    required this.categories,
+    required this.localStorage,
+  });
+
+  final List<EvidenceRecord> records;
+  final Map<String, int> categories;
+  final _LocalStorageSummary localStorage;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        key: const Key('outputs-right-rail'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            flex: 37,
+            child: _DistributionCard(total: records.length, categories: categories),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            flex: 38,
+            child: _ActivityCard(records: records.take(5).toList(growable: false)),
+          ),
+          const SizedBox(height: 10),
+          Expanded(
+            flex: 25,
+            child: _StorageCard(summary: localStorage),
+          ),
+        ],
+      );
+}
+
+class _DistributionCard extends StatelessWidget {
+  const _DistributionCard({required this.total, required this.categories});
+
+  final int total;
+  final Map<String, int> categories;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        key: const Key('outputs-distribution'),
+        padding: const EdgeInsets.all(13),
+        decoration: _panelDecoration(context, radius: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _RailTitle(
+              title: _copy(context, 'Çıktı Dağılımı', 'Output Distribution'),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: Row(
+                children: [
+                  SizedBox(
+                    width: 118,
+                    height: 118,
+                    child: Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        CustomPaint(
+                          size: const Size.square(118),
+                          painter: _DonutPainter(categories: categories),
+                        ),
+                        Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              '$total',
+                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+                            ),
+                            Text(
+                              _copy(context, 'Toplam', 'Total'),
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 8),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        for (final code in _categoryOrder)
+                          _LegendRow(
+                            label: _typeLabel(context, code),
+                            color: _typeColor(code),
+                            count: categories[code] ?? 0,
+                            total: total,
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Text(
+              _copy(
+                context,
+                '* Dağılım doğrulanmış bitmiş ürünlerden hesaplanır.',
+                '* Distribution is calculated from verified finished products.',
+              ),
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 7.5),
+            ),
+          ],
+        ),
+      );
+}
+
+class _DonutPainter extends CustomPainter {
+  const _DonutPainter({required this.categories});
+
+  final Map<String, int> categories;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+    final inset = rect.deflate(13);
+    final total = categories.values.fold<int>(0, (sum, value) => sum + value);
+    final track = Paint()
+      ..color = const Color(0xFF7B8798).withValues(alpha: .20)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 14;
+    canvas.drawArc(inset, 0, math.pi * 2, false, track);
+    if (total == 0) return;
+    var start = -math.pi / 2;
+    for (final code in _categoryOrder) {
+      final value = categories[code] ?? 0;
+      if (value <= 0) continue;
+      final sweep = math.pi * 2 * value / total;
+      final paint = Paint()
+        ..color = _typeColor(code)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 14
+        ..strokeCap = StrokeCap.butt;
+      canvas.drawArc(inset, start, sweep, false, paint);
+      start += sweep;
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _DonutPainter oldDelegate) =>
+      oldDelegate.categories != categories;
+}
+
+class _LegendRow extends StatelessWidget {
+  const _LegendRow({
+    required this.label,
+    required this.color,
+    required this.count,
+    required this.total,
+  });
+
+  final String label;
+  final Color color;
+  final int count;
+  final int total;
+
+  @override
+  Widget build(BuildContext context) {
+    final percent = total == 0 ? '—' : '${(count * 100 / total).toStringAsFixed(1)}%';
+    return SizedBox(
+      height: 19,
+      child: Row(
+        children: [
+          Icon(Icons.circle, size: 7, color: color),
+          const SizedBox(width: 5),
+          Expanded(
+            child: Text(label, style: const TextStyle(fontSize: 8.2)),
+          ),
+          Text('$count  $percent', style: const TextStyle(fontSize: 8.2)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ActivityCard extends StatelessWidget {
+  const _ActivityCard({required this.records});
+
+  final List<EvidenceRecord> records;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        key: const Key('outputs-activity'),
+        padding: const EdgeInsets.all(13),
+        decoration: _panelDecoration(context, radius: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _RailTitle(
+              title: _copy(context, 'Son Çıktı Aktivitesi', 'Recent Output Activity'),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: records.isEmpty
+                  ? Center(
+                      child: Text(
+                        '—',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                    )
+                  : Column(
+                      children: [
+                        for (final record in records)
+                          Expanded(
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 44,
+                                  child: Text(
+                                    '#${record.sequence}',
+                                    style: Theme.of(context)
+                                        .textTheme
+                                        .bodySmall
+                                        ?.copyWith(fontSize: 8),
+                                  ),
+                                ),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        _outputName(record),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${_copy(context, 'Yürütme', 'Execution')} ${record.executionId}',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(fontSize: 7.5),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const Icon(Icons.circle, size: 6, color: IlaiosTheme.success),
+                              ],
+                            ),
+                          ),
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      );
+}
+
+class _StorageCard extends StatelessWidget {
+  const _StorageCard({required this.summary});
+
+  final _LocalStorageSummary summary;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        key: const Key('outputs-storage'),
+        padding: const EdgeInsets.all(13),
+        decoration: _panelDecoration(context, radius: 8),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _RailTitle(
+              title: _copy(context, 'Depolama Kullanımı', 'Storage Usage'),
+            ),
+            const Spacer(),
+            Text(
+              summary.bytes == 0 ? '—' : _formatBytes(summary.bytes),
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 4),
+            LinearProgressIndicator(
+              value: summary.count == 0 ? 0 : 1,
+              minHeight: 5,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            const Spacer(),
+            Row(
+              children: [
+                Expanded(
+                  child: _StorageValue(
+                    label: _copy(context, 'Yerel Kopyalar', 'Local Copies'),
+                    value: '${summary.count}',
+                  ),
+                ),
+                Expanded(
+                  child: _StorageValue(
+                    label: _copy(context, 'Kapasite', 'Capacity'),
+                    value: '—',
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+}
+
+class _StorageValue extends StatelessWidget {
+  const _StorageValue({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 7.5),
+          ),
+          const SizedBox(height: 2),
+          Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+        ],
+      );
+}
+
+class _RailTitle extends StatelessWidget {
+  const _RailTitle({required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          ),
+          Text(
+            _copy(context, 'Tümü', 'All'),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 8),
+          ),
+          const SizedBox(width: 2),
+          const Icon(Icons.chevron_right, size: 15),
+        ],
+      );
+}
+
+class _InlineMessage extends StatelessWidget {
+  const _InlineMessage({required this.message});
+
+  final String message;
+
+  @override
+  Widget build(BuildContext context) => Container(
+        key: const Key('delivery-message'),
+        height: 30,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        alignment: Alignment.centerLeft,
+        decoration: BoxDecoration(
+          color: IlaiosTheme.enterpriseCyan.withValues(alpha: .07),
+          borderRadius: BorderRadius.circular(7),
+          border: Border.all(
+            color: IlaiosTheme.enterpriseCyan.withValues(alpha: .28),
+          ),
+        ),
+        child: SelectableText(
+          message,
+          maxLines: 1,
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 8.5),
+        ),
+      );
+}
+
+class _LocalStorageSummary {
+  const _LocalStorageSummary({required this.count, required this.bytes});
+
+  final int count;
+  final int bytes;
+}
+
+Map<String, int> _categoryCounts(List<EvidenceRecord> records) {
+  final result = <String, int>{for (final code in _categoryOrder) code: 0};
+  for (final record in records) {
+    final code = _deliveryTypeCode(record);
+    result[code] = (result[code] ?? 0) + 1;
+  }
+  return result;
+}
+
+_LocalStorageSummary _localStorage(List<EvidenceRecord> records) {
+  var count = 0;
+  var bytes = 0;
+  for (final record in records) {
+    final userProfile = Platform.environment['USERPROFILE']?.trim();
+    final localAppData = Platform.environment['LOCALAPPDATA']?.trim();
+    final separator = Platform.pathSeparator;
+    final rootPath = userProfile?.isNotEmpty == true
+        ? '$userProfile${separator}Downloads${separator}ILAIOS'
+        : (localAppData?.isNotEmpty == true
+            ? '$localAppData${separator}ILAIOS${separator}Deliveries'
+            : '${Directory.systemTemp.path}${separator}ILAIOS${separator}Deliveries');
+    final safeExecution =
+        record.executionId.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
+    final extension =
+        record.action.toLowerCase().contains('video') ? '.mp4' : '.bin';
+    final digestPrefix = record.artifactDigest.length <= 16
+        ? record.artifactDigest
+        : record.artifactDigest.substring(0, 16);
+    final file = File(
+      '$rootPath$separator${'ILAIOS-$safeExecution-$digestPrefix$extension'}',
+    );
+    try {
+      if (file.existsSync()) {
+        count += 1;
+        bytes += file.lengthSync();
+      }
+    } on FileSystemException {
+      // Local storage telemetry is best-effort and never affects evidence truth.
+    }
+  }
+  return _LocalStorageSummary(count: count, bytes: bytes);
+}
+
+bool _safeExists(File file) {
+  try {
+    return file.existsSync();
+  } on FileSystemException {
+    return false;
+  }
+}
+
+String _safeFileSize(File file) {
+  try {
+    return _formatBytes(file.lengthSync());
+  } on FileSystemException {
+    return '—';
+  }
+}
+
+String _formatBytes(int bytes) {
+  if (bytes < 1024) return '$bytes B';
+  if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+  if (bytes < 1024 * 1024 * 1024) {
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+  return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(1)} GB';
+}
+
+const List<String> _categoryOrder = <String>[
+  'document',
+  'video',
+  'visual',
+  'report',
+  'table',
+  'other',
+];
+
+String _deliveryTypeCode(EvidenceRecord record) {
+  final value = record.action.toLowerCase();
+  if (value.contains('video') || value.contains('media')) return 'video';
+  if (value.contains('image') ||
+      value.contains('visual') ||
+      value.contains('design')) {
+    return 'visual';
+  }
+  if (value.contains('report') || value.contains('research')) return 'report';
+  if (value.contains('table') ||
+      value.contains('sheet') ||
+      value.contains('csv')) {
+    return 'table';
+  }
+  if (value.contains('document') ||
+      value.contains('doc') ||
+      value.contains('pdf') ||
+      value.contains('web')) {
+    return 'document';
+  }
+  return 'other';
+}
+
+String _typeLabel(BuildContext context, String code) => switch (code) {
+      'document' => _copy(context, 'Doküman', 'Document'),
+      'video' => _copy(context, 'Video', 'Video'),
+      'visual' => _copy(context, 'Görsel', 'Visual'),
+      'report' => _copy(context, 'Rapor', 'Report'),
+      'table' => _copy(context, 'Tablo', 'Table'),
+      _ => _copy(context, 'Diğer', 'Other'),
+    };
+
+Color _typeColor(String code) => switch (code) {
+      'document' => IlaiosTheme.coreBlue,
+      'video' => IlaiosTheme.violet,
+      'visual' => const Color(0xFFEB5D91),
+      'report' => IlaiosTheme.warning,
+      'table' => IlaiosTheme.success,
+      _ => const Color(0xFF91A7C0),
+    };
+
+IconData _typeIcon(String code) => switch (code) {
+      'document' => Icons.description_outlined,
+      'video' => Icons.videocam_outlined,
+      'visual' => Icons.image_outlined,
+      'report' => Icons.analytics_outlined,
+      'table' => Icons.table_chart_outlined,
+      _ => Icons.inventory_2_outlined,
+    };
+
+String _outputName(EvidenceRecord record) {
+  var value = record.action;
+  const suffix = '.finished_product';
+  if (value.endsWith(suffix)) value = value.substring(0, value.length - suffix.length);
+  value = value.replaceAll(RegExp(r'[._-]+'), ' ').trim();
+  if (value.isEmpty) return record.executionId;
+  return value
+      .split(' ')
+      .where((part) => part.isNotEmpty)
+      .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+      .join(' ');
+}
+
+BoxDecoration _panelDecoration(BuildContext context, {required double radius}) =>
+    BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(radius),
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+    );
+
+BoxDecoration _fieldDecoration(BuildContext context) => BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerLowest,
+      borderRadius: BorderRadius.circular(7),
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+    );
+
 bool _isFinishedProductEvidence(EvidenceRecord record) =>
     record.action.endsWith('.finished_product');
+
+bool widgetStatusAvailable(String value) {
+  final lower = value.toLowerCase();
+  return lower.contains('connected') ||
+      lower.contains('operational') ||
+      lower.contains('bağlı');
+}
 
 String _localizedStatus(BuildContext context, String value) {
   if (!_isTr(context)) return value;
   return switch (value) {
     'Operational APIs connected' => 'Operasyon API’leri bağlı',
     'Connected to authoritative control plane' => 'Yetkili kontrol düzlemine bağlı',
+    'Operational APIs not connected' => 'Operasyon API’leri bağlı değil',
     _ => value,
   };
 }
 
-bool _isTr(BuildContext context) => context.ilaiosLocale.locale == IlaiosLocale.turkish;
+bool _isTr(BuildContext context) =>
+    context.ilaiosLocale.locale == IlaiosLocale.turkish;
+
+String _copy(BuildContext context, String tr, String en) =>
+    _isTr(context) ? tr : en;
 
 String _surface(BuildContext context, String key) =>
     IlaiosSurfaceCatalog.text(context.ilaiosLocale.locale.code, key) ?? key;
