@@ -123,8 +123,12 @@ void main() {
     ));
     await tester.tap(find.byKey(const ValueKey('nav-workflows')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('reference-workflows-page')), findsOneWidget);
-    expect(find.text('Workflows'), findsOneWidget);
+    final workflowsPage = find.byKey(const Key('reference-workflows-page'));
+    expect(workflowsPage, findsOneWidget);
+    expect(
+      find.descendant(of: workflowsPage, matching: find.text('Workflows')),
+      findsOneWidget,
+    );
     expect(find.text('5'), findsOneWidget);
     expect(find.text('2'), findsNothing);
     final refresh = find.byKey(const Key('workflows-refresh'));
