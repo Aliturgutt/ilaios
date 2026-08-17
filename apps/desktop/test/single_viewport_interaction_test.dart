@@ -15,19 +15,21 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byType(SingleChildScrollView), findsNothing);
 
-    final artifacts = find.byKey(const Key('reference-artifacts-panel'));
-    final evidence = find.byKey(const Key('reference-evidence-panel'));
+    final hero = find.byKey(const Key('command-center-hero'));
+    final artifacts = find.byKey(const Key('command-center-artifacts'));
+    final completed = find.byKey(const Key('command-center-completed'));
     final bottomBar = find.byKey(const Key('reference-bottom-status-v2'));
 
+    expect(hero, findsOneWidget);
     expect(artifacts, findsOneWidget);
-    expect(evidence, findsOneWidget);
+    expect(completed, findsOneWidget);
     expect(bottomBar, findsOneWidget);
     expect(tester.getBottomRight(artifacts).dy, lessThan(978));
-    expect(tester.getBottomRight(evidence).dy, lessThan(978));
+    expect(tester.getBottomRight(completed).dy, lessThan(978));
     expect(tester.getBottomRight(bottomBar).dy, lessThanOrEqualTo(1024));
   });
 
-  testWidgets('workspace tabs are real interactive controls', (
+  testWidgets('command-center controls are real interactive controls', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1536, 1024));
@@ -36,20 +38,15 @@ void main() {
     await tester.pumpWidget(const IlaiosDesktopApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('Live Code'), findsNWidgets(2));
-    expect(find.text('Terminal'), findsWidgets);
+    expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
+    expect(find.byKey(const Key('home-new-work')), findsOneWidget);
+    expect(find.byKey(const Key('home-templates')), findsOneWidget);
+    expect(find.byKey(const Key('home-assign-agent')), findsOneWidget);
+    expect(find.byKey(const Key('home-factory-video')), findsOneWidget);
 
-    await tester.tap(find.byKey(const Key('workspace-tab-terminal')));
+    await tester.tap(find.byKey(const Key('home-factory-video')));
     await tester.pumpAndSettle();
-
     expect(tester.takeException(), isNull);
-    expect(find.text('Live Code'), findsOneWidget);
-    expect(find.text('Terminal'), findsWidgets);
-
-    await tester.tap(find.byKey(const Key('workspace-tab-browser')));
-    await tester.pumpAndSettle();
-
-    expect(tester.takeException(), isNull);
-    expect(find.text('Browser'), findsWidgets);
+    expect(find.text('What do you want ILAIOS to build?'), findsOneWidget);
   });
 }
