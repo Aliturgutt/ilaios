@@ -8,14 +8,11 @@ from collections.abc import Callable, Mapping
 from typing import cast
 
 from .commercial_quote import CommercialDispatchAuthority
+from .commercial_store import CommercialAuthorityStore
 from .commercial_types import CommercialAdmissionError
 from .configuration import VideoAutomationPolicy
 from .managed_credit_store import ManagedCreditLedgerStore, ProviderSideEffectLedger
-from .managed_credits import (
-    ManagedCreditAccount,
-    ManagedCreditError,
-    ProviderCostQuote,
-)
+from .managed_credits import ManagedCreditAccount, ManagedCreditError, ProviderCostQuote
 from .managed_provider_execution import ManagedPaidVideoExecutionCoordinator
 from .models import ProviderRequest, ProviderResult
 from .openrouter_managed_video_provider import (
@@ -36,13 +33,7 @@ class OpenRouterManagedVideoGatewayError(ValueError):
 
 
 class OpenRouterManagedVideoGateway:
-    """Bind commercial, catalog and managed-credit evidence to the paid POST boundary.
-
-    The gateway never chooses a provider/model. It validates an already governed
-    request and canonical routing-decision binding before creating a provider.
-    A paid POST is impossible without a fresh CommercialDispatchAuthority that
-    is bound to secured payment, a locked quote and the same live pricing digest.
-    """
+    """Bind commercial, catalog and managed-credit evidence to the paid POST boundary."""
 
     def __init__(
         self,
@@ -50,6 +41,7 @@ class OpenRouterManagedVideoGateway:
         api_key: str,
         policy: VideoAutomationPolicy,
         credit_store: ManagedCreditLedgerStore,
+        commercial_store: CommercialAuthorityStore,
         catalog: OpenRouterVideoCatalogClient,
         transport: OpenRouterTransport | None = None,
         webhook_store: OpenRouterVideoWebhookStore | None = None,
@@ -61,6 +53,7 @@ class OpenRouterManagedVideoGateway:
         self._api_key = api_key
         self._policy = policy
         self._credit_store = credit_store
+        self._commercial_store = commercial_store
         self._catalog = catalog
         self._transport = transport
         self._webhook_store = webhook_store
@@ -76,24 +69,30 @@ class OpenRouterManagedVideoGateway:
         routing_decision_id: str,
         commercial_authority: CommercialDispatchAuthority,
     ) -> ProviderResult:
-        """Validate commercial/catalog facts, then perform at most one paid POST."""
+        """Validate durable commercial/catalog facts, then perform at most one paid POST."""
 
         if request.provider_name != OPENROUTER_MANAGED_PROVIDER_NAME:
             raise OpenRouterManagedVideoGatewayError(
                 "request is not bound to the managed OpenRouter provider"
             )
         model_id = _request_model_id(request)
+        now_epoch_s = int(self._clock())
         _validate_commercial_authority_before_catalog(
             authority=commercial_authority,
             request=request,
             quote=quote,
             model_id=model_id,
-            now_epoch_s=int(self._clock()),
+            now_epoch_s=now_epoch_s,
         )
+        try:
+            self._commercial_store.verify_authority(
+                commercial_authority, now_epoch_s=now_epoch_s
+            )
+        except CommercialAdmissionError as exc:
+            raise OpenRouterManagedVideoGatewayError(str(exc)) from exc
 
         # A paid request identity is single-use. Even a deterministic FAILED
-        # provider result requires a fresh governed retry request/authorization;
-        # this prevents retries from silently reusing financial side-effect state.
+        # provider result requires a fresh governed retry request/authorization.
         side_effect_ledger = ProviderSideEffectLedger(self._credit_store)
         try:
             side_effect_ledger.get(request.request_id)
@@ -135,10 +134,19 @@ class OpenRouterManagedVideoGateway:
             raise OpenRouterManagedVideoGatewayError(
                 "live pricing/capability catalog changed after quote; requote required"
             )
-        # Re-check TTL after live catalog I/O. A quote that expires while catalog
-        # evidence is being refreshed must not race through to the paid POST.
+        # Re-check TTL after live catalog I/O so an expiring quote cannot race POST.
+        now_epoch_s = int(self._clock())
         try:
-            commercial_authority.require_valid(int(self._clock()))
+            commercial_authority.require_valid(now_epoch_s)
+            self._commercial_store.verify_authority(
+                commercial_authority, now_epoch_s=now_epoch_s
+            )
+            self._commercial_store.reserve_request(
+                authority=commercial_authority,
+                request_id=request.request_id,
+                provider_quote=quote,
+                now_epoch_s=now_epoch_s,
+            )
         except CommercialAdmissionError as exc:
             raise OpenRouterManagedVideoGatewayError(str(exc)) from exc
 
@@ -154,12 +162,19 @@ class OpenRouterManagedVideoGateway:
             store=self._credit_store,
             side_effect_ledger=side_effect_ledger,
         )
-        plan = coordinator.authorize(
-            account=account,
-            request=request,
-            quote=quote,
-            routing_decision_id=routing_decision_id,
-        )
+        try:
+            plan = coordinator.authorize(
+                account=account,
+                request=request,
+                quote=quote,
+                routing_decision_id=routing_decision_id,
+            )
+        except Exception:
+            # No provider submission was prepared; return seller-side quote budget.
+            self._commercial_store.release_request(request.request_id)
+            raise
+        # From this point onward transport ambiguity may represent real spend.
+        # Keep the commercial reservation until terminal provider cost reconciliation.
         result = coordinator.execute(provider=provider, plan=plan)
         if result.success:
             if result.external_id is None:
@@ -215,10 +230,7 @@ def _request_model_id(request: ProviderRequest) -> str:
     return value
 
 
-def _validate_capabilities(
-    request: ProviderRequest,
-    model: OpenRouterVideoModel,
-) -> None:
+def _validate_capabilities(request: ProviderRequest, model: OpenRouterVideoModel) -> None:
     if request.payload.get("request_count") != 1:
         raise OpenRouterManagedVideoGatewayError(
             "catalog capability gate requires one generation item"
@@ -250,10 +262,7 @@ def _validate_capabilities(
     aspect_ratio = item.get("aspect_ratio")
     if not isinstance(aspect_ratio, str) or not aspect_ratio.strip():
         raise OpenRouterManagedVideoGatewayError("aspect_ratio must be non-empty")
-    if (
-        model.supported_aspect_ratios
-        and aspect_ratio not in model.supported_aspect_ratios
-    ):
+    if model.supported_aspect_ratios and aspect_ratio not in model.supported_aspect_ratios:
         raise OpenRouterManagedVideoGatewayError(
             "requested aspect ratio is not supported by live model capability"
         )
