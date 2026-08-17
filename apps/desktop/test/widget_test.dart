@@ -170,7 +170,10 @@ void main() {
     expect(find.text('Files'), findsWidgets);
     expect(find.text('Logs'), findsWidgets);
     expect(find.text('Events'), findsWidgets);
-    expect(find.textContaining('no data is fabricated'), findsOneWidget);
+    expect(
+      find.textContaining('Authoritative source-file content'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('verified evidence renders provenance metadata only', (
