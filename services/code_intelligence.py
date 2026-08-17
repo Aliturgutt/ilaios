@@ -12,6 +12,8 @@ from src.code_intelligence.graph import CodeIntelligenceGraphBuilder
 from src.code_intelligence.models import RepositorySnapshot
 from src.code_intelligence.repository_analyzer import RepositoryAnalyzer
 
+_GIT_TIMEOUT_SECONDS = 10.0
+
 
 class CodeIntelligenceAdmissionError(ValueError):
     """Repository intelligence cannot safely bind to the requested revision."""
@@ -139,30 +141,40 @@ class ILAIOSRepositoryIntelligence:
         }
 
 
-def _git_text(root: Path, *arguments: str) -> str:
-    completed = subprocess.run(
-        (
-            "git",
-            "-c",
-            "core.fsmonitor=false",
-            "-c",
-            "core.untrackedCache=false",
-            *arguments,
-        ),
-        cwd=root,
-        check=False,
-        capture_output=True,
-        text=True,
-    )
+def _git_output(root: Path, *arguments: str, strip: bool) -> str:
+    try:
+        completed = subprocess.run(
+            (
+                "git",
+                "-c",
+                "core.fsmonitor=false",
+                "-c",
+                "core.untrackedCache=false",
+                *arguments,
+            ),
+            cwd=root,
+            check=False,
+            capture_output=True,
+            text=True,
+            timeout=_GIT_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise CodeIntelligenceAdmissionError(
+            "repository Git verification failed"
+        ) from exc
     if completed.returncode != 0:
         raise CodeIntelligenceAdmissionError(
             "repository Git verification failed"
         )
-    return completed.stdout.strip()
+    return completed.stdout.strip() if strip else completed.stdout
+
+
+def _git_text(root: Path, *arguments: str) -> str:
+    return _git_output(root, *arguments, strip=True)
 
 
 def _tracked_files(root: Path) -> frozenset[str]:
-    output = _git_text(root, "ls-files", "-z")
+    output = _git_output(root, "ls-files", "-z", strip=False)
     return frozenset(path for path in output.split("\0") if path)
 
 
