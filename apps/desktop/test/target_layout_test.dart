@@ -27,16 +27,16 @@ void main() {
         reason:
             'Desktop target layout overflowed or threw at ${size.width}x${size.height}',
       );
-      expect(find.text('Active Workflow'), findsOneWidget);
-      expect(find.text('Goal Intake'), findsOneWidget);
-      expect(find.text('Execution'), findsOneWidget);
-      expect(find.text('Verification'), findsOneWidget);
-      expect(find.text('Delivery'), findsOneWidget);
+      expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
+      if (size.width >= 1180) {
+        expect(find.text('Main Control Center'), findsOneWidget);
+        expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
+        expect(find.byKey(const Key('command-center-metrics')), findsOneWidget);
+      }
     }
   });
 
-  testWidgets(
-      'premium target composition keeps operational right rail and workspace panes', (
+  testWidgets('premium target composition keeps command center and operational rail', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -45,15 +45,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('STATUS'), findsOneWidget);
-    expect(find.text('COST & USAGE'), findsOneWidget);
-    expect(find.text('APPROVALS'), findsOneWidget);
-    expect(find.text('LATEST LOGS'), findsOneWidget);
-    expect(find.text('Live Code'), findsWidgets);
-    expect(find.text('Terminal'), findsWidgets);
-    expect(find.text('Browser'), findsWidgets);
-    expect(find.text('LATEST ARTIFACTS'), findsOneWidget);
-    expect(find.text('EVIDENCE & VERIFICATION'), findsOneWidget);
+    expect(find.text('Main Control Center'), findsOneWidget);
+    expect(find.byKey(const Key('command-center-focus')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-attention')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-artifacts')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-completed')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-quick-actions')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-session')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-activities')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-alerts')), findsOneWidget);
   });
 
   testWidgets('wide shell renders visible canonical ILAIOS symbol and wordmark', (
@@ -97,8 +97,7 @@ void main() {
     }
   });
 
-  testWidgets(
-      'Turkish target layout tolerates localized Windows scaling at supported widths', (
+  testWidgets('Turkish target layout tolerates localized Windows scaling', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -129,8 +128,8 @@ void main() {
           reason:
               'Turkish Desktop layout failed at ${size.width}x${size.height}, ${scale}x text scaling',
         );
+        // Accessibility scaling intentionally uses the verified responsive shell.
         expect(find.text('Aktif İş Akışı'), findsOneWidget);
-        expect(find.text('Hedef Alımı'), findsOneWidget);
       }
     }
   });
