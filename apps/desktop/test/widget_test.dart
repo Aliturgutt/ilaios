@@ -374,7 +374,7 @@ void main() {
     ));
     await tester.tap(find.byKey(const ValueKey('nav-approvals')));
     await tester.pumpAndSettle();
-    expect(find.text('No pending governed work.'), findsOneWidget);
+    expect(find.text('No matching approval request.'), findsOneWidget);
     expect(find.byKey(const ValueKey('approve-exec-medium')), findsNothing);
     expect(find.byKey(const ValueKey('deny-exec-medium')), findsNothing);
   });
