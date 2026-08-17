@@ -14,6 +14,10 @@ from types import MappingProxyType
 from typing import cast
 
 from .models import MetadataValue, ProviderRequest, ProviderResult
+from .openrouter_frame_references import (
+    FrameReferenceRoutingError,
+    build_openrouter_frame_images,
+)
 from .openrouter_video_provider import (
     OpenRouterJsonResponse,
     OpenRouterTransport,
@@ -251,6 +255,12 @@ def _build_request_body(
         if isinstance(seed, bool) or not isinstance(seed, int):
             raise OpenRouterManagedVideoProviderError("seed must be an integer")
         body["seed"] = seed
+    try:
+        frame_images = build_openrouter_frame_images(item)
+    except FrameReferenceRoutingError as exc:
+        raise OpenRouterManagedVideoProviderError(str(exc)) from exc
+    if frame_images:
+        body["frame_images"] = frame_images
     if callback_url is not None:
         body["callback_url"] = callback_url
     return body
