@@ -148,16 +148,17 @@ class ReferenceDesktopShellV9 extends StatelessWidget {
   }
 }
 
-/// Uses the untouched canonical horizontal masters from the ILAIOS brand
-/// catalog. No symbol redrawing, recoloring, masks, or synthetic lockups are
-/// permitted here. Theme switching selects the matching catalog master only.
+/// Uses untouched canonical horizontal masters from the ILAIOS brand catalog.
+/// The files under apps/desktop/assets/brand are byte-for-byte mirrors of the
+/// canonical catalog blobs, placed inside Flutter's own asset root so Windows
+/// release builds can always resolve them from AssetManifest at runtime.
 class _ReferenceBrandOverlay extends StatelessWidget {
   const _ReferenceBrandOverlay();
 
   static const _darkAsset =
-      '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
+      'assets/brand/02-ilaios-primary-horizontal-dark.jpg';
   static const _lightAsset =
-      '../../brand/assets/13-ilaios-primary-horizontal-light.jpg';
+      'assets/brand/13-ilaios-primary-horizontal-light.jpg';
 
   @override
   Widget build(BuildContext context) {
@@ -172,7 +173,7 @@ class _ReferenceBrandOverlay extends StatelessWidget {
         child: Container(
           key: const Key('reference-brand-lockup-v9'),
           color: theme.colorScheme.surfaceContainerLow,
-          padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           alignment: Alignment.centerLeft,
           child: Image.asset(
             asset,
@@ -181,10 +182,15 @@ class _ReferenceBrandOverlay extends StatelessWidget {
                   ? 'reference-brand-horizontal-dark'
                   : 'reference-brand-horizontal-light',
             ),
+            width: 210,
+            height: 70,
             fit: BoxFit.contain,
             alignment: Alignment.centerLeft,
             filterQuality: FilterQuality.high,
             gaplessPlayback: true,
+            errorBuilder: (context, error, stackTrace) => const SizedBox.shrink(
+              key: Key('reference-brand-load-error'),
+            ),
           ),
         ),
       ),
