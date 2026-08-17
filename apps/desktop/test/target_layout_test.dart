@@ -32,7 +32,7 @@ void main() {
       expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
       expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
 
-      if (size.width < 1280 || size.height < 800) {
+      if (size.width < 1180 || size.height < 720) {
         expect(
           find.byKey(const Key('reference-scaled-viewport-v9')),
           findsOneWidget,

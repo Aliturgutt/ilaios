@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/main.dart';
 
@@ -8,14 +9,17 @@ Finder _asset(String name) => find.byWidgetPredicate((widget) {
     });
 
 void main() {
-  const darkLogo = '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
-  const lightLogo = '../../brand/assets/13-ilaios-primary-horizontal-light.jpg';
+  const darkLogo = 'assets/brand/02-ilaios-primary-horizontal-dark.jpg';
+  const lightLogo = 'assets/brand/13-ilaios-primary-horizontal-light.jpg';
 
-  testWidgets('dark Desktop uses the canonical dark horizontal brand master', (
+  testWidgets('dark Desktop loads the canonical dark horizontal brand master', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1536, 1024));
     addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final bytes = await rootBundle.load(darkLogo);
+    expect(bytes.lengthInBytes, greaterThan(0));
 
     await tester.pumpWidget(const IlaiosDesktopApp());
     await tester.pumpAndSettle();
@@ -23,15 +27,19 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
     expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
+    expect(find.byKey(const Key('reference-brand-load-error')), findsNothing);
     expect(_asset(darkLogo), findsOneWidget);
     expect(_asset(lightLogo), findsNothing);
   });
 
-  testWidgets('light Desktop uses the canonical light horizontal brand master', (
+  testWidgets('light Desktop loads the canonical light horizontal brand master', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1536, 1024));
     addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    final bytes = await rootBundle.load(lightLogo);
+    expect(bytes.lengthInBytes, greaterThan(0));
 
     await tester.pumpWidget(
       const IlaiosDesktopApp(themeMode: ThemeMode.light),
@@ -41,6 +49,7 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
     expect(find.byKey(const Key('reference-brand-horizontal-light')), findsOneWidget);
+    expect(find.byKey(const Key('reference-brand-load-error')), findsNothing);
     expect(_asset(lightLogo), findsOneWidget);
     expect(_asset(darkLogo), findsNothing);
   });
