@@ -67,7 +67,7 @@ def test_adapter_binds_evidence_to_exact_repository_revision(tmp_path: Path) -> 
     assert evidence["schema_version"] == "ilaios-code-intelligence-evidence-v1"
     assert evidence["repository_revision"] == revision
     assert isinstance(evidence["generation_id"], str)
-    assert evidence["node_count"] == 2
+    assert evidence["node_count"] == 3
 
 
 def test_adapter_rejects_stale_or_wrong_revision(tmp_path: Path) -> None:
