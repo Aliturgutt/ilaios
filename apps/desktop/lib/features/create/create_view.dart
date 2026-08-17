@@ -8,11 +8,10 @@ import '../../identity/identity_client.dart';
 
 /// Reference-faithful Goals surface.
 ///
-/// The supplied screenshots are used only as layout/theme references. Values
-/// rendered here come from the authoritative ControlPlaneProjection or from a
-/// PromptSubmission returned by the configured control-plane callback. Missing
-/// goal detail is shown as unavailable instead of being fabricated from the
-/// reference images.
+/// The supplied screenshots are layout/theme references only. Runtime values
+/// come from the authoritative ControlPlaneProjection or from a PromptSubmission
+/// returned by the control-plane callback. Missing goal detail is rendered as
+/// unavailable instead of copying screenshot telemetry into production state.
 class CreateView extends StatefulWidget {
   const CreateView({
     required this.projection,
@@ -39,6 +38,8 @@ class CreateView extends StatefulWidget {
   State<CreateView> createState() => _CreateViewState();
 }
 
+enum _FactoryPreset { web, video, software }
+
 class _CreateViewState extends State<CreateView> {
   final TextEditingController _controller = TextEditingController();
   bool _submitting = false;
@@ -46,6 +47,7 @@ class _CreateViewState extends State<CreateView> {
   String? _submittedObjective;
   String? _error;
   String _activeTab = 'all';
+  _FactoryPreset? _selectedPreset;
 
   @override
   void dispose() {
@@ -53,11 +55,59 @@ class _CreateViewState extends State<CreateView> {
     super.dispose();
   }
 
+  String _starterText(BuildContext context, _FactoryPreset preset) {
+    final tr = _isTr(context);
+    return switch (preset) {
+      _FactoryPreset.web => tr
+          ? 'Şirketim için premium, responsive bir web sitesi oluştur; test et ve bitmiş ürünü teslim et.'
+          : 'Build a premium responsive website for my company, test it, and deliver the finished product.',
+      _FactoryPreset.video => tr
+          ? '20 saniyelik profesyonel bir ürün videosu oluştur, doğrula ve bitmiş videoyu teslim et.'
+          : 'Create a professional 20-second product video, verify it, and deliver the finished video.',
+      _FactoryPreset.software => tr
+          ? 'İhtiyacımı karşılayan çalışan bir yazılım ürünü oluştur, test et ve doğrulanmış çıktıyı teslim et.'
+          : 'Build a working software product for my requirement, test it, and deliver the verified output.',
+    };
+  }
+
+  String _routePrefix(BuildContext context, _FactoryPreset preset) {
+    final tr = _isTr(context);
+    return switch (preset) {
+      _FactoryPreset.web => tr ? 'Web sitesi oluşturma görevi:' : 'Website build task:',
+      _FactoryPreset.video => tr ? 'Video oluşturma görevi:' : 'Video creation task:',
+      _FactoryPreset.software => tr ? 'Yazılım oluşturma görevi:' : 'Software build task:',
+    };
+  }
+
+  String _presetLabel(BuildContext context, _FactoryPreset preset) => switch (preset) {
+        _FactoryPreset.web => 'Web Factory',
+        _FactoryPreset.video => 'Video Factory',
+        _FactoryPreset.software => 'Software Factory',
+      };
+
+  void _selectPreset(_FactoryPreset preset) {
+    final current = _controller.text.trim();
+    final starterTexts = _FactoryPreset.values
+        .map((item) => _starterText(context, item))
+        .toSet();
+    final shouldReplace = current.isEmpty || starterTexts.contains(current);
+    setState(() {
+      _selectedPreset = preset;
+      _submission = null;
+      _error = null;
+      if (shouldReplace) {
+        final text = _starterText(context, preset);
+        _controller.text = text;
+        _controller.selection = TextSelection.collapsed(offset: text.length);
+      }
+    });
+  }
+
   Future<void> _submit() async {
     final callback = widget.onSubmit;
     if (callback == null || _submitting || !widget.projection.connected) return;
-    final objective = _controller.text.trim();
-    if (objective.isEmpty) {
+    final rawObjective = _controller.text.trim();
+    if (rawObjective.isEmpty) {
       setState(() {
         _submission = null;
         _error = _copy(
@@ -68,6 +118,10 @@ class _CreateViewState extends State<CreateView> {
       });
       return;
     }
+    final preset = _selectedPreset;
+    final objective = preset == null
+        ? rawObjective
+        : '${_routePrefix(context, preset)} $rawObjective';
     setState(() {
       _submitting = true;
       _submission = null;
@@ -79,7 +133,7 @@ class _CreateViewState extends State<CreateView> {
       if (!mounted) return;
       setState(() {
         _submission = result;
-        _submittedObjective = objective;
+        _submittedObjective = rawObjective;
       });
     } on Object catch (error) {
       if (!mounted) return;
@@ -108,6 +162,9 @@ class _CreateViewState extends State<CreateView> {
             controller: _controller,
             enabled: connected && widget.onSubmit != null,
             submitting: _submitting,
+            selectedPreset: _selectedPreset,
+            presetLabel: (preset) => _presetLabel(context, preset),
+            onPresetChanged: _selectPreset,
             onSubmit: _submit,
           ),
           const SizedBox(height: 8),
@@ -233,17 +290,23 @@ class _GoalsHeader extends StatelessWidget {
     required this.controller,
     required this.enabled,
     required this.submitting,
+    required this.selectedPreset,
+    required this.presetLabel,
+    required this.onPresetChanged,
     required this.onSubmit,
   });
 
   final TextEditingController controller;
   final bool enabled;
   final bool submitting;
+  final _FactoryPreset? selectedPreset;
+  final String Function(_FactoryPreset preset) presetLabel;
+  final ValueChanged<_FactoryPreset> onPresetChanged;
   final VoidCallback onSubmit;
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 58,
+        height: 72,
         child: Row(
           children: [
             Expanded(
@@ -271,17 +334,13 @@ class _GoalsHeader extends StatelessWidget {
               ),
             ),
             SizedBox(
-              width: 300,
+              width: 288,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Text(
-                    _copy(
-                      context,
-                      'What do you want ILAIOS to build?',
-                      'ILAIOS’un ne oluşturmasını istiyorsunuz?',
-                    ),
+                    context.tr('goals.title'),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 8.2),
                   ),
                   const SizedBox(height: 3),
@@ -304,19 +363,25 @@ class _GoalsHeader extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
+            _FactoryRouteStrip(
+              selected: selectedPreset,
+              presetLabel: presetLabel,
+              onChanged: onPresetChanged,
+            ),
+            const SizedBox(width: 8),
             _HeaderButton(
               icon: Icons.filter_alt_outlined,
               label: _copy(context, 'Filter', 'Filtrele'),
               onPressed: () {},
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             _HeaderButton(
               icon: Icons.download_outlined,
               label: _copy(context, 'Export', 'Dışa Aktar'),
               onPressed: () {},
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             SizedBox(
               height: 34,
               child: FilledButton.icon(
@@ -331,16 +396,124 @@ class _GoalsHeader extends StatelessWidget {
                     : const Icon(Icons.add_rounded, size: 18),
                 label: Text(
                   submitting
-                      ? _copy(context, 'Submitting…', 'Gönderiliyor…')
+                      ? context.tr('goals.submitting')
                       : _copy(context, 'New Goal', 'Yeni Hedef'),
                 ),
                 style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 15),
-                  textStyle: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w600),
+                  padding: const EdgeInsets.symmetric(horizontal: 13),
+                  textStyle: const TextStyle(fontSize: 10.2, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
           ],
+        ),
+      );
+}
+
+class _FactoryRouteStrip extends StatelessWidget {
+  const _FactoryRouteStrip({
+    required this.selected,
+    required this.presetLabel,
+    required this.onChanged,
+  });
+
+  final _FactoryPreset? selected;
+  final String Function(_FactoryPreset preset) presetLabel;
+  final ValueChanged<_FactoryPreset> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          for (final preset in _FactoryPreset.values) ...[
+            if (preset.index > 0) const SizedBox(width: 4),
+            _FactoryRouteChip(
+              preset: preset,
+              selected: selected == preset,
+              label: presetLabel(preset),
+              onTap: () => onChanged(preset),
+            ),
+          ],
+        ],
+      );
+}
+
+class _FactoryRouteChip extends StatelessWidget {
+  const _FactoryRouteChip({
+    required this.preset,
+    required this.selected,
+    required this.label,
+    required this.onTap,
+  });
+
+  final _FactoryPreset preset;
+  final bool selected;
+  final String label;
+  final VoidCallback onTap;
+
+  String get _keyName => switch (preset) {
+        _FactoryPreset.web => 'factory-preset-web',
+        _FactoryPreset.video => 'factory-preset-video',
+        _FactoryPreset.software => 'factory-preset-software',
+      };
+
+  IconData get _icon => switch (preset) {
+        _FactoryPreset.web => Icons.language_outlined,
+        _FactoryPreset.video => Icons.smart_display_outlined,
+        _FactoryPreset.software => Icons.code_rounded,
+      };
+
+  @override
+  Widget build(BuildContext context) => Material(
+        key: ValueKey(_keyName),
+        color: selected
+            ? IlaiosTheme.coreBlue.withValues(alpha: .10)
+            : Theme.of(context).colorScheme.surfaceContainerLowest,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(5),
+          side: BorderSide(
+            color: selected
+                ? IlaiosTheme.coreBlue.withValues(alpha: .65)
+                : Theme.of(context).colorScheme.outlineVariant,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: Container(
+            key: selected ? const Key('selected-factory-route') : null,
+            height: 32,
+            constraints: const BoxConstraints(minWidth: 43, maxWidth: 52),
+            padding: const EdgeInsets.symmetric(horizontal: 5),
+            child: Tooltip(
+              message: label,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    _icon,
+                    size: 14,
+                    color: selected
+                        ? IlaiosTheme.coreBlue
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 6.5,
+                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                      color: selected
+                          ? IlaiosTheme.coreBlue
+                          : Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
         ),
       );
 }
@@ -361,11 +534,11 @@ class _HeaderButton extends StatelessWidget {
         height: 34,
         child: OutlinedButton.icon(
           onPressed: onPressed,
-          icon: Icon(icon, size: 16),
+          icon: Icon(icon, size: 15),
           label: Text(label),
           style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 13),
-            textStyle: const TextStyle(fontSize: 10.2, fontWeight: FontWeight.w600),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            textStyle: const TextStyle(fontSize: 9.7, fontWeight: FontWeight.w600),
           ),
         ),
       );
@@ -426,7 +599,7 @@ class _MetricStrip extends StatelessWidget {
 
     return SizedBox(
       key: const Key('goals-kpis'),
-      height: 82,
+      height: 78,
       child: Row(
         children: [
           for (var index = 0; index < metrics.length; index++) ...[
@@ -446,33 +619,48 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: _cardDecoration(context, radius: 7),
         child: Row(
           children: [
             Container(
-              width: 38,
-              height: 38,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 color: metric.color.withValues(alpha: .11),
                 borderRadius: BorderRadius.circular(20),
               ),
-              child: Icon(metric.icon, color: metric.color, size: 22),
+              child: Icon(metric.icon, color: metric.color, size: 21),
             ),
-            const SizedBox(width: 9),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text(metric.label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 8.3)),
-                  const SizedBox(height: 2),
-                  Text(metric.value, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 17.5, fontWeight: FontWeight.w700, height: 1)),
-                  const SizedBox(height: 4),
-                  Text(metric.note, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: TextStyle(fontSize: 7.5, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                  Text(
+                    metric.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 8.1),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    metric.value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, height: 1),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    metric.note,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 7.2,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -499,7 +687,7 @@ class _GoalTabs extends StatelessWidget {
     ];
     return SizedBox(
       key: const Key('goals-tabs'),
-      height: 36,
+      height: 34,
       child: Row(
         children: [
           for (final tab in tabs)
@@ -520,7 +708,7 @@ class _GoalTabs extends StatelessWidget {
                 child: Text(
                   tab.label,
                   style: TextStyle(
-                    fontSize: 10,
+                    fontSize: 9.8,
                     fontWeight: activeTab == tab.id ? FontWeight.w700 : FontWeight.w500,
                     color: activeTab == tab.id
                         ? IlaiosTheme.coreBlue
@@ -561,15 +749,15 @@ class _GoalsTable extends StatelessWidget {
             height: 34,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             color: Theme.of(context).colorScheme.surfaceContainerLow,
-            child: const Row(
+            child: Row(
               children: [
-                Expanded(flex: 31, child: _TableHeader('Goal')),
-                Expanded(flex: 17, child: _TableHeader('Owner')),
-                Expanded(flex: 22, child: _TableHeader('Progress')),
-                Expanded(flex: 12, child: _TableHeader('Status')),
-                Expanded(flex: 12, child: _TableHeader('Target')),
-                Expanded(flex: 10, child: _TableHeader('Priority')),
-                SizedBox(width: 22),
+                Expanded(flex: 31, child: _TableHeader(_copy(context, 'Goal', 'Hedef'))),
+                Expanded(flex: 17, child: _TableHeader(_copy(context, 'Owner', 'Sahip'))),
+                Expanded(flex: 22, child: _TableHeader(_copy(context, 'Progress', 'İlerleme'))),
+                Expanded(flex: 12, child: _TableHeader(_copy(context, 'Status', 'Durum'))),
+                Expanded(flex: 12, child: _TableHeader(_copy(context, 'Target', 'Hedef Tarihi'))),
+                Expanded(flex: 10, child: _TableHeader(_copy(context, 'Priority', 'Öncelik'))),
+                const SizedBox(width: 22),
               ],
             ),
           ),
@@ -578,40 +766,46 @@ class _GoalsTable extends StatelessWidget {
               submission: submission!,
               objective: objective ?? submission!.goalId,
               owner: owner,
-            )
-          else
-            Expanded(
-              child: Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(22),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.track_changes_outlined,
-                          size: 34, color: Theme.of(context).colorScheme.outline),
-                      const SizedBox(height: 8),
-                      Text(
-                        _copy(
-                          context,
-                          'Detailed goal records are not exposed by the current authoritative projection.',
-                          'Ayrıntılı hedef kayıtları mevcut yetkili projeksiyon tarafından sunulmuyor.',
-                        ),
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 10,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
             ),
+          Expanded(
+            child: showSubmission
+                ? const SizedBox.expand()
+                : Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(22),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.track_changes_outlined,
+                            size: 34,
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            _copy(
+                              context,
+                              'Detailed goal records are not exposed by the current authoritative projection.',
+                              'Ayrıntılı hedef kayıtları mevcut yetkili projeksiyon tarafından sunulmuyor.',
+                            ),
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              fontSize: 10,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+          ),
           Container(
             height: 38,
             padding: const EdgeInsets.symmetric(horizontal: 12),
             decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
+              border: Border(
+                top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+              ),
             ),
             child: Row(
               children: [
@@ -620,10 +814,13 @@ class _GoalsTable extends StatelessWidget {
                     showSubmission
                         ? _copy(context, 'Showing 1 authoritative goal.', '1 yetkili hedef gösteriliyor.')
                         : _copy(context, 'No detailed goal rows available.', 'Ayrıntılı hedef satırı bulunmuyor.'),
-                    style: TextStyle(fontSize: 8.7, color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    style: TextStyle(
+                      fontSize: 8.7,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ),
-                _PageBox(label: '1', selected: true),
+                const _PageBox(label: '1', selected: true),
                 const SizedBox(width: 7),
                 _PageBox(label: _copy(context, '10 / page', '10 / sayfa')),
               ],
@@ -651,7 +848,11 @@ class _TableHeader extends StatelessWidget {
 }
 
 class _GoalRow extends StatelessWidget {
-  const _GoalRow({required this.submission, required this.objective, required this.owner});
+  const _GoalRow({
+    required this.submission,
+    required this.objective,
+    required this.owner,
+  });
 
   final PromptSubmission submission;
   final String objective;
@@ -661,8 +862,8 @@ class _GoalRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = submission.state.toUpperCase();
     final completed = state == 'COMPLETED' || state == 'SUCCEEDED' || state == 'FINISHED';
-    final active = state == 'RUNNING' || state == 'PENDING' || state == 'QUEUED';
-    final progress = completed ? 1.0 : (active ? 0.0 : 0.0);
+    final active = state == 'RUNNING' || state == 'PENDING' || state == 'QUEUED' || state == 'ADMITTED';
+    final progress = completed ? 1.0 : 0.0;
     final statusColor = completed
         ? IlaiosTheme.success
         : active
@@ -674,7 +875,9 @@ class _GoalRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
         color: IlaiosTheme.coreBlue.withValues(alpha: .045),
-        border: Border(bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
+        border: Border(
+          bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
       ),
       child: Row(
         children: [
@@ -689,7 +892,11 @@ class _GoalRow extends StatelessWidget {
                     color: IlaiosTheme.coreBlue.withValues(alpha: .10),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(Icons.track_changes_outlined, size: 17, color: IlaiosTheme.coreBlue),
+                  child: const Icon(
+                    Icons.track_changes_outlined,
+                    size: 17,
+                    color: IlaiosTheme.coreBlue,
+                  ),
                 ),
                 const SizedBox(width: 8),
                 Expanded(
@@ -697,19 +904,32 @@ class _GoalRow extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(objective, maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 10.2, fontWeight: FontWeight.w600)),
+                      Text(
+                        objective,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 10.2, fontWeight: FontWeight.w600),
+                      ),
                       const SizedBox(height: 2),
-                      Text(submission.goalId, maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 8.2, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                      Text(
+                        submission.goalId,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 8.2,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
           ),
-          Expanded(flex: 17, child: Text(owner, maxLines: 1, overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 9.4))),
+          Expanded(
+            flex: 17,
+            child: Text(owner, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9.4)),
+          ),
           Expanded(
             flex: 22,
             child: Row(
@@ -744,7 +964,11 @@ class _GoalRow extends StatelessWidget {
 }
 
 class _SelectedGoal extends StatelessWidget {
-  const _SelectedGoal({required this.submission, required this.objective, required this.owner});
+  const _SelectedGoal({
+    required this.submission,
+    required this.objective,
+    required this.owner,
+  });
 
   final PromptSubmission? submission;
   final String? objective;
@@ -760,8 +984,10 @@ class _SelectedGoal extends StatelessWidget {
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(_copy(context, 'Selected Goal', 'Seçili Hedef'),
-                      style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700)),
+                  Text(
+                    _copy(context, 'Selected Goal', 'Seçili Hedef'),
+                    style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700),
+                  ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
@@ -772,22 +998,33 @@ class _SelectedGoal extends StatelessWidget {
                           color: IlaiosTheme.coreBlue.withValues(alpha: .10),
                           borderRadius: BorderRadius.circular(22),
                         ),
-                        child: const Icon(Icons.track_changes_outlined,
-                            color: IlaiosTheme.coreBlue, size: 23),
+                        child: const Icon(
+                          Icons.track_changes_outlined,
+                          color: IlaiosTheme.coreBlue,
+                          size: 23,
+                        ),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(objective ?? submission!.goalId,
-                                maxLines: 2, overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700)),
+                            Text(
+                              objective ?? submission!.goalId,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                            ),
                             const SizedBox(height: 3),
-                            Text('ID: ${submission!.goalId}',
-                                maxLines: 1, overflow: TextOverflow.ellipsis,
-                                style: TextStyle(fontSize: 8.5,
-                                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                            Text(
+                              'ID: ${submission!.goalId}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 8.5,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -803,8 +1040,10 @@ class _SelectedGoal extends StatelessWidget {
                   const SizedBox(height: 7),
                   _DetailRow(label: _copy(context, 'Progress', 'İlerleme'), value: '—'),
                   const SizedBox(height: 10),
-                  Text(_copy(context, 'OKR Summary', 'OKR Özeti'),
-                      style: const TextStyle(fontSize: 9.4, fontWeight: FontWeight.w700)),
+                  Text(
+                    _copy(context, 'OKR Summary', 'OKR Özeti'),
+                    style: const TextStyle(fontSize: 9.4, fontWeight: FontWeight.w700),
+                  ),
                   const SizedBox(height: 5),
                   Text(
                     _copy(
@@ -812,8 +1051,10 @@ class _SelectedGoal extends StatelessWidget {
                       'Detailed OKR results are not exposed by the current authoritative projection.',
                       'Ayrıntılı OKR sonuçları mevcut yetkili projeksiyon tarafından sunulmuyor.',
                     ),
-                    style: TextStyle(fontSize: 8.8,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant),
+                    style: TextStyle(
+                      fontSize: 8.8,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const Spacer(),
                   Container(
@@ -844,13 +1085,21 @@ class _DetailRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 78,
-            child: Text(label,
-                style: TextStyle(fontSize: 8.6,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            child: Text(
+              label,
+              style: TextStyle(
+                fontSize: 8.6,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
           Expanded(
-            child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 9.1, fontWeight: FontWeight.w600)),
+            child: Text(
+              value,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 9.1, fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       );
@@ -877,11 +1126,20 @@ class _InfoCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Expanded(child: Text(title,
-                    style: const TextStyle(fontSize: 10.2, fontWeight: FontWeight.w700))),
-                Text(trailing,
-                    style: const TextStyle(fontSize: 8.3, color: IlaiosTheme.coreBlue,
-                        fontWeight: FontWeight.w600)),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: const TextStyle(fontSize: 10.2, fontWeight: FontWeight.w700),
+                  ),
+                ),
+                Text(
+                  trailing,
+                  style: const TextStyle(
+                    fontSize: 8.3,
+                    color: IlaiosTheme.coreBlue,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 7),
@@ -892,7 +1150,11 @@ class _InfoCard extends StatelessWidget {
 }
 
 class _RecentUpdates extends StatelessWidget {
-  const _RecentUpdates({required this.lastEvent, required this.submission, required this.objective});
+  const _RecentUpdates({
+    required this.lastEvent,
+    required this.submission,
+    required this.objective,
+  });
 
   final String? lastEvent;
   final PromptSubmission? submission;
@@ -929,11 +1191,21 @@ class _RecentUpdates extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.center,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(row.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 8.9, fontWeight: FontWeight.w600)),
-                      Text(row.detail, maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 7.6,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                      Text(
+                        row.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 8.9, fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        row.detail,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 7.6,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -965,14 +1237,18 @@ class _Distribution extends StatelessWidget {
                     value: goalCount == null ? 0 : 1,
                     strokeWidth: 10,
                     backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    color: goalCount == null ? Theme.of(context).colorScheme.outline : IlaiosTheme.coreBlue,
+                    color: goalCount == null
+                        ? Theme.of(context).colorScheme.outline
+                        : IlaiosTheme.coreBlue,
                   ),
                 ),
                 Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Text(goalCount?.toString() ?? '—',
-                        style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+                    Text(
+                      goalCount?.toString() ?? '—',
+                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                    ),
                     Text(_copy(context, 'Total', 'Toplam'), style: const TextStyle(fontSize: 7.5)),
                   ],
                 ),
@@ -987,8 +1263,10 @@ class _Distribution extends StatelessWidget {
                 'Category distribution is not exposed by the authoritative projection.',
                 'Kategori dağılımı yetkili projeksiyon tarafından sunulmuyor.',
               ),
-              style: TextStyle(fontSize: 8.2,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: TextStyle(
+                fontSize: 8.2,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ],
@@ -1009,8 +1287,10 @@ class _UnavailablePanel extends StatelessWidget {
             Text(
               _copy(context, 'Authoritative detail unavailable', 'Yetkili ayrıntı kullanılamıyor'),
               textAlign: TextAlign.center,
-              style: TextStyle(fontSize: 8.1,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: TextStyle(
+                fontSize: 8.1,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -1064,8 +1344,10 @@ class _SubmissionStatus extends StatelessWidget {
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 8.1,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant),
+              style: TextStyle(
+                fontSize: 8.1,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ),
         ],
@@ -1090,7 +1372,11 @@ class _Pill extends StatelessWidget {
           label,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: TextStyle(fontSize: 7.8, fontWeight: FontWeight.w700, color: color),
+          style: TextStyle(
+            fontSize: 7.8,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
         ),
       );
 }
@@ -1110,10 +1396,15 @@ class _PageBox extends StatelessWidget {
           color: selected ? IlaiosTheme.coreBlue.withValues(alpha: .10) : Colors.transparent,
           borderRadius: BorderRadius.circular(4),
           border: Border.all(
-            color: selected ? IlaiosTheme.coreBlue : Theme.of(context).colorScheme.outlineVariant,
+            color: selected
+                ? IlaiosTheme.coreBlue
+                : Theme.of(context).colorScheme.outlineVariant,
           ),
         ),
-        child: Text(label, style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600)),
+        child: Text(
+          label,
+          style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600),
+        ),
       );
 }
 
@@ -1123,5 +1414,7 @@ BoxDecoration _cardDecoration(BuildContext context, {double radius = 8}) => BoxD
       border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
     );
 
-String _copy(BuildContext context, String en, String tr) =>
-    IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish ? tr : en;
+bool _isTr(BuildContext context) =>
+    IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
+
+String _copy(BuildContext context, String en, String tr) => _isTr(context) ? tr : en;
