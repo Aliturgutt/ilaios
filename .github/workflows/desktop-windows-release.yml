@@ -19,6 +19,24 @@ on:
       - 'brand/assets/03-ilaios-symbol-dark.jpg'
       - 'brand/assets/05-ilaios-app-icon.jpg'
       - '.github/workflows/desktop-windows-release.yml'
+  push:
+    branches:
+      - master
+    paths:
+      - 'apps/desktop/**'
+      - 'services/desktop_identity_server.py'
+      - 'services/desktop_oidc.py'
+      - 'services/desktop_oidc_threaded.py'
+      - 'services/identity.py'
+      - 'services/execution_coordinator.py'
+      - 'services/governance/**'
+      - 'services/integrations/**'
+      - 'services/software_factory_runtime.py'
+      - 'services/software_factory_secret_scanning.py'
+      - 'src/video_automation/**'
+      - 'brand/assets/03-ilaios-symbol-dark.jpg'
+      - 'brand/assets/05-ilaios-app-icon.jpg'
+      - '.github/workflows/desktop-windows-release.yml'
   workflow_dispatch:
 
 permissions:
@@ -182,3 +200,12 @@ jobs:
             throw "Unexpected CompanyName: $($version.CompanyName)"
           }
           Write-Host "ILAIOS_DESKTOP_WINDOWS_VALIDATION=PASS"
+
+      - name: Upload exact portable Windows runtime
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ilaios-desktop-portable-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}
+          path: apps/desktop/build/windows/x64/runner/Release
+          if-no-files-found: error
+          retention-days: 30
