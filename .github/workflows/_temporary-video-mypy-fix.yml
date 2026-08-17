@@ -32,16 +32,10 @@ jobs:
               raise SystemExit('expected exactly one ProviderResult import target')
           text = text.replace(old_import, new_import, 1)
 
-          marker = '''        metadata = {
-              "backend": "openrouter",
-              "cost_policy": "free_only",
-              "model_id": model_id,'''
-          replacement = '''        metadata: dict[str, MetadataValue] = {
-              "backend": "openrouter",
-              "cost_policy": "free_only",
-              "model_id": model_id,'''
+          marker = '\n        metadata = {\n            "backend": "openrouter",\n            "cost_policy": "free_only",\n            "model_id": model_id,'
+          replacement = '\n        metadata: dict[str, MetadataValue] = {\n            "backend": "openrouter",\n            "cost_policy": "free_only",\n            "model_id": model_id,'
           if text.count(marker) != 1:
-              raise SystemExit('expected exactly one provider metadata target')
+              raise SystemExit(f'expected exactly one provider metadata target, found {text.count(marker)}')
           text = text.replace(marker, replacement, 1)
           path.write_text(text, encoding='utf-8')
 
