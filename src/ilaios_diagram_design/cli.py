@@ -58,10 +58,9 @@ def _list(value: object, *, name: str) -> list[Any]:
     return value
 
 
-def load_spec(path: Path) -> DiagramSpec:
-    """Load untrusted JSON as data; no code or templates are executed."""
+def parse_spec(raw_obj: object) -> DiagramSpec:
+    """Convert untrusted structured data into a validated DiagramSpec shape."""
 
-    raw_obj: object = json.loads(path.read_text(encoding="utf-8"))
     raw = _mapping(raw_obj, name="root")
 
     nodes: list[DiagramNode] = []
@@ -149,7 +148,16 @@ def load_spec(path: Path) -> DiagramSpec:
     )
 
 
-def _evidence_json(artifact_sha256: str, spec_sha256: str, checks: tuple[str, ...]) -> str:
+def load_spec(path: Path) -> DiagramSpec:
+    """Load untrusted JSON as data; no code or templates are executed."""
+
+    raw_obj: object = json.loads(path.read_text(encoding="utf-8"))
+    return parse_spec(raw_obj)
+
+
+def _evidence_json(
+    artifact_sha256: str, spec_sha256: str, checks: tuple[str, ...]
+) -> str:
     return json.dumps(
         {
             "artifact_sha256": artifact_sha256,
