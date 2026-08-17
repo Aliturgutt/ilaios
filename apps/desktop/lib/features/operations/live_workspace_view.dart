@@ -701,7 +701,7 @@ class _CodePane extends StatelessWidget {
   Widget build(BuildContext context) => _PanelShell(
         key: const Key('live-workspace-code-pane'),
         title: file?.name ?? _tr(context, 'Canlı Kod', 'Live Code'),
-        trailing: file == null ? null : file!.language,
+        trailing: file?.language,
         child: file?.content == null
             ? _MiniEmpty(
                 icon: Icons.code_off_rounded,
