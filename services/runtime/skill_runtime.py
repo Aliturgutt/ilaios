@@ -227,16 +227,18 @@ def normalize_prompt(prompt: str) -> str:
     if not stripped:
         raise SkillRuntimeError("prompt must not be blank")
     if len(stripped) > MAX_PROMPT_CHARS:
-        raise SkillRuntimeError(
-            f"prompt exceeds {MAX_PROMPT_CHARS} characters"
-        )
+        raise SkillRuntimeError(f"prompt exceeds {MAX_PROMPT_CHARS} characters")
+
     decomposed = unicodedata.normalize("NFKD", stripped.casefold())
     without_marks = "".join(
         character
         for character in decomposed
         if unicodedata.category(character) != "Mn"
+    ).replace("ı", "i")
+    token_safe = "".join(
+        character if character.isalnum() else " " for character in without_marks
     )
-    return " ".join(without_marks.replace("ı", "i").split())
+    return " ".join(token_safe.split())
 
 
 def _artifact(skill: NativeSkill) -> SkillArtifact:
