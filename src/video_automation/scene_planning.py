@@ -1,14 +1,20 @@
-"""Deterministic scene and shot planning for Video Automation.
+"""Deterministic scene and adaptive shot planning for Video Automation.
 
 M08 converts structured :class:`VideoScript` objects into canonical logical
 :class:`Scene` objects. M09 converts scene/beat intent into executable visual
 units. Neither layer calls providers or performs rendering.
+
+The planner deliberately separates final programme duration from provider clip
+duration. Long programmes are decomposed into directorial shots whose duration
+is selected from a shot-kind policy and then constrained again by provider
+capabilities before dispatch.
 """
 
 from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from enum import Enum
 from math import ceil, floor
 
 from .models import Scene, Shot, VideoScript
@@ -54,13 +60,61 @@ class ShotPlanningError(ValueError):
     """Raised when scene/beat intent cannot be converted into a shot plan."""
 
 
+class ShotKind(str, Enum):
+    """Directorial shot classes used by the adaptive duration policy."""
+
+    GENERAL = "general"
+    ESTABLISHING = "establishing"
+    ACTION = "action"
+    DIALOGUE = "dialogue"
+    REACTION_INSERT = "reaction_insert"
+    HERO = "hero"
+    TRANSITION = "transition"
+
+
+class ShotValue(str, Enum):
+    """Budget importance used by shot-level provider routing."""
+
+    ZERO = "zero"
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    HERO = "hero"
+
+
+@dataclass(frozen=True, slots=True)
+class ShotDurationPolicy:
+    """Preferred clip timing for one directorial shot class."""
+
+    minimum_seconds: float
+    target_seconds: float
+    maximum_seconds: float
+
+    def __post_init__(self) -> None:
+        if self.minimum_seconds <= 0:
+            raise ShotPlanningError("shot duration minimum must be greater than zero")
+        if not self.minimum_seconds <= self.target_seconds <= self.maximum_seconds:
+            raise ShotPlanningError("shot duration target must be inside bounds")
+
+
+SHOT_DURATION_POLICIES: dict[ShotKind, ShotDurationPolicy] = {
+    ShotKind.GENERAL: ShotDurationPolicy(4.0, 5.0, 6.0),
+    ShotKind.ESTABLISHING: ShotDurationPolicy(5.0, 6.0, 8.0),
+    ShotKind.ACTION: ShotDurationPolicy(3.0, 4.0, 5.0),
+    ShotKind.DIALOGUE: ShotDurationPolicy(5.0, 6.0, 10.0),
+    ShotKind.REACTION_INSERT: ShotDurationPolicy(2.0, 3.0, 4.0),
+    ShotKind.HERO: ShotDurationPolicy(4.0, 6.0, 8.0),
+    ShotKind.TRANSITION: ShotDurationPolicy(2.0, 3.0, 4.0),
+}
+
+
 @dataclass(frozen=True, slots=True)
 class ShotPlannerConfig:
-    """Timing constraints for generated cinematic clips."""
+    """Global safety bounds for adaptive generated cinematic clips."""
 
-    min_shot_seconds: float = 4.0
+    min_shot_seconds: float = 2.0
     target_shot_seconds: float = 5.0
-    max_shot_seconds: float = 6.0
+    max_shot_seconds: float = 12.0
 
     def __post_init__(self) -> None:
         if self.min_shot_seconds <= 0:
@@ -77,7 +131,7 @@ class ShotPlannerConfig:
 
 @dataclass(frozen=True, slots=True)
 class EpisodeBeat:
-    """Legacy-compatible explicit M09 shot-planning intent."""
+    """Explicit M09 shot-planning intent with adaptive production requirements."""
 
     beat_id: str
     text: str
@@ -91,6 +145,12 @@ class EpisodeBeat:
     movement: str = "static"
     generation_prompt: str | None = None
     required_provider_capability: str = "video.generate"
+    shot_kind: ShotKind = ShotKind.GENERAL
+    value: ShotValue = ShotValue.MEDIUM
+    reference_asset_ids: tuple[str, ...] = ()
+    capability_requirements: tuple[str, ...] = ()
+    requires_native_audio: bool = False
+    requires_frame_chaining: bool = False
 
     def __post_init__(self) -> None:
         _require_non_blank("beat_id", self.beat_id)
@@ -111,6 +171,10 @@ class EpisodeBeat:
             _require_non_blank(name, value)
         if self.generation_prompt is not None:
             _require_non_blank("generation_prompt", self.generation_prompt)
+        for reference in self.reference_asset_ids:
+            _require_non_blank("reference_asset_id", reference)
+        for capability in self.capability_requirements:
+            _require_non_blank("capability_requirement", capability)
 
 
 @dataclass(frozen=True, slots=True)
@@ -134,6 +198,12 @@ class CinematicShot:
     movement: str = "static"
     generation_prompt: str | None = None
     required_provider_capability: str = "video.generate"
+    shot_kind: ShotKind = ShotKind.GENERAL
+    value: ShotValue = ShotValue.MEDIUM
+    reference_asset_ids: tuple[str, ...] = ()
+    capability_requirements: tuple[str, ...] = ()
+    requires_native_audio: bool = False
+    requires_frame_chaining: bool = False
 
     def __post_init__(self) -> None:
         for name, value in (
@@ -159,6 +229,10 @@ class CinematicShot:
             _require_non_blank("previous_shot_id", self.previous_shot_id)
         if self.next_shot_id is not None:
             _require_non_blank("next_shot_id", self.next_shot_id)
+        for reference in self.reference_asset_ids:
+            _require_non_blank("reference_asset_id", reference)
+        for capability in self.capability_requirements:
+            _require_non_blank("capability_requirement", capability)
 
         resolved_scene_id = self.source_beat_id if self.scene_id is None else self.scene_id
         resolved_prompt = self.text if self.generation_prompt is None else self.generation_prompt
@@ -219,7 +293,7 @@ class ShotPlanner:
         *,
         episode_id: str,
     ) -> EpisodeShotPlan:
-        """Preserve the existing deterministic short-shot planning behavior."""
+        """Partition story beats into adaptive directorial provider clips."""
 
         if not episode_id.strip():
             raise ShotPlanningError("episode_id must not be blank")
@@ -231,7 +305,7 @@ class ShotPlanner:
 
         drafts: list[tuple[EpisodeBeat, str, float]] = []
         for beat in beats:
-            durations = self._partition_duration(beat.duration_seconds)
+            durations = self._partition_duration(beat.duration_seconds, beat.shot_kind)
             chunks = _split_text(beat.text, len(durations))
             drafts.extend(
                 (beat, chunks[index], duration)
@@ -241,6 +315,13 @@ class ShotPlanner:
         total_shots = len(drafts)
         shots: list[CinematicShot] = []
         for sequence, (beat, text, duration) in enumerate(drafts, start=1):
+            capabilities = list(beat.capability_requirements)
+            if beat.requires_native_audio and "native_audio" not in capabilities:
+                capabilities.append("native_audio")
+            if beat.requires_frame_chaining:
+                for capability in ("first_frame", "last_frame"):
+                    if capability not in capabilities:
+                        capabilities.append(capability)
             shots.append(
                 CinematicShot(
                     shot_id=_shot_id(episode_id, sequence),
@@ -264,20 +345,34 @@ class ShotPlanner:
                     movement=beat.movement,
                     generation_prompt=(text if beat.generation_prompt is None else beat.generation_prompt),
                     required_provider_capability=beat.required_provider_capability,
+                    shot_kind=beat.shot_kind,
+                    value=beat.value,
+                    reference_asset_ids=beat.reference_asset_ids,
+                    capability_requirements=tuple(capabilities),
+                    requires_native_audio=beat.requires_native_audio,
+                    requires_frame_chaining=beat.requires_frame_chaining,
                 )
             )
 
         return EpisodeShotPlan(episode_id=episode_id, shots=tuple(shots))
 
-    def _partition_duration(self, total_seconds: float) -> tuple[float, ...]:
-        minimum = self._config.min_shot_seconds
-        target = self._config.target_shot_seconds
-        maximum = self._config.max_shot_seconds
+    def _partition_duration(
+        self,
+        total_seconds: float,
+        shot_kind: ShotKind = ShotKind.GENERAL,
+    ) -> tuple[float, ...]:
+        policy = SHOT_DURATION_POLICIES[shot_kind]
+        minimum = max(self._config.min_shot_seconds, policy.minimum_seconds)
+        target = min(
+            max(policy.target_seconds, minimum),
+            min(self._config.max_shot_seconds, policy.maximum_seconds),
+        )
+        maximum = min(self._config.max_shot_seconds, policy.maximum_seconds)
         minimum_count = ceil(total_seconds / maximum)
         maximum_count = floor(total_seconds / minimum)
         if minimum_count > maximum_count:
             raise ShotPlanningError(
-                "beat duration cannot be partitioned inside configured shot bounds"
+                f"{shot_kind.value} beat duration cannot be partitioned inside adaptive shot bounds"
             )
         ideal_count = max(1, round(total_seconds / target))
         count = min(max(ideal_count, minimum_count), maximum_count)
@@ -286,7 +381,7 @@ class ShotPlanner:
         durations[-1] = total_seconds - sum(durations[:-1])
         if any(duration < minimum or duration > maximum for duration in durations):
             raise ShotPlanningError(
-                "shot partition violated configured duration bounds"
+                "shot partition violated adaptive duration bounds"
             )
         return tuple(durations)
 
@@ -305,7 +400,10 @@ def _shot_id(episode_id: str, sequence: int) -> str:
 def _split_text(text: str, count: int) -> tuple[str, ...]:
     words = " ".join(text.split()).split()
     if len(words) < count:
-        raise ShotPlanningError("beat text has fewer words than required shots")
+        # Visual beats can legitimately have terse text but multiple shots. Repeat the
+        # compact beat instead of changing the shot count or silently violating timing.
+        normalized = " ".join(words)
+        return tuple(normalized for _ in range(count))
     chunks: list[str] = []
     offset = 0
     for index in range(count):
