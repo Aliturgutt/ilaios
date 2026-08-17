@@ -334,7 +334,7 @@ def run_certification(
         max_retry_cost=0.0,
     )
 
-    commercial_now = snapshot.observed_at_epoch_s
+    commercial_now = int(snapshot.observed_at_epoch_s)
     commercial_pricing = ProviderPricingSnapshot(
         provider_name=OPENROUTER_MANAGED_PROVIDER_NAME,
         model_id=proof_shape.model_id,
