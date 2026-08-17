@@ -1,0 +1,52 @@
+name: OpenRouter Video Catalog Diagnostic
+
+on:
+  push:
+    branches:
+      - fix/openrouter-video-live-pricing
+    paths:
+      - .github/workflows/openrouter-video-catalog-diagnostic.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  catalog-diagnostic:
+    runs-on: ubuntu-latest
+    environment: Production
+    timeout-minutes: 5
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+    steps:
+      - name: Inspect sanitized live video catalog entry
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$OPENROUTER_API_KEY"
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+
+          request = urllib.request.Request(
+              "https://openrouter.ai/api/v1/videos/models",
+              headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+          )
+          with urllib.request.urlopen(request, timeout=30) as response:
+              payload = json.load(response)
+          target = "bytedance/seedance-2.0-fast"
+          model = next((item for item in payload.get("data", []) if item.get("id") == target), None)
+          if model is None:
+              raise SystemExit(f"target model absent: {target}")
+          sanitized = {
+              "id": model.get("id"),
+              "pricing_skus": model.get("pricing_skus"),
+              "supported_resolutions": model.get("supported_resolutions"),
+              "supported_sizes": model.get("supported_sizes"),
+              "supported_durations": model.get("supported_durations"),
+              "supported_aspect_ratios": model.get("supported_aspect_ratios"),
+              "generate_audio": model.get("generate_audio"),
+          }
+          print(json.dumps(sanitized, sort_keys=True))
+          PY
