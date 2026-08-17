@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,19 @@ from services.code_intelligence import (
     CodeIntelligenceAdmissionError,
     ILAIOSRepositoryIntelligence,
 )
+from services.software_factory_skills import (
+    SkillExecutionRequest,
+    SkillExecutor,
+    SkillRegistry,
+    default_skills_root,
+)
+
+
+class _UnusedRuntime:
+    def validate(self, adapter_id: str, repository: Path) -> Mapping[str, object]:
+        raise AssertionError(
+            f"runtime adapter must not be called: {adapter_id} {repository}"
+        )
 
 
 def _git(repository: Path, *arguments: str) -> str:
@@ -79,3 +93,35 @@ def test_adapter_rejects_non_sha_revision_before_analysis(tmp_path: Path) -> Non
 
     with pytest.raises(CodeIntelligenceAdmissionError, match="base_sha"):
         ILAIOSRepositoryIntelligence().inspect(repository, "not-a-sha")
+
+
+def test_sf7_repository_intelligence_skill_uses_first_party_adapter(
+    tmp_path: Path,
+) -> None:
+    repository, revision = _repository(tmp_path)
+    project_root = Path(__file__).resolve().parents[1]
+    executor = SkillExecutor(
+        SkillRegistry(default_skills_root(project_root)),
+        ILAIOSRepositoryIntelligence(),
+        _UnusedRuntime(),
+    )
+
+    result = executor.execute(
+        SkillExecutionRequest(
+            skill_id="sf-repository-intelligence",
+            repository=repository,
+            base_sha=revision,
+            actor_id="actor-1",
+            tenant_id="tenant-1",
+            policy_allowed=True,
+            payload={"intent": "inspect repository", "changed_paths": []},
+            requested_capabilities=frozenset({"repository_intelligence"}),
+        )
+    )
+
+    assert result.status == "READY"
+    assert result.repository_evidence["repository_revision"] == revision
+    assert (
+        result.repository_evidence["graph_schema_version"]
+        == "ilaios-code-intelligence-graph-v1"
+    )
