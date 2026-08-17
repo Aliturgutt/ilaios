@@ -24,7 +24,10 @@ from services.integrations.product_runtime import DurableVideoProductRuntime
 from services.integrations.provider_video_runtime import ProviderBackedDesktopVideoRuntime
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 from src.video_automation.ffmpeg_media_engine import FfmpegMediaEngine
-from src.video_automation.openrouter_video_provider import SEEDANCE_FREE_MODEL_ID
+from src.video_automation.openrouter_video_provider import (
+    SEEDANCE_FREE_MODEL_ID,
+    OpenRouterVideoGenerationJobPoller,
+)
 
 
 def main() -> int:
@@ -87,6 +90,10 @@ def _run_finished_product_acceptance(
         goal = control_plane.get_goal(token, job.goal_id)
         return goal.objective
 
+    poller = OpenRouterVideoGenerationJobPoller(
+        api_key,
+        provider_id=ProviderBackedDesktopVideoRuntime.PROVIDER_ID,
+    )
     video = ProviderBackedDesktopVideoRuntime(
         root / "video",
         grants,
@@ -99,6 +106,7 @@ def _run_finished_product_acceptance(
         resolution=os.environ.get("ILAIOS_VIDEO_E2E_RESOLUTION", "480p").strip(),
         poll_interval_seconds=5.0,
         max_poll_rounds=144,
+        poller=poller,
     )
     product = DurableVideoProductRuntime(
         root / "product-proof.sqlite3",
@@ -145,11 +153,31 @@ def _run_finished_product_acceptance(
     if prepared.get("adapter_id") != "video.product-runtime.v1":
         raise RuntimeError(f"wrong video adapter: {prepared}")
 
-    manifest = coordinator.resume(
-        request_id,
-        token=token,
-        now=now + timedelta(seconds=1),
-    )
+    try:
+        manifest = coordinator.resume(
+            request_id,
+            token=token,
+            now=now + timedelta(seconds=1),
+        )
+    except Exception as exc:
+        _write_provider_evidence(proof_root, poller)
+        (proof_root / "failure.json").write_text(
+            json.dumps(
+                {
+                    "schema": "ilaios.desktop.provider-video-e2e.failure.v1",
+                    "status": "FAIL",
+                    "revision_sha": os.environ.get("GITHUB_SHA", "local"),
+                    "error_type": exc.__class__.__name__,
+                    "error": str(exc),
+                },
+                sort_keys=True,
+                indent=2,
+            )
+            + "\n",
+            encoding="utf-8",
+        )
+        raise
+
     if manifest.get("accepted") is not True:
         raise RuntimeError(f"AcceptanceManifest did not pass: {manifest}")
 
@@ -204,13 +232,40 @@ def _run_finished_product_acceptance(
     if int(qa.get("generated_shot_count", 0)) != 2:
         raise RuntimeError(f"unexpected generated shot count: {qa}")
 
+    terminal_evidence = {
+        job_id: dict(evidence)
+        for job_id, evidence in poller.terminal_evidence.items()
+    }
+    if len(terminal_evidence) != 2:
+        raise RuntimeError(
+            f"expected terminal zero-cost evidence for 2 provider jobs, got {len(terminal_evidence)}"
+        )
+    costs = [float(evidence["cost"]) for evidence in terminal_evidence.values()]
+    if any(cost != 0.0 for cost in costs):
+        raise RuntimeError(f"provider cost evidence is not exactly zero: {costs}")
+    generation_ids = [
+        str(evidence["generation_id"])
+        for evidence in terminal_evidence.values()
+        if str(evidence.get("generation_id", "")).strip()
+        and str(evidence.get("generation_id")) != "unavailable"
+    ]
+    if len(generation_ids) != 2:
+        raise RuntimeError("provider generation IDs are not fully evidenced")
+    sources = sorted({str(evidence["source"]) for evidence in terminal_evidence.values()})
+    _write_provider_evidence(proof_root, poller)
+
     copied_video = proof_root / "desktop-provider-finished-product.mp4"
     shutil.copy2(rendered, copied_video)
     receipt = {
-        "schema": "ilaios.desktop.provider-video-e2e.v1",
+        "schema": "ilaios.desktop.provider-video-e2e.v2",
         "status": "PASS",
         "revision_sha": os.environ.get("GITHUB_SHA", "local"),
         "provider_model": os.environ.get("ILAIOS_VIDEO_MODEL_ID", SEEDANCE_FREE_MODEL_ID),
+        "provider_generation_id": generation_ids[0],
+        "provider_generation_ids": generation_ids,
+        "provider_cost_usd": 0.0,
+        "provider_cost_zero": True,
+        "provider_cost_evidence_source": ",".join(sources),
         "qa_model": os.environ.get("ILAIOS_VIDEO_QA_MODEL_ID", "openrouter/free"),
         "request_id": request_id,
         "execution_status": coordinator_state["execution_status"],
@@ -224,7 +279,6 @@ def _run_finished_product_acceptance(
         "semantic_score": qa.get("semantic_score"),
         "semantic_threshold": qa.get("semantic_threshold"),
         "generated_shot_count": qa.get("generated_shot_count"),
-        "provider_cost_zero": True,
         "generation_mode": "provider-backed-cinematic-video",
     }
     (proof_root / "receipt.json").write_text(
@@ -233,6 +287,22 @@ def _run_finished_product_acceptance(
     )
     print(json.dumps(receipt, sort_keys=True))
     print("ILAIOS_DESKTOP_PROVIDER_VIDEO_FINISHED_PRODUCT_E2E=PASS")
+
+
+def _write_provider_evidence(
+    proof_root: Path,
+    poller: OpenRouterVideoGenerationJobPoller,
+) -> None:
+    evidence = {
+        job_id: dict(value)
+        for job_id, value in poller.terminal_evidence.items()
+    }
+    if not evidence:
+        return
+    (proof_root / "provider-terminal-evidence.json").write_text(
+        json.dumps(evidence, sort_keys=True, indent=2) + "\n",
+        encoding="utf-8",
+    )
 
 
 if __name__ == "__main__":
