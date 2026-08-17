@@ -12,6 +12,7 @@ _SKILL_ROOT = Path("skills/ilaios-system-design")
 def test_skill_has_expected_owned_artifacts() -> None:
     expected = {
         "SKILL.md",
+        "manifest.json",
         "rules/scalability.md",
         "rules/availability.md",
         "rules/caching.md",
