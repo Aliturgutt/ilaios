@@ -87,18 +87,21 @@ void main() {
     expect(find.textContaining('does not treat submission as completion'), findsOneWidget);
   });
 
-  testWidgets('home renders truthful empty state without synthetic telemetry', (
+  testWidgets('home renders truthful command center without synthetic telemetry', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const IlaiosDesktopApp());
-    expect(find.text('Active Workflow'), findsOneWidget);
-    expect(find.text('No active worker leases are exposed by the scheduler.'), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text('Main Control Center'), findsOneWidget);
+    expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-metrics')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-session')), findsOneWidget);
     expect(find.textContaining(r'$3.21'), findsNothing);
-    expect(find.text('73%'), findsNothing);
-    expect(find.text('7 / 25'), findsNothing);
-    expect(find.text('Unavailable'), findsWidgets);
+    expect(find.textContaining('18.362'), findsNothing);
+    expect(find.text('96%'), findsNothing);
+    expect(find.text('—'), findsWidgets);
   });
 
   testWidgets('control center still projects query state and refresh', (
