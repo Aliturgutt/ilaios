@@ -4,7 +4,7 @@ import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('1536x1024 wide home renders the approved reference hierarchy', (
+  testWidgets('1536x1024 dark Home renders the command-center reference hierarchy', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1536, 1024));
@@ -14,129 +14,101 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.byKey(const Key('reference-workflow-strip')), findsOneWidget);
-    expect(find.byKey(const Key('reference-agent-row')), findsOneWidget);
-    expect(find.byKey(const Key('reference-workspace')), findsOneWidget);
-    expect(find.byKey(const Key('reference-artifacts-panel')), findsOneWidget);
-    expect(find.byKey(const Key('reference-evidence-panel')), findsOneWidget);
-    expect(find.byKey(const Key('reference-status-card')), findsOneWidget);
-    expect(find.byKey(const Key('reference-latest-logs')), findsOneWidget);
-    expect(find.byKey(const Key('reference-bottom-status-v2')), findsOneWidget);
-
-    for (final stage in <String>[
-      'Goal Intake',
-      'Planning',
-      'Execution',
-      'Verification',
-      'Delivery',
+    for (final key in <Key>[
+      const Key('command-center-home'),
+      const Key('command-center-hero'),
+      const Key('command-center-metrics'),
+      const Key('command-center-focus'),
+      const Key('command-center-attention'),
+      const Key('command-center-artifacts'),
+      const Key('command-center-completed'),
+      const Key('command-center-quick-actions'),
+      const Key('command-center-session'),
+      const Key('command-center-activities'),
+      const Key('command-center-alerts'),
+      const Key('reference-bottom-status-v2'),
     ]) {
-      expect(find.text(stage), findsOneWidget);
+      expect(find.byKey(key), findsOneWidget, reason: 'missing $key');
     }
 
-    for (final role in <String>[
-      'Architect Agent',
-      'Frontend Dev',
-      'Backend Dev',
-      'Test Engineer',
-      'Security Agent',
-      'Browser Agent',
-      'Deploy Agent',
-    ]) {
-      expect(find.text(role), findsOneWidget);
-    }
+    expect(find.text('Main Control Center'), findsOneWidget);
+    expect(find.text('Ongoing Work'), findsOneWidget);
+    expect(find.text('Needs Attention'), findsOneWidget);
+    expect(find.text('Active Agents'), findsOneWidget);
+    expect(find.text("Today's Cost"), findsOneWidget);
+    expect(find.text('System Health'), findsWidgets);
+    expect(find.text('FOCUS WORK'), findsOneWidget);
+    expect(find.text('NEEDS ATTENTION'), findsOneWidget);
+    expect(find.text('LATEST OUTPUTS'), findsOneWidget);
+    expect(find.text('RECENTLY COMPLETED'), findsOneWidget);
+    expect(find.text('QUICK ACTIONS'), findsOneWidget);
+    expect(find.text('SESSION STATUS'), findsOneWidget);
+    expect(find.text('RECENT ACTIVITY'), findsOneWidget);
+    expect(find.text('ALERTS'), findsOneWidget);
 
-    expect(find.text('Live Code'), findsWidgets);
-    expect(find.text('Terminal'), findsWidgets);
-    expect(find.text('Browser'), findsWidgets);
-    expect(find.text('Files'), findsOneWidget);
-    expect(find.text('Logs'), findsOneWidget);
-    expect(find.text('Events'), findsWidgets);
-    expect(find.text('LATEST ARTIFACTS'), findsOneWidget);
-    expect(find.text('EVIDENCE & VERIFICATION'), findsOneWidget);
-    expect(find.text('STATUS'), findsOneWidget);
-    expect(find.text('COST & USAGE'), findsOneWidget);
-    expect(find.text('APPROVALS'), findsOneWidget);
-    expect(find.text('LATEST LOGS'), findsOneWidget);
-
-    expect(find.text('73%'), findsNothing);
+    // Reference screenshot telemetry is visual-only and must never be copied.
+    expect(find.text('12'), findsNothing);
+    expect(find.textContaining('18.362'), findsNothing);
+    expect(find.text('96%'), findsNothing);
     expect(find.textContaining(r'$3.21'), findsNothing);
-    expect(find.text('7 / 25'), findsNothing);
-    expect(find.text('2.4M / 20M'), findsNothing);
   });
 
-  testWidgets(
-    'DPI-compressed 1320x720 desktop keeps the full reference in one viewport',
-    (WidgetTester tester) async {
-      await tester.binding.setSurfaceSize(const Size(1320, 720));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets('DPI-compressed 1320x720 keeps the full command center in one viewport', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1320, 720));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      await tester.pumpWidget(const IlaiosDesktopApp());
-      await tester.pumpAndSettle();
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.pumpAndSettle();
 
-      expect(tester.takeException(), isNull);
-      expect(
-        find.byKey(const Key('reference-dpi-scaled-viewport')),
-        findsOneWidget,
-      );
-      expect(find.byKey(const Key('reference-desktop-sidebar-v5')), findsOneWidget);
-      expect(find.byKey(const Key('reference-workflow-strip')), findsOneWidget);
-      expect(find.byKey(const Key('reference-agent-row')), findsOneWidget);
-      expect(find.byKey(const Key('reference-workspace')), findsOneWidget);
-      expect(find.byKey(const Key('reference-artifacts-panel')), findsOneWidget);
-      expect(find.byKey(const Key('reference-evidence-panel')), findsOneWidget);
-      expect(find.byKey(const Key('reference-status-card')), findsOneWidget);
-      expect(find.byKey(const Key('reference-latest-logs')), findsOneWidget);
-      expect(find.byKey(const Key('reference-bottom-status-v2')), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('reference-dpi-scaled-viewport')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-focus')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-artifacts')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-session')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-alerts')), findsOneWidget);
+    expect(find.byKey(const Key('reference-bottom-status-v2')), findsOneWidget);
 
-      final workspace = tester.getRect(
-        find.byKey(const Key('reference-workspace')),
-      );
-      final artifacts = tester.getRect(
-        find.byKey(const Key('reference-artifacts-panel')),
-      );
-      final bottomStatus = tester.getRect(
-        find.byKey(const Key('reference-bottom-status-v2')),
-      );
+    final artifacts = tester.getRect(find.byKey(const Key('command-center-artifacts')));
+    final bottomStatus = tester.getRect(find.byKey(const Key('reference-bottom-status-v2')));
+    expect(artifacts.bottom, lessThanOrEqualTo(bottomStatus.top + 1));
+    expect(bottomStatus.bottom, lessThanOrEqualTo(720));
+  });
 
-      expect(workspace.top, lessThan(artifacts.top));
-      expect(artifacts.bottom, lessThanOrEqualTo(bottomStatus.top + 1));
-      expect(bottomStatus.bottom, lessThanOrEqualTo(720));
-
-      await tester.tap(
-        find.byKey(const ValueKey('workspace-tab-terminal')),
-      );
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
-    },
-  );
-
-  testWidgets('reference hierarchy remains localized in Turkish', (
+  testWidgets('approved Turkish light reference renders without mixing dark state', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1536, 1024));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
-      const IlaiosDesktopApp(locale: IlaiosLocale.turkish),
+      const IlaiosDesktopApp(
+        locale: IlaiosLocale.turkish,
+        themeMode: ThemeMode.light,
+      ),
     );
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Aktif İş Akışı'), findsOneWidget);
-    expect(find.text('Hedef Alımı'), findsOneWidget);
-    expect(find.text('Planlama'), findsOneWidget);
-    expect(find.text('Yürütme'), findsOneWidget);
-    expect(find.text('Doğrulama'), findsOneWidget);
-    expect(find.text('Teslimat'), findsOneWidget);
-    expect(find.text('Genel İlerleme'), findsOneWidget);
-    expect(find.text('CANLI YÜRÜTME'), findsOneWidget);
-    expect(find.text('CANLI ÇALIŞMA ALANI'), findsOneWidget);
-    expect(find.text('Canlı Kod'), findsWidgets);
-    expect(find.text('DURUM'), findsOneWidget);
-    expect(find.text('MALİYET VE KULLANIM'), findsOneWidget);
-    expect(find.text('ONAYLAR'), findsOneWidget);
-    expect(find.text('SON GÜNLÜKLER'), findsOneWidget);
-    expect(find.text('73%'), findsNothing);
-    expect(find.textContaining(r'$3.21'), findsNothing);
+    final context = tester.element(find.byKey(const Key('command-center-home')));
+    expect(Theme.of(context).brightness, Brightness.light);
+    expect(find.text('Ana Kontrol Merkezi'), findsOneWidget);
+    expect(find.text('Devam Eden İşler'), findsOneWidget);
+    expect(find.text('Müdahale Gerektiren'), findsOneWidget);
+    expect(find.text('Aktif Ajanlar'), findsOneWidget);
+    expect(find.text('Bugünkü Harcama'), findsOneWidget);
+    expect(find.text('Sistem Sağlığı'), findsWidgets);
+    expect(find.text('ODAK İŞLER'), findsOneWidget);
+    expect(find.text('DİKKAT GEREKTİRENLER'), findsOneWidget);
+    expect(find.text('SON ÇIKTILAR'), findsOneWidget);
+    expect(find.text('SON TAMAMLANANLAR'), findsOneWidget);
+    expect(find.text('HIZLI İŞLEMLER'), findsOneWidget);
+    expect(find.text('OTURUM DURUMU'), findsOneWidget);
+    expect(find.text('SON ETKİNLİKLER'), findsOneWidget);
+    expect(find.text('UYARILAR'), findsOneWidget);
+    expect(find.textContaining('18.362'), findsNothing);
+    expect(find.text('96%'), findsNothing);
   });
 }

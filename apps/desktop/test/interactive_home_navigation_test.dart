@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('home workflow stage nodes navigate to real Desktop destinations', (
+  testWidgets('command-center quick actions navigate to real Desktop destinations', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -12,24 +12,28 @@ void main() {
     await tester.pumpWidget(const IlaiosDesktopApp());
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const ValueKey('home-stage-goals')), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-stage-workflows')), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-stage-agents')), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-stage-evidence')), findsOneWidget);
-    expect(find.byKey(const ValueKey('home-stage-artifacts')), findsOneWidget);
+    expect(find.byKey(const Key('home-templates')), findsOneWidget);
+    expect(find.byKey(const Key('home-assign-agent')), findsOneWidget);
+    expect(find.byKey(const Key('home-factory-web')), findsOneWidget);
 
-    await tester.tap(find.byKey(const ValueKey('home-stage-workflows')));
+    await tester.tap(find.byKey(const Key('home-templates')));
     await tester.pumpAndSettle();
     expect(find.text('Control Center'), findsOneWidget);
 
     await tester.tap(find.byKey(const ValueKey('nav-home')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('home-stage-agents')));
+    await tester.tap(find.byKey(const Key('home-assign-agent')));
     await tester.pumpAndSettle();
     expect(find.text('Live Execution'), findsOneWidget);
+
+    await tester.tap(find.byKey(const ValueKey('nav-home')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('home-factory-web')));
+    await tester.pumpAndSettle();
+    expect(find.text('What do you want ILAIOS to build?'), findsOneWidget);
   });
 
-  testWidgets('unknown progress and event count remain truth-preserving', (
+  testWidgets('empty command center remains truth-preserving', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -38,13 +42,11 @@ void main() {
     await tester.pumpWidget(const IlaiosDesktopApp());
     await tester.pumpAndSettle();
 
-    final progressFinder = find.byType(LinearProgressIndicator);
-    expect(progressFinder, findsOneWidget);
-    final progress = tester.widget<LinearProgressIndicator>(progressFinder);
-    expect(progress.value, 0);
+    expect(find.text('Main Control Center'), findsOneWidget);
     expect(find.text('—'), findsWidgets);
-    expect(find.text('Events'), findsWidgets);
-    expect(find.text('Events / min'), findsNothing);
+    expect(find.textContaining(r'$3.21'), findsNothing);
+    expect(find.textContaining('18.362'), findsNothing);
+    expect(find.text('96%'), findsNothing);
   });
 
   testWidgets('theme control switches the application to light mode', (
@@ -64,6 +66,7 @@ void main() {
 
     scaffoldContext = tester.element(find.byType(Scaffold).first);
     expect(Theme.of(scaffoldContext).brightness, Brightness.light);
+    expect(find.byKey(const Key('command-center-home')), findsOneWidget);
   });
 
   testWidgets('every primary Desktop destination renders in real light theme', (

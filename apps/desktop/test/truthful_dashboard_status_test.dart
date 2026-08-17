@@ -5,7 +5,7 @@ import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('connected control plane without runtime event never claims active workflow', (
+  testWidgets('connected control plane without runtime data never invents command-center telemetry', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -27,15 +27,16 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('NO ACTIVE DATA'), findsOneWidget);
-    expect(find.text('LIVE'), findsNothing);
-    expect(find.text('Project'), findsOneWidget);
-    expect(find.text('Unavailable'), findsWidgets);
-    expect(find.text('73%'), findsNothing);
+    expect(find.text('Main Control Center'), findsOneWidget);
+    expect(find.text('Connected'), findsWidgets);
+    expect(find.text('—'), findsWidgets);
     expect(find.textContaining(r'$3.21'), findsNothing);
+    expect(find.textContaining('18.362'), findsNothing);
+    expect(find.text('96%'), findsNothing);
+    expect(find.text('24'), findsNothing);
   });
 
-  testWidgets('dashboard projects populated authoritative runtime values without fixtures', (
+  testWidgets('command center projects populated authoritative runtime values', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -127,33 +128,21 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('RUNNING'), findsOneWidget);
-    expect(find.text('64%'), findsOneWidget);
-    expect(find.text('Frontend Dev'), findsOneWidget);
-    expect(find.text('Test Engineer'), findsOneWidget);
-    expect(find.text('render-authoritative-ui'), findsOneWidget);
-    expect(find.text('verify-runtime-evidence'), findsOneWidget);
-    expect(find.text('job-authoritative-001'), findsOneWidget);
-    expect(find.text('00:02:15'), findsOneWidget);
-    expect(find.text('Execution'), findsWidgets);
     expect(find.text('2.75'), findsOneWidget);
-    expect(find.text('10.00'), findsOneWidget);
-    expect(find.text('verified_delivery'), findsOneWidget);
+    expect(find.text('approval-1'), findsOneWidget);
+    expect(find.text('approval-2'), findsOneWidget);
+    expect(find.text('approval-3'), findsOneWidget);
+    expect(find.text('verified_delivery'), findsWidgets);
+    expect(find.text('job-authoritative-001'), findsWidgets);
+    expect(find.text('00:02:15'), findsOneWidget);
+    expect(find.textContaining('worker_progress'), findsWidgets);
     expect(find.text('2'), findsWidgets);
     expect(find.text('1'), findsWidgets);
-    expect(find.textContaining('worker_progress'), findsWidgets);
 
-    // Role slots are fixed reference-layout chrome, but activity and telemetry
-    // remain authority-derived. Missing roles must not be presented as active.
-    expect(find.text('Architect Agent'), findsOneWidget);
-    expect(find.text('Backend Dev'), findsOneWidget);
-    expect(find.text('Security Agent'), findsOneWidget);
-    expect(find.text('Browser Agent'), findsOneWidget);
-    expect(find.text('Deploy Agent'), findsOneWidget);
-
-    // The UI must not invent telemetry that is absent from the authoritative
-    // snapshot, even while rendering the populated values above.
-    expect(find.text('73%'), findsNothing);
+    // Demo reference telemetry is never promoted into runtime truth.
     expect(find.textContaining(r'$3.21'), findsNothing);
+    expect(find.textContaining('18.362'), findsNothing);
+    expect(find.text('96%'), findsNothing);
+    expect(find.text('24'), findsNothing);
   });
 }
