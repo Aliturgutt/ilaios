@@ -11,6 +11,7 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping
 from dataclasses import dataclass
+from decimal import Decimal, InvalidOperation
 from types import MappingProxyType
 from typing import Protocol, cast
 from urllib.error import HTTPError, URLError
@@ -275,7 +276,7 @@ class OpenRouterVideoGenerationProvider:
 
 
 class OpenRouterVideoGenerationJobPoller:
-    """Normalize OpenRouter video job status into the canonical polling contract."""
+    """Normalize OpenRouter video jobs and prove terminal provider cost."""
 
     def __init__(
         self,
@@ -298,10 +299,17 @@ class OpenRouterVideoGenerationJobPoller:
         self._base_url = base_url.rstrip("/")
         self._timeout_seconds = timeout_seconds
         self._transport = transport or UrllibOpenRouterTransport()
+        self._terminal_evidence: dict[str, Mapping[str, object]] = {}
 
     @property
     def provider_id(self) -> str:
         return self._provider_id
+
+    @property
+    def terminal_evidence(self) -> Mapping[str, Mapping[str, object]]:
+        """Return sanitized authoritative terminal cost evidence by provider job id."""
+
+        return MappingProxyType(dict(self._terminal_evidence))
 
     def poll(self, provider_job_id: str) -> ProviderJobObservation:
         _require_non_blank("provider_job_id", provider_job_id)
@@ -320,53 +328,115 @@ class OpenRouterVideoGenerationJobPoller:
             self._base_url,
             response.payload,
         )
-        if (
-            observation.status is ProviderJobStatus.SUCCEEDED
-            and "usage_json" not in observation.metadata
-        ):
-            recovered = self._recover_generation_usage(response.payload)
-            if recovered is not None:
-                metadata = dict(observation.metadata)
-                metadata["usage_json"] = json.dumps(
-                    dict(recovered), sort_keys=True, separators=(",", ":")
-                )
-                observation = ProviderJobObservation(
-                    provider_id=observation.provider_id,
-                    provider_job_id=observation.provider_job_id,
-                    status=observation.status,
-                    output_asset_ids=observation.output_asset_ids,
-                    metadata=metadata,
-                )
-        return observation
+        if observation.status is not ProviderJobStatus.SUCCEEDED:
+            return observation
 
-    def _recover_generation_usage(
+        evidence = self._resolve_terminal_zero_cost_evidence(response.payload)
+        cost = _decimal_cost(evidence.get("cost"))
+        if cost is None:
+            raise OpenRouterVideoProviderError(
+                "ZERO_COST_EVIDENCE_UNKNOWN: authoritative terminal cost is malformed"
+            )
+        if cost != Decimal("0"):
+            raise OpenRouterVideoProviderError(
+                f"PROVIDER_COST_NONZERO: authoritative OpenRouter charge was {cost} USD"
+            )
+
+        self._terminal_evidence[provider_job_id] = evidence
+        metadata = dict(observation.metadata)
+        metadata["usage_json"] = json.dumps(
+            dict(evidence), sort_keys=True, separators=(",", ":")
+        )
+        metadata["zero_cost_evidence_source"] = str(evidence["source"])
+        generation_id = evidence.get("generation_id")
+        if isinstance(generation_id, str) and generation_id.strip():
+            metadata["generation_id"] = generation_id
+        metadata["terminal_response_json"] = json.dumps(
+            evidence["terminal_response"], sort_keys=True, separators=(",", ":")
+        )
+        accounting_response = evidence.get("generation_accounting_response")
+        if isinstance(accounting_response, Mapping):
+            metadata["generation_accounting_response_json"] = json.dumps(
+                dict(accounting_response), sort_keys=True, separators=(",", ":")
+            )
+        return ProviderJobObservation(
+            provider_id=observation.provider_id,
+            provider_job_id=observation.provider_job_id,
+            status=observation.status,
+            output_asset_ids=observation.output_asset_ids,
+            metadata=metadata,
+        )
+
+    def _resolve_terminal_zero_cost_evidence(
         self,
         video_payload: Mapping[str, object],
-    ) -> Mapping[str, object] | None:
+    ) -> Mapping[str, object]:
+        sanitized_terminal = _sanitize_payload(video_payload)
         generation_id = video_payload.get("generation_id")
-        if not isinstance(generation_id, str) or not generation_id.strip():
-            return None
-        encoded_generation_id = quote(generation_id, safe="")
+        normalized_generation_id = (
+            generation_id.strip()
+            if isinstance(generation_id, str) and generation_id.strip()
+            else None
+        )
+
+        usage = video_payload.get("usage")
+        if isinstance(usage, Mapping) and "cost" in usage:
+            cost = _decimal_cost(usage.get("cost"))
+            if cost is not None:
+                return MappingProxyType(
+                    {
+                        "cost": float(cost),
+                        "source": "openrouter_video_poll_usage",
+                        "generation_id": normalized_generation_id or "unavailable",
+                        "terminal_response": sanitized_terminal,
+                    }
+                )
+
+        if normalized_generation_id is None:
+            if isinstance(usage, Mapping):
+                raise OpenRouterVideoProviderError(
+                    "ZERO_COST_EVIDENCE_UNKNOWN: terminal usage did not contain a valid cost "
+                    "and no generation_id was available for accounting recovery"
+                )
+            raise OpenRouterVideoProviderError(
+                "ZERO_COST_EVIDENCE_MISSING: completed OpenRouter video response contained "
+                "neither authoritative usage.cost nor a generation_id"
+            )
+
+        encoded_generation_id = quote(normalized_generation_id, safe="")
         response = self._transport.get_json(
             f"{self._base_url}/generation?id={encoded_generation_id}",
             headers=_auth_headers(self._api_key),
             timeout_seconds=self._timeout_seconds,
         )
+        sanitized_accounting = _sanitize_payload(response.payload)
         if not 200 <= response.status_code < 300:
-            return None
+            raise OpenRouterVideoProviderError(
+                "PROVIDER_USAGE_UNAVAILABLE: OpenRouter generation accounting lookup "
+                f"returned HTTP {response.status_code}"
+            )
         data = response.payload.get("data")
         if not isinstance(data, Mapping):
-            return None
+            raise OpenRouterVideoProviderError(
+                "ZERO_COST_EVIDENCE_UNKNOWN: OpenRouter generation accounting response "
+                "did not contain a data object"
+            )
         raw_cost = data.get("total_cost")
         if raw_cost is None:
             raw_cost = data.get("usage")
-        if isinstance(raw_cost, bool) or not isinstance(raw_cost, (int, float)):
-            return None
+        cost = _decimal_cost(raw_cost)
+        if cost is None:
+            raise OpenRouterVideoProviderError(
+                "ZERO_COST_EVIDENCE_UNKNOWN: OpenRouter generation accounting response "
+                "did not contain a valid numeric total_cost/usage"
+            )
         return MappingProxyType(
             {
-                "cost": raw_cost,
+                "cost": float(cost),
                 "source": "openrouter_generation_metadata",
-                "generation_id": generation_id,
+                "generation_id": normalized_generation_id,
+                "terminal_response": sanitized_terminal,
+                "generation_accounting_response": sanitized_accounting,
             }
         )
 
@@ -576,6 +646,53 @@ def _normalize_poll_observation(
         provider_job_id=provider_job_id,
         status=status,
         metadata=metadata,
+    )
+
+
+def _decimal_cost(value: object) -> Decimal | None:
+    if isinstance(value, bool) or value is None:
+        return None
+    if not isinstance(value, (int, float, str)):
+        return None
+    try:
+        cost = Decimal(str(value))
+    except (InvalidOperation, ValueError):
+        return None
+    if not cost.is_finite() or cost < Decimal("0"):
+        return None
+    return cost
+
+
+def _sanitize_payload(value: object) -> object:
+    if isinstance(value, Mapping):
+        sanitized: dict[str, object] = {}
+        for raw_key, raw_value in value.items():
+            key = str(raw_key)
+            if _sensitive_key(key):
+                sanitized[key] = "[REDACTED]"
+            else:
+                sanitized[key] = _sanitize_payload(raw_value)
+        return sanitized
+    if isinstance(value, (list, tuple)):
+        return [_sanitize_payload(item) for item in value]
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    return str(value)
+
+
+def _sensitive_key(key: str) -> bool:
+    normalized = key.lower().replace("-", "_")
+    return any(
+        marker in normalized
+        for marker in (
+            "authorization",
+            "api_key",
+            "apikey",
+            "access_token",
+            "refresh_token",
+            "secret",
+            "password",
+        )
     )
 
 
