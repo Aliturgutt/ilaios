@@ -26,6 +26,7 @@ void main() {
       const Key('command-center-session'),
       const Key('command-center-activities'),
       const Key('command-center-alerts'),
+      const Key('reference-brand-lockup-v9'),
       const Key('reference-bottom-status-v2'),
     ]) {
       expect(find.byKey(key), findsOneWidget, reason: 'missing $key');
@@ -46,14 +47,13 @@ void main() {
     expect(find.text('RECENT ACTIVITY'), findsOneWidget);
     expect(find.text('ALERTS'), findsOneWidget);
 
-    // Reference screenshot telemetry is visual-only and must never be copied.
     expect(find.text('12'), findsNothing);
     expect(find.textContaining('18.362'), findsNothing);
     expect(find.text('96%'), findsNothing);
     expect(find.textContaining(r'$3.21'), findsNothing);
   });
 
-  testWidgets('DPI-compressed 1320x720 keeps the full command center in one viewport', (
+  testWidgets('DPI-compressed 1320x720 keeps the same command center in one viewport', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1320, 720));
@@ -63,7 +63,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.byKey(const Key('reference-dpi-scaled-viewport')), findsOneWidget);
+    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsOneWidget);
+    expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
     expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
     expect(find.byKey(const Key('command-center-focus')), findsOneWidget);
     expect(find.byKey(const Key('command-center-artifacts')), findsOneWidget);
@@ -94,6 +95,7 @@ void main() {
     expect(tester.takeException(), isNull);
     final context = tester.element(find.byKey(const Key('command-center-home')));
     expect(Theme.of(context).brightness, Brightness.light);
+    expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
     expect(find.text('Ana Kontrol Merkezi'), findsOneWidget);
     expect(find.text('Devam Eden İşler'), findsOneWidget);
     expect(find.text('Müdahale Gerektiren'), findsOneWidget);
