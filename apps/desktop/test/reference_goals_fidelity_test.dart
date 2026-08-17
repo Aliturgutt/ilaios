@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
-import 'package:ilaios_desktop/control_plane/projection.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
