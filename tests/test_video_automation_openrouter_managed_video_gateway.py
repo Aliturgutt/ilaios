@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from src.video_automation.commercial_quote import CommercialDispatchAuthority
 from src.video_automation.managed_credit_policy import managed_credit_production_policy
 from src.video_automation.managed_credit_store import ManagedCreditLedgerStore
 from src.video_automation.managed_credits import ManagedCreditAccount, ProviderCostQuote
@@ -24,6 +25,8 @@ from src.video_automation.openrouter_video_provider import (
     OpenRouterTransport,
 )
 from src.video_automation.openrouter_video_webhook import OpenRouterVideoWebhookStore
+
+_NOW = 1_000_000
 
 
 class _Transport(OpenRouterTransport):
@@ -137,31 +140,98 @@ def _quote(model_id: str = "kwaivgi/kling-v3.0-pro") -> ProviderCostQuote:
     )
 
 
-def _gateway(tmp_path: Path, transport: _Transport) -> OpenRouterManagedVideoGateway:
-    return OpenRouterManagedVideoGateway(
-        api_key="server-secret",
-        policy=managed_credit_production_policy(
-            max_cost_per_video=5.0,
-            max_daily_cost=50.0,
-            max_retry_cost=1.0,
-        ),
-        credit_store=ManagedCreditLedgerStore(tmp_path / "credits"),
-        catalog=OpenRouterVideoCatalogClient("server-secret", transport=transport),
+def _gateway(
+    tmp_path: Path,
+    transport: _Transport,
+) -> tuple[OpenRouterManagedVideoGateway, OpenRouterVideoCatalogClient]:
+    clock = lambda: float(_NOW)
+    catalog = OpenRouterVideoCatalogClient(
+        "server-secret",
         transport=transport,
-        webhook_store=OpenRouterVideoWebhookStore(tmp_path / "webhooks"),
-        callback_url="https://ilaios.example/openrouter/video-webhook",
+        clock=clock,
     )
+    return (
+        OpenRouterManagedVideoGateway(
+            api_key="server-secret",
+            policy=managed_credit_production_policy(
+                max_cost_per_video=5.0,
+                max_daily_cost=50.0,
+                max_retry_cost=1.0,
+            ),
+            credit_store=ManagedCreditLedgerStore(tmp_path / "credits"),
+            catalog=catalog,
+            transport=transport,
+            webhook_store=OpenRouterVideoWebhookStore(tmp_path / "webhooks"),
+            callback_url="https://ilaios.example/openrouter/video-webhook",
+            clock=clock,
+        ),
+        catalog,
+    )
+
+
+def _authority(
+    *,
+    model_id: str = "kwaivgi/kling-v3.0-pro",
+    pricing_fingerprint: str,
+    max_cost_microusd: int = 500_000,
+    expires_at: int = _NOW + 300,
+) -> CommercialDispatchAuthority:
+    return CommercialDispatchAuthority(
+        authority_sha256="authority-evidence",
+        quote_id="customer-quote-001",
+        quote_sha256="quote-evidence",
+        payment_authorization_id="payment-auth-001",
+        provider_name=OPENROUTER_MANAGED_PROVIDER_NAME,
+        model_id=model_id,
+        pricing_fingerprint=pricing_fingerprint,
+        provider_cost_ceiling_microusd=max_cost_microusd,
+        issued_at_epoch_s=_NOW - 1,
+        expires_at_epoch_s=expires_at,
+    )
+
+
+def _catalog_bound_authority(
+    catalog: OpenRouterVideoCatalogClient,
+    *,
+    model_id: str = "kwaivgi/kling-v3.0-pro",
+) -> CommercialDispatchAuthority:
+    catalog.paid_eligible_models()
+    snapshot = catalog.last_good_snapshot
+    assert snapshot is not None
+    return _authority(
+        model_id=model_id,
+        pricing_fingerprint=snapshot.catalog_digest,
+    )
+
+
+def test_missing_commercial_authority_blocks_before_any_network(tmp_path: Path) -> None:
+    transport = _Transport(_catalog())
+    gateway, _catalog_client = _gateway(tmp_path, transport)
+
+    with pytest.raises(OpenRouterManagedVideoGatewayError, match="authority is required"):
+        gateway.submit(
+            account=_account(),
+            request=_request(),
+            quote=_quote(),
+            routing_decision_id="route-001",
+            commercial_authority=None,  # type: ignore[arg-type]
+        )
+
+    assert transport.get_calls == 0
+    assert transport.post_bodies == []
 
 
 def test_live_kling_catalog_can_pass_governed_paid_dispatch(tmp_path: Path) -> None:
     transport = _Transport(_catalog())
-    gateway = _gateway(tmp_path, transport)
+    gateway, catalog = _gateway(tmp_path, transport)
+    authority = _catalog_bound_authority(catalog)
 
     result = gateway.submit(
         account=_account(),
         request=_request(),
         quote=_quote(),
         routing_decision_id="route-001",
+        commercial_authority=authority,
     )
 
     assert result.success
@@ -171,16 +241,13 @@ def test_live_kling_catalog_can_pass_governed_paid_dispatch(tmp_path: Path) -> N
     assert body["model"] == "kwaivgi/kling-v3.0-pro"
     assert body["callback_url"] == "https://ilaios.example/openrouter/video-webhook"
     assert result.metadata["routing_decision_id"] == "route-001"
-    catalog_digest = result.metadata["catalog_digest"]
-    assert isinstance(catalog_digest, str)
-    assert len(catalog_digest) == 64
+    assert result.metadata["catalog_digest"] == authority.pricing_fingerprint
 
 
-def test_capability_mismatch_blocks_before_credit_reservation_and_network(
-    tmp_path: Path,
-) -> None:
+def test_capability_mismatch_blocks_before_paid_post(tmp_path: Path) -> None:
     transport = _Transport(_catalog())
-    gateway = _gateway(tmp_path, transport)
+    gateway, catalog = _gateway(tmp_path, transport)
+    authority = _catalog_bound_authority(catalog)
 
     with pytest.raises(OpenRouterManagedVideoGatewayError, match="duration"):
         gateway.submit(
@@ -188,6 +255,7 @@ def test_capability_mismatch_blocks_before_credit_reservation_and_network(
             request=_request(duration=5),
             quote=_quote(),
             routing_decision_id="route-001",
+            commercial_authority=authority,
         )
 
     assert transport.post_bodies == []
@@ -195,7 +263,7 @@ def test_capability_mismatch_blocks_before_credit_reservation_and_network(
 
 def test_unknown_pricing_blocks_before_paid_network_side_effect(tmp_path: Path) -> None:
     transport = _Transport(_catalog(pricing={}))
-    gateway = _gateway(tmp_path, transport)
+    gateway, _catalog_client = _gateway(tmp_path, transport)
 
     with pytest.raises(OpenRouterManagedVideoGatewayError, match="valid pricing"):
         gateway.submit(
@@ -203,15 +271,72 @@ def test_unknown_pricing_blocks_before_paid_network_side_effect(tmp_path: Path) 
             request=_request(),
             quote=_quote(),
             routing_decision_id="route-001",
+            commercial_authority=_authority(pricing_fingerprint="unverified"),
         )
 
+    assert transport.post_bodies == []
+
+
+def test_catalog_change_after_quote_blocks_before_paid_post(tmp_path: Path) -> None:
+    transport = _Transport(_catalog())
+    gateway, _catalog_client = _gateway(tmp_path, transport)
+
+    with pytest.raises(OpenRouterManagedVideoGatewayError, match="catalog changed"):
+        gateway.submit(
+            account=_account(),
+            request=_request(),
+            quote=_quote(),
+            routing_decision_id="route-001",
+            commercial_authority=_authority(pricing_fingerprint="stale-catalog-digest"),
+        )
+
+    assert transport.post_bodies == []
+
+
+def test_expired_commercial_authority_blocks_before_catalog_network(tmp_path: Path) -> None:
+    transport = _Transport(_catalog())
+    gateway, _catalog_client = _gateway(tmp_path, transport)
+
+    with pytest.raises(OpenRouterManagedVideoGatewayError, match="expired"):
+        gateway.submit(
+            account=_account(),
+            request=_request(),
+            quote=_quote(),
+            routing_decision_id="route-001",
+            commercial_authority=_authority(
+                pricing_fingerprint="unused",
+                expires_at=_NOW,
+            ),
+        )
+
+    assert transport.get_calls == 0
+    assert transport.post_bodies == []
+
+
+def test_commercial_cost_ceiling_blocks_before_catalog_network(tmp_path: Path) -> None:
+    transport = _Transport(_catalog())
+    gateway, _catalog_client = _gateway(tmp_path, transport)
+
+    with pytest.raises(OpenRouterManagedVideoGatewayError, match="cost exceeds"):
+        gateway.submit(
+            account=_account(),
+            request=_request(),
+            quote=_quote(),
+            routing_decision_id="route-001",
+            commercial_authority=_authority(
+                pricing_fingerprint="unused",
+                max_cost_microusd=499_999,
+            ),
+        )
+
+    assert transport.get_calls == 0
     assert transport.post_bodies == []
 
 
 def test_catalog_model_does_not_override_governed_family_policy(tmp_path: Path) -> None:
     model_id = "google/veo-3.1"
     transport = _Transport(_catalog(model_id=model_id))
-    gateway = _gateway(tmp_path, transport)
+    gateway, _catalog_client = _gateway(tmp_path, transport)
 
     with pytest.raises(OpenRouterManagedVideoGatewayError, match="paid-eligible"):
         gateway.submit(
@@ -219,6 +344,10 @@ def test_catalog_model_does_not_override_governed_family_policy(tmp_path: Path) 
             request=_request(model_id=model_id),
             quote=_quote(model_id),
             routing_decision_id="route-001",
+            commercial_authority=_authority(
+                model_id=model_id,
+                pricing_fingerprint="unused",
+            ),
         )
 
     assert transport.post_bodies == []
