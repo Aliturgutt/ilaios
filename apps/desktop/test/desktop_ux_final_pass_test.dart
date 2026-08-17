@@ -127,7 +127,7 @@ void main() {
           executionId: 'exec-video-test',
           artifactDigest:
               '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',
-          action: 'video.final',
+          action: 'video.desktop.finished_product',
           previousHash: '',
           recordHash: 'record-hash',
         ),
@@ -155,6 +155,6 @@ void main() {
       ),
       findsOneWidget,
     );
-    expect(find.text('video.final'), findsOneWidget);
+    expect(find.text('video.desktop.finished_product'), findsOneWidget);
   });
 }
