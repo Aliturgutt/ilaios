@@ -46,19 +46,26 @@ jobs:
               'bytedance/seedance-1-5-pro',
           }
           selected = []
-          zero_models = []
+          all_zero_models = []
+          any_zero_models = []
           for model in models:
               if not isinstance(model, dict):
                   continue
               model_id = model.get('id')
               pricing = model.get('pricing_skus')
               if model_id in requested:
-                  selected.append({'id': model_id, 'pricing_skus': pricing})
+                  selected.append({
+                      'id': model_id,
+                      'pricing_skus': pricing,
+                      'supported_durations': model.get('supported_durations'),
+                      'supported_resolutions': model.get('supported_resolutions'),
+                      'supported_aspect_ratios': model.get('supported_aspect_ratios'),
+                  })
               if not isinstance(model_id, str) or not isinstance(pricing, dict) or not pricing:
                   continue
-              parsed = []
+              parsed = {}
               valid = True
-              for value in pricing.values():
+              for sku, value in pricing.items():
                   try:
                       amount = Decimal(str(value))
                   except (InvalidOperation, ValueError):
@@ -67,14 +74,29 @@ jobs:
                   if not amount.is_finite() or amount < 0:
                       valid = False
                       break
-                  parsed.append(amount)
-              if valid and parsed and all(amount == 0 for amount in parsed):
-                  zero_models.append({'id': model_id, 'pricing_skus': pricing})
+                  parsed[str(sku)] = amount
+              if not valid or not parsed:
+                  continue
+              zero_skus = sorted(sku for sku, amount in parsed.items() if amount == 0)
+              if zero_skus:
+                  any_zero_models.append({
+                      'id': model_id,
+                      'zero_skus': zero_skus,
+                      'pricing_skus': pricing,
+                      'supported_durations': model.get('supported_durations'),
+                      'supported_resolutions': model.get('supported_resolutions'),
+                      'supported_aspect_ratios': model.get('supported_aspect_ratios'),
+                  })
+              if all(amount == 0 for amount in parsed.values()):
+                  all_zero_models.append({'id': model_id, 'pricing_skus': pricing})
 
           print('CATALOG_MODEL_COUNT=' + str(len(models)))
           print('REQUESTED_MODEL_RECORDS=' + json.dumps(selected, sort_keys=True))
-          print('ZERO_PRICE_VIDEO_MODELS=' + json.dumps(zero_models, sort_keys=True))
-          print('ZERO_PRICE_VIDEO_MODEL_COUNT=' + str(len(zero_models)))
+          print('ALL_ZERO_PRICE_VIDEO_MODELS=' + json.dumps(all_zero_models, sort_keys=True))
+          print('ANY_ZERO_PRICE_SKU_VIDEO_MODELS=' + json.dumps(any_zero_models, sort_keys=True))
+          print('ALL_ZERO_PRICE_VIDEO_MODEL_COUNT=' + str(len(all_zero_models)))
+          print('ANY_ZERO_PRICE_SKU_VIDEO_MODEL_COUNT=' + str(len(any_zero_models)))
+          print('GENERATION_POST_PERFORMED=FALSE')
 
           summary = os.environ.get('GITHUB_STEP_SUMMARY')
           if summary:
@@ -82,5 +104,6 @@ jobs:
                   handle.write('## OpenRouter video catalog diagnostic\n\n')
                   handle.write(f'- Catalog model count: `{len(models)}`\n')
                   handle.write(f'- Requested aliases/base records: `{json.dumps(selected, sort_keys=True)}`\n')
-                  handle.write(f'- Explicit zero-price models: `{json.dumps(zero_models, sort_keys=True)}`\n')
+                  handle.write(f'- All-zero models: `{json.dumps(all_zero_models, sort_keys=True)}`\n')
+                  handle.write(f'- Models with any zero-price SKU: `{json.dumps(any_zero_models, sort_keys=True)}`\n')
                   handle.write('- Generation POST performed: `FALSE`\n')
