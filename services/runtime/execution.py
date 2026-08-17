@@ -10,6 +10,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, ClassVar
 
+from services.runtime.diagram_design_adapter import (
+    DIAGRAM_DESIGN_ADAPTER_KIND,
+    execute_diagram_design_payload,
+)
 from services.runtime.routing import (
     AgentProfile,
     ProviderProfile,
@@ -38,6 +42,7 @@ class GovernedRuntime:
         "uppercase-text": lambda payload: {
             "text": _required_payload_text(payload).upper()
         },
+        DIAGRAM_DESIGN_ADAPTER_KIND: execute_diagram_design_payload,
         SYSTEM_DESIGN_ADAPTER_KIND: execute_system_design_payload,
     }
 
