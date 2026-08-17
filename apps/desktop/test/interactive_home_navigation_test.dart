@@ -18,8 +18,12 @@ void main() {
 
     await tester.tap(find.byKey(const Key('home-templates')));
     await tester.pumpAndSettle();
-    expect(find.text('Workflows'), findsOneWidget);
-    expect(find.byKey(const Key('reference-workflows-page')), findsOneWidget);
+    final workflowsPage = find.byKey(const Key('reference-workflows-page'));
+    expect(workflowsPage, findsOneWidget);
+    expect(
+      find.descendant(of: workflowsPage, matching: find.text('Workflows')),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const ValueKey('nav-home')));
     await tester.pumpAndSettle();
