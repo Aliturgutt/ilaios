@@ -36,7 +36,7 @@ jobs:
       VIDEO_PROVIDER_RESOLUTION: 480p
       VIDEO_PROVIDER_ASPECT_RATIO: "16:9"
       VIDEO_PROVIDER_MAX_UNIT_PRICE_USD: "0.15"
-      VIDEO_PROVIDER_MAX_TOTAL_COST_USD: "0.60"
+      VIDEO_PROVIDER_MAX_TOTAL_COST_USD: "1.00"
       ILAIOS_VIDEO_MODEL_ID: bytedance/seedance-2.0-fast:free
       ILAIOS_VIDEO_QA_MODEL_ID: openrouter/free
       ILAIOS_VIDEO_E2E_RESOLUTION: 480p
@@ -180,6 +180,7 @@ jobs:
           print(f"- Provider/model: `{receipt.get('provider')}` / `{receipt.get('model')}`")
           print(f"- Request: `{receipt.get('request_id', 'n/a')}`")
           print(f"- Quote ID: `{quote.get('quote_id', 'n/a')}`")
+          print(f"- Authorized workflow cap (USD): `{(receipt.get('budget_guard') or {}).get('max_total_cost_usd', 'n/a')}`")
           print(f"- Customer total before generation (microUSD): `{quote.get('gross_customer_price_microusd', 'n/a')}`")
           print(f"- Locked provider ceiling (microUSD): `{quote.get('provider_cost_ceiling_microusd', 'n/a')}`")
           print(f"- Actual provider cost (microUSD): `{reconciliation.get('actual_provider_cost_microusd', 'n/a')}`")

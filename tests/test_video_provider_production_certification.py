@@ -14,10 +14,12 @@ from src.video_automation.openrouter_video_catalog import (
     OpenRouterVideoModel,
 )
 from src.video_automation.provider_production_certification import (
+    CertificationPrice,
     CertificationShape,
     ProviderProductionCertificationError,
     build_certification_request,
     certification_price,
+    certification_provider_cost_ceiling,
     run_certification,
     select_certification_model,
 )
@@ -145,6 +147,44 @@ def test_unknown_or_over_budget_price_blocks_before_dispatch() -> None:
                 max_unit_price_usd=Decimal("0.15"),
             ),
         )
+
+
+def test_provider_reservation_buffers_variance_inside_hard_spend_cap() -> None:
+    price = CertificationPrice(
+        sku="video_tokens_without_audio",
+        unit_price_usd=Decimal("0.0000042"),
+        estimated_units=Decimal("38430"),
+        estimated_total_usd=Decimal("0.161406"),
+        estimated_total_microusd=161_406,
+    )
+    shape = CertificationShape(max_total_cost_usd=Decimal("1.00"))
+
+    ceiling = certification_provider_cost_ceiling(
+        price,
+        shape,
+        contingency_bps=1_000,
+    )
+
+    assert ceiling == 177_547
+    assert 170_495 <= ceiling
+    assert ceiling <= 1_000_000
+
+
+def test_provider_reservation_never_exceeds_authorized_hard_cap() -> None:
+    price = CertificationPrice(
+        sku="per-video-second",
+        unit_price_usd=Decimal("0.10"),
+        estimated_units=Decimal("4"),
+        estimated_total_usd=Decimal("0.40"),
+        estimated_total_microusd=400_000,
+    )
+    shape = CertificationShape(max_total_cost_usd=Decimal("0.42"))
+
+    assert certification_provider_cost_ceiling(
+        price,
+        shape,
+        contingency_bps=1_000,
+    ) == 420_000
 
 
 def test_request_is_single_item_and_bound_to_managed_provider() -> None:
