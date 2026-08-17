@@ -27,6 +27,7 @@ _DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 _DEFAULT_OPERATION = "video.generate"
 _DEFAULT_PROVIDER_NAME = "openrouter-video-free"
 _DEFAULT_RESOLUTION = "480p"
+_DEFAULT_SUBMISSION_TIMEOUT_SECONDS = 120.0
 _FREE_SUFFIX = ":free"
 SEEDANCE_FREE_MODEL_ID = "bytedance/seedance-2.0-fast:free"
 
@@ -175,7 +176,7 @@ class OpenRouterVideoGenerationProvider:
         *,
         provider_name: str = _DEFAULT_PROVIDER_NAME,
         base_url: str = _DEFAULT_BASE_URL,
-        timeout_seconds: float = 30.0,
+        timeout_seconds: float = _DEFAULT_SUBMISSION_TIMEOUT_SECONDS,
         default_resolution: str = _DEFAULT_RESOLUTION,
         generate_audio: bool = False,
         transport: OpenRouterTransport | None = None,
@@ -228,8 +229,29 @@ class OpenRouterVideoGenerationProvider:
                 body=body,
                 timeout_seconds=self._timeout_seconds,
             )
+        except TimeoutError:
+            return _failure_result(
+                request,
+                "submission_timeout_uncertain",
+                (
+                    "OpenRouter video submission response timed out after "
+                    f"{self._timeout_seconds:g}s; provider acceptance is unknown and "
+                    "automatic resubmission is forbidden to avoid duplicate generation"
+                ),
+            )
         except OpenRouterVideoProviderError as exc:
-            return _failure_result(request, "invalid_request", str(exc))
+            message = str(exc)
+            if "timed out" in message.lower():
+                return _failure_result(
+                    request,
+                    "submission_timeout_uncertain",
+                    (
+                        "OpenRouter video submission response timed out after "
+                        f"{self._timeout_seconds:g}s; provider acceptance is unknown and "
+                        "automatic resubmission is forbidden to avoid duplicate generation"
+                    ),
+                )
+            return _failure_result(request, "invalid_request", message)
         except Exception as exc:  # noqa: BLE001
             message = str(exc).strip() or exc.__class__.__name__
             return _failure_result(request, "transport_error", message)
