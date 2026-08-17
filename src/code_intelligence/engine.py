@@ -147,7 +147,12 @@ class CodeIntelligenceEngine:
 
         return self._index.coverage
 
-    def search_symbols(self, query: str, *, limit: int = 20) -> tuple[SymbolSearchHit, ...]:
+    def search_symbols(
+        self,
+        query: str,
+        *,
+        limit: int = 20,
+    ) -> tuple[SymbolSearchHit, ...]:
         """Search symbols deterministically; no embeddings or fuzzy LLM matching."""
 
         normalized = query.strip().casefold()
@@ -244,9 +249,9 @@ class CodeIntelligenceEngine:
         for node in self._index.nodes:
             if node.kind is not GraphNodeKind.SYMBOL or node.path is None:
                 continue
-            component = component_by_path.get(node.path)
-            if component is not None:
-                symbol_count[component] = symbol_count.get(component, 0) + 1
+            symbol_component = component_by_path.get(node.path)
+            if symbol_component is not None:
+                symbol_count[symbol_component] = symbol_count.get(symbol_component, 0) + 1
 
         components = tuple(
             ArchitectureComponent(
@@ -425,7 +430,9 @@ class CodeIntelligenceEngine:
                 f"max_depth must be between 1 and {self._limits.max_depth}"
             )
         if direction not in {"callers", "callees", "incoming", "outgoing"}:
-            raise CodeIntelligenceQueryError(f"unsupported traversal direction: {direction}")
+            raise CodeIntelligenceQueryError(
+                f"unsupported traversal direction: {direction}"
+            )
 
         reverse = direction in {"callers", "incoming"}
         queue: deque[tuple[str, int]] = deque([(origin_id, 0)])
@@ -437,7 +444,11 @@ class CodeIntelligenceEngine:
             node_id, depth = queue.popleft()
             if depth >= max_depth:
                 continue
-            adjacent = self._incoming.get(node_id, ()) if reverse else self._outgoing.get(node_id, ())
+            adjacent = (
+                self._incoming.get(node_id, ())
+                if reverse
+                else self._outgoing.get(node_id, ())
+            )
             for edge in adjacent:
                 if edge.kind not in edge_kinds:
                     continue
