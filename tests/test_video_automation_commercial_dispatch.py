@@ -60,7 +60,7 @@ def _provider_quote(*, maximum: int = 7_500_000) -> ProviderCostQuote:
     )
 
 
-@pytest.mark.parametrize(  # type: ignore[misc]
+@pytest.mark.parametrize(
     ("payment", "message"),
     (
         (_payment(status="PENDING"), "not secured"),
