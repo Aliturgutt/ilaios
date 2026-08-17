@@ -4,7 +4,7 @@ import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('Turkish locale translates premium Home labels without fabricating state', (
+  testWidgets('Turkish locale translates command-center Home without fabricating state', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -25,18 +25,26 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Aktif İş Akışı'), findsOneWidget);
-    expect(find.text('AKTİF VERİ YOK'), findsOneWidget);
-    expect(find.text('Hedef Alımı'), findsOneWidget);
-    expect(find.text('Planlama'), findsOneWidget);
-    expect(find.text('Genel İlerleme'), findsOneWidget);
-    expect(find.text('CANLI YÜRÜTME'), findsOneWidget);
-    expect(find.text('CANLI ÇALIŞMA ALANI'), findsOneWidget);
-    expect(find.text('DURUM'), findsOneWidget);
-    expect(find.text('MALİYET VE KULLANIM'), findsOneWidget);
-    expect(find.text('ONAYLAR'), findsOneWidget);
-    expect(find.text('SON GÜNLÜKLER'), findsOneWidget);
-    expect(find.text('73%'), findsNothing);
+    expect(find.text('Ana Kontrol Merkezi'), findsOneWidget);
+    expect(find.text('Yeni İş Başlat'), findsOneWidget);
+    expect(find.text('Şablonlar'), findsOneWidget);
+    expect(find.text('Son Oturumu Aç'), findsOneWidget);
+    expect(find.text('Ajan Ata'), findsOneWidget);
+    expect(find.text('Devam Eden İşler'), findsOneWidget);
+    expect(find.text('Müdahale Gerektiren'), findsOneWidget);
+    expect(find.text('Aktif Ajanlar'), findsOneWidget);
+    expect(find.text('Bugünkü Harcama'), findsOneWidget);
+    expect(find.text('Sistem Sağlığı'), findsOneWidget);
+    expect(find.text('ODAK İŞLER'), findsOneWidget);
+    expect(find.text('DİKKAT GEREKTİRENLER'), findsOneWidget);
+    expect(find.text('SON ÇIKTILAR'), findsOneWidget);
+    expect(find.text('SON TAMAMLANANLAR'), findsOneWidget);
+    expect(find.text('HIZLI İŞLEMLER'), findsOneWidget);
+    expect(find.text('OTURUM DURUMU'), findsOneWidget);
+    expect(find.text('SON ETKİNLİKLER'), findsOneWidget);
+    expect(find.text('UYARILAR'), findsOneWidget);
+    expect(find.textContaining('18.362'), findsNothing);
+    expect(find.text('96%'), findsNothing);
     expect(find.textContaining(r'$3.21'), findsNothing);
     expect(tester.takeException(), isNull);
   });
