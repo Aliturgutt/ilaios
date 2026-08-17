@@ -87,6 +87,36 @@ class OpenRouterVideoModel:
                 return False
         return True
 
+    def resolve_supported_duration(self, preferred_seconds: float) -> int:
+        """Resolve directorial timing intent against this live model capability.
+
+        This is capability resolution only, not routing. If OpenRouter publishes
+        explicit durations, the closest supported value wins and equal-distance
+        ties choose the shorter clip to avoid avoidable provider spend. If the
+        catalog publishes no duration restriction, a positive whole-second value
+        nearest to the directorial preference is returned.
+        """
+
+        if preferred_seconds <= 0:
+            raise OpenRouterCatalogError("preferred_seconds must be positive")
+        if self.supported_durations:
+            return min(
+                self.supported_durations,
+                key=lambda value: (abs(float(value) - preferred_seconds), value),
+            )
+        return max(1, int(round(preferred_seconds)))
+
+    def supports_frame_role(self, role: str) -> bool:
+        """Report whether live catalog evidence permits a first/last frame role."""
+
+        _text("frame role", role)
+        normalized = role.strip().lower().replace("-", "_")
+        published = {
+            item.strip().lower().replace("-", "_")
+            for item in self.supported_frame_images
+        }
+        return normalized in published
+
 
 @dataclass(frozen=True, slots=True)
 class OpenRouterCatalogSnapshot:
