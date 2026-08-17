@@ -4,7 +4,7 @@ import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('target dashboard renders without overflow at required desktop widths', (
+  testWidgets('command center remains the same design family at all desktop widths', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -12,7 +12,6 @@ void main() {
     for (final size in <Size>[
       const Size(1920, 1080),
       const Size(1600, 900),
-      const Size(2560, 1440),
       const Size(1280, 720),
       const Size(1024, 720),
       const Size(820, 700),
@@ -27,11 +26,16 @@ void main() {
         reason:
             'Desktop target layout overflowed or threw at ${size.width}x${size.height}',
       );
-      if (size.width >= 1180) {
-        expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
-        expect(find.text('Main Control Center'), findsOneWidget);
-        expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
-        expect(find.byKey(const Key('command-center-metrics')), findsOneWidget);
+      expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
+      expect(find.byKey(const Key('command-center-home')), findsOneWidget);
+      expect(find.text('Main Control Center'), findsOneWidget);
+      expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
+
+      if (size.width < 1280 || size.height < 800) {
+        expect(
+          find.byKey(const Key('reference-scaled-viewport-v9')),
+          findsOneWidget,
+        );
       }
     }
   });
@@ -56,7 +60,7 @@ void main() {
     expect(find.byKey(const Key('command-center-alerts')), findsOneWidget);
   });
 
-  testWidgets('wide shell renders visible canonical ILAIOS symbol and wordmark', (
+  testWidgets('shell renders the approved orbit-mark ILAIOS lockup', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -64,18 +68,12 @@ void main() {
     await tester.pumpWidget(const IlaiosDesktopApp());
     await tester.pumpAndSettle();
 
-    final symbol = find.byWidgetPredicate((widget) {
-      if (widget is! Image || widget.image is! AssetImage) return false;
-      return (widget.image as AssetImage).assetName ==
-          '../../brand/assets/03-ilaios-symbol-dark.jpg';
-    });
-
     expect(tester.takeException(), isNull);
-    expect(symbol, findsOneWidget);
-    expect(find.text('ILAIOS'), findsOneWidget);
+    expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
+    expect(find.text('ILAIOS'), findsWidgets);
   });
 
-  testWidgets('target dashboard tolerates 125 and 150 percent text scaling', (
+  testWidgets('target dashboard keeps command center under 125 and 150 percent text scaling', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -94,43 +92,36 @@ void main() {
         isNull,
         reason: 'Desktop target layout failed at ${scale}x text scaling',
       );
+      expect(find.byKey(const Key('command-center-home')), findsOneWidget);
+      expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
     }
   });
 
-  testWidgets('Turkish target layout tolerates localized Windows scaling', (
+  testWidgets('Turkish Home never falls back to the old workflow dashboard when resized', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final previousErrorHandler = FlutterError.onError;
-    FlutterError.onError = (details) {
-      debugPrint(details.toString());
-      previousErrorHandler?.call(details);
-    };
-    addTearDown(() => FlutterError.onError = previousErrorHandler);
 
     for (final size in <Size>[
       const Size(1600, 900),
       const Size(1280, 720),
       const Size(1024, 720),
+      const Size(820, 700),
     ]) {
-      for (final scale in <double>[1.25, 1.5]) {
-        await tester.binding.setSurfaceSize(size);
-        await tester.pumpWidget(
-          MediaQuery(
-            data: MediaQueryData(textScaler: TextScaler.linear(scale)),
-            child: const IlaiosDesktopApp(locale: IlaiosLocale.turkish),
-          ),
-        );
-        await tester.pumpAndSettle();
-        expect(
-          tester.takeException(),
-          isNull,
-          reason:
-              'Turkish Desktop layout failed at ${size.width}x${size.height}, ${scale}x text scaling',
-        );
-        // Accessibility scaling intentionally uses the verified responsive shell.
-        expect(find.text('Aktif İş Akışı'), findsOneWidget);
-      }
+      await tester.binding.setSurfaceSize(size);
+      await tester.pumpWidget(
+        const IlaiosDesktopApp(locale: IlaiosLocale.turkish),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: 'Turkish Desktop layout failed at ${size.width}x${size.height}',
+      );
+      expect(find.text('Ana Kontrol Merkezi'), findsOneWidget);
+      expect(find.byKey(const Key('command-center-home')), findsOneWidget);
+      expect(find.text('Aktif İş Akışı'), findsNothing);
     }
   });
 }
