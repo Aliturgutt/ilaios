@@ -7,9 +7,10 @@ units. Neither layer calls providers or performs rendering.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from math import ceil, floor
+from types import MappingProxyType
 
 from .models import Scene, Shot, VideoScript
 
@@ -55,12 +56,56 @@ class ShotPlanningError(ValueError):
 
 
 @dataclass(frozen=True, slots=True)
+class ShotDurationProfile:
+    """Preferred cinematic timing envelope for one semantic shot class."""
+
+    minimum_seconds: float
+    target_seconds: float
+    maximum_seconds: float
+
+    def __post_init__(self) -> None:
+        if self.minimum_seconds <= 0:
+            raise ShotPlanningError("profile minimum_seconds must be greater than zero")
+        if self.maximum_seconds < self.minimum_seconds:
+            raise ShotPlanningError(
+                "profile maximum_seconds must be >= profile minimum_seconds"
+            )
+        if not self.minimum_seconds <= self.target_seconds <= self.maximum_seconds:
+            raise ShotPlanningError(
+                "profile target_seconds must be inside the profile bounds"
+            )
+
+
+_DEFAULT_DURATION_PROFILES: Mapping[str, ShotDurationProfile] = MappingProxyType(
+    {
+        "establishing": ShotDurationProfile(5.0, 6.0, 8.0),
+        "action": ShotDurationProfile(3.0, 4.0, 5.0),
+        "dialogue": ShotDurationProfile(5.0, 7.0, 10.0),
+        "reaction": ShotDurationProfile(2.0, 3.0, 4.0),
+        "insert": ShotDurationProfile(2.0, 3.0, 4.0),
+        "hero": ShotDurationProfile(4.0, 6.0, 8.0),
+        "cinematic hero": ShotDurationProfile(4.0, 6.0, 8.0),
+        "transition": ShotDurationProfile(2.0, 3.0, 4.0),
+    }
+)
+
+
+@dataclass(frozen=True, slots=True)
 class ShotPlannerConfig:
-    """Timing constraints for generated cinematic clips."""
+    """Timing constraints for generated cinematic clips.
+
+    The 4-6 second envelope remains the provider-neutral default. Semantic shot
+    classes may use different preferred envelopes, while absolute bounds prevent
+    the planner from turning a user-requested final duration into one oversized
+    provider request. Live provider capabilities are resolved later by the
+    provider capability gate; this planner does not select providers.
+    """
 
     min_shot_seconds: float = 4.0
     target_shot_seconds: float = 5.0
     max_shot_seconds: float = 6.0
+    absolute_min_shot_seconds: float = 2.0
+    absolute_max_shot_seconds: float = 12.0
 
     def __post_init__(self) -> None:
         if self.min_shot_seconds <= 0:
@@ -72,6 +117,22 @@ class ShotPlannerConfig:
         if not self.min_shot_seconds <= self.target_shot_seconds <= self.max_shot_seconds:
             raise ShotPlanningError(
                 "target_shot_seconds must be inside configured shot bounds"
+            )
+        if self.absolute_min_shot_seconds <= 0:
+            raise ShotPlanningError(
+                "absolute_min_shot_seconds must be greater than zero"
+            )
+        if self.absolute_max_shot_seconds < self.absolute_min_shot_seconds:
+            raise ShotPlanningError(
+                "absolute_max_shot_seconds must be >= absolute_min_shot_seconds"
+            )
+        if self.min_shot_seconds < self.absolute_min_shot_seconds:
+            raise ShotPlanningError(
+                "min_shot_seconds must be >= absolute_min_shot_seconds"
+            )
+        if self.max_shot_seconds > self.absolute_max_shot_seconds:
+            raise ShotPlanningError(
+                "max_shot_seconds must be <= absolute_max_shot_seconds"
             )
 
 
@@ -219,7 +280,7 @@ class ShotPlanner:
         *,
         episode_id: str,
     ) -> EpisodeShotPlan:
-        """Preserve the existing deterministic short-shot planning behavior."""
+        """Plan adaptive short shots while preserving the exact final beat duration."""
 
         if not episode_id.strip():
             raise ShotPlanningError("episode_id must not be blank")
@@ -231,7 +292,10 @@ class ShotPlanner:
 
         drafts: list[tuple[EpisodeBeat, str, float]] = []
         for beat in beats:
-            durations = self._partition_duration(beat.duration_seconds)
+            durations = self._partition_duration(
+                beat.duration_seconds,
+                shot_type=beat.shot_type,
+            )
             chunks = _split_text(beat.text, len(durations))
             drafts.extend(
                 (beat, chunks[index], duration)
@@ -269,26 +333,72 @@ class ShotPlanner:
 
         return EpisodeShotPlan(episode_id=episode_id, shots=tuple(shots))
 
-    def _partition_duration(self, total_seconds: float) -> tuple[float, ...]:
-        minimum = self._config.min_shot_seconds
-        target = self._config.target_shot_seconds
-        maximum = self._config.max_shot_seconds
-        minimum_count = ceil(total_seconds / maximum)
-        maximum_count = floor(total_seconds / minimum)
-        if minimum_count > maximum_count:
-            raise ShotPlanningError(
-                "beat duration cannot be partitioned inside configured shot bounds"
+    def preferred_profile(self, shot_type: str) -> ShotDurationProfile:
+        """Return semantic timing intent without introducing provider selection."""
+
+        normalized = " ".join(shot_type.strip().lower().replace("_", " ").split())
+        profile = _DEFAULT_DURATION_PROFILES.get(normalized)
+        if profile is not None:
+            return profile
+        return ShotDurationProfile(
+            self._config.min_shot_seconds,
+            self._config.target_shot_seconds,
+            self._config.max_shot_seconds,
+        )
+
+    def _partition_duration(
+        self,
+        total_seconds: float,
+        *,
+        shot_type: str = "cinematic",
+    ) -> tuple[float, ...]:
+        profile = self.preferred_profile(shot_type)
+        try:
+            return _partition_inside_bounds(
+                total_seconds,
+                minimum=profile.minimum_seconds,
+                target=profile.target_seconds,
+                maximum=profile.maximum_seconds,
             )
-        ideal_count = max(1, round(total_seconds / target))
-        count = min(max(ideal_count, minimum_count), maximum_count)
-        base_duration = total_seconds / count
-        durations = [base_duration for _ in range(count)]
-        durations[-1] = total_seconds - sum(durations[:-1])
-        if any(duration < minimum or duration > maximum for duration in durations):
-            raise ShotPlanningError(
-                "shot partition violated configured duration bounds"
+        except ShotPlanningError:
+            # Semantic ranges are directorial preferences, not a reason to reject
+            # a valid user duration. Fall back to the global 2-12 second safety
+            # envelope. Live provider capability resolution may narrow this later.
+            target = min(
+                max(profile.target_seconds, self._config.absolute_min_shot_seconds),
+                self._config.absolute_max_shot_seconds,
             )
-        return tuple(durations)
+            return _partition_inside_bounds(
+                total_seconds,
+                minimum=self._config.absolute_min_shot_seconds,
+                target=target,
+                maximum=self._config.absolute_max_shot_seconds,
+            )
+
+
+def _partition_inside_bounds(
+    total_seconds: float,
+    *,
+    minimum: float,
+    target: float,
+    maximum: float,
+) -> tuple[float, ...]:
+    if total_seconds <= 0:
+        raise ShotPlanningError("total_seconds must be greater than zero")
+    minimum_count = ceil(total_seconds / maximum)
+    maximum_count = floor(total_seconds / minimum)
+    if minimum_count > maximum_count:
+        raise ShotPlanningError(
+            "beat duration cannot be partitioned inside configured shot bounds"
+        )
+    ideal_count = max(1, round(total_seconds / target))
+    count = min(max(ideal_count, minimum_count), maximum_count)
+    base_duration = total_seconds / count
+    durations = [base_duration for _ in range(count)]
+    durations[-1] = total_seconds - sum(durations[:-1])
+    if any(duration < minimum or duration > maximum for duration in durations):
+        raise ShotPlanningError("shot partition violated configured duration bounds")
+    return tuple(durations)
 
 
 def _require_non_blank(name: str, value: str) -> None:
