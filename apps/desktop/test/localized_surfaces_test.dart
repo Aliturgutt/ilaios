@@ -29,10 +29,20 @@ void main() {
     expect(find.text('ILAIOS’un ne oluşturmasını istiyorsun?'), findsOneWidget);
 
     await open('workflows');
-    expect(find.text('Kontrol Merkezi'), findsOneWidget);
+    final workflowsPage = find.byKey(const Key('reference-workflows-page'));
+    expect(workflowsPage, findsOneWidget);
+    expect(
+      find.descendant(of: workflowsPage, matching: find.text('İş Akışları')),
+      findsOneWidget,
+    );
 
     await open('agents');
-    expect(find.text('Canlı Yürütme'), findsOneWidget);
+    final agentsPage = find.byKey(const Key('reference-agents-page'));
+    expect(agentsPage, findsOneWidget);
+    expect(
+      find.descendant(of: agentsPage, matching: find.text('Ajanlar')),
+      findsOneWidget,
+    );
 
     await open('liveWorkspace');
     expect(find.text('Canlı Çalışma Alanı'), findsWidgets);

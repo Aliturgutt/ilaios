@@ -18,13 +18,23 @@ void main() {
 
     await tester.tap(find.byKey(const Key('home-templates')));
     await tester.pumpAndSettle();
-    expect(find.text('Control Center'), findsOneWidget);
+    final workflowsPage = find.byKey(const Key('reference-workflows-page'));
+    expect(workflowsPage, findsOneWidget);
+    expect(
+      find.descendant(of: workflowsPage, matching: find.text('Workflows')),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const ValueKey('nav-home')));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('home-assign-agent')));
     await tester.pumpAndSettle();
-    expect(find.text('Live Execution'), findsOneWidget);
+    final agentsPage = find.byKey(const Key('reference-agents-page'));
+    expect(agentsPage, findsOneWidget);
+    expect(
+      find.descendant(of: agentsPage, matching: find.text('Agents')),
+      findsOneWidget,
+    );
 
     await tester.tap(find.byKey(const ValueKey('nav-home')));
     await tester.pumpAndSettle();

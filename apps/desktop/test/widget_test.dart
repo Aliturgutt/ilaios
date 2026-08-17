@@ -104,7 +104,7 @@ void main() {
     expect(find.text('—'), findsWidgets);
   });
 
-  testWidgets('control center still projects query state and refresh', (
+  testWidgets('Workflows projects authoritative job state and refresh', (
     WidgetTester tester,
   ) async {
     var refreshRequests = 0;
@@ -123,9 +123,15 @@ void main() {
     ));
     await tester.tap(find.byKey(const ValueKey('nav-workflows')));
     await tester.pumpAndSettle();
-    expect(find.text('2'), findsOneWidget);
+    final workflowsPage = find.byKey(const Key('reference-workflows-page'));
+    expect(workflowsPage, findsOneWidget);
+    expect(
+      find.descendant(of: workflowsPage, matching: find.text('Workflows')),
+      findsOneWidget,
+    );
     expect(find.text('5'), findsOneWidget);
-    final refresh = find.byKey(const Key('refresh-command'));
+    expect(find.text('2'), findsNothing);
+    final refresh = find.byKey(const Key('workflows-refresh'));
     await tester.ensureVisible(refresh);
     await tester.tap(refresh);
     expect(refreshRequests, 1);
@@ -164,7 +170,10 @@ void main() {
     expect(find.text('Files'), findsWidgets);
     expect(find.text('Logs'), findsWidgets);
     expect(find.text('Events'), findsWidgets);
-    expect(find.textContaining('no data is fabricated'), findsOneWidget);
+    expect(
+      find.textContaining('Authoritative source-file content'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('verified evidence renders provenance metadata only', (
