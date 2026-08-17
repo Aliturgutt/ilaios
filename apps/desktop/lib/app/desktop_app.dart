@@ -7,7 +7,7 @@ import '../control_plane/client.dart';
 import '../control_plane/evidence_record.dart';
 import '../control_plane/operational_snapshot.dart';
 import '../control_plane/projection.dart';
-import '../features/dashboard/reference_desktop_shell_v4.dart';
+import '../features/dashboard/reference_desktop_shell_v5.dart';
 import '../identity/identity_client.dart';
 import 'ilaios_locale.dart';
 import 'ilaios_theme.dart';
@@ -108,7 +108,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp> {
       home: IlaiosLocaleScope(
         locale: widget.locale,
         onChanged: (value) => widget.onLocaleChanged?.call(value),
-        child: ReferenceDesktopShellV4(
+        child: ReferenceDesktopShellV5(
           projection: widget.projection,
           operationalSnapshot: widget.operationalSnapshot,
           operationalStatus: widget.operationalStatus,
