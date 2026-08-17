@@ -9,7 +9,7 @@ coding agent and the existing ILAIOS design-quality gates.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Final
 
 from services.runtime.skill_runtime import (
@@ -36,182 +36,94 @@ class UIComponentPattern:
 
 PATTERNS: Final[tuple[UIComponentPattern, ...]] = (
     UIComponentPattern(
-        "drawer",
-        "overlay",
-        (
-            "drawer",
-            "side panel",
-            "settings panel",
-            "yan panel",
-            "sagdan ayarlar",
-            "sagdan panel",
-            "soldan panel",
-            "kenardan acilan panel",
-        ),
-        "right",
-        "420px",
-        "full-screen sheet",
+        "drawer", "overlay",
+        ("drawer", "side panel", "settings panel", "yan panel", "sagdan ayarlar", "sagdan panel", "soldan panel", "kenardan acilan panel"),
+        "right", "420px", "full-screen sheet",
         ("escape-close", "close-button", "restore-trigger-focus"),
         ("focus-trap", "dialog-semantics", "keyboard-operable"),
     ),
     UIComponentPattern(
-        "multi-select",
-        "input",
-        (
-            "multi select",
-            "multiselect",
-            "multiple options",
-            "birden fazla secenek",
-            "coklu secim",
-            "coklu secenek",
-        ),
-        "inline",
-        "content-sized",
-        "wrap selected values; avoid horizontal overflow",
+        "multi-select", "input",
+        ("multi select", "multiselect", "multiple options", "birden fazla secenek", "coklu secim", "coklu secenek"),
+        "inline", "content-sized", "wrap selected values; avoid horizontal overflow",
         ("open-list", "toggle-option", "clear-selection"),
         ("labelled-control", "keyboard-navigation", "announced-selection-state"),
     ),
     UIComponentPattern(
-        "avatar-group",
-        "display",
-        (
-            "avatar group",
-            "stacked avatars",
-            "overlapping avatars",
-            "ust uste avatar",
-            "ust uste kucuk kullanici resimleri",
-            "kullanici resimleri",
-        ),
-        "inline",
-        "content-sized",
-        "cap visible avatars and expose remaining count",
+        "avatar-group", "display",
+        ("avatar group", "stacked avatars", "overlapping avatars", "ust uste avatar", "ust uste kucuk kullanici resimleri", "kullanici resimleri"),
+        "inline", "content-sized", "cap visible avatars and expose remaining count",
         ("show-overflow-count",),
         ("meaningful-alt-or-hidden-decoration", "non-color-only-identity"),
     ),
     UIComponentPattern(
-        "text-truncation",
-        "content",
-        (
-            "ellipsis",
-            "text truncation",
-            "truncate text",
-            "uc nokta",
-            "uzun metin",
-            "metin kisalt",
-        ),
-        "inline",
-        "container-bound",
-        "truncate only where full text remains discoverable",
+        "text-truncation", "content",
+        ("ellipsis", "text truncation", "truncate text", "uc nokta", "uzun metin", "metin kisalt"),
+        "inline", "container-bound", "truncate only where full text remains discoverable",
         ("reveal-full-value-on-demand",),
         ("full-value-accessible", "no-essential-information-loss"),
     ),
     UIComponentPattern(
-        "dialog",
-        "overlay",
-        ("dialog", "modal", "onay penceresi", "acilir pencere"),
-        "center",
-        "min(560px, calc(100vw - 32px))",
-        "near-full-width dialog with safe viewport margins",
+        "dialog", "overlay", ("dialog", "modal", "onay penceresi", "acilir pencere"),
+        "center", "min(560px, calc(100vw - 32px))", "near-full-width dialog with safe viewport margins",
         ("escape-close", "explicit-primary-secondary-actions", "restore-trigger-focus"),
         ("focus-trap", "dialog-semantics", "labelled-title", "keyboard-operable"),
     ),
     UIComponentPattern(
-        "tabs",
-        "navigation",
-        ("tabs", "tab bar", "sekmeler", "sekme", "tab navigation"),
-        "inline",
-        "container-width",
-        "scroll or transform navigation intentionally on compact surfaces",
+        "tabs", "navigation", ("tabs", "tab bar", "sekmeler", "sekme", "tab navigation"),
+        "inline", "container-width", "scroll or transform navigation intentionally on compact surfaces",
         ("activate-tab", "preserve-selected-state"),
         ("tablist-semantics", "arrow-key-navigation", "visible-focus"),
     ),
     UIComponentPattern(
-        "command-palette",
-        "navigation",
-        (
-            "command palette",
-            "command menu",
-            "komut paleti",
-            "hizli komut",
-            "quick command",
-        ),
-        "center",
-        "640px",
-        "full-width overlay with bounded height",
+        "command-palette", "navigation", ("command palette", "command menu", "komut paleti", "hizli komut", "quick command"),
+        "center", "640px", "full-width overlay with bounded height",
         ("type-to-filter", "escape-close", "keyboard-select"),
         ("combobox-semantics", "active-option-announcement", "visible-focus"),
     ),
     UIComponentPattern(
-        "data-table",
-        "data-display",
-        (
-            "data table",
-            "table",
-            "tablo",
-            "veri tablosu",
-            "satir sutun",
-        ),
-        "inline",
-        "container-width",
-        "preserve critical columns; transform secondary data deliberately",
+        "data-table", "data-display", ("data table", "table", "tablo", "veri tablosu", "satir sutun"),
+        "inline", "container-width", "preserve critical columns; transform secondary data deliberately",
         ("sort-when-supported", "filter-when-supported", "row-action-affordance"),
         ("header-association", "keyboard-operable-actions", "non-color-only-status"),
     ),
     UIComponentPattern(
-        "toast",
-        "feedback",
-        ("toast", "notification toast", "bildirim", "gecici bildirim"),
-        "bottom-right",
-        "360px",
-        "respect safe areas and avoid covering primary controls",
+        "toast", "feedback", ("toast", "notification toast", "bildirim", "gecici bildirim"),
+        "bottom-right", "360px", "respect safe areas and avoid covering primary controls",
         ("auto-dismiss-only-if-safe", "manual-dismiss-when-actionable"),
         ("live-region", "sufficient-reading-time", "keyboard-operable-action"),
     ),
     UIComponentPattern(
-        "surface-layout",
-        "layout",
-        (
-            "ui design",
-            "interface design",
-            "arayuz tasarimi",
-            "ekran tasarimi",
-            "dashboard design",
-            "kontrol paneli",
-            "desktop ui",
-            "web ui",
-        ),
-        "page",
-        "responsive container",
-        "derive compact/tablet/wide composition instead of stacking blindly",
+        "surface-layout", "layout",
+        ("ui design", "interface design", "arayuz tasarimi", "ekran tasarimi", "dashboard design", "kontrol paneli", "desktop ui", "web ui"),
+        "page", "responsive container", "derive compact/tablet/wide composition instead of stacking blindly",
         ("preserve-hierarchy", "preserve-primary-action"),
         ("logical-focus-order", "landmarks-or-native-semantics", "visible-focus"),
     ),
 )
 
 _GENERIC_UI_SIGNALS: Final[tuple[str, ...]] = (
-    "ui",
-    "interface",
-    "arayuz",
-    "ekran",
-    "component",
-    "bilesen",
-    "panel",
-    "modal",
-    "drawer",
-    "tablo",
-    "secenek",
-    "avatar",
-    "metin",
-    "bildirim",
-    "dashboard",
+    "ui", "interface", "arayuz", "ekran", "component", "bilesen", "panel", "modal",
+    "drawer", "tablo", "secenek", "avatar", "metin", "bildirim", "dashboard",
 )
+
+_DESIGN_PROFILE_POLICY: Final[dict[str, tuple[int, int, int, str]]] = {
+    "default": (4, 3, 6, "product-system"),
+    "minimal": (3, 2, 4, "restrained-minimal"),
+    "premium": (5, 4, 4, "premium-restrained"),
+    "dashboard": (4, 3, 8, "dense-operational"),
+    "experimental": (7, 6, 4, "expressive-bounded"),
+}
 
 _ARTIFACT_PAYLOAD: Final[bytes] = json.dumps(
     {
         "skill_id": "ilaios.skill.ui-design",
         "version": "1.0.0",
         "schema": "ilaios.ui-spec.v1",
-        "patterns": [pattern.component for pattern in PATTERNS],
+        "patterns": [asdict(pattern) for pattern in PATTERNS],
+        "generic_ui_signals": _GENERIC_UI_SIGNALS,
+        "design_profile_policy": _DESIGN_PROFILE_POLICY,
+        "routing": "normalized-whole-token-or-phrase-match",
         "runtime": "deterministic-clean-room",
     },
     sort_keys=True,
@@ -236,12 +148,8 @@ class ILAIOSUIDesignSkill:
     def match(self, normalized_prompt: str) -> SkillMatch:
         pattern, component_score, matched = _resolve_pattern(normalized_prompt)
         if pattern is not None:
-            score = min(0.98, component_score)
-            return SkillMatch(score, tuple(f"component:{item}" for item in matched))
-
-        generic = tuple(
-            signal for signal in _GENERIC_UI_SIGNALS if signal in normalized_prompt
-        )
+            return SkillMatch(min(0.98, component_score), tuple(f"component:{item}" for item in matched))
+        generic = tuple(signal for signal in _GENERIC_UI_SIGNALS if _contains_phrase(normalized_prompt, signal))
         if not generic:
             return SkillMatch(0.0, ())
         score = min(0.75, 0.44 + (0.08 * len(generic)))
@@ -250,7 +158,7 @@ class ILAIOSUIDesignSkill:
     def execute(self, request: SkillRequest) -> dict[str, object]:
         pattern, score, matched = _resolve_pattern(request.normalized_prompt)
         if pattern is None:
-            if any(signal in request.normalized_prompt for signal in _GENERIC_UI_SIGNALS):
+            if any(_contains_phrase(request.normalized_prompt, signal) for signal in _GENERIC_UI_SIGNALS):
                 pattern = next(item for item in PATTERNS if item.component == "surface-layout")
                 score = 0.55
                 matched = ("generic-ui-intent",)
@@ -265,7 +173,6 @@ class ILAIOSUIDesignSkill:
             if isinstance(product, str) and product.casefold() == "ilaios"
             else "inherit-existing-project-brand"
         )
-
         return {
             "schema_version": "ilaios.ui-spec.v1",
             "status": "SPECIFIED",
@@ -275,11 +182,7 @@ class ILAIOSUIDesignSkill:
             "confidence": round(score, 3),
             "evidence": list(matched),
             "design_read": design_profile,
-            "layout": {
-                "placement": placement,
-                "desktop_size": pattern.desktop_size,
-                "compact_behavior": pattern.compact_behavior,
-            },
+            "layout": {"placement": placement, "desktop_size": pattern.desktop_size, "compact_behavior": pattern.compact_behavior},
             "interaction": list(pattern.interactions),
             "accessibility": list(pattern.accessibility),
             "design_system": {
@@ -289,13 +192,9 @@ class ILAIOSUIDesignSkill:
                 "single_system_rule": True,
             },
             "quality_gates": [
-                "no-clipping-or-overlap",
-                "visible-focus",
-                "required-interaction-states",
-                "keyboard-operable",
-                "reduced-motion-when-motion-exists",
-                "intentional-compact-wide-adaptation",
-                "no-unexplained-generic-ai-decoration",
+                "no-clipping-or-overlap", "visible-focus", "required-interaction-states",
+                "keyboard-operable", "reduced-motion-when-motion-exists",
+                "intentional-compact-wide-adaptation", "no-unexplained-generic-ai-decoration",
             ],
             "codegen_hints": [
                 "treat-this-spec-as-constraints-not-copyable-markup",
@@ -307,28 +206,23 @@ class ILAIOSUIDesignSkill:
 
 
 def build_default_skill_runtime() -> NativeSkillRuntime:
-    """Build the default executable native skill runtime."""
     registry = NativeSkillRegistry()
     registry.register(ILAIOSUIDesignSkill())
     return NativeSkillRuntime(registry)
 
 
-def _resolve_pattern(
-    normalized_prompt: str,
-) -> tuple[UIComponentPattern | None, float, tuple[str, ...]]:
+def _resolve_pattern(normalized_prompt: str) -> tuple[UIComponentPattern | None, float, tuple[str, ...]]:
     best_pattern: UIComponentPattern | None = None
     best_score = 0.0
     best_matches: tuple[str, ...] = ()
     for pattern in PATTERNS:
-        matches = tuple(alias for alias in pattern.aliases if alias in normalized_prompt)
+        matches = tuple(alias for alias in pattern.aliases if _contains_phrase(normalized_prompt, alias))
         if not matches:
             continue
         longest = max(len(alias.split()) for alias in matches)
         score = min(0.98, 0.68 + (0.07 * min(longest, 4)) + (0.03 * (len(matches) - 1)))
         if score > best_score or (
-            score == best_score
-            and best_pattern is not None
-            and pattern.component < best_pattern.component
+            score == best_score and best_pattern is not None and pattern.component < best_pattern.component
         ):
             best_pattern = pattern
             best_score = score
@@ -336,28 +230,32 @@ def _resolve_pattern(
     return best_pattern, best_score, best_matches
 
 
+def _contains_phrase(prompt: str, phrase: str) -> bool:
+    return f" {phrase} " in f" {prompt} "
+
+
 def _infer_placement(prompt: str, default: str) -> str:
-    if any(term in prompt for term in ("soldan", "left side", "left panel")):
+    if any(_contains_phrase(prompt, term) for term in ("soldan", "left side", "left panel")):
         return "left"
-    if any(term in prompt for term in ("sagdan", "right side", "right panel")):
+    if any(_contains_phrase(prompt, term) for term in ("sagdan", "right side", "right panel")):
         return "right"
-    if any(term in prompt for term in ("alttan", "bottom sheet")):
+    if any(_contains_phrase(prompt, term) for term in ("alttan", "bottom sheet")):
         return "bottom"
     return default
 
 
 def _infer_design_profile(prompt: str) -> dict[str, object]:
-    variance, motion, density = 4, 3, 6
-    language = "product-system"
-    if any(term in prompt for term in ("minimal", "sade", "calm", "temiz")):
-        variance, motion, density, language = 3, 2, 4, "restrained-minimal"
-    elif any(term in prompt for term in ("premium", "luxury", "luk")):
-        variance, motion, density, language = 5, 4, 4, "premium-restrained"
-    elif any(term in prompt for term in ("dashboard", "kontrol paneli", "cockpit")):
-        variance, motion, density, language = 4, 3, 8, "dense-operational"
-    elif any(term in prompt for term in ("experimental", "playful", "yaratici")):
-        variance, motion, density, language = 7, 6, 4, "expressive-bounded"
+    profile = "default"
+    if any(_contains_phrase(prompt, term) for term in ("minimal", "sade", "calm", "temiz")):
+        profile = "minimal"
+    elif any(_contains_phrase(prompt, term) for term in ("premium", "luxury", "luk")):
+        profile = "premium"
+    elif any(_contains_phrase(prompt, term) for term in ("dashboard", "kontrol paneli", "cockpit")):
+        profile = "dashboard"
+    elif any(_contains_phrase(prompt, term) for term in ("experimental", "playful", "yaratici")):
+        profile = "experimental"
 
+    variance, motion, density, language = _DESIGN_PROFILE_POLICY[profile]
     return {
         "language": language,
         "design_variance": variance,
