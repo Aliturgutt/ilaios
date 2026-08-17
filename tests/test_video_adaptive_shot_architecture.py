@@ -89,6 +89,18 @@ def test_action_uses_shorter_semantic_shots() -> None:
     assert all(3.0 <= shot.duration_seconds <= 5.0 for shot in plan.shots)
 
 
+def test_caption_mode_defaults_off() -> None:
+    manifest = EpisodeRequestManifestBuilder().build(
+        "episode-default-captions",
+        [_request()],
+    )
+
+    assert manifest.caption_mode is CaptionMode.OFF
+    assert manifest.captions_explicitly_disabled
+    assert not manifest.captions_explicitly_required
+    assert manifest.metadata["caption_mode"] == "off"
+
+
 def test_caption_mode_off_is_explicit_and_not_forced() -> None:
     manifest = EpisodeRequestManifestBuilder().build(
         "episode-no-captions",
