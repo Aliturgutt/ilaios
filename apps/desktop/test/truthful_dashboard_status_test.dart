@@ -143,10 +143,17 @@ void main() {
     expect(find.text('1'), findsWidgets);
     expect(find.textContaining('worker_progress'), findsWidgets);
 
+    // Role slots are fixed reference-layout chrome, but activity and telemetry
+    // remain authority-derived. Missing roles must not be presented as active.
+    expect(find.text('Architect Agent'), findsOneWidget);
+    expect(find.text('Backend Dev'), findsOneWidget);
+    expect(find.text('Security Agent'), findsOneWidget);
+    expect(find.text('Browser Agent'), findsOneWidget);
+    expect(find.text('Deploy Agent'), findsOneWidget);
+
     // The UI must not invent telemetry that is absent from the authoritative
     // snapshot, even while rendering the populated values above.
     expect(find.text('73%'), findsNothing);
     expect(find.textContaining(r'$3.21'), findsNothing);
-    expect(find.text('Architect Agent'), findsNothing);
   });
 }
