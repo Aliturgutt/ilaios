@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ilaios:code-intelligence:result:v1",
+  "title": "ILAIOS Code Intelligence Result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "operation",
+    "repository_revision",
+    "generation_id",
+    "certainty",
+    "unknowns",
+    "data"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "ilaios-code-intelligence-result-v1"
+    },
+    "operation": {
+      "type": "string"
+    },
+    "repository_revision": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "generation_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "certainty": {
+      "type": "string",
+      "enum": ["known", "inferred", "unknown"]
+    },
+    "unknowns": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "data": {
+      "type": "object"
+    }
+  }
+}
