@@ -22,7 +22,7 @@ from urllib.request import Request, urlopen
 
 from .generated_asset_retrieval import GeneratedAssetPayload
 from .generation_job_polling import ProviderJobObservation, ProviderJobStatus
-from .models import ProviderRequest, ProviderResult
+from .models import MetadataValue, ProviderRequest, ProviderResult
 from .providers import ProviderCapabilities
 
 _DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
@@ -290,7 +290,7 @@ class OpenRouterVideoGenerationProvider:
                 "invalid_provider_response",
                 "OpenRouter response does not contain a non-empty video job id",
             )
-        metadata = {
+        metadata: dict[str, MetadataValue] = {
             "backend": "openrouter",
             "cost_policy": "free_only",
             "model_id": model_id,
