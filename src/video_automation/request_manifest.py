@@ -56,7 +56,7 @@ class EpisodeRequestManifest:
     total_duration_seconds: float
     request_count: int
     metadata: Mapping[str, str]
-    caption_mode: CaptionMode = CaptionMode.AUTO
+    caption_mode: CaptionMode = CaptionMode.OFF
 
     def __post_init__(self) -> None:
         _require_non_blank("manifest_id", self.manifest_id)
@@ -99,7 +99,7 @@ class EpisodeRequestManifestBuilder:
         episode_id: str,
         requests: Sequence[ShotGenerationRequest],
         *,
-        caption_mode: CaptionMode = CaptionMode.AUTO,
+        caption_mode: CaptionMode = CaptionMode.OFF,
     ) -> EpisodeRequestManifest:
         """Preserve request order and the explicit subtitle preference."""
 
