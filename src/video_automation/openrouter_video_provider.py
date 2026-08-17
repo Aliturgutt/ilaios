@@ -344,7 +344,14 @@ class OpenRouterVideoGenerationJobPoller:
 
         self._terminal_evidence[provider_job_id] = evidence
         metadata = dict(observation.metadata)
+        terminal_usage = response.payload.get("usage")
+        usage_payload = dict(terminal_usage) if isinstance(terminal_usage, Mapping) else {}
+        if _decimal_cost(usage_payload.get("cost")) is None:
+            usage_payload["cost"] = float(cost)
         metadata["usage_json"] = json.dumps(
+            usage_payload, sort_keys=True, separators=(",", ":")
+        )
+        metadata["provider_cost_evidence_json"] = json.dumps(
             dict(evidence), sort_keys=True, separators=(",", ":")
         )
         metadata["zero_cost_evidence_source"] = str(evidence["source"])
