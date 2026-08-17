@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import inspect
+from collections.abc import Mapping
 
 from src.video_automation import provider_production_certification
 from src.video_automation.commercial_admission import (
     CommercialAdmissionEngine,
     CommercialPricingPolicy,
+    LockedVideoQuote,
     ProviderPricingSnapshot,
     TaxProfile,
     VideoCostEnvelope,
@@ -15,24 +17,47 @@ from src.video_automation.openrouter_managed_video_runtime import (
     OpenRouterManagedVideoGenerationJobPoller,
     actual_cost_microusd_from_observation,
 )
-from src.video_automation.openrouter_video_provider import OpenRouterJsonResponse
+from src.video_automation.openrouter_video_provider import (
+    OpenRouterByteResponse,
+    OpenRouterJsonResponse,
+    OpenRouterTransport,
+)
 
 
-class _Transport:
+class _Transport(OpenRouterTransport):
     def __init__(self, payload: dict[str, object]) -> None:
         self._response = OpenRouterJsonResponse(200, payload)
 
-    def get_json(self, *args: object, **kwargs: object) -> OpenRouterJsonResponse:
+    def get_json(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        timeout_seconds: float,
+    ) -> OpenRouterJsonResponse:
         return self._response
 
-    def post_json(self, *args: object, **kwargs: object) -> OpenRouterJsonResponse:
+    def post_json(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        body: Mapping[str, object],
+        timeout_seconds: float,
+    ) -> OpenRouterJsonResponse:
         raise AssertionError("paid POST is outside this cost-policy unit test")
 
-    def get_bytes(self, *args: object, **kwargs: object) -> object:
+    def get_bytes(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        timeout_seconds: float,
+    ) -> OpenRouterByteResponse:
         raise AssertionError("asset retrieval is outside this cost-policy unit test")
 
 
-def _quote() -> object:
+def _quote() -> LockedVideoQuote:
     engine = CommercialAdmissionEngine(CommercialPricingPolicy())
     return engine.create_locked_quote(
         quote_id="paid-e2e-quote",
@@ -109,5 +134,5 @@ def test_paid_certification_never_reintroduces_free_only_poller() -> None:
     assert "OpenRouterManagedVideoGenerationJobPoller" in source
     assert "OpenRouterVideoGenerationJobPoller(" not in source
     assert '"cost_mode": "COMMERCIAL_BOUNDED"' in source
-    assert '"customer_quote"' in source
-    assert '"commercial_reconciliation"' in source
+    assert 'receipt["customer_quote"]' in source
+    assert 'receipt["commercial_reconciliation"]' in source
