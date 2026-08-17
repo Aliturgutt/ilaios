@@ -3,19 +3,21 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
 
 from services.commercial_access import (
     CommercialAccessError,
     CommercialAccessStore,
+    CommercialEntitlement,
     EntitlementState,
 )
 from src.video_automation.managed_credit_store import ManagedCreditLedgerStore
 from src.video_automation.managed_credits import ManagedCreditAccount, ProviderCostQuote
 
 
-def _store(tmp_path):
+def _store(tmp_path: Path) -> tuple[CommercialAccessStore, ManagedCreditLedgerStore]:
     credits = ManagedCreditLedgerStore(tmp_path / "credits")
     return CommercialAccessStore(tmp_path / "commercial", credits), credits
 
@@ -26,7 +28,7 @@ def _activate(
     *,
     paid_provider_allowed: bool = False,
     event_id: str = "evt-active-1",
-):
+) -> CommercialEntitlement:
     return store.apply_entitlement(
         event_id=event_id,
         tenant_id="tenant-1",
@@ -39,7 +41,7 @@ def _activate(
     )
 
 
-def test_missing_entitlement_fails_closed(tmp_path) -> None:
+def test_missing_entitlement_fails_closed(tmp_path: Path) -> None:
     store, _ = _store(tmp_path)
     now = datetime(2026, 8, 17, tzinfo=timezone.utc)
 
@@ -47,7 +49,7 @@ def test_missing_entitlement_fails_closed(tmp_path) -> None:
         store.require_access(tenant_id="tenant-1", user_id="user-1", now=now)
 
 
-def test_active_entitlement_allows_non_paid_access(tmp_path) -> None:
+def test_active_entitlement_allows_non_paid_access(tmp_path: Path) -> None:
     store, _ = _store(tmp_path)
     now = datetime(2026, 8, 17, tzinfo=timezone.utc)
     entitlement = _activate(store, now)
@@ -62,7 +64,7 @@ def test_active_entitlement_allows_non_paid_access(tmp_path) -> None:
     assert admitted.version == 1
 
 
-def test_entitlement_event_is_idempotent_and_conflicts_fail(tmp_path) -> None:
+def test_entitlement_event_is_idempotent_and_conflicts_fail(tmp_path: Path) -> None:
     store, _ = _store(tmp_path)
     now = datetime(2026, 8, 17, tzinfo=timezone.utc)
     first = _activate(store, now)
@@ -82,7 +84,9 @@ def test_entitlement_event_is_idempotent_and_conflicts_fail(tmp_path) -> None:
         )
 
 
-def test_suspended_cancelled_and_expired_entitlements_are_denied(tmp_path) -> None:
+def test_suspended_cancelled_and_expired_entitlements_are_denied(
+    tmp_path: Path,
+) -> None:
     store, _ = _store(tmp_path)
     now = datetime(2026, 8, 17, tzinfo=timezone.utc)
     _activate(store, now)
@@ -127,7 +131,7 @@ def test_suspended_cancelled_and_expired_entitlements_are_denied(tmp_path) -> No
         store.require_access(tenant_id="tenant-1", user_id="user-1", now=now)
 
 
-def test_paid_provider_requires_entitlement_permission(tmp_path) -> None:
+def test_paid_provider_requires_entitlement_permission(tmp_path: Path) -> None:
     store, _ = _store(tmp_path)
     now = datetime(2026, 8, 17, tzinfo=timezone.utc)
     _activate(store, now, paid_provider_allowed=False)
@@ -141,7 +145,9 @@ def test_paid_provider_requires_entitlement_permission(tmp_path) -> None:
         )
 
 
-def test_paid_provider_reserve_settle_uses_canonical_credit_ledger(tmp_path) -> None:
+def test_paid_provider_reserve_settle_uses_canonical_credit_ledger(
+    tmp_path: Path,
+) -> None:
     store, credits = _store(tmp_path)
     now = datetime(2026, 8, 17, tzinfo=timezone.utc)
     _activate(store, now, paid_provider_allowed=True)
@@ -190,7 +196,7 @@ def test_paid_provider_reserve_settle_uses_canonical_credit_ledger(tmp_path) -> 
     assert settled.account.reserved_microusd == 0
 
 
-def test_insufficient_credit_fails_closed(tmp_path) -> None:
+def test_insufficient_credit_fails_closed(tmp_path: Path) -> None:
     store, _ = _store(tmp_path)
     now = datetime(2026, 8, 17, tzinfo=timezone.utc)
     _activate(store, now, paid_provider_allowed=True)
@@ -218,7 +224,7 @@ def test_insufficient_credit_fails_closed(tmp_path) -> None:
         )
 
 
-def test_unused_provider_reservation_can_be_released(tmp_path) -> None:
+def test_unused_provider_reservation_can_be_released(tmp_path: Path) -> None:
     store, credits = _store(tmp_path)
     now = datetime(2026, 8, 17, tzinfo=timezone.utc)
     _activate(store, now, paid_provider_allowed=True)
