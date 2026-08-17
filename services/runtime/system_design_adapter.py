@@ -92,4 +92,4 @@ def _optional_positive_int(payload: dict[str, Any], key: str) -> int | None:
     value = payload[key]
     if isinstance(value, bool) or not isinstance(value, int) or value <= 0:
         raise RuntimeError(f"{key} must be a positive integer when supplied")
-    return value
+    return int(value)
