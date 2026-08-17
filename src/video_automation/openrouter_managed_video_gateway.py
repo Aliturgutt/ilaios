@@ -4,8 +4,14 @@ from __future__ import annotations
 
 import json
 from collections.abc import Mapping
+from decimal import Decimal, ROUND_CEILING
 from typing import cast
 
+from .commercial_pricing import (
+    CommercialPricingError,
+    CommercialPricingGuard,
+    CommercialPricingPolicy,
+)
 from .configuration import VideoAutomationPolicy
 from .managed_credit_store import ManagedCreditLedgerStore, ProviderSideEffectLedger
 from .managed_credits import (
@@ -27,9 +33,11 @@ from .openrouter_video_catalog import (
 from .openrouter_video_provider import OpenRouterTransport
 from .openrouter_video_webhook import OpenRouterVideoWebhookStore
 
+_MICRO_USD_PER_USD = Decimal("1000000")
+
 
 class OpenRouterManagedVideoGatewayError(ValueError):
-    """Raised before dispatch when live capability evidence is insufficient."""
+    """Raised before dispatch when capability or financial evidence is insufficient."""
 
 
 class OpenRouterManagedVideoGateway:
@@ -37,6 +45,8 @@ class OpenRouterManagedVideoGateway:
 
     The gateway never chooses a provider/model. It validates an already governed
     request and canonical routing-decision binding before creating a provider.
+    Every paid submit additionally proves authoritative provider cost and a
+    configured non-loss-making customer net price before any external POST.
     """
 
     def __init__(
@@ -46,6 +56,7 @@ class OpenRouterManagedVideoGateway:
         policy: VideoAutomationPolicy,
         credit_store: ManagedCreditLedgerStore,
         catalog: OpenRouterVideoCatalogClient,
+        commercial_pricing_policy: CommercialPricingPolicy,
         transport: OpenRouterTransport | None = None,
         webhook_store: OpenRouterVideoWebhookStore | None = None,
         callback_url: str | None = None,
@@ -56,6 +67,7 @@ class OpenRouterManagedVideoGateway:
         self._policy = policy
         self._credit_store = credit_store
         self._catalog = catalog
+        self._commercial_pricing_policy = commercial_pricing_policy
         self._transport = transport
         self._webhook_store = webhook_store
         self._callback_url = callback_url
@@ -67,17 +79,15 @@ class OpenRouterManagedVideoGateway:
         request: ProviderRequest,
         quote: ProviderCostQuote,
         routing_decision_id: str,
+        customer_net_price_usd: Decimal,
     ) -> ProviderResult:
-        """Validate current catalog/capabilities then perform one governed POST."""
+        """Validate catalog, cost floor, margin floor, then perform one governed POST."""
 
         if request.provider_name != OPENROUTER_MANAGED_PROVIDER_NAME:
             raise OpenRouterManagedVideoGatewayError(
                 "request is not bound to the managed OpenRouter provider"
             )
 
-        # A paid request identity is single-use. Even a deterministic FAILED
-        # provider result requires a fresh governed retry request/authorization;
-        # this prevents retries from silently reusing financial side-effect state.
         side_effect_ledger = ProviderSideEffectLedger(self._credit_store)
         try:
             side_effect_ledger.get(request.request_id)
@@ -103,6 +113,7 @@ class OpenRouterManagedVideoGateway:
                     "paid dispatch blocked: no governed paid-eligible candidate"
                 ) from exc
             raise OpenRouterManagedVideoGatewayError(str(exc)) from exc
+
         model_by_id = {model.model_id: model for model in eligible}
         model_id = _request_model_id(request)
         model = model_by_id.get(model_id)
@@ -110,7 +121,38 @@ class OpenRouterManagedVideoGateway:
             raise OpenRouterManagedVideoGatewayError(
                 "requested model is not currently paid-eligible"
             )
-        _validate_capabilities(request, model)
+        item = _validate_capabilities(request, model)
+        duration_seconds = _item_duration(item)
+        resolution = _item_resolution(item)
+
+        try:
+            catalog_provider_cost_usd = model.quote_provider_cost_usd(
+                duration_seconds=duration_seconds,
+                resolution=resolution,
+            )
+        except OpenRouterCatalogError as exc:
+            raise OpenRouterManagedVideoGatewayError(str(exc)) from exc
+
+        _validate_provider_quote(
+            quote,
+            model_id=model_id,
+            catalog_provider_cost_usd=catalog_provider_cost_usd,
+        )
+        try:
+            commercial_quote = CommercialPricingGuard().quote_for_provider_cost(
+                provider_cost_usd=catalog_provider_cost_usd,
+                generated_seconds=duration_seconds,
+                policy=self._commercial_pricing_policy,
+            )
+            CommercialPricingGuard().assert_charge_is_safe(
+                commercial_quote,
+                customer_net_price_usd=customer_net_price_usd,
+            )
+        except CommercialPricingError as exc:
+            raise OpenRouterManagedVideoGatewayError(
+                f"paid dispatch blocked by commercial pricing guard: {exc}"
+            ) from exc
+
         snapshot = self._catalog.last_good_snapshot
         if snapshot is None:
             raise OpenRouterManagedVideoGatewayError(
@@ -155,10 +197,43 @@ def _request_model_id(request: ProviderRequest) -> str:
     return value
 
 
+def _validate_provider_quote(
+    quote: ProviderCostQuote,
+    *,
+    model_id: str,
+    catalog_provider_cost_usd: Decimal,
+) -> None:
+    if quote.provider_name != OPENROUTER_MANAGED_PROVIDER_NAME:
+        raise OpenRouterManagedVideoGatewayError(
+            "provider cost quote is bound to the wrong provider"
+        )
+    if quote.model_id != model_id:
+        raise OpenRouterManagedVideoGatewayError(
+            "provider cost quote is bound to the wrong model"
+        )
+    required_microusd = int(
+        (catalog_provider_cost_usd * _MICRO_USD_PER_USD).to_integral_value(
+            rounding=ROUND_CEILING
+        )
+    )
+    if required_microusd <= 0:
+        raise OpenRouterManagedVideoGatewayError(
+            "paid dispatch requires a positive authoritative provider cost"
+        )
+    if quote.estimated_cost_microusd < required_microusd:
+        raise OpenRouterManagedVideoGatewayError(
+            "provider cost quote underestimates authoritative catalog price"
+        )
+    if quote.max_cost_microusd < required_microusd:
+        raise OpenRouterManagedVideoGatewayError(
+            "provider maximum cost does not cover authoritative catalog price"
+        )
+
+
 def _validate_capabilities(
     request: ProviderRequest,
     model: OpenRouterVideoModel,
-) -> None:
+) -> Mapping[str, object]:
     if request.payload.get("request_count") != 1:
         raise OpenRouterManagedVideoGatewayError(
             "catalog capability gate requires one generation item"
@@ -170,19 +245,16 @@ def _validate_capabilities(
         parsed = json.loads(items_json)
     except json.JSONDecodeError as exc:
         raise OpenRouterManagedVideoGatewayError("items_json is invalid JSON") from exc
-    if not isinstance(parsed, list) or len(parsed) != 1 or not isinstance(parsed[0], dict):
+    if (
+        not isinstance(parsed, list)
+        or len(parsed) != 1
+        or not isinstance(parsed[0], dict)
+    ):
         raise OpenRouterManagedVideoGatewayError(
             "items_json must contain exactly one object"
         )
     item = cast(Mapping[str, object], parsed[0])
-    duration = item.get("duration_seconds")
-    if isinstance(duration, bool) or not isinstance(duration, (int, float)):
-        raise OpenRouterManagedVideoGatewayError("duration_seconds must be numeric")
-    duration_int = int(duration)
-    if float(duration) != float(duration_int) or duration_int <= 0:
-        raise OpenRouterManagedVideoGatewayError(
-            "duration_seconds must be a positive whole number"
-        )
+    duration_int = _item_duration(item)
     if model.supported_durations and duration_int not in model.supported_durations:
         raise OpenRouterManagedVideoGatewayError(
             "requested duration is not supported by live model capability"
@@ -197,9 +269,7 @@ def _validate_capabilities(
         raise OpenRouterManagedVideoGatewayError(
             "requested aspect ratio is not supported by live model capability"
         )
-    resolution = item.get("resolution", "480p")
-    if not isinstance(resolution, str) or not resolution.strip():
-        raise OpenRouterManagedVideoGatewayError("resolution must be non-empty")
+    resolution = _item_resolution(item)
     if model.supported_resolutions and resolution not in model.supported_resolutions:
         raise OpenRouterManagedVideoGatewayError(
             "requested resolution is not supported by live model capability"
@@ -211,3 +281,23 @@ def _validate_capabilities(
         raise OpenRouterManagedVideoGatewayError(
             "requested audio generation is not supported by live model capability"
         )
+    return item
+
+
+def _item_duration(item: Mapping[str, object]) -> int:
+    duration = item.get("duration_seconds")
+    if isinstance(duration, bool) or not isinstance(duration, (int, float)):
+        raise OpenRouterManagedVideoGatewayError("duration_seconds must be numeric")
+    duration_int = int(duration)
+    if float(duration) != float(duration_int) or duration_int <= 0:
+        raise OpenRouterManagedVideoGatewayError(
+            "duration_seconds must be a positive whole number"
+        )
+    return duration_int
+
+
+def _item_resolution(item: Mapping[str, object]) -> str:
+    resolution = item.get("resolution", "480p")
+    if not isinstance(resolution, str) or not resolution.strip():
+        raise OpenRouterManagedVideoGatewayError("resolution must be non-empty")
+    return resolution
