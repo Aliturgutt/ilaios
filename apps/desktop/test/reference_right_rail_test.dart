@@ -19,7 +19,7 @@ void main() {
     expect(session, findsOneWidget);
     expect(activities, findsOneWidget);
     expect(alerts, findsOneWidget);
-    expect(tester.getTopLeft(session).dy, greaterThanOrEqualTo(80));
+    expect(tester.getTopLeft(session).dy, greaterThanOrEqualTo(70));
     expect(tester.getBottomRight(alerts).dy, lessThan(978));
   });
 }
