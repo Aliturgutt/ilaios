@@ -44,7 +44,8 @@ def _repository(tmp_path: Path) -> tuple[Path, str]:
         "def run() -> str:\n    return 'ok'\n",
         encoding="utf-8",
     )
-    _git(repository, "add", "app.py")
+    (repository / ".gitignore").write_text("ignored.py\n", encoding="utf-8")
+    _git(repository, "add", "app.py", ".gitignore")
     _git(
         repository,
         "-c",
@@ -93,6 +94,37 @@ def test_adapter_rejects_non_sha_revision_before_analysis(tmp_path: Path) -> Non
 
     with pytest.raises(CodeIntelligenceAdmissionError, match="base_sha"):
         ILAIOSRepositoryIntelligence().inspect(repository, "not-a-sha")
+
+
+def test_adapter_rejects_dirty_tracked_worktree(tmp_path: Path) -> None:
+    repository, revision = _repository(tmp_path)
+    (repository / "app.py").write_text(
+        "def run() -> str:\n    return 'changed'\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(CodeIntelligenceAdmissionError, match="worktree must be clean"):
+        ILAIOSRepositoryIntelligence().inspect(repository, revision)
+
+
+def test_adapter_rejects_untracked_supported_source(tmp_path: Path) -> None:
+    repository, revision = _repository(tmp_path)
+    (repository / "extra.py").write_text("value = 1\n", encoding="utf-8")
+
+    with pytest.raises(CodeIntelligenceAdmissionError, match="worktree must be clean"):
+        ILAIOSRepositoryIntelligence().inspect(repository, revision)
+
+
+def test_adapter_rejects_ignored_supported_source(tmp_path: Path) -> None:
+    repository, revision = _repository(tmp_path)
+    (repository / "ignored.py").write_text("value = 1\n", encoding="utf-8")
+    assert _git(repository, "status", "--porcelain") == ""
+
+    with pytest.raises(
+        CodeIntelligenceAdmissionError,
+        match="not tracked by requested revision",
+    ):
+        ILAIOSRepositoryIntelligence().inspect(repository, revision)
 
 
 def test_sf7_repository_intelligence_skill_uses_first_party_adapter(
