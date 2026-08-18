@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from services.runtime.browser_egress_docker import DockerBrowserEgressBoundary
+from services.runtime.browser_egress_playwright import PlaywrightDockerBrowserEgressBoundary
 from services.runtime.browser_tool_adapter import PlaywrightCliAdapter, browser_session_id
 
 _TARGET = "https://example.com/"
@@ -73,6 +74,7 @@ def main() -> None:
     if len(source_sha) != 40 or any(char not in "0123456789abcdef" for char in source_sha):
         raise RuntimeError("ILAIOS_SOURCE_SHA must be an exact lowercase Git SHA")
     runtime_image = _required_env("ILAIOS_BROWSER_E2E_IMAGE")
+    seccomp_profile = Path(_required_env("ILAIOS_BROWSER_SECCOMP_PROFILE")).resolve()
     artifact_root = Path(
         _required_env("ILAIOS_BROWSER_E2E_ARTIFACT_DIR")
     ).resolve()
@@ -87,9 +89,10 @@ def main() -> None:
         / "runtime"
         / "allowlist_proxy.py"
     )
-    boundary = DockerBrowserEgressBoundary(
+    boundary = PlaywrightDockerBrowserEgressBoundary(
         runtime_image=runtime_image,
         proxy_script=proxy_script,
+        seccomp_profile=seccomp_profile,
     )
     cli = PlaywrightCliAdapter(
         boundary,
@@ -158,6 +161,7 @@ def main() -> None:
         "javascript_enabled": False,
         "service_workers": "block",
         "state_changing_browser_actions": False,
+        "seccomp_profile_git_blob_sha1": "fddc05fb520affb145404e6f6f647ca96af8087d",
         "isolation_evidence_id": isolation_evidence,
         "actions": results,
         "egress_receipts": receipts,
