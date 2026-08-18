@@ -20,7 +20,6 @@ from services.control_plane.migrations import current_schema_version
 from services.control_plane.server import ControlPlaneHTTPServer
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
 from services.desktop_execution_coordinator import DesktopExecutionCoordinator
-from services.desktop_identity_server import DesktopIdentityHTTPServer
 from services.desktop_oidc_windows import DesktopIdentityError, DesktopOIDCService
 from services.evidence import EvidenceStore
 from services.execution_adapters import register_software_runtime, register_web_runtime
@@ -51,6 +50,12 @@ from services.reference_asset_admission import (
 )
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 from services.runtime.security_agent_adapters import SecurityAgentRuntimeAdapters
+from services.source_media import (
+    MAX_SOURCE_MEDIA_BYTES,
+    MAX_SOURCE_MEDIA_DURATION_SECONDS,
+    SourceMediaStore,
+)
+from services.source_media_desktop import SourceMediaDesktopIdentityHTTPServer
 from src.video_automation.openrouter_video_provider import SEEDANCE_FREE_MODEL_ID
 
 
@@ -94,8 +99,6 @@ def main(argv: Sequence[str] | None = None) -> int:
             if ai_configuration is not None:
                 ai_configuration_source = "openrouter-live-free-only"
         except OpenRouterAgentCatalogError:
-            # Provider/network/catalog availability must not prevent Desktop from
-            # starting. P0 AI remains unconfigured and readiness cannot promote.
             ai_configuration = None
             ai_configuration_source = "openrouter-catalog-unavailable"
 
@@ -107,9 +110,6 @@ def main(argv: Sequence[str] | None = None) -> int:
                 raise SystemExit("Agent runtime adapter identity collision")
             runtime_adapters[adapter_kind] = adapter
 
-    # There is exactly one canonical governed runtime. Security and external AI
-    # providers are dependency-injected adapters; they do not create a second
-    # Core, scheduler, router, agent engine, or evidence authority.
     governed_runtime = GovernedRuntime(
         database,
         external_adapters=runtime_adapters,
@@ -137,6 +137,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     reference_assets = ReferenceAssetAdmissionStore(
         root / "reference-assets.sqlite3",
         root / "reference-assets" / "blobs",
+    )
+    source_media = SourceMediaStore(
+        root / "source-media.sqlite3",
+        root / "source-media" / "blobs",
     )
     governance = GovernedRuntimeGateway(
         root / "governance.sqlite3",
@@ -173,6 +177,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 model_id=video_model_id,
                 qa_model_id=video_qa_model_id,
                 reference_assets=reference_assets,
+                source_media=source_media,
             )
             video_finished_product_configured = True
             video_provider = ReferenceAwareProviderBackedDesktopVideoRuntime.PROVIDER_ID
@@ -257,12 +262,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         control_server.server_close()
         raise SystemExit(f"Desktop identity configuration rejected: {error}") from error
 
-    identity_server = DesktopIdentityHTTPServer(
+    identity_server = SourceMediaDesktopIdentityHTTPServer(
         ("127.0.0.1", 0),
         bearer_token=token,
         identity=identity,
         coordinator=coordinator,
         reference_assets=reference_assets,
+        source_media=source_media,
     )
     identity_host, identity_port = identity_server.server_address[:2]
 
@@ -296,6 +302,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "video_reference_asset_limit": 20,
         "video_reference_unbound_limit": MAX_UNBOUND_REFERENCE_ASSETS,
         "video_reference_unbound_bytes_limit": MAX_UNBOUND_REFERENCE_BYTES,
+        "video_source_media_configured": True,
+        "video_source_media_max_bytes": MAX_SOURCE_MEDIA_BYTES,
+        "video_source_media_max_duration_seconds": MAX_SOURCE_MEDIA_DURATION_SECONDS,
         "web_finished_product_configured": True,
         "software_finished_product_configured": True,
         "execution_recovery_configured": True,
