@@ -2,8 +2,8 @@
 
 The projection never turns registry presence into runtime activity or VERIFIED
 maturity. It joins stable identity metadata with the latest persisted runtime
-route, when one exists, so UI consumers can show real provider/model/usage and
-evidence without inventing telemetry.
+route and append-only readiness evidence, when available, so UI consumers can
+show real provider/model/usage/readiness without inventing telemetry.
 """
 
 from __future__ import annotations
@@ -18,12 +18,15 @@ from services.agent_registry import CANONICAL_AGENT_REGISTRY
 
 def agent_state_projection(
     routes: Iterable[Mapping[str, Any]],
+    readiness: Mapping[str, Mapping[str, object]] | None = None,
 ) -> dict[str, object]:
+    """Project exact canonical identities plus observed execution/readiness evidence."""
     latest: dict[str, Mapping[str, Any]] = {}
     for route in routes:
         agent_id = route.get("agent_id")
         if isinstance(agent_id, str):
             latest[agent_id] = route
+    readiness = readiness or {}
 
     agents: list[dict[str, object]] = []
     for registration in CANONICAL_AGENT_REGISTRY:
@@ -39,9 +42,15 @@ def agent_state_projection(
             "readiness": registration.readiness.value,
             "verifier_id": manifest.verifier_id,
             "backing_capability": registration.backing_capability,
-            "agent_status": "registered" if route is None else "idle",
+            # The current Desktop understands offline/idle/active/busy/review.
+            # Registry presence alone is not activity, therefore it is projected
+            # as offline until a persisted runtime route exists.
+            "agent_status": "offline" if route is None else "idle",
             "active_tasks": 0,
         }
+        readiness_record = readiness.get(manifest.agent_id)
+        if readiness_record is not None:
+            _merge_readiness(record, readiness_record)
         if route is not None:
             _merge_route(record, route)
         agents.append(record)
@@ -49,8 +58,32 @@ def agent_state_projection(
     return {
         "agent_count": len(agents),
         "agents": agents,
-        "source": "canonical-agent-registry+persisted-runtime-routes",
+        "source": (
+            "canonical-agent-registry+persisted-runtime-routes+"
+            "append-only-readiness-evidence"
+        ),
     }
+
+
+def _merge_readiness(
+    record: dict[str, object], readiness: Mapping[str, object]
+) -> None:
+    allowed_readiness = {"registered", "executable", "verified"}
+    value = readiness.get("readiness")
+    if isinstance(value, str) and value in allowed_readiness:
+        record["readiness"] = value
+    for key in (
+        "readiness_evidence_id",
+        "readiness_evidence_digest",
+        "producer_evidence_digest",
+        "readiness_updated_at",
+    ):
+        value = readiness.get(key)
+        if isinstance(value, str) and value:
+            record[key] = value
+    verifier_id = readiness.get("verifier_id")
+    if isinstance(verifier_id, str) and verifier_id == record.get("verifier_id"):
+        record["readiness_verifier_id"] = verifier_id
 
 
 def _merge_route(record: dict[str, object], route: Mapping[str, Any]) -> None:
@@ -79,6 +112,8 @@ def _merge_route(record: dict[str, object], route: Mapping[str, Any]) -> None:
         _copy_if_scalar(record, output, "reserved_cost_usd")
         _copy_if_scalar(record, output, "latency_ms")
         _copy_if_scalar(record, output, "response_id")
+        _copy_if_scalar(record, output, "skill_id")
+        _copy_if_scalar(record, output, "skill_sha256")
         input_tokens = output.get("input_tokens")
         output_tokens = output.get("output_tokens")
         if isinstance(input_tokens, int) and isinstance(output_tokens, int):
