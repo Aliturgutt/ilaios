@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
@@ -48,5 +49,47 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(find.text('What do you want ILAIOS to build?'), findsOneWidget);
+  });
+
+  testWidgets('Home prompt is submitted through the authenticated execution callback', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1536, 1024));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    String? submittedObjective;
+    await tester.pumpWidget(
+      IlaiosDesktopApp(
+        projection: const ControlPlaneProjection(
+          connected: true,
+          status: 'Connected',
+          goalCount: 0,
+          jobCount: 0,
+        ),
+        onPromptSubmit: (objective) async {
+          submittedObjective = objective;
+          return const PromptSubmission(
+            goalId: 'goal-home-1',
+            jobId: 'job-home-1',
+            state: 'created',
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('home-command-prompt')),
+      'Build a verified website from the Home command center.',
+    );
+    await tester.tap(find.byKey(const Key('home-new-work')));
+    await tester.pumpAndSettle();
+
+    expect(
+      submittedObjective,
+      'Build a verified website from the Home command center.',
+    );
+    expect(find.byKey(const Key('command-center-home')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
