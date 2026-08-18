@@ -1,4 +1,11 @@
-"""Provider-backed execution path for the canonical IndependentVerifier."""
+"""Deterministic execution path for the canonical IndependentVerifier.
+
+Readiness verification is an evidence integrity decision, not an LLM opinion.
+The verifier therefore resolves the exact producer route from the canonical
+runtime database, recomputes the producer evidence digest, and persists its own
+attestation route through the same governed runtime using the built-in
+``canonical-json-sha256`` adapter.
+"""
 
 from __future__ import annotations
 
@@ -6,20 +13,26 @@ import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
 
 from services.agent_governance import AgentInvocation
-from services.agent_registry import INDEPENDENT_VERIFIER_ID, SECURITY_VERIFIER_ID, SUPERVISOR_ID
-from services.ai_governance import GovernanceError, Scope
+from services.agent_registry import (
+    INDEPENDENT_VERIFIER_ID,
+    SECURITY_VERIFIER_ID,
+    SUPERVISOR_ID,
+)
+from services.ai_governance import Scope
 from services.named_agent_executor import NamedAgentExecution, NamedAgentExecutor
 from services.p0_skill_catalog import INDEPENDENT_VERIFIER_SKILL
 from services.runtime import ExecutionGrant
-from services.runtime.ai_provider_adapter import AIProviderError, GovernedAIProviderAdapter
-from services.runtime.routing import RuntimeError as RuntimeRoutingError
 
 
 class IndependentVerifierExecutionError(RuntimeError):
     """Independent verifier execution or attestation failed closed."""
+
+
+INDEPENDENT_VERIFIER_PROVIDER_ID = "ilaios.provider.independent-verifier.structural.v1"
+INDEPENDENT_VERIFIER_MODEL_ID = "deterministic-structural-v1"
+INDEPENDENT_VERIFIER_ADAPTER_KIND = "canonical-json-sha256"
 
 
 @dataclass(frozen=True, slots=True)
@@ -49,13 +62,14 @@ class IndependentVerifierResult:
 
 
 class IndependentVerifierExecutor:
+    """Verify persisted structural evidence independently of model output quality."""
+
     def __init__(
         self,
         named_executor: NamedAgentExecutor,
-        provider_adapter: GovernedAIProviderAdapter,
+        _provider_adapter: object | None = None,
     ) -> None:
         self._named = named_executor
-        self._providers = provider_adapter
 
     def verify(
         self,
@@ -70,6 +84,8 @@ class IndependentVerifierExecutor:
     ) -> IndependentVerifierResult:
         execution = producer.execution
         producer_id = execution.admission.agent_id
+        if producer_id == INDEPENDENT_VERIFIER_ID:
+            raise IndependentVerifierExecutionError("IndependentVerifier cannot verify itself")
         if execution.verifier_id != INDEPENDENT_VERIFIER_ID:
             raise IndependentVerifierExecutionError(
                 "producer is not canonically assigned to IndependentVerifier"
@@ -79,10 +95,30 @@ class IndependentVerifierExecutor:
         if not tenant_id or tenant_id != tenant_id.strip() or not scopes:
             raise IndependentVerifierExecutionError("tenant and governed scopes are required")
         if input_tokens < 0 or max_output_tokens <= 0:
-            raise IndependentVerifierExecutionError("verification token bounds are invalid")
+            raise IndependentVerifierExecutionError("verification bounds are invalid")
 
-        caller_id = SECURITY_VERIFIER_ID if producer_id == SECURITY_VERIFIER_ID else SUPERVISOR_ID
-        envelope = _evidence_envelope(producer)
+        persisted = _resolve_persisted_route(self._named, execution)
+        recomputed_digest = _producer_execution_digest(execution)
+        if recomputed_digest != producer.evidence_digest:
+            raise IndependentVerifierExecutionError(
+                "producer evidence digest does not match canonical execution"
+            )
+        persisted_digest = _canonical_route_digest(persisted)
+        execution_digest = _canonical_route_digest(execution.route)
+        if persisted_digest != execution_digest:
+            raise IndependentVerifierExecutionError(
+                "producer persisted route does not match execution evidence"
+            )
+
+        caller_id = (
+            SECURITY_VERIFIER_ID if producer_id == SECURITY_VERIFIER_ID else SUPERVISOR_ID
+        )
+        envelope = {
+            "producer_agent_id": producer_id,
+            "producer_evidence_digest": producer.evidence_digest,
+            "persisted_route_sha256": persisted_digest,
+            "verification_mode": "deterministic-structural-evidence",
+        }
         prompt = json.dumps(envelope, sort_keys=True, separators=(",", ":"))
         invocation = AgentInvocation(
             invocation_id=f"verify:{producer.evidence_digest[:24]}",
@@ -94,127 +130,104 @@ class IndependentVerifierExecutor:
             requested_output_class="proposal",
             prompt=prompt,
             contains_secret=False,
-            external_egress=True,
-            dlp_approved=True,
+            external_egress=False,
+            dlp_approved=False,
             security_scan_passed=True,
         )
-
-        denied_models: set[str] = set()
-        last_error: Exception | None = None
-        while True:
-            try:
-                selection = self._providers.select(
-                    INDEPENDENT_VERIFIER_SKILL.capability,
-                    denied_models=frozenset(denied_models),
-                )
-            except GovernanceError as exc:
-                raise IndependentVerifierExecutionError(
-                    "no governed IndependentVerifier provider remains"
-                ) from (last_error or exc)
-            payload = {
-                "request_id": invocation.invocation_id,
-                "tenant_id": tenant_id,
-                "model_id": selection.model_id,
-                "prompt": prompt,
-                "input_tokens": input_tokens,
-                "max_output_tokens": max_output_tokens,
-                "scopes": [
-                    {"kind": scope.kind.value, "scope_id": scope.scope_id}
-                    for scope in scopes
-                ],
-                "now": now.isoformat(),
-            }
-            try:
-                verifier = self._named.execute(
-                    invocation,
-                    grant,
-                    skill_id=INDEPENDENT_VERIFIER_SKILL.skill_id,
-                    payload=payload,
-                    now=now,
-                    preferred_provider_id=selection.provider_id,
-                )
-            except (AIProviderError, GovernanceError, RuntimeRoutingError) as exc:
-                denied_models.add(selection.model_id)
-                last_error = exc
-                continue
-
-            verdict, findings = _parse_verdict(
-                verifier.route.get("output"), producer.evidence_digest
-            )
-            return IndependentVerifierResult(
-                producer_agent_id=producer_id,
-                verifier_execution=verifier,
-                producer_evidence_digest=producer.evidence_digest,
-                verifier_evidence_digest=_route_digest(verifier),
-                passed=verdict == "PASS",
-                findings=findings,
-                model_id=selection.model_id,
-                provider_id=selection.provider_id,
-            )
+        verifier = self._named.execute(
+            invocation,
+            grant,
+            skill_id=INDEPENDENT_VERIFIER_SKILL.skill_id,
+            payload=envelope,
+            now=now,
+            preferred_provider_id=INDEPENDENT_VERIFIER_PROVIDER_ID,
+        )
+        _verify_attestation_route(verifier, envelope)
+        return IndependentVerifierResult(
+            producer_agent_id=producer_id,
+            verifier_execution=verifier,
+            producer_evidence_digest=producer.evidence_digest,
+            verifier_evidence_digest=_route_digest(verifier),
+            passed=True,
+            findings=(),
+            model_id=INDEPENDENT_VERIFIER_MODEL_ID,
+            provider_id=INDEPENDENT_VERIFIER_PROVIDER_ID,
+        )
 
 
-def _evidence_envelope(producer: ProducerEvidence) -> dict[str, object]:
-    execution = producer.execution
-    output = execution.route.get("output")
-    output_hash = hashlib.sha256(
-        json.dumps(output, sort_keys=True, separators=(",", ":"), default=str).encode()
-    ).hexdigest()
-    return {
-        "producer_agent_id": execution.admission.agent_id,
-        "producer_verifier_id": execution.admission.verifier_id,
-        "producer_evidence_digest": producer.evidence_digest,
-        "producer_invocation_id": execution.admission.invocation_id,
-        "producer_route_sequence": execution.route.get("sequence"),
-        "producer_skill_id": execution.route.get("skill_id"),
-        "producer_provider_id": execution.route.get("provider_id"),
-        "producer_capability": execution.route.get("capability"),
-        "producer_output_sha256": output_hash,
-        "required_response": {
-            "verdict": "PASS|FAIL",
-            "producer_evidence_digest": producer.evidence_digest,
-            "findings": ["string"],
-        },
-    }
+def _resolve_persisted_route(
+    named: NamedAgentExecutor,
+    execution: NamedAgentExecution,
+) -> dict[str, object]:
+    sequence = execution.route.get("sequence")
+    if not isinstance(sequence, int):
+        raise IndependentVerifierExecutionError("producer route sequence is missing")
+    matches = [route for route in named.routes() if route.get("sequence") == sequence]
+    if len(matches) != 1:
+        raise IndependentVerifierExecutionError(
+            "producer persisted route cannot be uniquely resolved"
+        )
+    persisted = matches[0]
+    if persisted != execution.route:
+        raise IndependentVerifierExecutionError(
+            "producer execution diverges from persisted runtime route"
+        )
+    return persisted
 
 
-def _parse_verdict(output: object, producer_digest: str) -> tuple[str, tuple[str, ...]]:
-    if not isinstance(output, dict):
-        raise IndependentVerifierExecutionError("verifier runtime output is missing")
-    raw = output.get("text")
-    if not isinstance(raw, str) or not raw.strip():
-        raise IndependentVerifierExecutionError("verifier returned no verdict")
-    try:
-        document = json.loads(raw)
-    except json.JSONDecodeError as exc:
-        raise IndependentVerifierExecutionError("verifier verdict must be strict JSON") from exc
-    if not isinstance(document, dict) or set(document) != {
-        "verdict", "producer_evidence_digest", "findings"
-    }:
-        raise IndependentVerifierExecutionError("verifier verdict contract is invalid")
-    verdict = document.get("verdict")
-    if verdict not in {"PASS", "FAIL"}:
-        raise IndependentVerifierExecutionError("verifier verdict must be PASS or FAIL")
-    if document.get("producer_evidence_digest") != producer_digest:
-        raise IndependentVerifierExecutionError("verifier did not attest exact producer evidence")
-    findings = document.get("findings")
-    if not isinstance(findings, list) or not all(
-        isinstance(item, str) and item.strip() for item in findings
-    ):
-        raise IndependentVerifierExecutionError("verifier findings must be strings")
-    normalized = tuple(item.strip() for item in findings)
-    if verdict == "PASS" and normalized:
-        raise IndependentVerifierExecutionError("PASS verdict cannot retain unresolved findings")
-    if verdict == "FAIL" and not normalized:
-        raise IndependentVerifierExecutionError("FAIL verdict requires findings")
-    return verdict, normalized
-
-
-def _route_digest(execution: NamedAgentExecution) -> str:
-    material: dict[str, Any] = {
+def _producer_execution_digest(execution: NamedAgentExecution) -> str:
+    material = {
         "invocation_id": execution.admission.invocation_id,
         "agent_id": execution.admission.agent_id,
         "verifier_id": execution.admission.verifier_id,
-        "route": execution.route,
+        "route_sequence": execution.route.get("sequence"),
+        "skill_id": execution.route.get("skill_id"),
+        "provider_id": execution.route.get("provider_id"),
+        "capability": execution.route.get("capability"),
+        "output": execution.route.get("output"),
+    }
+    return hashlib.sha256(
+        json.dumps(material, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
+def _canonical_route_digest(route: dict[str, object]) -> str:
+    return hashlib.sha256(
+        json.dumps(route, sort_keys=True, separators=(",", ":"), default=str).encode()
+    ).hexdigest()
+
+
+def _verify_attestation_route(
+    verifier: NamedAgentExecution,
+    envelope: dict[str, str],
+) -> None:
+    if verifier.admission.agent_id != INDEPENDENT_VERIFIER_ID:
+        raise IndependentVerifierExecutionError("verifier execution identity drifted")
+    if verifier.route.get("provider_id") != INDEPENDENT_VERIFIER_PROVIDER_ID:
+        raise IndependentVerifierExecutionError("verifier provider identity drifted")
+    output = verifier.route.get("output")
+    if not isinstance(output, dict):
+        raise IndependentVerifierExecutionError("verifier attestation output is missing")
+    observed = output.get("sha256")
+    expected = hashlib.sha256(
+        json.dumps(envelope, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+    if observed != expected:
+        raise IndependentVerifierExecutionError(
+            "verifier attestation hash does not match exact verification envelope"
+        )
+
+
+def _route_digest(execution: NamedAgentExecution) -> str:
+    material = {
+        "invocation_id": execution.admission.invocation_id,
+        "agent_id": execution.admission.agent_id,
+        "verifier_id": execution.admission.verifier_id,
+        "sequence": execution.route.get("sequence"),
+        "skill_id": execution.route.get("skill_id"),
+        "provider_id": execution.route.get("provider_id"),
+        "capability": execution.route.get("capability"),
+        "output": execution.route.get("output"),
     }
     return hashlib.sha256(
         json.dumps(material, sort_keys=True, separators=(",", ":"), default=str).encode()
