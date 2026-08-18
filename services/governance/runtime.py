@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, cast
 
 from services.runtime import GovernedRuntime
+from services.usage_intelligence import UsageIntelligenceError, project_usage_stats
 
 from .cost_projection import CostProjectionError, project_explicit_costs
 from .gates import (
@@ -272,13 +273,18 @@ class GovernedRuntimeGateway:
             )
         except CostProjectionError as error:
             raise GateError("governed cost telemetry is malformed") from error
-        return {
+        state: dict[str, object] = {
             "work": work,
             "admissions": admissions,
             "secret_references": references,
             "ledger": self._ledger.state(),
             "costs": costs,
         }
+        try:
+            usage = project_usage_stats(self._runtime.routes(), state)
+        except UsageIntelligenceError as error:
+            raise GateError("governed usage telemetry is malformed") from error
+        return {**state, "usage": usage}
 
     def admission_snapshot(self, request_id: str) -> dict[str, object]:
         """Return the persisted server-authoritative admission for evidence."""
