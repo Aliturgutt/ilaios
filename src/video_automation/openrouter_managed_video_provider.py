@@ -18,6 +18,10 @@ from .openrouter_frame_references import (
     FrameReferenceRoutingError,
     build_openrouter_frame_images,
 )
+from .openrouter_reference_images import (
+    OpenRouterReferenceImageError,
+    build_reference_to_video_fields,
+)
 from .openrouter_video_provider import (
     OpenRouterJsonResponse,
     OpenRouterTransport,
@@ -261,6 +265,14 @@ def _build_request_body(
         raise OpenRouterManagedVideoProviderError(str(exc)) from exc
     if frame_images:
         body["frame_images"] = frame_images
+    try:
+        reference_fields, _ = build_reference_to_video_fields(
+            item=item,
+            model_id=model_id,
+        )
+    except OpenRouterReferenceImageError as exc:
+        raise OpenRouterManagedVideoProviderError(str(exc)) from exc
+    body.update(reference_fields)
     if callback_url is not None:
         body["callback_url"] = callback_url
     return body
