@@ -4,7 +4,8 @@ The adapter keeps the existing canonical Video runtime authoritative while addin
 request-scoped multimodal intent. General visual references use OpenRouter
 ``input_references``; explicit first/last-frame intent uses ``frame_images`` only
 on the corresponding boundary shot. Unsupported edit/localization/output-shape
-requests fail before any provider generation POST.
+requests fail before any provider generation POST. Deterministic media-signal QA
+runs before the existing independent semantic reviewer for every clip and final.
 """
 
 from __future__ import annotations
@@ -52,6 +53,7 @@ from .video_reference_intelligence import (
     VideoReferencePlan,
     derive_video_reference_plan,
 )
+from .video_signal_gate import SignalGatedSemanticVideoReviewer, VideoSignalGateError
 
 
 @dataclass(slots=True)
@@ -317,6 +319,7 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(ProviderBackedDesktopVideo
             retriever=retriever,
             reviewer=reviewer,
         )
+        self._reviewer = SignalGatedSemanticVideoReviewer(self._reviewer)
 
     def execute(
         self,
@@ -370,19 +373,33 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(ProviderBackedDesktopVideo
                 "not every canonical shot reached the reference-aware provider boundary"
             )
 
+        artifact_digest = result.get("artifact_digest")
+        if not isinstance(artifact_digest, str):
+            raise VideoSignalGateError("finished Video result is missing artifact identity")
+        signal_evidence = self._reviewer.evidence_for(artifact_digest)
+        if signal_evidence is None:
+            raise VideoSignalGateError(
+                "finished Video lacks deterministic final media-signal evidence"
+            )
         result["video_product_spec"] = product_spec.to_dict()
         result["video_product_mode"] = product_spec.mode.value
+        qa = result.get("qa")
+        if not isinstance(qa, dict):
+            raise VideoSignalGateError("finished Video result is missing QA evidence")
+        qa_copy = dict(qa)
+        qa_copy["signal_quality_passed"] = True
+        qa_copy["signal_evidence_id"] = signal_evidence.evidence_id
+        qa_copy["black_fraction"] = signal_evidence.black_fraction
+        qa_copy["max_freeze_seconds"] = signal_evidence.max_freeze_seconds
+        qa_copy["silence_fraction"] = signal_evidence.silence_fraction
         if references:
             result["reference_assets"] = [item.public_metadata() for item in references]
             result["reference_asset_usage"] = reference_plan.mode.value if reference_plan else "none"
             result["reference_plan"] = reference_plan.to_dict() if reference_plan else None
-            qa = result.get("qa")
-            if isinstance(qa, dict):
-                qa_copy = dict(qa)
-                qa_copy["reference_asset_count"] = len(references)
-                qa_copy["reference_assets_consumed"] = True
-                qa_copy["reference_mode"] = reference_plan.mode.value if reference_plan else "none"
-                result["qa"] = qa_copy
+            qa_copy["reference_asset_count"] = len(references)
+            qa_copy["reference_assets_consumed"] = True
+            qa_copy["reference_mode"] = reference_plan.mode.value if reference_plan else "none"
+        result["qa"] = qa_copy
         return result
 
 
