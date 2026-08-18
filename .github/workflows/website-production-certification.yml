@@ -1,12 +1,12 @@
 name: Website Production Certification
 
 on:
-  push:
-    branches: [master]
-    paths:
-      - "apps/website/**"
-      - ".github/workflows/website-production-certification.yml"
   workflow_dispatch:
+    inputs:
+      expected_sha:
+        description: "Exact master SHA already deployed to Vercel production"
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -22,12 +22,24 @@ jobs:
     timeout-minutes: 30
 
     steps:
-      - name: Checkout exact master SHA
+      - name: Checkout exact deployed SHA
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
-          ref: ${{ github.sha }}
+          ref: ${{ inputs.expected_sha }}
           fetch-depth: 0
+
+      - name: Verify certification target is exact master
+        shell: bash
+        env:
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
+        run: |
+          set -euo pipefail
+          git fetch origin master --no-tags
+          actual="$(git rev-parse HEAD)"
+          master="$(git rev-parse origin/master)"
+          test "$actual" = "$EXPECTED_SHA"
+          test "$master" = "$EXPECTED_SHA"
 
       - name: Setup Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
@@ -41,7 +53,7 @@ jobs:
 
       - name: Certify exact production deployment and live browser surfaces
         env:
-          EXPECTED_SHA: ${{ github.sha }}
+          EXPECTED_SHA: ${{ inputs.expected_sha }}
           BASE_URL: https://ilaios.com
           WWW_URL: https://www.ilaios.com
           CERTIFICATION_WAIT_SECONDS: "900"
@@ -78,7 +90,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: ilaios-production-website-certification-${{ github.sha }}
+          name: ilaios-production-website-certification-${{ inputs.expected_sha }}
           path: artifacts/production-certification
           if-no-files-found: warn
           retention-days: 30
