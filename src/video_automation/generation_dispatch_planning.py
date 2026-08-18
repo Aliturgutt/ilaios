@@ -14,6 +14,7 @@ from hashlib import sha256
 from types import MappingProxyType
 
 from .generation_batch_planning import EpisodeGenerationBatchPlan, GenerationBatch
+from .reference_images import VideoReferenceImage, validate_reference_pool
 from .request_manifest import ShotRequestEntry
 
 
@@ -54,6 +55,7 @@ class GenerationDispatchItem:
     frames_per_second: int
     output_count: int
     seed: int | None
+    reference_images: tuple[VideoReferenceImage, ...] = ()
 
     def __post_init__(self) -> None:
         if self.sequence_number <= 0:
@@ -79,6 +81,7 @@ class GenerationDispatchItem:
             )
         if self.seed is not None and self.seed < 0:
             raise GenerationDispatchPlanningError("seed must be zero or greater")
+        validate_reference_pool(self.reference_images)
 
 
 @dataclass(frozen=True, slots=True)
@@ -214,6 +217,9 @@ class EpisodeGenerationDispatchPlanner:
             "generation_plan_id": generation_plan.plan_id,
             "manifest_id": generation_plan.manifest_id,
             "episode_id": generation_plan.episode_id,
+            "reference_count": str(
+                sum(len(item.reference_images) for item in items)
+            ),
         }
         return GenerationBatchDispatch(
             dispatch_id=f"generation-dispatch-{digest[:16]}",
@@ -241,6 +247,7 @@ def _to_dispatch_item(entry: ShotRequestEntry) -> GenerationDispatchItem:
         frames_per_second=request.frames_per_second,
         output_count=request.output_count,
         seed=request.seed,
+        reference_images=request.reference_images,
     )
 
 
@@ -272,7 +279,8 @@ def _canonical_dispatch_material(
     ]
     lines.extend(
         f"sequence={item.sequence_number}|request_id={item.request_id}|"
-        f"idempotency_key={item.idempotency_key}"
+        f"idempotency_key={item.idempotency_key}|references="
+        f"{','.join(reference.sha256_digest for reference in item.reference_images)}"
         for item in items
     )
     return "\n".join(lines)
