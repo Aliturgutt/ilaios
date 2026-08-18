@@ -63,15 +63,23 @@ def test_explicit_platform_shape_is_bounded_and_truthful() -> None:
     assert derive_video_product_spec("Create a cinematic 16:9 launch video.").aspect_ratio == "16:9"
 
 
-def test_content_words_do_not_false_trigger_edit_or_portrait_output_modes() -> None:
+def test_content_words_do_not_false_trigger_product_or_output_modes() -> None:
     editing_tutorial = derive_video_product_spec(
         "Create a cinematic video about video editing techniques."
     )
     portrait_subject = derive_video_product_spec(
         "Create a cinematic video showing a portrait of a woman in a gallery."
     )
+    film_reel = derive_video_product_spec(
+        "Create a cinematic video showing an old film reel on a projector."
+    )
+    machine_part = derive_video_product_spec(
+        "Create a video explaining part 2 of the machine assembly."
+    )
     assert editing_tutorial.mode is VideoProductMode.CREATE
     assert portrait_subject.aspect_ratio == "16:9"
+    assert film_reel.aspect_ratio == "16:9"
+    assert machine_part.mode is VideoProductMode.CREATE
 
 
 def test_conflicting_output_shapes_fail_closed() -> None:
