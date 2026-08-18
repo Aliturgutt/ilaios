@@ -34,11 +34,10 @@ _RESERVED_EXTERNAL_SKILL_KEY = "_ilaios_skill"
 class GovernedRuntime:
     """Execute approved immutable skills through persisted provider manifests.
 
-    External provider adapters are injected into this same runtime instance. No
-    second agent engine, scheduler, registry, or evidence store is introduced.
-    A caller may supply a provider already selected by canonical governance;
-    the runtime still re-validates skill authority and provider capability
-    before the adapter can run.
+    External/provider-specific adapters are injected into this same runtime
+    instance. No second agent engine, scheduler, registry, or evidence store is
+    introduced. Provider determinism is persisted explicitly instead of being
+    inferred from whether an adapter was built in or injected.
     """
 
     _ADAPTERS: ClassVar[dict[str, RuntimeAdapter]] = {
@@ -107,18 +106,21 @@ class GovernedRuntime:
         *,
         adapter_kind: str,
         enabled: bool = True,
+        deterministic: bool | None = None,
     ) -> None:
         _require_id(provider_id, "provider_id")
         _require_values(capabilities, "capabilities")
         if adapter_kind not in self._adapters:
             raise RuntimeError("unknown runtime adapter kind")
+        if deterministic is None:
+            deterministic = adapter_kind in self._ADAPTERS
         with self._connect() as connection:
             connection.execute(
                 "INSERT INTO runtime_providers VALUES (?, ?, ?, ?, ?)",
                 (
                     provider_id,
                     json.dumps(sorted(capabilities)),
-                    0 if adapter_kind not in self._ADAPTERS else 1,
+                    int(deterministic),
                     int(enabled),
                     adapter_kind,
                 ),
@@ -138,7 +140,7 @@ class GovernedRuntime:
         ``preferred_provider_id`` may come from canonical model governance; this
         method still fails closed unless the persisted provider is enabled and
         has the requested capability. Immutable skill digest/authority checks
-        always run before execution. External adapters additionally receive the
+        always run before execution. Injected adapters additionally receive the
         exact approved skill instructions and digest from runtime storage.
         """
         if _RESERVED_EXTERNAL_SKILL_KEY in payload:
@@ -208,9 +210,9 @@ class GovernedRuntime:
             try:
                 instructions = content.decode("utf-8")
             except UnicodeDecodeError as exc:
-                raise RuntimeError("external AI skill content must be UTF-8 text") from exc
+                raise RuntimeError("injected provider skill content must be UTF-8 text") from exc
             if not instructions.strip():
-                raise RuntimeError("external AI skill instructions must not be blank")
+                raise RuntimeError("injected provider skill instructions must not be blank")
             adapter_payload = {
                 **payload,
                 _RESERVED_EXTERNAL_SKILL_KEY: {
