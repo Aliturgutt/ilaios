@@ -1,0 +1,33 @@
+{
+  "skill_id": "ilaios.skill.video.direction.cinematography",
+  "name": "ilaios-video-director",
+  "version": "0.1.0",
+  "maturity": "IMPLEMENTED",
+  "owner": "ILAIOS",
+  "runtime": {
+    "python_module": "services.integrations.video_prompting_skills",
+    "domain_module": "src.video_automation.creative_direction_execution",
+    "adapter_kind": "ilaios-video-prompting-canonical-v1",
+    "capability": "ilaios.capability.video-media-factory",
+    "operation": "cinematography-direction",
+    "network_required": false,
+    "shell_required": false,
+    "external_runtime_dependencies": []
+  },
+  "permissions": {
+    "read": ["caller-admitted-video-state"],
+    "write": [],
+    "network": false,
+    "shell": false,
+    "secrets": false
+  },
+  "inputs": ["application/json"],
+  "outputs": ["application/json"],
+  "authority_boundary": {
+    "canonical_components": "reuse existing ILAIOS Video Factory implementations; no parallel engine",
+    "provider_selection": "canonical routing authority remains authoritative",
+    "policy_approval": "existing ILAIOS governance remains authoritative",
+    "side_effects": "none"
+  },
+  "promotion_note": "TESTED/VERIFIED/DEPLOYED/PRODUCTION require exact repository CI/runtime/deployment evidence."
+}

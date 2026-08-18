@@ -12,6 +12,12 @@ from dataclasses import dataclass
 from typing import Final
 
 from services.software_factory_skills import REQUIRED_SKILL_IDS
+from services.web_factory_skills import (
+    WEB_FACTORY_BROWSER_SKILL_IDS,
+    WEB_FACTORY_NATIVE_SKILL_IDS,
+)
+from src.video_automation.video_prompting_skill_manifests import VIDEO_PROMPTING_SKILLS
+from src.video_automation.video_skills import VIDEO_SKILLS
 
 _ALLOWED_LAYERS: Final = frozenset(
     {"skill-engineering", "factories", "capabilities", "assurance"}
@@ -20,6 +26,23 @@ _ALLOWED_FACTORY_FAMILIES: Final = frozenset(
     {"web", "software", "video", "research"}
 )
 _ALLOWED_CAPABILITY_FAMILIES: Final = frozenset({"browser"})
+_SECURITY_REVIEW_SKILL_ID: Final = "ilaios-security-review"
+_DIFFERENTIAL_REVIEW_SKILL_ID: Final = "ilaios-differential-review"
+_AGENTIC_ACTION_AUDIT_SKILL_ID: Final = "ilaios-agentic-action-audit"
+_THREAT_MODEL_SKILL_ID: Final = "ilaios-threat-model"
+_SUPPLY_CHAIN_AUDIT_SKILL_ID: Final = "ilaios-supply-chain-audit"
+_SECURITY_METHODOLOGY_SKILL_IDS: Final = frozenset(
+    {
+        _SECURITY_REVIEW_SKILL_ID,
+        _DIFFERENTIAL_REVIEW_SKILL_ID,
+        _AGENTIC_ACTION_AUDIT_SKILL_ID,
+        _THREAT_MODEL_SKILL_ID,
+        _SUPPLY_CHAIN_AUDIT_SKILL_ID,
+    }
+)
+_VIDEO_RUNTIME_SKILL_IDS: Final = frozenset(
+    skill.skill_id for skill in (*VIDEO_SKILLS, *VIDEO_PROMPTING_SKILLS)
+)
 _PROTECTED_AUTHORITY_SEGMENTS: Final = frozenset(
     {
         "approval",
@@ -50,8 +73,9 @@ class SkillTaxonomyNode:
     """One logical skill node.
 
     ``backing_skill_ids`` references already-existing governed runtime skills.
-    An empty tuple means the logical node is target taxonomy only; it does not
-    imply implementation, runtime integration, verification, or production.
+    An empty tuple means no governed runtime backing is declared. The logical
+    node may still have a source/spec package, but an empty mapping does not
+    imply runtime integration, verification, deployment, or production.
     """
 
     path: tuple[str, ...]
@@ -80,13 +104,42 @@ SKILL_TAXONOMY: Final[tuple[SkillTaxonomyNode, ...]] = (
     _node("skill-engineering", "regression"),
     _node("skill-engineering", "compatibility"),
     _node("skill-engineering", "promote"),
-    _node("factories", "web", "architecture"),
-    _node("factories", "web", "design"),
-    _node("factories", "web", "build"),
-    _node("factories", "web", "accessibility"),
-    _node("factories", "web", "performance"),
-    _node("factories", "web", "test"),
-    _node("factories", "web", "production-qa"),
+    _node(
+        "factories",
+        "web",
+        "architecture",
+        backing_skill_ids=("ilaios-web-architecture",),
+    ),
+    _node(
+        "factories",
+        "web",
+        "design",
+        backing_skill_ids=("ilaios-web-design",),
+    ),
+    _node(
+        "factories",
+        "web",
+        "accessibility",
+        backing_skill_ids=("ilaios-web-accessibility",),
+    ),
+    _node(
+        "factories",
+        "web",
+        "performance",
+        backing_skill_ids=("ilaios-web-performance",),
+    ),
+    _node(
+        "factories",
+        "web",
+        "validation",
+        backing_skill_ids=("ilaios-web-validation",),
+    ),
+    _node(
+        "factories",
+        "web",
+        "production-qa",
+        backing_skill_ids=("ilaios-web-production-qa",),
+    ),
     _node(
         "factories",
         "software",
@@ -133,39 +186,124 @@ SKILL_TAXONOMY: Final[tuple[SkillTaxonomyNode, ...]] = (
         "release-validation",
         backing_skill_ids=("sf-build", "sf-release-readiness", "sf-recovery"),
     ),
-    _node("factories", "video", "director"),
-    _node("factories", "video", "prompt"),
-    _node("factories", "video", "reference-assets"),
-    _node("factories", "video", "continuity"),
+    _node(
+        "factories",
+        "video",
+        "director",
+        backing_skill_ids=("ilaios.skill.video.direction.cinematography",),
+    ),
+    _node(
+        "factories",
+        "video",
+        "prompt",
+        backing_skill_ids=("ilaios.skill.video.prompt.compose",),
+    ),
+    _node(
+        "factories",
+        "video",
+        "reference-assets",
+        backing_skill_ids=("ilaios.skill.video.reference-assets.inspect",),
+    ),
+    _node(
+        "factories",
+        "video",
+        "model-fit",
+        backing_skill_ids=("ilaios.skill.video.model-fit.analyze",),
+    ),
+    _node(
+        "factories",
+        "video",
+        "continuity",
+        backing_skill_ids=("ilaios.skill.video.continuity.track",),
+    ),
     _node("factories", "video", "generation"),
-    _node("factories", "video", "edit"),
+    _node(
+        "factories",
+        "video",
+        "edit",
+        backing_skill_ids=(
+            "ilaios.skill.video.edit.trim",
+            "ilaios.skill.video.edit.concatenate",
+            "ilaios.skill.video.edit.overlay",
+            "ilaios.skill.video.edit.crop",
+            "ilaios.skill.video.edit.scale",
+            "ilaios.skill.video.edit.audio-mix",
+        ),
+    ),
     _node("factories", "video", "captions"),
     _node("factories", "video", "composition"),
     _node("factories", "video", "render"),
-    _node("factories", "video", "output-verify"),
+    _node(
+        "factories",
+        "video",
+        "output-verify",
+        backing_skill_ids=("ilaios.skill.video.qa.evaluate",),
+    ),
     _node("factories", "research", "planning"),
     _node("factories", "research", "research"),
     _node("factories", "research", "source-validation"),
     _node("factories", "research", "contradiction-check"),
     _node("factories", "research", "citation-validation"),
     _node("factories", "research", "synthesis"),
-    _node("capabilities", "browser", "navigate"),
-    _node("capabilities", "browser", "inspect"),
+    _node(
+        "capabilities",
+        "browser",
+        "navigate",
+        backing_skill_ids=("ilaios-browser",),
+    ),
+    _node(
+        "capabilities",
+        "browser",
+        "inspect",
+        backing_skill_ids=("ilaios-browser",),
+    ),
     _node("capabilities", "browser", "automate"),
-    _node("capabilities", "browser", "e2e"),
-    _node("capabilities", "browser", "visual-qa"),
-    _node("capabilities", "browser", "production-verify"),
+    _node(
+        "capabilities",
+        "browser",
+        "e2e",
+        backing_skill_ids=("ilaios-web-e2e",),
+    ),
+    _node(
+        "capabilities",
+        "browser",
+        "visual-qa",
+        backing_skill_ids=("ilaios-visual-qa",),
+    ),
+    _node(
+        "capabilities",
+        "browser",
+        "production-verify",
+        backing_skill_ids=("ilaios-production-verification",),
+    ),
     _node(
         "assurance",
         "security-review",
-        backing_skill_ids=("sf-security-review",),
+        backing_skill_ids=(_SECURITY_REVIEW_SKILL_ID, "sf-security-review"),
     ),
-    _node("assurance", "differential-review"),
-    _node("assurance", "threat-model"),
+    _node(
+        "assurance",
+        "differential-review",
+        backing_skill_ids=(_DIFFERENTIAL_REVIEW_SKILL_ID,),
+    ),
+    _node(
+        "assurance",
+        "agentic-action-audit",
+        backing_skill_ids=(_AGENTIC_ACTION_AUDIT_SKILL_ID,),
+    ),
+    _node(
+        "assurance",
+        "threat-model",
+        backing_skill_ids=(_THREAT_MODEL_SKILL_ID,),
+    ),
     _node(
         "assurance",
         "supply-chain-audit",
-        backing_skill_ids=("sf-dependency-governance", "sf-license-provenance"),
+        backing_skill_ids=(
+            _SUPPLY_CHAIN_AUDIT_SKILL_ID,
+            "sf-dependency-governance",
+            "sf-license-provenance",
+        ),
     ),
     _node(
         "assurance",
@@ -202,7 +340,13 @@ def validate_skill_taxonomy() -> None:
     if len(logical_ids) != len(set(logical_ids)):
         raise ValueError("ILAIOS skill taxonomy logical IDs must be unique")
 
-    software_skill_ids = set(REQUIRED_SKILL_IDS)
+    runtime_skill_ids = (
+        set(REQUIRED_SKILL_IDS)
+        | set(WEB_FACTORY_NATIVE_SKILL_IDS)
+        | set(WEB_FACTORY_BROWSER_SKILL_IDS)
+        | set(_SECURITY_METHODOLOGY_SKILL_IDS)
+        | set(_VIDEO_RUNTIME_SKILL_IDS)
+    )
     for node in SKILL_TAXONOMY:
         if node.layer not in _ALLOWED_LAYERS:
             raise ValueError(f"invalid ILAIOS skill layer: {node.layer}")
@@ -223,7 +367,7 @@ def validate_skill_taxonomy() -> None:
                 or node.path[1] not in _ALLOWED_CAPABILITY_FAMILIES
             ):
                 raise ValueError(f"invalid capability skill node: {node.logical_id}")
-        unknown_backing = set(node.backing_skill_ids) - software_skill_ids
+        unknown_backing = set(node.backing_skill_ids) - runtime_skill_ids
         if unknown_backing:
             raise ValueError(
                 f"unknown existing runtime skill mapping for {node.logical_id}: "
