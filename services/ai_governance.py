@@ -302,7 +302,9 @@ class UsageGovernor:
             limit = self._limits.get(scope)
             if limit is None:
                 raise GovernanceError(f"no configured limit for {scope.kind.value} scope")
-            daily = self._daily.setdefault((scope, now.date().isoformat()), _Consumption())
+            daily = self._daily.setdefault(
+                (scope, now.date().isoformat()), _Consumption()
+            )
             month = now.strftime("%Y-%m")
             monthly = self._monthly.setdefault((scope, month), _Consumption())
             self._check(limit, daily, monthly, request)
@@ -415,13 +417,15 @@ class UsageGovernor:
         circuit = self._circuits.setdefault(provider_id, _Circuit())
         cutoff = now - self._window
         circuit.failures = [stamp for stamp in circuit.failures if stamp >= cutoff]
-        is_open = circuit.open_until is not None and now < circuit.open_until
+        open_until = circuit.open_until
+        is_open = open_until is not None and now < open_until
+        open_until_iso = open_until.isoformat() if is_open and open_until is not None else None
         return {
             "provider_id": provider.provider_id,
             "enabled": provider.enabled,
             "circuit": "open" if is_open else "closed",
             "recent_failures": len(circuit.failures),
-            "open_until": circuit.open_until.isoformat() if is_open else None,
+            "open_until": open_until_iso,
         }
 
     def usage_snapshot(self, scope: Scope, now: datetime) -> dict[str, object]:
