@@ -17,7 +17,7 @@ from services.web_revision_planner import (
     WebRevisionPlanningEnvelope,
     WebRevisionPlanningError,
 )
-from services.web_source_ingestion import WebSourceArchiveIngestor
+from services.web_source_ingestion import WebSourceArchiveIngestor, WebSourceSnapshot
 from services.web_source_revision import WebSourceRevisionRequest
 
 
@@ -101,7 +101,7 @@ class _DependencyMutationTransport:
         }
 
 
-def _snapshot(tmp_path: Path):  # type: ignore[no-untyped-def]
+def _snapshot(tmp_path: Path) -> WebSourceSnapshot:
     return WebSourceArchiveIngestor(tmp_path / "artifacts").ingest_zip(_archive())
 
 
