@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+import services.source_media as source_media_module
 from services.source_media import SourceMediaError, SourceMediaStore
 from src.video_automation.media_technical_validation import MediaProbeObservation
 
@@ -55,6 +56,23 @@ def _store(tmp_path: Path, probe: _Probe | None = None) -> SourceMediaStore:
     )
 
 
+def _put(
+    store: SourceMediaStore,
+    payload: bytes,
+    *,
+    filename: str,
+    principal_id: str = "user-1",
+    tenant_id: str = "tenant-1",
+):
+    return store.put(
+        content=_mp4(payload),
+        claimed_mime_type="video/mp4",
+        original_filename=filename,
+        principal_id=principal_id,
+        tenant_id=tenant_id,
+    )
+
+
 def test_source_media_is_content_addressed_owned_and_immutably_bound(tmp_path: Path) -> None:
     probe = _Probe()
     store = _store(tmp_path, probe)
@@ -83,7 +101,6 @@ def test_source_media_is_content_addressed_owned_and_immutably_bound(tmp_path: P
     )
     assert bound == record
     assert store.for_request("exec-source-1") == record
-    # Idempotent binding to the same source is safe.
     assert (
         store.bind_request(
             "exec-source-1",
@@ -112,13 +129,7 @@ def test_source_media_is_content_addressed_owned_and_immutably_bound(tmp_path: P
 
 def test_cross_tenant_source_media_access_fails_closed(tmp_path: Path) -> None:
     store = _store(tmp_path)
-    record = store.put(
-        content=_mp4(),
-        claimed_mime_type="video/mp4",
-        original_filename="source.mp4",
-        principal_id="user-1",
-        tenant_id="tenant-1",
-    )
+    record = _put(store, b"source", filename="source.mp4")
     with pytest.raises(SourceMediaError, match="ownership mismatch"):
         store.get_owned(
             record.asset_id,
@@ -208,14 +219,70 @@ def test_source_media_rejects_unsupported_codec_duration_and_filename(tmp_path: 
 
 def test_registered_source_path_detects_post_admission_tampering(tmp_path: Path) -> None:
     store = _store(tmp_path)
-    record = store.put(
-        content=_mp4(),
-        claimed_mime_type="video/mp4",
-        original_filename="source.mp4",
-        principal_id="user-1",
-        tenant_id="tenant-1",
-    )
+    record = _put(store, b"source", filename="source.mp4")
     path = store.require_registered_path(record.asset_id)
     path.write_bytes(_mp4(b"tampered"))
     with pytest.raises(SourceMediaError, match="size changed|integrity"):
         store.require_registered_path(record.asset_id)
+
+
+def test_unbound_source_uploads_are_bounded_and_discardable(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    first = _put(store, b"first", filename="first.mp4")
+    _put(store, b"second", filename="second.mp4")
+    with pytest.raises(SourceMediaError, match="too many unsubmitted"):
+        _put(store, b"third", filename="third.mp4")
+
+    assert store.discard_unbound(
+        first.asset_id,
+        principal_id="user-1",
+        tenant_id="tenant-1",
+    )
+    replacement = _put(store, b"third", filename="third.mp4")
+    assert replacement.asset_id.startswith("src-")
+    with pytest.raises(SourceMediaError, match="unknown source media"):
+        store.get_owned(
+            first.asset_id,
+            principal_id="user-1",
+            tenant_id="tenant-1",
+        )
+
+
+def test_bound_source_cannot_be_discarded_through_upload_boundary(tmp_path: Path) -> None:
+    store = _store(tmp_path)
+    record = _put(store, b"bound", filename="bound.mp4")
+    store.bind_request(
+        "exec-bound-source",
+        record.asset_id,
+        principal_id="user-1",
+        tenant_id="tenant-1",
+    )
+    with pytest.raises(SourceMediaError, match="bound source media"):
+        store.discard_unbound(
+            record.asset_id,
+            principal_id="user-1",
+            tenant_id="tenant-1",
+        )
+    assert store.require_registered_path(record.asset_id).is_file()
+
+
+def test_unbound_source_byte_quota_is_enforced_before_new_blob(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    store = _store(tmp_path)
+    first_content = _mp4(b"first")
+    monkeypatch.setattr(
+        source_media_module,
+        "MAX_UNBOUND_SOURCE_MEDIA_BYTES",
+        len(first_content) + 1,
+    )
+    store.put(
+        content=first_content,
+        claimed_mime_type="video/mp4",
+        original_filename="first.mp4",
+        principal_id="user-1",
+        tenant_id="tenant-1",
+    )
+    with pytest.raises(SourceMediaError, match="256 MiB safety quota"):
+        _put(store, b"second", filename="second.mp4")
