@@ -19,10 +19,18 @@ _FORBIDDEN_CALLER_AUTHORITY_FIELDS = frozenset(
 
 def canonical_agent_state(runtime: GovernedRuntime) -> dict[str, object]:
     """Project canonical agent identity plus persisted runtime registration state."""
-    persisted = {
-        str(item["agent_id"]): frozenset(str(value) for value in item["authorities"])
-        for item in runtime.agents()
-    }
+    persisted: dict[str, frozenset[str]] = {}
+    for item in runtime.agents():
+        agent_id = item.get("agent_id")
+        raw_authorities = item.get("authorities")
+        if not isinstance(agent_id, str) or not agent_id:
+            raise ValueError("persisted runtime agent identity projection is malformed")
+        if not isinstance(raw_authorities, list) or any(
+            not isinstance(value, str) for value in raw_authorities
+        ):
+            raise ValueError("persisted runtime agent authority projection is malformed")
+        persisted[agent_id] = frozenset(raw_authorities)
+
     agents: list[dict[str, object]] = []
     registered_count = 0
     drift_count = 0
