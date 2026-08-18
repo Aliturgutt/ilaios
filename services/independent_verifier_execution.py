@@ -161,7 +161,7 @@ def _resolve_persisted_route(
     execution: NamedAgentExecution,
 ) -> dict[str, object]:
     sequence = execution.route.get("sequence")
-    if not isinstance(sequence, int):
+    if not isinstance(sequence, int) or isinstance(sequence, bool):
         raise IndependentVerifierExecutionError("producer route sequence is missing")
     matches = [route for route in named.routes() if route.get("sequence") == sequence]
     if len(matches) != 1:
@@ -169,16 +169,41 @@ def _resolve_persisted_route(
             "producer persisted route cannot be uniquely resolved"
         )
     persisted = matches[0]
-    if persisted != execution.route:
+    if _comparable_route(persisted) != _comparable_route(execution.route):
         raise IndependentVerifierExecutionError(
             "producer execution diverges from persisted runtime route"
         )
     return persisted
 
 
+def _comparable_route(route: dict[str, object]) -> dict[str, object]:
+    """Project fields present in both runtime return and persisted route records."""
+    sequence = route.get("sequence")
+    if not isinstance(sequence, int) or isinstance(sequence, bool):
+        raise IndependentVerifierExecutionError("persisted route sequence is invalid")
+    projected: dict[str, object] = {"sequence": sequence}
+    for field in ("agent_id", "skill_id", "provider_id", "capability"):
+        value = route.get(field)
+        if not isinstance(value, str) or not value or value != value.strip():
+            raise IndependentVerifierExecutionError(
+                f"persisted route {field} is invalid"
+            )
+        projected[field] = value
+    output = route.get("output")
+    if not isinstance(output, dict):
+        raise IndependentVerifierExecutionError("persisted route output is invalid")
+    projected["output"] = output
+    return projected
+
+
 def _canonical_route_digest(route: dict[str, object]) -> str:
     return hashlib.sha256(
-        json.dumps(route, sort_keys=True, separators=(",", ":"), default=str).encode()
+        json.dumps(
+            _comparable_route(route),
+            sort_keys=True,
+            separators=(",", ":"),
+            default=str,
+        ).encode()
     ).hexdigest()
 
 
