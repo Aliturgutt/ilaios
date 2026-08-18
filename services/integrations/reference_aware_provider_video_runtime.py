@@ -2,7 +2,9 @@
 
 This module does not introduce another video engine. It derives a bounded visual
 brief from admitted private reference images and feeds that brief into the
-existing canonical shot-planning/generation/QA chain.
+existing canonical shot-planning/generation/QA chain. It also applies one narrow
+product-intent admission guard so unsupported edit/localization/series/output-
+shape requests cannot silently degrade into a different finished product.
 """
 
 from __future__ import annotations
@@ -35,6 +37,10 @@ from .provider_video_runtime import (
     ObjectiveResolver,
     ProviderBackedDesktopVideoRuntime,
     SemanticVideoReviewer,
+)
+from .video_product_intelligence import (
+    VideoProductIntentError,
+    admit_current_desktop_video_product,
 )
 from .video_runtime import VideoRuntimeError
 
@@ -107,6 +113,20 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
         objective: str,
         duration_seconds: float,
     ) -> dict[str, object]:
+        # Read only immutable request binding metadata before any provider effect.
+        # Current Desktop production supports create/reference generation in 16:9.
+        # Source-video edit/localization, authenticated series continuation, and
+        # other output shapes remain blocked until their exact inputs/capabilities
+        # are materialized and independently verified.
+        reference_count = len(self._reference_assets.for_request(request_id))
+        try:
+            product_spec = admit_current_desktop_video_product(
+                objective,
+                reference_count=reference_count,
+            )
+        except VideoProductIntentError as error:
+            raise VideoRuntimeError(str(error)) from error
+
         brief = self._reference_brief(request_id)
         conditioned_objective = _conditioned_objective(objective, brief)
         outcome = super()._generate_finished_product(
@@ -116,6 +136,10 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
             objective=conditioned_objective,
             duration_seconds=duration_seconds,
         )
+        outcome["video_product_spec"] = product_spec.to_dict()
+        outcome["video_product_mode"] = product_spec.mode.value
+        outcome["requested_aspect_ratio"] = product_spec.aspect_ratio
+
         if brief is None:
             outcome["reference_asset_count"] = 0
             outcome["reference_conditioning_mode"] = "none"
