@@ -31,8 +31,16 @@ _ALLOWED_CAPABILITIES = frozenset(
 )
 _REQUIRED_POLICY = "ilaios.skill-engineering.governed"
 _ALLOWED_RISK_CLASSES = frozenset({"low", "medium", "high", "critical"})
-_ALLOWED_MATURITY = frozenset(
-    {"DESIGNED", "SPECIFIED", "IMPLEMENTED", "TESTED", "VERIFIED"}
+_ALLOWED_SOURCE_MATURITY = frozenset({"DESIGNED", "SPECIFIED", "IMPLEMENTED"})
+_REQUIRED_DOMAIN = "skill-engineering"
+_REQUIRED_EMITTED_EVIDENCE = frozenset(
+    {
+        "skill_identity",
+        "logical_id",
+        "provenance",
+        "validation_plan",
+        "unresolved_blockers",
+    }
 )
 _REQUIRED_FORBIDDEN_ACTIONS = frozenset(
     {
@@ -126,6 +134,10 @@ class SkillEngineeringCatalog:
                 "skill-engineering skill_id must match its logical taxonomy leaf"
             )
 
+        domain = _required_text(manifest, "domain")
+        if domain != _REQUIRED_DOMAIN:
+            raise ValueError("skill-engineering package domain is invalid")
+
         required_policy = _required_text(manifest, "required_policy")
         if required_policy != _REQUIRED_POLICY:
             raise ValueError("skill-engineering package requires canonical policy")
@@ -145,13 +157,23 @@ class SkillEngineeringCatalog:
         risk_class = _required_text(manifest, "risk_class")
         if risk_class not in _ALLOWED_RISK_CLASSES:
             raise ValueError("skill-engineering package risk_class is invalid")
-        if maturity not in _ALLOWED_MATURITY:
-            raise ValueError("skill-engineering package maturity is invalid")
+        if maturity not in _ALLOWED_SOURCE_MATURITY:
+            raise ValueError(
+                "skill-engineering source maturity cannot claim tested or verified"
+            )
+
+        emitted_evidence = _string_set(manifest, "emitted_evidence")
+        if not _REQUIRED_EMITTED_EVIDENCE.issubset(emitted_evidence):
+            raise ValueError("skill-engineering evidence declaration is incomplete")
 
         independent_review_required = manifest.get("independent_review_required")
         if not isinstance(independent_review_required, bool):
             raise ValueError(
                 "skill-engineering independent_review_required must be boolean"
+            )
+        if risk_class in {"high", "critical"} and not independent_review_required:
+            raise ValueError(
+                "high-risk skill-engineering packages require independent review"
             )
 
         _validate_schema(_load_json(root / "input.schema.json"))
