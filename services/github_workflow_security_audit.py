@@ -11,15 +11,27 @@ _SHA = re.compile(r"^[0-9a-f]{40}$")
 _USES = re.compile(r"^\s*-?\s*uses:\s*([^#\s]+)")
 _TOP_PUSH = re.compile(r"(?m)^  push:\s*$")
 _TOP_PR = re.compile(r"(?m)^  pull_request:\s*$")
-_MANUAL_ONLY = frozenset({
-    "aws-r01-canary-apply.yml", "aws-r01-image-publish.yml",
-    "aws-r01-image-scan.yml", "aws-r01-preparation-resources.yml",
-    "aws-r02-limited-apply.yml", "aws-r03-production-apply.yml",
-    "desktop-msix-signed-release.yml", "video-provider-production-certification.yml",
-})
-_SECRET_ALLOWED = frozenset({
-    "desktop-msix-signed-release.yml", "video-provider-production-certification.yml",
-})
+_MANUAL_ONLY = frozenset(
+    {
+        "aws-r01-canary-apply.yml",
+        "aws-r01-image-publish.yml",
+        "aws-r01-image-scan.yml",
+        "aws-r01-preparation-resources.yml",
+        "aws-r02-limited-apply.yml",
+        "aws-r03-production-apply.yml",
+        "desktop-msix-signed-release.yml",
+        "video-provider-production-certification.yml",
+    }
+)
+_SECRET_ALLOWED = frozenset(
+    {
+        "agent-p0-live-certification.yml",
+        "desktop-msix-signed-release.yml",
+        "video-provider-production-certification.yml",
+    }
+)
+_TRUSTED_MASTER_SECRET = frozenset({"agent-p0-live-certification.yml"})
+
 
 @dataclass(frozen=True, slots=True)
 class WorkflowSecurityFinding:
@@ -35,9 +47,11 @@ def _checkout_blocks(text: str) -> tuple[str, ...]:
         if "uses: actions/checkout@" not in line:
             continue
         uses_indent = len(line) - len(line.lstrip())
-        step_indent = uses_indent if line.lstrip().startswith("- uses:") else max(0, uses_indent - 2)
+        step_indent = (
+            uses_indent if line.lstrip().startswith("- uses:") else max(0, uses_indent - 2)
+        )
         block = [line]
-        for candidate in lines[index + 1:]:
+        for candidate in lines[index + 1 :]:
             stripped = candidate.lstrip()
             indent = len(candidate) - len(stripped)
             if indent == step_indent and stripped.startswith("- "):
@@ -55,13 +69,66 @@ def audit_repository(repository_root: Path) -> tuple[WorkflowSecurityFinding, ..
         relative = path.relative_to(repository_root).as_posix()
         text = path.read_text(encoding="utf-8")
         if "pull_request_target:" in text:
-            findings.append(WorkflowSecurityFinding(relative, "NO_PR_TARGET", "pull_request_target is forbidden"))
-        if "permissions: write-all" in text or re.search(r"(?m)^  contents:\s+write\s*$", text):
-            findings.append(WorkflowSecurityFinding(relative, "NO_REPO_WRITE", "permanent workflows may not grant contents write"))
+            findings.append(
+                WorkflowSecurityFinding(
+                    relative, "NO_PR_TARGET", "pull_request_target is forbidden"
+                )
+            )
+        if "permissions: write-all" in text or re.search(
+            r"(?m)^  contents:\s+write\s*$", text
+        ):
+            findings.append(
+                WorkflowSecurityFinding(
+                    relative,
+                    "NO_REPO_WRITE",
+                    "permanent workflows may not grant contents write",
+                )
+            )
         if not re.search(r"(?m)^  contents:\s+read\s*$", text):
-            findings.append(WorkflowSecurityFinding(relative, "CONTENTS_READ", "explicit contents: read is required"))
+            findings.append(
+                WorkflowSecurityFinding(
+                    relative, "CONTENTS_READ", "explicit contents: read is required"
+                )
+            )
         if "secrets." in text and path.name not in _SECRET_ALLOWED:
-            findings.append(WorkflowSecurityFinding(relative, "SECRET_BOUNDARY", "secrets are forbidden in this workflow"))
+            findings.append(
+                WorkflowSecurityFinding(
+                    relative, "SECRET_BOUNDARY", "secrets are forbidden in this workflow"
+                )
+            )
+        if path.name in _TRUSTED_MASTER_SECRET:
+            if _TOP_PR.search(text):
+                findings.append(
+                    WorkflowSecurityFinding(
+                        relative,
+                        "TRUSTED_SECRET_TRIGGER",
+                        "secret-bearing certification cannot run from pull_request code",
+                    )
+                )
+            if not _TOP_PUSH.search(text) or "      - master\n" not in text:
+                findings.append(
+                    WorkflowSecurityFinding(
+                        relative,
+                        "TRUSTED_SECRET_TRIGGER",
+                        "secret-bearing certification must be scoped to master push",
+                    )
+                )
+            if "environment: Production" not in text:
+                findings.append(
+                    WorkflowSecurityFinding(
+                        relative,
+                        "TRUSTED_SECRET_ENVIRONMENT",
+                        "secret-bearing certification requires Production environment",
+                    )
+                )
+            if "ref: ${{ github.sha }}" not in text:
+                findings.append(
+                    WorkflowSecurityFinding(
+                        relative,
+                        "TRUSTED_SECRET_CHECKOUT",
+                        "secret-bearing certification must checkout exact trusted github.sha",
+                    )
+                )
         for line in text.splitlines():
             match = _USES.match(line)
             if match is None:
@@ -71,17 +138,41 @@ def audit_repository(repository_root: Path) -> tuple[WorkflowSecurityFinding, ..
                 continue
             _, sep, revision = reference.partition("@")
             if not sep or _SHA.fullmatch(revision) is None:
-                findings.append(WorkflowSecurityFinding(relative, "IMMUTABLE_ACTION", reference))
+                findings.append(
+                    WorkflowSecurityFinding(relative, "IMMUTABLE_ACTION", reference)
+                )
         for block in _checkout_blocks(text):
             if "persist-credentials: false" not in block:
-                findings.append(WorkflowSecurityFinding(relative, "CHECKOUT_CREDENTIALS", "checkout credentials must not persist"))
+                findings.append(
+                    WorkflowSecurityFinding(
+                        relative,
+                        "CHECKOUT_CREDENTIALS",
+                        "checkout credentials must not persist",
+                    )
+                )
             if "ref:" not in block:
-                findings.append(WorkflowSecurityFinding(relative, "EXACT_CHECKOUT", "checkout requires explicit exact ref"))
+                findings.append(
+                    WorkflowSecurityFinding(
+                        relative,
+                        "EXACT_CHECKOUT",
+                        "checkout requires explicit exact ref",
+                    )
+                )
         if path.name in _MANUAL_ONLY:
             if "workflow_dispatch:" not in text:
-                findings.append(WorkflowSecurityFinding(relative, "MANUAL_ONLY", "workflow_dispatch is required"))
+                findings.append(
+                    WorkflowSecurityFinding(
+                        relative, "MANUAL_ONLY", "workflow_dispatch is required"
+                    )
+                )
             if _TOP_PUSH.search(text) or _TOP_PR.search(text):
-                findings.append(WorkflowSecurityFinding(relative, "MANUAL_ONLY", "external mutation/spend cannot auto-trigger"))
+                findings.append(
+                    WorkflowSecurityFinding(
+                        relative,
+                        "MANUAL_ONLY",
+                        "external mutation/spend cannot auto-trigger",
+                    )
+                )
     return tuple(findings)
 
 
@@ -96,6 +187,7 @@ def main(argv: list[str] | None = None) -> int:
     for finding in findings:
         print(f"BLOCK {finding.rule} {finding.path}: {finding.detail}")
     return 1
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
