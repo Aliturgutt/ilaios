@@ -24,8 +24,8 @@ class IdentityClient extends core.IdentityClient {
       transportToken: transportToken,
       transport: resolvedTransport,
       retryDelay: retryDelay,
-      _referenceBaseUri: baseUri,
-      _referenceTransportToken: transportToken,
+      referenceBaseUri: baseUri,
+      referenceTransportToken: transportToken,
     );
   }
 
