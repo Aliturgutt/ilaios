@@ -85,10 +85,7 @@ void main() {
     await tester.pumpWidget(_app());
 
     final button = tester.widget<FilledButton>(
-      find.descendant(
-        of: find.byKey(const Key('new-agent-button')),
-        matching: find.byType(FilledButton),
-      ),
+      find.byKey(const Key('new-agent-button')),
     );
     expect(button.onPressed, isNull);
   });
