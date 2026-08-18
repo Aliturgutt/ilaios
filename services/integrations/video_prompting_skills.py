@@ -49,7 +49,7 @@ from src.video_automation.video_skills import (
 DIRECTOR_SKILL_ID = "ilaios.skill.video.direction.cinematography"
 PROMPT_SKILL_ID = "ilaios.skill.video.prompt.compose"
 REFERENCE_ASSET_SKILL_ID = "ilaios.skill.video.reference-assets.inspect"
-MODEL_ROUTING_SKILL_ID = "ilaios.skill.video.routing.model-advice"
+MODEL_FIT_SKILL_ID = "ilaios.skill.video.model-fit.analyze"
 CONTINUITY_SKILL_ID = "ilaios.skill.video.continuity.track"
 
 _SKILLS: tuple[VideoSkillManifest, ...] = (*VIDEO_SKILLS, *VIDEO_PROMPTING_SKILLS)
@@ -106,7 +106,7 @@ class GovernedVideoPromptingSkills:
         self._validate(REFERENCE_ASSET_SKILL_ID)
         return tuple(records)
 
-    def advise_model_route(
+    def analyze_model_fit(
         self,
         *,
         catalog: ProviderCatalogSnapshot,
@@ -115,8 +115,8 @@ class GovernedVideoPromptingSkills:
         request: RoutingIntelligenceRequest,
         now: datetime,
     ) -> RoutingIntelligenceEvidence:
-        """Rank candidates only; final selection remains canonical routing authority."""
-        self._validate(MODEL_ROUTING_SKILL_ID)
+        """Return ranking evidence only; canonical routing remains authoritative."""
+        self._validate(MODEL_FIT_SKILL_ID)
         return self._routing_intelligence.evaluate(
             catalog=catalog,
             runtime_state=runtime_state,
