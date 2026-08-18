@@ -67,13 +67,23 @@ class SourceMediaDesktopIdentityRequestHandler(DesktopIdentityRequestHandler):
     server: SourceMediaDesktopIdentityHTTPServer
 
     def do_POST(self) -> None:
-        if urlparse(self.path).path != "/v1/source-media":
+        path = urlparse(self.path).path
+        if path not in {"/v1/source-media", "/v1/source-media/discard"}:
             super().do_POST()
             return
         try:
             self._authenticate_transport()
-            body = self._read_json(max_bytes=_SOURCE_MEDIA_UPLOAD_BODY_BYTES)
-            self._upload_source_media(body)
+            body = self._read_json(
+                max_bytes=(
+                    _SOURCE_MEDIA_UPLOAD_BODY_BYTES
+                    if path == "/v1/source-media"
+                    else 1_048_576
+                )
+            )
+            if path == "/v1/source-media":
+                self._upload_source_media(body)
+            else:
+                self._discard_source_media(body)
         except DesktopIdentityError as error:
             self._send_error(HTTPStatus.UNAUTHORIZED, str(error))
         except ExecutionCoordinatorError as error:
@@ -106,6 +116,16 @@ class SourceMediaDesktopIdentityRequestHandler(DesktopIdentityRequestHandler):
             tenant_id=session.tenant_id,
         )
         self._send_json(HTTPStatus.CREATED, record.public_metadata())
+
+    def _discard_source_media(self, body: dict[str, Any]) -> None:
+        session = self._authenticated_session()
+        asset_id = _identity_core._required_string(body, "asset_id")
+        self.server.source_media.discard_unbound(
+            asset_id,
+            principal_id=session.principal_id,
+            tenant_id=session.tenant_id,
+        )
+        self._send_json(HTTPStatus.OK, {"discarded": True, "asset_id": asset_id})
 
     def _submit_authenticated_intent(self, body: dict[str, Any]) -> None:
         source_value = body.get("source_media_asset_id")
