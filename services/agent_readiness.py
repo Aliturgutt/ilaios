@@ -16,6 +16,7 @@ from services.agent_registry import (
     RuntimeReadiness,
     registration_for,
 )
+from services.capability_registry import CAPABILITIES
 
 
 class AgentReadinessError(ValueError):
@@ -34,6 +35,11 @@ EXPECTED_TEAM_COUNTS = {
 }
 EXPECTED_AGENT_COUNT = sum(EXPECTED_TEAM_COUNTS.values())
 P0_TEAMS = frozenset({"core", "engineering", "security"})
+LEGACY_IDENTITY_TOKENS = frozenset(
+    source.casefold()
+    for capability in CAPABILITIES
+    for source in capability.legacy_sources
+)
 
 KNOWN_BACKING_CAPABILITIES = frozenset(
     {
@@ -113,7 +119,7 @@ def audit_agent_registry(
             raise AgentReadinessError("agent ID is outside canonical ILAIOS namespace")
         if any(
             legacy in manifest.agent_id.casefold()
-            for legacy in ("hermes", "ilakos", "ilaten")
+            for legacy in LEGACY_IDENTITY_TOKENS
         ):
             raise AgentReadinessError("legacy identity leaked into machine agent ID")
         if not manifest.capabilities or not manifest.permissions:
