@@ -15,6 +15,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
+from typing import Any
 
 from services.ai_governance import (
     ModelProviderRegistry,
@@ -29,7 +30,12 @@ from services.ai_governance import (
 )
 from services.p0_agent_execution import P0_AGENT_BINDINGS
 from services.p0_ai_provider_config import P0AIProviderConfiguration
-from services.runtime.ai_provider_adapter import GovernedAIProviderAdapter, ProviderEndpoint
+from services.runtime.ai_provider_adapter import (
+    GovernedAIProviderAdapter,
+    OpenAICompatibleTransport,
+    ProviderEndpoint,
+    ProviderTransportResult,
+)
 
 
 class OpenRouterAgentCatalogError(RuntimeError):
@@ -43,6 +49,37 @@ _OPENROUTER_FREE_ROUTER_ID = "openrouter/free"
 _MAX_AUTO_MODELS = 12
 _FREE_ROUTER_CONTEXT_WINDOW = 32_768
 _FREE_ROUTER_MAX_OUTPUT_TOKENS = 2_048
+
+
+class _StrictOpenRouterTransport(OpenAICompatibleTransport):
+    """Require every OpenRouter downstream provider to honor request controls."""
+
+    def complete(
+        self,
+        endpoint: ProviderEndpoint,
+        *,
+        api_key: str,
+        model_id: str,
+        system_instructions: str,
+        prompt: str,
+        max_output_tokens: int,
+        response_format: dict[str, Any] | None = None,
+        require_parameters: bool = False,
+    ) -> ProviderTransportResult:
+        if endpoint.provider_id != _OPENROUTER_PROVIDER_ID:
+            raise OpenRouterAgentCatalogError(
+                "strict OpenRouter transport received a non-OpenRouter endpoint"
+            )
+        return super().complete(
+            endpoint,
+            api_key=api_key,
+            model_id=model_id,
+            system_instructions=system_instructions,
+            prompt=prompt,
+            max_output_tokens=max_output_tokens,
+            response_format=response_format,
+            require_parameters=True,
+        )
 
 
 class _TenantTemplateUsageGovernor(UsageGovernor):
@@ -167,7 +204,13 @@ def _configuration(
         max_retries=1,
     )
     return P0AIProviderConfiguration(
-        adapter=GovernedAIProviderAdapter(registry, policy, governor, (endpoint,)),
+        adapter=GovernedAIProviderAdapter(
+            registry,
+            policy,
+            governor,
+            (endpoint,),
+            transport=_StrictOpenRouterTransport(),
+        ),
         provider_capabilities={_OPENROUTER_PROVIDER_ID: capabilities},
         configured_scopes=(),
     )
