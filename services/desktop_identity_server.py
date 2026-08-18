@@ -9,7 +9,6 @@ all other capabilities fail-closed.
 from __future__ import annotations
 
 import secrets
-import time
 from datetime import datetime, timezone
 
 from services.desktop_oidc import DesktopOIDCService
@@ -18,6 +17,9 @@ from services.reference_assets import ReferenceAssetStore
 
 from . import desktop_identity_server_core as _core
 from .desktop_identity_server_core import *  # noqa: F403
+
+# Preserve the public module clock used by existing recovery tests/operators.
+time = _core.time
 
 
 class DesktopIdentityHTTPServer(_core.DesktopIdentityHTTPServer):
