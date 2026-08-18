@@ -191,7 +191,6 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
             status: widget.operationalStatus,
             onNavigate: _select,
             onRefreshRequested: widget.onRefreshRequested,
-            onProvisionAgent: widget.onProvisionAgent,
           ),
         DesktopSection.liveWorkspace => LiveWorkspaceView(
             snapshot: widget.operationalSnapshot,
