@@ -108,20 +108,36 @@ def admit_current_desktop_video_product(
     objective: str,
     *,
     reference_count: int = 0,
+    source_video_present: bool = False,
+    series_state_present: bool = False,
 ) -> VideoProductSpec:
     """Admit only work the current finished-product runtime can deliver exactly."""
 
     spec = derive_video_product_spec(objective, reference_count=reference_count)
-    if spec.source_video_required:
+    if source_video_present and not spec.source_video_required:
+        raise VideoProductIntentError(
+            "an authenticated source video is bound but the objective is not an explicit "
+            "revision/localization request; refusing to silently ignore source media"
+        )
+    if spec.source_video_required and not source_video_present:
         raise VideoProductIntentError(
             f"video mode '{spec.mode.value}' requires an authenticated source video; "
-            "the current Desktop finished-product path has no source-video binding and "
-            "must not degrade this request into new generation"
+            "image references cannot substitute for source media"
         )
-    if spec.series_state_required:
+    if spec.source_video_required:
+        raise VideoProductIntentError(
+            f"video mode '{spec.mode.value}' has authenticated source media but its "
+            "bounded edit/localization execution path is not materialized yet"
+        )
+    if spec.series_state_required and not series_state_present:
         raise VideoProductIntentError(
             "series-continuation intent requires an authenticated canonical SeriesState "
             "binding; standalone text must not invent cross-episode continuity"
+        )
+    if spec.series_state_required:
+        raise VideoProductIntentError(
+            "authenticated SeriesState is present but series-continuation execution is "
+            "not materialized by the current Desktop finished-product runtime"
         )
     if spec.aspect_ratio != "16:9":
         raise VideoProductIntentError(
