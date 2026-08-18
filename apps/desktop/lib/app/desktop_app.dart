@@ -159,8 +159,8 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
       );
     }
     final hasReferences = _referenceAssets.assets.isNotEmpty;
-    final referenceCapableObjective = _isReferenceCapableObjective(objective);
-    if (hasReferences && !referenceCapableObjective) {
+    final referenceFactoryCount = _referenceFactoryCount(objective);
+    if (hasReferences && referenceFactoryCount == 0) {
       throw StateError(
         _localeText(
           'Reference images can only be attached to Web Factory or Video Factory goals.',
@@ -168,8 +168,16 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
         ),
       );
     }
+    if (hasReferences && referenceFactoryCount != 1) {
+      throw StateError(
+        _localeText(
+          'A reference-image goal must target exactly one of Web Factory or Video Factory.',
+          'Referans görselli bir hedef tam olarak Web Factory veya Video Factory’den birini hedeflemelidir.',
+        ),
+      );
+    }
     final result = await callback(objective);
-    if (referenceCapableObjective && hasReferences) {
+    if (referenceFactoryCount == 1 && hasReferences) {
       _referenceAssets.clear();
       if (mounted) setState(() {});
     }
@@ -307,12 +315,10 @@ class _ReferenceAssetDock extends StatelessWidget {
   }
 }
 
-bool _isReferenceCapableObjective(String objective) {
+int _referenceFactoryCount(String objective) {
   final normalized = objective.trimLeft().toLowerCase();
-  if (normalized.startsWith('video creation task:') ||
-      normalized.startsWith('video oluşturma görevi:')) {
-    return true;
-  }
+  final video = normalized.startsWith('video creation task:') ||
+      normalized.startsWith('video oluşturma görevi:');
   const webTerms = <String>{
     'website',
     'web site',
@@ -320,5 +326,6 @@ bool _isReferenceCapableObjective(String objective) {
     'landing page',
     'internet sitesi',
   };
-  return webTerms.any(normalized.contains);
+  final web = webTerms.any(normalized.contains);
+  return (video ? 1 : 0) + (web ? 1 : 0);
 }
