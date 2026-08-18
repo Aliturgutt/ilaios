@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 concurrency:
   group: video-reference-production-certification-${{ github.ref }}
@@ -121,3 +122,98 @@ jobs:
           path: artifacts/video-desktop-reference-provider-proof
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Publish sanitized live-reference commit status
+        if: ${{ always() }}
+        shell: bash
+        env:
+          VIDEO_REFERENCE_JOB_STATUS: ${{ job.status }}
+          VIDEO_REFERENCE_STATUS_TOKEN: ${{ github.token }}
+          VIDEO_REFERENCE_STATUS_TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          def is_sha256(value: object) -> bool:
+              return (
+                  isinstance(value, str)
+                  and len(value) == 64
+                  and all(character in '0123456789abcdef' for character in value)
+              )
+
+          accepted = False
+          receipt_path = Path(os.environ['VIDEO_DESKTOP_REFERENCE_PROVIDER_PROOF_DIR']) / 'receipt.json'
+          if os.environ.get('VIDEO_REFERENCE_JOB_STATUS') == 'success' and receipt_path.is_file():
+              try:
+                  receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+                  semantic_score = receipt.get('semantic_score')
+                  semantic_threshold = receipt.get('semantic_threshold')
+                  accepted = (
+                      receipt.get('status') == 'PASS'
+                      and receipt.get('revision_sha') == os.environ['GITHUB_SHA']
+                      and receipt.get('execution_status') == 'ACCEPTED'
+                      and receipt.get('provider_cost_zero') is True
+                      and receipt.get('provider_cost_usd') == 0.0
+                      and isinstance(receipt.get('provider_generation_id'), str)
+                      and bool(receipt.get('provider_generation_id'))
+                      and receipt.get('reference_asset_count') == 1
+                      and is_sha256(receipt.get('reference_asset_sha256'))
+                      and receipt.get('reference_binding_retained') is True
+                      and isinstance(receipt.get('reference_analyzer_id'), str)
+                      and receipt.get('reference_analyzer_id', '').startswith('openrouter-reference-analysis:')
+                      and is_sha256(receipt.get('reference_visual_brief_sha256'))
+                      and receipt.get('reference_conditioning_mode') == 'private-multimodal-brief'
+                      and receipt.get('provider_native_reference_url_used') is False
+                      and receipt.get('raw_reference_blob_released') is True
+                      and is_sha256(receipt.get('artifact_sha256'))
+                      and isinstance(receipt.get('artifact_bytes'), int)
+                      and receipt.get('artifact_bytes', 0) > 100_000
+                      and isinstance(receipt.get('duration_seconds'), (int, float))
+                      and 3.0 <= float(receipt.get('duration_seconds')) <= 5.0
+                      and receipt.get('width') == 1920
+                      and receipt.get('height') == 1080
+                      and receipt.get('video_codec') == 'h264'
+                      and receipt.get('audio_codec') == 'aac'
+                      and isinstance(semantic_score, (int, float))
+                      and isinstance(semantic_threshold, (int, float))
+                      and float(semantic_score) >= float(semantic_threshold)
+                      and receipt.get('generated_shot_count') == 1
+                  )
+              except (OSError, ValueError, TypeError):
+                  accepted = False
+
+          state = 'success' if accepted else 'failure'
+          description = (
+              'Reference live E2E accepted: exact-SHA PASS'
+              if accepted
+              else 'Reference live E2E failed closed'
+          )
+          document = json.dumps(
+              {
+                  'state': state,
+                  'target_url': os.environ['VIDEO_REFERENCE_STATUS_TARGET_URL'],
+                  'description': description,
+                  'context': 'ILAIOS Video Reference Live Certification',
+              },
+              separators=(',', ':'),
+          ).encode('utf-8')
+          request = urllib.request.Request(
+              f"{os.environ['GITHUB_API_URL']}/repos/{os.environ['GITHUB_REPOSITORY']}/statuses/{os.environ['GITHUB_SHA']}",
+              data=document,
+              method='POST',
+              headers={
+                  'Accept': 'application/vnd.github+json',
+                  'Authorization': f"Bearer {os.environ['VIDEO_REFERENCE_STATUS_TOKEN']}",
+                  'Content-Type': 'application/json',
+                  'X-GitHub-Api-Version': '2022-11-28',
+              },
+          )
+          with urllib.request.urlopen(request, timeout=20) as response:
+              if response.status not in {200, 201}:
+                  raise RuntimeError(f'commit status publish failed: HTTP {response.status}')
+          print(f'VIDEO_REFERENCE_COMMIT_STATUS={state}')
+          PY
