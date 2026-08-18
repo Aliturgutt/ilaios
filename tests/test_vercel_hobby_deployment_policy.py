@@ -16,7 +16,10 @@ def test_vercel_git_deployments_are_opt_in_except_master() -> None:
     deployment_enabled = git_config.get("deploymentEnabled")
     assert isinstance(deployment_enabled, dict)
 
-    assert deployment_enabled.get("*") is False
+    # Vercel uses minimatch for branch rules. Globstar is required so
+    # slash-named branches such as agent/foo and codex/bar are default-denied.
+    assert deployment_enabled.get("**") is False
+    assert "*" not in deployment_enabled
     assert deployment_enabled.get("master") is True
     assert deployment_enabled.get("vercel-preview-*") is True
 
