@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from hashlib import sha256
+from pathlib import Path
 
 import pytest
 
@@ -14,7 +15,8 @@ from services.skill_factory import (
     SkillFactoryError,
     SkillPromotionError,
     SkillPromotionGate,
-    SkillRegistry,
+    SkillPromotionRegistry,
+    SkillPromotionState,
     SkillScenarioResult,
 )
 
@@ -97,6 +99,17 @@ def test_candidate_rejects_non_ilaios_identity() -> None:
         )
 
 
+def test_promotion_state_is_not_canonical_maturity() -> None:
+    assert SkillPromotionState.PROMOTED.value == "promoted"
+    source = (Path(__file__).resolve().parents[1] / "services" / "skill_factory.py").read_text(
+        encoding="utf-8"
+    )
+    assert "class SkillMaturity" not in source
+    assert "class SkillRegistry" not in source
+    assert "SkillPromotionRegistry" in source
+    assert "canonical maturity" in source.casefold()
+
+
 def test_promotion_requires_matching_evaluation_digest() -> None:
     item = candidate()
     evaluation = passing_evaluation(item)
@@ -110,7 +123,7 @@ def test_promotion_requires_matching_evaluation_digest() -> None:
     )
     governance = FakeGovernance()
     evidence = FakeEvidence()
-    gate = SkillPromotionGate(governance, evidence, SkillRegistry())
+    gate = SkillPromotionGate(governance, evidence, SkillPromotionRegistry())
 
     with pytest.raises(SkillPromotionError, match="does not belong"):
         gate.promote(item, wrong)
@@ -131,7 +144,7 @@ def test_promotion_fails_before_governance_when_regression_is_detected() -> None
     )
     governance = FakeGovernance()
     evidence = FakeEvidence()
-    gate = SkillPromotionGate(governance, evidence, SkillRegistry())
+    gate = SkillPromotionGate(governance, evidence, SkillPromotionRegistry())
 
     with pytest.raises(SkillPromotionError, match="regresses"):
         gate.promote(item, regressed)
@@ -143,7 +156,7 @@ def test_promotion_fails_closed_without_policy_approval_evidence() -> None:
     item = candidate()
     governance = FakeGovernance(evidence_id="")
     evidence = FakeEvidence()
-    gate = SkillPromotionGate(governance, evidence, SkillRegistry())
+    gate = SkillPromotionGate(governance, evidence, SkillPromotionRegistry())
 
     with pytest.raises(SkillPromotionError, match="policy/approval evidence"):
         gate.promote(item, passing_evaluation(item))
@@ -155,7 +168,7 @@ def test_promotion_fails_closed_without_promotion_evidence_record() -> None:
     item = candidate()
     governance = FakeGovernance()
     evidence = FakeEvidence(evidence_id="")
-    gate = SkillPromotionGate(governance, evidence, SkillRegistry())
+    gate = SkillPromotionGate(governance, evidence, SkillPromotionRegistry())
 
     with pytest.raises(SkillPromotionError, match="promotion evidence"):
         gate.promote(item, passing_evaluation(item))
@@ -167,12 +180,13 @@ def test_successful_promotion_records_governance_and_evidence_before_registry() 
     item = candidate()
     governance = FakeGovernance()
     evidence = FakeEvidence()
-    registry = SkillRegistry()
+    registry = SkillPromotionRegistry()
     gate = SkillPromotionGate(governance, evidence, registry)
 
     promoted = gate.promote(item, passing_evaluation(item))
 
     assert isinstance(promoted, PromotedSkill)
+    assert promoted.promotion_state is SkillPromotionState.PROMOTED
     assert promoted.governance_evidence_id == "gov-evidence-1"
     assert promoted.promotion_evidence_id == "promotion-evidence-1"
     assert registry.get(item.skill_id, item.version) == promoted
@@ -180,7 +194,7 @@ def test_successful_promotion_records_governance_and_evidence_before_registry() 
 
 def test_promoted_skill_version_is_immutable() -> None:
     original = candidate()
-    registry = SkillRegistry()
+    registry = SkillPromotionRegistry()
     gate = SkillPromotionGate(FakeGovernance(), FakeEvidence(), registry)
     gate.promote(original, passing_evaluation(original))
 
