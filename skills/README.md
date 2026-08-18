@@ -45,3 +45,10 @@ This preserves portability and reduces vendor lock-in without making ILAIOS depe
 
 - `ilaios-diagram-design` — deterministic architecture/flow/sequence/state/data/dependency/trust/capability diagrams with SVG/HTML output and evidence hashes.
 - `ilaios-system-design` — deterministic capacity, scalability, bottleneck, failure, architecture-review and renderer-neutral system-design analysis.
+- `ilaios-video-director` — provider-neutral creative-direction planning for Video Factory.
+- `ilaios-video-prompt` — provider-neutral video prompt composition from admitted direction, continuity, and reference-role contracts.
+- `ilaios-video-reference-assets` — semantic reference-role planning over already-admitted assets; it does not ingest or dispatch media bytes.
+- `ilaios-video-model-routing` — deterministic model-capability advice only; canonical M05 provider selection remains authoritative.
+- `ilaios-video-continuity` — explicit identity/object/screen-direction/end-state continuity planning.
+
+See `VIDEO_PROMPTING_PROVENANCE.md` for the independently authored provenance and external research boundary of the five Video Factory prompting skills.

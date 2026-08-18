@@ -1,0 +1,32 @@
+{
+  "skill_id": "ilaios.skill.video.routing.model",
+  "name": "ilaios-video-model-routing",
+  "version": "0.1.0",
+  "maturity": "IMPLEMENTED",
+  "owner": "ILAIOS",
+  "runtime": {
+    "python_module": "services.integrations.video_prompting_skills",
+    "domain_module": "src.video_automation.video_prompting_skills",
+    "adapter_kind": "ilaios-video-prompting-v1",
+    "capability": "ilaios.capability.video-media-factory",
+    "operation": "model-capability-advice",
+    "network_required": false,
+    "shell_required": false,
+    "external_runtime_dependencies": []
+  },
+  "permissions": {
+    "read": ["caller-admitted-model-capability-profiles"],
+    "write": [],
+    "network": false,
+    "shell": false,
+    "secrets": false
+  },
+  "inputs": ["application/json"],
+  "outputs": ["application/json"],
+  "authority_boundary": {
+    "provider_selection": "M05 ProviderSelectionEngine remains authoritative",
+    "policy_approval": "existing ILAIOS governance remains authoritative",
+    "side_effects": "none"
+  },
+  "promotion_note": "TESTED/VERIFIED/DEPLOYED/PRODUCTION require exact repository CI/runtime/deployment evidence."
+}

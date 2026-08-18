@@ -3,18 +3,18 @@ from dataclasses import replace
 import pytest
 
 from services.integrations.video_skill_governance import (
+    ALL_VIDEO_SKILLS,
     REQUIRED_VIDEO_SKILL_FAMILIES,
     approve_video_skills,
     runtime_artifact_for_video_skill,
     validate_video_skill,
 )
 from services.runtime.routing import AgentProfile, RuntimeError, SkillRegistry
-from src.video_automation.video_skills import VIDEO_SKILLS
 
 
 def _video_agent() -> AgentProfile:
     authorities = frozenset(
-        permission for skill in VIDEO_SKILLS for permission in skill.permissions
+        permission for skill in ALL_VIDEO_SKILLS for permission in skill.permissions
     )
     return AgentProfile("video-worker", authorities)
 
@@ -30,9 +30,9 @@ def test_all_video_skill_families_share_one_canonical_registry() -> None:
     }
     assert REQUIRED_VIDEO_SKILL_FAMILIES <= families
     assert {artifact.skill_id for artifact in artifacts} == {
-        skill.skill_id for skill in VIDEO_SKILLS
+        skill.skill_id for skill in ALL_VIDEO_SKILLS
     }
-    for manifest in VIDEO_SKILLS:
+    for manifest in ALL_VIDEO_SKILLS:
         artifact = validate_video_skill(registry, agent, manifest)
         assert artifact.digest == manifest.digest
         assert artifact.owner == "ILAIOS"
@@ -40,12 +40,32 @@ def test_all_video_skill_families_share_one_canonical_registry() -> None:
         assert artifact.source_provenance == "ILAIOS-native"
 
 
+def test_video_prompting_families_are_governed_and_read_only() -> None:
+    prompting_ids = {
+        "ilaios.skill.video.director.plan",
+        "ilaios.skill.video.prompt.compose",
+        "ilaios.skill.video.reference-assets.plan",
+        "ilaios.skill.video.routing.model",
+        "ilaios.skill.video.continuity.plan",
+    }
+    manifests = {
+        skill.skill_id: skill
+        for skill in ALL_VIDEO_SKILLS
+        if skill.skill_id in prompting_ids
+    }
+    assert set(manifests) == prompting_ids
+    assert all(manifest.risk.value == "read_only" for manifest in manifests.values())
+    assert all(
+        manifest.permissions == ("manifest.read",) for manifest in manifests.values()
+    )
+
+
 def test_video_runtime_gate_rejects_digest_authority_and_supply_chain_tampering(
 ) -> None:
     registry = SkillRegistry()
     approve_video_skills(registry)
     agent = _video_agent()
-    manifest = VIDEO_SKILLS[0]
+    manifest = ALL_VIDEO_SKILLS[0]
     artifact = runtime_artifact_for_video_skill(manifest)
 
     with pytest.raises(RuntimeError, match="digest"):
@@ -71,7 +91,7 @@ def test_video_runtime_gate_rejects_digest_authority_and_supply_chain_tampering(
 
 def test_supply_chain_approval_is_complete_or_rejected() -> None:
     registry = SkillRegistry()
-    artifact = runtime_artifact_for_video_skill(VIDEO_SKILLS[0])
+    artifact = runtime_artifact_for_video_skill(ALL_VIDEO_SKILLS[0])
 
     with pytest.raises(RuntimeError, match="metadata must be complete"):
         registry.approve(
@@ -84,7 +104,7 @@ def test_supply_chain_approval_is_complete_or_rejected() -> None:
 
 def test_video_namespace_cannot_bypass_proprietary_supply_chain_identity() -> None:
     registry = SkillRegistry()
-    artifact = runtime_artifact_for_video_skill(VIDEO_SKILLS[0])
+    artifact = runtime_artifact_for_video_skill(ALL_VIDEO_SKILLS[0])
 
     with pytest.raises(RuntimeError, match="proprietary supply-chain identity"):
         registry.approve(
