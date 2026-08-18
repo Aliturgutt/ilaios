@@ -1,11 +1,11 @@
-"""Persisted governed agent/skill/provider runtime with real local adapters."""
+"""Persisted governed agent/skill/provider runtime with real local and injected adapters."""
 
 from __future__ import annotations
 
 import hashlib
 import json
 import sqlite3
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, ClassVar
@@ -27,13 +27,19 @@ from services.runtime.system_design_adapter import (
     execute_system_design_payload,
 )
 
+RuntimeAdapter = Callable[[dict[str, Any]], dict[str, Any]]
+_RESERVED_EXTERNAL_SKILL_KEY = "_ilaios_skill"
+
 
 class GovernedRuntime:
-    """Execute approved immutable skills through persisted provider manifests."""
+    """Execute approved immutable skills through the single canonical runtime.
 
-    _ADAPTERS: ClassVar[
-        dict[str, Callable[[dict[str, Any]], dict[str, Any]]]
-    ] = {
+    External provider adapters are dependency-injected into this runtime. They
+    cannot replace canonical local adapters. Persisted agent, skill and provider
+    records remain authoritative and drift fails closed.
+    """
+
+    _ADAPTERS: ClassVar[dict[str, RuntimeAdapter]] = {
         "canonical-json-sha256": lambda payload: {
             "sha256": hashlib.sha256(
                 json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
@@ -46,8 +52,21 @@ class GovernedRuntime:
         SYSTEM_DESIGN_ADAPTER_KIND: execute_system_design_payload,
     }
 
-    def __init__(self, database_path: Path) -> None:
+    def __init__(
+        self,
+        database_path: Path,
+        *,
+        external_adapters: Mapping[str, RuntimeAdapter] | None = None,
+    ) -> None:
         self._database_path = database_path
+        self._adapters = dict(self._ADAPTERS)
+        for adapter_kind, adapter in (external_adapters or {}).items():
+            _require_id(adapter_kind, "external adapter kind")
+            if adapter_kind in self._adapters:
+                raise RuntimeError("external adapter cannot replace canonical local adapter")
+            if not callable(adapter):
+                raise RuntimeError("external adapter must be callable")
+            self._adapters[adapter_kind] = adapter
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self._database_path)
@@ -89,7 +108,7 @@ class GovernedRuntime:
             return False
 
     def agents(self) -> tuple[dict[str, Any], ...]:
-        """Return the persisted runtime agent projection without granting authority."""
+        """Return persisted runtime identities without granting authority."""
         with self._connect() as connection:
             rows = connection.execute(
                 "SELECT agent_id, authorities_json FROM runtime_agents ORDER BY agent_id"
@@ -102,12 +121,7 @@ class GovernedRuntime:
             authorities = _decode_string_set(
                 row["authorities_json"], field="persisted agent authorities"
             )
-            output.append(
-                {
-                    "agent_id": agent_id,
-                    "authorities": sorted(authorities),
-                }
-            )
+            output.append({"agent_id": agent_id, "authorities": sorted(authorities)})
         return tuple(output)
 
     def register_skill(
@@ -125,6 +139,36 @@ class GovernedRuntime:
             )
         return digest
 
+    def ensure_skill(
+        self, skill_id: str, content: bytes, authorities: frozenset[str]
+    ) -> str:
+        """Provision immutable skill content idempotently and reject drift."""
+        _require_id(skill_id, "skill_id")
+        if not content:
+            raise RuntimeError("skill content must not be empty")
+        _require_values(authorities, "authorities")
+        digest = hashlib.sha256(content).hexdigest()
+        encoded = json.dumps(sorted(authorities))
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT digest, authorities_json, content FROM runtime_skills WHERE skill_id = ?",
+                (skill_id,),
+            ).fetchone()
+            if row is None:
+                connection.execute(
+                    "INSERT INTO runtime_skills VALUES (?, ?, ?, ?)",
+                    (skill_id, digest, encoded, content),
+                )
+                return digest
+        if (
+            str(row["digest"]) != digest
+            or _decode_string_set(row["authorities_json"], field="skill authorities")
+            != authorities
+            or bytes(row["content"]) != content
+        ):
+            raise RuntimeError("persisted skill drifted from immutable canonical content")
+        return digest
+
     def register_provider(
         self,
         provider_id: str,
@@ -132,21 +176,75 @@ class GovernedRuntime:
         *,
         adapter_kind: str,
         enabled: bool = True,
+        deterministic: bool | None = None,
     ) -> None:
         _require_id(provider_id, "provider_id")
         _require_values(capabilities, "capabilities")
-        if adapter_kind not in self._ADAPTERS:
-            raise RuntimeError("unknown local adapter kind")
+        if adapter_kind not in self._adapters:
+            raise RuntimeError("unknown runtime adapter kind")
+        if deterministic is None:
+            deterministic = adapter_kind in self._ADAPTERS
         with self._connect() as connection:
             connection.execute(
-                "INSERT INTO runtime_providers VALUES (?, ?, 1, ?, ?)",
+                "INSERT INTO runtime_providers VALUES (?, ?, ?, ?, ?)",
                 (
                     provider_id,
                     json.dumps(sorted(capabilities)),
+                    int(deterministic),
                     int(enabled),
                     adapter_kind,
                 ),
             )
+
+    def ensure_provider(
+        self,
+        provider_id: str,
+        capabilities: frozenset[str],
+        *,
+        adapter_kind: str,
+        enabled: bool = True,
+        deterministic: bool | None = None,
+    ) -> bool:
+        """Provision provider idempotently and fail closed on persisted drift."""
+        _require_id(provider_id, "provider_id")
+        _require_values(capabilities, "capabilities")
+        if adapter_kind not in self._adapters:
+            raise RuntimeError("unknown runtime adapter kind")
+        if deterministic is None:
+            deterministic = adapter_kind in self._ADAPTERS
+        expected = (
+            json.dumps(sorted(capabilities)),
+            int(deterministic),
+            int(enabled),
+            adapter_kind,
+        )
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT capabilities_json, deterministic, enabled, adapter_kind "
+                "FROM runtime_providers WHERE provider_id = ?",
+                (provider_id,),
+            ).fetchone()
+            if row is None:
+                connection.execute(
+                    "INSERT INTO runtime_providers VALUES (?, ?, ?, ?, ?)",
+                    (provider_id, *expected),
+                )
+                return True
+        actual = (
+            json.dumps(
+                sorted(
+                    _decode_string_set(
+                        row["capabilities_json"], field="provider capabilities"
+                    )
+                )
+            ),
+            int(row["deterministic"]),
+            int(row["enabled"]),
+            str(row["adapter_kind"]),
+        )
+        if actual != expected:
+            raise RuntimeError("persisted provider configuration drifted from canonical setup")
+        return False
 
     def execute(
         self,
@@ -154,8 +252,12 @@ class GovernedRuntime:
         skill_id: str,
         capability: str,
         payload: dict[str, Any],
+        *,
+        preferred_provider_id: str | None = None,
     ) -> dict[str, Any]:
-        """Validate, route, execute, and persist one governed adapter call."""
+        """Validate, route, execute and persist one governed adapter call."""
+        if _RESERVED_EXTERNAL_SKILL_KEY in payload:
+            raise RuntimeError("caller cannot supply reserved runtime skill metadata")
         with self._connect() as connection:
             agent_row = connection.execute(
                 "SELECT * FROM runtime_agents WHERE agent_id = ?", (agent_id,)
@@ -170,22 +272,21 @@ class GovernedRuntime:
             raise RuntimeError("agent is not registered")
         if skill_row is None:
             raise RuntimeError("skill is not approved")
+
         agent = AgentProfile(
-            agent_row["agent_id"],
-            _decode_string_set(
-                agent_row["authorities_json"], field="agent authorities"
-            ),
+            str(agent_row["agent_id"]),
+            _decode_string_set(agent_row["authorities_json"], field="agent authorities"),
         )
         content = bytes(skill_row["content"])
         authorities = _decode_string_set(
             skill_row["authorities_json"], field="skill authorities"
         )
-        artifact = SkillArtifact(skill_row["skill_id"], content, authorities)
+        artifact = SkillArtifact(str(skill_row["skill_id"]), content, authorities)
         registry = SkillRegistry()
-        registry.approve(skill_row["skill_id"], skill_row["digest"], authorities)
+        registry.approve(str(skill_row["skill_id"]), str(skill_row["digest"]), authorities)
         providers = tuple(
             ProviderProfile(
-                row["provider_id"],
+                str(row["provider_id"]),
                 _decode_string_set(
                     row["capabilities_json"], field="provider capabilities"
                 ),
@@ -194,19 +295,54 @@ class GovernedRuntime:
             )
             for row in provider_rows
         )
+
+        routed = providers
+        if preferred_provider_id is not None:
+            _require_id(preferred_provider_id, "preferred_provider_id")
+            routed = tuple(
+                provider
+                for provider in providers
+                if provider.provider_id == preferred_provider_id
+            )
+            if not routed:
+                raise RuntimeError("preferred provider is not registered")
         decision = route_provider(
-            agent, artifact, registry, providers, capability=capability
+            agent, artifact, registry, routed, capability=capability
         )
         selected = next(
             row for row in provider_rows if row["provider_id"] == decision.provider_id
         )
-        output = self._ADAPTERS[selected["adapter_kind"]](payload)
+        adapter_kind = str(selected["adapter_kind"])
+        adapter = self._adapters.get(adapter_kind)
+        if adapter is None:
+            raise RuntimeError("persisted provider adapter is unavailable")
+
+        adapter_payload = payload
+        if adapter_kind not in self._ADAPTERS:
+            try:
+                instructions = content.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise RuntimeError("injected provider skill content must be UTF-8 text") from exc
+            if not instructions.strip():
+                raise RuntimeError("injected provider skill instructions must not be blank")
+            adapter_payload = {
+                **payload,
+                _RESERVED_EXTERNAL_SKILL_KEY: {
+                    "skill_id": skill_id,
+                    "sha256": str(skill_row["digest"]),
+                    "instructions": instructions,
+                },
+            }
+
+        output = adapter(adapter_payload)
+        if not isinstance(output, dict):
+            raise RuntimeError("runtime adapter output must be an object")
         canonical_input = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         with self._connect() as connection:
             cursor = connection.execute(
                 "INSERT INTO runtime_routes "
-                "(agent_id, skill_id, provider_id, capability, input_sha256, "
-                "output_json, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                "(agent_id, skill_id, provider_id, capability, input_sha256, output_json, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (
                     agent_id,
                     skill_id,
