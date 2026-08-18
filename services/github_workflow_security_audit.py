@@ -20,6 +20,7 @@ _MANUAL_ONLY = frozenset(
         "aws-r02-limited-apply.yml",
         "aws-r03-production-apply.yml",
         "desktop-msix-signed-release.yml",
+        "openrouter-production-telemetry-certification.yml",
         "video-provider-production-certification.yml",
     }
 )
@@ -27,6 +28,7 @@ _SECRET_ALLOWED = frozenset(
     {
         "agent-p0-live-certification.yml",
         "desktop-msix-signed-release.yml",
+        "openrouter-production-telemetry-certification.yml",
         "video-provider-production-certification.yml",
     }
 )
