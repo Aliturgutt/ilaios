@@ -38,6 +38,16 @@ class SemanticReviewer(Protocol):
     ) -> PerceptualReviewSubmission: ...
 
 
+class MediaSignalProbe(Protocol):
+    def probe(
+        self,
+        path: Path,
+        *,
+        artifact_sha256: str,
+        byte_length: int,
+    ) -> MediaSignalQualityEvidence: ...
+
+
 class SignalGatedSemanticVideoReviewer:
     """Require deterministic signal PASS before independent semantic review."""
 
@@ -45,7 +55,7 @@ class SignalGatedSemanticVideoReviewer:
         self,
         delegate: SemanticReviewer,
         *,
-        probe: FfmpegMediaSignalQualityProbe | None = None,
+        probe: MediaSignalProbe | None = None,
     ) -> None:
         self._delegate = delegate
         self._probe = probe or FfmpegMediaSignalQualityProbe()
@@ -95,6 +105,7 @@ class SignalGatedSemanticVideoReviewer:
 
 
 __all__ = [
+    "MediaSignalProbe",
     "SignalGatedSemanticVideoReviewer",
     "VideoSignalGateError",
 ]
