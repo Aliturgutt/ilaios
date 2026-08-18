@@ -22,6 +22,7 @@ _MANUAL_ONLY = frozenset(
         "desktop-msix-signed-release.yml",
         "openrouter-production-telemetry-certification.yml",
         "video-provider-production-certification.yml",
+        "website-production-certification.yml",
     }
 )
 _SECRET_ALLOWED = frozenset(
@@ -31,6 +32,7 @@ _SECRET_ALLOWED = frozenset(
         "openrouter-production-telemetry-certification.yml",
         "video-provider-production-certification.yml",
         "video-reference-production-certification.yml",
+        "website-production-certification.yml",
     }
 )
 _TRUSTED_MASTER_SECRET = frozenset(
