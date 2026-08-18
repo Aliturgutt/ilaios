@@ -28,7 +28,7 @@ const _snapshot = OperationalSnapshot(
 );
 
 void main() {
-  test('cost export writes only authoritative telemetry', () async {
+  test('cost export writes only allowlisted authoritative telemetry', () async {
     final root = await Directory.systemTemp.createTemp('ilaios-cost-export-test-');
     addTearDown(() async {
       if (await root.exists()) await root.delete(recursive: true);
@@ -46,12 +46,114 @@ void main() {
     expect(decoded['schema_version'], 1);
     expect(decoded['source'], 'authoritative-operational-snapshot');
     expect(decoded['exported_at'], '2026-08-18T09:30:00.000Z');
-    expect(decoded['costs'], _snapshot.governanceState['costs']);
+
+    final projections = decoded['projections'] as List<dynamic>;
+    expect(projections, hasLength(1));
+    final projection = projections.single as Map<String, dynamic>;
+    expect(projection['source'], 'governance.costs');
+    expect(
+      projection['values'],
+      _snapshot.governanceState['costs'],
+    );
+    expect(decoded.containsKey('governanceState'), isFalse);
+    expect(decoded.containsKey('schedulerState'), isFalse);
     expect(decoded.containsKey('token'), isFalse);
     expect(decoded.containsKey('secret'), isFalse);
   });
 
+  test('top-level authoritative cost fields are exportable', () async {
+    const snapshot = OperationalSnapshot(
+      runtimeRoutes: <Map<String, Object?>>[],
+      schedulerState: <String, Object?>{},
+      grantsState: <String, Object?>{},
+      governanceState: <String, Object?>{
+        'total_cost_usd': 12.75,
+        'budget_usd': 50.0,
+        'work': <Object?>[
+          <String, Object?>{'request_id': 'must-not-export'},
+        ],
+      },
+      evidenceRecords: <Never>[],
+      liveEvents: <Map<String, Object?>>[],
+    );
+
+    expect(CostExportService.canExport(snapshot), isTrue);
+
+    final root = await Directory.systemTemp.createTemp('ilaios-cost-top-level-');
+    addTearDown(() async {
+      if (await root.exists()) await root.delete(recursive: true);
+    });
+    final path = await CostExportService.export(snapshot, rootDirectory: root);
+    final decoded = jsonDecode(await File(path).readAsString()) as Map<String, dynamic>;
+    final projection = (decoded['projections'] as List<dynamic>).single
+        as Map<String, dynamic>;
+    final values = projection['values'] as Map<String, dynamic>;
+    expect(projection['source'], 'governance');
+    expect(values['total_cost_usd'], 12.75);
+    expect(values['budget_usd'], 50.0);
+    expect(values.containsKey('work'), isFalse);
+    expect(jsonEncode(decoded).contains('must-not-export'), isFalse);
+  });
+
+  test('scheduler nested FinOps telemetry follows the same export contract', () async {
+    const snapshot = OperationalSnapshot(
+      runtimeRoutes: <Map<String, Object?>>[],
+      schedulerState: <String, Object?>{
+        'finops': <String, Object?>{
+          'daily_costs': <Object?>[
+            <String, Object?>{'date': '2026-08-18', 'cost_usd': 1.25},
+          ],
+        },
+      },
+      grantsState: <String, Object?>{},
+      governanceState: <String, Object?>{},
+      evidenceRecords: <Never>[],
+      liveEvents: <Map<String, Object?>>[],
+    );
+
+    expect(CostExportService.canExport(snapshot), isTrue);
+    final root = await Directory.systemTemp.createTemp('ilaios-cost-scheduler-');
+    addTearDown(() async {
+      if (await root.exists()) await root.delete(recursive: true);
+    });
+    final path = await CostExportService.export(snapshot, rootDirectory: root);
+    final decoded = jsonDecode(await File(path).readAsString()) as Map<String, dynamic>;
+    final projection = (decoded['projections'] as List<dynamic>).single
+        as Map<String, dynamic>;
+    expect(projection['source'], 'scheduler.finops');
+  });
+
+  test('cost export fails closed when allowlisted telemetry contains a secret', () async {
+    const snapshot = OperationalSnapshot(
+      runtimeRoutes: <Map<String, Object?>>[],
+      schedulerState: <String, Object?>{},
+      grantsState: <String, Object?>{},
+      governanceState: <String, Object?>{
+        'costs': <String, Object?>{
+          'reports': <Object?>[
+            <String, Object?>{
+              'title': 'private report',
+              'token': 'must-not-leave-the-process',
+            },
+          ],
+        },
+      },
+      evidenceRecords: <Never>[],
+      liveEvents: <Map<String, Object?>>[],
+    );
+
+    expect(CostExportService.canExport(snapshot), isFalse);
+    await expectLater(
+      CostExportService.export(
+        snapshot,
+        rootDirectory: Directory.systemTemp,
+      ),
+      throwsA(isA<CostExportException>()),
+    );
+  });
+
   test('cost export fails closed without authoritative telemetry', () async {
+    expect(CostExportService.canExport(const OperationalSnapshot.unavailable()), isFalse);
     await expectLater(
       CostExportService.export(
         const OperationalSnapshot.unavailable(),
