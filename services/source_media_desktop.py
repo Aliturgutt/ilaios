@@ -14,7 +14,6 @@ import hashlib
 import hmac
 import json
 import secrets
-import threading
 from datetime import datetime, timezone
 from http import HTTPStatus
 from typing import Any
@@ -28,7 +27,7 @@ from services.desktop_identity_server import (
     _require_reference_store,
     _required_string,
 )
-from services.desktop_oidc import DesktopIdentityError
+from services.desktop_oidc import DesktopIdentityError, DesktopOIDCService
 from services.execution_coordinator import ExecutionCoordinator, ExecutionCoordinatorError
 from services.reference_assets import ReferenceAssetStore
 from services.source_media import (
@@ -49,7 +48,7 @@ class SourceMediaDesktopIdentityHTTPServer(DesktopIdentityHTTPServer):
         server_address: tuple[str, int],
         *,
         bearer_token: str,
-        identity: object,
+        identity: DesktopOIDCService | None,
         coordinator: ExecutionCoordinator,
         reference_assets: ReferenceAssetStore | None = None,
         source_media: SourceMediaStore,
@@ -57,7 +56,7 @@ class SourceMediaDesktopIdentityHTTPServer(DesktopIdentityHTTPServer):
         super().__init__(
             server_address,
             bearer_token=bearer_token,
-            identity=identity,  # type: ignore[arg-type]
+            identity=identity,
             coordinator=coordinator,
             reference_assets=reference_assets,
         )
@@ -165,25 +164,19 @@ class SourceMediaDesktopIdentityRequestHandler(DesktopIdentityRequestHandler):
             tenant_id=session.tenant_id,
             now=datetime.now(timezone.utc),
         )
-        try:
-            self.server.source_media.bind_request(
+        self.server.source_media.bind_request(
+            request_id,
+            source_record.asset_id,
+            principal_id=session.principal_id,
+            tenant_id=session.tenant_id,
+        )
+        if reference_store is not None:
+            reference_store.bind_request(
                 request_id,
-                source_record.asset_id,
+                asset_ids,
                 principal_id=session.principal_id,
                 tenant_id=session.tenant_id,
             )
-            if reference_store is not None:
-                reference_store.bind_request(
-                    request_id,
-                    asset_ids,
-                    principal_id=session.principal_id,
-                    tenant_id=session.tenant_id,
-                )
-        except Exception:
-            # The coordinator remains authoritative for the prepared record. Do
-            # not start execution when input binding failed; recovery/status will
-            # expose the non-running prepared state instead of dropping inputs.
-            raise
 
         if execution.get("execution_status") == "ADMITTED":
             self._start_execution(request_id)
