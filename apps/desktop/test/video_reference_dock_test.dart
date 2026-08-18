@@ -63,7 +63,7 @@ void main() {
     expect(find.byKey(const Key('video-reference-assets')), findsOneWidget);
     expect(find.byKey(const Key('video-reference-add')), findsOneWidget);
     expect(find.textContaining('20'), findsWidgets);
-    expect(find.textContaining('not published as public URLs'), findsOneWidget);
+    expect(find.textContaining('never published as public URLs'), findsOneWidget);
     expect(find.textContaining('free vision provider'), findsOneWidget);
   });
 
