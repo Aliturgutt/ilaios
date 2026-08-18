@@ -137,7 +137,7 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
           child: ListView.separated(
             shrinkWrap: true,
             itemCount: candidates.length,
-            separatorBuilder: (_, __) => const Divider(height: 1),
+            separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (_, index) {
               final candidate = candidates[index];
               return ListTile(
@@ -1006,12 +1006,20 @@ List<_AgentRecord> _agentRecords(OperationalSnapshot snapshot) {
     merged[id] = <String, Object?>{...?merged[id], ...item};
   }
 
-  for (final item in _maps(snapshot.agentState['agents'])) merge(item);
-  for (final key in const ['agents', 'workers', 'executors', 'leases']) {
-    for (final item in _maps(snapshot.schedulerState[key])) merge(item);
+  for (final item in _maps(snapshot.agentState['agents'])) {
+    merge(item);
   }
-  for (final item in snapshot.runtimeRoutes) merge(item);
-  for (final item in snapshot.liveEvents) merge(item);
+  for (final key in const ['agents', 'workers', 'executors', 'leases']) {
+    for (final item in _maps(snapshot.schedulerState[key])) {
+      merge(item);
+    }
+  }
+  for (final item in snapshot.runtimeRoutes) {
+    merge(item);
+  }
+  for (final item in snapshot.liveEvents) {
+    merge(item);
+  }
 
   return merged.entries.map((entry) {
     final item = entry.value;
