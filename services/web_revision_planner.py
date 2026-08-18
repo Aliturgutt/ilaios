@@ -262,7 +262,7 @@ def _parse_operations(
             raise WebRevisionPlanningError("Web revision proposal operation fields are invalid")
         content_value = item.get("content")
         if operation == "delete":
-            if content_value not in {None, ""}:
+            if content_value is not None and content_value != "":
                 raise WebRevisionPlanningError("delete proposal must not include content")
             document = current.get(relative_path)
             if document is None:
