@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from services.agent_readiness_store import AgentReadinessStore
 from services.control_plane.api import ControlPlane, ControlPlaneConfig
 from services.control_plane.live_state import LiveStateTransport
 from services.control_plane.migrations import current_schema_version
@@ -34,6 +35,10 @@ from services.integrations.provider_video_runtime import (
     UnavailableProviderVideoRuntime,
 )
 from services.integrations.video_runtime import VideoRuntimeError
+from services.openrouter_agent_catalog import (
+    OpenRouterAgentCatalogError,
+    discover_free_openrouter_agent_configuration,
+)
 from services.p0_ai_provider_config import (
     P0AIProviderConfigError,
     load_p0_ai_provider_configuration,
@@ -69,11 +74,25 @@ def main(argv: Sequence[str] | None = None) -> int:
     control_plane = ControlPlane(ControlPlaneConfig(database, token))
     workflow_store = WorkflowStore(WorkflowStoreConfig(database))
     live_state = LiveStateTransport(database)
+    openrouter_api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
 
     try:
         ai_configuration = load_p0_ai_provider_configuration()
     except P0AIProviderConfigError as error:
         raise SystemExit(f"Agent AI provider configuration rejected: {error}") from error
+    ai_configuration_source = "explicit" if ai_configuration is not None else "disabled"
+    if ai_configuration is None and openrouter_api_key:
+        try:
+            ai_configuration = discover_free_openrouter_agent_configuration(
+                api_key=openrouter_api_key
+            )
+            if ai_configuration is not None:
+                ai_configuration_source = "openrouter-live-free-only"
+        except OpenRouterAgentCatalogError:
+            # Provider/network/catalog availability must not prevent Desktop from
+            # starting. P0 AI remains unconfigured and readiness cannot promote.
+            ai_configuration = None
+            ai_configuration_source = "openrouter-catalog-unavailable"
 
     security_agent_adapters = SecurityAgentRuntimeAdapters()
     runtime_adapters = dict(security_agent_adapters.runtime_adapters())
@@ -106,6 +125,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             else None
         ),
     )
+    readiness_store = AgentReadinessStore(root / "agent-readiness.sqlite3")
+    readiness_store.verify()
 
     evidence_store = EvidenceStore(root / "evidence")
     governance = GovernedRuntimeGateway(
@@ -121,7 +142,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         goal = control_plane.get_goal(token, job.goal_id)
         return goal.objective
 
-    provider_api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     video_model_id = os.environ.get(
         "ILAIOS_VIDEO_MODEL_ID",
         SEEDANCE_FREE_MODEL_ID,
@@ -132,7 +152,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     ).strip()
     video_finished_product_configured = False
     video_provider = "unavailable"
-    if provider_api_key:
+    if openrouter_api_key:
         try:
             video_runtime = ProviderBackedDesktopVideoRuntime(
                 root / "video",
@@ -140,7 +160,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 governance,
                 evidence_store,
                 objective_resolver=resolve_objective,
-                api_key=provider_api_key,
+                api_key=openrouter_api_key,
                 model_id=video_model_id,
                 qa_model_id=video_qa_model_id,
             )
@@ -256,7 +276,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "p0_security_runtime_configured": p0_agents.security_provider_count == 5,
         "p0_ai_runtime_configured": p0_agents.ai_configured,
         "p0_ai_provider_count": p0_agents.ai_provider_count,
-        "openrouter_secret_present": bool(provider_api_key),
+        "p0_ai_configuration_source": ai_configuration_source,
+        "agent_readiness_store_configured": True,
+        "openrouter_secret_present": bool(openrouter_api_key),
         "video_finished_product_configured": video_finished_product_configured,
         "video_provider": video_provider,
         "web_finished_product_configured": True,
@@ -311,7 +333,12 @@ def _software_factory_skills_path() -> Path:
         base = Path(getattr(sys, "_MEIPASS"))
         path = base / "tools" / "software-factory" / "skills"
     else:
-        path = Path(__file__).resolve().parents[3] / "tools" / "software-factory" / "skills"
+        path = (
+            Path(__file__).resolve().parents[3]
+            / "tools"
+            / "software-factory"
+            / "skills"
+        )
     if not path.is_dir():
         raise RuntimeError("canonical Software Factory skill registry is missing")
     return path
@@ -347,7 +374,9 @@ def _ensure_packaged_identity_configuration() -> None:
         if not isinstance(provider, dict):
             raise RuntimeError("packaged Desktop identity provider is invalid")
         if "client_secret" in provider:
-            raise RuntimeError("packaged Desktop identity metadata must not contain client secrets")
+            raise RuntimeError(
+                "packaged Desktop identity metadata must not contain client secrets"
+            )
         client_id = provider.get("client_id")
         if not isinstance(client_id, str) or not client_id.strip():
             raise RuntimeError("packaged Desktop identity client id is missing")
