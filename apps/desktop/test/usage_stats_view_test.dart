@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/app/ilaios_theme.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
 import 'package:ilaios_desktop/features/operations/support_views.dart';
@@ -130,12 +131,16 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
-      MaterialApp(
-        theme: IlaiosTheme.dark,
-        home: const Scaffold(
-          body: CostsView(
-            snapshot: snapshot,
-            status: 'Operational APIs connected',
+      IlaiosLocaleScope(
+        locale: IlaiosLocale.english,
+        onChanged: (_) {},
+        child: MaterialApp(
+          theme: IlaiosTheme.dark,
+          home: const Scaffold(
+            body: CostsView(
+              snapshot: snapshot,
+              status: 'Operational APIs connected',
+            ),
           ),
         ),
       ),
