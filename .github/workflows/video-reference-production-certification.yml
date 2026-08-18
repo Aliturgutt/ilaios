@@ -20,7 +20,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[video-reference-live-cert]') }}
     runs-on: ubuntu-latest
     environment: Production
-    timeout-minutes: 25
+    timeout-minutes: 30
     env:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       ILAIOS_VIDEO_MODEL_ID: bytedance/seedance-2.0-fast:free
@@ -39,8 +39,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends ffmpeg
+          if [[ -f /etc/apt/apt-mirrors.txt ]]; then
+            printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' \
+              | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          fi
+          sudo timeout 180s apt-get \
+            -o Acquire::Retries=3 \
+            -o Acquire::http::Timeout=15 \
+            -o Acquire::https::Timeout=15 \
+            update
+          sudo timeout 600s env DEBIAN_FRONTEND=noninteractive apt-get \
+            -o Acquire::Retries=3 \
+            -o Acquire::http::Timeout=15 \
+            -o Acquire::https::Timeout=15 \
+            install -y --no-install-recommends ffmpeg
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
 
       - name: Verify live proof safety boundary
         shell: bash
@@ -79,6 +93,7 @@ jobs:
           print(f"- Revision: `{receipt.get('revision_sha')}`")
           print(f"- Execution: `{receipt.get('execution_status')}`")
           print(f"- Provider model: `{receipt.get('provider_model')}`")
+          print(f"- Provider generation IDs: `{receipt.get('provider_generation_ids')}`")
           print(f"- QA model: `{receipt.get('qa_model')}`")
           print(f"- Reference count: `{receipt.get('reference_asset_count')}`")
           print(f"- Reference SHA-256: `{receipt.get('reference_asset_sha256')}`")
@@ -152,6 +167,7 @@ jobs:
                   receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
                   semantic_score = receipt.get('semantic_score')
                   semantic_threshold = receipt.get('semantic_threshold')
+                  generation_ids = receipt.get('provider_generation_ids')
                   accepted = (
                       receipt.get('status') == 'PASS'
                       and receipt.get('revision_sha') == os.environ['GITHUB_SHA']
@@ -160,6 +176,11 @@ jobs:
                       and receipt.get('provider_cost_usd') == 0.0
                       and isinstance(receipt.get('provider_generation_id'), str)
                       and bool(receipt.get('provider_generation_id'))
+                      and isinstance(generation_ids, list)
+                      and len(generation_ids) == 2
+                      and all(isinstance(value, str) and bool(value) for value in generation_ids)
+                      and len(set(generation_ids)) == 2
+                      and receipt.get('provider_generation_id') == generation_ids[0]
                       and receipt.get('reference_asset_count') == 1
                       and is_sha256(receipt.get('reference_asset_sha256'))
                       and receipt.get('reference_binding_retained') is True
@@ -173,7 +194,7 @@ jobs:
                       and isinstance(receipt.get('artifact_bytes'), int)
                       and receipt.get('artifact_bytes', 0) > 100_000
                       and isinstance(receipt.get('duration_seconds'), (int, float))
-                      and 3.0 <= float(receipt.get('duration_seconds')) <= 5.0
+                      and 7.0 <= float(receipt.get('duration_seconds')) <= 9.0
                       and receipt.get('width') == 1920
                       and receipt.get('height') == 1080
                       and receipt.get('video_codec') == 'h264'
@@ -181,7 +202,7 @@ jobs:
                       and isinstance(semantic_score, (int, float))
                       and isinstance(semantic_threshold, (int, float))
                       and float(semantic_score) >= float(semantic_threshold)
-                      and receipt.get('generated_shot_count') == 1
+                      and receipt.get('generated_shot_count') == 2
                   )
               except (OSError, ValueError, TypeError):
                   accepted = False
