@@ -13,7 +13,7 @@ import 'reference_desktop_shell_v10.dart';
 ///
 /// Normal Windows client areas, including DPI-compressed viewports such as
 /// 1382x733, render V10 at native 1:1 size so typography is not artificially
-/// reduced. Only truly compact windows use the bounded 1280x900 safety canvas
+/// reduced. Smaller desktop windows use the bounded 1280x900 safety canvas
 /// needed to preserve the complete approved composition without RenderFlex
 /// overflow. The child V10 shell therefore never sees compact constraints when
 /// this outer safety fit is active, avoiding double scaling.
@@ -78,7 +78,7 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
-          const compactWidthThreshold = 1180.0;
+          const compactWidthThreshold = 1320.0;
           const compactHeightThreshold = 720.0;
           const designWidthFloor = 1280.0;
           const designHeight = 900.0;
