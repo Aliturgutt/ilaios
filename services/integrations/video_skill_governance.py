@@ -17,7 +17,18 @@ from src.video_automation.video_skills import (
 )
 
 REQUIRED_VIDEO_SKILL_FAMILIES = frozenset(
-    {"edit", "direction", "qa", "repair", "thumbnail", "publish"}
+    {
+        "edit",
+        "direction",
+        "prompt",
+        "reference",
+        "routing",
+        "continuity",
+        "qa",
+        "repair",
+        "thumbnail",
+        "publish",
+    }
 )
 
 
