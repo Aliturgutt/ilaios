@@ -8,6 +8,8 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from services.agent_projection import agent_state_projection
+from services.agent_readiness_store import AgentReadinessStore
 from services.runtime.scheduler import Lease, SchedulingError, WorkerProfile
 
 
@@ -171,6 +173,7 @@ class DurableWorkerScheduler:
         return True
 
     def state(self) -> dict[str, Any]:
+        """Return scheduler authority plus read-only agent telemetry projection."""
         with self._connect() as connection:
             workers = [
                 dict(row)
@@ -190,7 +193,31 @@ class DurableWorkerScheduler:
                     "SELECT * FROM scheduler_effects ORDER BY task_id, fencing_token"
                 )
             ]
-        return {"workers": workers, "leases": leases, "effects": effects}
+            routes = [
+                {
+                    "sequence": row["sequence"],
+                    "agent_id": row["agent_id"],
+                    "skill_id": row["skill_id"],
+                    "provider_id": row["provider_id"],
+                    "capability": row["capability"],
+                    "input_sha256": row["input_sha256"],
+                    "output": json.loads(row["output_json"]),
+                    "created_at": row["created_at"],
+                }
+                for row in connection.execute(
+                    "SELECT * FROM runtime_routes ORDER BY sequence"
+                )
+            ]
+        readiness = AgentReadinessStore(self._database_path).projection()
+        agent_projection = agent_state_projection(routes, readiness)
+        # ``agents`` is a UI/control-plane projection only. Worker scheduling,
+        # leases, fencing and effect authority remain in their original tables.
+        return {
+            "workers": workers,
+            "leases": leases,
+            "effects": effects,
+            **agent_projection,
+        }
 
     @staticmethod
     def _authorize(
