@@ -19,6 +19,11 @@ from services.reference_assets import configure_reference_asset_store
 
 def main(argv: Sequence[str] | None = None) -> int:
     arguments = list(sys.argv[1:] if argv is None else argv)
+    # Preserve the canonical CLI help/import smoke contract. Help must not need a
+    # writable data root or initialize durable reference storage.
+    if "--help" in arguments or "-h" in arguments:
+        return _core.main(argv)
+
     root = _data_root(arguments)
     configure_reference_asset_store(
         root / "reference-assets.sqlite3",
