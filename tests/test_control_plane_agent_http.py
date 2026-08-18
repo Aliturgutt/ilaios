@@ -5,7 +5,7 @@ import os
 import subprocess
 import sys
 import time
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any, cast
@@ -71,7 +71,7 @@ def _request(
     path: str,
     *,
     token: str = "runtime-secret",
-    payload: dict[str, object] | None = None,
+    payload: Mapping[str, object] | None = None,
 ) -> tuple[int, dict[str, Any]]:
     body = None if payload is None else json.dumps(payload).encode("utf-8")
     request = Request(
