@@ -231,6 +231,9 @@ def _build_provider_request(
             "frames_per_second": item.frames_per_second,
             "output_count": item.output_count,
             "seed": item.seed,
+            "reference_images": [
+                reference.to_wire() for reference in item.reference_images
+            ],
         }
         for item in dispatch.items
     ]
@@ -273,6 +276,9 @@ def _submission_metadata(dispatch: GenerationBatchDispatch) -> Mapping[str, str]
         "batch_number": str(dispatch.batch_number),
         "model_id": dispatch.model_id,
         "operation": dispatch.operation,
+        "reference_count": str(
+            sum(len(item.reference_images) for item in dispatch.items)
+        ),
     }
 
 
