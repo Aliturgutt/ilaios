@@ -134,3 +134,28 @@ def test_skill_engineering_catalog_rejects_cross_layer_identity(
         match="logical_id must stay in skill-engineering",
     ):
         SkillEngineeringCatalog(copied_root)
+
+
+def test_skill_engineering_catalog_rejects_source_verified_claim(
+    tmp_path: Path,
+) -> None:
+    repository_root = Path(__file__).resolve().parents[1]
+    source = default_skill_engineering_root(repository_root) / "skill-create"
+    copied_root = tmp_path / "skills"
+    copied = copied_root / "skill-create"
+    shutil.copytree(source, copied)
+
+    manifest_path = copied / "manifest.yaml"
+    raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = cast(dict[str, object], raw)
+    manifest["maturity"] = "VERIFIED"
+    manifest_path.write_text(
+        json.dumps(manifest, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="source maturity cannot claim tested or verified",
+    ):
+        SkillEngineeringCatalog(copied_root)
