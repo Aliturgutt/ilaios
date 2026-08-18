@@ -44,11 +44,13 @@ if ([string]::IsNullOrWhiteSpace($OutputPath)) {
   $OutputPath = Join-Path $desktopRoot "build\msix\ILAIOS-Desktop-$Version-x64-store.msix"
 }
 
-& $buildScript \
-  -IdentityName $IdentityName \
-  -Publisher $Publisher \
-  -Version $Version \
-  -OutputPath $OutputPath
+$buildArgs = @{
+  IdentityName = $IdentityName
+  Publisher = $Publisher
+  Version = $Version
+  OutputPath = $OutputPath
+}
+& $buildScript @buildArgs
 if ($LASTEXITCODE -ne 0) {
   throw "Store MSIX packaging failed with exit code $LASTEXITCODE"
 }
