@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from services.agent_execution_evidence import durable_route_projection
 from services.control_plane.migrations import migrate_database
 from services.runtime.execution import GovernedRuntime
 
@@ -36,6 +37,30 @@ def test_external_adapter_uses_same_runtime_and_cannot_replace_local_adapter(tmp
         {"value": 1},
         preferred_provider_id="test-provider",
     )
+    persisted = runtime.routes()[0]
     assert result["provider_id"] == "test-provider"
     assert result["output"] == {"ok": True, "skill_sha256": digest}
-    assert runtime.routes()[0]["provider_id"] == "test-provider"
+    assert persisted["provider_id"] == "test-provider"
+    assert isinstance(result["input_sha256"], str)
+    assert len(result["input_sha256"]) == 64
+    assert isinstance(result["created_at"], str)
+    assert durable_route_projection(result) == durable_route_projection(persisted)
+
+
+def test_durable_route_projection_ignores_transient_routing_explanation() -> None:
+    durable = {
+        "sequence": 1,
+        "agent_id": "ilaios.agent.test",
+        "skill_id": "test-skill",
+        "provider_id": "test-provider",
+        "capability": "test.run",
+        "input_sha256": "a" * 64,
+        "output": {"ok": True},
+        "created_at": "2026-08-18T00:00:00+00:00",
+    }
+    immediate = {
+        **durable,
+        "deterministic_first": False,
+        "evidence": ["provider=test-provider"],
+    }
+    assert durable_route_projection(immediate) == durable
