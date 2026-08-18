@@ -41,8 +41,14 @@ void main() {
       ],
       environment: environment,
     );
-    unawaited(process.stdout.drain<void>());
-    unawaited(process.stderr.drain<void>());
+    final stdoutBuffer = StringBuffer();
+    final stderrBuffer = StringBuffer();
+    final stdoutSubscription = process.stdout
+        .transform(utf8.decoder)
+        .listen(stdoutBuffer.write);
+    final stderrSubscription = process.stderr
+        .transform(utf8.decoder)
+        .listen(stderrBuffer.write);
     Uri? identityUri;
     addTearDown(() async {
       var exited = false;
@@ -77,6 +83,8 @@ void main() {
           // The directory-release assertion below remains authoritative.
         }
       }
+      await stdoutSubscription.cancel();
+      await stderrSubscription.cancel();
       for (var attempt = 0; attempt < 50 && await root.exists(); attempt += 1) {
         try {
           await root.delete(recursive: true);
@@ -106,7 +114,20 @@ void main() {
       }
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
-    expect(ready, isNotNull, reason: 'Packaged Desktop runtime must publish readiness');
+    if (ready == null) {
+      int? exitCode;
+      try {
+        exitCode = await process.exitCode.timeout(const Duration(milliseconds: 100));
+      } on TimeoutException {
+        // A still-running process is useful failure evidence too.
+      }
+      fail(
+        'Packaged Desktop runtime must publish readiness. '
+        'exit_code=${exitCode ?? 'running'}; '
+        'stdout=${stdoutBuffer.toString()}; '
+        'stderr=${stderrBuffer.toString()}',
+      );
+    }
     final host = ready!['host'];
     final port = ready['port'];
     final identityHost = ready['identity_host'];
