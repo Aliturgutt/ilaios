@@ -31,7 +31,7 @@ VIDEO_PROMPTING_SKILLS: tuple[VideoSkillManifest, ...] = (
         ("manifest.read",),
     ),
     VideoSkillManifest(
-        "ilaios.skill.video.routing.model",
+        "ilaios.skill.video.model-fit.analyze",
         "1.0.0",
         "ilaios.capability.video-media-factory",
         "src.video_automation.video_prompting_skills:ModelRoutingAdvisor",
