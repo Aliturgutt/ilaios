@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/app/ilaios_theme.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
-import 'package:ilaios_desktop/features/operations/reference_costs_view.dart';
+import 'package:ilaios_desktop/features/operations/reference_costs_view_v2.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
@@ -42,7 +42,7 @@ void main() {
         child: MaterialApp(
           theme: IlaiosTheme.light,
           home: const Scaffold(
-            body: ReferenceCostsView(
+            body: ReferenceCostsViewV2(
               snapshot: OperationalSnapshot.unavailable(),
               status: 'Operational APIs unavailable',
             ),
@@ -117,7 +117,7 @@ void main() {
         child: MaterialApp(
           theme: IlaiosTheme.dark,
           home: const Scaffold(
-            body: ReferenceCostsView(snapshot: snapshot, status: 'Operational APIs connected'),
+            body: ReferenceCostsViewV2(snapshot: snapshot, status: 'Operational APIs connected'),
           ),
         ),
       ),
