@@ -375,13 +375,15 @@ class GovernedAIProviderAdapter:
                 self._governor.complete(admitted)
                 self._governor.record_provider_failure(provider_id, now)
                 raise AIProviderError(
-                    "provider exceeded reserved input-token ceiling"
+                    "provider exceeded reserved input-token ceiling: "
+                    f"requested={reserved_input_tokens} observed={response.input_tokens}"
                 )
             if response.output_tokens > max_output_tokens:
                 self._governor.complete(admitted)
                 self._governor.record_provider_failure(provider_id, now)
                 raise AIProviderError(
-                    "provider exceeded requested output-token ceiling"
+                    "provider exceeded requested output-token ceiling: "
+                    f"requested={max_output_tokens} observed={response.output_tokens}"
                 )
             actual_cost = _cost(
                 model.input_cost_per_million,
