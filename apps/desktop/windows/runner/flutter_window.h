@@ -1,33 +1,43 @@
 #ifndef RUNNER_FLUTTER_WINDOW_H_
 #define RUNNER_FLUTTER_WINDOW_H_
 
+#include "win32_window.h"
+
+#include <shellapi.h>
+
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
+#include <flutter/method_channel.h>
+#include <flutter/standard_method_codec.h>
 
 #include <memory>
 
-#include "win32_window.h"
-
-// A window that does nothing but host a Flutter view.
+// A window that hosts the Flutter view plus the native Windows reference-image
+// picker/drop boundary. The channel returns file paths only; Dart performs all
+// content validation before anything is uploaded to the local control plane.
 class FlutterWindow : public Win32Window {
  public:
-  // Creates a new FlutterWindow hosting a Flutter view running |project|.
   explicit FlutterWindow(const flutter::DartProject& project);
   virtual ~FlutterWindow();
 
  protected:
-  // Win32Window:
   bool OnCreate() override;
   void OnDestroy() override;
   LRESULT MessageHandler(HWND window, UINT const message, WPARAM const wparam,
                          LPARAM const lparam) noexcept override;
 
  private:
-  // The project to run.
-  flutter::DartProject project_;
+  static LRESULT CALLBACK FlutterChildWindowProc(HWND window, UINT message,
+                                                  WPARAM wparam,
+                                                  LPARAM lparam) noexcept;
+  void HandleDroppedFiles(HDROP drop);
 
-  // The Flutter instance hosted by this window.
+  flutter::DartProject project_;
   std::unique_ptr<flutter::FlutterViewController> flutter_controller_;
+  std::unique_ptr<flutter::MethodChannel<flutter::EncodableValue>>
+      reference_asset_channel_;
+  HWND flutter_child_window_ = nullptr;
+  WNDPROC original_flutter_child_proc_ = nullptr;
 };
 
 #endif  // RUNNER_FLUTTER_WINDOW_H_
