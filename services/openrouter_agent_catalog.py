@@ -36,6 +36,7 @@ from services.runtime.ai_provider_adapter import (
     ProviderEndpoint,
     ProviderTransportResult,
 )
+from services.skill_engineering_runtime import SKILL_ENGINEERING_RUNTIME_BINDINGS
 
 
 class OpenRouterAgentCatalogError(RuntimeError):
@@ -151,12 +152,21 @@ def discover_free_openrouter_agent_configuration(
         raise OpenRouterAgentCatalogError(
             f"OpenRouter model catalog rejected the configured credential: HTTP {exc.code}"
         ) from exc
-    except (urllib.error.URLError, TimeoutError, UnicodeDecodeError, json.JSONDecodeError) as exc:
-        raise OpenRouterAgentCatalogError("OpenRouter model catalog observation failed") from exc
+    except (
+        urllib.error.URLError,
+        TimeoutError,
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+    ) as exc:
+        raise OpenRouterAgentCatalogError(
+            "OpenRouter model catalog observation failed"
+        ) from exc
 
     raw_models = document.get("data") if isinstance(document, dict) else None
     if not isinstance(raw_models, list):
-        raise OpenRouterAgentCatalogError("OpenRouter model catalog contract is malformed")
+        raise OpenRouterAgentCatalogError(
+            "OpenRouter model catalog contract is malformed"
+        )
 
     capabilities = _agent_capabilities()
     models = [
@@ -189,7 +199,9 @@ def _configuration(
         )
 
     registry = ModelProviderRegistry()
-    registry.register_provider(ProviderRecord(_OPENROUTER_PROVIDER_ID, "openai-compatible"))
+    registry.register_provider(
+        ProviderRecord(_OPENROUTER_PROVIDER_ID, "openai-compatible")
+    )
     for model in models:
         registry.register_model(model)
     fallback_order = tuple(model.model_id for model in models)
@@ -233,11 +245,15 @@ def _configuration(
 
 
 def _agent_capabilities() -> frozenset[str]:
-    return frozenset(
+    p0 = {
         binding.capability
         for binding in P0_AGENT_BINDINGS
         if binding.execution_mode == "governed-ai"
-    )
+    }
+    skill_engineering = {
+        binding.capability for binding in SKILL_ENGINEERING_RUNTIME_BINDINGS
+    }
+    return frozenset(p0 | skill_engineering)
 
 
 def _free_router_model(capabilities: frozenset[str]) -> ModelRecord:
@@ -275,7 +291,11 @@ def _eligible_free_text_model(
         return None
     if model_id.strip() == _OPENROUTER_FREE_ROUTER_ID:
         return None
-    if not isinstance(context_length, int) or isinstance(context_length, bool) or context_length <= 0:
+    if (
+        not isinstance(context_length, int)
+        or isinstance(context_length, bool)
+        or context_length <= 0
+    ):
         return None
     if not isinstance(pricing, dict) or not isinstance(architecture, dict):
         return None
@@ -287,12 +307,19 @@ def _eligible_free_text_model(
         return None
     if not isinstance(outputs, list) or "text" not in outputs:
         return None
-    if not all(_zero_price(pricing.get(field)) for field in ("prompt", "completion", "request")):
+    if not all(
+        _zero_price(pricing.get(field))
+        for field in ("prompt", "completion", "request")
+    ):
         return None
     max_output = None
     if isinstance(top_provider, dict):
         candidate = top_provider.get("max_completion_tokens")
-        if isinstance(candidate, int) and not isinstance(candidate, bool) and candidate > 0:
+        if (
+            isinstance(candidate, int)
+            and not isinstance(candidate, bool)
+            and candidate > 0
+        ):
             max_output = candidate
     if max_output is None:
         max_output = min(4096, context_length)
