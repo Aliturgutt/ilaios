@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from playwright.sync_api import Page, sync_playwright
 
@@ -88,6 +89,23 @@ def localized_path(locale: str, route: str) -> str:
     return "/tr" + route if route else "/tr"
 
 
+def normalized_internal_href(href: str) -> str | None:
+    href = href.strip()
+    if not href or href.startswith(("#", "mailto:", "tel:", "javascript:")):
+        return None
+    parsed = urlsplit(href)
+    base = urlsplit(BASE_URL)
+    if parsed.scheme or parsed.netloc:
+        if parsed.scheme not in {"http", "https"} or parsed.netloc != base.netloc:
+            return None
+    path = parsed.path or "/"
+    if not path.startswith("/"):
+        return None
+    if parsed.query:
+        path = f"{path}?{parsed.query}"
+    return path
+
+
 def overflow_elements(page: Page) -> list[dict[str, object]]:
     return page.evaluate(
         """
@@ -145,6 +163,8 @@ def main() -> int:
     screenshots.mkdir(parents=True, exist_ok=True)
     records: list[dict[str, object]] = []
     failures: list[str] = []
+    internal_links: set[str] = set()
+    internal_link_results: list[dict[str, object]] = []
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
@@ -203,6 +223,15 @@ def main() -> int:
                         record["h1_box"] = h1.bounding_box()
                         record.update(inspect_navigation(page, viewport_name))
 
+                        if viewport_name == "desktop":
+                            hrefs = page.locator("a[href]").evaluate_all(
+                                "els => els.map((el) => el.getAttribute('href')).filter(Boolean)"
+                            )
+                            for href in hrefs:
+                                normalized = normalized_internal_href(str(href))
+                                if normalized is not None:
+                                    internal_links.add(normalized)
+
                         if route_name in SCREENSHOT_ROUTE_NAMES and viewport_name in {"desktop", "mobile"}:
                             file_name = f"{locale}__{route_name}__{viewport_name}-{width}x{height}.png"
                             page.screenshot(path=str(screenshots / file_name), full_page=True)
@@ -218,16 +247,26 @@ def main() -> int:
                         records.append(record)
                         page.close()
 
+        for target in sorted(internal_links):
+            response = context.request.get(f"{BASE_URL}{target}", timeout=30_000, max_redirects=5)
+            status = response.status
+            ok = status < 400
+            internal_link_results.append({"target": target, "status": status, "result": "PASS" if ok else "FAIL"})
+            if not ok:
+                failures.append(f"internal link {target}: HTTP {status}")
+
         context.close()
         browser.close()
 
     report = {
-        "schema": "ilaios.website-v2.visual-qa.v2",
+        "schema": "ilaios.website-v2.visual-qa.v3",
         "base_url": BASE_URL,
         "public_route_pairs": len(ROUTES),
         "localized_routes": len(ROUTES) * 2,
         "viewports": [name for name, *_ in VIEWPORTS],
         "checks": len(records),
+        "internal_link_targets": len(internal_link_results),
+        "internal_link_results": internal_link_results,
         "screenshots_expected": len(SCREENSHOT_ROUTE_NAMES) * 2 * 2,
         "failures": failures,
         "status": "FAIL" if failures else "PASS",
@@ -245,6 +284,7 @@ def main() -> int:
                     "public_route_pairs",
                     "localized_routes",
                     "checks",
+                    "internal_link_targets",
                     "screenshots_expected",
                     "failures",
                 )
