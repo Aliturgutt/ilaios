@@ -101,18 +101,16 @@ def test_usage_projection_does_not_invent_unavailable_metrics_or_leak_payloads()
     assert "bob" not in encoded
 
 
-@pytest.mark.parametrize(
-    "route",
-    [
+def test_malformed_authoritative_route_fails_closed() -> None:
+    malformed_routes = (
         _route("2026-08-18T10:00:00"),
         _route("not-a-time"),
         {"agent_id": "agent-a"},
         {**_route("2026-08-18T10:00:00+00:00"), "provider_id": ""},
-    ],
-)
-def test_malformed_authoritative_route_fails_closed(route: dict[str, object]) -> None:
-    with pytest.raises(UsageIntelligenceError):
-        project_usage_stats([route], _governance(), evidence_count=0)
+    )
+    for route in malformed_routes:
+        with pytest.raises(UsageIntelligenceError):
+            project_usage_stats([route], _governance(), evidence_count=0)
 
 
 def test_non_explicit_currency_cost_projection_fails_closed() -> None:
