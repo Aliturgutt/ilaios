@@ -41,6 +41,7 @@ class ReferenceDesktopShellV10 extends StatefulWidget {
     this.onPromptSubmit,
     this.onSaveArtifact,
     this.onRefreshRequested,
+    this.onProvisionAgent,
     this.onGovernanceDecision,
     super.key,
   });
@@ -59,6 +60,7 @@ class ReferenceDesktopShellV10 extends StatefulWidget {
   final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
   final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
   final VoidCallback? onRefreshRequested;
+  final Future<void> Function(String agentId)? onProvisionAgent;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
       onGovernanceDecision;
 
@@ -189,6 +191,7 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
             status: widget.operationalStatus,
             onNavigate: _select,
             onRefreshRequested: widget.onRefreshRequested,
+            onProvisionAgent: widget.onProvisionAgent,
           ),
         DesktopSection.liveWorkspace => LiveWorkspaceView(
             snapshot: widget.operationalSnapshot,
