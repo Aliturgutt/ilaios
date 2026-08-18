@@ -33,6 +33,7 @@ from services.identity import (
 )
 from services.openrouter_agent_catalog import discover_free_openrouter_agent_configuration
 from services.runtime import GovernedRuntime
+from src.core.bootstrap_validator import BootstrapValidator
 from src.core.evidence_chain import EvidenceChain
 from src.core.immutable_context import ExecutionContext
 from src.core.tool_gateway import ToolGateway
@@ -49,10 +50,11 @@ _REGION = "eu-west"
 _ORIGIN = "https://github.com/Aliturgutt/ilaios.git"
 
 
-class _ExactHeadValidator:
+class _ExactHeadValidator(BootstrapValidator):
     """Validate immutable repository identity while allowing detached CI HEAD."""
 
     def __init__(self, repository_root: Path, revision_sha: str) -> None:
+        super().__init__(repository_root.resolve())
         self._root = repository_root.resolve()
         self._revision_sha = revision_sha
 
