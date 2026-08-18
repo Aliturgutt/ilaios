@@ -116,9 +116,13 @@ def test_reference_image_is_bound_through_web_factory_acceptance(tmp_path: Path)
 
     assert manifest["accepted"] is True
     assert manifest["reference_asset_usage"] == "asset-led-design-and-source"
+    assert manifest["reference_asset_rendered"] is True
     references = cast(list[dict[str, object]], manifest["reference_assets"])
     assert references[0]["asset_id"] == record.asset_id
     assert references[0]["sha256"] == record.sha256
+    render_paths = cast(list[str], manifest["reference_asset_render_paths"])
+    assert len(render_paths) == 1
+    assert render_paths[0].startswith("/reference-assets/reference-01-")
     design = cast(dict[str, object], manifest["design_strategy"])
     assert design["imagery_behavior"] == "asset-led"
 
@@ -126,8 +130,14 @@ def test_reference_image_is_bound_through_web_factory_acceptance(tmp_path: Path)
     reference_files = list((source_root / "public/reference-assets").glob("reference-*.png"))
     assert len(reference_files) == 1
     assert reference_files[0].read_bytes() == _png()
+    page_shell = (source_root / "components/PageShell.tsx").read_text(encoding="utf-8")
+    assert "reference-gallery" in page_shell
+    assert "<img" in page_shell
+    assert render_paths[0] in page_shell
     source_manifest = json.loads(
         (source_root / "public/reference-assets/manifest.json").read_text(encoding="utf-8")
     )
     assert source_manifest["usage"] == "asset-led-design-and-source"
+    assert source_manifest["rendered"] is True
+    assert source_manifest["render_paths"] == render_paths
     assert source_manifest["assets"][0]["sha256"] == record.sha256
