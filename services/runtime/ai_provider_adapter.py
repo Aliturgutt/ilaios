@@ -76,6 +76,13 @@ class AIModelSelection:
     provider_id: str
 
 
+@dataclass(frozen=True, slots=True)
+class RuntimeSkillContext:
+    skill_id: str
+    sha256: str
+    instructions: str
+
+
 class AIProviderTransport(Protocol):
     def complete(
         self,
@@ -83,6 +90,7 @@ class AIProviderTransport(Protocol):
         *,
         api_key: str,
         model_id: str,
+        system_instructions: str,
         prompt: str,
         max_output_tokens: int,
     ) -> ProviderTransportResult: ...
@@ -97,6 +105,7 @@ class OpenAICompatibleTransport:
         *,
         api_key: str,
         model_id: str,
+        system_instructions: str,
         prompt: str,
         max_output_tokens: int,
     ) -> ProviderTransportResult:
@@ -104,7 +113,10 @@ class OpenAICompatibleTransport:
         body = json.dumps(
             {
                 "model": model_id,
-                "messages": [{"role": "user", "content": prompt}],
+                "messages": [
+                    {"role": "system", "content": system_instructions},
+                    {"role": "user", "content": prompt},
+                ],
                 "max_tokens": max_output_tokens,
             },
             separators=(",", ":"),
@@ -204,12 +216,19 @@ class GovernedAIProviderAdapter:
         prompt = _required_text(payload, "prompt")
         request_id = _required_text(payload, "request_id")
         tenant_id = _required_text(payload, "tenant_id")
+        skill = _parse_runtime_skill(payload.get("_ilaios_skill"))
         model = self._registry.model(model_id)
         if model.provider_id != provider_id:
             raise AIProviderError("selected model/provider identity mismatch")
 
         input_tokens = _required_nonnegative_int(payload, "input_tokens")
         max_output_tokens = _required_positive_int(payload, "max_output_tokens")
+        # Reserve a conservative prompt ceiling. UTF-8 bytes are at least as
+        # conservative as typical subword token counts for this plain text path.
+        reserved_input_tokens = max(
+            input_tokens,
+            len(prompt.encode("utf-8")) + len(skill.instructions.encode("utf-8")),
+        )
         scopes = _parse_scopes(payload.get("scopes"))
         now = _parse_now(payload.get("now"))
 
@@ -223,7 +242,7 @@ class GovernedAIProviderAdapter:
             estimated_cost = _cost(
                 model.input_cost_per_million,
                 model.output_cost_per_million,
-                input_tokens,
+                reserved_input_tokens,
                 max_output_tokens,
             )
             usage_request = UsageRequest(
@@ -233,7 +252,7 @@ class GovernedAIProviderAdapter:
                 tenant_id=tenant_id,
                 scopes=scopes,
                 model_id=model_id,
-                input_tokens=input_tokens,
+                input_tokens=reserved_input_tokens,
                 output_tokens=max_output_tokens,
                 estimated_cost=estimated_cost,
                 retry_number=attempt,
@@ -246,6 +265,7 @@ class GovernedAIProviderAdapter:
                     endpoint,
                     api_key=api_key,
                     model_id=model_id,
+                    system_instructions=skill.instructions,
                     prompt=prompt,
                     max_output_tokens=max_output_tokens,
                 )
@@ -257,6 +277,12 @@ class GovernedAIProviderAdapter:
                 continue
 
             self._governor.complete(admitted)
+            if response.input_tokens > reserved_input_tokens:
+                self._governor.record_provider_failure(provider_id, now)
+                raise AIProviderError("provider exceeded reserved input-token ceiling")
+            if response.output_tokens > max_output_tokens:
+                self._governor.record_provider_failure(provider_id, now)
+                raise AIProviderError("provider exceeded requested output-token ceiling")
             actual_cost = _cost(
                 model.input_cost_per_million,
                 model.output_cost_per_million,
@@ -268,6 +294,8 @@ class GovernedAIProviderAdapter:
                 "response_id": response.response_id,
                 "model_id": model_id,
                 "provider_id": provider_id,
+                "skill_id": skill.skill_id,
+                "skill_sha256": skill.sha256,
                 "input_tokens": response.input_tokens,
                 "output_tokens": response.output_tokens,
                 "actual_cost_usd": str(actual_cost),
@@ -279,6 +307,25 @@ class GovernedAIProviderAdapter:
             }
 
         raise AIProviderError("provider retries exhausted") from last_error
+
+
+def _parse_runtime_skill(value: object) -> RuntimeSkillContext:
+    if not isinstance(value, dict) or set(value) != {"skill_id", "sha256", "instructions"}:
+        raise AIProviderError("runtime skill context is missing or malformed")
+    skill_id = value.get("skill_id")
+    digest = value.get("sha256")
+    instructions = value.get("instructions")
+    if not isinstance(skill_id, str) or not skill_id.strip():
+        raise AIProviderError("runtime skill identity is invalid")
+    if not isinstance(digest, str) or len(digest) != 64 or any(
+        character not in "0123456789abcdef" for character in digest
+    ):
+        raise AIProviderError("runtime skill digest is invalid")
+    if not isinstance(instructions, str) or not instructions.strip():
+        raise AIProviderError("runtime skill instructions are invalid")
+    if sha256(instructions.encode("utf-8")).hexdigest() != digest:
+        raise AIProviderError("runtime skill digest does not match instructions")
+    return RuntimeSkillContext(skill_id.strip(), digest, instructions)
 
 
 def _parse_scopes(value: object) -> tuple[Scope, ...]:
