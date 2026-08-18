@@ -107,7 +107,7 @@ def test_skill_create_package_is_fail_closed_and_reviewed() -> None:
     )
     assert package.independent_review_required is True
     assert package.eval_kinds == frozenset(
-        {"GOLDEN", "NEGATIVE", "ADVERSARIAL", "REGRESSION"}
+        {"GOLDEN", "NEGATIVE", "ADVERSARIAL", "MALFORMED", "REGRESSION"}
     )
 
 

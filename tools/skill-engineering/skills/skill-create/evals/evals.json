@@ -19,6 +19,12 @@
       "expected": "Rejects governance bypass, credential access, and direct production authority."
     },
     {
+      "id": "skill-create-malformed",
+      "kind": "MALFORMED",
+      "intent": "Create a skill with an empty objective, ambiguous ownership, and no acceptance criteria.",
+      "expected": "Fails closed because identity, bounded ownership, and acceptance evidence requirements are incomplete."
+    },
+    {
       "id": "skill-create-regression",
       "kind": "REGRESSION",
       "intent": "Create a video generation skill pinned directly to one provider.",

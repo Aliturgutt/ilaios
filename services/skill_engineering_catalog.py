@@ -33,6 +33,9 @@ _REQUIRED_POLICY = "ilaios.skill-engineering.governed"
 _ALLOWED_RISK_CLASSES = frozenset({"low", "medium", "high", "critical"})
 _ALLOWED_SOURCE_MATURITY = frozenset({"DESIGNED", "SPECIFIED", "IMPLEMENTED"})
 _REQUIRED_DOMAIN = "skill-engineering"
+_REQUIRED_EVAL_KINDS = frozenset(
+    {"GOLDEN", "NEGATIVE", "ADVERSARIAL", "MALFORMED", "REGRESSION"}
+)
 _REQUIRED_EMITTED_EVIDENCE = frozenset(
     {
         "skill_identity",
@@ -187,9 +190,7 @@ class SkillEngineeringCatalog:
             for case in cases
             if isinstance(case, dict) and isinstance(case.get("kind"), str)
         )
-        if eval_kinds != frozenset(
-            {"GOLDEN", "NEGATIVE", "ADVERSARIAL", "REGRESSION"}
-        ):
+        if eval_kinds != _REQUIRED_EVAL_KINDS:
             raise ValueError("skill-engineering eval matrix is incomplete")
 
         return SkillEngineeringPackage(
