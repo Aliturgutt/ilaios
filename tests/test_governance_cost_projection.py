@@ -84,10 +84,10 @@ def test_cost_projection_prefers_one_explicit_field_per_request() -> None:
     assert len(records) == 1
 
 
-@pytest.mark.parametrize("value", [-1, float("inf"), float("nan"), True, "1.25"])
-def test_cost_projection_rejects_untrusted_explicit_money_values(value: object) -> None:
-    with pytest.raises(CostProjectionError):
-        project_explicit_costs((("req-invalid", _stored({"cost_usd": value})),))
+def test_cost_projection_rejects_untrusted_explicit_money_values() -> None:
+    for value in (-1, float("inf"), float("nan"), True, "1.25"):
+        with pytest.raises(CostProjectionError):
+            project_explicit_costs((("req-invalid", _stored({"cost_usd": value})),))
 
 
 def test_cost_projection_fails_closed_on_malformed_persisted_result() -> None:
