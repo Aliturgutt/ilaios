@@ -12,6 +12,11 @@ on:
           - managed-bounded
           - desktop-one-prompt
           - free-only
+  push:
+    branches:
+      - master
+    paths:
+      - .github/video-provider-production-certification.trigger
 
 permissions:
   contents: read
@@ -27,6 +32,7 @@ jobs:
     environment: Production
     timeout-minutes: 25
     env:
+      CERT_PROOF_MODE: ${{ github.event_name == 'push' && 'managed-bounded' || inputs.proof_mode }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       VIDEO_FREE_PROVIDER_PROOF_DIR: artifacts/video-free-provider-proof
       VIDEO_FREE_PROVIDER_MODELS: bytedance/seedance-2.0-fast:free,bytedance/seedance-2.0:free,bytedance/seedance-1-5-pro:free
@@ -50,7 +56,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Desktop video runtime dependency
-        if: ${{ inputs.proof_mode == 'desktop-one-prompt' }}
+        if: ${{ env.CERT_PROOF_MODE == 'desktop-one-prompt' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -58,7 +64,7 @@ jobs:
           sudo apt-get install --yes --no-install-recommends ffmpeg
 
       - name: Verify Desktop free-route proof safety boundary
-        if: ${{ inputs.proof_mode == 'desktop-one-prompt' }}
+        if: ${{ env.CERT_PROOF_MODE == 'desktop-one-prompt' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -72,28 +78,28 @@ jobs:
           esac
 
       - name: Run real provider-backed Desktop verified-free finished-product E2E
-        if: ${{ inputs.proof_mode == 'desktop-one-prompt' }}
+        if: ${{ env.CERT_PROOF_MODE == 'desktop-one-prompt' }}
         shell: bash
         run: |
           set -euo pipefail
           python apps/desktop/e2e/provider_video_finished_product_e2e.py
 
       - name: Run real free-only provider certification
-        if: ${{ inputs.proof_mode == 'free-only' }}
+        if: ${{ env.CERT_PROOF_MODE == 'free-only' }}
         shell: bash
         run: |
           set -euo pipefail
           python -m src.video_automation.free_provider_production_certification
 
       - name: Run bounded paid proof through canonical managed provider path
-        if: ${{ inputs.proof_mode == 'managed-bounded' }}
+        if: ${{ env.CERT_PROOF_MODE == 'managed-bounded' }}
         shell: bash
         run: |
           set -euo pipefail
           python -m src.video_automation.provider_production_certification
 
       - name: Publish Desktop verified-free provider proof summary
-        if: ${{ always() && inputs.proof_mode == 'desktop-one-prompt' }}
+        if: ${{ always() && env.CERT_PROOF_MODE == 'desktop-one-prompt' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -124,7 +130,7 @@ jobs:
           fi
 
       - name: Publish free-provider proof summary
-        if: ${{ always() && inputs.proof_mode == 'free-only' }}
+        if: ${{ always() && env.CERT_PROOF_MODE == 'free-only' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -156,7 +162,7 @@ jobs:
           fi
 
       - name: Publish managed paid-provider proof summary
-        if: ${{ always() && inputs.proof_mode == 'managed-bounded' }}
+        if: ${{ always() && env.CERT_PROOF_MODE == 'managed-bounded' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -197,7 +203,7 @@ jobs:
           fi
 
       - name: Upload immutable Desktop provider finished-product proof
-        if: ${{ always() && inputs.proof_mode == 'desktop-one-prompt' }}
+        if: ${{ always() && env.CERT_PROOF_MODE == 'desktop-one-prompt' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: desktop-provider-video-proof-${{ github.sha }}-${{ github.run_id }}
@@ -206,7 +212,7 @@ jobs:
           retention-days: 30
 
       - name: Upload immutable free-provider proof evidence
-        if: ${{ always() && inputs.proof_mode == 'free-only' }}
+        if: ${{ always() && env.CERT_PROOF_MODE == 'free-only' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: video-free-provider-proof-${{ github.sha }}-${{ github.run_id }}
@@ -215,7 +221,7 @@ jobs:
           retention-days: 30
 
       - name: Upload immutable managed-provider proof evidence
-        if: ${{ always() && inputs.proof_mode == 'managed-bounded' }}
+        if: ${{ always() && env.CERT_PROOF_MODE == 'managed-bounded' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: video-provider-production-proof-${{ github.sha }}-${{ github.run_id }}
