@@ -52,8 +52,8 @@ void main() {
   });
 
   test('cost export fails closed without authoritative telemetry', () async {
-    expect(
-      () => CostExportService.export(
+    await expectLater(
+      CostExportService.export(
         const OperationalSnapshot.unavailable(),
         rootDirectory: Directory.systemTemp,
       ),
