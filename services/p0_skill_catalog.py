@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from services.agent_registry import registration_for
+from services.agent_registry import INDEPENDENT_VERIFIER_ID, registration_for
 from services.named_agent_executor import NamedAgentExecutor
 from services.p0_agent_execution import P0_AGENT_BINDINGS, binding_for
 from services.software_factory_skills import SkillRegistry, default_skills_root
@@ -102,6 +102,13 @@ P0_FIRST_PARTY_SKILLS: tuple[P0SkillDefinition, ...] = (
     ),
 )
 
+INDEPENDENT_VERIFIER_SKILL = P0SkillDefinition(
+    "ilaios.skill.meta.independent-verification.v1",
+    INDEPENDENT_VERIFIER_ID,
+    "evidence.verify",
+    """You are the canonical ILAIOS IndependentVerifier. Evaluate only the supplied producer evidence envelope against the requested acceptance contract. You must be a different identity from the producer. Return strict JSON with verdict PASS or FAIL, the exact producer_evidence_digest, and findings. PASS requires no unresolved findings. Never execute producer work, alter evidence, invent missing evidence, or promote a result beyond what the supplied proof supports.""",
+)
+
 
 def provision_non_engineering_p0_skills(executor: NamedAgentExecutor) -> dict[str, str]:
     """Provision the exact Core/Security first-party skills and return digests."""
@@ -116,12 +123,46 @@ def provision_non_engineering_p0_skills(executor: NamedAgentExecutor) -> dict[st
     }
 
 
+def ensure_non_engineering_p0_skills(executor: NamedAgentExecutor) -> dict[str, str]:
+    """Restart-safe Core/Security plus IndependentVerifier dependency skills."""
+    validate_p0_skill_catalog()
+    return {
+        item.skill_id: executor.ensure_skill(
+            item.skill_id,
+            item.content(),
+            frozenset({item.capability}),
+        )
+        for item in (*P0_FIRST_PARTY_SKILLS, INDEPENDENT_VERIFIER_SKILL)
+    }
+
+
 def provision_engineering_primary_skills(
     executor: NamedAgentExecutor,
     repository_root: Path,
 ) -> dict[str, str]:
     """Provision Engineering primary skills from validated canonical SF-7 packages."""
-    registry = SkillRegistry(default_skills_root(repository_root))
+    return _engineering_primary_skills(
+        executor,
+        default_skills_root(repository_root),
+        ensure=False,
+    )
+
+
+def ensure_engineering_primary_skills(
+    executor: NamedAgentExecutor,
+    skills_root: Path,
+) -> dict[str, str]:
+    """Restart-safe Engineering provisioning from source or packaged SF-7 root."""
+    return _engineering_primary_skills(executor, skills_root.resolve(), ensure=True)
+
+
+def _engineering_primary_skills(
+    executor: NamedAgentExecutor,
+    skills_root: Path,
+    *,
+    ensure: bool,
+) -> dict[str, str]:
+    registry = SkillRegistry(skills_root)
     digests: dict[str, str] = {}
     for binding in P0_AGENT_BINDINGS:
         registration = registration_for(binding.agent_id)
@@ -134,11 +175,19 @@ def provision_engineering_primary_skills(
             raise P0SkillCatalogError(
                 f"empty canonical Engineering skill instructions: {binding.primary_skill_id}"
             )
-        digests[binding.primary_skill_id] = executor.provision_skill(
-            binding.primary_skill_id,
-            instructions,
-            frozenset({binding.capability}),
-        )
+        if ensure:
+            digest = executor.ensure_skill(
+                binding.primary_skill_id,
+                instructions,
+                frozenset({binding.capability}),
+            )
+        else:
+            digest = executor.provision_skill(
+                binding.primary_skill_id,
+                instructions,
+                frozenset({binding.capability}),
+            )
+        digests[binding.primary_skill_id] = digest
     if len(digests) != 10:
         raise P0SkillCatalogError("Engineering primary provisioning must cover 10 agents")
     return digests
@@ -172,6 +221,11 @@ def validate_p0_skill_catalog() -> None:
             raise P0SkillCatalogError("skill capability exceeds agent manifest")
         if not item.instructions.strip():
             raise P0SkillCatalogError("skill instructions must not be blank")
+    verifier = registration_for(INDEPENDENT_VERIFIER_SKILL.owner_agent_id)
+    if INDEPENDENT_VERIFIER_SKILL.capability not in verifier.manifest.capabilities:
+        raise P0SkillCatalogError("IndependentVerifier skill exceeds manifest")
+    if not INDEPENDENT_VERIFIER_SKILL.instructions.strip():
+        raise P0SkillCatalogError("IndependentVerifier instructions must not be blank")
 
 
 validate_p0_skill_catalog()
