@@ -86,13 +86,15 @@ def test_readiness_ledger_can_promote_displayed_readiness_without_claiming_activ
     assert "provider_id" not in hephaestus
 
 
-def test_untrusted_readiness_verifier_is_not_projected_as_authoritative() -> None:
+def test_untrusted_readiness_verifier_cannot_promote_desktop_readiness() -> None:
     agent_id = "ilaios.agent.engineering.core.v1"
     projection = agent_state_projection(
         (),
         {
             agent_id: {
                 "readiness": "verified",
+                "readiness_evidence_id": "forged",
+                "readiness_evidence_digest": "f" * 64,
                 "verifier_id": "external.untrusted",
             }
         },
@@ -100,8 +102,10 @@ def test_untrusted_readiness_verifier_is_not_projected_as_authoritative() -> Non
     agents = projection["agents"]
     assert isinstance(agents, list)
     hephaestus = next(item for item in agents if item["agent_id"] == agent_id)
-    assert hephaestus["readiness"] == "verified"
+    assert hephaestus["readiness"] == "registered"
     assert "readiness_verifier_id" not in hephaestus
+    assert "readiness_evidence_id" not in hephaestus
+    assert "readiness_evidence_digest" not in hephaestus
 
 
 def test_unknown_runtime_identity_never_mints_a_desktop_agent() -> None:
