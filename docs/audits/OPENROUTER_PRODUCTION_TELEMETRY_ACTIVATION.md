@@ -124,16 +124,17 @@ It submits no inference request and therefore cannot intentionally consume model
 inference spend. The persisted receipt contains only sanitized quota/catalog
 facts and a pricing digest.
 
-For automated verification from ChatGPT/GitHub tooling, the workflow also has a
-strict `pull_request_target` path that runs only when the same repository opens
-or updates the exact trusted branch:
+Repository workflow security policy forbids `pull_request_target`, forbids
+secrets in ordinary workflows, and requires external/secret-sensitive workflows
+to be manual-only. This certification is therefore explicitly registered in the
+existing `_MANUAL_ONLY` and `_SECRET_ALLOWED` workflow allowlists and exposes
+only `workflow_dispatch`. It grants `contents: read`, performs no checkout, and
+uses only an immutable pinned artifact-upload action.
 
-`ops/openrouter-production-telemetry-cert`
-
-The workflow runs from the protected base branch, never checks out PR content,
-has read-only repository permissions, and uses the `Production` environment.
-This prevents the trigger PR from changing executable code that can access the
-secret.
+This means production credential proof cannot be auto-triggered by an arbitrary
+branch or pull request. A trusted operator must dispatch the workflow after the
+implementation is merged. This is an intentional security boundary, not a
+missing routing feature.
 
 ## Red-team invariants
 
@@ -145,13 +146,13 @@ Activation is rejected if any of the following becomes true:
 - secret material enters evidence, logs, errors or source;
 - provider read failure is converted into optimistic availability;
 - a production certification submits inference or a paid generation request;
-- an untrusted/fork PR can use the production secret path;
+- production secrets become available to automatic PR/push workflows;
 - Core, Video Factory routing authority, or the fixed SF-7 registry is rewritten.
 
 ## Verification requirement
 
 Repository implementation is not a production claim. Required CI must pass on
-the exact implementation head. After merge, the trusted certification trigger
+the exact implementation head. After merge, the manual production certification
 must produce an observed PASS receipt from the real `Production`
 `OPENROUTER_API_KEY` before provider telemetry may be reported as production
 verified.
