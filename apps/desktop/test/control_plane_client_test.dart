@@ -45,6 +45,11 @@ Map<String, ControlPlaneResponse> _operationalResponses({
       statusCode: 200,
       body: '{"routes":[{"sequence":1,"provider_id":"local","capability":"video"}]}',
     ),
+    '/v1/agents/state': const ControlPlaneResponse(
+      statusCode: 200,
+      body:
+          '{"canonical_count":1,"registered_count":0,"authority_drift_count":0,"agents":[{"agent_id":"ilaios.agent.security.codesec.v1","alias":"CodeSec","role":"security","team":"security","capabilities":["security.sast"],"permissions":[],"readiness":"ready","backing_capability":"security.sast","registered":false,"authority_matches_canonical":true}]}',
+    ),
     '/v1/scheduler/state': const ControlPlaneResponse(
       statusCode: 200,
       body: '{"leases":[],"effects":[]}',
@@ -107,6 +112,10 @@ void main() {
 
     expect(snapshot.runtimeRouteCount, 1);
     expect(snapshot.runtimeRoutes.single['provider_id'], 'local');
+    expect(snapshot.agentState['canonical_count'], 1);
+    final agents = snapshot.agentState['agents'] as List<dynamic>;
+    expect(agents.single['agent_id'], 'ilaios.agent.security.codesec.v1');
+    expect(agents.single['registered'], isFalse);
     expect(snapshot.evidenceCount, 1);
     final record = snapshot.evidenceRecords.single;
     expect(record.sequence, 1);
@@ -115,10 +124,84 @@ void main() {
     expect(record.artifactDigest, hasLength(64));
     expect(record.recordHash, hasLength(64));
     expect(snapshot.liveEventCount, 1);
-    expect(transport.requests, hasLength(6));
+    expect(transport.requests, hasLength(7));
     for (final request in transport.requests) {
       expect(request.headers['Authorization'], 'Bearer runtime-secret');
     }
+  });
+
+  test('provisions a canonical agent through the bounded agent command', () async {
+    final transport = _FakeTransport(<String, ControlPlaneResponse>{
+      '/v1/agents/commands': const ControlPlaneResponse(
+        statusCode: 200,
+        body:
+            '{"agent_id":"ilaios.agent.security.codesec.v1","registered":true,"created":true}',
+      ),
+    });
+    final client = ControlPlaneClient(
+      baseUri: Uri.parse('http://127.0.0.1:4123'),
+      token: 'runtime-secret',
+      transport: transport,
+    );
+
+    await client.provisionCanonicalAgent('ilaios.agent.security.codesec.v1');
+
+    final request = transport.requests.single;
+    expect(request.method, 'POST');
+    expect(request.uri.path, '/v1/agents/commands');
+    expect(request.headers['Authorization'], 'Bearer runtime-secret');
+    expect(jsonDecode(request.body!), <String, dynamic>{
+      'operation': 'provision',
+      'agent_id': 'ilaios.agent.security.codesec.v1',
+    });
+  });
+
+  test('agent provisioning fails closed on malformed or rejected responses', () async {
+    final rejected = ControlPlaneClient(
+      baseUri: Uri.parse('http://127.0.0.1:4123'),
+      token: 'runtime-secret',
+      transport: _FakeTransport(<String, ControlPlaneResponse>{
+        '/v1/agents/commands': const ControlPlaneResponse(
+          statusCode: 400,
+          body: '{"error":"unknown canonical agent identity"}',
+        ),
+      }),
+    );
+    await expectLater(
+      rejected.provisionCanonicalAgent('ilaios.agent.unknown.v1'),
+      throwsA(isA<ControlPlaneClientException>()),
+    );
+
+    final malformed = ControlPlaneClient(
+      baseUri: Uri.parse('http://127.0.0.1:4123'),
+      token: 'runtime-secret',
+      transport: _FakeTransport(<String, ControlPlaneResponse>{
+        '/v1/agents/commands': const ControlPlaneResponse(
+          statusCode: 200,
+          body:
+              '{"agent_id":"ilaios.agent.security.codesec.v1","registered":true}',
+        ),
+      }),
+    );
+    await expectLater(
+      malformed.provisionCanonicalAgent('ilaios.agent.security.codesec.v1'),
+      throwsA(isA<ControlPlaneClientException>()),
+    );
+  });
+
+  test('rejects malformed canonical agent identities before transport', () async {
+    final transport = _FakeTransport(const <String, ControlPlaneResponse>{});
+    final client = ControlPlaneClient(
+      baseUri: Uri.parse('http://127.0.0.1:4123'),
+      token: 'runtime-secret',
+      transport: transport,
+    );
+
+    await expectLater(
+      client.provisionCanonicalAgent(' agent-1 '),
+      throwsA(isA<ControlPlaneClientException>()),
+    );
+    expect(transport.requests, isEmpty);
   });
 
   test('malformed evidence metadata fails closed', () async {

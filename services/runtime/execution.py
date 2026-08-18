@@ -63,6 +63,53 @@ class GovernedRuntime:
                 (agent_id, json.dumps(sorted(authorities))),
             )
 
+    def ensure_agent(self, agent_id: str, authorities: frozenset[str]) -> bool:
+        """Idempotently provision one exact authority set without privilege drift."""
+        _require_id(agent_id, "agent_id")
+        _require_values(authorities, "authorities")
+        canonical = json.dumps(sorted(authorities))
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT authorities_json FROM runtime_agents WHERE agent_id = ?",
+                (agent_id,),
+            ).fetchone()
+            if row is None:
+                connection.execute(
+                    "INSERT INTO runtime_agents VALUES (?, ?)",
+                    (agent_id, canonical),
+                )
+                return True
+            existing = _decode_string_set(
+                row["authorities_json"], field="registered agent authorities"
+            )
+            if existing != authorities:
+                raise RuntimeError(
+                    "registered agent authorities differ from canonical provisioning"
+                )
+            return False
+
+    def agents(self) -> tuple[dict[str, Any], ...]:
+        """Return the persisted runtime agent projection without granting authority."""
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT agent_id, authorities_json FROM runtime_agents ORDER BY agent_id"
+            ).fetchall()
+        output: list[dict[str, Any]] = []
+        for row in rows:
+            agent_id = row["agent_id"]
+            if not isinstance(agent_id, str) or not agent_id:
+                raise RuntimeError("persisted agent identity is malformed")
+            authorities = _decode_string_set(
+                row["authorities_json"], field="persisted agent authorities"
+            )
+            output.append(
+                {
+                    "agent_id": agent_id,
+                    "authorities": sorted(authorities),
+                }
+            )
+        return tuple(output)
+
     def register_skill(
         self, skill_id: str, content: bytes, authorities: frozenset[str]
     ) -> str:
@@ -124,17 +171,24 @@ class GovernedRuntime:
         if skill_row is None:
             raise RuntimeError("skill is not approved")
         agent = AgentProfile(
-            agent_row["agent_id"], frozenset(json.loads(agent_row["authorities_json"]))
+            agent_row["agent_id"],
+            _decode_string_set(
+                agent_row["authorities_json"], field="agent authorities"
+            ),
         )
         content = bytes(skill_row["content"])
-        authorities = frozenset(json.loads(skill_row["authorities_json"]))
+        authorities = _decode_string_set(
+            skill_row["authorities_json"], field="skill authorities"
+        )
         artifact = SkillArtifact(skill_row["skill_id"], content, authorities)
         registry = SkillRegistry()
         registry.approve(skill_row["skill_id"], skill_row["digest"], authorities)
         providers = tuple(
             ProviderProfile(
                 row["provider_id"],
-                frozenset(json.loads(row["capabilities_json"])),
+                _decode_string_set(
+                    row["capabilities_json"], field="provider capabilities"
+                ),
                 bool(row["deterministic"]),
                 bool(row["enabled"]),
             )
@@ -193,6 +247,25 @@ class GovernedRuntime:
             }
             for row in rows
         )
+
+
+def _decode_string_set(raw: object, *, field: str) -> frozenset[str]:
+    if not isinstance(raw, str):
+        raise RuntimeError(f"{field} projection is malformed")
+    try:
+        decoded: object = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError(f"{field} projection is malformed") from exc
+    if not isinstance(decoded, list):
+        raise RuntimeError(f"{field} projection is malformed")
+    values: list[str] = []
+    for value in decoded:
+        if not isinstance(value, str) or not value or value != value.strip():
+            raise RuntimeError(f"{field} projection is malformed")
+        values.append(value)
+    if not values:
+        raise RuntimeError(f"{field} projection is malformed")
+    return frozenset(values)
 
 
 def _required_payload_text(payload: dict[str, Any]) -> str:

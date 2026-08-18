@@ -32,6 +32,7 @@ class IlaiosDesktopApp extends StatefulWidget {
     this.onPromptSubmit,
     this.onSaveArtifact,
     this.onRefreshRequested,
+    this.onProvisionAgent,
     this.onGovernanceDecision,
   });
 
@@ -51,6 +52,7 @@ class IlaiosDesktopApp extends StatefulWidget {
   final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
   final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
   final VoidCallback? onRefreshRequested;
+  final Future<void> Function(String agentId)? onProvisionAgent;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
       onGovernanceDecision;
 
@@ -170,6 +172,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
           onPromptSubmit: widget.onPromptSubmit,
           onSaveArtifact: widget.onSaveArtifact,
           onRefreshRequested: widget.onRefreshRequested,
+          onProvisionAgent: widget.onProvisionAgent,
           onGovernanceDecision: widget.onGovernanceDecision,
         ),
       ),

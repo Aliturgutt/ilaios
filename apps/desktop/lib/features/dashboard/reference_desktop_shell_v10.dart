@@ -41,6 +41,7 @@ class ReferenceDesktopShellV10 extends StatefulWidget {
     this.onPromptSubmit,
     this.onSaveArtifact,
     this.onRefreshRequested,
+    this.onProvisionAgent,
     this.onGovernanceDecision,
     super.key,
   });
@@ -59,6 +60,7 @@ class ReferenceDesktopShellV10 extends StatefulWidget {
   final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
   final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
   final VoidCallback? onRefreshRequested;
+  final Future<void> Function(String agentId)? onProvisionAgent;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
       onGovernanceDecision;
 
