@@ -13,7 +13,7 @@ class MigrationError(RuntimeError):
     """Raised when a control-plane migration cannot complete safely."""
 
 
-LATEST_SCHEMA_VERSION = 8
+LATEST_SCHEMA_VERSION = 7
 
 _UP_MIGRATIONS = {
     1: """
@@ -177,33 +177,6 @@ _UP_MIGRATIONS = {
             subject_id TEXT PRIMARY KEY, stopped_at TEXT NOT NULL
         );
     """,
-    8: """
-        CREATE TABLE agent_readiness_evidence (
-            sequence INTEGER PRIMARY KEY AUTOINCREMENT,
-            evidence_id TEXT UNIQUE NOT NULL,
-            agent_id TEXT NOT NULL,
-            verifier_id TEXT NOT NULL,
-            readiness TEXT NOT NULL CHECK (
-                readiness IN ('registered', 'executable', 'verified')
-            ),
-            producer_evidence_digest TEXT NOT NULL,
-            record_digest TEXT UNIQUE NOT NULL,
-            proof_json TEXT NOT NULL,
-            created_at TEXT NOT NULL
-        );
-        CREATE INDEX agent_readiness_agent_sequence
-            ON agent_readiness_evidence(agent_id, sequence DESC);
-        CREATE TRIGGER agent_readiness_no_update
-        BEFORE UPDATE ON agent_readiness_evidence
-        BEGIN
-            SELECT RAISE(ABORT, 'agent readiness evidence is append-only');
-        END;
-        CREATE TRIGGER agent_readiness_no_delete
-        BEFORE DELETE ON agent_readiness_evidence
-        BEGIN
-            SELECT RAISE(ABORT, 'agent readiness evidence is append-only');
-        END;
-    """,
 }
 
 _DOWN_MIGRATIONS = {
@@ -244,12 +217,6 @@ _DOWN_MIGRATIONS = {
         DROP TABLE revoked_grants;
         DROP TABLE grant_resources;
         DROP TABLE execution_grants;
-    """,
-    8: """
-        DROP TRIGGER agent_readiness_no_delete;
-        DROP TRIGGER agent_readiness_no_update;
-        DROP INDEX agent_readiness_agent_sequence;
-        DROP TABLE agent_readiness_evidence;
     """,
 }
 
