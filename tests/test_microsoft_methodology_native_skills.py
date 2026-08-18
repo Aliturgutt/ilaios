@@ -8,10 +8,6 @@ ROOT = Path(__file__).resolve().parents[1]
 MICROSOFT_REFERENCE_SHA = "e20084b9d230c6f3b46ce36f011e6c3e50f79f8a"
 
 PACKAGES = {
-    "ilaios-skill-engineering": (
-        "ilaios.skill.engineering.methodology.v1",
-        "ILAIOS-METHODOLOGY-SKILL-ENGINEERING-V1",
-    ),
     "ilaios-frontend-design-review": (
         "ilaios.skill.frontend.design-review.v1",
         "ILAIOS-METHODOLOGY-FRONTEND-REVIEW-V1",
@@ -31,7 +27,7 @@ PACKAGES = {
 }
 
 OVERLAYS = {
-    "sf-implementation-planning": "ILAIOS-METHODOLOGY-SKILL-ENGINEERING-V1",
+    "sf-implementation-planning": "skill-engineering/create",
     "sf-frontend-engineering": "ILAIOS-METHODOLOGY-FRONTEND-REVIEW-V1",
     "sf-integration-engineering": "ILAIOS-METHODOLOGY-MCP-BUILDER-V1",
     "sf-runtime-qa": "ILAIOS-METHODOLOGY-OBSERVABILITY-V1",
@@ -40,7 +36,7 @@ OVERLAYS = {
 }
 
 
-def test_native_methodology_packages_are_portable_without_execution_authority() -> None:
+def test_methodology_packages_are_portable_without_execution_authority() -> None:
     for folder, (canonical_id, contract) in PACKAGES.items():
         package = load_agent_skill(ROOT / "skills" / folder)
         assert package.metadata.name == folder
@@ -56,7 +52,7 @@ def test_native_methodology_packages_are_portable_without_execution_authority() 
         assert contract in skill
 
 
-def test_native_methodology_skills_are_provider_neutral() -> None:
+def test_methodology_skills_are_provider_neutral() -> None:
     forbidden = ("azure", "foundry", "entra", "microsoft")
     for folder in PACKAGES:
         skill = (ROOT / "skills" / folder / "SKILL.md").read_text(encoding="utf-8").lower()
@@ -90,11 +86,19 @@ def test_every_methodology_has_full_acceptance_matrix() -> None:
             assert f"## {kind}" in criteria
 
 
+def test_canonical_skill_create_is_single_authoring_owner() -> None:
+    canonical = ROOT / "tools" / "skill-engineering" / "skills" / "skill-create"
+    assert canonical.is_dir()
+    assert MICROSOFT_REFERENCE_SHA in (canonical / "PROVENANCE.md").read_text(
+        encoding="utf-8"
+    )
+    assert not (ROOT / "skills" / "ilaios-skill-engineering").exists()
+
+
 def test_methodologies_are_wired_into_existing_primary_skills() -> None:
     root = ROOT / "tools" / "software-factory" / "skills"
     for primary_skill, contract in OVERLAYS.items():
         text = (root / primary_skill / "SKILL.md").read_text(encoding="utf-8")
-        assert "ILAIOS native methodology overlay" in text
         assert contract in text
 
 

@@ -8,6 +8,6 @@ Specialization: preserve repository/base-SHA scope and choose only canonical Pyt
 
 The common `../CONTRACT.md` supplies governance, deny-set, evidence and completion semantics.
 
-## ILAIOS native methodology overlay
+## ILAIOS canonical skill-authoring overlay
 
-Apply `ilaios.skill.engineering.methodology.v1` / `ILAIOS-METHODOLOGY-SKILL-ENGINEERING-V1` when the plan creates or changes skills. Require bounded ownership, progressive disclosure, provenance, GOLDEN/NEGATIVE/ADVERSARIAL/MALFORMED/REGRESSION acceptance coverage, existing-path integration, and evidence-backed maturity. This is an instruction-only methodology overlay; it does not change this skill's capabilities, tools, runtime adapters, policy, permissions, or mutation authority.
+When the plan creates or changes skills, apply the canonical logical contract `skill-engineering/create` from `tools/skill-engineering/skills/skill-create/SKILL.md`. Preserve bounded ownership, progressive disclosure, provider neutrality, provenance, GOLDEN/NEGATIVE/ADVERSARIAL/MALFORMED/REGRESSION acceptance coverage, independent review, existing-path integration, and evidence-backed maturity. This is an instruction-only authoring overlay; it does not change this skill's capabilities, tools, runtime adapters, policy, permissions, or mutation authority.
