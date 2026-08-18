@@ -1,8 +1,9 @@
 """Read-only, fail-closed usage intelligence over authoritative ILAIOS projections.
 
-This module does not authorize work, meter billing, admit evidence, or inspect
+This module does not authorize work, meter billing, admit evidence, or expose
 prompt/output content. It derives bounded usage summaries only from existing
-runtime-route metadata, governance state, and verified-evidence counts.
+runtime-route metadata, allow-listed numeric/provider diagnostics, governance
+state, and verified-evidence counts.
 """
 
 from __future__ import annotations
@@ -25,6 +26,10 @@ class _RouteMetadata:
     provider_id: str
     capability: str
     created_at: datetime
+    model_id: str | None
+    input_tokens: int | None
+    output_tokens: int | None
+    latency_ms: int | None
 
 
 def project_usage_stats(
@@ -35,10 +40,10 @@ def project_usage_stats(
 ) -> dict[str, object]:
     """Build a privacy-minimized local usage projection.
 
-    The scope is intentionally the authenticated local control-plane instance.
-    Token, latency, model-level usage, and verified-evidence counts remain
-    unavailable until an authoritative caller supplies them; this projector
-    never infers missing telemetry.
+    Scope is intentionally the authenticated local control-plane instance.
+    Provider diagnostics are projected only when explicit allow-listed fields
+    are present in authoritative runtime output; unavailable data is never
+    inferred.
     """
 
     if evidence_count is not None and (
@@ -56,7 +61,20 @@ def project_usage_stats(
     agents = Counter(item.agent_id for item in normalized_routes)
     hours = Counter(stamp.hour for stamp in timestamps)
     activity = Counter(stamp.date().isoformat() for stamp in timestamps)
+    models = Counter(
+        item.model_id for item in normalized_routes if item.model_id is not None
+    )
 
+    token_rows = tuple(
+        item
+        for item in normalized_routes
+        if item.input_tokens is not None and item.output_tokens is not None
+    )
+    latency_rows = tuple(
+        item.latency_ms for item in normalized_routes if item.latency_ms is not None
+    )
+    token_usage = _token_usage(token_rows)
+    latency = _latency_summary(latency_rows)
     status_counts = _governance_status_counts(governance_state)
     cost_projection = _explicit_cost_projection(governance_state)
 
@@ -78,7 +96,10 @@ def project_usage_stats(
         "provider_distribution": _count_rows(providers),
         "skill_distribution": _count_rows(skills),
         "capability_distribution": _count_rows(capabilities),
+        "model_distribution": _count_rows(models),
         "governance_status_counts": _count_rows(status_counts),
+        "token_usage": token_usage,
+        "latency": latency,
         "verified_evidence_count": evidence_count,
         "costs": cost_projection,
         "coverage": {
@@ -88,9 +109,15 @@ def project_usage_stats(
                 "verified_evidence_count" if evidence_count is not None else "unavailable"
             ),
             "costs": cost_projection["coverage"],
-            "tokens": "unavailable",
-            "latency": "unavailable",
-            "models": "unavailable",
+            "tokens": (
+                "authoritative_provider_output_partial" if token_rows else "unavailable"
+            ),
+            "latency": (
+                "authoritative_provider_output_partial" if latency_rows else "unavailable"
+            ),
+            "models": (
+                "authoritative_provider_output_partial" if models else "unavailable"
+            ),
         },
     }
 
@@ -109,13 +136,75 @@ def _route_metadata(route: Mapping[str, object]) -> _RouteMetadata:
         raise UsageIntelligenceError("runtime route created_at is malformed") from error
     if created_at.tzinfo is None:
         raise UsageIntelligenceError("runtime route created_at must be timezone-aware")
+
+    raw_output = route.get("output")
+    if raw_output is None:
+        output: Mapping[str, object] = {}
+    elif isinstance(raw_output, Mapping):
+        output = raw_output
+    else:
+        raise UsageIntelligenceError("runtime route output is malformed")
+
+    model_id = _optional_trimmed_text(output, "model_id")
+    input_tokens = _optional_nonnegative_int(output, "input_tokens")
+    output_tokens = _optional_nonnegative_int(output, "output_tokens")
+    if (input_tokens is None) != (output_tokens is None):
+        raise UsageIntelligenceError("runtime route token usage is incomplete")
+    latency_ms = _optional_nonnegative_int(output, "latency_ms")
+
     return _RouteMetadata(
         values["agent_id"],
         values["skill_id"],
         values["provider_id"],
         values["capability"],
         created_at.astimezone(timezone.utc),
+        model_id,
+        input_tokens,
+        output_tokens,
+        latency_ms,
     )
+
+
+def _optional_trimmed_text(output: Mapping[str, object], field: str) -> str | None:
+    raw = output.get(field)
+    if raw is None:
+        return None
+    if not isinstance(raw, str) or not raw or raw != raw.strip():
+        raise UsageIntelligenceError(f"runtime route {field} is malformed")
+    return raw
+
+
+def _optional_nonnegative_int(output: Mapping[str, object], field: str) -> int | None:
+    raw = output.get(field)
+    if raw is None:
+        return None
+    if isinstance(raw, bool) or not isinstance(raw, int) or raw < 0:
+        raise UsageIntelligenceError(f"runtime route {field} is malformed")
+    return raw
+
+
+def _token_usage(rows: tuple[_RouteMetadata, ...]) -> dict[str, object] | None:
+    if not rows:
+        return None
+    input_tokens = sum(item.input_tokens or 0 for item in rows)
+    output_tokens = sum(item.output_tokens or 0 for item in rows)
+    return {
+        "route_count": len(rows),
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "total_tokens": input_tokens + output_tokens,
+    }
+
+
+def _latency_summary(values: tuple[int, ...]) -> dict[str, object] | None:
+    if not values:
+        return None
+    return {
+        "sample_count": len(values),
+        "average_ms": round(sum(values) / len(values), 2),
+        "min_ms": min(values),
+        "max_ms": max(values),
+    }
 
 
 def _governance_status_counts(state: Mapping[str, object]) -> Counter[str]:
