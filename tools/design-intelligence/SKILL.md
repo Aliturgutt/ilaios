@@ -1,6 +1,6 @@
 ---
 name: design-intelligence
-description: Evaluate and plan website visual quality, anti-generic-AI risk, typography, spacing, composition, motion, interaction, responsive behavior, EN/TR parity, accessibility, forms, navigation, data visualization, layout stability, and final polish through ILAIOS-native structured evidence and Web Factory gates.
+description: Evaluate and plan website visual quality, anti-generic-AI risk, typography, spacing, composition, motion, direct-manipulation continuity, interaction response, responsive behavior, EN/TR parity, accessibility, forms, navigation, data visualization, layout stability, and final polish through ILAIOS-native structured evidence and Web Factory gates.
 ---
 
 # ILAIOS Native Design Intelligence
@@ -42,10 +42,16 @@ Composition families remain contextual rather than rigid themes.
 
 ## Required evaluation families
 
-- Typography/readability and contrast.
+- Typography/readability, contrast, and user text scaling.
 - Spacing, clipping, overlap and responsive composition.
 - Brand/component consistency.
 - Motion purpose and reduced-motion support.
+- Immediate/continuous interaction feedback where direct manipulation exists.
+- Gesture tracking continuity for pointer/touch-driven controls.
+- Interruptible user-driven motion that can retarget from current presented state.
+- Continuity between gesture release and settled motion where momentum exists.
+- Spatially consistent reversible transitions.
+- Reduced-transparency and increased-contrast fallbacks when relevant surfaces require them.
 - Keyboard, focus, touch and non-hover-only interaction.
 - Accessibility naming and meaningful text alternatives.
 - Form labels and field-local validation/error feedback.
@@ -63,20 +69,18 @@ Composition families remain contextual rather than rigid themes.
 4. Rank findings as `critical`, `major`, `p2`, or `minor`.
 5. Fix root causes rather than layering exceptions.
 6. Re-check EN/TR parity and target viewport matrix.
-7. Do not modify product claims to solve visual problems.
-8. Do not add dependencies solely for visual polish when native implementation
-   is sufficient.
-9. Do not expand agent/runtime authority.
-10. PASS requires zero critical, major and blocking p2 findings; minor findings
-    require governance disposition.
+7. Treat direct-manipulation and motion checks as applicable evidence, not a mandate to add animation.
+8. Do not modify product claims to solve visual problems.
+9. Do not add dependencies solely for visual polish when native implementation is sufficient.
+10. Do not expand agent/runtime authority.
+11. PASS requires zero critical, major and blocking p2 findings; minor findings require governance disposition.
 
 ## Machine contract
 
 - Skill ID: `design.final-polish`.
-- Evaluator version: `1.2.0`.
+- Evaluator version: `1.3.0`.
 - Planning input: bounded `DesignContext`.
-- Planning output: deterministic `DesignStrategy` and optional
-  `CompositionFingerprint`.
+- Planning output: deterministic `DesignStrategy` and optional `CompositionFingerprint`.
 - Evaluation input: bounded `DesignObservation` rows.
 - Evaluation output: `DesignAssessment`.
 - Required viewport matrix: 320/360/390/412/430/768/1024/1440.
