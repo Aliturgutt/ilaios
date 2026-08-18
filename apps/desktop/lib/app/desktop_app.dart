@@ -148,16 +148,16 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
         surfaceContainerLow: IlaiosTheme.carbon,
       ),
     );
-    return MaterialApp(
-      title: 'ILAIOS Desktop',
-      debugShowCheckedModeBanner: false,
-      theme: IlaiosTheme.light,
-      darkTheme: darkDesktopTheme,
-      themeMode: effectiveTheme,
-      home: IlaiosLocaleScope(
-        locale: widget.locale,
-        onChanged: (value) => widget.onLocaleChanged?.call(value),
-        child: ReferenceDesktopShellV11(
+    return IlaiosLocaleScope(
+      locale: widget.locale,
+      onChanged: (value) => widget.onLocaleChanged?.call(value),
+      child: MaterialApp(
+        title: 'ILAIOS Desktop',
+        debugShowCheckedModeBanner: false,
+        theme: IlaiosTheme.light,
+        darkTheme: darkDesktopTheme,
+        themeMode: effectiveTheme,
+        home: ReferenceDesktopShellV11(
           projection: widget.projection,
           operationalSnapshot: widget.operationalSnapshot,
           operationalStatus: widget.operationalStatus,
