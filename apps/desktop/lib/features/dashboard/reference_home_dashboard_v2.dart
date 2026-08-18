@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 
+import '../../control_plane/client.dart';
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
+import '../../identity/identity_client.dart';
 import '../navigation/desktop_section.dart';
 import 'reference_home_dashboard_v3.dart';
 
@@ -18,6 +20,8 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
     required this.snapshot,
     required this.status,
     required this.onNavigate,
+    this.userSession,
+    this.onPromptSubmit,
     this.onRefreshRequested,
     super.key,
   });
@@ -26,13 +30,17 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
   final OperationalSnapshot snapshot;
   final String status;
   final ValueChanged<DesktopSection> onNavigate;
+  final DesktopUserSession? userSession;
+  final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
   final VoidCallback? onRefreshRequested;
 
   Widget _home() => ReferenceHomeDashboardV3(
         projection: projection,
         snapshot: snapshot,
         status: status,
+        userSession: userSession,
         onNavigate: onNavigate,
+        onPromptSubmit: onPromptSubmit,
         onRefreshRequested: onRefreshRequested,
       );
 
