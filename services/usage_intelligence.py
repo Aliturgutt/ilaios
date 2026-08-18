@@ -169,11 +169,8 @@ def _explicit_cost_projection(state: Mapping[str, object]) -> dict[str, object]:
     }
 
 
-def _count_rows(counter: Mapping[object, int]) -> list[dict[str, object]]:
-    items = sorted(
-        ((str(key), value) for key, value in counter.items()),
-        key=lambda item: (-item[1], item[0]),
-    )
+def _count_rows(counter: Mapping[str, int]) -> list[dict[str, object]]:
+    items = sorted(counter.items(), key=lambda item: (-item[1], item[0]))
     return [{"key": key, "count": count} for key, count in items]
 
 
