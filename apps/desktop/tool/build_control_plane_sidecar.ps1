@@ -10,6 +10,7 @@ $repoRoot = Resolve-Path (Join-Path $desktopRoot '..\..')
 $entrypoint = Join-Path $desktopRoot 'sidecar\ilaios_control_plane_sidecar.py'
 $brandLogo = Join-Path $repoRoot 'brand\assets\03-ilaios-symbol-dark.jpg'
 $identityProviders = Join-Path $desktopRoot 'packaging\identity\oidc-providers.public.json'
+$softwareFactorySkills = Join-Path $repoRoot 'tools\software-factory\skills'
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
   $OutputDirectory = Join-Path $desktopRoot 'build\windows\x64\runner\Release'
 }
@@ -17,10 +18,11 @@ if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
 if (-not (Test-Path $entrypoint)) { throw "Sidecar entrypoint missing: $entrypoint" }
 if (-not (Test-Path $brandLogo)) { throw "Official ILAIOS brand logo missing: $brandLogo" }
 if (-not (Test-Path $identityProviders)) { throw "Desktop public identity metadata missing: $identityProviders" }
+if (-not (Test-Path $softwareFactorySkills -PathType Container)) {
+  throw "Canonical Software Factory skills missing: $softwareFactorySkills"
+}
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 
-# Public OAuth client identifiers are registration metadata, not secrets. The
-# packaged metadata is audited separately and must never contain client_secret.
 $identityDocument = Get-Content -Raw $identityProviders | ConvertFrom-Json
 if ($null -eq $identityDocument) { throw 'Desktop public identity metadata is invalid.' }
 foreach ($provider in @($identityDocument)) {
@@ -32,11 +34,11 @@ foreach ($provider in @($identityDocument)) {
   }
 }
 
-# The Windows sidecar source and CI contract target Python 3.12. Building with
-# an older local interpreter can fail while importing first-party modules (for
-# example, pre-PEP-701 f-string parsing) even though the exact source is valid
-# under the canonical Windows CI interpreter. Fail before dependency install or
-# packaging so local and CI builds cannot silently use different runtimes.
+$skillFiles = @(Get-ChildItem -Path $softwareFactorySkills -Recurse -Filter 'SKILL.md' -File)
+if ($skillFiles.Count -lt 25) {
+  throw "Canonical Software Factory skill registry is incomplete: found $($skillFiles.Count)."
+}
+
 $pythonVersion = (& python -c "import sys; print('%d.%d' % sys.version_info[:2])").Trim()
 if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($pythonVersion)) {
   throw 'Unable to resolve the Python interpreter for Desktop sidecar build.'
@@ -71,19 +73,11 @@ $sourceHeadFile = Join-Path $metadata 'source-head.txt'
 $env:PYTHONPATH = $repoRoot
 Push-Location $repoRoot
 try {
-  # Fail before packaging if a required first-party runtime or identity module
-  # is absent or not importable in the active Windows build environment.
-  python -c "import services.desktop_oidc_microsoft; import services.desktop_oidc_windows; import services.integrations.web_factory"
+  python -c "import services.desktop_oidc_microsoft; import services.desktop_oidc_windows; import services.integrations.web_factory; import services.p0_runtime_composition; import services.runtime.ai_provider_adapter; import services.runtime.security_agent_adapters"
   if ($LASTEXITCODE -ne 0) {
-    throw 'Desktop sidecar source import smoke failed for required identity/integration modules.'
+    throw 'Desktop sidecar source import smoke failed for required identity/integration/agent modules.'
   }
 
-  # PyInstaller can miss package children on some local Python environments
-  # even when imports are statically reachable through package __init__ files.
-  # Collect the bounded first-party integrations package explicitly so local
-  # Windows builds and CI produce the same runnable composition root. The OIDC
-  # Windows/Microsoft modules are statically imported by the sidecar entrypoint
-  # and the pre-package smoke above prevents an omitted source dependency.
   python -m PyInstaller `
     --noconfirm `
     --clean `
@@ -97,6 +91,7 @@ try {
     --add-data "$brandLogo;brand/assets" `
     --add-data "$identityProviders;desktop-identity" `
     --add-data "$sourceHeadFile;build-metadata" `
+    --add-data "$softwareFactorySkills;tools/software-factory/skills" `
     --workpath $work `
     --specpath $spec `
     --distpath $dist `
@@ -111,10 +106,6 @@ $built = Join-Path $dist 'ilaios_control_plane.exe'
 if (-not (Test-Path $built)) { throw "Sidecar executable missing: $built" }
 if ((Get-Item $built).Length -le 0) { throw 'Bundled control-plane executable is empty.' }
 
-# A successful PyInstaller exit is not sufficient evidence that the frozen
-# composition root is runnable. --help imports the complete module graph before
-# argparse exits, so this catches missing first-party modules without starting a
-# runtime or using secrets.
 & $built --help *> $null
 if ($LASTEXITCODE -ne 0) {
   throw 'Packaged Desktop sidecar import smoke failed.'
