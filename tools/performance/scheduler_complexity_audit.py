@@ -12,9 +12,8 @@ import argparse
 import json
 from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta, timezone
-from types import MethodType
 
-from services.runtime.scheduler import WorkerProfile, WorkerScheduler
+from services.runtime.scheduler import Lease, WorkerProfile, WorkerScheduler
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,6 +25,20 @@ class ScenarioResult:
     selected_worker: str
 
 
+class AuditWorkerScheduler(WorkerScheduler):
+    """Instrumented scheduler used only by the audit command."""
+
+    def __init__(self, *, lease_duration: timedelta) -> None:
+        super().__init__(lease_duration=lease_duration)
+        self.active_count_calls = 0
+        self.lease_items_scanned = 0
+
+    def _active_count(self, worker_id: str, now: datetime) -> int:
+        self.active_count_calls += 1
+        self.lease_items_scanned += len(self._leases)
+        return super()._active_count(worker_id, now)
+
+
 def characterize(*, workers: int, seeded_leases: int) -> ScenarioResult:
     if workers < 1:
         raise ValueError("workers must be positive")
@@ -35,7 +48,7 @@ def characterize(*, workers: int, seeded_leases: int) -> ScenarioResult:
         raise ValueError("seeded_leases cannot exceed workers")
 
     now = datetime(2026, 1, 1, tzinfo=timezone.utc)
-    scheduler = WorkerScheduler(lease_duration=timedelta(minutes=5))
+    scheduler = AuditWorkerScheduler(lease_duration=timedelta(minutes=5))
     for index in range(workers):
         scheduler.register(
             WorkerProfile(
@@ -45,27 +58,27 @@ def characterize(*, workers: int, seeded_leases: int) -> ScenarioResult:
             )
         )
 
+    # Seed the fixture directly so setup cost does not contaminate the target
+    # schedule operation. Each seeded worker has one active lease and remains
+    # below its quota of two concurrent tasks.
     for index in range(seeded_leases):
-        scheduler.schedule(f"seed-{index:06d}", "audit", now=now)
+        task_id = f"seed-{index:06d}"
+        scheduler._leases[task_id] = Lease(
+            task_id=task_id,
+            worker_id=f"worker-{index:06d}",
+            fencing_token=1,
+            expires_at=now + timedelta(minutes=5),
+        )
 
-    active_count_calls = 0
-    lease_items_scanned = 0
-    original = scheduler._active_count
-
-    def counted_active_count(self: WorkerScheduler, worker_id: str, at: datetime) -> int:
-        nonlocal active_count_calls, lease_items_scanned
-        active_count_calls += 1
-        lease_items_scanned += len(self._leases)
-        return original(worker_id, at)
-
-    scheduler._active_count = MethodType(counted_active_count, scheduler)  # type: ignore[method-assign]
+    scheduler.active_count_calls = 0
+    scheduler.lease_items_scanned = 0
     lease = scheduler.schedule("audit-target", "audit", now=now)
 
     return ScenarioResult(
         workers=workers,
         seeded_leases=seeded_leases,
-        active_count_calls=active_count_calls,
-        lease_items_scanned=lease_items_scanned,
+        active_count_calls=scheduler.active_count_calls,
+        lease_items_scanned=scheduler.lease_items_scanned,
         selected_worker=lease.worker_id,
     )
 
