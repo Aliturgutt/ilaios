@@ -57,6 +57,9 @@ class P0LiveCertificationError(RuntimeError):
     """Live P0 execution or evidence failed closed."""
 
 
+_CERTIFICATION_INPUT_TOKEN_RESERVATION = 4096
+
+
 def run_p0_live_certification(
     *,
     repository_root: Path,
@@ -127,7 +130,7 @@ def run_p0_live_certification(
                 tenant_id=tenant_id,
                 scopes=scopes,
                 prompt=invocation.prompt,
-                input_tokens=256,
+                input_tokens=_CERTIFICATION_INPUT_TOKEN_RESERVATION,
                 max_output_tokens=256,
                 now=observed_at,
             )
