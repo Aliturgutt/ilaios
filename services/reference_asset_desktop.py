@@ -8,7 +8,7 @@ import json
 import secrets
 from datetime import datetime, timezone
 from http import HTTPStatus
-from typing import Any, cast
+from typing import Any
 from urllib.parse import urlparse
 
 from services.desktop_identity_server import (
@@ -83,7 +83,7 @@ class ReferenceAwareDesktopIdentityRequestHandler(DesktopIdentityRequestHandler)
                 original_name=filename,
                 media_type=media_type,
                 content=content,
-                claimed_sha256=cast(str | None, claimed_sha256_value),
+                claimed_sha256=claimed_sha256_value,
             )
             self._send_json(HTTPStatus.CREATED, record.public_metadata())
         except DesktopIdentityError as error:
