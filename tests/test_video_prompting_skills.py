@@ -1,3 +1,5 @@
+from pathlib import Path
+
 import pytest
 
 from src.video_automation.prompting_skills import (
@@ -15,6 +17,15 @@ from src.video_automation.prompting_skills import (
     VideoPromptComposer,
 )
 from src.video_automation.video_skills import VIDEO_SKILLS, VideoSkillError
+
+
+SKILL_PACKAGES = (
+    "ilaios-video-director",
+    "ilaios-video-prompt",
+    "ilaios-video-reference-assets",
+    "ilaios-video-model-routing",
+    "ilaios-video-continuity",
+)
 
 
 def _directed() -> DirectedVideoBrief:
@@ -130,3 +141,13 @@ def test_five_prompting_skills_are_registered_as_first_party_read_only_runtime_b
         assert manifest.source_provenance == "ILAIOS-native"
         assert manifest.risk.value == "read_only"
         assert "prompting_skills" in manifest.implementation
+
+
+def test_skill_packages_declare_no_imported_code_or_text() -> None:
+    root = Path(__file__).resolve().parents[1] / "skills"
+    for package in SKILL_PACKAGES:
+        provenance = (root / package / "PROVENANCE.md").read_text(encoding="utf-8")
+        assert "FIRST-PARTY ILAIOS IMPLEMENTATION" in provenance
+        assert "INDEPENDENTLY AUTHORED" in provenance
+        assert "CODE/TEXT IMPORTED = NONE" in provenance
+        assert "THIRD-PARTY SKILL FILES COPIED = NONE" in provenance
