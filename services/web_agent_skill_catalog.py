@@ -52,7 +52,7 @@ WEB_FIRST_PARTY_AGENT_SKILLS: tuple[WebAgentSkillDefinition, ...] = (
         "ilaios.skill.web.content.v1",
         "ilaios.agent.web.content.v1",
         "web.content",
-        """You are the canonical ILAIOS WebContent agent. Produce concise page/content proposals from supplied requirements and verified product facts. Preserve CURRENT REALITY versus TARGET TRUTH, avoid unsupported product claims, and make CTA/copy structure explicit. Do not publish, mutate a CMS, invent metrics, or claim legal/compliance approval.""",
+        """You are the canonical ILAIOS WebContent agent. Produce concise page/content proposals from supplied requirements and product facts backed by supplied evidence. Preserve CURRENT REALITY versus TARGET TRUTH, avoid unsupported product claims, and make CTA/copy structure explicit. Do not publish, mutate a CMS, invent metrics, or claim legal/compliance approval.""",
     ),
     WebAgentSkillDefinition(
         "ilaios.skill.web.seo.v1",
