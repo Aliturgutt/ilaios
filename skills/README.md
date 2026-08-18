@@ -48,7 +48,7 @@ This preserves portability and reduces vendor lock-in without making ILAIOS depe
 - `ilaios-video-director` — governed access to the existing canonical CreativeDirection/CinematographyExecutor path.
 - `ilaios-video-prompt` — governed access to the existing provider-agnostic ShotPromptCompiler.
 - `ilaios-video-reference-assets` — read-only access to already-admitted reference metadata; the existing tenant-bound reference pipeline remains authoritative.
-- `ilaios-video-model-routing` — governed RoutingIntelligenceEngine candidate ranking; canonical route_model remains final authority.
+- `ilaios-video-model-fit-analysis` — governed RoutingIntelligenceEngine ranking evidence only; canonical route_model remains final routing authority.
 - `ilaios-video-continuity` — governed access to the existing ContinuityTracker state/transition path.
 
 See `VIDEO_PROMPTING_PROVENANCE.md` for the independently authored provenance, external research boundary, and canonical-component mapping of the five Video Factory prompting skills.
