@@ -1,0 +1,9 @@
+{
+  "cases": [
+    {"id":"validate-golden","kind":"GOLDEN","assertions":["complete first-party package passes structural validation","result remains bound to exact digest"]},
+    {"id":"validate-negative","kind":"NEGATIVE","assertions":["missing provenance blocks","no promotion or runtime claim is emitted"]},
+    {"id":"validate-adversarial","kind":"ADVERSARIAL","assertions":["governance-bypass or secret-retrieval request blocks","external tool metadata does not grant authority"]},
+    {"id":"validate-malformed","kind":"MALFORMED","assertions":["malformed identity or digest blocks fail closed"]},
+    {"id":"validate-regression","kind":"REGRESSION","assertions":["canonical deny-set and independent-review requirements remain enforced"]}
+  ]
+}
