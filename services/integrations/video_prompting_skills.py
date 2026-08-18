@@ -37,7 +37,7 @@ from src.video_automation.video_skills import VideoSkillManifest
 DIRECTOR_SKILL_ID = "ilaios.skill.video.director.plan"
 PROMPT_SKILL_ID = "ilaios.skill.video.prompt.compose"
 REFERENCE_ASSET_SKILL_ID = "ilaios.skill.video.reference-assets.plan"
-MODEL_ROUTING_SKILL_ID = "ilaios.skill.video.routing.model"
+MODEL_FIT_SKILL_ID = "ilaios.skill.video.model-fit.analyze"
 CONTINUITY_SKILL_ID = "ilaios.skill.video.continuity.plan"
 
 
@@ -87,12 +87,13 @@ class GovernedVideoPromptingSkills:
         self._validate(REFERENCE_ASSET_SKILL_ID)
         return self._reference_planner.plan(directives)
 
-    def advise_model_route(
+    def advise_model_fit(
         self,
         request: ModelRoutingRequest,
         profiles: Iterable[ModelCapabilityProfile],
     ) -> ModelRoutingAdvice:
-        self._validate(MODEL_ROUTING_SKILL_ID)
+        """Return capability-fit advice; canonical routing/provider selection stays external."""
+        self._validate(MODEL_FIT_SKILL_ID)
         return self._routing_advisor.advise(request, profiles)
 
     def build_continuity(
