@@ -7,7 +7,7 @@ import '../control_plane/client.dart';
 import '../control_plane/evidence_record.dart';
 import '../control_plane/operational_snapshot.dart';
 import '../control_plane/projection.dart';
-import '../features/dashboard/reference_desktop_shell_v11.dart';
+import '../features/dashboard/reference_desktop_shell_v12.dart';
 import '../identity/identity_client.dart';
 import 'ilaios_locale.dart';
 import 'ilaios_theme.dart';
@@ -30,6 +30,7 @@ class IlaiosDesktopApp extends StatefulWidget {
     this.onSignIn,
     this.onLogout,
     this.onPromptSubmit,
+    this.onVideoPromptSubmit,
     this.onSaveArtifact,
     this.onRefreshRequested,
     this.onGovernanceDecision,
@@ -49,6 +50,7 @@ class IlaiosDesktopApp extends StatefulWidget {
   final Future<void> Function(String providerId)? onSignIn;
   final Future<void> Function()? onLogout;
   final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
+  final VideoPromptSubmit? onVideoPromptSubmit;
   final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
   final VoidCallback? onRefreshRequested;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
@@ -140,9 +142,6 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
         widget.onThemeModeChanged == null ? _localThemeMode : widget.themeMode;
     final darkDesktopTheme = IlaiosTheme.dark.copyWith(
       colorScheme: IlaiosTheme.dark.colorScheme.copyWith(
-        // The approved dark horizontal JPG has the canonical Carbon backdrop.
-        // Keep shell/sidebar surfaces on the same Carbon tone so the untouched
-        // brand master renders seamlessly instead of as a visible black box.
         surfaceContainerLow: IlaiosTheme.carbon,
       ),
     );
@@ -155,7 +154,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
       home: IlaiosLocaleScope(
         locale: widget.locale,
         onChanged: (value) => widget.onLocaleChanged?.call(value),
-        child: ReferenceDesktopShellV11(
+        child: ReferenceDesktopShellV12(
           projection: widget.projection,
           operationalSnapshot: widget.operationalSnapshot,
           operationalStatus: widget.operationalStatus,
@@ -168,6 +167,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
           onSignIn: widget.onSignIn,
           onLogout: widget.onLogout,
           onPromptSubmit: widget.onPromptSubmit,
+          onVideoPromptSubmit: widget.onVideoPromptSubmit,
           onSaveArtifact: widget.onSaveArtifact,
           onRefreshRequested: widget.onRefreshRequested,
           onGovernanceDecision: widget.onGovernanceDecision,
