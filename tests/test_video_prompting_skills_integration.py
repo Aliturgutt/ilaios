@@ -150,7 +150,7 @@ def test_reference_skill_exposes_only_already_admitted_metadata() -> None:
     assert result[0].sha256 == "a" * 64
 
 
-def test_model_routing_delegates_to_existing_routing_intelligence_only() -> None:
+def test_model_fit_delegates_to_existing_routing_intelligence_only() -> None:
     now = datetime(2026, 8, 18, tzinfo=timezone.utc)
     catalog = ProviderCatalogSnapshot(
         catalog_version="catalog-1",
@@ -186,7 +186,7 @@ def test_model_routing_delegates_to_existing_routing_intelligence_only() -> None
             ),
         ),
     )
-    evidence = _approved_adapter().advise_model_route(
+    evidence = _approved_adapter().analyze_model_fit(
         catalog=catalog,
         runtime_state=runtime_state,
         policy=RoutingPolicy(),
