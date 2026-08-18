@@ -54,11 +54,15 @@ def web_factory_native_skill_plan() -> tuple[dict[str, str], ...]:
 def bind_web_factory_native_skill_evidence(
     manifest: dict[str, object],
 ) -> dict[str, object]:
-    """Bind native skill stages to real Web runtime evidence without widening claims.
+    """Project canonical Web runtime evidence onto native skill coverage.
 
-    Local artifact evidence can bind architecture/design/accessibility/performance/
-    validation stages. Production QA remains explicitly blocked until a deployment
-    receipt exists; local CI or artifact acceptance can never promote it.
+    This function does not dispatch or execute the six native skills. It only binds
+    already-observed canonical Web runtime evidence to the skill stages whose
+    contracts are covered by that evidence. Therefore the returned field is named
+    ``native_skill_evidence_binding`` rather than ``native_skill_execution``.
+
+    Production QA remains explicitly blocked until a deployment receipt exists;
+    local CI or artifact acceptance can never be presented as live-production proof.
     """
     validate_web_factory_native_skills()
     if manifest.get("adapter_id") != "web.product-runtime.v1":
@@ -81,14 +85,14 @@ def bind_web_factory_native_skill_evidence(
     local_statuses = (
         "EVIDENCE_BOUND",
         "EVIDENCE_BOUND",
-        "LOCAL_QA_BOUND",
-        "LOCAL_QA_BOUND",
-        "LOCAL_VERIFIED",
+        "QA_EVIDENCE_BOUND",
+        "QA_EVIDENCE_BOUND",
+        "VALIDATION_EVIDENCE_BOUND",
     )
-    execution: list[dict[str, object]] = []
+    bindings: list[dict[str, object]] = []
     local_skills = WEB_FACTORY_NATIVE_SKILLS[:-1]
     for skill, status in zip(local_skills, local_statuses, strict=True):
-        execution.append(
+        bindings.append(
             {
                 "skill_id": skill.skill_id,
                 "capability": skill.capability,
@@ -105,13 +109,13 @@ def bind_web_factory_native_skill_evidence(
         if not isinstance(receipt, dict) or not receipt:
             raise ValueError("production Web skill evidence requires deployment receipt")
         production_status = (
-            "PRODUCTION_VERIFIED"
+            "PRODUCTION_VERIFICATION_EVIDENCE_BOUND"
             if deployment_state == "PRODUCTION_VERIFIED"
-            else "DEPLOYED_NOT_LIVE_VERIFIED"
+            else "DEPLOYMENT_EVIDENCE_BOUND_NOT_LIVE_VERIFIED"
         )
     else:
         raise ValueError("unknown Web deployment state")
-    execution.append(
+    bindings.append(
         {
             "skill_id": production_skill.skill_id,
             "capability": production_skill.capability,
@@ -122,7 +126,7 @@ def bind_web_factory_native_skill_evidence(
 
     bound = dict(manifest)
     bound["native_skill_plan"] = web_factory_native_skill_plan()
-    bound["native_skill_execution"] = execution
+    bound["native_skill_evidence_binding"] = bindings
     return bound
 
 
