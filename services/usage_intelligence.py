@@ -31,16 +31,19 @@ def project_usage_stats(
     routes: Iterable[Mapping[str, object]],
     governance_state: Mapping[str, object],
     *,
-    evidence_count: int,
+    evidence_count: int | None = None,
 ) -> dict[str, object]:
     """Build a privacy-minimized local usage projection.
 
     The scope is intentionally the authenticated local control-plane instance.
-    Token, latency, and model-level usage remain unavailable until an
-    authoritative source is wired; this projector never infers them.
+    Token, latency, model-level usage, and verified-evidence counts remain
+    unavailable until an authoritative caller supplies them; this projector
+    never infers missing telemetry.
     """
 
-    if isinstance(evidence_count, bool) or evidence_count < 0:
+    if evidence_count is not None and (
+        isinstance(evidence_count, bool) or evidence_count < 0
+    ):
         raise UsageIntelligenceError("evidence_count must be non-negative")
 
     normalized_routes = tuple(_route_metadata(route) for route in routes)
@@ -81,7 +84,9 @@ def project_usage_stats(
         "coverage": {
             "runtime_routes": "authoritative_route_metadata",
             "governance": "authoritative_governance_state",
-            "evidence": "verified_evidence_count",
+            "evidence": (
+                "verified_evidence_count" if evidence_count is not None else "unavailable"
+            ),
             "costs": cost_projection["coverage"],
             "tokens": "unavailable",
             "latency": "unavailable",
