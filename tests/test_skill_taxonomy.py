@@ -5,6 +5,13 @@ from typing import cast
 
 import pytest
 
+from services.security_methodology_skills import (
+    AGENTIC_ACTION_AUDIT_SKILL_ID,
+    DIFFERENTIAL_REVIEW_SKILL_ID,
+    SECURITY_REVIEW_SKILL_ID,
+    SUPPLY_CHAIN_AUDIT_SKILL_ID,
+    THREAT_MODEL_SKILL_ID,
+)
 from services.skill_engineering_catalog import (
     SkillEngineeringCatalog,
     default_skill_engineering_root,
@@ -97,16 +104,35 @@ def test_software_logical_nodes_only_map_to_existing_runtime_skills() -> None:
     )
 
 
-def test_assurance_is_cross_cutting_and_reuses_existing_evidence_gates() -> None:
+def test_assurance_maps_native_security_and_existing_software_gates() -> None:
     assurance = nodes_for_prefix("assurance")
     assert {node.path[-1] for node in assurance} == {
         "security-review",
         "differential-review",
+        "agentic-action-audit",
         "threat-model",
         "supply-chain-audit",
         "dependency-audit",
         "release-readiness",
     }
+    assert resolve_logical_skill("assurance/security-review").backing_skill_ids == (
+        SECURITY_REVIEW_SKILL_ID,
+        "sf-security-review",
+    )
+    assert resolve_logical_skill("assurance/differential-review").backing_skill_ids == (
+        DIFFERENTIAL_REVIEW_SKILL_ID,
+    )
+    assert resolve_logical_skill("assurance/agentic-action-audit").backing_skill_ids == (
+        AGENTIC_ACTION_AUDIT_SKILL_ID,
+    )
+    assert resolve_logical_skill("assurance/threat-model").backing_skill_ids == (
+        THREAT_MODEL_SKILL_ID,
+    )
+    assert resolve_logical_skill("assurance/supply-chain-audit").backing_skill_ids == (
+        SUPPLY_CHAIN_AUDIT_SKILL_ID,
+        "sf-dependency-governance",
+        "sf-license-provenance",
+    )
     assert resolve_logical_skill("assurance/release-readiness").backing_skill_ids == (
         "sf-release-readiness",
     )
