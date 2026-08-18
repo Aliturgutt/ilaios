@@ -28,11 +28,13 @@ from services.runtime import DurableGrantPolicy
 from services.runtime.routing import AgentProfile, SkillRegistry
 from services.source_media import SourceMediaError, SourceMediaStore
 from src.video_automation.generation_job_polling import GenerationJobPoller
+from src.video_automation.media_technical_validation import MediaProbeObservation
 from src.video_automation.openrouter_video_provider import (
     SEEDANCE_FREE_MODEL_ID,
     OpenRouterGeneratedAssetRetriever,
     OpenRouterVideoGenerationProvider,
 )
+from src.video_automation.perceptual_review import PerceptualReviewSubmission
 from src.video_automation.reference_image_analysis import (
     OpenRouterReferenceImageAnalyzer,
     ReferenceImageAnalysisError,
@@ -53,10 +55,7 @@ from .video_product_intelligence import (
     admit_current_desktop_video_product,
     derive_video_product_spec,
 )
-from .video_revision import (
-    GovernedVideoRevisionExecutor,
-    VideoRevisionError,
-)
+from .video_revision import GovernedVideoRevisionExecutor, VideoRevisionError
 from .video_runtime import VideoRuntimeError
 from .video_skill_governance import approve_video_skills
 
@@ -125,8 +124,6 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
             data_root / "reference-briefs.sqlite3"
         )
 
-        # One process-scoped instance of the existing canonical SkillRegistry is
-        # used for Video native skills. It is not a new policy engine or runtime.
         self._video_skill_registry = SkillRegistry()
         approve_video_skills(self._video_skill_registry)
         self._video_edit_agent = AgentProfile(
@@ -161,8 +158,6 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
             reference_count=len(self._reference_assets.for_request(request_id)),
         )
         if spec.mode is not VideoProductMode.REVISION:
-            # Let the common product guard produce the canonical fail-closed error
-            # for localization/plain-create source bindings.
             return super().execute(
                 request_id=request_id,
                 job_id=job_id,
@@ -204,7 +199,9 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
                 )
             source = self._source_media.for_request(request_id)
             if source is None:
-                raise VideoRuntimeError("source-video revision lost its immutable source binding")
+                raise VideoRuntimeError(
+                    "source-video revision lost its immutable source binding"
+                )
             try:
                 self._source_media.require_registered_path(source.asset_id)
                 product_spec = admit_current_desktop_video_product(
@@ -216,7 +213,9 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
             except (SourceMediaError, VideoProductIntentError) as error:
                 raise VideoRuntimeError(str(error)) from error
             if product_spec.mode is not VideoProductMode.REVISION:
-                raise VideoRuntimeError("source-video revision resolved to an unexpected product mode")
+                raise VideoRuntimeError(
+                    "source-video revision resolved to an unexpected product mode"
+                )
 
             run_root = self._root / request_id
             run_root.mkdir(parents=True, exist_ok=False)
@@ -243,14 +242,17 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
             except VideoRevisionError as error:
                 raise VideoRuntimeError(str(error)) from error
 
-            outcome = revision.to_runtime_outcome()
             final_path = Path(revision.edit.output_path)
             content = final_path.read_bytes()
             if not content:
-                raise VideoRuntimeError("governed source revision produced an empty video")
+                raise VideoRuntimeError(
+                    "governed source revision produced an empty video"
+                )
             artifact = self._evidence.put_artifact(content)
             if artifact.digest != revision.edit.sha256_hex:
-                raise VideoRuntimeError("revised video digest changed before acceptance")
+                raise VideoRuntimeError(
+                    "revised video digest changed before acceptance"
+                )
 
             lineage_payload = {
                 "schema": "ilaios.video-revision-lineage.v1",
@@ -267,7 +269,14 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
                 "provider_generation_used": False,
             }
             lineage_artifact = self._evidence.put_artifact(
-                (json.dumps(lineage_payload, sort_keys=True, separators=(",", ":")) + "\n").encode()
+                (
+                    json.dumps(
+                        lineage_payload,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    )
+                    + "\n"
+                ).encode()
             )
             lineage_provenance = self._evidence.append_provenance(
                 job_id,
@@ -283,7 +292,9 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
             latency_ms = int((time.monotonic() - started) * 1000)
             latency_budget_ms = 10 * 60 * 1000
             if latency_ms > latency_budget_ms:
-                raise VideoRuntimeError("source-video revision latency acceptance failed")
+                raise VideoRuntimeError(
+                    "source-video revision latency acceptance failed"
+                )
 
             qa = {
                 "passed": True,
@@ -360,17 +371,15 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
         objective: str,
         duration_seconds: float,
     ) -> dict[str, object]:
-        # Read only immutable request binding metadata before any provider effect.
-        # Source-video revision is handled by ``execute`` above. Any source that
-        # reaches this generation method is therefore localization/unsupported and
-        # must still fail closed before reference analysis/provider generation.
         reference_count = len(self._reference_assets.for_request(request_id))
         source_record = self._source_media.for_request(request_id)
         if source_record is not None:
             try:
                 self._source_media.require_registered_path(source_record.asset_id)
             except SourceMediaError as error:
-                raise VideoRuntimeError("bound source video integrity validation failed") from error
+                raise VideoRuntimeError(
+                    "bound source video integrity validation failed"
+                ) from error
         try:
             product_spec = admit_current_desktop_video_product(
                 objective,
@@ -399,9 +408,6 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
             return outcome
 
         raw_retention = "managed_by_injected_store"
-        # The immutable brief and source digests are frozen before generation.
-        # Once the canonical provider/QA chain succeeds, production admission
-        # storage can release raw user image bytes without losing retry identity.
         if isinstance(self._reference_assets, ReferenceAssetAdmissionStore):
             try:
                 self._reference_assets.release_request_blobs(request_id)
@@ -418,7 +424,10 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
         outcome["reference_raw_retention"] = raw_retention
         return outcome
 
-    def _reference_brief(self, request_id: str) -> ReferenceVisualBrief | None:
+    def _reference_brief(
+        self,
+        request_id: str,
+    ) -> ReferenceVisualBrief | None:
         records = self._reference_assets.for_request(request_id)
         if not records:
             return None
@@ -426,7 +435,9 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
         try:
             cached = self._reference_brief_cache.get(request_id)
         except ReferenceBriefCacheError as error:
-            raise VideoRuntimeError("cached reference conditioning is invalid") from error
+            raise VideoRuntimeError(
+                "cached reference conditioning is invalid"
+            ) from error
         if cached is not None:
             if cached.reference_sha256s != digests:
                 raise VideoRuntimeError(
@@ -451,7 +462,9 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
         try:
             brief = self._reference_analyzer.analyze(references)
         except ReferenceImageAnalysisError as error:
-            raise VideoRuntimeError("reference image conditioning failed") from error
+            raise VideoRuntimeError(
+                "reference image conditioning failed"
+            ) from error
         if brief.reference_sha256s != digests:
             raise VideoRuntimeError(
                 "reference analyzer returned a digest set that does not match bound images"
@@ -464,7 +477,9 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
                 analyzer_id=brief.analyzer_id,
             )
         except ReferenceBriefCacheError as error:
-            raise VideoRuntimeError("reference conditioning could not be frozen") from error
+            raise VideoRuntimeError(
+                "reference conditioning could not be frozen"
+            ) from error
         return ReferenceVisualBrief(
             frozen.text,
             frozen.reference_sha256s,
@@ -472,28 +487,32 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
         )
 
 
-def _observation_payload(observation: object) -> dict[str, object]:
+def _observation_payload(
+    observation: MediaProbeObservation,
+) -> dict[str, object]:
     return {
-        "container": getattr(observation, "container"),
-        "duration_seconds": getattr(observation, "duration_seconds"),
-        "width": getattr(observation, "width"),
-        "height": getattr(observation, "height"),
-        "frames_per_second": getattr(observation, "frames_per_second"),
-        "video_codec": getattr(observation, "video_codec"),
-        "audio_codec": getattr(observation, "audio_codec"),
-        "video_stream_count": getattr(observation, "video_stream_count"),
-        "audio_stream_count": getattr(observation, "audio_stream_count"),
+        "container": observation.container,
+        "duration_seconds": observation.duration_seconds,
+        "width": observation.width,
+        "height": observation.height,
+        "frames_per_second": observation.frames_per_second,
+        "video_codec": observation.video_codec,
+        "audio_codec": observation.audio_codec,
+        "video_stream_count": observation.video_stream_count,
+        "audio_stream_count": observation.audio_stream_count,
     }
 
 
-def _review_payload(review: object) -> dict[str, object]:
+def _review_payload(
+    review: PerceptualReviewSubmission,
+) -> dict[str, object]:
     return {
-        "review_id": getattr(review, "review_id"),
-        "reviewer_id": getattr(review, "reviewer_id"),
-        "score": getattr(review, "score"),
-        "threshold": getattr(review, "threshold"),
-        "criteria_sha256": getattr(review, "criteria_sha256"),
-        "artifact_sha256": getattr(review, "artifact_sha256"),
+        "review_id": review.review_id,
+        "reviewer_id": review.reviewer_id,
+        "score": review.score,
+        "threshold": review.threshold,
+        "criteria_sha256": review.criteria_sha256,
+        "artifact_sha256": review.artifact_sha256,
     }
 
 
