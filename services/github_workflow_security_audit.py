@@ -16,9 +16,11 @@ _MANUAL_ONLY = frozenset({
     "aws-r01-image-scan.yml", "aws-r01-preparation-resources.yml",
     "aws-r02-limited-apply.yml", "aws-r03-production-apply.yml",
     "desktop-msix-signed-release.yml", "video-provider-production-certification.yml",
+    "openrouter-production-telemetry-certification.yml",
 })
 _SECRET_ALLOWED = frozenset({
     "desktop-msix-signed-release.yml", "video-provider-production-certification.yml",
+    "openrouter-production-telemetry-certification.yml",
 })
 
 @dataclass(frozen=True, slots=True)

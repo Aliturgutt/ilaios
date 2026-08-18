@@ -1,0 +1,237 @@
+name: OpenRouter Production Telemetry Certification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openrouter-production-telemetry-certification
+  cancel-in-progress: false
+
+jobs:
+  read-only-telemetry-proof:
+    name: Read-only production telemetry proof
+    runs-on: ubuntu-latest
+    environment: Production
+    timeout-minutes: 5
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      PROOF_DIR: artifacts/openrouter-production-telemetry
+
+    steps:
+      - name: Observe authenticated OpenRouter telemetry without inference
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$PROOF_DIR"
+          python - <<'PY'
+          from __future__ import annotations
+
+          import hashlib
+          import json
+          import os
+          import time
+          import urllib.error
+          import urllib.request
+          from datetime import datetime, timezone
+          from decimal import Decimal, InvalidOperation
+          from pathlib import Path
+
+          secret = os.environ.get("OPENROUTER_API_KEY", "").strip()
+          proof_dir = Path(os.environ["PROOF_DIR"])
+          if not secret:
+              print("::error::Production OPENROUTER_API_KEY is unavailable")
+              raise SystemExit(2)
+
+          base_url = "https://openrouter.ai/api/v1"
+
+          def get_json(path: str) -> tuple[dict[str, object], int]:
+              request = urllib.request.Request(
+                  f"{base_url}{path}",
+                  headers={
+                      "Authorization": f"Bearer {secret}",
+                      "Accept": "application/json",
+                  },
+                  method="GET",
+              )
+              started = time.monotonic()
+              try:
+                  with urllib.request.urlopen(request, timeout=15) as response:
+                      status = int(response.status)
+                      raw = response.read().decode("utf-8")
+              except urllib.error.HTTPError as exc:
+                  print(f"::error::OpenRouter read-only telemetry HTTP {exc.code}")
+                  raise SystemExit(3) from None
+              except (urllib.error.URLError, TimeoutError, OSError):
+                  print("::error::OpenRouter read-only telemetry transport failed")
+                  raise SystemExit(4) from None
+              latency_ms = max(0, int((time.monotonic() - started) * 1000))
+              if status < 200 or status >= 300:
+                  print(f"::error::OpenRouter read-only telemetry HTTP {status}")
+                  raise SystemExit(5)
+              try:
+                  document = json.loads(raw)
+              except (UnicodeDecodeError, json.JSONDecodeError):
+                  print("::error::OpenRouter telemetry returned malformed JSON")
+                  raise SystemExit(6) from None
+              if not isinstance(document, dict):
+                  print("::error::OpenRouter telemetry root is not an object")
+                  raise SystemExit(7)
+              return document, latency_ms
+
+          key_document, key_latency = get_json("/key")
+          models_document, models_latency = get_json("/models/user")
+
+          key_data = key_document.get("data")
+          models_data = models_document.get("data")
+          if not isinstance(key_data, dict):
+              print("::error::OpenRouter /key contract is malformed")
+              raise SystemExit(8)
+          if not isinstance(models_data, list):
+              print("::error::OpenRouter /models/user contract is malformed")
+              raise SystemExit(9)
+
+          def decimal_or_none(value: object) -> Decimal | None:
+              if value is None:
+                  return None
+              if isinstance(value, bool) or not isinstance(value, (str, int, float)):
+                  raise ValueError("not numeric")
+              try:
+                  parsed = Decimal(str(value))
+              except InvalidOperation as exc:
+                  raise ValueError("not decimal") from exc
+              if not parsed.is_finite() or parsed < 0:
+                  raise ValueError("not finite non-negative")
+              return parsed
+
+          try:
+              limit = decimal_or_none(key_data.get("limit"))
+              limit_remaining = decimal_or_none(key_data.get("limit_remaining"))
+              usage = decimal_or_none(key_data.get("usage"))
+          except ValueError:
+              print("::error::OpenRouter key quota values are malformed")
+              raise SystemExit(10) from None
+
+          normalized_models: list[dict[str, object]] = []
+          zero_cost_models = 0
+          priced_models = 0
+          for raw in models_data:
+              if not isinstance(raw, dict):
+                  continue
+              model_id = raw.get("id")
+              pricing = raw.get("pricing")
+              if not isinstance(model_id, str) or not isinstance(pricing, dict):
+                  continue
+              try:
+                  prompt = decimal_or_none(pricing.get("prompt"))
+                  completion = decimal_or_none(pricing.get("completion"))
+              except ValueError:
+                  continue
+              if prompt is None or completion is None:
+                  continue
+              priced_models += 1
+              if prompt == 0 and completion == 0:
+                  zero_cost_models += 1
+              normalized_models.append(
+                  {
+                      "id": model_id,
+                      "prompt": str(prompt),
+                      "completion": str(completion),
+                  }
+              )
+
+          if not normalized_models:
+              print("::error::Authenticated OpenRouter catalog contains no usable pricing evidence")
+              raise SystemExit(11)
+
+          pricing_digest = hashlib.sha256(
+              json.dumps(
+                  sorted(normalized_models, key=lambda item: str(item["id"])),
+                  sort_keys=True,
+                  separators=(",", ":"),
+              ).encode("utf-8")
+          ).hexdigest()
+          receipt = {
+              "schema": "ilaios.openrouter.production-telemetry-proof.v1",
+              "status": "PASS",
+              "observed_at": datetime.now(timezone.utc).isoformat(),
+              "provider": "openrouter",
+              "operations": ["GET /api/v1/key", "GET /api/v1/models/user"],
+              "inference_request_submitted": False,
+              "credential_reference": "github-environment-secret://Production/OPENROUTER_API_KEY",
+              "key": {
+                  "is_free_tier": bool(key_data.get("is_free_tier", False)),
+                  "limit_configured": limit is not None,
+                  "limit_usd": None if limit is None else str(limit),
+                  "limit_remaining_usd": (
+                      None if limit_remaining is None else str(limit_remaining)
+                  ),
+                  "usage_usd": None if usage is None else str(usage),
+                  "latency_ms": key_latency,
+              },
+              "catalog": {
+                  "authenticated_model_count": len(models_data),
+                  "priced_model_count": priced_models,
+                  "zero_cost_model_count": zero_cost_models,
+                  "pricing_digest": pricing_digest,
+                  "latency_ms": models_latency,
+              },
+          }
+          encoded = json.dumps(receipt, sort_keys=True, indent=2).encode("utf-8")
+          if secret.encode("utf-8") in encoded:
+              print("::error::Credential material entered telemetry evidence")
+              raise SystemExit(12)
+          (proof_dir / "receipt.json").write_bytes(encoded)
+          PY
+
+      - name: Verify sanitized receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$PROOF_DIR/receipt.json"
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          receipt = json.loads(
+              (Path(os.environ["PROOF_DIR"]) / "receipt.json").read_text(encoding="utf-8")
+          )
+          assert receipt["status"] == "PASS"
+          assert receipt["inference_request_submitted"] is False
+          assert receipt["catalog"]["priced_model_count"] > 0
+          print("OpenRouter read-only production telemetry proof: PASS")
+          PY
+
+      - name: Publish sanitized proof summary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          receipt = json.loads(
+              (Path(os.environ["PROOF_DIR"]) / "receipt.json").read_text(encoding="utf-8")
+          )
+          print("## OpenRouter Production Telemetry — Read Only")
+          print(f"- Status: `{receipt['status']}`")
+          print(f"- Observed at: `{receipt['observed_at']}`")
+          print(f"- Inference submitted: `{receipt['inference_request_submitted']}`")
+          print(f"- Key limit configured: `{receipt['key']['limit_configured']}`")
+          print(f"- Key limit remaining USD: `{receipt['key']['limit_remaining_usd']}`")
+          print(f"- Authenticated models: `{receipt['catalog']['authenticated_model_count']}`")
+          print(f"- Priced models: `{receipt['catalog']['priced_model_count']}`")
+          print(f"- Pricing digest: `{receipt['catalog']['pricing_digest']}`")
+          PY
+
+      - name: Upload sanitized production telemetry evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: openrouter-production-telemetry-${{ github.run_id }}-${{ github.run_attempt }}
+          path: artifacts/openrouter-production-telemetry
+          if-no-files-found: error
+          retention-days: 30
