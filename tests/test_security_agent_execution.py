@@ -77,6 +77,7 @@ def _executor(tmp_path: Path) -> tuple[DefensiveSecurityAgentExecutor, NamedAgen
             provider_id,
             frozenset({capability}),
             adapter_kind=adapter_kind,
+            deterministic=True,
         )
     return DefensiveSecurityAgentExecutor(named), named
 
@@ -97,6 +98,7 @@ def test_codesec_report_is_persisted_then_verified_by_distinct_security_verifier
         now=NOW,
     )
     assert producer.route["provider_id"] == "ilaios.security.local.codesec"
+    assert producer.route["deterministic_first"] is True
     assert producer.route["output"]["passed"] is True
     assert producer.route["output"]["finding_count"] == 0
     assert producer.verifier_id == SECURITY_VERIFIER_ID
