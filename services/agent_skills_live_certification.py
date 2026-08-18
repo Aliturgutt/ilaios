@@ -64,7 +64,7 @@ class _ExactHeadValidator:
             raise AgentSkillsLiveCertificationError("repository root identity drifted")
         if observed_head != self._revision_sha:
             raise AgentSkillsLiveCertificationError("repository HEAD identity drifted")
-        if observed_origin != _ORIGIN:
+        if observed_origin.removesuffix(".git") != _ORIGIN.removesuffix(".git"):
             raise AgentSkillsLiveCertificationError("repository origin identity drifted")
         return observed_root
 
