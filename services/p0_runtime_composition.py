@@ -55,7 +55,7 @@ def compose_p0_runtime(
     if len(p0) != 21:
         raise P0RuntimeCompositionError("canonical P0 population must contain 21 agents")
 
-    named = NamedAgentExecutor(runtime, grants)  # type: ignore[arg-type]
+    named = NamedAgentExecutor(runtime, grants)
     target_ids = {item.manifest.agent_id for item in p0}
     identities = target_ids | {INDEPENDENT_VERIFIER_ID}
     for agent_id in sorted(identities):
