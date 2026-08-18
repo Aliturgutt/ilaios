@@ -13,7 +13,6 @@ import os
 import selectors
 import socket
 import socketserver
-from collections.abc import Iterable
 from urllib.parse import urlsplit
 
 _MAX_HEADER_BYTES = 16 * 1024
