@@ -144,7 +144,7 @@ class OpenAICompatibleTransport:
                 {"role": "system", "content": system_instructions},
                 {"role": "user", "content": prompt},
             ],
-            "max_tokens": max_output_tokens,
+            "max_completion_tokens": max_output_tokens,
         }
         if model_id == "openrouter/free" and response_format is None:
             request_document["reasoning"] = {
