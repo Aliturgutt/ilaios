@@ -105,7 +105,7 @@ The Software Factory mappings currently represented in code include:
 - `factories/software/release-validation` -> existing build, release-readiness, and recovery skills;
 - selected assurance nodes -> existing security, dependency/provenance, and release-readiness skills.
 
-An empty runtime mapping means only that the logical taxonomy node exists. It must not be interpreted as implementation, verification, deployment, or production evidence.
+An empty runtime mapping means no governed runtime backing is declared for that logical node. A source/spec package may still exist, but the empty mapping must not be interpreted as runtime integration, verification, deployment, or production evidence.
 
 ## Skill engineering lifecycle
 
@@ -151,4 +151,4 @@ The first new Skill Engineering package is `tools/skill-engineering/skills/skill
 
 The current six native Web Factory skills are mapped into the taxonomy without moving or duplicating their runtime ownership.
 
-Other taxonomy nodes without an existing runtime mapping remain target nodes until independently authored packages, tests, integration, and evidence are added.
+Other taxonomy nodes without an existing runtime mapping remain target nodes unless a first-party source/spec package exists. Runtime integration, testing, verification, deployment, and production status remain evidence-gated separately.
