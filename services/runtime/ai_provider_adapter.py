@@ -36,6 +36,25 @@ class AIProviderError(RuntimeError):
     """External AI execution failed closed."""
 
 
+class AIProviderAuthorizationError(AIProviderError):
+    """Provider credential/credit/permission failure; model fallback cannot fix it."""
+
+
+class AIProviderTransportError(AIProviderError):
+    """Provider transport failure with explicit retryability metadata."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        retryable: bool,
+        retry_after_seconds: float | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.retryable = retryable
+        self.retry_after_seconds = retry_after_seconds
+
+
 @dataclass(frozen=True, slots=True)
 class ProviderEndpoint:
     provider_id: str
@@ -49,7 +68,9 @@ class ProviderEndpoint:
         values = (self.provider_id, self.base_url, self.api_key_env)
         if any(not value or value != value.strip() for value in values):
             raise ValueError("provider endpoint fields must be non-empty and trimmed")
-        if not self.base_url.startswith(("https://", "http://127.0.0.1", "http://localhost")):
+        if not self.base_url.startswith(
+            ("https://", "http://127.0.0.1", "http://localhost")
+        ):
             raise ValueError("provider endpoint must use HTTPS or explicit localhost")
         if self.timeout_seconds <= 0 or self.max_retries < 0:
             raise ValueError("provider timeout/retry configuration is invalid")
@@ -98,7 +119,7 @@ class AIProviderTransport(Protocol):
 
 
 class OpenAICompatibleTransport:
-    """Minimal fail-closed transport for OpenAI-compatible chat endpoints."""
+    """Fail-closed OpenAI-compatible transport with bounded error classification."""
 
     def complete(
         self,
@@ -122,17 +143,34 @@ class OpenAICompatibleTransport:
             },
             separators=(",", ":"),
         ).encode("utf-8")
-        headers = {"Content-Type": "application/json", "X-OpenRouter-Metadata": "enabled"}
+        headers = {"Content-Type": "application/json"}
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
         request = urllib.request.Request(url, data=body, headers=headers, method="POST")
         try:
-            with urllib.request.urlopen(request, timeout=endpoint.timeout_seconds) as response:
+            with urllib.request.urlopen(
+                request, timeout=endpoint.timeout_seconds
+            ) as response:
                 payload = json.loads(response.read().decode("utf-8"))
         except urllib.error.HTTPError as exc:
-            raise AIProviderError(f"provider HTTP failure: {exc.code}") from exc
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError) as exc:
-            raise AIProviderError("provider transport failed") from exc
+            retry_after = _retry_after_seconds(exc)
+            if exc.code in {401, 402, 403}:
+                raise AIProviderAuthorizationError(
+                    f"provider authorization/billing failure: HTTP {exc.code}"
+                ) from exc
+            raise AIProviderTransportError(
+                f"provider HTTP failure: {exc.code}",
+                retryable=exc.code in {408, 429, 500, 502, 503, 504},
+                retry_after_seconds=retry_after,
+            ) from exc
+        except (urllib.error.URLError, TimeoutError) as exc:
+            raise AIProviderTransportError(
+                "provider transport failed", retryable=True
+            ) from exc
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise AIProviderTransportError(
+                "provider returned malformed JSON", retryable=True
+            ) from exc
 
         try:
             text = payload["choices"][0]["message"]["content"]
@@ -141,9 +179,13 @@ class OpenAICompatibleTransport:
             output_tokens = int(usage["completion_tokens"])
             response_id = str(payload["id"])
         except (KeyError, IndexError, TypeError, ValueError) as exc:
-            raise AIProviderError("provider response contract is incomplete") from exc
+            raise AIProviderTransportError(
+                "provider response contract is incomplete", retryable=True
+            ) from exc
         if not isinstance(text, str):
-            raise AIProviderError("provider output must be text")
+            raise AIProviderTransportError(
+                "provider output must be text", retryable=True
+            )
         return ProviderTransportResult(text, input_tokens, output_tokens, response_id)
 
 
@@ -199,7 +241,9 @@ class GovernedAIProviderAdapter:
         digest = sha256(provider_id.encode("utf-8")).hexdigest()[:16]
         return f"ilaios.runtime.ai.{digest}"
 
-    def runtime_adapters(self) -> Mapping[str, Callable[[dict[str, Any]], dict[str, Any]]]:
+    def runtime_adapters(
+        self,
+    ) -> Mapping[str, Callable[[dict[str, Any]], dict[str, Any]]]:
         return {
             self.adapter_kind(provider_id): (
                 lambda payload, bound_provider=provider_id: self._execute_provider(
@@ -235,14 +279,15 @@ class GovernedAIProviderAdapter:
         max_output_tokens = _required_positive_int(payload, "max_output_tokens")
         reserved_input_tokens = max(
             input_tokens,
-            len(prompt.encode("utf-8")) + len(skill.instructions.encode("utf-8")),
+            len(prompt.encode("utf-8"))
+            + len(skill.instructions.encode("utf-8")),
         )
         scopes = _parse_scopes(payload.get("scopes"))
         now = _parse_now(payload.get("now"))
 
         api_key = self._secret_reader(endpoint.api_key_env) or ""
         if endpoint.requires_api_key and not api_key:
-            raise AIProviderError("provider credential is unavailable")
+            raise AIProviderAuthorizationError("provider credential is unavailable")
 
         retry_cost = Decimal(0)
         last_error: Exception | None = None
@@ -254,7 +299,9 @@ class GovernedAIProviderAdapter:
                 max_output_tokens,
             )
             usage_request = UsageRequest(
-                request_id=f"{request_id}:provider:{provider_id}:model:{model_id}:attempt:{attempt}",
+                request_id=(
+                    f"{request_id}:provider:{provider_id}:model:{model_id}:attempt:{attempt}"
+                ),
                 tenant_id=tenant_id,
                 scopes=scopes,
                 model_id=model_id,
@@ -275,21 +322,37 @@ class GovernedAIProviderAdapter:
                     prompt=prompt,
                     max_output_tokens=max_output_tokens,
                 )
-            except Exception as exc:
+            except AIProviderAuthorizationError:
+                self._governor.complete(admitted)
+                self._governor.record_provider_failure(provider_id, now)
+                raise
+            except AIProviderTransportError as exc:
                 self._governor.complete(admitted)
                 self._governor.record_provider_failure(provider_id, now)
                 retry_cost += estimated_cost
                 last_error = exc
+                if not exc.retryable or attempt >= endpoint.max_retries:
+                    raise
+                if exc.retry_after_seconds is not None:
+                    time.sleep(min(exc.retry_after_seconds, 2.0))
                 continue
+            except Exception:
+                self._governor.complete(admitted)
+                self._governor.record_provider_failure(provider_id, now)
+                raise
 
             if response.input_tokens > reserved_input_tokens:
                 self._governor.complete(admitted)
                 self._governor.record_provider_failure(provider_id, now)
-                raise AIProviderError("provider exceeded reserved input-token ceiling")
+                raise AIProviderError(
+                    "provider exceeded reserved input-token ceiling"
+                )
             if response.output_tokens > max_output_tokens:
                 self._governor.complete(admitted)
                 self._governor.record_provider_failure(provider_id, now)
-                raise AIProviderError("provider exceeded requested output-token ceiling")
+                raise AIProviderError(
+                    "provider exceeded requested output-token ceiling"
+                )
             actual_cost = _cost(
                 model.input_cost_per_million,
                 model.output_cost_per_million,
@@ -305,7 +368,9 @@ class GovernedAIProviderAdapter:
                 except GovernanceError:
                     pass
                 self._governor.record_provider_failure(provider_id, now)
-                raise AIProviderError("provider usage reconciliation failed") from exc
+                raise AIProviderError(
+                    "provider usage reconciliation failed"
+                ) from exc
             self._governor.record_provider_success(provider_id, now)
             health = self._governor.provider_health(provider_id, now)
             return {
@@ -329,8 +394,25 @@ class GovernedAIProviderAdapter:
         raise AIProviderError("provider retries exhausted") from last_error
 
 
+def _retry_after_seconds(error: urllib.error.HTTPError) -> float | None:
+    if error.code not in {429, 503}:
+        return None
+    raw = error.headers.get("Retry-After") if error.headers is not None else None
+    if raw is None:
+        return None
+    try:
+        value = float(raw)
+    except ValueError:
+        return None
+    return value if 0 < value <= 60 else None
+
+
 def _parse_runtime_skill(value: object) -> RuntimeSkillContext:
-    if not isinstance(value, dict) or set(value) != {"skill_id", "sha256", "instructions"}:
+    if not isinstance(value, dict) or set(value) != {
+        "skill_id",
+        "sha256",
+        "instructions",
+    }:
         raise AIProviderError("runtime skill context is missing or malformed")
     skill_id = value.get("skill_id")
     digest = value.get("sha256")
@@ -366,13 +448,17 @@ def _parse_scopes(value: object) -> tuple[Scope, ...]:
 
 def _parse_now(value: object) -> datetime:
     if not isinstance(value, str):
-        raise AIProviderError("provider execution requires serialized timestamp")
+        raise AIProviderError(
+            "provider execution requires serialized timestamp"
+        )
     try:
         parsed = datetime.fromisoformat(value)
     except ValueError as exc:
         raise AIProviderError("provider execution timestamp is invalid") from exc
     if parsed.tzinfo is None:
-        raise AIProviderError("provider execution timestamp must be timezone-aware")
+        raise AIProviderError(
+            "provider execution timestamp must be timezone-aware"
+        )
     return parsed
 
 
