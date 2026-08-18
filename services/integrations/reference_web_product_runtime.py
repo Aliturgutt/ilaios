@@ -20,7 +20,7 @@ from .web_product_runtime_recovery import RecoverableWebProductRuntime
 
 
 class ReferenceAwareRecoverableWebProductRuntime(RecoverableWebProductRuntime):
-    """Bind user reference images into design context, source, and acceptance evidence."""
+    """Bind user reference images into design context, rendered source, and evidence."""
 
     def prepare(
         self,
@@ -90,16 +90,7 @@ class ReferenceAwareRecoverableWebProductRuntime(RecoverableWebProductRuntime):
             self._bind_references_before_assurance(request_id, references)
         manifest = super().recover_finalizing(request_id, token=token, now=now)
         if references:
-            bound = manifest.get("reference_assets")
-            expected = [item.public_metadata() for item in references]
-            if bound != expected:
-                raise WebProductRuntimeError(
-                    "accepted Web manifest does not bind the supplied reference images"
-                )
-            if manifest.get("reference_asset_usage") != "asset-led-design-and-source":
-                raise WebProductRuntimeError(
-                    "accepted Web manifest does not prove reference image usage"
-                )
+            self._verify_reference_acceptance(manifest, references)
         return manifest
 
     def _bind_references_before_assurance(
@@ -123,7 +114,11 @@ class ReferenceAwareRecoverableWebProductRuntime(RecoverableWebProductRuntime):
             raise WebProductRuntimeError("stored finalizing Web manifest is malformed")
         manifest = cast(dict[str, object], value)
         expected_metadata = [item.public_metadata() for item in references]
-        if manifest.get("reference_assets") == expected_metadata:
+        if (
+            manifest.get("reference_assets") == expected_metadata
+            and manifest.get("reference_asset_rendered") is True
+        ):
+            self._verify_reference_acceptance(manifest, references)
             return
 
         source_value = manifest.get("source_project_path")
@@ -148,9 +143,12 @@ class ReferenceAwareRecoverableWebProductRuntime(RecoverableWebProductRuntime):
             project_files[relative_path] = store.read_bytes(record)
             emitted.append({**record.public_metadata(), "source_path": relative_path})
 
+        render_paths = _bind_rendered_reference_gallery(project_files, emitted)
         reference_manifest = {
             "schema": "ilaios.web.reference-assets.v1",
             "usage": "asset-led-design-and-source",
+            "rendered": True,
+            "render_paths": render_paths,
             "assets": emitted,
         }
         project_files["public/reference-assets/manifest.json"] = json.dumps(
@@ -168,6 +166,8 @@ class ReferenceAwareRecoverableWebProductRuntime(RecoverableWebProductRuntime):
             raise WebProductRuntimeError("generated Web site.json is malformed")
         site_value["reference_assets"] = emitted
         site_value["reference_asset_usage"] = "asset-led-design-and-source"
+        site_value["reference_asset_rendered"] = True
+        site_value["reference_asset_render_paths"] = render_paths
         project_files["site.json"] = json.dumps(
             site_value,
             sort_keys=True,
@@ -194,11 +194,14 @@ class ReferenceAwareRecoverableWebProductRuntime(RecoverableWebProductRuntime):
         manifest["reference_assets"] = expected_metadata
         manifest["reference_asset_source_files"] = emitted
         manifest["reference_asset_usage"] = "asset-led-design-and-source"
+        manifest["reference_asset_rendered"] = True
+        manifest["reference_asset_render_paths"] = render_paths
         design = manifest.get("design_strategy")
         if not isinstance(design, dict) or design.get("imagery_behavior") != "asset-led":
             raise WebProductRuntimeError(
                 "Web design strategy did not consume the supplied visual references"
             )
+        self._verify_reference_acceptance(manifest, references)
         serialized = json.dumps(manifest, sort_keys=True, separators=(",", ":"))
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
@@ -211,6 +214,153 @@ class ReferenceAwareRecoverableWebProductRuntime(RecoverableWebProductRuntime):
             raise WebProductRuntimeError(
                 "Web reference image evidence could not be bound to finalization"
             )
+
+    def _verify_reference_acceptance(
+        self,
+        manifest: dict[str, object],
+        references: tuple[ReferenceAssetRecord, ...],
+    ) -> None:
+        expected = [item.public_metadata() for item in references]
+        if manifest.get("reference_assets") != expected:
+            raise WebProductRuntimeError(
+                "accepted Web manifest does not bind the supplied reference images"
+            )
+        if manifest.get("reference_asset_usage") != "asset-led-design-and-source":
+            raise WebProductRuntimeError(
+                "accepted Web manifest does not prove reference image usage"
+            )
+        if manifest.get("reference_asset_rendered") is not True:
+            raise WebProductRuntimeError(
+                "accepted Web manifest does not prove rendered reference image usage"
+            )
+        render_paths = manifest.get("reference_asset_render_paths")
+        if not isinstance(render_paths, list) or len(render_paths) != len(references):
+            raise WebProductRuntimeError(
+                "accepted Web manifest has incomplete reference render paths"
+            )
+        if not all(
+            isinstance(path, str) and path.startswith("/reference-assets/")
+            for path in render_paths
+        ):
+            raise WebProductRuntimeError("accepted Web reference render path is malformed")
+        source_value = manifest.get("source_project_path")
+        if not isinstance(source_value, str) or not source_value:
+            raise WebProductRuntimeError("accepted Web source path is missing")
+        source_root = Path(source_value)
+        shell_path = source_root / "components" / "PageShell.tsx"
+        try:
+            shell_source = shell_path.read_text(encoding="utf-8")
+        except OSError as error:
+            raise WebProductRuntimeError(
+                "accepted Web source does not contain the reference renderer"
+            ) from error
+        for render_path, reference in zip(render_paths, references, strict=True):
+            if not isinstance(render_path, str) or render_path not in shell_source:
+                raise WebProductRuntimeError(
+                    "accepted Web source does not reference every supplied image"
+                )
+            asset_path = source_root / "public" / render_path.removeprefix("/")
+            try:
+                body = asset_path.read_bytes()
+            except OSError as error:
+                raise WebProductRuntimeError(
+                    "accepted Web reference image is missing from rendered source"
+                ) from error
+            if hashlib.sha256(body).hexdigest() != reference.sha256:
+                raise WebProductRuntimeError(
+                    "accepted Web rendered reference image failed digest verification"
+                )
+
+
+def _bind_rendered_reference_gallery(
+    project_files: dict[str, bytes],
+    emitted: list[dict[str, object]],
+) -> list[str]:
+    shell_key = "components/PageShell.tsx"
+    shell_body = project_files.get(shell_key)
+    if shell_body is None:
+        raise WebProductRuntimeError("generated Web PageShell source is missing")
+    shell = shell_body.decode("utf-8")
+    render_assets: list[dict[str, str]] = []
+    for item in emitted:
+        source_path = item.get("source_path")
+        sha256 = item.get("sha256")
+        if not isinstance(source_path, str) or not source_path.startswith("public/"):
+            raise WebProductRuntimeError("reference image source path is malformed")
+        if not isinstance(sha256, str) or len(sha256) != 64:
+            raise WebProductRuntimeError("reference image digest is malformed")
+        render_assets.append(
+            {"src": "/" + source_path.removeprefix("public/"), "sha256": sha256}
+        )
+    render_paths = [asset["src"] for asset in render_assets]
+
+    declaration_anchor = "const labels: Record<string, Record<string, string>> = {"
+    if declaration_anchor not in shell:
+        raise WebProductRuntimeError("generated Web reference declaration anchor is missing")
+    declaration = (
+        "const referenceAssets = "
+        + json.dumps(render_assets, ensure_ascii=False, separators=(",", ":"))
+        + " as const;\n\n"
+    )
+    shell = shell.replace(declaration_anchor, declaration + declaration_anchor, 1)
+
+    render_anchor = '''          {props.pageName === "home" && (
+            <aside className="composition-note"'''
+    if render_anchor not in shell:
+        raise WebProductRuntimeError("generated Web reference render anchor is missing")
+    gallery = '''          {props.pageName === "home" && referenceAssets.length > 0 && (
+            <section className="reference-gallery" aria-label={props.locale === "tr" ? "Referans görseller" : "Reference visuals"}>
+              {referenceAssets.map((asset, index) => (
+                <figure className="reference-visual" key={asset.sha256}>
+                  <img
+                    src={asset.src}
+                    alt={`${props.businessName} ${props.locale === "tr" ? "referans görseli" : "reference visual"} ${index + 1}`}
+                    loading={index === 0 ? "eager" : "lazy"}
+                  />
+                </figure>
+              ))}
+            </section>
+          )}
+'''
+    shell = shell.replace(render_anchor, gallery + render_anchor, 1)
+    if not all(path in shell for path in render_paths):
+        raise WebProductRuntimeError(
+            "generated Web source did not bind every reference render path"
+        )
+    project_files[shell_key] = shell.encode("utf-8")
+
+    css_key = "app/globals.css"
+    css_body = project_files.get(css_key)
+    if css_body is None:
+        raise WebProductRuntimeError("generated Web global stylesheet is missing")
+    css = css_body.decode("utf-8")
+    css += '''
+
+.reference-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-top: 1.5rem;
+}
+.reference-visual {
+  margin: 0;
+  min-height: 180px;
+  overflow: hidden;
+  border: 1px solid currentColor;
+  border-radius: 1rem;
+  background: rgba(127, 127, 127, 0.08);
+}
+.reference-visual img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  max-height: 420px;
+  object-fit: contain;
+}
+'''
+    project_files[css_key] = css.encode("utf-8")
+    return render_paths
 
 
 def _materialize_derived_project(root: Path, files: dict[str, bytes]) -> None:
