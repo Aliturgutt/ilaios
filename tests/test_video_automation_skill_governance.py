@@ -51,7 +51,7 @@ def test_video_prompting_skills_reuse_canonical_implementations() -> None:
         "ilaios.skill.video.reference-assets.inspect": (
             "services.reference_assets:ReferenceAssetRecord"
         ),
-        "ilaios.skill.video.routing.model-advice": (
+        "ilaios.skill.video.model-fit.analyze": (
             "services.routing_intelligence:RoutingIntelligenceEngine"
         ),
         "ilaios.skill.video.continuity.track": (
