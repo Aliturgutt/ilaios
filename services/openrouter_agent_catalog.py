@@ -12,6 +12,7 @@ import json
 import os
 import urllib.error
 import urllib.request
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 
 from services.ai_governance import (
@@ -19,8 +20,8 @@ from services.ai_governance import (
     ModelRecord,
     ProviderRecord,
     RoutingPolicy,
-    Scope,
     ScopeKind,
+    UsageEvidence,
     UsageGovernor,
     UsageLimits,
     UsageRequest,
@@ -41,11 +42,7 @@ _MAX_AUTO_MODELS = 12
 
 
 class _TenantTemplateUsageGovernor(UsageGovernor):
-    """Apply one conservative zero-cost template per actual tenant scope.
-
-    Accounting remains keyed by the real tenant ID. The template does not make
-    a wildcard/global budget and therefore does not collapse tenant isolation.
-    """
+    """Apply one conservative zero-cost template per actual tenant scope."""
 
     def __init__(
         self,
@@ -55,7 +52,7 @@ class _TenantTemplateUsageGovernor(UsageGovernor):
         super().__init__(registry, {})
         self._tenant_limit = tenant_limit
 
-    def admit(self, request: UsageRequest, now):  # type: ignore[override]
+    def admit(self, request: UsageRequest, now: datetime) -> UsageEvidence:
         for scope in request.scopes:
             if scope.kind is not ScopeKind.TENANT:
                 raise OpenRouterAgentCatalogError(
