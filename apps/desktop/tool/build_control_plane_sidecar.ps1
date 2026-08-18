@@ -11,6 +11,7 @@ $entrypoint = Join-Path $desktopRoot 'sidecar\ilaios_control_plane_sidecar.py'
 $brandLogo = Join-Path $repoRoot 'brand\assets\03-ilaios-symbol-dark.jpg'
 $identityProviders = Join-Path $desktopRoot 'packaging\identity\oidc-providers.public.json'
 $softwareFactorySkills = Join-Path $repoRoot 'tools\software-factory\skills'
+$securityFactorySkills = Join-Path $repoRoot 'tools\security-factory\skills'
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
   $OutputDirectory = Join-Path $desktopRoot 'build\windows\x64\runner\Release'
 }
@@ -20,6 +21,9 @@ if (-not (Test-Path $brandLogo)) { throw "Official ILAIOS brand logo missing: $b
 if (-not (Test-Path $identityProviders)) { throw "Desktop public identity metadata missing: $identityProviders" }
 if (-not (Test-Path $softwareFactorySkills -PathType Container)) {
   throw "Canonical Software Factory skills missing: $softwareFactorySkills"
+}
+if (-not (Test-Path $securityFactorySkills -PathType Container)) {
+  throw "Canonical Security Factory skills missing: $securityFactorySkills"
 }
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 
@@ -37,6 +41,10 @@ foreach ($provider in @($identityDocument)) {
 $skillFiles = @(Get-ChildItem -Path $softwareFactorySkills -Recurse -Filter 'SKILL.md' -File)
 if ($skillFiles.Count -lt 25) {
   throw "Canonical Software Factory skill registry is incomplete: found $($skillFiles.Count)."
+}
+$securitySkillFiles = @(Get-ChildItem -Path $securityFactorySkills -Recurse -Filter 'SKILL.md' -File)
+if ($securitySkillFiles.Count -ne 5) {
+  throw "Canonical Security Factory methodology registry is incomplete: found $($securitySkillFiles.Count)."
 }
 
 $pythonVersion = (& python -c "import sys; print('%d.%d' % sys.version_info[:2])").Trim()
@@ -73,7 +81,7 @@ $sourceHeadFile = Join-Path $metadata 'source-head.txt'
 $env:PYTHONPATH = $repoRoot
 Push-Location $repoRoot
 try {
-  python -c "import services.desktop_oidc_microsoft; import services.desktop_oidc_windows; import services.integrations.web_factory; import services.p0_runtime_composition; import services.runtime.ai_provider_adapter; import services.runtime.security_agent_adapters"
+  python -c "import services.desktop_oidc_microsoft; import services.desktop_oidc_windows; import services.integrations.web_factory; import services.p0_runtime_composition; import services.runtime.ai_provider_adapter; import services.runtime.security_agent_adapters; import services.security_methodology_analysis; import services.security_methodology_skills"
   if ($LASTEXITCODE -ne 0) {
     throw 'Desktop sidecar source import smoke failed for required identity/integration/agent modules.'
   }
@@ -92,6 +100,7 @@ try {
     --add-data "$identityProviders;desktop-identity" `
     --add-data "$sourceHeadFile;build-metadata" `
     --add-data "$softwareFactorySkills;tools/software-factory/skills" `
+    --add-data "$securityFactorySkills;tools/security-factory/skills" `
     --workpath $work `
     --specpath $spec `
     --distpath $dist `
