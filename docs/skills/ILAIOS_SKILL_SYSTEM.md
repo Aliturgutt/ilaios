@@ -32,10 +32,9 @@ ILAIOS Skills
 |   +-- web
 |   |   +-- architecture
 |   |   +-- design
-|   |   +-- build
 |   |   +-- accessibility
 |   |   +-- performance
-|   |   +-- test
+|   |   +-- validation
 |   |   +-- production-qa
 |   +-- software
 |   |   +-- spec
@@ -84,6 +83,17 @@ ILAIOS Skills
 ## Runtime mapping rule
 
 The taxonomy is logical. Existing governed runtime skills remain in their current physical locations and registries. They are mapped into logical nodes rather than moved or rewritten.
+
+The Web Factory mappings currently represented in code are exact mappings to the canonical native Web registry:
+
+- `factories/web/architecture` -> `ilaios-web-architecture`;
+- `factories/web/design` -> `ilaios-web-design`;
+- `factories/web/accessibility` -> `ilaios-web-accessibility`;
+- `factories/web/performance` -> `ilaios-web-performance`;
+- `factories/web/validation` -> `ilaios-web-validation`;
+- `factories/web/production-qa` -> `ilaios-web-production-qa`.
+
+The Web taxonomy deliberately does not invent separate `build` or `test` skill owners where the current canonical Web runtime owns execution through the Web adapter and the native validation skill. This avoids overlapping ownership and a parallel execution path.
 
 The Software Factory mappings currently represented in code include:
 
@@ -138,5 +148,7 @@ Tool declarations are requested capabilities only. Policy, approval, tenant, sec
 The logical taxonomy is machine-readable in `services/skill_taxonomy.py`.
 
 The first new Skill Engineering package is `tools/skill-engineering/skills/skill-create/`. Its catalog validates package completeness, provenance, deny-set, allowed tool declarations, schemas, and eval coverage, but it does not provide a side-effect executor.
+
+The current six native Web Factory skills are mapped into the taxonomy without moving or duplicating their runtime ownership.
 
 Other taxonomy nodes without an existing runtime mapping remain target nodes until independently authored packages, tests, integration, and evidence are added.
