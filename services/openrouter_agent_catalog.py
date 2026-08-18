@@ -43,6 +43,7 @@ class OpenRouterAgentCatalogError(RuntimeError):
 
 
 _OPENROUTER_PROVIDER_ID = "openrouter"
+_OPENROUTER_STRICT_WIRE_PROVIDER_ID = "openrouter-strict-wire"
 _OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 _OPENROUTER_MODELS_URL = f"{_OPENROUTER_BASE_URL}/models/user"
 _OPENROUTER_FREE_ROUTER_ID = "openrouter/free"
@@ -52,7 +53,7 @@ _FREE_ROUTER_MAX_OUTPUT_TOKENS = 2_048
 
 
 class _StrictOpenRouterTransport(OpenAICompatibleTransport):
-    """Require every OpenRouter downstream provider to honor request controls."""
+    """Require downstream support for the bounded, provider-filterable controls."""
 
     def complete(
         self,
@@ -70,8 +71,23 @@ class _StrictOpenRouterTransport(OpenAICompatibleTransport):
             raise OpenRouterAgentCatalogError(
                 "strict OpenRouter transport received a non-OpenRouter endpoint"
             )
+
+        # OpenRouter publishes provider support for the normalized ``max_tokens``
+        # parameter. Dynamic routers such as ``openrouter/free`` do not guarantee
+        # reasoning controls, and provider support metadata does not expose
+        # ``modalities`` as a filterable request parameter. Serialize the strict
+        # request through the generic OpenAI-compatible branch so the wire body
+        # contains only parameters that ``require_parameters`` can enforce.
+        wire_endpoint = ProviderEndpoint(
+            _OPENROUTER_STRICT_WIRE_PROVIDER_ID,
+            endpoint.base_url,
+            endpoint.api_key_env,
+            timeout_seconds=endpoint.timeout_seconds,
+            max_retries=endpoint.max_retries,
+            requires_api_key=endpoint.requires_api_key,
+        )
         return super().complete(
-            endpoint,
+            wire_endpoint,
             api_key=api_key,
             model_id=model_id,
             system_instructions=system_instructions,
