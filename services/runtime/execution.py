@@ -84,6 +84,24 @@ class GovernedRuntime:
                 (agent_id, json.dumps(sorted(authorities))),
             )
 
+    def ensure_agent(self, agent_id: str, authorities: frozenset[str]) -> None:
+        """Create an agent once; on restart accept only the exact same manifest."""
+        _require_id(agent_id, "agent_id")
+        _require_values(authorities, "authorities")
+        encoded = json.dumps(sorted(authorities))
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT authorities_json FROM runtime_agents WHERE agent_id = ?",
+                (agent_id,),
+            ).fetchone()
+            if row is None:
+                connection.execute(
+                    "INSERT INTO runtime_agents VALUES (?, ?)", (agent_id, encoded)
+                )
+                return
+        if str(row["authorities_json"]) != encoded:
+            raise RuntimeError("persisted agent authorities drifted from canonical manifest")
+
     def register_skill(
         self, skill_id: str, content: bytes, authorities: frozenset[str]
     ) -> str:
@@ -97,6 +115,36 @@ class GovernedRuntime:
                 "INSERT INTO runtime_skills VALUES (?, ?, ?, ?)",
                 (skill_id, digest, json.dumps(sorted(authorities)), content),
             )
+        return digest
+
+    def ensure_skill(
+        self, skill_id: str, content: bytes, authorities: frozenset[str]
+    ) -> str:
+        """Create an immutable skill once and reject silent content/authority drift."""
+        _require_id(skill_id, "skill_id")
+        if not content:
+            raise RuntimeError("skill content must not be empty")
+        _require_values(authorities, "authorities")
+        digest = hashlib.sha256(content).hexdigest()
+        encoded = json.dumps(sorted(authorities))
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT digest, authorities_json, content FROM runtime_skills "
+                "WHERE skill_id = ?",
+                (skill_id,),
+            ).fetchone()
+            if row is None:
+                connection.execute(
+                    "INSERT INTO runtime_skills VALUES (?, ?, ?, ?)",
+                    (skill_id, digest, encoded, content),
+                )
+                return digest
+        if (
+            str(row["digest"]) != digest
+            or str(row["authorities_json"]) != encoded
+            or bytes(row["content"]) != content
+        ):
+            raise RuntimeError("persisted skill drifted from immutable canonical content")
         return digest
 
     def register_provider(
@@ -125,6 +173,45 @@ class GovernedRuntime:
                     adapter_kind,
                 ),
             )
+
+    def ensure_provider(
+        self,
+        provider_id: str,
+        capabilities: frozenset[str],
+        *,
+        adapter_kind: str,
+        enabled: bool = True,
+        deterministic: bool | None = None,
+    ) -> None:
+        """Create a provider once; reject capability/adapter/health-config drift."""
+        _require_id(provider_id, "provider_id")
+        _require_values(capabilities, "capabilities")
+        if adapter_kind not in self._adapters:
+            raise RuntimeError("unknown runtime adapter kind")
+        if deterministic is None:
+            deterministic = adapter_kind in self._ADAPTERS
+        encoded = json.dumps(sorted(capabilities))
+        expected = (encoded, int(deterministic), int(enabled), adapter_kind)
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT capabilities_json, deterministic, enabled, adapter_kind "
+                "FROM runtime_providers WHERE provider_id = ?",
+                (provider_id,),
+            ).fetchone()
+            if row is None:
+                connection.execute(
+                    "INSERT INTO runtime_providers VALUES (?, ?, ?, ?, ?)",
+                    (provider_id, *expected),
+                )
+                return
+        actual = (
+            str(row["capabilities_json"]),
+            int(row["deterministic"]),
+            int(row["enabled"]),
+            str(row["adapter_kind"]),
+        )
+        if actual != expected:
+            raise RuntimeError("persisted provider configuration drifted from canonical setup")
 
     def execute(
         self,
