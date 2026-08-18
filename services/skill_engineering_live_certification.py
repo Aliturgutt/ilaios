@@ -257,10 +257,22 @@ def main() -> None:
         revision_sha=revision,
         configuration=_configuration_from_environment(),
     )
+    raw_provider_ids = receipt.get("provider_ids")
+    if not isinstance(raw_provider_ids, list):
+        raise SkillEngineeringLiveCertificationError(
+            "certification provider list is malformed"
+        )
+    provider_ids: list[str] = []
+    for provider_id in raw_provider_ids:
+        if not isinstance(provider_id, str):
+            raise SkillEngineeringLiveCertificationError(
+                "certification provider identity is malformed"
+            )
+        provider_ids.append(provider_id)
     print(
         "SKILL_ENGINEERING_LIVE_CERTIFICATION=PASS "
         f"verified={receipt['verified_skill_count']}/{receipt['target_skill_count']} "
-        f"providers={','.join(receipt['provider_ids'])}"
+        f"providers={','.join(provider_ids)}"
     )
 
 
