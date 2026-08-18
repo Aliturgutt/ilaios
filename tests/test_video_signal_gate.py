@@ -25,7 +25,13 @@ class _Probe:
         self.visual = visual
         self.audio = audio
 
-    def probe(self, path, *, artifact_sha256, byte_length):
+    def probe(
+        self,
+        path: Path,
+        *,
+        artifact_sha256: str,
+        byte_length: int,
+    ) -> MediaSignalQualityEvidence:
         return MediaSignalQualityEvidence(
             evidence_id="signal-evidence-1",
             artifact_sha256=artifact_sha256,
@@ -86,7 +92,7 @@ def test_signal_gate_runs_before_semantic_review_and_retains_final_evidence(
     tmp_path: Path,
 ) -> None:
     reviewer = _Reviewer()
-    gate = SignalGatedSemanticVideoReviewer(reviewer, probe=_Probe())  # type: ignore[arg-type]
+    gate = SignalGatedSemanticVideoReviewer(reviewer, probe=_Probe())
     submission = gate.review(
         video_path=_media(tmp_path),
         objective="Create a product film.",
@@ -106,7 +112,7 @@ def test_visual_signal_failure_blocks_semantic_reviewer(tmp_path: Path) -> None:
     reviewer = _Reviewer()
     gate = SignalGatedSemanticVideoReviewer(
         reviewer,
-        probe=_Probe(visual=False),  # type: ignore[arg-type]
+        probe=_Probe(visual=False),
     )
     with pytest.raises(VideoSignalGateError, match="visual signal QA failed"):
         gate.review(
@@ -123,7 +129,7 @@ def test_audio_signal_failure_blocks_semantic_reviewer(tmp_path: Path) -> None:
     reviewer = _Reviewer()
     gate = SignalGatedSemanticVideoReviewer(
         reviewer,
-        probe=_Probe(audio=False),  # type: ignore[arg-type]
+        probe=_Probe(audio=False),
     )
     with pytest.raises(VideoSignalGateError, match="audio signal QA failed"):
         gate.review(
