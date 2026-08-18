@@ -47,10 +47,15 @@ class NamedAgentExecutor:
             tuple(item.manifest for item in CANONICAL_AGENT_REGISTRY), grants
         )
 
-    def provision_agent(self, agent_id: str) -> None:
-        """Register one canonical machine identity with its bounded capabilities."""
+    def provision_agent(self, agent_id: str) -> bool:
+        """Provision one canonical machine identity without authority expansion.
+
+        Returns ``True`` when the runtime registration is created and ``False``
+        when the same canonical registration already exists. Existing runtime
+        authority that differs from the canonical manifest fails closed.
+        """
         registration = registration_for(agent_id)
-        self._runtime.register_agent(
+        return self._runtime.ensure_agent(
             registration.manifest.agent_id, registration.manifest.capabilities
         )
 
