@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Iterable, Mapping
-from typing import Any
+from typing import Any, cast
 
 from services.agent_registry import CANONICAL_AGENT_REGISTRY
 
@@ -19,10 +19,10 @@ def agent_state_projection(
         agent_id = route.get("agent_id")
         if isinstance(agent_id, str):
             latest[agent_id] = route
-    if readiness is None:
-        readiness_map: Mapping[str, Mapping[str, object]] = {}
-    else:
-        readiness_map = readiness
+    readiness_map = cast(
+        Mapping[str, Mapping[str, object]],
+        readiness if readiness is not None else {},
+    )
 
     agents: list[dict[str, object]] = []
     for registration in CANONICAL_AGENT_REGISTRY:
