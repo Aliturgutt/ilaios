@@ -156,7 +156,7 @@ def test_usage_projection_does_not_leak_payloads_or_requesters() -> None:
 
 
 def test_malformed_authoritative_route_fails_closed() -> None:
-    malformed_routes = (
+    malformed_routes: tuple[dict[str, object], ...] = (
         _route("2026-08-18T10:00:00"),
         _route("not-a-time"),
         {"agent_id": "agent-a"},
