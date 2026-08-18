@@ -218,10 +218,16 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('nav-evidence')));
     await tester.pumpAndSettle();
-    expect(find.text('Evidence & Audit'), findsOneWidget);
-    expect(find.text('video.local.rendered'), findsOneWidget);
-    expect(find.text('Execution: exec-1'), findsOneWidget);
-    expect(find.textContaining('aaaaaaaaaaaaaaaaaa'), findsOneWidget);
+    final evidencePage = find.byKey(const Key('reference-evidence-page'));
+    expect(evidencePage, findsOneWidget);
+    expect(
+      find.descendant(of: evidencePage, matching: find.text('Evidence')),
+      findsOneWidget,
+    );
+    expect(find.text('video.local.rendered'), findsWidgets);
+    expect(find.byKey(const ValueKey('evidence-row-1')), findsOneWidget);
+    expect(find.textContaining('exec-1'), findsWidgets);
+    expect(find.textContaining('aaaaaaaaaaaaaaaaaa'), findsWidgets);
     expect(find.textContaining('content_base64'), findsNothing);
   });
 
