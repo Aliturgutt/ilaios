@@ -26,6 +26,14 @@ _REQUIRED_PROVENANCE_MARKERS = (
 _ALLOWED_TOOLS = frozenset(
     {"repository_intelligence", "governance", "evidence_chain"}
 )
+_ALLOWED_CAPABILITIES = frozenset(
+    {"repository_intelligence", "governance", "evidence_chain"}
+)
+_REQUIRED_POLICY = "ilaios.skill-engineering.governed"
+_ALLOWED_RISK_CLASSES = frozenset({"low", "medium", "high", "critical"})
+_ALLOWED_MATURITY = frozenset(
+    {"DESIGNED", "SPECIFIED", "IMPLEMENTED", "TESTED", "VERIFIED"}
+)
 _REQUIRED_FORBIDDEN_ACTIONS = frozenset(
     {
         "direct_master_mutation",
@@ -46,6 +54,7 @@ class SkillEngineeringPackage:
     logical_id: str
     version: str
     maturity: str
+    required_capabilities: frozenset[str]
     allowed_tools: frozenset[str]
     forbidden_actions: frozenset[str]
     independent_review_required: bool
@@ -106,14 +115,38 @@ class SkillEngineeringCatalog:
         maturity = _required_text(manifest, "maturity")
         if skill_id != root.name:
             raise ValueError("skill-engineering manifest skill_id must match directory")
-        resolve_logical_skill(logical_id)
+
+        logical_node = resolve_logical_skill(logical_id)
+        if logical_node.layer != "skill-engineering":
+            raise ValueError(
+                "skill-engineering package logical_id must stay in skill-engineering"
+            )
+        if skill_id != f"skill-{logical_node.path[-1]}":
+            raise ValueError(
+                "skill-engineering skill_id must match its logical taxonomy leaf"
+            )
+
+        required_policy = _required_text(manifest, "required_policy")
+        if required_policy != _REQUIRED_POLICY:
+            raise ValueError("skill-engineering package requires canonical policy")
+
+        required_capabilities = _string_set(manifest, "required_capabilities")
+        if not required_capabilities.issubset(_ALLOWED_CAPABILITIES):
+            raise ValueError("skill-engineering package requests unknown capability")
 
         allowed_tools = _string_set(manifest, "allowed_tools")
         if not allowed_tools.issubset(_ALLOWED_TOOLS):
             raise ValueError("skill-engineering package requests unknown tool")
+
         forbidden_actions = _string_set(manifest, "forbidden_actions")
         if forbidden_actions != _REQUIRED_FORBIDDEN_ACTIONS:
             raise ValueError("skill-engineering package must preserve canonical deny-set")
+
+        risk_class = _required_text(manifest, "risk_class")
+        if risk_class not in _ALLOWED_RISK_CLASSES:
+            raise ValueError("skill-engineering package risk_class is invalid")
+        if maturity not in _ALLOWED_MATURITY:
+            raise ValueError("skill-engineering package maturity is invalid")
 
         independent_review_required = manifest.get("independent_review_required")
         if not isinstance(independent_review_required, bool):
@@ -143,6 +176,7 @@ class SkillEngineeringCatalog:
             logical_id=logical_id,
             version=version,
             maturity=maturity,
+            required_capabilities=required_capabilities,
             allowed_tools=allowed_tools,
             forbidden_actions=forbidden_actions,
             independent_review_required=independent_review_required,
