@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
 import '../../identity/identity_client.dart';
-import 'reference_costs_view.dart';
+import 'reference_costs_view_v2.dart';
 import 'reference_settings_view.dart';
 
 /// Compatibility entry point used by every Desktop shell generation.
@@ -22,7 +22,7 @@ class CostsView extends StatelessWidget {
   final String status;
 
   @override
-  Widget build(BuildContext context) => ReferenceCostsView(
+  Widget build(BuildContext context) => ReferenceCostsViewV2(
         snapshot: snapshot,
         status: status,
       );
