@@ -62,7 +62,12 @@ void main() {
     );
 
     await open('costs');
-    expect(find.text('Maliyetler'), findsOneWidget);
+    final costsPage = find.byKey(const Key('reference-costs-page'));
+    expect(costsPage, findsOneWidget);
+    expect(
+      find.descendant(of: costsPage, matching: find.text('Maliyetler')),
+      findsOneWidget,
+    );
 
     await open('settings');
     expect(find.text('Ayarlar'), findsWidgets);
