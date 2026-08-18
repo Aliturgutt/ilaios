@@ -28,6 +28,19 @@ def test_video_reference_live_workflow_publishes_sanitized_exact_sha_status() ->
     assert "reference_conditioning_mode') == 'private-multimodal-brief'" in text
     assert "contents: write" not in text
 
+    status_step = text.split(
+        "      - name: Publish sanitized live-reference commit status\n", 1
+    )[1]
+    assert "OPENROUTER_API_KEY" not in status_step
+    assert "frozen.text" not in status_step
+    assert "reference_bytes" not in status_step
+    assert "generated_content" not in status_step
+    assert "prompt" not in status_step.lower()
+    assert "'state': state" in status_step
+    assert "'target_url': os.environ['VIDEO_REFERENCE_STATUS_TARGET_URL']" in status_step
+    assert "'description': description" in status_step
+    assert "'context': 'ILAIOS Video Reference Live Certification'" in status_step
+
 
 def test_video_reference_live_status_preserves_repository_security_policy() -> None:
     root = _repository_root()
