@@ -3,6 +3,7 @@ import pytest
 from src.video_automation.video_prompting_skills import (
     ContinuityPlanner,
     DirectorBrief,
+    DirectorPlan,
     ModelCapabilityProfile,
     ModelRoutingAdvisor,
     ModelRoutingRequest,
@@ -18,7 +19,7 @@ from src.video_automation.video_prompting_skills import (
 )
 
 
-def _director_plan():
+def _director_plan() -> DirectorPlan:
     brief = DirectorBrief(
         "brief-1",
         "reveal the product without changing its geometry",
