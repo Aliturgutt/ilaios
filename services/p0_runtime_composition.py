@@ -1,4 +1,4 @@
-"""Single-runtime composition root for the P0 canonical agent population."""
+"""Single-runtime P0 composition root for the P0 canonical agent population."""
 
 from __future__ import annotations
 
@@ -30,7 +30,10 @@ from services.security_methodology_skills import (
     ensure_security_methodology_skills,
 )
 from services.skill_engineering_catalog import default_skill_engineering_root
-from services.skill_engineering_runtime import ensure_skill_engineering_runtime_skills
+from services.skill_engineering_runtime import (
+    SKILL_ENGINEERING_RUNTIME_BINDINGS,
+    ensure_skill_engineering_runtime_skills,
+)
 
 
 class P0RuntimeCompositionError(RuntimeError):
@@ -137,6 +140,8 @@ def compose_p0_runtime(
             binding.capability
             for binding in P0_AGENT_BINDINGS
             if binding.execution_mode == "governed-ai"
+        } | {
+            binding.capability for binding in SKILL_ENGINEERING_RUNTIME_BINDINGS
         }
         for provider_id, provider_capabilities in sorted(capabilities.items()):
             if not provider_capabilities:
@@ -145,7 +150,7 @@ def compose_p0_runtime(
                 )
             if not provider_capabilities.issubset(governed_ai_capabilities):
                 raise P0RuntimeCompositionError(
-                    "AI provider capability contract exceeds P0 governed execution"
+                    "AI provider capability contract exceeds governed execution"
                 )
             named.ensure_provider(
                 provider_id,

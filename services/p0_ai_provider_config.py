@@ -20,6 +20,7 @@ from services.ai_governance import (
 )
 from services.p0_agent_execution import P0_AGENT_BINDINGS
 from services.runtime.ai_provider_adapter import GovernedAIProviderAdapter, ProviderEndpoint
+from services.skill_engineering_runtime import SKILL_ENGINEERING_RUNTIME_BINDINGS
 
 
 class P0AIProviderConfigError(ValueError):
@@ -34,7 +35,12 @@ class P0AIProviderConfiguration:
 
 
 _ALLOWED_CAPABILITIES = frozenset(
-    {binding.capability for binding in P0_AGENT_BINDINGS if binding.execution_mode == "governed-ai"}
+    {
+        binding.capability
+        for binding in P0_AGENT_BINDINGS
+        if binding.execution_mode == "governed-ai"
+    }
+    | {binding.capability for binding in SKILL_ENGINEERING_RUNTIME_BINDINGS}
     | {"evidence.verify"}
 )
 
@@ -52,7 +58,9 @@ def load_p0_ai_provider_configuration(
     if not isinstance(document, dict):
         raise P0AIProviderConfigError("P0 AI configuration must be an object")
     if set(document) != {"providers", "models", "routing", "limits"}:
-        raise P0AIProviderConfigError("P0 AI configuration has unknown or missing top-level fields")
+        raise P0AIProviderConfigError(
+            "P0 AI configuration has unknown or missing top-level fields"
+        )
 
     providers_raw = document.get("providers")
     models_raw = document.get("models")
@@ -74,7 +82,13 @@ def load_p0_ai_provider_configuration(
         provider = _object(raw_provider, "provider")
         _exact_fields(
             provider,
-            {"provider_id", "base_url", "api_key_env", "timeout_seconds", "max_retries"},
+            {
+                "provider_id",
+                "base_url",
+                "api_key_env",
+                "timeout_seconds",
+                "max_retries",
+            },
             "provider",
         )
         provider_id = _text(provider, "provider_id")
@@ -83,7 +97,9 @@ def load_p0_ai_provider_configuration(
         provider_ids.add(provider_id)
         api_key_env = _text(provider, "api_key_env")
         if api_key_env.startswith(("sk-", "Bearer ")):
-            raise P0AIProviderConfigError("api_key_env must name a secret variable, not contain a secret")
+            raise P0AIProviderConfigError(
+                "api_key_env must name a secret variable, not contain a secret"
+            )
         timeout = _positive_number(provider.get("timeout_seconds"), "timeout_seconds")
         retries = _nonnegative_int(provider.get("max_retries"), "max_retries")
         registry.register_provider(ProviderRecord(provider_id, "openai-compatible"))
@@ -97,15 +113,21 @@ def load_p0_ai_provider_configuration(
             )
         )
 
-    provider_capabilities: dict[str, set[str]] = {provider_id: set() for provider_id in provider_ids}
+    provider_capabilities: dict[str, set[str]] = {
+        provider_id: set() for provider_id in provider_ids
+    }
     model_ids: set[str] = set()
     for raw_model in models_raw:
         model = _object(raw_model, "model")
         _exact_fields(
             model,
             {
-                "model_id", "provider_id", "capabilities", "context_window",
-                "max_output_tokens", "input_cost_per_million_usd",
+                "model_id",
+                "provider_id",
+                "capabilities",
+                "context_window",
+                "max_output_tokens",
+                "input_cost_per_million_usd",
                 "output_cost_per_million_usd",
             },
             "model",
@@ -119,32 +141,62 @@ def load_p0_ai_provider_configuration(
         model_ids.add(model_id)
         capabilities = _string_set(model.get("capabilities"), "model capabilities")
         if not capabilities or not capabilities.issubset(_ALLOWED_CAPABILITIES):
-            raise P0AIProviderConfigError("model capability exceeds P0 governed AI boundary")
+            raise P0AIProviderConfigError(
+                "model capability exceeds governed AI boundary"
+            )
         provider_capabilities[provider_id].update(capabilities)
         registry.register_model(
             ModelRecord(
                 model_id,
                 provider_id,
                 capabilities,
-                context_window=_positive_int(model.get("context_window"), "context_window"),
-                max_output_tokens=_positive_int(model.get("max_output_tokens"), "max_output_tokens"),
-                input_cost_per_million=_decimal(model.get("input_cost_per_million_usd"), "input_cost_per_million_usd"),
-                output_cost_per_million=_decimal(model.get("output_cost_per_million_usd"), "output_cost_per_million_usd"),
+                context_window=_positive_int(
+                    model.get("context_window"), "context_window"
+                ),
+                max_output_tokens=_positive_int(
+                    model.get("max_output_tokens"), "max_output_tokens"
+                ),
+                input_cost_per_million=_decimal(
+                    model.get("input_cost_per_million_usd"),
+                    "input_cost_per_million_usd",
+                ),
+                output_cost_per_million=_decimal(
+                    model.get("output_cost_per_million_usd"),
+                    "output_cost_per_million_usd",
+                ),
             )
         )
     if any(not capabilities for capabilities in provider_capabilities.values()):
-        raise P0AIProviderConfigError("every configured provider must back at least one model capability")
+        raise P0AIProviderConfigError(
+            "every configured provider must back at least one model capability"
+        )
 
     _exact_fields(
         routing_raw,
-        {"allowed_models", "denied_models", "allowed_providers", "denied_providers", "fallback_order"},
+        {
+            "allowed_models",
+            "denied_models",
+            "allowed_providers",
+            "denied_providers",
+            "fallback_order",
+        },
         "routing",
     )
-    allowed_models = _string_set(routing_raw.get("allowed_models"), "allowed_models", allow_empty=True)
-    denied_models = _string_set(routing_raw.get("denied_models"), "denied_models", allow_empty=True)
-    allowed_providers = _string_set(routing_raw.get("allowed_providers"), "allowed_providers", allow_empty=True)
-    denied_providers = _string_set(routing_raw.get("denied_providers"), "denied_providers", allow_empty=True)
-    fallback_order = _string_tuple(routing_raw.get("fallback_order"), "fallback_order")
+    allowed_models = _string_set(
+        routing_raw.get("allowed_models"), "allowed_models", allow_empty=True
+    )
+    denied_models = _string_set(
+        routing_raw.get("denied_models"), "denied_models", allow_empty=True
+    )
+    allowed_providers = _string_set(
+        routing_raw.get("allowed_providers"), "allowed_providers", allow_empty=True
+    )
+    denied_providers = _string_set(
+        routing_raw.get("denied_providers"), "denied_providers", allow_empty=True
+    )
+    fallback_order = _string_tuple(
+        routing_raw.get("fallback_order"), "fallback_order"
+    )
     if (allowed_models | denied_models | set(fallback_order)) - model_ids:
         raise P0AIProviderConfigError("routing references unknown model")
     if (allowed_providers | denied_providers) - provider_ids:
@@ -165,10 +217,19 @@ def load_p0_ai_provider_configuration(
         _exact_fields(
             limit,
             {
-                "scope_kind", "scope_id", "max_input_tokens", "max_output_tokens",
-                "max_requests_daily", "max_concurrency", "daily_cost_usd",
-                "monthly_cost_usd", "gpu_seconds_daily", "runtime_seconds_daily",
-                "warning_fraction", "max_retries", "max_retry_cost_usd",
+                "scope_kind",
+                "scope_id",
+                "max_input_tokens",
+                "max_output_tokens",
+                "max_requests_daily",
+                "max_concurrency",
+                "daily_cost_usd",
+                "monthly_cost_usd",
+                "gpu_seconds_daily",
+                "runtime_seconds_daily",
+                "warning_fraction",
+                "max_retries",
+                "max_retry_cost_usd",
             },
             "limit",
         )
@@ -180,20 +241,40 @@ def load_p0_ai_provider_configuration(
         if scope in limits:
             raise P0AIProviderConfigError("usage limit scopes must be unique")
         limits[scope] = UsageLimits(
-            max_input_tokens=_positive_int(limit.get("max_input_tokens"), "max_input_tokens"),
-            max_output_tokens=_positive_int(limit.get("max_output_tokens"), "max_output_tokens"),
-            max_requests_daily=_positive_int(limit.get("max_requests_daily"), "max_requests_daily"),
-            max_concurrency=_positive_int(limit.get("max_concurrency"), "max_concurrency"),
+            max_input_tokens=_positive_int(
+                limit.get("max_input_tokens"), "max_input_tokens"
+            ),
+            max_output_tokens=_positive_int(
+                limit.get("max_output_tokens"), "max_output_tokens"
+            ),
+            max_requests_daily=_positive_int(
+                limit.get("max_requests_daily"), "max_requests_daily"
+            ),
+            max_concurrency=_positive_int(
+                limit.get("max_concurrency"), "max_concurrency"
+            ),
             daily_cost=_decimal(limit.get("daily_cost_usd"), "daily_cost_usd"),
-            monthly_cost=_decimal(limit.get("monthly_cost_usd"), "monthly_cost_usd"),
-            gpu_seconds_daily=_decimal(limit.get("gpu_seconds_daily"), "gpu_seconds_daily"),
-            runtime_seconds_daily=_decimal(limit.get("runtime_seconds_daily"), "runtime_seconds_daily"),
-            warning_fraction=_decimal(limit.get("warning_fraction"), "warning_fraction"),
+            monthly_cost=_decimal(
+                limit.get("monthly_cost_usd"), "monthly_cost_usd"
+            ),
+            gpu_seconds_daily=_decimal(
+                limit.get("gpu_seconds_daily"), "gpu_seconds_daily"
+            ),
+            runtime_seconds_daily=_decimal(
+                limit.get("runtime_seconds_daily"), "runtime_seconds_daily"
+            ),
+            warning_fraction=_decimal(
+                limit.get("warning_fraction"), "warning_fraction"
+            ),
             max_retries=_nonnegative_int(limit.get("max_retries"), "max_retries"),
-            max_retry_cost=_decimal(limit.get("max_retry_cost_usd"), "max_retry_cost_usd"),
+            max_retry_cost=_decimal(
+                limit.get("max_retry_cost_usd"), "max_retry_cost_usd"
+            ),
         )
     if not any(scope.kind is ScopeKind.TENANT for scope in limits):
-        raise P0AIProviderConfigError("P0 AI configuration requires at least one tenant limit")
+        raise P0AIProviderConfigError(
+            "P0 AI configuration requires at least one tenant limit"
+        )
 
     governor = UsageGovernor(registry, limits)
     adapter = GovernedAIProviderAdapter(registry, policy, governor, tuple(endpoints))
@@ -203,7 +284,9 @@ def load_p0_ai_provider_configuration(
             provider_id: frozenset(capabilities)
             for provider_id, capabilities in provider_capabilities.items()
         },
-        configured_scopes=tuple(sorted(limits, key=lambda item: (item.kind.value, item.scope_id))),
+        configured_scopes=tuple(
+            sorted(limits, key=lambda item: (item.kind.value, item.scope_id))
+        ),
     )
 
 
@@ -238,7 +321,11 @@ def _nonnegative_int(value: object, field: str) -> int:
 
 
 def _positive_number(value: object, field: str) -> float:
-    if not isinstance(value, (int, float)) or isinstance(value, bool) or float(value) <= 0:
+    if (
+        not isinstance(value, (int, float))
+        or isinstance(value, bool)
+        or float(value) <= 0
+    ):
         raise P0AIProviderConfigError(f"{field} must be positive")
     return float(value)
 
@@ -255,7 +342,12 @@ def _decimal(value: object, field: str) -> Decimal:
     return parsed
 
 
-def _string_set(value: object, field: str, *, allow_empty: bool = False) -> frozenset[str]:
+def _string_set(
+    value: object,
+    field: str,
+    *,
+    allow_empty: bool = False,
+) -> frozenset[str]:
     items = _string_tuple(value, field)
     if not items and not allow_empty:
         raise P0AIProviderConfigError(f"{field} cannot be empty")
