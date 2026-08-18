@@ -113,13 +113,10 @@ class ReferenceAwareOpenRouterVideoGenerationProvider(OpenRouterVideoGenerationP
                 default_resolution=self._default_resolution,
                 generate_audio=self._generate_audio,
             )
-            frame_images = body.get("frame_images")
+            frame_types = _frame_types(body.get("frame_images"))
             input_references = body.get("input_references")
-            if isinstance(frame_images, list) and frame_images:
-                self._prove_frame_support(
-                    model_id,
-                    tuple(str(value["frame_type"]) for value in frame_images),
-                )
+            if frame_types:
+                self._prove_frame_support(model_id, frame_types)
             elif isinstance(input_references, list) and input_references:
                 self._prove_reference_support(model_id)
             response = self._transport.post_json(
@@ -180,11 +177,11 @@ class ReferenceAwareOpenRouterVideoGenerationProvider(OpenRouterVideoGenerationP
             "catalog_zero_cost_evidence_source": "openrouter_videos_models",
         }
         references_value = body.get("input_references")
-        frame_images_value = body.get("frame_images")
+        frame_types = _frame_types(body.get("frame_images"))
         reference_count = (
             len(references_value) if isinstance(references_value, list) else 0
         )
-        frame_count = len(frame_images_value) if isinstance(frame_images_value, list) else 0
+        frame_count = len(frame_types)
         if reference_count:
             metadata["reference_asset_count"] = reference_count
             metadata["reference_mode"] = "input_references"
@@ -192,8 +189,7 @@ class ReferenceAwareOpenRouterVideoGenerationProvider(OpenRouterVideoGenerationP
             metadata["reference_asset_count"] = frame_count
             metadata["reference_mode"] = "frame_images"
             metadata["frame_types_json"] = json.dumps(
-                [str(value["frame_type"]) for value in frame_images_value],
-                separators=(",", ":"),
+                list(frame_types), separators=(",", ":")
             )
         generation_id = response.payload.get("generation_id")
         if isinstance(generation_id, str) and generation_id.strip():
@@ -319,7 +315,9 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(ProviderBackedDesktopVideo
             retriever=retriever,
             reviewer=reviewer,
         )
-        self._reviewer = SignalGatedSemanticVideoReviewer(self._reviewer)
+        signal_reviewer = SignalGatedSemanticVideoReviewer(self._reviewer)
+        self._reviewer = signal_reviewer
+        self._signal_reviewer = signal_reviewer
 
     def execute(
         self,
@@ -368,7 +366,10 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(ProviderBackedDesktopVideo
         finally:
             _reference_dispatch_state.reset(dispatch_token)
 
-        if dispatch_state is not None and dispatch_state.next_shot_index != dispatch_state.shot_count:
+        if (
+            dispatch_state is not None
+            and dispatch_state.next_shot_index != dispatch_state.shot_count
+        ):
             raise VideoReferenceIntentError(
                 "not every canonical shot reached the reference-aware provider boundary"
             )
@@ -376,7 +377,7 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(ProviderBackedDesktopVideo
         artifact_digest = result.get("artifact_digest")
         if not isinstance(artifact_digest, str):
             raise VideoSignalGateError("finished Video result is missing artifact identity")
-        signal_evidence = self._reviewer.evidence_for(artifact_digest)
+        signal_evidence = self._signal_reviewer.evidence_for(artifact_digest)
         if signal_evidence is None:
             raise VideoSignalGateError(
                 "finished Video lacks deterministic final media-signal evidence"
@@ -394,11 +395,17 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(ProviderBackedDesktopVideo
         qa_copy["silence_fraction"] = signal_evidence.silence_fraction
         if references:
             result["reference_assets"] = [item.public_metadata() for item in references]
-            result["reference_asset_usage"] = reference_plan.mode.value if reference_plan else "none"
-            result["reference_plan"] = reference_plan.to_dict() if reference_plan else None
+            result["reference_asset_usage"] = (
+                reference_plan.mode.value if reference_plan else "none"
+            )
+            result["reference_plan"] = (
+                reference_plan.to_dict() if reference_plan else None
+            )
             qa_copy["reference_asset_count"] = len(references)
             qa_copy["reference_assets_consumed"] = True
-            qa_copy["reference_mode"] = reference_plan.mode.value if reference_plan else "none"
+            qa_copy["reference_mode"] = (
+                reference_plan.mode.value if reference_plan else "none"
+            )
         result["qa"] = qa_copy
         return result
 
@@ -467,3 +474,22 @@ def _build_reference_request_body(
     if frame_images:
         body["frame_images"] = frame_images
     return MappingProxyType(body)
+
+
+def _frame_types(value: object) -> tuple[str, ...]:
+    if value is None:
+        return ()
+    if not isinstance(value, list):
+        raise VideoReferenceIntentError("frame_images must be a list")
+    frame_types: list[str] = []
+    for item in value:
+        if not isinstance(item, Mapping):
+            raise VideoReferenceIntentError("frame_images entries must be objects")
+        frame_type = item.get("frame_type")
+        if not isinstance(frame_type, str) or frame_type not in {
+            "first_frame",
+            "last_frame",
+        }:
+            raise VideoReferenceIntentError("frame_images contains an invalid frame_type")
+        frame_types.append(frame_type)
+    return tuple(frame_types)
