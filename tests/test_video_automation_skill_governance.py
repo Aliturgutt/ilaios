@@ -45,7 +45,7 @@ def test_video_prompting_families_are_governed_and_read_only() -> None:
         "ilaios.skill.video.director.plan",
         "ilaios.skill.video.prompt.compose",
         "ilaios.skill.video.reference-assets.plan",
-        "ilaios.skill.video.routing.model",
+        "ilaios.skill.video.model-fit.analyze",
         "ilaios.skill.video.continuity.plan",
     }
     manifests = {
@@ -54,6 +54,9 @@ def test_video_prompting_families_are_governed_and_read_only() -> None:
         if skill.skill_id in prompting_ids
     }
     assert set(manifests) == prompting_ids
+    assert "ilaios.skill.video.routing.model" not in {
+        skill.skill_id for skill in ALL_VIDEO_SKILLS
+    }
     assert all(manifest.risk.value == "read_only" for manifest in manifests.values())
     assert all(
         manifest.permissions == ("manifest.read",) for manifest in manifests.values()
