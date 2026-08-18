@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
@@ -134,8 +132,6 @@ class UsageStatsModel {
       ? null
       : inputTokens + outputTokens + cacheReadTokens + cacheWriteTokens;
 
-  bool get hasTelemetry => observedRoutes > 0;
-
   factory UsageStatsModel.fromSnapshot(OperationalSnapshot snapshot) {
     var tokenCoverage = 0;
     var costCoverage = 0;
@@ -171,14 +167,14 @@ class UsageStatsModel {
         route,
         const ['cache_write_tokens', 'cached_output_tokens'],
       );
-      final routeHasTokens =
+      final hasTokens =
           input != null || generated != null || cacheRead != null || cacheWrite != null;
       final cost = _firstNumber(output, route, const ['actual_cost_usd']);
       final reserved = _firstNumber(output, route, const ['reserved_cost_usd']);
       final latency = _firstNumber(output, route, const ['latency_ms']);
       final status = _firstText(output, route, const ['status', 'state', 'outcome']);
 
-      if (routeHasTokens) tokenCoverage += 1;
+      if (hasTokens) tokenCoverage += 1;
       if (cost != null) costCoverage += 1;
       if (reserved != null) reservedCostCoverage += 1;
       if (latency != null) latencyCoverage += 1;
@@ -207,18 +203,20 @@ class UsageStatsModel {
             );
       }
       if (modelId != null) {
-        final bucket = modelBuckets.putIfAbsent(
-          modelId,
-          () => _MutableUsageBucket(modelId, providerId: providerId),
-        );
-        bucket.add(
-          input: input,
-          output: generated,
-          cacheRead: cacheRead,
-          cacheWrite: cacheWrite,
-          cost: cost,
-          latency: latency,
-        );
+        final modelKey = '${providerId ?? ''}\u001f$modelId';
+        modelBuckets
+            .putIfAbsent(
+              modelKey,
+              () => _MutableUsageBucket(modelId, providerId: providerId),
+            )
+            .add(
+              input: input,
+              output: generated,
+              cacheRead: cacheRead,
+              cacheWrite: cacheWrite,
+              cost: cost,
+              latency: latency,
+            );
       }
 
       history.add(
@@ -301,80 +299,76 @@ class UsageStatsView extends StatelessWidget {
     final model = UsageStatsModel.fromSnapshot(snapshot);
     final tr = Localizations.localeOf(context).languageCode == 'tr';
     final scheme = Theme.of(context).colorScheme;
-
     return Container(
       key: const Key('usage-stats-page'),
       color: Theme.of(context).scaffoldBackgroundColor,
       child: LayoutBuilder(
         builder: (context, constraints) => SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(22, 18, 22, 84),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(minHeight: math.max(0, constraints.maxHeight - 102)),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  tr ? 'Kullanım ve İstatistikler' : 'Usage & Stats',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                tr ? 'Kullanım ve İstatistikler' : 'Usage & Stats',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+              ),
+              const SizedBox(height: 5),
+              Text(
+                tr
+                    ? 'Yalnızca kimliği doğrulanmış control-plane runtime route kanıtından türetilen kullanım, sağlayıcı/model, maliyet, gecikme ve çalışma geçmişi.'
+                    : 'Usage, provider/model, cost, latency and execution history derived only from authenticated control-plane runtime-route evidence.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: scheme.onSurfaceVariant,
+                    ),
+              ),
+              const SizedBox(height: 16),
+              _SummaryGrid(model: model, tr: tr),
+              const SizedBox(height: 14),
+              _CoveragePanel(model: model, tr: tr, status: status),
+              const SizedBox(height: 14),
+              if (constraints.maxWidth >= 1000)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _BreakdownPanel(
+                        title: tr ? 'Sağlayıcı Kullanımı' : 'Provider Usage',
+                        rows: model.providers,
+                        tr: tr,
+                        showProvider: false,
                       ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: _BreakdownPanel(
+                        title: tr ? 'Model Kullanımı' : 'Model Usage',
+                        rows: model.models,
+                        tr: tr,
+                        showProvider: true,
+                      ),
+                    ),
+                  ],
+                )
+              else ...[
+                _BreakdownPanel(
+                  title: tr ? 'Sağlayıcı Kullanımı' : 'Provider Usage',
+                  rows: model.providers,
+                  tr: tr,
+                  showProvider: false,
                 ),
-                const SizedBox(height: 5),
-                Text(
-                  tr
-                      ? 'Yalnızca kimliği doğrulanmış control-plane runtime route kanıtından türetilen kullanım, sağlayıcı/model, maliyet, gecikme ve çalışma geçmişi.'
-                      : 'Usage, provider/model, cost, latency and execution history derived only from authenticated control-plane runtime-route evidence.',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: scheme.onSurfaceVariant,
-                      ),
+                const SizedBox(height: 14),
+                _BreakdownPanel(
+                  title: tr ? 'Model Kullanımı' : 'Model Usage',
+                  rows: model.models,
+                  tr: tr,
+                  showProvider: true,
                 ),
-                const SizedBox(height: 16),
-                _SummaryGrid(model: model, tr: tr),
-                const SizedBox(height: 14),
-                _CoveragePanel(model: model, tr: tr, status: status),
-                const SizedBox(height: 14),
-                if (constraints.maxWidth >= 1120)
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: _BreakdownPanel(
-                          title: tr ? 'Sağlayıcı Kullanımı' : 'Provider Usage',
-                          rows: model.providers,
-                          tr: tr,
-                          showProvider: false,
-                        ),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: _BreakdownPanel(
-                          title: tr ? 'Model Kullanımı' : 'Model Usage',
-                          rows: model.models,
-                          tr: tr,
-                          showProvider: true,
-                        ),
-                      ),
-                    ],
-                  )
-                else ...[
-                  _BreakdownPanel(
-                    title: tr ? 'Sağlayıcı Kullanımı' : 'Provider Usage',
-                    rows: model.providers,
-                    tr: tr,
-                    showProvider: false,
-                  ),
-                  const SizedBox(height: 14),
-                  _BreakdownPanel(
-                    title: tr ? 'Model Kullanımı' : 'Model Usage',
-                    rows: model.models,
-                    tr: tr,
-                    showProvider: true,
-                  ),
-                ],
-                const SizedBox(height: 14),
-                _HistoryPanel(model: model, tr: tr),
               ],
-            ),
+              const SizedBox(height: 14),
+              _HistoryPanel(model: model, tr: tr),
+            ],
           ),
         ),
       ),
@@ -404,7 +398,7 @@ class _SummaryGrid extends StatelessWidget {
               _SummaryCard(
                 width: cardWidth,
                 icon: Icons.route_outlined,
-                label: tr ? 'Gözlenen yürütme rotaları' : 'Observed execution routes',
+                label: tr ? 'Gözlenen rotalar' : 'Observed routes',
                 value: model.observedRoutes.toString(),
                 detail: tr ? 'Kalıcı runtime kayıtları' : 'Persisted runtime records',
               ),
@@ -415,9 +409,7 @@ class _SummaryGrid extends StatelessWidget {
                 value: model.observedTokens == null
                     ? '—'
                     : _formatInt(model.observedTokens!),
-                detail: tr
-                    ? '${model.routesWithTokenTelemetry}/${model.observedRoutes} rota token kanıtı taşıyor'
-                    : '${model.routesWithTokenTelemetry}/${model.observedRoutes} routes carry token evidence',
+                detail: '${model.routesWithTokenTelemetry}/${model.observedRoutes}',
               ),
               _SummaryCard(
                 width: cardWidth,
@@ -426,9 +418,7 @@ class _SummaryGrid extends StatelessWidget {
                 value: model.observedActualCostUsd == null
                     ? '—'
                     : _formatUsd(model.observedActualCostUsd!),
-                detail: tr
-                    ? '${model.routesWithCostTelemetry}/${model.observedRoutes} rota actual-cost kanıtı taşıyor'
-                    : '${model.routesWithCostTelemetry}/${model.observedRoutes} routes carry actual-cost evidence',
+                detail: '${model.routesWithCostTelemetry}/${model.observedRoutes}',
               ),
               _SummaryCard(
                 width: cardWidth,
@@ -438,7 +428,7 @@ class _SummaryGrid extends StatelessWidget {
                     ? '—'
                     : '${model.averageLatencyMs!.toStringAsFixed(0)} ms',
                 detail: model.p95LatencyMs == null
-                    ? (tr ? 'p95 kullanılamıyor' : 'p95 unavailable')
+                    ? 'p95 —'
                     : 'p95 ${model.p95LatencyMs!.toStringAsFixed(0)} ms',
               ),
             ],
@@ -482,28 +472,17 @@ class _SummaryCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      label,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                    const SizedBox(height: 5),
+                    Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 4),
                     Text(
                       value,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.titleLarge?.copyWith(
                             fontWeight: FontWeight.w800,
                           ),
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 2),
                     Text(
                       detail,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
@@ -544,34 +523,13 @@ class _CoveragePanel extends StatelessWidget {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _CoverageChip(
-                  label: tr ? 'Token' : 'Tokens',
-                  value: '${model.routesWithTokenTelemetry}/${model.observedRoutes}',
-                ),
-                _CoverageChip(
-                  label: tr ? 'Gerçek maliyet' : 'Actual cost',
-                  value: '${model.routesWithCostTelemetry}/${model.observedRoutes}',
-                ),
-                _CoverageChip(
-                  label: tr ? 'Ayrılan maliyet' : 'Reserved cost',
-                  value: '${model.routesWithReservedCostTelemetry}/${model.observedRoutes}',
-                ),
-                _CoverageChip(
-                  label: tr ? 'Gecikme' : 'Latency',
-                  value: '${model.routesWithLatencyTelemetry}/${model.observedRoutes}',
-                ),
-                _CoverageChip(
-                  label: tr ? 'Sağlayıcı' : 'Provider',
-                  value: '${model.routesWithProvider}/${model.observedRoutes}',
-                ),
-                _CoverageChip(
-                  label: tr ? 'Model' : 'Model',
-                  value: '${model.routesWithModel}/${model.observedRoutes}',
-                ),
-                _CoverageChip(
-                  label: tr ? 'Durum/sonuç' : 'Status/outcome',
-                  value: '${model.routesWithStatus}/${model.observedRoutes}',
-                ),
+                _CoverageChip('Tokens', model.routesWithTokenTelemetry, model.observedRoutes),
+                _CoverageChip('Actual cost', model.routesWithCostTelemetry, model.observedRoutes),
+                _CoverageChip('Reserved cost', model.routesWithReservedCostTelemetry, model.observedRoutes),
+                _CoverageChip('Latency', model.routesWithLatencyTelemetry, model.observedRoutes),
+                _CoverageChip('Provider', model.routesWithProvider, model.observedRoutes),
+                _CoverageChip('Model', model.routesWithModel, model.observedRoutes),
+                _CoverageChip('Status', model.routesWithStatus, model.observedRoutes),
               ],
             ),
             const SizedBox(height: 10),
@@ -581,8 +539,8 @@ class _CoveragePanel extends StatelessWidget {
                       ? 'Yetkili runtime-route telemetrisi kullanılamıyor. Sentetik token, maliyet, sağlayıcı, model, gecikme veya başarı oranı üretilmez. Runtime durumu: $status'
                       : 'Authoritative runtime-route telemetry is unavailable. No synthetic token, cost, provider, model, latency or success-rate values are generated. Runtime status: $status')
                   : (tr
-                      ? 'Eksik alanlar “—” olarak kalır. Bu ekran yalnızca gözlenen rotaları toplar; eksik maliyet/token alanlarını tahmin ederek toplamı tamamlamaz.'
-                      : 'Missing fields remain “—”. This surface aggregates observed routes only; it does not estimate missing cost or token fields to complete totals.'),
+                      ? 'Eksik alanlar “—” olarak kalır. Bu ekran eksik maliyet veya token verisini tahmin ederek toplamı tamamlamaz.'
+                      : 'Missing fields remain “—”. This surface does not estimate missing cost or token data to complete totals.'),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
@@ -593,10 +551,11 @@ class _CoveragePanel extends StatelessWidget {
 }
 
 class _CoverageChip extends StatelessWidget {
-  const _CoverageChip({required this.label, required this.value});
+  const _CoverageChip(this.label, this.observed, this.total);
 
   final String label;
-  final String value;
+  final int observed;
+  final int total;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -605,7 +564,7 @@ class _CoverageChip extends StatelessWidget {
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Text('$label  $value', style: Theme.of(context).textTheme.labelMedium),
+        child: Text('$label  $observed/$total'),
       );
 }
 
@@ -636,43 +595,83 @@ class _BreakdownPanel extends StatelessWidget {
             const SizedBox(height: 8),
             if (rows.isEmpty)
               _EmptyText(
-                text: tr
-                    ? 'Yetkili kullanım kırılımı kullanılamıyor.'
-                    : 'Authoritative usage breakdown is unavailable.',
+                tr ? 'Yetkili kullanım kırılımı kullanılamıyor.' : 'Authoritative usage breakdown is unavailable.',
               )
             else
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columnSpacing: 18,
-                  horizontalMargin: 4,
-                  headingRowHeight: 34,
-                  dataRowMinHeight: 36,
-                  dataRowMaxHeight: 44,
-                  columns: [
-                    DataColumn(label: Text(showProvider ? (tr ? 'Model' : 'Model') : (tr ? 'Sağlayıcı' : 'Provider'))),
-                    if (showProvider) DataColumn(label: Text(tr ? 'Sağlayıcı' : 'Provider')),
-                    DataColumn(label: Text(tr ? 'Rota' : 'Routes'), numeric: true),
-                    DataColumn(label: Text(tr ? 'Token' : 'Tokens'), numeric: true),
-                    DataColumn(label: Text(tr ? 'Maliyet' : 'Cost'), numeric: true),
-                    DataColumn(label: Text(tr ? 'Ort. gecikme' : 'Avg latency'), numeric: true),
-                  ],
-                  rows: [
-                    for (final row in rows.take(12))
-                      DataRow(
-                        cells: [
-                          DataCell(_EllipsisText(row.label, width: 180)),
-                          if (showProvider)
-                            DataCell(_EllipsisText(row.providerId ?? '—', width: 130)),
-                          DataCell(Text(row.routes.toString())),
-                          DataCell(Text(row.tokenSamples == 0 ? '—' : _formatInt(row.totalTokens))),
-                          DataCell(Text(row.costSamples == 0 ? '—' : _formatUsd(row.observedCostUsd))),
-                          DataCell(Text(row.averageLatencyMs == null ? '—' : '${row.averageLatencyMs!.toStringAsFixed(0)} ms')),
-                        ],
-                      ),
-                  ],
-                ),
+              for (final row in rows.take(10))
+                _BreakdownRow(row: row, showProvider: showProvider, tr: tr),
+          ],
+        ),
+      );
+}
+
+class _BreakdownRow extends StatelessWidget {
+  const _BreakdownRow({
+    required this.row,
+    required this.showProvider,
+    required this.tr,
+  });
+
+  final UsageStatsBreakdown row;
+  final bool showProvider;
+  final bool tr;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(row.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  if (showProvider)
+                    Text(
+                      row.providerId ?? '—',
+                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                          ),
+                    ),
+                ],
               ),
+            ),
+            const SizedBox(width: 12),
+            _MetricText(tr ? 'Rota' : 'Routes', row.routes.toString()),
+            const SizedBox(width: 12),
+            _MetricText(
+              'Tokens',
+              row.tokenSamples == 0 ? '—' : _formatInt(row.totalTokens),
+            ),
+            const SizedBox(width: 12),
+            _MetricText(
+              tr ? 'Maliyet' : 'Cost',
+              row.costSamples == 0 ? '—' : _formatUsd(row.observedCostUsd),
+            ),
+          ],
+        ),
+      );
+}
+
+class _MetricText extends StatelessWidget {
+  const _MetricText(this.label, this.value);
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        width: 82,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Text(
+              label,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+            ),
+            Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
         ),
       );
@@ -698,101 +697,88 @@ class _HistoryPanel extends StatelessWidget {
             const SizedBox(height: 8),
             if (model.history.isEmpty)
               _EmptyText(
-                text: tr
-                    ? 'Yetkili runtime çalışma geçmişi kullanılamıyor.'
-                    : 'Authoritative runtime execution history is unavailable.',
+                tr ? 'Yetkili runtime çalışma geçmişi kullanılamıyor.' : 'Authoritative runtime execution history is unavailable.',
               )
             else
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: DataTable(
-                  columnSpacing: 18,
-                  horizontalMargin: 4,
-                  headingRowHeight: 34,
-                  dataRowMinHeight: 38,
-                  dataRowMaxHeight: 48,
-                  columns: [
-                    DataColumn(label: Text(tr ? 'Zaman' : 'Time')),
-                    DataColumn(label: Text(tr ? 'Ajan / Skill' : 'Agent / Skill')),
-                    DataColumn(label: Text(tr ? 'Sağlayıcı / Model' : 'Provider / Model')),
-                    DataColumn(label: Text(tr ? 'Token' : 'Tokens'), numeric: true),
-                    DataColumn(label: Text(tr ? 'Maliyet' : 'Cost'), numeric: true),
-                    DataColumn(label: Text(tr ? 'Gecikme' : 'Latency'), numeric: true),
-                    DataColumn(label: Text(tr ? 'Durum' : 'Status')),
-                  ],
-                  rows: [
-                    for (final item in model.history.take(20))
-                      DataRow(
-                        cells: [
-                          DataCell(_EllipsisText(item.createdAt ?? '—', width: 155)),
-                          DataCell(
-                            _TwoLineCell(
-                              primary: item.agentId ?? '—',
-                              secondary: item.skillId ?? item.capability ?? '—',
-                            ),
-                          ),
-                          DataCell(
-                            _TwoLineCell(
-                              primary: item.providerId ?? '—',
-                              secondary: item.modelId ?? '—',
-                            ),
-                          ),
-                          DataCell(Text(item.totalTokens == null ? '—' : _formatInt(item.totalTokens!))),
-                          DataCell(Text(item.actualCostUsd == null ? '—' : _formatUsd(item.actualCostUsd!))),
-                          DataCell(Text(item.latencyMs == null ? '—' : '${item.latencyMs!.toStringAsFixed(0)} ms')),
-                          DataCell(_EllipsisText(item.status ?? '—', width: 95)),
-                        ],
-                      ),
-                  ],
-                ),
-              ),
+              for (final item in model.history.take(20))
+                _HistoryRow(item: item),
           ],
         ),
       );
 }
 
-class _TwoLineCell extends StatelessWidget {
-  const _TwoLineCell({required this.primary, required this.secondary});
+class _HistoryRow extends StatelessWidget {
+  const _HistoryRow({required this.item});
 
-  final String primary;
-  final String secondary;
+  final UsageStatsActivity item;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-        width: 190,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+          ),
+        ),
+        child: Row(
           children: [
-            Text(primary, maxLines: 1, overflow: TextOverflow.ellipsis),
-            Text(
-              secondary,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+            SizedBox(
+              width: 150,
+              child: Text(item.createdAt ?? '—', maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.agentId ?? '—', maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(
+                    item.skillId ?? item.capability ?? '—',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            SizedBox(
+              width: 170,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(item.providerId ?? '—', maxLines: 1, overflow: TextOverflow.ellipsis),
+                  Text(
+                    item.modelId ?? '—',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            _MetricText('Tokens', item.totalTokens == null ? '—' : _formatInt(item.totalTokens!)),
+            const SizedBox(width: 8),
+            _MetricText('Cost', item.actualCostUsd == null ? '—' : _formatUsd(item.actualCostUsd!)),
+            const SizedBox(width: 8),
+            _MetricText('Latency', item.latencyMs == null ? '—' : '${item.latencyMs!.toStringAsFixed(0)} ms'),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 90,
+              child: Text(item.status ?? '—', maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           ],
         ),
       );
 }
 
-class _EllipsisText extends StatelessWidget {
-  const _EllipsisText(this.text, {required this.width});
-
-  final String text;
-  final double width;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-        width: width,
-        child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis),
-      );
-}
-
 class _EmptyText extends StatelessWidget {
-  const _EmptyText({required this.text});
+  const _EmptyText(this.text);
 
   final String text;
 
@@ -883,8 +869,7 @@ class _MutableUsageBucket {
 
 int _compareBreakdown(UsageStatsBreakdown left, UsageStatsBreakdown right) {
   final byRoutes = right.routes.compareTo(left.routes);
-  if (byRoutes != 0) return byRoutes;
-  return left.label.compareTo(right.label);
+  return byRoutes != 0 ? byRoutes : left.label.compareTo(right.label);
 }
 
 Map<String, Object?> _asMap(Object? value) {
@@ -950,7 +935,10 @@ String? _text(Object? value) {
 
 int? _int(Object? value) {
   if (value is int && value >= 0) return value;
-  if (value is num && value >= 0 && value == value.roundToDouble()) {
+  if (value is double &&
+      value.isFinite &&
+      value >= 0 &&
+      value == value.truncateToDouble()) {
     return value.toInt();
   }
   if (value is String) {
@@ -961,7 +949,10 @@ int? _int(Object? value) {
 }
 
 double? _number(Object? value) {
-  if (value is num && value.isFinite && value >= 0) return value.toDouble();
+  if (value is num) {
+    final parsed = value.toDouble();
+    if (parsed.isFinite && parsed >= 0) return parsed;
+  }
   if (value is String) {
     final parsed = double.tryParse(value.trim());
     if (parsed != null && parsed.isFinite && parsed >= 0) return parsed;
@@ -972,7 +963,8 @@ double? _number(Object? value) {
 double? _percentile95(List<double> values) {
   if (values.isEmpty) return null;
   final sorted = List<double>.of(values)..sort();
-  final index = math.max(0, (sorted.length * .95).ceil() - 1);
+  final rawIndex = (sorted.length * .95).ceil() - 1;
+  final index = rawIndex < 0 ? 0 : rawIndex;
   return sorted[index];
 }
 
