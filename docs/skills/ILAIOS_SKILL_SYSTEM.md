@@ -86,11 +86,11 @@ ILAIOS Skills
 
 The taxonomy is logical. Existing governed runtime skills remain in their current physical locations and registries. They are mapped into logical nodes rather than moved or rewritten.
 
-Five first-party Skill Engineering packages now have explicit governed runtime backing: `skill-create`, `skill-validate`, `skill-evaluate`, `skill-benchmark`, and `skill-regression`. They are provisioned into the existing canonical `GovernedRuntime` through `NamedAgentExecutor`; no parallel runtime, registry, router, policy engine, approval engine, Tool Gateway, provider path, or evidence authority is introduced.
+Five first-party Skill Engineering packages have explicit governed runtime backing: `skill-create`, `skill-validate`, `skill-evaluate`, `skill-benchmark`, and `skill-regression`. They are provisioned into the existing canonical `GovernedRuntime` through `NamedAgentExecutor`; no parallel runtime, registry, router, policy engine, approval engine, Tool Gateway, provider path, or evidence authority is introduced.
 
 Runtime authority is deliberately narrower than package dependency declarations. `skill-create` reuses the existing Architect identity and `architecture.propose`; `skill-validate`, `skill-benchmark`, and `skill-regression` reuse the existing Test Engineering identity and `test.execute`; `skill-evaluate` reuses the existing Review identity and `code.review`. Each binding uses an existing canonical permission and package text cannot widen that authority. Independent review remains mandatory.
 
-The runtime allowlist is intentionally explicit. A new Skill Engineering source package does not become executable merely because the catalog discovers it; it must receive a reviewed runtime binding separately. Accordingly, `lint`, `security-scan`, `compatibility`, and `promote` remain without runtime backing until their own implementation and evidence exist.
+The runtime allowlist is intentionally explicit. A new Skill Engineering source package does not become executable merely because the catalog discovers it; it must receive a reviewed runtime binding separately. `skill-lint`, `skill-security-scan`, `skill-compatibility`, and `skill-promote` now exist as first-party source/spec packages but deliberately retain empty runtime mappings. Their package existence must not be treated as runtime admission, verification, deployment, or production evidence.
 
 The Web Factory mappings currently represented in code are exact mappings to the canonical native Web registry:
 
@@ -128,11 +128,13 @@ An empty runtime mapping means no governed runtime backing is declared for that 
 
 ## Skill engineering lifecycle
 
-The target lifecycle is:
+The canonical lifecycle is:
 
 `create -> lint -> validate -> security-scan -> evaluate -> benchmark -> regression -> compatibility -> promote`
 
-Only lifecycle stages with implemented source packages and explicit reviewed runtime bindings are executable. Promotion does not imply production verification.
+All nine lifecycle stages now have first-party source/spec packages. Only stages with explicit reviewed runtime bindings are executable; current runtime admission remains five stages. Promotion eligibility does not imply promotion, promotion does not imply runtime admission, and none of those imply production verification.
+
+`security-scan` is a lifecycle gate over applicable canonical Assurance evidence; it does not replace or duplicate Assurance. `promote` assembles evidence for the existing canonical `services.skill_factory.SkillPromotionGate`; it does not own policy, approval, promotion-record, runtime-admission, or deployment authority.
 
 ## Provider independence
 
@@ -168,9 +170,11 @@ Tool declarations are requested dependencies only. Policy, approval, tenant, sec
 
 The logical taxonomy is machine-readable in `services/skill_taxonomy.py`.
 
-The implemented core Skill Engineering source packages are under `tools/skill-engineering/skills/`: `skill-create`, `skill-validate`, `skill-evaluate`, `skill-benchmark`, and `skill-regression`. `services/skill_engineering_catalog.py` validates package completeness, provenance, deny-set, allowed tool declarations, schemas, eval coverage, and source maturity. `services/skill_engineering_runtime.py` is a separate fail-closed admission map that provisions only explicitly approved packages into the existing canonical runtime; it is not a second runtime or registry.
+The complete nine-stage first-party Skill Engineering source lifecycle is under `tools/skill-engineering/skills/`: `skill-create`, `skill-lint`, `skill-validate`, `skill-security-scan`, `skill-evaluate`, `skill-benchmark`, `skill-regression`, `skill-compatibility`, and `skill-promote`. `services/skill_engineering_catalog.py` validates package completeness, provenance, deny-set, allowed tool declarations, schemas, eval coverage, and source maturity.
 
-Those five packages have explicit runtime backing and are included in the canonical P0 runtime composition. The Windows Desktop sidecar bundles the Skill Engineering package directory so source and packaged-runtime composition use the same package content. Other Skill Engineering taxonomy nodes remain target-only or source/spec-only until they receive their own evidence-backed implementation and runtime admission.
+`services/skill_engineering_runtime.py` remains a separate fail-closed admission map. It provisions only the five explicitly reviewed runtime-backed packages: `skill-create`, `skill-validate`, `skill-evaluate`, `skill-benchmark`, and `skill-regression`. The four new source packages remain non-executable until a separate dependency, authority mapping, review, tests, and evidence justify runtime admission.
+
+Those five runtime-backed packages are included in the canonical P0 runtime composition. The Windows Desktop sidecar bundles the complete Skill Engineering package directory so source/spec content is available consistently, but bundling a package does not grant it runtime authority.
 
 The current native Web Factory, Video Factory, and SecurityFactory methodology skills are mapped into the taxonomy without moving or duplicating their runtime ownership.
 
