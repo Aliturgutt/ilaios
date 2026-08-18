@@ -34,7 +34,9 @@ from services.integrations.provider_video_runtime import (
     UnavailableProviderVideoRuntime,
 )
 from services.integrations.video_runtime import VideoRuntimeError
+from services.p0_runtime_composition import compose_p0_runtime
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
+from services.runtime.security_agent_adapters import SecurityAgentRuntimeAdapters
 from src.video_automation.openrouter_video_provider import SEEDANCE_FREE_MODEL_ID
 
 
@@ -63,12 +65,27 @@ def main(argv: Sequence[str] | None = None) -> int:
     control_plane = ControlPlane(ControlPlaneConfig(database, token))
     workflow_store = WorkflowStore(WorkflowStoreConfig(database))
     live_state = LiveStateTransport(database)
-    governed_runtime = GovernedRuntime(database)
+
+    # P0 does not create another runtime. Defensive SecurityFactory adapters are
+    # injected into the same GovernedRuntime used by the existing Control Plane.
+    # Provider-backed Core/Engineering adapters remain unavailable until an
+    # authoritative model/provider/cost/tenant budget contract is configured;
+    # no hard-coded model or assumed pricing is used here.
+    security_agent_adapters = SecurityAgentRuntimeAdapters()
+    governed_runtime = GovernedRuntime(
+        database,
+        external_adapters=security_agent_adapters.runtime_adapters(),
+    )
     scheduler = DurableWorkerScheduler(
         database,
         lease_duration=timedelta(seconds=arguments.lease_seconds),
     )
     grant_policy = DurableGrantPolicy(database)
+    p0_agents = compose_p0_runtime(
+        governed_runtime,
+        grant_policy,
+        engineering_skills_root=_software_factory_skills_path(),
+    )
     evidence_store = EvidenceStore(root / "evidence")
     governance = GovernedRuntimeGateway(
         root / "governance.sqlite3",
@@ -212,6 +229,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         "identity_port": identity_port,
         "account_sign_in_configured": identity is not None,
         "governed_execution_configured": identity is not None,
+        "p0_target_agent_count": p0_agents.target_agent_count,
+        "p0_provisioned_identity_count": p0_agents.provisioned_identity_count,
+        "p0_skill_count": p0_agents.skill_count,
+        "p0_security_runtime_configured": p0_agents.security_provider_count == 5,
+        "p0_ai_runtime_configured": p0_agents.ai_configured,
         "video_finished_product_configured": video_finished_product_configured,
         "video_provider": video_provider,
         "web_finished_product_configured": True,
@@ -259,6 +281,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         control_server.server_close()
         control_thread.join(timeout=5)
     return 0
+
+
+def _software_factory_skills_path() -> Path:
+    if getattr(sys, "frozen", False):
+        base = Path(getattr(sys, "_MEIPASS"))
+        path = base / "tools" / "software-factory" / "skills"
+    else:
+        path = (
+            Path(__file__).resolve().parents[3]
+            / "tools"
+            / "software-factory"
+            / "skills"
+        )
+    if not path.is_dir():
+        raise RuntimeError("canonical Software Factory skill registry is missing")
+    return path
 
 
 def _identity_configuration_path() -> Path:
