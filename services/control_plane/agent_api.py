@@ -5,7 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from services.agent_registry import CANONICAL_AGENT_REGISTRY
-from services.named_agent_executor import provision_canonical_agent
+from services.named_agent_executor import (
+    NamedAgentExecutionError,
+    provision_canonical_agent,
+)
 from services.runtime import GovernedRuntime
 
 
@@ -78,5 +81,8 @@ def handle_agent_command(
         raise ValueError("unknown agent operation")
     if not isinstance(agent_id, str) or not agent_id or agent_id != agent_id.strip():
         raise TypeError("agent_id must be a non-blank trimmed string")
-    created = provision_canonical_agent(runtime, agent_id)
+    try:
+        created = provision_canonical_agent(runtime, agent_id)
+    except NamedAgentExecutionError as exc:
+        raise ValueError(str(exc)) from exc
     return {"agent_id": agent_id, "registered": True, "created": created}
