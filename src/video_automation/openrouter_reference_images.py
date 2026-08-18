@@ -14,11 +14,13 @@ from .reference_images import (
 )
 
 # This is deliberately narrower than the provider's general model allowlist.
-# OpenRouter's current reference-to-video cookbook explicitly demonstrates
-# Seedance 2.0 Fast. Additional models are promoted only when current provider
-# evidence and an adapter regression prove reference semantics for that model.
+# OpenRouter's current model descriptions explicitly identify both Seedance 2.0
+# Fast IDs below as multimodal reference-to-video capable. Additional models are
+# promoted only when current provider evidence and an adapter regression prove
+# equivalent reference semantics for the exact model identity.
 OPENROUTER_REFERENCE_IMAGE_LIMITS: Mapping[str, int] = {
     "bytedance/seedance-2.0-fast": DEFAULT_PROVIDER_REFERENCE_IMAGES,
+    "bytedance/seedance-2.0-fast:free": DEFAULT_PROVIDER_REFERENCE_IMAGES,
 }
 
 
