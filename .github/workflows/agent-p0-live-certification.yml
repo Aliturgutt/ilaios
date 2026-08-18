@@ -17,6 +17,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 concurrency:
   group: agent-p0-live-certification-${{ github.ref }}
@@ -90,9 +91,17 @@ jobs:
           import os
           from pathlib import Path
 
+          def is_sha256(value: object) -> bool:
+              return (
+                  isinstance(value, str)
+                  and len(value) == 64
+                  and all(character in '0123456789abcdef' for character in value)
+              )
+
           receipt_path = Path(os.environ['AGENT_P0_PROOF_DIR']) / 'p0-live-receipt.json'
           receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
           assert receipt['status'] == 'VERIFIED'
+          assert receipt['revision_sha'] == os.environ['GITHUB_SHA']
           assert receipt['target_agent_count'] == 21
           assert receipt['verified_agent_count'] == 21
           assert receipt['zero_cost_openrouter_only'] is True
@@ -101,6 +110,8 @@ jobs:
               'executable': 0,
               'verified': 21,
           }
+          assert is_sha256(receipt['runtime_database_sha256'])
+          assert is_sha256(receipt['readiness_database_sha256'])
           assert len(receipt['agents']) == 21
           for agent in receipt['agents']:
               assert agent['readiness'] == 'verified'
@@ -145,3 +156,88 @@ jobs:
           path: artifacts/agent-p0-live-proof
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Publish sanitized P0 commit status
+        if: ${{ always() }}
+        shell: bash
+        env:
+          P0_JOB_STATUS: ${{ job.status }}
+          P0_STATUS_TOKEN: ${{ github.token }}
+          P0_STATUS_TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          def is_sha256(value: object) -> bool:
+              return (
+                  isinstance(value, str)
+                  and len(value) == 64
+                  and all(character in '0123456789abcdef' for character in value)
+              )
+
+          accepted = False
+          receipt_path = Path(os.environ['AGENT_P0_PROOF_DIR']) / 'p0-live-receipt.json'
+          if os.environ.get('P0_JOB_STATUS') == 'success' and receipt_path.is_file():
+              try:
+                  receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+                  agents = receipt.get('agents')
+                  accepted = (
+                      receipt.get('status') == 'VERIFIED'
+                      and receipt.get('revision_sha') == os.environ['GITHUB_SHA']
+                      and receipt.get('target_agent_count') == 21
+                      and receipt.get('verified_agent_count') == 21
+                      and receipt.get('zero_cost_openrouter_only') is True
+                      and receipt.get('matrix_summary') == {
+                          'registered': 26,
+                          'executable': 0,
+                          'verified': 21,
+                      }
+                      and is_sha256(receipt.get('runtime_database_sha256'))
+                      and is_sha256(receipt.get('readiness_database_sha256'))
+                      and isinstance(agents, list)
+                      and len(agents) == 21
+                      and all(
+                          isinstance(agent, dict)
+                          and agent.get('readiness') == 'verified'
+                          and agent.get('actual_cost_usd') in (None, '0')
+                          for agent in agents
+                      )
+                  )
+              except (OSError, ValueError, TypeError):
+                  accepted = False
+
+          state = 'success' if accepted else 'failure'
+          description = (
+              'P0 live receipt accepted: 21/21 VERIFIED'
+              if accepted
+              else 'P0 live certification failed closed'
+          )
+          document = json.dumps(
+              {
+                  'state': state,
+                  'target_url': os.environ['P0_STATUS_TARGET_URL'],
+                  'description': description,
+                  'context': 'ILAIOS Agent P0 Live Certification',
+              },
+              separators=(',', ':'),
+          ).encode('utf-8')
+          request = urllib.request.Request(
+              f"{os.environ['GITHUB_API_URL']}/repos/{os.environ['GITHUB_REPOSITORY']}/statuses/{os.environ['GITHUB_SHA']}",
+              data=document,
+              method='POST',
+              headers={
+                  'Accept': 'application/vnd.github+json',
+                  'Authorization': f"Bearer {os.environ['P0_STATUS_TOKEN']}",
+                  'Content-Type': 'application/json',
+                  'X-GitHub-Api-Version': '2022-11-28',
+              },
+          )
+          with urllib.request.urlopen(request, timeout=20) as response:
+              if response.status not in {200, 201}:
+                  raise RuntimeError(f'commit status publish failed: HTTP {response.status}')
+          print(f'P0_COMMIT_STATUS={state}')
+          PY
