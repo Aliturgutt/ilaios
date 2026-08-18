@@ -3,10 +3,14 @@ from __future__ import annotations
 import pytest
 
 from services.desktop_execution_coordinator import normalize_desktop_execution_objective
-from services.execution_coordinator import ExecutionCoordinatorError, classify_execution_route
+from services.execution_coordinator import (
+    ExecutionCoordinatorError,
+    ExecutionRoute,
+    classify_execution_route,
+)
 
 
-def _route_after_desktop_normalization(objective: str):  # type: ignore[no-untyped-def]
+def _route_after_desktop_normalization(objective: str) -> ExecutionRoute:
     return classify_execution_route(normalize_desktop_execution_objective(objective))
 
 
