@@ -11,6 +11,7 @@ class OperationalSnapshot {
     required this.governanceState,
     required this.evidenceRecords,
     required this.liveEvents,
+    this.agentState = const <String, Object?>{},
   });
 
   const OperationalSnapshot.unavailable()
@@ -19,7 +20,8 @@ class OperationalSnapshot {
         grantsState = const <String, Object?>{},
         governanceState = const <String, Object?>{},
         evidenceRecords = const <EvidenceRecord>[],
-        liveEvents = const <Map<String, Object?>>[];
+        liveEvents = const <Map<String, Object?>>[],
+        agentState = const <String, Object?>{};
 
   final List<Map<String, Object?>> runtimeRoutes;
   final Map<String, Object?> schedulerState;
@@ -27,6 +29,7 @@ class OperationalSnapshot {
   final Map<String, Object?> governanceState;
   final List<EvidenceRecord> evidenceRecords;
   final List<Map<String, Object?>> liveEvents;
+  final Map<String, Object?> agentState;
 
   bool get available =>
       runtimeRoutes.isNotEmpty ||
@@ -34,7 +37,8 @@ class OperationalSnapshot {
       grantsState.isNotEmpty ||
       governanceState.isNotEmpty ||
       evidenceRecords.isNotEmpty ||
-      liveEvents.isNotEmpty;
+      liveEvents.isNotEmpty ||
+      agentState.isNotEmpty;
 
   int get runtimeRouteCount => runtimeRoutes.length;
   int get evidenceCount => evidenceRecords.length;
