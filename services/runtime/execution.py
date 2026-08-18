@@ -343,6 +343,8 @@ class GovernedRuntime:
         if not isinstance(output, dict):
             raise RuntimeError("runtime adapter output must be an object")
         canonical_input = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+        input_sha256 = hashlib.sha256(canonical_input.encode()).hexdigest()
+        created_at = datetime.now(timezone.utc).isoformat()
         with self._connect() as connection:
             cursor = connection.execute(
                 "INSERT INTO runtime_routes "
@@ -353,9 +355,9 @@ class GovernedRuntime:
                     skill_id,
                     decision.provider_id,
                     capability,
-                    hashlib.sha256(canonical_input.encode()).hexdigest(),
+                    input_sha256,
                     json.dumps(output, sort_keys=True),
-                    datetime.now(timezone.utc).isoformat(),
+                    created_at,
                 ),
             )
             sequence = cursor.lastrowid
@@ -365,6 +367,8 @@ class GovernedRuntime:
             "skill_id": decision.skill_id,
             "provider_id": decision.provider_id,
             "capability": decision.capability,
+            "input_sha256": input_sha256,
+            "created_at": created_at,
             "deterministic_first": decision.deterministic_first,
             "evidence": list(decision.evidence),
             "output": output,
