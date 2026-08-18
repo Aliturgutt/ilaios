@@ -4,14 +4,14 @@ import hashlib
 import io
 import json
 import zipfile
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 import pytest
 
 from services.evidence import EvidenceStore
 from services.runtime import BlastRadiusBudget, ExecutionGrant
-from services.web_source_ingestion import WebSourceArchiveIngestor
+from services.web_source_ingestion import WebSourceArchiveIngestor, WebSourceSnapshot
 from services.web_source_revision import (
     GovernedWebSourceRevisionEngine,
     WebSourceRevisionError,
@@ -68,7 +68,7 @@ def _source_files() -> dict[str, bytes]:
     }
 
 
-def _snapshot(tmp_path: Path):  # type: ignore[no-untyped-def]
+def _snapshot(tmp_path: Path) -> WebSourceSnapshot:
     return WebSourceArchiveIngestor(tmp_path / "artifacts").ingest_zip(
         _zip(_source_files())
     )
