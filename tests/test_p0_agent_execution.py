@@ -37,11 +37,13 @@ from services.runtime.ai_provider_adapter import (
 NOW = datetime(2026, 8, 18, 9, 0, tzinfo=timezone.utc)
 PLANNER_ID = "ilaios.agent.core.planner.v1"
 TENANT_SCOPE = Scope(ScopeKind.TENANT, "tenant-test")
+SKILL_TEXT = "ILAIOS first-party bounded planning skill"
 
 
 class _FallbackTransport:
     def __init__(self) -> None:
         self.calls: list[str] = []
+        self.system_instructions: list[str] = []
 
     def complete(
         self,
@@ -49,11 +51,15 @@ class _FallbackTransport:
         *,
         api_key: str,
         model_id: str,
+        system_instructions: str,
         prompt: str,
         max_output_tokens: int,
     ) -> ProviderTransportResult:
         self.calls.append(endpoint.provider_id)
+        self.system_instructions.append(system_instructions)
         assert api_key == "test-secret"
+        assert prompt == "Plan the bounded authorized software task."
+        assert max_output_tokens == 128
         if endpoint.provider_id == "provider-a":
             raise RuntimeError("simulated provider outage")
         return ProviderTransportResult(
@@ -126,7 +132,7 @@ def _provider_stack(tmp_path: Path) -> tuple[P0ProviderBackedExecutor, NamedAgen
     named.provision_agent(PLANNER_ID)
     named.provision_skill(
         "ilaios.skill.core.planning.v1",
-        b"ILAIOS first-party bounded planning skill",
+        SKILL_TEXT.encode(),
         frozenset({"workflow.plan"}),
     )
     for provider_id in ("provider-a", "provider-b"):
@@ -190,13 +196,17 @@ def test_core_agent_falls_back_and_persists_only_successful_governed_route(tmp_p
     )
 
     assert transport.calls == ["provider-a", "provider-b"]
+    assert transport.system_instructions == [SKILL_TEXT, SKILL_TEXT]
     assert result.model_id == "model-b"
     assert result.provider_id == "provider-b"
     assert len(result.evidence_digest) == 64
     assert result.execution.route["provider_id"] == "provider-b"
-    assert result.execution.route["output"]["response_id"] == "response-b"
-    assert result.execution.route["output"]["input_tokens"] == 24
-    assert result.execution.route["output"]["output_tokens"] == 18
+    output = result.execution.route["output"]
+    assert output["response_id"] == "response-b"
+    assert output["input_tokens"] == 24
+    assert output["output_tokens"] == 18
+    assert output["skill_id"] == "ilaios.skill.core.planning.v1"
+    assert len(output["skill_sha256"]) == 64
     routes = named.routes()
     assert len(routes) == 1
     assert routes[0]["agent_id"] == PLANNER_ID
