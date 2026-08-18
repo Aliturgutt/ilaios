@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, cast
 from urllib.parse import parse_qs, urlparse
 
+from services.control_plane.agent_api import canonical_agent_state, handle_agent_command
 from services.control_plane.api import (
     AuthenticationError,
     ControlPlane,
@@ -185,6 +186,12 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                     {"routes": self.server.governed_runtime.routes()},
                 )
                 return
+            if path == "/v1/agents/state":
+                self._send_json(
+                    HTTPStatus.OK,
+                    canonical_agent_state(self.server.governed_runtime),
+                )
+                return
             if path == "/v1/scheduler/state":
                 self._send_json(HTTPStatus.OK, self.server.scheduler.state())
                 return
@@ -341,6 +348,12 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/v1/runtime/commands":
                 self._send_json(HTTPStatus.OK, self._runtime_command(body))
+                return
+            if path == "/v1/agents/commands":
+                self._send_json(
+                    HTTPStatus.OK,
+                    handle_agent_command(self.server.governed_runtime, body),
+                )
                 return
             if path == "/v1/scheduler/commands":
                 self._send_json(HTTPStatus.OK, self._scheduler_command(body))
