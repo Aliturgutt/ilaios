@@ -227,7 +227,9 @@ class GovernedAIProviderAdapter:
                 max_output_tokens,
             )
             usage_request = UsageRequest(
-                request_id=f"{request_id}:attempt:{attempt}",
+                request_id=(
+                    f"{request_id}:provider:{provider_id}:model:{model_id}:attempt:{attempt}"
+                ),
                 tenant_id=tenant_id,
                 scopes=scopes,
                 model_id=model_id,
