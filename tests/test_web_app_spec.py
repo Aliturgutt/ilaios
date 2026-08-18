@@ -81,8 +81,8 @@ def test_read_only_dashboard_does_not_invent_crud() -> None:
     assert [(item.name, item.operations) for item in spec.resources] == [
         ("projects", ("read",))
     ]
-    assert "crud" in spec.requested_capabilities
-    # Data resources are still declared, but write operations are not invented.
+    assert "data" in spec.requested_capabilities
+    assert "crud" not in spec.requested_capabilities
     assert "create" not in spec.resources[0].operations
 
 
