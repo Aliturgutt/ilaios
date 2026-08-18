@@ -107,7 +107,7 @@ class IdentityClient extends core.IdentityClient {
         <String, Object?>{
           'objective': normalized,
           'reference_asset_ids': referenceAssetIds,
-          if (sourceAssetId != null) 'source_media_asset_id': sourceAssetId,
+          'source_media_asset_id': ?sourceAssetId,
         },
         'authenticated intent',
         session,
