@@ -34,6 +34,19 @@ _WEB_APP_TERMS = (
     "müşteri portalı",
     "musteri portali",
 )
+_NON_WEB_PLATFORM_TERMS = (
+    "mobile app",
+    "android app",
+    "ios app",
+    "iphone app",
+    "desktop app",
+    "windows app",
+    "mac app",
+    "macos app",
+    "mobil uygulama",
+    "masaüstü uygulama",
+    "masaustu uygulama",
+)
 _RESOURCE_TERMS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("users", ("users", "user management", "kullanıcılar", "kullanici", "üyeler", "uyeler")),
     ("projects", ("projects", "project management", "projeler", "proje yönet", "proje yonet")),
@@ -163,7 +176,10 @@ class WebAppSpec:
             capabilities.append("auth")
         if self.resources:
             capabilities.append("data")
-            if any(resource.operations != ("read",) for resource in self.resources):
+            if any(
+                resource.operations == ("create", "read", "update", "delete")
+                for resource in self.resources
+            ):
                 capabilities.append("crud")
         if self.tables_required:
             capabilities.append("tables")
@@ -203,6 +219,8 @@ def derive_web_app_spec(
     if len(objective) > _MAX_OBJECTIVE_CHARS:
         raise WebAppSpecError("Web App objective exceeds the input limit")
     normalized = " ".join(objective.casefold().split())
+    if any(term in normalized for term in _NON_WEB_PLATFORM_TERMS):
+        raise WebAppSpecError("objective targets a non-Web application platform")
     if not any(term in normalized for term in _WEB_APP_TERMS):
         raise WebAppSpecError("objective does not explicitly target a Web application surface")
 
@@ -225,8 +243,17 @@ def derive_web_app_spec(
     booking_required = _contains(normalized, _BOOKING_TERMS)
     commerce_required = _contains(normalized, _COMMERCE_TERMS)
     cms_required = _contains(normalized, _CMS_TERMS)
-    if booking_required and "bookings" not in resource_names:
-        resources = (*resources, WebAppResourceSpec("bookings", operations))
+    if booking_required:
+        booking_ops = operations if crud_requested else ("create", "read")
+        if "bookings" in resource_names:
+            resources = tuple(
+                WebAppResourceSpec(item.name, booking_ops)
+                if item.name == "bookings"
+                else item
+                for item in resources
+            )
+        else:
+            resources = (*resources, WebAppResourceSpec("bookings", booking_ops))
         tables_required = True
     if commerce_required and not any(name in resource_names for name in ("orders", "products")):
         raise WebAppSpecError(
@@ -350,7 +377,7 @@ def _acceptance_requirements(
     if auth_required:
         values.append("unauthenticated protected-route and API access fails closed")
     if resources:
-        values.append("declared data resources pass exact CRUD/read contract tests")
+        values.append("declared data resource operations pass exact contract tests")
     if tables_required:
         values.append("table states cover loading, empty, error, and populated data")
     if charts_required:
