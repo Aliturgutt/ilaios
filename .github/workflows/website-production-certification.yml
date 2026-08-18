@@ -1,10 +1,10 @@
-name: Website Production Certification
+name: Website Production Release and Certification
 
 on:
   workflow_dispatch:
     inputs:
       expected_sha:
-        description: "Exact master SHA already deployed to Vercel production"
+        description: "Exact current master SHA to release"
         required: true
         type: string
 
@@ -12,24 +12,24 @@ permissions:
   contents: read
 
 concurrency:
-  group: website-production-certification-master
-  cancel-in-progress: true
+  group: website-production-release-master
+  cancel-in-progress: false
 
 jobs:
-  certify-production:
-    name: Exact live-domain browser certification
+  release-and-certify-production:
+    name: Exact production release and browser certification
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
     steps:
-      - name: Checkout exact deployed SHA
+      - name: Checkout exact release SHA
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
           ref: ${{ inputs.expected_sha }}
           fetch-depth: 0
 
-      - name: Verify certification target is exact master
+      - name: Verify release target is exact current master
         shell: bash
         env:
           EXPECTED_SHA: ${{ inputs.expected_sha }}
@@ -40,6 +40,25 @@ jobs:
           master="$(git rev-parse origin/master)"
           test "$actual" = "$EXPECTED_SHA"
           test "$master" = "$EXPECTED_SHA"
+
+      - name: Require production Deploy Hook
+        shell: bash
+        env:
+          HOOK_URL: ${{ secrets.VERCEL_PRODUCTION_DEPLOY_HOOK }}
+        run: |
+          set -euo pipefail
+          if [[ -z "$HOOK_URL" ]]; then
+            echo "VERCEL_PRODUCTION_DEPLOY_HOOK is not configured." >&2
+            exit 1
+          fi
+
+      - name: Trigger exactly one Vercel production deployment
+        shell: bash
+        env:
+          HOOK_URL: ${{ secrets.VERCEL_PRODUCTION_DEPLOY_HOOK }}
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --request POST "$HOOK_URL" >/dev/null
 
       - name: Setup Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
