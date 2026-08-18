@@ -1,6 +1,6 @@
 """Deterministic, provider-neutral AI usage and cost governance.
 
-This module is a control-plane reference implementation.  It performs no
+This module is a control-plane reference implementation. It performs no
 provider calls and grants no authorization; callers must pass an already
 authorized request and cannot override the controls represented here.
 """
@@ -277,6 +277,7 @@ class UsageGovernor:
         self._daily: dict[tuple[Scope, str], _Consumption] = {}
         self._monthly: dict[tuple[Scope, str], _Consumption] = {}
         self._requests: set[str] = set()
+        self._reconciled: set[str] = set()
         self._circuits: dict[str, _Circuit] = {}
         self._threshold = circuit_failure_threshold
         self._window = circuit_window
@@ -290,8 +291,11 @@ class UsageGovernor:
         if not model.enabled or not provider.enabled:
             raise GovernanceError("model or provider is disabled")
         circuit = self._circuits.setdefault(provider.provider_id, _Circuit())
-        if circuit.open_until is not None and now < circuit.open_until:
-            raise GovernanceError("provider circuit is open")
+        if circuit.open_until is not None:
+            if now < circuit.open_until:
+                raise GovernanceError("provider circuit is open")
+            circuit.open_until = None
+            circuit.failures.clear()
         if request.input_tokens + request.output_tokens > model.context_window:
             raise GovernanceError("model context window exceeded")
         if request.output_tokens > model.max_output_tokens:
@@ -371,6 +375,28 @@ class UsageGovernor:
         if request.retry_accumulated_cost > limit.max_retry_cost:
             raise GovernanceError("retry cost ceiling exceeded")
 
+    def reconcile_cost(self, evidence: UsageEvidence, actual_cost: Decimal) -> None:
+        """Reconcile a conservative reservation downward to observed provider cost."""
+        if actual_cost < 0:
+            raise GovernanceError("actual cost cannot be negative")
+        if actual_cost > evidence.cost:
+            raise GovernanceError("actual provider cost exceeded reserved cost")
+        if evidence.request_id in self._reconciled:
+            raise GovernanceError("usage request cost is already reconciled")
+        difference = evidence.cost - actual_cost
+        for scope in evidence.scopes:
+            daily_key = (scope, evidence.admitted_at.date().isoformat())
+            monthly_key = (scope, evidence.admitted_at.strftime("%Y-%m"))
+            daily = self._daily.get(daily_key)
+            monthly = self._monthly.get(monthly_key)
+            if daily is None or monthly is None:
+                raise GovernanceError("usage reservation is unavailable")
+            if daily.cost < difference or monthly.cost < difference:
+                raise GovernanceError("usage accounting would become negative")
+            daily.cost -= difference
+            monthly.cost -= difference
+        self._reconciled.add(evidence.request_id)
+
     def complete(self, evidence: UsageEvidence) -> None:
         for scope in evidence.scopes:
             key = (scope, evidence.admitted_at.date().isoformat())
@@ -387,3 +413,46 @@ class UsageGovernor:
         circuit.failures.append(now)
         if len(circuit.failures) >= self._threshold:
             circuit.open_until = now + self._cooldown
+
+    def record_provider_success(self, provider_id: str, now: datetime) -> None:
+        self._registry.provider(provider_id)
+        circuit = self._circuits.setdefault(provider_id, _Circuit())
+        cutoff = now - self._window
+        circuit.failures = [stamp for stamp in circuit.failures if stamp >= cutoff]
+        circuit.failures.clear()
+        circuit.open_until = None
+
+    def provider_health(self, provider_id: str, now: datetime) -> dict[str, object]:
+        """Return non-authoritative operational health derived from the circuit state."""
+        provider = self._registry.provider(provider_id)
+        circuit = self._circuits.setdefault(provider_id, _Circuit())
+        cutoff = now - self._window
+        circuit.failures = [stamp for stamp in circuit.failures if stamp >= cutoff]
+        is_open = circuit.open_until is not None and now < circuit.open_until
+        return {
+            "provider_id": provider.provider_id,
+            "enabled": provider.enabled,
+            "circuit": "open" if is_open else "closed",
+            "recent_failures": len(circuit.failures),
+            "open_until": circuit.open_until.isoformat() if is_open else None,
+        }
+
+    def usage_snapshot(self, scope: Scope, now: datetime) -> dict[str, object]:
+        """Return current reserved/reconciled usage for telemetry without secrets."""
+        self._limits.get(scope) or (_raise_missing_limit(scope))
+        daily = self._daily.get((scope, now.date().isoformat()), _Consumption())
+        monthly = self._monthly.get((scope, now.strftime("%Y-%m")), _Consumption())
+        return {
+            "scope_kind": scope.kind.value,
+            "scope_id": scope.scope_id,
+            "daily_requests": daily.requests,
+            "daily_active": daily.active,
+            "daily_cost": str(daily.cost),
+            "monthly_cost": str(monthly.cost),
+            "daily_gpu_seconds": str(daily.gpu),
+            "daily_runtime_seconds": str(daily.runtime),
+        }
+
+
+def _raise_missing_limit(scope: Scope) -> None:
+    raise GovernanceError(f"no configured limit for {scope.kind.value} scope")
