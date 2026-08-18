@@ -93,20 +93,36 @@ def test_web_factory_native_skills_do_not_import_external_skill_assets() -> None
         assert {path.name for path in package.iterdir()} == {"SKILL.md"}
 
 
-def test_native_web_skill_execution_binds_to_accepted_runtime_evidence() -> None:
+def test_native_web_skill_evidence_binding_is_not_execution_claim() -> None:
     bound = bind_web_factory_native_skill_evidence(_accepted_local_manifest())
-    execution = cast(list[dict[str, object]], bound["native_skill_execution"])
-    assert tuple(item["skill_id"] for item in execution) == WEB_FACTORY_NATIVE_SKILL_IDS
-    assert execution[0]["status"] == "EVIDENCE_BOUND"
-    assert execution[4]["status"] == "LOCAL_VERIFIED"
-    assert execution[5]["status"] == "BLOCKED_DEPLOYMENT"
+    assert "native_skill_execution" not in bound
+    bindings = cast(
+        list[dict[str, object]], bound["native_skill_evidence_binding"]
+    )
+    assert tuple(item["skill_id"] for item in bindings) == WEB_FACTORY_NATIVE_SKILL_IDS
+    assert bindings[0]["status"] == "EVIDENCE_BOUND"
+    assert bindings[2]["status"] == "QA_EVIDENCE_BOUND"
+    assert bindings[4]["status"] == "VALIDATION_EVIDENCE_BOUND"
+    assert bindings[5]["status"] == "BLOCKED_DEPLOYMENT"
 
 
-def test_native_web_skill_execution_cannot_fake_production_verification() -> None:
+def test_native_web_skill_evidence_binding_cannot_fake_production_verification() -> None:
     manifest = _accepted_local_manifest()
     manifest["deployment_state"] = "PRODUCTION_VERIFIED"
     with pytest.raises(ValueError, match="deployment receipt"):
         bind_web_factory_native_skill_evidence(manifest)
+
+
+def test_native_web_skill_production_binding_names_evidence_not_execution() -> None:
+    manifest = _accepted_local_manifest()
+    manifest["deployment_state"] = "PRODUCTION_VERIFIED"
+    manifest["deployment_receipt"] = {"deployment_id": "deployment-test"}
+    bound = bind_web_factory_native_skill_evidence(manifest)
+    bindings = cast(
+        list[dict[str, object]], bound["native_skill_evidence_binding"]
+    )
+    assert bindings[-1]["status"] == "PRODUCTION_VERIFICATION_EVIDENCE_BOUND"
+    assert "native_skill_execution" not in bound
 
 
 def test_web_execution_adapter_is_wired_to_native_skill_evidence_binding() -> None:
