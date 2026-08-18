@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, ClassVar
@@ -27,13 +27,20 @@ from services.runtime.system_design_adapter import (
     execute_system_design_payload,
 )
 
+RuntimeAdapter = Callable[[dict[str, Any]], dict[str, Any]]
+
 
 class GovernedRuntime:
-    """Execute approved immutable skills through persisted provider manifests."""
+    """Execute approved immutable skills through persisted provider manifests.
 
-    _ADAPTERS: ClassVar[
-        dict[str, Callable[[dict[str, Any]], dict[str, Any]]]
-    ] = {
+    External provider adapters are injected into this same runtime instance. No
+    second agent engine, scheduler, registry, or evidence store is introduced.
+    A caller may supply a provider already selected by canonical governance;
+    the runtime still re-validates skill authority and provider capability
+    before the adapter can run.
+    """
+
+    _ADAPTERS: ClassVar[dict[str, RuntimeAdapter]] = {
         "canonical-json-sha256": lambda payload: {
             "sha256": hashlib.sha256(
                 json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
@@ -46,8 +53,22 @@ class GovernedRuntime:
         SYSTEM_DESIGN_ADAPTER_KIND: execute_system_design_payload,
     }
 
-    def __init__(self, database_path: Path) -> None:
+    def __init__(
+        self,
+        database_path: Path,
+        *,
+        external_adapters: Mapping[str, RuntimeAdapter] | None = None,
+    ) -> None:
         self._database_path = database_path
+        self._adapters = dict(self._ADAPTERS)
+        for adapter_kind, adapter in (external_adapters or {}).items():
+            if not adapter_kind or adapter_kind != adapter_kind.strip():
+                raise RuntimeError("external adapter kind must be non-blank and trimmed")
+            if adapter_kind in self._adapters:
+                raise RuntimeError("external adapter cannot replace canonical local adapter")
+            if not callable(adapter):
+                raise RuntimeError("external adapter must be callable")
+            self._adapters[adapter_kind] = adapter
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self._database_path)
@@ -88,14 +109,15 @@ class GovernedRuntime:
     ) -> None:
         _require_id(provider_id, "provider_id")
         _require_values(capabilities, "capabilities")
-        if adapter_kind not in self._ADAPTERS:
-            raise RuntimeError("unknown local adapter kind")
+        if adapter_kind not in self._adapters:
+            raise RuntimeError("unknown runtime adapter kind")
         with self._connect() as connection:
             connection.execute(
-                "INSERT INTO runtime_providers VALUES (?, ?, 1, ?, ?)",
+                "INSERT INTO runtime_providers VALUES (?, ?, ?, ?, ?)",
                 (
                     provider_id,
                     json.dumps(sorted(capabilities)),
+                    0 if adapter_kind not in self._ADAPTERS else 1,
                     int(enabled),
                     adapter_kind,
                 ),
@@ -107,8 +129,16 @@ class GovernedRuntime:
         skill_id: str,
         capability: str,
         payload: dict[str, Any],
+        *,
+        preferred_provider_id: str | None = None,
     ) -> dict[str, Any]:
-        """Validate, route, execute, and persist one governed adapter call."""
+        """Validate, route, execute, and persist one governed adapter call.
+
+        ``preferred_provider_id`` is advisory only in the sense that governance
+        may preselect it; this method still fails closed unless the persisted
+        provider is enabled and has the requested capability. Skill digest and
+        authority checks are always re-run before execution.
+        """
         with self._connect() as connection:
             agent_row = connection.execute(
                 "SELECT * FROM runtime_agents WHERE agent_id = ?", (agent_id,)
@@ -123,6 +153,7 @@ class GovernedRuntime:
             raise RuntimeError("agent is not registered")
         if skill_row is None:
             raise RuntimeError("skill is not approved")
+
         agent = AgentProfile(
             agent_row["agent_id"], frozenset(json.loads(agent_row["authorities_json"]))
         )
@@ -140,13 +171,38 @@ class GovernedRuntime:
             )
             for row in provider_rows
         )
-        decision = route_provider(
-            agent, artifact, registry, providers, capability=capability
-        )
+
+        if preferred_provider_id is not None:
+            _require_id(preferred_provider_id, "preferred_provider_id")
+            preferred = tuple(
+                provider for provider in providers if provider.provider_id == preferred_provider_id
+            )
+            if not preferred:
+                raise RuntimeError("preferred provider is not registered")
+            # Passing the exact preselected provider through route_provider keeps
+            # immutable-skill/authority checks in the canonical routing path.
+            decision = route_provider(
+                agent,
+                artifact,
+                registry,
+                preferred,
+                capability=capability,
+            )
+        else:
+            decision = route_provider(
+                agent, artifact, registry, providers, capability=capability
+            )
+
         selected = next(
             row for row in provider_rows if row["provider_id"] == decision.provider_id
         )
-        output = self._ADAPTERS[selected["adapter_kind"]](payload)
+        adapter = self._adapters.get(selected["adapter_kind"])
+        if adapter is None:
+            raise RuntimeError("persisted provider adapter is unavailable")
+        output = adapter(payload)
+        if not isinstance(output, dict):
+            raise RuntimeError("runtime adapter output must be an object")
+
         canonical_input = json.dumps(payload, sort_keys=True, separators=(",", ":"))
         with self._connect() as connection:
             cursor = connection.execute(
