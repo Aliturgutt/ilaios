@@ -146,6 +146,11 @@ class OpenAICompatibleTransport:
             ],
             "max_tokens": max_output_tokens,
         }
+        if model_id == "openrouter/free" and response_format is None:
+            request_document["reasoning"] = {
+                "effort": "minimal",
+                "exclude": True,
+            }
         if response_format is not None:
             request_document["response_format"] = response_format
         if require_parameters:
