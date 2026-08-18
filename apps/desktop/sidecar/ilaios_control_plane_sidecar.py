@@ -29,11 +29,16 @@ from services.integrations import (
     RecoverableSoftwareProductRuntime,
     RecoverableWebProductRuntime,
 )
-from services.integrations.provider_video_runtime import (
-    ProviderBackedDesktopVideoRuntime,
-    UnavailableProviderVideoRuntime,
+from services.integrations.provider_video_runtime import UnavailableProviderVideoRuntime
+from services.integrations.reference_aware_provider_video_runtime import (
+    ReferenceAwareProviderBackedDesktopVideoRuntime,
 )
 from services.integrations.video_runtime import VideoRuntimeError
+from services.reference_asset_admission import (
+    MAX_UNBOUND_REFERENCE_ASSETS,
+    MAX_UNBOUND_REFERENCE_BYTES,
+    ReferenceAssetAdmissionStore,
+)
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 from src.video_automation.openrouter_video_provider import SEEDANCE_FREE_MODEL_ID
 
@@ -70,6 +75,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     grant_policy = DurableGrantPolicy(database)
     evidence_store = EvidenceStore(root / "evidence")
+    reference_assets = ReferenceAssetAdmissionStore(
+        root / "reference-assets.sqlite3",
+        root / "reference-assets" / "blobs",
+    )
     governance = GovernedRuntimeGateway(
         root / "governance.sqlite3",
         governed_runtime,
@@ -96,7 +105,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     video_provider = "unavailable"
     if provider_api_key:
         try:
-            video_runtime = ProviderBackedDesktopVideoRuntime(
+            video_runtime = ReferenceAwareProviderBackedDesktopVideoRuntime(
                 root / "video",
                 grant_policy,
                 governance,
@@ -105,9 +114,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 api_key=provider_api_key,
                 model_id=video_model_id,
                 qa_model_id=video_qa_model_id,
+                reference_assets=reference_assets,
             )
             video_finished_product_configured = True
-            video_provider = ProviderBackedDesktopVideoRuntime.PROVIDER_ID
+            video_provider = ReferenceAwareProviderBackedDesktopVideoRuntime.PROVIDER_ID
         except VideoRuntimeError as error:
             video_runtime = UnavailableProviderVideoRuntime(
                 root / "video",
@@ -194,6 +204,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         bearer_token=token,
         identity=identity,
         coordinator=coordinator,
+        reference_assets=reference_assets,
     )
     identity_host, identity_port = identity_server.server_address[:2]
 
@@ -214,6 +225,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         "governed_execution_configured": identity is not None,
         "video_finished_product_configured": video_finished_product_configured,
         "video_provider": video_provider,
+        "video_reference_assets_configured": True,
+        "video_reference_asset_limit": 20,
+        "video_reference_unbound_limit": MAX_UNBOUND_REFERENCE_ASSETS,
+        "video_reference_unbound_bytes_limit": MAX_UNBOUND_REFERENCE_BYTES,
         "web_finished_product_configured": True,
         "software_finished_product_configured": True,
         "execution_recovery_configured": True,

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../control_plane/client.dart';
+import '../reference_assets/reference_asset_draft.dart';
 
 typedef IdentityRetryDelay = Future<void> Function(Duration duration);
 
@@ -76,6 +77,9 @@ class IdentityClient {
         _retryDelay = retryDelay ?? _defaultRetryDelay;
 
   static const Duration _startupRetryDelay = Duration(milliseconds: 350);
+  static const int _maxReferenceAssets = 20;
+  static const int _maxReferenceAssetBytes = 10 * 1024 * 1024;
+  static const int _maxReferenceTotalBytes = 100 * 1024 * 1024;
 
   final Uri _baseUri;
   final String _transportToken;
@@ -203,9 +207,27 @@ class IdentityClient {
     if (normalized.length > 20000) {
       throw const IdentityClientException('Prompt exceeds the Desktop input limit');
     }
+
+    final references = ReferenceAssetSubmissionBus.pending;
+    if (references.isNotEmpty && !_isVideoObjective(normalized)) {
+      throw const IdentityClientException(
+        'Reference images may only be submitted through Video Factory',
+      );
+    }
+    _validateReferenceAssets(references);
+    final referenceAssetIds = <String>[];
+    for (final reference in references) {
+      referenceAssetIds.add(
+        await _uploadReferenceAsset(reference, session),
+      );
+    }
+
     final payload = await _sessionPost(
       '/v1/desktop/intent',
-      <String, Object?>{'objective': normalized},
+      <String, Object?>{
+        'objective': normalized,
+        'reference_asset_ids': referenceAssetIds,
+      },
       'authenticated intent',
       session,
       expectedStatus: HttpStatus.created,
@@ -236,6 +258,38 @@ class IdentityClient {
       requestId: requestId,
       executionStatus: executionStatus,
     );
+  }
+
+  Future<String> _uploadReferenceAsset(
+    ReferenceAssetDraft reference,
+    DesktopUserSession session,
+  ) async {
+    final payload = await _sessionPost(
+      '/v1/reference-assets',
+      <String, Object?>{
+        'filename': reference.filename,
+        'mime_type': reference.mimeType,
+        'role': reference.role.wireValue,
+        'instruction': reference.instruction,
+        'sha256': reference.sha256Hex,
+        'content_base64': base64Encode(reference.bytes),
+      },
+      'reference image upload',
+      session,
+      expectedStatus: HttpStatus.created,
+    );
+    final assetId = payload['asset_id'];
+    final digest = payload['sha256'];
+    final sizeBytes = payload['size_bytes'];
+    if (assetId is! String ||
+        !assetId.startsWith('ref-') ||
+        digest != reference.sha256Hex ||
+        sizeBytes != reference.sizeBytes) {
+      throw const IdentityClientException(
+        'Reference image upload response is malformed',
+      );
+    }
+    return assetId;
   }
 
   Future<String> decideExecution(
@@ -428,6 +482,54 @@ class IdentityClient {
       );
     }
     return payload;
+  }
+
+  static void _validateReferenceAssets(List<ReferenceAssetDraft> references) {
+    if (references.length > _maxReferenceAssets) {
+      throw const IdentityClientException(
+        'A video can use at most 20 reference images',
+      );
+    }
+    var totalBytes = 0;
+    final digests = <String>{};
+    for (final reference in references) {
+      if (reference.filename.trim().isEmpty || reference.filename.length > 180) {
+        throw const IdentityClientException('Reference image filename is invalid');
+      }
+      if (!const <String>{'image/jpeg', 'image/png', 'image/webp'}
+          .contains(reference.mimeType)) {
+        throw const IdentityClientException('Reference image type is unsupported');
+      }
+      if (reference.sizeBytes <= 0 ||
+          reference.sizeBytes > _maxReferenceAssetBytes) {
+        throw const IdentityClientException(
+          'A reference image exceeds the 10 MiB limit',
+        );
+      }
+      if (reference.instruction != null &&
+          reference.instruction!.trim().length > 500) {
+        throw const IdentityClientException(
+          'Reference image instruction exceeds 500 characters',
+        );
+      }
+      if (!digests.add(reference.sha256Hex)) {
+        throw const IdentityClientException(
+          'Duplicate reference images are not allowed',
+        );
+      }
+      totalBytes += reference.sizeBytes;
+    }
+    if (totalBytes > _maxReferenceTotalBytes) {
+      throw const IdentityClientException(
+        'Reference images exceed the 100 MiB request limit',
+      );
+    }
+  }
+
+  static bool _isVideoObjective(String objective) {
+    final normalized = objective.trimLeft().toLowerCase();
+    return normalized.startsWith('video creation task:') ||
+        normalized.startsWith('video oluşturma görevi:');
   }
 
   static bool _isTransportAuthenticationFailure(

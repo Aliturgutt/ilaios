@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
+import hashlib
 import hmac
 import json
 import secrets
@@ -10,6 +13,7 @@ import time
 from datetime import datetime, timezone
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
 from typing import Any, cast
 from urllib.parse import parse_qs, urlparse
 
@@ -24,8 +28,15 @@ from services.execution_coordinator import (
     ExecutionCoordinatorError,
 )
 from services.identity import Session
+from services.reference_assets import (
+    MAX_REFERENCE_ASSETS,
+    ReferenceAssetError,
+    ReferenceAssetRole,
+    ReferenceAssetStore,
+)
 
 _RECOVERY_SWEEP_SECONDS = 60.0
+_REFERENCE_UPLOAD_BODY_BYTES = 15 * 1024 * 1024
 
 
 class DesktopIdentityHTTPServer(ThreadingHTTPServer):
@@ -40,6 +51,7 @@ class DesktopIdentityHTTPServer(ThreadingHTTPServer):
         bearer_token: str,
         identity: DesktopOIDCService | None,
         coordinator: ExecutionCoordinator,
+        reference_assets: ReferenceAssetStore | None = None,
     ) -> None:
         if not bearer_token:
             raise DesktopIdentityError("Desktop identity transport token is required")
@@ -47,6 +59,7 @@ class DesktopIdentityHTTPServer(ThreadingHTTPServer):
         self.bearer_token = bearer_token
         self.identity = identity
         self.coordinator = coordinator
+        self.reference_assets = reference_assets or _reference_store_for(coordinator)
         self._next_recovery_sweep = time.monotonic()
 
     def service_actions(self) -> None:
@@ -100,6 +113,8 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                         "status": "ready",
                         "providers_configured": self.server.identity is not None,
                         "governed_execution": self.server.identity is not None,
+                        "reference_assets": self.server.reference_assets is not None,
+                        "reference_asset_limit": MAX_REFERENCE_ASSETS,
                     },
                 )
                 return
@@ -142,8 +157,14 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
     def do_POST(self) -> None:
         try:
             self._authenticate_transport()
-            body = self._read_json()
             path = urlparse(self.path).path
+            body = self._read_json(
+                max_bytes=(
+                    _REFERENCE_UPLOAD_BODY_BYTES
+                    if path == "/v1/reference-assets"
+                    else 1_048_576
+                )
+            )
             if path == "/v1/runtime/shutdown":
                 self._send_json(HTTPStatus.ACCEPTED, {"shutdown": True})
                 threading.Thread(
@@ -172,6 +193,9 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                 identity = self._require_identity()
                 identity.logout(_required_string(body, "session_id"))
                 self._send_json(HTTPStatus.OK, {"logged_out": True})
+                return
+            if path == "/v1/reference-assets":
+                self._upload_reference_asset(body)
                 return
             if path == "/v1/desktop/intent":
                 self._submit_authenticated_intent(body)
@@ -224,11 +248,84 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             "ILAIOS sign-in completed. You can close this tab and return to ILAIOS Desktop.",
         )
 
+    def _upload_reference_asset(self, body: dict[str, Any]) -> None:
+        session = self._authenticated_session()
+        store = _require_reference_store(self.server.reference_assets)
+        filename = _required_string(body, "filename")
+        mime_type = _required_string(body, "mime_type")
+        role_value = _required_string(body, "role")
+        supplied_sha256 = _required_string(body, "sha256").lower()
+        instruction_value = body.get("instruction")
+        if instruction_value is not None and not isinstance(instruction_value, str):
+            raise TypeError("instruction must be text when provided")
+        if len(supplied_sha256) != 64 or any(
+            character not in "0123456789abcdef" for character in supplied_sha256
+        ):
+            raise ValueError("reference image sha256 is invalid")
+        try:
+            role = ReferenceAssetRole(role_value)
+        except ValueError as error:
+            raise ValueError("reference image role is invalid") from error
+        if role in {ReferenceAssetRole.FIRST_FRAME, ReferenceAssetRole.LAST_FRAME}:
+            raise ValueError(
+                "exact first/last frame references require a separately verified provider relay"
+            )
+        encoded = _required_string(body, "content_base64")
+        try:
+            content = base64.b64decode(encoded, validate=True)
+        except (binascii.Error, ValueError) as error:
+            raise ValueError("reference image base64 payload is invalid") from error
+        digest = hashlib.sha256(content).hexdigest()
+        if not hmac.compare_digest(digest, supplied_sha256):
+            raise ValueError("reference image sha256 does not match uploaded bytes")
+        record = store.put(
+            content=content,
+            claimed_mime_type=mime_type,
+            original_filename=filename,
+            role=role,
+            instruction=instruction_value,
+            principal_id=session.principal_id,
+            tenant_id=session.tenant_id,
+        )
+        self._send_json(
+            HTTPStatus.CREATED,
+            {
+                "asset_id": record.asset_id,
+                "sha256": record.sha256,
+                "mime_type": record.mime_type,
+                "width": record.width,
+                "height": record.height,
+                "size_bytes": record.size_bytes,
+                "role": record.role.value,
+            },
+        )
+
     def _submit_authenticated_intent(self, body: dict[str, Any]) -> None:
         session = self._authenticated_session()
         objective = _required_string(body, "objective")
         if len(objective) > 20_000:
             raise ValueError("objective exceeds Desktop input limit")
+        asset_ids = _reference_asset_ids(body.get("reference_asset_ids", []))
+        if asset_ids and not _is_video_objective(objective):
+            raise ValueError("reference images may only be attached to Video Factory requests")
+
+        store = _require_reference_store(self.server.reference_assets) if asset_ids else None
+        owned_records = (
+            tuple(
+                store.get_owned(
+                    asset_id,
+                    principal_id=session.principal_id,
+                    tenant_id=session.tenant_id,
+                )
+                for asset_id in asset_ids
+            )
+            if store is not None
+            else ()
+        )
+        digests = tuple(record.sha256 for record in owned_records)
+        if len(set(digests)) != len(digests):
+            raise ValueError("duplicate reference image content is not allowed")
+
         request_id = f"exec-{secrets.token_hex(16)}"
         execution = self.server.coordinator.prepare(
             request_id,
@@ -238,9 +335,18 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             tenant_id=session.tenant_id,
             now=datetime.now(timezone.utc),
         )
+        if store is not None:
+            store.bind_request(
+                request_id,
+                asset_ids,
+                principal_id=session.principal_id,
+                tenant_id=session.tenant_id,
+            )
         if execution.get("execution_status") == "ADMITTED":
             self._start_execution(request_id)
-        self._send_json(HTTPStatus.CREATED, execution)
+        response = dict(execution)
+        response["reference_asset_count"] = len(asset_ids)
+        self._send_json(HTTPStatus.CREATED, response)
 
     def _decide_authenticated_execution(self, body: dict[str, Any]) -> None:
         session = self._authenticated_session()
@@ -353,12 +459,12 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             raise DesktopIdentityError("Desktop account sign-in is not configured")
         return identity
 
-    def _read_json(self) -> dict[str, Any]:
+    def _read_json(self, *, max_bytes: int = 1_048_576) -> dict[str, Any]:
         raw_length = self.headers.get("Content-Length")
         if raw_length is None:
             raise ValueError("Content-Length is required")
         length = int(raw_length)
-        if length < 1 or length > 1_048_576:
+        if length < 1 or length > max_bytes:
             raise ValueError("request body length is outside allowed bounds")
         value = json.loads(self.rfile.read(length).decode("utf-8"))
         if not isinstance(value, dict):
@@ -398,6 +504,51 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+
+
+def _reference_store_for(
+    coordinator: ExecutionCoordinator,
+) -> ReferenceAssetStore | None:
+    database_path = getattr(coordinator, "_database_path", None)
+    if not isinstance(database_path, Path):
+        return None
+    root = database_path.parent
+    return ReferenceAssetStore(
+        root / "reference-assets.sqlite3",
+        root / "reference-assets" / "blobs",
+    )
+
+
+def _require_reference_store(
+    store: ReferenceAssetStore | None,
+) -> ReferenceAssetStore:
+    if store is None:
+        raise ReferenceAssetError("reference image storage is unavailable")
+    return store
+
+
+def _reference_asset_ids(value: object) -> tuple[str, ...]:
+    if not isinstance(value, list):
+        raise TypeError("reference_asset_ids must be a list")
+    if len(value) > MAX_REFERENCE_ASSETS:
+        raise ValueError(
+            f"at most {MAX_REFERENCE_ASSETS} reference images are allowed per request"
+        )
+    normalized: list[str] = []
+    for item in value:
+        if not isinstance(item, str) or not item.startswith("ref-"):
+            raise TypeError("reference_asset_ids contains an invalid id")
+        normalized.append(item)
+    if len(set(normalized)) != len(normalized):
+        raise ValueError("duplicate reference asset ids are not allowed")
+    return tuple(normalized)
+
+
+def _is_video_objective(objective: str) -> bool:
+    normalized = objective.strip().lower()
+    return normalized.startswith("video creation task:") or normalized.startswith(
+        "video oluşturma görevi:"
+    )
 
 
 def _server_endpoint(address: tuple[str | bytes, int]) -> tuple[str, int]:
