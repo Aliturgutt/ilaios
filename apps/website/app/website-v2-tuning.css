@@ -1,0 +1,40 @@
+/* ILAIOS Website V2 density tuning.
+   Keeps inner pages editorial and compact while reserving the largest type for the product hero. */
+
+:root {
+  --v2-max: 1240px;
+  --max: var(--v2-max);
+}
+
+h1 {
+  max-width: 860px !important;
+  font-size: clamp(2.8rem, 3.65vw, 3.7rem) !important;
+  line-height: 1.01 !important;
+}
+
+h2 {
+  font-size: clamp(1.82rem, 2.35vw, 2.35rem) !important;
+  line-height: 1.1 !important;
+}
+
+.home-hero-copy h1 {
+  max-width: 620px !important;
+  font-size: clamp(3.35rem, 4.45vw, 4.55rem) !important;
+  line-height: .98 !important;
+}
+
+.page-hero,
+.compact-page-hero {
+  max-width: 980px !important;
+}
+
+@media (max-width: 1120px) {
+  h1 { font-size: clamp(2.65rem, 4.7vw, 3.45rem) !important; }
+  .home-hero-copy h1 { font-size: clamp(3rem, 5.2vw, 4rem) !important; }
+}
+
+@media (max-width: 760px) {
+  h1 { font-size: clamp(2.25rem, 10vw, 3rem) !important; }
+  h2 { font-size: clamp(1.65rem, 7vw, 2.15rem) !important; }
+  .home-hero-copy h1 { font-size: clamp(2.55rem, 11vw, 3.4rem) !important; }
+}

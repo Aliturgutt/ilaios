@@ -11,14 +11,14 @@ const forbiddenPublicMailboxes = [
   "cloud@ilaios.com",
   "postmaster@ilaios.com",
 ];
-const requiredPublicMailboxes = [
-  "contact@ilaios.com",
+const unverifiedFunctionalMailboxes = [
   "info@ilaios.com",
   "support@ilaios.com",
   "privacy@ilaios.com",
   "security@ilaios.com",
   "abuse@ilaios.com",
 ];
+const requiredPublicMailboxes = ["contact@ilaios.com"];
 const requiredSocial = [
   "https://www.linkedin.com/company/ilaios/",
   "https://x.com/ilaios",
@@ -42,6 +42,9 @@ const failures = [];
 
 for (const mailbox of forbiddenPublicMailboxes) {
   if (source.includes(`mailto:${mailbox}`)) failures.push(`forbidden public mailbox exposed: ${mailbox}`);
+}
+for (const mailbox of unverifiedFunctionalMailboxes) {
+  if (source.includes(mailbox)) failures.push(`unverified functional mailbox published before verification: ${mailbox}`);
 }
 
 function mailboxIsLinked(mailbox) {

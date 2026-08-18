@@ -24,7 +24,7 @@ const copy = {
     permissions: "Permissions",
     approvals: "Approvals",
     audit: "Audit",
-    report: "Report suspected vulnerabilities to security@ilaios.com. Service misuse, spam or fraud reports go to abuse@ilaios.com.",
+    report: "Report suspected vulnerabilities, service misuse, spam or fraud through the verified public route contact@ilaios.com. A dedicated security mailbox will be published only after that route is verified for public use.",
   },
   tr: {
     eyebrow: "Güvenlik",
@@ -45,7 +45,7 @@ const copy = {
     permissions: "İzinler",
     approvals: "Onaylar",
     audit: "Denetim",
-    report: "Şüpheli güvenlik açıklarını security@ilaios.com adresine bildirin. Hizmet kötüye kullanımı, spam veya dolandırıcılık bildirimleri abuse@ilaios.com adresine gönderilmelidir.",
+    report: "Şüpheli güvenlik açıklarını, hizmet kötüye kullanımını, spam veya dolandırıcılık bildirimlerini doğrulanmış kamu kanalı contact@ilaios.com üzerinden iletin. Özel güvenlik adresi yalnız kamuya açık kullanım amacı doğrulandıktan sonra yayınlanacaktır.",
   },
 } as const;
 
