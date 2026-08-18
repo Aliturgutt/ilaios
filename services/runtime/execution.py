@@ -28,6 +28,7 @@ from services.runtime.system_design_adapter import (
 )
 
 RuntimeAdapter = Callable[[dict[str, Any]], dict[str, Any]]
+_RESERVED_EXTERNAL_SKILL_KEY = "_ilaios_skill"
 
 
 class GovernedRuntime:
@@ -134,11 +135,14 @@ class GovernedRuntime:
     ) -> dict[str, Any]:
         """Validate, route, execute, and persist one governed adapter call.
 
-        ``preferred_provider_id`` is advisory only in the sense that governance
-        may preselect it; this method still fails closed unless the persisted
-        provider is enabled and has the requested capability. Skill digest and
-        authority checks are always re-run before execution.
+        ``preferred_provider_id`` may come from canonical model governance; this
+        method still fails closed unless the persisted provider is enabled and
+        has the requested capability. Immutable skill digest/authority checks
+        always run before execution. External adapters additionally receive the
+        exact approved skill instructions and digest from runtime storage.
         """
+        if _RESERVED_EXTERNAL_SKILL_KEY in payload:
+            raise RuntimeError("caller cannot supply reserved runtime skill metadata")
         with self._connect() as connection:
             agent_row = connection.execute(
                 "SELECT * FROM runtime_agents WHERE agent_id = ?", (agent_id,)
@@ -179,8 +183,6 @@ class GovernedRuntime:
             )
             if not preferred:
                 raise RuntimeError("preferred provider is not registered")
-            # Passing the exact preselected provider through route_provider keeps
-            # immutable-skill/authority checks in the canonical routing path.
             decision = route_provider(
                 agent,
                 artifact,
@@ -196,10 +198,29 @@ class GovernedRuntime:
         selected = next(
             row for row in provider_rows if row["provider_id"] == decision.provider_id
         )
-        adapter = self._adapters.get(selected["adapter_kind"])
+        adapter_kind = str(selected["adapter_kind"])
+        adapter = self._adapters.get(adapter_kind)
         if adapter is None:
             raise RuntimeError("persisted provider adapter is unavailable")
-        output = adapter(payload)
+
+        adapter_payload = payload
+        if adapter_kind not in self._ADAPTERS:
+            try:
+                instructions = content.decode("utf-8")
+            except UnicodeDecodeError as exc:
+                raise RuntimeError("external AI skill content must be UTF-8 text") from exc
+            if not instructions.strip():
+                raise RuntimeError("external AI skill instructions must not be blank")
+            adapter_payload = {
+                **payload,
+                _RESERVED_EXTERNAL_SKILL_KEY: {
+                    "skill_id": skill_id,
+                    "sha256": str(skill_row["digest"]),
+                    "instructions": instructions,
+                },
+            }
+
+        output = adapter(adapter_payload)
         if not isinstance(output, dict):
             raise RuntimeError("runtime adapter output must be an object")
 
