@@ -3,6 +3,11 @@
 This module is intentionally additive. It does not execute tools or providers and it
 cannot promote a skill without governance and evidence attestations supplied by the
 canonical platform boundaries.
+
+Canonical skill taxonomy/package truth lives in ``services.skill_taxonomy`` and
+``services.skill_engineering_catalog``. The promotion registry in this module stores
+only immutable promotion records; it is not a second runtime SkillRegistry, package
+catalog, capability registry, router, policy authority, or maturity authority.
 """
 
 from __future__ import annotations
@@ -14,14 +19,16 @@ from typing import Protocol
 
 
 class SkillFactoryError(ValueError):
-    """Skill lifecycle input or registry state is invalid."""
+    """Skill lifecycle input or promotion-record state is invalid."""
 
 
 class SkillPromotionError(PermissionError):
     """A candidate failed closed at the promotion boundary."""
 
 
-class SkillMaturity(str, Enum):
+class SkillPromotionState(str, Enum):
+    """Promotion workflow state, deliberately separate from canonical maturity."""
+
     CANDIDATE = "candidate"
     EVALUATED = "evaluated"
     PROMOTED = "promoted"
@@ -143,11 +150,11 @@ class PromotedSkill:
     evaluation: SkillEvaluation
     governance_evidence_id: str
     promotion_evidence_id: str
-    maturity: SkillMaturity = SkillMaturity.PROMOTED
+    promotion_state: SkillPromotionState = SkillPromotionState.PROMOTED
 
 
-class SkillRegistry:
-    """Canonical in-process identity registry for promoted skill versions."""
+class SkillPromotionRegistry:
+    """Immutable promotion records only; never canonical runtime skill identity truth."""
 
     def __init__(self) -> None:
         self._skills: dict[tuple[str, str], PromotedSkill] = {}
@@ -178,7 +185,7 @@ class SkillPromotionGate:
         self,
         governance: PromotionGovernance,
         evidence: PromotionEvidence,
-        registry: SkillRegistry,
+        registry: SkillPromotionRegistry,
         requirements: PromotionRequirements | None = None,
     ) -> None:
         self._governance = governance
