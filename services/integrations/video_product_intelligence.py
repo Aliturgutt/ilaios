@@ -2,8 +2,8 @@
 
 This module does not generate media, choose providers, authorize spend, or create a
 second Video runtime. It classifies only the minimum product-shape information
-needed to prevent the current 16:9 create/reference runtime from silently claiming
-unsupported revision, localization, series-continuation, or output-shape work.
+needed to prevent the current Video runtime from silently claiming unsupported
+revision, localization, series-continuation, or output-shape work.
 """
 
 from __future__ import annotations
@@ -43,9 +43,9 @@ class VideoProductSpec:
 
 
 _REVISION_PATTERNS = (
-    r"\b(?:edit|revise|modify|rework|remix)\s+(?:this|the|my|existing|uploaded|source)\s+video\b",
-    r"\b(?:this|the|my|existing|uploaded|source)\s+video\s+(?:edit|revision|remix)\b",
-    r"\b(?:bu|mevcut|yüklediğim|yukledigim|kaynak)\s+videoyu\s+(?:düzenle|duzenle|değiştir|degistir|revize)\b",
+    r"\b(?:edit|revise|modify|rework|remix|trim|cut|crop|resize|rescale)\s+(?:this|the|my|existing|uploaded|source)\s+video\b",
+    r"\b(?:this|the|my|existing|uploaded|source)\s+video\s+(?:edit|revision|remix|trim|crop|resize)\b",
+    r"\b(?:bu|mevcut|yüklediğim|yukledigim|kaynak)\s+videoyu\s+(?:düzenle|duzenle|değiştir|degistir|revize|kırp|kirp|kes|boyutlandır|boyutlandir|ölçekle|olcekle)\b",
 )
 _LOCALIZATION_PATTERNS = (
     r"\b(?:dub|localize|localise|translate)\s+(?:this|the|my|existing|uploaded|source)\s+video\b",
@@ -110,8 +110,12 @@ def admit_current_desktop_video_product(
     reference_count: int = 0,
     source_video_present: bool = False,
     series_state_present: bool = False,
+    revision_execution_available: bool = False,
+    localization_execution_available: bool = False,
+    series_execution_available: bool = False,
+    supported_aspect_ratios: frozenset[str] = frozenset({"16:9"}),
 ) -> VideoProductSpec:
-    """Admit only work the current finished-product runtime can deliver exactly."""
+    """Admit work only when the caller proves its exact execution capability."""
 
     spec = derive_video_product_spec(objective, reference_count=reference_count)
     if source_video_present and not spec.source_video_required:
@@ -124,25 +128,30 @@ def admit_current_desktop_video_product(
             f"video mode '{spec.mode.value}' requires an authenticated source video; "
             "image references cannot substitute for source media"
         )
-    if spec.source_video_required:
+    if spec.mode is VideoProductMode.REVISION and not revision_execution_available:
         raise VideoProductIntentError(
-            f"video mode '{spec.mode.value}' has authenticated source media but its "
-            "bounded edit/localization execution path is not materialized yet"
+            "video mode 'revision' has authenticated source media but its bounded edit "
+            "execution path is not materialized by this runtime"
+        )
+    if spec.mode is VideoProductMode.LOCALIZATION and not localization_execution_available:
+        raise VideoProductIntentError(
+            "video mode 'localization' has authenticated source media but its governed "
+            "localization execution path is not materialized by this runtime"
         )
     if spec.series_state_required and not series_state_present:
         raise VideoProductIntentError(
             "series-continuation intent requires an authenticated canonical SeriesState "
             "binding; standalone text must not invent cross-episode continuity"
         )
-    if spec.series_state_required:
+    if spec.series_state_required and not series_execution_available:
         raise VideoProductIntentError(
             "authenticated SeriesState is present but series-continuation execution is "
-            "not materialized by the current Desktop finished-product runtime"
+            "not materialized by this runtime"
         )
-    if spec.aspect_ratio != "16:9":
+    if not supported_aspect_ratios or spec.aspect_ratio not in supported_aspect_ratios:
         raise VideoProductIntentError(
-            f"requested aspect ratio '{spec.aspect_ratio}' is not materialized by the "
-            "current Desktop finished-product runtime; refusing a mismatched video"
+            f"requested aspect ratio '{spec.aspect_ratio}' is not materialized by this "
+            "Desktop finished-product runtime; refusing a mismatched video"
         )
     return spec
 
