@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
@@ -36,6 +37,23 @@ void main() {
         'fake.png',
         Uint8List.fromList(<int>[1, 2, 3, 4]),
       ),
+      throwsA(isA<ReferenceAttachmentException>()),
+    );
+  });
+
+  test('oversized file is rejected before reference ingest', () async {
+    final directory = await Directory.systemTemp.createTemp('ilaios-reference-');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}${Platform.pathSeparator}oversized.png');
+    final handle = await file.open(mode: FileMode.write);
+    try {
+      await handle.truncate(maxReferenceAssetBytes + 1);
+    } finally {
+      await handle.close();
+    }
+
+    await expectLater(
+      ReferenceAttachmentDraft.fromFilePath(file.path),
       throwsA(isA<ReferenceAttachmentException>()),
     );
   });
