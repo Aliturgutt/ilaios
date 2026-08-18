@@ -3,22 +3,33 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
+from datetime import datetime
+from pathlib import Path
 from types import MappingProxyType
-from typing import Mapping
 
+from services.evidence import EvidenceStore
+from services.governance import GovernedRuntimeGateway
 from services.reference_assets import (
     current_reference_request_id,
     get_reference_asset_store,
     reference_request_context,
 )
+from services.runtime import DurableGrantPolicy
 from src.video_automation import openrouter_video_provider as _openrouter
+from src.video_automation.generation_job_polling import GenerationJobPoller
 from src.video_automation.models import MetadataValue, ProviderRequest, ProviderResult
 from src.video_automation.openrouter_video_provider import (
+    OpenRouterGeneratedAssetRetriever,
     OpenRouterVideoGenerationProvider,
     OpenRouterVideoProviderError,
 )
 
-from .provider_video_runtime import ProviderBackedDesktopVideoRuntime
+from .provider_video_runtime import (
+    ObjectiveResolver,
+    ProviderBackedDesktopVideoRuntime,
+    SemanticVideoReviewer,
+)
 
 
 class ReferenceAwareOpenRouterVideoGenerationProvider(OpenRouterVideoGenerationProvider):
@@ -116,7 +127,8 @@ class ReferenceAwareOpenRouterVideoGenerationProvider(OpenRouterVideoGenerationP
             ),
             "catalog_zero_cost_evidence_source": "openrouter_videos_models",
         }
-        reference_count = len(body.get("input_references", ()))
+        references_value = body.get("input_references")
+        reference_count = len(references_value) if isinstance(references_value, list) else 0
         if reference_count:
             metadata["reference_asset_count"] = reference_count
             metadata["reference_mode"] = "input_references"
@@ -165,16 +177,48 @@ class ReferenceAwareOpenRouterVideoGenerationProvider(OpenRouterVideoGenerationP
 class ReferenceAwareProviderBackedDesktopVideoRuntime(ProviderBackedDesktopVideoRuntime):
     """Keep one request-scoped reference context across all generated shots."""
 
-    def __init__(self, *args: object, api_key: str, provider=None, **kwargs: object) -> None:
-        if provider is None:
-            resolution = str(kwargs.get("resolution", "720p"))
-            provider = ReferenceAwareOpenRouterVideoGenerationProvider(
-                api_key,
-                provider_name=self.PROVIDER_ID,
-                default_resolution=resolution,
-                generate_audio=True,
-            )
-        super().__init__(*args, api_key=api_key, provider=provider, **kwargs)
+    def __init__(
+        self,
+        root: Path,
+        grants: DurableGrantPolicy,
+        governance: GovernedRuntimeGateway,
+        evidence: EvidenceStore,
+        *,
+        objective_resolver: ObjectiveResolver,
+        api_key: str,
+        model_id: str = _openrouter.SEEDANCE_FREE_MODEL_ID,
+        qa_model_id: str = "openrouter/free",
+        resolution: str = "720p",
+        poll_interval_seconds: float = 5.0,
+        max_poll_rounds: int = 144,
+        provider: OpenRouterVideoGenerationProvider | None = None,
+        poller: GenerationJobPoller | None = None,
+        retriever: OpenRouterGeneratedAssetRetriever | None = None,
+        reviewer: SemanticVideoReviewer | None = None,
+    ) -> None:
+        reference_provider = provider or ReferenceAwareOpenRouterVideoGenerationProvider(
+            api_key,
+            provider_name=self.PROVIDER_ID,
+            default_resolution=resolution,
+            generate_audio=True,
+        )
+        super().__init__(
+            root,
+            grants,
+            governance,
+            evidence,
+            objective_resolver=objective_resolver,
+            api_key=api_key,
+            model_id=model_id,
+            qa_model_id=qa_model_id,
+            resolution=resolution,
+            poll_interval_seconds=poll_interval_seconds,
+            max_poll_rounds=max_poll_rounds,
+            provider=reference_provider,
+            poller=poller,
+            retriever=retriever,
+            reviewer=reviewer,
+        )
 
     def execute(
         self,
@@ -182,7 +226,7 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(ProviderBackedDesktopVideo
         request_id: str,
         job_id: str,
         grant_id: str,
-        now,
+        now: datetime,
     ) -> dict[str, object]:
         with reference_request_context(request_id):
             result = dict(
@@ -199,10 +243,10 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(ProviderBackedDesktopVideo
             result["reference_asset_usage"] = "openrouter-input-references"
             qa = result.get("qa")
             if isinstance(qa, dict):
-                qa = dict(qa)
-                qa["reference_asset_count"] = len(references)
-                qa["reference_assets_consumed"] = True
-                result["qa"] = qa
+                qa_copy = dict(qa)
+                qa_copy["reference_asset_count"] = len(references)
+                qa_copy["reference_assets_consumed"] = True
+                result["qa"] = qa_copy
         return result
 
 
@@ -227,10 +271,11 @@ def _build_reference_request_body(
     references = get_reference_asset_store().for_request(request_id)
     if not references:
         return MappingProxyType(body)
+    store = get_reference_asset_store()
     body["input_references"] = [
         {
             "type": "image_url",
-            "image_url": {"url": get_reference_asset_store().data_url(record)},
+            "image_url": {"url": store.data_url(record)},
         }
         for record in references
     ]
