@@ -45,16 +45,16 @@ IlaiosDesktopApp _app({
     );
 
 void main() {
-  testWidgets('authenticated Desktop exposes the Video Factory reference dock', (
+  testWidgets('authenticated Desktop exposes the shared Web Video reference dock', (
     tester,
   ) async {
     _desktopViewport(tester);
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
-    final toggle = find.byKey(const Key('video-reference-dock-toggle'));
+    final toggle = find.byKey(const Key('reference-asset-dock-toggle'));
     expect(toggle, findsOneWidget);
-    expect(find.text('Video references'), findsOneWidget);
+    expect(find.text('Reference images'), findsOneWidget);
     expect(find.byKey(const Key('video-reference-assets')), findsNothing);
 
     await tester.tap(toggle);
@@ -67,15 +67,15 @@ void main() {
     expect(find.textContaining('free vision provider'), findsOneWidget);
   });
 
-  testWidgets('Turkish locale localizes reference dock and privacy disclosure', (
+  testWidgets('Turkish locale localizes shared reference dock and privacy disclosure', (
     tester,
   ) async {
     _desktopViewport(tester);
     await tester.pumpWidget(_app(locale: IlaiosLocale.turkish));
     await tester.pumpAndSettle();
 
-    final toggle = find.byKey(const Key('video-reference-dock-toggle'));
-    expect(find.text('Video referansları'), findsOneWidget);
+    final toggle = find.byKey(const Key('reference-asset-dock-toggle'));
+    expect(find.text('Referans görseller'), findsOneWidget);
     await tester.tap(toggle);
     await tester.pumpAndSettle();
 
@@ -84,7 +84,7 @@ void main() {
     expect(find.text('Görsel ekle'), findsOneWidget);
   });
 
-  testWidgets('reference dock remains disabled without an authenticated session', (
+  testWidgets('shared reference dock remains disabled without an authenticated session', (
     tester,
   ) async {
     _desktopViewport(tester);
@@ -92,7 +92,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final button = tester.widget<FilledButton>(
-      find.byKey(const Key('video-reference-dock-toggle')),
+      find.byKey(const Key('reference-asset-dock-toggle')),
     );
     expect(button.onPressed, isNull);
   });
