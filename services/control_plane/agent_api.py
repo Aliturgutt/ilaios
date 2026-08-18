@@ -25,11 +25,16 @@ def canonical_agent_state(runtime: GovernedRuntime) -> dict[str, object]:
         raw_authorities = item.get("authorities")
         if not isinstance(agent_id, str) or not agent_id:
             raise ValueError("persisted runtime agent identity projection is malformed")
-        if not isinstance(raw_authorities, list) or any(
-            not isinstance(value, str) for value in raw_authorities
-        ):
+        if not isinstance(raw_authorities, list):
             raise ValueError("persisted runtime agent authority projection is malformed")
-        persisted[agent_id] = frozenset(raw_authorities)
+        authorities: list[str] = []
+        for value in raw_authorities:
+            if not isinstance(value, str) or not value or value != value.strip():
+                raise ValueError("persisted runtime agent authority projection is malformed")
+            authorities.append(value)
+        if not authorities:
+            raise ValueError("persisted runtime agent authority projection is malformed")
+        persisted[agent_id] = frozenset(authorities)
 
     agents: list[dict[str, object]] = []
     registered_count = 0
