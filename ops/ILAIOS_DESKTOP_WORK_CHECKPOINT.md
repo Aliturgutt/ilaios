@@ -16,7 +16,7 @@ Home, Goals, Workflows, Agents, Live Workspace, Outputs, Approvals, Evidence, Co
 - Active phase: 6 / Agents functional closure
 - Active PR: #433
 - Active branch: desktop/agents-functional-closure
-- Active exact head: e70662fbfdd7cf8aa11ca56966bbf94627426da5
+- Active exact head: 632c5ae2d7a408f5c569e39f173552123781a37e
 
 ## Mandatory phase order
 0 Acceptance baseline
@@ -48,39 +48,43 @@ CODE -> unit/widget/integration -> Flutter analyze -> Flutter test -> Desktop CI
 Exact head 1be576df1165503c82bdc10e144d64d016e3ba66: all five mandatory gates PASS. Merge master 55d86dffa8ccfc2a786c27df4781392b518fd6fa.
 
 ### PR #421 Workflows
-Final exact head 1883cf5486305a1aa953a819d7718181fe49aefd: Desktop CI PASS, Windows Gate PASS, MSIX PASS, Required CI PASS, Software Factory Final Evidence PASS. Merge master 3d37597993172e2046ea487fe587ea360005c796.
-Closed: real Type/Priority/Owner/Stage filters, real paging, search clearing, toolbar More actions, row Details/Approvals/Live Workspace actions. No fabricated telemetry or privilege changes.
+Final exact head 1883cf5486305a1aa953a819d7718181fe49aefd: all five mandatory gates PASS. Merge master 3d37597993172e2046ea487fe587ea360005c796.
+Closed: real Type/Priority/Owner/Stage filters, real paging, search clearing, toolbar More actions, row Details/Approvals/Live Workspace actions.
 
 ## Active PR #433 Agents
 Implemented:
-- consumes canonical `/v1/agents/state` plus scheduler/runtime/live telemetry
-- carries existing governed `onProvisionAgent` through a scoped UI binding
-- New Agent selects only server-projected, unregistered canonical agent IDs and sends only `agent_id`
-- server remains authority for capabilities/permissions/allowed callers/targets
-- real Role / Status / Capability filters
-- real six-row paging and Clear Filters
-- toolbar More replaced with bounded Refresh / Provision actions
-- Assign Task remains disabled because no governed assignment API is proven
-- regression tests cover canonical projection, filters, paging, provisioning and disabled assignment
+- canonical `/v1/agents/state` projection + scheduler/runtime/live telemetry
+- governed provisioning callback scoped into Agents
+- New Agent selects only server-projected unregistered canonical IDs and sends only `agent_id`
+- real Role / Status / Capability filters, six-row paging, Clear Filters
+- toolbar More = Refresh / Provision
+- Assign Task disabled because governed assignment API is not proven
 
-Initial exact head 6897ea23b03e4f1528d3d674d8e319e29ef0484e:
-- Software Factory Final Evidence PASS
-- Desktop CI Flutter analyze failed on six style/lint infos only: one separator callback naming lint, four missing-brace lints, and one redundant test import
-- no compile/runtime failure was reported by that analyzer pass
+CI history:
+- head 6897ea23...: analyze failed on six lint/style infos
+- commit 65460f0b... removed redundant test import
+- commit e70662fb... fixed source lint/braces; Flutter analyze PASS and Windows release build PASS
+- head e70662fb... widget suite: 125 PASS / 4 FAIL; all four failures were `pumpAndSettle timed out` in new agent_controls tests because test fixtures omitted capacity, causing indeterminate progress animations
+- existing fidelity, approvals, goals, workflows, costs, output, identity and control-plane tests remained green in that run
+- commit 632c5ae2d7a408f5c569e39f173552123781a37e adds determinate authoritative capacity/success telemetry to the regression fixtures; no product authority change
+- fresh five-gate CI is running on exact head 632c5ae2d7a408f5c569e39f173552123781a37e
 
-Remediation:
-- redundant test import fixed in commit 65460f0b700f25f54c727e5f6c8db9c418350240
-- remaining source lints fixed in commit e70662fbfdd7cf8aa11ca56966bbf94627426da5
-- no product/runtime authority behavior changed by lint remediation
-- fresh five-gate exact-head CI is running on e70662fbfdd7cf8aa11ca56966bbf94627426da5
+## Phase 7 Approvals pre-audit
+Authority path is already real: governance `work` + `admissions`, independent approver checks and approve/deny callback. Remaining visible gaps found on master:
+- Type/Requester/Status filters are presentation-only while risk filter is real
+- table pagination is presentation-only
+- row trailing More icon is not actionable
+- header Export is disabled/unbound
+- Policy Rules card is visually prominent but unbound
+- selected-request View Details uses `onPressed: () {}`
+- Add Note is disabled/unbound
+These must be closed without bypassing governance authority. No fake policy/notes data.
 
-## Next-phase pre-audit
-Approvals is already substantially authority-backed: governance `work` + `admissions`, approve/deny callback, independent approver fail-closed checks, search/risk/tabs/selection. Phase 7 will audit every visible action/filter/paging control and close any remaining presentation-only behavior without changing governance authority.
-
-No implemented `/v1/workspace` HTTP API exists on current master. SoftwareFactory already owns isolated bounded Workspace execution state. Live Workspace phases must project/control that canonical workspace rather than create a parallel runtime.
+## Later-phase pre-audit
+No implemented `/v1/workspace` HTTP API exists on current master. SoftwareFactory already owns isolated bounded Workspace execution state; Live Workspace must project/control that canonical workspace, not create a parallel runtime.
 
 ## Non-negotiable invariants
 No fake/demo KPI. No clickable no-op. Flutter cannot mint authority. Privileged actions route Policy -> Approval if needed -> Tool Gateway -> Runtime -> Evidence/Event. No parallel Core/runtime/registry. Missing authority is disabled/unavailable.
 
 ## Next action
-Check all five PR #433 workflows for exact head e70662fbfdd7cf8aa11ca56966bbf94627426da5. Fix any exact failing job with the smallest safe change. Merge only when all five are PASS; then fetch fresh master, update this checkpoint to phase 7 and start Approvals closure from that exact master.
+Check all five PR #433 workflows for exact head 632c5ae2d7a408f5c569e39f173552123781a37e. Fix any exact failing job with the smallest safe change. Merge only when all five are PASS; then fetch fresh master, update this checkpoint to phase 7 and start Approvals closure from that exact master.
