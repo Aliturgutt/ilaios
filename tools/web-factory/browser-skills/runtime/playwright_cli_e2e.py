@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 
 from services.runtime.browser_egress_docker import DockerBrowserEgressBoundary
@@ -33,6 +34,38 @@ def _assert_artifact(result: dict[str, object], action: str) -> None:
         raise RuntimeError(f"{action} artifact digest is missing")
     if not isinstance(size, int) or size <= 0:
         raise RuntimeError(f"{action} artifact is empty")
+
+
+def _diagnostic_open(
+    boundary: DockerBrowserEgressBoundary,
+    artifact_root: Path,
+    session_id: str,
+) -> dict[str, object]:
+    """Open the fixed public certification target with bounded diagnostics.
+
+    The production adapter intentionally does not surface raw browser stderr. This
+    E2E-only path is safe to diagnose because target, argv and policy are fixed in
+    source, no credentials are accepted, and the same Docker egress boundary is
+    still mandatory.
+    """
+    process = boundary.run(
+        allowed_origins=_ALLOWED_ORIGINS,
+        argv=("playwright-cli", f"-s={session_id}", "open", _TARGET),
+        cwd=artifact_root,
+        timeout_seconds=120,
+    )
+    if process.returncode != 0:
+        print("--- bounded playwright-cli stdout ---", file=sys.stderr)
+        print(process.stdout[-4000:], file=sys.stderr)
+        print("--- bounded playwright-cli stderr ---", file=sys.stderr)
+        print(process.stderr[-4000:], file=sys.stderr)
+        raise RuntimeError(
+            f"bounded certification open failed with exit code {process.returncode}"
+        )
+    return {
+        "returncode": process.returncode,
+        "boundary_evidence_id": process.boundary_evidence_id,
+    }
 
 
 def main() -> None:
@@ -68,13 +101,7 @@ def main() -> None:
     results: dict[str, dict[str, object]] = {}
     isolation_evidence: str | None = None
     try:
-        results["open"] = cli.execute(
-            _ALLOWED_ORIGINS,
-            session_id,
-            "open",
-            _TARGET,
-        )
-        _assert_observed(results["open"], "open")
+        results["open"] = _diagnostic_open(boundary, artifact_root, session_id)
 
         isolation_evidence = boundary.verify_isolation(cwd=artifact_root)
         if not isolation_evidence.startswith("sha256:"):
