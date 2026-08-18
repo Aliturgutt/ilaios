@@ -181,6 +181,7 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
             operationalSnapshot: widget.operationalSnapshot,
             operationalStatus: widget.operationalStatus,
             onRefreshRequested: widget.onRefreshRequested,
+            onNavigate: _select,
           ),
         DesktopSection.agents => ReferenceAgentsView(
             projection: widget.projection,
