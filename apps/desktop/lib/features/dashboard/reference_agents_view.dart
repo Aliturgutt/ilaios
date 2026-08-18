@@ -7,6 +7,7 @@ import '../../app/ilaios_theme.dart';
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
 import '../navigation/desktop_section.dart';
+import 'agent_provision_scope.dart';
 
 /// Reference-faithful Agents surface.
 ///
@@ -47,6 +48,7 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
         : visible[_selected.clamp(0, visible.length - 1)];
     final pendingAssignments = _pendingAssignments(widget.snapshot);
     final reviews = _pendingReviews(widget.snapshot, selected?.id);
+    final provisionAgent = AgentProvisionScope.maybeOf(context)?.onProvisionAgent;
 
     return Container(
       key: const Key('reference-agents-page'),
@@ -88,14 +90,14 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
                           _selected = 0;
                         }),
                         onSelect: (value) => setState(() => _selected = value),
-                        onCreate: () => _showUnavailableAction(
-                          context,
-                          _tr(
-                            context,
-                            'Yeni ajan oluşturma işlemi henüz Desktop API sözleşmesine bağlı değil.',
-                            'New agent creation is not yet bound to a Desktop API contract.',
-                          ),
-                        ),
+                        onCreate: provisionAgent == null
+                            ? null
+                            : () => _showCanonicalProvisionDialog(
+                                  context,
+                                  widget.snapshot,
+                                  provisionAgent,
+                                  widget.onRefreshRequested,
+                                ),
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -355,7 +357,7 @@ class _AgentsTablePanel extends StatelessWidget {
   final ValueChanged<int> onTab;
   final ValueChanged<String> onQuery;
   final ValueChanged<int> onSelect;
-  final VoidCallback onCreate;
+  final VoidCallback? onCreate;
 
   @override
   Widget build(BuildContext context) => _Card(
@@ -1628,6 +1630,26 @@ class _AgentRecord {
   final List<double> performance;
 }
 
+class _CanonicalAgentOption {
+  const _CanonicalAgentOption({
+    required this.id,
+    required this.alias,
+    required this.role,
+    required this.team,
+    required this.capabilities,
+    required this.registered,
+    required this.authorityMatchesCanonical,
+  });
+
+  final String id;
+  final String alias;
+  final String role;
+  final String team;
+  final List<String> capabilities;
+  final bool registered;
+  final bool authorityMatchesCanonical;
+}
+
 List<_AgentRecord> _agentRecords(OperationalSnapshot snapshot) {
   final sources = <Map<String, Object?>>[];
   for (final key in const ['agents', 'workers', 'executors', 'leases']) {
@@ -1650,11 +1672,28 @@ List<_AgentRecord> _agentRecords(OperationalSnapshot snapshot) {
     if (id == null) continue;
     merged[id] = <String, Object?>{...?merged[id], ...source};
   }
+  for (final canonical in _mapList(snapshot.agentState['agents'])) {
+    final id = _text(canonical, const ['agent_id']);
+    if (id == null) continue;
+    final capabilities = _stringList(canonical, const ['capabilities']);
+    merged[id] = <String, Object?>{
+      ...?merged[id],
+      'agent_id': id,
+      'agent_name': _text(canonical, const ['alias']) ?? id,
+      'role': _text(canonical, const ['role']) ?? '—',
+      'skills': capabilities,
+      'canonical_registered': canonical['registered'],
+      'authority_matches_canonical': canonical['authority_matches_canonical'],
+    };
+  }
 
   return merged.entries.map((entry) {
     final item = entry.value;
     final role = _text(item, const ['role', 'agent_role', 'worker_role', 'capability', 'specialty', 'type']) ?? '—';
-    final stateRaw = _text(item, const ['agent_status', 'worker_status', 'status', 'state', 'lease_state']) ?? '';
+    final registered = item['canonical_registered'];
+    final stateRaw = registered == false
+        ? 'offline'
+        : _text(item, const ['agent_status', 'worker_status', 'status', 'state', 'lease_state']) ?? '';
     final activeTasks = _authoritativeInt(item, const ['active_tasks', 'task_count', 'active_jobs']);
     final tokenCurrent = _text(item, const ['token_usage', 'tokens_used', 'input_tokens', 'tokens']);
     final tokenLimit = _text(item, const ['token_limit', 'token_budget', 'max_tokens']);
@@ -1682,6 +1721,20 @@ List<_AgentRecord> _agentRecords(OperationalSnapshot snapshot) {
     );
   }).toList(growable: false);
 }
+
+List<_CanonicalAgentOption> _canonicalAgentOptions(OperationalSnapshot snapshot) =>
+    _mapList(snapshot.agentState['agents']).map((item) {
+      final id = _text(item, const ['agent_id']) ?? '';
+      return _CanonicalAgentOption(
+        id: id,
+        alias: _text(item, const ['alias']) ?? id,
+        role: _text(item, const ['role']) ?? '—',
+        team: _text(item, const ['team']) ?? '—',
+        capabilities: _stringList(item, const ['capabilities']),
+        registered: item['registered'] == true,
+        authorityMatchesCanonical: item['authority_matches_canonical'] == true,
+      );
+    }).where((item) => item.id.isNotEmpty).toList(growable: false);
 
 List<Map<String, Object?>> _pendingAssignments(OperationalSnapshot snapshot) {
   for (final key in const ['pending_assignments', 'assignments', 'queue', 'pending_tasks']) {
@@ -1886,6 +1939,104 @@ String _normalize(String value) => value.toLowerCase().replaceAll(RegExp(r'[^a-z
 
 String _tr(BuildContext context, String tr, String en) =>
     IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish ? tr : en;
+
+Future<void> _showCanonicalProvisionDialog(
+  BuildContext context,
+  OperationalSnapshot snapshot,
+  Future<void> Function(String agentId) onProvisionAgent,
+  VoidCallback? onRefresh,
+) async {
+  final options = _canonicalAgentOptions(snapshot);
+  if (options.isEmpty) {
+    _showUnavailableAction(
+      context,
+      _tr(
+        context,
+        'Canonical ajan kaydı kullanılamıyor; kimlik uydurulmadı.',
+        'Canonical agent registry data is unavailable; no identity was fabricated.',
+      ),
+    );
+    return;
+  }
+
+  final selected = await showDialog<String>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      key: const Key('canonical-agent-provision-dialog'),
+      title: Text(_tr(dialogContext, 'Canonical Ajanı Etkinleştir', 'Provision Canonical Agent')),
+      content: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 620, maxHeight: 460),
+        child: ListView.separated(
+          shrinkWrap: true,
+          itemCount: options.length,
+          separatorBuilder: (_, __) => const Divider(height: 1),
+          itemBuilder: (context, index) {
+            final option = options[index];
+            final enabled = !option.registered && option.authorityMatchesCanonical;
+            final trailing = option.registered
+                ? _tr(context, 'Kayıtlı', 'Registered')
+                : option.authorityMatchesCanonical
+                    ? _tr(context, 'Etkinleştir', 'Provision')
+                    : _tr(context, 'Yetki sapması', 'Authority drift');
+            return ListTile(
+              key: Key('canonical-agent-option-${option.id}'),
+              enabled: enabled,
+              onTap: enabled ? () => Navigator.pop(dialogContext, option.id) : null,
+              leading: Icon(
+                option.authorityMatchesCanonical ? Icons.verified_user_outlined : Icons.gpp_bad_outlined,
+                size: 20,
+              ),
+              title: Text(option.alias),
+              subtitle: Text(
+                '${option.id}\n${option.role} • ${option.team}${option.capabilities.isEmpty ? '' : ' • ${option.capabilities.take(3).join(', ')}'}',
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+              ),
+              trailing: Text(trailing),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(dialogContext),
+          child: Text(_tr(dialogContext, 'İptal', 'Cancel')),
+        ),
+      ],
+    ),
+  );
+  if (selected == null || !context.mounted) return;
+
+  try {
+    await onProvisionAgent(selected);
+    if (!context.mounted) return;
+    onRefresh?.call();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _tr(
+            context,
+            'Canonical ajan runtime üzerinde etkinleştirildi.',
+            'Canonical agent was provisioned on the runtime.',
+          ),
+        ),
+      ),
+    );
+  } catch (error) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _tr(
+            context,
+            'Ajan etkinleştirme başarısız oldu; state değiştirilmedi.',
+            'Agent provisioning failed; no UI state was fabricated.',
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 void _showAgentDetail(BuildContext context, _AgentRecord agent) {
   showDialog<void>(
