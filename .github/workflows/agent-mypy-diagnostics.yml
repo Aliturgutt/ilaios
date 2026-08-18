@@ -1,9 +1,9 @@
 name: Agent Mypy Diagnostics
 
 on:
-  push:
+  pull_request:
     branches:
-      - agent/47-agent-runtime-redteam
+      - master
 
 permissions:
   contents: read
@@ -16,7 +16,7 @@ jobs:
       - name: Checkout exact source commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Set up Python
