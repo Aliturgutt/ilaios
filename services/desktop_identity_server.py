@@ -12,6 +12,10 @@ import secrets
 import time
 from datetime import datetime, timezone
 
+from services.desktop_oidc import DesktopOIDCService
+from services.execution_coordinator import ExecutionCoordinator
+from services.reference_assets import ReferenceAssetStore
+
 from . import desktop_identity_server_core as _core
 from .desktop_identity_server_core import *  # noqa: F403
 
@@ -19,8 +23,22 @@ from .desktop_identity_server_core import *  # noqa: F403
 class DesktopIdentityHTTPServer(_core.DesktopIdentityHTTPServer):
     """Canonical Desktop server with the shared reference-capable handler."""
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        server_address: tuple[str, int],
+        *,
+        bearer_token: str,
+        identity: DesktopOIDCService | None,
+        coordinator: ExecutionCoordinator,
+        reference_assets: ReferenceAssetStore | None = None,
+    ) -> None:
+        super().__init__(
+            server_address,
+            bearer_token=bearer_token,
+            identity=identity,
+            coordinator=coordinator,
+            reference_assets=reference_assets,
+        )
         self.RequestHandlerClass = DesktopIdentityRequestHandler
 
 
