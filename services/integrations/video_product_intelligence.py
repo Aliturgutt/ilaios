@@ -53,7 +53,8 @@ _LOCALIZATION_PATTERNS = (
     r"\b(?:bu|mevcut|yüklediğim|yukledigim|kaynak)\s+videoyu\s+(?:dublaj|çevir|cevir|yerelleştir|yerellestir)\b",
 )
 _SERIES_PATTERNS = (
-    r"\b(?:episode|part)\s+\d+\b",
+    r"\bepisode\s+\d+\b",
+    r"\bpart\s+\d+\s+of\s+(?:the\s+)?series\b",
     r"\b(?:next|previous|existing)\s+episode\b",
     r"\b(?:bölüm|bolum)\s+\d+\b",
     r"\b(?:sonraki|önceki|onceki|mevcut)\s+(?:bölüm|bolum)\b",
@@ -139,7 +140,8 @@ def _aspect_ratio(normalized: str) -> str:
         re.search(r"(?:^|\s)9\s*:\s*16(?:\s|$)", normalized)
         or re.search(r"\b(?:vertical|portrait)\s+(?:video|format|aspect(?:\s+ratio)?)\b", normalized)
         or re.search(r"\b(?:for|on)\s+tiktok\b", normalized)
-        or re.search(r"\b(?:instagram\s+)?reels?\b", normalized)
+        or re.search(r"\binstagram\s+reels?\b", normalized)
+        or re.search(r"\b(?:for|on)\s+reels?\b", normalized)
         or re.search(r"\byoutube\s+shorts?\b", normalized)
     )
     square = bool(
