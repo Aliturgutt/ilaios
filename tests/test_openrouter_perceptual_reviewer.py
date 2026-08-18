@@ -98,6 +98,7 @@ def test_perceptual_reviewer_prefers_strict_json_schema(
     assert isinstance(provider, Mapping)
     assert provider["require_parameters"] is True
     assert submission.score == pytest.approx(0.91)
+    assert "route=json-schema" in submission.provenance_reference
 
 
 def _assert_capability_fallback(
@@ -118,16 +119,15 @@ def _assert_capability_fallback(
 
     assert len(transport.requests) == 2
     first_format = transport.requests[0]["response_format"]
-    second_format = transport.requests[1]["response_format"]
     assert isinstance(first_format, Mapping)
-    assert isinstance(second_format, Mapping)
     assert first_format["type"] == "json_schema"
-    assert second_format == {"type": "json_object"}
+    assert "response_format" not in transport.requests[1]
     assert transport.requests[1]["model"] == "openrouter/free"
     provider = transport.requests[1]["provider"]
     assert isinstance(provider, Mapping)
     assert provider["require_parameters"] is True
     assert submission.score == pytest.approx(0.91)
+    assert "route=prompt-json-fallback" in submission.provenance_reference
 
 
 def test_perceptual_reviewer_falls_back_on_404(
