@@ -20,6 +20,7 @@ from services.reference_brief_cache import (
     ReferenceBriefCacheError,
 )
 from services.runtime import DurableGrantPolicy
+from services.source_media import SourceMediaError, SourceMediaStore
 from src.video_automation.generation_job_polling import GenerationJobPoller
 from src.video_automation.openrouter_video_provider import (
     SEEDANCE_FREE_MODEL_ID,
@@ -71,6 +72,7 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
         retriever: OpenRouterGeneratedAssetRetriever | None = None,
         reviewer: SemanticVideoReviewer | None = None,
         reference_assets: ReferenceAssetStore | None = None,
+        source_media: SourceMediaStore | None = None,
         reference_analyzer: OpenRouterReferenceImageAnalyzer | None = None,
         reference_brief_cache: ReferenceBriefCache | None = None,
     ) -> None:
@@ -96,6 +98,10 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
             data_root / "reference-assets.sqlite3",
             data_root / "reference-assets" / "blobs",
         )
+        self._source_media = source_media or SourceMediaStore(
+            data_root / "source-media.sqlite3",
+            data_root / "source-media" / "blobs",
+        )
         self._reference_analyzer = reference_analyzer or OpenRouterReferenceImageAnalyzer(
             api_key,
             _REFERENCE_ANALYZER_MODEL_ID,
@@ -115,14 +121,20 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
     ) -> dict[str, object]:
         # Read only immutable request binding metadata before any provider effect.
         # Current Desktop production supports create/reference generation in 16:9.
-        # Source-video edit/localization, authenticated series continuation, and
-        # other output shapes remain blocked until their exact inputs/capabilities
-        # are materialized and independently verified.
+        # Source media is now authenticated/bound, but actual edit/localization
+        # remains blocked until exact governed mutation + acceptance is materialized.
         reference_count = len(self._reference_assets.for_request(request_id))
+        source_record = self._source_media.for_request(request_id)
+        if source_record is not None:
+            try:
+                self._source_media.require_registered_path(source_record.asset_id)
+            except SourceMediaError as error:
+                raise VideoRuntimeError("bound source video integrity validation failed") from error
         try:
             product_spec = admit_current_desktop_video_product(
                 objective,
                 reference_count=reference_count,
+                source_video_present=source_record is not None,
             )
         except VideoProductIntentError as error:
             raise VideoRuntimeError(str(error)) from error
