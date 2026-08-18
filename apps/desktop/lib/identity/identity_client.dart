@@ -8,6 +8,9 @@ import 'identity_client_core.dart' as core;
 export 'identity_client_core.dart' hide IdentityClient;
 
 class IdentityClient extends core.IdentityClient {
+  // The same constructor inputs also initialize the local reference transport,
+  // so keeping named locals is intentional instead of converting to super params.
+  // ignore: use_super_parameters
   IdentityClient({
     required Uri baseUri,
     required String transportToken,
