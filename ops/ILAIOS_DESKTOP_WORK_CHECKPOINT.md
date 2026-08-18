@@ -15,7 +15,7 @@ All 10 approved Desktop surfaces must be real-data, real-action, real-time and W
 - Active phase: 5 / Workflows functional closure
 - Active PR: #421
 - Active branch: desktop/workflows-functional-closure
-- Active exact head: 70e47aff40a4257833aadbc252b96f5cc7d3d005
+- Active exact head: 1883cf5486305a1aa953a819d7718181fe49aefd
 
 ## Mandatory phase order
 0. Acceptance baseline / no screenshot demo telemetry
@@ -53,18 +53,30 @@ Exact head 1be576df1165503c82bdc10e144d64d016e3ba66:
 Merged master: 55d86dffa8ccfc2a786c27df4781392b518fd6fa.
 
 ## Active PR #421 — Workflows
-Implemented on exact head 70e47aff40a4257833aadbc252b96f5cc7d3d005:
+Implementation:
 - real Type / Priority / Owner / Stage filters over authority-derived workflow records
 - real 5-row pagination with bounded previous/next controls
 - Clear Filters resets filter state and visible search text
 - toolbar More no-op replaced by bounded Refresh / New Workflow actions
 - row menu now performs Details / Approvals / Live Workspace actions
-- added widget regression tests for filtering, clearing, pagination and menus
+- widget regression coverage for filtering, clearing, pagination and menus
 - no backend/schema/privilege changes; no fabricated telemetry
-Current exact-head CI: all five mandatory workflows started and are pending/running.
+
+Previous head 70e47aff40a4257833aadbc252b96f5cc7d3d005:
+- Flutter analyze: PASS
+- 124 widget tests PASS / 1 FAIL
+- failure was test-only ambiguity: `Open Details` exists both in the persistent selected-workflow panel and opened row popup, so `findsOneWidget` was invalid
+- product behavior itself was not the failing assertion
+
+Current exact head 1883cf5486305a1aa953a819d7718181fe49aefd:
+- test assertions now tolerate/scoped duplicate visible action labels and select the popup action explicitly
+- all five mandatory exact-head workflows have started; awaiting results
 
 ## Pre-audit for next phases
-- Agents bootstrap already exposes a governed `onProvisionAgent` callback backed by `/v1/agents/commands`, but ReferenceAgentsView does not receive it and still declares New Agent unavailable. Phase 6 will bind the existing governed command and close filters/paging/no-ops.
+- Agents bootstrap already exposes a governed `onProvisionAgent` callback backed by `/v1/agents/commands`, but ReferenceAgentsView does not receive it and still declares New Agent unavailable.
+- Canonical `/v1/agents/state` already projects registry-backed agents and rejects authority drift; `/v1/agents/commands` provisioning rejects caller-supplied authorities/capabilities/permissions and resolves them server-side from CANONICAL_AGENT_REGISTRY.
+- Current Agents UI also ignores `snapshot.agentState` in its record aggregation, has presentation-only Role/Status/Capability filters, fake paging, and a toolbar no-op More control. Phase 6 must close these without inventing assignment authority.
+- Assign Task remains unavailable unless a governed assignment API is proven; do not fake it.
 - No implemented `/v1/workspace` HTTP API exists on current master; SoftwareFactory already owns an isolated bounded Workspace abstraction. Live Workspace must project that canonical execution workspace safely instead of creating a parallel runtime.
 
 ## Non-negotiable invariants
@@ -76,4 +88,4 @@ Current exact-head CI: all five mandatory workflows started and are pending/runn
 - Missing authority renders unavailable/disabled, never fabricated.
 
 ## Next action
-Check PR #421 exact-head gates. If any fails, inspect exact job/log and apply the smallest safe fix. Merge only when Desktop CI, Windows Gate, MSIX, Required CI and Software Factory Final Evidence all PASS. Then fetch fresh master, update this checkpoint to phase 6 and start Agents closure from that exact master.
+Check PR #421 exact-head 1883cf5486305a1aa953a819d7718181fe49aefd gates. If any fails, inspect exact job/log and apply the smallest safe fix. Merge only when Desktop CI, Windows Gate, MSIX, Required CI and Software Factory Final Evidence all PASS. Then fetch fresh master, update this checkpoint to phase 6 and start Agents closure from that exact master.
