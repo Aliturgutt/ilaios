@@ -1,4 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" = \"website-v2-redteam\" ]; then exit 0; fi; git diff --quiet HEAD^ HEAD ./"
+  "git": {
+    "deploymentEnabled": {
+      "*": false,
+      "master": true,
+      "vercel-preview-*": true
+    }
+  },
+  "ignoreCommand": "if [ -n \"$VERCEL_GIT_PREVIOUS_SHA\" ] && git cat-file -e \"$VERCEL_GIT_PREVIOUS_SHA^{commit}\" 2>/dev/null; then git diff --quiet \"$VERCEL_GIT_PREVIOUS_SHA\" HEAD -- ./; else git diff --quiet HEAD^ HEAD -- ./; fi"
 }
