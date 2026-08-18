@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import sqlite3
 from pathlib import Path
 
 import pytest
@@ -128,9 +129,11 @@ def test_web_composition_reuses_single_governed_runtime(tmp_path: Path) -> None:
     assert composition.skill_count == 9
     assert composition.ai_provider_count == 1
     assert composition.local_provider_count == 2
-    providers = {item["provider_id"] for item in runtime.providers()}
-    assert "openrouter" in providers
-    assert BROWSER_EVIDENCE_PROVIDER_ID in providers
-    assert BROWSER_EVIDENCE_ADAPTER_KIND in {
-        item["adapter_kind"] for item in runtime.providers()
-    }
+    with sqlite3.connect(database) as connection:
+        rows = connection.execute(
+            "SELECT provider_id, adapter_kind FROM runtime_providers ORDER BY provider_id"
+        ).fetchall()
+    provider_adapters = {str(provider_id): str(adapter_kind) for provider_id, adapter_kind in rows}
+    assert "openrouter" in provider_adapters
+    assert BROWSER_EVIDENCE_PROVIDER_ID in provider_adapters
+    assert provider_adapters[BROWSER_EVIDENCE_PROVIDER_ID] == BROWSER_EVIDENCE_ADAPTER_KIND
