@@ -32,8 +32,8 @@ The five skill packages do **not** install parallel Video Factory engines.
 - `ilaios-video-prompt` reuses `ShotPromptCompiler`.
 - `ilaios-video-reference-assets` reuses the existing admitted
   `ReferenceAssetRecord` boundary and reference-aware runtime.
-- `ilaios-video-model-routing` reuses `RoutingIntelligenceEngine`; final routing
-  authority remains canonical `route_model`.
+- `ilaios-video-model-fit-analysis` reuses `RoutingIntelligenceEngine` for ranking
+  evidence only; final routing authority remains canonical `route_model`.
 - `ilaios-video-continuity` reuses `ContinuityTracker`.
 
 The governed facade only validates skill admission through the existing
