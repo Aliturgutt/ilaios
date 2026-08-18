@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Iterable, Mapping
-from typing import Any, cast
+from typing import Any
 
 from services.agent_registry import CANONICAL_AGENT_REGISTRY
 
@@ -15,19 +15,18 @@ def agent_state_projection(
     readiness: Mapping[str, Mapping[str, object]] | None = None,
 ) -> dict[str, object]:
     latest: dict[str, Mapping[str, Any]] = {}
-    for route in routes:
-        agent_id = route.get("agent_id")
+    for runtime_route in routes:
+        agent_id = runtime_route.get("agent_id")
         if isinstance(agent_id, str):
-            latest[agent_id] = route
-    readiness_map = cast(
-        Mapping[str, Mapping[str, object]],
-        readiness if readiness is not None else {},
+            latest[agent_id] = runtime_route
+    readiness_map: Mapping[str, Mapping[str, object]] = (
+        readiness if readiness is not None else {}
     )
 
     agents: list[dict[str, object]] = []
     for registration in CANONICAL_AGENT_REGISTRY:
         manifest = registration.manifest
-        route = latest.get(manifest.agent_id)
+        latest_route = latest.get(manifest.agent_id)
         record: dict[str, object] = {
             "agent_id": manifest.agent_id,
             "agent_name": manifest.alias,
@@ -38,14 +37,14 @@ def agent_state_projection(
             "readiness": registration.readiness.value,
             "verifier_id": manifest.verifier_id,
             "backing_capability": registration.backing_capability,
-            "agent_status": "offline" if route is None else "idle",
+            "agent_status": "offline" if latest_route is None else "idle",
             "active_tasks": 0,
         }
         readiness_record = readiness_map.get(manifest.agent_id)
         if readiness_record is not None:
             _merge_readiness(record, readiness_record)
-        if route is not None:
-            _merge_route(record, route)
+        if latest_route is not None:
+            _merge_route(record, latest_route)
         agents.append(record)
 
     return {
