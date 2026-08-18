@@ -9,17 +9,15 @@ all other capabilities fail-closed.
 from __future__ import annotations
 
 import secrets
+import time
 from datetime import datetime, timezone
+from http import HTTPStatus
 
 from services.desktop_oidc import DesktopOIDCService
 from services.execution_coordinator import ExecutionCoordinator
 from services.reference_assets import ReferenceAssetStore
 
 from . import desktop_identity_server_core as _core
-from .desktop_identity_server_core import *  # noqa: F403
-
-# Preserve the public module clock used by existing recovery tests/operators.
-time = _core.time
 
 
 class DesktopIdentityHTTPServer(_core.DesktopIdentityHTTPServer):
@@ -105,7 +103,7 @@ class DesktopIdentityRequestHandler(_core.DesktopIdentityRequestHandler):
             self._start_execution(request_id)
         response = dict(execution)
         response["reference_asset_count"] = len(asset_ids)
-        self._send_json(_core.HTTPStatus.CREATED, response)
+        self._send_json(HTTPStatus.CREATED, response)
 
 
 def _reference_factory_count(objective: str) -> int:
