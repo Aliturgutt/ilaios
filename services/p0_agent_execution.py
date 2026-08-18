@@ -8,11 +8,10 @@ before each P0 identity can earn EXECUTABLE readiness.
 
 from __future__ import annotations
 
-import hashlib
-import json
 from dataclasses import dataclass
 from datetime import datetime
 
+from services.agent_execution_evidence import execution_evidence_digest
 from services.agent_governance import AgentInvocation
 from services.agent_readiness import p0_registrations
 from services.agent_registry import registration_for
@@ -164,8 +163,13 @@ class P0ProviderBackedExecutor:
                 raise P0AgentExecutionError("persisted model identity diverged from selection")
             if output.get("provider_id") != selection.provider_id:
                 raise P0AgentExecutionError("persisted provider identity diverged from selection")
-            evidence_digest = _execution_digest(execution)
-            return ProviderBackedAgentResult(execution, selection.model_id, selection.provider_id, evidence_digest)
+            evidence_digest = execution_evidence_digest(execution)
+            return ProviderBackedAgentResult(
+                execution,
+                selection.model_id,
+                selection.provider_id,
+                evidence_digest,
+            )
 
 
 def binding_for(agent_id: str) -> P0AgentBinding:
@@ -192,21 +196,6 @@ def validate_p0_bindings() -> None:
             raise P0AgentExecutionError(f"binding permission exceeds manifest: {binding.agent_id}")
         if binding.execution_mode not in {"governed-ai", "defensive-local", "independent-verification"}:
             raise P0AgentExecutionError("unknown P0 execution mode")
-
-
-def _execution_digest(execution: NamedAgentExecution) -> str:
-    material = {
-        "invocation_id": execution.admission.invocation_id,
-        "agent_id": execution.admission.agent_id,
-        "verifier_id": execution.admission.verifier_id,
-        "route_sequence": execution.route.get("sequence"),
-        "skill_id": execution.route.get("skill_id"),
-        "provider_id": execution.route.get("provider_id"),
-        "capability": execution.route.get("capability"),
-        "output": execution.route.get("output"),
-    }
-    encoded = json.dumps(material, sort_keys=True, separators=(",", ":")).encode()
-    return hashlib.sha256(encoded).hexdigest()
 
 
 validate_p0_bindings()
