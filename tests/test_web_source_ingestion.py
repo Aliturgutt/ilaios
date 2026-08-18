@@ -112,21 +112,22 @@ def test_ingestion_rejects_symlink_entries(tmp_path: Path) -> None:
         WebSourceArchiveIngestor(tmp_path / "artifacts").ingest_zip(buffer.getvalue())
 
 
-@pytest.mark.parametrize(
-    "secret_path",
-    [".env", ".env.production", ".npmrc", "config/private.key", "certs/site.p12"],
-)
-def test_ingestion_rejects_secret_bearing_paths(
-    tmp_path: Path, secret_path: str
-) -> None:
-    files = _next_files()
-    files[secret_path] = b"do-not-import"
-
-    with pytest.raises(
-        WebSourceIngestionError,
-        match="secret-bearing path|private-key/certificate path",
+def test_ingestion_rejects_secret_bearing_paths(tmp_path: Path) -> None:
+    for secret_path in (
+        ".env",
+        ".env.production",
+        ".npmrc",
+        "config/private.key",
+        "certs/site.p12",
     ):
-        WebSourceArchiveIngestor(tmp_path / "artifacts").ingest_zip(_archive(files))
+        files = _next_files()
+        files[secret_path] = b"do-not-import"
+
+        with pytest.raises(
+            WebSourceIngestionError,
+            match="secret-bearing path|private-key/certificate path",
+        ):
+            WebSourceArchiveIngestor(tmp_path / "artifacts").ingest_zip(_archive(files))
 
 
 def test_ingestion_rejects_generated_dependency_trees(tmp_path: Path) -> None:
