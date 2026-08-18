@@ -74,6 +74,7 @@ ILAIOS Skills
 +-- assurance
     +-- security-review
     +-- differential-review
+    +-- agentic-action-audit
     +-- threat-model
     +-- supply-chain-audit
     +-- dependency-audit
@@ -102,8 +103,19 @@ The Software Factory mappings currently represented in code include:
 - `factories/software/implementation` -> existing governed engineering skills;
 - `factories/software/test` -> existing test-design, test-generation, and runtime-QA skills;
 - `factories/software/review` -> existing code-review skill;
-- `factories/software/release-validation` -> existing build, release-readiness, and recovery skills;
-- selected assurance nodes -> existing security, dependency/provenance, and release-readiness skills.
+- `factories/software/release-validation` -> existing build, release-readiness, and recovery skills.
+
+The Assurance mappings classify the current native SecurityFactory methodology skills without taking over SecurityFactory execution ownership:
+
+- `assurance/security-review` -> `ilaios-security-review` plus the existing Software Factory security-review gate;
+- `assurance/differential-review` -> `ilaios-differential-review`;
+- `assurance/agentic-action-audit` -> `ilaios-agentic-action-audit`;
+- `assurance/threat-model` -> `ilaios-threat-model`;
+- `assurance/supply-chain-audit` -> `ilaios-supply-chain-audit` plus existing Software Factory dependency/provenance gates;
+- `assurance/dependency-audit` -> existing Software Factory dependency-governance gate;
+- `assurance/release-readiness` -> existing Software Factory release-readiness gate.
+
+A mapping with multiple backing skill IDs is classification only. It does not choose an executor, merge authorities, or bypass the runtime owner responsible for admission and evidence.
 
 An empty runtime mapping means no governed runtime backing is declared for that logical node. A source/spec package may still exist, but the empty mapping must not be interpreted as runtime integration, verification, deployment, or production evidence.
 
@@ -127,7 +139,7 @@ Additional shared capability families may be added only when a demonstrated depe
 
 ## Assurance
 
-Assurance is cross-cutting. It does not become an alternate security authority. Security review, differential review, threat modeling, supply-chain audit, dependency audit, and release readiness must preserve independent review and evidence requirements.
+Assurance is cross-cutting. It does not become an alternate security authority. Security review, differential review, agentic action audit, threat modeling, supply-chain audit, dependency audit, and release readiness must preserve their existing runtime ownership, independent review, and evidence requirements.
 
 ## Physical package contract
 
@@ -149,6 +161,6 @@ The logical taxonomy is machine-readable in `services/skill_taxonomy.py`.
 
 The first new Skill Engineering package is `tools/skill-engineering/skills/skill-create/`. Its catalog validates package completeness, provenance, deny-set, allowed tool declarations, schemas, and eval coverage, but it does not provide a side-effect executor.
 
-The current six native Web Factory skills are mapped into the taxonomy without moving or duplicating their runtime ownership.
+The current native Web Factory and SecurityFactory methodology skills are mapped into the taxonomy without moving or duplicating their runtime ownership.
 
 Other taxonomy nodes without an existing runtime mapping remain target nodes unless a first-party source/spec package exists. Runtime integration, testing, verification, deployment, and production status remain evidence-gated separately.
