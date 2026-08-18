@@ -10,12 +10,21 @@ from __future__ import annotations
 import math
 from collections import Counter
 from collections.abc import Iterable, Mapping
-from datetime import datetime, timezone
-from typing import cast
+from dataclasses import dataclass
+from datetime import date, datetime, timezone
 
 
 class UsageIntelligenceError(ValueError):
     """Authoritative usage source data cannot be projected safely."""
+
+
+@dataclass(frozen=True, slots=True)
+class _RouteMetadata:
+    agent_id: str
+    skill_id: str
+    provider_id: str
+    capability: str
+    created_at: datetime
 
 
 def project_usage_stats(
@@ -35,13 +44,13 @@ def project_usage_stats(
         raise UsageIntelligenceError("evidence_count must be non-negative")
 
     normalized_routes = tuple(_route_metadata(route) for route in routes)
-    timestamps = tuple(item["created_at"] for item in normalized_routes)
+    timestamps = tuple(item.created_at for item in normalized_routes)
     dates = tuple(sorted({stamp.date() for stamp in timestamps}))
 
-    providers = Counter(item["provider_id"] for item in normalized_routes)
-    skills = Counter(item["skill_id"] for item in normalized_routes)
-    capabilities = Counter(item["capability"] for item in normalized_routes)
-    agents = Counter(item["agent_id"] for item in normalized_routes)
+    providers = Counter(item.provider_id for item in normalized_routes)
+    skills = Counter(item.skill_id for item in normalized_routes)
+    capabilities = Counter(item.capability for item in normalized_routes)
+    agents = Counter(item.agent_id for item in normalized_routes)
     hours = Counter(stamp.hour for stamp in timestamps)
     activity = Counter(stamp.date().isoformat() for stamp in timestamps)
 
@@ -60,9 +69,7 @@ def project_usage_stats(
         "active_days": len(dates),
         "latest_streak_days": _latest_streak_days(dates),
         "longest_streak_days": _longest_streak_days(dates),
-        "latest_activity_at": (
-            max(timestamps).isoformat() if timestamps else None
-        ),
+        "latest_activity_at": max(timestamps).isoformat() if timestamps else None,
         "peak_execution_hour_utc": _peak_hour(hours),
         "activity_by_date": _count_rows(activity),
         "provider_distribution": _count_rows(providers),
@@ -83,7 +90,7 @@ def project_usage_stats(
     }
 
 
-def _route_metadata(route: Mapping[str, object]) -> dict[str, object]:
+def _route_metadata(route: Mapping[str, object]) -> _RouteMetadata:
     required = ("agent_id", "skill_id", "provider_id", "capability", "created_at")
     values: dict[str, str] = {}
     for field in required:
@@ -97,13 +104,13 @@ def _route_metadata(route: Mapping[str, object]) -> dict[str, object]:
         raise UsageIntelligenceError("runtime route created_at is malformed") from error
     if created_at.tzinfo is None:
         raise UsageIntelligenceError("runtime route created_at must be timezone-aware")
-    return {
-        "agent_id": values["agent_id"],
-        "skill_id": values["skill_id"],
-        "provider_id": values["provider_id"],
-        "capability": values["capability"],
-        "created_at": created_at.astimezone(timezone.utc),
-    }
+    return _RouteMetadata(
+        values["agent_id"],
+        values["skill_id"],
+        values["provider_id"],
+        values["capability"],
+        created_at.astimezone(timezone.utc),
+    )
 
 
 def _governance_status_counts(state: Mapping[str, object]) -> Counter[str]:
@@ -172,24 +179,22 @@ def _peak_hour(hours: Mapping[int, int]) -> int | None:
     return min(hour for hour, count in hours.items() if count == maximum)
 
 
-def _latest_streak_days(dates: tuple[object, ...]) -> int:
+def _latest_streak_days(dates: tuple[date, ...]) -> int:
     if not dates:
         return 0
-    typed = cast(tuple[datetime.date, ...], dates)
     streak = 1
-    for index in range(len(typed) - 1, 0, -1):
-        if (typed[index] - typed[index - 1]).days != 1:
+    for index in range(len(dates) - 1, 0, -1):
+        if (dates[index] - dates[index - 1]).days != 1:
             break
         streak += 1
     return streak
 
 
-def _longest_streak_days(dates: tuple[object, ...]) -> int:
+def _longest_streak_days(dates: tuple[date, ...]) -> int:
     if not dates:
         return 0
-    typed = cast(tuple[datetime.date, ...], dates)
     longest = current = 1
-    for previous, current_date in zip(typed, typed[1:], strict=False):
+    for previous, current_date in zip(dates, dates[1:], strict=False):
         if (current_date - previous).days == 1:
             current += 1
             longest = max(longest, current)
