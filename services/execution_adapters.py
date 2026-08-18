@@ -24,6 +24,7 @@ from services.integrations.software_product_runtime_recovery import (
     RecoverableSoftwareProductRuntime,
 )
 from services.integrations.web_product_runtime import DurableWebProductRuntime
+from services.web_factory_skills import bind_web_factory_native_skill_evidence
 
 _WEB = "ilaios.capability.web-factory"
 _SOFTWARE = "ilaios.capability.software-factory"
@@ -78,10 +79,13 @@ class WebExecutionAdapter:
         token: str,
         now: datetime,
     ) -> dict[str, object]:
-        return self._runtime.execute(request_id, grant_id, token=token, now=now)
+        manifest = self._runtime.execute(request_id, grant_id, token=token, now=now)
+        return bind_web_factory_native_skill_evidence(manifest)
 
     def accepted_result(self, request_id: str) -> dict[str, object]:
-        return self._runtime.get_manifest(request_id)
+        return bind_web_factory_native_skill_evidence(
+            self._runtime.get_manifest(request_id)
+        )
 
     def state(self, request_id: str) -> dict[str, object]:
         return self._runtime.get_state(request_id)
@@ -93,7 +97,8 @@ class WebExecutionAdapter:
         token: str,
         now: datetime,
     ) -> dict[str, object]:
-        return self._runtime.recover_finalizing(request_id, token=token, now=now)
+        manifest = self._runtime.recover_finalizing(request_id, token=token, now=now)
+        return bind_web_factory_native_skill_evidence(manifest)
 
     def interrupt(
         self,
