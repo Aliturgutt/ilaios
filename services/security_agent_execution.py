@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import hashlib
-import json
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
+from services.agent_execution_evidence import execution_evidence_digest
 from services.agent_governance import AgentInvocation
 from services.agent_registry import SECURITY_VERIFIER_ID
 from services.named_agent_executor import NamedAgentExecution, NamedAgentExecutor
@@ -94,7 +93,7 @@ class DefensiveSecurityAgentExecutor:
         report = producer.route.get("output")
         if not isinstance(report, dict):
             raise SecurityAgentExecutionError("producer persisted report is missing")
-        producer_digest = _route_digest(producer)
+        producer_digest = execution_evidence_digest(producer)
         verifier = self._named.execute(
             verifier_invocation,
             verifier_grant,
@@ -119,7 +118,7 @@ class DefensiveSecurityAgentExecutor:
             producer=producer,
             verifier=verifier,
             producer_evidence_digest=producer_digest,
-            verifier_evidence_digest=_route_digest(verifier),
+            verifier_evidence_digest=execution_evidence_digest(verifier),
             passed=bool(output["verified"]),
         )
 
@@ -129,15 +128,3 @@ def security_local_provider_specs() -> tuple[tuple[str, str, str], ...]:
         (provider_id, adapter_kind, capability)
         for provider_id, (adapter_kind, capability) in sorted(SECURITY_LOCAL_PROVIDERS.items())
     )
-
-
-def _route_digest(execution: NamedAgentExecution) -> str:
-    material = {
-        "invocation_id": execution.admission.invocation_id,
-        "agent_id": execution.admission.agent_id,
-        "verifier_id": execution.admission.verifier_id,
-        "route": execution.route,
-    }
-    return hashlib.sha256(
-        json.dumps(material, sort_keys=True, separators=(",", ":"), default=str).encode()
-    ).hexdigest()
