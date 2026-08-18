@@ -1,7 +1,7 @@
 name: Agent P0 Live Certification
 
 on:
-  pull_request:
+  push:
     branches:
       - master
     paths:
@@ -19,7 +19,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: agent-p0-live-certification-${{ github.event.pull_request.number || github.ref }}
+  group: agent-p0-live-certification-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -33,10 +33,10 @@ jobs:
       AGENT_P0_PROOF_DIR: artifacts/agent-p0-live-proof
 
     steps:
-      - name: Checkout exact source commit
+      - name: Checkout exact trusted source commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
           persist-credentials: false
 
       - name: Set up Python
@@ -58,6 +58,7 @@ jobs:
         run: |
           set -euo pipefail
           test -n "$OPENROUTER_API_KEY"
+          test "$GITHUB_REF" = "refs/heads/master" || test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
           echo 'OPENROUTER_API_KEY_PRESENT=TRUE'
           echo 'Credential material is not printed or persisted.'
 
@@ -138,7 +139,7 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: agent-p0-live-proof-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}
+          name: agent-p0-live-proof-${{ github.sha }}-${{ github.run_id }}
           path: artifacts/agent-p0-live-proof
           if-no-files-found: warn
           retention-days: 30
