@@ -19,6 +19,10 @@ def test_reference_images_promote_reference_to_video_mode() -> None:
     assert spec.reference_count == 3
     assert "video.reference" in spec.required_capabilities
     assert spec.source_video_required is False
+    assert (
+        spec.audio_policy
+        == "current-provider-runtime-generates-audio-and-requires-signal-pass"
+    )
 
 
 def test_series_intent_keeps_canonical_series_continuity_requirement() -> None:
@@ -31,6 +35,27 @@ def test_series_intent_keeps_canonical_series_continuity_requirement() -> None:
     assert spec.continuity_policy == "canonical-series-state-required"
     assert "video.series-continuity" in spec.required_capabilities
     assert "video.reference" in spec.required_capabilities
+
+
+def test_series_intent_fails_closed_without_bound_canonical_state() -> None:
+    spec = derive_video_product_spec("Create the next episode of the existing series.")
+    with pytest.raises(VideoProductIntentError, match="canonical series-state binding"):
+        validate_video_product_inputs(
+            spec,
+            source_video_present=False,
+            series_state_present=False,
+        )
+    validate_video_product_inputs(
+        spec,
+        source_video_present=False,
+        series_state_present=True,
+    )
+
+
+def test_standalone_episode_word_does_not_invent_series_identity() -> None:
+    spec = derive_video_product_spec("Create a 20 second episode teaser for a launch.")
+    assert spec.mode is VideoProductMode.CREATE
+    assert spec.series_continuity_required is False
 
 
 def test_revision_never_degrades_to_new_generation_without_source_video() -> None:
