@@ -1,4 +1,9 @@
+import json
+import shutil
 from pathlib import Path
+from typing import cast
+
+import pytest
 
 from services.skill_engineering_catalog import (
     SkillEngineeringCatalog,
@@ -94,6 +99,9 @@ def test_skill_create_package_is_fail_closed_and_reviewed() -> None:
     package = catalog.resolve("skill-create")
     assert package.logical_id == "skill-engineering/create"
     assert package.maturity == "IMPLEMENTED"
+    assert package.required_capabilities == frozenset(
+        {"repository_intelligence", "governance", "evidence_chain"}
+    )
     assert package.allowed_tools == frozenset(
         {"repository_intelligence", "governance", "evidence_chain"}
     )
@@ -101,3 +109,28 @@ def test_skill_create_package_is_fail_closed_and_reviewed() -> None:
     assert package.eval_kinds == frozenset(
         {"GOLDEN", "NEGATIVE", "ADVERSARIAL", "REGRESSION"}
     )
+
+
+def test_skill_engineering_catalog_rejects_cross_layer_identity(
+    tmp_path: Path,
+) -> None:
+    repository_root = Path(__file__).resolve().parents[1]
+    source = default_skill_engineering_root(repository_root) / "skill-create"
+    copied_root = tmp_path / "skills"
+    copied = copied_root / "skill-create"
+    shutil.copytree(source, copied)
+
+    manifest_path = copied / "manifest.yaml"
+    raw = json.loads(manifest_path.read_text(encoding="utf-8"))
+    manifest = cast(dict[str, object], raw)
+    manifest["logical_id"] = "assurance/security-review"
+    manifest_path.write_text(
+        json.dumps(manifest, separators=(",", ":")) + "\n",
+        encoding="utf-8",
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="logical_id must stay in skill-engineering",
+    ):
+        SkillEngineeringCatalog(copied_root)
