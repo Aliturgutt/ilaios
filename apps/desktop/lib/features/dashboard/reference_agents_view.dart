@@ -1969,7 +1969,7 @@ Future<void> _showCanonicalProvisionDialog(
         child: ListView.separated(
           shrinkWrap: true,
           itemCount: options.length,
-          separatorBuilder: (_, __) => const Divider(height: 1),
+          separatorBuilder: (_, _) => const Divider(height: 1),
           itemBuilder: (context, index) {
             final option = options[index];
             final enabled = !option.registered && option.authorityMatchesCanonical;
@@ -2022,7 +2022,7 @@ Future<void> _showCanonicalProvisionDialog(
         ),
       ),
     );
-  } catch (error) {
+  } catch (_) {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
