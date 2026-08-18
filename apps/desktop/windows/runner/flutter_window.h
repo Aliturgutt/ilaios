@@ -1,6 +1,8 @@
 #ifndef RUNNER_FLUTTER_WINDOW_H_
 #define RUNNER_FLUTTER_WINDOW_H_
 
+#include "win32_window.h"
+
 #include <shellapi.h>
 
 #include <flutter/dart_project.h>
@@ -9,8 +11,6 @@
 #include <flutter/standard_method_codec.h>
 
 #include <memory>
-
-#include "win32_window.h"
 
 // A window that hosts the Flutter view plus the native Windows reference-image
 // picker/drop boundary. The channel returns file paths only; Dart performs all
