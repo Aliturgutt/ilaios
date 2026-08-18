@@ -44,25 +44,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if ! command -v ffmpeg >/dev/null 2>&1; then
-            sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-            sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/apt-mirrors.txt 2>/dev/null || true
-            sudo timeout 180 apt-get \
-              -o Acquire::Retries=3 \
-              -o Acquire::ForceIPv4=true \
-              -o Acquire::http::Timeout=15 \
-              -o Acquire::https::Timeout=15 \
-              -o Acquire::Languages=none \
-              update
-            sudo timeout 600 apt-get \
-              -o Acquire::Retries=3 \
-              -o Acquire::ForceIPv4=true \
-              -o Acquire::http::Timeout=15 \
-              -o Acquire::https::Timeout=15 \
-              install -y --no-install-recommends ffmpeg
+          if [[ -f /etc/apt/apt-mirrors.txt ]]; then
+            printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' \
+              | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
           fi
-          ffmpeg -version | head -1
-          ffprobe -version | head -1
+          sudo timeout 180s apt-get \
+            -o Acquire::Retries=3 \
+            -o Acquire::http::Timeout=15 \
+            -o Acquire::https::Timeout=15 \
+            update
+          sudo timeout 600s env DEBIAN_FRONTEND=noninteractive apt-get \
+            -o Acquire::Retries=3 \
+            -o Acquire::http::Timeout=15 \
+            -o Acquire::https::Timeout=15 \
+            install -y ffmpeg
+          ffmpeg -version | head -n 1
+          ffprobe -version | head -n 1
           sudo sysctl -w kernel.unprivileged_userns_clone=1 || true
           if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
