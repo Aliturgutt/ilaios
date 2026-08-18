@@ -97,6 +97,8 @@ def test_openai_transport_sends_structured_contract_and_requires_parameters(
     document = captured["document"]
     assert document["response_format"] == response_format
     assert document["provider"] == {"require_parameters": True}
+    assert document["max_completion_tokens"] == 128
+    assert "max_tokens" not in document
     assert "reasoning" not in document
     assert result.response_id == "response-1"
     assert result.input_tokens == 10
@@ -127,7 +129,10 @@ def test_free_router_normal_text_request_bounds_and_excludes_reasoning(
         prompt="Probe one capability.",
         max_output_tokens=128,
     )
-    assert captured["document"]["reasoning"] == {
+    document = captured["document"]
+    assert document["max_completion_tokens"] == 128
+    assert "max_tokens" not in document
+    assert document["reasoning"] == {
         "effort": "minimal",
         "exclude": True,
     }
