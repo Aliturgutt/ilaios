@@ -21,6 +21,7 @@ from hashlib import sha256
 from typing import Any, Protocol
 
 from services.ai_governance import (
+    GovernanceError,
     ModelProviderRegistry,
     RoutingPolicy,
     Scope,
@@ -208,6 +209,16 @@ class GovernedAIProviderAdapter:
             for provider_id in sorted(self._endpoints)
         }
 
+    def provider_health(self, now: datetime) -> tuple[dict[str, object], ...]:
+        """Expose circuit-derived provider health for Control Plane telemetry."""
+        return tuple(
+            self._governor.provider_health(provider_id, now)
+            for provider_id in sorted(self._endpoints)
+        )
+
+    def usage_snapshot(self, scope: Scope, now: datetime) -> dict[str, object]:
+        return self._governor.usage_snapshot(scope, now)
+
     def _execute_provider(
         self, provider_id: str, payload: dict[str, Any]
     ) -> dict[str, Any]:
@@ -223,8 +234,6 @@ class GovernedAIProviderAdapter:
 
         input_tokens = _required_nonnegative_int(payload, "input_tokens")
         max_output_tokens = _required_positive_int(payload, "max_output_tokens")
-        # Reserve a conservative prompt ceiling. UTF-8 bytes are at least as
-        # conservative as typical subword token counts for this plain text path.
         reserved_input_tokens = max(
             input_tokens,
             len(prompt.encode("utf-8")) + len(skill.instructions.encode("utf-8")),
@@ -276,11 +285,12 @@ class GovernedAIProviderAdapter:
                 last_error = exc
                 continue
 
-            self._governor.complete(admitted)
             if response.input_tokens > reserved_input_tokens:
+                self._governor.complete(admitted)
                 self._governor.record_provider_failure(provider_id, now)
                 raise AIProviderError("provider exceeded reserved input-token ceiling")
             if response.output_tokens > max_output_tokens:
+                self._governor.complete(admitted)
                 self._governor.record_provider_failure(provider_id, now)
                 raise AIProviderError("provider exceeded requested output-token ceiling")
             actual_cost = _cost(
@@ -289,6 +299,18 @@ class GovernedAIProviderAdapter:
                 response.input_tokens,
                 response.output_tokens,
             )
+            try:
+                self._governor.reconcile_cost(admitted, actual_cost)
+                self._governor.complete(admitted)
+            except GovernanceError as exc:
+                try:
+                    self._governor.complete(admitted)
+                except GovernanceError:
+                    pass
+                self._governor.record_provider_failure(provider_id, now)
+                raise AIProviderError("provider usage reconciliation failed") from exc
+            self._governor.record_provider_success(provider_id, now)
+            health = self._governor.provider_health(provider_id, now)
             return {
                 "text": response.text,
                 "response_id": response.response_id,
@@ -303,6 +325,7 @@ class GovernedAIProviderAdapter:
                 "latency_ms": int((time.monotonic() - started) * 1000),
                 "attempt": attempt,
                 "usage_warnings": list(admitted.warnings),
+                "provider_health": health,
                 "completed_at": datetime.now(timezone.utc).isoformat(),
             }
 
