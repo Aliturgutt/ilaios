@@ -29,6 +29,8 @@ from services.security_methodology_skills import (
     default_security_methodology_skills_root,
     ensure_security_methodology_skills,
 )
+from services.skill_engineering_catalog import default_skill_engineering_root
+from services.skill_engineering_runtime import ensure_skill_engineering_runtime_skills
 
 
 class P0RuntimeCompositionError(RuntimeError):
@@ -43,6 +45,7 @@ class P0RuntimeComposition:
     target_agent_count: int
     provisioned_identity_count: int
     skill_count: int
+    skill_engineering_skill_count: int
     security_provider_count: int
     verifier_provider_count: int
     ai_provider_count: int
@@ -80,15 +83,25 @@ def compose_p0_runtime(
         named,
         default_security_methodology_skills_root(repository_root),
     )
-    all_skill_ids = set(core_security) | set(engineering) | set(security_methodology)
+    skill_engineering = ensure_skill_engineering_runtime_skills(
+        named,
+        default_skill_engineering_root(repository_root),
+    )
+    all_skill_ids = (
+        set(core_security)
+        | set(engineering)
+        | set(security_methodology)
+        | set(skill_engineering)
+    )
     if (
         len(core_security) != 12
         or len(engineering) != 10
         or len(security_methodology) != 5
-        or len(all_skill_ids) != 27
+        or len(skill_engineering) != 5
+        or len(all_skill_ids) != 32
     ):
         raise P0RuntimeCompositionError(
-            "P0 plus verifier/security methodology skill coverage drifted"
+            "P0 plus verifier/security/skill-engineering coverage drifted"
         )
 
     security_specs = security_local_provider_specs()
@@ -150,6 +163,7 @@ def compose_p0_runtime(
         target_agent_count=len(p0),
         provisioned_identity_count=len(identities),
         skill_count=len(all_skill_ids),
+        skill_engineering_skill_count=len(skill_engineering),
         security_provider_count=len(security_specs),
         verifier_provider_count=1,
         ai_provider_count=ai_provider_count,

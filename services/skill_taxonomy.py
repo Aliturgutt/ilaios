@@ -26,6 +26,15 @@ _ALLOWED_FACTORY_FAMILIES: Final = frozenset(
     {"web", "software", "video", "research"}
 )
 _ALLOWED_CAPABILITY_FAMILIES: Final = frozenset({"browser"})
+_SKILL_ENGINEERING_RUNTIME_SKILL_IDS: Final = frozenset(
+    {
+        "skill-create",
+        "skill-validate",
+        "skill-evaluate",
+        "skill-benchmark",
+        "skill-regression",
+    }
+)
 _SECURITY_REVIEW_SKILL_ID: Final = "ilaios-security-review"
 _DIFFERENTIAL_REVIEW_SKILL_ID: Final = "ilaios-differential-review"
 _AGENTIC_ACTION_AUDIT_SKILL_ID: Final = "ilaios-agentic-action-audit"
@@ -95,13 +104,13 @@ def _node(*path: str, backing_skill_ids: tuple[str, ...] = ()) -> SkillTaxonomyN
 
 
 SKILL_TAXONOMY: Final[tuple[SkillTaxonomyNode, ...]] = (
-    _node("skill-engineering", "create"),
+    _node("skill-engineering", "create", backing_skill_ids=("skill-create",)),
     _node("skill-engineering", "lint"),
-    _node("skill-engineering", "validate"),
+    _node("skill-engineering", "validate", backing_skill_ids=("skill-validate",)),
     _node("skill-engineering", "security-scan"),
-    _node("skill-engineering", "evaluate"),
-    _node("skill-engineering", "benchmark"),
-    _node("skill-engineering", "regression"),
+    _node("skill-engineering", "evaluate", backing_skill_ids=("skill-evaluate",)),
+    _node("skill-engineering", "benchmark", backing_skill_ids=("skill-benchmark",)),
+    _node("skill-engineering", "regression", backing_skill_ids=("skill-regression",)),
     _node("skill-engineering", "compatibility"),
     _node("skill-engineering", "promote"),
     _node(
@@ -344,6 +353,7 @@ def validate_skill_taxonomy() -> None:
         set(REQUIRED_SKILL_IDS)
         | set(WEB_FACTORY_NATIVE_SKILL_IDS)
         | set(WEB_FACTORY_BROWSER_SKILL_IDS)
+        | set(_SKILL_ENGINEERING_RUNTIME_SKILL_IDS)
         | set(_SECURITY_METHODOLOGY_SKILL_IDS)
         | set(_VIDEO_RUNTIME_SKILL_IDS)
     )
