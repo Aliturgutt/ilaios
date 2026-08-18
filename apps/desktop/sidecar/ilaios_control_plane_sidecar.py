@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+from services.agent_readiness_store import AgentReadinessStore
 from services.control_plane.api import ControlPlane, ControlPlaneConfig
 from services.control_plane.live_state import LiveStateTransport
 from services.control_plane.migrations import current_schema_version
@@ -34,12 +35,22 @@ from services.integrations.reference_aware_provider_video_runtime import (
     ReferenceAwareProviderBackedDesktopVideoRuntime,
 )
 from services.integrations.video_runtime import VideoRuntimeError
+from services.openrouter_agent_catalog import (
+    OpenRouterAgentCatalogError,
+    discover_free_openrouter_agent_configuration,
+)
+from services.p0_ai_provider_config import (
+    P0AIProviderConfigError,
+    load_p0_ai_provider_configuration,
+)
+from services.p0_runtime_composition import compose_p0_runtime
 from services.reference_asset_admission import (
     MAX_UNBOUND_REFERENCE_ASSETS,
     MAX_UNBOUND_REFERENCE_BYTES,
     ReferenceAssetAdmissionStore,
 )
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
+from services.runtime.security_agent_adapters import SecurityAgentRuntimeAdapters
 from src.video_automation.openrouter_video_provider import SEEDANCE_FREE_MODEL_ID
 
 
@@ -68,12 +79,60 @@ def main(argv: Sequence[str] | None = None) -> int:
     control_plane = ControlPlane(ControlPlaneConfig(database, token))
     workflow_store = WorkflowStore(WorkflowStoreConfig(database))
     live_state = LiveStateTransport(database)
-    governed_runtime = GovernedRuntime(database)
+    openrouter_api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
+
+    try:
+        ai_configuration = load_p0_ai_provider_configuration()
+    except P0AIProviderConfigError as error:
+        raise SystemExit(f"Agent AI provider configuration rejected: {error}") from error
+    ai_configuration_source = "explicit" if ai_configuration is not None else "disabled"
+    if ai_configuration is None and openrouter_api_key:
+        try:
+            ai_configuration = discover_free_openrouter_agent_configuration(
+                api_key=openrouter_api_key
+            )
+            if ai_configuration is not None:
+                ai_configuration_source = "openrouter-live-free-only"
+        except OpenRouterAgentCatalogError:
+            # Provider/network/catalog availability must not prevent Desktop from
+            # starting. P0 AI remains unconfigured and readiness cannot promote.
+            ai_configuration = None
+            ai_configuration_source = "openrouter-catalog-unavailable"
+
+    security_agent_adapters = SecurityAgentRuntimeAdapters()
+    runtime_adapters = dict(security_agent_adapters.runtime_adapters())
+    if ai_configuration is not None:
+        for adapter_kind, adapter in ai_configuration.adapter.runtime_adapters().items():
+            if adapter_kind in runtime_adapters:
+                raise SystemExit("Agent runtime adapter identity collision")
+            runtime_adapters[adapter_kind] = adapter
+
+    # There is exactly one canonical governed runtime. Security and external AI
+    # providers are dependency-injected adapters; they do not create a second
+    # Core, scheduler, router, agent engine, or evidence authority.
+    governed_runtime = GovernedRuntime(
+        database,
+        external_adapters=runtime_adapters,
+    )
     scheduler = DurableWorkerScheduler(
         database,
         lease_duration=timedelta(seconds=arguments.lease_seconds),
     )
     grant_policy = DurableGrantPolicy(database)
+    p0_agents = compose_p0_runtime(
+        governed_runtime,
+        grant_policy,
+        engineering_skills_root=_software_factory_skills_path(),
+        ai_adapter=(ai_configuration.adapter if ai_configuration is not None else None),
+        ai_provider_capabilities=(
+            ai_configuration.provider_capabilities
+            if ai_configuration is not None
+            else None
+        ),
+    )
+    readiness_store = AgentReadinessStore(root / "agent-readiness.sqlite3")
+    readiness_store.verify()
+
     evidence_store = EvidenceStore(root / "evidence")
     reference_assets = ReferenceAssetAdmissionStore(
         root / "reference-assets.sqlite3",
@@ -92,7 +151,6 @@ def main(argv: Sequence[str] | None = None) -> int:
         goal = control_plane.get_goal(token, job.goal_id)
         return goal.objective
 
-    provider_api_key = os.environ.get("OPENROUTER_API_KEY", "").strip()
     video_model_id = os.environ.get(
         "ILAIOS_VIDEO_MODEL_ID",
         SEEDANCE_FREE_MODEL_ID,
@@ -103,7 +161,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     ).strip()
     video_finished_product_configured = False
     video_provider = "unavailable"
-    if provider_api_key:
+    if openrouter_api_key:
         try:
             video_runtime = ReferenceAwareProviderBackedDesktopVideoRuntime(
                 root / "video",
@@ -111,7 +169,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 governance,
                 evidence_store,
                 objective_resolver=resolve_objective,
-                api_key=provider_api_key,
+                api_key=openrouter_api_key,
                 model_id=video_model_id,
                 qa_model_id=video_qa_model_id,
                 reference_assets=reference_assets,
@@ -223,6 +281,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         "identity_port": identity_port,
         "account_sign_in_configured": identity is not None,
         "governed_execution_configured": identity is not None,
+        "p0_target_agent_count": p0_agents.target_agent_count,
+        "p0_provisioned_identity_count": p0_agents.provisioned_identity_count,
+        "p0_skill_count": p0_agents.skill_count,
+        "p0_security_runtime_configured": p0_agents.security_provider_count == 5,
+        "p0_ai_runtime_configured": p0_agents.ai_configured,
+        "p0_ai_provider_count": p0_agents.ai_provider_count,
+        "p0_ai_configuration_source": ai_configuration_source,
+        "agent_readiness_store_configured": True,
+        "openrouter_secret_present": bool(openrouter_api_key),
         "video_finished_product_configured": video_finished_product_configured,
         "video_provider": video_provider,
         "video_reference_assets_configured": True,
@@ -274,6 +341,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         control_server.server_close()
         control_thread.join(timeout=5)
     return 0
+
+
+def _software_factory_skills_path() -> Path:
+    if getattr(sys, "frozen", False):
+        base = Path(getattr(sys, "_MEIPASS"))
+        path = base / "tools" / "software-factory" / "skills"
+    else:
+        path = (
+            Path(__file__).resolve().parents[3]
+            / "tools"
+            / "software-factory"
+            / "skills"
+        )
+    if not path.is_dir():
+        raise RuntimeError("canonical Software Factory skill registry is missing")
+    return path
 
 
 def _identity_configuration_path() -> Path:
