@@ -72,22 +72,23 @@ def test_agent_provision_command_is_idempotent_and_server_resolves_authority(
     )
 
 
-@pytest.mark.parametrize(
-    "field",
-    ["authorities", "capabilities", "permissions", "allowed_callers", "allowed_targets"],
-)
-def test_agent_command_rejects_caller_supplied_authority(
-    tmp_path: Path, field: str
-) -> None:
+def test_agent_command_rejects_caller_supplied_authority(tmp_path: Path) -> None:
     runtime = _runtime(tmp_path)
+    fields = (
+        "authorities",
+        "capabilities",
+        "permissions",
+        "allowed_callers",
+        "allowed_targets",
+    )
 
-    with pytest.raises(ValueError, match="server-resolved"):
-        handle_agent_command(
-            runtime,
-            {"operation": "provision", "agent_id": AGENT_ID, field: ["admin"]},
-        )
-
-    assert runtime.agents() == ()
+    for field in fields:
+        with pytest.raises(ValueError, match="server-resolved"):
+            handle_agent_command(
+                runtime,
+                {"operation": "provision", "agent_id": AGENT_ID, field: ["admin"]},
+            )
+        assert runtime.agents() == ()
 
 
 def test_agent_command_rejects_unknown_identity_and_unexpected_fields(
