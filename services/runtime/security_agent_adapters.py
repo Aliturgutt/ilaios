@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
@@ -14,6 +15,17 @@ from services.security_factory import (
     SecurityScope,
     Severity,
 )
+from services.security_methodology_analysis import (
+    SecurityMethodologyAnalysisError,
+    SecurityMethodologyAnalyzer,
+)
+from services.security_methodology_skills import (
+    AGENTIC_ACTION_AUDIT_SKILL_ID,
+    DIFFERENTIAL_REVIEW_SKILL_ID,
+    SECURITY_REVIEW_SKILL_ID,
+    SUPPLY_CHAIN_AUDIT_SKILL_ID,
+    THREAT_MODEL_SKILL_ID,
+)
 
 CODESEC_ADAPTER_KIND = "ilaios.runtime.security.codesec.v1"
 WEB_API_ADAPTER_KIND = "ilaios.runtime.security.web-api.v1"
@@ -24,10 +36,24 @@ VERIFIER_ADAPTER_KIND = "ilaios.runtime.security.verifier.v1"
 SECURITY_LOCAL_PROVIDERS: Mapping[str, tuple[str, str]] = {
     "ilaios.security.local.codesec": (CODESEC_ADAPTER_KIND, "security.sast"),
     "ilaios.security.local.web-api": (WEB_API_ADAPTER_KIND, "security.web-api"),
-    "ilaios.security.local.supply-chain": (SUPPLY_CHAIN_ADAPTER_KIND, "security.dependency"),
-    "ilaios.security.local.infrastructure": (INFRASTRUCTURE_ADAPTER_KIND, "security.infrastructure"),
+    "ilaios.security.local.supply-chain": (
+        SUPPLY_CHAIN_ADAPTER_KIND,
+        "security.dependency",
+    ),
+    "ilaios.security.local.infrastructure": (
+        INFRASTRUCTURE_ADAPTER_KIND,
+        "security.infrastructure",
+    ),
     "ilaios.security.local.verifier": (VERIFIER_ADAPTER_KIND, "security.verify"),
 }
+
+_PRIMARY_CODESEC_SKILL = "ilaios.skill.security.sast.v1"
+_PRIMARY_WEB_API_SKILL = "ilaios.skill.security.web-api.v1"
+_PRIMARY_SUPPLY_CHAIN_SKILL = "ilaios.skill.security.supply-chain.v1"
+_PRIMARY_INFRASTRUCTURE_SKILL = "ilaios.skill.security.infrastructure.v1"
+_PRIMARY_VERIFIER_SKILL = "ilaios.skill.security.verify.v1"
+_RESERVED_SKILL_KEY = "_ilaios_skill"
+_SHA1 = re.compile(r"^[0-9a-f]{40}$")
 
 
 class SecurityAgentAdapterError(RuntimeError):
@@ -37,8 +63,11 @@ class SecurityAgentAdapterError(RuntimeError):
 class SecurityAgentRuntimeAdapters:
     def __init__(self, factory: SecurityFactory | None = None) -> None:
         self._factory = factory or SecurityFactory()
+        self._methodology = SecurityMethodologyAnalyzer(self._factory)
 
-    def runtime_adapters(self) -> Mapping[str, Callable[[dict[str, Any]], dict[str, Any]]]:
+    def runtime_adapters(
+        self,
+    ) -> Mapping[str, Callable[[dict[str, Any]], dict[str, Any]]]:
         return {
             CODESEC_ADAPTER_KIND: self._codesec,
             WEB_API_ADAPTER_KIND: self._web_api,
@@ -48,18 +77,77 @@ class SecurityAgentRuntimeAdapters:
         }
 
     def _codesec(self, payload: dict[str, Any]) -> dict[str, Any]:
-        report = self._factory.scan_repository(_scope(payload))
+        scope = _scope(payload)
+        skill_id = _skill_id(payload, default=_PRIMARY_CODESEC_SKILL)
+        try:
+            if skill_id == SECURITY_REVIEW_SKILL_ID:
+                return _report_json(self._methodology.security_review(scope))
+            if skill_id == DIFFERENTIAL_REVIEW_SKILL_ID:
+                return _report_json(
+                    self._methodology.differential_review(
+                        scope,
+                        base_sha=_sha(payload, "base_sha"),
+                        head_sha=_sha(payload, "head_sha"),
+                        changed_paths=_string_tuple(payload, "changed_paths"),
+                    )
+                )
+            if skill_id == THREAT_MODEL_SKILL_ID:
+                report, surface = self._methodology.threat_model(scope)
+                output = _report_json(report)
+                output["threat_surface"] = {
+                    key: list(value) for key, value in sorted(surface.items())
+                }
+                return output
+        except SecurityMethodologyAnalysisError as exc:
+            raise SecurityAgentAdapterError(
+                "security methodology input or scope failed closed"
+            ) from exc
+
+        if skill_id != _PRIMARY_CODESEC_SKILL:
+            raise SecurityAgentAdapterError("CodeSec skill is not authorized")
+        report = self._factory.scan_repository(scope)
         return _report_json(_filter_report(report, {"sast", "secret"}))
 
     def _supply_chain(self, payload: dict[str, Any]) -> dict[str, Any]:
-        report = self._factory.scan_repository(_scope(payload))
+        scope = _scope(payload)
+        skill_id = _skill_id(payload, default=_PRIMARY_SUPPLY_CHAIN_SKILL)
+        if skill_id == SUPPLY_CHAIN_AUDIT_SKILL_ID:
+            try:
+                return _report_json(self._methodology.supply_chain_audit(scope))
+            except SecurityMethodologyAnalysisError as exc:
+                raise SecurityAgentAdapterError(
+                    "supply-chain methodology failed closed"
+                ) from exc
+        if skill_id != _PRIMARY_SUPPLY_CHAIN_SKILL:
+            raise SecurityAgentAdapterError(
+                "SupplyChainSec skill is not authorized"
+            )
+        report = self._factory.scan_repository(scope)
         return _report_json(_filter_report(report, {"supply-chain"}))
 
     def _infrastructure(self, payload: dict[str, Any]) -> dict[str, Any]:
-        report = self._factory.scan_repository(_scope(payload))
+        scope = _scope(payload)
+        skill_id = _skill_id(payload, default=_PRIMARY_INFRASTRUCTURE_SKILL)
+        if skill_id == AGENTIC_ACTION_AUDIT_SKILL_ID:
+            try:
+                return _report_json(self._methodology.audit_agentic_actions(scope))
+            except SecurityMethodologyAnalysisError as exc:
+                raise SecurityAgentAdapterError(
+                    "agentic action audit failed closed"
+                ) from exc
+        if skill_id != _PRIMARY_INFRASTRUCTURE_SKILL:
+            raise SecurityAgentAdapterError(
+                "InfrastructureSec skill is not authorized"
+            )
+        report = self._factory.scan_repository(scope)
         return _report_json(_filter_report(report, {"infrastructure"}))
 
     def _web_api(self, payload: dict[str, Any]) -> dict[str, Any]:
+        if (
+            _skill_id(payload, default=_PRIMARY_WEB_API_SKILL)
+            != _PRIMARY_WEB_API_SKILL
+        ):
+            raise SecurityAgentAdapterError("WebAPISec skill is not authorized")
         scope = _scope(payload)
         target_url = _text(payload, "target_url")
         status_code = payload.get("status_code")
@@ -73,22 +161,38 @@ class SecurityAgentRuntimeAdapters:
             raise SecurityAgentAdapterError("headers must be a string map")
         try:
             report = self._factory.analyze_dast_observation(
-                scope, target_url, status_code, headers
+                scope,
+                target_url,
+                status_code,
+                headers,
             )
         except SecurityFactoryError as exc:
-            raise SecurityAgentAdapterError("web/api observation is outside defensive scope") from exc
+            raise SecurityAgentAdapterError(
+                "web/api observation is outside defensive scope"
+            ) from exc
         return _report_json(report)
 
     def _verify(self, payload: dict[str, Any]) -> dict[str, Any]:
+        if (
+            _skill_id(payload, default=_PRIMARY_VERIFIER_SKILL)
+            != _PRIMARY_VERIFIER_SKILL
+        ):
+            raise SecurityAgentAdapterError(
+                "SecurityVerifier skill is not authorized"
+            )
         producer_id = _text(payload, "producer_id")
         verifier_id = _text(payload, "verifier_id")
         report = _report_from_json(payload.get("report"))
         try:
             passed = self._factory.independently_verify(
-                report, producer_id=producer_id, verifier_id=verifier_id
+                report,
+                producer_id=producer_id,
+                verifier_id=verifier_id,
             )
         except SecurityFactoryError as exc:
-            raise SecurityAgentAdapterError("security verification failed closed") from exc
+            raise SecurityAgentAdapterError(
+                "security verification failed closed"
+            ) from exc
         return {
             "verified": passed,
             "scope_id": report.scope_id,
@@ -105,10 +209,46 @@ def _scope(payload: dict[str, Any]) -> SecurityScope:
     try:
         return SecurityScope(scope_id, Path(repository_root).resolve())
     except SecurityFactoryError as exc:
-        raise SecurityAgentAdapterError("security repository scope is invalid") from exc
+        raise SecurityAgentAdapterError(
+            "security repository scope is invalid"
+        ) from exc
 
 
-def _filter_report(report: SecurityReport, categories: set[str]) -> SecurityReport:
+def _skill_id(payload: dict[str, Any], *, default: str) -> str:
+    raw = payload.get(_RESERVED_SKILL_KEY)
+    if raw is None:
+        return default
+    if not isinstance(raw, dict):
+        raise SecurityAgentAdapterError("runtime skill metadata is invalid")
+    skill_id = raw.get("skill_id")
+    if not isinstance(skill_id, str) or not skill_id or skill_id != skill_id.strip():
+        raise SecurityAgentAdapterError("runtime skill identity is invalid")
+    return skill_id
+
+
+def _sha(payload: dict[str, Any], field: str) -> str:
+    value = _text(payload, field)
+    if _SHA1.fullmatch(value) is None:
+        raise SecurityAgentAdapterError(
+            f"{field} must be a lowercase 40-character SHA"
+        )
+    return value
+
+
+def _string_tuple(payload: dict[str, Any], field: str) -> tuple[str, ...]:
+    value = payload.get(field)
+    if not isinstance(value, list) or not all(
+        isinstance(item, str) and item and item == item.strip()
+        for item in value
+    ):
+        raise SecurityAgentAdapterError(f"{field} must be a list of strings")
+    return tuple(value)
+
+
+def _filter_report(
+    report: SecurityReport,
+    categories: set[str],
+) -> SecurityReport:
     return SecurityReport(
         report.scope_id,
         tuple(item for item in report.findings if item.category in categories),
@@ -139,17 +279,25 @@ def _report_json(report: SecurityReport) -> dict[str, Any]:
 
 def _report_from_json(value: object) -> SecurityReport:
     if not isinstance(value, dict):
-        raise SecurityAgentAdapterError("verification report must be an object")
+        raise SecurityAgentAdapterError(
+            "verification report must be an object"
+        )
     scope_id = value.get("scope_id")
     raw_findings = value.get("findings")
     if not isinstance(scope_id, str) or not scope_id.strip():
-        raise SecurityAgentAdapterError("verification report scope is invalid")
+        raise SecurityAgentAdapterError(
+            "verification report scope is invalid"
+        )
     if not isinstance(raw_findings, list):
-        raise SecurityAgentAdapterError("verification report findings are invalid")
+        raise SecurityAgentAdapterError(
+            "verification report findings are invalid"
+        )
     findings: list[SecurityFinding] = []
     for raw in raw_findings:
         if not isinstance(raw, dict):
-            raise SecurityAgentAdapterError("verification finding must be an object")
+            raise SecurityAgentAdapterError(
+                "verification finding must be an object"
+            )
         try:
             finding = SecurityFinding(
                 finding_id=str(raw["finding_id"]),
@@ -161,7 +309,9 @@ def _report_from_json(value: object) -> SecurityReport:
                 remediation=str(raw["remediation"]),
             )
         except (KeyError, ValueError, TypeError) as exc:
-            raise SecurityAgentAdapterError("verification finding contract is invalid") from exc
+            raise SecurityAgentAdapterError(
+                "verification finding contract is invalid"
+            ) from exc
         if not all(
             (
                 finding.finding_id,
@@ -171,7 +321,9 @@ def _report_from_json(value: object) -> SecurityReport:
                 finding.remediation,
             )
         ) or finding.line < 0:
-            raise SecurityAgentAdapterError("verification finding fields are invalid")
+            raise SecurityAgentAdapterError(
+                "verification finding fields are invalid"
+            )
         findings.append(finding)
     return SecurityReport(scope_id.strip(), tuple(findings))
 
@@ -179,5 +331,7 @@ def _report_from_json(value: object) -> SecurityReport:
 def _text(payload: dict[str, Any], field: str) -> str:
     value = payload.get(field)
     if not isinstance(value, str) or not value or value != value.strip():
-        raise SecurityAgentAdapterError(f"{field} must be non-empty and trimmed")
+        raise SecurityAgentAdapterError(
+            f"{field} must be non-empty and trimmed"
+        )
     return value
