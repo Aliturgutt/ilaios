@@ -1,9 +1,9 @@
 """Provider-neutral product intent for the canonical ILAIOS Video Factory.
 
 This module does not generate media, route providers, authorize spend, or replace
-any existing Video Factory planner.  It resolves a bounded product mode before
-provider execution so unsupported edit/localization requests fail closed instead
-of silently degrading into text-to-video generation.
+any existing Video Factory planner. It resolves a bounded product mode before
+provider execution so unsupported edit/localization or output-shape requests fail
+closed instead of silently degrading into a different finished product.
 """
 
 from __future__ import annotations
@@ -146,8 +146,9 @@ def validate_video_product_inputs(
     spec: VideoProductSpec,
     *,
     source_video_present: bool,
+    supported_aspect_ratios: tuple[str, ...] = ("16:9",),
 ) -> None:
-    """Fail closed when a mode requires source media the current request lacks."""
+    """Fail closed when requested inputs/output shape cannot be materialized exactly."""
 
     if spec.source_video_required and not source_video_present:
         raise VideoProductIntentError(
@@ -156,6 +157,11 @@ def validate_video_product_inputs(
         )
     if spec.mode is VideoProductMode.REFERENCE_TO_VIDEO and spec.reference_count == 0:
         raise VideoProductIntentError("reference-to-video requires at least one reference")
+    if spec.aspect_ratio not in supported_aspect_ratios:
+        raise VideoProductIntentError(
+            f"requested aspect ratio '{spec.aspect_ratio}' is not materialized by the "
+            "current finished-product runtime; refusing to return a mismatched video"
+        )
 
 
 def _matches_any(value: str, patterns: tuple[str, ...]) -> bool:
