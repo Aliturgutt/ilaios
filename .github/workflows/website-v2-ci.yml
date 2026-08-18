@@ -1,0 +1,17 @@
+name: Website V2 CI
+
+on:
+  push:
+    branches: [website-v2-redteam]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: website-v2-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  website:
+    uses: ./.github/workflows/website-ci.yml
