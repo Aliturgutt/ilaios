@@ -31,6 +31,7 @@ void main() {
       ..remove('ILAIOS_DESKTOP_OIDC_PROVIDERS_JSON')
       ..remove('OPENROUTER_API_KEY');
 
+    final startup = Stopwatch()..start();
     final process = await Process.start(
       sidecar.path,
       <String>[
@@ -41,8 +42,14 @@ void main() {
       ],
       environment: environment,
     );
-    unawaited(process.stdout.drain<void>());
-    unawaited(process.stderr.drain<void>());
+    final stdoutBuffer = StringBuffer();
+    final stderrBuffer = StringBuffer();
+    final stdoutSubscription = process.stdout
+        .transform(utf8.decoder)
+        .listen(stdoutBuffer.write);
+    final stderrSubscription = process.stderr
+        .transform(utf8.decoder)
+        .listen(stderrBuffer.write);
     Uri? identityUri;
     addTearDown(() async {
       var exited = false;
@@ -77,6 +84,8 @@ void main() {
           // The directory-release assertion below remains authoritative.
         }
       }
+      await stdoutSubscription.cancel();
+      await stderrSubscription.cancel();
       for (var attempt = 0; attempt < 50 && await root.exists(); attempt += 1) {
         try {
           await root.delete(recursive: true);
@@ -92,7 +101,10 @@ void main() {
     });
 
     Map<String, dynamic>? ready;
-    for (var attempt = 0; attempt < 150; attempt += 1) {
+    // PyInstaller --onefile performs a bounded cold extraction before Python can
+    // publish readiness. The Windows gate measures that real packaged path, so
+    // allow up to 45 seconds while retaining exact startup-latency evidence.
+    for (var attempt = 0; attempt < 450; attempt += 1) {
       if (await readyFile.exists()) {
         try {
           final decoded = jsonDecode(await readyFile.readAsString());
@@ -106,8 +118,27 @@ void main() {
       }
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
-    expect(ready, isNotNull, reason: 'Packaged Desktop runtime must publish readiness');
-    final host = ready!['host'];
+    startup.stop();
+    if (ready == null) {
+      int? exitCode;
+      try {
+        exitCode = await process.exitCode.timeout(const Duration(milliseconds: 100));
+      } on TimeoutException {
+        // A still-running process is useful failure evidence too.
+      }
+      fail(
+        'Packaged Desktop runtime must publish readiness within 45 seconds. '
+        'startup_ms=${startup.elapsedMilliseconds}; '
+        'exit_code=${exitCode ?? 'running'}; '
+        'stdout=${stdoutBuffer.toString()}; '
+        'stderr=${stderrBuffer.toString()}',
+      );
+    }
+    // Keep the measured packaged cold-start latency in CI output as evidence.
+    // ignore: avoid_print
+    print('ILAIOS_PACKAGED_READY_LATENCY_MS=${startup.elapsedMilliseconds}');
+
+    final host = ready['host'];
     final port = ready['port'];
     final identityHost = ready['identity_host'];
     final identityPort = ready['identity_port'];
@@ -164,7 +195,7 @@ void main() {
     expect(projection.connected, isTrue);
     expect(projection.goalCount, 1);
     expect(projection.jobCount, 1);
-  }, timeout: const Timeout(Duration(seconds: 60)));
+  }, timeout: const Timeout(Duration(seconds: 90)));
 }
 
 Future<void> _requestShutdown(Uri baseUri, String token) async {

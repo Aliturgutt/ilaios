@@ -5,12 +5,13 @@ import 'dart:io';
 
 import '../control_plane/client.dart';
 import '../reference_assets/reference_asset_draft.dart';
+import '../source_media/source_media_draft.dart';
 import 'identity_client_core.dart' as core;
 
 /// Backward-compatible IdentityClient that extends the existing authenticated
-/// session client with the shared Web/Video reference-asset submission contract.
-/// All non-reference auth/session behavior remains delegated to the canonical
-/// implementation in [core.IdentityClient].
+/// session client with governed Web/Video reference assets and one private
+/// source-video input. Raw media bytes are uploaded separately; execution intent
+/// receives only immutable server-side asset identifiers.
 class IdentityClient extends core.IdentityClient {
   factory IdentityClient({
     required Uri baseUri,
@@ -24,8 +25,8 @@ class IdentityClient extends core.IdentityClient {
       transportToken: transportToken,
       transport: resolvedTransport,
       retryDelay: retryDelay,
-      referenceBaseUri: baseUri,
-      referenceTransportToken: transportToken,
+      assetBaseUri: baseUri,
+      assetTransportToken: transportToken,
     );
   }
 
@@ -34,18 +35,19 @@ class IdentityClient extends core.IdentityClient {
     required super.transportToken,
     required ControlPlaneTransport transport,
     super.retryDelay,
-    required this._referenceBaseUri,
-    required this._referenceTransportToken,
-  })  : _referenceTransport = transport,
+    required this._assetBaseUri,
+    required this._assetTransportToken,
+  })  : _assetTransport = transport,
         super(transport: transport);
 
   static const int _maxReferenceAssets = 20;
   static const int _maxReferenceAssetBytes = 10 * 1024 * 1024;
   static const int _maxReferenceTotalBytes = 100 * 1024 * 1024;
+  static const int _maxSourceMediaBytes = 128 * 1024 * 1024;
 
-  final Uri _referenceBaseUri;
-  final String _referenceTransportToken;
-  final ControlPlaneTransport _referenceTransport;
+  final Uri _assetBaseUri;
+  final String _assetTransportToken;
+  final ControlPlaneTransport _assetTransport;
 
   @override
   Future<core.GovernedPromptSubmission> submitPrompt(
@@ -63,6 +65,7 @@ class IdentityClient extends core.IdentityClient {
     }
 
     final references = ReferenceAssetSubmissionBus.pending;
+    final source = SourceMediaSubmissionBus.pending;
     if (references.isNotEmpty) {
       final factoryCount = _referenceFactoryCount(normalized);
       if (factoryCount == 0) {
@@ -76,49 +79,77 @@ class IdentityClient extends core.IdentityClient {
         );
       }
     }
-    _validateReferenceAssets(references);
-
-    final referenceAssetIds = <String>[];
-    for (final reference in references) {
-      referenceAssetIds.add(await _uploadReferenceAsset(reference, session));
-    }
-
-    final payload = await _sessionPost(
-      '/v1/desktop/intent',
-      <String, Object?>{
-        'objective': normalized,
-        'reference_asset_ids': referenceAssetIds,
-      },
-      'authenticated intent',
-      session,
-      expectedStatus: HttpStatus.created,
-    );
-    final goalId = payload['goal_id'];
-    final jobId = payload['job_id'];
-    final state = payload['state'];
-    final requestId = payload['request_id'];
-    final executionStatus = payload['execution_status'];
-    if (goalId is! String ||
-        goalId.isEmpty ||
-        jobId is! String ||
-        jobId.isEmpty ||
-        state is! String ||
-        state.isEmpty ||
-        requestId is! String ||
-        requestId.isEmpty ||
-        executionStatus is! String ||
-        executionStatus.isEmpty) {
+    if (source != null && !_isVideoFactoryObjective(normalized)) {
       throw const core.IdentityClientException(
-        'Authenticated intent response is malformed',
+        'Source video may only be submitted through Video Factory',
       );
     }
-    return core.GovernedPromptSubmission(
-      goalId: goalId,
-      jobId: jobId,
-      state: state,
-      requestId: requestId,
-      executionStatus: executionStatus,
-    );
+    if (source != null && references.isNotEmpty) {
+      throw const core.IdentityClientException(
+        'Source video and reference images cannot be combined until that exact revision contract is verified',
+      );
+    }
+    _validateReferenceAssets(references);
+    if (source != null) _validateSourceMedia(source);
+
+    final referenceAssetIds = <String>[];
+    String? sourceAssetId;
+    try {
+      for (final reference in references) {
+        referenceAssetIds.add(await _uploadReferenceAsset(reference, session));
+      }
+      if (source != null) {
+        sourceAssetId = await _uploadSourceMedia(source, session);
+      }
+
+      final payload = await _sessionPost(
+        '/v1/desktop/intent',
+        <String, Object?>{
+          'objective': normalized,
+          'reference_asset_ids': referenceAssetIds,
+          'source_media_asset_id': ?sourceAssetId,
+        },
+        'authenticated intent',
+        session,
+        expectedStatus: HttpStatus.created,
+      );
+      final goalId = payload['goal_id'];
+      final jobId = payload['job_id'];
+      final state = payload['state'];
+      final requestId = payload['request_id'];
+      final executionStatus = payload['execution_status'];
+      if (goalId is! String ||
+          goalId.isEmpty ||
+          jobId is! String ||
+          jobId.isEmpty ||
+          state is! String ||
+          state.isEmpty ||
+          requestId is! String ||
+          requestId.isEmpty ||
+          executionStatus is! String ||
+          executionStatus.isEmpty) {
+        throw const core.IdentityClientException(
+          'Authenticated intent response is malformed',
+        );
+      }
+      return core.GovernedPromptSubmission(
+        goalId: goalId,
+        jobId: jobId,
+        state: state,
+        requestId: requestId,
+        executionStatus: executionStatus,
+      );
+    } catch (_) {
+      if (sourceAssetId != null) {
+        try {
+          await _discardSourceMedia(sourceAssetId, session);
+        } catch (_) {
+          // The source may already be immutably bound to a prepared request.
+          // Server-side retention/recovery remains authoritative in that case.
+        }
+      }
+      rethrow;
+    }
   }
 
   Future<String> _uploadReferenceAsset(
@@ -153,6 +184,49 @@ class IdentityClient extends core.IdentityClient {
     return assetId;
   }
 
+  Future<String> _uploadSourceMedia(
+    SourceMediaDraft source,
+    core.DesktopUserSession session,
+  ) async {
+    final payload = await _sessionPost(
+      '/v1/source-media',
+      <String, Object?>{
+        'filename': source.filename,
+        'mime_type': source.mimeType,
+        'sha256': source.sha256Hex,
+        'content_base64': base64Encode(source.bytes),
+      },
+      'source video upload',
+      session,
+      expectedStatus: HttpStatus.created,
+    );
+    final assetId = payload['asset_id'];
+    final digest = payload['sha256'];
+    final sizeBytes = payload['size_bytes'];
+    if (assetId is! String ||
+        !assetId.startsWith('src-') ||
+        digest != source.sha256Hex ||
+        sizeBytes != source.sizeBytes) {
+      throw const core.IdentityClientException(
+        'Source video upload response is malformed',
+      );
+    }
+    return assetId;
+  }
+
+  Future<void> _discardSourceMedia(
+    String assetId,
+    core.DesktopUserSession session,
+  ) async {
+    await _sessionPost(
+      '/v1/source-media/discard',
+      <String, Object?>{'asset_id': assetId},
+      'source video discard',
+      session,
+      expectedStatus: HttpStatus.ok,
+    );
+  }
+
   Future<Map<String, dynamic>> _sessionPost(
     String path,
     Map<String, Object?> body,
@@ -160,11 +234,11 @@ class IdentityClient extends core.IdentityClient {
     core.DesktopUserSession session, {
     required int expectedStatus,
   }) async {
-    final response = await _referenceTransport.post(
-      _referenceBaseUri.resolve(path),
+    final response = await _assetTransport.post(
+      _assetBaseUri.resolve(path),
       body: jsonEncode(body),
       headers: <String, String>{
-        'Authorization': 'Bearer $_referenceTransportToken',
+        'Authorization': 'Bearer $_assetTransportToken',
         'X-ILAIOS-Session': session.sessionId,
       },
     );
@@ -246,12 +320,41 @@ class IdentityClient extends core.IdentityClient {
       );
     }
   }
+
+  static void _validateSourceMedia(SourceMediaDraft source) {
+    if (source.filename.trim().isEmpty ||
+        source.filename.length > 180 ||
+        !source.filename.toLowerCase().endsWith('.mp4')) {
+      throw const core.IdentityClientException('Source video filename is invalid');
+    }
+    if (source.sizeBytes < 12 || source.sizeBytes > _maxSourceMediaBytes) {
+      throw const core.IdentityClientException(
+        'Source video is empty or exceeds the 128 MiB limit',
+      );
+    }
+    if (source.bytes[4] != 0x66 ||
+        source.bytes[5] != 0x74 ||
+        source.bytes[6] != 0x79 ||
+        source.bytes[7] != 0x70) {
+      throw const core.IdentityClientException(
+        'Source video does not contain an MP4 signature',
+      );
+    }
+    if (!RegExp(r'^[0-9a-f]{64}$').hasMatch(source.sha256Hex)) {
+      throw const core.IdentityClientException('Source video digest is invalid');
+    }
+  }
+}
+
+bool _isVideoFactoryObjective(String objective) {
+  final normalized = objective.trimLeft().toLowerCase();
+  return normalized.startsWith('video creation task:') ||
+      normalized.startsWith('video oluşturma görevi:');
 }
 
 int _referenceFactoryCount(String objective) {
   final normalized = objective.trimLeft().toLowerCase();
-  final video = normalized.startsWith('video creation task:') ||
-      normalized.startsWith('video oluşturma görevi:');
+  final video = _isVideoFactoryObjective(normalized);
   const webTerms = <String>{
     'website',
     'web site',

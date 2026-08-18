@@ -13,6 +13,7 @@ from services.integrations.reference_aware_provider_video_runtime import (
 from services.reference_asset_admission import ReferenceAssetAdmissionStore
 from services.reference_assets import ReferenceAssetRole
 from services.reference_brief_cache import ReferenceBriefCache
+from services.source_media import SourceMediaStore
 from src.video_automation.reference_image_analysis import (
     OpenRouterReferenceImageAnalyzer,
     ReferenceImageInput,
@@ -80,6 +81,10 @@ def test_reference_runtime_freezes_conditioning_releases_raw_bytes_and_reuses_ca
     analyzer = _FakeAnalyzer()
     runtime = object.__new__(ReferenceAwareProviderBackedDesktopVideoRuntime)
     runtime._reference_assets = store
+    runtime._source_media = SourceMediaStore(
+        tmp_path / "source-media.sqlite3",
+        tmp_path / "source-media" / "blobs",
+    )
     runtime._reference_analyzer = analyzer
     runtime._reference_brief_cache = ReferenceBriefCache(
         tmp_path / "reference-briefs.sqlite3"
