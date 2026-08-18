@@ -2,7 +2,7 @@
 
 This module does not create a second agent engine. It binds canonical ILAIOS
 agent manifests to the existing permission firewall, scoped execution grants,
-immutable skill registry, deterministic provider routing, and persisted runtime
+immutable skill registry, governed provider routing, and persisted runtime
 evidence.
 """
 
@@ -27,12 +27,7 @@ class NamedAgentExecutionError(RuntimeError):
 
 
 def provision_canonical_agent(runtime: GovernedRuntime, agent_id: str) -> bool:
-    """Provision one registry-backed agent without accepting caller authority.
-
-    The canonical Agent Registry is the only source for the machine identity and
-    capability set. Existing registrations with divergent authority fail closed
-    in :meth:`GovernedRuntime.ensure_agent`.
-    """
+    """Provision one registry-backed identity without caller-supplied authority."""
     try:
         registration = registration_for(agent_id)
     except KeyError as exc:
@@ -44,8 +39,6 @@ def provision_canonical_agent(runtime: GovernedRuntime, agent_id: str) -> bool:
 
 @dataclass(frozen=True, slots=True)
 class NamedAgentExecution:
-    """Admission and persisted runtime route for one governed invocation."""
-
     admission: AgentAdmissionEvidence
     route: dict[str, Any]
 
@@ -64,14 +57,20 @@ class NamedAgentExecutor:
         )
 
     def provision_agent(self, agent_id: str) -> bool:
-        """Provision one canonical machine identity without authority expansion."""
+        return provision_canonical_agent(self._runtime, agent_id)
+
+    def ensure_agent(self, agent_id: str) -> bool:
         return provision_canonical_agent(self._runtime, agent_id)
 
     def provision_skill(
         self, skill_id: str, content: bytes, authorities: frozenset[str]
     ) -> str:
-        """Register an immutable bounded skill in the existing runtime."""
         return self._runtime.register_skill(skill_id, content, authorities)
+
+    def ensure_skill(
+        self, skill_id: str, content: bytes, authorities: frozenset[str]
+    ) -> str:
+        return self._runtime.ensure_skill(skill_id, content, authorities)
 
     def provision_provider(
         self,
@@ -79,10 +78,28 @@ class NamedAgentExecutor:
         capabilities: frozenset[str],
         *,
         adapter_kind: str,
+        deterministic: bool | None = None,
     ) -> None:
-        """Register an enabled provider already supported by GovernedRuntime."""
         self._runtime.register_provider(
-            provider_id, capabilities, adapter_kind=adapter_kind
+            provider_id,
+            capabilities,
+            adapter_kind=adapter_kind,
+            deterministic=deterministic,
+        )
+
+    def ensure_provider(
+        self,
+        provider_id: str,
+        capabilities: frozenset[str],
+        *,
+        adapter_kind: str,
+        deterministic: bool | None = None,
+    ) -> bool:
+        return self._runtime.ensure_provider(
+            provider_id,
+            capabilities,
+            adapter_kind=adapter_kind,
+            deterministic=deterministic,
         )
 
     def execute(
@@ -93,6 +110,7 @@ class NamedAgentExecutor:
         skill_id: str,
         payload: dict[str, Any],
         now: datetime,
+        preferred_provider_id: str | None = None,
     ) -> NamedAgentExecution:
         """Admit, route, execute, and bind the result to independent verification."""
         try:
@@ -105,6 +123,7 @@ class NamedAgentExecutor:
             skill_id,
             invocation.capability,
             payload,
+            preferred_provider_id=preferred_provider_id,
         )
         if route.get("agent_id") != admission.agent_id:
             raise NamedAgentExecutionError("runtime route identity diverged from admission")
@@ -113,5 +132,4 @@ class NamedAgentExecutor:
         return NamedAgentExecution(admission, route)
 
     def routes(self) -> tuple[dict[str, Any], ...]:
-        """Return persisted runtime route evidence."""
         return self._runtime.routes()
