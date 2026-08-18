@@ -11,6 +11,14 @@ import re
 from dataclasses import dataclass
 from typing import Final
 
+from services.security_methodology_skills import (
+    AGENTIC_ACTION_AUDIT_SKILL_ID,
+    DIFFERENTIAL_REVIEW_SKILL_ID,
+    SECURITY_METHODOLOGY_SKILLS,
+    SECURITY_REVIEW_SKILL_ID,
+    SUPPLY_CHAIN_AUDIT_SKILL_ID,
+    THREAT_MODEL_SKILL_ID,
+)
 from services.software_factory_skills import REQUIRED_SKILL_IDS
 from services.web_factory_skills import WEB_FACTORY_NATIVE_SKILL_IDS
 
@@ -189,14 +197,31 @@ SKILL_TAXONOMY: Final[tuple[SkillTaxonomyNode, ...]] = (
     _node(
         "assurance",
         "security-review",
-        backing_skill_ids=("sf-security-review",),
+        backing_skill_ids=(SECURITY_REVIEW_SKILL_ID, "sf-security-review"),
     ),
-    _node("assurance", "differential-review"),
-    _node("assurance", "threat-model"),
+    _node(
+        "assurance",
+        "differential-review",
+        backing_skill_ids=(DIFFERENTIAL_REVIEW_SKILL_ID,),
+    ),
+    _node(
+        "assurance",
+        "agentic-action-audit",
+        backing_skill_ids=(AGENTIC_ACTION_AUDIT_SKILL_ID,),
+    ),
+    _node(
+        "assurance",
+        "threat-model",
+        backing_skill_ids=(THREAT_MODEL_SKILL_ID,),
+    ),
     _node(
         "assurance",
         "supply-chain-audit",
-        backing_skill_ids=("sf-dependency-governance", "sf-license-provenance"),
+        backing_skill_ids=(
+            SUPPLY_CHAIN_AUDIT_SKILL_ID,
+            "sf-dependency-governance",
+            "sf-license-provenance",
+        ),
     ),
     _node(
         "assurance",
@@ -233,7 +258,11 @@ def validate_skill_taxonomy() -> None:
     if len(logical_ids) != len(set(logical_ids)):
         raise ValueError("ILAIOS skill taxonomy logical IDs must be unique")
 
-    runtime_skill_ids = set(REQUIRED_SKILL_IDS) | set(WEB_FACTORY_NATIVE_SKILL_IDS)
+    runtime_skill_ids = (
+        set(REQUIRED_SKILL_IDS)
+        | set(WEB_FACTORY_NATIVE_SKILL_IDS)
+        | {item.skill_id for item in SECURITY_METHODOLOGY_SKILLS}
+    )
     for node in SKILL_TAXONOMY:
         if node.layer not in _ALLOWED_LAYERS:
             raise ValueError(f"invalid ILAIOS skill layer: {node.layer}")
