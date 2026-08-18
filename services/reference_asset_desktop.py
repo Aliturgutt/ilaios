@@ -12,12 +12,11 @@ from typing import Any, cast
 from urllib.parse import urlparse
 
 from services.desktop_identity_server import (
-    DesktopIdentityError,
     DesktopIdentityHTTPServer,
     DesktopIdentityRequestHandler,
     _required_string,
 )
-from services.desktop_oidc import DesktopOIDCService
+from services.desktop_oidc import DesktopIdentityError, DesktopOIDCService
 from services.execution_coordinator import (
     ExecutionCoordinator,
     ExecutionCoordinatorError,
@@ -166,4 +165,4 @@ class ReferenceAwareDesktopIdentityRequestHandler(DesktopIdentityRequestHandler)
         value = json.loads(self.rfile.read(length).decode("utf-8"))
         if not isinstance(value, dict):
             raise TypeError("request body must be a JSON object")
-        return cast(dict[str, Any], value)
+        return value
