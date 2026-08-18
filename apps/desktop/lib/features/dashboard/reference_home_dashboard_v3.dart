@@ -633,13 +633,13 @@ class _FactoryAction extends StatelessWidget {
                         title,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700),
+                        style: const TextStyle(fontSize: 10.4, fontWeight: FontWeight.w700),
                       ),
                       Text(
                         subtitle,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 7.7),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 9.3),
                       ),
                     ],
                   ),
@@ -757,7 +757,7 @@ class _MetricCard extends StatelessWidget {
                           data.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 8.7, fontWeight: FontWeight.w600),
+                          style: const TextStyle(fontSize: 9.7, fontWeight: FontWeight.w600),
                         ),
                       ),
                     ],
@@ -774,7 +774,7 @@ class _MetricCard extends StatelessWidget {
                     data.footnote,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 7.2),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 9.1),
                   ),
                 ],
               ),
@@ -891,9 +891,9 @@ class _FocusWorkRow extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 8.7, fontWeight: FontWeight.w700)),
+                    style: const TextStyle(fontSize: 9.7, fontWeight: FontWeight.w700)),
                 Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 7.2)),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 9.0)),
               ],
             ),
           ),
@@ -908,10 +908,10 @@ class _FocusWorkRow extends StatelessWidget {
                   children: [
                     Expanded(
                       child: Text(state, maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 7.8)),
+                          style: const TextStyle(fontSize: 8.8)),
                     ),
                     Text(phase, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 7.0)),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 8.2)),
                   ],
                 ),
                 const SizedBox(height: 3),
@@ -1023,9 +1023,9 @@ class _AttentionRow extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(data.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 8.7, fontWeight: FontWeight.w700)),
+                        style: const TextStyle(fontSize: 9.7, fontWeight: FontWeight.w700)),
                     Text(data.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 7.2)),
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 9.0)),
                   ],
                 ),
               ),
@@ -1121,15 +1121,15 @@ class _ArtifactTile extends StatelessWidget {
                 const SizedBox(width: 5),
                 Expanded(
                   child: Text(record.action, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 8.1, fontWeight: FontWeight.w700)),
+                      style: const TextStyle(fontSize: 9.2, fontWeight: FontWeight.w700)),
                 ),
               ],
             ),
             const SizedBox(height: 4),
             Text(record.executionId, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 7)),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 8.4)),
             Text(_short(record.artifactDigest), maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 7)),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 8.4)),
           ],
         ),
       );
@@ -1185,9 +1185,9 @@ class _CompletionRow extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(record.action, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 8.4, fontWeight: FontWeight.w700)),
+                      style: const TextStyle(fontSize: 9.4, fontWeight: FontWeight.w700)),
                   Text(record.executionId, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 7.1)),
+                      style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 8.4)),
                 ],
               ),
             ),
@@ -1229,7 +1229,7 @@ class _QuickActionsPanel extends StatelessWidget {
                         const SizedBox(width: 7),
                         Expanded(
                           child: Text(actions[index].$2, maxLines: 1, overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 8.2)),
+                              style: const TextStyle(fontSize: 9.3)),
                         ),
                         const Icon(Icons.chevron_right_rounded, size: 14),
                       ],
@@ -1336,7 +1336,7 @@ class _SessionCard extends StatelessWidget {
             onPressed: onManage,
             icon: const Icon(Icons.settings_outlined, size: 13),
             label: Text(_t(context, 'Manage Session', 'Oturumu Yönet'),
-                style: const TextStyle(fontSize: 8.4)),
+                style: const TextStyle(fontSize: 9.3)),
             style: TextButton.styleFrom(alignment: Alignment.centerLeft, padding: EdgeInsets.zero),
           ),
         ],
@@ -1421,12 +1421,12 @@ class _ActivityRow extends StatelessWidget {
           SizedBox(
             width: 48,
             child: Text(time, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 7)),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 8.3)),
           ),
           const SizedBox(width: 5),
           Expanded(
             child: Text(title, maxLines: 2, overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 8.0, height: 1.2)),
+                style: const TextStyle(fontSize: 9.1, height: 1.2)),
           ),
           const SizedBox(width: 4),
           const Padding(
@@ -1484,7 +1484,7 @@ class _AlertsCard extends StatelessWidget {
                                   const SizedBox(width: 7),
                                   Expanded(
                                     child: Text(alert.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 8.1)),
+                                        style: const TextStyle(fontSize: 9.1)),
                                   ),
                                   const Icon(Icons.chevron_right_rounded, size: 13),
                                 ],
@@ -1532,7 +1532,7 @@ class _SectionPanel extends StatelessWidget {
                       child: Text(title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 9.6, fontWeight: FontWeight.w800)),
+                          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800)),
                     ),
                     if (actionLabel != null)
                       TextButton(
@@ -1544,7 +1544,7 @@ class _SectionPanel extends StatelessWidget {
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(actionLabel!, style: const TextStyle(fontSize: 7.5)),
+                            Text(actionLabel!, style: const TextStyle(fontSize: 9.1)),
                             const Icon(Icons.chevron_right_rounded, size: 12),
                           ],
                         ),
@@ -1578,7 +1578,7 @@ class _EmptyState extends StatelessWidget {
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 7.6)),
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 9.5)),
             ],
           ),
         ),
@@ -1595,13 +1595,13 @@ class _InfoRow extends StatelessWidget {
         children: [
           Expanded(
             child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 7.7)),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 9.2)),
           ),
           const SizedBox(width: 6),
           Flexible(
             child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis,
                 textAlign: TextAlign.right,
-                style: const TextStyle(fontSize: 7.8, fontWeight: FontWeight.w600)),
+                style: const TextStyle(fontSize: 9.4, fontWeight: FontWeight.w600)),
           ),
         ],
       );
@@ -1623,7 +1623,7 @@ class _StatusPill extends StatelessWidget {
         child: Text(
           label,
           style: TextStyle(
-            fontSize: 7.2,
+            fontSize: 8.4,
             fontWeight: FontWeight.w800,
             color: positive ? IlaiosTheme.success : Theme.of(context).colorScheme.onSurfaceVariant,
           ),
