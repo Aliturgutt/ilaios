@@ -59,16 +59,15 @@ def _success_payload(
     }
 
 
-@pytest.fixture(autouse=True)
-def _sampled_frames(monkeypatch: pytest.MonkeyPatch) -> None:
+def _review(
+    transport: _QueuedTransport,
+    monkeypatch: pytest.MonkeyPatch,
+) -> PerceptualReviewSubmission:
     monkeypatch.setattr(
         reviewer_module,
         "_sample_frames",
         lambda path, count: (b"frame-one", b"frame-two"),
     )
-
-
-def _review(transport: _QueuedTransport) -> PerceptualReviewSubmission:
     reviewer = OpenRouterPerceptualReviewer(
         "secret",
         "openrouter/free",
@@ -84,10 +83,12 @@ def _review(transport: _QueuedTransport) -> PerceptualReviewSubmission:
     )
 
 
-def test_perceptual_reviewer_prefers_strict_json_schema() -> None:
+def test_perceptual_reviewer_prefers_strict_json_schema(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     transport = _QueuedTransport([OpenRouterReviewResponse(200, _success_payload())])
 
-    submission = _review(transport)
+    submission = _review(transport, monkeypatch)
 
     assert len(transport.requests) == 1
     response_format = transport.requests[0]["response_format"]
@@ -99,9 +100,9 @@ def test_perceptual_reviewer_prefers_strict_json_schema() -> None:
     assert submission.score == pytest.approx(0.91)
 
 
-@pytest.mark.parametrize("status_code", [404, 503])
-def test_perceptual_reviewer_falls_back_to_json_object_when_strict_route_unavailable(
+def _assert_capability_fallback(
     status_code: int,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     transport = _QueuedTransport(
         [
@@ -113,7 +114,7 @@ def test_perceptual_reviewer_falls_back_to_json_object_when_strict_route_unavail
         ]
     )
 
-    submission = _review(transport)
+    submission = _review(transport, monkeypatch)
 
     assert len(transport.requests) == 2
     first_format = transport.requests[0]["response_format"]
@@ -129,7 +130,21 @@ def test_perceptual_reviewer_falls_back_to_json_object_when_strict_route_unavail
     assert submission.score == pytest.approx(0.91)
 
 
-def test_perceptual_reviewer_does_not_retry_non_capability_http_errors() -> None:
+def test_perceptual_reviewer_falls_back_on_404(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _assert_capability_fallback(404, monkeypatch)
+
+
+def test_perceptual_reviewer_falls_back_on_503(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _assert_capability_fallback(503, monkeypatch)
+
+
+def test_perceptual_reviewer_does_not_retry_non_capability_http_errors(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     transport = _QueuedTransport(
         [
             OpenRouterReviewResponse(
@@ -140,12 +155,14 @@ def test_perceptual_reviewer_does_not_retry_non_capability_http_errors() -> None
     )
 
     with pytest.raises(OpenRouterPerceptualReviewError, match="HTTP 400"):
-        _review(transport)
+        _review(transport, monkeypatch)
 
     assert len(transport.requests) == 1
 
 
-def test_perceptual_reviewer_fallback_remains_fail_closed_on_extra_fields() -> None:
+def test_perceptual_reviewer_fallback_remains_fail_closed_on_extra_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     payload = _success_payload()
     choices = payload["choices"]
     assert isinstance(choices, list)
@@ -167,6 +184,6 @@ def test_perceptual_reviewer_fallback_remains_fail_closed_on_extra_fields() -> N
     )
 
     with pytest.raises(OpenRouterPerceptualReviewError, match="contain exactly"):
-        _review(transport)
+        _review(transport, monkeypatch)
 
     assert len(transport.requests) == 2
