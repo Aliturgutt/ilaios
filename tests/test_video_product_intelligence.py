@@ -29,10 +29,34 @@ def test_revision_cannot_degrade_to_new_generation_without_source_video() -> Non
         )
 
 
+def test_bound_source_video_is_recognized_but_not_false_claimed_as_edit_execution() -> None:
+    with pytest.raises(VideoProductIntentError, match="not materialized"):
+        admit_current_desktop_video_product(
+            "Edit this video and make the final scene shorter.",
+            source_video_present=True,
+        )
+
+
+def test_bound_source_video_is_never_silently_ignored_by_create_mode() -> None:
+    with pytest.raises(VideoProductIntentError, match="silently ignore source media"):
+        admit_current_desktop_video_product(
+            "Create a new cinematic launch video.",
+            source_video_present=True,
+        )
+
+
 def test_localization_cannot_degrade_to_new_generation_without_source_video() -> None:
     with pytest.raises(VideoProductIntentError, match="authenticated source video"):
         admit_current_desktop_video_product(
             "Dub this video into Turkish.",
+        )
+
+
+def test_bound_source_localization_still_fails_until_real_dubbing_is_materialized() -> None:
+    with pytest.raises(VideoProductIntentError, match="not materialized"):
+        admit_current_desktop_video_product(
+            "Dub this video into Turkish.",
+            source_video_present=True,
         )
 
 
@@ -42,6 +66,14 @@ def test_episode_request_cannot_invent_series_state() -> None:
     with pytest.raises(VideoProductIntentError, match="SeriesState"):
         admit_current_desktop_video_product(
             "Create episode 4 with the same characters.",
+        )
+
+
+def test_bound_series_state_is_not_false_claimed_as_execution() -> None:
+    with pytest.raises(VideoProductIntentError, match="not materialized"):
+        admit_current_desktop_video_product(
+            "Create episode 4 with the same characters.",
+            series_state_present=True,
         )
 
 
