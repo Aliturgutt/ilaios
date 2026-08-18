@@ -44,10 +44,6 @@ class SkillCandidate:
             raise SkillFactoryError("version and instructions are required")
         if len(self.source_trace_digest) != 64:
             raise SkillFactoryError("source trace must be represented by a SHA-256 digest")
-        if any(
-            legacy in self.skill_id.casefold() for legacy in ("hermes", "ilakos", "ilaten")
-        ):
-            raise SkillFactoryError("legacy product names are provenance only")
 
     @property
     def package_digest(self) -> str:
