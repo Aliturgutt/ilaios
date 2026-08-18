@@ -162,7 +162,9 @@ class WebAppSpec:
         if self.auth_required:
             capabilities.append("auth")
         if self.resources:
-            capabilities.extend(("data", "crud"))
+            capabilities.append("data")
+            if any(resource.operations != ("read",) for resource in self.resources):
+                capabilities.append("crud")
         if self.tables_required:
             capabilities.append("tables")
         if self.charts_required:
