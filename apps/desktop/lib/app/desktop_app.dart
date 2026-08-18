@@ -159,17 +159,25 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
       );
     }
     final hasReferences = _referenceAssets.assets.isNotEmpty;
-    final videoObjective = _isVideoObjective(objective);
-    if (hasReferences && !videoObjective) {
+    final referenceFactoryCount = _referenceFactoryCount(objective);
+    if (hasReferences && referenceFactoryCount == 0) {
       throw StateError(
         _localeText(
-          'Reference images are attached to Video Factory. Select Video Factory before submitting this goal.',
-          'Video Factory için referans görseller ekli. Bu hedefi göndermeden önce Video Factory seçilmelidir.',
+          'Reference images can only be attached to Web Factory or Video Factory goals.',
+          'Referans görseller yalnızca Web Factory veya Video Factory hedeflerine eklenebilir.',
+        ),
+      );
+    }
+    if (hasReferences && referenceFactoryCount != 1) {
+      throw StateError(
+        _localeText(
+          'A reference-image goal must target exactly one of Web Factory or Video Factory.',
+          'Referans görselli bir hedef tam olarak Web Factory veya Video Factory’den birini hedeflemelidir.',
         ),
       );
     }
     final result = await callback(objective);
-    if (videoObjective && hasReferences) {
+    if (referenceFactoryCount == 1 && hasReferences) {
       _referenceAssets.clear();
       if (mounted) setState(() {});
     }
@@ -224,7 +232,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
               Positioned(
                 right: 18,
                 bottom: 34,
-                child: _VideoReferenceDock(
+                child: _ReferenceAssetDock(
                   controller: _referenceAssets,
                   open: _referenceDockOpen,
                   enabled: widget.userSession != null &&
@@ -242,8 +250,8 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
   }
 }
 
-class _VideoReferenceDock extends StatelessWidget {
-  const _VideoReferenceDock({
+class _ReferenceAssetDock extends StatelessWidget {
+  const _ReferenceAssetDock({
     required this.controller,
     required this.open,
     required this.enabled,
@@ -258,7 +266,7 @@ class _VideoReferenceDock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final label = context.tr('videoReferences.dock');
+    final label = context.tr('referenceAssets.dock');
     return Material(
       type: MaterialType.transparency,
       child: Column(
@@ -289,7 +297,7 @@ class _VideoReferenceDock extends StatelessWidget {
             builder: (context, _) => Tooltip(
               message: label,
               child: FilledButton.icon(
-                key: const Key('video-reference-dock-toggle'),
+                key: const Key('reference-asset-dock-toggle'),
                 onPressed: enabled || open ? onToggle : null,
                 icon: const Icon(Icons.collections_outlined, size: 17),
                 label: Text(
@@ -307,8 +315,17 @@ class _VideoReferenceDock extends StatelessWidget {
   }
 }
 
-bool _isVideoObjective(String objective) {
+int _referenceFactoryCount(String objective) {
   final normalized = objective.trimLeft().toLowerCase();
-  return normalized.startsWith('video creation task:') ||
+  final video = normalized.startsWith('video creation task:') ||
       normalized.startsWith('video oluşturma görevi:');
+  const webTerms = <String>{
+    'website',
+    'web site',
+    'web sitesi',
+    'landing page',
+    'internet sitesi',
+  };
+  final web = webTerms.any(normalized.contains);
+  return (video ? 1 : 0) + (web ? 1 : 0);
 }

@@ -111,7 +111,33 @@ void main() {
     expect(intentBody.containsKey('bytes'), isFalse);
   });
 
-  test('references fail closed when objective is not routed to Video Factory', () async {
+  test('Web Factory references use the same upload and immutable-ID path', () async {
+    final transport = _ReferenceTransport();
+    final client = IdentityClient(
+      baseUri: Uri.parse('http://127.0.0.1:43123'),
+      transportToken: 'local-transport-token',
+      transport: transport,
+    );
+    ReferenceAssetSubmissionBus.replace(<ReferenceAssetDraft>[_draft(2)]);
+
+    final result = await client.submitPrompt(
+      'Build a premium website for my furniture company using this product reference.',
+      _session,
+    );
+
+    expect(result.requestId, 'exec-1');
+    expect(transport.requests, hasLength(2));
+    expect(transport.requests[0].uri.path, '/v1/reference-assets');
+    expect(transport.requests[1].uri.path, '/v1/desktop/intent');
+    final intentBody =
+        jsonDecode(transport.requests[1].body!) as Map<String, dynamic>;
+    expect(intentBody['objective'], contains('website'));
+    expect(intentBody['reference_asset_ids'], <String>['ref-1234567890abcdef12345678']);
+    expect(intentBody.containsKey('content_base64'), isFalse);
+    expect(intentBody.containsKey('bytes'), isFalse);
+  });
+
+  test('references fail closed outside Web Factory and Video Factory', () async {
     final transport = _ReferenceTransport();
     final client = IdentityClient(
       baseUri: Uri.parse('http://127.0.0.1:43123'),
@@ -121,12 +147,12 @@ void main() {
     ReferenceAssetSubmissionBus.replace(<ReferenceAssetDraft>[_draft(1)]);
 
     await expectLater(
-      client.submitPrompt('Create a product page', _session),
+      client.submitPrompt('Create a product image', _session),
       throwsA(
         isA<IdentityClientException>().having(
           (error) => error.message,
           'message',
-          contains('Video Factory'),
+          contains('Web Factory or Video Factory'),
         ),
       ),
     );
