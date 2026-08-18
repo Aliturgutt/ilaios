@@ -120,7 +120,7 @@ def main() -> int:
 
                     response = page.goto(f"{BASE_URL}{path}", wait_until="networkidle", timeout=45_000)
                     status = response.status if response is not None else 0
-                    h1 = page.locator("main#main h1")
+                    h1 = page.locator("main#main-content h1")
                     overflow = float(page.evaluate("document.documentElement.scrollWidth - window.innerWidth"))
                     offenders = overflow_elements(page) if overflow > 1 else []
                     record: dict[str, object] = {
