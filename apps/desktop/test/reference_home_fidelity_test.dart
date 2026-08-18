@@ -71,7 +71,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsOneWidget);
+    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
     expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
     expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
     expect(find.byKey(const Key('command-center-focus')), findsOneWidget);
@@ -83,8 +83,6 @@ void main() {
     final artifacts = tester.getRect(find.byKey(const Key('command-center-artifacts')));
     final bottomStatus = tester.getRect(find.byKey(const Key('reference-bottom-status-v2')));
     expect(artifacts.bottom, lessThanOrEqualTo(bottomStatus.top + 1));
-    // FittedBox can leave a sub-pixel floating-point residue at the exact edge.
-    // Keep a 0.01 logical-pixel tolerance without accepting a visible overflow.
     expect(bottomStatus.bottom, lessThanOrEqualTo(720.01));
   });
 
@@ -98,7 +96,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsOneWidget);
+    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
     final outputs = tester.getRect(find.byKey(const Key('command-center-artifacts')));
     final completed = tester.getRect(find.byKey(const Key('command-center-completed')));
     final quick = tester.getRect(find.byKey(const Key('command-center-quick-actions')));
