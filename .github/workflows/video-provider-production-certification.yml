@@ -10,6 +10,7 @@ on:
         type: choice
         options:
           - managed-bounded
+          - desktop-managed-bounded
           - desktop-one-prompt
           - free-only
 
@@ -38,9 +39,12 @@ jobs:
       VIDEO_PROVIDER_MAX_UNIT_PRICE_USD: "0.15"
       VIDEO_PROVIDER_MAX_TOTAL_COST_USD: "1.00"
       ILAIOS_VIDEO_MODEL_ID: bytedance/seedance-2.0-fast:free
+      ILAIOS_VIDEO_MANAGED_MODEL_ID: bytedance/seedance-2.0-fast
+      ILAIOS_VIDEO_MANAGED_E2E_MAX_TOTAL_USD: "1.00"
       ILAIOS_VIDEO_QA_MODEL_ID: openrouter/free
       ILAIOS_VIDEO_E2E_RESOLUTION: 480p
       VIDEO_DESKTOP_PROVIDER_PROOF_DIR: artifacts/video-desktop-provider-proof
+      VIDEO_DESKTOP_MANAGED_PROVIDER_PROOF_DIR: artifacts/video-desktop-managed-provider-proof
 
     steps:
       - name: Checkout exact source revision
@@ -50,7 +54,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Desktop video runtime dependency
-        if: ${{ inputs.proof_mode == 'desktop-one-prompt' }}
+        if: ${{ inputs.proof_mode == 'desktop-one-prompt' || inputs.proof_mode == 'desktop-managed-bounded' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -68,7 +72,23 @@ jobs:
           test -n "$OPENROUTER_API_KEY"
           case "$ILAIOS_VIDEO_MODEL_ID" in
             *:free) ;;
-            *) echo "desktop-one-prompt is the explicit verified-free proof; use managed-bounded for paid E2E" >&2; exit 1 ;;
+            *) echo "desktop-one-prompt is the explicit verified-free proof; use desktop-managed-bounded for the authorized paid Desktop proof" >&2; exit 1 ;;
+          esac
+
+      - name: Verify Desktop managed-bounded proof safety boundary
+        if: ${{ inputs.proof_mode == 'desktop-managed-bounded' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python --version
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+          test -n "$OPENROUTER_API_KEY"
+          test "$ILAIOS_VIDEO_MANAGED_E2E_MAX_TOTAL_USD" = "1.00"
+          case "$ILAIOS_VIDEO_MANAGED_MODEL_ID" in
+            *:free) echo "desktop-managed-bounded requires the explicit managed provider model, not a free alias" >&2; exit 1 ;;
+            "") echo "desktop-managed-bounded model is empty" >&2; exit 1 ;;
+            *) ;;
           esac
 
       - name: Run real provider-backed Desktop verified-free finished-product E2E
@@ -77,6 +97,13 @@ jobs:
         run: |
           set -euo pipefail
           python apps/desktop/e2e/provider_video_finished_product_e2e.py
+
+      - name: Run real provider-backed Desktop managed-bounded finished-product E2E
+        if: ${{ inputs.proof_mode == 'desktop-managed-bounded' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python apps/desktop/e2e/provider_video_managed_finished_product_e2e.py
 
       - name: Run real free-only provider certification
         if: ${{ inputs.proof_mode == 'free-only' }}
@@ -118,6 +145,40 @@ jobs:
           print(f"- Artifact bytes: `{receipt.get('artifact_bytes')}`")
           print(f"- Verified free-route cost zero: `{receipt.get('provider_cost_zero')}`")
           print("- This zero-cost assertion applies only to the explicit verified-free route.")
+          PY
+          else
+            printf '%s\n' '- Status: NO_ACCEPTED_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Publish Desktop managed-bounded provider proof summary
+        if: ${{ always() && inputs.proof_mode == 'desktop-managed-bounded' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "## Desktop Provider-Backed Video Factory — Managed Bounded Route" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f "$VIDEO_DESKTOP_MANAGED_PROVIDER_PROOF_DIR/receipt.json" ]]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          proof_dir = Path(os.environ["VIDEO_DESKTOP_MANAGED_PROVIDER_PROOF_DIR"])
+          receipt = json.loads((proof_dir / "receipt.json").read_text(encoding="utf-8"))
+          print(f"- Status: `{receipt.get('status')}`")
+          print(f"- Revision: `{receipt.get('revision_sha')}`")
+          print(f"- Execution: `{receipt.get('execution_status')}`")
+          print(f"- Provider model: `{receipt.get('provider_model')}`")
+          print(f"- Provider cost mode: `{receipt.get('provider_cost_mode')}`")
+          print(f"- Provider actual cost USD: `{receipt.get('provider_cost_usd')}`")
+          print(f"- Authorized hard cap USD: `{receipt.get('provider_cost_hard_cap_usd')}`")
+          print(f"- QA model: `{receipt.get('qa_model')}`")
+          print(f"- Semantic score/threshold: `{receipt.get('semantic_score')}` / `{receipt.get('semantic_threshold')}`")
+          print(f"- Generated shots: `{receipt.get('generated_shot_count')}`")
+          print(f"- Duration: `{receipt.get('duration_seconds')}` seconds")
+          print(f"- Video/audio: `{receipt.get('video_codec')}` / `{receipt.get('audio_codec')}`")
+          print(f"- Artifact SHA-256: `{receipt.get('artifact_sha256')}`")
+          print(f"- Artifact bytes: `{receipt.get('artifact_bytes')}`")
+          print("- Automatic paid fallback: `FALSE`")
           PY
           else
             printf '%s\n' '- Status: NO_ACCEPTED_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
@@ -202,6 +263,15 @@ jobs:
         with:
           name: desktop-provider-video-proof-${{ github.sha }}-${{ github.run_id }}
           path: artifacts/video-desktop-provider-proof
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Upload immutable Desktop managed-provider finished-product proof
+        if: ${{ always() && inputs.proof_mode == 'desktop-managed-bounded' }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-managed-provider-video-proof-${{ github.sha }}-${{ github.run_id }}
+          path: artifacts/video-desktop-managed-provider-proof
           if-no-files-found: warn
           retention-days: 30
 
