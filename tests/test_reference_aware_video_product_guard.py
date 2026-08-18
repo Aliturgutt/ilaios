@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
@@ -16,9 +17,32 @@ class _EmptyReferenceStore:
         return ()
 
 
-def _runtime() -> ReferenceAwareProviderBackedDesktopVideoRuntime:
+@dataclass(frozen=True)
+class _SourceRecord:
+    asset_id: str = "src-test"
+
+
+class _SourceStore:
+    def __init__(self, *, bound: bool = False) -> None:
+        self.bound = bound
+        self.path_checks = 0
+
+    def for_request(self, request_id: str) -> _SourceRecord | None:
+        assert request_id == "request-guard"
+        return _SourceRecord() if self.bound else None
+
+    def require_registered_path(self, asset_id: str) -> Path:
+        assert asset_id == "src-test"
+        self.path_checks += 1
+        return Path("source.mp4")
+
+
+def _runtime(
+    *, source_bound: bool = False
+) -> ReferenceAwareProviderBackedDesktopVideoRuntime:
     runtime = object.__new__(ReferenceAwareProviderBackedDesktopVideoRuntime)
     setattr(runtime, "_reference_assets", _EmptyReferenceStore())
+    setattr(runtime, "_source_media", _SourceStore(bound=source_bound))
     return runtime
 
 
@@ -46,5 +70,33 @@ def test_source_video_revision_is_rejected_before_provider_generation(
             request_id="request-guard",
             job_id="job-guard",
             objective="Edit this video and shorten the ending.",
+            duration_seconds=20.0,
+        )
+
+
+def test_bound_source_is_verified_then_rejected_before_unmaterialized_edit_execution(
+    tmp_path: Path,
+) -> None:
+    runtime = _runtime(source_bound=True)
+    source_store = runtime._source_media
+    with pytest.raises(VideoRuntimeError, match="not materialized yet"):
+        runtime._generate_finished_product(
+            run_root=tmp_path,
+            request_id="request-guard",
+            job_id="job-guard",
+            objective="Edit this video and shorten the ending.",
+            duration_seconds=20.0,
+        )
+    assert source_store.path_checks == 1
+
+
+def test_bound_source_is_never_dropped_from_plain_create_request(tmp_path: Path) -> None:
+    runtime = _runtime(source_bound=True)
+    with pytest.raises(VideoRuntimeError, match="silently ignore source media"):
+        runtime._generate_finished_product(
+            run_root=tmp_path,
+            request_id="request-guard",
+            job_id="job-guard",
+            objective="Create a cinematic launch video.",
             duration_seconds=20.0,
         )
