@@ -41,9 +41,27 @@ jobs:
           cache-dependency-path: .github/requirements/platform-ci.txt
 
       - name: Install system validation dependencies
+        shell: bash
         run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo sed -i 's|http://azure.archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
+            sudo timeout 180 apt-get \
+              -o Acquire::Retries=3 \
+              -o Acquire::ForceIPv4=true \
+              -o Acquire::http::Timeout=15 \
+              -o Acquire::https::Timeout=15 \
+              -o Acquire::Languages=none \
+              update
+            sudo timeout 180 apt-get \
+              -o Acquire::Retries=3 \
+              -o Acquire::ForceIPv4=true \
+              -o Acquire::http::Timeout=15 \
+              -o Acquire::https::Timeout=15 \
+              install -y --no-install-recommends ffmpeg
+          fi
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
           sudo sysctl -w kernel.unprivileged_userns_clone=1 || true
           if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
@@ -118,13 +136,17 @@ jobs:
         run: python -m pytest -q
 
       - name: Ruff
-        run: ruff check src services tests
+        run: python -m ruff check .
 
       - name: Mypy strict
-        run: mypy --strict src tests
+        run: python -m mypy --strict services src tests
 
       - name: Verify pre-commit checks did not mutate source
+        shell: bash
         run: git diff --exit-code
 
       - name: Diff hygiene
-        run: git diff --check
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check
