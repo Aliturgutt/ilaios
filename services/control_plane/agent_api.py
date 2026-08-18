@@ -23,7 +23,12 @@ def canonical_agent_state(
     runtime: GovernedRuntime,
     readiness_store: AgentReadinessStore | None = None,
 ) -> dict[str, object]:
-    """Project canonical identity, registration, runtime routes and readiness truth."""
+    """Project canonical identity, registration, runtime routes and readiness truth.
+
+    The normal Desktop HTTP path remains read-only: when no readiness store is
+    injected explicitly, an existing sibling ``agent-readiness.sqlite3`` is
+    opened. A GET request never creates the evidence database.
+    """
     persisted: dict[str, frozenset[str]] = {}
     for item in runtime.agents():
         agent_id = item.get("agent_id")
@@ -41,15 +46,21 @@ def canonical_agent_state(
             raise ValueError("persisted runtime agent authority projection is malformed")
         persisted[agent_id] = frozenset(authorities)
 
+    resolved_store = readiness_store
+    if resolved_store is None:
+        readiness_path = runtime.database_path.with_name("agent-readiness.sqlite3")
+        if readiness_path.is_file():
+            resolved_store = AgentReadinessStore(readiness_path)
     readiness_projection = (
-        readiness_store.projection() if readiness_store is not None else {}
+        resolved_store.projection() if resolved_store is not None else {}
     )
-    runtime_projection = agent_state_projection(
-        runtime.routes(), readiness_projection
-    )
+    runtime_projection = agent_state_projection(runtime.routes(), readiness_projection)
+    raw_agents = runtime_projection.get("agents")
+    if not isinstance(raw_agents, list):
+        raise ValueError("runtime agent projection is malformed")
     runtime_by_id = {
         str(item["agent_id"]): item
-        for item in runtime_projection["agents"]
+        for item in raw_agents
         if isinstance(item, dict) and isinstance(item.get("agent_id"), str)
     }
 
