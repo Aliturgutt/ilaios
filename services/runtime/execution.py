@@ -63,6 +63,43 @@ class GovernedRuntime:
                 (agent_id, json.dumps(sorted(authorities))),
             )
 
+    def ensure_agent(self, agent_id: str, authorities: frozenset[str]) -> bool:
+        """Idempotently provision one exact authority set without privilege drift."""
+        _require_id(agent_id, "agent_id")
+        _require_values(authorities, "authorities")
+        canonical = json.dumps(sorted(authorities))
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT authorities_json FROM runtime_agents WHERE agent_id = ?",
+                (agent_id,),
+            ).fetchone()
+            if row is None:
+                connection.execute(
+                    "INSERT INTO runtime_agents VALUES (?, ?)",
+                    (agent_id, canonical),
+                )
+                return True
+            existing = frozenset(json.loads(row["authorities_json"]))
+            if existing != authorities:
+                raise RuntimeError(
+                    "registered agent authorities differ from canonical provisioning"
+                )
+            return False
+
+    def agents(self) -> tuple[dict[str, Any], ...]:
+        """Return the persisted runtime agent projection without granting authority."""
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT agent_id, authorities_json FROM runtime_agents ORDER BY agent_id"
+            ).fetchall()
+        return tuple(
+            {
+                "agent_id": row["agent_id"],
+                "authorities": list(json.loads(row["authorities_json"])),
+            }
+            for row in rows
+        )
+
     def register_skill(
         self, skill_id: str, content: bytes, authorities: frozenset[str]
     ) -> str:
