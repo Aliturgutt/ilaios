@@ -97,6 +97,8 @@ def test_openai_transport_sends_structured_contract_and_requires_parameters(
     document = captured["document"]
     assert document["response_format"] == response_format
     assert document["provider"] == {"require_parameters": True}
+    assert document["max_completion_tokens"] == 128
+    assert "max_tokens" not in document
     assert "reasoning" not in document
     assert result.response_id == "response-1"
     assert result.input_tokens == 10
@@ -127,7 +129,42 @@ def test_free_router_normal_text_request_bounds_and_excludes_reasoning(
         prompt="Probe one capability.",
         max_output_tokens=128,
     )
-    assert captured["document"]["reasoning"] == {
+    document = captured["document"]
+    assert document["max_completion_tokens"] == 128
+    assert "max_tokens" not in document
+    assert document["reasoning"] == {
+        "effort": "minimal",
+        "exclude": True,
+    }
+
+
+def test_openrouter_reasoning_control_is_endpoint_scoped_not_model_name(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+
+    def _urlopen(request: Any, *, timeout: float) -> _Response:
+        captured["document"] = json.loads(request.data.decode("utf-8"))
+        return _completion("bounded proposal")
+
+    monkeypatch.setattr(
+        "services.runtime.ai_provider_adapter.urllib.request.urlopen", _urlopen
+    )
+    OpenAICompatibleTransport().complete(
+        ProviderEndpoint(
+            "openrouter",
+            "https://openrouter.ai/api/v1",
+            "OPENROUTER_API_KEY",
+        ),
+        api_key="test-secret",
+        model_id="example/free-model",
+        system_instructions="Return a bounded proposal.",
+        prompt="Probe one capability.",
+        max_output_tokens=128,
+    )
+    document = captured["document"]
+    assert document["max_completion_tokens"] == 128
+    assert document["reasoning"] == {
         "effort": "minimal",
         "exclude": True,
     }
