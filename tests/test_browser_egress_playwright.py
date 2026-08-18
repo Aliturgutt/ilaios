@@ -45,7 +45,7 @@ def test_seccomp_profile_provenance_mismatch_fails_closed(
         )
 
 
-def test_browser_container_gets_only_pinned_seccomp_profile(
+def test_browser_container_gets_pinned_seccomp_and_only_sys_chroot(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -62,19 +62,24 @@ def test_browser_container_gets_only_pinned_seccomp_profile(
         "infinity",
     )
     hardened = boundary._inject_browser_seccomp(args)
-    assert hardened[:4] == (
+    assert hardened[:5] == (
         "run",
         "-d",
         "--security-opt",
         f"seccomp={boundary._seccomp_profile}",
+        "--cap-add=SYS_CHROOT",
     )
+    assert hardened.count("--cap-add=SYS_CHROOT") == 1
     assert "--cap-drop=ALL" in hardened
     assert "--security-opt=no-new-privileges" in hardened
     assert "--privileged" not in hardened
     assert "--security-opt=seccomp=unconfined" not in hardened
+    assert "--cap-add=SYS_ADMIN" not in hardened
+    assert "--cap-add=NET_ADMIN" not in hardened
+    assert "--cap-add=SYS_PTRACE" not in hardened
 
 
-def test_proxy_container_does_not_receive_browser_seccomp(
+def test_proxy_container_does_not_receive_browser_seccomp_or_capability(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -89,6 +94,7 @@ def test_proxy_container_does_not_receive_browser_seccomp(
         "proxy.py",
     )
     assert boundary._inject_browser_seccomp(args) == args
+    assert "--cap-add=SYS_CHROOT" not in args
 
 
 def test_hardening_rejects_privileged_browser_launch(
@@ -103,7 +109,49 @@ def test_hardening_rejects_privileged_browser_launch(
                 "-d",
                 "--name",
                 boundary._browser_name,
+                "--cap-drop=ALL",
                 "--privileged",
+                "image-id",
+            )
+        )
+
+
+@pytest.mark.parametrize(
+    "forbidden_capability",
+    ("--cap-add=SYS_ADMIN", "--cap-add=NET_ADMIN", "--cap-add=SYS_PTRACE"),
+)
+def test_hardening_rejects_broad_browser_capabilities(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    forbidden_capability: str,
+) -> None:
+    boundary = _boundary(tmp_path, monkeypatch)
+    with pytest.raises(BrowserToolError, match="weaken container isolation"):
+        boundary._inject_browser_seccomp(
+            (
+                "run",
+                "-d",
+                "--name",
+                boundary._browser_name,
+                "--cap-drop=ALL",
+                forbidden_capability,
+                "image-id",
+            )
+        )
+
+
+def test_hardening_requires_ambient_capability_drop(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    boundary = _boundary(tmp_path, monkeypatch)
+    with pytest.raises(BrowserToolError, match="drop ambient"):
+        boundary._inject_browser_seccomp(
+            (
+                "run",
+                "-d",
+                "--name",
+                boundary._browser_name,
                 "image-id",
             )
         )
