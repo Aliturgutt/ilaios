@@ -99,7 +99,7 @@ def test_generic_mobile_or_desktop_app_is_not_misclassified_as_web_app() -> None
         "Build a mobile app dashboard for field teams",
         "Build a desktop app for Windows",
     ):
-        with pytest.raises(WebAppSpecError, match="does not explicitly target"):
+        with pytest.raises(WebAppSpecError, match="non-Web application platform"):
             derive_web_app_spec("request-not-web", objective)
 
 
@@ -119,8 +119,9 @@ def test_booking_adds_bounded_booking_resource() -> None:
 
     assert spec.booking_required is True
     assert [item.name for item in spec.resources] == ["bookings"]
-    assert spec.resources[0].operations == ("read",)
+    assert spec.resources[0].operations == ("create", "read")
     assert "booking" in spec.requested_capabilities
+    assert "crud" not in spec.requested_capabilities
 
 
 def test_realtime_and_cms_are_requirements_not_readiness_claims() -> None:
