@@ -13,6 +13,7 @@ void main() {
       const Size(1920, 1080),
       const Size(1600, 900),
       const Size(1382, 733),
+      const Size(1320, 720),
       const Size(1280, 720),
       const Size(1024, 720),
       const Size(820, 700),
@@ -34,12 +35,12 @@ void main() {
       expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
 
       final shouldScaleCompactViewport =
-          size.width <= 1180 || size.height < 720;
+          size.width <= 1320 || size.height < 720;
       expect(
         find.byKey(const Key('reference-scaled-viewport-v9')),
         shouldScaleCompactViewport ? findsOneWidget : findsNothing,
         reason: shouldScaleCompactViewport
-            ? 'Truly compact Desktop viewport should use the bounded safety fit'
+            ? 'Compact Desktop viewport should use the bounded safety fit'
             : 'Normal/DPI-compressed Desktop viewport must remain native 1:1',
       );
     }
@@ -110,6 +111,8 @@ void main() {
 
     for (final size in <Size>[
       const Size(1600, 900),
+      const Size(1382, 733),
+      const Size(1320, 720),
       const Size(1280, 720),
       const Size(1024, 720),
       const Size(820, 700),
