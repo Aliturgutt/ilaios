@@ -58,12 +58,21 @@ class IlaiosDesktopApp extends StatefulWidget {
   State<IlaiosDesktopApp> createState() => _IlaiosDesktopAppState();
 }
 
-class _IlaiosDesktopAppState extends State<IlaiosDesktopApp> {
+class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
+    with WidgetsBindingObserver {
+  static const Duration _operationalRefreshInterval = Duration(seconds: 2);
+
   late ThemeMode _localThemeMode = widget.themeMode;
+  Timer? _operationalRefreshTimer;
+  AppLifecycleState _lifecycleState = AppLifecycleState.resumed;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _lifecycleState =
+        WidgetsBinding.instance.lifecycleState ?? AppLifecycleState.resumed;
+    _restartOperationalRefresh();
     if (kReleaseMode && widget.onThemeModeChanged == null) {
       unawaited(_loadTheme());
     }
@@ -76,6 +85,36 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp> {
         widget.onThemeModeChanged != null) {
       _localThemeMode = widget.themeMode;
     }
+    if (widget.onRefreshRequested != oldWidget.onRefreshRequested) {
+      _restartOperationalRefresh();
+    }
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    _lifecycleState = state;
+    if (state == AppLifecycleState.resumed) {
+      widget.onRefreshRequested?.call();
+    }
+  }
+
+  @override
+  void dispose() {
+    _operationalRefreshTimer?.cancel();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  void _restartOperationalRefresh() {
+    _operationalRefreshTimer?.cancel();
+    if (widget.onRefreshRequested == null) return;
+    _operationalRefreshTimer = Timer.periodic(
+      _operationalRefreshInterval,
+      (_) {
+        if (!mounted || _lifecycleState != AppLifecycleState.resumed) return;
+        widget.onRefreshRequested?.call();
+      },
+    );
   }
 
   Future<void> _loadTheme() async {
