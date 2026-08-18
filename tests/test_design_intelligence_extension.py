@@ -14,7 +14,7 @@ from services.design_quality import (
 from src.ilaios_ui_design import resolve_ui_design
 
 
-def _web_rows(**overrides: int) -> list[DesignObservation]:
+def _web_rows(**overrides: Any) -> list[DesignObservation]:
     return [
         DesignObservation(
             route="/" if locale == "en" else "/tr",
@@ -69,6 +69,38 @@ def test_web_accessibility_form_performance_navigation_and_chart_failures_block(
         assert result.status == "FAIL"
         assert any(
             finding.category == category and finding.severity == severity
+            for finding in result.findings
+        )
+
+
+def test_web_fluid_interaction_and_motion_failures_block() -> None:
+    cases = (
+        ("input_feedback_failures", "design.interaction-response"),
+        ("gesture_tracking_failures", "design.gesture-continuity"),
+        ("non_interruptible_motion_failures", "design.motion-quality"),
+        ("velocity_handoff_failures", "design.motion-quality"),
+        ("spatial_transition_failures", "design.motion-quality"),
+        ("text_scaling_failures", "design.typography-quality"),
+    )
+    evaluator = NativeDesignQualityEvaluator()
+    for field, category in cases:
+        result = evaluator.evaluate(_web_rows(**{field: 1}))
+        assert result.status == "FAIL"
+        assert any(
+            finding.category == category and finding.severity == "p2"
+            for finding in result.findings
+        )
+
+
+def test_web_accessibility_motion_fallbacks_fail_closed_when_required() -> None:
+    evaluator = NativeDesignQualityEvaluator()
+    for field in ("reduced_transparency_supported", "increased_contrast_supported"):
+        result = evaluator.evaluate(_web_rows(**{field: False}))
+        assert result.status == "FAIL"
+        assert any(
+            finding.category == "design.accessibility"
+            and finding.severity == "p2"
+            and finding.evidence.get(field) is False
             for finding in result.findings
         )
 
