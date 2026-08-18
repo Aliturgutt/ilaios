@@ -55,11 +55,11 @@ OperationalSnapshot _snapshot() => const OperationalSnapshot(
     );
 
 Widget _app({Future<void> Function(String agentId)? onProvisionAgent}) =>
-    MaterialApp(
-      home: IlaiosLocaleScope(
-        locale: IlaiosLocale.english,
-        onChanged: (_) {},
-        child: AgentProvisionScope(
+    IlaiosLocaleScope(
+      locale: IlaiosLocale.english,
+      onChanged: (_) {},
+      child: MaterialApp(
+        home: AgentProvisionScope(
           onProvisionAgent: onProvisionAgent,
           child: Scaffold(
             body: SizedBox(
