@@ -17,7 +17,10 @@ def _file(path: Path, content: str = "x") -> Path:
     return path
 
 
-def _boundary(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> PlaywrightDockerBrowserEgressBoundary:
+def _boundary(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> PlaywrightDockerBrowserEgressBoundary:
     proxy = _file(tmp_path / "proxy.py")
     profile = _file(tmp_path / "seccomp.json", "{}")
     monkeypatch.setattr(
@@ -116,16 +119,10 @@ def test_hardening_rejects_privileged_browser_launch(
         )
 
 
-@pytest.mark.parametrize(
-    "forbidden_capability",
-    ("--cap-add=SYS_ADMIN", "--cap-add=NET_ADMIN", "--cap-add=SYS_PTRACE"),
-)
-def test_hardening_rejects_broad_browser_capabilities(
-    tmp_path: Path,
-    monkeypatch: pytest.MonkeyPatch,
+def _assert_broad_capability_rejected(
+    boundary: PlaywrightDockerBrowserEgressBoundary,
     forbidden_capability: str,
 ) -> None:
-    boundary = _boundary(tmp_path, monkeypatch)
     with pytest.raises(BrowserToolError, match="weaken container isolation"):
         boundary._inject_browser_seccomp(
             (
@@ -138,6 +135,33 @@ def test_hardening_rejects_broad_browser_capabilities(
                 "image-id",
             )
         )
+
+
+def test_hardening_rejects_sys_admin(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _assert_broad_capability_rejected(
+        _boundary(tmp_path, monkeypatch), "--cap-add=SYS_ADMIN"
+    )
+
+
+def test_hardening_rejects_net_admin(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _assert_broad_capability_rejected(
+        _boundary(tmp_path, monkeypatch), "--cap-add=NET_ADMIN"
+    )
+
+
+def test_hardening_rejects_sys_ptrace(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _assert_broad_capability_rejected(
+        _boundary(tmp_path, monkeypatch), "--cap-add=SYS_PTRACE"
+    )
 
 
 def test_hardening_requires_ambient_capability_drop(
