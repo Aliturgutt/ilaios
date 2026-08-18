@@ -2,7 +2,7 @@
 
 This module does not create a second agent engine. It binds canonical ILAIOS
 agent manifests to the existing permission firewall, scoped execution grants,
-immutable skill registry, deterministic provider routing, and persisted runtime
+immutable skill registry, governed provider routing, and persisted runtime
 evidence.
 """
 
@@ -80,6 +80,7 @@ class NamedAgentExecutor:
         skill_id: str,
         payload: dict[str, Any],
         now: datetime,
+        preferred_provider_id: str | None = None,
     ) -> NamedAgentExecution:
         """Admit, route, execute, and bind the result to independent verification."""
         try:
@@ -92,6 +93,7 @@ class NamedAgentExecutor:
             skill_id,
             invocation.capability,
             payload,
+            preferred_provider_id=preferred_provider_id,
         )
         if route.get("agent_id") != admission.agent_id:
             raise NamedAgentExecutionError("runtime route identity diverged from admission")
