@@ -17,10 +17,15 @@ from services.p0_skill_catalog import (
 )
 from services.runtime import GovernedRuntime
 from services.runtime.ai_provider_adapter import GovernedAIProviderAdapter
+from services.runtime.independent_verifier_adapter import (
+    INDEPENDENT_VERIFIER_ADAPTER_KIND,
+    INDEPENDENT_VERIFIER_PROVIDER_ID,
+)
 from services.security_agent_execution import (
     DefensiveSecurityAgentExecutor,
     security_local_provider_specs,
 )
+from services.structural_independent_verifier import StructuralIndependentVerifier
 
 
 class P0RuntimeCompositionError(RuntimeError):
@@ -31,11 +36,13 @@ class P0RuntimeCompositionError(RuntimeError):
 class P0RuntimeComposition:
     named_executor: NamedAgentExecutor
     security_executor: DefensiveSecurityAgentExecutor
+    structural_verifier: StructuralIndependentVerifier
     ai_executor: P0ProviderBackedExecutor | None
     target_agent_count: int
     provisioned_identity_count: int
     skill_count: int
     security_provider_count: int
+    verifier_provider_count: int
     ai_provider_count: int
 
     @property
@@ -76,6 +83,14 @@ def compose_p0_runtime(
             deterministic=True,
         )
 
+    named.ensure_provider(
+        INDEPENDENT_VERIFIER_PROVIDER_ID,
+        frozenset({"evidence.verify"}),
+        adapter_kind=INDEPENDENT_VERIFIER_ADAPTER_KIND,
+        deterministic=True,
+    )
+    structural_verifier = StructuralIndependentVerifier(named, runtime)
+
     ai_executor: P0ProviderBackedExecutor | None = None
     ai_provider_count = 0
     capabilities = dict(ai_provider_capabilities or {})
@@ -115,10 +130,12 @@ def compose_p0_runtime(
     return P0RuntimeComposition(
         named_executor=named,
         security_executor=DefensiveSecurityAgentExecutor(named),
+        structural_verifier=structural_verifier,
         ai_executor=ai_executor,
         target_agent_count=len(p0),
         provisioned_identity_count=len(identities),
         skill_count=len(all_skill_ids),
         security_provider_count=len(security_specs),
+        verifier_provider_count=1,
         ai_provider_count=ai_provider_count,
     )
