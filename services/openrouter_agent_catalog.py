@@ -15,6 +15,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
+from typing import Any
 
 from services.ai_governance import (
     ModelProviderRegistry,
@@ -29,7 +30,12 @@ from services.ai_governance import (
 )
 from services.p0_agent_execution import P0_AGENT_BINDINGS
 from services.p0_ai_provider_config import P0AIProviderConfiguration
-from services.runtime.ai_provider_adapter import GovernedAIProviderAdapter, ProviderEndpoint
+from services.runtime.ai_provider_adapter import (
+    GovernedAIProviderAdapter,
+    OpenAICompatibleTransport,
+    ProviderEndpoint,
+    ProviderTransportResult,
+)
 
 
 class OpenRouterAgentCatalogError(RuntimeError):
@@ -37,12 +43,59 @@ class OpenRouterAgentCatalogError(RuntimeError):
 
 
 _OPENROUTER_PROVIDER_ID = "openrouter"
+_OPENROUTER_STRICT_WIRE_PROVIDER_ID = "openrouter-strict-wire"
 _OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 _OPENROUTER_MODELS_URL = f"{_OPENROUTER_BASE_URL}/models/user"
 _OPENROUTER_FREE_ROUTER_ID = "openrouter/free"
 _MAX_AUTO_MODELS = 12
 _FREE_ROUTER_CONTEXT_WINDOW = 32_768
 _FREE_ROUTER_MAX_OUTPUT_TOKENS = 2_048
+
+
+class _StrictOpenRouterTransport(OpenAICompatibleTransport):
+    """Require downstream support for the bounded, provider-filterable controls."""
+
+    def complete(
+        self,
+        endpoint: ProviderEndpoint,
+        *,
+        api_key: str,
+        model_id: str,
+        system_instructions: str,
+        prompt: str,
+        max_output_tokens: int,
+        response_format: dict[str, Any] | None = None,
+        require_parameters: bool = False,
+    ) -> ProviderTransportResult:
+        if endpoint.provider_id != _OPENROUTER_PROVIDER_ID:
+            raise OpenRouterAgentCatalogError(
+                "strict OpenRouter transport received a non-OpenRouter endpoint"
+            )
+
+        # OpenRouter publishes provider support for the normalized ``max_tokens``
+        # parameter. Dynamic routers such as ``openrouter/free`` do not guarantee
+        # reasoning controls, and provider support metadata does not expose
+        # ``modalities`` as a filterable request parameter. Serialize the strict
+        # request through the generic OpenAI-compatible branch so the wire body
+        # contains only parameters that ``require_parameters`` can enforce.
+        wire_endpoint = ProviderEndpoint(
+            _OPENROUTER_STRICT_WIRE_PROVIDER_ID,
+            endpoint.base_url,
+            endpoint.api_key_env,
+            timeout_seconds=endpoint.timeout_seconds,
+            max_retries=endpoint.max_retries,
+            requires_api_key=endpoint.requires_api_key,
+        )
+        return super().complete(
+            wire_endpoint,
+            api_key=api_key,
+            model_id=model_id,
+            system_instructions=system_instructions,
+            prompt=prompt,
+            max_output_tokens=max_output_tokens,
+            response_format=response_format,
+            require_parameters=True,
+        )
 
 
 class _TenantTemplateUsageGovernor(UsageGovernor):
@@ -167,7 +220,13 @@ def _configuration(
         max_retries=1,
     )
     return P0AIProviderConfiguration(
-        adapter=GovernedAIProviderAdapter(registry, policy, governor, (endpoint,)),
+        adapter=GovernedAIProviderAdapter(
+            registry,
+            policy,
+            governor,
+            (endpoint,),
+            transport=_StrictOpenRouterTransport(),
+        ),
         provider_capabilities={_OPENROUTER_PROVIDER_ID: capabilities},
         configured_scopes=(),
     )

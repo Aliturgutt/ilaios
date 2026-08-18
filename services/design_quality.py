@@ -173,7 +173,15 @@ class DesignObservation:
     layout_shift_failures: int = 0
     navigation_hierarchy_failures: int = 0
     chart_accessibility_failures: int = 0
+    input_feedback_failures: int = 0
+    gesture_tracking_failures: int = 0
+    non_interruptible_motion_failures: int = 0
+    velocity_handoff_failures: int = 0
+    spatial_transition_failures: int = 0
+    text_scaling_failures: int = 0
     reduced_motion_supported: bool = True
+    reduced_transparency_supported: bool = True
+    increased_contrast_supported: bool = True
 
 
 @dataclass(frozen=True, slots=True)
@@ -211,7 +219,7 @@ class DesignAssessment:
 
 class NativeDesignQualityEvaluator:
     evaluator_id = "design.final-polish"
-    version = "1.2.0"
+    version = "1.3.0"
 
     def evaluate(self, observations: Iterable[DesignObservation]) -> DesignAssessment:
         rows = tuple(observations)
@@ -292,6 +300,12 @@ class NativeDesignQualityEvaluator:
             "layout_shift_failures",
             "navigation_hierarchy_failures",
             "chart_accessibility_failures",
+            "input_feedback_failures",
+            "gesture_tracking_failures",
+            "non_interruptible_motion_failures",
+            "velocity_handoff_failures",
+            "spatial_transition_failures",
+            "text_scaling_failures",
         )
         for name in fields:
             if getattr(row, name) < 0:
@@ -411,6 +425,48 @@ class NativeDesignQualityEvaluator:
                 "Data visualization relies on inaccessible encoding.",
                 "Provide labels, legends, non-color encoding, and accessible data context.",
             ),
+            (
+                "input_feedback_failures",
+                "design.interaction-response",
+                "p2",
+                "Interactive input feedback is delayed or discontinuous.",
+                "Respond at interaction start and keep feedback continuous while the input is active.",
+            ),
+            (
+                "gesture_tracking_failures",
+                "design.gesture-continuity",
+                "p2",
+                "Gesture-driven content does not track the active input continuously.",
+                "Keep direct-manipulation state synchronized with pointer or touch movement.",
+            ),
+            (
+                "non_interruptible_motion_failures",
+                "design.motion-quality",
+                "p2",
+                "User-driven motion cannot be safely interrupted or redirected.",
+                "Retarget from the current presented state without locking interaction during motion.",
+            ),
+            (
+                "velocity_handoff_failures",
+                "design.motion-quality",
+                "p2",
+                "Gesture release introduces a visible motion discontinuity.",
+                "Preserve measured interaction momentum when transitioning to settled motion.",
+            ),
+            (
+                "spatial_transition_failures",
+                "design.motion-quality",
+                "p2",
+                "Enter, exit, or reversible transitions break spatial continuity.",
+                "Keep reversible transitions anchored to the same spatial source and path.",
+            ),
+            (
+                "text_scaling_failures",
+                "design.typography-quality",
+                "p2",
+                "Text scaling breaks hierarchy, legibility, or layout.",
+                "Use scale-aware typography and spacing that survives user text-size changes.",
+            ),
         )
         out = [
             self._finding(
@@ -434,6 +490,30 @@ class NativeDesignQualityEvaluator:
                     "Reduced-motion behavior is missing.",
                     {"reduced_motion_supported": False},
                     "Honor prefers-reduced-motion.",
+                    1.0,
+                )
+            )
+        if not row.reduced_transparency_supported:
+            out.append(
+                self._finding(
+                    row,
+                    "design.accessibility",
+                    "p2",
+                    "A required reduced-transparency fallback is missing.",
+                    {"reduced_transparency_supported": False},
+                    "When translucent surfaces are used, provide a legible reduced-transparency fallback.",
+                    1.0,
+                )
+            )
+        if not row.increased_contrast_supported:
+            out.append(
+                self._finding(
+                    row,
+                    "design.accessibility",
+                    "p2",
+                    "A required increased-contrast fallback is missing.",
+                    {"increased_contrast_supported": False},
+                    "Provide higher-contrast treatment where the platform requests increased contrast.",
                     1.0,
                 )
             )
