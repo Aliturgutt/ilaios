@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import base64
 import json
+from collections.abc import Mapping
 from pathlib import Path
 
 from services.integrations.reference_video_runtime import (
@@ -12,7 +13,10 @@ from services.reference_assets import (
     reference_request_context,
 )
 from src.video_automation.models import ProviderRequest
-from src.video_automation.openrouter_video_provider import OpenRouterJsonResponse
+from src.video_automation.openrouter_video_provider import (
+    OpenRouterByteResponse,
+    OpenRouterJsonResponse,
+)
 
 
 def _png(width: int = 320, height: int = 180) -> bytes:
@@ -30,9 +34,15 @@ def _png(width: int = 320, height: int = 180) -> bytes:
 class _FrameTransport:
     def __init__(self, *, supported: tuple[str, ...]) -> None:
         self.supported = supported
-        self.submitted_body = None
+        self.submitted_body: Mapping[str, object] | None = None
 
-    def get_json(self, url, *, headers, timeout_seconds):
+    def get_json(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        timeout_seconds: float,
+    ) -> OpenRouterJsonResponse:
         assert headers["Authorization"].startswith("Bearer ")
         if url.endswith("/videos/models"):
             return OpenRouterJsonResponse(
@@ -50,16 +60,32 @@ class _FrameTransport:
             )
         raise AssertionError(f"unexpected GET: {url}")
 
-    def post_json(self, url, *, headers, body, timeout_seconds):
+    def post_json(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        body: Mapping[str, object],
+        timeout_seconds: float,
+    ) -> OpenRouterJsonResponse:
         assert url.endswith("/videos")
         self.submitted_body = body
         return OpenRouterJsonResponse(202, {"id": "frame-job-1", "status": "pending"})
 
-    def get_bytes(self, url, *, headers, timeout_seconds):
+    def get_bytes(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        timeout_seconds: float,
+    ) -> OpenRouterByteResponse:
         raise AssertionError("not used")
 
 
-def _request(provider, prompt: str) -> ProviderRequest:
+def _request(
+    provider: ReferenceAwareOpenRouterVideoGenerationProvider,
+    prompt: str,
+) -> ProviderRequest:
     return ProviderRequest(
         request_id="dispatch-frame-1",
         job_id="dispatch-plan-1",
@@ -117,10 +143,16 @@ def test_exact_first_frame_uses_frame_images_not_general_references(tmp_path: Pa
     assert result.success is True
     assert transport.submitted_body is not None
     assert "input_references" not in transport.submitted_body
-    frames = transport.submitted_body["frame_images"]
-    assert len(frames) == 1
-    assert frames[0]["frame_type"] == "first_frame"
-    url = frames[0]["image_url"]["url"]
+    raw_frames = transport.submitted_body.get("frame_images")
+    assert isinstance(raw_frames, list)
+    assert len(raw_frames) == 1
+    frame = raw_frames[0]
+    assert isinstance(frame, Mapping)
+    assert frame.get("frame_type") == "first_frame"
+    raw_image_url = frame.get("image_url")
+    assert isinstance(raw_image_url, Mapping)
+    url = raw_image_url.get("url")
+    assert isinstance(url, str)
     assert base64.b64decode(url.split(",", 1)[1]) == content
     assert result.metadata["reference_mode"] == "frame_images"
 
