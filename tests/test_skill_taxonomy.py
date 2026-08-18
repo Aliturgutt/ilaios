@@ -16,6 +16,7 @@ from services.skill_taxonomy import (
     validate_skill_taxonomy,
 )
 from services.software_factory_skills import REQUIRED_SKILL_IDS
+from services.web_factory_skills import WEB_FACTORY_NATIVE_SKILL_IDS
 
 
 def test_taxonomy_has_expected_top_level_families() -> None:
@@ -51,6 +52,26 @@ def test_factories_are_domain_skills_not_core_authorities() -> None:
     assert "factories/video/model-routing" not in logical_ids
     assert all("tool-gateway" not in logical_id for logical_id in logical_ids)
     assert all("policy-engine" not in logical_id for logical_id in logical_ids)
+
+
+def test_web_taxonomy_maps_exactly_to_native_runtime_skills() -> None:
+    web = nodes_for_prefix("factories/web")
+    assert {node.path[-1] for node in web} == {
+        "architecture",
+        "design",
+        "accessibility",
+        "performance",
+        "validation",
+        "production-qa",
+    }
+    assert tuple(
+        backing_skill_id
+        for node in web
+        for backing_skill_id in node.backing_skill_ids
+    ) == WEB_FACTORY_NATIVE_SKILL_IDS
+    logical_ids = {node.logical_id for node in web}
+    assert "factories/web/build" not in logical_ids
+    assert "factories/web/test" not in logical_ids
 
 
 def test_browser_is_shared_capability_not_factory() -> None:
