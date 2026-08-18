@@ -38,7 +38,6 @@ from src.video_automation.commercial_admission import (
 from src.video_automation.commercial_store import CommercialAuthorityStore
 from src.video_automation.generation_execution_tracking import GenerationDispatchExecution
 from src.video_automation.generation_job_polling import (
-    GenerationJobPoller,
     ProviderJobObservation,
     ProviderJobStatus,
 )
