@@ -40,7 +40,25 @@ class ReferenceAttachmentDraft {
       throw const ReferenceAttachmentException('Reference image path is empty.');
     }
     final file = File(normalized);
+    final stat = await file.stat();
+    if (stat.type != FileSystemEntityType.file) {
+      throw const ReferenceAttachmentException(
+        'Reference image must be a regular file.',
+      );
+    }
+    if (stat.size <= 0 || stat.size > maxReferenceAssetBytes) {
+      throw const ReferenceAttachmentException(
+        'Reference image must be between 1 byte and 8 MB.',
+      );
+    }
     final bytes = await file.readAsBytes();
+    // Repeat the size check after the read to fail closed if the file changed
+    // between stat and read (TOCTOU).
+    if (bytes.isEmpty || bytes.length > maxReferenceAssetBytes) {
+      throw const ReferenceAttachmentException(
+        'Reference image must be between 1 byte and 8 MB.',
+      );
+    }
     return fromBytes(file.uri.pathSegments.last, bytes);
   }
 
