@@ -30,11 +30,21 @@ def test_revision_cannot_degrade_to_new_generation_without_source_video() -> Non
 
 
 def test_bound_source_video_is_recognized_but_not_false_claimed_as_edit_execution() -> None:
-    with pytest.raises(VideoProductIntentError, match="not materialized yet"):
+    with pytest.raises(VideoProductIntentError, match="not materialized"):
         admit_current_desktop_video_product(
             "Edit this video and make the final scene shorter.",
             source_video_present=True,
         )
+
+
+def test_bound_source_revision_is_admitted_only_with_explicit_execution_capability() -> None:
+    spec = admit_current_desktop_video_product(
+        "Trim this video from 00:00:04 to 00:00:12.",
+        source_video_present=True,
+        revision_execution_available=True,
+    )
+    assert spec.mode is VideoProductMode.REVISION
+    assert spec.source_video_required is True
 
 
 def test_bound_source_video_is_never_silently_ignored_by_create_mode() -> None:
@@ -53,7 +63,7 @@ def test_localization_cannot_degrade_to_new_generation_without_source_video() ->
 
 
 def test_bound_source_localization_still_fails_until_real_dubbing_is_materialized() -> None:
-    with pytest.raises(VideoProductIntentError, match="not materialized yet"):
+    with pytest.raises(VideoProductIntentError, match="not materialized"):
         admit_current_desktop_video_product(
             "Dub this video into Turkish.",
             source_video_present=True,
@@ -69,6 +79,23 @@ def test_episode_request_cannot_invent_series_state() -> None:
         )
 
 
+def test_series_state_alone_does_not_claim_unmaterialized_execution() -> None:
+    with pytest.raises(VideoProductIntentError, match="not materialized"):
+        admit_current_desktop_video_product(
+            "Create episode 4 with the same characters.",
+            series_state_present=True,
+        )
+
+
+def test_series_execution_requires_both_state_and_explicit_capability() -> None:
+    spec = admit_current_desktop_video_product(
+        "Create episode 4 with the same characters.",
+        series_state_present=True,
+        series_execution_available=True,
+    )
+    assert spec.mode is VideoProductMode.SERIES_CONTINUATION
+
+
 def test_vertical_and_square_requests_fail_before_current_16_9_materialization() -> None:
     with pytest.raises(VideoProductIntentError, match="9:16"):
         admit_current_desktop_video_product(
@@ -78,6 +105,19 @@ def test_vertical_and_square_requests_fail_before_current_16_9_materialization()
         admit_current_desktop_video_product(
             "Create a square video for the campaign.",
         )
+
+
+def test_output_shape_is_admitted_only_when_runtime_proves_support() -> None:
+    vertical = admit_current_desktop_video_product(
+        "Create a vertical video for a product launch.",
+        supported_aspect_ratios=frozenset({"16:9", "9:16"}),
+    )
+    square = admit_current_desktop_video_product(
+        "Create a square video for the campaign.",
+        supported_aspect_ratios=frozenset({"16:9", "1:1"}),
+    )
+    assert vertical.aspect_ratio == "9:16"
+    assert square.aspect_ratio == "1:1"
 
 
 def test_explicit_platform_shape_is_bounded_and_truthful() -> None:
