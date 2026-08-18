@@ -1,4 +1,4 @@
-"""Canonical provider-independent Web Factory native skill family."""
+"""Canonical provider-independent Web Factory native skill families."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -24,6 +24,21 @@ WEB_FACTORY_NATIVE_SKILL_IDS: tuple[str, ...] = tuple(
     skill.skill_id for skill in WEB_FACTORY_NATIVE_SKILLS
 )
 
+# Browser support skills are not a second Web Factory pipeline. They are bounded
+# BrowserQA capabilities consumed by validation/production-QA through Tool Gateway.
+WEB_FACTORY_BROWSER_SKILLS: tuple[WebFactorySkill, ...] = (
+    WebFactorySkill("ilaios-browser", "web.verify", "browser"),
+    WebFactorySkill("ilaios-web-e2e", "web.verify", "web-e2e"),
+    WebFactorySkill("ilaios-visual-qa", "web.verify", "visual-qa"),
+    WebFactorySkill(
+        "ilaios-production-verification", "web.verify", "production-verification"
+    ),
+)
+
+WEB_FACTORY_BROWSER_SKILL_IDS: tuple[str, ...] = tuple(
+    skill.skill_id for skill in WEB_FACTORY_BROWSER_SKILLS
+)
+
 
 def validate_web_factory_native_skills() -> None:
     ids = WEB_FACTORY_NATIVE_SKILL_IDS
@@ -38,6 +53,22 @@ def validate_web_factory_native_skills() -> None:
             raise ValueError("Web Factory native capability drifted")
 
 
+def validate_web_factory_browser_skills() -> None:
+    expected = (
+        "ilaios-browser",
+        "ilaios-web-e2e",
+        "ilaios-visual-qa",
+        "ilaios-production-verification",
+    )
+    if WEB_FACTORY_BROWSER_SKILL_IDS != expected:
+        raise ValueError("Web Factory browser skill identity/order drifted")
+    if set(WEB_FACTORY_BROWSER_SKILL_IDS) & set(WEB_FACTORY_NATIVE_SKILL_IDS):
+        raise ValueError("browser support skills must not replace native pipeline stages")
+    for skill in WEB_FACTORY_BROWSER_SKILLS:
+        if skill.capability != "web.verify":
+            raise ValueError("browser support skills may not widen BrowserQA capability")
+
+
 def web_factory_native_skill_plan() -> tuple[dict[str, str], ...]:
     """Return the immutable ordered native skill plan exposed to Web runtime callers."""
     validate_web_factory_native_skills()
@@ -48,6 +79,19 @@ def web_factory_native_skill_plan() -> tuple[dict[str, str], ...]:
             "stage": skill.stage,
         }
         for skill in WEB_FACTORY_NATIVE_SKILLS
+    )
+
+
+def web_factory_browser_skill_plan() -> tuple[dict[str, str], ...]:
+    """Return BrowserQA support skills without granting execution authority."""
+    validate_web_factory_browser_skills()
+    return tuple(
+        {
+            "skill_id": skill.skill_id,
+            "capability": skill.capability,
+            "stage": skill.stage,
+        }
+        for skill in WEB_FACTORY_BROWSER_SKILLS
     )
 
 
@@ -131,3 +175,4 @@ def bind_web_factory_native_skill_evidence(
 
 
 validate_web_factory_native_skills()
+validate_web_factory_browser_skills()
