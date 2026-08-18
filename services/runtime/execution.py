@@ -68,6 +68,11 @@ class GovernedRuntime:
                 raise RuntimeError("external adapter must be callable")
             self._adapters[adapter_kind] = adapter
 
+    @property
+    def database_path(self) -> Path:
+        """Authoritative runtime database location for read-only projections."""
+        return self._database_path
+
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self._database_path)
         connection.row_factory = sqlite3.Row
