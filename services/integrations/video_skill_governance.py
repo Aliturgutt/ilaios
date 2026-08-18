@@ -33,7 +33,7 @@ REQUIRED_VIDEO_SKILL_FAMILIES = frozenset(
         "director",
         "prompt",
         "reference-assets",
-        "routing",
+        "model-fit",
         "continuity",
     }
 )
