@@ -361,6 +361,15 @@ int _referenceFactoryCount(String objective) {
     'web sitesi',
     'landing page',
     'internet sitesi',
+    'web app',
+    'web application',
+    'web uygulaması',
+    'web uygulamasi',
+    'dashboard',
+    'admin panel',
+    'management dashboard',
+    'yönetim paneli',
+    'yonetim paneli',
   };
   final web = webTerms.any(normalized.contains);
   return (video ? 1 : 0) + (web ? 1 : 0);
