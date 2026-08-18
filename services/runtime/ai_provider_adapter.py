@@ -144,9 +144,16 @@ class OpenAICompatibleTransport:
                 {"role": "system", "content": system_instructions},
                 {"role": "user", "content": prompt},
             ],
-            "max_tokens": max_output_tokens,
         }
-        if model_id == "openrouter/free" and response_format is None:
+        if endpoint.provider_id == "openrouter":
+            # OpenRouter deprecates max_tokens in favor of max_completion_tokens.
+            # Use the current contract so the provider-side completion ceiling
+            # covers reported output/reasoning usage instead of relying on a
+            # legacy parameter that upstream routes may interpret differently.
+            request_document["max_completion_tokens"] = max_output_tokens
+        else:
+            request_document["max_tokens"] = max_output_tokens
+        if endpoint.provider_id == "openrouter" and response_format is None:
             request_document["reasoning"] = {
                 "effort": "minimal",
                 "exclude": True,
