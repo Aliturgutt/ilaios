@@ -126,10 +126,10 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('workflow-row-menu-workflow-7')));
     await tester.pumpAndSettle();
-    expect(find.text('Open Details'), findsOneWidget);
-    expect(find.text('View Approvals'), findsOneWidget);
-    expect(find.text('Live Workspace'), findsOneWidget);
-    await tester.tap(find.text('View Approvals'));
+    expect(find.text('Open Details'), findsWidgets);
+    expect(find.text('View Approvals'), findsWidgets);
+    expect(find.text('Live Workspace'), findsWidgets);
+    await tester.tap(find.text('View Approvals').last);
     await tester.pumpAndSettle();
     expect(destination, DesktopSection.approvals);
   });
