@@ -50,6 +50,8 @@ void main() {
                 'authority_matches_canonical': true,
                 'agent_status': index == 1 ? 'busy' : 'active',
                 'current_task': index == 1 ? 'Authoritative task' : '—',
+                'capacity': 0.40 + index * 0.05,
+                'success_rate': 0.91 + index * 0.005,
                 'latency_ms': 800 + index * 10,
                 'last_activity': '2026-08-19T00:00:0${index}Z',
                 'health': 'ready',
