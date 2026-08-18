@@ -9,7 +9,7 @@ all other capabilities fail-closed.
 from __future__ import annotations
 
 import secrets
-import time
+import time as _time
 from datetime import datetime, timezone
 from http import HTTPStatus
 
@@ -18,6 +18,10 @@ from services.execution_coordinator import ExecutionCoordinator
 from services.reference_assets import ReferenceAssetStore
 
 from . import desktop_identity_server_core as _core
+
+# Preserve the public module clock used by recovery tests and operators without
+# relying on an implicit re-export from the canonical core module.
+time = _time
 
 
 class DesktopIdentityHTTPServer(_core.DesktopIdentityHTTPServer):
