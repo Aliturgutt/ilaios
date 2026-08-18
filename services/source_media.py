@@ -3,9 +3,9 @@
 Source media is authenticated user input, not accepted execution evidence. It is
 therefore kept outside the append-only EvidenceStore, like reference images, but
 with its own single-source request contract. Bytes are content addressed, MIME
-and container facts are verified server-side, ownership is enforced, and request
-binding is immutable. This module does not edit media, select providers, or
-create a second Video runtime.
+and container facts are verified server-side, ownership is enforced, request
+binding is immutable, and unsubmitted uploads are strictly bounded/retained.
+This module does not edit media, select providers, or create a second Video runtime.
 """
 
 from __future__ import annotations
@@ -16,7 +16,7 @@ import secrets
 import sqlite3
 import threading
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Protocol
 
@@ -30,6 +30,9 @@ MAX_SOURCE_MEDIA_BYTES = 128 * 1024 * 1024
 MAX_SOURCE_MEDIA_DURATION_SECONDS = 15 * 60.0
 MAX_SOURCE_MEDIA_DIMENSION = 7680
 MAX_SOURCE_MEDIA_FILENAME_CHARS = 180
+MAX_UNBOUND_SOURCE_MEDIA_ASSETS = 2
+MAX_UNBOUND_SOURCE_MEDIA_BYTES = 256 * 1024 * 1024
+UNBOUND_SOURCE_MEDIA_RETENTION = timedelta(hours=24)
 ALLOWED_SOURCE_VIDEO_CODECS = frozenset({"h264", "hevc", "vp9", "av1"})
 SOURCE_MEDIA_MIME_TYPE = "video/mp4"
 
@@ -129,6 +132,8 @@ class SourceMediaStore:
                 );
                 """
             )
+        with self._lock:
+            self._prune_expired_unbound(datetime.now(timezone.utc))
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self._database_path, timeout=10)
@@ -159,6 +164,20 @@ class SourceMediaStore:
         digest = hashlib.sha256(content).hexdigest()
         path = self._blob_root / digest
         with self._lock:
+            self._prune_expired_unbound(datetime.now(timezone.utc))
+            count, bytes_used = self._unbound_usage(
+                principal_id=principal_id,
+                tenant_id=tenant_id,
+            )
+            if count >= MAX_UNBOUND_SOURCE_MEDIA_ASSETS:
+                raise SourceMediaError(
+                    "too many unsubmitted source videos; submit or discard the current upload"
+                )
+            if bytes_used + len(content) > MAX_UNBOUND_SOURCE_MEDIA_BYTES:
+                raise SourceMediaError(
+                    "unsubmitted source videos exceed the 256 MiB safety quota"
+                )
+
             if path.is_symlink():
                 raise SourceMediaError("source video blob path is a symbolic link")
             existed = path.exists()
@@ -272,29 +291,64 @@ class SourceMediaStore:
         tenant_id: str,
     ) -> SourceMediaRecord:
         _identity("request_id", request_id)
-        record = self.get_owned(
-            asset_id,
-            principal_id=principal_id,
-            tenant_id=tenant_id,
-        )
-        self.require_registered_path(record.asset_id)
-        bound_at = datetime.now(timezone.utc).isoformat()
-        with self._connect() as connection:
-            connection.execute("BEGIN IMMEDIATE")
-            existing = connection.execute(
-                "SELECT asset_id FROM request_source_media WHERE request_id = ?",
-                (request_id,),
-            ).fetchone()
-            if existing is not None:
-                if str(existing["asset_id"]) != asset_id:
-                    raise SourceMediaError("source media is immutable after request binding")
-                return record
-            connection.execute(
-                "INSERT INTO request_source_media (request_id, asset_id, bound_at) "
-                "VALUES (?, ?, ?)",
-                (request_id, asset_id, bound_at),
+        with self._lock:
+            record = self.get_owned(
+                asset_id,
+                principal_id=principal_id,
+                tenant_id=tenant_id,
             )
-        return record
+            self.require_registered_path(record.asset_id)
+            bound_at = datetime.now(timezone.utc).isoformat()
+            with self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                existing = connection.execute(
+                    "SELECT asset_id FROM request_source_media WHERE request_id = ?",
+                    (request_id,),
+                ).fetchone()
+                if existing is not None:
+                    if str(existing["asset_id"]) != asset_id:
+                        raise SourceMediaError(
+                            "source media is immutable after request binding"
+                        )
+                    return record
+                connection.execute(
+                    "INSERT INTO request_source_media (request_id, asset_id, bound_at) "
+                    "VALUES (?, ?, ?)",
+                    (request_id, asset_id, bound_at),
+                )
+            return record
+
+    def discard_unbound(
+        self,
+        asset_id: str,
+        *,
+        principal_id: str,
+        tenant_id: str,
+    ) -> bool:
+        """Discard caller-owned source input only when no request has bound it."""
+
+        with self._lock:
+            record = self.get_owned(
+                asset_id,
+                principal_id=principal_id,
+                tenant_id=tenant_id,
+            )
+            with self._connect() as connection:
+                connection.execute("BEGIN IMMEDIATE")
+                bound = connection.execute(
+                    "SELECT 1 FROM request_source_media WHERE asset_id = ? LIMIT 1",
+                    (asset_id,),
+                ).fetchone()
+                if bound is not None:
+                    raise SourceMediaError(
+                        "bound source media cannot be discarded through the upload boundary"
+                    )
+                connection.execute(
+                    "DELETE FROM source_media_assets WHERE asset_id = ?",
+                    (asset_id,),
+                )
+            self._remove_blob_if_unreferenced(record.sha256)
+            return True
 
     def for_request(self, request_id: str) -> SourceMediaRecord | None:
         _identity("request_id", request_id)
@@ -327,6 +381,49 @@ class SourceMediaStore:
             raise SourceMediaError("source video integrity check failed")
         _require_mp4_signature(content)
         return path.resolve()
+
+    def _unbound_usage(self, *, principal_id: str, tenant_id: str) -> tuple[int, int]:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT COUNT(*), COALESCE(SUM(a.size_bytes), 0) "
+                "FROM source_media_assets a "
+                "LEFT JOIN request_source_media r ON r.asset_id = a.asset_id "
+                "WHERE a.principal_id = ? AND a.tenant_id = ? AND r.asset_id IS NULL",
+                (principal_id, tenant_id),
+            ).fetchone()
+        if row is None:
+            return 0, 0
+        return int(row[0]), int(row[1])
+
+    def _prune_expired_unbound(self, now: datetime) -> None:
+        cutoff = (now - UNBOUND_SOURCE_MEDIA_RETENTION).isoformat()
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT a.asset_id, a.sha256 FROM source_media_assets a "
+                "LEFT JOIN request_source_media r ON r.asset_id = a.asset_id "
+                "WHERE r.asset_id IS NULL AND a.created_at < ?",
+                (cutoff,),
+            ).fetchall()
+            if not rows:
+                return
+            connection.execute("BEGIN IMMEDIATE")
+            connection.executemany(
+                "DELETE FROM source_media_assets WHERE asset_id = ?",
+                ((str(row["asset_id"]),) for row in rows),
+            )
+        for row in rows:
+            self._remove_blob_if_unreferenced(str(row["sha256"]))
+
+    def _remove_blob_if_unreferenced(self, digest: str) -> None:
+        if self._digest_is_registered(digest):
+            return
+        path = self._blob_root / digest
+        if path.is_symlink():
+            raise SourceMediaError("source video blob path is a symbolic link")
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as error:
+            raise SourceMediaError("source video bytes could not be discarded") from error
 
     def _digest_is_registered(self, digest: str) -> bool:
         with self._connect() as connection:
@@ -417,8 +514,11 @@ __all__ = [
     "ALLOWED_SOURCE_VIDEO_CODECS",
     "MAX_SOURCE_MEDIA_BYTES",
     "MAX_SOURCE_MEDIA_DURATION_SECONDS",
+    "MAX_UNBOUND_SOURCE_MEDIA_ASSETS",
+    "MAX_UNBOUND_SOURCE_MEDIA_BYTES",
     "SOURCE_MEDIA_MIME_TYPE",
     "SourceMediaError",
     "SourceMediaRecord",
     "SourceMediaStore",
+    "UNBOUND_SOURCE_MEDIA_RETENTION",
 ]
