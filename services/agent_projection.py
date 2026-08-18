@@ -19,7 +19,9 @@ def agent_state_projection(
         agent_id = route.get("agent_id")
         if isinstance(agent_id, str):
             latest[agent_id] = route
-    readiness = readiness or {}
+    readiness_map: Mapping[str, Mapping[str, object]] = (
+        readiness if readiness is not None else {}
+    )
 
     agents: list[dict[str, object]] = []
     for registration in CANONICAL_AGENT_REGISTRY:
@@ -38,7 +40,7 @@ def agent_state_projection(
             "agent_status": "offline" if route is None else "idle",
             "active_tasks": 0,
         }
-        readiness_record = readiness.get(manifest.agent_id)
+        readiness_record = readiness_map.get(manifest.agent_id)
         if readiness_record is not None:
             _merge_readiness(record, readiness_record)
         if route is not None:
