@@ -54,11 +54,24 @@ class NamedAgentExecutor:
             registration.manifest.agent_id, registration.manifest.capabilities
         )
 
+    def ensure_agent(self, agent_id: str) -> None:
+        """Idempotently provision a canonical identity and reject persisted drift."""
+        registration = registration_for(agent_id)
+        self._runtime.ensure_agent(
+            registration.manifest.agent_id, registration.manifest.capabilities
+        )
+
     def provision_skill(
         self, skill_id: str, content: bytes, authorities: frozenset[str]
     ) -> str:
         """Register an immutable bounded skill in the existing runtime."""
         return self._runtime.register_skill(skill_id, content, authorities)
+
+    def ensure_skill(
+        self, skill_id: str, content: bytes, authorities: frozenset[str]
+    ) -> str:
+        """Idempotently provision immutable skill content and reject drift."""
+        return self._runtime.ensure_skill(skill_id, content, authorities)
 
     def provision_provider(
         self,
@@ -70,6 +83,22 @@ class NamedAgentExecutor:
     ) -> None:
         """Register an enabled provider already supported by GovernedRuntime."""
         self._runtime.register_provider(
+            provider_id,
+            capabilities,
+            adapter_kind=adapter_kind,
+            deterministic=deterministic,
+        )
+
+    def ensure_provider(
+        self,
+        provider_id: str,
+        capabilities: frozenset[str],
+        *,
+        adapter_kind: str,
+        deterministic: bool | None = None,
+    ) -> None:
+        """Idempotently provision a provider and reject persisted configuration drift."""
+        self._runtime.ensure_provider(
             provider_id,
             capabilities,
             adapter_kind=adapter_kind,
