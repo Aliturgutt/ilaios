@@ -41,8 +41,14 @@ void main() {
       ],
       environment: environment,
     );
-    unawaited(process.stdout.drain<void>());
-    unawaited(process.stderr.drain<void>());
+    final stdoutBuffer = StringBuffer();
+    final stderrBuffer = StringBuffer();
+    final stdoutSubscription = process.stdout
+        .transform(utf8.decoder)
+        .listen(stdoutBuffer.write);
+    final stderrSubscription = process.stderr
+        .transform(utf8.decoder)
+        .listen(stderrBuffer.write);
     Uri? identityUri;
     addTearDown(() async {
       var exited = false;
@@ -77,6 +83,8 @@ void main() {
           // The directory-release assertion below remains authoritative.
         }
       }
+      await stdoutSubscription.cancel();
+      await stderrSubscription.cancel();
       for (var attempt = 0; attempt < 50 && await root.exists(); attempt += 1) {
         try {
           await root.delete(recursive: true);
@@ -92,7 +100,10 @@ void main() {
     });
 
     Map<String, dynamic>? ready;
-    for (var attempt = 0; attempt < 150; attempt += 1) {
+    // Match the product's bounded 30-second startup deadline. The child must
+    // still publish authenticated loopback readiness; this only tolerates
+    // observed PyInstaller/Windows AV extraction variance on slower hosts.
+    for (var attempt = 0; attempt < 300; attempt += 1) {
       if (await readyFile.exists()) {
         try {
           final decoded = jsonDecode(await readyFile.readAsString());
@@ -106,8 +117,21 @@ void main() {
       }
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
-    expect(ready, isNotNull, reason: 'Packaged Desktop runtime must publish readiness');
-    final host = ready!['host'];
+    if (ready == null) {
+      int? exitCode;
+      try {
+        exitCode = await process.exitCode.timeout(const Duration(milliseconds: 250));
+      } on TimeoutException {
+        // A still-running child is distinct from an early packaged-runtime exit.
+      }
+      fail(
+        'Packaged Desktop runtime must publish readiness; '
+        'exitCode=${exitCode ?? "running"}; '
+        'stdout=${stdoutBuffer.toString()}; '
+        'stderr=${stderrBuffer.toString()}',
+      );
+    }
+    final host = ready['host'];
     final port = ready['port'];
     final identityHost = ready['identity_host'];
     final identityPort = ready['identity_port'];

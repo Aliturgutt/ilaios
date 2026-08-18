@@ -120,7 +120,11 @@ class DesktopRuntime {
     File readyFile,
     String token,
   ) async {
-    const attempts = 150;
+    // PyInstaller one-file extraction is subject to bounded Windows disk and
+    // antivirus variance. Keep startup fail-closed, but allow a healthy child
+    // enough time to publish and authenticate loopback readiness on slower
+    // machines instead of falsely reporting the control plane unavailable.
+    const attempts = 300;
     for (var attempt = 0; attempt < attempts; attempt += 1) {
       if (await readyFile.exists()) {
         try {
