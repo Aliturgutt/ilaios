@@ -40,7 +40,9 @@ def _model(model_id: str, *, free: bool, text: bool = True) -> dict[str, Any]:
     }
 
 
-def test_auto_catalog_accepts_only_free_user_eligible_text_models(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_auto_catalog_prefers_direct_free_user_eligible_text_models(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     payload = {
         "data": [
             _model("paid/model", free=False),
@@ -60,10 +62,33 @@ def test_auto_catalog_accepts_only_free_user_eligible_text_models(monkeypatch: p
     assert configuration.configured_scopes == ()
 
 
-def test_auto_catalog_never_falls_back_to_paid_model(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_auto_catalog_uses_documented_free_router_when_no_direct_zero_price_model(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setattr(
         "services.openrouter_agent_catalog.urllib.request.urlopen",
-        lambda *_args, **_kwargs: _Response({"data": [_model("paid/model", free=False)]}),
+        lambda *_args, **_kwargs: _Response(
+            {
+                "data": [
+                    _model("paid/model", free=False),
+                    _model("free/image-only", free=True, text=False),
+                ]
+            }
+        ),
+    )
+    configuration = discover_free_openrouter_agent_configuration(api_key="test-secret")
+    assert configuration is not None
+    selection = configuration.adapter.select("workflow.coordinate")
+    assert selection.provider_id == "openrouter"
+    assert selection.model_id == "openrouter/free"
+
+
+def test_auto_catalog_rejects_malformed_catalog_instead_of_guessing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "services.openrouter_agent_catalog.urllib.request.urlopen",
+        lambda *_args, **_kwargs: _Response({"unexpected": []}),
     )
     with pytest.raises(OpenRouterAgentCatalogError):
         discover_free_openrouter_agent_configuration(api_key="test-secret")
