@@ -175,12 +175,9 @@ def _configuration(
 
 def _agent_capabilities() -> frozenset[str]:
     return frozenset(
-        {
-            binding.capability
-            for binding in P0_AGENT_BINDINGS
-            if binding.execution_mode == "governed-ai"
-        }
-        | {"evidence.verify"}
+        binding.capability
+        for binding in P0_AGENT_BINDINGS
+        if binding.execution_mode == "governed-ai"
     )
 
 
