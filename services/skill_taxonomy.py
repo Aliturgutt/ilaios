@@ -12,7 +12,10 @@ from dataclasses import dataclass
 from typing import Final
 
 from services.software_factory_skills import REQUIRED_SKILL_IDS
-from services.web_factory_skills import WEB_FACTORY_NATIVE_SKILL_IDS
+from services.web_factory_skills import (
+    WEB_FACTORY_BROWSER_SKILL_IDS,
+    WEB_FACTORY_NATIVE_SKILL_IDS,
+)
 from src.video_automation.video_prompting_skill_manifests import VIDEO_PROMPTING_SKILLS
 from src.video_automation.video_skills import VIDEO_SKILLS
 
@@ -242,12 +245,37 @@ SKILL_TAXONOMY: Final[tuple[SkillTaxonomyNode, ...]] = (
     _node("factories", "research", "contradiction-check"),
     _node("factories", "research", "citation-validation"),
     _node("factories", "research", "synthesis"),
-    _node("capabilities", "browser", "navigate"),
-    _node("capabilities", "browser", "inspect"),
+    _node(
+        "capabilities",
+        "browser",
+        "navigate",
+        backing_skill_ids=("ilaios-browser",),
+    ),
+    _node(
+        "capabilities",
+        "browser",
+        "inspect",
+        backing_skill_ids=("ilaios-browser",),
+    ),
     _node("capabilities", "browser", "automate"),
-    _node("capabilities", "browser", "e2e"),
-    _node("capabilities", "browser", "visual-qa"),
-    _node("capabilities", "browser", "production-verify"),
+    _node(
+        "capabilities",
+        "browser",
+        "e2e",
+        backing_skill_ids=("ilaios-web-e2e",),
+    ),
+    _node(
+        "capabilities",
+        "browser",
+        "visual-qa",
+        backing_skill_ids=("ilaios-visual-qa",),
+    ),
+    _node(
+        "capabilities",
+        "browser",
+        "production-verify",
+        backing_skill_ids=("ilaios-production-verification",),
+    ),
     _node(
         "assurance",
         "security-review",
@@ -315,6 +343,7 @@ def validate_skill_taxonomy() -> None:
     runtime_skill_ids = (
         set(REQUIRED_SKILL_IDS)
         | set(WEB_FACTORY_NATIVE_SKILL_IDS)
+        | set(WEB_FACTORY_BROWSER_SKILL_IDS)
         | set(_SECURITY_METHODOLOGY_SKILL_IDS)
         | set(_VIDEO_RUNTIME_SKILL_IDS)
     )

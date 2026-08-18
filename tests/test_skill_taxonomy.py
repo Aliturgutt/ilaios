@@ -23,7 +23,10 @@ from services.skill_taxonomy import (
     validate_skill_taxonomy,
 )
 from services.software_factory_skills import REQUIRED_SKILL_IDS
-from services.web_factory_skills import WEB_FACTORY_NATIVE_SKILL_IDS
+from services.web_factory_skills import (
+    WEB_FACTORY_BROWSER_SKILL_IDS,
+    WEB_FACTORY_NATIVE_SKILL_IDS,
+)
 
 
 def test_taxonomy_has_expected_top_level_families() -> None:
@@ -112,7 +115,7 @@ def test_video_taxonomy_maps_current_governed_runtime_skills() -> None:
     assert resolve_logical_skill("factories/video/generation").backing_skill_ids == ()
 
 
-def test_browser_is_shared_capability_not_factory() -> None:
+def test_browser_is_shared_capability_with_bounded_runtime_backing() -> None:
     browser = nodes_for_prefix("capabilities/browser")
     assert {node.path[-1] for node in browser} == {
         "navigate",
@@ -123,6 +126,28 @@ def test_browser_is_shared_capability_not_factory() -> None:
         "production-verify",
     }
     assert not nodes_for_prefix("factories/browser")
+    assert WEB_FACTORY_BROWSER_SKILL_IDS == (
+        "ilaios-browser",
+        "ilaios-web-e2e",
+        "ilaios-visual-qa",
+        "ilaios-production-verification",
+    )
+    assert resolve_logical_skill("capabilities/browser/navigate").backing_skill_ids == (
+        "ilaios-browser",
+    )
+    assert resolve_logical_skill("capabilities/browser/inspect").backing_skill_ids == (
+        "ilaios-browser",
+    )
+    assert resolve_logical_skill("capabilities/browser/automate").backing_skill_ids == ()
+    assert resolve_logical_skill("capabilities/browser/e2e").backing_skill_ids == (
+        "ilaios-web-e2e",
+    )
+    assert resolve_logical_skill("capabilities/browser/visual-qa").backing_skill_ids == (
+        "ilaios-visual-qa",
+    )
+    assert resolve_logical_skill(
+        "capabilities/browser/production-verify"
+    ).backing_skill_ids == ("ilaios-production-verification",)
 
 
 def test_software_logical_nodes_only_map_to_existing_runtime_skills() -> None:
@@ -171,9 +196,7 @@ def test_assurance_maps_native_security_and_existing_software_gates() -> None:
 
 def test_skill_create_package_is_fail_closed_and_reviewed() -> None:
     repository_root = Path(__file__).resolve().parents[1]
-    catalog = SkillEngineeringCatalog(
-        default_skill_engineering_root(repository_root)
-    )
+    catalog = SkillEngineeringCatalog(default_skill_engineering_root(repository_root))
     package = catalog.resolve("skill-create")
     assert package.logical_id == "skill-engineering/create"
     assert package.maturity == "IMPLEMENTED"
@@ -189,9 +212,7 @@ def test_skill_create_package_is_fail_closed_and_reviewed() -> None:
     )
 
 
-def test_skill_engineering_catalog_rejects_cross_layer_identity(
-    tmp_path: Path,
-) -> None:
+def test_skill_engineering_catalog_rejects_cross_layer_identity(tmp_path: Path) -> None:
     repository_root = Path(__file__).resolve().parents[1]
     source = default_skill_engineering_root(repository_root) / "skill-create"
     copied_root = tmp_path / "skills"
@@ -207,16 +228,11 @@ def test_skill_engineering_catalog_rejects_cross_layer_identity(
         encoding="utf-8",
     )
 
-    with pytest.raises(
-        ValueError,
-        match="logical_id must stay in skill-engineering",
-    ):
+    with pytest.raises(ValueError, match="logical_id must stay in skill-engineering"):
         SkillEngineeringCatalog(copied_root)
 
 
-def test_skill_engineering_catalog_rejects_source_verified_claim(
-    tmp_path: Path,
-) -> None:
+def test_skill_engineering_catalog_rejects_source_verified_claim(tmp_path: Path) -> None:
     repository_root = Path(__file__).resolve().parents[1]
     source = default_skill_engineering_root(repository_root) / "skill-create"
     copied_root = tmp_path / "skills"
