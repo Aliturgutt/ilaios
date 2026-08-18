@@ -7,10 +7,12 @@ import json
 import os
 import threading
 from dataclasses import replace
+from datetime import datetime
 from pathlib import Path
 from typing import cast
 
-from services.reference_assets import get_reference_asset_store
+from services.control_plane import BudgetEnvelope, DataClass
+from services.reference_assets import ReferenceAssetRecord, get_reference_asset_store
 
 from .web_factory import WebsiteSpec
 from .web_product_runtime import WebProductRuntimeError
@@ -20,8 +22,30 @@ from .web_product_runtime_recovery import RecoverableWebProductRuntime
 class ReferenceAwareRecoverableWebProductRuntime(RecoverableWebProductRuntime):
     """Bind user reference images into design context, source, and acceptance evidence."""
 
-    def prepare(self, request_id: str, objective: str, **kwargs: object) -> dict[str, object]:
-        prepared = super().prepare(request_id, objective, **kwargs)
+    def prepare(
+        self,
+        request_id: str,
+        objective: str,
+        *,
+        token: str,
+        now: datetime,
+        requester_id: str,
+        tenant_id: str,
+        risk: str = "medium",
+        data_class: DataClass = DataClass.INTERNAL,
+        budget: BudgetEnvelope = BudgetEnvelope(2, 120, 0),
+    ) -> dict[str, object]:
+        prepared = super().prepare(
+            request_id,
+            objective,
+            token=token,
+            now=now,
+            requester_id=requester_id,
+            tenant_id=tenant_id,
+            risk=risk,
+            data_class=data_class,
+            budget=budget,
+        )
         references = get_reference_asset_store().for_request(request_id)
         if not references:
             return prepared
@@ -59,7 +83,7 @@ class ReferenceAwareRecoverableWebProductRuntime(RecoverableWebProductRuntime):
         request_id: str,
         *,
         token: str,
-        now,
+        now: datetime,
     ) -> dict[str, object]:
         references = get_reference_asset_store().for_request(request_id)
         if references:
@@ -78,7 +102,11 @@ class ReferenceAwareRecoverableWebProductRuntime(RecoverableWebProductRuntime):
                 )
         return manifest
 
-    def _bind_references_before_assurance(self, request_id: str, references) -> None:
+    def _bind_references_before_assurance(
+        self,
+        request_id: str,
+        references: tuple[ReferenceAssetRecord, ...],
+    ) -> None:
         with self._connect() as connection:
             row = connection.execute(
                 "SELECT status, manifest_json FROM web_product_requests WHERE request_id=?",
