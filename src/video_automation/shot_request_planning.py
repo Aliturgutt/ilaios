@@ -13,6 +13,11 @@ from hashlib import sha256
 from types import MappingProxyType
 
 from .prompt_compilation import ShotPromptPackage
+from .reference_images import (
+    VideoReferenceImage,
+    reference_pool_digest,
+    validate_reference_pool,
+)
 
 
 class ShotRequestPlanningError(ValueError):
@@ -55,6 +60,7 @@ class ShotGenerationRequest:
     output_count: int
     seed: int | None
     metadata: Mapping[str, str]
+    reference_images: tuple[VideoReferenceImage, ...] = ()
 
     def __post_init__(self) -> None:
         _require_non_blank("request_id", self.request_id)
@@ -75,6 +81,7 @@ class ShotGenerationRequest:
             raise ShotRequestPlanningError("output_count must be greater than zero")
         if self.seed is not None and self.seed < 0:
             raise ShotRequestPlanningError("seed must be zero or greater")
+        validate_reference_pool(self.reference_images)
         normalized = dict(self.metadata)
         for key, value in normalized.items():
             _require_non_blank("metadata key", key)
@@ -88,10 +95,20 @@ class ShotGenerationRequestPlanner:
     def __init__(self, policy: ShotGenerationPolicy | None = None) -> None:
         self._policy = policy or ShotGenerationPolicy()
 
-    def plan(self, package: ShotPromptPackage) -> ShotGenerationRequest:
+    def plan(
+        self,
+        package: ShotPromptPackage,
+        *,
+        reference_images: tuple[VideoReferenceImage, ...] = (),
+    ) -> ShotGenerationRequest:
         """Build one deterministic request without provider selection or I/O."""
 
-        canonical = _canonical_request_material(package, self._policy)
+        validate_reference_pool(reference_images)
+        canonical = _canonical_request_material(
+            package,
+            self._policy,
+            reference_images=reference_images,
+        )
         digest = sha256(canonical.encode("utf-8")).hexdigest()
         request_id = f"shot-request-{digest[:16]}"
         metadata = {
@@ -100,6 +117,8 @@ class ShotGenerationRequestPlanner:
             "prompt_sha256": sha256(
                 package.prompt_text.encode("utf-8")
             ).hexdigest(),
+            "reference_count": str(len(reference_images)),
+            "reference_pool_sha256": reference_pool_digest(reference_images),
         }
         return ShotGenerationRequest(
             request_id=request_id,
@@ -113,12 +132,15 @@ class ShotGenerationRequestPlanner:
             output_count=self._policy.output_count,
             seed=self._policy.seed,
             metadata=metadata,
+            reference_images=reference_images,
         )
 
 
 def _canonical_request_material(
     package: ShotPromptPackage,
     policy: ShotGenerationPolicy,
+    *,
+    reference_images: tuple[VideoReferenceImage, ...],
 ) -> str:
     seed = "none" if policy.seed is None else str(policy.seed)
     return "\n".join(
@@ -131,6 +153,7 @@ def _canonical_request_material(
             f"output_count={policy.output_count}",
             f"seed={seed}",
             f"prompt_sha256={sha256(package.prompt_text.encode('utf-8')).hexdigest()}",
+            f"reference_pool_sha256={reference_pool_digest(reference_images)}",
         )
     )
 
