@@ -90,7 +90,9 @@ Return an uppercase transformation of the supplied text.
     return root
 
 
-def _configured(tmp_path: Path) -> tuple[AgentSkillsProductionRuntime, GovernedRuntimeGateway, EvidenceChain]:
+def _configured(
+    tmp_path: Path,
+) -> tuple[AgentSkillsProductionRuntime, GovernedRuntimeGateway, EvidenceChain]:
     database = tmp_path / "runtime.sqlite3"
     _runtime_database(database)
 
@@ -100,15 +102,19 @@ def _configured(tmp_path: Path) -> tuple[AgentSkillsProductionRuntime, GovernedR
         skill = payload.get("_ilaios_skill")
         assert isinstance(skill, dict)
         observed_skill.append(skill)
+        skill_sha256 = skill.get("sha256")
+        assert isinstance(skill_sha256, str)
         text = payload.get("text")
         assert isinstance(text, str)
         return {
             "text": text.upper(),
-            "skill_sha256": skill["sha256"],
+            "skill_sha256": skill_sha256,
             "script_executed": False,
         }
 
-    runtime = GovernedRuntime(database, external_adapters={ADAPTER_KIND: external_adapter})
+    runtime = GovernedRuntime(
+        database, external_adapters={ADAPTER_KIND: external_adapter}
+    )
     runtime.register_agent(AGENT_ID, frozenset({CAPABILITY}))
     runtime.register_provider(
         PROVIDER_ID,
@@ -148,7 +154,12 @@ def _configured(tmp_path: Path) -> tuple[AgentSkillsProductionRuntime, GovernedR
 
     validator = MagicMock()
     tool_gateway = ToolGateway(
-        ExecutionContext(tmp_path, "test", "deadbeef", "https://github.com/Aliturgutt/ilaios.git"),
+        ExecutionContext(
+            tmp_path,
+            "test",
+            "deadbeef",
+            "https://github.com/Aliturgutt/ilaios.git",
+        ),
         validator,
     )
     evidence = EvidenceChain()
@@ -163,7 +174,13 @@ def _configured(tmp_path: Path) -> tuple[AgentSkillsProductionRuntime, GovernedR
     return bridge, governed, evidence
 
 
-def _request(tmp_path: Path, package_root: Path, *, risk: str = "low", tenant: str = "tenant-a") -> ExternalSkillExecutionRequest:
+def _request(
+    tmp_path: Path,
+    package_root: Path,
+    *,
+    risk: str = "low",
+    tenant: str = "tenant-a",
+) -> ExternalSkillExecutionRequest:
     package = load_agent_skill(package_root)
     return ExternalSkillExecutionRequest(
         request_id=f"req-{risk}-{tenant}",
@@ -186,7 +203,9 @@ def _request(tmp_path: Path, package_root: Path, *, risk: str = "low", tenant: s
     )
 
 
-def test_external_skill_executes_through_governed_runtime_and_evidence_chain(tmp_path: Path) -> None:
+def test_external_skill_executes_through_governed_runtime_and_evidence_chain(
+    tmp_path: Path,
+) -> None:
     package_root = _package(tmp_path)
     bridge, governed, evidence = _configured(tmp_path)
     request = _request(tmp_path, package_root)
@@ -202,13 +221,18 @@ def test_external_skill_executes_through_governed_runtime_and_evidence_chain(tmp
     assert receipt.approval_proven is False
     assert receipt.output["text"] == "GOVERNED"
     assert receipt.output["script_executed"] is False
-    assert governed.state()["work"][0]["status"] == "executed"
+    state = governed.state()
+    work = state["work"]
+    assert isinstance(work, list)
+    assert work[0]["status"] == "executed"
     assert len(evidence.get_records()) == 1
     assert evidence.verify_integrity() is True
     assert receipt.evidence_chain_hash == evidence.get_records()[0].chain_hash
 
 
-def test_high_risk_external_skill_requires_independent_durable_approval(tmp_path: Path) -> None:
+def test_high_risk_external_skill_requires_independent_durable_approval(
+    tmp_path: Path,
+) -> None:
     package_root = _package(tmp_path)
     bridge, governed, _ = _configured(tmp_path)
     request = _request(tmp_path, package_root, risk="high")
@@ -262,7 +286,9 @@ def test_package_digest_drift_blocks_activation(tmp_path: Path) -> None:
         bridge.submit(request, now=datetime.now(timezone.utc))
 
 
-def test_bundled_script_is_never_authorized_or_executed_by_instruction_bridge(tmp_path: Path) -> None:
+def test_bundled_script_is_never_authorized_or_executed_by_instruction_bridge(
+    tmp_path: Path,
+) -> None:
     package_root = _package(tmp_path, with_script=True)
     bridge, _, _ = _configured(tmp_path)
     request = _request(tmp_path, package_root)
