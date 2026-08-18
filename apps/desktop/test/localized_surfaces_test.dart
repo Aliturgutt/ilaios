@@ -62,7 +62,7 @@ void main() {
     );
 
     await open('costs');
-    expect(find.text('Maliyetler ve Kullanım'), findsOneWidget);
+    expect(find.text('Maliyetler'), findsOneWidget);
 
     await open('settings');
     expect(find.text('Ayarlar'), findsWidgets);
