@@ -12,6 +12,7 @@ from .product_runtime import (
     ProductFinalizationPending,
     ProductRuntimeError,
 )
+from .reference_aware_web_product_runtime import RecoverableWebProductRuntime
 from .software_product_runtime import (
     DurableSoftwareProductRuntime,
     FinishedSoftwareBuilder,
@@ -24,7 +25,6 @@ from .software_product_runtime_recovery import RecoverableSoftwareProductRuntime
 from .video import VideoChainAdapter, VideoIntegrationError, VideoIntegrationResult
 from .video_runtime import DeterministicLocalVideoRuntime, VideoRuntimeError
 from .web_factory import GovernedWebFactory, WebsiteAcceptance, WebsiteFile
-from .web_product_runtime_recovery import RecoverableWebProductRuntime
 from .web_vercel_delivery import (
     RequestsVercelDeploymentTransport,
     VercelDeploymentTransport,
