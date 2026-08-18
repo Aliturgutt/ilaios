@@ -19,7 +19,11 @@ from services.agent_registry import registration_for
 from services.ai_governance import GovernanceError, Scope
 from services.named_agent_executor import NamedAgentExecution, NamedAgentExecutor
 from services.runtime import ExecutionGrant
-from services.runtime.ai_provider_adapter import AIProviderError, GovernedAIProviderAdapter
+from services.runtime.ai_provider_adapter import (
+    AIProviderAuthorizationError,
+    AIProviderError,
+    GovernedAIProviderAdapter,
+)
 from services.runtime.routing import RuntimeError as RuntimeRoutingError
 
 
@@ -144,6 +148,10 @@ class P0ProviderBackedExecutor:
                     now=request.now,
                     preferred_provider_id=selection.provider_id,
                 )
+            except AIProviderAuthorizationError as exc:
+                raise P0AgentExecutionError(
+                    "AI provider credential, permission, or billing gate failed"
+                ) from exc
             except (AIProviderError, GovernanceError, RuntimeRoutingError) as exc:
                 denied_models.add(selection.model_id)
                 last_error = exc
