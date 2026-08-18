@@ -111,10 +111,15 @@ def audit_agent_registry(
         manifest = item.manifest
         if not manifest.agent_id.startswith("ilaios.agent."):
             raise AgentReadinessError("agent ID is outside canonical ILAIOS namespace")
-        if any(legacy in manifest.agent_id.casefold() for legacy in ("hermes", "ilakos", "ilaten")):
+        if any(
+            legacy in manifest.agent_id.casefold()
+            for legacy in ("hermes", "ilakos", "ilaten")
+        ):
             raise AgentReadinessError("legacy identity leaked into machine agent ID")
         if not manifest.capabilities or not manifest.permissions:
-            raise AgentReadinessError(f"agent has empty capability/permission boundary: {manifest.agent_id}")
+            raise AgentReadinessError(
+                f"agent has empty capability/permission boundary: {manifest.agent_id}"
+            )
         if manifest.verifier_id == manifest.agent_id:
             raise AgentReadinessError("agent cannot independently verify itself")
         if item.backing_capability not in KNOWN_BACKING_CAPABILITIES:
@@ -122,9 +127,13 @@ def audit_agent_registry(
                 f"unknown backing capability for {manifest.agent_id}: {item.backing_capability}"
             )
         if manifest.dependencies != frozenset({item.backing_capability}):
-            raise AgentReadinessError(f"backing capability/dependency mismatch for {manifest.agent_id}")
-        if item.readiness is not RuntimeReadiness.REGISTERED:
-            raise AgentReadinessError(f"static readiness promotion is prohibited: {manifest.agent_id}")
+            raise AgentReadinessError(
+                f"backing capability/dependency mismatch for {manifest.agent_id}"
+            )
+        if item.readiness != RuntimeReadiness.REGISTERED:
+            raise AgentReadinessError(
+                f"static readiness promotion is prohibited: {manifest.agent_id}"
+            )
     if len(p0_registrations()) != 21:
         raise AgentReadinessError("P0 population must contain exactly 21 agents")
 
@@ -139,7 +148,9 @@ def effective_readiness(proof: AgentReadinessProof) -> RuntimeReadiness:
     if proof.independent_verification_passed and not proof.output_passed:
         raise AgentReadinessError("verification cannot precede a successful output")
     if proof.evidence_persisted and not proof.independent_verification_passed:
-        raise AgentReadinessError("verified evidence cannot be persisted before independent verification")
+        raise AgentReadinessError(
+            "verified evidence cannot be persisted before independent verification"
+        )
     if proof.desktop_projection_passed and not proof.evidence_persisted:
         raise AgentReadinessError("Desktop cannot project unpersisted agent evidence")
     if proof.regression_e2e_passed and not proof.executable_gates_passed:
@@ -147,8 +158,12 @@ def effective_readiness(proof: AgentReadinessProof) -> RuntimeReadiness:
     if not proof.executable_gates_passed:
         return RuntimeReadiness.REGISTERED
     if not proof.evidence_digest or len(proof.evidence_digest) != 64:
-        raise AgentReadinessError("executable readiness requires SHA-256 evidence digest")
-    if any(character not in "0123456789abcdef" for character in proof.evidence_digest):
+        raise AgentReadinessError(
+            "executable readiness requires SHA-256 evidence digest"
+        )
+    if any(
+        character not in "0123456789abcdef" for character in proof.evidence_digest
+    ):
         raise AgentReadinessError("evidence digest must be lowercase SHA-256 hex")
     if proof.regression_e2e_passed:
         return RuntimeReadiness.VERIFIED
