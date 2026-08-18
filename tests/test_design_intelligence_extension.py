@@ -1,5 +1,7 @@
 """Clean-room red-team proofs for expanded ILAIOS UI/design intelligence."""
 
+from typing import Any, cast
+
 from services.app_design_quality import (
     AppDesignObservation,
     NativeAppDesignQualityEvaluator,
@@ -18,7 +20,7 @@ def _web_rows(**overrides: int) -> list[DesignObservation]:
             route="/" if locale == "en" else "/tr",
             locale=locale,
             viewport=width,
-            **overrides,
+            **cast(Any, overrides),
         )
         for locale in ("en", "tr")
         for width in REQUIRED_VIEWPORTS
@@ -33,7 +35,7 @@ def _app_rows(**overrides: int) -> list[AppDesignObservation]:
             form_factor,
             width,
             800,
-            **overrides,
+            **cast(Any, overrides),
         )
         for form_factor, width in (("compact", 600), ("wide", 1440))
     ]
