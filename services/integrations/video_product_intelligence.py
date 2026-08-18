@@ -143,7 +143,7 @@ def derive_video_product_spec(
             if series
             else "canonical-shot-continuity-required"
         ),
-        audio_policy="preserve-or-generate-only-when-objective-requires-audio",
+        audio_policy="current-provider-runtime-generates-audio-and-requires-signal-pass",
         caption_policy="safe-area-and-timing-validation-when-captions-are-requested",
     )
 
