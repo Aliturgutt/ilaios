@@ -632,7 +632,7 @@ class _Filters extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         key: const Key('approvals-filters'),
-        height: 42,
+        height: 44,
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
         decoration: _cardDecoration(context, radius: 6),
         child: Row(

@@ -81,7 +81,7 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
     final media = MediaQuery.of(context);
 
     Widget canvas(double width, double height) => MediaQuery(
-          data: media.copyWith(textScaler: const TextScaler.linear(.90)),
+          data: media.copyWith(textScaler: const TextScaler.linear(.95)),
           child: SizedBox(
             width: width,
             height: height,
