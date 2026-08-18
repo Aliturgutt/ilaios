@@ -11,14 +11,6 @@ import re
 from dataclasses import dataclass
 from typing import Final
 
-from services.security_methodology_skills import (
-    AGENTIC_ACTION_AUDIT_SKILL_ID,
-    DIFFERENTIAL_REVIEW_SKILL_ID,
-    SECURITY_METHODOLOGY_SKILLS,
-    SECURITY_REVIEW_SKILL_ID,
-    SUPPLY_CHAIN_AUDIT_SKILL_ID,
-    THREAT_MODEL_SKILL_ID,
-)
 from services.software_factory_skills import REQUIRED_SKILL_IDS
 from services.web_factory_skills import WEB_FACTORY_NATIVE_SKILL_IDS
 
@@ -29,6 +21,20 @@ _ALLOWED_FACTORY_FAMILIES: Final = frozenset(
     {"web", "software", "video", "research"}
 )
 _ALLOWED_CAPABILITY_FAMILIES: Final = frozenset({"browser"})
+_SECURITY_REVIEW_SKILL_ID: Final = "ilaios-security-review"
+_DIFFERENTIAL_REVIEW_SKILL_ID: Final = "ilaios-differential-review"
+_AGENTIC_ACTION_AUDIT_SKILL_ID: Final = "ilaios-agentic-action-audit"
+_THREAT_MODEL_SKILL_ID: Final = "ilaios-threat-model"
+_SUPPLY_CHAIN_AUDIT_SKILL_ID: Final = "ilaios-supply-chain-audit"
+_SECURITY_METHODOLOGY_SKILL_IDS: Final = frozenset(
+    {
+        _SECURITY_REVIEW_SKILL_ID,
+        _DIFFERENTIAL_REVIEW_SKILL_ID,
+        _AGENTIC_ACTION_AUDIT_SKILL_ID,
+        _THREAT_MODEL_SKILL_ID,
+        _SUPPLY_CHAIN_AUDIT_SKILL_ID,
+    }
+)
 _PROTECTED_AUTHORITY_SEGMENTS: Final = frozenset(
     {
         "approval",
@@ -197,28 +203,28 @@ SKILL_TAXONOMY: Final[tuple[SkillTaxonomyNode, ...]] = (
     _node(
         "assurance",
         "security-review",
-        backing_skill_ids=(SECURITY_REVIEW_SKILL_ID, "sf-security-review"),
+        backing_skill_ids=(_SECURITY_REVIEW_SKILL_ID, "sf-security-review"),
     ),
     _node(
         "assurance",
         "differential-review",
-        backing_skill_ids=(DIFFERENTIAL_REVIEW_SKILL_ID,),
+        backing_skill_ids=(_DIFFERENTIAL_REVIEW_SKILL_ID,),
     ),
     _node(
         "assurance",
         "agentic-action-audit",
-        backing_skill_ids=(AGENTIC_ACTION_AUDIT_SKILL_ID,),
+        backing_skill_ids=(_AGENTIC_ACTION_AUDIT_SKILL_ID,),
     ),
     _node(
         "assurance",
         "threat-model",
-        backing_skill_ids=(THREAT_MODEL_SKILL_ID,),
+        backing_skill_ids=(_THREAT_MODEL_SKILL_ID,),
     ),
     _node(
         "assurance",
         "supply-chain-audit",
         backing_skill_ids=(
-            SUPPLY_CHAIN_AUDIT_SKILL_ID,
+            _SUPPLY_CHAIN_AUDIT_SKILL_ID,
             "sf-dependency-governance",
             "sf-license-provenance",
         ),
@@ -261,7 +267,7 @@ def validate_skill_taxonomy() -> None:
     runtime_skill_ids = (
         set(REQUIRED_SKILL_IDS)
         | set(WEB_FACTORY_NATIVE_SKILL_IDS)
-        | {item.skill_id for item in SECURITY_METHODOLOGY_SKILLS}
+        | set(_SECURITY_METHODOLOGY_SKILL_IDS)
     )
     for node in SKILL_TAXONOMY:
         if node.layer not in _ALLOWED_LAYERS:
