@@ -2,13 +2,6 @@ name: OpenRouter Production Telemetry Certification
 
 on:
   workflow_dispatch:
-  pull_request_target:
-    branches:
-      - master
-    types:
-      - opened
-      - synchronize
-      - reopened
 
 permissions:
   contents: read
@@ -20,11 +13,6 @@ concurrency:
 jobs:
   read-only-telemetry-proof:
     name: Read-only production telemetry proof
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'pull_request_target' &&
-       github.event.pull_request.head.repo.full_name == github.repository &&
-       github.event.pull_request.head.ref == 'ops/openrouter-production-telemetry-cert')
     runs-on: ubuntu-latest
     environment: Production
     timeout-minutes: 5
@@ -44,7 +32,6 @@ jobs:
           import hashlib
           import json
           import os
-          import sys
           import time
           import urllib.error
           import urllib.request
