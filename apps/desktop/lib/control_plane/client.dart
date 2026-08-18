@@ -273,6 +273,8 @@ class ControlPlaneClient {
     }
     final runtimePayload =
         await _getAuthenticatedObject('/v1/runtime/routes', 'runtime routes');
+    final agentPayload =
+        await _getAuthenticatedObject('/v1/agents/state', 'agent state');
     final schedulerPayload =
         await _getAuthenticatedObject('/v1/scheduler/state', 'scheduler state');
     final grantsPayload =
@@ -301,7 +303,34 @@ class ControlPlaneClient {
       governanceState: Map<String, Object?>.from(governancePayload),
       evidenceRecords: _evidenceList(evidencePayload['records']),
       liveEvents: _boundedLiveEvents(liveEvents),
+      agentState: Map<String, Object?>.from(agentPayload),
     );
+  }
+
+  Future<void> provisionCanonicalAgent(String agentId) async {
+    final normalized = agentId.trim();
+    if (normalized.isEmpty ||
+        normalized != agentId ||
+        !normalized.startsWith('ilaios.agent.') ||
+        normalized.contains('/')) {
+      throw const ControlPlaneClientException('Invalid canonical agent identity');
+    }
+    final payload = await _postAuthenticatedObject(
+      '/v1/agents/commands',
+      <String, Object?>{
+        'operation': 'provision',
+        'agent_id': normalized,
+      },
+      'agent provisioning',
+      expectedStatus: HttpStatus.ok,
+    );
+    if (payload['agent_id'] != normalized ||
+        payload['registered'] != true ||
+        payload['created'] is! bool) {
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed agent provisioning result',
+      );
+    }
   }
 
   Future<void> decideGovernanceRequest({
