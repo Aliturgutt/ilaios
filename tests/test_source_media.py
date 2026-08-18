@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 import services.source_media as source_media_module
-from services.source_media import SourceMediaError, SourceMediaStore
+from services.source_media import SourceMediaError, SourceMediaRecord, SourceMediaStore
 from src.video_automation.media_technical_validation import MediaProbeObservation
 
 
@@ -63,7 +63,7 @@ def _put(
     filename: str,
     principal_id: str = "user-1",
     tenant_id: str = "tenant-1",
-):
+) -> SourceMediaRecord:
     return store.put(
         content=_mp4(payload),
         claimed_mime_type="video/mp4",
@@ -164,7 +164,10 @@ def test_source_media_rejects_mime_signature_and_technical_spoofing(tmp_path: Pa
             tenant_id="tenant-1",
         )
 
-    wrong_container = _store(tmp_path / "wrong-container", _Probe(container="matroska,webm"))
+    wrong_container = _store(
+        tmp_path / "wrong-container",
+        _Probe(container="matroska,webm"),
+    )
     with pytest.raises(SourceMediaError, match="container"):
         wrong_container.put(
             content=_mp4(),
