@@ -23,7 +23,8 @@ void main() {
     'ilaios.agent.engineering.test.v1',
   ];
 
-  OperationalSnapshot snapshot() => OperationalSnapshot(
+  OperationalSnapshot snapshot({bool includeCapacity = true}) =>
+      OperationalSnapshot(
         runtimeRoutes: const <Map<String, Object?>>[],
         schedulerState: const <String, Object?>{},
         grantsState: const <String, Object?>{},
@@ -50,7 +51,7 @@ void main() {
                 'authority_matches_canonical': true,
                 'agent_status': index == 1 ? 'busy' : 'active',
                 'current_task': index == 1 ? 'Authoritative task' : '—',
-                'capacity': 0.40 + index * 0.05,
+                if (includeCapacity) 'capacity': 0.40 + index * 0.05,
                 'success_rate': 0.91 + index * 0.005,
                 'latency_ms': 800 + index * 10,
                 'last_activity': '2026-08-19T00:00:0${index}Z',
@@ -63,12 +64,13 @@ void main() {
   Future<void> openAgents(
     WidgetTester tester, {
     Future<void> Function(String agentId)? onProvision,
+    OperationalSnapshot? operationalSnapshot,
   }) async {
     await tester.binding.setSurfaceSize(const Size(1648, 928));
     await tester.pumpWidget(
       IlaiosDesktopApp(
         projection: projection,
-        operationalSnapshot: snapshot(),
+        operationalSnapshot: operationalSnapshot ?? snapshot(),
         onProvisionAgent: onProvision,
       ),
     );
@@ -171,5 +173,36 @@ void main() {
       ),
     );
     expect(assign.onPressed, isNull);
+  });
+
+  testWidgets('missing capacity is static unavailable, not loading', (
+    WidgetTester tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await openAgents(
+      tester,
+      operationalSnapshot: snapshot(includeCapacity: false),
+    );
+
+    final indicator = find.byKey(
+      const ValueKey('agent-capacity-ilaios.agent.core.orchestrator.v1'),
+    );
+    expect(indicator, findsOneWidget);
+    expect(
+      find.descendant(
+        of: indicator,
+        matching: find.byType(LinearProgressIndicator),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: indicator,
+        matching: find.byKey(const Key('agent-capacity-unavailable-track')),
+      ),
+      findsOneWidget,
+    );
+    expect(find.descendant(of: indicator, matching: find.text('—')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }
