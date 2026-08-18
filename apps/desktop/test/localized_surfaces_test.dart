@@ -54,7 +54,12 @@ void main() {
     expect(find.text('Onaylar'), findsWidgets);
 
     await open('evidence');
-    expect(find.text('Kanıt ve Denetim'), findsOneWidget);
+    final evidencePage = find.byKey(const Key('reference-evidence-page'));
+    expect(evidencePage, findsOneWidget);
+    expect(
+      find.descendant(of: evidencePage, matching: find.text('Kanıtlar')),
+      findsOneWidget,
+    );
 
     await open('costs');
     expect(find.text('Maliyetler ve Kullanım'), findsOneWidget);
