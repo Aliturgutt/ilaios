@@ -75,7 +75,7 @@ def _run_finished_product_acceptance(
     api_key: str,
     max_total_cost_usd: Decimal,
 ) -> None:
-    token = "desktop-managed-provider-video-e2e-token"
+    token = "ci-token"
     database = root / "control-plane.sqlite3"
     control_plane = ControlPlane(ControlPlaneConfig(database, token))
     workflows = WorkflowStore(WorkflowStoreConfig(database))
