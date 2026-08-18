@@ -401,7 +401,7 @@ class _TenantSummary extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(_isTr(context) ? 'Klasör' : 'Folder', style: const TextStyle(fontSize: 8.3)),
+          Text(_isTr(context) ? 'Klasör' : 'Folder', style: const TextStyle(fontSize: 9.4)),
           const SizedBox(height: 4),
           Row(
             children: [
@@ -423,27 +423,27 @@ class _TenantSummary extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 10),
-          Text(_isTr(context) ? 'Plan' : 'Plan', style: const TextStyle(fontSize: 8.3)),
+          Text(_isTr(context) ? 'Plan' : 'Plan', style: const TextStyle(fontSize: 9.4)),
           const SizedBox(height: 3),
           Text(
             plan ?? context.tr('shell.unavailable'),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600),
+            style: const TextStyle(fontSize: 10.4, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 10),
-          Text(_isTr(context) ? 'Bölge' : 'Region', style: const TextStyle(fontSize: 8.3)),
+          Text(_isTr(context) ? 'Bölge' : 'Region', style: const TextStyle(fontSize: 9.4)),
           const SizedBox(height: 3),
           Text(
             region ?? context.tr('shell.unavailable'),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600),
+            style: const TextStyle(fontSize: 10.4, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 10),
           Text(
             projection.schemaVersion == null ? '—' : 'v${projection.schemaVersion}',
-            style: const TextStyle(fontSize: 8.5),
+            style: const TextStyle(fontSize: 9.4),
           ),
         ],
       ),
