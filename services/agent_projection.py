@@ -68,6 +68,14 @@ def agent_state_projection(
 def _merge_readiness(
     record: dict[str, object], readiness: Mapping[str, object]
 ) -> None:
+    # Defense in depth: even though AgentReadinessStore already validates the
+    # canonical verifier relationship, the UI projection independently rejects
+    # any readiness evidence whose verifier does not match the manifest.
+    verifier_id = readiness.get("verifier_id")
+    if not isinstance(verifier_id, str) or verifier_id != record.get("verifier_id"):
+        return
+    record["readiness_verifier_id"] = verifier_id
+
     allowed_readiness = {"registered", "executable", "verified"}
     value = readiness.get("readiness")
     if isinstance(value, str) and value in allowed_readiness:
@@ -81,9 +89,6 @@ def _merge_readiness(
         value = readiness.get(key)
         if isinstance(value, str) and value:
             record[key] = value
-    verifier_id = readiness.get("verifier_id")
-    if isinstance(verifier_id, str) and verifier_id == record.get("verifier_id"):
-        record["readiness_verifier_id"] = verifier_id
 
 
 def _merge_route(record: dict[str, object], route: Mapping[str, Any]) -> None:
