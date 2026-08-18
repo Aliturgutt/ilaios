@@ -2,14 +2,17 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from services.control_plane.migrations import migrate_database
 from services.governance import GovernedRuntimeGateway
 from services.runtime import GovernedRuntime
 
 
 def _gateway(tmp_path: Path) -> GovernedRuntimeGateway:
+    runtime_path = tmp_path / "runtime.sqlite3"
+    migrate_database(runtime_path)
     return GovernedRuntimeGateway(
         tmp_path / "governance.sqlite3",
-        GovernedRuntime(tmp_path / "runtime.sqlite3"),
+        GovernedRuntime(runtime_path),
         hard_cap_minor=10_000,
     )
 
