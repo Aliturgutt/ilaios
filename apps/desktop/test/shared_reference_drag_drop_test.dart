@@ -5,6 +5,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/features/create/reference_asset_picker.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   test('dropped image paths enter the same reference controller with dedupe', () async {
     final directory = await Directory.systemTemp.createTemp('ilaios-reference-drop-');
     final file = File('${directory.path}${Platform.pathSeparator}product.png');
