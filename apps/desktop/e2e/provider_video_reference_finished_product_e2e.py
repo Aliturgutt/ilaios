@@ -139,7 +139,7 @@ def _run_reference_finished_product_acceptance(
     )
 
     objective = (
-        "Video creation task: Create a finished cinematic product video exactly 4 seconds long. "
+        "Video creation task: Create a finished cinematic product video exactly 8 seconds long. "
         "Use the attached product reference as the visual source of truth. Preserve its observable "
         "matte dark geometry, cyan illuminated vertical feature, orange circular emblem placement, "
         "and light accent marks. Present the same product as a premium studio reveal with realistic "
@@ -258,7 +258,7 @@ def _run_reference_finished_product_acceptance(
         raise RuntimeError("reference-provider output codecs are outside the delivery contract")
     if int(str(video_stream.get("width"))) != 1920 or int(str(video_stream.get("height"))) != 1080:
         raise RuntimeError("reference-provider finished product is not 1920x1080")
-    if not 3.0 <= float(probe.duration_seconds) <= 5.0:
+    if not 7.0 <= float(probe.duration_seconds) <= 9.0:
         raise RuntimeError(f"reference-provider duration is outside tolerance: {probe.duration_seconds}")
 
     qa = manifest.get("qa")
@@ -268,12 +268,12 @@ def _run_reference_finished_product_acceptance(
         raise RuntimeError(f"reference-provider semantic/technical QA is incomplete: {qa}")
     if qa.get("provider_cost_zero") is not True:
         raise RuntimeError(f"reference free-route cost evidence is not proven: {qa}")
-    if int(qa.get("generated_shot_count", 0)) != 1:
+    if int(qa.get("generated_shot_count", 0)) != 2:
         raise RuntimeError(f"unexpected reference generated shot count: {qa}")
 
     terminal = {job_id: dict(value) for job_id, value in poller.terminal_evidence.items()}
-    if len(terminal) != 1:
-        raise RuntimeError(f"expected one provider terminal record, got {len(terminal)}")
+    if len(terminal) != 2:
+        raise RuntimeError(f"expected two provider terminal records, got {len(terminal)}")
     if any(float(value["cost"]) != 0.0 for value in terminal.values()):
         raise RuntimeError("reference provider terminal cost is not exactly zero")
     generation_ids = [
@@ -282,8 +282,8 @@ def _run_reference_finished_product_acceptance(
         if str(value.get("generation_id", "")).strip()
         and str(value.get("generation_id")) != "unavailable"
     ]
-    if len(generation_ids) != 1:
-        raise RuntimeError("reference provider generation ID is not fully evidenced")
+    if len(generation_ids) != 2:
+        raise RuntimeError("reference provider generation IDs are not fully evidenced")
     sources = sorted({str(value["source"]) for value in terminal.values()})
     _write_provider_evidence(proof_root, poller)
 
@@ -297,6 +297,7 @@ def _run_reference_finished_product_acceptance(
         "execution_status": coordinator_state["execution_status"],
         "provider_model": os.environ.get("ILAIOS_VIDEO_MODEL_ID", SEEDANCE_FREE_MODEL_ID),
         "provider_generation_id": generation_ids[0],
+        "provider_generation_ids": generation_ids,
         "provider_cost_usd": 0.0,
         "provider_cost_zero": True,
         "provider_cost_evidence_source": ",".join(sources),
