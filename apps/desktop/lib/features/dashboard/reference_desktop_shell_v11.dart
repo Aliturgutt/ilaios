@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../control_plane/client.dart';
@@ -9,13 +7,13 @@ import '../../control_plane/projection.dart';
 import '../../identity/identity_client.dart';
 import 'reference_desktop_shell_v10.dart';
 
-/// Final resize guard for the approved Home design.
+/// Final resize guard for the approved Desktop design.
 ///
-/// Wide windows render the reference-faithful V10 shell directly. Restored,
-/// taskbar-constrained or DPI-compressed Windows sizes scale that exact shell
-/// on a verified Desktop canvas; they never route back to the legacy Home.
-/// The 900px design height deliberately includes the shell's 44px status bar,
-/// so common 1080p/125%-DPI client heights cannot crop the bottom row/status.
+/// V11 deliberately delegates native sizing to V10. V10 already owns the
+/// verified compact fallback below 1180x720. Keeping a second outer FittedBox
+/// here caused normal Windows client areas compressed by DPI scaling to render
+/// the entire Desktop below 1:1, making otherwise readable typography appear
+/// artificially small.
 class ReferenceDesktopShellV11 extends StatelessWidget {
   const ReferenceDesktopShellV11({
     required this.projection,
@@ -55,7 +53,8 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
   final Future<void> Function(String requestId, GovernanceDecision decision)?
       onGovernanceDecision;
 
-  Widget _shell() => ReferenceDesktopShellV10(
+  @override
+  Widget build(BuildContext context) => ReferenceDesktopShellV10(
         projection: projection,
         operationalSnapshot: operationalSnapshot,
         operationalStatus: operationalStatus,
@@ -72,41 +71,5 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
         onRefreshRequested: onRefreshRequested,
         onProvisionAgent: onProvisionAgent,
         onGovernanceDecision: onGovernanceDecision,
-      );
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, constraints) {
-          const designWidthFloor = 1280.0;
-          const designHeight = 900.0;
-
-          // A Windows screenshot around 1640x925 contains a client area near
-          // 1640x890 after the native title bar. Treat that as a compact shell
-          // so the complete Home, including the bottom status strip, is always
-          // fitted into one viewport instead of being clipped below the frame.
-          final compact = constraints.maxWidth < designWidthFloor ||
-              constraints.maxHeight < 940;
-          if (!compact) return _shell();
-
-          final ratioMatchedWidth = constraints.maxHeight > 0
-              ? constraints.maxWidth * designHeight / constraints.maxHeight
-              : designWidthFloor;
-          final designWidth = math.max(designWidthFloor, ratioMatchedWidth);
-
-          return ClipRect(
-            key: const Key('reference-scaled-viewport-v9'),
-            child: SizedBox.expand(
-              child: FittedBox(
-                fit: BoxFit.contain,
-                alignment: Alignment.topLeft,
-                child: SizedBox(
-                  width: designWidth,
-                  height: designHeight,
-                  child: _shell(),
-                ),
-              ),
-            ),
-          );
-        },
       );
 }
