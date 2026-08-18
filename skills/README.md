@@ -18,3 +18,8 @@ A skill is an execution capability used by a governed worker. It is **not** a se
 
 - `ilaios-diagram-design` — deterministic architecture/flow/sequence/state/data/dependency/trust/capability diagrams with SVG/HTML output and evidence hashes.
 - `ilaios-system-design` — deterministic capacity, scalability, bottleneck, failure, architecture-review and renderer-neutral system-design analysis.
+- `ilaios-video-director` — bounded provider-neutral creative direction for admitted Video Factory objectives.
+- `ilaios-video-prompt` — governed prompt composition from directed briefs and continuity plans.
+- `ilaios-video-reference-assets` — content-addressed reference-role planning without provider dispatch authority.
+- `ilaios-video-model-routing` — deterministic advisory model-capability matching; canonical M05 retains provider selection.
+- `ilaios-video-continuity` — explicit state inheritance across ordered video beats for downstream prompt and QA use.
