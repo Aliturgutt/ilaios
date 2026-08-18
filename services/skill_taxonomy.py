@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from typing import Final
 
 from services.software_factory_skills import REQUIRED_SKILL_IDS
+from services.web_factory_skills import WEB_FACTORY_NATIVE_SKILL_IDS
 
 _ALLOWED_LAYERS: Final = frozenset(
     {"skill-engineering", "factories", "capabilities", "assurance"}
@@ -80,13 +81,42 @@ SKILL_TAXONOMY: Final[tuple[SkillTaxonomyNode, ...]] = (
     _node("skill-engineering", "regression"),
     _node("skill-engineering", "compatibility"),
     _node("skill-engineering", "promote"),
-    _node("factories", "web", "architecture"),
-    _node("factories", "web", "design"),
-    _node("factories", "web", "build"),
-    _node("factories", "web", "accessibility"),
-    _node("factories", "web", "performance"),
-    _node("factories", "web", "test"),
-    _node("factories", "web", "production-qa"),
+    _node(
+        "factories",
+        "web",
+        "architecture",
+        backing_skill_ids=("ilaios-web-architecture",),
+    ),
+    _node(
+        "factories",
+        "web",
+        "design",
+        backing_skill_ids=("ilaios-web-design",),
+    ),
+    _node(
+        "factories",
+        "web",
+        "accessibility",
+        backing_skill_ids=("ilaios-web-accessibility",),
+    ),
+    _node(
+        "factories",
+        "web",
+        "performance",
+        backing_skill_ids=("ilaios-web-performance",),
+    ),
+    _node(
+        "factories",
+        "web",
+        "validation",
+        backing_skill_ids=("ilaios-web-validation",),
+    ),
+    _node(
+        "factories",
+        "web",
+        "production-qa",
+        backing_skill_ids=("ilaios-web-production-qa",),
+    ),
     _node(
         "factories",
         "software",
@@ -202,7 +232,7 @@ def validate_skill_taxonomy() -> None:
     if len(logical_ids) != len(set(logical_ids)):
         raise ValueError("ILAIOS skill taxonomy logical IDs must be unique")
 
-    software_skill_ids = set(REQUIRED_SKILL_IDS)
+    runtime_skill_ids = set(REQUIRED_SKILL_IDS) | set(WEB_FACTORY_NATIVE_SKILL_IDS)
     for node in SKILL_TAXONOMY:
         if node.layer not in _ALLOWED_LAYERS:
             raise ValueError(f"invalid ILAIOS skill layer: {node.layer}")
@@ -223,7 +253,7 @@ def validate_skill_taxonomy() -> None:
                 or node.path[1] not in _ALLOWED_CAPABILITY_FAMILIES
             ):
                 raise ValueError(f"invalid capability skill node: {node.logical_id}")
-        unknown_backing = set(node.backing_skill_ids) - software_skill_ids
+        unknown_backing = set(node.backing_skill_ids) - runtime_skill_ids
         if unknown_backing:
             raise ValueError(
                 f"unknown existing runtime skill mapping for {node.logical_id}: "
