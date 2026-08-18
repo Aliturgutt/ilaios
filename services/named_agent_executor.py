@@ -16,10 +16,11 @@ from services.agent_governance import (
     AgentAdmissionEvidence,
     AgentInvocation,
     AgentSecurityError,
+    GrantAuthorizer,
     PermissionFirewall,
 )
 from services.agent_registry import CANONICAL_AGENT_REGISTRY, registration_for
-from services.runtime import ExecutionGrant, GovernedRuntime, GrantPolicy
+from services.runtime import ExecutionGrant, GovernedRuntime
 
 
 class NamedAgentExecutionError(RuntimeError):
@@ -50,7 +51,7 @@ class NamedAgentExecution:
 class NamedAgentExecutor:
     """Bind canonical named agents to the existing governed runtime."""
 
-    def __init__(self, runtime: GovernedRuntime, grants: GrantPolicy) -> None:
+    def __init__(self, runtime: GovernedRuntime, grants: GrantAuthorizer) -> None:
         self._runtime = runtime
         self._firewall = PermissionFirewall(
             tuple(item.manifest for item in CANONICAL_AGENT_REGISTRY), grants
