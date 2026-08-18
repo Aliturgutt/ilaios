@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from services.runtime.routing import AgentProfile, SkillArtifact, SkillRegistry
+from src.video_automation.video_prompting_skill_manifests import VIDEO_PROMPTING_SKILLS
 from src.video_automation.video_skills import (
     VIDEO_SKILLS,
     VideoSkillError,
@@ -16,8 +17,24 @@ from src.video_automation.video_skills import (
     validate_video_skills,
 )
 
+ALL_VIDEO_SKILLS: tuple[VideoSkillManifest, ...] = (
+    *VIDEO_SKILLS,
+    *VIDEO_PROMPTING_SKILLS,
+)
+
 REQUIRED_VIDEO_SKILL_FAMILIES = frozenset(
-    {"edit", "direction", "qa", "repair", "thumbnail", "publish"}
+    {
+        "edit",
+        "direction",
+        "qa",
+        "repair",
+        "thumbnail",
+        "publish",
+        "prompt",
+        "reference-assets",
+        "model-fit",
+        "continuity",
+    }
 )
 
 
@@ -78,7 +95,7 @@ def runtime_artifact_for_video_skill(
 
 def approve_video_skills(
     registry: SkillRegistry,
-    skills: Sequence[VideoSkillManifest] = VIDEO_SKILLS,
+    skills: Sequence[VideoSkillManifest] = ALL_VIDEO_SKILLS,
 ) -> tuple[SkillArtifact, ...]:
     """Approve every canonical Video skill in the existing governed registry."""
     validate_video_skills(skills)

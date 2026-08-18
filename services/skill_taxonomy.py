@@ -13,6 +13,8 @@ from typing import Final
 
 from services.software_factory_skills import REQUIRED_SKILL_IDS
 from services.web_factory_skills import WEB_FACTORY_NATIVE_SKILL_IDS
+from src.video_automation.video_prompting_skill_manifests import VIDEO_PROMPTING_SKILLS
+from src.video_automation.video_skills import VIDEO_SKILLS
 
 _ALLOWED_LAYERS: Final = frozenset(
     {"skill-engineering", "factories", "capabilities", "assurance"}
@@ -34,6 +36,9 @@ _SECURITY_METHODOLOGY_SKILL_IDS: Final = frozenset(
         _THREAT_MODEL_SKILL_ID,
         _SUPPLY_CHAIN_AUDIT_SKILL_ID,
     }
+)
+_VIDEO_RUNTIME_SKILL_IDS: Final = frozenset(
+    skill.skill_id for skill in (*VIDEO_SKILLS, *VIDEO_PROMPTING_SKILLS)
 )
 _PROTECTED_AUTHORITY_SEGMENTS: Final = frozenset(
     {
@@ -178,16 +183,59 @@ SKILL_TAXONOMY: Final[tuple[SkillTaxonomyNode, ...]] = (
         "release-validation",
         backing_skill_ids=("sf-build", "sf-release-readiness", "sf-recovery"),
     ),
-    _node("factories", "video", "director"),
-    _node("factories", "video", "prompt"),
-    _node("factories", "video", "reference-assets"),
-    _node("factories", "video", "continuity"),
+    _node(
+        "factories",
+        "video",
+        "director",
+        backing_skill_ids=("ilaios.skill.video.direction.cinematography",),
+    ),
+    _node(
+        "factories",
+        "video",
+        "prompt",
+        backing_skill_ids=("ilaios.skill.video.prompt.compose",),
+    ),
+    _node(
+        "factories",
+        "video",
+        "reference-assets",
+        backing_skill_ids=("ilaios.skill.video.reference-assets.inspect",),
+    ),
+    _node(
+        "factories",
+        "video",
+        "model-fit",
+        backing_skill_ids=("ilaios.skill.video.model-fit.analyze",),
+    ),
+    _node(
+        "factories",
+        "video",
+        "continuity",
+        backing_skill_ids=("ilaios.skill.video.continuity.track",),
+    ),
     _node("factories", "video", "generation"),
-    _node("factories", "video", "edit"),
+    _node(
+        "factories",
+        "video",
+        "edit",
+        backing_skill_ids=(
+            "ilaios.skill.video.edit.trim",
+            "ilaios.skill.video.edit.concatenate",
+            "ilaios.skill.video.edit.overlay",
+            "ilaios.skill.video.edit.crop",
+            "ilaios.skill.video.edit.scale",
+            "ilaios.skill.video.edit.audio-mix",
+        ),
+    ),
     _node("factories", "video", "captions"),
     _node("factories", "video", "composition"),
     _node("factories", "video", "render"),
-    _node("factories", "video", "output-verify"),
+    _node(
+        "factories",
+        "video",
+        "output-verify",
+        backing_skill_ids=("ilaios.skill.video.qa.evaluate",),
+    ),
     _node("factories", "research", "planning"),
     _node("factories", "research", "research"),
     _node("factories", "research", "source-validation"),
@@ -268,6 +316,7 @@ def validate_skill_taxonomy() -> None:
         set(REQUIRED_SKILL_IDS)
         | set(WEB_FACTORY_NATIVE_SKILL_IDS)
         | set(_SECURITY_METHODOLOGY_SKILL_IDS)
+        | set(_VIDEO_RUNTIME_SKILL_IDS)
     )
     for node in SKILL_TAXONOMY:
         if node.layer not in _ALLOWED_LAYERS:
