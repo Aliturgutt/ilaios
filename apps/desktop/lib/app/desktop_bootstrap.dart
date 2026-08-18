@@ -226,6 +226,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
           governanceState: fresh.governanceState,
           evidenceRecords: fresh.evidenceRecords,
           liveEvents: List<Map<String, Object?>>.unmodifiable(boundedEvents),
+          agentState: fresh.agentState,
         );
         if (!mounted) return;
         setState(() {
@@ -308,6 +309,23 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       setState(() => _operationalStatus = 'Verified artifact saved');
     }
     return output.path;
+  }
+
+  Future<void> _provisionAgent(String agentId) async {
+    final client = _client;
+    if (client == null) {
+      throw const ControlPlaneClientException('Control plane is unavailable');
+    }
+    if (_userSession == null) {
+      throw const IdentityClientException(
+        'Verified account sign-in is required for agent provisioning',
+      );
+    }
+    await client.provisionCanonicalAgent(agentId);
+    if (mounted) {
+      setState(() => _operationalStatus = 'Canonical agent provisioned');
+    }
+    await _refresh();
   }
 
   Future<void> _decideGovernance(
@@ -414,6 +432,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
         _identityClient != null &&
         _identityProviders.isNotEmpty &&
         _userSession != null;
+    final agentProvisionEnabled = _client != null && _userSession != null;
     final governanceEnabled = _client != null &&
         (widget.config?.approverId != null ||
             (_identityClient != null && _userSession != null));
@@ -433,6 +452,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       onPromptSubmit: promptEnabled ? _submitPrompt : null,
       onSaveArtifact: _client == null ? null : _saveArtifact,
       onRefreshRequested: _client == null ? null : _refresh,
+      onProvisionAgent: agentProvisionEnabled ? _provisionAgent : null,
       onGovernanceDecision: governanceEnabled ? _decideGovernance : null,
     );
   }
