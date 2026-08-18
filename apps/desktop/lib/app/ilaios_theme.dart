@@ -27,15 +27,15 @@ abstract final class IlaiosTheme {
   static const Color violetWash = Color(0x265C58FE);
   static const Color focusRing = Color(0xE600C2D1);
   static const Color text = white;
-  static const Color muted = Color(0x99FFFFFF);
-  static const Color mutedStrong = Color(0xCCFFFFFF);
+  static const Color muted = Color(0xB3FFFFFF);
+  static const Color mutedStrong = Color(0xD9FFFFFF);
 
   static const Color lightCanvas = Color(0xFFF4F7FB);
   static const Color lightSurface = Color(0xFFFFFFFF);
   static const Color lightSurfaceRaised = Color(0xFFEAF0F7);
   static const Color lightBorder = Color(0xFFD5DFEA);
   static const Color lightText = Color(0xFF0B0F14);
-  static const Color lightMuted = Color(0xFF617084);
+  static const Color lightMuted = Color(0xFF526176);
 
   static const Color success = Color(0xFF45D98B);
   static const Color warning = Color(0xFFF1BE45);
@@ -169,73 +169,73 @@ abstract final class IlaiosTheme {
       textTheme: TextTheme(
         headlineLarge: TextStyle(
           color: foreground,
-          fontSize: 30,
+          fontSize: 32,
           height: 1.12,
           fontWeight: FontWeight.w700,
           letterSpacing: -.6,
         ),
         headlineMedium: TextStyle(
           color: foreground,
-          fontSize: 23,
+          fontSize: 25,
           height: 1.15,
           fontWeight: FontWeight.w700,
           letterSpacing: -.4,
         ),
         titleLarge: TextStyle(
           color: foreground,
-          fontSize: 18,
+          fontSize: 19.5,
           height: 1.2,
           fontWeight: FontWeight.w700,
           letterSpacing: -.2,
         ),
         titleMedium: TextStyle(
           color: foreground,
-          fontSize: 14.5,
+          fontSize: 16,
           height: 1.25,
           fontWeight: FontWeight.w600,
         ),
         titleSmall: TextStyle(
           color: foreground,
-          fontSize: 12.5,
+          fontSize: 13.5,
           height: 1.25,
           fontWeight: FontWeight.w600,
           letterSpacing: .1,
         ),
         bodyLarge: TextStyle(
           color: foreground,
-          fontSize: 13.5,
+          fontSize: 14.5,
           height: 1.42,
           fontWeight: FontWeight.w400,
         ),
         bodyMedium: TextStyle(
           color: mutedColor,
-          fontSize: 12,
+          fontSize: 13,
           height: 1.4,
           fontWeight: FontWeight.w400,
         ),
         bodySmall: TextStyle(
           color: mutedColor,
-          fontSize: 10.5,
+          fontSize: 11.5,
           height: 1.35,
           fontWeight: FontWeight.w400,
         ),
         labelLarge: TextStyle(
           color: foreground,
-          fontSize: 11.5,
+          fontSize: 12.5,
           height: 1.2,
           fontWeight: FontWeight.w600,
           letterSpacing: .1,
         ),
         labelMedium: TextStyle(
           color: isDark ? mutedStrong : const Color(0xFF334155),
-          fontSize: 10,
+          fontSize: 11,
           height: 1.2,
           fontWeight: FontWeight.w600,
           letterSpacing: .2,
         ),
         labelSmall: TextStyle(
           color: mutedColor,
-          fontSize: 9,
+          fontSize: 10,
           height: 1.2,
           fontWeight: FontWeight.w600,
           letterSpacing: .35,
