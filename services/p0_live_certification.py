@@ -58,6 +58,7 @@ class P0LiveCertificationError(RuntimeError):
 
 
 _CERTIFICATION_INPUT_TOKEN_RESERVATION = 4096
+_CERTIFICATION_OUTPUT_TOKEN_RESERVATION = 1024
 
 
 def run_p0_live_certification(
@@ -131,7 +132,7 @@ def run_p0_live_certification(
                 scopes=scopes,
                 prompt=invocation.prompt,
                 input_tokens=_CERTIFICATION_INPUT_TOKEN_RESERVATION,
-                max_output_tokens=256,
+                max_output_tokens=_CERTIFICATION_OUTPUT_TOKEN_RESERVATION,
                 now=observed_at,
             )
         )
