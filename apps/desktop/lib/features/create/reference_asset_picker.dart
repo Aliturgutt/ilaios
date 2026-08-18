@@ -9,20 +9,23 @@ import 'package:flutter/services.dart';
 
 import '../../reference_assets/reference_asset_draft.dart';
 import 'reference_asset_picker_core.dart' as core;
+import 'source_video_picker.dart';
 
 const MethodChannel _referenceDropChannel = MethodChannel(
   'ilaios/reference-assets-drop',
 );
 
-/// Existing picker controller plus a Windows-native drag/drop ingress.
-/// The native bridge only supplies local file paths; the same size/digest and
-/// server-side validation contract used by the ordinary picker still applies.
+/// Existing picker controller plus Windows-native image drag/drop and one
+/// separately governed source-video draft. Source bytes never enter reference
+/// image state and therefore cannot masquerade as a visual reference.
 class ReferenceAssetPickerController extends core.ReferenceAssetPickerController {
   ReferenceAssetPickerController() {
     if (Platform.isWindows) {
       _referenceDropChannel.setMethodCallHandler(_handleNativeDrop);
     }
   }
+
+  final SourceVideoPickerController sourceVideo = SourceVideoPickerController();
 
   Future<Object?> _handleNativeDrop(MethodCall call) async {
     if (call.method != 'droppedPaths') return null;
@@ -85,17 +88,23 @@ class ReferenceAssetPickerController extends core.ReferenceAssetPickerController
   }
 
   @override
+  void clear() {
+    super.clear();
+    sourceVideo.clear();
+  }
+
+  @override
   void dispose() {
     if (Platform.isWindows) {
       _referenceDropChannel.setMethodCallHandler(null);
     }
+    sourceVideo.dispose();
     super.dispose();
   }
 }
 
-/// UI-compatible wrapper around the proven picker. The controller subtype above
-/// keeps ordinary file selection, previews, reorder/remove and role editing
-/// unchanged while adding native drag/drop at the shared controller boundary.
+/// Shared private-input dock. Reference images retain their existing behavior;
+/// source video is a separate single-MP4 boundary below them.
 class ReferenceAssetPicker extends StatelessWidget {
   const ReferenceAssetPicker({
     required this.controller,
@@ -109,10 +118,20 @@ class ReferenceAssetPicker extends StatelessWidget {
   final bool compact;
 
   @override
-  Widget build(BuildContext context) => core.ReferenceAssetPicker(
-        controller: controller,
-        enabled: enabled,
-        compact: compact,
+  Widget build(BuildContext context) => Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          core.ReferenceAssetPicker(
+            controller: controller,
+            enabled: enabled,
+            compact: compact,
+          ),
+          const SizedBox(height: 8),
+          SourceVideoPicker(
+            controller: controller.sourceVideo,
+            enabled: enabled,
+          ),
+        ],
       );
 }
 
