@@ -12,18 +12,18 @@ import json
 import os
 import urllib.error
 import urllib.request
-from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from typing import Any
 
 from services.ai_governance import (
     ModelProviderRegistry,
     ModelRecord,
     ProviderRecord,
     RoutingPolicy,
+    Scope,
     ScopeKind,
     UsageGovernor,
     UsageLimits,
+    UsageRequest,
 )
 from services.p0_agent_execution import P0_AGENT_BINDINGS
 from services.p0_ai_provider_config import P0AIProviderConfiguration
@@ -40,17 +40,38 @@ _OPENROUTER_MODELS_URL = f"{_OPENROUTER_BASE_URL}/models/user"
 _MAX_AUTO_MODELS = 12
 
 
+class _TenantTemplateUsageGovernor(UsageGovernor):
+    """Apply one conservative zero-cost template per actual tenant scope.
+
+    Accounting remains keyed by the real tenant ID. The template does not make
+    a wildcard/global budget and therefore does not collapse tenant isolation.
+    """
+
+    def __init__(
+        self,
+        registry: ModelProviderRegistry,
+        tenant_limit: UsageLimits,
+    ) -> None:
+        super().__init__(registry, {})
+        self._tenant_limit = tenant_limit
+
+    def admit(self, request: UsageRequest, now):  # type: ignore[override]
+        for scope in request.scopes:
+            if scope.kind is not ScopeKind.TENANT:
+                raise OpenRouterAgentCatalogError(
+                    "automatic zero-cost routing accepts tenant scope only"
+                )
+            if scope not in self._limits:
+                self._limits[scope] = self._tenant_limit
+        return super().admit(request, now)
+
+
 def discover_free_openrouter_agent_configuration(
     *,
     api_key: str | None = None,
     timeout_seconds: float = 10.0,
 ) -> P0AIProviderConfiguration | None:
-    """Build a zero-cost agent configuration from live user-filtered catalog evidence.
-
-    Returns ``None`` when no secret exists. Any configured-secret/network/catalog
-    failure raises so the caller can disable AI execution without fabricating
-    readiness.
-    """
+    """Build a zero-cost agent configuration from live user-filtered catalog evidence."""
     secret = api_key if api_key is not None else os.environ.get("OPENROUTER_API_KEY", "")
     if not secret or not secret.strip():
         return None
@@ -82,11 +103,11 @@ def discover_free_openrouter_agent_configuration(
         {binding.capability for binding in P0_AGENT_BINDINGS if binding.execution_mode == "governed-ai"}
         | {"evidence.verify"}
     )
-    models: list[ModelRecord] = []
-    for raw in raw_models:
-        model = _eligible_free_text_model(raw, capabilities)
-        if model is not None:
-            models.append(model)
+    models = [
+        model
+        for raw in raw_models
+        if (model := _eligible_free_text_model(raw, capabilities)) is not None
+    ]
     models.sort(key=lambda item: (-item.context_window, item.model_id))
     models = models[:_MAX_AUTO_MODELS]
     if not models:
@@ -117,11 +138,7 @@ def discover_free_openrouter_agent_configuration(
         max_retries=1,
         max_retry_cost=Decimal(0),
     )
-    governor = UsageGovernor(
-        registry,
-        {},
-        default_limits={ScopeKind.TENANT: conservative},
-    )
+    governor = _TenantTemplateUsageGovernor(registry, conservative)
     endpoint = ProviderEndpoint(
         _OPENROUTER_PROVIDER_ID,
         _OPENROUTER_BASE_URL,
