@@ -2,16 +2,31 @@
 
 Status: CONTROLLED RESEARCH RECORD
 
-The external UI/design references were used only to study general ideas such as component vocabulary, intent-to-component mapping, responsive/accessibility constraints, coherent design-system use, and pre-flight quality review.
+External UI/design references are research inputs only. For this extension the
+reviewed public reference included:
 
-ILAIOS implementation is independently authored in:
+- `nextlevelbuilder/ui-ux-pro-max-skill`
+- reviewed repository lineage: `a38d04c3d5c298c851dbe5e6ee1965ee3de42cb5`
+
+Only general UI/UX problem classes were studied: accessibility naming and text
+alternatives, touch/interaction quality, layout stability, form feedback,
+navigation/back behavior, data-visualization accessibility, safe-area handling,
+text scaling, and deep-link behavior.
+
+ILAIOS implementation remains independently authored in:
 
 - `src/ilaios_ui_design/`
 - `services/ui_design_orchestrator.py`
+- `services/design_quality.py`
+- `services/app_design_quality.py`
 - `tests/test_ui_design_orchestrator.py`
+- `tests/test_design_intelligence_extension.py`
 
 CODE/TEXT IMPORTED = NONE
 RUNTIME DEPENDENCY ON REFERENCE REPOSITORY = NONE
 THIRD-PARTY SKILL EXECUTION = NONE
 
-The implementation deliberately reuses the existing ILAIOS Software Factory SF-7 execution boundary rather than introducing a parallel runtime or policy authority. Future source-code copying or new third-party runtime dependencies require a separate license/provenance review before merge.
+The implementation reuses the existing ILAIOS Software Factory SF-7 execution
+boundary and the existing Web/App design-quality authorities. It does not
+introduce a parallel runtime, design authority, policy authority, or deployment
+authority.
