@@ -10,6 +10,7 @@ $repoRoot = Resolve-Path (Join-Path $desktopRoot '..\..')
 $entrypoint = Join-Path $desktopRoot 'sidecar\ilaios_control_plane_sidecar.py'
 $brandLogo = Join-Path $repoRoot 'brand\assets\03-ilaios-symbol-dark.jpg'
 $identityProviders = Join-Path $desktopRoot 'packaging\identity\oidc-providers.public.json'
+$softwareFactorySkills = Join-Path $repoRoot 'tools\software-factory\skills'
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
   $OutputDirectory = Join-Path $desktopRoot 'build\windows\x64\runner\Release'
 }
@@ -17,6 +18,7 @@ if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
 if (-not (Test-Path $entrypoint)) { throw "Sidecar entrypoint missing: $entrypoint" }
 if (-not (Test-Path $brandLogo)) { throw "Official ILAIOS brand logo missing: $brandLogo" }
 if (-not (Test-Path $identityProviders)) { throw "Desktop public identity metadata missing: $identityProviders" }
+if (-not (Test-Path $softwareFactorySkills)) { throw "Canonical Software Factory skills missing: $softwareFactorySkills" }
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 
 # Public OAuth client identifiers are registration metadata, not secrets. The
@@ -72,18 +74,18 @@ $env:PYTHONPATH = $repoRoot
 Push-Location $repoRoot
 try {
   # Fail before packaging if a required first-party runtime or identity module
-  # is absent or not importable in the active Windows build environment.
-  python -c "import services.desktop_oidc_microsoft; import services.desktop_oidc_windows; import services.integrations.web_factory"
+  # is absent or not importable in the active Windows build environment. The
+  # complete SF-7 registry must also validate before it can be embedded.
+  python -c "import services.desktop_oidc_microsoft; import services.desktop_oidc_windows; import services.integrations.web_factory; from pathlib import Path; from services.software_factory_skills import SkillRegistry; r=Path(r'$softwareFactorySkills'); x=SkillRegistry(r); assert len(x.skill_ids)==25"
   if ($LASTEXITCODE -ne 0) {
-    throw 'Desktop sidecar source import smoke failed for required identity/integration modules.'
+    throw 'Desktop sidecar source import/SF-7 skill-registry smoke failed.'
   }
 
-  # PyInstaller can miss package children on some local Python environments
-  # even when imports are statically reachable through package __init__ files.
-  # Collect the bounded first-party integrations package explicitly so local
-  # Windows builds and CI produce the same runnable composition root. The OIDC
-  # Windows/Microsoft modules are statically imported by the sidecar entrypoint
-  # and the pre-package smoke above prevents an omitted source dependency.
+  # The canonical 25-package Software Factory skill registry is packaged as
+  # read-only runtime data. P0 Engineering identities therefore use the exact
+  # same SKILL/provenance/schema/eval sources in a frozen Store/MSIX sidecar as
+  # they do in a source checkout; the sidecar does not invent a parallel skill
+  # family when the repository is absent.
   python -m PyInstaller `
     --noconfirm `
     --clean `
@@ -96,6 +98,7 @@ try {
     --collect-submodules services.integrations `
     --add-data "$brandLogo;brand/assets" `
     --add-data "$identityProviders;desktop-identity" `
+    --add-data "$softwareFactorySkills;tools/software-factory/skills" `
     --add-data "$sourceHeadFile;build-metadata" `
     --workpath $work `
     --specpath $spec `
