@@ -6,9 +6,11 @@ on:
     paths:
       - 'services/runtime/browser_tool_adapter.py'
       - 'services/runtime/browser_egress_docker.py'
+      - 'services/runtime/browser_egress_playwright.py'
       - 'services/browser_runtime_composition.py'
       - 'tests/test_web_factory_browser_skills.py'
       - 'tests/test_browser_egress_docker.py'
+      - 'tests/test_browser_egress_playwright.py'
       - 'tools/web-factory/browser-skills/runtime/**'
       - '.github/workflows/browser-skill-playwright-e2e.yml'
   push:
@@ -16,9 +18,11 @@ on:
     paths:
       - 'services/runtime/browser_tool_adapter.py'
       - 'services/runtime/browser_egress_docker.py'
+      - 'services/runtime/browser_egress_playwright.py'
       - 'services/browser_runtime_composition.py'
       - 'tests/test_web_factory_browser_skills.py'
       - 'tests/test_browser_egress_docker.py'
+      - 'tests/test_browser_egress_playwright.py'
       - 'tools/web-factory/browser-skills/runtime/**'
       - '.github/workflows/browser-skill-playwright-e2e.yml'
   workflow_dispatch:
@@ -64,20 +68,58 @@ jobs:
         run: |
           python -m pytest -q \
             tests/test_web_factory_browser_skills.py \
-            tests/test_browser_egress_docker.py
+            tests/test_browser_egress_docker.py \
+            tests/test_browser_egress_playwright.py
 
       - name: Validate BrowserQA Python quality
         run: |
           python -m ruff check \
             services/runtime/browser_egress_docker.py \
+            services/runtime/browser_egress_playwright.py \
             tools/web-factory/browser-skills/runtime/allowlist_proxy.py \
             tools/web-factory/browser-skills/runtime/playwright_cli_e2e.py \
-            tests/test_browser_egress_docker.py
+            tests/test_browser_egress_docker.py \
+            tests/test_browser_egress_playwright.py
           python -m mypy --strict \
             services/runtime/browser_egress_docker.py \
+            services/runtime/browser_egress_playwright.py \
             tools/web-factory/browser-skills/runtime/allowlist_proxy.py \
             tools/web-factory/browser-skills/runtime/playwright_cli_e2e.py \
-            tests/test_browser_egress_docker.py
+            tests/test_browser_egress_docker.py \
+            tests/test_browser_egress_playwright.py
+
+      - name: Provision pinned Playwright seccomp profile
+        env:
+          SECCOMP_PATH: ${{ runner.temp }}/playwright-seccomp_profile.json
+        run: |
+          python - <<'PY'
+          import hashlib
+          import os
+          import pathlib
+          import urllib.request
+
+          source_commit = "5f8e7eac83052e2602faec430adf54dd55d63611"
+          expected_blob = "fddc05fb520affb145404e6f6f647ca96af8087d"
+          url = (
+              "https://raw.githubusercontent.com/microsoft/playwright/"
+              f"{source_commit}/utils/docker/seccomp_profile.json"
+          )
+          with urllib.request.urlopen(url, timeout=30) as response:
+              payload = response.read()
+          header = f"blob {len(payload)}\0".encode("ascii")
+          actual_blob = hashlib.sha1(
+              header + payload,
+              usedforsecurity=False,
+          ).hexdigest()
+          if actual_blob != expected_blob:
+              raise SystemExit(
+                  f"Playwright seccomp provenance mismatch: {actual_blob}"
+              )
+          destination = pathlib.Path(os.environ["SECCOMP_PATH"])
+          destination.write_bytes(payload)
+          destination.chmod(0o600)
+          print(f"verified Playwright seccomp blob {actual_blob}")
+          PY
 
       - name: Build pinned BrowserQA runtime image
         run: |
@@ -94,6 +136,7 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
           ILAIOS_SOURCE_SHA: ${{ env.SOURCE_SHA }}
           ILAIOS_BROWSER_E2E_IMAGE: ${{ env.BROWSER_IMAGE }}
+          ILAIOS_BROWSER_SECCOMP_PROFILE: ${{ runner.temp }}/playwright-seccomp_profile.json
           ILAIOS_BROWSER_E2E_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/browser-skill-playwright-e2e
         run: python tools/web-factory/browser-skills/runtime/playwright_cli_e2e.py
 
