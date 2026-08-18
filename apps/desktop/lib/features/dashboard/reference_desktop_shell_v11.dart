@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../../control_plane/client.dart';
@@ -9,11 +11,12 @@ import 'reference_desktop_shell_v10.dart';
 
 /// Final resize guard for the approved Desktop design.
 ///
-/// V11 deliberately delegates native sizing to V10. V10 already owns the
-/// verified compact fallback below 1180x720. Keeping a second outer FittedBox
-/// here caused normal Windows client areas compressed by DPI scaling to render
-/// the entire Desktop below 1:1, making otherwise readable typography appear
-/// artificially small.
+/// Normal Windows client areas, including DPI-compressed viewports such as
+/// 1382x733, render V10 at native 1:1 size so typography is not artificially
+/// reduced. Only truly compact windows use the bounded 1280x900 safety canvas
+/// needed to preserve the complete approved composition without RenderFlex
+/// overflow. The child V10 shell therefore never sees compact constraints when
+/// this outer safety fit is active, avoiding double scaling.
 class ReferenceDesktopShellV11 extends StatelessWidget {
   const ReferenceDesktopShellV11({
     required this.projection,
@@ -53,8 +56,7 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
   final Future<void> Function(String requestId, GovernanceDecision decision)?
       onGovernanceDecision;
 
-  @override
-  Widget build(BuildContext context) => ReferenceDesktopShellV10(
+  Widget _shell() => ReferenceDesktopShellV10(
         projection: projection,
         operationalSnapshot: operationalSnapshot,
         operationalStatus: operationalStatus,
@@ -71,5 +73,39 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
         onRefreshRequested: onRefreshRequested,
         onProvisionAgent: onProvisionAgent,
         onGovernanceDecision: onGovernanceDecision,
+      );
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+        builder: (context, constraints) {
+          const compactWidthThreshold = 1180.0;
+          const compactHeightThreshold = 720.0;
+          const designWidthFloor = 1280.0;
+          const designHeight = 900.0;
+
+          final compact = constraints.maxWidth <= compactWidthThreshold ||
+              constraints.maxHeight < compactHeightThreshold;
+          if (!compact) return _shell();
+
+          final ratioMatchedWidth = constraints.maxHeight > 0
+              ? constraints.maxWidth * designHeight / constraints.maxHeight
+              : designWidthFloor;
+          final designWidth = math.max(designWidthFloor, ratioMatchedWidth);
+
+          return ClipRect(
+            key: const Key('reference-scaled-viewport-v9'),
+            child: SizedBox.expand(
+              child: FittedBox(
+                fit: BoxFit.contain,
+                alignment: Alignment.topLeft,
+                child: SizedBox(
+                  width: designWidth,
+                  height: designHeight,
+                  child: _shell(),
+                ),
+              ),
+            ),
+          );
+        },
       );
 }
