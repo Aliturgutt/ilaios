@@ -2,8 +2,8 @@
 
 The base Desktop identity server remains the authority for sessions, execution
 admission, approvals and cancellation. This adapter adds only source-media input
-handling and preserves the existing request/reference flow for all requests that
-do not carry source media.
+handling and preserves the existing shared Web/Video reference flow for requests
+that do not carry source media.
 """
 
 from __future__ import annotations
@@ -19,13 +19,10 @@ from http import HTTPStatus
 from typing import Any
 from urllib.parse import urlparse
 
+from services import desktop_identity_server_core as _identity_core
 from services.desktop_identity_server import (
     DesktopIdentityHTTPServer,
     DesktopIdentityRequestHandler,
-    _is_video_objective,
-    _reference_asset_ids,
-    _require_reference_store,
-    _required_string,
 )
 from services.desktop_oidc import DesktopIdentityError, DesktopOIDCService
 from services.execution_coordinator import ExecutionCoordinator, ExecutionCoordinatorError
@@ -61,8 +58,8 @@ class SourceMediaDesktopIdentityHTTPServer(DesktopIdentityHTTPServer):
             reference_assets=reference_assets,
         )
         self.source_media = source_media
-        # ThreadingHTTPServer has not started serving yet, so replacing only the
-        # request-handler class preserves every server lifecycle/recovery control.
+        # The server has not started serving yet. Replacing only the request
+        # handler preserves the canonical lifecycle, recovery and auth boundary.
         self.RequestHandlerClass = SourceMediaDesktopIdentityRequestHandler
 
 
@@ -86,14 +83,14 @@ class SourceMediaDesktopIdentityRequestHandler(DesktopIdentityRequestHandler):
 
     def _upload_source_media(self, body: dict[str, Any]) -> None:
         session = self._authenticated_session()
-        filename = _required_string(body, "filename")
-        mime_type = _required_string(body, "mime_type")
-        supplied_sha256 = _required_string(body, "sha256").lower()
+        filename = _identity_core._required_string(body, "filename")
+        mime_type = _identity_core._required_string(body, "mime_type")
+        supplied_sha256 = _identity_core._required_string(body, "sha256").lower()
         if len(supplied_sha256) != 64 or any(
             character not in "0123456789abcdef" for character in supplied_sha256
         ):
             raise ValueError("source video sha256 is invalid")
-        encoded = _required_string(body, "content_base64")
+        encoded = _identity_core._required_string(body, "content_base64")
         try:
             content = base64.b64decode(encoded, validate=True)
         except (binascii.Error, ValueError) as error:
@@ -120,15 +117,19 @@ class SourceMediaDesktopIdentityRequestHandler(DesktopIdentityRequestHandler):
         source_asset_id = source_value.strip()
 
         session = self._authenticated_session()
-        objective = _required_string(body, "objective")
+        objective = _identity_core._required_string(body, "objective")
         if len(objective) > 20_000:
             raise ValueError("objective exceeds Desktop input limit")
-        if not _is_video_objective(objective):
+        if not _identity_core._is_video_objective(objective):
             raise ValueError("source video may only be attached to Video Factory requests")
 
-        asset_ids = _reference_asset_ids(body.get("reference_asset_ids", []))
+        asset_ids = _identity_core._reference_asset_ids(
+            body.get("reference_asset_ids", [])
+        )
         reference_store = (
-            _require_reference_store(self.server.reference_assets) if asset_ids else None
+            _identity_core._require_reference_store(self.server.reference_assets)
+            if asset_ids
+            else None
         )
         owned_references = (
             tuple(
