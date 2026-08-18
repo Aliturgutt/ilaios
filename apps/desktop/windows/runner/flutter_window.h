@@ -1,6 +1,8 @@
 #ifndef RUNNER_FLUTTER_WINDOW_H_
 #define RUNNER_FLUTTER_WINDOW_H_
 
+#include <shellapi.h>
+
 #include <flutter/dart_project.h>
 #include <flutter/flutter_view_controller.h>
 #include <flutter/method_channel.h>
