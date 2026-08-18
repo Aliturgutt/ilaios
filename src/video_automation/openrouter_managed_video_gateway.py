@@ -23,6 +23,10 @@ from .openrouter_managed_video_provider import (
     OPENROUTER_MANAGED_PROVIDER_NAME,
     OpenRouterManagedVideoGenerationProvider,
 )
+from .openrouter_reference_images import (
+    OpenRouterReferenceImageError,
+    validate_reference_image_capability,
+)
 from .openrouter_video_catalog import (
     OpenRouterCatalogError,
     OpenRouterVideoCatalogClient,
@@ -248,6 +252,10 @@ def _validate_capabilities(request: ProviderRequest, model: OpenRouterVideoModel
     try:
         validate_bound_frame_fields(item=item, model=model)
     except FrameReferenceRoutingError as exc:
+        raise OpenRouterManagedVideoGatewayError(str(exc)) from exc
+    try:
+        validate_reference_image_capability(item=item, model=model)
+    except OpenRouterReferenceImageError as exc:
         raise OpenRouterManagedVideoGatewayError(str(exc)) from exc
     duration = item.get("duration_seconds")
     if isinstance(duration, bool) or not isinstance(duration, (int, float)):
