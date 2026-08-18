@@ -26,6 +26,22 @@ class NamedAgentExecutionError(RuntimeError):
     """Canonical named-agent execution violated a bridge invariant."""
 
 
+def provision_canonical_agent(runtime: GovernedRuntime, agent_id: str) -> bool:
+    """Provision one registry-backed agent without accepting caller authority.
+
+    The canonical Agent Registry is the only source for the machine identity and
+    capability set. Existing registrations with divergent authority fail closed
+    in :meth:`GovernedRuntime.ensure_agent`.
+    """
+    try:
+        registration = registration_for(agent_id)
+    except KeyError as exc:
+        raise NamedAgentExecutionError("unknown canonical agent identity") from exc
+    return runtime.ensure_agent(
+        registration.manifest.agent_id, registration.manifest.capabilities
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class NamedAgentExecution:
     """Admission and persisted runtime route for one governed invocation."""
@@ -48,16 +64,8 @@ class NamedAgentExecutor:
         )
 
     def provision_agent(self, agent_id: str) -> bool:
-        """Provision one canonical machine identity without authority expansion.
-
-        Returns ``True`` when the runtime registration is created and ``False``
-        when the same canonical registration already exists. Existing runtime
-        authority that differs from the canonical manifest fails closed.
-        """
-        registration = registration_for(agent_id)
-        return self._runtime.ensure_agent(
-            registration.manifest.agent_id, registration.manifest.capabilities
-        )
+        """Provision one canonical machine identity without authority expansion."""
+        return provision_canonical_agent(self._runtime, agent_id)
 
     def provision_skill(
         self, skill_id: str, content: bytes, authorities: frozenset[str]
