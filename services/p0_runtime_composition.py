@@ -9,6 +9,10 @@ from pathlib import Path
 from services.agent_governance import GrantAuthorizer
 from services.agent_readiness import p0_registrations
 from services.agent_registry import INDEPENDENT_VERIFIER_ID
+from services.independent_verifier_execution import (
+    INDEPENDENT_VERIFIER_ADAPTER_KIND,
+    INDEPENDENT_VERIFIER_PROVIDER_ID,
+)
 from services.named_agent_executor import NamedAgentExecutor
 from services.p0_agent_execution import P0ProviderBackedExecutor, P0_AGENT_BINDINGS
 from services.p0_skill_catalog import (
@@ -17,15 +21,10 @@ from services.p0_skill_catalog import (
 )
 from services.runtime import GovernedRuntime
 from services.runtime.ai_provider_adapter import GovernedAIProviderAdapter
-from services.runtime.independent_verifier_adapter import (
-    INDEPENDENT_VERIFIER_ADAPTER_KIND,
-    INDEPENDENT_VERIFIER_PROVIDER_ID,
-)
 from services.security_agent_execution import (
     DefensiveSecurityAgentExecutor,
     security_local_provider_specs,
 )
-from services.structural_independent_verifier import StructuralIndependentVerifier
 
 
 class P0RuntimeCompositionError(RuntimeError):
@@ -36,7 +35,6 @@ class P0RuntimeCompositionError(RuntimeError):
 class P0RuntimeComposition:
     named_executor: NamedAgentExecutor
     security_executor: DefensiveSecurityAgentExecutor
-    structural_verifier: StructuralIndependentVerifier
     ai_executor: P0ProviderBackedExecutor | None
     target_agent_count: int
     provisioned_identity_count: int
@@ -89,7 +87,6 @@ def compose_p0_runtime(
         adapter_kind=INDEPENDENT_VERIFIER_ADAPTER_KIND,
         deterministic=True,
     )
-    structural_verifier = StructuralIndependentVerifier(named, runtime)
 
     ai_executor: P0ProviderBackedExecutor | None = None
     ai_provider_count = 0
@@ -112,9 +109,7 @@ def compose_p0_runtime(
         for provider_id, provider_capabilities in sorted(capabilities.items()):
             if not provider_capabilities:
                 raise P0RuntimeCompositionError("AI provider capability set cannot be empty")
-            if not provider_capabilities.issubset(
-                governed_ai_capabilities | {"evidence.verify"}
-            ):
+            if not provider_capabilities.issubset(governed_ai_capabilities):
                 raise P0RuntimeCompositionError(
                     "AI provider capability contract exceeds P0 governed execution"
                 )
@@ -130,7 +125,6 @@ def compose_p0_runtime(
     return P0RuntimeComposition(
         named_executor=named,
         security_executor=DefensiveSecurityAgentExecutor(named),
-        structural_verifier=structural_verifier,
         ai_executor=ai_executor,
         target_agent_count=len(p0),
         provisioned_identity_count=len(identities),
