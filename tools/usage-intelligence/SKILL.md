@@ -37,6 +37,13 @@ The native projector may emit:
 - explicit USD cost totals only when the existing cost projection proves `currency=USD` and `coverage=explicit_currency_only`;
 - a machine-readable coverage map that marks unavailable metrics explicitly.
 
+## Current integration
+
+- `services/governance/runtime.py` projects the native usage snapshot under `GovernedRuntimeGateway.state()["usage"]`.
+- The existing authenticated `/v1/governance/state` transport therefore carries the projection without creating a second API authority.
+- The existing Desktop operational snapshot already consumes the governance-state map, so the usage payload reaches the Desktop data boundary without redesigning the visually frozen Desktop shell.
+- The governance-state integration does not fabricate an evidence count; evidence coverage stays `unavailable` until a caller with verified Evidence authority supplies it explicitly.
+
 ## Truth boundaries
 
 - Runtime route count is not called a user session count.
@@ -62,7 +69,8 @@ The native projector may emit:
 - Scope: `local_authenticated_control_plane`.
 - Time zone: UTC.
 - Implementation: `services/usage_intelligence.py`.
-- Tests: `tests/test_usage_intelligence.py`.
+- Integration: `services/governance/runtime.py`.
+- Tests: `tests/test_usage_intelligence.py` and `tests/test_governance_cost_state.py`.
 - Runtime dependencies: Python standard library only.
 - Third-party runtime dependency: none.
 - Copied third-party implementation code/text: NO.
