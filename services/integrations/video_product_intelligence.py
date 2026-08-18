@@ -135,9 +135,21 @@ def _matches_any(value: str, patterns: tuple[str, ...]) -> bool:
     return any(re.search(pattern, value, flags=re.IGNORECASE) is not None for pattern in patterns)
 
 
+def _ratio(value: str, numerator: int, denominator: int) -> bool:
+    # Digit lookarounds recognize punctuation-delimited ratios (for example,
+    # ``9:16.``) while refusing to match digits embedded inside larger numbers.
+    return (
+        re.search(
+            rf"(?<!\d){numerator}\s*:\s*{denominator}(?!\d)",
+            value,
+        )
+        is not None
+    )
+
+
 def _aspect_ratio(normalized: str) -> str:
     vertical = bool(
-        re.search(r"(?:^|\s)9\s*:\s*16(?:\s|$)", normalized)
+        _ratio(normalized, 9, 16)
         or re.search(r"\b(?:vertical|portrait)\s+(?:video|format|aspect(?:\s+ratio)?)\b", normalized)
         or re.search(r"\b(?:for|on)\s+tiktok\b", normalized)
         or re.search(r"\binstagram\s+reels?\b", normalized)
@@ -145,11 +157,11 @@ def _aspect_ratio(normalized: str) -> str:
         or re.search(r"\byoutube\s+shorts?\b", normalized)
     )
     square = bool(
-        re.search(r"(?:^|\s)1\s*:\s*1(?:\s|$)", normalized)
+        _ratio(normalized, 1, 1)
         or re.search(r"\bsquare\s+(?:video|format|aspect(?:\s+ratio)?)\b", normalized)
         or re.search(r"\bkare\s+(?:video|format)\b", normalized)
     )
-    widescreen = bool(re.search(r"(?:^|\s)16\s*:\s*9(?:\s|$)", normalized))
+    widescreen = _ratio(normalized, 16, 9)
     requested = [
         ratio
         for ratio, present in (("9:16", vertical), ("1:1", square), ("16:9", widescreen))
