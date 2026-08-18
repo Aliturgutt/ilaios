@@ -66,10 +66,14 @@ class NamedAgentExecutor:
         capabilities: frozenset[str],
         *,
         adapter_kind: str,
+        deterministic: bool | None = None,
     ) -> None:
         """Register an enabled provider already supported by GovernedRuntime."""
         self._runtime.register_provider(
-            provider_id, capabilities, adapter_kind=adapter_kind
+            provider_id,
+            capabilities,
+            adapter_kind=adapter_kind,
+            deterministic=deterministic,
         )
 
     def execute(
