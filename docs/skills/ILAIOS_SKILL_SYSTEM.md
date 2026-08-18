@@ -86,6 +86,12 @@ ILAIOS Skills
 
 The taxonomy is logical. Existing governed runtime skills remain in their current physical locations and registries. They are mapped into logical nodes rather than moved or rewritten.
 
+Five first-party Skill Engineering packages now have explicit governed runtime backing: `skill-create`, `skill-validate`, `skill-evaluate`, `skill-benchmark`, and `skill-regression`. They are provisioned into the existing canonical `GovernedRuntime` through `NamedAgentExecutor`; no parallel runtime, registry, router, policy engine, approval engine, Tool Gateway, provider path, or evidence authority is introduced.
+
+Runtime authority is deliberately narrower than package dependency declarations. `skill-create` reuses the existing Architect identity and `architecture.propose`; `skill-validate`, `skill-benchmark`, and `skill-regression` reuse the existing Test Engineering identity and `test.execute`; `skill-evaluate` reuses the existing Review identity and `code.review`. Each binding uses an existing canonical permission and package text cannot widen that authority. Independent review remains mandatory.
+
+The runtime allowlist is intentionally explicit. A new Skill Engineering source package does not become executable merely because the catalog discovers it; it must receive a reviewed runtime binding separately. Accordingly, `lint`, `security-scan`, `compatibility`, and `promote` remain without runtime backing until their own implementation and evidence exist.
+
 The Web Factory mappings currently represented in code are exact mappings to the canonical native Web registry:
 
 - `factories/web/architecture` -> `ilaios-web-architecture`;
@@ -105,20 +111,6 @@ The Software Factory mappings currently represented in code include:
 - `factories/software/test` -> existing test-design, test-generation, and runtime-QA skills;
 - `factories/software/review` -> existing code-review skill;
 - `factories/software/release-validation` -> existing build, release-readiness, and recovery skills.
-
-The Video Factory mappings currently represented in code reuse existing governed runtime components rather than introducing a parallel Video execution stack:
-
-- `factories/video/director` -> `ilaios.skill.video.direction.cinematography`;
-- `factories/video/prompt` -> `ilaios.skill.video.prompt.compose`;
-- `factories/video/reference-assets` -> `ilaios.skill.video.reference-assets.inspect`;
-- `factories/video/model-fit` -> `ilaios.skill.video.model-fit.analyze`;
-- `factories/video/continuity` -> `ilaios.skill.video.continuity.track`;
-- `factories/video/edit` -> the existing governed trim, concatenate, overlay, crop, scale, and audio-mix skills;
-- `factories/video/output-verify` -> `ilaios.skill.video.qa.evaluate`.
-
-`factories/video/model-fit` is advisory ranking evidence only. It does not own provider/model routing, authorize spend, invoke a provider, or emit an independent routing decision. Canonical routing and governance remain authoritative.
-
-`factories/video/generation`, `captions`, `composition`, and `render` intentionally have no governed runtime backing declared by this taxonomy. Their presence in the logical taxonomy must not be interpreted as runtime integration or production evidence.
 
 The Assurance mappings classify the current native SecurityFactory methodology skills without taking over SecurityFactory execution ownership:
 
@@ -140,11 +132,13 @@ The target lifecycle is:
 
 `create -> lint -> validate -> security-scan -> evaluate -> benchmark -> regression -> compatibility -> promote`
 
-Promotion does not imply production verification.
+Only lifecycle stages with implemented source packages and explicit reviewed runtime bindings are executable. Promotion does not imply production verification.
 
 ## Provider independence
 
 Provider/model routing is not a Video skill responsibility and is not part of this taxonomy. For example, `factories/video/generation` must express capability, quality, cost, privacy, reference-asset, and output requirements. The canonical router and governance layers choose an eligible provider.
+
+The same rule applies to Skill Engineering: runtime admission maps skills to existing agent authority, while provider/model selection remains owned by canonical routing and AI governance. A runtime binding never grants a provider credential or chooses a model by itself.
 
 ## Shared capabilities
 
@@ -168,14 +162,16 @@ New first-party skill packages should use the established ILAIOS package discipl
 - `evals/`
 - focused tests
 
-Tool declarations are requested capabilities only. Policy, approval, tenant, security, Tool Gateway, and runtime admission remain authoritative.
+Tool declarations are requested dependencies only. Policy, approval, tenant, security, Tool Gateway, runtime admission, provider routing, Validation, Audit, and Evidence remain authoritative.
 
 ## Current implementation boundary
 
 The logical taxonomy is machine-readable in `services/skill_taxonomy.py`.
 
-The first new Skill Engineering package is `tools/skill-engineering/skills/skill-create/`. Its catalog validates package completeness, provenance, deny-set, allowed tool declarations, schemas, and eval coverage, but it does not provide a side-effect executor.
+The implemented core Skill Engineering source packages are under `tools/skill-engineering/skills/`: `skill-create`, `skill-validate`, `skill-evaluate`, `skill-benchmark`, and `skill-regression`. `services/skill_engineering_catalog.py` validates package completeness, provenance, deny-set, allowed tool declarations, schemas, eval coverage, and source maturity. `services/skill_engineering_runtime.py` is a separate fail-closed admission map that provisions only explicitly approved packages into the existing canonical runtime; it is not a second runtime or registry.
+
+Those five packages have explicit runtime backing and are included in the canonical P0 runtime composition. The Windows Desktop sidecar bundles the Skill Engineering package directory so source and packaged-runtime composition use the same package content. Other Skill Engineering taxonomy nodes remain target-only or source/spec-only until they receive their own evidence-backed implementation and runtime admission.
 
 The current native Web Factory, Video Factory, and SecurityFactory methodology skills are mapped into the taxonomy without moving or duplicating their runtime ownership.
 
-Other taxonomy nodes without an existing runtime mapping remain target nodes unless a first-party source/spec package exists. Runtime integration, testing, verification, deployment, and production status remain evidence-gated separately.
+Runtime tests, CI, post-merge exact-master verification, credentialed provider E2E, deployment, and live production flow status remain evidence-gated separately. A source package, runtime mapping, passing unit test, or deployment status alone is not production verification.

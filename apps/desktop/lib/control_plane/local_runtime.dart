@@ -120,7 +120,11 @@ class DesktopRuntime {
     File readyFile,
     String token,
   ) async {
-    const attempts = 150;
+    // PyInstaller one-file extraction is subject to bounded Windows disk and
+    // antivirus variance. Keep startup fail-closed, but align the product with
+    // the packaged Windows gate's 45-second cold-start evidence window so a
+    // healthy child is not rejected earlier than the artifact we certify.
+    const attempts = 450;
     for (var attempt = 0; attempt < attempts; attempt += 1) {
       if (await readyFile.exists()) {
         try {

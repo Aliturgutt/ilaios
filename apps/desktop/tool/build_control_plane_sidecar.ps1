@@ -12,6 +12,7 @@ $brandLogo = Join-Path $repoRoot 'brand\assets\03-ilaios-symbol-dark.jpg'
 $identityProviders = Join-Path $desktopRoot 'packaging\identity\oidc-providers.public.json'
 $softwareFactorySkills = Join-Path $repoRoot 'tools\software-factory\skills'
 $securityFactorySkills = Join-Path $repoRoot 'tools\security-factory\skills'
+$skillEngineeringSkills = Join-Path $repoRoot 'tools\skill-engineering\skills'
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
   $OutputDirectory = Join-Path $desktopRoot 'build\windows\x64\runner\Release'
 }
@@ -24,6 +25,12 @@ if (-not (Test-Path $softwareFactorySkills -PathType Container)) {
 }
 if (-not (Test-Path $securityFactorySkills -PathType Container)) {
   throw "Canonical Security Factory skills missing: $securityFactorySkills"
+}
+if (-not (Test-Path $skillEngineeringSkills -PathType Container)) {
+  throw "Canonical Skill Engineering skills missing: $skillEngineeringSkills"
+}
+if (-not (Test-Path (Join-Path $skillEngineeringSkills 'skill-create\SKILL.md') -PathType Leaf)) {
+  throw 'Canonical Skill Engineering runtime package skill-create is missing.'
 }
 New-Item -ItemType Directory -Force -Path $OutputDirectory | Out-Null
 
@@ -81,7 +88,7 @@ $sourceHeadFile = Join-Path $metadata 'source-head.txt'
 $env:PYTHONPATH = $repoRoot
 Push-Location $repoRoot
 try {
-  python -c "import services.desktop_oidc_microsoft; import services.desktop_oidc_windows; import services.integrations.web_factory; import services.p0_runtime_composition; import services.runtime.ai_provider_adapter; import services.runtime.security_agent_adapters; import services.security_methodology_analysis; import services.security_methodology_skills"
+  python -c "import services.desktop_oidc_microsoft; import services.desktop_oidc_windows; import services.integrations.web_factory; import services.p0_runtime_composition; import services.runtime.ai_provider_adapter; import services.runtime.security_agent_adapters; import services.security_methodology_analysis; import services.security_methodology_skills; import services.skill_engineering_catalog; import services.skill_engineering_runtime"
   if ($LASTEXITCODE -ne 0) {
     throw 'Desktop sidecar source import smoke failed for required identity/integration/agent modules.'
   }
@@ -101,6 +108,7 @@ try {
     --add-data "$sourceHeadFile;build-metadata" `
     --add-data "$softwareFactorySkills;tools/software-factory/skills" `
     --add-data "$securityFactorySkills;tools/security-factory/skills" `
+    --add-data "$skillEngineeringSkills;tools/skill-engineering/skills" `
     --workpath $work `
     --specpath $spec `
     --distpath $dist `

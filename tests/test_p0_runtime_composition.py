@@ -1,5 +1,6 @@
 """Single-runtime P0 composition and restart/drift proofs."""
 
+import json
 import sqlite3
 from pathlib import Path
 
@@ -16,6 +17,13 @@ from services.runtime.security_agent_adapters import SecurityAgentRuntimeAdapter
 from services.software_factory_skills import default_skills_root
 
 ROOT = Path(__file__).resolve().parents[1]
+EXPECTED_SKILL_ENGINEERING_AUTHORITIES = {
+    "skill-create": ["architecture.propose"],
+    "skill-validate": ["test.execute"],
+    "skill-evaluate": ["code.review"],
+    "skill-benchmark": ["test.execute"],
+    "skill-regression": ["test.execute"],
+}
 
 
 def _runtime(tmp_path: Path) -> tuple[Path, GovernedRuntime]:
@@ -39,7 +47,8 @@ def test_p0_composes_exact_targets_plus_verifier_dependency_on_same_runtime(
     )
     assert composition.target_agent_count == 21
     assert composition.provisioned_identity_count == 22
-    assert composition.skill_count == 27
+    assert composition.skill_count == 32
+    assert composition.skill_engineering_skill_count == 5
     assert composition.security_provider_count == 5
     assert composition.verifier_provider_count == 1
     assert composition.ai_provider_count == 0
@@ -52,12 +61,20 @@ def test_p0_composes_exact_targets_plus_verifier_dependency_on_same_runtime(
         skill_count = connection.execute(
             "SELECT COUNT(*) FROM runtime_skills"
         ).fetchone()[0]
+        skill_engineering_rows = connection.execute(
+            "SELECT skill_id, authorities_json FROM runtime_skills "
+            "WHERE skill_id LIKE 'skill-%' ORDER BY skill_id"
+        ).fetchall()
         provider_rows = connection.execute(
             "SELECT provider_id, deterministic "
             "FROM runtime_providers ORDER BY provider_id"
         ).fetchall()
     assert agent_count == 22
-    assert skill_count == 27
+    assert skill_count == 32
+    assert {
+        skill_id: json.loads(authorities_json)
+        for skill_id, authorities_json in skill_engineering_rows
+    } == EXPECTED_SKILL_ENGINEERING_AUTHORITIES
     assert len(provider_rows) == 6
     assert all(deterministic == 1 for _, deterministic in provider_rows)
     assert any(
@@ -79,6 +96,7 @@ def test_p0_composition_is_restart_idempotent(tmp_path: Path) -> None:
         engineering_skills_root=default_skills_root(ROOT),
     )
     assert first.target_agent_count == second.target_agent_count == 21
+    assert first.skill_engineering_skill_count == second.skill_engineering_skill_count == 5
     with sqlite3.connect(database) as connection:
         assert (
             connection.execute(
@@ -90,7 +108,7 @@ def test_p0_composition_is_restart_idempotent(tmp_path: Path) -> None:
             connection.execute(
                 "SELECT COUNT(*) FROM runtime_skills"
             ).fetchone()[0]
-            == 27
+            == 32
         )
         assert (
             connection.execute(
