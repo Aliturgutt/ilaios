@@ -21,10 +21,10 @@ from hashlib import sha256
 from typing import Any, Protocol
 
 from services.ai_governance import (
-    GovernanceError,
     ModelProviderRegistry,
     RoutingPolicy,
     Scope,
+    ScopeKind,
     UsageGovernor,
     UsageRequest,
     route_model,
@@ -210,15 +210,8 @@ class GovernedAIProviderAdapter:
 
         input_tokens = _required_nonnegative_int(payload, "input_tokens")
         max_output_tokens = _required_positive_int(payload, "max_output_tokens")
-        raw_scopes = payload.get("scopes")
-        if not isinstance(raw_scopes, tuple) or not raw_scopes or not all(
-            isinstance(item, Scope) for item in raw_scopes
-        ):
-            raise AIProviderError("provider execution requires governed Scope tuple")
-        scopes = raw_scopes
-        now = payload.get("now")
-        if not isinstance(now, datetime) or now.tzinfo is None:
-            raise AIProviderError("provider execution requires timezone-aware now")
+        scopes = _parse_scopes(payload.get("scopes"))
+        now = _parse_now(payload.get("now"))
 
         api_key = self._secret_reader(endpoint.api_key_env) or ""
         if endpoint.requires_api_key and not api_key:
@@ -284,6 +277,34 @@ class GovernedAIProviderAdapter:
             }
 
         raise AIProviderError("provider retries exhausted") from last_error
+
+
+def _parse_scopes(value: object) -> tuple[Scope, ...]:
+    if not isinstance(value, list) or not value:
+        raise AIProviderError("provider execution requires governed scopes")
+    scopes: list[Scope] = []
+    for item in value:
+        if not isinstance(item, dict):
+            raise AIProviderError("scope evidence must be an object")
+        try:
+            kind = ScopeKind(str(item["kind"]))
+            scope_id = str(item["scope_id"])
+        except (KeyError, ValueError) as exc:
+            raise AIProviderError("scope evidence is invalid") from exc
+        scopes.append(Scope(kind, scope_id))
+    return tuple(scopes)
+
+
+def _parse_now(value: object) -> datetime:
+    if not isinstance(value, str):
+        raise AIProviderError("provider execution requires serialized timestamp")
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise AIProviderError("provider execution timestamp is invalid") from exc
+    if parsed.tzinfo is None:
+        raise AIProviderError("provider execution timestamp must be timezone-aware")
+    return parsed
 
 
 def _cost(
