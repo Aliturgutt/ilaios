@@ -23,6 +23,23 @@ from . import desktop_identity_server_core as _core
 # relying on an implicit re-export from the canonical core module.
 time = _time
 
+_WEB_REFERENCE_OBJECTIVE_TERMS = (
+    "website",
+    "web site",
+    "web sitesi",
+    "landing page",
+    "internet sitesi",
+    "web app",
+    "web application",
+    "web uygulaması",
+    "web uygulamasi",
+    "dashboard",
+    "admin panel",
+    "management dashboard",
+    "yönetim paneli",
+    "yonetim paneli",
+)
+
 
 class DesktopIdentityHTTPServer(_core.DesktopIdentityHTTPServer):
     """Canonical Desktop server with the shared reference-capable handler."""
@@ -113,16 +130,7 @@ class DesktopIdentityRequestHandler(_core.DesktopIdentityRequestHandler):
 def _reference_factory_count(objective: str) -> int:
     video = _core._is_video_objective(objective)
     normalized = " ".join(objective.casefold().split())
-    web = any(
-        term in normalized
-        for term in (
-            "website",
-            "web site",
-            "web sitesi",
-            "landing page",
-            "internet sitesi",
-        )
-    )
+    web = any(term in normalized for term in _WEB_REFERENCE_OBJECTIVE_TERMS)
     return int(video) + int(web)
 
 

@@ -32,6 +32,8 @@ from .video_skills import QaDomain
 _DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 _CRITERIA_ID = "ilaios.video.semantic-prompt-alignment"
 _CRITERIA_VERSION = "1.0.0"
+_RETRYABLE_CAPABILITY_STATUS_CODES = frozenset({404, 503})
+_REVIEW_KEYS = frozenset({"score", "detail", "repair_target"})
 _CRITERIA_TEXT = (
     "Judge only whether the sampled frames are a faithful visual realization of the "
     "requested video objective. Reject generic motion-graphics, title cards, placeholder "
@@ -152,7 +154,9 @@ class OpenRouterPerceptualReviewer:
                 "text": (
                     f"{_CRITERIA_TEXT}\n\nUSER OBJECTIVE:\n{objective}\n\n"
                     "Return a strict score from 0 to 1. A generic explainer, motion-graphics "
-                    "template, or unrelated clip must score below the threshold."
+                    "template, or unrelated clip must score below the threshold. Return only "
+                    "a JSON object with exactly these keys: score, detail, repair_target. "
+                    "Do not use markdown fences or add commentary outside the JSON object."
                 ),
             }
         ]
@@ -175,28 +179,40 @@ class OpenRouterPerceptualReviewer:
             "required": ["score", "detail", "repair_target"],
             "additionalProperties": False,
         }
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+        }
+        base_body: dict[str, object] = {
+            "model": self._model_id,
+            "messages": ({"role": "user", "content": content},),
+            "provider": {"require_parameters": True},
+            "stream": False,
+        }
+        strict_body = dict(base_body)
+        strict_body["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "ilaios_video_semantic_review",
+                "strict": True,
+                "schema": schema,
+            },
+        }
         response = self._transport.post_json(
             f"{self._base_url}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {self._api_key}",
-                "Content-Type": "application/json",
-            },
-            body={
-                "model": self._model_id,
-                "messages": ({"role": "user", "content": content},),
-                "response_format": {
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "ilaios_video_semantic_review",
-                        "strict": True,
-                        "schema": schema,
-                    },
-                },
-                "provider": {"require_parameters": True},
-                "stream": False,
-            },
+            headers=headers,
+            body=strict_body,
             timeout_seconds=self._timeout_seconds,
         )
+        review_route = "json-schema"
+        if response.status_code in _RETRYABLE_CAPABILITY_STATUS_CODES:
+            response = self._transport.post_json(
+                f"{self._base_url}/chat/completions",
+                headers=headers,
+                body=base_body,
+                timeout_seconds=self._timeout_seconds,
+            )
+            review_route = "prompt-json-fallback"
         if not 200 <= response.status_code < 300:
             raise OpenRouterPerceptualReviewError(
                 f"OpenRouter perceptual review failed with HTTP {response.status_code}"
@@ -223,7 +239,8 @@ class OpenRouterPerceptualReviewer:
             threshold=self._threshold,
             evidence_references=frame_refs,
             provenance_reference=(
-                f"openrouter-review:model={self._model_id}:artifact={artifact_sha256}"
+                f"openrouter-review:model={self._model_id}:route={review_route}:"
+                f"artifact={artifact_sha256}"
             ),
             repair_target=None if passed else (repair_target.strip() or "regenerate-video"),
         )
@@ -293,6 +310,10 @@ def _extract_review(payload: Mapping[str, object]) -> dict[str, object]:
         raise OpenRouterPerceptualReviewError("review content is not valid JSON") from exc
     if not isinstance(value, dict):
         raise OpenRouterPerceptualReviewError("review content must be an object")
+    if frozenset(value) != _REVIEW_KEYS:
+        raise OpenRouterPerceptualReviewError(
+            "review content must contain exactly score, detail, and repair_target"
+        )
     score = value.get("score")
     detail = value.get("detail")
     repair_target = value.get("repair_target")

@@ -137,6 +137,46 @@ void main() {
     expect(intentBody.containsKey('bytes'), isFalse);
   });
 
+  test('Web App dashboard references use the governed Web upload path', () async {
+    final transport = _ReferenceTransport();
+    final client = IdentityClient(
+      baseUri: Uri.parse('http://127.0.0.1:43123'),
+      transportToken: 'local-transport-token',
+      transport: transport,
+    );
+    ReferenceAssetSubmissionBus.replace(<ReferenceAssetDraft>[_draft(3)]);
+
+    final result = await client.submitPrompt(
+      'Build a Web App dashboard from these reference screenshots.',
+      _session,
+    );
+
+    expect(result.requestId, 'exec-1');
+    expect(transport.requests, hasLength(2));
+    final intentBody =
+        jsonDecode(transport.requests[1].body!) as Map<String, dynamic>;
+    expect(intentBody['objective'], contains('Web App dashboard'));
+    expect(intentBody['reference_asset_ids'], <String>['ref-1234567890abcdef12345678']);
+  });
+
+  test('Turkish Web App references are admitted without generic app widening', () async {
+    final transport = _ReferenceTransport();
+    final client = IdentityClient(
+      baseUri: Uri.parse('http://127.0.0.1:43123'),
+      transportToken: 'local-transport-token',
+      transport: transport,
+    );
+    ReferenceAssetSubmissionBus.replace(<ReferenceAssetDraft>[_draft(4)]);
+
+    final result = await client.submitPrompt(
+      'Bu referanslarla bir web uygulaması oluştur.',
+      _session,
+    );
+
+    expect(result.requestId, 'exec-1');
+    expect(transport.requests, hasLength(2));
+  });
+
   test('references fail closed outside Web Factory and Video Factory', () async {
     final transport = _ReferenceTransport();
     final client = IdentityClient(
@@ -155,6 +195,22 @@ void main() {
           contains('Web Factory or Video Factory'),
         ),
       ),
+    );
+    expect(transport.requests, isEmpty);
+  });
+
+  test('generic mobile app references remain fail closed', () async {
+    final transport = _ReferenceTransport();
+    final client = IdentityClient(
+      baseUri: Uri.parse('http://127.0.0.1:43123'),
+      transportToken: 'local-transport-token',
+      transport: transport,
+    );
+    ReferenceAssetSubmissionBus.replace(<ReferenceAssetDraft>[_draft(5)]);
+
+    await expectLater(
+      client.submitPrompt('Build a mobile app from these screenshots', _session),
+      throwsA(isA<IdentityClientException>()),
     );
     expect(transport.requests, isEmpty);
   });
