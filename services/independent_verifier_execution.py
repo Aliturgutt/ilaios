@@ -14,7 +14,11 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 
-from services.agent_execution_evidence import execution_evidence_digest
+from services.agent_execution_evidence import (
+    durable_route_digest,
+    durable_route_projection,
+    execution_evidence_digest,
+)
 from services.agent_governance import AgentInvocation
 from services.agent_registry import (
     INDEPENDENT_VERIFIER_ID,
@@ -104,11 +108,11 @@ class IndependentVerifierExecutor:
             raise IndependentVerifierExecutionError(
                 "producer evidence digest does not match canonical execution"
             )
-        persisted_digest = _canonical_route_digest(persisted)
-        execution_digest = _canonical_route_digest(execution.route)
+        persisted_digest = durable_route_digest(persisted)
+        execution_digest = durable_route_digest(execution.route)
         if persisted_digest != execution_digest:
             raise IndependentVerifierExecutionError(
-                "producer persisted route does not match execution evidence"
+                "producer durable route does not match persisted runtime evidence"
             )
 
         caller_id = (
@@ -169,42 +173,18 @@ def _resolve_persisted_route(
             "producer persisted route cannot be uniquely resolved"
         )
     persisted = matches[0]
-    if _comparable_route(persisted) != _comparable_route(execution.route):
+    try:
+        persisted_projection = durable_route_projection(persisted)
+        execution_projection = durable_route_projection(execution.route)
+    except ValueError as exc:
         raise IndependentVerifierExecutionError(
-            "producer execution diverges from persisted runtime route"
+            "producer durable route evidence is malformed"
+        ) from exc
+    if persisted_projection != execution_projection:
+        raise IndependentVerifierExecutionError(
+            "producer execution diverges from persisted durable runtime route"
         )
     return persisted
-
-
-def _comparable_route(route: dict[str, object]) -> dict[str, object]:
-    """Project fields present in both runtime return and persisted route records."""
-    sequence = route.get("sequence")
-    if not isinstance(sequence, int) or isinstance(sequence, bool):
-        raise IndependentVerifierExecutionError("persisted route sequence is invalid")
-    projected: dict[str, object] = {"sequence": sequence}
-    for field in ("agent_id", "skill_id", "provider_id", "capability"):
-        value = route.get(field)
-        if not isinstance(value, str) or not value or value != value.strip():
-            raise IndependentVerifierExecutionError(
-                f"persisted route {field} is invalid"
-            )
-        projected[field] = value
-    output = route.get("output")
-    if not isinstance(output, dict):
-        raise IndependentVerifierExecutionError("persisted route output is invalid")
-    projected["output"] = output
-    return projected
-
-
-def _canonical_route_digest(route: dict[str, object]) -> str:
-    return hashlib.sha256(
-        json.dumps(
-            _comparable_route(route),
-            sort_keys=True,
-            separators=(",", ":"),
-            default=str,
-        ).encode()
-    ).hexdigest()
 
 
 def _verify_attestation_route(
