@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import cast
 
 
 @dataclass(frozen=True, slots=True)
@@ -87,7 +86,8 @@ def bind_web_factory_native_skill_evidence(
         "LOCAL_VERIFIED",
     )
     execution: list[dict[str, object]] = []
-    for skill, status in zip(WEB_FACTORY_NATIVE_SKILLS[:-1], local_statuses, strict=True):
+    local_skills = WEB_FACTORY_NATIVE_SKILLS[:-1]
+    for skill, status in zip(local_skills, local_statuses, strict=True):
         execution.append(
             {
                 "skill_id": skill.skill_id,
@@ -121,7 +121,7 @@ def bind_web_factory_native_skill_evidence(
     )
 
     bound = dict(manifest)
-    bound["native_skill_plan"] = cast(tuple[dict[str, str], ...], web_factory_native_skill_plan())
+    bound["native_skill_plan"] = web_factory_native_skill_plan()
     bound["native_skill_execution"] = execution
     return bound
 
