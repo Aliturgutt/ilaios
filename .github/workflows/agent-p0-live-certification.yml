@@ -69,6 +69,7 @@ jobs:
           python -m pytest -q \
             tests/test_p0_runtime_composition.py \
             tests/test_openrouter_agent_catalog.py \
+            tests/test_ai_provider_structured_output.py \
             tests/test_agent_readiness_integration.py \
             tests/test_agent_readiness_store_integration.py \
             tests/test_runtime_external_adapter_integration.py
