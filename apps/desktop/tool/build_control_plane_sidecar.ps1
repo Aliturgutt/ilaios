@@ -13,6 +13,8 @@ $identityProviders = Join-Path $desktopRoot 'packaging\identity\oidc-providers.p
 $softwareFactorySkills = Join-Path $repoRoot 'tools\software-factory\skills'
 $securityFactorySkills = Join-Path $repoRoot 'tools\security-factory\skills'
 $skillEngineeringSkills = Join-Path $repoRoot 'tools\skill-engineering\skills'
+$webFactorySkills = Join-Path $repoRoot 'tools\web-factory\skills'
+$webBrowserSkills = Join-Path $repoRoot 'tools\web-factory\browser-skills'
 if ([string]::IsNullOrWhiteSpace($OutputDirectory)) {
   $OutputDirectory = Join-Path $desktopRoot 'build\windows\x64\runner\Release'
 }
@@ -28,6 +30,12 @@ if (-not (Test-Path $securityFactorySkills -PathType Container)) {
 }
 if (-not (Test-Path $skillEngineeringSkills -PathType Container)) {
   throw "Canonical Skill Engineering skills missing: $skillEngineeringSkills"
+}
+if (-not (Test-Path $webFactorySkills -PathType Container)) {
+  throw "Canonical Web Factory skills missing: $webFactorySkills"
+}
+if (-not (Test-Path $webBrowserSkills -PathType Container)) {
+  throw "Canonical BrowserQA skills missing: $webBrowserSkills"
 }
 if (-not (Test-Path (Join-Path $skillEngineeringSkills 'skill-create\SKILL.md') -PathType Leaf)) {
   throw 'Canonical Skill Engineering runtime package skill-create is missing.'
@@ -52,6 +60,14 @@ if ($skillFiles.Count -lt 25) {
 $securitySkillFiles = @(Get-ChildItem -Path $securityFactorySkills -Recurse -Filter 'SKILL.md' -File)
 if ($securitySkillFiles.Count -ne 5) {
   throw "Canonical Security Factory methodology registry is incomplete: found $($securitySkillFiles.Count)."
+}
+$webSkillFiles = @(Get-ChildItem -Path $webFactorySkills -Recurse -Filter 'SKILL.md' -File)
+if ($webSkillFiles.Count -ne 6) {
+  throw "Canonical Web Factory skill registry is incomplete: found $($webSkillFiles.Count)."
+}
+$browserSkillFiles = @(Get-ChildItem -Path $webBrowserSkills -Recurse -Filter 'SKILL.md' -File)
+if ($browserSkillFiles.Count -ne 4) {
+  throw "Canonical BrowserQA skill registry is incomplete: found $($browserSkillFiles.Count)."
 }
 
 $pythonVersion = (& python -c "import sys; print('%d.%d' % sys.version_info[:2])").Trim()
@@ -88,7 +104,7 @@ $sourceHeadFile = Join-Path $metadata 'source-head.txt'
 $env:PYTHONPATH = $repoRoot
 Push-Location $repoRoot
 try {
-  python -c "import services.desktop_oidc_microsoft; import services.desktop_oidc_windows; import services.integrations.web_factory; import services.p0_runtime_composition; import services.runtime.ai_provider_adapter; import services.runtime.security_agent_adapters; import services.security_methodology_analysis; import services.security_methodology_skills; import services.skill_engineering_catalog; import services.skill_engineering_runtime"
+  python -c "import services.desktop_oidc_microsoft; import services.desktop_oidc_windows; import services.integrations.web_factory; import services.p0_runtime_composition; import services.web_agent_execution; import services.web_agent_runtime; import services.web_agent_skill_catalog; import services.browser_runtime_composition; import services.runtime.ai_provider_adapter; import services.runtime.security_agent_adapters; import services.security_methodology_analysis; import services.security_methodology_skills; import services.skill_engineering_catalog; import services.skill_engineering_runtime"
   if ($LASTEXITCODE -ne 0) {
     throw 'Desktop sidecar source import smoke failed for required identity/integration/agent modules.'
   }
@@ -109,6 +125,8 @@ try {
     --add-data "$softwareFactorySkills;tools/software-factory/skills" `
     --add-data "$securityFactorySkills;tools/security-factory/skills" `
     --add-data "$skillEngineeringSkills;tools/skill-engineering/skills" `
+    --add-data "$webFactorySkills;tools/web-factory/skills" `
+    --add-data "$webBrowserSkills;tools/web-factory/browser-skills" `
     --workpath $work `
     --specpath $spec `
     --distpath $dist `
