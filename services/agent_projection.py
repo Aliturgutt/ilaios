@@ -19,9 +19,10 @@ def agent_state_projection(
         agent_id = route.get("agent_id")
         if isinstance(agent_id, str):
             latest[agent_id] = route
-    readiness_map: Mapping[str, Mapping[str, object]] = (
-        readiness if readiness is not None else {}
-    )
+    if readiness is None:
+        readiness_map: Mapping[str, Mapping[str, object]] = {}
+    else:
+        readiness_map = readiness
 
     agents: list[dict[str, object]] = []
     for registration in CANONICAL_AGENT_REGISTRY:
