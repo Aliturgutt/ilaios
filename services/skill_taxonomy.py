@@ -51,8 +51,9 @@ class SkillTaxonomyNode:
     """One logical skill node.
 
     ``backing_skill_ids`` references already-existing governed runtime skills.
-    An empty tuple means the logical node is target taxonomy only; it does not
-    imply implementation, runtime integration, verification, or production.
+    An empty tuple means no governed runtime backing is declared. The logical
+    node may still have a source/spec package, but an empty mapping does not
+    imply runtime integration, verification, deployment, or production.
     """
 
     path: tuple[str, ...]
