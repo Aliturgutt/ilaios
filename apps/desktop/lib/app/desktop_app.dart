@@ -7,6 +7,7 @@ import '../control_plane/client.dart';
 import '../control_plane/evidence_record.dart';
 import '../control_plane/operational_snapshot.dart';
 import '../control_plane/projection.dart';
+import '../features/create/reference_asset_picker.dart';
 import '../features/dashboard/reference_desktop_shell_v11.dart';
 import '../identity/identity_client.dart';
 import 'ilaios_locale.dart';
@@ -65,8 +66,11 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
   static const Duration _operationalRefreshInterval = Duration(seconds: 2);
 
   late ThemeMode _localThemeMode = widget.themeMode;
+  final ReferenceAssetPickerController _referenceAssets =
+      ReferenceAssetPickerController();
   Timer? _operationalRefreshTimer;
   AppLifecycleState _lifecycleState = AppLifecycleState.resumed;
+  bool _referenceDockOpen = false;
 
   @override
   void initState() {
@@ -90,6 +94,10 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
     if (widget.onRefreshRequested != oldWidget.onRefreshRequested) {
       _restartOperationalRefresh();
     }
+    if (oldWidget.userSession != null && widget.userSession == null) {
+      _referenceAssets.clear();
+      _referenceDockOpen = false;
+    }
   }
 
   @override
@@ -103,6 +111,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
   @override
   void dispose() {
     _operationalRefreshTimer?.cancel();
+    _referenceAssets.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -136,6 +145,37 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
     if (kReleaseMode) unawaited(IlaiosThemeModeStore.save(mode));
   }
 
+  String _localeText(String english, String turkish) =>
+      widget.locale == IlaiosLocale.turkish ? turkish : english;
+
+  Future<PromptSubmission> _submitPrompt(String objective) async {
+    final callback = widget.onPromptSubmit;
+    if (callback == null) {
+      throw StateError(
+        _localeText(
+          'Desktop prompt submission is unavailable.',
+          'Desktop prompt gönderimi kullanılamıyor.',
+        ),
+      );
+    }
+    final hasReferences = _referenceAssets.assets.isNotEmpty;
+    final videoObjective = _isVideoObjective(objective);
+    if (hasReferences && !videoObjective) {
+      throw StateError(
+        _localeText(
+          'Reference images are attached to Video Factory. Select Video Factory before submitting this goal.',
+          'Video Factory için referans görseller ekli. Bu hedefi göndermeden önce Video Factory seçilmelidir.',
+        ),
+      );
+    }
+    final result = await callback(objective);
+    if (videoObjective && hasReferences) {
+      _referenceAssets.clear();
+      if (mounted) setState(() {});
+    }
+    return result;
+  }
+
   @override
   Widget build(BuildContext context) {
     final effectiveTheme =
@@ -157,25 +197,118 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
       home: IlaiosLocaleScope(
         locale: widget.locale,
         onChanged: (value) => widget.onLocaleChanged?.call(value),
-        child: ReferenceDesktopShellV11(
-          projection: widget.projection,
-          operationalSnapshot: widget.operationalSnapshot,
-          operationalStatus: widget.operationalStatus,
-          approverId: widget.approverId,
-          identityProviders: widget.identityProviders,
-          userSession: widget.userSession,
-          identityStatus: widget.identityStatus,
-          themeMode: effectiveTheme,
-          onThemeModeChanged: _changeTheme,
-          onSignIn: widget.onSignIn,
-          onLogout: widget.onLogout,
-          onPromptSubmit: widget.onPromptSubmit,
-          onSaveArtifact: widget.onSaveArtifact,
-          onRefreshRequested: widget.onRefreshRequested,
-          onProvisionAgent: widget.onProvisionAgent,
-          onGovernanceDecision: widget.onGovernanceDecision,
+        child: Builder(
+          builder: (context) => Stack(
+            children: [
+              Positioned.fill(
+                child: ReferenceDesktopShellV11(
+                  projection: widget.projection,
+                  operationalSnapshot: widget.operationalSnapshot,
+                  operationalStatus: widget.operationalStatus,
+                  approverId: widget.approverId,
+                  identityProviders: widget.identityProviders,
+                  userSession: widget.userSession,
+                  identityStatus: widget.identityStatus,
+                  themeMode: effectiveTheme,
+                  onThemeModeChanged: _changeTheme,
+                  onSignIn: widget.onSignIn,
+                  onLogout: widget.onLogout,
+                  onPromptSubmit:
+                      widget.onPromptSubmit == null ? null : _submitPrompt,
+                  onSaveArtifact: widget.onSaveArtifact,
+                  onRefreshRequested: widget.onRefreshRequested,
+                  onProvisionAgent: widget.onProvisionAgent,
+                  onGovernanceDecision: widget.onGovernanceDecision,
+                ),
+              ),
+              Positioned(
+                right: 18,
+                bottom: 34,
+                child: _VideoReferenceDock(
+                  controller: _referenceAssets,
+                  open: _referenceDockOpen,
+                  enabled: widget.userSession != null &&
+                      widget.projection.connected &&
+                      widget.onPromptSubmit != null,
+                  onToggle: () =>
+                      setState(() => _referenceDockOpen = !_referenceDockOpen),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
+}
+
+class _VideoReferenceDock extends StatelessWidget {
+  const _VideoReferenceDock({
+    required this.controller,
+    required this.open,
+    required this.enabled,
+    required this.onToggle,
+  });
+
+  final ReferenceAssetPickerController controller;
+  final bool open;
+  final bool enabled;
+  final VoidCallback onToggle;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final label = context.tr('videoReferences.dock');
+    return Material(
+      type: MaterialType.transparency,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (open) ...[
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 780),
+              child: Material(
+                elevation: 10,
+                borderRadius: BorderRadius.circular(12),
+                clipBehavior: Clip.antiAlias,
+                child: Padding(
+                  padding: const EdgeInsets.all(8),
+                  child: ReferenceAssetPicker(
+                    controller: controller,
+                    enabled: enabled,
+                    compact: true,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+          ],
+          ListenableBuilder(
+            listenable: controller,
+            builder: (context, _) => Tooltip(
+              message: label,
+              child: FilledButton.icon(
+                key: const Key('video-reference-dock-toggle'),
+                onPressed: enabled || open ? onToggle : null,
+                icon: const Icon(Icons.collections_outlined, size: 17),
+                label: Text(
+                  controller.assets.isEmpty
+                      ? label
+                      : '$label (${controller.assets.length}/20)',
+                  style: theme.textTheme.labelMedium,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+bool _isVideoObjective(String objective) {
+  final normalized = objective.trimLeft().toLowerCase();
+  return normalized.startsWith('video creation task:') ||
+      normalized.startsWith('video oluşturma görevi:');
 }
