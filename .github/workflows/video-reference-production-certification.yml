@@ -1,0 +1,123 @@
+name: Video Reference Production Certification
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+
+concurrency:
+  group: video-reference-production-certification-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  reference-provider-proof:
+    name: Real reference-aware provider production proof
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[video-reference-live-cert]') }}
+    runs-on: ubuntu-latest
+    environment: Production
+    timeout-minutes: 25
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      ILAIOS_VIDEO_MODEL_ID: bytedance/seedance-2.0-fast:free
+      ILAIOS_VIDEO_QA_MODEL_ID: openrouter/free
+      ILAIOS_VIDEO_E2E_RESOLUTION: 480p
+      VIDEO_DESKTOP_REFERENCE_PROVIDER_PROOF_DIR: artifacts/video-desktop-reference-provider-proof
+
+    steps:
+      - name: Checkout exact source revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Install reference-video runtime dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg
+
+      - name: Verify live proof safety boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python --version
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+          test -n "$OPENROUTER_API_KEY"
+          case "$ILAIOS_VIDEO_MODEL_ID" in
+            *:free) ;;
+            *) echo "reference certification requires an explicit verified-free video model" >&2; exit 1 ;;
+          esac
+
+      - name: Run real provider-backed reference-image finished-product E2E
+        shell: bash
+        run: |
+          set -euo pipefail
+          python apps/desktop/e2e/provider_video_reference_finished_product_e2e.py
+
+      - name: Publish reference-provider proof summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "## Video Factory — Live Reference Provider Certification" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f "$VIDEO_DESKTOP_REFERENCE_PROVIDER_PROOF_DIR/receipt.json" ]]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          proof_dir = Path(os.environ["VIDEO_DESKTOP_REFERENCE_PROVIDER_PROOF_DIR"])
+          receipt = json.loads((proof_dir / "receipt.json").read_text(encoding="utf-8"))
+          print(f"- Status: `{receipt.get('status')}`")
+          print(f"- Revision: `{receipt.get('revision_sha')}`")
+          print(f"- Execution: `{receipt.get('execution_status')}`")
+          print(f"- Provider model: `{receipt.get('provider_model')}`")
+          print(f"- QA model: `{receipt.get('qa_model')}`")
+          print(f"- Reference count: `{receipt.get('reference_asset_count')}`")
+          print(f"- Reference SHA-256: `{receipt.get('reference_asset_sha256')}`")
+          print(f"- Analyzer: `{receipt.get('reference_analyzer_id')}`")
+          print(f"- Frozen brief SHA-256: `{receipt.get('reference_visual_brief_sha256')}`")
+          print(f"- Conditioning mode: `{receipt.get('reference_conditioning_mode')}`")
+          print(f"- Raw reference released: `{receipt.get('raw_reference_blob_released')}`")
+          print(f"- Binding retained: `{receipt.get('reference_binding_retained')}`")
+          print(f"- Native provider reference URL used: `{receipt.get('provider_native_reference_url_used')}`")
+          print(f"- Semantic score/threshold: `{receipt.get('semantic_score')}` / `{receipt.get('semantic_threshold')}`")
+          print(f"- Generated shots: `{receipt.get('generated_shot_count')}`")
+          print(f"- Duration: `{receipt.get('duration_seconds')}` seconds")
+          print(f"- Video/audio: `{receipt.get('video_codec')}` / `{receipt.get('audio_codec')}`")
+          print(f"- Artifact SHA-256: `{receipt.get('artifact_sha256')}`")
+          print(f"- Artifact bytes: `{receipt.get('artifact_bytes')}`")
+          print(f"- Verified free-route cost zero: `{receipt.get('provider_cost_zero')}`")
+          print("- This certifies ILAIOS private multimodal visual-brief conditioning, not provider-native public-URL reference mode.")
+          PY
+          elif [[ -f "$VIDEO_DESKTOP_REFERENCE_PROVIDER_PROOF_DIR/failure.json" ]]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          proof_dir = Path(os.environ["VIDEO_DESKTOP_REFERENCE_PROVIDER_PROOF_DIR"])
+          failure = json.loads((proof_dir / "failure.json").read_text(encoding="utf-8"))
+          print("- Status: `FAIL`")
+          print(f"- Revision: `{failure.get('revision_sha')}`")
+          print(f"- Error type: `{failure.get('error_type')}`")
+          print(f"- Error: `{failure.get('error')}`")
+          PY
+          else
+            printf '%s\n' '- Status: NO_ACCEPTED_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload immutable live reference-provider proof
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-reference-provider-video-proof-${{ github.sha }}-${{ github.run_id }}
+          path: artifacts/video-desktop-reference-provider-proof
+          if-no-files-found: warn
+          retention-days: 30
