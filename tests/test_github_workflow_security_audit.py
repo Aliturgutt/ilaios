@@ -23,6 +23,46 @@ def test_external_mutation_push_trigger_is_blocked(tmp_path: Path) -> None:
     assert any(item.rule == "MANUAL_ONLY" for item in audit_repository(tmp_path))
 
 
+def test_website_release_secret_is_allowed_only_on_manual_workflow(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "website-production-certification.yml",
+        "on:\n"
+        "  workflow_dispatch:\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  release:\n"
+        "    environment: Production\n"
+        "    runs-on: ubuntu-latest\n"
+        "    env:\n"
+        "      HOOK_URL: ${{ secrets.VERCEL_PRODUCTION_DEPLOY_HOOK }}\n"
+        "    steps: []\n",
+    )
+    assert audit_repository(tmp_path) == ()
+
+
+def test_website_release_push_trigger_is_blocked(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "website-production-certification.yml",
+        "on:\n"
+        "  push:\n"
+        "    branches: [master]\n"
+        "  workflow_dispatch:\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  release:\n"
+        "    environment: Production\n"
+        "    runs-on: ubuntu-latest\n"
+        "    env:\n"
+        "      HOOK_URL: ${{ secrets.VERCEL_PRODUCTION_DEPLOY_HOOK }}\n"
+        "    steps: []\n",
+    )
+    assert any(item.rule == "MANUAL_ONLY" for item in audit_repository(tmp_path))
+
+
 def test_reference_live_secret_cannot_run_from_pull_request(tmp_path: Path) -> None:
     _write(
         tmp_path,
