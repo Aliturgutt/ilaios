@@ -745,7 +745,13 @@ class _AgentRow extends StatelessWidget {
             Expanded(flex: 17, child: Text(record.role, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 7.7))),
             Expanded(flex: 12, child: Row(children: [Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)), const SizedBox(width: 5), Expanded(child: Text(_stateLabel(context, record.state), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 7.4, color: color)))])),
             Expanded(flex: 20, child: Text(record.currentTask, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 7.5))),
-            Expanded(flex: 14, child: _Progress(value: record.capacity)),
+            Expanded(
+              flex: 14,
+              child: _Progress(
+                key: ValueKey('agent-capacity-${record.id}'),
+                value: record.capacity,
+              ),
+            ),
             Expanded(flex: 13, child: Text(record.successRate == null ? '—' : '${(record.successRate! * 100).toStringAsFixed(1)}%', style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w600))),
             Expanded(flex: 13, child: Text(record.lastActivity, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 7.2))),
             SizedBox(width: 22, child: IconButton(onPressed: () => _showAgentDetail(context, record), padding: EdgeInsets.zero, icon: const Icon(Icons.more_vert, size: 14))),
@@ -893,14 +899,38 @@ class _Tab extends StatelessWidget {
 }
 
 class _Progress extends StatelessWidget {
-  const _Progress({required this.value});
+  const _Progress({required this.value, super.key});
   final double? value;
+
   @override
-  Widget build(BuildContext context) => Row(children: [
-        Expanded(child: LinearProgressIndicator(value: value, minHeight: 4)),
-        const SizedBox(width: 5),
-        SizedBox(width: 28, child: Text(value == null ? '—' : '${(value! * 100).round()}%', style: const TextStyle(fontSize: 7))),
-      ]);
+  Widget build(BuildContext context) => Row(
+        children: [
+          Expanded(
+            child: value == null
+                ? Container(
+                    key: const Key('agent-capacity-unavailable-track'),
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.outlineVariant,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  )
+                : LinearProgressIndicator(
+                    key: const Key('agent-capacity-progress'),
+                    value: value,
+                    minHeight: 4,
+                  ),
+          ),
+          const SizedBox(width: 5),
+          SizedBox(
+            width: 28,
+            child: Text(
+              value == null ? '—' : '${(value! * 100).round()}%',
+              style: const TextStyle(fontSize: 7),
+            ),
+          ),
+        ],
+      );
 }
 
 class _Info extends StatelessWidget {
