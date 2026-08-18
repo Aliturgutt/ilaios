@@ -75,12 +75,12 @@ def test_source_video_revision_is_rejected_before_provider_generation(
         )
 
 
-def test_bound_source_is_verified_then_rejected_before_unmaterialized_edit_execution(
+def test_bound_source_never_enters_provider_generation_revision_path(
     tmp_path: Path,
 ) -> None:
     runtime = _runtime(source_bound=True)
     source_store = cast(_SourceStore, runtime._source_media)
-    with pytest.raises(VideoRuntimeError, match="not materialized yet"):
+    with pytest.raises(VideoRuntimeError, match="not materialized"):
         runtime._generate_finished_product(
             run_root=tmp_path,
             request_id="request-guard",
