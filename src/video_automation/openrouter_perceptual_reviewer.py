@@ -155,7 +155,8 @@ class OpenRouterPerceptualReviewer:
                     f"{_CRITERIA_TEXT}\n\nUSER OBJECTIVE:\n{objective}\n\n"
                     "Return a strict score from 0 to 1. A generic explainer, motion-graphics "
                     "template, or unrelated clip must score below the threshold. Return only "
-                    "JSON with exactly these keys: score, detail, repair_target."
+                    "a JSON object with exactly these keys: score, detail, repair_target. "
+                    "Do not use markdown fences or add commentary outside the JSON object."
                 ),
             }
         ]
@@ -203,15 +204,15 @@ class OpenRouterPerceptualReviewer:
             body=strict_body,
             timeout_seconds=self._timeout_seconds,
         )
+        review_route = "json-schema"
         if response.status_code in _RETRYABLE_CAPABILITY_STATUS_CODES:
-            fallback_body = dict(base_body)
-            fallback_body["response_format"] = {"type": "json_object"}
             response = self._transport.post_json(
                 f"{self._base_url}/chat/completions",
                 headers=headers,
-                body=fallback_body,
+                body=base_body,
                 timeout_seconds=self._timeout_seconds,
             )
+            review_route = "prompt-json-fallback"
         if not 200 <= response.status_code < 300:
             raise OpenRouterPerceptualReviewError(
                 f"OpenRouter perceptual review failed with HTTP {response.status_code}"
@@ -238,7 +239,8 @@ class OpenRouterPerceptualReviewer:
             threshold=self._threshold,
             evidence_references=frame_refs,
             provenance_reference=(
-                f"openrouter-review:model={self._model_id}:artifact={artifact_sha256}"
+                f"openrouter-review:model={self._model_id}:route={review_route}:"
+                f"artifact={artifact_sha256}"
             ),
             repair_target=None if passed else (repair_target.strip() or "regenerate-video"),
         )
