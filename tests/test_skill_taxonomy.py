@@ -57,6 +57,7 @@ def test_factories_are_domain_skills_not_core_authorities() -> None:
     assert factory_families == {"web", "software", "video", "research"}
     logical_ids = {node.logical_id for node in SKILL_TAXONOMY}
     assert "factories/video/model-routing" not in logical_ids
+    assert "factories/video/model-fit" in logical_ids
     assert all("tool-gateway" not in logical_id for logical_id in logical_ids)
     assert all("policy-engine" not in logical_id for logical_id in logical_ids)
 
@@ -79,6 +80,36 @@ def test_web_taxonomy_maps_exactly_to_native_runtime_skills() -> None:
     logical_ids = {node.logical_id for node in web}
     assert "factories/web/build" not in logical_ids
     assert "factories/web/test" not in logical_ids
+
+
+def test_video_taxonomy_maps_current_governed_runtime_skills() -> None:
+    assert resolve_logical_skill("factories/video/director").backing_skill_ids == (
+        "ilaios.skill.video.direction.cinematography",
+    )
+    assert resolve_logical_skill("factories/video/prompt").backing_skill_ids == (
+        "ilaios.skill.video.prompt.compose",
+    )
+    assert resolve_logical_skill("factories/video/reference-assets").backing_skill_ids == (
+        "ilaios.skill.video.reference-assets.inspect",
+    )
+    assert resolve_logical_skill("factories/video/model-fit").backing_skill_ids == (
+        "ilaios.skill.video.model-fit.analyze",
+    )
+    assert resolve_logical_skill("factories/video/continuity").backing_skill_ids == (
+        "ilaios.skill.video.continuity.track",
+    )
+    assert resolve_logical_skill("factories/video/edit").backing_skill_ids == (
+        "ilaios.skill.video.edit.trim",
+        "ilaios.skill.video.edit.concatenate",
+        "ilaios.skill.video.edit.overlay",
+        "ilaios.skill.video.edit.crop",
+        "ilaios.skill.video.edit.scale",
+        "ilaios.skill.video.edit.audio-mix",
+    )
+    assert resolve_logical_skill("factories/video/output-verify").backing_skill_ids == (
+        "ilaios.skill.video.qa.evaluate",
+    )
+    assert resolve_logical_skill("factories/video/generation").backing_skill_ids == ()
 
 
 def test_browser_is_shared_capability_not_factory() -> None:
