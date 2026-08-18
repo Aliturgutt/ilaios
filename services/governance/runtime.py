@@ -10,6 +10,7 @@ from typing import Any, cast
 
 from services.runtime import GovernedRuntime
 
+from .cost_projection import CostProjectionError, project_explicit_costs
 from .gates import (
     FinancialLedger,
     GateError,
@@ -265,11 +266,18 @@ class GovernedRuntimeGateway:
                     "SELECT secret_id, reference FROM secret_references ORDER BY secret_id"
                 ).fetchall()
             ]
+        try:
+            costs = project_explicit_costs(
+                (str(row["request_id"]), row["result_json"]) for row in rows
+            )
+        except CostProjectionError as error:
+            raise GateError("governed cost telemetry is malformed") from error
         return {
             "work": work,
             "admissions": admissions,
             "secret_references": references,
             "ledger": self._ledger.state(),
+            "costs": costs,
         }
 
     def admission_snapshot(self, request_id: str) -> dict[str, object]:
