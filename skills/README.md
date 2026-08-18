@@ -45,3 +45,12 @@ This preserves portability and reduces vendor lock-in without making ILAIOS depe
 
 - `ilaios-diagram-design` — deterministic architecture/flow/sequence/state/data/dependency/trust/capability diagrams with SVG/HTML output and evidence hashes.
 - `ilaios-system-design` — deterministic capacity, scalability, bottleneck, failure, architecture-review and renderer-neutral system-design analysis.
+- `ilaios-skill-engineering` — provider-neutral skill authoring, progressive disclosure, provenance, acceptance criteria, evaluation, and maturity methodology.
+- `ilaios-frontend-design-review` — provider-neutral UI task/design-system/accessibility/responsive/state review methodology.
+- `ilaios-mcp-builder` — provider-neutral MCP contract, schema, side-effect, auth, pagination, error, and evaluation methodology.
+- `ilaios-observability` — provider-neutral correlated telemetry/evaluation/privacy/regression methodology.
+- `ilaios-governance` — provider-neutral identity/tenant/capability/policy/approval/provenance/evidence/release review methodology.
+
+## Canonical execution wiring
+
+The five methodology skills above do not create new execution identities or permissions. Their versioned methodology contracts are embedded as instruction-only overlays in existing Software Factory primary skills: implementation planning, frontend engineering, integration engineering, runtime QA, code review, and release readiness. Those primary skills continue to execute through the existing P0 worker bindings and governed runtime.
