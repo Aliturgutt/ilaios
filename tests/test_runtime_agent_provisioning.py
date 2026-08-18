@@ -4,7 +4,7 @@ import pytest
 
 from services.agent_registry import registration_for
 from services.control_plane.migrations import migrate_database
-from services.named_agent_executor import NamedAgentExecutor
+from services.named_agent_executor import NamedAgentExecutionError, NamedAgentExecutor
 from services.runtime import GovernedRuntime, GrantPolicy
 from services.runtime.routing import RuntimeError
 
@@ -65,7 +65,10 @@ def test_named_executor_rejects_noncanonical_identity(tmp_path: Path) -> None:
     runtime = _runtime(tmp_path)
     executor = NamedAgentExecutor(runtime, GrantPolicy())
 
-    with pytest.raises(KeyError):
+    with pytest.raises(
+        NamedAgentExecutionError,
+        match="unknown canonical agent identity",
+    ):
         executor.provision_agent("ilaios.agent.unregistered.user-defined.v1")
 
     assert runtime.agents() == ()
