@@ -100,7 +100,7 @@ def test_auto_catalog_uses_documented_free_router_when_no_direct_zero_price_mode
     assert selection.model_id == "openrouter/free"
 
 
-def test_strict_openrouter_transport_requires_all_request_parameters(
+def test_strict_openrouter_transport_uses_only_provider_filterable_controls(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     captured: dict[str, Any] = {}
@@ -128,10 +128,47 @@ def test_strict_openrouter_transport_requires_all_request_parameters(
     )
     document = captured["document"]
     assert document["provider"] == {"require_parameters": True}
-    assert document["max_completion_tokens"] == 128
-    assert document["modalities"] == ["text"]
-    assert document["reasoning"] == {"effort": "minimal", "exclude": True}
+    assert document["max_tokens"] == 128
+    assert "max_completion_tokens" not in document
+    assert "modalities" not in document
+    assert "reasoning" not in document
     assert result.output_tokens == 12
+
+
+def test_strict_openrouter_transport_preserves_structured_output_filter(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    captured: dict[str, Any] = {}
+    response_format = {"type": "json_object"}
+
+    def _urlopen(request: Any, *, timeout: float) -> _Response:
+        captured["document"] = json.loads(request.data.decode("utf-8"))
+        return _completion()
+
+    monkeypatch.setattr(
+        "services.runtime.ai_provider_adapter.urllib.request.urlopen",
+        _urlopen,
+    )
+    _StrictOpenRouterTransport().complete(
+        ProviderEndpoint(
+            "openrouter",
+            "https://openrouter.ai/api/v1",
+            "OPENROUTER_API_KEY",
+        ),
+        api_key="test-secret",
+        model_id="openrouter/free",
+        system_instructions="Return JSON.",
+        prompt="Verify evidence.",
+        max_output_tokens=128,
+        response_format=response_format,
+    )
+    document = captured["document"]
+    assert document["provider"] == {"require_parameters": True}
+    assert document["max_tokens"] == 128
+    assert document["response_format"] == response_format
+    assert "max_completion_tokens" not in document
+    assert "modalities" not in document
+    assert "reasoning" not in document
 
 
 def test_strict_openrouter_transport_rejects_non_openrouter_endpoint() -> None:
