@@ -28,9 +28,10 @@ for the existing ILAIOS Video Factory architecture.
 ## Authority boundary
 
 These skills do not create a new Core, orchestrator, provider registry, provider
-selector, policy engine, approval engine, evidence store, or execution runtime.
+selector, policy engine, approval engine, evidence store, routing authority, or
+execution runtime.
 
-Model-routing output is advisory capability filtering only. Canonical M04
-provider capability state and M05 `ProviderSelectionEngine`, together with normal
-policy, approval, budget, tenant, Tool Gateway, validation, audit, and evidence
-controls, remain authoritative for execution.
+The model-fit-analysis output is advisory capability filtering only. Canonical
+M04 provider capability state and M05 `ProviderSelectionEngine`, together with
+normal policy, approval, budget, tenant, Tool Gateway, validation, audit, and
+evidence controls, remain authoritative for execution.
