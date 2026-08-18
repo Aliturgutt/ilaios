@@ -86,9 +86,11 @@ ILAIOS Skills
 
 The taxonomy is logical. Existing governed runtime skills remain in their current physical locations and registries. They are mapped into logical nodes rather than moved or rewritten.
 
-`skill-engineering/create` is the first Skill Engineering node with explicit governed runtime backing. `skill-create` is provisioned into the existing canonical `GovernedRuntime` under the existing Architect identity `ilaios.agent.engineering.architect.v1`, existing capability `architecture.propose`, and existing permission `repository.read`. Package-declared tools/capabilities remain dependency declarations and cannot widen runtime authority. Independent review remains mandatory.
+Five first-party Skill Engineering packages now have explicit governed runtime backing: `skill-create`, `skill-validate`, `skill-evaluate`, `skill-benchmark`, and `skill-regression`. They are provisioned into the existing canonical `GovernedRuntime` through `NamedAgentExecutor`; no parallel runtime, registry, router, policy engine, approval engine, Tool Gateway, provider path, or evidence authority is introduced.
 
-The runtime allowlist is intentionally explicit. A new Skill Engineering source package does not become executable merely because the catalog discovers it; it must receive a reviewed runtime binding separately.
+Runtime authority is deliberately narrower than package dependency declarations. `skill-create` reuses the existing Architect identity and `architecture.propose`; `skill-validate`, `skill-benchmark`, and `skill-regression` reuse the existing Test Engineering identity and `test.execute`; `skill-evaluate` reuses the existing Review identity and `code.review`. Each binding uses an existing canonical permission and package text cannot widen that authority. Independent review remains mandatory.
+
+The runtime allowlist is intentionally explicit. A new Skill Engineering source package does not become executable merely because the catalog discovers it; it must receive a reviewed runtime binding separately. Accordingly, `lint`, `security-scan`, `compatibility`, and `promote` remain without runtime backing until their own implementation and evidence exist.
 
 The Web Factory mappings currently represented in code are exact mappings to the canonical native Web registry:
 
@@ -130,11 +132,13 @@ The target lifecycle is:
 
 `create -> lint -> validate -> security-scan -> evaluate -> benchmark -> regression -> compatibility -> promote`
 
-Promotion does not imply production verification.
+Only lifecycle stages with implemented source packages and explicit reviewed runtime bindings are executable. Promotion does not imply production verification.
 
 ## Provider independence
 
 Provider/model routing is not a Video skill responsibility and is not part of this taxonomy. For example, `factories/video/generation` must express capability, quality, cost, privacy, reference-asset, and output requirements. The canonical router and governance layers choose an eligible provider.
+
+The same rule applies to Skill Engineering: runtime admission maps skills to existing agent authority, while provider/model selection remains owned by canonical routing and AI governance. A runtime binding never grants a provider credential or chooses a model by itself.
 
 ## Shared capabilities
 
@@ -164,10 +168,10 @@ Tool declarations are requested dependencies only. Policy, approval, tenant, sec
 
 The logical taxonomy is machine-readable in `services/skill_taxonomy.py`.
 
-The first Skill Engineering package is `tools/skill-engineering/skills/skill-create/`. `services/skill_engineering_catalog.py` validates package completeness, provenance, deny-set, allowed tool declarations, schemas, eval coverage, and source maturity. `services/skill_engineering_runtime.py` is a separate fail-closed admission map that provisions only explicitly approved packages into the existing canonical runtime; it is not a second runtime or registry.
+The implemented core Skill Engineering source packages are under `tools/skill-engineering/skills/`: `skill-create`, `skill-validate`, `skill-evaluate`, `skill-benchmark`, and `skill-regression`. `services/skill_engineering_catalog.py` validates package completeness, provenance, deny-set, allowed tool declarations, schemas, eval coverage, and source maturity. `services/skill_engineering_runtime.py` is a separate fail-closed admission map that provisions only explicitly approved packages into the existing canonical runtime; it is not a second runtime or registry.
 
-At the current boundary, only `skill-create` has Skill Engineering runtime backing. It is also included in the packaged Windows Desktop sidecar data so source and packaged-runtime composition use the same package content. Other Skill Engineering taxonomy nodes remain source/spec or target-only until they receive their own evidence-backed runtime admission.
+Those five packages have explicit runtime backing and are included in the canonical P0 runtime composition. The Windows Desktop sidecar bundles the Skill Engineering package directory so source and packaged-runtime composition use the same package content. Other Skill Engineering taxonomy nodes remain target-only or source/spec-only until they receive their own evidence-backed implementation and runtime admission.
 
 The current native Web Factory, Video Factory, and SecurityFactory methodology skills are mapped into the taxonomy without moving or duplicating their runtime ownership.
 
-Runtime testing, post-merge verification, packaged Desktop verification, deployment, and production status remain evidence-gated separately.
+Runtime tests, CI, post-merge exact-master verification, credentialed provider E2E, deployment, and live production flow status remain evidence-gated separately. A source package, runtime mapping, passing unit test, or deployment status alone is not production verification.
