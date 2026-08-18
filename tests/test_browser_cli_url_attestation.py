@@ -67,9 +67,13 @@ def test_screenshot_without_page_url_is_attested_in_same_session(tmp_path: Path)
     assert result["boundary_evidence_id"] == "sha256:screenshot-boundary"
     assert result["observation_boundary_evidence_id"] == "sha256:attestation-boundary"
     assert isinstance(result["artifact_sha256"], str)
-    assert result["artifact_size"] > 0
+    artifact_size = result["artifact_size"]
+    assert isinstance(artifact_size, int)
+    assert artifact_size > 0
     assert isinstance(result["observation_artifact_sha256"], str)
-    assert result["observation_artifact_size"] > 0
+    observation_artifact_size = result["observation_artifact_size"]
+    assert isinstance(observation_artifact_size, int)
+    assert observation_artifact_size > 0
     assert len(egress.calls) == 2
     assert egress.calls[0][1] == egress.calls[1][1] == f"-s={session_id}"
     assert egress.calls[0][2] == "screenshot"
