@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from services.agent_governance import GrantAuthorizer
+from services.agent_provider_capabilities import ALLOWED_AGENT_AI_CAPABILITIES
 from services.agent_readiness import p0_registrations
 from services.agent_registry import INDEPENDENT_VERIFIER_ID
 from services.independent_verifier_execution import (
@@ -14,7 +15,7 @@ from services.independent_verifier_execution import (
     INDEPENDENT_VERIFIER_PROVIDER_ID,
 )
 from services.named_agent_executor import NamedAgentExecutor
-from services.p0_agent_execution import P0ProviderBackedExecutor, P0_AGENT_BINDINGS
+from services.p0_agent_execution import P0ProviderBackedExecutor
 from services.p0_skill_catalog import (
     ensure_engineering_primary_skills,
     ensure_non_engineering_p0_skills,
@@ -133,19 +134,14 @@ def compose_p0_runtime(
             raise P0RuntimeCompositionError(
                 "governed AI adapter requires explicit provider capability contracts"
             )
-        governed_ai_capabilities = {
-            binding.capability
-            for binding in P0_AGENT_BINDINGS
-            if binding.execution_mode == "governed-ai"
-        }
         for provider_id, provider_capabilities in sorted(capabilities.items()):
             if not provider_capabilities:
                 raise P0RuntimeCompositionError(
                     "AI provider capability set cannot be empty"
                 )
-            if not provider_capabilities.issubset(governed_ai_capabilities):
+            if not provider_capabilities.issubset(ALLOWED_AGENT_AI_CAPABILITIES):
                 raise P0RuntimeCompositionError(
-                    "AI provider capability contract exceeds P0 governed execution"
+                    "AI provider capability contract exceeds canonical governed execution"
                 )
             named.ensure_provider(
                 provider_id,
