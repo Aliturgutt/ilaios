@@ -159,7 +159,9 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
       );
     }
     final hasReferences = _referenceAssets.assets.isNotEmpty;
+    final hasSourceVideo = _referenceAssets.sourceVideo.source != null;
     final referenceFactoryCount = _referenceFactoryCount(objective);
+    final videoFactory = _isVideoFactoryObjective(objective);
     if (hasReferences && referenceFactoryCount == 0) {
       throw StateError(
         _localeText(
@@ -176,8 +178,24 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
         ),
       );
     }
+    if (hasSourceVideo && !videoFactory) {
+      throw StateError(
+        _localeText(
+          'Source video can only be attached to a Video Factory goal.',
+          'Kaynak video yalnızca Video Factory hedefine eklenebilir.',
+        ),
+      );
+    }
+    if (hasSourceVideo && hasReferences) {
+      throw StateError(
+        _localeText(
+          'Source video and reference images cannot be combined until that exact revision contract is verified.',
+          'Bu birleşik revizyon sözleşmesi doğrulanana kadar kaynak video ile referans görseller birlikte kullanılamaz.',
+        ),
+      );
+    }
     final result = await callback(objective);
-    if (referenceFactoryCount == 1 && hasReferences) {
+    if ((hasReferences && referenceFactoryCount == 1) || hasSourceVideo) {
       _referenceAssets.clear();
       if (mounted) setState(() {});
     }
@@ -293,7 +311,10 @@ class _ReferenceAssetDock extends StatelessWidget {
             const SizedBox(height: 8),
           ],
           ListenableBuilder(
-            listenable: controller,
+            listenable: Listenable.merge(<Listenable>[
+              controller,
+              controller.sourceVideo,
+            ]),
             builder: (context, _) => Tooltip(
               message: label,
               child: FilledButton.icon(
@@ -301,9 +322,7 @@ class _ReferenceAssetDock extends StatelessWidget {
                 onPressed: enabled || open ? onToggle : null,
                 icon: const Icon(Icons.collections_outlined, size: 17),
                 label: Text(
-                  controller.assets.isEmpty
-                      ? label
-                      : '$label (${controller.assets.length}/20)',
+                  _dockLabel(label, controller),
                   style: theme.textTheme.labelMedium,
                 ),
               ),
@@ -315,10 +334,27 @@ class _ReferenceAssetDock extends StatelessWidget {
   }
 }
 
+String _dockLabel(
+  String label,
+  ReferenceAssetPickerController controller,
+) {
+  final references = controller.assets.length;
+  final hasSource = controller.sourceVideo.source != null;
+  if (references == 0 && !hasSource) return label;
+  final referenceSuffix = references == 0 ? '' : ' ($references/20)';
+  final sourceSuffix = hasSource ? ' • MP4' : '';
+  return '$label$referenceSuffix$sourceSuffix';
+}
+
+bool _isVideoFactoryObjective(String objective) {
+  final normalized = objective.trimLeft().toLowerCase();
+  return normalized.startsWith('video creation task:') ||
+      normalized.startsWith('video oluşturma görevi:');
+}
+
 int _referenceFactoryCount(String objective) {
   final normalized = objective.trimLeft().toLowerCase();
-  final video = normalized.startsWith('video creation task:') ||
-      normalized.startsWith('video oluşturma görevi:');
+  final video = _isVideoFactoryObjective(normalized);
   const webTerms = <String>{
     'website',
     'web site',
