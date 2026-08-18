@@ -25,6 +25,10 @@ from services.security_agent_execution import (
     DefensiveSecurityAgentExecutor,
     security_local_provider_specs,
 )
+from services.security_methodology_skills import (
+    default_security_methodology_skills_root,
+    ensure_security_methodology_skills,
+)
 
 
 class P0RuntimeCompositionError(RuntimeError):
@@ -58,7 +62,9 @@ def compose_p0_runtime(
 ) -> P0RuntimeComposition:
     p0 = p0_registrations()
     if len(p0) != 21:
-        raise P0RuntimeCompositionError("canonical P0 population must contain 21 agents")
+        raise P0RuntimeCompositionError(
+            "canonical P0 population must contain 21 agents"
+        )
 
     named = NamedAgentExecutor(runtime, grants)
     target_ids = {item.manifest.agent_id for item in p0}
@@ -66,11 +72,24 @@ def compose_p0_runtime(
     for agent_id in sorted(identities):
         named.ensure_agent(agent_id)
 
+    engineering_root = engineering_skills_root.resolve()
+    repository_root = _repository_root_from_engineering_skills(engineering_root)
     core_security = ensure_non_engineering_p0_skills(named)
-    engineering = ensure_engineering_primary_skills(named, engineering_skills_root)
-    all_skill_ids = set(core_security) | set(engineering)
-    if len(core_security) != 12 or len(engineering) != 10 or len(all_skill_ids) != 22:
-        raise P0RuntimeCompositionError("P0 plus verifier dependency skill coverage drifted")
+    engineering = ensure_engineering_primary_skills(named, engineering_root)
+    security_methodology = ensure_security_methodology_skills(
+        named,
+        default_security_methodology_skills_root(repository_root),
+    )
+    all_skill_ids = set(core_security) | set(engineering) | set(security_methodology)
+    if (
+        len(core_security) != 12
+        or len(engineering) != 10
+        or len(security_methodology) != 5
+        or len(all_skill_ids) != 27
+    ):
+        raise P0RuntimeCompositionError(
+            "P0 plus verifier/security methodology skill coverage drifted"
+        )
 
     security_specs = security_local_provider_specs()
     for provider_id, adapter_kind, capability in security_specs:
@@ -108,7 +127,9 @@ def compose_p0_runtime(
         }
         for provider_id, provider_capabilities in sorted(capabilities.items()):
             if not provider_capabilities:
-                raise P0RuntimeCompositionError("AI provider capability set cannot be empty")
+                raise P0RuntimeCompositionError(
+                    "AI provider capability set cannot be empty"
+                )
             if not provider_capabilities.issubset(governed_ai_capabilities):
                 raise P0RuntimeCompositionError(
                     "AI provider capability contract exceeds P0 governed execution"
@@ -133,3 +154,17 @@ def compose_p0_runtime(
         verifier_provider_count=1,
         ai_provider_count=ai_provider_count,
     )
+
+
+def _repository_root_from_engineering_skills(skills_root: Path) -> Path:
+    expected_suffix = ("tools", "software-factory", "skills")
+    if tuple(skills_root.parts[-3:]) != expected_suffix:
+        raise P0RuntimeCompositionError(
+            "engineering skill root must use tools/software-factory/skills"
+        )
+    repository_root = skills_root.parents[2]
+    if not repository_root.is_dir():
+        raise P0RuntimeCompositionError(
+            "repository root derived from engineering skills is unavailable"
+        )
+    return repository_root

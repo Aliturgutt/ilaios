@@ -13,6 +13,7 @@ from services.named_agent_executor import NamedAgentExecution, NamedAgentExecuto
 from services.p0_agent_execution import binding_for
 from services.runtime import ExecutionGrant
 from services.runtime.security_agent_adapters import SECURITY_LOCAL_PROVIDERS
+from services.security_methodology_skills import definition_for
 
 
 class SecurityAgentExecutionError(RuntimeError):
@@ -52,14 +53,37 @@ class DefensiveSecurityAgentExecutor:
     ) -> NamedAgentExecution:
         binding = binding_for(invocation.target_id)
         if binding.execution_mode != "defensive-local":
-            raise SecurityAgentExecutionError("only defensive-local specialist bindings are accepted")
+            raise SecurityAgentExecutionError(
+                "only defensive-local specialist bindings are accepted"
+            )
         if invocation.capability != binding.capability:
-            raise SecurityAgentExecutionError("security capability diverges from binding")
+            raise SecurityAgentExecutionError(
+                "security capability diverges from binding"
+            )
         if invocation.permission != binding.permission:
-            raise SecurityAgentExecutionError("security permission diverges from binding")
+            raise SecurityAgentExecutionError(
+                "security permission diverges from binding"
+            )
+
+        supplementary = definition_for(skill_id)
+        if supplementary is None:
+            if skill_id != binding.primary_skill_id:
+                raise SecurityAgentExecutionError(
+                    "security skill is outside canonical binding"
+                )
+        elif (
+            supplementary.owner_agent_id != invocation.target_id
+            or supplementary.capability != invocation.capability
+        ):
+            raise SecurityAgentExecutionError(
+                "security methodology skill owner or capability mismatch"
+            )
+
         provider_id = _SECURITY_PROVIDER_BY_AGENT.get(invocation.target_id)
         if provider_id is None:
-            raise SecurityAgentExecutionError("security specialist provider is unavailable")
+            raise SecurityAgentExecutionError(
+                "security specialist provider is unavailable"
+            )
         return self._named.execute(
             invocation,
             grant,
@@ -79,20 +103,36 @@ class DefensiveSecurityAgentExecutor:
         now: datetime,
     ) -> SecurityVerificationResult:
         if producer.admission.agent_id == SECURITY_VERIFIER_ID:
-            raise SecurityAgentExecutionError("SecurityVerifier cannot verify itself")
+            raise SecurityAgentExecutionError(
+                "SecurityVerifier cannot verify itself"
+            )
         if producer.verifier_id != SECURITY_VERIFIER_ID:
-            raise SecurityAgentExecutionError("producer is not canonically assigned to SecurityVerifier")
+            raise SecurityAgentExecutionError(
+                "producer is not canonically assigned to SecurityVerifier"
+            )
         if verifier_invocation.target_id != SECURITY_VERIFIER_ID:
-            raise SecurityAgentExecutionError("verification target must be SecurityVerifier")
+            raise SecurityAgentExecutionError(
+                "verification target must be SecurityVerifier"
+            )
         binding = binding_for(SECURITY_VERIFIER_ID)
+        if skill_id != binding.primary_skill_id:
+            raise SecurityAgentExecutionError(
+                "verification must use the canonical SecurityVerifier skill"
+            )
         if verifier_invocation.capability != binding.capability:
-            raise SecurityAgentExecutionError("verifier capability diverges from binding")
+            raise SecurityAgentExecutionError(
+                "verifier capability diverges from binding"
+            )
         if verifier_invocation.permission != binding.permission:
-            raise SecurityAgentExecutionError("verifier permission diverges from binding")
+            raise SecurityAgentExecutionError(
+                "verifier permission diverges from binding"
+            )
 
         report = producer.route.get("output")
         if not isinstance(report, dict):
-            raise SecurityAgentExecutionError("producer persisted report is missing")
+            raise SecurityAgentExecutionError(
+                "producer persisted report is missing"
+            )
         producer_digest = execution_evidence_digest(producer)
         verifier = self._named.execute(
             verifier_invocation,
@@ -108,12 +148,20 @@ class DefensiveSecurityAgentExecutor:
             preferred_provider_id="ilaios.security.local.verifier",
         )
         output = verifier.route.get("output")
-        if not isinstance(output, dict) or not isinstance(output.get("verified"), bool):
-            raise SecurityAgentExecutionError("SecurityVerifier output is incomplete")
+        if not isinstance(output, dict) or not isinstance(
+            output.get("verified"), bool
+        ):
+            raise SecurityAgentExecutionError(
+                "SecurityVerifier output is incomplete"
+            )
         if output.get("producer_id") != producer.admission.agent_id:
-            raise SecurityAgentExecutionError("verifier producer identity mismatch")
+            raise SecurityAgentExecutionError(
+                "verifier producer identity mismatch"
+            )
         if output.get("verifier_id") != SECURITY_VERIFIER_ID:
-            raise SecurityAgentExecutionError("verifier identity mismatch")
+            raise SecurityAgentExecutionError(
+                "verifier identity mismatch"
+            )
         return SecurityVerificationResult(
             producer=producer,
             verifier=verifier,
@@ -126,5 +174,7 @@ class DefensiveSecurityAgentExecutor:
 def security_local_provider_specs() -> tuple[tuple[str, str, str], ...]:
     return tuple(
         (provider_id, adapter_kind, capability)
-        for provider_id, (adapter_kind, capability) in sorted(SECURITY_LOCAL_PROVIDERS.items())
+        for provider_id, (adapter_kind, capability) in sorted(
+            SECURITY_LOCAL_PROVIDERS.items()
+        )
     )
