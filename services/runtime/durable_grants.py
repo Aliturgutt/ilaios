@@ -7,7 +7,7 @@ import sqlite3
 from datetime import datetime
 from pathlib import Path
 
-from services.runtime.grants import ExecutionGrant, GrantError
+from services.runtime.grants import BlastRadiusBudget, ExecutionGrant, GrantError
 
 
 class DurableGrantPolicy:
@@ -38,6 +38,54 @@ class DurableGrantPolicy:
                     grant.budget.max_resources,
                 ),
             )
+
+    def get(self, grant_id: str) -> ExecutionGrant:
+        """Reconstruct the immutable grant contract from authoritative storage."""
+        if not grant_id or grant_id != grant_id.strip():
+            raise GrantError("grant_id must be non-blank and trimmed")
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM execution_grants WHERE grant_id = ?", (grant_id,)
+            ).fetchone()
+        if row is None:
+            raise GrantError("grant is not registered")
+        return ExecutionGrant(
+            str(row["grant_id"]),
+            str(row["subject_id"]),
+            frozenset(json.loads(row["actions_json"])),
+            frozenset(json.loads(row["resources_json"])),
+            datetime.fromisoformat(str(row["expires_at"])),
+            BlastRadiusBudget(
+                int(row["max_side_effects"]),
+                int(row["max_resources"]),
+            ),
+        )
+
+    def authorize(
+        self,
+        grant: ExecutionGrant,
+        *,
+        subject_id: str,
+        action: str,
+        resource: str,
+        now: datetime,
+    ) -> None:
+        """Satisfy the canonical agent firewall using durable grant authority.
+
+        The supplied object contributes only its stable grant identity; all
+        authorization attributes are re-read and enforced from SQLite by
+        ``authorize_and_record`` so a caller cannot weaken a persisted grant by
+        constructing a different in-memory object.
+        """
+        if not isinstance(grant, ExecutionGrant):
+            raise GrantError("canonical ExecutionGrant is required")
+        self.authorize_and_record(
+            grant.grant_id,
+            subject_id=subject_id,
+            action=action,
+            resource=resource,
+            now=now,
+        )
 
     def authorize_and_record(
         self,
