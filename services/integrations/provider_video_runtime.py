@@ -18,7 +18,7 @@ import math
 import shutil
 import time
 from collections.abc import Callable, Sequence
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -98,6 +98,7 @@ from src.video_automation.perceptual_review import (
 from src.video_automation.prompt_compilation import ShotPromptCompiler
 from src.video_automation.provider_execution import ProviderExecutionOrchestrator
 from src.video_automation.provider_registry import ProviderRegistry
+from src.video_automation.providers import Provider
 from src.video_automation.request_manifest import EpisodeRequestManifestBuilder
 from src.video_automation.scene_planning import EpisodeBeat, ShotPlanner
 from src.video_automation.shot_request_planning import (
@@ -124,6 +125,67 @@ class SemanticVideoReviewer(Protocol):
         producer_id: str,
         review_id: str,
     ) -> PerceptualReviewSubmission: ...
+
+
+@dataclass(frozen=True, slots=True)
+class ProviderCostEvidence:
+    """Terminal provider-cost evidence admitted by the configured cost policy."""
+
+    mode: str
+    proven: bool
+    zero: bool
+    actual_microusd: int
+    ceiling_microusd: int | None = None
+
+    def __post_init__(self) -> None:
+        if not self.mode.strip():
+            raise VideoRuntimeError("provider cost evidence mode must not be blank")
+        if not self.proven:
+            raise VideoRuntimeError("provider cost evidence must be proven before acceptance")
+        if self.actual_microusd < 0:
+            raise VideoRuntimeError("provider actual cost must not be negative")
+        if self.ceiling_microusd is not None:
+            if self.ceiling_microusd < 0:
+                raise VideoRuntimeError("provider cost ceiling must not be negative")
+            if self.actual_microusd > self.ceiling_microusd:
+                raise VideoRuntimeError("provider actual cost exceeded proven ceiling")
+        if self.zero != (self.actual_microusd == 0):
+            raise VideoRuntimeError("provider zero-cost evidence is inconsistent")
+
+
+class ProviderCostEvidencePolicy(Protocol):
+    """Fail-closed cost admission contract for one canonical provider runtime."""
+
+    def validate_model_id(self, model_id: str) -> None: ...
+
+    def verify(
+        self, records: Sequence[GenerationDispatchExecution]
+    ) -> ProviderCostEvidence: ...
+
+
+class VerifiedFreeProviderCostPolicy:
+    """Default policy: explicit free alias plus exact terminal provider cost zero."""
+
+    def validate_model_id(self, model_id: str) -> None:
+        if not model_id.endswith(":free"):
+            raise VideoRuntimeError(
+                "Desktop Video Factory requires an explicit free video model"
+            )
+
+    def verify(
+        self, records: Sequence[GenerationDispatchExecution]
+    ) -> ProviderCostEvidence:
+        if not _zero_provider_cost_proven(records):
+            raise VideoRuntimeError(
+                "free provider execution lacks explicit zero-cost terminal evidence"
+            )
+        return ProviderCostEvidence(
+            mode="verified-free",
+            proven=True,
+            zero=True,
+            actual_microusd=0,
+            ceiling_microusd=0,
+        )
 
 
 class _DelayedGenerationPoller:
@@ -165,16 +227,21 @@ class ProviderBackedDesktopVideoRuntime(DeterministicLocalVideoRuntime):
         resolution: str = "720p",
         poll_interval_seconds: float = 5.0,
         max_poll_rounds: int = 144,
-        provider: OpenRouterVideoGenerationProvider | None = None,
+        provider: Provider | None = None,
         poller: GenerationJobPoller | None = None,
         retriever: OpenRouterGeneratedAssetRetriever | None = None,
         reviewer: SemanticVideoReviewer | None = None,
+        cost_policy: ProviderCostEvidencePolicy | None = None,
     ) -> None:
         super().__init__(root, grants, governance, evidence)
         if not api_key or api_key != api_key.strip():
             raise VideoRuntimeError("provider-backed video runtime requires API credentials")
-        if not model_id.endswith(":free"):
-            raise VideoRuntimeError("Desktop Video Factory requires an explicit free video model")
+        selected_cost_policy = cost_policy or VerifiedFreeProviderCostPolicy()
+        selected_cost_policy.validate_model_id(model_id)
+        if cost_policy is not None and not model_id.endswith(":free") and provider is None:
+            raise VideoRuntimeError(
+                "non-free Desktop Video Factory mode requires an injected governed provider"
+            )
         if not qa_model_id.strip():
             raise VideoRuntimeError("semantic reviewer model must not be blank")
         if max_poll_rounds <= 0:
@@ -185,6 +252,7 @@ class ProviderBackedDesktopVideoRuntime(DeterministicLocalVideoRuntime):
         self._model_id = model_id
         self._resolution = resolution
         self._max_poll_rounds = max_poll_rounds
+        self._cost_policy = selected_cost_policy
         self._provider = provider or OpenRouterVideoGenerationProvider(
             api_key,
             provider_name=self.PROVIDER_ID,
@@ -264,7 +332,13 @@ class ProviderBackedDesktopVideoRuntime(DeterministicLocalVideoRuntime):
                 "semantic_score": outcome["semantic_score"],
                 "semantic_threshold": outcome["semantic_threshold"],
                 "generated_shot_count": outcome["generated_shot_count"],
-                "provider_cost_zero": True,
+                "provider_cost_mode": outcome["provider_cost_mode"],
+                "provider_cost_proven": outcome["provider_cost_proven"],
+                "provider_cost_zero": outcome["provider_cost_zero"],
+                "provider_cost_microusd": outcome["provider_cost_microusd"],
+                "provider_cost_ceiling_microusd": outcome[
+                    "provider_cost_ceiling_microusd"
+                ],
                 "duration_seconds": outcome["duration_seconds"],
                 "width": outcome["width"],
                 "height": outcome["height"],
@@ -286,6 +360,13 @@ class ProviderBackedDesktopVideoRuntime(DeterministicLocalVideoRuntime):
                 "provider_boundary": self.PROVIDER_ID,
                 "generation_mode": "provider-backed-cinematic-video",
                 "provider_model_id": self._model_id,
+                "provider_cost_mode": outcome["provider_cost_mode"],
+                "provider_cost_proven": outcome["provider_cost_proven"],
+                "provider_cost_zero": outcome["provider_cost_zero"],
+                "provider_cost_microusd": outcome["provider_cost_microusd"],
+                "provider_cost_ceiling_microusd": outcome[
+                    "provider_cost_ceiling_microusd"
+                ],
                 "latency_ms": latency_ms,
                 "latency_budget_ms": latency_budget_ms,
                 "latency_passed": True,
@@ -418,10 +499,9 @@ class ProviderBackedDesktopVideoRuntime(DeterministicLocalVideoRuntime):
             ),
             max_poll_rounds=self._max_poll_rounds,
         ).execute(dispatch_plan)
-        if not _zero_provider_cost_proven(acquisition.final_execution_state.records):
-            raise VideoRuntimeError(
-                "free provider execution lacks explicit zero-cost terminal evidence"
-            )
+        cost_evidence = self._cost_policy.verify(
+            acquisition.final_execution_state.records
+        )
 
         clip_profile = MediaTechnicalProfile(
             min_width=320,
@@ -551,6 +631,11 @@ class ProviderBackedDesktopVideoRuntime(DeterministicLocalVideoRuntime):
             "semantic_threshold": final_review.threshold,
             "clip_semantic_min_score": min(semantic_scores),
             "generated_shot_count": len(shot_plan.shots),
+            "provider_cost_mode": cost_evidence.mode,
+            "provider_cost_proven": cost_evidence.proven,
+            "provider_cost_zero": cost_evidence.zero,
+            "provider_cost_microusd": cost_evidence.actual_microusd,
+            "provider_cost_ceiling_microusd": cost_evidence.ceiling_microusd,
             "duration_seconds": observation.duration_seconds,
             "width": observation.width,
             "height": observation.height,
