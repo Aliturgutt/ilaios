@@ -1,6 +1,7 @@
 import pytest
 
 from src.video_automation.prompting_skills import (
+    DirectedVideoBrief,
     ModelRoutingRequest,
     ReferenceAsset,
     ReferenceAssetPlanner,
@@ -16,7 +17,7 @@ from src.video_automation.prompting_skills import (
 from src.video_automation.video_skills import VIDEO_SKILLS, VideoSkillError
 
 
-def _directed():
+def _directed() -> DirectedVideoBrief:
     brief = VideoPromptBrief(
         brief_id="brief-1",
         objective="Show a product handoff without identity drift",
