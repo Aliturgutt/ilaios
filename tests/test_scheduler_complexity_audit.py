@@ -13,8 +13,17 @@ def test_scheduler_complexity_audit_preserves_deterministic_selection() -> None:
     assert result.workers == 4
     assert result.seeded_leases == 2
     assert result.selected_worker == "worker-000002"
-    assert result.active_count_calls >= 0
-    assert result.lease_items_scanned >= 0
+    assert result.active_count_calls == 0
+    assert result.bulk_active_count_calls == 1
+    assert result.lease_items_scanned == 2
+
+
+def test_scheduler_complexity_audit_scans_each_active_lease_once() -> None:
+    result = characterize(workers=1000, seeded_leases=1000)
+
+    assert result.active_count_calls == 0
+    assert result.bulk_active_count_calls == 1
+    assert result.lease_items_scanned == result.seeded_leases
 
 
 def test_scheduler_complexity_audit_rejects_invalid_bounds() -> None:

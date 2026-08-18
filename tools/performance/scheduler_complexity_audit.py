@@ -1,9 +1,9 @@
 """Deterministic scheduler complexity characterization for ILAIOS.
 
 This is an audit utility, not a production runtime dependency. It avoids wall-clock
-thresholds and records structural work performed by WorkerScheduler._active_count.
-The output can be compared before and after a candidate optimization without
-changing scheduler semantics.
+thresholds and records structural lease scans performed while WorkerScheduler
+selects a worker. The output can be compared before and after a candidate
+optimization without changing scheduler semantics.
 """
 
 from __future__ import annotations
@@ -21,6 +21,7 @@ class ScenarioResult:
     workers: int
     seeded_leases: int
     active_count_calls: int
+    bulk_active_count_calls: int
     lease_items_scanned: int
     selected_worker: str
 
@@ -31,7 +32,13 @@ class AuditWorkerScheduler(WorkerScheduler):
     def __init__(self, *, lease_duration: timedelta) -> None:
         super().__init__(lease_duration=lease_duration)
         self.active_count_calls = 0
+        self.bulk_active_count_calls = 0
         self.lease_items_scanned = 0
+
+    def _active_counts(self, now: datetime) -> dict[str, int]:
+        self.bulk_active_count_calls += 1
+        self.lease_items_scanned += len(self._leases)
+        return super()._active_counts(now)
 
     def _active_count(self, worker_id: str, now: datetime) -> int:
         self.active_count_calls += 1
@@ -71,6 +78,7 @@ def characterize(*, workers: int, seeded_leases: int) -> ScenarioResult:
         )
 
     scheduler.active_count_calls = 0
+    scheduler.bulk_active_count_calls = 0
     scheduler.lease_items_scanned = 0
     lease = scheduler.schedule("audit-target", "audit", now=now)
 
@@ -78,6 +86,7 @@ def characterize(*, workers: int, seeded_leases: int) -> ScenarioResult:
         workers=workers,
         seeded_leases=seeded_leases,
         active_count_calls=scheduler.active_count_calls,
+        bulk_active_count_calls=scheduler.bulk_active_count_calls,
         lease_items_scanned=scheduler.lease_items_scanned,
         selected_worker=lease.worker_id,
     )
