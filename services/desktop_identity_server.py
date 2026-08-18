@@ -43,7 +43,7 @@ class DesktopIdentityHTTPServer(_core.DesktopIdentityHTTPServer):
 
 
 class DesktopIdentityRequestHandler(_core.DesktopIdentityRequestHandler):
-    """Allow governed reference assets only for Web and Video Factory intents."""
+    """Allow governed reference assets only for one Web or Video Factory intent."""
 
     def _submit_authenticated_intent(self, body: dict[str, object]) -> None:
         session = self._authenticated_session()
@@ -51,10 +51,16 @@ class DesktopIdentityRequestHandler(_core.DesktopIdentityRequestHandler):
         if len(objective) > 20_000:
             raise ValueError("objective exceeds Desktop input limit")
         asset_ids = _core._reference_asset_ids(body.get("reference_asset_ids", []))
-        if asset_ids and not _is_reference_capable_objective(objective):
-            raise ValueError(
-                "reference images may only be attached to Web Factory or Video Factory requests"
-            )
+        if asset_ids:
+            factory_count = _reference_factory_count(objective)
+            if factory_count == 0:
+                raise ValueError(
+                    "reference images may only be attached to Web Factory or Video Factory requests"
+                )
+            if factory_count != 1:
+                raise ValueError(
+                    "reference-image requests must target exactly one of Web Factory or Video Factory"
+                )
 
         store = (
             _core._require_reference_store(self.server.reference_assets)
@@ -100,11 +106,10 @@ class DesktopIdentityRequestHandler(_core.DesktopIdentityRequestHandler):
         self._send_json(_core.HTTPStatus.CREATED, response)
 
 
-def _is_reference_capable_objective(objective: str) -> bool:
-    if _core._is_video_objective(objective):
-        return True
+def _reference_factory_count(objective: str) -> int:
+    video = _core._is_video_objective(objective)
     normalized = " ".join(objective.casefold().split())
-    return any(
+    web = any(
         term in normalized
         for term in (
             "website",
@@ -114,6 +119,7 @@ def _is_reference_capable_objective(objective: str) -> bool:
             "internet sitesi",
         )
     )
+    return int(video) + int(web)
 
 
 __all__ = [
