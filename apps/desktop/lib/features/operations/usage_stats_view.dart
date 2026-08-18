@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../../app/ilaios_theme.dart';
@@ -162,8 +161,8 @@ class UsageStatsModel {
     var providerCoverage = 0;
     var modelCoverage = 0;
     var statusCoverage = 0;
-    var successfulRoutes = 0;
-    var failedRoutes = 0;
+    var successful = 0;
+    var failed = 0;
     var inputTokens = 0;
     var outputTokens = 0;
     var cacheReadTokens = 0;
@@ -171,12 +170,12 @@ class UsageStatsModel {
     var actualCost = 0.0;
     var reservedCost = 0.0;
     final latencies = <double>[];
-    final providerBuckets = <String, _MutableUsageBucket>{};
-    final modelBuckets = <String, _MutableUsageBucket>{};
+    final providers = <String, _UsageBucket>{};
+    final models = <String, _UsageBucket>{};
     final history = <UsageStatsActivity>[];
 
     for (final route in snapshot.runtimeRoutes) {
-      final output = _asMap(route['output']);
+      final output = _map(route['output']);
       final providerId = _firstText(output, route, const ['provider_id']);
       final modelId = _firstText(output, route, const ['model_id']);
       final input = _firstInt(output, route, const ['input_tokens']);
@@ -191,27 +190,27 @@ class UsageStatsModel {
         route,
         const ['cache_write_tokens', 'cached_output_tokens'],
       );
-      final hasTokens =
-          input != null || generated != null || cacheRead != null || cacheWrite != null;
       final cost = _firstNumber(output, route, const ['actual_cost_usd']);
       final reserved = _firstNumber(output, route, const ['reserved_cost_usd']);
       final latency = _firstNumber(output, route, const ['latency_ms']);
       final status = _firstText(output, route, const ['status', 'state', 'outcome']);
       final outcome = _terminalOutcome(status);
+      final hasTokens =
+          input != null || generated != null || cacheRead != null || cacheWrite != null;
 
-      if (hasTokens) tokenCoverage += 1;
-      if (input != null) inputCoverage += 1;
-      if (generated != null) outputCoverage += 1;
-      if (cacheRead != null) cacheReadCoverage += 1;
-      if (cacheWrite != null) cacheWriteCoverage += 1;
-      if (cost != null) costCoverage += 1;
-      if (reserved != null) reservedCostCoverage += 1;
-      if (latency != null) latencyCoverage += 1;
-      if (providerId != null) providerCoverage += 1;
-      if (modelId != null) modelCoverage += 1;
-      if (status != null) statusCoverage += 1;
-      if (outcome == _Outcome.success) successfulRoutes += 1;
-      if (outcome == _Outcome.failure) failedRoutes += 1;
+      if (hasTokens) tokenCoverage++;
+      if (input != null) inputCoverage++;
+      if (generated != null) outputCoverage++;
+      if (cacheRead != null) cacheReadCoverage++;
+      if (cacheWrite != null) cacheWriteCoverage++;
+      if (cost != null) costCoverage++;
+      if (reserved != null) reservedCostCoverage++;
+      if (latency != null) latencyCoverage++;
+      if (providerId != null) providerCoverage++;
+      if (modelId != null) modelCoverage++;
+      if (status != null) statusCoverage++;
+      if (outcome == _Outcome.success) successful++;
+      if (outcome == _Outcome.failure) failed++;
 
       inputTokens += input ?? 0;
       outputTokens += generated ?? 0;
@@ -221,33 +220,26 @@ class UsageStatsModel {
       reservedCost += reserved ?? 0;
       if (latency != null) latencies.add(latency);
 
+      void addTo(_UsageBucket bucket) => bucket.add(
+            input: input,
+            output: generated,
+            cacheRead: cacheRead,
+            cacheWrite: cacheWrite,
+            cost: cost,
+            latency: latency,
+          );
+
       if (providerId != null) {
-        providerBuckets
-            .putIfAbsent(providerId, () => _MutableUsageBucket(providerId))
-            .add(
-              input: input,
-              output: generated,
-              cacheRead: cacheRead,
-              cacheWrite: cacheWrite,
-              cost: cost,
-              latency: latency,
-            );
+        addTo(providers.putIfAbsent(providerId, () => _UsageBucket(providerId)));
       }
       if (modelId != null) {
-        final modelKey = '${providerId ?? ''}\u001f$modelId';
-        modelBuckets
-            .putIfAbsent(
-              modelKey,
-              () => _MutableUsageBucket(modelId, providerId: providerId),
-            )
-            .add(
-              input: input,
-              output: generated,
-              cacheRead: cacheRead,
-              cacheWrite: cacheWrite,
-              cost: cost,
-              latency: latency,
-            );
+        final key = '${providerId ?? ''}\u001f$modelId';
+        addTo(
+          models.putIfAbsent(
+            key,
+            () => _UsageBucket(modelId, providerId: providerId),
+          ),
+        );
       }
 
       history.add(
@@ -270,22 +262,18 @@ class UsageStatsModel {
       );
     }
 
-    history.sort((left, right) {
-      final a = left.sequence;
-      final b = right.sequence;
-      if (a != null && b != null) return b.compareTo(a);
-      if (a != null) return -1;
-      if (b != null) return 1;
+    history.sort((a, b) {
+      if (a.sequence != null && b.sequence != null) {
+        return b.sequence!.compareTo(a.sequence!);
+      }
+      if (a.sequence != null) return -1;
+      if (b.sequence != null) return 1;
       return 0;
     });
 
-    final providerRows = providerBuckets.values
-        .map((bucket) => bucket.freeze())
-        .toList(growable: false)
+    final providerRows = providers.values.map((e) => e.freeze()).toList()
       ..sort(_compareBreakdown);
-    final modelRows = modelBuckets.values
-        .map((bucket) => bucket.freeze())
-        .toList(growable: false)
+    final modelRows = models.values.map((e) => e.freeze()).toList()
       ..sort(_compareBreakdown);
 
     return UsageStatsModel(
@@ -301,22 +289,21 @@ class UsageStatsModel {
       routesWithProvider: providerCoverage,
       routesWithModel: modelCoverage,
       routesWithStatus: statusCoverage,
-      successfulRoutes: successfulRoutes,
-      failedRoutes: failedRoutes,
+      successfulRoutes: successful,
+      failedRoutes: failed,
       inputTokens: inputTokens,
       outputTokens: outputTokens,
       cacheReadTokens: cacheReadTokens,
       cacheWriteTokens: cacheWriteTokens,
       observedActualCostUsd: costCoverage == 0 ? null : actualCost,
-      observedReservedCostUsd:
-          reservedCostCoverage == 0 ? null : reservedCost,
+      observedReservedCostUsd: reservedCostCoverage == 0 ? null : reservedCost,
       averageLatencyMs: latencies.isEmpty
           ? null
           : latencies.reduce((a, b) => a + b) / latencies.length,
-      p95LatencyMs: _percentile95(latencies),
-      providers: List<UsageStatsBreakdown>.unmodifiable(providerRows),
-      models: List<UsageStatsBreakdown>.unmodifiable(modelRows),
-      history: List<UsageStatsActivity>.unmodifiable(history),
+      p95LatencyMs: _p95(latencies),
+      providers: List.unmodifiable(providerRows),
+      models: List.unmodifiable(modelRows),
+      history: List.unmodifiable(history),
     );
   }
 }
@@ -361,68 +348,37 @@ class UsageStatsView extends StatelessWidget {
                     ),
               ),
               const SizedBox(height: 16),
-              _SummaryGrid(model: model, tr: tr),
+              _summary(context, model, tr),
               const SizedBox(height: 14),
-              _TokenDetailPanel(model: model, tr: tr),
+              _tokenDetail(context, model, tr),
               const SizedBox(height: 14),
-              _CoveragePanel(model: model, tr: tr, status: status),
+              _coverage(context, model, tr),
               const SizedBox(height: 14),
               if (constraints.maxWidth >= 1000)
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(
-                      child: _BreakdownPanel(
-                        title: tr ? 'Sağlayıcı Kullanımı' : 'Provider Usage',
-                        rows: model.providers,
-                        tr: tr,
-                        showProvider: false,
-                      ),
-                    ),
+                    Expanded(child: _breakdown(context, model.providers, tr, false)),
                     const SizedBox(width: 14),
-                    Expanded(
-                      child: _BreakdownPanel(
-                        title: tr ? 'Model Kullanımı' : 'Model Usage',
-                        rows: model.models,
-                        tr: tr,
-                        showProvider: true,
-                      ),
-                    ),
+                    Expanded(child: _breakdown(context, model.models, tr, true)),
                   ],
                 )
               else ...[
-                _BreakdownPanel(
-                  title: tr ? 'Sağlayıcı Kullanımı' : 'Provider Usage',
-                  rows: model.providers,
-                  tr: tr,
-                  showProvider: false,
-                ),
+                _breakdown(context, model.providers, tr, false),
                 const SizedBox(height: 14),
-                _BreakdownPanel(
-                  title: tr ? 'Model Kullanımı' : 'Model Usage',
-                  rows: model.models,
-                  tr: tr,
-                  showProvider: true,
-                ),
+                _breakdown(context, model.models, tr, true),
               ],
               const SizedBox(height: 14),
-              _HistoryPanel(model: model, tr: tr),
+              _history(context, model, tr),
             ],
           ),
         ),
       ),
     );
   }
-}
 
-class _SummaryGrid extends StatelessWidget {
-  const _SummaryGrid({required this.model, required this.tr});
-
-  final UsageStatsModel model;
-  final bool tr;
-
-  @override
-  Widget build(BuildContext context) => LayoutBuilder(
+  Widget _summary(BuildContext context, UsageStatsModel model, bool tr) =>
+      LayoutBuilder(
         builder: (context, constraints) {
           final width = constraints.maxWidth;
           final cardWidth = width >= 1050
@@ -434,79 +390,54 @@ class _SummaryGrid extends StatelessWidget {
             spacing: 14,
             runSpacing: 14,
             children: [
-              _SummaryCard(
-                width: cardWidth,
-                icon: Icons.route_outlined,
-                label: tr ? 'Gözlenen rotalar' : 'Observed routes',
-                value: model.observedRoutes.toString(),
-                detail: tr ? 'Kalıcı runtime kayıtları' : 'Persisted runtime records',
-              ),
-              _SummaryCard(
-                width: cardWidth,
-                icon: Icons.data_usage_outlined,
-                label: tr ? 'Gözlenen tokenlar' : 'Observed tokens',
-                value: model.observedTokens == null
-                    ? '—'
-                    : _formatInt(model.observedTokens!),
-                detail: '${model.routesWithTokenTelemetry}/${model.observedRoutes}',
-              ),
-              _SummaryCard(
-                width: cardWidth,
-                icon: Icons.attach_money_outlined,
-                label: tr ? 'Gözlenen rota maliyeti' : 'Observed route cost',
-                value: model.observedActualCostUsd == null
-                    ? '—'
-                    : _formatUsd(model.observedActualCostUsd!),
-                detail: '${model.routesWithCostTelemetry}/${model.observedRoutes}',
-              ),
-              _SummaryCard(
-                width: cardWidth,
-                icon: Icons.speed_outlined,
-                label: tr ? 'Gecikme' : 'Latency',
-                value: model.averageLatencyMs == null
-                    ? '—'
-                    : '${model.averageLatencyMs!.toStringAsFixed(0)} ms',
-                detail: model.p95LatencyMs == null
-                    ? 'p95 —'
-                    : 'p95 ${model.p95LatencyMs!.toStringAsFixed(0)} ms',
-              ),
-              _SummaryCard(
-                width: cardWidth,
-                icon: Icons.task_alt_outlined,
-                label: tr ? 'Gözlenen sonuçlar' : 'Observed outcomes',
-                value: model.observedSuccessRate == null
-                    ? '—'
-                    : '${model.observedSuccessRate!.toStringAsFixed(1)}%',
-                detail: model.routesWithOutcomeTelemetry == 0
-                    ? (tr ? 'Terminal sonuç kanıtı yok' : 'No terminal outcome evidence')
-                    : '${model.successfulRoutes} ✓  ${model.failedRoutes} ✕  · ${model.routesWithOutcomeTelemetry}/${model.observedRoutes}',
-              ),
+              _summaryCard(context, cardWidth, Icons.route_outlined,
+                  tr ? 'Gözlenen rotalar' : 'Observed routes',
+                  '${model.observedRoutes}',
+                  tr ? 'Kalıcı runtime kayıtları' : 'Persisted runtime records'),
+              _summaryCard(context, cardWidth, Icons.data_usage_outlined,
+                  tr ? 'Gözlenen tokenlar' : 'Observed tokens',
+                  model.observedTokens == null ? '—' : _formatInt(model.observedTokens!),
+                  '${model.routesWithTokenTelemetry}/${model.observedRoutes}'),
+              _summaryCard(context, cardWidth, Icons.attach_money_outlined,
+                  tr ? 'Gözlenen rota maliyeti' : 'Observed route cost',
+                  model.observedActualCostUsd == null
+                      ? '—'
+                      : _formatUsd(model.observedActualCostUsd!),
+                  '${model.routesWithCostTelemetry}/${model.observedRoutes}'),
+              _summaryCard(context, cardWidth, Icons.speed_outlined,
+                  tr ? 'Gecikme' : 'Latency',
+                  model.averageLatencyMs == null
+                      ? '—'
+                      : '${model.averageLatencyMs!.toStringAsFixed(0)} ms',
+                  model.p95LatencyMs == null
+                      ? 'p95 —'
+                      : 'p95 ${model.p95LatencyMs!.toStringAsFixed(0)} ms'),
+              _summaryCard(context, cardWidth, Icons.task_alt_outlined,
+                  tr ? 'Gözlenen sonuçlar' : 'Observed outcomes',
+                  model.observedSuccessRate == null
+                      ? '—'
+                      : '${model.observedSuccessRate!.toStringAsFixed(1)}%',
+                  model.routesWithOutcomeTelemetry == 0
+                      ? (tr ? 'Terminal sonuç kanıtı yok' : 'No terminal outcome evidence')
+                      : '${model.successfulRoutes} ✓  ${model.failedRoutes} ✕  · ${model.routesWithOutcomeTelemetry}/${model.observedRoutes}'),
             ],
           );
         },
       );
-}
 
-class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({
-    required this.width,
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.detail,
-  });
-
-  final double width;
-  final IconData icon;
-  final String label;
-  final String value;
-  final String detail;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
+  Widget _summaryCard(
+    BuildContext context,
+    double width,
+    IconData icon,
+    String label,
+    String value,
+    String detail,
+  ) =>
+      SizedBox(
         width: width,
-        child: _Panel(
-          child: Row(
+        child: _panel(
+          context,
+          Row(
             children: [
               Container(
                 width: 42,
@@ -524,21 +455,16 @@ class _SummaryCard extends StatelessWidget {
                   children: [
                     Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
-                    Text(
-                      value,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            fontWeight: FontWeight.w800,
-                          ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      detail,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
+                    Text(value,
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            )),
+                    Text(detail,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            )),
                   ],
                 ),
               ),
@@ -546,84 +472,31 @@ class _SummaryCard extends StatelessWidget {
           ),
         ),
       );
-}
 
-class _TokenDetailPanel extends StatelessWidget {
-  const _TokenDetailPanel({required this.model, required this.tr});
-
-  final UsageStatsModel model;
-  final bool tr;
-
-  @override
-  Widget build(BuildContext context) => _Panel(
-        child: Column(
+  Widget _tokenDetail(BuildContext context, UsageStatsModel model, bool tr) =>
+      _panel(
+        context,
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              tr ? 'Token Ayrıntısı' : 'Token Detail',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
+            _heading(context, tr ? 'Token Ayrıntısı' : 'Token Detail'),
             const SizedBox(height: 10),
             Wrap(
               spacing: 12,
               runSpacing: 10,
               children: [
-                _TokenMetric(
-                  label: tr ? 'Girdi' : 'Input',
-                  value: model.routesWithInputTokens == 0
-                      ? null
-                      : model.inputTokens,
-                  coverage: model.routesWithInputTokens,
-                  total: model.observedRoutes,
-                ),
-                _TokenMetric(
-                  label: tr ? 'Çıktı' : 'Output',
-                  value: model.routesWithOutputTokens == 0
-                      ? null
-                      : model.outputTokens,
-                  coverage: model.routesWithOutputTokens,
-                  total: model.observedRoutes,
-                ),
-                _TokenMetric(
-                  label: tr ? 'Cache okuma' : 'Cache read',
-                  value: model.routesWithCacheReadTokens == 0
-                      ? null
-                      : model.cacheReadTokens,
-                  coverage: model.routesWithCacheReadTokens,
-                  total: model.observedRoutes,
-                ),
-                _TokenMetric(
-                  label: tr ? 'Cache yazma' : 'Cache write',
-                  value: model.routesWithCacheWriteTokens == 0
-                      ? null
-                      : model.cacheWriteTokens,
-                  coverage: model.routesWithCacheWriteTokens,
-                  total: model.observedRoutes,
-                ),
+                _tokenTile(context, tr ? 'Girdi' : 'Input', model.routesWithInputTokens == 0 ? null : model.inputTokens, model.routesWithInputTokens, model.observedRoutes),
+                _tokenTile(context, tr ? 'Çıktı' : 'Output', model.routesWithOutputTokens == 0 ? null : model.outputTokens, model.routesWithOutputTokens, model.observedRoutes),
+                _tokenTile(context, tr ? 'Cache okuma' : 'Cache read', model.routesWithCacheReadTokens == 0 ? null : model.cacheReadTokens, model.routesWithCacheReadTokens, model.observedRoutes),
+                _tokenTile(context, tr ? 'Cache yazma' : 'Cache write', model.routesWithCacheWriteTokens == 0 ? null : model.cacheWriteTokens, model.routesWithCacheWriteTokens, model.observedRoutes),
               ],
             ),
           ],
         ),
       );
-}
 
-class _TokenMetric extends StatelessWidget {
-  const _TokenMetric({
-    required this.label,
-    required this.value,
-    required this.coverage,
-    required this.total,
-  });
-
-  final String label;
-  final int? value;
-  final int coverage;
-  final int total;
-
-  @override
-  Widget build(BuildContext context) => Container(
+  Widget _tokenTile(BuildContext context, String label, int? value, int coverage, int total) =>
+      Container(
         width: 190,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
@@ -633,60 +506,40 @@ class _TokenMetric extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(label, style: Theme.of(context).textTheme.labelMedium),
+            Text(label),
             const SizedBox(height: 4),
-            Text(
-              value == null ? '—' : _formatInt(value!),
-              style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
-            Text(
-              '$coverage/$total routes',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
+            Text(value == null ? '—' : _formatInt(value),
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    )),
+            Text('$coverage/$total routes',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    )),
           ],
         ),
       );
-}
 
-class _CoveragePanel extends StatelessWidget {
-  const _CoveragePanel({
-    required this.model,
-    required this.tr,
-    required this.status,
-  });
-
-  final UsageStatsModel model;
-  final bool tr;
-  final String status;
-
-  @override
-  Widget build(BuildContext context) => _Panel(
-        child: Column(
+  Widget _coverage(BuildContext context, UsageStatsModel model, bool tr) =>
+      _panel(
+        context,
+        Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              tr ? 'Telemetry Kapsamı' : 'Telemetry Coverage',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
+            _heading(context, tr ? 'Telemetry Kapsamı' : 'Telemetry Coverage'),
             const SizedBox(height: 10),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
-                _CoverageChip('Tokens', model.routesWithTokenTelemetry, model.observedRoutes),
-                _CoverageChip('Actual cost', model.routesWithCostTelemetry, model.observedRoutes),
-                _CoverageChip('Reserved cost', model.routesWithReservedCostTelemetry, model.observedRoutes),
-                _CoverageChip('Latency', model.routesWithLatencyTelemetry, model.observedRoutes),
-                _CoverageChip('Provider', model.routesWithProvider, model.observedRoutes),
-                _CoverageChip('Model', model.routesWithModel, model.observedRoutes),
-                _CoverageChip('Status', model.routesWithStatus, model.observedRoutes),
-                _CoverageChip('Terminal outcome', model.routesWithOutcomeTelemetry, model.observedRoutes),
+                _coverageChip(context, 'Tokens', model.routesWithTokenTelemetry, model.observedRoutes),
+                _coverageChip(context, 'Actual cost', model.routesWithCostTelemetry, model.observedRoutes),
+                _coverageChip(context, 'Reserved cost', model.routesWithReservedCostTelemetry, model.observedRoutes),
+                _coverageChip(context, 'Latency', model.routesWithLatencyTelemetry, model.observedRoutes),
+                _coverageChip(context, 'Provider', model.routesWithProvider, model.observedRoutes),
+                _coverageChip(context, 'Model', model.routesWithModel, model.observedRoutes),
+                _coverageChip(context, 'Status', model.routesWithStatus, model.observedRoutes),
+                _coverageChip(context, 'Terminal outcome', model.routesWithOutcomeTelemetry, model.observedRoutes),
               ],
             ),
             const SizedBox(height: 10),
@@ -705,17 +558,9 @@ class _CoveragePanel extends StatelessWidget {
           ],
         ),
       );
-}
 
-class _CoverageChip extends StatelessWidget {
-  const _CoverageChip(this.label, this.observed, this.total);
-
-  final String label;
-  final int observed;
-  final int total;
-
-  @override
-  Widget build(BuildContext context) => Container(
+  Widget _coverageChip(BuildContext context, String label, int observed, int total) =>
+      Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
@@ -723,148 +568,63 @@ class _CoverageChip extends StatelessWidget {
         ),
         child: Text('$label  $observed/$total'),
       );
-}
 
-class _BreakdownPanel extends StatelessWidget {
-  const _BreakdownPanel({
-    required this.title,
-    required this.rows,
-    required this.tr,
-    required this.showProvider,
-  });
-
-  final String title;
-  final List<UsageStatsBreakdown> rows;
-  final bool tr;
-  final bool showProvider;
-
-  @override
-  Widget build(BuildContext context) => _Panel(
-        child: Column(
+  Widget _breakdown(BuildContext context, List<UsageStatsBreakdown> rows, bool tr, bool models) =>
+      _panel(
+        context,
+        Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              title,
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
+            _heading(context, models
+                ? (tr ? 'Model Kullanımı' : 'Model Usage')
+                : (tr ? 'Sağlayıcı Kullanımı' : 'Provider Usage')),
             const SizedBox(height: 8),
             if (rows.isEmpty)
-              _EmptyText(
-                tr ? 'Yetkili kullanım kırılımı kullanılamıyor.' : 'Authoritative usage breakdown is unavailable.',
-              )
+              _empty(context, tr
+                  ? 'Yetkili kullanım kırılımı kullanılamıyor.'
+                  : 'Authoritative usage breakdown is unavailable.')
             else
               for (final row in rows.take(10))
-                _BreakdownRow(row: row, showProvider: showProvider, tr: tr),
-          ],
-        ),
-      );
-}
-
-class _BreakdownRow extends StatelessWidget {
-  const _BreakdownRow({
-    required this.row,
-    required this.showProvider,
-    required this.tr,
-  });
-
-  final UsageStatsBreakdown row;
-  final bool showProvider;
-  final bool tr;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(row.label, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  if (showProvider)
-                    Text(
-                      row.providerId ?? '—',
-                      style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            _MetricText(tr ? 'Rota' : 'Routes', row.routes.toString()),
-            const SizedBox(width: 8),
-            _MetricText(
-              'Tokens',
-              row.tokenSamples == 0 ? '—' : _formatInt(row.observedTokens),
-            ),
-            const SizedBox(width: 8),
-            _MetricText(
-              tr ? 'Maliyet' : 'Cost',
-              row.costSamples == 0 ? '—' : _formatUsd(row.observedCostUsd),
-            ),
-            const SizedBox(width: 8),
-            _MetricText(
-              tr ? 'Gecikme' : 'Latency',
-              row.averageLatencyMs == null
-                  ? '—'
-                  : '${row.averageLatencyMs!.toStringAsFixed(0)} ms',
-            ),
-          ],
-        ),
-      );
-}
-
-class _MetricText extends StatelessWidget {
-  const _MetricText(this.label, this.value);
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-        width: 76,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 6),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(row.label, maxLines: 1, overflow: TextOverflow.ellipsis),
+                            if (models)
+                              Text(row.providerId ?? '—',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                      )),
+                          ],
+                        ),
+                      ),
+                      _metric(context, tr ? 'Rota' : 'Routes', '${row.routes}'),
+                      _metric(context, 'Tokens', row.tokenSamples == 0 ? '—' : _formatInt(row.observedTokens)),
+                      _metric(context, tr ? 'Maliyet' : 'Cost', row.costSamples == 0 ? '—' : _formatUsd(row.observedCostUsd)),
+                      _metric(context, tr ? 'Gecikme' : 'Latency', row.averageLatencyMs == null ? '—' : '${row.averageLatencyMs!.toStringAsFixed(0)} ms'),
+                    ],
                   ),
-            ),
-            Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
+                ),
           ],
         ),
       );
-}
 
-class _HistoryPanel extends StatelessWidget {
-  const _HistoryPanel({required this.model, required this.tr});
-
-  final UsageStatsModel model;
-  final bool tr;
-
-  @override
-  Widget build(BuildContext context) => _Panel(
-        child: Column(
+  Widget _history(BuildContext context, UsageStatsModel model, bool tr) =>
+      _panel(
+        context,
+        Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              tr ? 'Çalışma Geçmişi' : 'Execution History',
-              style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    fontWeight: FontWeight.w800,
-                  ),
-            ),
+            _heading(context, tr ? 'Çalışma Geçmişi' : 'Execution History'),
             const SizedBox(height: 8),
             if (model.history.isEmpty)
-              _EmptyText(
-                tr ? 'Yetkili runtime çalışma geçmişi kullanılamıyor.' : 'Authoritative runtime execution history is unavailable.',
-              )
+              _empty(context, tr
+                  ? 'Yetkili runtime çalışma geçmişi kullanılamıyor.'
+                  : 'Authoritative runtime execution history is unavailable.')
             else
               LayoutBuilder(
                 builder: (context, constraints) {
@@ -878,7 +638,44 @@ class _HistoryPanel extends StatelessWidget {
                       child: Column(
                         children: [
                           for (final item in model.history.take(20))
-                            _HistoryRow(item: item),
+                            Container(
+                              padding: const EdgeInsets.symmetric(vertical: 8),
+                              decoration: BoxDecoration(
+                                border: Border(bottom: BorderSide(
+                                  color: Theme.of(context).colorScheme.outlineVariant,
+                                )),
+                              ),
+                              child: Row(
+                                children: [
+                                  SizedBox(width: 150, child: _oneLine(item.createdAt ?? '—')),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        _oneLine(item.agentId ?? '—'),
+                                        _oneLine(item.skillId ?? item.capability ?? '—', muted: true, context: context),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  SizedBox(
+                                    width: 170,
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        _oneLine(item.providerId ?? '—'),
+                                        _oneLine(item.modelId ?? '—', muted: true, context: context),
+                                      ],
+                                    ),
+                                  ),
+                                  _metric(context, 'Tokens', item.observedTokens == null ? '—' : _formatInt(item.observedTokens!)),
+                                  _metric(context, 'Cost', item.actualCostUsd == null ? '—' : _formatUsd(item.actualCostUsd!)),
+                                  _metric(context, 'Latency', item.latencyMs == null ? '—' : '${item.latencyMs!.toStringAsFixed(0)} ms'),
+                                  SizedBox(width: 90, child: _oneLine(item.status ?? '—')),
+                                ],
+                              ),
+                            ),
                         ],
                       ),
                     ),
@@ -888,103 +685,51 @@ class _HistoryPanel extends StatelessWidget {
           ],
         ),
       );
-}
 
-class _HistoryRow extends StatelessWidget {
-  const _HistoryRow({required this.item});
-
-  final UsageStatsActivity item;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        decoration: BoxDecoration(
-          border: Border(
-            bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-          ),
-        ),
-        child: Row(
+  Widget _metric(BuildContext context, String label, String value) => SizedBox(
+        width: 76,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            SizedBox(
-              width: 150,
-              child: Text(item.createdAt ?? '—', maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(item.agentId ?? '—', maxLines: 1, overflow: TextOverflow.ellipsis),
-                  Text(
-                    item.skillId ?? item.capability ?? '—',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 12),
-            SizedBox(
-              width: 170,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(item.providerId ?? '—', maxLines: 1, overflow: TextOverflow.ellipsis),
-                  Text(
-                    item.modelId ?? '—',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            _MetricText('Tokens', item.observedTokens == null ? '—' : _formatInt(item.observedTokens!)),
-            const SizedBox(width: 8),
-            _MetricText('Cost', item.actualCostUsd == null ? '—' : _formatUsd(item.actualCostUsd!)),
-            const SizedBox(width: 8),
-            _MetricText('Latency', item.latencyMs == null ? '—' : '${item.latencyMs!.toStringAsFixed(0)} ms'),
-            const SizedBox(width: 10),
-            SizedBox(
-              width: 90,
-              child: Text(item.status ?? '—', maxLines: 1, overflow: TextOverflow.ellipsis),
-            ),
+            Text(label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    )),
+            Text(value, maxLines: 1, overflow: TextOverflow.ellipsis),
           ],
         ),
       );
-}
 
-class _EmptyText extends StatelessWidget {
-  const _EmptyText(this.text);
-
-  final String text;
-
-  @override
-  Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-        ),
+  Widget _oneLine(String value, {bool muted = false, BuildContext? context}) => Text(
+        value,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: muted && context != null
+            ? Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                )
+            : null,
       );
-}
 
-class _Panel extends StatelessWidget {
-  const _Panel({required this.child});
+  Widget _heading(BuildContext context, String text) => Text(
+        text,
+        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              fontWeight: FontWeight.w800,
+            ),
+      );
 
-  final Widget child;
+  Widget _empty(BuildContext context, String text) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 20),
+        child: Text(text,
+            textAlign: TextAlign.center,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                )),
+      );
 
-  @override
-  Widget build(BuildContext context) => Container(
+  Widget _panel(BuildContext context, Widget child) => Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerLow,
@@ -995,8 +740,8 @@ class _Panel extends StatelessWidget {
       );
 }
 
-class _MutableUsageBucket {
-  _MutableUsageBucket(this.label, {this.providerId});
+class _UsageBucket {
+  _UsageBucket(this.label, {this.providerId});
 
   final String label;
   final String? providerId;
@@ -1018,16 +763,16 @@ class _MutableUsageBucket {
     required double? cost,
     required double? latency,
   }) {
-    routes += 1;
+    routes++;
     if (input != null || output != null || cacheRead != null || cacheWrite != null) {
-      tokenSamples += 1;
+      tokenSamples++;
     }
     inputTokens += input ?? 0;
     outputTokens += output ?? 0;
     cacheReadTokens += cacheRead ?? 0;
     cacheWriteTokens += cacheWrite ?? 0;
     if (cost != null) {
-      costSamples += 1;
+      costSamples++;
       observedCostUsd += cost;
     }
     if (latency != null) latencies.add(latency);
@@ -1055,8 +800,7 @@ enum _Outcome { success, failure }
 _Outcome? _terminalOutcome(String? status) {
   final normalized = status?.trim().toLowerCase();
   if (normalized == null || normalized.isEmpty) return null;
-  if (const {'completed', 'complete', 'success', 'succeeded', 'ok'}
-      .contains(normalized)) {
+  if (const {'completed', 'complete', 'success', 'succeeded', 'ok'}.contains(normalized)) {
     return _Outcome.success;
   }
   if (const {'failed', 'failure', 'error'}.contains(normalized)) {
@@ -1065,23 +809,19 @@ _Outcome? _terminalOutcome(String? status) {
   return null;
 }
 
-int _compareBreakdown(UsageStatsBreakdown left, UsageStatsBreakdown right) {
-  final byRoutes = right.routes.compareTo(left.routes);
-  return byRoutes != 0 ? byRoutes : left.label.compareTo(right.label);
+int _compareBreakdown(UsageStatsBreakdown a, UsageStatsBreakdown b) {
+  final routes = b.routes.compareTo(a.routes);
+  return routes != 0 ? routes : a.label.compareTo(b.label);
 }
 
-Map<String, Object?> _asMap(Object? value) {
+Map<String, Object?> _map(Object? value) {
   if (value is Map<Object?, Object?>) {
     return value.map((key, item) => MapEntry(key.toString(), item));
   }
-  return const <String, Object?>{};
+  return const {};
 }
 
-String? _firstText(
-  Map<String, Object?> primary,
-  Map<String, Object?> fallback,
-  List<String> keys,
-) {
+String? _firstText(Map<String, Object?> primary, Map<String, Object?> fallback, List<String> keys) {
   for (final key in keys) {
     final value = _text(primary[key]);
     if (value != null) return value;
@@ -1093,11 +833,7 @@ String? _firstText(
   return null;
 }
 
-int? _firstInt(
-  Map<String, Object?> primary,
-  Map<String, Object?> fallback,
-  List<String> keys,
-) {
+int? _firstInt(Map<String, Object?> primary, Map<String, Object?> fallback, List<String> keys) {
   for (final key in keys) {
     final value = _int(primary[key]);
     if (value != null) return value;
@@ -1109,11 +845,7 @@ int? _firstInt(
   return null;
 }
 
-double? _firstNumber(
-  Map<String, Object?> primary,
-  Map<String, Object?> fallback,
-  List<String> keys,
-) {
+double? _firstNumber(Map<String, Object?> primary, Map<String, Object?> fallback, List<String> keys) {
   for (final key in keys) {
     final value = _number(primary[key]);
     if (value != null) return value;
@@ -1133,10 +865,7 @@ String? _text(Object? value) {
 
 int? _int(Object? value) {
   if (value is int && value >= 0) return value;
-  if (value is double &&
-      value.isFinite &&
-      value >= 0 &&
-      value == value.truncateToDouble()) {
+  if (value is double && value.isFinite && value >= 0 && value == value.truncateToDouble()) {
     return value.toInt();
   }
   if (value is String) {
@@ -1147,23 +876,19 @@ int? _int(Object? value) {
 }
 
 double? _number(Object? value) {
-  if (value is num) {
-    final parsed = value.toDouble();
-    if (parsed.isFinite && parsed >= 0) return parsed;
-  }
-  if (value is String) {
-    final parsed = double.tryParse(value.trim());
-    if (parsed != null && parsed.isFinite && parsed >= 0) return parsed;
-  }
-  return null;
+  final parsed = value is num
+      ? value.toDouble()
+      : value is String
+          ? double.tryParse(value.trim())
+          : null;
+  return parsed != null && parsed.isFinite && parsed >= 0 ? parsed : null;
 }
 
-double? _percentile95(List<double> values) {
+double? _p95(List<double> values) {
   if (values.isEmpty) return null;
   final sorted = List<double>.of(values)..sort();
-  final rawIndex = (sorted.length * .95).ceil() - 1;
-  final index = rawIndex < 0 ? 0 : rawIndex;
-  return sorted[index];
+  final index = (sorted.length * .95).ceil() - 1;
+  return sorted[index < 0 ? 0 : index];
 }
 
 String _formatInt(int value) {
