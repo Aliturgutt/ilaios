@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -78,7 +79,7 @@ def test_bound_source_is_verified_then_rejected_before_unmaterialized_edit_execu
     tmp_path: Path,
 ) -> None:
     runtime = _runtime(source_bound=True)
-    source_store = runtime._source_media
+    source_store = cast(_SourceStore, runtime._source_media)
     with pytest.raises(VideoRuntimeError, match="not materialized yet"):
         runtime._generate_finished_product(
             run_root=tmp_path,
