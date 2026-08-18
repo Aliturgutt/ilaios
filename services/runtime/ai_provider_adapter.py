@@ -118,6 +118,9 @@ class AIProviderTransport(Protocol):
     ) -> ProviderTransportResult: ...
 
 
+RuntimeAdapter = Callable[[dict[str, Any]], dict[str, Any]]
+
+
 class OpenAICompatibleTransport:
     """Fail-closed OpenAI-compatible transport with bounded error classification."""
 
@@ -241,17 +244,17 @@ class GovernedAIProviderAdapter:
         digest = sha256(provider_id.encode("utf-8")).hexdigest()[:16]
         return f"ilaios.runtime.ai.{digest}"
 
-    def runtime_adapters(
-        self,
-    ) -> Mapping[str, Callable[[dict[str, Any]], dict[str, Any]]]:
+    def runtime_adapters(self) -> Mapping[str, RuntimeAdapter]:
         return {
-            self.adapter_kind(provider_id): (
-                lambda payload, bound_provider=provider_id: self._execute_provider(
-                    bound_provider, payload
-                )
-            )
+            self.adapter_kind(provider_id): self._bind_runtime_adapter(provider_id)
             for provider_id in sorted(self._endpoints)
         }
+
+    def _bind_runtime_adapter(self, provider_id: str) -> RuntimeAdapter:
+        def execute(payload: dict[str, Any]) -> dict[str, Any]:
+            return self._execute_provider(provider_id, payload)
+
+        return execute
 
     def provider_health(self, now: datetime) -> tuple[dict[str, object], ...]:
         return tuple(
