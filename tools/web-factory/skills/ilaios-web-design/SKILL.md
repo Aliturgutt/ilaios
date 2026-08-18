@@ -15,8 +15,8 @@ Convert product, brand, audience and content constraints into a deliberate visua
 3. Reject generic structural repetition and decorative complexity without user value.
 4. Preserve brand truth and product claims; never solve visual issues by changing factual claims.
 5. Require keyboard/focus/touch/reduced-motion considerations during design, not after it.
-6. Do not add a third-party runtime dependency solely for polish.
-7. External design repositories may inform research; imported implementation/text is not authoritative.
+6. Keep the native contract provider-independent; do not add a third-party runtime dependency solely for polish.
+7. External design research may inform problem discovery, but all ILAIOS skill instructions, implementation and evidence contracts are independently authored.
 
 ## Evidence
 A PASS requires structured observations and the existing ILAIOS design-quality acceptance contract. Visual intent alone is not verification.
