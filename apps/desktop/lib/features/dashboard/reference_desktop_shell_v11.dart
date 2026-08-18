@@ -9,13 +9,14 @@ import '../../control_plane/projection.dart';
 import '../../identity/identity_client.dart';
 import 'reference_desktop_shell_v10.dart';
 
-/// Final resize guard for the approved Home design.
+/// Final resize guard for the approved Desktop design.
 ///
-/// Wide windows render the reference-faithful V10 shell directly. Restored,
-/// taskbar-constrained or DPI-compressed Windows sizes scale that exact shell
-/// on a verified Desktop canvas; they never route back to the legacy Home.
-/// The 900px design height deliberately includes the shell's 44px status bar,
-/// so common 1080p/125%-DPI client heights cannot crop the bottom row/status.
+/// Normal Windows client areas, including DPI-compressed viewports such as
+/// 1382x733, render V10 at native 1:1 size so typography is not artificially
+/// reduced. Smaller desktop windows use the bounded 1280x900 safety canvas
+/// needed to preserve the complete approved composition without RenderFlex
+/// overflow. The child V10 shell therefore never sees compact constraints when
+/// this outer safety fit is active, avoiding double scaling.
 class ReferenceDesktopShellV11 extends StatelessWidget {
   const ReferenceDesktopShellV11({
     required this.projection,
@@ -77,15 +78,13 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
+          const compactWidthThreshold = 1320.0;
+          const compactHeightThreshold = 720.0;
           const designWidthFloor = 1280.0;
           const designHeight = 900.0;
 
-          // A Windows screenshot around 1640x925 contains a client area near
-          // 1640x890 after the native title bar. Treat that as a compact shell
-          // so the complete Home, including the bottom status strip, is always
-          // fitted into one viewport instead of being clipped below the frame.
-          final compact = constraints.maxWidth < designWidthFloor ||
-              constraints.maxHeight < 940;
+          final compact = constraints.maxWidth <= compactWidthThreshold ||
+              constraints.maxHeight < compactHeightThreshold;
           if (!compact) return _shell();
 
           final ratioMatchedWidth = constraints.maxHeight > 0

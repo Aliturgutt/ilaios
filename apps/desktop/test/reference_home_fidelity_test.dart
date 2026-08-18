@@ -61,7 +61,7 @@ void main() {
     expect(find.textContaining(r'$3.21'), findsNothing);
   });
 
-  testWidgets('DPI-compressed 1320x720 keeps the same command center in one viewport', (
+  testWidgets('compact 1320x720 keeps the same command center in one viewport', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1320, 720));
@@ -83,9 +83,22 @@ void main() {
     final artifacts = tester.getRect(find.byKey(const Key('command-center-artifacts')));
     final bottomStatus = tester.getRect(find.byKey(const Key('reference-bottom-status-v2')));
     expect(artifacts.bottom, lessThanOrEqualTo(bottomStatus.top + 1));
-    // FittedBox can leave a sub-pixel floating-point residue at the exact edge.
-    // Keep a 0.01 logical-pixel tolerance without accepting a visible overflow.
     expect(bottomStatus.bottom, lessThanOrEqualTo(720.01));
+  });
+
+  testWidgets('1382x733 DPI-compressed client preserves native typography', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1382, 733));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
+    expect(find.byKey(const Key('command-center-home')), findsOneWidget);
+    expect(find.byKey(const Key('reference-bottom-status-v2')), findsOneWidget);
   });
 
   testWidgets('1640x890 Windows client keeps bottom row and status strip visible', (
@@ -98,7 +111,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsOneWidget);
+    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
     final outputs = tester.getRect(find.byKey(const Key('command-center-artifacts')));
     final completed = tester.getRect(find.byKey(const Key('command-center-completed')));
     final quick = tester.getRect(find.byKey(const Key('command-center-quick-actions')));
