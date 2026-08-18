@@ -1,9 +1,7 @@
 export 'reference_asset_picker_core.dart'
     hide ReferenceAssetPicker, ReferenceAssetPickerController;
 
-import 'dart:async';
 import 'dart:io';
-import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
@@ -22,7 +20,7 @@ const MethodChannel _referenceDropChannel = MethodChannel(
 class ReferenceAssetPickerController extends core.ReferenceAssetPickerController {
   ReferenceAssetPickerController() {
     if (Platform.isWindows) {
-      unawaited(_referenceDropChannel.setMethodCallHandler(_handleNativeDrop));
+      _referenceDropChannel.setMethodCallHandler(_handleNativeDrop);
     }
   }
 
@@ -69,12 +67,7 @@ class ReferenceAssetPickerController extends core.ReferenceAssetPickerController
         _ => null,
       };
       if (mimeType == null) continue;
-      Uint8List bytes;
-      try {
-        bytes = await file.readAsBytes();
-      } on FileSystemException {
-        continue;
-      }
+      final bytes = await file.readAsBytes();
       if (bytes.length != stat.size) continue;
       final digest = sha256.convert(bytes).toString();
       if (!knownDigests.add(digest)) continue;
@@ -94,7 +87,7 @@ class ReferenceAssetPickerController extends core.ReferenceAssetPickerController
   @override
   void dispose() {
     if (Platform.isWindows) {
-      unawaited(_referenceDropChannel.setMethodCallHandler(null));
+      _referenceDropChannel.setMethodCallHandler(null);
     }
     super.dispose();
   }
