@@ -17,7 +17,9 @@ from services.desktop_identity_server import (
     DesktopIdentityRequestHandler,
     _required_string,
 )
+from services.desktop_oidc import DesktopOIDCService
 from services.execution_coordinator import (
+    ExecutionCoordinator,
     ExecutionCoordinatorError,
     classify_execution_plan,
 )
@@ -36,8 +38,20 @@ _REFERENCE_CAPABILITIES = frozenset(
 class ReferenceAwareDesktopIdentityHTTPServer(DesktopIdentityHTTPServer):
     """Drop-in Desktop identity server that adds the reference-asset endpoint."""
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
-        super().__init__(*args, **kwargs)
+    def __init__(
+        self,
+        server_address: tuple[str, int],
+        *,
+        bearer_token: str,
+        identity: DesktopOIDCService | None,
+        coordinator: ExecutionCoordinator,
+    ) -> None:
+        super().__init__(
+            server_address,
+            bearer_token=bearer_token,
+            identity=identity,
+            coordinator=coordinator,
+        )
         self.RequestHandlerClass = ReferenceAwareDesktopIdentityRequestHandler
 
 
