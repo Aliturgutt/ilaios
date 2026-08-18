@@ -65,6 +65,7 @@ void main() {
           status: 'Connected',
           goalCount: 0,
           jobCount: 0,
+          lastEvent: null,
         ),
         onPromptSubmit: (objective) async {
           submittedObjective = objective;
