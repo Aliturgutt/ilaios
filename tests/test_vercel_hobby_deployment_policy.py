@@ -8,28 +8,18 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 VERCEL_CONFIG = REPO_ROOT / "apps" / "website" / "vercel.json"
 
 
-def test_vercel_git_deployments_are_opt_in_except_master() -> None:
+def test_vercel_git_auto_deployments_are_disabled_on_hobby() -> None:
     config = json.loads(VERCEL_CONFIG.read_text(encoding="utf-8"))
 
     git_config = config.get("git")
     assert isinstance(git_config, dict)
-    deployment_enabled = git_config.get("deploymentEnabled")
-    assert isinstance(deployment_enabled, dict)
-
-    # Vercel uses minimatch for branch rules. Globstar is required so
-    # slash-named branches such as agent/foo and codex/bar are default-denied.
-    assert deployment_enabled.get("**") is False
-    assert "*" not in deployment_enabled
-    assert deployment_enabled.get("master") is True
-    assert deployment_enabled.get("vercel-preview-*") is True
+    assert git_config.get("deploymentEnabled") is False
 
 
-def test_vercel_ignored_build_step_uses_last_successful_deployment() -> None:
+def test_vercel_config_has_no_ignored_build_fallback() -> None:
     config = json.loads(VERCEL_CONFIG.read_text(encoding="utf-8"))
 
-    ignore_command = config.get("ignoreCommand")
-    assert isinstance(ignore_command, str)
-    assert "VERCEL_GIT_PREVIOUS_SHA" in ignore_command
-    assert "git diff --quiet" in ignore_command
-    assert "HEAD^ HEAD" in ignore_command
-    assert "-- ./" in ignore_command
+    # Ignored Build Step runs after a deployment has already been created and
+    # canceled builds still consume Hobby deployment quota. With Git auto-deploy
+    # disabled, production releases must be deliberate single deployments.
+    assert "ignoreCommand" not in config
