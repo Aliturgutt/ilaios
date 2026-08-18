@@ -55,7 +55,13 @@ from services.source_media import (
     MAX_SOURCE_MEDIA_DURATION_SECONDS,
     SourceMediaStore,
 )
-from services.source_media_desktop import SourceMediaDesktopIdentityHTTPServer
+from services.web_source_admission import (
+    MAX_UNBOUND_WEB_SOURCE_ASSETS,
+    MAX_UNBOUND_WEB_SOURCE_BYTES,
+    WebSourceAdmissionStore,
+)
+from services.web_source_desktop import WebSourceDesktopIdentityHTTPServer
+from services.web_source_ingestion import MAX_ARCHIVE_BYTES
 from src.video_automation.openrouter_video_provider import SEEDANCE_FREE_MODEL_ID
 
 
@@ -141,6 +147,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     source_media = SourceMediaStore(
         root / "source-media.sqlite3",
         root / "source-media" / "blobs",
+    )
+    web_source = WebSourceAdmissionStore(
+        root / "web-source.sqlite3",
+        root / "web-source",
     )
     governance = GovernedRuntimeGateway(
         root / "governance.sqlite3",
@@ -262,13 +272,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         control_server.server_close()
         raise SystemExit(f"Desktop identity configuration rejected: {error}") from error
 
-    identity_server = SourceMediaDesktopIdentityHTTPServer(
+    identity_server = WebSourceDesktopIdentityHTTPServer(
         ("127.0.0.1", 0),
         bearer_token=token,
         identity=identity,
         coordinator=coordinator,
         reference_assets=reference_assets,
         source_media=source_media,
+        web_source=web_source,
     )
     identity_host, identity_port = identity_server.server_address[:2]
 
@@ -306,6 +317,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         "video_source_media_max_bytes": MAX_SOURCE_MEDIA_BYTES,
         "video_source_media_max_duration_seconds": MAX_SOURCE_MEDIA_DURATION_SECONDS,
         "web_finished_product_configured": True,
+        "web_existing_source_upload_configured": True,
+        "web_existing_source_max_archive_bytes": MAX_ARCHIVE_BYTES,
+        "web_existing_source_unbound_limit": MAX_UNBOUND_WEB_SOURCE_ASSETS,
+        "web_existing_source_unbound_bytes_limit": MAX_UNBOUND_WEB_SOURCE_BYTES,
         "software_finished_product_configured": True,
         "execution_recovery_configured": True,
         "source_head_sha": source_head,
