@@ -2,7 +2,8 @@ name: Agent Web Live Certification
 
 on:
   push:
-    branches: [master]
+    branches:
+      - master
     paths:
       - 'services/web_agent_*.py'
       - 'services/runtime/browser_evidence_adapter.py'
