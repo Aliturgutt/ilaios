@@ -1,36 +1,22 @@
 ---
 name: ilaios-video-prompt
-description: Compose a provider-neutral Video Factory production prompt from admitted direction, continuity state, reference-role plans, and input mode while keeping model/provider controls outside prompt text.
+description: Compile admitted cinematic shots and canonical continuity state through the existing provider-agnostic ShotPromptCompiler while keeping provider/model controls outside prompt compilation.
 ---
 
 # ILAIOS Video Prompt
 
-Use this skill to convert an admitted director/shot plan into a production note that downstream model adapters can serialize.
+Use this skill after shot planning and continuity binding when Video Factory needs a deterministic provider-agnostic prompt package.
 
-## Contract
+## Canonical execution
 
-The prompt may contain:
+This skill delegates prompt compilation to the existing `ShotPromptCompiler`. It does not create a second prompt engine.
 
-- shot intent,
-- chronological action beats,
-- camera composition and motion,
-- visual treatment,
-- reference roles,
-- continuity invariants,
-- audio direction,
-- exact ending state.
+The upstream skill methodology is used only as guidance for how admitted shot intent should be prepared: chronological action, motivated camera motion, explicit reference intent, audio intent where supported downstream, and a stable ending state.
 
-## Input-mode rules
-
-- Text-to-video: define the visual anchors the model must invent.
-- Image-to-video: treat the opening image as the authority for identity, wardrobe, scene, palette, and opening composition; describe what changes over time.
-- Reference-to-video: assign each admitted reference a narrow semantic role and exclusions.
-- First/last-frame: describe the physical path between admitted endpoints.
-- Edit: preserve successful context and change only the explicit target.
-- Extend: preserve completed state and begin with new action; never replay completed action.
+Model/provider names, credentials, commercial routing, resolution, and adapter-specific API parameters remain outside canonical prompt compilation.
 
 ## Boundaries
 
-Do not place model name/version, provider name, API parameter names, resolution, aspect ratio, credentials, or cost controls inside provider-neutral prompt text. Do not call providers or bypass M05 selection.
+The skill does not invoke providers, select routes, mutate media, or bypass M04/M05 and governance.
 
-Model-specific serialization is an adapter concern. See `references/model-guidance.md`.
+See `references/model-guidance.md` for provider-replaceable prompting guidance. Exact provider schemas remain adapter concerns.

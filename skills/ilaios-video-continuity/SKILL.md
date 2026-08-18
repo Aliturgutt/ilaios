@@ -1,26 +1,24 @@
 ---
 name: ilaios-video-continuity
-description: Build explicit Video Factory continuity state for identity, wardrobe, objects, counts, ownership, screen direction, and ending state so downstream shots cannot treat occlusion or cuts as an implicit reset.
+description: Preserve and advance Video Factory shot continuity through the existing canonical ContinuityState, ContinuityUpdate, and ContinuityTracker contracts without creating a second continuity engine.
 ---
 
 # ILAIOS Video Continuity
 
-Use this skill when a scene spans multiple action beats, cuts, references, or continuation generations.
+Use this skill when ordered shots must preserve explicit identity, appearance, object, location, lighting, camera, scene, technology, or timeline state.
 
-## Contract
+## Canonical execution
 
-Track only explicit caller/admitted state:
+This skill delegates to the existing `ContinuityTracker`.
 
-- identity and wardrobe invariants,
-- product/object geometry and material invariants,
-- object ownership/count/open-closed-attached state,
-- travel and screen direction,
-- required ending state.
+- `start` admits an initial canonical continuity snapshot.
+- `advance` preserves all unspecified state and applies only explicit updates.
+- transitions record the changed fields and predecessor shot.
+
+Reference-prompting methodology is used only to improve what explicit continuity facts callers should capture; it does not replace the canonical state model.
 
 ## Boundaries
 
-This skill does not inspect generated pixels, certify identity, edit media, or override the independent QA/validation pipeline. It creates the state contract that downstream prompt generation and QA can check.
-
-Contradictory or duplicate invariants must fail closed.
+The skill does not inspect generated pixels, infer hidden identity, edit media, or certify output. Independent QA/validation remains authoritative.
 
 See `references/continuity-guidance.md`.

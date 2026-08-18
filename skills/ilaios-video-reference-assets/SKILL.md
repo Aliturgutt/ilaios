@@ -1,27 +1,29 @@
 ---
 name: ilaios-video-reference-assets
-description: Convert already-admitted Video Factory reference assets into deterministic semantic control roles, preservation rules, exclusions, and content-bound plans without ingesting, uploading, or dispatching asset bytes.
+description: Surface already-admitted tenant-bound Video Factory reference metadata through the canonical reference-asset boundary without introducing another uploader, store, analyzer, or provider transport path.
 ---
 
 # ILAIOS Video Reference Assets
 
-Use this skill after the authenticated reference-asset boundary has admitted assets and before prompt/model routing.
+Use this skill only after the canonical reference-asset admission path has accepted and bound reference assets to the request.
 
-## Contract
+## Canonical execution
 
-For each reference, define:
+The skill reuses existing `ReferenceAssetRecord` metadata and the established private reference-asset storage/admission pipeline. It does not read arbitrary filesystem paths or create another asset store.
 
-- stable reference ID,
-- media kind: image, video, or audio,
-- the narrow property it controls,
-- properties that must be preserved,
-- properties that must not leak into generation,
-- content digest when supplied by the canonical asset pipeline.
+Relevant admitted metadata includes:
+
+- stable asset ID,
+- content SHA-256,
+- MIME type and dimensions,
+- canonical reference role,
+- bounded user instruction,
+- tenant/principal binding already enforced by admission.
+
+The existing reference-aware Video runtime remains responsible for private visual analysis, frozen reference briefs, provider conditioning, raw-byte retention/release, and provider execution.
 
 ## Boundaries
 
-This skill never reads arbitrary filesystem paths, uploads files, stages URLs, bypasses tenant ownership, or sends media to a provider. Asset bytes and signed/staged transport remain under the existing authenticated reference-asset, Tool Gateway, policy, provenance, and provider runtime boundaries.
-
-Reject conflicting preserve/exclude rules, duplicate reference IDs, and duplicate content digests.
+No raw bytes are read by this skill facade. No upload, URL staging, provider dispatch, ownership bypass, or tenant bypass is added.
 
 See `references/reference-role-guidance.md`.

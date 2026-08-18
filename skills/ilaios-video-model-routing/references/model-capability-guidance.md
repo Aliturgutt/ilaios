@@ -1,17 +1,15 @@
 # Model capability guidance
 
-Model routing should be driven by declared M04 capabilities, not brand preference.
+Video model routing must use current canonical provider/model evidence, not brand preference or static documentation.
 
-Useful capability dimensions include:
+Relevant evidence belongs in existing ILAIOS structures such as:
 
-- text-to-video,
-- image-to-video,
-- reference-to-video,
-- first/last-frame conditioning,
-- edit,
-- extend/continue,
-- native audio,
-- multi-shot composition,
-- timed-sequence control.
+- `ProviderCatalogSnapshot` for provider/model identity and declared capabilities,
+- `ProviderRuntimeSnapshot` for bounded health/quota state,
+- `RoutingPolicy` for allow/deny constraints,
+- `RoutingIntelligenceEngine` for deterministic ranking,
+- canonical `route_model` for final selection authority.
 
-Current public model families may expose different combinations of these features, but that information is replaceable data. ILAIOS should update capability profiles independently of the skill implementation and should never let this skill become a provider registry or commercial routing authority.
+Public model families may expose text-to-video, image-to-video, reference conditioning, first/last-frame, edit/extend, native audio, or other capabilities. Those facts are replaceable catalog data and can become stale; this skill must not encode them as permanent routing truth.
+
+The skill ranks only already-policy-eligible candidates and cannot expand the caller's policy or authorize provider execution.

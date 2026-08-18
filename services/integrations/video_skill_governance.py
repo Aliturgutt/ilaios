@@ -30,7 +30,6 @@ REQUIRED_VIDEO_SKILL_FAMILIES = frozenset(
         "repair",
         "thumbnail",
         "publish",
-        "director",
         "prompt",
         "reference-assets",
         "routing",

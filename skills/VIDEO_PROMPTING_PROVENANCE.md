@@ -21,16 +21,23 @@ anchoring, explicit reference roles, temporal continuity, end-state planning,
 and character-consistency workflows.
 
 No upstream source code, prompt-guide prose, templates, assets, or implementation
-files are included in these ILAIOS-native skills. ILAIOS contracts, naming,
-governance integration, algorithms, tests, and skill instructions were authored
-for the existing ILAIOS Video Factory architecture.
+files are included in these ILAIOS-native skills.
 
-## Authority boundary
+## Canonical-component rule
 
-These skills do not create a new Core, orchestrator, provider registry, provider
-selector, policy engine, approval engine, evidence store, or execution runtime.
+The five skill packages do **not** install parallel Video Factory engines.
 
-Model-routing output is advisory capability filtering only. Canonical M04
-provider capability state and M05 `ProviderSelectionEngine`, together with normal
-policy, approval, budget, tenant, Tool Gateway, validation, audit, and evidence
-controls, remain authoritative for execution.
+- `ilaios-video-director` reuses the existing `CreativeDirection` /
+  `CinematographyExecutor` path.
+- `ilaios-video-prompt` reuses `ShotPromptCompiler`.
+- `ilaios-video-reference-assets` reuses the existing admitted
+  `ReferenceAssetRecord` boundary and reference-aware runtime.
+- `ilaios-video-model-routing` reuses `RoutingIntelligenceEngine`; final routing
+  authority remains canonical `route_model`.
+- `ilaios-video-continuity` reuses `ContinuityTracker`.
+
+The governed facade only validates skill admission through the existing
+`SkillRegistry` before delegating to these canonical components.
+
+Policy, approval, budget, tenant, Tool Gateway, routing authority, validation,
+audit, evidence, and provider execution boundaries remain unchanged.

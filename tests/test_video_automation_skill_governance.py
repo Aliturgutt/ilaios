@@ -40,24 +40,36 @@ def test_all_video_skill_families_share_one_canonical_registry() -> None:
         assert artifact.source_provenance == "ILAIOS-native"
 
 
-def test_video_prompting_families_are_governed_and_read_only() -> None:
-    prompting_ids = {
-        "ilaios.skill.video.director.plan",
-        "ilaios.skill.video.prompt.compose",
-        "ilaios.skill.video.reference-assets.plan",
-        "ilaios.skill.video.routing.model",
-        "ilaios.skill.video.continuity.plan",
+def test_video_prompting_skills_reuse_canonical_implementations() -> None:
+    expected = {
+        "ilaios.skill.video.direction.cinematography": (
+            "src.video_automation.video_skills:CreativeDirection"
+        ),
+        "ilaios.skill.video.prompt.compose": (
+            "src.video_automation.prompt_compilation:ShotPromptCompiler"
+        ),
+        "ilaios.skill.video.reference-assets.inspect": (
+            "services.reference_assets:ReferenceAssetRecord"
+        ),
+        "ilaios.skill.video.routing.model-advice": (
+            "services.routing_intelligence:RoutingIntelligenceEngine"
+        ),
+        "ilaios.skill.video.continuity.track": (
+            "src.video_automation.continuity:ContinuityTracker"
+        ),
     }
     manifests = {
         skill.skill_id: skill
         for skill in ALL_VIDEO_SKILLS
-        if skill.skill_id in prompting_ids
+        if skill.skill_id in expected
     }
-    assert set(manifests) == prompting_ids
-    assert all(manifest.risk.value == "read_only" for manifest in manifests.values())
-    assert all(
-        manifest.permissions == ("manifest.read",) for manifest in manifests.values()
-    )
+    assert set(manifests) == set(expected)
+    for skill_id, implementation in expected.items():
+        manifest = manifests[skill_id]
+        assert manifest.implementation == implementation
+        assert manifest.risk.value == "read_only"
+        assert manifest.permissions == ("manifest.read",)
+        assert "video_prompting_skills" not in manifest.implementation
 
 
 def test_video_runtime_gate_rejects_digest_authority_and_supply_chain_tampering(

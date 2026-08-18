@@ -1,36 +1,22 @@
 ---
 name: ilaios-video-model-routing
-description: Produce deterministic model-capability candidate advice from M04 capability profiles and an admitted video prompt contract; never select or invoke a provider and never authorize spend.
+description: Rank already-policy-eligible Video Factory provider/model candidates through the existing RoutingIntelligenceEngine; final model selection remains with canonical routing authority.
 ---
 
 # ILAIOS Video Model Routing
 
-Use this skill when Video Factory has an admitted input mode and prompt form and needs to narrow model candidates before canonical provider selection.
+Use this skill when an admitted video capability request needs model/provider candidate intelligence before canonical route selection.
 
-## Inputs
+## Canonical execution
 
-- required input mode,
-- prompt form,
-- native-audio requirement,
-- reference-asset requirement,
-- caller-supplied M04 model capability profiles.
+This skill delegates candidate evaluation to the existing `RoutingIntelligenceEngine`, using current `ProviderCatalogSnapshot`, `ProviderRuntimeSnapshot`, `RoutingPolicy`, and `RoutingIntelligenceRequest` evidence.
 
-## Output
+The engine can consider capability, health, quota, cost, latency, reliability, quality, freshness, and policy. It ranks candidates only.
 
-Return an ordered list of model IDs whose declared capabilities satisfy the request, with one rationale per candidate.
+Final model selection is still delegated to the canonical `services.ai_governance.route_model` authority through the existing governed routing path. This skill cannot expand policy.
 
 ## Boundaries
 
-This is advisory capability filtering only.
+It does not create a second router, discover providers over the network, use credentials, dispatch generation, authorize spend, or bypass evidence requirements.
 
-It must not:
-
-- choose a provider account,
-- call M05 on behalf of the runtime,
-- bypass provider policy,
-- infer pricing or free eligibility,
-- use credentials,
-- perform network discovery,
-- dispatch generation.
-
-M05 Provider Selection Engine remains authoritative for the actual provider route. See `references/model-capability-guidance.md`.
+See `references/model-capability-guidance.md`.
