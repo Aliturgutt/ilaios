@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
 
+from services.agent_projection import agent_state_projection
 from services.runtime.scheduler import Lease, SchedulingError, WorkerProfile
 
 
@@ -190,7 +191,30 @@ class DurableWorkerScheduler:
                     "SELECT * FROM scheduler_effects ORDER BY task_id, fencing_token"
                 )
             ]
-        return {"workers": workers, "leases": leases, "effects": effects}
+            runtime_routes = [
+                {
+                    "sequence": row["sequence"],
+                    "agent_id": row["agent_id"],
+                    "skill_id": row["skill_id"],
+                    "provider_id": row["provider_id"],
+                    "capability": row["capability"],
+                    "input_sha256": row["input_sha256"],
+                    "output": json.loads(row["output_json"]),
+                    "created_at": row["created_at"],
+                }
+                for row in connection.execute(
+                    "SELECT * FROM runtime_routes ORDER BY sequence"
+                )
+            ]
+        # ``agents`` is a read-only UI/control-plane projection. Scheduler
+        # authority remains exclusively in workers/leases/fences/effects.
+        agent_projection = agent_state_projection(runtime_routes)
+        return {
+            "workers": workers,
+            "leases": leases,
+            "effects": effects,
+            **agent_projection,
+        }
 
     @staticmethod
     def _authorize(
