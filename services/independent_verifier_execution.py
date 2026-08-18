@@ -2,9 +2,9 @@
 
 Readiness verification is an evidence integrity decision, not an LLM opinion.
 The verifier therefore resolves the exact producer route from the canonical
-runtime database, recomputes the producer evidence digest, and persists its own
-attestation route through the same governed runtime using the built-in
-``canonical-json-sha256`` adapter.
+runtime database, recomputes the canonical execution evidence digest, and
+persists its own attestation route through the same governed runtime using the
+built-in ``canonical-json-sha256`` adapter.
 """
 
 from __future__ import annotations
@@ -14,6 +14,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime
 
+from services.agent_execution_evidence import execution_evidence_digest
 from services.agent_governance import AgentInvocation
 from services.agent_registry import (
     INDEPENDENT_VERIFIER_ID,
@@ -98,7 +99,7 @@ class IndependentVerifierExecutor:
             raise IndependentVerifierExecutionError("verification bounds are invalid")
 
         persisted = _resolve_persisted_route(self._named, execution)
-        recomputed_digest = _producer_execution_digest(execution)
+        recomputed_digest = execution_evidence_digest(execution)
         if recomputed_digest != producer.evidence_digest:
             raise IndependentVerifierExecutionError(
                 "producer evidence digest does not match canonical execution"
@@ -147,7 +148,7 @@ class IndependentVerifierExecutor:
             producer_agent_id=producer_id,
             verifier_execution=verifier,
             producer_evidence_digest=producer.evidence_digest,
-            verifier_evidence_digest=_route_digest(verifier),
+            verifier_evidence_digest=execution_evidence_digest(verifier),
             passed=True,
             findings=(),
             model_id=INDEPENDENT_VERIFIER_MODEL_ID,
@@ -175,22 +176,6 @@ def _resolve_persisted_route(
     return persisted
 
 
-def _producer_execution_digest(execution: NamedAgentExecution) -> str:
-    material = {
-        "invocation_id": execution.admission.invocation_id,
-        "agent_id": execution.admission.agent_id,
-        "verifier_id": execution.admission.verifier_id,
-        "route_sequence": execution.route.get("sequence"),
-        "skill_id": execution.route.get("skill_id"),
-        "provider_id": execution.route.get("provider_id"),
-        "capability": execution.route.get("capability"),
-        "output": execution.route.get("output"),
-    }
-    return hashlib.sha256(
-        json.dumps(material, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
-
-
 def _canonical_route_digest(route: dict[str, object]) -> str:
     return hashlib.sha256(
         json.dumps(route, sort_keys=True, separators=(",", ":"), default=str).encode()
@@ -216,19 +201,3 @@ def _verify_attestation_route(
         raise IndependentVerifierExecutionError(
             "verifier attestation hash does not match exact verification envelope"
         )
-
-
-def _route_digest(execution: NamedAgentExecution) -> str:
-    material = {
-        "invocation_id": execution.admission.invocation_id,
-        "agent_id": execution.admission.agent_id,
-        "verifier_id": execution.admission.verifier_id,
-        "sequence": execution.route.get("sequence"),
-        "skill_id": execution.route.get("skill_id"),
-        "provider_id": execution.route.get("provider_id"),
-        "capability": execution.route.get("capability"),
-        "output": execution.route.get("output"),
-    }
-    return hashlib.sha256(
-        json.dumps(material, sort_keys=True, separators=(",", ":"), default=str).encode()
-    ).hexdigest()
