@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from services.agent_governance import GrantAuthorizer
-from services.agent_provider_capabilities import ALLOWED_AGENT_AI_CAPABILITIES
+from services.agent_provider_capabilities import AGENT_GOVERNED_AI_CAPABILITIES
 from services.agent_readiness import p0_registrations
 from services.agent_registry import INDEPENDENT_VERIFIER_ID
 from services.independent_verifier_execution import (
@@ -139,7 +139,7 @@ def compose_p0_runtime(
                 raise P0RuntimeCompositionError(
                     "AI provider capability set cannot be empty"
                 )
-            if not provider_capabilities.issubset(ALLOWED_AGENT_AI_CAPABILITIES):
+            if not provider_capabilities.issubset(AGENT_GOVERNED_AI_CAPABILITIES):
                 raise P0RuntimeCompositionError(
                     "AI provider capability contract exceeds canonical governed execution"
                 )
