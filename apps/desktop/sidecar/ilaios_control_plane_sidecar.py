@@ -34,7 +34,13 @@ from services.integrations.provider_video_runtime import (
     UnavailableProviderVideoRuntime,
 )
 from services.integrations.video_runtime import VideoRuntimeError
+from services.p0_ai_provider_config import (
+    P0AIProviderConfigError,
+    load_p0_ai_provider_configuration,
+)
+from services.p0_runtime_composition import compose_p0_runtime
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
+from services.runtime.security_agent_adapters import SecurityAgentRuntimeAdapters
 from src.video_automation.openrouter_video_provider import SEEDANCE_FREE_MODEL_ID
 
 
@@ -63,12 +69,44 @@ def main(argv: Sequence[str] | None = None) -> int:
     control_plane = ControlPlane(ControlPlaneConfig(database, token))
     workflow_store = WorkflowStore(WorkflowStoreConfig(database))
     live_state = LiveStateTransport(database)
-    governed_runtime = GovernedRuntime(database)
+
+    try:
+        ai_configuration = load_p0_ai_provider_configuration()
+    except P0AIProviderConfigError as error:
+        raise SystemExit(f"Agent AI provider configuration rejected: {error}") from error
+
+    security_agent_adapters = SecurityAgentRuntimeAdapters()
+    runtime_adapters = dict(security_agent_adapters.runtime_adapters())
+    if ai_configuration is not None:
+        for adapter_kind, adapter in ai_configuration.adapter.runtime_adapters().items():
+            if adapter_kind in runtime_adapters:
+                raise SystemExit("Agent runtime adapter identity collision")
+            runtime_adapters[adapter_kind] = adapter
+
+    # There is exactly one canonical governed runtime. Security and external AI
+    # providers are dependency-injected adapters; they do not create a second
+    # Core, scheduler, router, agent engine, or evidence authority.
+    governed_runtime = GovernedRuntime(
+        database,
+        external_adapters=runtime_adapters,
+    )
     scheduler = DurableWorkerScheduler(
         database,
         lease_duration=timedelta(seconds=arguments.lease_seconds),
     )
     grant_policy = DurableGrantPolicy(database)
+    p0_agents = compose_p0_runtime(
+        governed_runtime,
+        grant_policy,
+        engineering_skills_root=_software_factory_skills_path(),
+        ai_adapter=(ai_configuration.adapter if ai_configuration is not None else None),
+        ai_provider_capabilities=(
+            ai_configuration.provider_capabilities
+            if ai_configuration is not None
+            else None
+        ),
+    )
+
     evidence_store = EvidenceStore(root / "evidence")
     governance = GovernedRuntimeGateway(
         root / "governance.sqlite3",
@@ -212,6 +250,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         "identity_port": identity_port,
         "account_sign_in_configured": identity is not None,
         "governed_execution_configured": identity is not None,
+        "p0_target_agent_count": p0_agents.target_agent_count,
+        "p0_provisioned_identity_count": p0_agents.provisioned_identity_count,
+        "p0_skill_count": p0_agents.skill_count,
+        "p0_security_runtime_configured": p0_agents.security_provider_count == 5,
+        "p0_ai_runtime_configured": p0_agents.ai_configured,
+        "p0_ai_provider_count": p0_agents.ai_provider_count,
+        "openrouter_secret_present": bool(provider_api_key),
         "video_finished_product_configured": video_finished_product_configured,
         "video_provider": video_provider,
         "web_finished_product_configured": True,
@@ -261,6 +306,17 @@ def main(argv: Sequence[str] | None = None) -> int:
     return 0
 
 
+def _software_factory_skills_path() -> Path:
+    if getattr(sys, "frozen", False):
+        base = Path(getattr(sys, "_MEIPASS"))
+        path = base / "tools" / "software-factory" / "skills"
+    else:
+        path = Path(__file__).resolve().parents[3] / "tools" / "software-factory" / "skills"
+    if not path.is_dir():
+        raise RuntimeError("canonical Software Factory skill registry is missing")
+    return path
+
+
 def _identity_configuration_path() -> Path:
     if getattr(sys, "frozen", False):
         base = Path(getattr(sys, "_MEIPASS"))
@@ -291,9 +347,7 @@ def _ensure_packaged_identity_configuration() -> None:
         if not isinstance(provider, dict):
             raise RuntimeError("packaged Desktop identity provider is invalid")
         if "client_secret" in provider:
-            raise RuntimeError(
-                "packaged Desktop identity metadata must not contain client secrets"
-            )
+            raise RuntimeError("packaged Desktop identity metadata must not contain client secrets")
         client_id = provider.get("client_id")
         if not isinstance(client_id, str) or not client_id.strip():
             raise RuntimeError("packaged Desktop identity client id is missing")
