@@ -42,18 +42,19 @@ All 10 approved Desktop surfaces must be real-data, real-action, real-time and W
 CODE -> unit/widget/integration tests -> Flutter analyze -> Flutter test -> Desktop CI -> Windows Gate -> MSIX -> Required CI -> exact-head PASS -> merge -> next phase.
 
 ## PR #417 evidence history
-Previous exact head 4548f5afe6e73e797ae2add741c32ca73389caec:
-- Required CI: PASS
-- Software Factory Final Evidence: PASS
-- Desktop CI: FAIL at Flutter analyze
-- Windows Gate: FAIL
-- MSIX Packaging: FAIL
-- Root cause proven from Desktop CI log: new regression test constructed ControlPlaneProjection without required `lastEvent` argument.
+Previous exact head 4548f5afe6e73e797ae2add741c32ca73389caec failed because the new regression test omitted required `lastEvent` from ControlPlaneProjection. The smallest test-only fix was committed on exact head 1be576df1165503c82bdc10e144d64d016e3ba66.
 
-Remediation committed on exact head 1be576df1165503c82bdc10e144d64d016e3ba66:
-- add `lastEvent: null` to the regression projection fixture only
-- no product/runtime/API behavior changed
-- fresh exact-head gates must now decide merge readiness
+Current exact-head evidence for 1be576df1165503c82bdc10e144d64d016e3ba66:
+- Software Factory Final Evidence: PASS
+- Desktop CI: PASS (analyze + tests + Windows build)
+- Windows Gate: PASS, including packaged Desktop -> control-plane E2E and real Video/Software/App factory Windows evidence
+- MSIX Packaging: PASS, including bundled control plane and package inspection
+- Required CI: IN PROGRESS; structural/security jobs are green and full Platform validation is still in pytest/Ruff/Mypy quality sequence
+
+## Pre-audit for next phases
+- Workflows current view has real authority-derived records, search/tabs and persistent navigation, but top More is a no-op, four filter boxes are presentation-only, clear only resets query state, and pagination is presentation-only. Phase 5 will close these locally without inventing backend authority.
+- Agents bootstrap already exposes a governed `onProvisionAgent` callback backed by `/v1/agents/commands`, but ReferenceAgentsView does not receive it and still declares New Agent unavailable. Phase 6 will bind the existing governed command and close filters/paging/no-ops.
+- No implemented `/v1/workspace` HTTP API exists on current master; SoftwareFactory already owns an isolated bounded Workspace abstraction. Live Workspace must project that canonical execution workspace safely instead of creating a parallel runtime.
 
 ## Non-negotiable invariants
 - No fake/demo KPI values in production.
@@ -64,4 +65,4 @@ Remediation committed on exact head 1be576df1165503c82bdc10e144d64d016e3ba66:
 - Missing authority renders unavailable/disabled, never fabricated.
 
 ## Next action
-Check all workflow runs for exact head 1be576df1165503c82bdc10e144d64d016e3ba66. If all mandatory gates PASS, merge #417 with this expected head SHA, update master/checkpoint, and proceed to Workflows closure. If any gate fails, inspect the exact failing job/log and apply the smallest safe fix before merge.
+Re-check Required CI for exact head 1be576df1165503c82bdc10e144d64d016e3ba66. If PASS, merge #417 with this expected head SHA, fetch the new master SHA, update this checkpoint to phase 5, and create a Workflows closure branch from the exact new master. If Required CI fails, inspect the exact failing job/log and apply the smallest safe fix before merge.
