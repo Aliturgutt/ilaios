@@ -58,11 +58,30 @@ class PlaywrightDockerBrowserEgressBoundary(DockerBrowserEgressBoundary):
         name_index = args.index("--name") + 1
         if name_index >= len(args) or args[name_index] != self._browser_name:
             return args
-        if any(arg == "--privileged" or arg == "--security-opt=seccomp=unconfined" for arg in args):
+        forbidden = {
+            "--privileged",
+            "--security-opt=seccomp=unconfined",
+            "--cap-add=SYS_ADMIN",
+            "--cap-add=NET_ADMIN",
+            "--cap-add=SYS_PTRACE",
+        }
+        if any(arg in forbidden for arg in args):
             raise BrowserToolError("browser runtime attempted to weaken container isolation")
+        if "--cap-drop=ALL" not in args:
+            raise BrowserToolError("browser runtime must drop ambient container capabilities")
+
+        # Chromium's Linux namespace sandbox chroots into /proc/self/fdinfo and
+        # then drops its capabilities. Docker's default/Playwright seccomp profile
+        # permits chroot only when CAP_SYS_CHROOT is present in the container's
+        # capability set. Re-add that single narrow capability after CAP_DROP=ALL;
+        # do not grant SYS_ADMIN or disable seccomp/sandboxing.
         return (
             args[:2]
-            + ("--security-opt", f"seccomp={self._seccomp_profile}")
+            + (
+                "--security-opt",
+                f"seccomp={self._seccomp_profile}",
+                "--cap-add=SYS_CHROOT",
+            )
             + args[2:]
         )
 
