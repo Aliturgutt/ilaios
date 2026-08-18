@@ -47,6 +47,7 @@ ILAIOS Skills
 |   |   +-- director
 |   |   +-- prompt
 |   |   +-- reference-assets
+|   |   +-- model-fit
 |   |   +-- continuity
 |   |   +-- generation
 |   |   +-- edit
@@ -105,6 +106,20 @@ The Software Factory mappings currently represented in code include:
 - `factories/software/review` -> existing code-review skill;
 - `factories/software/release-validation` -> existing build, release-readiness, and recovery skills.
 
+The Video Factory mappings currently represented in code reuse existing governed runtime components rather than introducing a parallel Video execution stack:
+
+- `factories/video/director` -> `ilaios.skill.video.direction.cinematography`;
+- `factories/video/prompt` -> `ilaios.skill.video.prompt.compose`;
+- `factories/video/reference-assets` -> `ilaios.skill.video.reference-assets.inspect`;
+- `factories/video/model-fit` -> `ilaios.skill.video.model-fit.analyze`;
+- `factories/video/continuity` -> `ilaios.skill.video.continuity.track`;
+- `factories/video/edit` -> the existing governed trim, concatenate, overlay, crop, scale, and audio-mix skills;
+- `factories/video/output-verify` -> `ilaios.skill.video.qa.evaluate`.
+
+`factories/video/model-fit` is advisory ranking evidence only. It does not own provider/model routing, authorize spend, invoke a provider, or emit an independent routing decision. Canonical routing and governance remain authoritative.
+
+`factories/video/generation`, `captions`, `composition`, and `render` intentionally have no governed runtime backing declared by this taxonomy. Their presence in the logical taxonomy must not be interpreted as runtime integration or production evidence.
+
 The Assurance mappings classify the current native SecurityFactory methodology skills without taking over SecurityFactory execution ownership:
 
 - `assurance/security-review` -> `ilaios-security-review` plus the existing Software Factory security-review gate;
@@ -161,6 +176,6 @@ The logical taxonomy is machine-readable in `services/skill_taxonomy.py`.
 
 The first new Skill Engineering package is `tools/skill-engineering/skills/skill-create/`. Its catalog validates package completeness, provenance, deny-set, allowed tool declarations, schemas, and eval coverage, but it does not provide a side-effect executor.
 
-The current native Web Factory and SecurityFactory methodology skills are mapped into the taxonomy without moving or duplicating their runtime ownership.
+The current native Web Factory, Video Factory, and SecurityFactory methodology skills are mapped into the taxonomy without moving or duplicating their runtime ownership.
 
 Other taxonomy nodes without an existing runtime mapping remain target nodes unless a first-party source/spec package exists. Runtime integration, testing, verification, deployment, and production status remain evidence-gated separately.
