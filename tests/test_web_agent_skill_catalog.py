@@ -23,8 +23,9 @@ def test_web_agent_skills_are_bounded_proposal_instructions() -> None:
         assert skill.capability.startswith("web.")
         assert skill.owner_agent_id.startswith("ilaios.agent.web.")
         content = skill.content()
+        lower = content.lower()
         assert content.endswith(b"\n")
-        assert b"verified" not in content.lower() or b"evidence" in content.lower()
+        assert b"do not" in lower or b"never" in lower
 
 
 def test_browserqa_is_not_redeclared_as_provider_backed_skill() -> None:
