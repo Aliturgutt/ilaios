@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import base64
 import json
+from collections.abc import Mapping
 from pathlib import Path
+from typing import cast
 
 import pytest
 
@@ -16,7 +18,10 @@ from services.reference_assets import (
     reference_request_context,
 )
 from src.video_automation.models import ProviderRequest
-from src.video_automation.openrouter_video_provider import OpenRouterJsonResponse
+from src.video_automation.openrouter_video_provider import (
+    OpenRouterByteResponse,
+    OpenRouterJsonResponse,
+)
 
 
 def _png(width: int = 320, height: int = 180) -> bytes:
@@ -77,9 +82,15 @@ def test_reference_asset_store_rejects_spoofed_media(tmp_path: Path) -> None:
 
 class _Transport:
     def __init__(self) -> None:
-        self.submitted_body = None
+        self.submitted_body: Mapping[str, object] | None = None
 
-    def get_json(self, url, *, headers, timeout_seconds):
+    def get_json(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        timeout_seconds: float,
+    ) -> OpenRouterJsonResponse:
         assert headers["Authorization"].startswith("Bearer ")
         if url.endswith("/videos/models"):
             return OpenRouterJsonResponse(
@@ -96,12 +107,25 @@ class _Transport:
             )
         raise AssertionError(f"unexpected GET: {url}")
 
-    def post_json(self, url, *, headers, body, timeout_seconds):
+    def post_json(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        body: Mapping[str, object],
+        timeout_seconds: float,
+    ) -> OpenRouterJsonResponse:
         assert url.endswith("/videos")
         self.submitted_body = body
         return OpenRouterJsonResponse(202, {"id": "video-job-1", "status": "pending"})
 
-    def get_bytes(self, url, *, headers, timeout_seconds):
+    def get_bytes(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        timeout_seconds: float,
+    ) -> OpenRouterByteResponse:
         raise AssertionError("not used")
 
 
@@ -153,15 +177,25 @@ def test_video_provider_consumes_bound_reference_images(tmp_path: Path) -> None:
     assert result.success is True
     assert transport.submitted_body is not None
     references = transport.submitted_body["input_references"]
+    assert isinstance(references, list)
     assert len(references) == 1
-    url = references[0]["image_url"]["url"]
+    reference = cast(dict[str, object], references[0])
+    image_url = cast(dict[str, object], reference["image_url"])
+    url = image_url["url"]
+    assert isinstance(url, str)
     assert url.startswith("data:image/png;base64,")
     assert base64.b64decode(url.split(",", 1)[1]) == _png()
     assert result.metadata["reference_asset_count"] == 1
 
 
 class _NoReferenceCapabilityTransport(_Transport):
-    def get_json(self, url, *, headers, timeout_seconds):
+    def get_json(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        timeout_seconds: float,
+    ) -> OpenRouterJsonResponse:
         if url.endswith("/videos/models"):
             return OpenRouterJsonResponse(
                 200,
