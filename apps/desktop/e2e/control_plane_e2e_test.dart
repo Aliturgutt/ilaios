@@ -128,7 +128,7 @@ void main() {
         'stderr=${stderrBuffer.toString()}',
       );
     }
-    final host = ready!['host'];
+    final host = ready['host'];
     final port = ready['port'];
     final identityHost = ready['identity_host'];
     final identityPort = ready['identity_port'];
