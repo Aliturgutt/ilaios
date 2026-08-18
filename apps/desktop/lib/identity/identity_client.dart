@@ -24,23 +24,22 @@ class IdentityClient extends core.IdentityClient {
       transportToken: transportToken,
       transport: resolvedTransport,
       retryDelay: retryDelay,
+      referenceBaseUri: baseUri,
+      referenceTransportToken: transportToken,
     );
   }
 
   IdentityClient._({
-    required Uri baseUri,
-    required String transportToken,
+    required super.baseUri,
+    required super.transportToken,
     required ControlPlaneTransport transport,
-    core.IdentityRetryDelay? retryDelay,
-  })  : _referenceBaseUri = baseUri,
-        _referenceTransportToken = transportToken,
+    super.retryDelay,
+    required Uri referenceBaseUri,
+    required String referenceTransportToken,
+  })  : _referenceBaseUri = referenceBaseUri,
+        _referenceTransportToken = referenceTransportToken,
         _referenceTransport = transport,
-        super(
-          baseUri: baseUri,
-          transportToken: transportToken,
-          transport: transport,
-          retryDelay: retryDelay,
-        );
+        super(transport: transport);
 
   static const int _maxReferenceAssets = 20;
   static const int _maxReferenceAssetBytes = 10 * 1024 * 1024;
