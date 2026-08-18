@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../control_plane/client.dart';
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
+import '../../identity/identity_client.dart';
 import '../navigation/desktop_section.dart';
+import 'home_runtime_binding.dart';
 import 'reference_home_dashboard_v3.dart';
 
 /// Compatibility entry point kept for the established Desktop shell.
@@ -18,6 +21,8 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
     required this.snapshot,
     required this.status,
     required this.onNavigate,
+    this.userSession,
+    this.onPromptSubmit,
     this.onRefreshRequested,
     super.key,
   });
@@ -26,15 +31,22 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
   final OperationalSnapshot snapshot;
   final String status;
   final ValueChanged<DesktopSection> onNavigate;
+  final DesktopUserSession? userSession;
+  final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
   final VoidCallback? onRefreshRequested;
 
-  Widget _home() => ReferenceHomeDashboardV3(
-        projection: projection,
-        snapshot: snapshot,
-        status: status,
-        onNavigate: onNavigate,
-        onRefreshRequested: onRefreshRequested,
-      );
+  Widget _home(BuildContext context) {
+    final binding = HomeRuntimeBinding.maybeOf(context);
+    return ReferenceHomeDashboardV3(
+      projection: projection,
+      snapshot: snapshot,
+      status: status,
+      userSession: userSession ?? binding?.userSession,
+      onNavigate: onNavigate,
+      onPromptSubmit: onPromptSubmit ?? binding?.onPromptSubmit,
+      onRefreshRequested: onRefreshRequested,
+    );
+  }
 
   @override
   Widget build(BuildContext context) => LayoutBuilder(
@@ -47,11 +59,11 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
               child: SizedBox(
                 width: constraints.maxWidth,
                 height: 700,
-                child: _home(),
+                child: _home(context),
               ),
             );
           }
-          return _home();
+          return _home(context);
         },
       );
 }
