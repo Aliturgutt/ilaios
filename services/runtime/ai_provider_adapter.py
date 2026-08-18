@@ -119,6 +119,7 @@ class AIProviderTransport(Protocol):
 
 
 RuntimeAdapter = Callable[[dict[str, Any]], dict[str, Any]]
+_INDEPENDENT_VERIFIER_SKILL_ID = "ilaios.skill.meta.independent-verification.v1"
 
 
 class OpenAICompatibleTransport:
@@ -133,19 +134,23 @@ class OpenAICompatibleTransport:
         system_instructions: str,
         prompt: str,
         max_output_tokens: int,
+        response_format: dict[str, Any] | None = None,
+        require_parameters: bool = False,
     ) -> ProviderTransportResult:
         url = f"{endpoint.base_url.rstrip('/')}/chat/completions"
-        body = json.dumps(
-            {
-                "model": model_id,
-                "messages": [
-                    {"role": "system", "content": system_instructions},
-                    {"role": "user", "content": prompt},
-                ],
-                "max_tokens": max_output_tokens,
-            },
-            separators=(",", ":"),
-        ).encode("utf-8")
+        request_document: dict[str, Any] = {
+            "model": model_id,
+            "messages": [
+                {"role": "system", "content": system_instructions},
+                {"role": "user", "content": prompt},
+            ],
+            "max_tokens": max_output_tokens,
+        }
+        if response_format is not None:
+            request_document["response_format"] = response_format
+        if require_parameters:
+            request_document["provider"] = {"require_parameters": True}
+        body = json.dumps(request_document, separators=(",", ":")).encode("utf-8")
         headers = {"Content-Type": "application/json"}
         if api_key:
             headers["Authorization"] = f"Bearer {api_key}"
@@ -317,14 +322,29 @@ class GovernedAIProviderAdapter:
             admitted = self._governor.admit(usage_request, now)
             started = time.monotonic()
             try:
-                response = self._transport.complete(
-                    endpoint,
-                    api_key=api_key,
-                    model_id=model_id,
-                    system_instructions=skill.instructions,
-                    prompt=prompt,
-                    max_output_tokens=max_output_tokens,
-                )
+                response_format = _structured_response_format(skill.skill_id)
+                if response_format is not None and isinstance(
+                    self._transport, OpenAICompatibleTransport
+                ):
+                    response = self._transport.complete(
+                        endpoint,
+                        api_key=api_key,
+                        model_id=model_id,
+                        system_instructions=skill.instructions,
+                        prompt=prompt,
+                        max_output_tokens=max_output_tokens,
+                        response_format=response_format,
+                        require_parameters=True,
+                    )
+                else:
+                    response = self._transport.complete(
+                        endpoint,
+                        api_key=api_key,
+                        model_id=model_id,
+                        system_instructions=skill.instructions,
+                        prompt=prompt,
+                        max_output_tokens=max_output_tokens,
+                    )
             except AIProviderAuthorizationError:
                 self._governor.complete(admitted)
                 self._governor.record_provider_failure(provider_id, now)
@@ -395,6 +415,38 @@ class GovernedAIProviderAdapter:
             }
 
         raise AIProviderError("provider retries exhausted") from last_error
+
+
+def _structured_response_format(skill_id: str) -> dict[str, Any] | None:
+    if skill_id != _INDEPENDENT_VERIFIER_SKILL_ID:
+        return None
+    return {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "ilaios_independent_verification",
+            "strict": True,
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "verdict": {"type": "string", "enum": ["PASS", "FAIL"]},
+                    "producer_evidence_digest": {
+                        "type": "string",
+                        "pattern": "^[0-9a-f]{64}$",
+                    },
+                    "findings": {
+                        "type": "array",
+                        "items": {"type": "string", "minLength": 1},
+                    },
+                },
+                "required": [
+                    "verdict",
+                    "producer_evidence_digest",
+                    "findings",
+                ],
+                "additionalProperties": False,
+            },
+        },
+    }
 
 
 def _retry_after_seconds(error: urllib.error.HTTPError) -> float | None:
