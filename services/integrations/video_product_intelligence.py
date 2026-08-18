@@ -2,8 +2,8 @@
 
 This module does not generate media, route providers, authorize spend, or replace
 any existing Video Factory planner. It resolves a bounded product mode before
-provider execution so unsupported edit/localization or output-shape requests fail
-closed instead of silently degrading into a different finished product.
+provider execution so unsupported edit/localization, series-continuity or output-
+shape requests fail closed instead of silently degrading into another product.
 """
 
 from __future__ import annotations
@@ -69,11 +69,17 @@ _LOCALIZATION_TERMS = (
 )
 _SERIES_TERMS = (
     r"\bseries\b",
-    r"\bepisode\b",
     r"\bepisodic\b",
     r"\bseri\b",
-    r"\bbölüm\b",
-    r"\bbolum\b",
+    r"\bnext episode\b",
+    r"\bprevious episode\b",
+    r"\bexisting episode\b",
+    r"\bsonraki bölüm\b",
+    r"\bsonraki bolum\b",
+    r"\bönceki bölüm\b",
+    r"\bonceki bolum\b",
+    r"\bmevcut bölüm\b",
+    r"\bmevcut bolum\b",
 )
 
 
@@ -146,6 +152,7 @@ def validate_video_product_inputs(
     spec: VideoProductSpec,
     *,
     source_video_present: bool,
+    series_state_present: bool = False,
     supported_aspect_ratios: tuple[str, ...] = ("16:9",),
 ) -> None:
     """Fail closed when requested inputs/output shape cannot be materialized exactly."""
@@ -154,6 +161,11 @@ def validate_video_product_inputs(
         raise VideoProductIntentError(
             f"video mode '{spec.mode.value}' requires an authenticated source video; "
             "image references cannot be treated as source-video edit input"
+        )
+    if spec.series_continuity_required and not series_state_present:
+        raise VideoProductIntentError(
+            "series Video intent requires an authenticated canonical series-state binding; "
+            "a standalone objective cannot prove cross-episode continuity"
         )
     if spec.mode is VideoProductMode.REFERENCE_TO_VIDEO and spec.reference_count == 0:
         raise VideoProductIntentError("reference-to-video requires at least one reference")
