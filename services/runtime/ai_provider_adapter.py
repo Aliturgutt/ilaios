@@ -146,11 +146,9 @@ class OpenAICompatibleTransport:
             ],
         }
         if endpoint.provider_id == "openrouter":
-            # OpenRouter deprecates max_tokens in favor of max_completion_tokens.
-            # Use the current contract so the provider-side completion ceiling
-            # covers reported output/reasoning usage instead of relying on a
-            # legacy parameter that upstream routes may interpret differently.
             request_document["max_completion_tokens"] = max_output_tokens
+            # P0 text agents must not silently route into image/audio output.
+            request_document["modalities"] = ["text"]
         else:
             request_document["max_tokens"] = max_output_tokens
         if endpoint.provider_id == "openrouter" and response_format is None:
@@ -193,7 +191,7 @@ class OpenAICompatibleTransport:
             ) from exc
 
         try:
-            text = payload["choices"][0]["message"]["content"]
+            choice = payload["choices"][0]
             usage = payload["usage"]
             input_tokens = int(usage["prompt_tokens"])
             output_tokens = int(usage["completion_tokens"])
@@ -202,10 +200,7 @@ class OpenAICompatibleTransport:
             raise AIProviderTransportError(
                 "provider response contract is incomplete", retryable=True
             ) from exc
-        if not isinstance(text, str):
-            raise AIProviderTransportError(
-                "provider output must be text", retryable=True
-            )
+        text = _completion_text(choice)
         return ProviderTransportResult(text, input_tokens, output_tokens, response_id)
 
 
@@ -427,6 +422,45 @@ class GovernedAIProviderAdapter:
             }
 
         raise AIProviderError("provider retries exhausted") from last_error
+
+
+def _completion_text(choice: object) -> str:
+    """Return only canonical assistant text; classify no-content responses safely."""
+    if not isinstance(choice, dict):
+        raise AIProviderTransportError(
+            "provider completion choice is malformed", retryable=True
+        )
+    embedded_error = choice.get("error")
+    if embedded_error is not None:
+        raise AIProviderTransportError(
+            "provider completion ended with an in-body error", retryable=True
+        )
+    message = choice.get("message")
+    if not isinstance(message, dict):
+        raise AIProviderTransportError(
+            "provider completion message is missing", retryable=True
+        )
+    content = message.get("content")
+    finish_reason = choice.get("finish_reason")
+    if isinstance(content, str) and content.strip():
+        return content
+    if content is None and finish_reason == "length":
+        raise AIProviderTransportError(
+            "provider exhausted completion budget before returning text",
+            retryable=True,
+        )
+    if content is None:
+        raise AIProviderTransportError(
+            "provider returned no text content", retryable=True
+        )
+    if isinstance(content, str):
+        raise AIProviderTransportError(
+            "provider returned empty text content", retryable=True
+        )
+    raise AIProviderTransportError(
+        "provider returned a non-text completion despite text-only request",
+        retryable=True,
+    )
 
 
 def _structured_response_format(skill_id: str) -> dict[str, Any] | None:
