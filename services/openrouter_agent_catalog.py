@@ -1,9 +1,10 @@
 """Fail-closed OpenRouter free-model discovery for canonical text agents.
 
-This bootstrap is used only when an OpenRouter secret exists and no explicit
-``ILAIOS_AGENT_AI_CONFIG_JSON`` contract was supplied. It never guesses prices:
-only user-visible models whose prompt/completion/request prices are all exactly
-zero are eligible. Paid routing remains an explicit policy/budget decision.
+When user-visible model metadata exposes an exact zero price, the most capable
+eligible direct free models are preferred. If the user-filtered catalog contains
+no such direct model, the documented ``openrouter/free`` virtual router is used
+as the only automatic fallback. Paid routing remains an explicit policy/budget
+decision and is never selected by this bootstrap.
 """
 
 from __future__ import annotations
@@ -38,7 +39,10 @@ class OpenRouterAgentCatalogError(RuntimeError):
 _OPENROUTER_PROVIDER_ID = "openrouter"
 _OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
 _OPENROUTER_MODELS_URL = f"{_OPENROUTER_BASE_URL}/models/user"
+_OPENROUTER_FREE_ROUTER_ID = "openrouter/free"
 _MAX_AUTO_MODELS = 12
+_FREE_ROUTER_CONTEXT_WINDOW = 32_768
+_FREE_ROUTER_MAX_OUTPUT_TOKENS = 2_048
 
 
 class _TenantTemplateUsageGovernor(UsageGovernor):
@@ -68,7 +72,12 @@ def discover_free_openrouter_agent_configuration(
     api_key: str | None = None,
     timeout_seconds: float = 10.0,
 ) -> P0AIProviderConfiguration | None:
-    """Build a zero-cost agent configuration from live user-filtered catalog evidence."""
+    """Build a zero-cost agent configuration from live OpenRouter evidence.
+
+    Direct exact-zero user-visible text models are preferred. If none are
+    exposed, ``openrouter/free`` is admitted as a conservative virtual model.
+    That router is never mixed with paid model IDs by this bootstrap.
+    """
     secret = api_key if api_key is not None else os.environ.get("OPENROUTER_API_KEY", "")
     if not secret or not secret.strip():
         return None
@@ -96,10 +105,7 @@ def discover_free_openrouter_agent_configuration(
     if not isinstance(raw_models, list):
         raise OpenRouterAgentCatalogError("OpenRouter model catalog contract is malformed")
 
-    capabilities = frozenset(
-        {binding.capability for binding in P0_AGENT_BINDINGS if binding.execution_mode == "governed-ai"}
-        | {"evidence.verify"}
-    )
+    capabilities = _agent_capabilities()
     models = [
         model
         for raw in raw_models
@@ -108,8 +114,25 @@ def discover_free_openrouter_agent_configuration(
     models.sort(key=lambda item: (-item.context_window, item.model_id))
     models = models[:_MAX_AUTO_MODELS]
     if not models:
+        models = [_free_router_model(capabilities)]
+
+    return _configuration(models, capabilities)
+
+
+def _configuration(
+    models: list[ModelRecord],
+    capabilities: frozenset[str],
+) -> P0AIProviderConfiguration:
+    if not models:
+        raise OpenRouterAgentCatalogError("zero-cost model set cannot be empty")
+    if any(
+        model.provider_id != _OPENROUTER_PROVIDER_ID
+        or model.input_cost_per_million != 0
+        or model.output_cost_per_million != 0
+        for model in models
+    ):
         raise OpenRouterAgentCatalogError(
-            "no user-eligible zero-cost OpenRouter text model satisfies the agent contract"
+            "automatic OpenRouter configuration contains non-zero-cost routing"
         )
 
     registry = ModelProviderRegistry()
@@ -150,6 +173,36 @@ def discover_free_openrouter_agent_configuration(
     )
 
 
+def _agent_capabilities() -> frozenset[str]:
+    return frozenset(
+        {
+            binding.capability
+            for binding in P0_AGENT_BINDINGS
+            if binding.execution_mode == "governed-ai"
+        }
+        | {"evidence.verify"}
+    )
+
+
+def _free_router_model(capabilities: frozenset[str]) -> ModelRecord:
+    """Represent the documented free router with conservative local ceilings.
+
+    The context/output values are ILAIOS admission ceilings, not a claim about
+    the dynamically selected downstream model. The router itself remains the
+    persisted requested model identity while provider response evidence can
+    identify the downstream model when exposed by OpenRouter.
+    """
+    return ModelRecord(
+        _OPENROUTER_FREE_ROUTER_ID,
+        _OPENROUTER_PROVIDER_ID,
+        capabilities,
+        context_window=_FREE_ROUTER_CONTEXT_WINDOW,
+        max_output_tokens=_FREE_ROUTER_MAX_OUTPUT_TOKENS,
+        input_cost_per_million=Decimal(0),
+        output_cost_per_million=Decimal(0),
+    )
+
+
 def _eligible_free_text_model(
     value: object,
     capabilities: frozenset[str],
@@ -163,6 +216,8 @@ def _eligible_free_text_model(
     supported = value.get("supported_parameters")
     top_provider = value.get("top_provider")
     if not isinstance(model_id, str) or not model_id.strip():
+        return None
+    if model_id.strip() == _OPENROUTER_FREE_ROUTER_ID:
         return None
     if not isinstance(context_length, int) or isinstance(context_length, bool) or context_length <= 0:
         return None
