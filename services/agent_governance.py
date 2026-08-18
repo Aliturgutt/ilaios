@@ -5,8 +5,21 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import Any, Protocol
 
-from services.runtime import ExecutionGrant, GrantPolicy
+
+class GrantAuthorizer(Protocol):
+    """Minimal execution-grant port required by the permission firewall."""
+
+    def authorize(
+        self,
+        grant: Any,
+        *,
+        subject_id: str,
+        action: str,
+        resource: str,
+        now: datetime,
+    ) -> None: ...
 
 
 class AgentSecurityError(PermissionError):
@@ -48,9 +61,7 @@ class AgentManifest:
             self.version,
         )
         if not all(required):
-            raise ValueError(
-                "complete stable agent identity and governance metadata required"
-            )
+            raise ValueError("complete stable agent identity and governance metadata required")
         if self.agent_id == self.alias:
             raise ValueError("machine agent ID and human-readable alias must differ")
         if self.agent_id == self.verifier_id:
@@ -95,13 +106,13 @@ class PermissionFirewall:
     )
 
     def __init__(
-        self, manifests: tuple[AgentManifest, ...], grants: GrantPolicy
+        self, manifests: tuple[AgentManifest, ...], grants: GrantAuthorizer
     ) -> None:
         self._manifests = {manifest.agent_id: manifest for manifest in manifests}
         self._grants = grants
 
     def admit(
-        self, invocation: AgentInvocation, grant: ExecutionGrant, now: datetime
+        self, invocation: AgentInvocation, grant: Any, now: datetime
     ) -> AgentAdmissionEvidence:
         manifest = self._manifests.get(invocation.target_id)
         if manifest is None or manifest.status is not AgentStatus.ACTIVE:
