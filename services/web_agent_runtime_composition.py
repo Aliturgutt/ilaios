@@ -50,7 +50,7 @@ def compose_web_agent_runtime(
     grants: GrantAuthorizer,
     *,
     repository_root: Path,
-    browser_evidence_root: Path,
+    browser_evidence_adapter: BrowserEvidenceRuntimeAdapter,
     ai_adapter: GovernedAIProviderAdapter,
     ai_provider_capabilities: Mapping[str, frozenset[str]],
 ) -> WebAgentRuntimeComposition:
@@ -95,9 +95,9 @@ def compose_web_agent_runtime(
             deterministic=False,
         )
 
-    browser_adapter = BrowserEvidenceRuntimeAdapter(browser_evidence_root)
-    if BROWSER_EVIDENCE_ADAPTER_KIND not in browser_adapter.runtime_adapters():
-        raise WebAgentRuntimeCompositionError("BrowserQA evidence adapter is unavailable")
+    browser_adapters = browser_evidence_adapter.runtime_adapters()
+    if set(browser_adapters) != {BROWSER_EVIDENCE_ADAPTER_KIND}:
+        raise WebAgentRuntimeCompositionError("BrowserQA evidence adapter contract drifted")
     named.ensure_provider(
         BROWSER_EVIDENCE_PROVIDER_ID,
         frozenset({BROWSER_EVIDENCE_CAPABILITY}),
