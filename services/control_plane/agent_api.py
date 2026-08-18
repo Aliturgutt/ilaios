@@ -58,16 +58,27 @@ def canonical_agent_state(
     raw_agents = runtime_projection.get("agents")
     if not isinstance(raw_agents, list):
         raise ValueError("runtime agent projection is malformed")
-    runtime_by_id = {
-        str(item["agent_id"]): item
-        for item in raw_agents
-        if isinstance(item, dict) and isinstance(item.get("agent_id"), str)
-    }
+    runtime_by_id: dict[str, dict[str, object]] = {}
+    for item in raw_agents:
+        if not isinstance(item, dict):
+            continue
+        agent_id = item.get("agent_id")
+        if not isinstance(agent_id, str):
+            continue
+        typed_item: dict[str, object] = {}
+        for key, value in item.items():
+            if isinstance(key, str):
+                typed_item[key] = value
+        runtime_by_id[agent_id] = typed_item
 
     agents: list[dict[str, object]] = []
     registered_count = 0
     drift_count = 0
-    readiness_counts = {"registered": 0, "executable": 0, "verified": 0}
+    readiness_counts: dict[str, int] = {
+        "registered": 0,
+        "executable": 0,
+        "verified": 0,
+    }
     for registration in CANONICAL_AGENT_REGISTRY:
         manifest = registration.manifest
         runtime_authorities = persisted.get(manifest.agent_id)
