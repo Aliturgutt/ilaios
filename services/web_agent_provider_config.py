@@ -7,6 +7,7 @@ free-router transport used by P0.
 
 from __future__ import annotations
 
+from datetime import datetime
 from decimal import Decimal
 
 from services.ai_governance import (
@@ -38,7 +39,7 @@ class _TenantTemplateUsageGovernor(UsageGovernor):
         super().__init__(registry, {})
         self._tenant_limit = tenant_limit
 
-    def admit(self, request: UsageRequest, now) -> UsageEvidence:  # type: ignore[no-untyped-def]
+    def admit(self, request: UsageRequest, now: datetime) -> UsageEvidence:
         for scope in request.scopes:
             if scope.kind is not ScopeKind.TENANT:
                 raise WebAgentProviderConfigError(
