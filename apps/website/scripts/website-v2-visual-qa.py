@@ -9,29 +9,76 @@ from playwright.sync_api import Page, sync_playwright
 BASE_URL = os.environ.get("ILAIOS_V2_BASE_URL", "http://127.0.0.1:3100").rstrip("/")
 ARTIFACT_DIR = Path(os.environ.get("ILAIOS_V2_VISUAL_ARTIFACT_DIR", "artifacts/website-v2-visual-qa"))
 
+# Every public EN route has a /tr counterpart. API, robots, sitemap and _not-found
+# are intentionally excluded because this harness certifies user-facing pages.
 ROUTES = (
     ("home", ""),
-    ("platform", "/platform"),
-    ("factories", "/factories"),
-    ("capabilities", "/capabilities"),
-    ("security", "/security"),
-    ("solutions", "/solutions"),
-    ("enterprise", "/enterprise"),
-    ("individuals", "/individuals"),
-    ("how-it-works", "/how-it-works"),
-    ("core", "/core"),
-    ("trust", "/trust"),
-    ("architecture", "/architecture"),
-    ("docs", "/docs"),
-    ("resources", "/resources"),
     ("about", "/about"),
+    ("agents", "/agents"),
+    ("architecture", "/architecture"),
+    ("capabilities", "/capabilities"),
     ("contact", "/contact"),
+    ("core", "/core"),
+    ("desktop", "/desktop"),
+    ("docs", "/docs"),
+    ("enterprise", "/enterprise"),
+    ("factories", "/factories"),
+    ("factory-app", "/factories/app"),
+    ("factory-commerce-growth", "/factories/commerce-growth"),
+    ("factory-creative-document", "/factories/creative-document"),
+    ("factory-personal-operations", "/factories/personal-operations"),
+    ("factory-research-data", "/factories/research-data"),
+    ("factory-security", "/factories/security"),
+    ("factory-software", "/factories/software"),
+    ("factory-video", "/factories/video"),
+    ("factory-web", "/factories/web"),
+    ("how-it-works", "/how-it-works"),
+    ("individuals", "/individuals"),
+    ("platform", "/platform"),
+    ("platform-control-plane", "/platform/control-plane"),
+    ("platform-evidence", "/platform/evidence"),
+    ("platform-execution", "/platform/execution"),
+    ("platform-validation", "/platform/validation"),
+    ("privacy", "/privacy"),
+    ("resources", "/resources"),
+    ("resource-agent-security", "/resources/agent-security-and-governance"),
+    ("resource-control-plane", "/resources/control-plane-agent-architecture"),
+    ("resource-deterministic", "/resources/deterministic-execution-vs-ai-agents"),
+    ("security", "/security"),
+    ("security-approvals", "/security/approvals"),
+    ("security-audit", "/security/audit"),
+    ("security-permissions", "/security/permissions"),
+    ("solutions", "/solutions"),
+    ("terms", "/terms"),
+    ("trust", "/trust"),
+    ("updates", "/updates"),
 )
 
+# Keep artifact size bounded while still preserving visual evidence for the
+# primary product, governance and company surfaces. Every route is still tested.
+SCREENSHOT_ROUTE_NAMES = {
+    "home",
+    "platform",
+    "factories",
+    "capabilities",
+    "security",
+    "solutions",
+    "enterprise",
+    "individuals",
+    "how-it-works",
+    "core",
+    "trust",
+    "architecture",
+    "docs",
+    "resources",
+    "about",
+    "contact",
+}
+
 VIEWPORTS = (
-    ("desktop", 1440, 1000, True),
-    ("tablet", 1024, 900, False),
-    ("mobile", 390, 844, True),
+    ("desktop", 1440, 1000),
+    ("tablet", 1024, 900),
+    ("mobile", 390, 844),
 )
 
 
@@ -71,10 +118,11 @@ def inspect_navigation(page: Page, viewport_name: str) -> dict[str, object]:
         panel = page.locator(".nav-panel")
         if panel.count() != 1 or not panel.is_visible():
             raise RuntimeError("mobile navigation panel did not open")
+        menu_overflow = float(page.evaluate("document.documentElement.scrollWidth - window.innerWidth"))
+        if menu_overflow > 1:
+            raise RuntimeError(f"mobile navigation creates horizontal overflow {menu_overflow}px")
         result["mobile_menu_open"] = True
-        result["mobile_menu_overflow_px"] = page.evaluate(
-            "document.documentElement.scrollWidth - window.innerWidth"
-        )
+        result["mobile_menu_overflow_px"] = menu_overflow
         toggle.click()
     elif viewport_name == "desktop":
         summary = page.locator(".explore-menu summary")
@@ -84,7 +132,7 @@ def inspect_navigation(page: Page, viewport_name: str) -> dict[str, object]:
             if panel.count() != 1 or not panel.is_visible():
                 raise RuntimeError("Explore menu did not open")
             box = panel.bounding_box()
-            if box is not None and box["x"] + box["width"] > 1441:
+            if box is not None and (box["x"] < -1 or box["x"] + box["width"] > 1441):
                 raise RuntimeError("Explore menu is clipped outside the desktop viewport")
             result["explore_menu_open"] = True
             summary.click()
@@ -104,7 +152,7 @@ def main() -> int:
 
         for locale in ("en", "tr"):
             for route_name, route in ROUTES:
-                for viewport_name, width, height, take_screenshot in VIEWPORTS:
+                for viewport_name, width, height in VIEWPORTS:
                     path = localized_path(locale, route)
                     page = context.new_page()
                     page.set_viewport_size({"width": width, "height": height})
@@ -149,19 +197,18 @@ def main() -> int:
                         if page_errors:
                             raise RuntimeError(f"page errors: {page_errors[:3]}")
 
-                        h1_box = h1.bounding_box()
                         record["h1_font_px"] = page.evaluate(
                             "el => parseFloat(getComputedStyle(el).fontSize)", h1.element_handle()
                         )
-                        record["h1_box"] = h1_box
+                        record["h1_box"] = h1.bounding_box()
                         record.update(inspect_navigation(page, viewport_name))
 
-                        if take_screenshot:
+                        if route_name in SCREENSHOT_ROUTE_NAMES and viewport_name in {"desktop", "mobile"}:
                             file_name = f"{locale}__{route_name}__{viewport_name}-{width}x{height}.png"
                             page.screenshot(path=str(screenshots / file_name), full_page=True)
                             record["screenshot"] = f"screenshots/{file_name}"
                         record["result"] = "PASS"
-                    except Exception as exc:  # noqa: BLE001 - CI harness must aggregate route failures.
+                    except Exception as exc:  # noqa: BLE001 - aggregate all rendered route failures.
                         record["result"] = "FAIL"
                         record["failure"] = str(exc)
                         failures.append(f"{locale} {path} {viewport_name}: {exc}")
@@ -175,12 +222,13 @@ def main() -> int:
         browser.close()
 
     report = {
-        "schema": "ilaios.website-v2.visual-qa.v1",
+        "schema": "ilaios.website-v2.visual-qa.v2",
         "base_url": BASE_URL,
-        "routes": len(ROUTES) * 2,
+        "public_route_pairs": len(ROUTES),
+        "localized_routes": len(ROUTES) * 2,
         "viewports": [name for name, *_ in VIEWPORTS],
         "checks": len(records),
-        "screenshots_expected": len(ROUTES) * 2 * 2,
+        "screenshots_expected": len(SCREENSHOT_ROUTE_NAMES) * 2 * 2,
         "failures": failures,
         "status": "FAIL" if failures else "PASS",
         "records": records,
@@ -188,7 +236,22 @@ def main() -> int:
     (ARTIFACT_DIR / "visual-qa.json").write_text(
         json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
     )
-    print(json.dumps({k: report[k] for k in ("status", "routes", "checks", "screenshots_expected", "failures")}, indent=2))
+    print(
+        json.dumps(
+            {
+                k: report[k]
+                for k in (
+                    "status",
+                    "public_route_pairs",
+                    "localized_routes",
+                    "checks",
+                    "screenshots_expected",
+                    "failures",
+                )
+            },
+            indent=2,
+        )
+    )
     return 1 if failures else 0
 
 
