@@ -66,10 +66,18 @@ class IdentityClient extends core.IdentityClient {
     }
 
     final references = ReferenceAssetSubmissionBus.pending;
-    if (references.isNotEmpty && !_isReferenceCapableObjective(normalized)) {
-      throw const core.IdentityClientException(
-        'Reference images may only be submitted through Web Factory or Video Factory',
-      );
+    if (references.isNotEmpty) {
+      final factoryCount = _referenceFactoryCount(normalized);
+      if (factoryCount == 0) {
+        throw const core.IdentityClientException(
+          'Reference images may only be submitted through Web Factory or Video Factory',
+        );
+      }
+      if (factoryCount != 1) {
+        throw const core.IdentityClientException(
+          'A reference-image request must target exactly one of Web Factory or Video Factory',
+        );
+      }
     }
     _validateReferenceAssets(references);
 
@@ -216,6 +224,12 @@ class IdentityClient extends core.IdentityClient {
           'Reference image exceeds the per-image size limit',
         );
       }
+      if (reference.instruction != null &&
+          reference.instruction!.trim().length > 500) {
+        throw const core.IdentityClientException(
+          'Reference image instruction exceeds 500 characters',
+        );
+      }
       if (reference.sha256Hex.length != 64 ||
           !RegExp(r'^[0-9a-f]{64}$').hasMatch(reference.sha256Hex)) {
         throw const core.IdentityClientException(
@@ -237,12 +251,10 @@ class IdentityClient extends core.IdentityClient {
   }
 }
 
-bool _isReferenceCapableObjective(String objective) {
+int _referenceFactoryCount(String objective) {
   final normalized = objective.trimLeft().toLowerCase();
-  if (normalized.startsWith('video creation task:') ||
-      normalized.startsWith('video oluşturma görevi:')) {
-    return true;
-  }
+  final video = normalized.startsWith('video creation task:') ||
+      normalized.startsWith('video oluşturma görevi:');
   const webTerms = <String>{
     'website',
     'web site',
@@ -250,5 +262,6 @@ bool _isReferenceCapableObjective(String objective) {
     'landing page',
     'internet sitesi',
   };
-  return webTerms.any(normalized.contains);
+  final web = webTerms.any(normalized.contains);
+  return (video ? 1 : 0) + (web ? 1 : 0);
 }
