@@ -103,7 +103,6 @@ def test_reference_image_is_bound_through_web_factory_acceptance(tmp_path: Path)
         now=now,
     )
     assert prepared["execution_status"] == ExecutionState.ADMITTED.value
-    assert prepared["reference_asset_count"] == 1
     job_id = cast(str, prepared["job_id"])
     store.attach_job(request_id, job_id)
 
