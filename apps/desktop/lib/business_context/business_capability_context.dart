@@ -1,24 +1,26 @@
 enum BusinessCapabilityFamily {
-  executiveEnterpriseIntelligence('executive_enterprise_intelligence'),
-  operations('operations'),
-  financeCostIntelligence('finance_cost_intelligence'),
-  growthMarketing('growth_marketing'),
-  commerceSales('commerce_sales'),
-  researchData('research_data');
+  executiveEnterpriseIntelligence('BCF01'),
+  operations('BCF02'),
+  financeCostIntelligence('BCF03'),
+  growthMarketing('BCF04'),
+  commerceSales('BCF05'),
+  researchData('BCF06');
 
-  const BusinessCapabilityFamily(this.wireValue);
+  const BusinessCapabilityFamily(this.contextCode);
 
-  final String wireValue;
+  final String contextCode;
 }
 
-/// Transient, process-local metadata handoff for the existing one-prompt path.
+/// Adds a bounded, opaque business-context marker without naming a provider,
+/// worker, route, approval, tool, tenant or execution authority.
 ///
-/// This value is descriptive intent context only. It does not carry tenant,
-/// provider, worker, route, approval, grant, tool, validation or execution
-/// authority. [CreateView] clears it after each submission attempt and the
-/// authenticated backend validates the exact allowlist independently.
-abstract final class BusinessCapabilitySubmissionBus {
-  static BusinessCapabilityFamily? pending;
-
-  static void clear() => pending = null;
+/// The canonical backend still classifies and admits the ordinary user
+/// objective. The opaque code exists only so the governed request can retain
+/// optional business context without teaching the Desktop how to route work.
+String withBusinessCapabilityContext(
+  String objective,
+  BusinessCapabilityFamily? family,
+) {
+  if (family == null) return objective;
+  return '$objective\n\n[ILAIOS_BUSINESS_CONTEXT:${family.contextCode}]';
 }
