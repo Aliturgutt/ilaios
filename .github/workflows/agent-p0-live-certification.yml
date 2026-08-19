@@ -11,7 +11,10 @@ on:
       - 'services/independent_verifier_execution.py'
       - 'services/runtime/**'
       - 'services/security_factory.py'
+      - 'services/skill_engineering_*.py'
       - 'tools/software-factory/skills/**'
+      - 'tools/skill-engineering/skills/**'
+      - 'tests/test_skill_engineering_*.py'
       - '.github/workflows/agent-p0-live-certification.yml'
   workflow_dispatch:
 
@@ -25,13 +28,14 @@ concurrency:
 
 jobs:
   p0-live-certification:
-    name: 21-agent real provider/tool evidence
+    name: 21-agent plus Skill Engineering real provider evidence
     runs-on: ubuntu-latest
     environment: Production
-    timeout-minutes: 25
+    timeout-minutes: 30
     env:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       AGENT_P0_PROOF_DIR: artifacts/agent-p0-live-proof
+      SKILL_ENGINEERING_PROOF_DIR: artifacts/skill-engineering-live-proof
 
     steps:
       - name: Checkout exact trusted source commit
@@ -63,7 +67,7 @@ jobs:
           echo 'OPENROUTER_API_KEY_PRESENT=TRUE'
           echo 'Credential material is not printed or persisted.'
 
-      - name: Run focused P0 regression gates
+      - name: Run focused P0 and Skill Engineering regression gates
         shell: bash
         run: |
           set -euo pipefail
@@ -74,13 +78,23 @@ jobs:
             tests/test_ai_provider_structured_output.py \
             tests/test_agent_readiness_integration.py \
             tests/test_agent_readiness_store_integration.py \
-            tests/test_runtime_external_adapter_integration.py
+            tests/test_runtime_external_adapter_integration.py \
+            tests/test_skill_engineering_runtime.py \
+            tests/test_skill_engineering_completion.py \
+            tests/test_skill_engineering_provider_capabilities.py \
+            tests/test_skill_engineering_live_certification.py
 
       - name: Run 21-agent real provider/tool certification
         shell: bash
         run: |
           set -euo pipefail
           python -m services.p0_live_certification
+
+      - name: Run five-skill real provider certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m services.skill_engineering_live_certification
 
       - name: Verify accepted P0 receipt
         shell: bash
@@ -120,8 +134,35 @@ jobs:
           print('P0_LIVE_RECEIPT=PASS verified=21/21')
           PY
 
+      - name: Verify accepted Skill Engineering receipt
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          receipt_path = Path(os.environ['SKILL_ENGINEERING_PROOF_DIR']) / 'skill-engineering-live-receipt.json'
+          receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+          assert receipt['status'] == 'VERIFIED'
+          assert receipt['revision_sha'] == os.environ['GITHUB_SHA']
+          assert receipt['target_skill_count'] == 5
+          assert receipt['verified_skill_count'] == 5
+          assert receipt['zero_cost_only'] is True
+          assert receipt['zero_cost_openrouter_only'] is True
+          assert receipt['provider_ids'] == ['openrouter']
+          assert len(receipt['skills']) == 5
+          for skill in receipt['skills']:
+              assert skill['provider_id'] == 'openrouter'
+              assert skill['actual_cost_usd'] == '0'
+              assert isinstance(skill['producer_evidence_sha256'], str) and len(skill['producer_evidence_sha256']) == 64
+              assert isinstance(skill['verifier_evidence_sha256'], str) and len(skill['verifier_evidence_sha256']) == 64
+          print('SKILL_ENGINEERING_LIVE_RECEIPT=PASS verified=5/5')
+          PY
+
       - name: Publish certification summary
-        if: ${{ always() }}
+        if: always()
         shell: bash
         run: |
           set -euo pipefail
@@ -147,18 +188,39 @@ jobs:
           else
             echo '- Status: `NO_ACCEPTED_RECEIPT`' >> "$GITHUB_STEP_SUMMARY"
           fi
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo '## ILAIOS Skill Engineering Live Provider Certification' >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f "$SKILL_ENGINEERING_PROOF_DIR/skill-engineering-live-receipt.json" ]]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+          receipt = json.loads(
+              (Path(os.environ['SKILL_ENGINEERING_PROOF_DIR']) / 'skill-engineering-live-receipt.json').read_text(encoding='utf-8')
+          )
+          print(f"- Status: `{receipt.get('status')}`")
+          print(f"- Revision: `{receipt.get('revision_sha')}`")
+          print(f"- Verified skills: `{receipt.get('verified_skill_count')}/{receipt.get('target_skill_count')}`")
+          print(f"- Providers: `{receipt.get('provider_ids')}`")
+          print('- Automatic provider cost: `0 USD`')
+          PY
+          else
+            echo '- Status: `NO_ACCEPTED_RECEIPT`' >> "$GITHUB_STEP_SUMMARY"
+          fi
 
-      - name: Upload immutable P0 live evidence
-        if: ${{ always() }}
+      - name: Upload immutable live evidence
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: agent-p0-live-proof-${{ github.sha }}-${{ github.run_id }}
-          path: artifacts/agent-p0-live-proof
+          name: agent-and-skill-engineering-live-proof-${{ github.sha }}-${{ github.run_id }}
+          path: |
+            artifacts/agent-p0-live-proof
+            artifacts/skill-engineering-live-proof
           if-no-files-found: warn
           retention-days: 30
 
       - name: Publish sanitized P0 commit status
-        if: ${{ always() }}
+        if: always()
         shell: bash
         env:
           P0_JOB_STATUS: ${{ job.status }}
@@ -240,4 +302,61 @@ jobs:
               if response.status not in {200, 201}:
                   raise RuntimeError(f'commit status publish failed: HTTP {response.status}')
           print(f'P0_COMMIT_STATUS={state}')
+          PY
+
+      - name: Publish sanitized Skill Engineering commit status
+        if: always()
+        shell: bash
+        env:
+          CERT_JOB_STATUS: ${{ job.status }}
+          STATUS_TOKEN: ${{ github.token }}
+          STATUS_TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          accepted = False
+          receipt_path = Path(os.environ['SKILL_ENGINEERING_PROOF_DIR']) / 'skill-engineering-live-receipt.json'
+          if os.environ.get('CERT_JOB_STATUS') == 'success' and receipt_path.is_file():
+              try:
+                  receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+                  accepted = (
+                      receipt.get('status') == 'VERIFIED'
+                      and receipt.get('revision_sha') == os.environ['GITHUB_SHA']
+                      and receipt.get('target_skill_count') == 5
+                      and receipt.get('verified_skill_count') == 5
+                      and receipt.get('zero_cost_openrouter_only') is True
+                      and receipt.get('provider_ids') == ['openrouter']
+                  )
+              except (OSError, ValueError, TypeError):
+                  accepted = False
+          state = 'success' if accepted else 'failure'
+          document = json.dumps(
+              {
+                  'state': state,
+                  'target_url': os.environ['STATUS_TARGET_URL'],
+                  'description': 'Skill Engineering 5/5 live provider receipt accepted' if accepted else 'Skill Engineering live provider certification failed closed',
+                  'context': 'ilaios/skill-engineering-live-provider',
+              },
+              separators=(',', ':'),
+          ).encode('utf-8')
+          request = urllib.request.Request(
+              f"{os.environ['GITHUB_API_URL']}/repos/{os.environ['GITHUB_REPOSITORY']}/statuses/{os.environ['GITHUB_SHA']}",
+              data=document,
+              method='POST',
+              headers={
+                  'Accept': 'application/vnd.github+json',
+                  'Authorization': f"Bearer {os.environ['STATUS_TOKEN']}",
+                  'Content-Type': 'application/json',
+                  'X-GitHub-Api-Version': '2022-11-28',
+              },
+          )
+          with urllib.request.urlopen(request, timeout=20) as response:
+              if response.status not in {200, 201}:
+                  raise RuntimeError(f'commit status publish failed: HTTP {response.status}')
+          print(f'SKILL_ENGINEERING_COMMIT_STATUS={state}')
           PY

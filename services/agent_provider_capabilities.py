@@ -7,6 +7,7 @@ wired into the single runtime.
 from __future__ import annotations
 
 from services.p0_agent_execution import P0_AGENT_BINDINGS
+from services.skill_engineering_runtime import SKILL_ENGINEERING_RUNTIME_BINDINGS
 from services.web_agent_execution import WEB_GOVERNED_AI_CAPABILITIES
 
 
@@ -16,8 +17,14 @@ P0_GOVERNED_AI_CAPABILITIES = frozenset(
     if binding.execution_mode == "governed-ai"
 )
 
+SKILL_ENGINEERING_GOVERNED_AI_CAPABILITIES = frozenset(
+    binding.capability for binding in SKILL_ENGINEERING_RUNTIME_BINDINGS
+)
+
 AGENT_GOVERNED_AI_CAPABILITIES = frozenset(
-    set(P0_GOVERNED_AI_CAPABILITIES) | set(WEB_GOVERNED_AI_CAPABILITIES)
+    set(P0_GOVERNED_AI_CAPABILITIES)
+    | set(WEB_GOVERNED_AI_CAPABILITIES)
+    | set(SKILL_ENGINEERING_GOVERNED_AI_CAPABILITIES)
 )
 
 # IndependentVerifier remains deterministic/local in the canonical runtime. The
@@ -35,8 +42,17 @@ def validate_agent_provider_capabilities() -> None:
         raise ValueError("Web governed AI capability population drifted")
     if P0_GOVERNED_AI_CAPABILITIES & WEB_GOVERNED_AI_CAPABILITIES:
         raise ValueError("P0 and Web governed AI capabilities must remain distinct")
-    if len(AGENT_GOVERNED_AI_CAPABILITIES) != 21:
-        raise ValueError("P0+Web governed AI capability population must be 21")
+    if SKILL_ENGINEERING_GOVERNED_AI_CAPABILITIES != frozenset(
+        {"architecture.propose", "code.review", "test.execute"}
+    ):
+        raise ValueError("Skill Engineering governed AI capability population drifted")
+    if (
+        SKILL_ENGINEERING_GOVERNED_AI_CAPABILITIES - P0_GOVERNED_AI_CAPABILITIES
+        != frozenset({"test.execute"})
+    ):
+        raise ValueError("Skill Engineering provider capability delta drifted")
+    if len(AGENT_GOVERNED_AI_CAPABILITIES) != 22:
+        raise ValueError("P0+Web+Skill Engineering governed AI capability population must be 22")
     if "web.verify" in AGENT_GOVERNED_AI_CAPABILITIES:
         raise ValueError("BrowserQA must never be advertised as generic governed AI")
 
