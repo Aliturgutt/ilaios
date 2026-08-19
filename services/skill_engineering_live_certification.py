@@ -39,8 +39,8 @@ class SkillEngineeringLiveCertificationError(RuntimeError):
     """Live Skill Engineering provider certification failed closed."""
 
 
-_INPUT_TOKEN_RESERVATION = 4096
-_OUTPUT_TOKEN_RESERVATION = 512
+_INPUT_TOKEN_RESERVATION = 1024
+_OUTPUT_TOKEN_RESERVATION = 1024
 
 
 def run_skill_engineering_live_certification(
