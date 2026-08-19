@@ -27,6 +27,7 @@ _MANUAL_ONLY = frozenset(
 _SECRET_ALLOWED = frozenset(
     {
         "agent-p0-live-certification.yml",
+        "agent-web-live-certification.yml",
         "desktop-msix-signed-release.yml",
         "openrouter-production-telemetry-certification.yml",
         "video-provider-production-certification.yml",
@@ -36,6 +37,7 @@ _SECRET_ALLOWED = frozenset(
 _TRUSTED_MASTER_SECRET = frozenset(
     {
         "agent-p0-live-certification.yml",
+        "agent-web-live-certification.yml",
         "video-reference-production-certification.yml",
     }
 )
