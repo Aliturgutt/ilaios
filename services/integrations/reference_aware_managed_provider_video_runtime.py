@@ -54,6 +54,7 @@ from .video_runtime import VideoRuntimeError
 
 _DEFAULT_MODEL_ID = "bytedance/seedance-2.0-fast"
 _DEFAULT_QA_MODEL_ID = "openrouter/free"
+_DEFAULT_REFERENCE_ANALYZER_MODEL_ID = "google/gemma-4-26b-a4b-it:free"
 _DEFAULT_RESOLUTION = "480p"
 _TERMINAL_PROVIDER_STATUSES = frozenset(
     {ProviderJobStatus.SUCCEEDED, ProviderJobStatus.FAILED, ProviderJobStatus.CANCELLED}
@@ -382,7 +383,7 @@ class ManagedReferenceAwareProviderBackedDesktopVideoRuntime(
         self._source_media = source_store
         self._reference_analyzer = OpenRouterReferenceImageAnalyzer(
             api_key,
-            _DEFAULT_QA_MODEL_ID,
+            _DEFAULT_REFERENCE_ANALYZER_MODEL_ID,
         )
         self._reference_brief_cache = ReferenceBriefCache(
             data_root / "reference-briefs.sqlite3"
