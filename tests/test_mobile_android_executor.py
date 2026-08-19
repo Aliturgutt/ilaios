@@ -24,7 +24,7 @@ from services.software_factory import (
 
 
 def _projection(**overrides: object) -> AppRequestProjection:
-    projection: AppRequestProjection = {
+    data: dict[str, object] = {
         "request_id": "appreq-android-1",
         "platform": "android",
         "action": "client_change_request",
@@ -34,8 +34,8 @@ def _projection(**overrides: object) -> AppRequestProjection:
         "approver": "owner-review",
         "client_mutated": False,
     }
-    projection.update(cast(dict[str, object], overrides))
-    return projection
+    data.update(overrides)
+    return cast(AppRequestProjection, data)
 
 
 def _changes() -> tuple[AndroidSourceChange, ...]:
@@ -149,6 +149,26 @@ def test_software_factory_request_is_apps_mobile_android_bounded_and_zero_secret
         change.path.startswith("apps/mobile/android/ilaios-mobile/")
         for change in request.changeset.changes
     )
+
+
+def test_software_factory_request_rejects_tampered_plan_digest() -> None:
+    plan = build_android_implementation_plan(
+        projection=_projection(),
+        app_id="ilaios-mobile",
+        application_id="com.ilaios.mobile",
+        source_changes=_changes(),
+    )
+    tampered = replace(
+        plan,
+        source_changes=(AndroidSourceChange("create", "settings.gradle.kts", b"tampered\n"),),
+    )
+
+    with pytest.raises(AndroidImplementationError, match="plan digest"):
+        build_android_software_factory_request(
+            plan=tampered,
+            repository_root=Path("/repo"),
+            base_sha="b" * 40,
+        )
 
 
 class _RecordingGovernedFactory:
