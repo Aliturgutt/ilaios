@@ -48,7 +48,7 @@ def test_mobile_and_desktop_app_dashboard_terms_are_not_rewritten_as_web() -> No
         normalized = normalize_desktop_execution_objective(objective)
         assert not normalized.startswith("website ")
         route = classify_execution_route(normalized)
-        assert route.capability_id == "ilaios.capability.mobile-apps"
+        assert route.capability_id == "ilaios.capability.app-factory"
 
 
 def test_video_plus_dashboard_becomes_explicit_multi_capability_and_fails_closed() -> None:
