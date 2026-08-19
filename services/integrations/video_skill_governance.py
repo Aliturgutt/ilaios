@@ -9,6 +9,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from services.runtime.routing import AgentProfile, SkillArtifact, SkillRegistry
+from src.video_automation.video_lifecycle_skill_manifests import VIDEO_LIFECYCLE_SKILLS
 from src.video_automation.video_prompting_skill_manifests import VIDEO_PROMPTING_SKILLS
 from src.video_automation.video_skills import (
     VIDEO_SKILLS,
@@ -20,6 +21,7 @@ from src.video_automation.video_skills import (
 ALL_VIDEO_SKILLS: tuple[VideoSkillManifest, ...] = (
     *VIDEO_SKILLS,
     *VIDEO_PROMPTING_SKILLS,
+    *VIDEO_LIFECYCLE_SKILLS,
 )
 
 REQUIRED_VIDEO_SKILL_FAMILIES = frozenset(
@@ -34,6 +36,10 @@ REQUIRED_VIDEO_SKILL_FAMILIES = frozenset(
         "reference-assets",
         "model-fit",
         "continuity",
+        "generation",
+        "captions",
+        "composition",
+        "render",
     }
 )
 
