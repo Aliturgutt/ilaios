@@ -128,6 +128,7 @@ def test_browser_is_shared_capability_with_bounded_runtime_backing() -> None:
     assert not nodes_for_prefix("factories/browser")
     assert WEB_FACTORY_BROWSER_SKILL_IDS == (
         "ilaios-browser",
+        "ilaios-browser-automate",
         "ilaios-web-e2e",
         "ilaios-visual-qa",
         "ilaios-production-verification",
@@ -138,7 +139,9 @@ def test_browser_is_shared_capability_with_bounded_runtime_backing() -> None:
     assert resolve_logical_skill("capabilities/browser/inspect").backing_skill_ids == (
         "ilaios-browser",
     )
-    assert resolve_logical_skill("capabilities/browser/automate").backing_skill_ids == ()
+    assert resolve_logical_skill("capabilities/browser/automate").backing_skill_ids == (
+        "ilaios-browser-automate",
+    )
     assert resolve_logical_skill("capabilities/browser/e2e").backing_skill_ids == (
         "ilaios-web-e2e",
     )
