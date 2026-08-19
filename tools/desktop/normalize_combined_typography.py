@@ -3,44 +3,143 @@ import subprocess
 import sys
 
 root = Path(sys.argv[1]).resolve()
-rel = "apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart"
+v10_rel = "apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart"
+deliveries_rel = "apps/desktop/lib/features/deliveries/deliveries_view.dart"
+test_rel = "apps/desktop/test/desktop_combined_typography_reference_ux_test.dart"
 
-# Rebuild V10 from the exact checked-out branch source so the protected shell
-# keeps every geometry constant byte-for-byte. Apply one controlled baseline
-# uplift from the previous .95 scaler to 1.10 (+15.8%) without stacking a
-# second set of hard-coded micro-font inflation. The bounded short-viewport Home
-# scroll canvas provides the required vertical safety at 1366x768.
-result = subprocess.run(
-    ["git", "-C", str(root), "show", f"HEAD:{rel}"],
-    check=True,
-    capture_output=True,
-    text=True,
-    encoding="utf-8",
-)
-text = result.stdout
 
-media_anchor = "    final media = MediaQuery.of(context);"
-if text.count(media_anchor) != 1:
-    raise SystemExit("NORMALIZE_TYPOGRAPHY_MEDIA_ANCHOR_MISMATCH")
-text = text.replace(
-    media_anchor,
-    media_anchor
-    + "\n    final systemTextScale = media.textScaler.scale(1.0);"
-    + "\n    final desktopTextScale = math.max(1.10, systemTextScale);",
-    1,
-)
+def head_text(rel: str) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(root), "show", f"HEAD:{rel}"],
+        check=True,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+    )
+    return result.stdout
 
-scale_anchor = (
-    "          data: media.copyWith(textScaler: const TextScaler.linear(.95)),"
-)
-if text.count(scale_anchor) != 1:
-    raise SystemExit("NORMALIZE_TYPOGRAPHY_SCALE_ANCHOR_MISMATCH")
-text = text.replace(
-    scale_anchor,
-    "          data: media.copyWith(textScaler: TextScaler.linear(desktopTextScale)),",
-    1,
-)
 
-path = root / rel
-path.write_text(text, encoding="utf-8", newline="\n")
-print("V10_TYPOGRAPHY_NORMALIZED_TO_CONTROLLED_1_10_BASELINE")
+def replace_once(text: str, old: str, new: str, label: str) -> str:
+    count = text.count(old)
+    if count != 1:
+        raise SystemExit(
+            f"SCOPED_TYPOGRAPHY_ANCHOR_MISMATCH {label}: expected 1, actual {count}"
+        )
+    return text.replace(old, new, 1)
+
+
+# Preserve the canonical shell exactly. The previous candidate applied a global
+# 1.10 MediaQuery text scale, which enlarged unrelated Settings, Approvals,
+# Live Workspace, toolbar and filter geometry. The requested readability change
+# is scoped to Outputs content instead; sidebar/topbar/shell geometry and scale
+# remain byte-for-byte at the checked-out branch baseline.
+v10_path = root / v10_rel
+v10_path.write_text(head_text(v10_rel), encoding="utf-8", newline="\n")
+print("V10_TYPOGRAPHY_PRESERVED_NO_GLOBAL_ZOOM")
+
+# Rebuild Outputs from the exact checked-out branch source so the aggressive
+# whole-file font-size mapping from the candidate patch cannot leak into fixed
+# KPI/toolbar/filter geometry. Then uplift only unconstrained, ellipsis-safe
+# reading surfaces by about 15-20 percent.
+deliveries = head_text(deliveries_rel)
+deliveries = replace_once(
+    deliveries,
+    "                          fontSize: 22,\n                          fontWeight: FontWeight.w700,",
+    "                          fontSize: 25.5,\n                          fontWeight: FontWeight.w700,",
+    "outputs-title",
+)
+deliveries = replace_once(
+    deliveries,
+    "                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10.5),",
+    "                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12.2),",
+    "outputs-subtitle",
+)
+deliveries = replace_once(
+    deliveries,
+    "          style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600),",
+    "          style: const TextStyle(fontSize: 9.8, fontWeight: FontWeight.w600),",
+    "outputs-table-header",
+)
+deliveries = replace_once(
+    deliveries,
+    "                          style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700),",
+    "                          style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w700),",
+    "outputs-row-title",
+)
+deliveries = replace_once(
+    deliveries,
+    "                          style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 7.5),",
+    "                          style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 8.7),",
+    "outputs-row-subtitle",
+)
+deliveries = replace_once(
+    deliveries,
+    "              child: Text(size, style: const TextStyle(fontSize: 8.5)),",
+    "              child: Text(size, style: const TextStyle(fontSize: 9.8)),",
+    "outputs-row-size",
+)
+deliveries = replace_once(
+    deliveries,
+    "                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700),",
+    "                style: const TextStyle(fontSize: 12.7, fontWeight: FontWeight.w700),",
+    "outputs-empty-title",
+)
+(root / deliveries_rel).write_text(deliveries, encoding="utf-8", newline="\n")
+print("OUTPUTS_TYPOGRAPHY_SCOPED_UPLIFT_APPLIED")
+
+# Replace the generated regression assertion that previously required a global
+# 1.10 scaler. The new contract explicitly proves no global zoom, then checks
+# the scoped Outputs title uplift and overflow safety at every required viewport.
+test_path = root / test_rel
+test_text = test_path.read_text(encoding="utf-8")
+old_assertion = """        final homeNav = find.byKey(const ValueKey('nav-home'));
+        final homeText =
+            find.descendant(of: homeNav, matching: find.byType(Text)).first;
+        final scaler = MediaQuery.textScalerOf(tester.element(homeText));
+        expect(
+          scaler.scale(1.0),
+          greaterThanOrEqualTo(1.10),
+          reason:
+              'Desktop typography uplift was not active at ${size.width}x${size.height}',
+        );
+
+        await _openGoals(tester);
+"""
+new_assertion = """        final homeNav = find.byKey(const ValueKey('nav-home'));
+        final homeText =
+            find.descendant(of: homeNav, matching: find.byType(Text)).first;
+        final scaler = MediaQuery.textScalerOf(tester.element(homeText));
+        expect(
+          scaler.scale(1.0),
+          closeTo(.95, .001),
+          reason:
+              'Desktop shell must retain its canonical scale at ${size.width}x${size.height}',
+        );
+
+        await tester.tap(find.byKey(const ValueKey('nav-artifacts')));
+        await tester.pumpAndSettle();
+        final outputsHeader = find.byKey(const Key('outputs-header'));
+        expect(outputsHeader, findsOneWidget);
+        final outputsTitle = find.descendant(
+          of: outputsHeader,
+          matching: find.text('Outputs'),
+        );
+        expect(outputsTitle, findsOneWidget);
+        expect(tester.widget<Text>(outputsTitle).style?.fontSize, 25.5);
+        expect(
+          tester.takeException(),
+          isNull,
+          reason:
+              'Scoped Outputs typography overflowed at ${size.width}x${size.height}',
+        );
+
+        await _openGoals(tester);
+"""
+test_text = replace_once(
+    test_text,
+    old_assertion,
+    new_assertion,
+    "viewport-global-scale-assertion",
+)
+test_path.write_text(test_text, encoding="utf-8", newline="\n")
+print("COMBINED_VIEWPORT_TEST_SCOPED_TYPOGRAPHY_ASSERTION_APPLIED")
