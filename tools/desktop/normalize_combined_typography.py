@@ -28,6 +28,35 @@ def replace_once(text: str, old: str, new: str, label: str) -> str:
     return text.replace(old, new, 1)
 
 
+def replace_once_in_region(
+    text: str,
+    region_start: str,
+    region_end: str,
+    old: str,
+    new: str,
+    label: str,
+) -> str:
+    start_count = text.count(region_start)
+    end_count = text.count(region_end)
+    if start_count != 1 or end_count != 1:
+        raise SystemExit(
+            f"SCOPED_TYPOGRAPHY_REGION_MISMATCH {label}: "
+            f"start={start_count}, end={end_count}"
+        )
+    start = text.index(region_start)
+    end = text.index(region_end, start)
+    if end <= start:
+        raise SystemExit(f"SCOPED_TYPOGRAPHY_REGION_ORDER_MISMATCH {label}")
+    region = text[start:end]
+    count = region.count(old)
+    if count != 1:
+        raise SystemExit(
+            f"SCOPED_TYPOGRAPHY_ANCHOR_MISMATCH {label}: expected 1 in region, actual {count}"
+        )
+    updated_region = region.replace(old, new, 1)
+    return text[:start] + updated_region + text[end:]
+
+
 # Preserve the canonical shell exactly. The previous candidate applied a global
 # 1.10 MediaQuery text scale, which enlarged unrelated Settings, Approvals,
 # Live Workspace, toolbar and filter geometry. The requested readability change
@@ -88,9 +117,12 @@ deliveries = replace_once(
 # The 1366x768 Desktop content rail leaves about 791px for Outputs filters and
 # about 773px for the toolbar. Keep every control visible and preserve its font
 # size/semantics by compacting only fixed horizontal geometry inside Outputs.
-# This is deliberately not a global text-scale or shell-geometry change.
-deliveries = replace_once(
+# Scope the generic padding literal to _Toolbar so visually identical padding
+# in other Outputs widgets cannot be modified by accident.
+deliveries = replace_once_in_region(
     deliveries,
+    "class _Toolbar extends StatelessWidget {",
+    "class _Filters extends StatelessWidget {",
     "          padding: const EdgeInsets.symmetric(horizontal: 10),",
     "          padding: const EdgeInsets.symmetric(horizontal: 7),",
     "outputs-tab-horizontal-padding",
