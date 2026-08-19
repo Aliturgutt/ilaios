@@ -7,6 +7,7 @@ from services.app_architecture_plan import (
     plan_application_architecture,
 )
 from services.app_product_spec import (
+    AppPlatform,
     admit_project,
     build_product_spec,
     classify_risk,
@@ -14,12 +15,16 @@ from services.app_product_spec import (
 )
 
 
-def _build_spec(*, capabilities: tuple[str, ...], platforms: tuple[str, ...] = ("android",)):
+def _build_spec(
+    *,
+    capabilities: tuple[str, ...],
+    platforms: tuple[AppPlatform, ...] = ("android",),
+):
     admission = admit_project(
         project_id="project-architecture-test",
         intent="new",
         objective="Build a governed mobile application",
-        platforms=platforms,  # type: ignore[arg-type]
+        platforms=platforms,
     )
     return build_product_spec(
         admission=admission,
