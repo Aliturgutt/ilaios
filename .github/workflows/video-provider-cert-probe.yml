@@ -1,0 +1,41 @@
+name: Video Provider Certification Probe
+
+on:
+  push:
+    branches:
+      - observe/video-provider-cert-7a1f
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Report latest canonical certification runs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          runs_json="$(gh run list \
+            --repo "$GITHUB_REPOSITORY" \
+            --workflow video-provider-production-certification.yml \
+            --branch master \
+            --limit 20 \
+            --json databaseId,headSha,status,conclusion,createdAt,updatedAt,event,url,workflowName)"
+          body_file="/tmp/video-provider-cert-probe.md"
+          {
+            echo "Latest canonical Video Provider Production Certification runs on master:"
+            echo
+            echo '```json'
+            printf '%s\n' "$runs_json"
+            echo '```'
+          } > "$body_file"
+          gh issue create \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Video Provider Certification Probe $(date -u +%Y%m%dT%H%M%SZ)" \
+            --body-file "$body_file"
