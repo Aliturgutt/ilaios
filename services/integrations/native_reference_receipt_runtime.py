@@ -22,6 +22,21 @@ from .native_reference_verified_runtime import (
 _NATIVE_QA_PREFIXES = ("reference_consistency_", "logo_asset_lock_")
 
 
+def native_receipt_evidence(outcome: dict[str, object]) -> dict[str, object]:
+    """Return only verified native-reference fields that may enter final receipts."""
+
+    if outcome.get("reference_consistency_passed") is not True:
+        raise RuntimeError("native reference receipt lacks consistency PASS evidence")
+    evidence = {
+        key: value
+        for key, value in outcome.items()
+        if key.startswith(_NATIVE_QA_PREFIXES)
+    }
+    if not evidence:
+        raise RuntimeError("native reference receipt evidence is unavailable")
+    return evidence
+
+
 class ReceiptBoundNativeReferenceManagedDesktopVideoRuntime(
     NativeReferenceVerifiedManagedDesktopVideoRuntime
 ):
@@ -50,14 +65,7 @@ class ReceiptBoundNativeReferenceManagedDesktopVideoRuntime(
             objective=objective,
             duration_seconds=duration_seconds,
         )
-        native_evidence = {
-            key: value
-            for key, value in outcome.items()
-            if key.startswith(_NATIVE_QA_PREFIXES)
-        }
-        if outcome.get("reference_consistency_passed") is not True:
-            raise RuntimeError("native reference receipt lacks consistency PASS evidence")
-        self._native_receipt_context.set(native_evidence)
+        self._native_receipt_context.set(native_receipt_evidence(outcome))
         return outcome
 
     def execute(
