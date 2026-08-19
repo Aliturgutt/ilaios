@@ -49,6 +49,11 @@ replace_once(
     "if (!scope.open) {\n                  scope.onToggle();\n                }",
 )
 replace_once(
+    "apps/desktop/lib/features/create/create_view.dart",
+    "if (value == null) return const SizedBox.shrink();",
+    "if (value == null) {\n      return const SizedBox.shrink();\n    }",
+)
+replace_once(
     "apps/desktop/lib/features/deliveries/deliveries_view.dart",
     "if (value.endsWith(suffix)) value = value.substring(0, value.length - suffix.length);",
     "if (value.endsWith(suffix)) {\n    value = value.substring(0, value.length - suffix.length);\n  }",
