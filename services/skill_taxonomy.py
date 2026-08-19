@@ -320,7 +320,12 @@ SKILL_TAXONOMY: Final[tuple[SkillTaxonomyNode, ...]] = (
         "inspect",
         backing_skill_ids=("ilaios-browser",),
     ),
-    _node("capabilities", "browser", "automate"),
+    _node(
+        "capabilities",
+        "browser",
+        "automate",
+        backing_skill_ids=("ilaios-browser-automate",),
+    ),
     _node(
         "capabilities",
         "browser",
