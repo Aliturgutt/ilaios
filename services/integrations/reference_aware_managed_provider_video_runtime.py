@@ -97,9 +97,19 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
         self,
         *,
         identity_resolver: DurableProductIdentityResolver,
-        **kwargs: object,
+        root: Path,
+        api_key: str,
+        model_id: str,
+        resolution: str,
+        max_total_cost_usd: Decimal,
     ) -> None:
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+        super().__init__(
+            root=root,
+            api_key=api_key,
+            model_id=model_id,
+            resolution=resolution,
+            max_total_cost_usd=max_total_cost_usd,
+        )
         self._identity_resolver = identity_resolver
         self._account_switch_lock = threading.Lock()
 
