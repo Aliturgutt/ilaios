@@ -3,22 +3,117 @@
 Status: CONTROLLED
 
 ## Scope
-Windows desktop packaging, MSIX/signing and Microsoft Store publication for ILAIOS Desktop.
+
+Windows Desktop packaging, Microsoft Store MSIX release, optional non-Store signing, certification evidence, publication and rollback for ILAIOS Desktop.
+
+## Distribution modes
+
+ILAIOS Desktop has two distinct production distribution paths. They must not be mixed.
+
+### A. Microsoft Store MSIX — canonical public Windows distribution
+
+For an MSIX submitted through Microsoft Store, ILAIOS does **not** require a repository-owned production code-signing certificate. The Store validates the submission and re-signs the package as part of certification. No PFX, certificate password, Azure signing credential or private key may be invented merely to satisfy the Store path.
+
+The Store package manifest must still use the exact Partner Center product identity values. `Identity Name`, `Publisher` and the four-part package version must match the Partner Center product configuration.
+
+### B. Direct / sideload / non-Store distribution
+
+A package distributed outside Microsoft Store must follow the applicable trusted code-signing requirements for that distribution channel. Production signing material is RESTRICTED and must be held only in an approved signing service or secret facility. This path is independent from the Microsoft Store MSIX path.
 
 ## Build
-Build from a clean, identified commit using locked dependencies and the supported Flutter/Windows toolchain. Run static analysis, unit/widget/integration tests applicable to the release, and produce the release artifact reproducibly where practical.
 
-## Packaging
-MSIX identity, publisher, version and capabilities must match the approved Store/manifest configuration. Package permissions must be minimal and documented. Record package hash and build commit.
+Build from one clean, identified exact `master` SHA using locked dependencies and the supported Flutter/Windows toolchain. The release candidate must not be built from a moving branch, an unmerged PR head or an uncommitted local workspace.
 
-## Signing
-Production signing credentials/certificates are RESTRICTED. They must be stored in an approved signing service/secret facility, exposed only to the signing step, and never committed or copied into general CI logs. Record certificate/key identifier and timestamp, not private material.
+Required source qualification includes the repository-owned Required CI Gate, Desktop CI/Windows release validation, relevant finished-product E2E checks and MSIX packaging/inspection checks for the same source SHA.
 
-## Validation
-Verify signature, package install/upgrade/uninstall, startup, update path, backend authentication, minimum supported Windows version, and rollback/recovery behavior. Scan the final signed artifact where tooling permits.
+## Partner Center prerequisites
 
-## Store publication
-Store submission is an external production-impacting action requiring explicit approval. Preserve submission ID, package hash, certification result and published version. Store acceptance is external evidence, not proof of backend production readiness.
+Before a Store release candidate can be produced with production identity, all of the following external facts must be available:
+
+- Microsoft Store developer account status is active and publishing-enabled.
+- The product name has been reserved in Partner Center.
+- Partner Center `Package/Identity/Name` is known.
+- Partner Center `Package/Identity/Publisher` is known.
+- The next allowed four-part package version is known.
+
+These values are external authority. Do not guess them and do not reuse the CI placeholders `ILAIOS.Desktop.CI` or `CN=ILAIOS-CI-UNSIGNED`.
+
+## Store release-candidate packaging
+
+The controlled Store packaging entry point is:
+
+```powershell
+./tool/build_store_msix.ps1 `
+  -IdentityName '<PARTNER_CENTER_IDENTITY_NAME>' `
+  -Publisher '<PARTNER_CENTER_PUBLISHER>' `
+  -Version '<A.B.C.D>'
+```
+
+The script fails closed if CI placeholder identity values are supplied, builds through the canonical MSIX builder, unpacks the result, verifies manifest identity/version equality and records SHA-256 release evidence.
+
+The GitHub workflow `.github/workflows/desktop-store-release-candidate.yml` is the remote release-candidate gate. It is manual-only and requires:
+
+- dispatch from `master`,
+- an explicit expected `master` SHA,
+- exact Partner Center identity and publisher values,
+- an explicit four-part package version.
+
+The workflow aborts if `master` moves after approval or if the supplied SHA/identity values are inconsistent.
+
+## Microsoft Store signing model
+
+The Store release candidate is intentionally recorded as `signed_before_submission=false`. This is not a production defect for the Microsoft Store MSIX path. Microsoft Store performs the trusted signing/re-signing step after certification.
+
+Do not add a private signing certificate to GitHub solely for Microsoft Store MSIX submission.
+
+## Validation before submission
+
+On one exact source SHA, verify at minimum:
+
+- Required CI Gate: PASS.
+- Flutter static analysis: PASS.
+- Flutter tests: PASS.
+- Windows release build: PASS.
+- Desktop Windows Gate: PASS where applicable to the changed scope.
+- MSIX packaging: PASS.
+- MSIX unpack/manifest inspection: PASS.
+- Store manifest Identity Name/Publisher/Version exactly match Partner Center.
+- Store package SHA-256 is recorded.
+- Exact-master Windows launch: PASS.
+- English/Turkish UI QA: PASS.
+- 100%/125%/150% Windows scaling QA: PASS.
+- Existing configured authentication regression: PASS.
+- No fabricated runtime telemetry or evidence.
+
+## Store submission
+
+Create or open the Partner Center product submission, complete pricing/availability, properties, age ratings, package upload, Store listings and submission options, then submit for certification.
+
+Store submission is an external production-impacting action. Preserve:
+
+- exact source SHA,
+- Store release-candidate package SHA-256,
+- package version,
+- Partner Center Identity Name and Publisher,
+- submission ID,
+- certification result,
+- published Store version/link when available.
+
+Store acceptance proves Microsoft Store publication for that package. It does not by itself prove backend production readiness.
+
+## Post-certification verification
+
+After certification and publication:
+
+1. Install ILAIOS Desktop from the public/flighted Microsoft Store listing on a clean supported Windows environment.
+2. Confirm the installed Store package is trusted and launches normally.
+3. Verify authentication and control-plane connectivity.
+4. Verify update behavior from the Store channel.
+5. Re-run the critical Web/Video/Software execution smoke paths appropriate for the release.
+6. Record Store version, installation evidence and release SHA linkage.
+
+Only after these checks may the Store distribution state be reported as `DEPLOYED / PRODUCTION`.
 
 ## Rollback
-Use Store rollback/flight controls or publish a corrected higher version according to platform constraints; never reuse a released version for different bytes.
+
+Use Microsoft Store flight/availability controls where available or publish a corrected higher package version according to platform constraints. Never reuse a published package version for different bytes.
