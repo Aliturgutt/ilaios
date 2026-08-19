@@ -47,9 +47,22 @@ def native_receipt_evidence(outcome: dict[str, object]) -> dict[str, object]:
         for key, value in outcome.items()
         if key.startswith(_NATIVE_QA_PREFIXES) or key in _NATIVE_PROVIDER_KEYS
     }
+    if outcome.get("logo_asset_lock_applied") is True:
+        repaired_sha256 = outcome.get("artifact_sha256")
+        if not _is_sha256(repaired_sha256):
+            raise RuntimeError("native logo asset-lock repaired artifact digest is invalid")
+        evidence["logo_asset_lock_repaired_artifact_sha256"] = repaired_sha256
     if not evidence:
         raise RuntimeError("native reference receipt evidence is unavailable")
     return evidence
+
+
+def _is_sha256(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and len(value) == 64
+        and all(character in "0123456789abcdef" for character in value)
+    )
 
 
 class ReceiptBoundNativeReferenceManagedDesktopVideoRuntime(
