@@ -15,7 +15,9 @@ from services.runtime import GovernedRuntime, GrantPolicy
 from services.runtime.browser_egress_playwright import PlaywrightDockerBrowserEgressBoundary
 from services.runtime.browser_tool_adapter import (
     BROWSER_AGENT_ID,
+    BROWSER_CAPABILITY,
     BROWSER_TOOL_NAME,
+    BrowserWorkReader,
     browser_session_id,
     submit_browser_request,
 )
@@ -29,6 +31,7 @@ _ALLOWED_ORIGINS = ("https://example.com",)
 _SKILL_ID = "ilaios-web-e2e"
 _REQUESTER_ID = "ci-browser"
 _TENANT_ID = "ci-browser-tenant"
+_REQUIRED_ACTIONS = ("open", "snapshot", "screenshot", "reload", "close")
 
 
 def _required_env(name: str) -> str:
@@ -110,6 +113,7 @@ def main() -> None:
     grants = GrantPolicy()
     named = NamedAgentExecutor(runtime, grants)
     governance = GovernedRuntimeGateway(governance_database, runtime, hard_cap_minor=1000)
+    work_reader = BrowserWorkReader(governance, governance_database)
     audit = AuditEngine()
     context = ExecutionContext(repository_root, branch, source_sha, origin)
     tool_gateway = ToolGateway(context, BootstrapValidator(repository_root))
@@ -131,6 +135,7 @@ def main() -> None:
     session_id = browser_session_id(_REQUESTER_ID, _TENANT_ID, workflow_id)
     results: dict[str, dict[str, object]] = {}
     admission_evidence: list[dict[str, object]] = []
+    persisted_work_evidence: list[dict[str, str]] = []
 
     def execute(
         index: int,
@@ -169,6 +174,26 @@ def main() -> None:
         )
         if result.get("request_id") != request_id:
             raise RuntimeError(f"{action} tool result lost governed request identity")
+        persisted = work_reader.read(request_id)
+        if persisted.agent_id != BROWSER_AGENT_ID:
+            raise RuntimeError("BrowserQA governed work lost canonical agent identity")
+        if persisted.skill_id != _SKILL_ID:
+            raise RuntimeError("BrowserQA governed work lost canonical skill identity")
+        if persisted.capability != BROWSER_CAPABILITY:
+            raise RuntimeError("BrowserQA governed work lost canonical capability identity")
+        if persisted.status != "executed":
+            raise RuntimeError("BrowserQA governed work did not reconcile to executed")
+        persisted_work_evidence.append(
+            {
+                "request_id": request_id,
+                "requester_id": persisted.requester_id,
+                "agent_id": persisted.agent_id,
+                "skill_id": persisted.skill_id,
+                "capability": persisted.capability,
+                "status": persisted.status,
+                "action": action,
+            }
+        )
         admission_evidence.append(
             {
                 "request_id": request_id,
@@ -206,38 +231,29 @@ def main() -> None:
     if len(receipts) < 6:
         raise RuntimeError("real BrowserQA E2E produced insufficient boundary receipts")
 
-    governance_state = governance.state()
-    work = governance_state.get("work")
-    if not isinstance(work, list) or len(work) != 5:
-        raise RuntimeError("BrowserQA governed-work persistence coverage is incomplete")
-    work_rows = [cast(dict[str, object], item) for item in work if isinstance(item, dict)]
-    if len(work_rows) != 5 or any(item.get("status") != "executed" for item in work_rows):
-        raise RuntimeError("BrowserQA governed work did not reconcile to executed")
-    if any(item.get("agent_id") != BROWSER_AGENT_ID for item in work_rows):
-        raise RuntimeError("BrowserQA governed work lost canonical agent identity")
-    if any(item.get("skill_id") != _SKILL_ID for item in work_rows):
-        raise RuntimeError("BrowserQA governed work lost canonical skill identity")
+    if len(persisted_work_evidence) != 5:
+        raise RuntimeError("BrowserQA persisted work identity coverage is incomplete")
+    if {item["action"] for item in persisted_work_evidence} != set(_REQUIRED_ACTIONS):
+        raise RuntimeError("BrowserQA persisted work action coverage drifted")
 
     audit_records = audit.get_records(component="browser-tool", status="success")
     if len(audit_records) != 5:
         raise RuntimeError("BrowserQA audit evidence coverage is incomplete")
-    if {record.action for record in audit_records} != {
-        "open",
-        "snapshot",
-        "screenshot",
-        "reload",
-        "close",
-    }:
+    if {record.action for record in audit_records} != set(_REQUIRED_ACTIONS):
         raise RuntimeError("BrowserQA audit action coverage drifted")
 
     admission_canonical = json.dumps(
         admission_evidence, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    work_canonical = json.dumps(
+        persisted_work_evidence, sort_keys=True, separators=(",", ":")
     ).encode("utf-8")
     summary = {
         "schema_version": 2,
         "source_sha": source_sha,
         "agent_id": BROWSER_AGENT_ID,
         "skill_id": _SKILL_ID,
+        "capability": BROWSER_CAPABILITY,
         "runtime_image": runtime_image,
         "target": _TARGET,
         "allowed_origins": list(_ALLOWED_ORIGINS),
@@ -250,11 +266,13 @@ def main() -> None:
         "canonical_tool_gateway": BROWSER_TOOL_NAME,
         "governed_work_persisted": True,
         "canonical_admission_proven": True,
-        "governed_request_count": len(work_rows),
+        "governed_request_count": len(persisted_work_evidence),
         "audit_success_count": len(audit_records),
         "governance_database_sha256": _sha256_file(governance_database),
         "admission_evidence_sha256": hashlib.sha256(admission_canonical).hexdigest(),
+        "governed_work_evidence_sha256": hashlib.sha256(work_canonical).hexdigest(),
         "admissions": admission_evidence,
+        "governed_work": persisted_work_evidence,
         "actions": results,
         "egress_receipts": receipts,
     }
