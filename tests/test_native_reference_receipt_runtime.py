@@ -1,13 +1,13 @@
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
 from services.integrations.native_reference_receipt_runtime import native_receipt_evidence
 from services.integrations.native_reference_verified_runtime import _native_provider_evidence
-from services.reference_assets import ReferenceAssetRole
+from services.reference_assets import ReferenceAssetRecord, ReferenceAssetRole
 
 
 def _native_provider_fields() -> dict[str, object]:
@@ -19,6 +19,23 @@ def _native_provider_fields() -> dict[str, object]:
         "native_reference_sha256s": ("1" * 64, "2" * 64),
         "native_reference_relay_released": True,
     }
+
+
+def _record(role: ReferenceAssetRole, sha256: str) -> ReferenceAssetRecord:
+    return ReferenceAssetRecord(
+        asset_id=f"asset-{role.value}-{sha256[:8]}",
+        principal_id="principal-1",
+        tenant_id="tenant-1",
+        sha256=sha256,
+        mime_type="image/png",
+        original_filename=f"{role.value}.png",
+        width=64,
+        height=64,
+        size_bytes=128,
+        role=role,
+        instruction=None,
+        created_at=datetime.now(timezone.utc),
+    )
 
 
 def test_native_receipt_preserves_provider_consistency_and_logo_lock_evidence() -> None:
@@ -73,11 +90,11 @@ def test_native_receipt_fails_closed_on_invalid_repaired_artifact_digest() -> No
 
 def test_native_provider_evidence_uses_input_references_for_seedance() -> None:
     records = (
-        SimpleNamespace(role=ReferenceAssetRole.PRODUCT, sha256="1" * 64),
-        SimpleNamespace(role=ReferenceAssetRole.LOGO, sha256="2" * 64),
+        _record(ReferenceAssetRole.PRODUCT, "1" * 64),
+        _record(ReferenceAssetRole.LOGO, "2" * 64),
     )
 
-    evidence = _native_provider_evidence(  # type: ignore[arg-type]
+    evidence = _native_provider_evidence(
         records,
         model_id="bytedance/seedance-2.0-fast",
         generated_shot_count=2,
@@ -92,12 +109,12 @@ def test_native_provider_evidence_uses_input_references_for_seedance() -> None:
 
 def test_native_provider_evidence_gives_frame_images_precedence() -> None:
     records = (
-        SimpleNamespace(role=ReferenceAssetRole.PRODUCT, sha256="1" * 64),
-        SimpleNamespace(role=ReferenceAssetRole.FIRST_FRAME, sha256="2" * 64),
-        SimpleNamespace(role=ReferenceAssetRole.LAST_FRAME, sha256="3" * 64),
+        _record(ReferenceAssetRole.PRODUCT, "1" * 64),
+        _record(ReferenceAssetRole.FIRST_FRAME, "2" * 64),
+        _record(ReferenceAssetRole.LAST_FRAME, "3" * 64),
     )
 
-    evidence = _native_provider_evidence(  # type: ignore[arg-type]
+    evidence = _native_provider_evidence(
         records,
         model_id="bytedance/seedance-2.0-fast",
         generated_shot_count=1,
@@ -110,9 +127,9 @@ def test_native_provider_evidence_gives_frame_images_precedence() -> None:
 
 
 def test_native_provider_evidence_preserves_private_brief_fallback() -> None:
-    records = (SimpleNamespace(role=ReferenceAssetRole.PRODUCT, sha256="1" * 64),)
+    records = (_record(ReferenceAssetRole.PRODUCT, "1" * 64),)
 
-    evidence = _native_provider_evidence(  # type: ignore[arg-type]
+    evidence = _native_provider_evidence(
         records,
         model_id="vendor/unproven-video-model",
         generated_shot_count=1,
