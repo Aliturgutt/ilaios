@@ -5,6 +5,7 @@ from typing import cast
 
 import pytest
 
+from services.research_factory_skills import RESEARCH_FACTORY_SKILL_IDS
 from services.security_methodology_skills import (
     AGENTIC_ACTION_AUDIT_SKILL_ID,
     DIFFERENTIAL_REVIEW_SKILL_ID,
@@ -101,6 +102,9 @@ def test_video_taxonomy_maps_current_governed_runtime_skills() -> None:
     assert resolve_logical_skill("factories/video/continuity").backing_skill_ids == (
         "ilaios.skill.video.continuity.track",
     )
+    assert resolve_logical_skill("factories/video/generation").backing_skill_ids == (
+        "ilaios.skill.video.generation.execute",
+    )
     assert resolve_logical_skill("factories/video/edit").backing_skill_ids == (
         "ilaios.skill.video.edit.trim",
         "ilaios.skill.video.edit.concatenate",
@@ -109,10 +113,35 @@ def test_video_taxonomy_maps_current_governed_runtime_skills() -> None:
         "ilaios.skill.video.edit.scale",
         "ilaios.skill.video.edit.audio-mix",
     )
+    assert resolve_logical_skill("factories/video/captions").backing_skill_ids == (
+        "ilaios.skill.video.captions.export",
+    )
+    assert resolve_logical_skill("factories/video/composition").backing_skill_ids == (
+        "ilaios.skill.video.composition.prepare",
+    )
+    assert resolve_logical_skill("factories/video/render").backing_skill_ids == (
+        "ilaios.skill.video.render.execute",
+    )
     assert resolve_logical_skill("factories/video/output-verify").backing_skill_ids == (
         "ilaios.skill.video.qa.evaluate",
     )
-    assert resolve_logical_skill("factories/video/generation").backing_skill_ids == ()
+
+
+def test_research_taxonomy_maps_bounded_native_runtime_skills() -> None:
+    research = nodes_for_prefix("factories/research")
+    assert {node.path[-1] for node in research} == {
+        "planning",
+        "research",
+        "source-validation",
+        "contradiction-check",
+        "citation-validation",
+        "synthesis",
+    }
+    assert tuple(
+        backing_skill_id
+        for node in research
+        for backing_skill_id in node.backing_skill_ids
+    ) == RESEARCH_FACTORY_SKILL_IDS
 
 
 def test_browser_is_shared_capability_with_bounded_runtime_backing() -> None:
@@ -128,6 +157,7 @@ def test_browser_is_shared_capability_with_bounded_runtime_backing() -> None:
     assert not nodes_for_prefix("factories/browser")
     assert WEB_FACTORY_BROWSER_SKILL_IDS == (
         "ilaios-browser",
+        "ilaios-browser-automate",
         "ilaios-web-e2e",
         "ilaios-visual-qa",
         "ilaios-production-verification",
@@ -138,7 +168,9 @@ def test_browser_is_shared_capability_with_bounded_runtime_backing() -> None:
     assert resolve_logical_skill("capabilities/browser/inspect").backing_skill_ids == (
         "ilaios-browser",
     )
-    assert resolve_logical_skill("capabilities/browser/automate").backing_skill_ids == ()
+    assert resolve_logical_skill("capabilities/browser/automate").backing_skill_ids == (
+        "ilaios-browser-automate",
+    )
     assert resolve_logical_skill("capabilities/browser/e2e").backing_skill_ids == (
         "ilaios-web-e2e",
     )

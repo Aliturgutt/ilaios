@@ -11,11 +11,13 @@ import re
 from dataclasses import dataclass
 from typing import Final
 
+from services.research_factory_skills import RESEARCH_FACTORY_SKILL_IDS
 from services.software_factory_skills import REQUIRED_SKILL_IDS
 from services.web_factory_skills import (
     WEB_FACTORY_BROWSER_SKILL_IDS,
     WEB_FACTORY_NATIVE_SKILL_IDS,
 )
+from src.video_automation.video_lifecycle_skill_manifests import VIDEO_LIFECYCLE_SKILLS
 from src.video_automation.video_prompting_skill_manifests import VIDEO_PROMPTING_SKILLS
 from src.video_automation.video_skills import VIDEO_SKILLS
 
@@ -50,8 +52,10 @@ _SECURITY_METHODOLOGY_SKILL_IDS: Final = frozenset(
     }
 )
 _VIDEO_RUNTIME_SKILL_IDS: Final = frozenset(
-    skill.skill_id for skill in (*VIDEO_SKILLS, *VIDEO_PROMPTING_SKILLS)
+    skill.skill_id
+    for skill in (*VIDEO_SKILLS, *VIDEO_PROMPTING_SKILLS, *VIDEO_LIFECYCLE_SKILLS)
 )
+_RESEARCH_RUNTIME_SKILL_IDS: Final = frozenset(RESEARCH_FACTORY_SKILL_IDS)
 _PROTECTED_AUTHORITY_SEGMENTS: Final = frozenset(
     {
         "approval",
@@ -225,7 +229,12 @@ SKILL_TAXONOMY: Final[tuple[SkillTaxonomyNode, ...]] = (
         "continuity",
         backing_skill_ids=("ilaios.skill.video.continuity.track",),
     ),
-    _node("factories", "video", "generation"),
+    _node(
+        "factories",
+        "video",
+        "generation",
+        backing_skill_ids=("ilaios.skill.video.generation.execute",),
+    ),
     _node(
         "factories",
         "video",
@@ -239,21 +248,66 @@ SKILL_TAXONOMY: Final[tuple[SkillTaxonomyNode, ...]] = (
             "ilaios.skill.video.edit.audio-mix",
         ),
     ),
-    _node("factories", "video", "captions"),
-    _node("factories", "video", "composition"),
-    _node("factories", "video", "render"),
+    _node(
+        "factories",
+        "video",
+        "captions",
+        backing_skill_ids=("ilaios.skill.video.captions.export",),
+    ),
+    _node(
+        "factories",
+        "video",
+        "composition",
+        backing_skill_ids=("ilaios.skill.video.composition.prepare",),
+    ),
+    _node(
+        "factories",
+        "video",
+        "render",
+        backing_skill_ids=("ilaios.skill.video.render.execute",),
+    ),
     _node(
         "factories",
         "video",
         "output-verify",
         backing_skill_ids=("ilaios.skill.video.qa.evaluate",),
     ),
-    _node("factories", "research", "planning"),
-    _node("factories", "research", "research"),
-    _node("factories", "research", "source-validation"),
-    _node("factories", "research", "contradiction-check"),
-    _node("factories", "research", "citation-validation"),
-    _node("factories", "research", "synthesis"),
+    _node(
+        "factories",
+        "research",
+        "planning",
+        backing_skill_ids=("ilaios-research-planning",),
+    ),
+    _node(
+        "factories",
+        "research",
+        "research",
+        backing_skill_ids=("ilaios-research",),
+    ),
+    _node(
+        "factories",
+        "research",
+        "source-validation",
+        backing_skill_ids=("ilaios-source-validation",),
+    ),
+    _node(
+        "factories",
+        "research",
+        "contradiction-check",
+        backing_skill_ids=("ilaios-contradiction-check",),
+    ),
+    _node(
+        "factories",
+        "research",
+        "citation-validation",
+        backing_skill_ids=("ilaios-citation-validation",),
+    ),
+    _node(
+        "factories",
+        "research",
+        "synthesis",
+        backing_skill_ids=("ilaios-research-synthesis",),
+    ),
     _node(
         "capabilities",
         "browser",
@@ -266,7 +320,12 @@ SKILL_TAXONOMY: Final[tuple[SkillTaxonomyNode, ...]] = (
         "inspect",
         backing_skill_ids=("ilaios-browser",),
     ),
-    _node("capabilities", "browser", "automate"),
+    _node(
+        "capabilities",
+        "browser",
+        "automate",
+        backing_skill_ids=("ilaios-browser-automate",),
+    ),
     _node(
         "capabilities",
         "browser",
@@ -356,6 +415,7 @@ def validate_skill_taxonomy() -> None:
         | set(_SKILL_ENGINEERING_RUNTIME_SKILL_IDS)
         | set(_SECURITY_METHODOLOGY_SKILL_IDS)
         | set(_VIDEO_RUNTIME_SKILL_IDS)
+        | set(_RESEARCH_RUNTIME_SKILL_IDS)
     )
     for node in SKILL_TAXONOMY:
         if node.layer not in _ALLOWED_LAYERS:
