@@ -57,7 +57,7 @@ class DurableProductIdentityResolver:
         if not self._database.is_file():
             raise VideoRuntimeError("managed Desktop product identity store is unavailable")
         connection = sqlite3.connect(
-            f"file:{self._database.as_posix()}?mode=ro",
+            self._database.resolve().as_uri() + "?mode=ro",
             uri=True,
             timeout=10,
         )
