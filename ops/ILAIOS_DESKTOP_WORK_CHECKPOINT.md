@@ -4,29 +4,21 @@ Temporary evidence-only checkpoint for Desktop functional closure. CURRENT REALI
 
 ## Current phase
 
-- Phase: Agents functional closure
-- Working branch: `desktop/agents-functional-closure-master-sync`
-- Fresh base: `master@94a2f5c2647dbc32ae380ede1c01ccd98b0ed1a2`
-- Supersedes stale-base work from PR #433 without rewriting its history.
-- Merge-base-to-master audit showed no overlap between the 27 intervening master commits and the four Agents code/test paths, so the Agents change can be replayed onto current master without discarding master work.
+- Phase: Approvals functional closure
+- Working branch: `desktop/approvals-functional-closure`
+- Fresh base: `master@91d7c049ee008e7940f709babc7f3a049f1955c0`
+- Agents closure is merged through PR #468 after exact-head 5/5 required gates passed on `20c878b0ac6b9e4fbd28ebdb40f6eabc1852c5a5`.
+- Agents merge commit: `91d7c049ee008e7940f709babc7f3a049f1955c0`.
 
-## Failure and bounded repair evidence
+## Approvals audit evidence
 
-Previous PR #433 exact head `ac8e5ea73a487d668ebc531b3b784ce46035265c`:
+Current `apps/desktop/lib/features/operations/approvals_view.dart` is authority-derived for request state and preserves the existing governed decision callback. Pending decisions are allowed only when a real callback and approver identity are present; self-approval is fail-closed when requester and approver IDs match. Existing regression coverage proves authoritative approval callback dispatch and no fabricated screenshot metrics.
 
-- Required CI Gate: PASS
-- Software Factory Final Evidence: PASS
-- ILAIOS Desktop CI: FAIL
-- ILAIOS Desktop Windows Gate: FAIL
-- ILAIOS Desktop MSIX Packaging: FAIL
-
-The three Desktop failures stopped in the same regression test: `agent_controls_test.dart` / `New Agent provisions only the server-projected canonical identity`. GitHub Actions logs showed `RenderShrinkWrappingViewport does not support returning intrinsic dimensions` from the canonical-agent provisioning `AlertDialog`.
-
-Bounded repair: replace the shrink-wrapped viewport with an explicitly bounded `SizedBox` and normal scrollable list. The existing provisioning regression remains unchanged. No new authority, capability, permission, assignment, telemetry, credential, provider, identity, policy, or approval path is introduced.
+Current gap found by the functional audit: the visible `Export` and `Policy Rules` toolbar controls are presentation-only because they have no callback. They must not remain visually actionable without a governed implementation. This phase should either wire an already-proven governed/navigation path or make them explicitly unavailable/disabled; do not invent export, policy mutation, or new authority.
 
 ## Merge gate
 
-Do not merge the active Agents phase until the exact active PR head has PASS evidence for all five:
+Do not merge the active Approvals phase until the exact active PR head has PASS evidence for all five:
 
 - ILAIOS Desktop CI
 - ILAIOS Desktop Windows Gate
@@ -34,12 +26,12 @@ Do not merge the active Agents phase until the exact active PR head has PASS evi
 - Required CI Gate
 - Software Factory Final Evidence
 
-Assignment and other actions remain explicitly unavailable unless a governed API and canonical authority path are proven.
+Approval/denial must continue through the authoritative control-plane callback. No local Flutter approval authority, policy mutation, or fabricated export is permitted.
 
 ## Closure sequence
 
-1. Agents
-2. Approvals
+1. Agents — MERGED via PR #468
+2. Approvals — ACTIVE
 3. Governed Live Workspace read projections
 4. Workspace actions through Policy / Approval / Tool Gateway
 5. Outputs lifecycle
