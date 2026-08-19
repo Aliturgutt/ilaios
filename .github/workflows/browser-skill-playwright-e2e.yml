@@ -42,13 +42,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
-      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
-      BROWSER_IMAGE: ilaios-browser-e2e:${{ github.event.pull_request.head.sha || github.sha }}
+      SOURCE_SHA: 877679add5e51f00bcdb01bcc7984cebad24fb2f
+      BROWSER_IMAGE: ilaios-browser-e2e:877679add5e51f00bcdb01bcc7984cebad24fb2f
     steps:
       - name: Checkout exact source commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          ref: 877679add5e51f00bcdb01bcc7984cebad24fb2f
           fetch-depth: 0
           persist-credentials: false
 
@@ -149,7 +149,7 @@ jobs:
           ILAIOS_BROWSER_E2E_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/browser-skill-playwright-e2e
         run: python tools/web-factory/browser-skills/runtime/playwright_cli_e2e.py
 
-      - name: Assert exact-head BrowserQA evidence exists
+      - name: Assert exact-master BrowserQA evidence exists
         run: |
           test -s artifacts/browser-skill-playwright-e2e/playwright-cli-e2e-summary.json
           grep -F '"source_sha": "'"$SOURCE_SHA"'"' \
