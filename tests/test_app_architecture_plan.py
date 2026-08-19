@@ -8,6 +8,7 @@ from services.app_architecture_plan import (
 )
 from services.app_product_spec import (
     AppPlatform,
+    ProductSpec,
     admit_project,
     build_product_spec,
     classify_risk,
@@ -19,7 +20,7 @@ def _build_spec(
     *,
     capabilities: tuple[str, ...],
     platforms: tuple[AppPlatform, ...] = ("android",),
-):
+) -> ProductSpec:
     admission = admit_project(
         project_id="project-architecture-test",
         intent="new",
