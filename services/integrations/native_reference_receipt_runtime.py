@@ -15,6 +15,10 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from src.video_automation.reference_consistency_review import (
+    OpenRouterReferenceConsistencyReviewer,
+)
+
 from .native_reference_verified_runtime import (
     NativeReferenceVerifiedManagedDesktopVideoRuntime,
 )
@@ -30,6 +34,7 @@ _NATIVE_PROVIDER_KEYS = frozenset(
         "native_reference_relay_released",
     }
 )
+_NATIVE_CONSISTENCY_MODEL_ID = "google/gemma-4-26b-a4b-it:free"
 
 
 def native_receipt_evidence(outcome: dict[str, object]) -> dict[str, object]:
@@ -71,6 +76,14 @@ class ReceiptBoundNativeReferenceManagedDesktopVideoRuntime(
     """Preserve native-reference acceptance evidence through final receipts."""
 
     def __init__(self, *args: Any, **kwargs: Any) -> None:
+        if kwargs.get("consistency_reviewer") is None:
+            api_key = kwargs.get("api_key")
+            if not isinstance(api_key, str) or not api_key.strip():
+                raise RuntimeError("native reference consistency reviewer requires API credentials")
+            kwargs["consistency_reviewer"] = OpenRouterReferenceConsistencyReviewer(
+                api_key,
+                _NATIVE_CONSISTENCY_MODEL_ID,
+            )
         super().__init__(*args, **kwargs)
         self._native_receipt_context: ContextVar[dict[str, object] | None] = ContextVar(
             f"native-reference-receipt-{id(self)}",
