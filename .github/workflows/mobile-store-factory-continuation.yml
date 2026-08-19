@@ -100,13 +100,14 @@ jobs:
           print(f"MOBILE_STORE_FACTORY_LEDGER=PASS current_phase={current}")
           PY
 
-      - name: Run focused App Factory regression tests
+      - name: Run focused Mobile Store regression tests
         shell: bash
         run: |
           set -euo pipefail
           python -m pytest -q \
             tests/test_app_factory.py \
-            tests/test_app_design_quality.py
+            tests/test_app_design_quality.py \
+            tests/test_store_release_certification.py
 
       - name: Run focused Ruff
         shell: bash
@@ -115,8 +116,10 @@ jobs:
           python -m ruff check \
             services/app_factory.py \
             services/app_design_quality.py \
+            services/store_release_certification.py \
             tests/test_app_factory.py \
-            tests/test_app_design_quality.py
+            tests/test_app_design_quality.py \
+            tests/test_store_release_certification.py
 
       - name: Run focused strict Mypy
         shell: bash
@@ -124,7 +127,9 @@ jobs:
           set -euo pipefail
           python -m mypy --strict \
             services/app_factory.py \
-            services/app_design_quality.py
+            services/app_design_quality.py \
+            services/store_release_certification.py \
+            tests/test_store_release_certification.py
 
       - name: Publish checkpoint summary
         if: always()
