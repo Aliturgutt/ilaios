@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from services.runtime.browser_tool_adapter import BROWSER_AGENT_ID, BROWSER_TOOL_NAME
-from services.web_agent_execution import binding_for_web_agent
+from services.web_agent_execution import web_binding_for
 
 
 class WebAgentBrowserCertificationError(RuntimeError):
@@ -16,7 +16,7 @@ class WebAgentBrowserCertificationError(RuntimeError):
 
 _TARGET = "https://example.com/"
 _REQUIRED_ACTIONS = ("open", "snapshot", "screenshot", "reload", "close")
-_SKILL_ID = binding_for_web_agent(BROWSER_AGENT_ID).primary_skill_id
+_SKILL_ID = web_binding_for(BROWSER_AGENT_ID).primary_skill_id
 
 
 def verify_browser_e2e_evidence(
