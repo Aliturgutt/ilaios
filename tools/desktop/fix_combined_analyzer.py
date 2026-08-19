@@ -31,12 +31,32 @@ replace_once(
     "if (hasReferences && referenceFactoryCount != 1)",
     "if (hasReferences && factoryCount != 1)",
 )
+replace_once(
+    "apps/desktop/lib/app/desktop_app.dart",
+    "if ((hasReferences && referenceFactoryCount == 1) || hasSourceVideo)",
+    "if ((hasReferences && factoryCount == 1) || hasSourceVideo)",
+)
 
 # flutter_lints requires explicit blocks for these flow-control statements.
 replace_once(
     "apps/desktop/lib/features/create/create_view.dart",
     "if (scope.target != target) scope.onTargetChanged(target);",
     "if (scope.target != target) {\n                  scope.onTargetChanged(target);\n                }",
+)
+replace_once(
+    "apps/desktop/lib/features/create/create_view.dart",
+    "if (!scope.open) scope.onToggle();",
+    "if (!scope.open) {\n                  scope.onToggle();\n                }",
+)
+replace_once(
+    "apps/desktop/lib/features/deliveries/deliveries_view.dart",
+    "if (value.endsWith(suffix)) value = value.substring(0, value.length - suffix.length);",
+    "if (value.endsWith(suffix)) {\n    value = value.substring(0, value.length - suffix.length);\n  }",
+)
+replace_once(
+    "apps/desktop/lib/features/deliveries/deliveries_view.dart",
+    "if (value.isEmpty) return record.executionId;",
+    "if (value.isEmpty) {\n    return record.executionId;\n  }",
 )
 replace_once(
     "apps/desktop/lib/features/deliveries/deliveries_view.dart",
