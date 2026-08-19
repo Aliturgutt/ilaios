@@ -3,7 +3,7 @@
   "tracking_issue": 486,
   "checkpoint_protocol": "branch-pr-exact-head-ci-merge-next-master",
   "truth_rule": "NO_EVIDENCE_NO_DONE",
-  "base_master_sha": "e453c9e94c8109e43555049f6201047f3f56c87d",
+  "base_master_sha": "29b17a400cb8cdb1a3f529877c05531f28e77e45",
   "current_phase": 1,
   "benchmark": "ILAIOS 12-screen enterprise Web App reference set",
   "phases": [
