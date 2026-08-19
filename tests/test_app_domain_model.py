@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import pytest
 
-from services.app_architecture_plan import plan_application_architecture
+from services.app_architecture_plan import (
+    ApplicationArchitecturePlan,
+    plan_application_architecture,
+)
 from services.app_domain_model import (
     AppDomainModelError,
     DomainEntity,
@@ -35,7 +38,7 @@ def _spec() -> ProductSpec:
     )
 
 
-def _architecture(spec: ProductSpec):
+def _architecture(spec: ProductSpec) -> ApplicationArchitecturePlan:
     return plan_application_architecture(
         spec=spec,
         capability_assessments=resolve_capabilities(spec),
