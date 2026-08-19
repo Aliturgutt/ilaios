@@ -19,7 +19,7 @@ from src.video_automation.managed_provider_execution import (
     ManagedPaidVideoExecutionCoordinator,
     ManagedPaidVideoExecutionError,
 )
-from src.video_automation.models import ProviderRequest
+from src.video_automation.models import ProviderRequest, ProviderResult
 from src.video_automation.openrouter_managed_video_provider import (
     OPENROUTER_MANAGED_PROVIDER_NAME,
     SEEDANCE_MANAGED_MODEL_IDS,
@@ -137,7 +137,7 @@ def _coordinator(root: Path) -> ManagedPaidVideoExecutionCoordinator:
 def _execute_authorized(
     tmp_path: Path,
     request: ProviderRequest,
-) -> tuple[_Transport, object]:
+) -> tuple[_Transport, ProviderResult]:
     transport = _Transport()
     provider = OpenRouterManagedVideoGenerationProvider("server-secret", transport=transport)
     store = ManagedCreditLedgerStore(tmp_path)
