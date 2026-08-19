@@ -10,12 +10,14 @@ Close the native photo-reference path end-to-end:
 2. provider `input_references` / `frame_images` wiring,
 3. Desktop-uploaded admitted reference bytes relayed directly to the selected provider,
 4. visible subject/product/logo consistency QA,
-5. real managed provider video generation,
-6. exact-head CI,
-7. merge on exact current master,
-8. real relay deployment/configuration,
-9. trusted-master native-reference live production certification,
-10. exact-SHA `VERIFIED` only after receipt/artifact validation.
+5. deterministic original-logo asset-lock repair when native generation distorts the logo,
+6. fresh final technical + semantic + reference-consistency QA after any logo repair,
+7. real managed provider video generation,
+8. exact-head CI,
+9. merge on exact current master,
+10. real relay deployment/configuration,
+11. trusted-master native-reference live production certification,
+12. exact-SHA `VERIFIED` only after receipt/artifact validation.
 
 ## Non-negotiable invariants
 
@@ -29,6 +31,11 @@ Close the native photo-reference path end-to-end:
 - Subject consistency is visible continuity only (appearance/clothing/hair/silhouette/non-sensitive cues). Do not perform biometric identity verification or infer sensitive traits.
 - Product consistency checks visible geometry/proportions/materials/colors/markings.
 - Logo consistency checks visible shape/text-mark structure/colors/placement.
+- Native reference + QA is the first line of defense for photo/subject/product/logo continuity.
+- Logo integrity must not depend only on generative redraw. If native generation fails logo consistency while subject/product critical scores still pass, use the exact admitted original logo bytes through deterministic asset-lock compositing, then re-run final QA.
+- Logo asset-lock must never silently resize, crop, recolor, redraw, regenerate, or substitute the logo. If the exact original asset cannot be composited safely at its admitted dimensions, fail closed rather than degrade it.
+- Logo asset-lock may not hide subject or product drift. If subject/product critical scores fail, reject/regenerate rather than overlaying a logo and accepting the video.
+- Any asset-lock repair must produce fresh technical evidence, fresh semantic QA, fresh reference-consistency QA, a new final artifact SHA-256, and append-only EvidenceStore provenance. Final receipt must state whether asset-lock was applied and the exact source-logo SHA-256.
 - `frame_images` exact first/last-frame mode takes deterministic precedence over general `input_references` when both semantics could otherwise collide.
 - Unknown/unproven native model capability must fail closed for required first/last-frame semantics; general references may retain private visual-brief fallback.
 - Never use stale green CI after master advances. Replay reviewed delta onto exact current master and re-run all gates.
@@ -40,7 +47,7 @@ Close the native photo-reference path end-to-end:
 - Authoritative native-reference PR: `#561`
 - Branch: `agent/video-native-reference-relay-r2`
 - PR base last observed: `a654ba997db335fdf45836ed076334ee8b015471`
-- PR head last observed before this checkpoint commit: `a5f014564f450939879fc6322e038f0921df0f4d`
+- PR head is advancing under this checkpoint; always re-read exact head before acting.
 - PR state: draft/open/mergeable.
 
 Implemented on the native branch so far:
@@ -61,9 +68,15 @@ Implemented on the native branch so far:
 - consistency reviewer explicitly forbids biometric identity/sensitive-trait inference,
 - native relay configuration negative tests,
 - evidence artifact/provenance support for consistency QA,
-- native relay-enabled Desktop composition selects consistency-verified managed runtime.
+- native relay-enabled Desktop composition selects consistency-verified managed runtime,
+- deterministic original-logo asset-lock compositor using canonical M18 FFmpeg overlay,
+- no-resize/no-crop/no-recolor/no-redraw logo preservation policy,
+- deterministic EN/TR placement vocabulary with bottom-right safe default and ambiguity fail-closed behavior,
+- runtime policy that permits asset-lock only for logo-only critical drift and never for subject/product failures,
+- post-asset-lock technical + semantic + reference-consistency revalidation,
+- distinct append-only `video.logo_asset_lock` evidence with source logo SHA and repaired artifact SHA.
 
-Last observed exact-head CI on the earlier branch head had Software Factory Final Evidence PASS while Required CI Gate, Desktop CI, Desktop Windows Gate and MSIX Packaging were still pending/in progress. Re-read exact current head and current runs every iteration.
+Re-read exact current head and workflow runs every iteration; old PASS/FAIL evidence is stale after any branch update.
 
 ## Baseline prerequisite blocker
 
@@ -87,7 +100,7 @@ If any fails, inspect the exact job/log and fix only the root cause. Do not merg
 
 1. Re-read the current PR head and current master; create a successor if stale.
 2. Resolve all strict pytest/Ruff/Mypy/Flutter/Windows/MSIX failures on exact head.
-3. Verify native consistency QA output is surfaced into the final execution/receipt evidence used by certification; add regression tests if any fields are dropped by an upper runtime layer.
+3. Verify native consistency QA and logo asset-lock output are surfaced into the final execution/receipt evidence used by certification; add regression tests if any fields are dropped by an upper runtime layer.
 4. Add a separate trusted-master native-reference production certification workflow/status; do not reuse the private-brief certification as proof of native provider references.
 5. The native certification must use a real HTTPS relay deployment/configuration with secrets outside the repository.
 6. Certification must upload a Desktop reference image and prove the provider fetched a signed relay URL.
@@ -95,9 +108,10 @@ If any fails, inspect the exact job/log and fix only the root cause. Do not merg
 8. Generate a real provider MP4 under `managed-bounded` with actual terminal provider cost evidence `<= $1.00`.
 9. Validate H.264/AAC, 1920x1080, requested-duration tolerance, artifact size/digest, semantic QA, technical QA, and generated shot count.
 10. Validate subject/product/logo consistency QA where applicable, including threshold and evidence digest/provenance hash.
-11. Prove immutable reference binding remains retained, private local raw blob is released after success, and relay item is released/expired after provider use.
-12. Validate exact revision SHA in receipt/artifact and publish a distinct native-reference live certification status.
-13. Only then report `VERIFIED` for that exact certified SHA.
+11. Include a logo-drift certification case: native generation must either pass logo consistency directly or trigger deterministic original-asset lock; if asset-lock is applied, prove source-logo SHA, no resize/crop/recolor/redraw, repaired artifact SHA, final technical QA PASS, final semantic QA PASS, final logo consistency PASS, and evidence-chain provenance.
+12. Prove immutable reference binding remains retained, private local raw blob is released after success, and relay item is released/expired after provider use.
+13. Validate exact revision SHA in receipt/artifact and publish a distinct native-reference live certification status.
+14. Only then report `VERIFIED` for that exact certified SHA.
 
 ## Automation behavior
 
@@ -109,7 +123,8 @@ At each run:
 4. Read exact-head workflow runs and failing job logs.
 5. Read changed implementation files relevant to the next fix before writing.
 6. Perform all non-blocked repo work autonomously.
-7. If master advanced, compare/replay onto a current-master successor; never reuse stale green evidence.
-8. If all exact-head gates PASS and branch is current, make PR ready and merge only with expected-head protection and the appropriate trusted-master certification trigger token.
-9. Run/verify baseline and native live certifications and validate uploaded artifacts/receipts.
-10. If blocked by external provider availability, missing secrets, relay deployment infrastructure, or CI infrastructure, leave repo safe and report the precise blocker with evidence. Never fabricate `DONE`, `PRODUCTION`, or `VERIFIED`.
+7. Treat logo asset-lock as mandatory closure scope, not a future enhancement.
+8. If master advanced, compare/replay onto a current-master successor; never reuse stale green evidence.
+9. If all exact-head gates PASS and branch is current, make PR ready and merge only with expected-head protection and the appropriate trusted-master certification trigger token.
+10. Run/verify baseline and native live certifications and validate uploaded artifacts/receipts, including logo asset-lock evidence when exercised.
+11. If blocked by external provider availability, missing secrets, relay deployment infrastructure, or CI infrastructure, leave repo safe and report the precise blocker with evidence. Never fabricate `DONE`, `PRODUCTION`, or `VERIFIED`.
