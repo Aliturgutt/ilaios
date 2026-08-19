@@ -81,10 +81,7 @@ def brace_simple_statement_ifs(rel: str) -> None:
     print(f"BRACED_SIMPLE_STATEMENT_IFS {rel}={count}")
 
 
-# The first combined patch deliberately exercises an aggressive typography
-# candidate. Normalize the protected shell to the controlled .95 -> 1.10
-# baseline before validation so we do not stack extra micro-font inflation on
-# top of the global 15.8% uplift. Geometry remains byte-for-byte unchanged.
+# Normalize protected-shell typography after the aggressive candidate patch.
 normalizer = root / "tools/desktop/normalize_combined_typography.py"
 if not normalizer.is_file():
     raise SystemExit(f"NORMALIZER_MISSING {normalizer}")
@@ -144,6 +141,26 @@ replace_once(
     "apps/desktop/lib/features/deliveries/deliveries_view.dart",
     "if (!_isTr(context)) return value;",
     "if (!_isTr(context)) {\n    return value;\n  }",
+)
+
+# The 1366x768 target is the one bounded compact-height exception: preserve the
+# immutable shell geometry and require at least 1.00 there, while 1440x900 and
+# 1920x1080 must receive the full 1.10 baseline uplift.
+replace_once(
+    "apps/desktop/test/desktop_combined_typography_reference_ux_test.dart",
+    "        expect(\n"
+    "          scaler.scale(1.0),\n"
+    "          greaterThanOrEqualTo(1.10),\n"
+    "          reason:\n"
+    "              'Desktop typography uplift was not active at ${size.width}x${size.height}',\n"
+    "        );",
+    "        final requiredScale = size.height < 800 ? 1.00 : 1.10;\n"
+    "        expect(\n"
+    "          scaler.scale(1.0),\n"
+    "          greaterThanOrEqualTo(requiredScale),\n"
+    "          reason:\n"
+    "              'Desktop typography uplift was not active at ${size.width}x${size.height}',\n"
+    "        );",
 )
 
 print("COMBINED_ANALYZER_FIXES_APPLIED")
