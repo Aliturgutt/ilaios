@@ -6,7 +6,7 @@ from services.web_app_design_contract import (
     WebAppDesignContractError,
     derive_web_app_design_contract,
 )
-from services.web_app_spec import derive_web_app_spec
+from services.web_app_spec import WebAppSpec, derive_web_app_spec
 from services.web_reference_semantics import (
     WebReferenceSemanticBrief,
     WebSemanticObservation,
@@ -29,7 +29,7 @@ def _semantic() -> WebReferenceSemanticBrief:
     )
 
 
-def _spec_with_reference():
+def _spec_with_reference() -> WebAppSpec:
     return derive_web_app_spec(
         "request-shell-design",
         "Build a Web App dashboard with login, CRUD project management, tables and analytics charts.",

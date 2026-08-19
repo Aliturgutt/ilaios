@@ -27,13 +27,22 @@ jobs:
     name: exact-head Web App Factory checkpoint
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
-      - name: Checkout exact source commit
+      - name: Checkout exact PR head
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ env.SOURCE_SHA }}
           persist-credentials: false
+
+      - name: Verify exact checked-out head
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          echo "WEB_APP_FACTORY_EXACT_HEAD=$SOURCE_SHA"
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -108,7 +117,7 @@ jobs:
         run: |
           set -euo pipefail
           echo '## ILAIOS Web App Factory Continuation Gate' >> "$GITHUB_STEP_SUMMARY"
-          echo "- Exact head: \`${GITHUB_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Exact PR head: \`${SOURCE_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
           echo '- Tracking issue: `#486`' >> "$GITHUB_STEP_SUMMARY"
           echo '- Rule: `NO_EVIDENCE_NO_DONE`' >> "$GITHUB_STEP_SUMMARY"
           echo '- This gate proves source/test quality only; it does not claim deployment or production.' >> "$GITHUB_STEP_SUMMARY"
