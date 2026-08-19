@@ -39,8 +39,23 @@ class SkillEngineeringLiveCertificationError(RuntimeError):
     """Live Skill Engineering provider certification failed closed."""
 
 
-_INPUT_TOKEN_RESERVATION = 1024
-_OUTPUT_TOKEN_RESERVATION = 1024
+_DEFAULT_INPUT_TOKEN_RESERVATION = 4096
+_DEFAULT_OUTPUT_TOKEN_RESERVATION = 512
+_OPENROUTER_FREE_OUTPUT_TOKEN_RESERVATION = 2048
+_VLLM_INPUT_TOKEN_RESERVATION = 1024
+_VLLM_OUTPUT_TOKEN_RESERVATION = 512
+
+
+def _token_reservations(provider_id: str, model_id: str) -> tuple[int, int]:
+    """Return provider-specific certification reservations without widening runtime limits."""
+    if provider_id == "openrouter" and model_id == "openrouter/free":
+        return (
+            _DEFAULT_INPUT_TOKEN_RESERVATION,
+            _OPENROUTER_FREE_OUTPUT_TOKEN_RESERVATION,
+        )
+    if provider_id == "vllm":
+        return (_VLLM_INPUT_TOKEN_RESERVATION, _VLLM_OUTPUT_TOKEN_RESERVATION)
+    return (_DEFAULT_INPUT_TOKEN_RESERVATION, _DEFAULT_OUTPUT_TOKEN_RESERVATION)
 
 
 def run_skill_engineering_live_certification(
@@ -97,6 +112,9 @@ def run_skill_engineering_live_certification(
 
     for index, binding in enumerate(SKILL_ENGINEERING_RUNTIME_BINDINGS):
         selection = config.adapter.select(binding.capability)
+        input_tokens, max_output_tokens = _token_reservations(
+            selection.provider_id, selection.model_id
+        )
         invocation = AgentInvocation(
             invocation_id=f"skill-engineering-live-{index}-{binding.skill_id}",
             caller_id="ilaios.agent.core.orchestrator.v1",
@@ -124,8 +142,8 @@ def run_skill_engineering_live_certification(
                 "tenant_id": tenant_id,
                 "model_id": selection.model_id,
                 "prompt": invocation.prompt,
-                "input_tokens": _INPUT_TOKEN_RESERVATION,
-                "max_output_tokens": _OUTPUT_TOKEN_RESERVATION,
+                "input_tokens": input_tokens,
+                "max_output_tokens": max_output_tokens,
                 "scopes": [
                     {"kind": scope.kind.value, "scope_id": scope.scope_id}
                     for scope in scopes

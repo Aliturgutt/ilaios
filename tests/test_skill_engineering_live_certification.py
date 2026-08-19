@@ -25,6 +25,7 @@ from services.runtime.ai_provider_adapter import (
     ProviderTransportResult,
 )
 from services.skill_engineering_live_certification import (
+    _token_reservations,
     run_skill_engineering_live_certification,
 )
 from services.skill_engineering_runtime import SKILL_ENGINEERING_RUNTIME_BINDINGS
@@ -47,7 +48,7 @@ class _Transport:
         assert model_id == "local-test/model"
         assert system_instructions.strip()
         assert prompt.strip()
-        assert max_output_tokens == 1024
+        assert max_output_tokens == 512
         return ProviderTransportResult(
             text="bounded certification proposal",
             input_tokens=64,
@@ -142,6 +143,15 @@ def test_five_skill_certification_persists_verified_receipt(tmp_path: Path) -> N
         (tmp_path / "skill-engineering-live-receipt.json").read_text(encoding="utf-8")
     )
     assert persisted == receipt
+
+
+def test_provider_specific_token_reservations_remain_within_real_boundaries() -> None:
+    assert _token_reservations("openrouter", "openrouter/free") == (4096, 2048)
+    assert _token_reservations("openrouter", "direct/free-model") == (4096, 512)
+    assert _token_reservations("llama-cpp", "ilaios-local") == (4096, 512)
+    vllm_input, vllm_output = _token_reservations("vllm", "ilaios-local")
+    assert (vllm_input, vllm_output) == (1024, 512)
+    assert vllm_input + vllm_output <= 2048
 
 
 def test_explicit_local_provider_config_accepts_admitted_test_execute_capability() -> None:
