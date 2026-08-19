@@ -47,7 +47,7 @@ class _Transport:
         assert model_id == "local-test/model"
         assert system_instructions.strip()
         assert prompt.strip()
-        assert max_output_tokens == 512
+        assert max_output_tokens == 1024
         return ProviderTransportResult(
             text="bounded certification proposal",
             input_tokens=64,
