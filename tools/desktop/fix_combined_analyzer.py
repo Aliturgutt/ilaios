@@ -143,24 +143,4 @@ replace_once(
     "if (!_isTr(context)) {\n    return value;\n  }",
 )
 
-# 1366x768 is the bounded compact-height exception: keep the proven .95 shell
-# baseline to preserve the immutable geometry. 1440x900 and 1920x1080 must
-# receive the full 1.10 baseline uplift.
-replace_once(
-    "apps/desktop/test/desktop_combined_typography_reference_ux_test.dart",
-    "        expect(\n"
-    "          scaler.scale(1.0),\n"
-    "          greaterThanOrEqualTo(1.10),\n"
-    "          reason:\n"
-    "              'Desktop typography uplift was not active at ${size.width}x${size.height}',\n"
-    "        );",
-    "        final requiredScale = size.height < 800 ? .95 : 1.10;\n"
-    "        expect(\n"
-    "          scaler.scale(1.0),\n"
-    "          greaterThanOrEqualTo(requiredScale),\n"
-    "          reason:\n"
-    "              'Desktop typography uplift was not active at ${size.width}x${size.height}',\n"
-    "        );",
-)
-
 print("COMBINED_ANALYZER_FIXES_APPLIED")
