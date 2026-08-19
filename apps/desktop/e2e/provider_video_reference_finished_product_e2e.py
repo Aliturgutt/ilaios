@@ -11,6 +11,7 @@ import tempfile
 import time
 import zlib
 from datetime import datetime, timedelta, timezone
+from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -23,18 +24,17 @@ from services.desktop_execution_coordinator import DesktopExecutionCoordinator
 from services.evidence import EvidenceStore
 from services.governance import GovernedRuntimeGateway
 from services.integrations.product_runtime import DurableVideoProductRuntime
-from services.integrations.reference_aware_provider_video_runtime import (
-    ReferenceAwareProviderBackedDesktopVideoRuntime,
+from services.integrations.reference_aware_managed_provider_video_runtime import (
+    ManagedReferenceAwareProviderBackedDesktopVideoRuntime,
 )
 from services.reference_asset_admission import ReferenceAssetAdmissionStore
 from services.reference_assets import ReferenceAssetRole
 from services.reference_brief_cache import ReferenceBriefCache
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 from src.video_automation.ffmpeg_media_engine import FfmpegMediaEngine
-from src.video_automation.openrouter_video_provider import (
-    SEEDANCE_FREE_MODEL_ID,
-    OpenRouterVideoGenerationJobPoller,
-)
+
+_MAX_REFERENCE_CERTIFICATION_SPEND_USD = Decimal("1.00")
+_DEFAULT_MANAGED_MODEL_ID = "bytedance/seedance-2.0-fast"
 
 
 def main() -> int:
@@ -43,6 +43,7 @@ def main() -> int:
         raise RuntimeError("OPENROUTER_API_KEY is required for live reference-provider E2E")
     if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
         raise RuntimeError("live reference-provider E2E requires ffmpeg and ffprobe")
+    max_total_cost_usd = _managed_reference_budget()
 
     proof_root = Path(
         os.environ.get(
@@ -57,6 +58,7 @@ def main() -> int:
             root=temporary,
             proof_root=proof_root,
             api_key=api_key,
+            max_total_cost_usd=max_total_cost_usd,
         )
     finally:
         gc.collect()
@@ -73,7 +75,11 @@ def main() -> int:
 
 
 def _run_reference_finished_product_acceptance(
-    *, root: Path, proof_root: Path, api_key: str
+    *,
+    root: Path,
+    proof_root: Path,
+    api_key: str,
+    max_total_cost_usd: Decimal,
 ) -> None:
     token = "test"
     principal_id = "ci-reference-provider-video-user"
@@ -81,6 +87,7 @@ def _run_reference_finished_product_acceptance(
     request_id = "desktop-reference-provider-video-real-e2e"
 
     database = root / "control-plane.sqlite3"
+    product_database = root / "product-proof.sqlite3"
     control_plane = ControlPlane(ControlPlaneConfig(database, token))
     workflows = WorkflowStore(WorkflowStoreConfig(database))
     governed_runtime = GovernedRuntime(database)
@@ -101,27 +108,27 @@ def _run_reference_finished_product_acceptance(
         job = control_plane.get_job(token, job_id)
         return control_plane.get_goal(token, job.goal_id).objective
 
-    poller = OpenRouterVideoGenerationJobPoller(
-        api_key,
-        provider_id=ReferenceAwareProviderBackedDesktopVideoRuntime.PROVIDER_ID,
-    )
-    video = ReferenceAwareProviderBackedDesktopVideoRuntime(
+    video = ManagedReferenceAwareProviderBackedDesktopVideoRuntime(
         root / "video",
         grants,
         governance,
         evidence,
         objective_resolver=resolve_objective,
         api_key=api_key,
-        model_id=os.environ.get("ILAIOS_VIDEO_MODEL_ID", SEEDANCE_FREE_MODEL_ID).strip(),
+        product_identity_database=product_database,
+        max_total_cost_usd=max_total_cost_usd,
+        model_id=os.environ.get(
+            "ILAIOS_VIDEO_MANAGED_MODEL_ID",
+            _DEFAULT_MANAGED_MODEL_ID,
+        ).strip(),
         qa_model_id=os.environ.get("ILAIOS_VIDEO_QA_MODEL_ID", "openrouter/free").strip(),
         resolution=os.environ.get("ILAIOS_VIDEO_E2E_RESOLUTION", "480p").strip(),
         poll_interval_seconds=5.0,
         max_poll_rounds=144,
-        poller=poller,
         reference_assets=references,
     )
     product = DurableVideoProductRuntime(
-        root / "product-proof.sqlite3",
+        product_database,
         control_plane,
         workflows,
         scheduler,
@@ -190,14 +197,15 @@ def _run_reference_finished_product_acceptance(
             now=now + timedelta(seconds=1),
         )
     except Exception as exc:
-        _write_provider_evidence(proof_root, poller)
         (proof_root / "failure.json").write_text(
             json.dumps(
                 {
-                    "schema": "ilaios.desktop.reference-provider-video-e2e.failure.v1",
+                    "schema": "ilaios.desktop.reference-provider-video-e2e.failure.v2",
                     "status": "FAIL",
                     "revision_sha": os.environ.get("GITHUB_SHA", "local"),
                     "reference_sha256": asset.sha256,
+                    "provider_cost_mode": "managed-bounded",
+                    "provider_cost_hard_cap_usd": str(max_total_cost_usd),
                     "error_type": exc.__class__.__name__,
                     "error": str(exc),
                 },
@@ -266,40 +274,40 @@ def _run_reference_finished_product_acceptance(
         raise RuntimeError(f"reference-provider QA is not proven: {qa}")
     if qa.get("semantic_passed") is not True or qa.get("technical_passed") is not True:
         raise RuntimeError(f"reference-provider semantic/technical QA is incomplete: {qa}")
-    if qa.get("provider_cost_zero") is not True:
-        raise RuntimeError(f"reference free-route cost evidence is not proven: {qa}")
+    if qa.get("provider_cost_mode") != "managed-bounded":
+        raise RuntimeError(f"reference provider cost mode is not managed-bounded: {qa}")
+    if qa.get("provider_cost_proven") is not True:
+        raise RuntimeError(f"reference provider terminal cost is not proven: {qa}")
+    provider_cost_microusd = qa.get("provider_cost_microusd")
+    if isinstance(provider_cost_microusd, bool) or not isinstance(provider_cost_microusd, int):
+        raise RuntimeError("reference provider cost must be integer microUSD")
+    hard_cap_microusd = _usd_to_microusd(max_total_cost_usd)
+    if provider_cost_microusd < 0 or provider_cost_microusd > hard_cap_microusd:
+        raise RuntimeError("reference provider actual cost exceeded the authorized proof cap")
+    if qa.get("provider_cost_ceiling_microusd") != hard_cap_microusd:
+        raise RuntimeError("reference provider evidence is not bound to the exact proof cap")
     if int(qa.get("generated_shot_count", 0)) != 1:
         raise RuntimeError(f"unexpected reference generated shot count: {qa}")
-
-    terminal = {job_id: dict(value) for job_id, value in poller.terminal_evidence.items()}
-    if len(terminal) != 1:
-        raise RuntimeError(f"expected one provider terminal record, got {len(terminal)}")
-    if any(float(value["cost"]) != 0.0 for value in terminal.values()):
-        raise RuntimeError("reference provider terminal cost is not exactly zero")
-    generation_ids = [
-        str(value["generation_id"])
-        for value in terminal.values()
-        if str(value.get("generation_id", "")).strip()
-        and str(value.get("generation_id")) != "unavailable"
-    ]
-    if len(generation_ids) != 1:
-        raise RuntimeError("reference provider generation ID is not fully evidenced")
-    sources = sorted({str(value["source"]) for value in terminal.values()})
-    _write_provider_evidence(proof_root, poller)
 
     copied_video = proof_root / "desktop-reference-provider-finished-product.mp4"
     shutil.copy2(rendered, copied_video)
     receipt = {
-        "schema": "ilaios.desktop.reference-provider-video-e2e.v1",
+        "schema": "ilaios.desktop.reference-provider-video-e2e.v2",
         "status": "PASS",
         "revision_sha": os.environ.get("GITHUB_SHA", "local"),
         "request_id": request_id,
         "execution_status": coordinator_state["execution_status"],
-        "provider_model": os.environ.get("ILAIOS_VIDEO_MODEL_ID", SEEDANCE_FREE_MODEL_ID),
-        "provider_generation_id": generation_ids[0],
-        "provider_cost_usd": 0.0,
-        "provider_cost_zero": True,
-        "provider_cost_evidence_source": ",".join(sources),
+        "provider_model": os.environ.get(
+            "ILAIOS_VIDEO_MANAGED_MODEL_ID",
+            _DEFAULT_MANAGED_MODEL_ID,
+        ),
+        "provider_cost_mode": "managed-bounded",
+        "provider_cost_proven": True,
+        "provider_cost_zero": qa.get("provider_cost_zero"),
+        "provider_cost_microusd": provider_cost_microusd,
+        "provider_cost_usd": str(Decimal(provider_cost_microusd) / Decimal(1_000_000)),
+        "provider_cost_hard_cap_usd": str(max_total_cost_usd),
+        "provider_cost_hard_cap_microusd": hard_cap_microusd,
         "qa_model": os.environ.get("ILAIOS_VIDEO_QA_MODEL_ID", "openrouter/free"),
         "reference_asset_count": 1,
         "reference_asset_sha256": asset.sha256,
@@ -320,7 +328,7 @@ def _run_reference_finished_product_acceptance(
         "semantic_score": qa.get("semantic_score"),
         "semantic_threshold": qa.get("semantic_threshold"),
         "generated_shot_count": qa.get("generated_shot_count"),
-        "generation_mode": "provider-backed-reference-conditioned-video",
+        "generation_mode": "managed-provider-reference-conditioned-video",
     }
     (proof_root / "receipt.json").write_text(
         json.dumps(receipt, sort_keys=True, indent=2) + "\n",
@@ -328,6 +336,31 @@ def _run_reference_finished_product_acceptance(
     )
     print(json.dumps(receipt, sort_keys=True))
     print("ILAIOS_DESKTOP_REFERENCE_PROVIDER_VIDEO_E2E=PASS")
+
+
+def _managed_reference_budget() -> Decimal:
+    raw = os.environ.get("ILAIOS_VIDEO_REFERENCE_MAX_TOTAL_USD", "").strip()
+    if not raw:
+        raise RuntimeError("ILAIOS_VIDEO_REFERENCE_MAX_TOTAL_USD is required")
+    try:
+        value = Decimal(raw)
+    except InvalidOperation as exc:
+        raise RuntimeError("reference managed-provider budget is not a decimal") from exc
+    if (
+        not value.is_finite()
+        or value <= 0
+        or value > _MAX_REFERENCE_CERTIFICATION_SPEND_USD
+    ):
+        raise RuntimeError("reference managed-provider budget must be > 0 and <= 1.00 USD")
+    _usd_to_microusd(value)
+    return value
+
+
+def _usd_to_microusd(value: Decimal) -> int:
+    scaled = value * Decimal(1_000_000)
+    if scaled != scaled.to_integral_value():
+        raise RuntimeError("reference managed-provider budget must have microUSD precision")
+    return int(scaled)
 
 
 def _reference_png_bytes() -> bytes:
@@ -361,18 +394,6 @@ def _reference_png_bytes() -> bytes:
 def _png_chunk(kind: bytes, payload: bytes) -> bytes:
     body = kind + payload
     return struct.pack(">I", len(payload)) + body + struct.pack(">I", zlib.crc32(body) & 0xFFFFFFFF)
-
-
-def _write_provider_evidence(
-    proof_root: Path,
-    poller: OpenRouterVideoGenerationJobPoller,
-) -> None:
-    evidence = {job_id: dict(value) for job_id, value in poller.terminal_evidence.items()}
-    if evidence:
-        (proof_root / "provider-terminal-evidence.json").write_text(
-            json.dumps(evidence, sort_keys=True, indent=2) + "\n",
-            encoding="utf-8",
-        )
 
 
 if __name__ == "__main__":
