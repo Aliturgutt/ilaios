@@ -132,10 +132,10 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
       context: context,
       builder: (dialogContext) => AlertDialog(
         title: Text(_tr(context, 'Canonical Ajan Provision Et', 'Provision Canonical Agent')),
-        content: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 560, maxHeight: 460),
+        content: SizedBox(
+          width: 560,
+          height: math.min(460.0, candidates.length * 72.0),
           child: ListView.separated(
-            shrinkWrap: true,
             itemCount: candidates.length,
             separatorBuilder: (context, index) => const Divider(height: 1),
             itemBuilder: (_, index) {
