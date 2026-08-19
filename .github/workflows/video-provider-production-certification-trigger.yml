@@ -1,0 +1,30 @@
+name: Video Provider Production Certification Trigger
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/video-provider-production-certification.trigger
+
+permissions:
+  actions: write
+  contents: read
+
+jobs:
+  dispatch:
+    name: Dispatch canonical desktop-managed-bounded certification
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Dispatch canonical certification workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${GITHUB_REF_NAME}" = "master"
+          gh workflow run video-provider-production-certification.yml \
+            --repo "${GITHUB_REPOSITORY}" \
+            --ref master \
+            -f proof_mode=desktop-managed-bounded
