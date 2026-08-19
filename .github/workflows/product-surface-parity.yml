@@ -1,0 +1,50 @@
+name: Product Surface Parity Gate
+
+on:
+  pull_request:
+    paths:
+      - 'contracts/product_surface_contract.json'
+      - 'scripts/validate_product_surface_contract.py'
+      - 'tests/test_product_surface_contract.py'
+      - 'skills/ilaios-product-surface-integration/**'
+      - 'services/agent_readiness.py'
+      - 'services/agent_registry.py'
+      - 'apps/website/app/**'
+      - 'apps/desktop/**'
+      - 'docs/canonical/SYSTEM_ARCHITECTURE.md'
+  push:
+    branches: [master]
+    paths:
+      - 'contracts/product_surface_contract.json'
+      - 'scripts/validate_product_surface_contract.py'
+      - 'tests/test_product_surface_contract.py'
+      - 'skills/ilaios-product-surface-integration/**'
+      - 'services/agent_readiness.py'
+      - 'services/agent_registry.py'
+      - 'apps/website/app/**'
+      - 'apps/desktop/**'
+      - 'docs/canonical/SYSTEM_ARCHITECTURE.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    name: Contract and authority parity
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install project test dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Validate product surface contract
+        run: python scripts/validate_product_surface_contract.py
+      - name: Run product surface parity tests
+        run: python -m pytest -q tests/test_product_surface_contract.py
