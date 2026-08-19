@@ -108,7 +108,8 @@ jobs:
             tests/test_app_factory.py \
             tests/test_app_design_quality.py \
             tests/test_store_release_certification.py \
-            tests/test_mobile_android_executor.py
+            tests/test_mobile_android_executor.py \
+            tests/test_mobile_android_release.py
 
       - name: Run focused Ruff
         shell: bash
@@ -119,10 +120,12 @@ jobs:
             services/app_design_quality.py \
             services/store_release_certification.py \
             services/mobile_android_executor.py \
+            services/mobile_android_release.py \
             tests/test_app_factory.py \
             tests/test_app_design_quality.py \
             tests/test_store_release_certification.py \
-            tests/test_mobile_android_executor.py
+            tests/test_mobile_android_executor.py \
+            tests/test_mobile_android_release.py
 
       - name: Run focused strict Mypy
         shell: bash
@@ -133,8 +136,10 @@ jobs:
             services/app_design_quality.py \
             services/store_release_certification.py \
             services/mobile_android_executor.py \
+            services/mobile_android_release.py \
             tests/test_store_release_certification.py \
-            tests/test_mobile_android_executor.py
+            tests/test_mobile_android_executor.py \
+            tests/test_mobile_android_release.py
 
       - name: Publish checkpoint summary
         if: always()
@@ -145,4 +150,4 @@ jobs:
           echo "- Exact PR head: \`${SOURCE_SHA}\`" >> "$GITHUB_STEP_SUMMARY"
           echo '- Tracking issue: `#502`' >> "$GITHUB_STEP_SUMMARY"
           echo '- Rule: `NO_EVIDENCE_NO_DONE`' >> "$GITHUB_STEP_SUMMARY"
-          echo '- This gate proves bounded source/test checkpoint quality only; it does not claim Android build/signing, STORE_READY, submission, publication, or live-install verification.' >> "$GITHUB_STEP_SUMMARY"
+          echo '- This gate proves bounded source/test checkpoint quality only; it does not claim a real APK/AAB build, signing, emulator/device execution, Google Play submission/publication, STORE_READY, or live-install verification.' >> "$GITHUB_STEP_SUMMARY"
