@@ -22,19 +22,24 @@ from services.software_factory import (
 )
 
 
-def _projection(**overrides: object) -> AppRequestProjection:
-    projection: AppRequestProjection = {
+def _projection(
+    *,
+    platform: str = "android",
+    action: str = "client_change_request",
+    request_sha256: str = "a" * 64,
+    approved_for_review: bool = True,
+    approver: str = "owner-review",
+) -> AppRequestProjection:
+    return {
         "request_id": "appreq-android-1",
-        "platform": "android",
-        "action": "client_change_request",
+        "platform": platform,
+        "action": action,
         "objective": "Build the approved Android client surface",
-        "request_sha256": "a" * 64,
-        "approved_for_review": True,
-        "approver": "owner-review",
+        "request_sha256": request_sha256,
+        "approved_for_review": approved_for_review,
+        "approver": approver,
         "client_mutated": False,
     }
-    projection.update(cast(dict[str, object], overrides))
-    return projection
 
 
 def _changes() -> tuple[AndroidSourceChange, ...]:
