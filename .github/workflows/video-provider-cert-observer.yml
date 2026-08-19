@@ -1,0 +1,133 @@
+name: Video Provider Certification Observer
+
+on:
+  push:
+    branches:
+      - observe/video-provider-cert-7a1f
+
+permissions:
+  actions: read
+  contents: read
+  issues: write
+
+jobs:
+  observe:
+    name: Observe canonical certification
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Find, wait for, and report canonical certification
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          repo="$GITHUB_REPOSITORY"
+          target_after="2026-08-19T09:15:00Z"
+          run_id=""
+
+          for _ in $(seq 1 90); do
+            runs_json="$(gh run list \
+              --repo "$repo" \
+              --workflow video-provider-production-certification.yml \
+              --branch master \
+              --event workflow_dispatch \
+              --limit 20 \
+              --json databaseId,headSha,status,conclusion,createdAt,url,workflowName)"
+            run_id="$(printf '%s' "$runs_json" | jq -r --arg after "$target_after" '
+              [ .[] | select(.createdAt >= $after) ]
+              | sort_by(.createdAt)
+              | last
+              | .databaseId // empty
+            ')"
+            if [[ -n "$run_id" ]]; then
+              break
+            fi
+            sleep 10
+          done
+
+          if [[ -z "$run_id" ]]; then
+            gh issue create \
+              --repo "$repo" \
+              --title "Video Provider Certification Observer: NO_RUN_FOUND" \
+              --body "No canonical Video Provider Production Certification workflow_dispatch run was found on master after $target_after."
+            exit 1
+          fi
+
+          gh run watch "$run_id" --repo "$repo" --exit-status || true
+          run_json="$(gh run view "$run_id" --repo "$repo" --json databaseId,headSha,status,conclusion,createdAt,updatedAt,url,workflowName,event)"
+
+          proof_dir="/tmp/video-provider-cert-proof"
+          rm -rf "$proof_dir"
+          mkdir -p "$proof_dir"
+          gh run download "$run_id" --repo "$repo" --dir "$proof_dir" || true
+
+          receipt_summary="NO_RECEIPT_FOUND"
+          receipt_path="$(find "$proof_dir" -type f \( -name 'receipt.json' -o -name 'provider-receipt.json' \) | head -1 || true)"
+          if [[ -n "$receipt_path" ]]; then
+            receipt_summary="$(python - "$receipt_path" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          p = Path(sys.argv[1])
+          data = json.loads(p.read_text(encoding="utf-8"))
+          keys = [
+              "status",
+              "revision_sha",
+              "execution_status",
+              "provider",
+              "provider_model",
+              "model",
+              "provider_cost_mode",
+              "provider_cost_usd",
+              "provider_cost_hard_cap_usd",
+              "qa_model",
+              "semantic_score",
+              "semantic_threshold",
+              "generated_shot_count",
+              "duration_seconds",
+              "video_codec",
+              "audio_codec",
+              "artifact_sha256",
+              "artifact_bytes",
+          ]
+          for key in keys:
+              if key in data:
+                  print(f"{key}: {data.get(key)}")
+          artifact = data.get("artifact") or {}
+          for key in ("sha256", "bytes", "path"):
+              if key in artifact:
+                  print(f"artifact.{key}: {artifact.get(key)}")
+          PY
+          )"
+          fi
+
+          artifact_listing="$(find "$proof_dir" -type f -printf '%P\n' | sort | sed -n '1,200p')"
+          body_file="/tmp/video-provider-cert-observer.md"
+          {
+            echo "Canonical Video Provider Production Certification observation."
+            echo
+            echo '```json'
+            printf '%s\n' "$run_json"
+            echo '```'
+            echo
+            echo "## Receipt summary"
+            echo '```text'
+            printf '%s\n' "$receipt_summary"
+            echo '```'
+            echo
+            echo "## Downloaded artifact files"
+            echo '```text'
+            printf '%s\n' "${artifact_listing:-NO_FILES_DOWNLOADED}"
+            echo '```'
+          } > "$body_file"
+
+          conclusion="$(printf '%s' "$run_json" | jq -r '.conclusion // "unknown"')"
+          head_sha="$(printf '%s' "$run_json" | jq -r '.headSha // "unknown"')"
+          gh issue create \
+            --repo "$repo" \
+            --title "Video Provider Certification Evidence: ${run_id} ${conclusion}" \
+            --body-file "$body_file"
+
+          [[ "$conclusion" == "success" ]]
