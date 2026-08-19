@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from collections.abc import Mapping
 from hashlib import sha256
+from pathlib import Path
 
 import pytest
 
@@ -74,7 +75,7 @@ def test_reference_consistency_requires_strong_threshold() -> None:
 
 
 def test_product_and_logo_consistency_passes_only_when_each_critical_score_passes(
-    tmp_path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _patch_media(monkeypatch)
     transport = _Transport(
@@ -117,7 +118,7 @@ def test_product_and_logo_consistency_passes_only_when_each_critical_score_passe
 
 
 def test_low_critical_role_score_rejects_even_when_overall_score_is_high(
-    tmp_path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _patch_media(monkeypatch)
     transport = _Transport(
@@ -149,7 +150,7 @@ def test_low_critical_role_score_rejects_even_when_overall_score_is_high(
 
 
 def test_subject_review_is_visual_consistency_not_identity_verification(
-    tmp_path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _patch_media(monkeypatch)
     transport = _Transport(
@@ -183,7 +184,7 @@ def test_subject_review_is_visual_consistency_not_identity_verification(
 
 
 def test_missing_applicable_critical_score_fails_closed(
-    tmp_path, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _patch_media(monkeypatch)
     transport = _Transport(
