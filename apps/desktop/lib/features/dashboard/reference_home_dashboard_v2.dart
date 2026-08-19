@@ -13,8 +13,8 @@ import 'reference_home_dashboard_v3.dart';
 /// The actual Home implementation lives in [ReferenceHomeDashboardV3]. Wide
 /// Desktop windows with a short logical content height (for example 1280x800
 /// after the shell bars are removed) preserve native typography size and allow
-/// vertical scrolling of the verified 700px Home canvas instead of shrinking
-/// the entire surface. Normal reference sizes render natively at 1:1.
+/// vertical scrolling of the verified 720px Home safety canvas instead of
+/// shrinking the entire surface. Normal reference sizes render natively at 1:1.
 class ReferenceHomeDashboardV2 extends StatelessWidget {
   const ReferenceHomeDashboardV2({
     required this.projection,
@@ -51,14 +51,14 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
-          if (constraints.maxWidth >= 1000 && constraints.maxHeight < 700) {
+          if (constraints.maxWidth >= 1000 && constraints.maxHeight < 720) {
             return SingleChildScrollView(
               key: const Key('command-center-short-viewport-scroll'),
               primary: false,
               physics: const ClampingScrollPhysics(),
               child: SizedBox(
                 width: constraints.maxWidth,
-                height: 700,
+                height: 720,
                 child: _home(context),
               ),
             );
