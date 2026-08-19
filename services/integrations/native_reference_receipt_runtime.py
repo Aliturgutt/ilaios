@@ -1,8 +1,8 @@
 """Evidence-preserving native-reference Desktop Video runtime.
 
 The canonical provider runtime deliberately knows nothing about native-reference
-specific QA fields. This additive adapter captures only the already-verified
-native consistency/logo-lock evidence produced by
+specific QA fields. This additive adapter captures only already-verified native
+provider/consistency/logo-lock evidence produced by
 ``NativeReferenceVerifiedManagedDesktopVideoRuntime`` and carries it into the
 canonical ``qa``/result document returned to ProductRuntime. It does not change
 provider routing, generation, thresholds, cost policy, or acceptance decisions.
@@ -20,17 +20,32 @@ from .native_reference_verified_runtime import (
 )
 
 _NATIVE_QA_PREFIXES = ("reference_consistency_", "logo_asset_lock_")
+_NATIVE_PROVIDER_KEYS = frozenset(
+    {
+        "provider_native_reference_url_used",
+        "native_reference_mode",
+        "native_reference_count",
+        "native_reference_dispatch_count",
+        "native_reference_sha256s",
+        "native_reference_relay_released",
+    }
+)
 
 
 def native_receipt_evidence(outcome: dict[str, object]) -> dict[str, object]:
-    """Return only verified native-reference fields that may enter final receipts."""
+    """Return verified native-reference fields that may enter final receipts."""
 
     if outcome.get("reference_consistency_passed") is not True:
         raise RuntimeError("native reference receipt lacks consistency PASS evidence")
+    missing = sorted(key for key in _NATIVE_PROVIDER_KEYS if key not in outcome)
+    if missing:
+        raise RuntimeError("native reference receipt lacks provider relay evidence")
+    if outcome.get("native_reference_relay_released") is not True:
+        raise RuntimeError("native reference receipt lacks relay release evidence")
     evidence = {
         key: value
         for key, value in outcome.items()
-        if key.startswith(_NATIVE_QA_PREFIXES)
+        if key.startswith(_NATIVE_QA_PREFIXES) or key in _NATIVE_PROVIDER_KEYS
     }
     if not evidence:
         raise RuntimeError("native reference receipt evidence is unavailable")
