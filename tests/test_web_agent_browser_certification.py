@@ -10,10 +10,10 @@ from services.web_agent_browser_certification import (
     WebAgentBrowserCertificationError,
     verify_browser_e2e_evidence,
 )
-from services.web_agent_execution import binding_for_web_agent
+from services.web_agent_execution import web_binding_for
 
 _SOURCE_SHA = "a" * 40
-_SKILL_ID = binding_for_web_agent(BROWSER_AGENT_ID).primary_skill_id
+_SKILL_ID = web_binding_for(BROWSER_AGENT_ID).primary_skill_id
 
 
 def _write_receipts(root: Path, count: int = 6) -> list[str]:
@@ -122,7 +122,7 @@ def test_rejects_missing_governed_admission(tmp_path: Path) -> None:
 
 def test_rejects_wrong_agent_or_skill(tmp_path: Path) -> None:
     document = _document(_write_receipts(tmp_path))
-    document["agent_id"] = "ilaios.agent.web.web-ux.v1"
+    document["agent_id"] = "ilaios.agent.web.ux.v1"
     path = _write_summary(tmp_path, document)
     with pytest.raises(WebAgentBrowserCertificationError, match="agent_id drifted"):
         verify_browser_e2e_evidence(summary_path=path, expected_source_sha=_SOURCE_SHA)
