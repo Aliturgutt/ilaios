@@ -13,6 +13,7 @@ from dataclasses import dataclass
 
 from services.reference_assets import (
     ReferenceAssetError,
+    ReferenceAssetRecord,
     ReferenceAssetRole,
     ReferenceAssetStore,
 )
@@ -130,7 +131,7 @@ class NativeReferenceRelayBinder:
     def _prepare_frames(
         self,
         *,
-        frame_records: tuple[object, ...],
+        frame_records: tuple[ReferenceAssetRecord, ...],
         tenant_id: str,
         principal_id: str,
         model: OpenRouterVideoModel,
@@ -140,23 +141,20 @@ class NativeReferenceRelayBinder:
         last_url: str | None = None
         digests: list[str] = []
         try:
-            for raw_record in frame_records:
-                record = raw_record
-                # ReferenceAssetRecord is intentionally not widened into a second
-                # DTO; the admitted immutable record remains the authority.
-                content = self._reference_assets.read_bytes(record)  # type: ignore[arg-type]
+            for record in frame_records:
+                content = self._reference_assets.read_bytes(record)
                 ticket = self._relay.publish(
                     content=content,
-                    mime_type=record.mime_type,  # type: ignore[attr-defined]
-                    sha256_hex=record.sha256,  # type: ignore[attr-defined]
+                    mime_type=record.mime_type,
+                    sha256_hex=record.sha256,
                     tenant_id=tenant_id,
                     principal_id=principal_id,
                 )
                 tickets.append(ticket)
-                digests.append(record.sha256)  # type: ignore[attr-defined]
-                if record.role is ReferenceAssetRole.FIRST_FRAME:  # type: ignore[attr-defined]
+                digests.append(record.sha256)
+                if record.role is ReferenceAssetRole.FIRST_FRAME:
                     first_url = ticket.url
-                elif record.role is ReferenceAssetRole.LAST_FRAME:  # type: ignore[attr-defined]
+                elif record.role is ReferenceAssetRole.LAST_FRAME:
                     last_url = ticket.url
             fields = capability_bound_frame_fields(
                 model=model,
