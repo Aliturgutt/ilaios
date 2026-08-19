@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from services.agent_provider_capabilities import ALLOWED_AGENT_AI_CAPABILITIES
 from services.ai_governance import (
     ModelProviderRegistry,
     ModelRecord,
@@ -18,7 +19,6 @@ from services.ai_governance import (
     UsageGovernor,
     UsageLimits,
 )
-from services.p0_agent_execution import P0_AGENT_BINDINGS
 from services.runtime.ai_provider_adapter import GovernedAIProviderAdapter, ProviderEndpoint
 
 
@@ -33,10 +33,7 @@ class P0AIProviderConfiguration:
     configured_scopes: tuple[Scope, ...]
 
 
-_ALLOWED_CAPABILITIES = frozenset(
-    {binding.capability for binding in P0_AGENT_BINDINGS if binding.execution_mode == "governed-ai"}
-    | {"evidence.verify"}
-)
+_ALLOWED_CAPABILITIES = ALLOWED_AGENT_AI_CAPABILITIES
 
 
 def load_p0_ai_provider_configuration(
