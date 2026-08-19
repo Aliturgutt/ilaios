@@ -29,10 +29,8 @@ from services.integrations import (
     RecoverableSoftwareProductRuntime,
     RecoverableWebProductRuntime,
 )
+from services.integrations.desktop_video_composition import compose_desktop_video_runtime
 from services.integrations.provider_video_runtime import UnavailableProviderVideoRuntime
-from services.integrations.reference_aware_provider_video_runtime import (
-    ReferenceAwareProviderBackedDesktopVideoRuntime,
-)
 from services.integrations.video_runtime import VideoRuntimeError
 from services.openrouter_agent_catalog import (
     OpenRouterAgentCatalogError,
@@ -58,7 +56,6 @@ from services.source_media import (
 from services.source_media_desktop import SourceMediaDesktopIdentityHTTPServer
 from services.web_agent_execution import WEB_GOVERNED_AI_CAPABILITIES
 from services.web_agent_runtime import compose_web_agent_runtime
-from src.video_automation.openrouter_video_provider import SEEDANCE_FREE_MODEL_ID
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -181,50 +178,36 @@ def main(argv: Sequence[str] | None = None) -> int:
         goal = control_plane.get_goal(token, job.goal_id)
         return goal.objective
 
-    video_model_id = os.environ.get(
-        "ILAIOS_VIDEO_MODEL_ID",
-        SEEDANCE_FREE_MODEL_ID,
-    ).strip()
-    video_qa_model_id = os.environ.get(
-        "ILAIOS_VIDEO_QA_MODEL_ID",
-        "openrouter/free",
-    ).strip()
     video_finished_product_configured = False
     video_provider = "unavailable"
-    if openrouter_api_key:
-        try:
-            video_runtime = ReferenceAwareProviderBackedDesktopVideoRuntime(
-                root / "video",
-                grant_policy,
-                governance,
-                evidence_store,
-                objective_resolver=resolve_objective,
-                api_key=openrouter_api_key,
-                model_id=video_model_id,
-                qa_model_id=video_qa_model_id,
-                reference_assets=reference_assets,
-                source_media=source_media,
-            )
-            video_finished_product_configured = True
-            video_provider = ReferenceAwareProviderBackedDesktopVideoRuntime.PROVIDER_ID
-        except VideoRuntimeError as error:
-            video_runtime = UnavailableProviderVideoRuntime(
-                root / "video",
-                grant_policy,
-                governance,
-                evidence_store,
-                reason=f"Provider-backed Video Factory configuration rejected: {error}",
-            )
-    else:
+    video_provider_mode = os.environ.get(
+        "ILAIOS_VIDEO_PROVIDER_MODE", "verified-free"
+    ).strip()
+    video_managed_budget_usd: str | None = None
+    try:
+        video_composition = compose_desktop_video_runtime(
+            root=root / "video",
+            grants=grant_policy,
+            governance=governance,
+            evidence=evidence_store,
+            objective_resolver=resolve_objective,
+            api_key=openrouter_api_key,
+            reference_assets=reference_assets,
+            source_media=source_media,
+            product_identity_database=root / "product-proof.sqlite3",
+        )
+        video_runtime = video_composition.runtime
+        video_finished_product_configured = video_composition.configured
+        video_provider = video_composition.provider_id
+        video_provider_mode = video_composition.provider_mode
+        video_managed_budget_usd = video_composition.managed_budget_usd
+    except VideoRuntimeError as error:
         video_runtime = UnavailableProviderVideoRuntime(
             root / "video",
             grant_policy,
             governance,
             evidence_store,
-            reason=(
-                "Provider-backed Video Factory is unavailable because "
-                "OPENROUTER_API_KEY is not configured"
-            ),
+            reason=f"Provider-backed Video Factory configuration rejected: {error}",
         )
 
     product_runtime = DurableVideoProductRuntime(
@@ -330,6 +313,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "openrouter_secret_present": bool(openrouter_api_key),
         "video_finished_product_configured": video_finished_product_configured,
         "video_provider": video_provider,
+        "video_provider_mode": video_provider_mode,
+        "video_managed_budget_usd": video_managed_budget_usd,
         "video_reference_assets_configured": True,
         "video_reference_asset_limit": 20,
         "video_reference_unbound_limit": MAX_UNBOUND_REFERENCE_ASSETS,
