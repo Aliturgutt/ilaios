@@ -55,9 +55,7 @@ def _checkout_blocks(text: str) -> tuple[str, ...]:
         if "uses: actions/checkout@" not in line:
             continue
         uses_indent = len(line) - len(line.lstrip())
-        step_indent = (
-            uses_indent if line.lstrip().startswith("- uses:") else max(0, uses_indent - 2)
-        )
+        step_indent = uses_indent if line.lstrip().startswith("- uses:") else max(0, uses_indent - 2)
         block = [line]
         for candidate in lines[index + 1 :]:
             stripped = candidate.lstrip()
@@ -69,6 +67,22 @@ def _checkout_blocks(text: str) -> tuple[str, ...]:
     return tuple(result)
 
 
+def _indirect_manual_only_target(text: str, current_name: str) -> str | None:
+    """Reject proxy workflows that auto-dispatch a manual-only workflow."""
+    for target in sorted(_MANUAL_ONLY):
+        if target == current_name:
+            continue
+        indicators = (
+            f"gh workflow run {target}",
+            f"gh workflow run '{target}'",
+            f'gh workflow run "{target}"',
+            f"/actions/workflows/{target}/dispatches",
+        )
+        if any(indicator in text for indicator in indicators):
+            return target
+    return None
+
+
 def audit_repository(repository_root: Path) -> tuple[WorkflowSecurityFinding, ...]:
     findings: list[WorkflowSecurityFinding] = []
     for path in sorted((repository_root / ".github" / "workflows").glob("*.yml")):
@@ -77,66 +91,22 @@ def audit_repository(repository_root: Path) -> tuple[WorkflowSecurityFinding, ..
         relative = path.relative_to(repository_root).as_posix()
         text = path.read_text(encoding="utf-8")
         if "pull_request_target:" in text:
-            findings.append(
-                WorkflowSecurityFinding(
-                    relative, "NO_PR_TARGET", "pull_request_target is forbidden"
-                )
-            )
-        if "permissions: write-all" in text or re.search(
-            r"(?m)^  contents:\s+write\s*$", text
-        ):
-            findings.append(
-                WorkflowSecurityFinding(
-                    relative,
-                    "NO_REPO_WRITE",
-                    "permanent workflows may not grant contents write",
-                )
-            )
+            findings.append(WorkflowSecurityFinding(relative, "NO_PR_TARGET", "pull_request_target is forbidden"))
+        if "permissions: write-all" in text or re.search(r"(?m)^  contents:\s+write\s*$", text):
+            findings.append(WorkflowSecurityFinding(relative, "NO_REPO_WRITE", "permanent workflows may not grant contents write"))
         if not re.search(r"(?m)^  contents:\s+read\s*$", text):
-            findings.append(
-                WorkflowSecurityFinding(
-                    relative, "CONTENTS_READ", "explicit contents: read is required"
-                )
-            )
+            findings.append(WorkflowSecurityFinding(relative, "CONTENTS_READ", "explicit contents: read is required"))
         if "secrets." in text and path.name not in _SECRET_ALLOWED:
-            findings.append(
-                WorkflowSecurityFinding(
-                    relative, "SECRET_BOUNDARY", "secrets are forbidden in this workflow"
-                )
-            )
+            findings.append(WorkflowSecurityFinding(relative, "SECRET_BOUNDARY", "secrets are forbidden in this workflow"))
         if path.name in _TRUSTED_MASTER_SECRET:
             if _TOP_PR.search(text):
-                findings.append(
-                    WorkflowSecurityFinding(
-                        relative,
-                        "TRUSTED_SECRET_TRIGGER",
-                        "secret-bearing certification cannot run from pull_request code",
-                    )
-                )
+                findings.append(WorkflowSecurityFinding(relative, "TRUSTED_SECRET_TRIGGER", "secret-bearing certification cannot run from pull_request code"))
             if not _TOP_PUSH.search(text) or "      - master\n" not in text:
-                findings.append(
-                    WorkflowSecurityFinding(
-                        relative,
-                        "TRUSTED_SECRET_TRIGGER",
-                        "secret-bearing certification must be scoped to master push",
-                    )
-                )
+                findings.append(WorkflowSecurityFinding(relative, "TRUSTED_SECRET_TRIGGER", "secret-bearing certification must be scoped to master push"))
             if "environment: Production" not in text:
-                findings.append(
-                    WorkflowSecurityFinding(
-                        relative,
-                        "TRUSTED_SECRET_ENVIRONMENT",
-                        "secret-bearing certification requires Production environment",
-                    )
-                )
+                findings.append(WorkflowSecurityFinding(relative, "TRUSTED_SECRET_ENVIRONMENT", "secret-bearing certification requires Production environment"))
             if "ref: ${{ github.sha }}" not in text:
-                findings.append(
-                    WorkflowSecurityFinding(
-                        relative,
-                        "TRUSTED_SECRET_CHECKOUT",
-                        "secret-bearing certification must checkout exact trusted github.sha",
-                    )
-                )
+                findings.append(WorkflowSecurityFinding(relative, "TRUSTED_SECRET_CHECKOUT", "secret-bearing certification must checkout exact trusted github.sha"))
         for line in text.splitlines():
             match = _USES.match(line)
             if match is None:
@@ -146,41 +116,20 @@ def audit_repository(repository_root: Path) -> tuple[WorkflowSecurityFinding, ..
                 continue
             _, sep, revision = reference.partition("@")
             if not sep or _SHA.fullmatch(revision) is None:
-                findings.append(
-                    WorkflowSecurityFinding(relative, "IMMUTABLE_ACTION", reference)
-                )
+                findings.append(WorkflowSecurityFinding(relative, "IMMUTABLE_ACTION", reference))
         for block in _checkout_blocks(text):
             if "persist-credentials: false" not in block:
-                findings.append(
-                    WorkflowSecurityFinding(
-                        relative,
-                        "CHECKOUT_CREDENTIALS",
-                        "checkout credentials must not persist",
-                    )
-                )
+                findings.append(WorkflowSecurityFinding(relative, "CHECKOUT_CREDENTIALS", "checkout credentials must not persist"))
             if "ref:" not in block:
-                findings.append(
-                    WorkflowSecurityFinding(
-                        relative,
-                        "EXACT_CHECKOUT",
-                        "checkout requires explicit exact ref",
-                    )
-                )
+                findings.append(WorkflowSecurityFinding(relative, "EXACT_CHECKOUT", "checkout requires explicit exact ref"))
         if path.name in _MANUAL_ONLY:
             if "workflow_dispatch:" not in text:
-                findings.append(
-                    WorkflowSecurityFinding(
-                        relative, "MANUAL_ONLY", "workflow_dispatch is required"
-                    )
-                )
+                findings.append(WorkflowSecurityFinding(relative, "MANUAL_ONLY", "workflow_dispatch is required"))
             if _TOP_PUSH.search(text) or _TOP_PR.search(text):
-                findings.append(
-                    WorkflowSecurityFinding(
-                        relative,
-                        "MANUAL_ONLY",
-                        "external mutation/spend cannot auto-trigger",
-                    )
-                )
+                findings.append(WorkflowSecurityFinding(relative, "MANUAL_ONLY", "external mutation/spend cannot auto-trigger"))
+        indirect_target = _indirect_manual_only_target(text, path.name)
+        if indirect_target is not None:
+            findings.append(WorkflowSecurityFinding(relative, "INDIRECT_MANUAL_ONLY", f"workflow may not proxy-dispatch manual-only target {indirect_target}"))
     return tuple(findings)
 
 
