@@ -46,6 +46,25 @@ def test_reference_live_secret_cannot_run_from_pull_request(tmp_path: Path) -> N
         "          ref: ${{ github.sha }}\n"
         "          persist-credentials: false\n",
     )
-    assert any(
-        item.rule == "TRUSTED_SECRET_TRIGGER" for item in audit_repository(tmp_path)
+    assert any(item.rule == "TRUSTED_SECRET_TRIGGER" for item in audit_repository(tmp_path))
+
+
+def test_proxy_dispatch_of_manual_only_workflow_is_blocked(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "video-provider-trigger.yml",
+        "on:\n"
+        "  push:\n"
+        "    branches:\n"
+        "      - master\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "  actions: write\n"
+        "jobs:\n"
+        "  dispatch:\n"
+        "    runs-on: ubuntu-latest\n"
+        "    steps:\n"
+        "      - run: gh workflow run video-provider-production-certification.yml --ref master\n",
     )
+    findings = audit_repository(tmp_path)
+    assert any(item.rule == "INDIRECT_MANUAL_ONLY" for item in findings)
