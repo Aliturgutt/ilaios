@@ -1,0 +1,26 @@
+{
+  "schema_version": "ilaios.web-app-factory-closure.v1",
+  "tracking_issue": 486,
+  "checkpoint_protocol": "branch-pr-exact-head-ci-merge-next-master",
+  "truth_rule": "NO_EVIDENCE_NO_DONE",
+  "base_master_sha": "d323177b7c301ddd241fc8bb8663c4b53db127cb",
+  "current_phase": 1,
+  "benchmark": "ILAIOS 12-screen enterprise Web App reference set",
+  "phases": [
+    {"id": 1, "name": "application-shell-and-design-system-contracts", "status": "IN_PROGRESS"},
+    {"id": 2, "name": "domain-data-model-and-migrations", "status": "NOT_STARTED"},
+    {"id": 3, "name": "auth-rbac-permission-matrix", "status": "NOT_STARTED"},
+    {"id": 4, "name": "interaction-contracts-and-state-machines", "status": "NOT_STARTED"},
+    {"id": 5, "name": "generic-crud-api-runtime", "status": "NOT_STARTED"},
+    {"id": 6, "name": "authenticated-charts-and-analytics", "status": "NOT_STARTED"},
+    {"id": 7, "name": "realtime-event-layer", "status": "NOT_STARTED"},
+    {"id": 8, "name": "enterprise-table-runtime", "status": "NOT_STARTED"},
+    {"id": 9, "name": "files-outputs-runtime", "status": "NOT_STARTED"},
+    {"id": 10, "name": "integrations-settings-runtime", "status": "NOT_STARTED"},
+    {"id": 11, "name": "sandboxed-live-workspace-runtime", "status": "NOT_STARTED"},
+    {"id": 12, "name": "screenshot-fidelity-bounded-repair-loop", "status": "NOT_STARTED"},
+    {"id": 13, "name": "existing-site-desktop-e2e-closure", "status": "NOT_STARTED"},
+    {"id": 14, "name": "one-prompt-general-web-app-runtime", "status": "NOT_STARTED"},
+    {"id": 15, "name": "app-ilaios-com-production-e2e", "status": "NOT_STARTED"}
+  ]
+}
