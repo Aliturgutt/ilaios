@@ -2,12 +2,26 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import sys
 from pathlib import Path
 
+from services.governance import GovernedRuntimeGateway
+from services.runtime import GovernedRuntime
 from services.runtime.browser_egress_docker import DockerBrowserEgressBoundary
 from services.runtime.browser_egress_playwright import PlaywrightDockerBrowserEgressBoundary
-from services.runtime.browser_tool_adapter import PlaywrightCliAdapter, browser_session_id
+from services.runtime.browser_tool_adapter import (
+    BROWSER_AUTOMATION_SKILL_ID,
+    BROWSER_TOOL_NAME,
+    PlaywrightCliAdapter,
+    browser_session_id,
+    build_browser_tool_gateway,
+    submit_browser_request,
+)
+from src.core.audit_engine import AuditEngine
+from src.core.bootstrap_validator import BootstrapValidator
+from src.core.immutable_context import ExecutionContext
+from src.core.tool_gateway import ToolGateway
 
 _TARGET = "https://example.com/"
 _ALLOWED_ORIGINS = ("https://example.com",)
@@ -18,6 +32,40 @@ def _required_env(name: str) -> str:
     if not value:
         raise RuntimeError(f"required environment variable is missing: {name}")
     return value
+
+
+def _run_git(repository_root: Path, *args: str) -> str:
+    result = subprocess.run(
+        ["git", *args],
+        cwd=repository_root,
+        check=True,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    return result.stdout.strip()
+
+
+def _ensure_git_identity(repository_root: Path, source_sha: str) -> tuple[str, str]:
+    if _run_git(repository_root, "rev-parse", "HEAD") != source_sha:
+        raise RuntimeError("BrowserQA E2E checkout is not bound to exact source SHA")
+    branch = _run_git(repository_root, "branch", "--show-current")
+    if not branch:
+        branch = f"ilaios-browser-e2e-{source_sha[:12]}"
+        subprocess.run(
+            ["git", "switch", "-c", branch],
+            cwd=repository_root,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=30,
+        )
+    if _run_git(repository_root, "rev-parse", "HEAD") != source_sha:
+        raise RuntimeError("BrowserQA E2E branch setup changed exact source SHA")
+    origin = _run_git(repository_root, "remote", "get-url", "origin")
+    if not origin:
+        raise RuntimeError("BrowserQA E2E origin identity is unavailable")
+    return branch, origin
 
 
 def _assert_observed(result: dict[str, object], action: str) -> None:
@@ -42,13 +90,7 @@ def _diagnostic_open(
     artifact_root: Path,
     session_id: str,
 ) -> dict[str, object]:
-    """Open the fixed public certification target with bounded diagnostics.
-
-    The production adapter intentionally does not surface raw browser stderr. This
-    E2E-only path is safe to diagnose because target, argv and policy are fixed in
-    source, no credentials are accepted, and the same Docker egress boundary is
-    still mandatory.
-    """
+    """Open the fixed public certification target with bounded diagnostics."""
     process = boundary.run(
         allowed_origins=_ALLOWED_ORIGINS,
         argv=("playwright-cli", f"-s={session_id}", "open", _TARGET),
@@ -69,6 +111,110 @@ def _diagnostic_open(
     }
 
 
+def _run_governed_interaction(
+    *,
+    repository_root: Path,
+    artifact_root: Path,
+    boundary: PlaywrightDockerBrowserEgressBoundary,
+    source_sha: str,
+    branch: str,
+    origin: str,
+    session_id: str,
+) -> tuple[dict[str, object], dict[str, object]]:
+    governance_db = artifact_root / "governance.sqlite3"
+    runtime_db = artifact_root / "runtime.sqlite3"
+    governance = GovernedRuntimeGateway(
+        governance_db,
+        GovernedRuntime(runtime_db),
+        hard_cap_minor=100,
+    )
+    audit = AuditEngine()
+    context = ExecutionContext(repository_root, branch, source_sha, origin)
+    tool_gateway = ToolGateway(context, BootstrapValidator(repository_root))
+    build_browser_tool_gateway(
+        tool_gateway,
+        governance,
+        governance_db,
+        frozenset(_ALLOWED_ORIGINS),
+        boundary,
+        audit,
+        artifact_root,
+        executable="playwright-cli",
+        timeout_seconds=120,
+    )
+
+    request_id = f"browser-press-{source_sha[:16]}"
+    submit_browser_request(
+        governance,
+        request_id,
+        "ci-browser",
+        "ci-tenant",
+        source_sha,
+        BROWSER_AUTOMATION_SKILL_ID,
+        "press",
+        operand="Tab",
+        target_url=_TARGET,
+    )
+    before = governance.admission_snapshot(request_id)
+    if before != {
+        "risk": "high",
+        "admission_decision": "REQUIRE_APPROVAL",
+        "human_approval_required": True,
+        "approval_proven": False,
+        "admission_proven": False,
+    }:
+        raise RuntimeError("high-risk browser interaction did not fail closed before approval")
+
+    governance.decide(request_id, "ci-independent-approver", "approved")
+    after = governance.admission_snapshot(request_id)
+    if after.get("risk") != "high":
+        raise RuntimeError("approved browser interaction lost high-risk classification")
+    if after.get("human_approval_required") is not True:
+        raise RuntimeError("approved browser interaction lost HITL requirement")
+    if after.get("approval_proven") is not True or after.get("admission_proven") is not True:
+        raise RuntimeError("approved browser interaction lacks durable approval/admission proof")
+
+    result = tool_gateway.dispatch(
+        BROWSER_TOOL_NAME,
+        request_id,
+        session_id,
+        "press",
+        "Tab",
+        _TARGET,
+    )
+    if not isinstance(result, dict):
+        raise RuntimeError("governed browser interaction returned an invalid result")
+    _assert_observed(result, "governed-press-tab")
+    if result.get("request_id") != request_id:
+        raise RuntimeError("browser result is not bound to the governed request")
+
+    latest = audit.get_latest()
+    if latest is None or latest.component != "browser-tool":
+        raise RuntimeError("governed browser interaction lacks audit evidence")
+    if latest.action != "press" or latest.status != "success":
+        raise RuntimeError("governed browser interaction audit evidence is not successful")
+
+    state = governance.state()
+    work = state.get("work")
+    if not isinstance(work, list) or not any(
+        isinstance(item, dict)
+        and item.get("request_id") == request_id
+        and item.get("status") == "executed"
+        for item in work
+    ):
+        raise RuntimeError("governed browser interaction did not reach durable executed state")
+
+    approval_evidence = {
+        "before_approval": before,
+        "after_approval": after,
+        "audit_component": latest.component,
+        "audit_action": latest.action,
+        "audit_status": latest.status,
+        "durable_work_status": "executed",
+    }
+    return result, approval_evidence
+
+
 def main() -> None:
     source_sha = _required_env("ILAIOS_SOURCE_SHA")
     if len(source_sha) != 40 or any(char not in "0123456789abcdef" for char in source_sha):
@@ -81,6 +227,7 @@ def main() -> None:
     artifact_root.mkdir(parents=True, exist_ok=True)
 
     repository_root = Path(__file__).resolve().parents[4]
+    branch, origin = _ensure_git_identity(repository_root, source_sha)
     proxy_script = (
         repository_root
         / "tools"
@@ -103,6 +250,7 @@ def main() -> None:
     session_id = browser_session_id("ci-browser", "ci-tenant", source_sha)
     results: dict[str, dict[str, object]] = {}
     isolation_evidence: str | None = None
+    approval_evidence: dict[str, object] | None = None
     try:
         results["open"] = _diagnostic_open(boundary, artifact_root, session_id)
 
@@ -136,16 +284,16 @@ def main() -> None:
         )
         _assert_observed(results["reload"], "reload")
 
-        # This E2E proves the pinned CLI + Docker egress surface can perform one
-        # bounded interaction. Production invocation still requires the separate
-        # GovernedBrowserTool high-risk admission + independent approval checks.
-        results["press-tab"] = cli.execute(
-            _ALLOWED_ORIGINS,
-            session_id,
-            "press",
-            "Tab",
+        governed_result, approval_evidence = _run_governed_interaction(
+            repository_root=repository_root,
+            artifact_root=artifact_root,
+            boundary=boundary,
+            source_sha=source_sha,
+            branch=branch,
+            origin=origin,
+            session_id=session_id,
         )
-        _assert_observed(results["press-tab"], "press-tab")
+        results["governed-press-tab"] = governed_result
 
         results["close"] = cli.execute(
             _ALLOWED_ORIGINS,
@@ -162,18 +310,24 @@ def main() -> None:
     )
     if len(receipts) < 7:
         raise RuntimeError("real BrowserQA E2E produced insufficient boundary receipts")
+    if approval_evidence is None:
+        raise RuntimeError("governed browser interaction produced no approval evidence")
 
     summary = {
-        "schema_version": 2,
+        "schema_version": 3,
         "source_sha": source_sha,
         "runtime_image": runtime_image,
         "target": _TARGET,
         "allowed_origins": list(_ALLOWED_ORIGINS),
+        "git_branch": branch,
+        "git_origin": origin,
         "javascript_enabled": False,
         "service_workers": "block",
-        "bounded_interaction_cli_verified": True,
+        "governed_high_risk_interaction_verified": True,
+        "interaction": "press Tab",
         "text_entry_actions_enabled": False,
         "production_interaction_requires_independent_approval": True,
+        "approval_evidence": approval_evidence,
         "seccomp_profile_git_blob_sha1": "fddc05fb520affb145404e6f6f647ca96af8087d",
         "isolation_evidence_id": isolation_evidence,
         "actions": results,
