@@ -15,12 +15,29 @@ from dataclasses import dataclass
 from enum import Enum
 from hashlib import sha256
 from pathlib import Path
+from typing import Protocol
 
-from .ffmpeg_media_engine import FfmpegMediaEngine, FfmpegMediaEngineError
+from .ffmpeg_media_engine import (
+    FfmpegMediaEngine,
+    FfmpegMediaEngineError,
+    MediaCommandResult,
+)
 
 
 class LogoAssetLockError(RuntimeError):
     """Raised when deterministic logo preservation cannot be established."""
+
+
+class LogoOverlayEngine(Protocol):
+    def overlay(
+        self,
+        *,
+        input_path: str | Path,
+        overlay_path: str | Path,
+        output_path: str | Path,
+        x: int = 0,
+        y: int = 0,
+    ) -> MediaCommandResult: ...
 
 
 class LogoPlacement(str, Enum):
@@ -68,7 +85,7 @@ class LogoAssetLockResult:
 class LogoAssetLockCompositor:
     """Composite one exact logo asset at deterministic coordinates."""
 
-    def __init__(self, *, engine: FfmpegMediaEngine | None = None) -> None:
+    def __init__(self, *, engine: LogoOverlayEngine | None = None) -> None:
         self._engine = engine or FfmpegMediaEngine(timeout_seconds=900)
 
     def apply(
