@@ -13,10 +13,14 @@ from services.mobile_android_build_executor import (
     execute_android_release_build,
     sign_or_submit_android_release,
 )
-from services.mobile_android_release import build_android_release_plan
+from services.mobile_android_release import (
+    AndroidArtifactKind,
+    AndroidBuildPlan,
+    build_android_release_plan,
+)
 
 
-def _repository(tmp_path: Path, *, artifact_kind: str = "aab") -> tuple[Path, str]:
+def _repository(tmp_path: Path, *, artifact_kind: AndroidArtifactKind = "aab") -> tuple[Path, str]:
     repository = tmp_path / "repo"
     project = repository / "apps" / "mobile" / "android" / "ilaios-mobile"
     project.mkdir(parents=True)
@@ -55,12 +59,12 @@ def _repository(tmp_path: Path, *, artifact_kind: str = "aab") -> tuple[Path, st
     return repository, sha
 
 
-def _plan(source_sha: str, *, artifact_kind: str = "aab"):
+def _plan(source_sha: str, *, artifact_kind: AndroidArtifactKind = "aab") -> AndroidBuildPlan:
     return build_android_release_plan(
         app_id="ilaios-mobile",
         application_id="com.ilaios.mobile",
         source_sha=source_sha,
-        artifact_kind=artifact_kind,  # type: ignore[arg-type]
+        artifact_kind=artifact_kind,
         version="1.0.0",
         build_number="1",
         signing_mode="google-play-app-signing",
