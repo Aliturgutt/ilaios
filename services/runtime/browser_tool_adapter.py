@@ -185,6 +185,18 @@ class PlaywrightCliAdapter:
             data = path.read_bytes()
             artifact_sha256 = hashlib.sha256(data).hexdigest()
             artifact_size = len(data)
+
+        observation_boundary_evidence_id: str | None = None
+        observation_artifact_sha256: str | None = None
+        observation_artifact_size: int | None = None
+        if action != "close" and observed is None:
+            (
+                observed,
+                observation_boundary_evidence_id,
+                observation_artifact_sha256,
+                observation_artifact_size,
+            ) = self._attest_session_url(allowed_origins, session_id)
+
         return {
             "tool": BROWSER_TOOL_NAME,
             "action": action,
@@ -193,7 +205,57 @@ class PlaywrightCliAdapter:
             "artifact_size": artifact_size,
             "stdout_sha256": hashlib.sha256(result.stdout.encode("utf-8")).hexdigest(),
             "boundary_evidence_id": result.boundary_evidence_id,
+            "observation_boundary_evidence_id": observation_boundary_evidence_id,
+            "observation_artifact_sha256": observation_artifact_sha256,
+            "observation_artifact_size": observation_artifact_size,
         }
+
+    def _attest_session_url(
+        self,
+        allowed_origins: tuple[str, ...],
+        session_id: str,
+    ) -> tuple[str, str, str, int]:
+        """Observe the same named session without weakening URL verification.
+
+        Some pinned Playwright CLI commands that save an explicit artifact do not
+        reliably include the Page URL line in stdout. Rather than trusting the
+        requested URL or dropping the observed-URL gate, run one additional
+        read-only snapshot in the same session through the same egress boundary.
+        The attestation artifact and its own boundary receipt become evidence.
+        """
+        artifact = f"url-attestation-{uuid.uuid4().hex}.yaml"
+        result = self._egress.run(
+            allowed_origins=allowed_origins,
+            argv=(
+                self._executable,
+                f"-s={session_id}",
+                "snapshot",
+                f"--filename={artifact}",
+            ),
+            cwd=self._root,
+            timeout_seconds=self._timeout,
+        )
+        if not result.boundary_evidence_id.strip():
+            raise BrowserToolError("browser URL attestation lacks egress evidence")
+        if result.returncode != 0:
+            raise BrowserToolError(
+                f"browser URL attestation failed with exit code {result.returncode}"
+            )
+        observed = _observed_url(result.stdout)
+        if observed is None:
+            raise BrowserToolError("browser URL attestation returned no Page URL")
+        path = self._root / artifact
+        if not path.is_file():
+            raise BrowserToolError("browser URL attestation artifact was not created")
+        data = path.read_bytes()
+        if not data:
+            raise BrowserToolError("browser URL attestation artifact is empty")
+        return (
+            observed,
+            result.boundary_evidence_id,
+            hashlib.sha256(data).hexdigest(),
+            len(data),
+        )
 
     def _command(
         self, session_id: str, action: str, operand: str | None
@@ -418,52 +480,45 @@ def _validate_persisted_binding(
 
 def _validate_action(action: str, operand: str | None) -> None:
     if action not in _SUPPORTED:
-        raise BrowserToolError("browser action is not exposed by read-only v0")
-    if action in {"open", "goto"}:
-        if operand is None:
-            raise BrowserToolError("browser navigation requires URL")
-        _validate_http_url(operand)
-    elif action == "find":
-        if operand is None or not operand.strip() or len(operand) > 512 or operand.startswith("-"):
-            raise BrowserToolError("browser find query is invalid")
-    elif operand is not None:
-        raise BrowserToolError(f"browser action {action} does not accept an operand")
-
-
-def _payload_text(payload: dict[str, Any], key: str) -> str:
-    value = payload.get(key)
-    if not isinstance(value, str) or not value.strip():
-        raise BrowserToolError(f"persisted browser payload lacks {key}")
-    return value
+        raise BrowserToolError("browser action is outside read/navigation-only v0")
+    if action in {"open", "goto", "find"} and (operand is None or not operand.strip()):
+        raise BrowserToolError("browser action requires a non-empty operand")
+    if action not in {"open", "goto", "find"} and operand is not None:
+        raise BrowserToolError("browser action does not accept an operand")
 
 
 def _validate_session(session_id: str) -> None:
     if _SESSION_RE.fullmatch(session_id) is None:
-        raise BrowserToolError("browser session is not ILAIOS-scoped")
+        raise BrowserToolError("browser session identifier is invalid")
+
+
+def _observed_url(stdout: str) -> str | None:
+    match = _PAGE_URL_RE.search(stdout)
+    if match is None:
+        return None
+    return match.group(1)
 
 
 def _validate_http_url(value: str) -> SplitResult:
-    if len(value) > 4096 or any(char in value for char in "\r\n\x00"):
+    if not isinstance(value, str) or not value.strip():
+        raise BrowserToolError("browser URL is required")
+    if len(value) > 2048 or any(char in value for char in "\r\n\x00"):
         raise BrowserToolError("browser URL is malformed")
-    try:
-        parsed = urlsplit(value)
-        hostname = parsed.hostname
-        parsed.port
-    except ValueError as error:
-        raise BrowserToolError("browser URL is malformed") from error
-    if parsed.scheme.lower() not in {"http", "https"} or not hostname:
-        raise BrowserToolError("browser target must use HTTP(S)")
+    parsed = urlsplit(value.strip())
+    if parsed.scheme.lower() not in {"http", "https"} or not parsed.hostname:
+        raise BrowserToolError("browser URL must be absolute HTTP(S)")
     if parsed.username is not None or parsed.password is not None:
-        raise BrowserToolError("credentials are forbidden in browser URLs")
+        raise BrowserToolError("browser URL may not contain credentials")
     return parsed
 
 
 def _canonical_origin(parsed: SplitResult) -> str:
     scheme = parsed.scheme.lower()
-    host = (parsed.hostname or "").lower()
+    host = parsed.hostname.lower() if parsed.hostname else ""
     port = parsed.port
-    default = (scheme == "http" and port == 80) or (scheme == "https" and port == 443)
-    return f"{scheme}://{host}" + ("" if port is None or default else f":{port}")
+    if port is None or (scheme == "http" and port == 80) or (scheme == "https" and port == 443):
+        return f"{scheme}://{host}"
+    return f"{scheme}://{host}:{port}"
 
 
 def _canonical_url(value: str) -> str:
@@ -473,6 +528,8 @@ def _canonical_url(value: str) -> str:
     return f"{_canonical_origin(parsed)}{path}{query}"
 
 
-def _observed_url(stdout: str) -> str | None:
-    match = _PAGE_URL_RE.search(stdout)
-    return None if match is None else match.group(1)
+def _payload_text(payload: dict[str, Any], field: str) -> str:
+    value = payload.get(field)
+    if not isinstance(value, str) or not value.strip():
+        raise BrowserToolError(f"browser payload field is invalid: {field}")
+    return value

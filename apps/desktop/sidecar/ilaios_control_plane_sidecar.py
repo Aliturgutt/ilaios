@@ -56,6 +56,8 @@ from services.source_media import (
     SourceMediaStore,
 )
 from services.source_media_desktop import SourceMediaDesktopIdentityHTTPServer
+from services.web_agent_execution import WEB_GOVERNED_AI_CAPABILITIES
+from services.web_agent_runtime import compose_web_agent_runtime
 from src.video_automation.openrouter_video_provider import SEEDANCE_FREE_MODEL_ID
 
 
@@ -127,6 +129,30 @@ def main(argv: Sequence[str] | None = None) -> int:
         ai_provider_capabilities=(
             ai_configuration.provider_capabilities
             if ai_configuration is not None
+            else None
+        ),
+    )
+    web_ai_covered = False
+    if ai_configuration is not None:
+        advertised_web_capabilities = frozenset(
+            capability
+            for provider_capabilities in ai_configuration.provider_capabilities.values()
+            for capability in provider_capabilities
+        )
+        web_ai_covered = WEB_GOVERNED_AI_CAPABILITIES.issubset(
+            advertised_web_capabilities
+        )
+    web_agents = compose_web_agent_runtime(
+        p0_agents.named_executor,
+        _software_factory_skills_path().parents[2],
+        ai_adapter=(
+            ai_configuration.adapter
+            if ai_configuration is not None and web_ai_covered
+            else None
+        ),
+        ai_provider_capabilities=(
+            ai_configuration.provider_capabilities
+            if ai_configuration is not None and web_ai_covered
             else None
         ),
     )
@@ -294,6 +320,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         "p0_ai_runtime_configured": p0_agents.ai_configured,
         "p0_ai_provider_count": p0_agents.ai_provider_count,
         "p0_ai_configuration_source": ai_configuration_source,
+        "web_agent_target_count": web_agents.target_agent_count,
+        "web_agent_provisioned_identity_count": web_agents.provisioned_identity_count,
+        "web_agent_skill_count": web_agents.skill_count,
+        "web_agent_ai_runtime_configured": web_agents.ai_configured,
+        "web_agent_browser_tool_required": web_agents.browser_tool_required,
+        "web_agent_browser_runtime_configured": False,
         "agent_readiness_store_configured": True,
         "openrouter_secret_present": bool(openrouter_api_key),
         "video_finished_product_configured": video_finished_product_configured,

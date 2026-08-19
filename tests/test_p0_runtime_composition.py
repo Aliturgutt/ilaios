@@ -142,7 +142,7 @@ def test_ai_provider_cannot_claim_independent_verification_authority(
     _, runtime = _runtime(tmp_path)
     with pytest.raises(
         P0RuntimeCompositionError,
-        match="exceeds P0 governed execution",
+        match="exceeds canonical governed execution",
     ):
         compose_p0_runtime(
             runtime,

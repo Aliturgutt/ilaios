@@ -65,7 +65,7 @@ def test_browser_provenance_is_cleanroom() -> None:
 
 
 def test_browser_v0_rejects_state_changing_actions() -> None:
-    with pytest.raises(BrowserToolError, match="read-only v0"):
+    with pytest.raises(BrowserToolError, match="read/navigation-only v0"):
         browser_request_payload(
             "user-1",
             "tenant-1",
