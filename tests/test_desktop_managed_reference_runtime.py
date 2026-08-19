@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from decimal import Decimal
 from pathlib import Path
 
 import pytest
@@ -8,6 +9,7 @@ import pytest
 from services.integrations.desktop_video_composition import _managed_budget
 from services.integrations.reference_aware_managed_provider_video_runtime import (
     DurableProductIdentityResolver,
+    TenantBoundManagedDesktopVideoSession,
 )
 from services.integrations.video_runtime import VideoRuntimeError
 
@@ -31,10 +33,21 @@ def _identity_database(path: Path, *, tenant_id: str | None = "tenant-1") -> Pat
     return path
 
 
-def test_managed_identity_resolver_uses_durable_product_identity(tmp_path: Path) -> None:
+def test_managed_identity_resolver_uses_durable_product_request_identity(
+    tmp_path: Path,
+) -> None:
     resolver = DurableProductIdentityResolver(_identity_database(tmp_path / "proof.sqlite3"))
 
-    assert resolver.resolve("job-1") == ("tenant-1", "user-1")
+    assert resolver.resolve("request-1") == ("tenant-1", "user-1")
+
+
+def test_managed_identity_resolver_does_not_treat_control_plane_job_as_product_request(
+    tmp_path: Path,
+) -> None:
+    resolver = DurableProductIdentityResolver(_identity_database(tmp_path / "proof.sqlite3"))
+
+    with pytest.raises(VideoRuntimeError, match="product request lacks one durable"):
+        resolver.resolve("job-1")
 
 
 def test_managed_identity_resolver_fails_closed_without_tenant(tmp_path: Path) -> None:
@@ -43,14 +56,38 @@ def test_managed_identity_resolver_fails_closed_without_tenant(tmp_path: Path) -
     )
 
     with pytest.raises(VideoRuntimeError, match="tenant identity is unavailable"):
-        resolver.resolve("job-1")
+        resolver.resolve("request-1")
 
 
-def test_managed_identity_resolver_fails_closed_for_unknown_job(tmp_path: Path) -> None:
+def test_managed_identity_resolver_fails_closed_for_unknown_request(tmp_path: Path) -> None:
     resolver = DurableProductIdentityResolver(_identity_database(tmp_path / "proof.sqlite3"))
 
-    with pytest.raises(VideoRuntimeError, match="one durable product identity"):
-        resolver.resolve("job-missing")
+    with pytest.raises(VideoRuntimeError, match="product request lacks one durable"):
+        resolver.resolve("request-missing")
+
+
+def test_managed_session_requires_explicit_product_request_binding(tmp_path: Path) -> None:
+    resolver = DurableProductIdentityResolver(_identity_database(tmp_path / "proof.sqlite3"))
+    session = TenantBoundManagedDesktopVideoSession(
+        identity_resolver=resolver,
+        root=tmp_path / "managed",
+        api_key="test-api-key",
+        model_id="bytedance/seedance-2.0-fast",
+        resolution="480p",
+        max_total_cost_usd=Decimal("1.00"),
+    )
+
+    with pytest.raises(VideoRuntimeError, match="lacks product request identity binding"):
+        session._require_bound_product_request()
+
+    with session.bind_product_request("request-1"):
+        assert session._require_bound_product_request() == "request-1"
+        with pytest.raises(VideoRuntimeError, match="binding is already active"):
+            with session.bind_product_request("request-2"):
+                pass
+
+    with pytest.raises(VideoRuntimeError, match="lacks product request identity binding"):
+        session._require_bound_product_request()
 
 
 def test_managed_budget_requires_explicit_bounded_value(monkeypatch: pytest.MonkeyPatch) -> None:
