@@ -18,6 +18,10 @@ from .openrouter_frame_references import (
     FrameReferenceRoutingError,
     build_openrouter_frame_images,
 )
+from .openrouter_input_references import (
+    NativeReferenceRoutingError,
+    build_openrouter_input_references,
+)
 from .openrouter_video_provider import (
     OpenRouterJsonResponse,
     OpenRouterTransport,
@@ -257,10 +261,16 @@ def _build_request_body(
         body["seed"] = seed
     try:
         frame_images = build_openrouter_frame_images(item)
-    except FrameReferenceRoutingError as exc:
+        input_references = build_openrouter_input_references(item)
+    except (FrameReferenceRoutingError, NativeReferenceRoutingError) as exc:
         raise OpenRouterManagedVideoProviderError(str(exc)) from exc
     if frame_images:
         body["frame_images"] = frame_images
+    elif input_references:
+        # OpenRouter treats frame_images as image-to-video when both are present.
+        # Keep ILAIOS semantics deterministic by emitting input_references only
+        # when there is no exact frame anchor on the request.
+        body["input_references"] = input_references
     if callback_url is not None:
         body["callback_url"] = callback_url
     return body
