@@ -110,7 +110,7 @@ jobs:
                   'provider_id': 'llama-cpp',
                   'capabilities': ['architecture.propose', 'code.review', 'test.execute'],
                   'context_window': 8192,
-                  'max_output_tokens': 512,
+                  'max_output_tokens': 1024,
                   'input_cost_per_million_usd': '0',
                   'output_cost_per_million_usd': '0',
               }],
@@ -246,12 +246,12 @@ jobs:
             --cap-add SYS_NICE \
             --shm-size=2g \
             -p 8000:8000 \
-            -e VLLM_CPU_KVCACHE_SPACE=1 \
+            -e VLLM_CPU_KVCACHE_SPACE=2 \
             "$VLLM_IMAGE" \
             HuggingFaceTB/SmolLM2-135M-Instruct \
             --served-model-name ilaios-local \
             --dtype float32 \
-            --max-model-len 2048
+            --max-model-len 8192
           for attempt in $(seq 1 300); do
             if curl --fail --silent http://127.0.0.1:8000/v1/models >/tmp/vllm-models.json; then
               cat /tmp/vllm-models.json
@@ -283,8 +283,8 @@ jobs:
                   'model_id': 'ilaios-local',
                   'provider_id': 'vllm',
                   'capabilities': ['architecture.propose', 'code.review', 'test.execute'],
-                  'context_window': 2048,
-                  'max_output_tokens': 512,
+                  'context_window': 8192,
+                  'max_output_tokens': 1024,
                   'input_cost_per_million_usd': '0',
                   'output_cost_per_million_usd': '0',
               }],
