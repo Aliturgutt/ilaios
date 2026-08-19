@@ -5,7 +5,9 @@ from pathlib import Path
 
 import pytest
 
+from services.agent_registry import INDEPENDENT_VERIFIER_ID
 from services.ai_governance import Scope, ScopeKind
+from services.control_plane.migrations import migrate_database
 from services.independent_verifier_execution import (
     INDEPENDENT_VERIFIER_PROVIDER_ID,
     IndependentVerifierExecutionError,
@@ -14,8 +16,7 @@ from services.independent_verifier_execution import (
 from services.p0_runtime_composition import compose_p0_runtime
 from services.runtime import BlastRadiusBudget, ExecutionGrant, GovernedRuntime, GrantPolicy
 from services.runtime.browser_tool_adapter import BROWSER_AGENT_ID, BROWSER_TOOL_NAME
-from services.control_plane.migrations import migrate_database
-from services.agent_registry import INDEPENDENT_VERIFIER_ID
+from services.runtime.security_agent_adapters import SecurityAgentRuntimeAdapters
 
 
 def _grant(now: datetime) -> ExecutionGrant:
@@ -32,7 +33,10 @@ def _grant(now: datetime) -> ExecutionGrant:
 def _executor(tmp_path: Path) -> IndependentVerifierExecutor:
     database = tmp_path / "runtime.sqlite3"
     migrate_database(database)
-    runtime = GovernedRuntime(database)
+    runtime = GovernedRuntime(
+        database,
+        external_adapters=SecurityAgentRuntimeAdapters().runtime_adapters(),
+    )
     composition = compose_p0_runtime(
         runtime,
         GrantPolicy(),
