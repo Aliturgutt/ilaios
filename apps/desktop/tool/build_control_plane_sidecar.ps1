@@ -66,7 +66,7 @@ if ($webSkillFiles.Count -ne 6) {
   throw "Canonical Web Factory skill registry is incomplete: found $($webSkillFiles.Count)."
 }
 $browserSkillFiles = @(Get-ChildItem -Path $webBrowserSkills -Recurse -Filter 'SKILL.md' -File)
-if ($browserSkillFiles.Count -ne 4) {
+if ($browserSkillFiles.Count -ne 5) {
   throw "Canonical BrowserQA skill registry is incomplete: found $($browserSkillFiles.Count)."
 }
 
