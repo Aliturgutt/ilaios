@@ -75,12 +75,12 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $release = 'build\\windows\\x64\\runner\\Release'
+          $release = 'build\windows\x64\runner\Release'
           $required = @(
-            'brand\\assets\\02-ilaios-primary-horizontal-dark.jpg',
-            'brand\\assets\\03-ilaios-symbol-dark.jpg',
-            'brand\\assets\\05-ilaios-app-icon.jpg',
-            'brand\\assets\\13-ilaios-primary-horizontal-light.jpg'
+            'brand\assets\02-ilaios-primary-horizontal-dark.jpg',
+            'brand\assets\03-ilaios-symbol-dark.jpg',
+            'brand\assets\05-ilaios-app-icon.jpg',
+            'brand\assets\13-ilaios-primary-horizontal-light.jpg'
           )
           foreach ($relative in $required) {
             $path = Join-Path $release $relative
@@ -103,9 +103,9 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
-          $msix = Get-ChildItem build\\msix\\*.msix | Select-Object -First 1
+          $msix = Get-ChildItem build\msix\*.msix | Select-Object -First 1
           if ($null -eq $msix) { throw 'MSIX artifact not found.' }
-          $makeAppx = Get-ChildItem 'C:\\Program Files (x86)\\Windows Kits\\10\\bin\\*\\x64\\makeappx.exe' |
+          $makeAppx = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe' |
             Sort-Object FullName -Descending | Select-Object -First 1
           if ($null -eq $makeAppx) { throw 'MakeAppx.exe not found.' }
           $unpack = Join-Path $env:RUNNER_TEMP 'ilaios-msix-unpacked'
@@ -115,10 +115,10 @@ jobs:
           if (-not (Test-Path (Join-Path $unpack 'ilaios_desktop.exe'))) { throw 'Packaged executable missing.' }
           if (-not (Test-Path (Join-Path $unpack 'ilaios_control_plane.exe'))) { throw 'Packaged control-plane sidecar missing.' }
           if (-not (Test-Path (Join-Path $unpack 'AppxManifest.xml'))) { throw 'Packaged manifest missing.' }
-          if (-not (Test-Path (Join-Path $unpack 'brand\\assets\\02-ilaios-primary-horizontal-dark.jpg'))) { throw 'Packaged ILAIOS dark horizontal brand asset missing.' }
-          if (-not (Test-Path (Join-Path $unpack 'brand\\assets\\03-ilaios-symbol-dark.jpg'))) { throw 'Packaged ILAIOS canonical symbol missing.' }
-          if (-not (Test-Path (Join-Path $unpack 'brand\\assets\\05-ilaios-app-icon.jpg'))) { throw 'Packaged ILAIOS app icon asset missing.' }
-          if (-not (Test-Path (Join-Path $unpack 'brand\\assets\\13-ilaios-primary-horizontal-light.jpg'))) { throw 'Packaged ILAIOS light horizontal brand asset missing.' }
+          if (-not (Test-Path (Join-Path $unpack 'brand\assets\02-ilaios-primary-horizontal-dark.jpg'))) { throw 'Packaged ILAIOS dark horizontal brand asset missing.' }
+          if (-not (Test-Path (Join-Path $unpack 'brand\assets\03-ilaios-symbol-dark.jpg'))) { throw 'Packaged ILAIOS canonical symbol missing.' }
+          if (-not (Test-Path (Join-Path $unpack 'brand\assets\05-ilaios-app-icon.jpg'))) { throw 'Packaged ILAIOS app icon asset missing.' }
+          if (-not (Test-Path (Join-Path $unpack 'brand\assets\13-ilaios-primary-horizontal-light.jpg'))) { throw 'Packaged ILAIOS light horizontal brand asset missing.' }
           Write-Host 'ILAIOS_DESKTOP_MSIX_INSPECTION=PASS'
 
       - name: Validate Store MSIX packaging contract
