@@ -11,7 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, TypeVar
 
 
 AppIntent = Literal["new", "revision", "reference", "migration"]
@@ -24,6 +24,8 @@ RiskLevel = Literal["low", "medium", "high"]
 Monetization = Literal[
     "free", "paid", "iap", "subscription", "physical-goods", "external-billing"
 ]
+
+_T = TypeVar("_T", bound=str)
 
 
 class AppProductSpecError(ValueError):
@@ -273,9 +275,9 @@ def _risk_from_tokens(capabilities: set[str], sensitive: set[str]) -> RiskLevel:
     return "low"
 
 
-def _normalize_unique(values: tuple[str, ...], field: str) -> tuple[str, ...]:
-    normalized: list[str] = []
-    seen: set[str] = set()
+def _normalize_unique(values: tuple[_T, ...], field: str) -> tuple[_T, ...]:
+    normalized: list[_T] = []
+    seen: set[_T] = set()
     for value in values:
         _require_token(value, field)
         if value in seen:
