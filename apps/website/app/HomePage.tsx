@@ -12,7 +12,7 @@ const copy = {
     eyebrow: "Governed AI Operating System",
     title: "Describe the outcome. ILAIOS governs the work to get there.",
     lead: "One authenticated goal can move through planning, bounded execution, validation and evidence toward a finished digital product.",
-    primary: "Explore the system",
+    primary: "See what you can create",
     secondary: "How it works",
     proof: [["One product brain", "Authority stays in the platform."], ["Native factories", "Web, video, software, app and more."], ["Evidence built in", "Acceptance is verified, not narrated."]],
     processEyebrow: "Execution protocol",
@@ -20,10 +20,10 @@ const copy = {
     process: [["01", "Goal", "Authenticated intent enters the system."], ["02", "Plan", "Context, policy and dependencies define the path."], ["03", "Execute", "Bounded capabilities perform admitted work."], ["04", "Validate", "Tests and acceptance criteria evaluate the result."], ["05", "Deliver", "Accepted work is surfaced with reviewable evidence."]],
     visualEyebrow: "How the system works",
     visualTitle: "The operating model is visible as a governed system, not hidden inside model output.",
-    visualLead: "These diagrams are product explanations derived from the canonical architecture: one control authority, bounded factories, replaceable execution resources and evidence-linked acceptance.",
-    archEyebrow: "System language",
+    visualLead: "These product explanations keep authority, bounded factories, replaceable execution resources and evidence-linked acceptance visible without making users operate the internal provider stack.",
+    archEyebrow: "Public system language",
     archTitle: "Governed execution stays visible from goal to accepted result.",
-    archText: "Goal → Policy → Router → Factory → Validation → Evidence → Result is the visual and operational spine of the product.",
+    archText: "Goal → bounded planning → governed execution → validation → evidence → accepted result is the public product spine. Internal provider routing remains behind that boundary.",
     evidenceEyebrow: "Why governance matters",
     evidenceTitle: "Generated is not the same as finished.",
     ctaEyebrow: "Provider independent",
@@ -35,7 +35,7 @@ const copy = {
     eyebrow: "Yönetilen Yapay Zekâ İşletim Sistemi",
     title: "Sonucu tarif edin. Oraya giden işi ILAIOS yönetsin.",
     lead: "Kimliği doğrulanmış tek bir hedef; planlama, sınırlandırılmış yürütme, doğrulama ve kanıt üzerinden bitmiş dijital ürüne ilerler.",
-    primary: "Sistemi incele",
+    primary: "Neler oluşturabileceğini gör",
     secondary: "Nasıl çalışır?",
     proof: [["Tek ürün beyni", "Yetki platformda kalır."], ["Yerleşik üretim alanları", "Web, video, yazılım, uygulama ve daha fazlası."], ["Kanıt işin parçası", "Kabul anlatılmaz; doğrulanır."]],
     processEyebrow: "Yürütme protokolü",
@@ -43,10 +43,10 @@ const copy = {
     process: [["01", "Hedef", "Kimliği doğrulanmış niyet sisteme girer."], ["02", "Plan", "Bağlam, politika ve bağımlılıklar yolu belirler."], ["03", "Yürüt", "Sınırlandırılmış yetenekler kabul edilen işi yapar."], ["04", "Doğrula", "Testler ve kabul ölçütleri sonucu değerlendirir."], ["05", "Teslim et", "Kabul edilen iş incelenebilir kanıtla sunulur."]],
     visualEyebrow: "Sistem nasıl çalışır?",
     visualTitle: "Çalışma modeli, model çıktısının içinde saklanmak yerine yönetilen bir sistem olarak görünür.",
-    visualLead: "Bu şemalar kanonik mimarinin ürün anlatımıdır: tek kontrol otoritesi, sınırlandırılmış factory'ler, değiştirilebilir yürütme kaynakları ve kanıta bağlı kabul.",
-    archEyebrow: "Sistem dili",
+    visualLead: "Bu ürün anlatımları yetkiyi, sınırlandırılmış factory'leri, değiştirilebilir yürütme kaynaklarını ve kanıta bağlı kabulü görünür tutar; kullanıcıya dahili provider stack'ini işlettirmez.",
+    archEyebrow: "Public sistem dili",
     archTitle: "Yönetilen yürütme hedeften kabul edilmiş sonuca kadar görünür kalır.",
-    archText: "Hedef → Politika → Yönlendirme → Üretim → Doğrulama → Kanıt → Sonuç, ürünün görsel ve operasyonel omurgasıdır.",
+    archText: "Hedef → sınırlandırılmış planlama → yönetilen yürütme → doğrulama → kanıt → kabul edilmiş sonuç public ürün omurgasıdır. Dahili provider routing bu sınırın arkasında kalır.",
     evidenceEyebrow: "Yönetim neden önemli?",
     evidenceTitle: "Üretilmiş olmak, bitmiş olmak değildir.",
     ctaEyebrow: "Sağlayıcı bağımsızlığı",
@@ -65,7 +65,7 @@ export default function HomePage({ locale }: { locale: Locale }) {
         <div className="eyebrow">{c.eyebrow}</div>
         <h1>{c.title}</h1>
         <p className="lead">{c.lead}</p>
-        <div className="actions"><Link className="button" href={`${base}/capabilities`}>{c.primary}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.secondary}</Link></div>
+        <div className="actions"><Link className="button" href={`${base}/use-ilaios`}>{c.primary}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.secondary}</Link></div>
       </div>
       <ProductExperience locale={locale} />
     </section>
