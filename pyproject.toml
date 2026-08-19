@@ -26,3 +26,4 @@ ignore_missing_imports = true
 [tool.ruff.per-file-ignores]
 "apps/desktop/e2e/provider_video_finished_product_e2e.py" = ["E402"]
 "apps/desktop/e2e/provider_video_reference_finished_product_e2e.py" = ["E402"]
+"apps/desktop/e2e/provider_video_native_reference_finished_product_e2e.py" = ["E402"]
