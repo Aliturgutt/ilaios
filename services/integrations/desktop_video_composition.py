@@ -3,7 +3,8 @@
 Verified-free remains the default. Managed provider execution is available only
 through the explicit ``ILAIOS_VIDEO_PROVIDER_MODE=managed-bounded`` setting and a
 bounded budget value. There is no automatic free-to-paid fallback. Provider-native
-references additionally require a separately configured HTTPS relay.
+references additionally require a separately configured HTTPS relay and an
+independent reference-consistency acceptance layer.
 """
 
 from __future__ import annotations
@@ -21,6 +22,9 @@ from services.runtime import DurableGrantPolicy
 from services.source_media import SourceMediaStore
 from src.video_automation.openrouter_video_provider import SEEDANCE_FREE_MODEL_ID
 
+from .native_reference_verified_runtime import (
+    NativeReferenceVerifiedManagedDesktopVideoRuntime,
+)
 from .provider_video_runtime import ObjectiveResolver, UnavailableProviderVideoRuntime
 from .reference_aware_managed_provider_video_runtime import (
     ManagedReferenceAwareProviderBackedDesktopVideoRuntime,
@@ -111,23 +115,41 @@ def compose_desktop_video_runtime(
         "ILAIOS_VIDEO_MANAGED_MODEL_ID",
         _DEFAULT_MANAGED_MODEL_ID,
     ).strip()
-    runtime = ManagedReferenceAwareProviderBackedDesktopVideoRuntime(
-        root,
-        grants,
-        governance,
-        evidence,
-        objective_resolver=objective_resolver,
-        api_key=api_key,
-        product_identity_database=product_identity_database,
-        max_total_cost_usd=budget,
-        model_id=managed_model_id,
-        qa_model_id=qa_model_id,
-        reference_assets=reference_assets,
-        source_media=source_media,
-        reference_relay=reference_relay,
-    )
+    if reference_relay is None:
+        managed_runtime: DeterministicLocalVideoRuntime = (
+            ManagedReferenceAwareProviderBackedDesktopVideoRuntime(
+                root,
+                grants,
+                governance,
+                evidence,
+                objective_resolver=objective_resolver,
+                api_key=api_key,
+                product_identity_database=product_identity_database,
+                max_total_cost_usd=budget,
+                model_id=managed_model_id,
+                qa_model_id=qa_model_id,
+                reference_assets=reference_assets,
+                source_media=source_media,
+            )
+        )
+    else:
+        managed_runtime = NativeReferenceVerifiedManagedDesktopVideoRuntime(
+            root,
+            grants,
+            governance,
+            evidence,
+            objective_resolver=objective_resolver,
+            api_key=api_key,
+            product_identity_database=product_identity_database,
+            max_total_cost_usd=budget,
+            model_id=managed_model_id,
+            qa_model_id=qa_model_id,
+            reference_assets=reference_assets,
+            source_media=source_media,
+            reference_relay=reference_relay,
+        )
     return DesktopVideoComposition(
-        runtime,
+        managed_runtime,
         True,
         ManagedReferenceAwareProviderBackedDesktopVideoRuntime.PROVIDER_ID,
         mode,
