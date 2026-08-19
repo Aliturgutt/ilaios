@@ -3,7 +3,8 @@
 The base Desktop identity server remains the authority for sessions, execution
 admission, approvals and cancellation. This adapter adds only source-media input
 handling and preserves the existing shared Web/Video reference flow for requests
-that do not carry source media.
+that do not carry source media. Exact first/last-frame uploads are accepted only
+when the separately configured provider reference relay is fail-closed ready.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ import binascii
 import hashlib
 import hmac
 import json
+import os
 import secrets
 from datetime import datetime, timezone
 from http import HTTPStatus
@@ -26,7 +28,7 @@ from services.desktop_identity_server import (
 )
 from services.desktop_oidc import DesktopIdentityError, DesktopOIDCService
 from services.execution_coordinator import ExecutionCoordinator, ExecutionCoordinatorError
-from services.reference_assets import ReferenceAssetStore
+from services.reference_assets import ReferenceAssetRole, ReferenceAssetStore
 from services.source_media import (
     MAX_SOURCE_MEDIA_BYTES,
     SourceMediaError,
@@ -38,7 +40,7 @@ _SOURCE_MEDIA_UPLOAD_BODY_BYTES = ((MAX_SOURCE_MEDIA_BYTES + 2) // 3) * 4 + 1_04
 
 
 class SourceMediaDesktopIdentityHTTPServer(DesktopIdentityHTTPServer):
-    """Existing Desktop identity server plus one private source-media store."""
+    """Existing Desktop identity server plus private source/reference inputs."""
 
     def __init__(
         self,
@@ -58,6 +60,7 @@ class SourceMediaDesktopIdentityHTTPServer(DesktopIdentityHTTPServer):
             reference_assets=reference_assets,
         )
         self.source_media = source_media
+        self.native_frame_relay_configured = _native_frame_relay_configured()
         # The server has not started serving yet. Replacing only the request
         # handler preserves the canonical lifecycle, recovery and auth boundary.
         self.RequestHandlerClass = SourceMediaDesktopIdentityRequestHandler
@@ -90,6 +93,64 @@ class SourceMediaDesktopIdentityRequestHandler(DesktopIdentityRequestHandler):
             self._send_error(HTTPStatus.CONFLICT, str(error))
         except (SourceMediaError, ValueError, TypeError, json.JSONDecodeError) as error:
             self._send_error(HTTPStatus.BAD_REQUEST, str(error))
+
+    def _upload_reference_asset(self, body: dict[str, Any]) -> None:
+        role_value = body.get("role")
+        if role_value not in {
+            ReferenceAssetRole.FIRST_FRAME.value,
+            ReferenceAssetRole.LAST_FRAME.value,
+        }:
+            super()._upload_reference_asset(body)
+            return
+        if not self.server.native_frame_relay_configured:
+            # Preserve the canonical fail-closed error wording for unverified
+            # exact-frame uploads.
+            super()._upload_reference_asset(body)
+            return
+
+        session = self._authenticated_session()
+        store = _identity_core._require_reference_store(self.server.reference_assets)
+        filename = _identity_core._required_string(body, "filename")
+        mime_type = _identity_core._required_string(body, "mime_type")
+        supplied_sha256 = _identity_core._required_string(body, "sha256").lower()
+        instruction_value = body.get("instruction")
+        if instruction_value is not None and not isinstance(instruction_value, str):
+            raise TypeError("instruction must be text when provided")
+        if len(supplied_sha256) != 64 or any(
+            character not in "0123456789abcdef" for character in supplied_sha256
+        ):
+            raise ValueError("reference image sha256 is invalid")
+        role = ReferenceAssetRole(role_value)
+        encoded = _identity_core._required_string(body, "content_base64")
+        try:
+            content = base64.b64decode(encoded, validate=True)
+        except (binascii.Error, ValueError) as error:
+            raise ValueError("reference image base64 payload is invalid") from error
+        digest = hashlib.sha256(content).hexdigest()
+        if not hmac.compare_digest(digest, supplied_sha256):
+            raise ValueError("reference image sha256 does not match uploaded bytes")
+        record = store.put(
+            content=content,
+            claimed_mime_type=mime_type,
+            original_filename=filename,
+            role=role,
+            instruction=instruction_value,
+            principal_id=session.principal_id,
+            tenant_id=session.tenant_id,
+        )
+        self._send_json(
+            HTTPStatus.CREATED,
+            {
+                "asset_id": record.asset_id,
+                "sha256": record.sha256,
+                "mime_type": record.mime_type,
+                "width": record.width,
+                "height": record.height,
+                "size_bytes": record.size_bytes,
+                "role": record.role.value,
+                "native_frame_relay_configured": True,
+            },
+        )
 
     def _upload_source_media(self, body: dict[str, Any]) -> None:
         session = self._authenticated_session()
@@ -206,6 +267,17 @@ class SourceMediaDesktopIdentityRequestHandler(DesktopIdentityRequestHandler):
         response["source_media_asset_id"] = source_record.asset_id
         response["source_media_sha256"] = source_record.sha256
         self._send_json(HTTPStatus.CREATED, response)
+
+
+def _native_frame_relay_configured() -> bool:
+    mode = os.environ.get("ILAIOS_VIDEO_PROVIDER_MODE", "verified-free").strip()
+    upload_url = os.environ.get("ILAIOS_REFERENCE_RELAY_UPLOAD_URL", "").strip()
+    upload_token = os.environ.get("ILAIOS_REFERENCE_RELAY_UPLOAD_TOKEN", "").strip()
+    return (
+        mode == "managed-bounded"
+        and upload_url.startswith("https://")
+        and bool(upload_token)
+    )
 
 
 __all__ = [
