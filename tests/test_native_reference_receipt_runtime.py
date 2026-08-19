@@ -42,6 +42,7 @@ def test_native_receipt_preserves_provider_consistency_and_logo_lock_evidence() 
     assert evidence["reference_consistency_score"] == 0.91
     assert evidence["logo_asset_lock_applied"] is True
     assert evidence["logo_asset_lock_source_sha256"] == "c" * 64
+    assert evidence["logo_asset_lock_repaired_artifact_sha256"] == "f" * 64
     assert evidence["provider_native_reference_url_used"] is True
     assert evidence["native_reference_mode"] == "input-references"
     assert evidence["native_reference_relay_released"] is True
@@ -57,6 +58,17 @@ def test_native_receipt_fails_closed_without_consistency_pass() -> None:
 def test_native_receipt_fails_closed_without_provider_relay_evidence() -> None:
     with pytest.raises(RuntimeError, match="lacks provider relay evidence"):
         native_receipt_evidence({"reference_consistency_passed": True})
+
+
+def test_native_receipt_fails_closed_on_invalid_repaired_artifact_digest() -> None:
+    outcome = {
+        "reference_consistency_passed": True,
+        "logo_asset_lock_applied": True,
+        "artifact_sha256": "not-a-digest",
+        **_native_provider_fields(),
+    }
+    with pytest.raises(RuntimeError, match="repaired artifact digest is invalid"):
+        native_receipt_evidence(outcome)
 
 
 def test_native_provider_evidence_uses_input_references_for_seedance() -> None:
