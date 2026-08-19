@@ -45,7 +45,7 @@ IlaiosDesktopApp _app({
     );
 
 void main() {
-  testWidgets('authenticated Desktop exposes the shared Web Video reference dock', (
+  testWidgets('authenticated Desktop exposes shared references and existing Web source', (
     tester,
   ) async {
     _desktopViewport(tester);
@@ -56,18 +56,24 @@ void main() {
     expect(toggle, findsOneWidget);
     expect(find.text('Reference images'), findsOneWidget);
     expect(find.byKey(const Key('video-reference-assets')), findsNothing);
+    expect(find.byKey(const Key('web-source-picker')), findsNothing);
 
     await tester.tap(toggle);
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('video-reference-assets')), findsOneWidget);
     expect(find.byKey(const Key('video-reference-add')), findsOneWidget);
+    expect(find.byKey(const Key('web-source-picker')), findsOneWidget);
+    expect(find.byKey(const Key('web-source-add')), findsOneWidget);
+    expect(find.text('Existing Web Source'), findsOneWidget);
+    expect(find.text('Choose ZIP'), findsOneWidget);
     expect(find.textContaining('20'), findsWidgets);
     expect(find.textContaining('never published as public URLs'), findsOneWidget);
     expect(find.textContaining('free vision provider'), findsOneWidget);
+    expect(find.textContaining('Next.js/React source ZIP'), findsOneWidget);
   });
 
-  testWidgets('Turkish locale localizes shared reference dock and privacy disclosure', (
+  testWidgets('Turkish locale localizes references and existing Web source surface', (
     tester,
   ) async {
     _desktopViewport(tester);
@@ -82,9 +88,12 @@ void main() {
     expect(find.textContaining('herkese açık URL'), findsOneWidget);
     expect(find.textContaining('ücretsiz görsel sağlayıcısına'), findsOneWidget);
     expect(find.text('Görsel ekle'), findsOneWidget);
+    expect(find.text('Mevcut Web Kaynağı'), findsOneWidget);
+    expect(find.text('ZIP Seç'), findsOneWidget);
+    expect(find.textContaining('Next.js/React kaynak ZIP'), findsOneWidget);
   });
 
-  testWidgets('shared reference dock remains disabled without an authenticated session', (
+  testWidgets('shared attachment dock remains disabled without authenticated session', (
     tester,
   ) async {
     _desktopViewport(tester);

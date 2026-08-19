@@ -8,6 +8,7 @@ import '../control_plane/evidence_record.dart';
 import '../control_plane/operational_snapshot.dart';
 import '../control_plane/projection.dart';
 import '../features/create/reference_asset_picker.dart';
+import '../features/create/web_source_picker.dart';
 import '../features/dashboard/reference_desktop_shell_v11.dart';
 import '../identity/identity_client.dart';
 import 'ilaios_locale.dart';
@@ -68,6 +69,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
   late ThemeMode _localThemeMode = widget.themeMode;
   final ReferenceAssetPickerController _referenceAssets =
       ReferenceAssetPickerController();
+  final WebSourcePickerController _webSource = WebSourcePickerController();
   Timer? _operationalRefreshTimer;
   AppLifecycleState _lifecycleState = AppLifecycleState.resumed;
   bool _referenceDockOpen = false;
@@ -96,6 +98,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
     }
     if (oldWidget.userSession != null && widget.userSession == null) {
       _referenceAssets.clear();
+      _webSource.clear();
       _referenceDockOpen = false;
     }
   }
@@ -112,6 +115,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
   void dispose() {
     _operationalRefreshTimer?.cancel();
     _referenceAssets.dispose();
+    _webSource.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -160,6 +164,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
     }
     final hasReferences = _referenceAssets.assets.isNotEmpty;
     final hasSourceVideo = _referenceAssets.sourceVideo.source != null;
+    final hasWebSource = _webSource.source != null;
     final referenceFactoryCount = _referenceFactoryCount(objective);
     final videoFactory = _isVideoFactoryObjective(objective);
     if (hasReferences && referenceFactoryCount == 0) {
@@ -194,10 +199,31 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
         ),
       );
     }
+    if (hasWebSource && (videoFactory || referenceFactoryCount != 1)) {
+      throw StateError(
+        _localeText(
+          'Existing Web source can only be attached to one Web Factory goal.',
+          'Mevcut Web kaynağı yalnızca tek bir Web Factory hedefine eklenebilir.',
+        ),
+      );
+    }
+    if (hasWebSource && hasSourceVideo) {
+      throw StateError(
+        _localeText(
+          'Existing Web source and source video cannot share one goal.',
+          'Mevcut Web kaynağı ile kaynak video aynı hedefte kullanılamaz.',
+        ),
+      );
+    }
     final result = await callback(objective);
     if ((hasReferences && referenceFactoryCount == 1) || hasSourceVideo) {
       _referenceAssets.clear();
-      if (mounted) setState(() {});
+    }
+    if (hasWebSource) {
+      _webSource.clear();
+    }
+    if (mounted && (hasReferences || hasSourceVideo || hasWebSource)) {
+      setState(() {});
     }
     return result;
   }
@@ -252,6 +278,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
                 bottom: 34,
                 child: _ReferenceAssetDock(
                   controller: _referenceAssets,
+                  webSourceController: _webSource,
                   open: _referenceDockOpen,
                   enabled: widget.userSession != null &&
                       widget.projection.connected &&
@@ -271,12 +298,14 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
 class _ReferenceAssetDock extends StatelessWidget {
   const _ReferenceAssetDock({
     required this.controller,
+    required this.webSourceController,
     required this.open,
     required this.enabled,
     required this.onToggle,
   });
 
   final ReferenceAssetPickerController controller;
+  final WebSourcePickerController webSourceController;
   final bool open;
   final bool enabled;
   final VoidCallback onToggle;
@@ -300,10 +329,21 @@ class _ReferenceAssetDock extends StatelessWidget {
                 clipBehavior: Clip.antiAlias,
                 child: Padding(
                   padding: const EdgeInsets.all(8),
-                  child: ReferenceAssetPicker(
-                    controller: controller,
-                    enabled: enabled,
-                    compact: true,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      ReferenceAssetPicker(
+                        controller: controller,
+                        enabled: enabled,
+                        compact: true,
+                      ),
+                      const SizedBox(height: 8),
+                      WebSourcePicker(
+                        controller: webSourceController,
+                        enabled: enabled,
+                      ),
+                    ],
                   ),
                 ),
               ),
@@ -314,6 +354,7 @@ class _ReferenceAssetDock extends StatelessWidget {
             listenable: Listenable.merge(<Listenable>[
               controller,
               controller.sourceVideo,
+              webSourceController,
             ]),
             builder: (context, _) => Tooltip(
               message: label,
@@ -322,7 +363,7 @@ class _ReferenceAssetDock extends StatelessWidget {
                 onPressed: enabled || open ? onToggle : null,
                 icon: const Icon(Icons.collections_outlined, size: 17),
                 label: Text(
-                  _dockLabel(label, controller),
+                  _dockLabel(label, controller, webSourceController),
                   style: theme.textTheme.labelMedium,
                 ),
               ),
@@ -337,13 +378,16 @@ class _ReferenceAssetDock extends StatelessWidget {
 String _dockLabel(
   String label,
   ReferenceAssetPickerController controller,
+  WebSourcePickerController webSourceController,
 ) {
   final references = controller.assets.length;
   final hasSource = controller.sourceVideo.source != null;
-  if (references == 0 && !hasSource) return label;
+  final hasWebSource = webSourceController.source != null;
+  if (references == 0 && !hasSource && !hasWebSource) return label;
   final referenceSuffix = references == 0 ? '' : ' ($references/20)';
   final sourceSuffix = hasSource ? ' • MP4' : '';
-  return '$label$referenceSuffix$sourceSuffix';
+  final webSourceSuffix = hasWebSource ? ' • ZIP' : '';
+  return '$label$referenceSuffix$sourceSuffix$webSourceSuffix';
 }
 
 bool _isVideoFactoryObjective(String objective) {
@@ -361,6 +405,15 @@ int _referenceFactoryCount(String objective) {
     'web sitesi',
     'landing page',
     'internet sitesi',
+    'web app',
+    'web application',
+    'web uygulaması',
+    'web uygulamasi',
+    'dashboard',
+    'admin panel',
+    'management dashboard',
+    'yönetim paneli',
+    'yonetim paneli',
   };
   final web = webTerms.any(normalized.contains);
   return (video ? 1 : 0) + (web ? 1 : 0);
