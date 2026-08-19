@@ -10,12 +10,17 @@ on:
       - 'services/browser_runtime_composition.py'
       - 'services/web_agent_browser_certification.py'
       - 'services/web_agent_live_certification.py'
+      - 'services/independent_verifier_execution.py'
+      - 'services/github_workflow_security_audit.py'
       - 'tests/test_web_factory_browser_skills.py'
       - 'tests/test_browser_cli_url_attestation.py'
       - 'tests/test_browser_egress_docker.py'
       - 'tests/test_browser_egress_playwright.py'
       - 'tests/test_web_agent_browser_certification.py'
-      - 'tests/test_web_agent_live_certification.py'
+      - 'tests/test_independent_verifier*.py'
+      - 'tests/test_github_workflow_security_audit.py'
+      - 'tests/test_web_agent_execution.py'
+      - 'tests/test_web_agent_runtime.py'
       - 'tools/web-factory/browser-skills/runtime/**'
       - '.github/workflows/browser-skill-playwright-e2e.yml'
       - '.github/workflows/agent-web-live-certification.yml'
@@ -28,12 +33,17 @@ on:
       - 'services/browser_runtime_composition.py'
       - 'services/web_agent_browser_certification.py'
       - 'services/web_agent_live_certification.py'
+      - 'services/independent_verifier_execution.py'
+      - 'services/github_workflow_security_audit.py'
       - 'tests/test_web_factory_browser_skills.py'
       - 'tests/test_browser_cli_url_attestation.py'
       - 'tests/test_browser_egress_docker.py'
       - 'tests/test_browser_egress_playwright.py'
       - 'tests/test_web_agent_browser_certification.py'
-      - 'tests/test_web_agent_live_certification.py'
+      - 'tests/test_independent_verifier*.py'
+      - 'tests/test_github_workflow_security_audit.py'
+      - 'tests/test_web_agent_execution.py'
+      - 'tests/test_web_agent_runtime.py'
       - 'tools/web-factory/browser-skills/runtime/**'
       - '.github/workflows/browser-skill-playwright-e2e.yml'
       - '.github/workflows/agent-web-live-certification.yml'
@@ -93,6 +103,36 @@ jobs:
             tests/test_browser_egress_docker.py \
             tests/test_browser_egress_playwright.py
 
+      - name: Run BrowserQA certification validator regressions
+        if: always()
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python -m pytest -q tests/test_web_agent_browser_certification.py
+
+      - name: Run IndependentVerifier regressions
+        if: always()
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python -m pytest -q \
+            tests/test_independent_verifier_execution.py \
+            tests/test_independent_verifier_tool_evidence.py
+
+      - name: Run workflow-security regressions
+        if: always()
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: python -m pytest -q tests/test_github_workflow_security_audit.py
+
+      - name: Run Web Agent runtime regressions
+        if: always()
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python -m pytest -q \
+            tests/test_web_agent_execution.py \
+            tests/test_web_agent_runtime.py
+
       - name: Validate BrowserQA Python quality
         run: |
           python -m ruff check \
@@ -101,20 +141,30 @@ jobs:
             services/runtime/browser_egress_playwright.py \
             tools/web-factory/browser-skills/runtime/allowlist_proxy.py \
             tools/web-factory/browser-skills/runtime/playwright_cli_e2e.py \
+            services/web_agent_browser_certification.py \
+            services/web_agent_live_certification.py \
+            services/independent_verifier_execution.py \
             tests/test_web_factory_browser_skills.py \
             tests/test_browser_cli_url_attestation.py \
             tests/test_browser_egress_docker.py \
-            tests/test_browser_egress_playwright.py
+            tests/test_browser_egress_playwright.py \
+            tests/test_web_agent_browser_certification.py \
+            tests/test_independent_verifier_tool_evidence.py
           python -m mypy --strict \
             services/runtime/browser_tool_adapter.py \
             services/runtime/browser_egress_docker.py \
             services/runtime/browser_egress_playwright.py \
             tools/web-factory/browser-skills/runtime/allowlist_proxy.py \
             tools/web-factory/browser-skills/runtime/playwright_cli_e2e.py \
+            services/web_agent_browser_certification.py \
+            services/web_agent_live_certification.py \
+            services/independent_verifier_execution.py \
             tests/test_web_factory_browser_skills.py \
             tests/test_browser_cli_url_attestation.py \
             tests/test_browser_egress_docker.py \
-            tests/test_browser_egress_playwright.py
+            tests/test_browser_egress_playwright.py \
+            tests/test_web_agent_browser_certification.py \
+            tests/test_independent_verifier_tool_evidence.py
 
       - name: Provision pinned Playwright seccomp profile
         env:
@@ -175,6 +225,10 @@ jobs:
           grep -F '"source_sha": "'"$SOURCE_SHA"'"' \
             artifacts/browser-skill-playwright-e2e/playwright-cli-e2e-summary.json
           grep -F '"schema_version": 2' \
+            artifacts/browser-skill-playwright-e2e/playwright-cli-e2e-summary.json
+          grep -F '"agent_id": "ilaios.agent.web.browser-qa.v1"' \
+            artifacts/browser-skill-playwright-e2e/playwright-cli-e2e-summary.json
+          grep -F '"skill_id": "ilaios-web-e2e"' \
             artifacts/browser-skill-playwright-e2e/playwright-cli-e2e-summary.json
           grep -F '"canonical_tool_gateway": "browser.playwright-cli"' \
             artifacts/browser-skill-playwright-e2e/playwright-cli-e2e-summary.json
