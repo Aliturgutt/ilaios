@@ -552,7 +552,6 @@ class _TabsAndActions extends StatelessWidget {
           _TinyAction(
             icon: Icons.shield_outlined,
             label: _copy(context, 'Politika Kuralları', 'Policy Rules'),
-            prominent: true,
           ),
         ],
       ),
@@ -574,46 +573,55 @@ class _TinyAction extends StatelessWidget {
   final bool prominent;
 
   @override
-  Widget build(BuildContext context) => Material(
-        color: prominent
-            ? IlaiosTheme.coreBlue
-            : Theme.of(context).colorScheme.surfaceContainerLowest,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(5),
-          side: BorderSide(
-            color: prominent
-                ? IlaiosTheme.coreBlue
-                : Theme.of(context).colorScheme.outlineVariant,
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    final effectiveProminent = prominent && enabled;
+    final child = Material(
+      color: effectiveProminent
+          ? IlaiosTheme.coreBlue
+          : Theme.of(context).colorScheme.surfaceContainerLowest,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(5),
+        side: BorderSide(
+          color: effectiveProminent
+              ? IlaiosTheme.coreBlue
+              : Theme.of(context).colorScheme.outlineVariant,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10),
+          child: Row(
+            children: [
+              Icon(
+                icon,
+                size: 14,
+                color: effectiveProminent
+                    ? Colors.white
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 5),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.w600,
+                  color: effectiveProminent ? Colors.white : null,
+                ),
+              ),
+            ],
           ),
         ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: Row(
-              children: [
-                Icon(
-                  icon,
-                  size: 14,
-                  color: prominent
-                      ? Colors.white
-                      : Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-                const SizedBox(width: 5),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 8.5,
-                    fontWeight: FontWeight.w600,
-                    color: prominent ? Colors.white : null,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
+      ),
+    );
+    return Semantics(
+      enabled: enabled,
+      button: true,
+      child: enabled ? child : Opacity(opacity: .45, child: child),
+    );
+  }
 }
 
 class _Filters extends StatelessWidget {
