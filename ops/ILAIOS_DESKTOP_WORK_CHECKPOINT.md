@@ -6,9 +6,9 @@ Temporary evidence-only checkpoint for Desktop functional closure. CURRENT REALI
 
 - Phase: Approvals functional closure
 - Working branch: `desktop/approvals-functional-closure-master-sync`
-- Fresh/latest synced base: `master@14b85a8747559fed25c6d9af7a37c7cd8122c399`
+- Fresh/latest synced base: `master@7a1f68349f76896659d891384594c8653f38bfb1`
 - Supersedes stale-base Approvals PR #470 without rewriting its history.
-- Master changes since the prior Desktop base affect only non-Desktop Skill Engineering/Web App paths and do not overlap the three Approvals closure paths replayed here.
+- Master changes since the prior Desktop base do not overlap the three Approvals closure paths replayed here; the latest sync preserves current master history.
 - Agents closure is merged through PR #468 after exact-head 5/5 required gates passed on `20c878b0ac6b9e4fbd28ebdb40f6eabc1852c5a5`.
 - Agents merge commit: `91d7c049ee008e7940f709babc7f3a049f1955c0`.
 
