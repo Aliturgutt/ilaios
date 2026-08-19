@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from typing import Literal
 
 
@@ -21,7 +21,9 @@ CapabilityStatus = Literal[
 ]
 Complexity = Literal["small", "medium", "complex", "enterprise"]
 RiskLevel = Literal["low", "medium", "high"]
-Monetization = Literal["free", "paid", "iap", "subscription", "physical-goods", "external-billing"]
+Monetization = Literal[
+    "free", "paid", "iap", "subscription", "physical-goods", "external-billing"
+]
 
 
 class AppProductSpecError(ValueError):
@@ -199,12 +201,14 @@ def resolve_capabilities(
         else:
             status = "NEEDS_IMPLEMENTATION"
             reason = "capability has no verified implementation in the supplied availability set"
-        assessments.append(CapabilityAssessment(capability=capability, status=status, reason=reason))
+        assessments.append(
+            CapabilityAssessment(capability=capability, status=status, reason=reason)
+        )
     return tuple(assessments)
 
 
 def classify_risk(spec: ProductSpec) -> RiskAssessment:
-    """Classify explicit spec signals; free-form objective text does not grant capabilities."""
+    """Classify explicit spec signals; free-form objective text grants no capability."""
     capabilities = set(spec.capabilities)
     weighted_size = len(spec.screens) + len(spec.capabilities) + (2 * len(spec.platforms))
     if weighted_size >= 24 or len(spec.capabilities) >= 12:
@@ -216,17 +220,31 @@ def classify_risk(spec: ProductSpec) -> RiskAssessment:
     else:
         complexity = "small"
 
-    security = _risk_from_tokens(capabilities, {"authentication", "rbac", "admin", "secrets", "payments"})
-    privacy = _risk_from_tokens(capabilities, {"camera", "photos", "files", "tracking", "location", "biometrics"})
-    commerce = "high" if spec.monetization in {"iap", "subscription", "external-billing"} else (
-        "medium" if spec.monetization == "paid" else "low"
+    security = _risk_from_tokens(
+        capabilities, {"authentication", "rbac", "admin", "secrets", "payments"}
     )
-    external_integration = _risk_from_tokens(capabilities, {"integrations", "external-api", "webhooks", "payments"})
-    store: RiskLevel = "high" if "ios" in spec.platforms and "android" in spec.platforms else (
-        "medium" if any(platform in {"ios", "android"} for platform in spec.platforms) else "low"
+    privacy = _risk_from_tokens(
+        capabilities, {"camera", "photos", "files", "tracking", "location", "biometrics"}
     )
+    commerce: RiskLevel
+    if spec.monetization in {"iap", "subscription", "external-billing"}:
+        commerce = "high"
+    elif spec.monetization == "paid":
+        commerce = "medium"
+    else:
+        commerce = "low"
+    external_integration = _risk_from_tokens(
+        capabilities, {"integrations", "external-api", "webhooks", "payments"}
+    )
+    store: RiskLevel
+    if "ios" in spec.platforms and "android" in spec.platforms:
+        store = "high"
+    elif any(platform in {"ios", "android"} for platform in spec.platforms):
+        store = "medium"
+    else:
+        store = "low"
 
-    canonical = {
+    canonical: dict[str, object] = {
         "commerce": commerce,
         "complexity": complexity,
         "external_integration": external_integration,
