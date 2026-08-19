@@ -1,130 +1,95 @@
 # Video Native Reference Closure Automation Checkpoint
 
-This file is the durable execution checkpoint for the ILAIOS Video Factory native photo-reference closure. Automation runs must read this file first, then re-read current `master`, the authoritative PR/successor, exact-head CI, and the relevant implementation files before changing anything. GitHub code/tests/CI/runtime/deployment evidence always overrides stale text in this checkpoint.
+Durable checkpoint for the ILAIOS Video Factory native photo-reference closure. Every automation run must read this file first, then re-read current `master`, PR #561 or its explicit successor, exact-head CI, failing logs, and relevant implementation. GitHub source/CI/runtime/deployment evidence overrides stale text here.
 
 ## Goal
 
-Close the native photo-reference path end-to-end:
-
-1. secure short-lived HTTPS photo relay,
-2. provider `input_references` / `frame_images` wiring,
-3. Desktop-uploaded admitted reference bytes relayed directly to the selected provider,
-4. visible subject/product/logo consistency QA,
-5. deterministic original-logo asset-lock repair when native generation distorts the logo,
-6. fresh final technical + semantic + reference-consistency QA after any logo repair,
-7. real managed provider video generation,
-8. exact-head CI,
-9. merge on exact current master,
-10. real relay deployment/configuration,
-11. trusted-master native-reference live production certification,
-12. exact-SHA `VERIFIED` only after receipt/artifact validation.
+Close the native photo-reference path end-to-end: secure signed short-lived HTTPS relay; OpenRouter `input_references` / `frame_images`; Desktop admitted-reference relay; visible subject/product/logo consistency QA without biometric/sensitive-trait inference; deterministic exact-original logo asset-lock when logo-only drift occurs; fresh technical + semantic + reference-consistency QA after repair; real managed provider video; exact-head CI; merge on exact current master; real relay deployment/configuration; separate trusted-master native-reference live certification; receipt/artifact validation; exact-SHA `VERIFIED` only after all evidence passes.
 
 ## Non-negotiable invariants
 
-- Do not redesign or duplicate Core, Policy, Approval, Tool Gateway, router, planner, QA engine, or governance.
-- Preserve `verified-free` default behavior and the existing private multimodal visual-brief fallback.
-- No automatic free-to-paid fallback.
-- Managed provider hard cap remains `<= $1.00` total for the certification path.
-- Do not weaken security, CI, semantic QA, technical QA, or consistency thresholds to obtain green status.
-- Raw Desktop reference bytes remain private except for the bounded short-lived relay publication required by the selected provider.
-- Relay URLs must be HTTPS, unguessable, signed, expiring, integrity-bound, and released when the provider job no longer needs them. Tenant/principal identities must not be embedded in public URLs.
-- Subject consistency is visible continuity only (appearance/clothing/hair/silhouette/non-sensitive cues). Do not perform biometric identity verification or infer sensitive traits.
-- Product consistency checks visible geometry/proportions/materials/colors/markings.
-- Logo consistency checks visible shape/text-mark structure/colors/placement.
-- Native reference + QA is the first line of defense for photo/subject/product/logo continuity.
-- Logo integrity must not depend only on generative redraw. If native generation fails logo consistency while subject/product critical scores still pass, use the exact admitted original logo bytes through deterministic asset-lock compositing, then re-run final QA.
-- Logo asset-lock must never silently resize, crop, recolor, redraw, regenerate, or substitute the logo. If the exact original asset cannot be composited safely at its admitted dimensions, fail closed rather than degrade it.
-- Logo asset-lock may not hide subject or product drift. If subject/product critical scores fail, reject/regenerate rather than overlaying a logo and accepting the video.
-- Any asset-lock repair must produce fresh technical evidence, fresh semantic QA, fresh reference-consistency QA, a new final artifact SHA-256, and append-only EvidenceStore provenance. Final receipt must state whether asset-lock was applied and the exact source-logo SHA-256.
-- `frame_images` exact first/last-frame mode takes deterministic precedence over general `input_references` when both semantics could otherwise collide.
-- Unknown/unproven native model capability must fail closed for required first/last-frame semantics; general references may retain private visual-brief fallback.
-- Never use stale green CI after master advances. Replay reviewed delta onto exact current master and re-run all gates.
+- Preserve canonical Core, Policy, Approval, Tool Gateway, router, planner, QA, Evidence and tenant/security authorities.
+- Preserve `verified-free` default and private multimodal visual-brief fallback; no automatic free-to-paid fallback.
+- Managed certification provider spend remains `<= $1.00`.
+- Relay URLs must be HTTPS, unguessable, HMAC-signed, expiring, SHA-bound and explicitly released; tenant/principal identities stay server-side.
+- Native reference + QA is first-line continuity defense.
+- Subject consistency is visible continuity only; never biometric identity or sensitive-trait inference.
+- Logo asset-lock is allowed only for logo-only critical drift after subject/product critical scores pass. It uses exact admitted original logo bytes through canonical M18 FFmpeg and may not resize, crop, recolor, redraw, regenerate or substitute the logo.
+- If exact safe logo compositing cannot be established, fail closed.
+- After asset-lock require a new final artifact SHA-256, H.264/AAC/1920x1080/duration technical PASS, fresh independent semantic PASS, fresh reference-consistency PASS, exact source-logo SHA, repaired-artifact SHA and append-only `video.logo_asset_lock` provenance.
+- `frame_images` deterministically wins over general `input_references` when frame roles are present.
+- Unknown/unproven general native capability retains private visual-brief fallback; required frame semantics fail closed.
+- Never reuse stale CI after master advances.
 
-## Current authoritative checkpoint — 2026-08-19
+## Current authoritative state — 2026-08-19
 
 - Repo: `Aliturgutt/ilaios`
-- Master last observed: `a654ba997db335fdf45836ed076334ee8b015471`
-- Authoritative native-reference PR: `#561`
+- Current master last re-read: `c5b59325c88b5a0e047a21682da5d3cbf588507a`
+- Authoritative PR: #561
 - Branch: `agent/video-native-reference-relay-r2`
-- PR base last observed: `a654ba997db335fdf45836ed076334ee8b015471`
-- PR head is advancing under this checkpoint; always re-read exact head before acting.
-- PR state: draft/open/mergeable.
+- PR base: exact current master `c5b59325c88b5a0e047a21682da5d3cbf588507a`
+- Latest head before this checkpoint update: `5691741a59f3fc22df04d3119584873d337461ea`; re-read exact head before every action because this file update advances it.
+- PR remains DRAFT until repo CI, live relay, baseline private-brief certification and native live certification are all evidence-backed.
 
-Implemented on the native branch so far:
+## Implemented on branch
 
-- fail-closed OpenRouter `input_references` request shaping,
-- deterministic `frame_images` precedence,
-- short-lived HMAC-signed HTTPS relay core,
-- authenticated relay HTTP upload/delete boundary,
-- SHA-256 and MIME/magic integrity checks,
-- tenant/principal server-side relay binding,
-- no signed-query logging,
-- relay expiry and explicit release,
-- native reference binder with private visual-brief fallback on unproven models,
-- managed provider lifecycle wiring that keeps relay alive through provider execution and releases on terminal status,
-- Desktop managed-only relay configuration gate,
-- Desktop `first_frame` / `last_frame` roles and backend admission only when relay configuration is present,
-- subject/product/logo independent visual-consistency reviewer,
-- consistency reviewer explicitly forbids biometric identity/sensitive-trait inference,
-- native relay configuration negative tests,
-- evidence artifact/provenance support for consistency QA,
-- native relay-enabled Desktop composition selects consistency-verified managed runtime,
-- deterministic original-logo asset-lock compositor using canonical M18 FFmpeg overlay,
-- no-resize/no-crop/no-recolor/no-redraw logo preservation policy,
-- deterministic EN/TR placement vocabulary with bottom-right safe default and ambiguity fail-closed behavior,
-- runtime policy that permits asset-lock only for logo-only critical drift and never for subject/product failures,
-- post-asset-lock technical + semantic + reference-consistency revalidation,
-- distinct append-only `video.logo_asset_lock` evidence with source logo SHA and repaired artifact SHA.
+- fail-closed OpenRouter `input_references` request shaping;
+- deterministic `frame_images` precedence;
+- short-lived signed HTTPS relay store + authenticated HTTP upload/delete + provider GET;
+- SHA-256/MIME/magic validation, tenant/principal server-side binding, expiry/release and no signed-query logging;
+- provider fetch access ledger;
+- native relay binder with private visual-brief fallback on unproven models;
+- relay lifetime bound to provider job lifecycle;
+- Desktop managed-only relay configuration;
+- subject/product/logo independent visible-consistency reviewer with explicit no-biometric/sensitive-trait rule;
+- deterministic exact-original logo asset-lock using canonical M18 FFmpeg;
+- logo-only repair policy; subject/product drift cannot be hidden by overlay;
+- post-lock technical + semantic + reference-consistency revalidation;
+- append-only `video.logo_asset_lock` evidence;
+- native consistency/logo evidence preservation into canonical final result/QA;
+- native provider relay evidence preservation into final result/QA: URL-used flag, mode, count, dispatch count, SHA bindings, relay-release flag;
+- repaired final artifact SHA surfaced as `logo_asset_lock_repaired_artifact_sha256` when asset-lock is applied;
+- baseline private reference analyzer moved from failing `openrouter/free` route to current live-catalog free multimodal model `google/gemma-4-26b-a4b-it:free`; this is source-implemented but still requires trusted-master live certification before declaring restoration;
+- real native reference Desktop E2E harness added at `apps/desktop/e2e/provider_video_native_reference_finished_product_e2e.py`; it uses product + logo references, managed provider cap, final MP4/QA/SHA checks and relay access-ledger fetch proof;
+- separate trusted-master workflow added at `.github/workflows/video-native-reference-production-certification.yml` with distinct `ILAIOS Video Native Reference Live Certification` exact-SHA status and immutable proof artifact.
 
-Re-read exact current head and workflow runs every iteration; old PASS/FAIL evidence is stale after any branch update.
+## Current exact-head CI
 
-## Baseline prerequisite blocker
+On head `5691741a59f3fc22df04d3119584873d337461ea` at last read:
 
-Trusted-master `Video Reference Production Certification` on exact master `a654ba997db335fdf45836ed076334ee8b015471` was rerun after an initial ffmpeg package-download timeout. On rerun, ffmpeg installed successfully and the real E2E started. It then failed before video generation because private reference image analysis returned HTTP 404 from OpenRouter while using analyzer route/model `openrouter/free`.
+- Software Factory Final Evidence: PASS
+- Required CI Gate: pending
+- ILAIOS Desktop CI: pending
+- ILAIOS Desktop Windows Gate: queued
+- ILAIOS Desktop MSIX Packaging: pending
 
-Do not hide this failure. Diagnose against the live authoritative OpenRouter catalog/API. Select only an actually supported free multimodal analysis route or another evidence-backed configuration that preserves the existing reference-analysis semantics. Restore the baseline private visual-brief production certification before claiming native closure.
+This checkpoint update creates a newer head, so the next run must ignore the above as merge evidence and read the fresh exact-head runs.
 
-## Required exact-head gates before merge
+## Baseline private visual-brief certification
 
-All of the following must PASS on the same exact native PR head:
+Last trusted-master failure was real OpenRouter HTTP 404 while reference analysis used `openrouter/free`. Live official OpenRouter catalog/API research on 2026-08-19 confirmed explicit free multimodal `google/gemma-4-26b-a4b-it:free` with image input and structured-output support. PR #561 pins the private reference analyzer to that explicit free model while leaving semantic QA routing separate. This is not yet VERIFIED: after merge, rerun trusted-master `Video Reference Production Certification` on the exact merge SHA and require real analysis + real provider MP4 + QA + receipt + cost evidence.
 
-- Required CI Gate
-- Software Factory Final Evidence
-- ILAIOS Desktop CI
-- ILAIOS Desktop Windows Gate
-- ILAIOS Desktop MSIX Packaging
+## External relay blocker
 
-If any fails, inspect the exact job/log and fix only the root cause. Do not merge while draft or while any exact-head gate is incomplete/failing.
+Repository relay code is implemented, but no real public relay deployment/configuration evidence exists yet. Existing ILAIOS AWS production ALB is intentionally restricted to the approved owner `/32`; widening it for provider fetch would violate the existing network boundary. A native provider relay therefore needs a separately authorized public HTTPS deployment with bounded secrets/storage and cost. Do not silently broaden the existing production ALB or incur new infrastructure spend without an explicit bounded authority. Until a real public relay URL and bearer credential exist in the GitHub Production environment, native live certification must remain blocked/fail-closed.
 
-## Remaining native implementation/certification work
+Required Production secrets for the new native cert are:
 
-1. Re-read the current PR head and current master; create a successor if stale.
-2. Resolve all strict pytest/Ruff/Mypy/Flutter/Windows/MSIX failures on exact head.
-3. Verify native consistency QA and logo asset-lock output are surfaced into the final execution/receipt evidence used by certification; add regression tests if any fields are dropped by an upper runtime layer.
-4. Add a separate trusted-master native-reference production certification workflow/status; do not reuse the private-brief certification as proof of native provider references.
-5. The native certification must use a real HTTPS relay deployment/configuration with secrets outside the repository.
-6. Certification must upload a Desktop reference image and prove the provider fetched a signed relay URL.
-7. Prove `provider_native_reference_url_used=true` and native mode (`input-references` or `frame-images`) in durable receipt evidence.
-8. Generate a real provider MP4 under `managed-bounded` with actual terminal provider cost evidence `<= $1.00`.
-9. Validate H.264/AAC, 1920x1080, requested-duration tolerance, artifact size/digest, semantic QA, technical QA, and generated shot count.
-10. Validate subject/product/logo consistency QA where applicable, including threshold and evidence digest/provenance hash.
-11. Include a logo-drift certification case: native generation must either pass logo consistency directly or trigger deterministic original-asset lock; if asset-lock is applied, prove source-logo SHA, no resize/crop/recolor/redraw, repaired artifact SHA, final technical QA PASS, final semantic QA PASS, final logo consistency PASS, and evidence-chain provenance.
-12. Prove immutable reference binding remains retained, private local raw blob is released after success, and relay item is released/expired after provider use.
-13. Validate exact revision SHA in receipt/artifact and publish a distinct native-reference live certification status.
-14. Only then report `VERIFIED` for that exact certified SHA.
+- `OPENROUTER_API_KEY` (existing provider credential),
+- `ILAIOS_REFERENCE_RELAY_UPLOAD_URL` (real HTTPS upload endpoint),
+- `ILAIOS_REFERENCE_RELAY_UPLOAD_TOKEN` (server-held upload/delete/access-evidence bearer).
 
-## Automation behavior
+Relay server itself additionally requires server-side `ILAIOS_REFERENCE_RELAY_PUBLIC_BASE_URL`, `ILAIOS_REFERENCE_RELAY_UPLOAD_TOKEN`, and `ILAIOS_REFERENCE_RELAY_SIGNING_SECRET` outside the repository.
 
-At each run:
+## Remaining order
 
-1. Read this checkpoint file.
-2. Read current `master` SHA.
-3. Read PR `#561`; if stale/closed/superseded, follow the explicit successor only.
-4. Read exact-head workflow runs and failing job logs.
-5. Read changed implementation files relevant to the next fix before writing.
-6. Perform all non-blocked repo work autonomously.
-7. Treat logo asset-lock as mandatory closure scope, not a future enhancement.
-8. If master advanced, compare/replay onto a current-master successor; never reuse stale green evidence.
-9. If all exact-head gates PASS and branch is current, make PR ready and merge only with expected-head protection and the appropriate trusted-master certification trigger token.
-10. Run/verify baseline and native live certifications and validate uploaded artifacts/receipts, including logo asset-lock evidence when exercised.
-11. If blocked by external provider availability, missing secrets, relay deployment infrastructure, or CI infrastructure, leave repo safe and report the precise blocker with evidence. Never fabricate `DONE`, `PRODUCTION`, or `VERIFIED`.
+1. Read fresh head + fresh exact-head five gates; repair only evidenced failures.
+2. Add/fix regression/security tests for the new native live workflow if CI identifies any issue.
+3. Keep PR current with master; if master advances, create/replay a current-master successor rather than reusing stale green evidence.
+4. Obtain/establish a separately authorized real public HTTPS relay deployment without weakening the existing R03 network boundary; configure Production secrets.
+5. When repo work is exact-head green and current, mark PR ready and merge with expected-head protection and appropriate trusted-master trigger token(s).
+6. Rerun baseline private visual-brief trusted-master certification and require PASS on exact merge SHA.
+7. Run separate native-reference trusted-master certification. Require provider relay fetch evidence for both product and logo, `provider_native_reference_url_used=true`, `native_reference_mode=input-references`, managed terminal cost `<= $1.00`, real MP4, final technical/semantic/reference-consistency PASS, and logo direct-PASS or deterministic asset-lock PASS.
+8. Validate receipt/artifact SHA and append-only evidence/provenance; only then publish exact-SHA native-reference VERIFIED.
+
+If external relay deployment remains blocked, continue all non-blocked repository/CI work and report the precise blocker. Never fabricate `DONE`, `PRODUCTION`, or `VERIFIED`.
