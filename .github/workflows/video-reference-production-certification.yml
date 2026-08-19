@@ -16,14 +16,15 @@ concurrency:
 
 jobs:
   reference-provider-proof:
-    name: Real reference-aware provider production proof
+    name: Real reference-aware managed provider production proof
     if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[video-reference-live-cert]') }}
     runs-on: ubuntu-latest
     environment: Production
     timeout-minutes: 25
     env:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      ILAIOS_VIDEO_MODEL_ID: bytedance/seedance-2.0-fast:free
+      ILAIOS_VIDEO_MANAGED_MODEL_ID: bytedance/seedance-2.0-fast
+      ILAIOS_VIDEO_REFERENCE_MAX_TOTAL_USD: "1.00"
       ILAIOS_VIDEO_QA_MODEL_ID: openrouter/free
       ILAIOS_VIDEO_E2E_RESOLUTION: 480p
       VIDEO_DESKTOP_REFERENCE_PROVIDER_PROOF_DIR: artifacts/video-desktop-reference-provider-proof
@@ -39,8 +40,26 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends ffmpeg
+          if command -v ffmpeg >/dev/null 2>&1 && command -v ffprobe >/dev/null 2>&1; then
+            ffmpeg -version | head -1
+            ffprobe -version | head -1
+            exit 0
+          fi
+          export DEBIAN_FRONTEND=noninteractive
+          sudo timeout 180 apt-get \
+            -o Acquire::Retries=3 \
+            -o Acquire::ForceIPv4=true \
+            -o Acquire::http::Timeout=15 \
+            -o Acquire::https::Timeout=15 \
+            update
+          sudo timeout 600 apt-get \
+            -o Acquire::Retries=3 \
+            -o Acquire::ForceIPv4=true \
+            -o Acquire::http::Timeout=15 \
+            -o Acquire::https::Timeout=15 \
+            install --yes --no-install-recommends ffmpeg
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
 
       - name: Verify live proof safety boundary
         shell: bash
@@ -50,12 +69,14 @@ jobs:
           ffmpeg -version | head -1
           ffprobe -version | head -1
           test -n "$OPENROUTER_API_KEY"
-          case "$ILAIOS_VIDEO_MODEL_ID" in
-            *:free) ;;
-            *) echo "reference certification requires an explicit verified-free video model" >&2; exit 1 ;;
+          test "$ILAIOS_VIDEO_REFERENCE_MAX_TOTAL_USD" = "1.00"
+          case "$ILAIOS_VIDEO_MANAGED_MODEL_ID" in
+            *:free) echo "reference managed certification requires an explicit non-free managed model" >&2; exit 1 ;;
+            "") echo "reference managed certification model is empty" >&2; exit 1 ;;
+            *) ;;
           esac
 
-      - name: Run real provider-backed reference-image finished-product E2E
+      - name: Run real managed provider-backed reference-image finished-product E2E
         shell: bash
         run: |
           set -euo pipefail
@@ -66,7 +87,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          echo "## Video Factory — Live Reference Provider Certification" >> "$GITHUB_STEP_SUMMARY"
+          echo "## Video Factory — Live Reference Managed Provider Certification" >> "$GITHUB_STEP_SUMMARY"
           if [[ -f "$VIDEO_DESKTOP_REFERENCE_PROVIDER_PROOF_DIR/receipt.json" ]]; then
             python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
@@ -79,6 +100,9 @@ jobs:
           print(f"- Revision: `{receipt.get('revision_sha')}`")
           print(f"- Execution: `{receipt.get('execution_status')}`")
           print(f"- Provider model: `{receipt.get('provider_model')}`")
+          print(f"- Provider cost mode: `{receipt.get('provider_cost_mode')}`")
+          print(f"- Provider actual cost USD: `{receipt.get('provider_cost_usd')}`")
+          print(f"- Authorized hard cap USD: `{receipt.get('provider_cost_hard_cap_usd')}`")
           print(f"- QA model: `{receipt.get('qa_model')}`")
           print(f"- Reference count: `{receipt.get('reference_asset_count')}`")
           print(f"- Reference SHA-256: `{receipt.get('reference_asset_sha256')}`")
@@ -94,7 +118,7 @@ jobs:
           print(f"- Video/audio: `{receipt.get('video_codec')}` / `{receipt.get('audio_codec')}`")
           print(f"- Artifact SHA-256: `{receipt.get('artifact_sha256')}`")
           print(f"- Artifact bytes: `{receipt.get('artifact_bytes')}`")
-          print(f"- Verified free-route cost zero: `{receipt.get('provider_cost_zero')}`")
+          print("- Automatic paid fallback: `FALSE`; this proof explicitly selected managed-bounded mode under the existing $1 authorization.")
           print("- This certifies ILAIOS private multimodal visual-brief conditioning, not provider-native public-URL reference mode.")
           PY
           elif [[ -f "$VIDEO_DESKTOP_REFERENCE_PROVIDER_PROOF_DIR/failure.json" ]]; then
@@ -107,6 +131,8 @@ jobs:
           failure = json.loads((proof_dir / "failure.json").read_text(encoding="utf-8"))
           print("- Status: `FAIL`")
           print(f"- Revision: `{failure.get('revision_sha')}`")
+          print(f"- Cost mode: `{failure.get('provider_cost_mode')}`")
+          print(f"- Hard cap USD: `{failure.get('provider_cost_hard_cap_usd')}`")
           print(f"- Error type: `{failure.get('error_type')}`")
           print(f"- Error: `{failure.get('error')}`")
           PY
@@ -152,14 +178,19 @@ jobs:
                   receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
                   semantic_score = receipt.get('semantic_score')
                   semantic_threshold = receipt.get('semantic_threshold')
+                  provider_cost_microusd = receipt.get('provider_cost_microusd')
                   accepted = (
-                      receipt.get('status') == 'PASS'
+                      receipt.get('schema') == 'ilaios.desktop.reference-provider-video-e2e.v2'
+                      and receipt.get('status') == 'PASS'
                       and receipt.get('revision_sha') == os.environ['GITHUB_SHA']
                       and receipt.get('execution_status') == 'ACCEPTED'
-                      and receipt.get('provider_cost_zero') is True
-                      and receipt.get('provider_cost_usd') == 0.0
-                      and isinstance(receipt.get('provider_generation_id'), str)
-                      and bool(receipt.get('provider_generation_id'))
+                      and receipt.get('provider_cost_mode') == 'managed-bounded'
+                      and receipt.get('provider_cost_proven') is True
+                      and isinstance(provider_cost_microusd, int)
+                      and not isinstance(provider_cost_microusd, bool)
+                      and 0 <= provider_cost_microusd <= 1_000_000
+                      and receipt.get('provider_cost_hard_cap_usd') == '1.00'
+                      and receipt.get('provider_cost_hard_cap_microusd') == 1_000_000
                       and receipt.get('reference_asset_count') == 1
                       and is_sha256(receipt.get('reference_asset_sha256'))
                       and receipt.get('reference_binding_retained') is True
@@ -182,13 +213,14 @@ jobs:
                       and isinstance(semantic_threshold, (int, float))
                       and float(semantic_score) >= float(semantic_threshold)
                       and receipt.get('generated_shot_count') == 1
+                      and receipt.get('generation_mode') == 'managed-provider-reference-conditioned-video'
                   )
               except (OSError, ValueError, TypeError):
                   accepted = False
 
           state = 'success' if accepted else 'failure'
           description = (
-              'Reference live E2E accepted: exact-SHA PASS'
+              'Reference live E2E accepted: exact-SHA managed PASS'
               if accepted
               else 'Reference live E2E failed closed'
           )
