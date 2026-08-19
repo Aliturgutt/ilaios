@@ -1,0 +1,6 @@
+ILAIOS Desktop Store successor checkpoint
+base_created_from=028349bf26c74a8841313f680fea98e867e4b7df
+observed_master_before_pr=14b85a8747559fed25c6d9af7a37c7cd8122c399
+store_scope_files=5
+master_drift_overlap=none
+purpose=force exact-head qualification of bounded Store successor; remove before merge if not needed
