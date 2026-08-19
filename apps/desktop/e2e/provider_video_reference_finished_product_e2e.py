@@ -139,7 +139,7 @@ def _run_reference_finished_product_acceptance(
     )
 
     objective = (
-        "Video creation task: Create a finished cinematic product video exactly 4 seconds long. "
+        "Video creation task: Create a finished cinematic product video exactly 8 seconds long. "
         "Use the attached product reference as the visual source of truth. Preserve its observable "
         "matte dark geometry, cyan illuminated vertical feature, orange circular emblem placement, "
         "and light accent marks. Present the same product as a premium studio reveal with realistic "
@@ -258,7 +258,7 @@ def _run_reference_finished_product_acceptance(
         raise RuntimeError("reference-provider output codecs are outside the delivery contract")
     if int(str(video_stream.get("width"))) != 1920 or int(str(video_stream.get("height"))) != 1080:
         raise RuntimeError("reference-provider finished product is not 1920x1080")
-    if not 3.0 <= float(probe.duration_seconds) <= 5.0:
+    if not 7.0 <= float(probe.duration_seconds) <= 9.0:
         raise RuntimeError(f"reference-provider duration is outside tolerance: {probe.duration_seconds}")
 
     qa = manifest.get("qa")

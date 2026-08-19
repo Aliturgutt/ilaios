@@ -26,6 +26,7 @@ def test_video_reference_live_workflow_publishes_sanitized_exact_sha_status() ->
     assert "/statuses/{os.environ['GITHUB_SHA']}" in text
     assert "provider_native_reference_url_used') is False" in text
     assert "reference_conditioning_mode') == 'private-multimodal-brief'" in text
+    assert "7.0 <= float(receipt.get('duration_seconds')) <= 9.0" in text
     assert "contents: write" not in text
 
     status_step = text.split(
@@ -40,6 +41,21 @@ def test_video_reference_live_workflow_publishes_sanitized_exact_sha_status() ->
     assert "'target_url': os.environ['VIDEO_REFERENCE_STATUS_TARGET_URL']" in status_step
     assert "'description': description" in status_step
     assert "'context': 'ILAIOS Video Reference Live Certification'" in status_step
+
+
+def test_reference_provider_live_e2e_uses_supported_eight_second_contract() -> None:
+    root = _repository_root()
+    script = (
+        root
+        / "apps"
+        / "desktop"
+        / "e2e"
+        / "provider_video_reference_finished_product_e2e.py"
+    ).read_text(encoding="utf-8")
+
+    assert "exactly 8 seconds long" in script
+    assert "7.0 <= float(probe.duration_seconds) <= 9.0" in script
+    assert "exactly 4 seconds long" not in script
 
 
 def test_video_reference_live_status_preserves_repository_security_policy() -> None:
