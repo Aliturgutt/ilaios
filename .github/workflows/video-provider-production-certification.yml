@@ -13,9 +13,15 @@ on:
           - desktop-managed-bounded
           - desktop-one-prompt
           - free-only
+  push:
+    branches:
+      - master
+    paths:
+      - .github/video-provider-production-certification.trigger
 
 permissions:
   contents: read
+  statuses: write
 
 concurrency:
   group: video-provider-production-certification-${{ github.ref }}
@@ -28,6 +34,7 @@ jobs:
     environment: Production
     timeout-minutes: 25
     env:
+      CERT_PROOF_MODE: ${{ github.event_name == 'push' && 'desktop-managed-bounded' || inputs.proof_mode }}
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       VIDEO_FREE_PROVIDER_PROOF_DIR: artifacts/video-free-provider-proof
       VIDEO_FREE_PROVIDER_MODELS: bytedance/seedance-2.0-fast:free,bytedance/seedance-2.0:free,bytedance/seedance-1-5-pro:free
@@ -54,7 +61,7 @@ jobs:
           persist-credentials: false
 
       - name: Install Desktop video runtime dependency
-        if: ${{ inputs.proof_mode == 'desktop-one-prompt' || inputs.proof_mode == 'desktop-managed-bounded' }}
+        if: ${{ env.CERT_PROOF_MODE == 'desktop-one-prompt' || env.CERT_PROOF_MODE == 'desktop-managed-bounded' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -62,7 +69,7 @@ jobs:
           sudo apt-get install --yes --no-install-recommends ffmpeg
 
       - name: Verify Desktop free-route proof safety boundary
-        if: ${{ inputs.proof_mode == 'desktop-one-prompt' }}
+        if: ${{ env.CERT_PROOF_MODE == 'desktop-one-prompt' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -76,7 +83,7 @@ jobs:
           esac
 
       - name: Verify Desktop managed-bounded proof safety boundary
-        if: ${{ inputs.proof_mode == 'desktop-managed-bounded' }}
+        if: ${{ env.CERT_PROOF_MODE == 'desktop-managed-bounded' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -92,35 +99,35 @@ jobs:
           esac
 
       - name: Run real provider-backed Desktop verified-free finished-product E2E
-        if: ${{ inputs.proof_mode == 'desktop-one-prompt' }}
+        if: ${{ env.CERT_PROOF_MODE == 'desktop-one-prompt' }}
         shell: bash
         run: |
           set -euo pipefail
           python apps/desktop/e2e/provider_video_finished_product_e2e.py
 
       - name: Run real provider-backed Desktop managed-bounded finished-product E2E
-        if: ${{ inputs.proof_mode == 'desktop-managed-bounded' }}
+        if: ${{ env.CERT_PROOF_MODE == 'desktop-managed-bounded' }}
         shell: bash
         run: |
           set -euo pipefail
           python apps/desktop/e2e/provider_video_managed_finished_product_e2e.py
 
       - name: Run real free-only provider certification
-        if: ${{ inputs.proof_mode == 'free-only' }}
+        if: ${{ env.CERT_PROOF_MODE == 'free-only' }}
         shell: bash
         run: |
           set -euo pipefail
           python -m src.video_automation.free_provider_production_certification
 
       - name: Run bounded paid proof through canonical managed provider path
-        if: ${{ inputs.proof_mode == 'managed-bounded' }}
+        if: ${{ env.CERT_PROOF_MODE == 'managed-bounded' }}
         shell: bash
         run: |
           set -euo pipefail
           python -m src.video_automation.provider_production_certification
 
       - name: Publish Desktop verified-free provider proof summary
-        if: ${{ always() && inputs.proof_mode == 'desktop-one-prompt' }}
+        if: ${{ always() && env.CERT_PROOF_MODE == 'desktop-one-prompt' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -151,7 +158,7 @@ jobs:
           fi
 
       - name: Publish Desktop managed-bounded provider proof summary
-        if: ${{ always() && inputs.proof_mode == 'desktop-managed-bounded' }}
+        if: ${{ always() && env.CERT_PROOF_MODE == 'desktop-managed-bounded' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -185,7 +192,7 @@ jobs:
           fi
 
       - name: Publish free-provider proof summary
-        if: ${{ always() && inputs.proof_mode == 'free-only' }}
+        if: ${{ always() && env.CERT_PROOF_MODE == 'free-only' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -217,7 +224,7 @@ jobs:
           fi
 
       - name: Publish managed paid-provider proof summary
-        if: ${{ always() && inputs.proof_mode == 'managed-bounded' }}
+        if: ${{ always() && env.CERT_PROOF_MODE == 'managed-bounded' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -258,7 +265,7 @@ jobs:
           fi
 
       - name: Upload immutable Desktop provider finished-product proof
-        if: ${{ always() && inputs.proof_mode == 'desktop-one-prompt' }}
+        if: ${{ always() && env.CERT_PROOF_MODE == 'desktop-one-prompt' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: desktop-provider-video-proof-${{ github.sha }}-${{ github.run_id }}
@@ -267,7 +274,7 @@ jobs:
           retention-days: 30
 
       - name: Upload immutable Desktop managed-provider finished-product proof
-        if: ${{ always() && inputs.proof_mode == 'desktop-managed-bounded' }}
+        if: ${{ always() && env.CERT_PROOF_MODE == 'desktop-managed-bounded' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: desktop-managed-provider-video-proof-${{ github.sha }}-${{ github.run_id }}
@@ -276,7 +283,7 @@ jobs:
           retention-days: 30
 
       - name: Upload immutable free-provider proof evidence
-        if: ${{ always() && inputs.proof_mode == 'free-only' }}
+        if: ${{ always() && env.CERT_PROOF_MODE == 'free-only' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: video-free-provider-proof-${{ github.sha }}-${{ github.run_id }}
@@ -285,10 +292,108 @@ jobs:
           retention-days: 30
 
       - name: Upload immutable managed-provider proof evidence
-        if: ${{ always() && inputs.proof_mode == 'managed-bounded' }}
+        if: ${{ always() && env.CERT_PROOF_MODE == 'managed-bounded' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: video-provider-production-proof-${{ github.sha }}-${{ github.run_id }}
           path: artifacts/video-provider-proof
           if-no-files-found: warn
           retention-days: 30
+
+      - name: Publish sanitized managed Desktop certification commit status
+        if: ${{ always() && env.CERT_PROOF_MODE == 'desktop-managed-bounded' }}
+        shell: bash
+        env:
+          VIDEO_PROVIDER_JOB_STATUS: ${{ job.status }}
+          VIDEO_PROVIDER_STATUS_TOKEN: ${{ github.token }}
+          VIDEO_PROVIDER_STATUS_TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          def is_sha256(value: object) -> bool:
+              return (
+                  isinstance(value, str)
+                  and len(value) == 64
+                  and all(character in "0123456789abcdef" for character in value)
+              )
+
+          accepted = False
+          receipt_path = Path(os.environ["VIDEO_DESKTOP_MANAGED_PROVIDER_PROOF_DIR"]) / "receipt.json"
+          if os.environ.get("VIDEO_PROVIDER_JOB_STATUS") == "success" and receipt_path.is_file():
+              try:
+                  receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+                  semantic_score = receipt.get("semantic_score")
+                  semantic_threshold = receipt.get("semantic_threshold")
+                  provider_cost = receipt.get("provider_cost_microusd")
+                  hard_cap = receipt.get("provider_cost_hard_cap_microusd")
+                  accepted = (
+                      receipt.get("status") == "PASS"
+                      and receipt.get("revision_sha") == os.environ["GITHUB_SHA"]
+                      and receipt.get("execution_status") == "ACCEPTED"
+                      and receipt.get("provider_cost_mode") == "managed-bounded"
+                      and receipt.get("provider_cost_proven") is True
+                      and isinstance(provider_cost, int)
+                      and not isinstance(provider_cost, bool)
+                      and isinstance(hard_cap, int)
+                      and not isinstance(hard_cap, bool)
+                      and hard_cap == 1_000_000
+                      and 0 <= provider_cost <= hard_cap
+                      and receipt.get("provider_cost_hard_cap_usd") == "1.00"
+                      and isinstance(receipt.get("provider_model"), str)
+                      and bool(receipt.get("provider_model"))
+                      and isinstance(receipt.get("qa_model"), str)
+                      and bool(receipt.get("qa_model"))
+                      and is_sha256(receipt.get("artifact_sha256"))
+                      and isinstance(receipt.get("artifact_bytes"), int)
+                      and receipt.get("artifact_bytes", 0) > 100_000
+                      and isinstance(receipt.get("duration_seconds"), (int, float))
+                      and 7.0 <= float(receipt.get("duration_seconds")) <= 9.0
+                      and receipt.get("width") == 1920
+                      and receipt.get("height") == 1080
+                      and receipt.get("video_codec") == "h264"
+                      and receipt.get("audio_codec") == "aac"
+                      and isinstance(semantic_score, (int, float))
+                      and isinstance(semantic_threshold, (int, float))
+                      and float(semantic_score) >= float(semantic_threshold)
+                      and receipt.get("generated_shot_count") == 2
+                      and receipt.get("generation_mode") == "provider-backed-cinematic-video"
+                  )
+              except (OSError, ValueError, TypeError):
+                  accepted = False
+
+          state = "success" if accepted else "failure"
+          description = (
+              "Video provider E2E accepted: exact-SHA MP4/QA/cost PASS"
+              if accepted
+              else "Video provider E2E failed closed"
+          )
+          document = json.dumps(
+              {
+                  "state": state,
+                  "target_url": os.environ["VIDEO_PROVIDER_STATUS_TARGET_URL"],
+                  "description": description,
+                  "context": "ILAIOS Video Provider Production Certification",
+              },
+              separators=(",", ":"),
+          ).encode("utf-8")
+          request = urllib.request.Request(
+              f"{os.environ['GITHUB_API_URL']}/repos/{os.environ['GITHUB_REPOSITORY']}/statuses/{os.environ['GITHUB_SHA']}",
+              data=document,
+              method="POST",
+              headers={
+                  "Accept": "application/vnd.github+json",
+                  "Authorization": f"Bearer {os.environ['VIDEO_PROVIDER_STATUS_TOKEN']}",
+                  "Content-Type": "application/json",
+                  "X-GitHub-Api-Version": "2022-11-28",
+              },
+          )
+          with urllib.request.urlopen(request, timeout=20) as response:
+              if response.status not in {200, 201}:
+                  raise RuntimeError(f"commit status publish failed: HTTP {response.status}")
+          print(f"VIDEO_PROVIDER_COMMIT_STATUS={state}")
+          PY
