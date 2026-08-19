@@ -14,6 +14,7 @@ from services.named_agent_executor import NamedAgentExecutor
 from services.runtime import GovernedRuntime, GrantPolicy
 from services.runtime.browser_egress_playwright import PlaywrightDockerBrowserEgressBoundary
 from services.runtime.browser_tool_adapter import (
+    BROWSER_AGENT_ID,
     BROWSER_TOOL_NAME,
     browser_session_id,
     submit_browser_request,
@@ -184,22 +185,17 @@ def main() -> None:
     try:
         results["open"] = execute(1, "open", operand=_TARGET)
         _assert_observed(results["open"], "open")
-
         isolation_evidence = boundary.verify_isolation(cwd=artifact_root)
         if not isolation_evidence.startswith("sha256:"):
             raise RuntimeError("Docker isolation probe lacks durable evidence")
-
         results["snapshot"] = execute(2, "snapshot")
         _assert_observed(results["snapshot"], "snapshot")
         _assert_artifact(results["snapshot"], "snapshot")
-
         results["screenshot"] = execute(3, "screenshot")
         _assert_observed(results["screenshot"], "screenshot")
         _assert_artifact(results["screenshot"], "screenshot")
-
         results["reload"] = execute(4, "reload")
         _assert_observed(results["reload"], "reload")
-
         results["close"] = execute(5, "close", target_url=None)
     finally:
         boundary.shutdown()
@@ -217,6 +213,10 @@ def main() -> None:
     work_rows = [cast(dict[str, object], item) for item in work if isinstance(item, dict)]
     if len(work_rows) != 5 or any(item.get("status") != "executed" for item in work_rows):
         raise RuntimeError("BrowserQA governed work did not reconcile to executed")
+    if any(item.get("agent_id") != BROWSER_AGENT_ID for item in work_rows):
+        raise RuntimeError("BrowserQA governed work lost canonical agent identity")
+    if any(item.get("skill_id") != _SKILL_ID for item in work_rows):
+        raise RuntimeError("BrowserQA governed work lost canonical skill identity")
 
     audit_records = audit.get_records(component="browser-tool", status="success")
     if len(audit_records) != 5:
@@ -236,6 +236,8 @@ def main() -> None:
     summary = {
         "schema_version": 2,
         "source_sha": source_sha,
+        "agent_id": BROWSER_AGENT_ID,
+        "skill_id": _SKILL_ID,
         "runtime_image": runtime_image,
         "target": _TARGET,
         "allowed_origins": list(_ALLOWED_ORIGINS),
