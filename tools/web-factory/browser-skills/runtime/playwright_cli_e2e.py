@@ -136,6 +136,17 @@ def main() -> None:
         )
         _assert_observed(results["reload"], "reload")
 
+        # This E2E proves the pinned CLI + Docker egress surface can perform one
+        # bounded interaction. Production invocation still requires the separate
+        # GovernedBrowserTool high-risk admission + independent approval checks.
+        results["press-tab"] = cli.execute(
+            _ALLOWED_ORIGINS,
+            session_id,
+            "press",
+            "Tab",
+        )
+        _assert_observed(results["press-tab"], "press-tab")
+
         results["close"] = cli.execute(
             _ALLOWED_ORIGINS,
             session_id,
@@ -149,18 +160,20 @@ def main() -> None:
         path.name
         for path in (artifact_root / "browser-egress-evidence").glob("*.json")
     )
-    if len(receipts) < 6:
+    if len(receipts) < 7:
         raise RuntimeError("real BrowserQA E2E produced insufficient boundary receipts")
 
     summary = {
-        "schema_version": 1,
+        "schema_version": 2,
         "source_sha": source_sha,
         "runtime_image": runtime_image,
         "target": _TARGET,
         "allowed_origins": list(_ALLOWED_ORIGINS),
         "javascript_enabled": False,
         "service_workers": "block",
-        "state_changing_browser_actions": False,
+        "bounded_interaction_cli_verified": True,
+        "text_entry_actions_enabled": False,
+        "production_interaction_requires_independent_approval": True,
         "seccomp_profile_git_blob_sha1": "fddc05fb520affb145404e6f6f647ca96af8087d",
         "isolation_evidence_id": isolation_evidence,
         "actions": results,

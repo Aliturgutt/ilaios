@@ -9,6 +9,7 @@ from services.governance.runtime import GovernedRuntimeGateway
 from services.named_agent_executor import NamedAgentExecutor
 from services.runtime.browser_tool_adapter import (
     BROWSER_AGENT_ID,
+    BROWSER_AUTOMATION_SKILL_ID,
     BROWSER_CAPABILITY,
     BrowserEgressBoundary,
     build_browser_tool_gateway,
@@ -38,6 +39,8 @@ def ensure_web_factory_browser_skills(
         digests[skill_id] = executor.ensure_skill(
             skill_id, instructions, frozenset({BROWSER_CAPABILITY})
         )
+    if BROWSER_AUTOMATION_SKILL_ID not in digests:
+        raise ValueError("browser automation skill is not provisioned")
     return digests
 
 
@@ -74,5 +77,7 @@ def compose_browser_runtime(
         "skill_digests": digests,
         "tool": "browser.playwright-cli",
         "egress_boundary_required": True,
-        "state_changing_actions_enabled": False,
+        "state_changing_actions_enabled": True,
+        "state_changing_actions_require_approval": True,
+        "text_entry_actions_enabled": False,
     }

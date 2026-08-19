@@ -1,8 +1,10 @@
 """Governed, fail-closed browser tool adapter for ILAIOS BrowserQA.
 
-The adapter is intentionally read/navigation-only. It is entered through the
-canonical ToolGateway and will not launch a browser unless persisted governance
-work, admission/budget and an external egress-enforcement boundary all agree.
+The adapter is entered through the canonical ToolGateway and will not launch a
+browser unless persisted governance work, admission/budget, required independent
+approval, and an external egress-enforcement boundary all agree. Read/navigation
+remains low/medium risk; the narrow automation surface is high-risk and approval
+bound per request rather than granted as standing agent authority.
 """
 from __future__ import annotations
 
@@ -24,12 +26,30 @@ from src.core.tool_gateway import ToolGateway
 BROWSER_TOOL_NAME = "browser.playwright-cli"
 BROWSER_AGENT_ID = "ilaios.agent.web.browser-qa.v1"
 BROWSER_CAPABILITY = "web.verify"
+BROWSER_AUTOMATION_SKILL_ID = "ilaios-browser-automate"
 
 _LOW_RISK = frozenset({"snapshot", "find", "screenshot", "close"})
 _MEDIUM_RISK = frozenset({"open", "goto", "reload"})
-_SUPPORTED = _LOW_RISK | _MEDIUM_RISK
+_HIGH_RISK = frozenset({"click", "press"})
+_SUPPORTED = _LOW_RISK | _MEDIUM_RISK | _HIGH_RISK
 _PAGE_URL_RE = re.compile(r"(?m)^- Page URL:\s*(\S+)\s*$")
 _SESSION_RE = re.compile(r"^ilaios-[0-9a-f]{24}$")
+_SAFE_PRESS_KEYS = frozenset(
+    {
+        "Enter",
+        "Tab",
+        "Shift+Tab",
+        "Escape",
+        "ArrowUp",
+        "ArrowDown",
+        "ArrowLeft",
+        "ArrowRight",
+        "Home",
+        "End",
+        "PageUp",
+        "PageDown",
+    }
+)
 
 
 class BrowserToolError(RuntimeError):
@@ -215,14 +235,7 @@ class PlaywrightCliAdapter:
         allowed_origins: tuple[str, ...],
         session_id: str,
     ) -> tuple[str, str, str, int]:
-        """Observe the same named session without weakening URL verification.
-
-        Some pinned Playwright CLI commands that save an explicit artifact do not
-        reliably include the Page URL line in stdout. Rather than trusting the
-        requested URL or dropping the observed-URL gate, run one additional
-        read-only snapshot in the same session through the same egress boundary.
-        The attestation artifact and its own boundary receipt become evidence.
-        """
+        """Observe the same named session without weakening URL verification."""
         artifact = f"url-attestation-{uuid.uuid4().hex}.yaml"
         result = self._egress.run(
             allowed_origins=allowed_origins,
@@ -263,10 +276,7 @@ class PlaywrightCliAdapter:
         _validate_session(session_id)
         _validate_action(action, operand)
         prefix = (self._executable, f"-s={session_id}")
-        if action in {"open", "goto"}:
-            assert operand is not None
-            return ((*prefix, action, operand), None)
-        if action == "find":
+        if action in {"open", "goto", "find", "click", "press"}:
             assert operand is not None
             return ((*prefix, action, operand), None)
         if action in {"snapshot", "screenshot"}:
@@ -309,11 +319,18 @@ class GovernedBrowserTool:
             production = work.skill_id == "ilaios-production-verification"
             self._targets.authorize(target_url, production=production)
             admission = self._governance.admission_snapshot(request_id)
-            required_risk = "medium" if action in _MEDIUM_RISK else "low"
+            required_risk = _risk_for_action(action)
             if admission.get("risk") != required_risk:
                 raise BrowserToolError("browser persisted risk classification drifted")
             if admission.get("admission_proven") is not True:
                 raise BrowserToolError("browser work lacks proven canonical admission")
+            if action in _HIGH_RISK:
+                if work.skill_id != BROWSER_AUTOMATION_SKILL_ID:
+                    raise BrowserToolError("browser interaction requires automation skill")
+                if admission.get("human_approval_required") is not True:
+                    raise BrowserToolError("browser interaction must require human approval")
+                if admission.get("approval_proven") is not True:
+                    raise BrowserToolError("browser interaction lacks independent approval")
             amount = self._governance.authorize_billable(request_id)
             reserved = True
             result = self._cli.execute(
@@ -378,7 +395,7 @@ def submit_browser_request(
         BROWSER_CAPABILITY,
         payload,
         (),
-        risk="medium" if action in _MEDIUM_RISK else "low",
+        risk=_risk_for_action(action),
     )
 
 
@@ -397,6 +414,10 @@ def browser_request_payload(
     if skill_id not in WEB_FACTORY_BROWSER_SKILL_IDS:
         raise BrowserToolError("unknown canonical browser skill")
     _validate_action(action, operand)
+    if action in _HIGH_RISK and skill_id != BROWSER_AUTOMATION_SKILL_ID:
+        raise BrowserToolError("browser interaction requires automation skill")
+    if skill_id == BROWSER_AUTOMATION_SKILL_ID and action not in _HIGH_RISK:
+        raise BrowserToolError("browser automation skill is limited to high-risk interaction")
     if action in {"open", "goto"}:
         if target_url is None or operand is None:
             raise BrowserToolError("browser navigation requires a governed target URL")
@@ -478,13 +499,29 @@ def _validate_persisted_binding(
         raise BrowserToolError("browser session identity diverges from governed work")
 
 
+def _risk_for_action(action: str) -> str:
+    if action in _HIGH_RISK:
+        return "high"
+    if action in _MEDIUM_RISK:
+        return "medium"
+    return "low"
+
+
 def _validate_action(action: str, operand: str | None) -> None:
     if action not in _SUPPORTED:
-        raise BrowserToolError("browser action is outside read/navigation-only v0")
-    if action in {"open", "goto", "find"} and (operand is None or not operand.strip()):
+        raise BrowserToolError("browser action is outside the governed BrowserQA surface")
+    if action in {"open", "goto", "find", "click", "press"} and (
+        operand is None or not operand.strip()
+    ):
         raise BrowserToolError("browser action requires a non-empty operand")
-    if action not in {"open", "goto", "find"} and operand is not None:
+    if action not in {"open", "goto", "find", "click", "press"} and operand is not None:
         raise BrowserToolError("browser action does not accept an operand")
+    if operand is not None and (
+        len(operand) > 512 or any(char in operand for char in "\r\n\x00")
+    ):
+        raise BrowserToolError("browser action operand is malformed")
+    if action == "press" and operand not in _SAFE_PRESS_KEYS:
+        raise BrowserToolError("browser press key is outside the bounded control-key allowlist")
 
 
 def _validate_session(session_id: str) -> None:
