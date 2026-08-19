@@ -1,9 +1,8 @@
 """Deterministic Store release-certification foundation.
 
-This module is intentionally policy/evidence infrastructure only. It does not build,
-sign, submit, publish, or mutate mobile applications. Store-specific executable
-verticals must remain downstream of the existing Policy/Approval/Tool Gateway and
-Evidence authorities.
+This module is policy/evidence infrastructure only. It does not build, sign, submit,
+publish, or mutate mobile applications. Store-specific executable verticals remain
+downstream of the existing Policy/Approval/Tool Gateway and Evidence authorities.
 """
 
 from __future__ import annotations
@@ -151,7 +150,7 @@ class CredentialReference:
     scopes: tuple[str, ...]
 
 
-_ALLOWED_TRANSITIONS: dict[str, frozenset[str]] = {
+_ALLOWED_TRANSITIONS: dict[CertificationState, frozenset[CertificationState]] = {
     "DESIGNED": frozenset({"SPECIFIED"}),
     "SPECIFIED": frozenset({"IMPLEMENTED"}),
     "IMPLEMENTED": frozenset({"TESTED"}),
@@ -197,41 +196,46 @@ def build_submission_profile(
     if not 0 <= target_age <= 120:
         raise StoreCertificationError("target_age is outside the supported range")
 
-    normalized = {
+    normalized_territories = _normalize_tokens(territories, "territories")
+    normalized_auth = _normalize_tokens(auth_methods, "auth_methods")
+    normalized_permissions = _normalize_tokens(permissions, "permissions")
+    normalized_data = _normalize_tokens(data_collection, "data_collection")
+    normalized_sdks = _normalize_tokens(sdk_ids, "sdk_ids")
+    normalized_backends = _normalize_tokens(backend_dependencies, "backend_dependencies")
+    canonical: dict[str, object] = {
         "account_creation": account_creation,
         "ads": ads,
         "app_id": app_id,
-        "auth_methods": list(_normalize_tokens(auth_methods, "auth_methods")),
-        "backend_dependencies": list(_normalize_tokens(backend_dependencies, "backend_dependencies")),
-        "data_collection": list(_normalize_tokens(data_collection, "data_collection")),
+        "auth_methods": list(normalized_auth),
+        "backend_dependencies": list(normalized_backends),
+        "data_collection": list(normalized_data),
         "monetization": monetization,
-        "permissions": list(_normalize_tokens(permissions, "permissions")),
+        "permissions": list(normalized_permissions),
         "platform": platform,
-        "sdk_ids": list(_normalize_tokens(sdk_ids, "sdk_ids")),
+        "sdk_ids": list(normalized_sdks),
         "store": store,
         "target_age": target_age,
-        "territories": list(_normalize_tokens(territories, "territories")),
+        "territories": list(normalized_territories),
         "tracking": tracking,
         "ugc": ugc,
     }
-    digest = _sha256_json(normalized)
     return SubmissionProfile(
         app_id=app_id,
         platform=platform,
         store=store,
-        territories=tuple(normalized["territories"]),
-        auth_methods=tuple(normalized["auth_methods"]),
+        territories=normalized_territories,
+        auth_methods=normalized_auth,
         account_creation=account_creation,
-        permissions=tuple(normalized["permissions"]),
-        data_collection=tuple(normalized["data_collection"]),
+        permissions=normalized_permissions,
+        data_collection=normalized_data,
         tracking=tracking,
         monetization=monetization,
         ugc=ugc,
         ads=ads,
         target_age=target_age,
-        sdk_ids=tuple(normalized["sdk_ids"]),
-        backend_dependencies=tuple(normalized["backend_dependencies"]),
-        profile_sha256=digest,
+        sdk_ids=normalized_sdks,
+        backend_dependencies=normalized_backends,
+        profile_sha256=_sha256_json(canonical),
     )
 
 
@@ -255,7 +259,7 @@ def build_policy_snapshot(
         if rule.rule_id in rule_ids:
             raise StoreCertificationError("duplicate policy rule id")
         rule_ids.add(rule.rule_id)
-    canonical = {
+    canonical: dict[str, object] = {
         "policy_version": policy_version,
         "retrieved_at": retrieved_at,
         "rules": [rule.canonical_dict() for rule in sorted(rules, key=lambda item: item.rule_id)],
@@ -280,6 +284,7 @@ def evaluate_policy(profile: SubmissionProfile, snapshot: PolicySnapshot) -> tup
 
 
 def policy_allows_release(evaluations: tuple[RuleEvaluation, ...]) -> bool:
+    """Return true only when no applicable/unknown rule blocks release."""
     return all(evaluation.outcome != "BLOCK" for evaluation in evaluations)
 
 
@@ -290,8 +295,7 @@ def policy_snapshot_is_stale(*, certified_snapshot_sha256: str, current_snapshot
 
 def transition_release_state(current: CertificationState, target: CertificationState) -> CertificationState:
     """Apply the frozen release state machine without skipping maturity states."""
-    allowed = _ALLOWED_TRANSITIONS[current]
-    if target not in allowed:
+    if target not in _ALLOWED_TRANSITIONS[current]:
         raise StoreCertificationError(f"invalid release transition: {current} -> {target}")
     return target
 
@@ -373,27 +377,31 @@ def _evaluate_rule(profile: SubmissionProfile, rule: PolicyRule) -> RuleEvaluati
         return RuleEvaluation(
             rule.rule_id,
             "BLOCK",
-            "unknown policy applicability predicate fails closed",
+            "unknown or malformed policy applicability predicate fails closed",
             rule.required_evidence,
         )
     if not applies:
         return RuleEvaluation(rule.rule_id, "NOT_APPLICABLE", "applicability condition is false", ())
-    if not rule.required_evidence and rule.severity == "BLOCK":
+    if rule.severity == "BLOCK" and not rule.required_evidence:
         return RuleEvaluation(rule.rule_id, "BLOCK", "blocking rule has no provable evidence contract", ())
     return RuleEvaluation(rule.rule_id, "PASS", "applicable rule has a declared evidence contract", rule.required_evidence)
 
 
 def _resolve_applicability(profile: SubmissionProfile, key: str, value: str) -> bool | None:
     if key == "always":
-        return value == "true" if value in {"true", "false"} else None
+        return _optional_bool(value)
     if key == "account_creation":
-        return profile.account_creation == _parse_bool(value)
+        expected = _optional_bool(value)
+        return None if expected is None else profile.account_creation == expected
     if key == "tracking":
-        return profile.tracking == _parse_bool(value)
+        expected = _optional_bool(value)
+        return None if expected is None else profile.tracking == expected
     if key == "ugc":
-        return profile.ugc == _parse_bool(value)
+        expected = _optional_bool(value)
+        return None if expected is None else profile.ugc == expected
     if key == "ads":
-        return profile.ads == _parse_bool(value)
+        expected = _optional_bool(value)
+        return None if expected is None else profile.ads == expected
     if key == "monetization":
         return profile.monetization == value
     if key == "auth_method":
@@ -403,12 +411,12 @@ def _resolve_applicability(profile: SubmissionProfile, key: str, value: str) -> 
     return None
 
 
-def _parse_bool(value: str) -> bool:
+def _optional_bool(value: str) -> bool | None:
     if value == "true":
         return True
     if value == "false":
         return False
-    raise StoreCertificationError("boolean applicability values must be true or false")
+    return None
 
 
 def _validate_policy_rule(rule: PolicyRule) -> None:
@@ -427,7 +435,7 @@ def _validate_policy_rule(rule: PolicyRule) -> None:
 
 
 def _require_store_platform_pair(platform: MobilePlatform, store: StoreId) -> None:
-    expected: dict[str, str] = {"ios": "apple-app-store", "android": "google-play"}
+    expected: dict[MobilePlatform, StoreId] = {"ios": "apple-app-store", "android": "google-play"}
     if expected[platform] != store:
         raise StoreCertificationError("platform/store pairing is invalid")
 
