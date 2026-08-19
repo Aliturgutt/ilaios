@@ -1,22 +1,54 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
-import sys
+import subprocess
 from pathlib import Path
+from typing import cast
 
-from services.runtime.browser_egress_docker import DockerBrowserEgressBoundary
+from services.browser_runtime_composition import compose_browser_runtime
+from services.control_plane.migrations import migrate_database
+from services.governance.runtime import GovernedRuntimeGateway
+from services.named_agent_executor import NamedAgentExecutor
+from services.runtime import GovernedRuntime, GrantPolicy
 from services.runtime.browser_egress_playwright import PlaywrightDockerBrowserEgressBoundary
-from services.runtime.browser_tool_adapter import PlaywrightCliAdapter, browser_session_id
+from services.runtime.browser_tool_adapter import (
+    BROWSER_TOOL_NAME,
+    browser_session_id,
+    submit_browser_request,
+)
+from src.core.audit_engine import AuditEngine
+from src.core.bootstrap_validator import BootstrapValidator
+from src.core.immutable_context import ExecutionContext
+from src.core.tool_gateway import ToolGateway
 
 _TARGET = "https://example.com/"
 _ALLOWED_ORIGINS = ("https://example.com",)
+_SKILL_ID = "ilaios-web-e2e"
+_REQUESTER_ID = "ci-browser"
+_TENANT_ID = "ci-browser-tenant"
 
 
 def _required_env(name: str) -> str:
     value = os.environ.get(name, "").strip()
     if not value:
         raise RuntimeError(f"required environment variable is missing: {name}")
+    return value
+
+
+def _git_value(repository_root: Path, *args: str) -> str:
+    completed = subprocess.run(
+        ("git", *args),
+        cwd=repository_root,
+        capture_output=True,
+        text=True,
+        check=True,
+        timeout=30,
+    )
+    value = completed.stdout.strip()
+    if not value:
+        raise RuntimeError(f"git {' '.join(args)} returned no value")
     return value
 
 
@@ -33,40 +65,12 @@ def _assert_artifact(result: dict[str, object], action: str) -> None:
     size = result.get("artifact_size")
     if not isinstance(digest, str) or len(digest) != 64:
         raise RuntimeError(f"{action} artifact digest is missing")
-    if not isinstance(size, int) or size <= 0:
+    if not isinstance(size, int) or isinstance(size, bool) or size <= 0:
         raise RuntimeError(f"{action} artifact is empty")
 
 
-def _diagnostic_open(
-    boundary: DockerBrowserEgressBoundary,
-    artifact_root: Path,
-    session_id: str,
-) -> dict[str, object]:
-    """Open the fixed public certification target with bounded diagnostics.
-
-    The production adapter intentionally does not surface raw browser stderr. This
-    E2E-only path is safe to diagnose because target, argv and policy are fixed in
-    source, no credentials are accepted, and the same Docker egress boundary is
-    still mandatory.
-    """
-    process = boundary.run(
-        allowed_origins=_ALLOWED_ORIGINS,
-        argv=("playwright-cli", f"-s={session_id}", "open", _TARGET),
-        cwd=artifact_root,
-        timeout_seconds=120,
-    )
-    if process.returncode != 0:
-        print("--- bounded playwright-cli stdout ---", file=sys.stderr)
-        print(process.stdout[-4000:], file=sys.stderr)
-        print("--- bounded playwright-cli stderr ---", file=sys.stderr)
-        print(process.stderr[-4000:], file=sys.stderr)
-        raise RuntimeError(
-            f"bounded certification open failed with exit code {process.returncode}"
-        )
-    return {
-        "returncode": process.returncode,
-        "boundary_evidence_id": process.boundary_evidence_id,
-    }
+def _sha256_file(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def main() -> None:
@@ -75,12 +79,16 @@ def main() -> None:
         raise RuntimeError("ILAIOS_SOURCE_SHA must be an exact lowercase Git SHA")
     runtime_image = _required_env("ILAIOS_BROWSER_E2E_IMAGE")
     seccomp_profile = Path(_required_env("ILAIOS_BROWSER_SECCOMP_PROFILE")).resolve()
-    artifact_root = Path(
-        _required_env("ILAIOS_BROWSER_E2E_ARTIFACT_DIR")
-    ).resolve()
+    artifact_root = Path(_required_env("ILAIOS_BROWSER_E2E_ARTIFACT_DIR")).resolve()
     artifact_root.mkdir(parents=True, exist_ok=True)
 
     repository_root = Path(__file__).resolve().parents[4]
+    actual_head = _git_value(repository_root, "rev-parse", "HEAD")
+    if actual_head != source_sha:
+        raise RuntimeError("BrowserQA source SHA diverges from checked-out HEAD")
+    branch = _git_value(repository_root, "branch", "--show-current")
+    origin = _git_value(repository_root, "remote", "get-url", "origin")
+
     proxy_script = (
         repository_root
         / "tools"
@@ -94,66 +102,136 @@ def main() -> None:
         proxy_script=proxy_script,
         seccomp_profile=seccomp_profile,
     )
-    cli = PlaywrightCliAdapter(
+
+    governance_database = artifact_root / "governed-browser-runtime.sqlite3"
+    migrate_database(governance_database)
+    runtime = GovernedRuntime(governance_database)
+    grants = GrantPolicy()
+    named = NamedAgentExecutor(runtime, grants)
+    governance = GovernedRuntimeGateway(governance_database, runtime, hard_cap_minor=1000)
+    audit = AuditEngine()
+    context = ExecutionContext(repository_root, branch, source_sha, origin)
+    tool_gateway = ToolGateway(context, BootstrapValidator(repository_root))
+    compose_browser_runtime(
+        named,
+        repository_root,
+        tool_gateway,
+        governance,
+        governance_database,
+        frozenset(_ALLOWED_ORIGINS),
         boundary,
+        audit,
         artifact_root,
         executable="playwright-cli",
         timeout_seconds=120,
     )
-    session_id = browser_session_id("ci-browser", "ci-tenant", source_sha)
+
+    workflow_id = source_sha
+    session_id = browser_session_id(_REQUESTER_ID, _TENANT_ID, workflow_id)
     results: dict[str, dict[str, object]] = {}
+    admission_evidence: list[dict[str, object]] = []
+
+    def execute(
+        index: int,
+        action: str,
+        *,
+        operand: str | None = None,
+        target_url: str | None = _TARGET,
+    ) -> dict[str, object]:
+        request_id = f"browser-e2e-{source_sha[:12]}-{index}-{action}"
+        submitted = submit_browser_request(
+            governance,
+            request_id,
+            _REQUESTER_ID,
+            _TENANT_ID,
+            workflow_id,
+            _SKILL_ID,
+            action,
+            operand=operand,
+            target_url=target_url,
+        )
+        if submitted.get("status") != "admitted":
+            raise RuntimeError(f"{action} did not receive canonical browser admission")
+        snapshot = governance.admission_snapshot(request_id)
+        if snapshot.get("admission_proven") is not True:
+            raise RuntimeError(f"{action} admission was not proven before tool dispatch")
+        result = tool_gateway.dispatch(
+            BROWSER_TOOL_NAME,
+            request_id,
+            session_id,
+            action,
+            operand,
+            target_url,
+        )
+        if result.get("request_id") != request_id:
+            raise RuntimeError(f"{action} tool result lost governed request identity")
+        admission_evidence.append(
+            {
+                "request_id": request_id,
+                "action": action,
+                "risk": snapshot.get("risk"),
+                "admission_decision": snapshot.get("admission_decision"),
+                "admission_proven": snapshot.get("admission_proven"),
+                "reserved_minor": result.get("reserved_minor"),
+            }
+        )
+        return result
+
     isolation_evidence: str | None = None
     try:
-        results["open"] = _diagnostic_open(boundary, artifact_root, session_id)
+        results["open"] = execute(1, "open", operand=_TARGET)
+        _assert_observed(results["open"], "open")
 
         isolation_evidence = boundary.verify_isolation(cwd=artifact_root)
         if not isolation_evidence.startswith("sha256:"):
             raise RuntimeError("Docker isolation probe lacks durable evidence")
 
-        results["snapshot"] = cli.execute(
-            _ALLOWED_ORIGINS,
-            session_id,
-            "snapshot",
-            None,
-        )
+        results["snapshot"] = execute(2, "snapshot")
         _assert_observed(results["snapshot"], "snapshot")
         _assert_artifact(results["snapshot"], "snapshot")
 
-        results["screenshot"] = cli.execute(
-            _ALLOWED_ORIGINS,
-            session_id,
-            "screenshot",
-            None,
-        )
+        results["screenshot"] = execute(3, "screenshot")
         _assert_observed(results["screenshot"], "screenshot")
         _assert_artifact(results["screenshot"], "screenshot")
 
-        results["reload"] = cli.execute(
-            _ALLOWED_ORIGINS,
-            session_id,
-            "reload",
-            None,
-        )
+        results["reload"] = execute(4, "reload")
         _assert_observed(results["reload"], "reload")
 
-        results["close"] = cli.execute(
-            _ALLOWED_ORIGINS,
-            session_id,
-            "close",
-            None,
-        )
+        results["close"] = execute(5, "close", target_url=None)
     finally:
         boundary.shutdown()
 
     receipts = sorted(
-        path.name
-        for path in (artifact_root / "browser-egress-evidence").glob("*.json")
+        path.name for path in (artifact_root / "browser-egress-evidence").glob("*.json")
     )
     if len(receipts) < 6:
         raise RuntimeError("real BrowserQA E2E produced insufficient boundary receipts")
 
+    governance_state = governance.state()
+    work = governance_state.get("work")
+    if not isinstance(work, list) or len(work) != 5:
+        raise RuntimeError("BrowserQA governed-work persistence coverage is incomplete")
+    work_rows = [cast(dict[str, object], item) for item in work if isinstance(item, dict)]
+    if len(work_rows) != 5 or any(item.get("status") != "executed" for item in work_rows):
+        raise RuntimeError("BrowserQA governed work did not reconcile to executed")
+
+    audit_records = audit.get_records(component="browser-tool", status="success")
+    if len(audit_records) != 5:
+        raise RuntimeError("BrowserQA audit evidence coverage is incomplete")
+    if {record.action for record in audit_records} != {
+        "open",
+        "snapshot",
+        "screenshot",
+        "reload",
+        "close",
+    }:
+        raise RuntimeError("BrowserQA audit action coverage drifted")
+
+    admission_canonical = json.dumps(
+        admission_evidence, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
     summary = {
-        "schema_version": 1,
+        "schema_version": 2,
         "source_sha": source_sha,
         "runtime_image": runtime_image,
         "target": _TARGET,
@@ -163,6 +241,15 @@ def main() -> None:
         "state_changing_browser_actions": False,
         "seccomp_profile_git_blob_sha1": "fddc05fb520affb145404e6f6f647ca96af8087d",
         "isolation_evidence_id": isolation_evidence,
+        "direct_public_ip_egress_blocked": True,
+        "canonical_tool_gateway": BROWSER_TOOL_NAME,
+        "governed_work_persisted": True,
+        "canonical_admission_proven": True,
+        "governed_request_count": len(work_rows),
+        "audit_success_count": len(audit_records),
+        "governance_database_sha256": _sha256_file(governance_database),
+        "admission_evidence_sha256": hashlib.sha256(admission_canonical).hexdigest(),
+        "admissions": admission_evidence,
         "actions": results,
         "egress_receipts": receipts,
     }
