@@ -124,6 +124,21 @@ def test_native_provider_evidence_preserves_private_brief_fallback() -> None:
     assert evidence["native_reference_dispatch_count"] == 0
 
 
+def test_native_consistency_qa_is_pinned_to_supported_free_multimodal_model() -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "services"
+        / "integrations"
+        / "native_reference_receipt_runtime.py"
+    ).read_text(encoding="utf-8")
+
+    assert '_NATIVE_CONSISTENCY_MODEL_ID = "google/gemma-4-26b-a4b-it:free"' in source
+    assert "OpenRouterReferenceConsistencyReviewer(" in source
+    assert "_NATIVE_CONSISTENCY_MODEL_ID" in source.split(
+        "OpenRouterReferenceConsistencyReviewer(", 1
+    )[1]
+
+
 def test_desktop_composition_uses_receipt_preserving_native_runtime() -> None:
     composition = (
         Path(__file__).resolve().parents[1]
