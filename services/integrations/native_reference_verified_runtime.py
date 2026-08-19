@@ -21,7 +21,12 @@ from pathlib import Path
 
 from services.evidence import EvidenceStore
 from services.governance import GovernedRuntimeGateway
-from services.reference_assets import ReferenceAssetError, ReferenceAssetStore
+from services.reference_assets import (
+    ReferenceAssetError,
+    ReferenceAssetRecord,
+    ReferenceAssetRole,
+    ReferenceAssetStore,
+)
 from services.reference_relay import ReferenceRelay
 from services.runtime import DurableGrantPolicy
 from services.source_media import SourceMediaStore
@@ -46,6 +51,10 @@ from .reference_aware_managed_provider_video_runtime import (
 from .video_runtime import VideoRuntimeError
 
 _CRITICAL_ROLE_THRESHOLD = 0.80
+_NATIVE_INPUT_REFERENCE_MODEL_ID = "bytedance/seedance-2.0-fast"
+_FRAME_REFERENCE_ROLES = frozenset(
+    {ReferenceAssetRole.FIRST_FRAME, ReferenceAssetRole.LAST_FRAME}
+)
 
 
 class NativeReferenceVerifiedManagedDesktopVideoRuntime(
@@ -138,6 +147,13 @@ class NativeReferenceVerifiedManagedDesktopVideoRuntime(
         )
         if not references:
             return outcome
+        outcome.update(
+            _native_provider_evidence(
+                records,
+                model_id=self._model_id,
+                generated_shot_count=_positive_int(outcome, "generated_shot_count"),
+            )
+        )
 
         final_path = Path(str(outcome["final_path"]))
         initial_review = self._review_consistency(final_path, references)
@@ -364,6 +380,49 @@ class NativeReferenceVerifiedManagedDesktopVideoRuntime(
             "logo_asset_lock_evidence_digest": artifact.digest,
             "logo_asset_lock_provenance_hash": provenance.record_hash,
         }
+
+
+def _native_provider_evidence(
+    records: tuple[ReferenceAssetRecord, ...],
+    *,
+    model_id: str,
+    generated_shot_count: int,
+) -> dict[str, object]:
+    """Describe the fail-closed native relay mode proven by the completed runtime path.
+
+    This records that signed relay URLs were supplied to every successful provider
+    dispatch. Actual remote fetch is separately proven by the relay access ledger in
+    trusted-master live certification.
+    """
+
+    if generated_shot_count <= 0:
+        raise VideoRuntimeError("native reference generated shot count is invalid")
+    frame_records = tuple(record for record in records if record.role in _FRAME_REFERENCE_ROLES)
+    if frame_records:
+        mode = "frame-images"
+        native_records = frame_records
+    elif model_id == _NATIVE_INPUT_REFERENCE_MODEL_ID:
+        mode = "input-references"
+        native_records = records
+    else:
+        return {
+            "provider_native_reference_url_used": False,
+            "native_reference_mode": "private-multimodal-brief-fallback",
+            "native_reference_count": 0,
+            "native_reference_dispatch_count": 0,
+            "native_reference_sha256s": (),
+            "native_reference_relay_released": True,
+        }
+    return {
+        "provider_native_reference_url_used": True,
+        "native_reference_mode": mode,
+        "native_reference_count": len(native_records),
+        "native_reference_dispatch_count": generated_shot_count,
+        "native_reference_sha256s": tuple(record.sha256 for record in native_records),
+        # The parent runtime returns only after every provider job reached terminal
+        # state; the native session fails if terminal relay cleanup fails.
+        "native_reference_relay_released": True,
+    }
 
 
 def _logo_only_repairable(review: ReferenceConsistencyReview) -> bool:
