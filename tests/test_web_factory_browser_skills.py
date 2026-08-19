@@ -9,6 +9,7 @@ import pytest
 from services.agent_skills_compat import discovery_metadata
 from services.runtime.browser_tool_adapter import (
     BROWSER_AGENT_ID,
+    BROWSER_AUTOMATION_SKILL_ID,
     BROWSER_CAPABILITY,
     BROWSER_TOOL_NAME,
     BrowserProcessResult,
@@ -19,6 +20,7 @@ from services.runtime.browser_tool_adapter import (
     PlaywrightCliAdapter,
     browser_request_payload,
     browser_session_id,
+    submit_browser_request,
 )
 from services.web_factory_skills import (
     WEB_FACTORY_BROWSER_SKILL_IDS,
@@ -35,6 +37,7 @@ def test_browser_skill_family_is_canonical_and_portable() -> None:
     validate_web_factory_browser_skills()
     assert WEB_FACTORY_BROWSER_SKILL_IDS == (
         "ilaios-browser",
+        "ilaios-browser-automate",
         "ilaios-web-e2e",
         "ilaios-visual-qa",
         "ilaios-production-verification",
@@ -64,8 +67,22 @@ def test_browser_provenance_is_cleanroom() -> None:
         assert marker in provenance
 
 
-def test_browser_v0_rejects_state_changing_actions() -> None:
-    with pytest.raises(BrowserToolError, match="read/navigation-only v0"):
+def test_browser_automation_keeps_text_entry_fail_closed() -> None:
+    for action in ("type", "fill"):
+        with pytest.raises(BrowserToolError, match="outside the governed BrowserQA surface"):
+            browser_request_payload(
+                "user-1",
+                "tenant-1",
+                "wf-1",
+                BROWSER_AUTOMATION_SKILL_ID,
+                action,
+                operand="sensitive-text",
+                target_url="https://example.com/",
+            )
+
+
+def test_browser_interaction_requires_automation_skill() -> None:
+    with pytest.raises(BrowserToolError, match="requires automation skill"):
         browser_request_payload(
             "user-1",
             "tenant-1",
@@ -73,6 +90,47 @@ def test_browser_v0_rejects_state_changing_actions() -> None:
             "ilaios-web-e2e",
             "click",
             operand="e1",
+            target_url="https://example.com/",
+        )
+
+
+def test_browser_automation_is_submitted_as_high_risk() -> None:
+    governance = MagicMock()
+    governance.submit.return_value = {"status": "pending_approval"}
+    result = submit_browser_request(
+        governance,
+        "req-1",
+        "user-1",
+        "tenant-1",
+        "wf-1",
+        BROWSER_AUTOMATION_SKILL_ID,
+        "click",
+        operand="e1",
+        target_url="https://example.com/",
+    )
+    assert result == {"status": "pending_approval"}
+    assert governance.submit.call_args.kwargs["risk"] == "high"
+
+
+def test_browser_press_uses_bounded_control_key_allowlist() -> None:
+    payload = browser_request_payload(
+        "user-1",
+        "tenant-1",
+        "wf-1",
+        BROWSER_AUTOMATION_SKILL_ID,
+        "press",
+        operand="Tab",
+        target_url="https://example.com/",
+    )
+    assert payload["action"] == "press"
+    with pytest.raises(BrowserToolError, match="control-key allowlist"):
+        browser_request_payload(
+            "user-1",
+            "tenant-1",
+            "wf-1",
+            BROWSER_AUTOMATION_SKILL_ID,
+            "press",
+            operand="A",
             target_url="https://example.com/",
         )
 
@@ -124,7 +182,12 @@ def test_cli_requires_egress_boundary_and_hashes_artifact(tmp_path: Path) -> Non
     assert len(egress.calls) == 1
 
 
-def _create_work_db(path: Path, payload: dict[str, Any]) -> None:
+def _create_work_db(
+    path: Path,
+    payload: dict[str, Any],
+    *,
+    skill_id: str = "ilaios-visual-qa",
+) -> None:
     with sqlite3.connect(path) as connection:
         connection.execute(
             "CREATE TABLE governed_work (request_id TEXT PRIMARY KEY, requester_id TEXT NOT NULL, "
@@ -138,7 +201,7 @@ def _create_work_db(path: Path, payload: dict[str, Any]) -> None:
                 "req-1",
                 "user-1",
                 BROWSER_AGENT_ID,
-                "ilaios-visual-qa",
+                skill_id,
                 BROWSER_CAPABILITY,
                 json.dumps(payload, sort_keys=True, separators=(",", ":")),
                 "[]",
@@ -182,6 +245,85 @@ def test_governed_tool_binds_persisted_work_before_cli(tmp_path: Path) -> None:
     governance.authorize_billable.assert_called_once_with("req-1")
     governance.reconcile_billable.assert_called_once()
     audit.record.assert_called_once()
+
+
+def test_approved_browser_click_crosses_canonical_tool_boundary(tmp_path: Path) -> None:
+    payload = browser_request_payload(
+        "user-1",
+        "tenant-1",
+        "wf-1",
+        BROWSER_AUTOMATION_SKILL_ID,
+        "click",
+        operand="e1",
+        target_url="https://example.com/",
+    )
+    db = tmp_path / "governance.db"
+    _create_work_db(db, payload, skill_id=BROWSER_AUTOMATION_SKILL_ID)
+    governance = MagicMock()
+    governance._database_path = db
+    governance.admission_snapshot.return_value = {
+        "risk": "high",
+        "admission_proven": True,
+        "human_approval_required": True,
+        "approval_proven": True,
+    }
+    governance.authorize_billable.return_value = 10
+    egress = _FakeEgress(tmp_path)
+    tool = GovernedBrowserTool(
+        governance,
+        BrowserWorkReader(governance, db),
+        BrowserTargetPolicy(frozenset({"https://example.com"})),
+        PlaywrightCliAdapter(egress, tmp_path / "evidence"),
+        MagicMock(),
+    )
+    result = tool.execute(
+        "req-1",
+        str(payload["session_id"]),
+        "click",
+        "e1",
+        "https://example.com/",
+    )
+    assert result["action"] == "click"
+    assert egress.calls[0][-2:] == ("click", "e1")
+    governance.authorize_billable.assert_called_once_with("req-1")
+
+
+def test_browser_click_without_approval_is_denied_before_budget(tmp_path: Path) -> None:
+    payload = browser_request_payload(
+        "user-1",
+        "tenant-1",
+        "wf-1",
+        BROWSER_AUTOMATION_SKILL_ID,
+        "click",
+        operand="e1",
+        target_url="https://example.com/",
+    )
+    db = tmp_path / "governance.db"
+    _create_work_db(db, payload, skill_id=BROWSER_AUTOMATION_SKILL_ID)
+    governance = MagicMock()
+    governance._database_path = db
+    governance.admission_snapshot.return_value = {
+        "risk": "high",
+        "admission_proven": False,
+        "human_approval_required": True,
+        "approval_proven": False,
+    }
+    tool = GovernedBrowserTool(
+        governance,
+        BrowserWorkReader(governance, db),
+        BrowserTargetPolicy(frozenset({"https://example.com"})),
+        PlaywrightCliAdapter(_FakeEgress(tmp_path), tmp_path / "evidence"),
+        MagicMock(),
+    )
+    with pytest.raises(BrowserToolError, match="proven canonical admission"):
+        tool.execute(
+            "req-1",
+            str(payload["session_id"]),
+            "click",
+            "e1",
+            "https://example.com/",
+        )
+    governance.authorize_billable.assert_not_called()
 
 
 def test_spoofed_session_is_denied_before_budget_reservation(tmp_path: Path) -> None:

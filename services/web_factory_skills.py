@@ -28,6 +28,7 @@ WEB_FACTORY_NATIVE_SKILL_IDS: tuple[str, ...] = tuple(
 # BrowserQA capabilities consumed by validation/production-QA through Tool Gateway.
 WEB_FACTORY_BROWSER_SKILLS: tuple[WebFactorySkill, ...] = (
     WebFactorySkill("ilaios-browser", "web.verify", "browser"),
+    WebFactorySkill("ilaios-browser-automate", "web.verify", "browser-automate"),
     WebFactorySkill("ilaios-web-e2e", "web.verify", "web-e2e"),
     WebFactorySkill("ilaios-visual-qa", "web.verify", "visual-qa"),
     WebFactorySkill(
@@ -56,6 +57,7 @@ def validate_web_factory_native_skills() -> None:
 def validate_web_factory_browser_skills() -> None:
     expected = (
         "ilaios-browser",
+        "ilaios-browser-automate",
         "ilaios-web-e2e",
         "ilaios-visual-qa",
         "ilaios-production-verification",
