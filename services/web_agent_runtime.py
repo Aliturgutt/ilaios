@@ -12,7 +12,11 @@ from services.web_agent_execution import (
     WEB_GOVERNED_AI_CAPABILITIES,
     WebProviderBackedExecutor,
 )
-from services.web_agent_skill_catalog import ensure_web_agent_skills
+from services.web_agent_skill_catalog import (
+    WEB_FIRST_PARTY_AGENT_SKILLS,
+    ensure_web_agent_skills,
+)
+from services.web_factory_skills import WEB_FACTORY_BROWSER_SKILL_IDS
 
 
 class WebAgentRuntimeCompositionError(RuntimeError):
@@ -57,9 +61,15 @@ def compose_web_agent_runtime(
         named_executor.ensure_agent(item.manifest.agent_id)
 
     digests = ensure_web_agent_skills(named_executor, repository_root.resolve())
-    # Five proposal skills plus four existing BrowserQA support skills.
-    if len(digests) != 9:
-        raise WebAgentRuntimeCompositionError("Web runtime skill coverage must be nine")
+    expected_skill_ids = {
+        item.skill_id for item in WEB_FIRST_PARTY_AGENT_SKILLS
+    } | set(WEB_FACTORY_BROWSER_SKILL_IDS)
+    if set(digests) != expected_skill_ids:
+        missing = sorted(expected_skill_ids - set(digests))
+        extra = sorted(set(digests) - expected_skill_ids)
+        raise WebAgentRuntimeCompositionError(
+            f"Web runtime skill coverage drifted missing={missing} extra={extra}"
+        )
 
     capabilities = dict(ai_provider_capabilities or {})
     ai_executor: WebProviderBackedExecutor | None = None
