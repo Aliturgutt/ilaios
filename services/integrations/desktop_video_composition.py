@@ -22,8 +22,8 @@ from services.runtime import DurableGrantPolicy
 from services.source_media import SourceMediaStore
 from src.video_automation.openrouter_video_provider import SEEDANCE_FREE_MODEL_ID
 
-from .native_reference_verified_runtime import (
-    NativeReferenceVerifiedManagedDesktopVideoRuntime,
+from .native_reference_receipt_runtime import (
+    ReceiptBoundNativeReferenceManagedDesktopVideoRuntime,
 )
 from .provider_video_runtime import ObjectiveResolver, UnavailableProviderVideoRuntime
 from .reference_aware_managed_provider_video_runtime import (
@@ -133,7 +133,7 @@ def compose_desktop_video_runtime(
             )
         )
     else:
-        managed_runtime = NativeReferenceVerifiedManagedDesktopVideoRuntime(
+        managed_runtime = ReceiptBoundNativeReferenceManagedDesktopVideoRuntime(
             root,
             grants,
             governance,
