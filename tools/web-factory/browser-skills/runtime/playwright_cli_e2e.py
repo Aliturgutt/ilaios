@@ -155,13 +155,16 @@ def main() -> None:
         snapshot = governance.admission_snapshot(request_id)
         if snapshot.get("admission_proven") is not True:
             raise RuntimeError(f"{action} admission was not proven before tool dispatch")
-        result = tool_gateway.dispatch(
-            BROWSER_TOOL_NAME,
-            request_id,
-            session_id,
-            action,
-            operand,
-            target_url,
+        result = cast(
+            dict[str, object],
+            tool_gateway.dispatch(
+                BROWSER_TOOL_NAME,
+                request_id,
+                session_id,
+                action,
+                operand,
+                target_url,
+            ),
         )
         if result.get("request_id") != request_id:
             raise RuntimeError(f"{action} tool result lost governed request identity")
