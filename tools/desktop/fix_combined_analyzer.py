@@ -1,5 +1,4 @@
 from pathlib import Path
-import re
 import sys
 
 root = Path(sys.argv[1])
@@ -17,32 +16,75 @@ def replace_once(rel: str, old: str, new: str) -> None:
 
 
 def brace_simple_statement_ifs(rel: str) -> None:
-    """Brace one-line statement ifs, never collection-if entries.
+    """Brace simple one-line statement ifs without touching collection-if syntax.
 
-    The matcher is deliberately line-bounded and requires a semicolon at the
-    end, so Dart collection-if entries ending in commas remain untouched.
+    Dart callback bodies can contain nested parentheses (for example
+    ``setState(() => ...)``), so a regex that greedily searches for ``) `` can
+    split the condition at the wrong parenthesis. This scanner finds the exact
+    balanced closing parenthesis of ``if (...)`` first, then braces only a
+    trailing statement that ends in ``;``. Collection-if entries end in commas
+    and are intentionally ignored.
     """
     path = root / rel
-    text = path.read_text(encoding="utf-8")
-    pattern = re.compile(
-        r"(?m)^(?P<indent>[ \t]*)if \((?P<condition>.+)\) "
-        r"(?P<body>(?!\{).+;)$"
-    )
+    lines = path.read_text(encoding="utf-8").splitlines()
+    output: list[str] = []
+    count = 0
 
-    def repl(match: re.Match[str]) -> str:
-        indent = match.group("indent")
-        condition = match.group("condition")
-        body = match.group("body")
-        return (
-            f"{indent}if ({condition}) {{\n"
-            f"{indent}  {body}\n"
-            f"{indent}}}"
+    for line in lines:
+        stripped = line.lstrip(" \t")
+        indent = line[: len(line) - len(stripped)]
+        if not stripped.startswith("if ("):
+            output.append(line)
+            continue
+
+        open_index = stripped.find("(")
+        depth = 0
+        close_index = -1
+        quote: str | None = None
+        escaped = False
+        for index in range(open_index, len(stripped)):
+            char = stripped[index]
+            if quote is not None:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == quote:
+                    quote = None
+                continue
+            if char in {"'", '"'}:
+                quote = char
+                continue
+            if char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+                if depth == 0:
+                    close_index = index
+                    break
+
+        if close_index < 0:
+            output.append(line)
+            continue
+
+        body = stripped[close_index + 1 :].strip()
+        condition = stripped[open_index + 1 : close_index]
+        if not body or body.startswith("{") or not body.endswith(";"):
+            output.append(line)
+            continue
+
+        output.extend(
+            [
+                f"{indent}if ({condition}) {{",
+                f"{indent}  {body}",
+                f"{indent}}}",
+            ]
         )
+        count += 1
 
-    updated, count = pattern.subn(repl, text)
     if count == 0:
         raise SystemExit(f"NO_SIMPLE_STATEMENT_IFS_TO_BRACE {rel}")
-    path.write_text(updated, encoding="utf-8", newline="\n")
+    path.write_text("\n".join(output) + "\n", encoding="utf-8", newline="\n")
     print(f"BRACED_SIMPLE_STATEMENT_IFS {rel}={count}")
 
 
@@ -69,8 +111,8 @@ replace_once(
 )
 
 # The generated compact attachment callback contains one-line ifs. Brace those
-# exact anchors first, then brace any remaining simple statement ifs in the
-# existing Create view so flutter_lints stays clean after line shifts/formatting.
+# exact anchors first, then safely brace remaining simple statement ifs in the
+# existing Create view so flutter_lints remains clean after line shifts.
 replace_once(
     "apps/desktop/lib/features/create/create_view.dart",
     "if (scope.target != target) scope.onTargetChanged(target);",
