@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 import sys
 
 root = Path(sys.argv[1])
@@ -16,15 +17,7 @@ def replace_once(rel: str, old: str, new: str) -> None:
 
 
 def brace_simple_statement_ifs(rel: str) -> None:
-    """Brace simple one-line statement ifs without touching collection-if syntax.
-
-    Dart callback bodies can contain nested parentheses (for example
-    ``setState(() => ...)``), so a regex that greedily searches for ``) `` can
-    split the condition at the wrong parenthesis. This scanner finds the exact
-    balanced closing parenthesis of ``if (...)`` first, then braces only a
-    trailing statement that ends in ``;``. Collection-if entries end in commas
-    and are intentionally ignored.
-    """
+    """Brace simple one-line statement ifs without touching collection-if syntax."""
     path = root / rel
     lines = path.read_text(encoding="utf-8").splitlines()
     output: list[str] = []
@@ -87,6 +80,15 @@ def brace_simple_statement_ifs(rel: str) -> None:
     path.write_text("\n".join(output) + "\n", encoding="utf-8", newline="\n")
     print(f"BRACED_SIMPLE_STATEMENT_IFS {rel}={count}")
 
+
+# The first combined patch deliberately exercises an aggressive typography
+# candidate. Normalize the protected shell to the controlled .95 -> 1.10
+# baseline before validation so we do not stack extra micro-font inflation on
+# top of the global 15.8% uplift. Geometry remains byte-for-byte unchanged.
+normalizer = root / "tools/desktop/normalize_combined_typography.py"
+if not normalizer.is_file():
+    raise SystemExit(f"NORMALIZER_MISSING {normalizer}")
+subprocess.run([sys.executable, str(normalizer), str(root)], check=True)
 
 # Shared helper function must not be shadowed by a local variable of the same name.
 replace_once(
