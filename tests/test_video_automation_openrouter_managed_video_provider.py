@@ -72,8 +72,12 @@ class _Transport(OpenRouterTransport):
         raise AssertionError("asset retrieval is outside submit-provider unit scope")
 
 
-def _request(*, model_id: str = "bytedance/seedance-2.0-fast") -> ProviderRequest:
-    item = {
+def _request(
+    *,
+    model_id: str = "bytedance/seedance-2.0-fast",
+    item_extra: Mapping[str, object] | None = None,
+) -> ProviderRequest:
+    item: dict[str, object] = {
         "request_id": "request-001",
         "shot_id": "shot-001",
         "prompt_text": "cinematic original product scene",
@@ -83,6 +87,8 @@ def _request(*, model_id: str = "bytedance/seedance-2.0-fast") -> ProviderReques
         "resolution": "480p",
         "generate_audio": False,
     }
+    if item_extra:
+        item.update(item_extra)
     return ProviderRequest(
         request_id="request-001",
         job_id="job-001",
@@ -126,6 +132,24 @@ def _coordinator(root: Path) -> ManagedPaidVideoExecutionCoordinator:
         policy=_policy(),
         store=ManagedCreditLedgerStore(root),
     )
+
+
+def _execute_authorized(
+    tmp_path: Path,
+    request: ProviderRequest,
+) -> tuple[_Transport, object]:
+    transport = _Transport()
+    provider = OpenRouterManagedVideoGenerationProvider("server-secret", transport=transport)
+    store = ManagedCreditLedgerStore(tmp_path)
+    coordinator = ManagedPaidVideoExecutionCoordinator(policy=_policy(), store=store)
+    plan = coordinator.authorize(
+        account=_account(),
+        request=request,
+        quote=_quote(),
+        routing_decision_id="route-001",
+    )
+    result = coordinator.execute(provider=provider, plan=plan)
+    return transport, result
 
 
 def test_managed_provider_is_paid_and_server_credential_owned() -> None:
@@ -218,6 +242,61 @@ def test_authorized_request_submits_exactly_once_and_persists_external_job_id(
     with pytest.raises(Exception, match="reconcile instead of redispatch"):
         coordinator.execute(provider=provider, plan=plan)
     assert len(transport.post_calls) == 1
+
+
+def test_authorized_native_references_reach_openrouter_input_references(
+    tmp_path: Path,
+) -> None:
+    reference = {
+        "url": "https://relay.example/reference/product",
+        "role": "product",
+        "sha256": "a" * 64,
+    }
+    transport, result = _execute_authorized(
+        tmp_path,
+        _request(item_extra={"native_reference_images": [reference]}),
+    )
+
+    assert result.success
+    body = transport.post_calls[0][2]
+    assert body["input_references"] == [
+        {
+            "type": "image_url",
+            "image_url": {"url": "https://relay.example/reference/product"},
+        }
+    ]
+    assert "frame_images" not in body
+
+
+def test_exact_frame_reference_takes_precedence_over_input_references(
+    tmp_path: Path,
+) -> None:
+    transport, result = _execute_authorized(
+        tmp_path,
+        _request(
+            item_extra={
+                "first_frame_url": "https://relay.example/reference/frame",
+                "native_reference_images": [
+                    {
+                        "url": "https://relay.example/reference/product",
+                        "role": "product",
+                        "sha256": "a" * 64,
+                    }
+                ],
+            }
+        ),
+    )
+
+    assert result.success
+    body = transport.post_calls[0][2]
+    assert body["frame_images"] == [
+        {
+            "type": "image_url",
+            "image_url": {"url": "https://relay.example/reference/frame"},
+            "frame_type": "first_frame",
+        }
+    ]
+    assert "input_references" not in body
 
 
 def test_transport_timeout_is_ambiguous_and_cannot_be_blindly_retried(
