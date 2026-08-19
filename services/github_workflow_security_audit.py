@@ -29,6 +29,7 @@ _SECRET_ALLOWED = frozenset(
         "agent-p0-live-certification.yml",
         "desktop-msix-signed-release.yml",
         "openrouter-production-telemetry-certification.yml",
+        "video-native-reference-production-certification.yml",
         "video-provider-production-certification.yml",
         "video-reference-production-certification.yml",
     }
@@ -36,6 +37,7 @@ _SECRET_ALLOWED = frozenset(
 _TRUSTED_MASTER_SECRET = frozenset(
     {
         "agent-p0-live-certification.yml",
+        "video-native-reference-production-certification.yml",
         "video-reference-production-certification.yml",
     }
 )
