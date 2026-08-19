@@ -4,14 +4,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import ThemeToggle from "./ThemeToggle";
 
 type NavLink = readonly [label: string, href: string];
 type FooterGroup = { heading: string; links: readonly NavLink[] };
 
 const enPrimary = [["Platform", "/platform"], ["Factories", "/factories"], ["Capabilities", "/capabilities"], ["Security", "/security"]] as const;
 const trPrimary = [["Platform", "/tr/platform"], ["Üretim", "/tr/factories"], ["Yetenekler", "/tr/capabilities"], ["Güvenlik", "/tr/security"]] as const;
-const enExplore = [["Solutions", "/solutions"], ["For Enterprises", "/enterprise"], ["For Individuals", "/individuals"], ["How It Works", "/how-it-works"], ["ILAIOS Core", "/core"], ["Trust Center", "/trust"], ["Architecture", "/architecture"], ["Documentation", "/docs"], ["Resources", "/resources"], ["About", "/about"]] as const;
-const trExplore = [["Çözümler", "/tr/solutions"], ["Kurumlar İçin", "/tr/enterprise"], ["Bireysel Kullanıcılar", "/tr/individuals"], ["Nasıl Çalışır", "/tr/how-it-works"], ["ILAIOS Core", "/tr/core"], ["Güven Merkezi", "/tr/trust"], ["Mimari", "/tr/architecture"], ["Dokümantasyon", "/tr/docs"], ["Kaynaklar", "/tr/resources"], ["Hakkımızda", "/tr/about"]] as const;
+const enExplore = [["Solutions", "/solutions"], ["For Enterprises", "/enterprise"], ["For Individuals", "/individuals"], ["How It Works", "/how-it-works"], ["Use ILAIOS", "/use-ilaios"], ["ILAIOS Core", "/core"], ["Trust Center", "/trust"], ["Architecture", "/architecture"], ["Documentation", "/docs"], ["Resources", "/resources"], ["About", "/about"]] as const;
+const trExplore = [["Çözümler", "/tr/solutions"], ["Kurumlar İçin", "/tr/enterprise"], ["Bireysel Kullanıcılar", "/tr/individuals"], ["Nasıl Çalışır", "/tr/how-it-works"], ["ILAIOS'u Kullan", "/tr/use-ilaios"], ["ILAIOS Core", "/tr/core"], ["Güven Merkezi", "/tr/trust"], ["Mimari", "/tr/architecture"], ["Dokümantasyon", "/tr/docs"], ["Kaynaklar", "/tr/resources"], ["Hakkımızda", "/tr/about"]] as const;
 
 function counterpart(pathname: string, isTr: boolean) {
   if (isTr) {
@@ -53,8 +54,8 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
     ? [["Platform", "/tr/platform"], ["Üretim", "/tr/factories"], ["Yetenekler", "/tr/capabilities"], ["Nasıl Çalışır", "/tr/how-it-works"]]
     : [["Platform", "/platform"], ["Factories", "/factories"], ["Capabilities", "/capabilities"], ["How It Works", "/how-it-works"]];
   const useLinks: readonly NavLink[] = isTr
-    ? [["Kurumlar", "/tr/enterprise"], ["Bireysel", "/tr/individuals"], ["Çözümler", "/tr/solutions"]]
-    : [["Enterprises", "/enterprise"], ["Individuals", "/individuals"], ["Solutions", "/solutions"]];
+    ? [["ILAIOS'u Kullan", "/tr/use-ilaios"], ["Kurumlar", "/tr/enterprise"], ["Bireysel", "/tr/individuals"], ["Çözümler", "/tr/solutions"]]
+    : [["Use ILAIOS", "/use-ilaios"], ["Enterprises", "/enterprise"], ["Individuals", "/individuals"], ["Solutions", "/solutions"]];
   const resources: readonly NavLink[] = isTr
     ? [["Mimari", "/tr/architecture"], ["Dokümantasyon", "/tr/docs"], ["Kaynaklar", "/tr/resources"], ["ILAIOS Core", "/tr/core"]]
     : [["Architecture", "/architecture"], ["Documentation", "/docs"], ["Resources", "/resources"], ["ILAIOS Core", "/core"]];
@@ -80,7 +81,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
         <button className="menu-toggle" type="button" aria-expanded={open} aria-controls="site-navigation" aria-label={open ? (isTr ? "Menüyü kapat" : "Close menu") : (isTr ? "Menüyü aç" : "Open menu")} onClick={() => setOpen(value => !value)}><span>{open ? (isTr ? "Kapat" : "Close") : (isTr ? "Menü" : "Menu")}</span><i aria-hidden="true" /></button>
         <nav id="site-navigation" className={`nav-panel ${open ? "is-open" : ""}`} aria-label={isTr ? "Ana menü" : "Primary navigation"}>
           <div className="nav-primary">{primary.map(([label, href]) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined} onClick={() => setOpen(false)}>{label}</Link>)}</div>
-          <div className="nav-utility"><details className="explore-menu"><summary className={exploreActive ? "is-active" : undefined}>{isTr ? "Keşfet" : "Explore"}</summary><div className="explore-menu-panel">{explore.map(([label, href]) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined} onClick={() => setOpen(false)}>{label}</Link>)}</div></details><Link href={isTr ? "/tr/contact" : "/contact"} aria-current={active(isTr ? "/tr/contact" : "/contact") ? "page" : undefined} onClick={() => setOpen(false)}>{isTr ? "İletişim" : "Contact"}</Link><span className="language-switch" aria-label={isTr ? "Dil seçimi" : "Language selection"}>{isTr ? <><Link href={switchHref} hrefLang="en" lang="en" onClick={() => setOpen(false)}>EN</Link><strong aria-current="true">TR</strong></> : <><strong aria-current="true">EN</strong><Link href={switchHref} hrefLang="tr" lang="tr" onClick={() => setOpen(false)}>TR</Link></>}</span></div>
+          <div className="nav-utility"><details className="explore-menu"><summary className={exploreActive ? "is-active" : undefined}>{isTr ? "Keşfet" : "Explore"}</summary><div className="explore-menu-panel">{explore.map(([label, href]) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined} onClick={() => setOpen(false)}>{label}</Link>)}</div></details><Link href={isTr ? "/tr/contact" : "/contact"} aria-current={active(isTr ? "/tr/contact" : "/contact") ? "page" : undefined} onClick={() => setOpen(false)}>{isTr ? "İletişim" : "Contact"}</Link><ThemeToggle locale={lang} /><span className="language-switch" aria-label={isTr ? "Dil seçimi" : "Language selection"}>{isTr ? <><Link href={switchHref} hrefLang="en" lang="en" onClick={() => setOpen(false)}>EN</Link><strong aria-current="true">TR</strong></> : <><strong aria-current="true">EN</strong><Link href={switchHref} hrefLang="tr" lang="tr" onClick={() => setOpen(false)}>TR</Link></>}</span></div>
         </nav>
       </div>
     </header>
