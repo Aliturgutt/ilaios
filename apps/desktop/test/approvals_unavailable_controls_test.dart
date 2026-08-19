@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ilaios_desktop/app/ilaios_theme.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
@@ -24,15 +23,12 @@ void main() {
       expect(inkFinder, findsOneWidget);
       expect(tester.widget<InkWell>(inkFinder).onTap, isNull);
 
-      final materialFinder = find.ancestor(
+      final opacityFinder = find.ancestor(
         of: textFinder,
-        matching: find.byType(Material),
+        matching: find.byType(Opacity),
       );
-      expect(materialFinder, findsOneWidget);
-      expect(
-        tester.widget<Material>(materialFinder).color,
-        isNot(IlaiosTheme.coreBlue),
-      );
+      expect(opacityFinder, findsOneWidget);
+      expect(tester.widget<Opacity>(opacityFinder).opacity, .45);
     }
 
     expect(tester.takeException(), isNull);
