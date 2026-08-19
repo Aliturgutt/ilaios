@@ -10,6 +10,9 @@ from __future__ import annotations
 
 import sqlite3
 import threading
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from decimal import Decimal
 from pathlib import Path
 
@@ -45,15 +48,15 @@ _DEFAULT_RESOLUTION = "480p"
 
 
 class DurableProductIdentityResolver:
-    """Resolve one provider job to its already-admitted Desktop tenant/principal."""
+    """Resolve one admitted Desktop product request to its durable tenant/principal."""
 
     def __init__(self, product_database: Path) -> None:
         self._database = product_database
 
-    def resolve(self, job_id: str) -> tuple[str, str]:
-        normalized_job = job_id.strip()
-        if not normalized_job:
-            raise VideoRuntimeError("managed Desktop provider job identity is blank")
+    def resolve(self, request_id: str) -> tuple[str, str]:
+        normalized_request = request_id.strip()
+        if not normalized_request:
+            raise VideoRuntimeError("managed Desktop product request identity is blank")
         if not self._database.is_file():
             raise VideoRuntimeError("managed Desktop product identity store is unavailable")
         connection = sqlite3.connect(
@@ -68,8 +71,8 @@ class DurableProductIdentityResolver:
                 "FROM product_proofs AS proof "
                 "JOIN product_proof_identity AS identity "
                 "ON identity.request_id = proof.request_id "
-                "WHERE proof.job_id = ? LIMIT 2",
-                (normalized_job,),
+                "WHERE proof.request_id = ? LIMIT 2",
+                (normalized_request,),
             ).fetchall()
         except sqlite3.Error as error:
             raise VideoRuntimeError(
@@ -79,7 +82,7 @@ class DurableProductIdentityResolver:
             connection.close()
         if len(rows) != 1:
             raise VideoRuntimeError(
-                "managed Desktop provider job lacks one durable product identity"
+                "managed Desktop product request lacks one durable product identity"
             )
         tenant_id = rows[0]["tenant_id"]
         requester_id = rows[0]["requester_id"]
@@ -112,9 +115,37 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
         )
         self._identity_resolver = identity_resolver
         self._account_switch_lock = threading.Lock()
+        self._product_request_context: ContextVar[str | None] = ContextVar(
+            f"managed-video-product-request-{id(self)}",
+            default=None,
+        )
+
+    @contextmanager
+    def bind_product_request(self, request_id: str) -> Iterator[None]:
+        """Bind provider dispatches to the exact admitted product request in this call."""
+
+        normalized = request_id.strip()
+        if not normalized:
+            raise VideoRuntimeError("managed Desktop product request binding is blank")
+        if self._product_request_context.get() is not None:
+            raise VideoRuntimeError("managed Desktop product request binding is already active")
+        token = self._product_request_context.set(normalized)
+        try:
+            yield
+        finally:
+            self._product_request_context.reset(token)
+
+    def _require_bound_product_request(self) -> str:
+        request_id = self._product_request_context.get()
+        if request_id is None:
+            raise VideoRuntimeError(
+                "managed Desktop provider dispatch lacks product request identity binding"
+            )
+        return request_id
 
     def execute(self, request: ProviderRequest) -> ProviderResult:
-        tenant_id, requester_id = self._identity_resolver.resolve(request.job_id)
+        product_request_id = self._require_bound_product_request()
+        tenant_id, requester_id = self._identity_resolver.resolve(product_request_id)
         account = self._credit_store.seed_account(
             ManagedCreditAccount(
                 tenant_id=tenant_id,
@@ -209,3 +240,26 @@ class ManagedReferenceAwareProviderBackedDesktopVideoRuntime(
         self._reference_brief_cache = ReferenceBriefCache(
             data_root / "reference-briefs.sqlite3"
         )
+        self._managed_reference_session = session
+
+    def _generate_finished_product(
+        self,
+        *,
+        run_root: Path,
+        request_id: str,
+        job_id: str,
+        objective: str,
+        duration_seconds: float,
+    ) -> dict[str, object]:
+        # ProviderExecution creates provider-facing generation dispatch IDs, which
+        # are intentionally not product identity keys. Carry the exact admitted
+        # product request through a request-scoped context instead of guessing
+        # identity from a downstream dispatch/job identifier.
+        with self._managed_reference_session.bind_product_request(request_id):
+            return super()._generate_finished_product(
+                run_root=run_root,
+                request_id=request_id,
+                job_id=job_id,
+                objective=objective,
+                duration_seconds=duration_seconds,
+            )
