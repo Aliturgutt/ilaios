@@ -76,6 +76,7 @@ class AndroidDeviceReceipt:
 class GooglePlayCertificationInput:
     profile: SubmissionProfile
     artifact: ArtifactIdentity
+    build_plan: AndroidBuildPlan
     build_receipt: AndroidBuildReceipt
     device_receipts: tuple[AndroidDeviceReceipt, ...]
     reviewer_access_receipt: str
@@ -176,7 +177,7 @@ def validate_android_build_receipt(plan: AndroidBuildPlan, receipt: AndroidBuild
 def validate_android_device_receipt(
     *, artifact_sha256: str, receipt: AndroidDeviceReceipt
 ) -> None:
-    """Require real-evidence-shaped install/launch/smoke results bound to exact bytes."""
+    """Require install/launch/smoke evidence bound to exact release bytes."""
     _require_sha256(artifact_sha256, "artifact_sha256")
     _require_sha256(receipt.artifact_sha256, "device.artifact_sha256")
     _require_sha256(receipt.receipt_sha256, "device.receipt_sha256")
@@ -192,22 +193,13 @@ def validate_google_play_certification_input(value: GooglePlayCertificationInput
     """Fail closed unless Play profile, artifact, build and device evidence reconcile."""
     if value.profile.platform != "android" or value.profile.store != "google-play":
         raise AndroidReleaseError("Google Play certification requires Android/google-play profile")
-    validate_android_build_receipt(
-        AndroidBuildPlan(
-            app_id=value.profile.app_id,
-            application_id="placeholder.invalid",
-            source_sha=value.artifact.source_sha,
-            project_root=f"apps/mobile/android/{value.profile.app_id}",
-            artifact_kind=value.build_receipt.artifact_kind,
-            gradle_task=_ALLOWED_TASKS[value.build_receipt.artifact_kind],
-            version=value.artifact.version,
-            build_number=value.artifact.build_number,
-            signing_mode="google-play-app-signing",
-            signing_credential=None,
-            plan_sha256=value.build_receipt.plan_sha256,
-        ),
-        value.build_receipt,
-    )
+    if value.profile.app_id != value.build_plan.app_id:
+        raise AndroidReleaseError("submission profile app id differs from build plan")
+    if value.artifact.source_sha != value.build_plan.source_sha:
+        raise AndroidReleaseError("certified artifact source differs from build plan")
+    if value.artifact.version != value.build_plan.version or value.artifact.build_number != value.build_plan.build_number:
+        raise AndroidReleaseError("certified artifact version differs from build plan")
+    validate_android_build_receipt(value.build_plan, value.build_receipt)
     if value.artifact.binary_sha256 != value.build_receipt.artifact_sha256:
         raise AndroidReleaseError("certified artifact identity differs from build receipt")
     if not value.device_receipts:
