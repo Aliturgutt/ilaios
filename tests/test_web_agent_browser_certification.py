@@ -131,7 +131,7 @@ def test_rejects_receipt_path_escape(tmp_path: Path) -> None:
     summary_path = tmp_path / "playwright-cli-e2e-summary.json"
     summary_path.write_text(json.dumps(_summary(source_sha, names)), encoding="utf-8")
 
-    with pytest.raises(WebAgentBrowserCertificationError, match="receipt name is malformed"):
+    with pytest.raises(WebAgentBrowserCertificationError, match="receipt escapes evidence root"):
         verify_browser_egress_e2e_evidence(
             summary_path=summary_path,
             expected_source_sha=source_sha,
