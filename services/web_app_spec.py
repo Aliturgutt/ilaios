@@ -57,7 +57,17 @@ _RESOURCE_TERMS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("bookings", ("bookings", "reservations", "appointments", "rezervasyon", "randevu")),
     ("invoices", ("invoices", "billing records", "faturalar", "fatura")),
     ("tickets", ("tickets", "support tickets", "destek talepleri", "destek kayıt", "destek kayit")),
-    ("documents", ("documents", "files", "dokümanlar", "dokumanlar", "belgeler")),
+    (
+        "documents",
+        (
+            "documents",
+            "document management",
+            "files",
+            "dokümanlar",
+            "dokumanlar",
+            "belgeler",
+        ),
+    ),
 )
 _CRUD_TERMS = (
     "crud",
