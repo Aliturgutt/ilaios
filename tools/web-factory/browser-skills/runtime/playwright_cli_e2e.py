@@ -5,6 +5,7 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from typing import cast
 
 from services.governance import GovernedRuntimeGateway
 from services.runtime import GovernedRuntime
@@ -184,8 +185,9 @@ def _run_governed_interaction(
     )
     if not isinstance(result, dict):
         raise RuntimeError("governed browser interaction returned an invalid result")
-    _assert_observed(result, "governed-press-tab")
-    if result.get("request_id") != request_id:
+    typed_result = cast(dict[str, object], result)
+    _assert_observed(typed_result, "governed-press-tab")
+    if typed_result.get("request_id") != request_id:
         raise RuntimeError("browser result is not bound to the governed request")
 
     latest = audit.get_latest()
@@ -204,7 +206,7 @@ def _run_governed_interaction(
     ):
         raise RuntimeError("governed browser interaction did not reach durable executed state")
 
-    approval_evidence = {
+    approval_evidence: dict[str, object] = {
         "before_approval": before,
         "after_approval": after,
         "audit_component": latest.component,
@@ -212,7 +214,7 @@ def _run_governed_interaction(
         "audit_status": latest.status,
         "durable_work_status": "executed",
     }
-    return result, approval_evidence
+    return typed_result, approval_evidence
 
 
 def main() -> None:
