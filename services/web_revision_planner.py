@@ -151,7 +151,10 @@ class GovernedWebRevisionPlanner:
             max_operations=MAX_REVISION_OPERATIONS,
         )
         response = self._transport.propose_revision(envelope)
-        operations = _parse_operations(response, source_documents)
+        try:
+            operations = _parse_operations(response, source_documents)
+        except WebSourceRevisionError as error:
+            raise WebRevisionPlanningError(str(error)) from error
         canonical_ops = [
             {
                 "operation": operation.operation,
@@ -177,12 +180,15 @@ class GovernedWebRevisionPlanner:
             ensure_ascii=False,
         ).encode("utf-8")
         proposal_sha = hashlib.sha256(serialized).hexdigest()
-        plan = WebSourceRevisionPlan(
-            plan_id=f"web-plan-{proposal_sha[:20]}",
-            source_tree_sha256=snapshot.tree_sha256,
-            operations=operations,
-            semantic_analysis_sha256=semantic_sha,
-        )
+        try:
+            plan = WebSourceRevisionPlan(
+                plan_id=f"web-plan-{proposal_sha[:20]}",
+                source_tree_sha256=snapshot.tree_sha256,
+                operations=operations,
+                semantic_analysis_sha256=semantic_sha,
+            )
+        except WebSourceRevisionError as error:
+            raise WebRevisionPlanningError(str(error)) from error
         return WebRevisionPlanningReceipt(
             planner_id=self._transport.planner_id,
             source_tree_sha256=snapshot.tree_sha256,
