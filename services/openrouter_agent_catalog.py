@@ -17,6 +17,7 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from typing import Any
 
+from services.agent_provider_capabilities import AGENT_GOVERNED_AI_CAPABILITIES
 from services.ai_governance import (
     ModelProviderRegistry,
     ModelRecord,
@@ -28,7 +29,6 @@ from services.ai_governance import (
     UsageLimits,
     UsageRequest,
 )
-from services.p0_agent_execution import P0_AGENT_BINDINGS
 from services.p0_ai_provider_config import P0AIProviderConfiguration
 from services.runtime.ai_provider_adapter import (
     GovernedAIProviderAdapter,
@@ -233,11 +233,7 @@ def _configuration(
 
 
 def _agent_capabilities() -> frozenset[str]:
-    return frozenset(
-        binding.capability
-        for binding in P0_AGENT_BINDINGS
-        if binding.execution_mode == "governed-ai"
-    )
+    return AGENT_GOVERNED_AI_CAPABILITIES
 
 
 def _free_router_model(capabilities: frozenset[str]) -> ModelRecord:
