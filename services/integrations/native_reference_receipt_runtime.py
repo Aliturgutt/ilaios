@@ -13,6 +13,7 @@ from __future__ import annotations
 from contextvars import ContextVar
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from .native_reference_verified_runtime import (
     NativeReferenceVerifiedManagedDesktopVideoRuntime,
@@ -26,7 +27,7 @@ class ReceiptBoundNativeReferenceManagedDesktopVideoRuntime(
 ):
     """Preserve native-reference acceptance evidence through final receipts."""
 
-    def __init__(self, *args: object, **kwargs: object) -> None:
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         super().__init__(*args, **kwargs)
         self._native_receipt_context: ContextVar[dict[str, object] | None] = ContextVar(
             f"native-reference-receipt-{id(self)}",
