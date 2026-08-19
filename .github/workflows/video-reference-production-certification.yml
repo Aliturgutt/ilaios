@@ -173,7 +173,7 @@ jobs:
                       and isinstance(receipt.get('artifact_bytes'), int)
                       and receipt.get('artifact_bytes', 0) > 100_000
                       and isinstance(receipt.get('duration_seconds'), (int, float))
-                      and 3.0 <= float(receipt.get('duration_seconds')) <= 5.0
+                      and 7.0 <= float(receipt.get('duration_seconds')) <= 9.0
                       and receipt.get('width') == 1920
                       and receipt.get('height') == 1080
                       and receipt.get('video_codec') == 'h264'
