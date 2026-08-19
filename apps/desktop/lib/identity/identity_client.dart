@@ -6,12 +6,13 @@ import 'dart:io';
 import '../control_plane/client.dart';
 import '../reference_assets/reference_asset_draft.dart';
 import '../source_media/source_media_draft.dart';
+import '../web_source/web_source_draft.dart';
 import 'identity_client_core.dart' as core;
 
 /// Backward-compatible IdentityClient that extends the existing authenticated
-/// session client with governed Web/Video reference assets and one private
-/// source-video input. Raw media bytes are uploaded separately; execution intent
-/// receives only immutable server-side asset identifiers.
+/// session client with governed Web/Video reference assets, one private source
+/// video, and one existing Web source ZIP. Raw media/source bytes are uploaded
+/// separately; execution intent receives only immutable server-side asset IDs.
 class IdentityClient extends core.IdentityClient {
   factory IdentityClient({
     required Uri baseUri,
@@ -44,6 +45,7 @@ class IdentityClient extends core.IdentityClient {
   static const int _maxReferenceAssetBytes = 10 * 1024 * 1024;
   static const int _maxReferenceTotalBytes = 100 * 1024 * 1024;
   static const int _maxSourceMediaBytes = 128 * 1024 * 1024;
+  static const int _maxWebSourceArchiveBytes = 64 * 1024 * 1024;
 
   final Uri _assetBaseUri;
   final String _assetTransportToken;
@@ -66,8 +68,9 @@ class IdentityClient extends core.IdentityClient {
 
     final references = ReferenceAssetSubmissionBus.pending;
     final source = SourceMediaSubmissionBus.pending;
+    final webSource = WebSourceSubmissionBus.pending;
+    final factoryCount = _referenceFactoryCount(normalized);
     if (references.isNotEmpty) {
-      final factoryCount = _referenceFactoryCount(normalized);
       if (factoryCount == 0) {
         throw const core.IdentityClientException(
           'Reference images may only be submitted through Web Factory or Video Factory',
@@ -89,17 +92,34 @@ class IdentityClient extends core.IdentityClient {
         'Source video and reference images cannot be combined until that exact revision contract is verified',
       );
     }
+    if (webSource != null) {
+      if (_isVideoFactoryObjective(normalized) || factoryCount != 1) {
+        throw const core.IdentityClientException(
+          'Existing Web source may only be submitted through one Web Factory request',
+        );
+      }
+      if (source != null) {
+        throw const core.IdentityClientException(
+          'Existing Web source and source video cannot share one execution request',
+        );
+      }
+    }
     _validateReferenceAssets(references);
     if (source != null) _validateSourceMedia(source);
+    if (webSource != null) _validateWebSource(webSource);
 
     final referenceAssetIds = <String>[];
     String? sourceAssetId;
+    String? webSourceAssetId;
     try {
       for (final reference in references) {
         referenceAssetIds.add(await _uploadReferenceAsset(reference, session));
       }
       if (source != null) {
         sourceAssetId = await _uploadSourceMedia(source, session);
+      }
+      if (webSource != null) {
+        webSourceAssetId = await _uploadWebSource(webSource, session);
       }
 
       final payload = await _sessionPost(
@@ -108,6 +128,7 @@ class IdentityClient extends core.IdentityClient {
           'objective': normalized,
           'reference_asset_ids': referenceAssetIds,
           'source_media_asset_id': ?sourceAssetId,
+          'web_source_asset_id': ?webSourceAssetId,
         },
         'authenticated intent',
         session,
@@ -143,6 +164,14 @@ class IdentityClient extends core.IdentityClient {
       if (sourceAssetId != null) {
         try {
           await _discardSourceMedia(sourceAssetId, session);
+        } catch (_) {
+          // The source may already be immutably bound to a prepared request.
+          // Server-side retention/recovery remains authoritative in that case.
+        }
+      }
+      if (webSourceAssetId != null) {
+        try {
+          await _discardWebSource(webSourceAssetId, session);
         } catch (_) {
           // The source may already be immutably bound to a prepared request.
           // Server-side retention/recovery remains authoritative in that case.
@@ -214,6 +243,39 @@ class IdentityClient extends core.IdentityClient {
     return assetId;
   }
 
+  Future<String> _uploadWebSource(
+    WebSourceDraft source,
+    core.DesktopUserSession session,
+  ) async {
+    final payload = await _sessionPost(
+      '/v1/web-source',
+      <String, Object?>{
+        'filename': source.filename,
+        'sha256': source.sha256Hex,
+        'content_base64': base64Encode(source.bytes),
+      },
+      'existing Web source upload',
+      session,
+      expectedStatus: HttpStatus.created,
+    );
+    final assetId = payload['asset_id'];
+    final digest = payload['archive_sha256'];
+    final treeDigest = payload['tree_sha256'];
+    final sizeBytes = payload['size_bytes'];
+    if (assetId is! String ||
+        !assetId.startsWith('wsrc-') ||
+        digest != source.sha256Hex ||
+        treeDigest is! String ||
+        !RegExp(r'^[0-9a-f]{64}$').hasMatch(treeDigest) ||
+        sizeBytes is! int ||
+        sizeBytes <= 0) {
+      throw const core.IdentityClientException(
+        'Existing Web source upload response is malformed',
+      );
+    }
+    return assetId;
+  }
+
   Future<void> _discardSourceMedia(
     String assetId,
     core.DesktopUserSession session,
@@ -222,6 +284,19 @@ class IdentityClient extends core.IdentityClient {
       '/v1/source-media/discard',
       <String, Object?>{'asset_id': assetId},
       'source video discard',
+      session,
+      expectedStatus: HttpStatus.ok,
+    );
+  }
+
+  Future<void> _discardWebSource(
+    String assetId,
+    core.DesktopUserSession session,
+  ) async {
+    await _sessionPost(
+      '/v1/web-source/discard',
+      <String, Object?>{'asset_id': assetId},
+      'existing Web source discard',
       session,
       expectedStatus: HttpStatus.ok,
     );
@@ -342,6 +417,31 @@ class IdentityClient extends core.IdentityClient {
     }
     if (!RegExp(r'^[0-9a-f]{64}$').hasMatch(source.sha256Hex)) {
       throw const core.IdentityClientException('Source video digest is invalid');
+    }
+  }
+
+  static void _validateWebSource(WebSourceDraft source) {
+    if (source.filename.trim().isEmpty ||
+        source.filename.length > 180 ||
+        !source.filename.toLowerCase().endsWith('.zip')) {
+      throw const core.IdentityClientException(
+        'Existing Web source filename must be a ZIP archive',
+      );
+    }
+    if (source.sizeBytes < 4 || source.sizeBytes > _maxWebSourceArchiveBytes) {
+      throw const core.IdentityClientException(
+        'Existing Web source is empty or exceeds the 64 MiB limit',
+      );
+    }
+    if (source.bytes[0] != 0x50 || source.bytes[1] != 0x4b) {
+      throw const core.IdentityClientException(
+        'Existing Web source does not contain a ZIP signature',
+      );
+    }
+    if (!RegExp(r'^[0-9a-f]{64}$').hasMatch(source.sha256Hex)) {
+      throw const core.IdentityClientException(
+        'Existing Web source digest is invalid',
+      );
     }
   }
 }
