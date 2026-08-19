@@ -542,6 +542,7 @@ class _TabsAndActions extends StatelessWidget {
             icon: Icons.filter_alt_off_outlined,
             label: _copy(context, 'Filtreleri Temizle', 'Clear Filters'),
             onTap: onClear,
+            prominent: false,
           ),
           const SizedBox(width: 6),
           _TinyAction(
