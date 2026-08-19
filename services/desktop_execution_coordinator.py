@@ -6,6 +6,10 @@ must not be mistaken for a request to perform that side effect. This Desktop
 adapter preserves the user's local-only intent while removing only narrowly
 recognized negative side-effect clauses before canonical classification.
 
+It also maps explicit Web-App/dashboard terminology into the existing canonical
+Web route vocabulary without adding a second router. Generic mobile/desktop app
+requests are not rewritten and remain under their existing fail-closed route.
+
 Positive publish/upload/deploy requests are never rewritten and therefore
 continue to fail closed at the canonical coordinator boundary.
 """
@@ -43,24 +47,70 @@ _NEGATED_EXTERNAL_SIDE_EFFECTS: tuple[re.Pattern[str], ...] = (
     ),
 )
 
+_WEB_APP_ROUTE_TERMS = (
+    "web app",
+    "web application",
+    "web uygulaması",
+    "web uygulamasi",
+    "dashboard",
+    "admin panel",
+    "management dashboard",
+    "yönetim paneli",
+    "yonetim paneli",
+    "customer portal",
+    "client portal",
+    "müşteri portalı",
+    "musteri portali",
+)
+_CANONICAL_WEB_ROUTE_TERMS = (
+    "website",
+    "web site",
+    "web sitesi",
+    "landing page",
+    "internet sitesi",
+)
+_NON_WEB_PLATFORM_TERMS = (
+    "mobile app",
+    "android app",
+    "ios app",
+    "iphone app",
+    "desktop app",
+    "windows app",
+    "mac app",
+    "macos app",
+    "mobil uygulama",
+    "masaüstü uygulama",
+    "masaustu uygulama",
+)
+
 _LOCAL_ONLY_REPLACEMENT = " keep the finished result local only "
+_CANONICAL_WEB_ROUTE_PREFIX = "website "
 
 
 def normalize_desktop_execution_objective(objective: str) -> str:
-    """Rewrite only explicit negative external-side-effect clauses.
+    """Normalize bounded Desktop aliases before canonical route classification.
 
-    This is intentionally narrow. Any ambiguous or positive mutation language is
-    left untouched so the canonical coordinator continues to block it.
+    Negative external-side-effect clauses are rewritten narrowly. Explicit Web-App
+    aliases are prefixed with the already-canonical ``website`` route term so the
+    existing coordinator selects the Web Factory. No new route/authority is
+    created. Mobile/desktop application objectives are never rewritten as Web.
     """
 
     normalized = objective
     for pattern in _NEGATED_EXTERNAL_SIDE_EFFECTS:
         normalized = pattern.sub(_LOCAL_ONLY_REPLACEMENT, normalized)
-    return " ".join(normalized.split())
+    normalized = " ".join(normalized.split())
+    folded = normalized.casefold()
+    has_canonical_web = any(term in folded for term in _CANONICAL_WEB_ROUTE_TERMS)
+    has_web_app_alias = any(term in folded for term in _WEB_APP_ROUTE_TERMS)
+    has_non_web_platform = any(term in folded for term in _NON_WEB_PLATFORM_TERMS)
+    if has_web_app_alias and not has_canonical_web and not has_non_web_platform:
+        normalized = _CANONICAL_WEB_ROUTE_PREFIX + normalized
+    return normalized
 
 
 class DesktopExecutionCoordinator(ExecutionCoordinator):
-    """Canonical coordinator with Desktop-specific negation normalization."""
+    """Canonical coordinator with Desktop-specific bounded normalization."""
 
     def prepare(
         self,

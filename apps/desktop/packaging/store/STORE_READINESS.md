@@ -1,6 +1,6 @@
 # ILAIOS Desktop — Microsoft Store Readiness
 
-This file prepares the repository-owned Store listing material that can be completed before Microsoft account / Partner Center publisher connection. It deliberately does **not** claim signing, certification, publication, or Microsoft OAuth completion.
+This file prepares the repository-owned Microsoft Store material that can be completed before Partner Center product identity and account activation are available. It deliberately does **not** claim certification, publication or production deployment without external evidence.
 
 ## Product identity
 
@@ -8,8 +8,27 @@ This file prepares the repository-owned Store listing material that can be compl
 - Publisher display name: **ILAIOS**
 - Platform: Windows Desktop, x64
 - UI languages implemented by the Desktop client: **English (en-US)** and **Türkçe (tr-TR)**
-- Package identity / publisher subject: **EXTERNAL — use the exact Partner Center-assigned values only**
-- Production signing certificate: **EXTERNAL — never invent or commit certificate material**
+- Package Identity Name: **EXTERNAL — use the exact Partner Center value only**
+- Package Publisher: **EXTERNAL — use the exact Partner Center value only**
+- Package Version: **EXTERNAL at release time — use the next allowed four-part Store version**
+
+For Microsoft Store **MSIX** distribution, a repository-owned production code-signing certificate is **not** a prerequisite. Microsoft Store re-signs the submitted MSIX as part of certification. Direct/sideload distribution remains a separate signing problem and must not be conflated with this Store path.
+
+## Controlled Store release-candidate path
+
+Use `.github/workflows/desktop-store-release-candidate.yml` only after Partner Center exposes the real package Identity Name and Publisher.
+
+The workflow requires:
+
+- dispatch from `master`,
+- the explicit exact current `master` SHA,
+- Partner Center Identity Name,
+- Partner Center Publisher,
+- a four-part package version.
+
+It fails closed if the approved SHA is no longer current `master`, if CI placeholder identity values are supplied, or if package identity/version validation fails.
+
+The generated release evidence records the source SHA, package SHA-256, identity, publisher, version and the fact that the pre-submission MSIX is intentionally unsigned for Store-managed signing.
 
 ## English listing copy
 
@@ -41,7 +60,7 @@ Tek tek çalışma zamanı projeksiyonlarının kullanılabilirliği bağlı ILA
 
 ## Store assets and screenshots
 
-Repository package generation already derives Store/MSIX logo assets from the canonical ILAIOS application-icon master. Final Store screenshots must be captured from the exact signed/release-candidate Windows build, not from mockups.
+Repository package generation derives Store/MSIX logo assets from the canonical ILAIOS application-icon master. Final Store screenshots must be captured from the exact release-candidate Windows build, not from mockups.
 
 Required final screenshot set after exact-final Windows QA:
 
@@ -55,12 +74,16 @@ Do not populate fake runtime data solely for screenshots.
 
 ## External fields intentionally blocked until Microsoft connection
 
-The following are not repository-owned facts and must remain unresolved until Microsoft / Partner Center provides or confirms them:
+The following are external facts and must remain unresolved until Microsoft / Partner Center provides or confirms them:
 
+- Developer account activation / publishing-enabled status.
+- Reserved Store product name.
 - Partner Center package Identity Name.
-- Publisher subject / certificate identity.
-- Production signing secrets.
-- Store submission ID and certification result.
+- Partner Center package Publisher.
+- Next allowed four-part package version.
+- Store submission ID.
+- Certification result.
+- Published Store listing/version.
 
 Privacy-policy and support URLs must be copied only from verified live ILAIOS production pages. They are intentionally not guessed in this file.
 
@@ -74,9 +97,15 @@ A release candidate is eligible for Store submission only when all of the follow
 - Desktop Windows Gate: PASS.
 - MSIX Packaging: PASS.
 - MSIX unpack/manifest inspection: PASS.
+- Store package Identity Name/Publisher/Version: exact Partner Center match.
+- Store package SHA-256: recorded.
 - Exact-master Windows launch: PASS.
 - English/Turkish UI and 100%/125%/150% scaling QA: PASS.
-- Existing Google session regression: PASS where Google is configured.
+- Existing configured authentication regression: PASS.
 - No fabricated runtime telemetry.
 
-Microsoft OAuth is independent of the Desktop release-readiness checks above and is not required to be represented as complete until it has its own configuration and evidence.
+## Publication evidence
+
+Do not claim `DEPLOYED / PRODUCTION` until Microsoft certification succeeds and the published/flighted Store build has been installed and smoke-tested from the Store channel.
+
+Preserve source SHA, package SHA-256, package version, Store submission ID, certification result and Store installation evidence as the publication proof chain.
