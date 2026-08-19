@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import cast
 
 import pytest
 
@@ -107,13 +108,13 @@ def test_general_product_and_logo_references_use_native_input_references() -> No
     )
 
     prepared = binder.prepare(request_id="request-1", model=_model())
+    native_images = cast(
+        list[dict[str, str]], prepared.item_fields["native_reference_images"]
+    )
 
     assert prepared.mode == "input-references"
     assert prepared.provider_native_reference_url_used
-    assert [item["role"] for item in prepared.item_fields["native_reference_images"]] == [
-        "product",
-        "logo",
-    ]
+    assert [item["role"] for item in native_images] == ["product", "logo"]
     assert relay.published == ["a" * 64, "b" * 64]
     binder.release(prepared)
     assert relay.released == ["relay-1", "relay-2"]
