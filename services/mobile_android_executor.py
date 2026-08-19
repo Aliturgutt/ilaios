@@ -90,45 +90,18 @@ def build_android_implementation_plan(
     """Bind an approved Android AppFactory projection to deterministic source changes."""
     _validate_projection(projection)
     _require_app_id(app_id)
-    if _APPLICATION_ID_PATTERN.fullmatch(application_id) is None:
-        raise AndroidImplementationError("application_id must be a dotted Android package id")
-    if not source_changes:
-        raise AndroidImplementationError("at least one Android source change is required")
-    if len(source_changes) > _MAX_ANDROID_FILES:
-        raise AndroidImplementationError("Android source change count exceeds the bounded limit")
-
-    total_bytes = 0
-    seen_paths: set[str] = set()
-    canonical_changes: list[dict[str, object]] = []
-    for change in source_changes:
-        _validate_source_change(change)
-        if change.relative_path in seen_paths:
-            raise AndroidImplementationError("duplicate Android source path")
-        seen_paths.add(change.relative_path)
-        total_bytes += len(change.content)
-        canonical_changes.append(
-            {
-                "content_sha256": hashlib.sha256(change.content).hexdigest(),
-                "expected_sha256": change.expected_sha256,
-                "operation": change.operation,
-                "relative_path": change.relative_path,
-            }
-        )
-    if total_bytes > _MAX_ANDROID_BYTES:
-        raise AndroidImplementationError("Android source changes exceed the bounded byte limit")
+    _require_application_id(application_id)
+    _validate_source_changes(source_changes)
 
     objective_sha256 = hashlib.sha256(projection["objective"].encode("utf-8")).hexdigest()
-    canonical: dict[str, object] = {
-        "app_id": app_id,
-        "app_request_id": projection["request_id"],
-        "app_request_sha256": projection["request_sha256"],
-        "application_id": application_id,
-        "objective_sha256": objective_sha256,
-        "source_changes": canonical_changes,
-    }
-    plan_sha256 = hashlib.sha256(
-        json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
-    ).hexdigest()
+    plan_sha256 = _plan_digest(
+        app_id=app_id,
+        application_id=application_id,
+        app_request_id=projection["request_id"],
+        app_request_sha256=projection["request_sha256"],
+        objective_sha256=objective_sha256,
+        source_changes=source_changes,
+    )
     return AndroidImplementationPlan(
         app_id=app_id,
         application_id=application_id,
@@ -152,13 +125,26 @@ def build_android_software_factory_request(
     if _GIT_SHA_PATTERN.fullmatch(base_sha) is None:
         raise AndroidImplementationError("base_sha must be a lowercase 40-character git SHA")
     _require_app_id(plan.app_id)
-    if _SHA256_PATTERN.fullmatch(plan.plan_sha256) is None:
-        raise AndroidImplementationError("plan_sha256 is invalid")
+    _require_application_id(plan.application_id)
+    _require_token(plan.app_request_id, "app_request_id")
+    _require_sha256(plan.app_request_sha256, "app_request_sha256")
+    _require_sha256(plan.objective_sha256, "objective_sha256")
+    _validate_source_changes(plan.source_changes)
+
+    expected_plan_sha256 = _plan_digest(
+        app_id=plan.app_id,
+        application_id=plan.application_id,
+        app_request_id=plan.app_request_id,
+        app_request_sha256=plan.app_request_sha256,
+        objective_sha256=plan.objective_sha256,
+        source_changes=plan.source_changes,
+    )
+    if plan.plan_sha256 != expected_plan_sha256:
+        raise AndroidImplementationError("plan digest does not match Android implementation content")
 
     prefix = f"apps/mobile/android/{plan.app_id}"
     changes: list[Change] = []
     for source_change in plan.source_changes:
-        _validate_source_change(source_change)
         operation = (
             ChangeOperation.CREATE
             if source_change.operation == "create"
@@ -226,6 +212,37 @@ class GovernedAndroidImplementationExecutor:
         )
 
 
+def _plan_digest(
+    *,
+    app_id: str,
+    application_id: str,
+    app_request_id: str,
+    app_request_sha256: str,
+    objective_sha256: str,
+    source_changes: tuple[AndroidSourceChange, ...],
+) -> str:
+    canonical: dict[str, object] = {
+        "app_id": app_id,
+        "app_request_id": app_request_id,
+        "app_request_sha256": app_request_sha256,
+        "application_id": application_id,
+        "objective_sha256": objective_sha256,
+        "source_changes": [_canonical_change(change) for change in source_changes],
+    }
+    return hashlib.sha256(
+        json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def _canonical_change(change: AndroidSourceChange) -> dict[str, object]:
+    return {
+        "content_sha256": hashlib.sha256(change.content).hexdigest(),
+        "expected_sha256": change.expected_sha256,
+        "operation": change.operation,
+        "relative_path": change.relative_path,
+    }
+
+
 def _validate_projection(projection: AppRequestProjection) -> None:
     if projection["platform"] != "android":
         raise AndroidImplementationError("only Android AppFactory projections are accepted")
@@ -235,12 +252,26 @@ def _validate_projection(projection: AppRequestProjection) -> None:
         raise AndroidImplementationError("AppFactory request must be approved for review")
     if projection["client_mutated"] is not False:
         raise AndroidImplementationError("AppFactory client_mutated must remain false")
-    if not projection["request_id"] or projection["request_id"] != projection["request_id"].strip():
-        raise AndroidImplementationError("AppFactory request_id must be non-blank and trimmed")
-    if not projection["objective"].strip():
-        raise AndroidImplementationError("AppFactory objective must be non-blank")
-    if _SHA256_PATTERN.fullmatch(projection["request_sha256"]) is None:
-        raise AndroidImplementationError("AppFactory request_sha256 is invalid")
+    _require_token(projection["request_id"], "AppFactory request_id")
+    _require_token(projection["objective"], "AppFactory objective")
+    _require_sha256(projection["request_sha256"], "AppFactory request_sha256")
+
+
+def _validate_source_changes(source_changes: tuple[AndroidSourceChange, ...]) -> None:
+    if not source_changes:
+        raise AndroidImplementationError("at least one Android source change is required")
+    if len(source_changes) > _MAX_ANDROID_FILES:
+        raise AndroidImplementationError("Android source change count exceeds the bounded limit")
+    total_bytes = 0
+    seen_paths: set[str] = set()
+    for change in source_changes:
+        _validate_source_change(change)
+        if change.relative_path in seen_paths:
+            raise AndroidImplementationError("duplicate Android source path")
+        seen_paths.add(change.relative_path)
+        total_bytes += len(change.content)
+    if total_bytes > _MAX_ANDROID_BYTES:
+        raise AndroidImplementationError("Android source changes exceed the bounded byte limit")
 
 
 def _validate_source_change(change: AndroidSourceChange) -> None:
@@ -268,3 +299,18 @@ def _validate_source_change(change: AndroidSourceChange) -> None:
 def _require_app_id(app_id: str) -> None:
     if _APP_ID_PATTERN.fullmatch(app_id) is None:
         raise AndroidImplementationError("app_id must be a lowercase bounded path token")
+
+
+def _require_application_id(application_id: str) -> None:
+    if _APPLICATION_ID_PATTERN.fullmatch(application_id) is None:
+        raise AndroidImplementationError("application_id must be a dotted Android package id")
+
+
+def _require_token(value: str, field: str) -> None:
+    if not value or value != value.strip():
+        raise AndroidImplementationError(f"{field} must be non-blank and trimmed")
+
+
+def _require_sha256(value: str, field: str) -> None:
+    if _SHA256_PATTERN.fullmatch(value) is None:
+        raise AndroidImplementationError(f"{field} is invalid")
