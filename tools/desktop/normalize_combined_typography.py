@@ -84,8 +84,38 @@ deliveries = replace_once(
     "                style: const TextStyle(fontSize: 12.7, fontWeight: FontWeight.w700),",
     "outputs-empty-title",
 )
+
+# The 1366x768 Desktop content rail leaves about 791px for Outputs filters and
+# about 773px for the toolbar. Keep every control visible and preserve its font
+# size/semantics by compacting only fixed horizontal geometry inside Outputs.
+# This is deliberately not a global text-scale or shell-geometry change.
+deliveries = replace_once(
+    deliveries,
+    "          padding: const EdgeInsets.symmetric(horizontal: 10),",
+    "          padding: const EdgeInsets.symmetric(horizontal: 7),",
+    "outputs-tab-horizontal-padding",
+)
+deliveries = replace_once(
+    deliveries,
+    "              width: 185,",
+    "              width: 145,",
+    "outputs-search-width",
+)
+deliveries = replace_once(
+    deliveries,
+    "              width: 105,",
+    "              width: 90,",
+    "outputs-type-filter-width",
+)
+deliveries = replace_once(
+    deliveries,
+    "_DisabledFilter(label: _copy(context, 'Tarih Aralığı', 'Date Range'), width: 118),",
+    "_DisabledFilter(label: _copy(context, 'Tarih Aralığı', 'Date Range'), width: 100),",
+    "outputs-date-filter-width",
+)
 (root / deliveries_rel).write_text(deliveries, encoding="utf-8", newline="\n")
 print("OUTPUTS_TYPOGRAPHY_SCOPED_UPLIFT_APPLIED")
+print("OUTPUTS_COMPACT_CONTROL_GEOMETRY_APPLIED")
 
 # Replace the generated regression assertion that previously required a global
 # 1.10 scaler. The new contract explicitly proves no global zoom, then checks
