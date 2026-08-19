@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from services.mobile_android_release import (
+    AndroidBuildPlan,
     AndroidBuildReceipt,
     AndroidDeviceReceipt,
     AndroidReleaseError,
@@ -27,7 +28,7 @@ SHA = "a" * 64
 SOURCE = "b" * 40
 
 
-def _plan() -> object:
+def _plan() -> AndroidBuildPlan:
     return build_android_release_plan(
         app_id="ilaios-mobile",
         application_id="com.ilaios.mobile",
@@ -93,11 +94,13 @@ def test_build_receipt_reconciles_exact_plan_source_version_and_extension() -> N
     )
     validate_android_build_receipt(plan, receipt)
 
-    with pytest.raises(AndroidReleaseError, match="different artifact bytes|artifact kind|extension"):
+    with pytest.raises(AndroidReleaseError, match="artifact kind"):
         validate_android_build_receipt(
             plan,
             replace(receipt, artifact_kind="apk", artifact_path="outputs/ilaios-release.apk"),
         )
+    with pytest.raises(AndroidReleaseError, match="not bound"):
+        validate_android_build_receipt(plan, replace(receipt, plan_sha256="9" * 64))
 
 
 def test_device_receipt_requires_exact_artifact_and_all_smoke_gates() -> None:
@@ -157,6 +160,7 @@ def test_google_play_input_requires_android_profile_and_bound_evidence() -> None
     value = GooglePlayCertificationInput(
         profile=profile,
         artifact=artifact,
+        build_plan=plan,
         build_receipt=build_receipt,
         device_receipts=(device,),
         reviewer_access_receipt="reviewer-access://public-flow",
@@ -179,6 +183,19 @@ def test_google_play_input_requires_android_profile_and_bound_evidence() -> None
         validate_google_play_certification_input(
             replace(value, artifact=replace(artifact, binary_sha256="1" * 64))
         )
+
+    rebound_plan = build_android_release_plan(
+        app_id="other-app",
+        application_id="com.ilaios.other",
+        source_sha=SOURCE,
+        artifact_kind="aab",
+        version="1.0.0",
+        build_number="100",
+        signing_mode="google-play-app-signing",
+        signing_credential=None,
+    )
+    with pytest.raises(AndroidReleaseError, match="app id differs"):
+        validate_google_play_certification_input(replace(value, build_plan=rebound_plan))
 
 
 def test_contract_layer_cannot_execute_gradle_sign_or_store_operations() -> None:
