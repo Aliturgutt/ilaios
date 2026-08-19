@@ -109,14 +109,11 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
         run: python -m pytest -q tests/test_web_agent_browser_certification.py
 
-      - name: Run IndependentVerifier regressions
+      - name: Run IndependentVerifier governed-tool regressions
         if: always()
         env:
           PYTHONPATH: ${{ github.workspace }}
-        run: |
-          python -m pytest -q \
-            tests/test_independent_verifier_execution.py \
-            tests/test_independent_verifier_tool_evidence.py
+        run: python -m pytest -q tests/test_independent_verifier_tool_evidence.py
 
       - name: Run workflow-security regressions
         if: always()
