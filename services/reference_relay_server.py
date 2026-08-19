@@ -1,8 +1,8 @@
 """HTTP boundary for the short-lived provider reference relay.
 
-Production must terminate TLS in front of this process. Upload/delete operations
-require a server-held bearer token; provider GETs use only signed expiring URLs.
-The handler never logs bearer tokens or signed query strings.
+Production must terminate TLS in front of this process. Upload/delete/access-evidence
+operations require a server-held bearer token; provider GETs use only signed expiring
+URLs. The handler never logs bearer tokens or signed query strings.
 """
 
 from __future__ import annotations
@@ -20,6 +20,7 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from services.reference_relay import ReferenceRelayError, SignedReferenceRelayStore
+from services.reference_relay_access import ReferenceRelayAccessLedger
 
 _MAX_UPLOAD_BODY_BYTES = 15 * 1024 * 1024
 
@@ -32,12 +33,14 @@ class ReferenceRelayHTTPServer(ThreadingHTTPServer):
         server_address: tuple[str, int],
         *,
         store: SignedReferenceRelayStore,
+        access_ledger: ReferenceRelayAccessLedger,
         upload_token: str,
     ) -> None:
         if not upload_token or upload_token != upload_token.strip():
             raise ReferenceRelayError("reference relay upload token is invalid")
         super().__init__(server_address, ReferenceRelayRequestHandler)
         self.store = store
+        self.access_ledger = access_ledger
         self.upload_token = upload_token
 
 
@@ -52,6 +55,31 @@ class ReferenceRelayRequestHandler(BaseHTTPRequestHandler):
         if parsed.path == "/health/ready":
             self.server.store.purge_expired()
             self._send_json(HTTPStatus.OK, {"status": "ready"})
+            return
+        access_prefix = "/v1/reference-relay-access/"
+        if parsed.path.startswith(access_prefix):
+            try:
+                self._authenticate_upload()
+                sha256_hex = parsed.path.removeprefix(access_prefix)
+                evidence = self.server.access_ledger.evidence(sha256_hex)
+            except PermissionError:
+                self._send_json(HTTPStatus.UNAUTHORIZED, {"error": "unauthorized"})
+                return
+            except ReferenceRelayError:
+                self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid_reference"})
+                return
+            if evidence is None:
+                self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
+                return
+            self._send_json(
+                HTTPStatus.OK,
+                {
+                    "sha256": evidence.sha256,
+                    "fetch_count": evidence.fetch_count,
+                    "first_fetched_at_epoch_s": evidence.first_fetched_at_epoch_s,
+                    "last_fetched_at_epoch_s": evidence.last_fetched_at_epoch_s,
+                },
+            )
             return
         prefix = "/v1/reference-relay/"
         if not parsed.path.startswith(prefix):
@@ -69,6 +97,7 @@ class ReferenceRelayRequestHandler(BaseHTTPRequestHandler):
                 sha256_hex=sha256_hex,
                 signature=signature,
             )
+            self.server.access_ledger.record_fetch(sha256_hex)
         except (ReferenceRelayError, ValueError):
             # Do not reveal whether an id, digest, signature, or expiry was valid.
             self._send_json(HTTPStatus.NOT_FOUND, {"error": "not_found"})
@@ -232,9 +261,11 @@ def main(argv: list[str] | None = None) -> int:
         public_base_url=public_base_url,
         signing_secret=signing_secret,
     )
+    access_ledger = ReferenceRelayAccessLedger(root / "reference-relay-access.sqlite3")
     server = ReferenceRelayHTTPServer(
         (args.host, args.port),
         store=store,
+        access_ledger=access_ledger,
         upload_token=upload_token,
     )
     try:
