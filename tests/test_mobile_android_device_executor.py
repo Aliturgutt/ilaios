@@ -12,18 +12,20 @@ from services.mobile_android_device_executor import (
     execute_android_apk_device_e2e,
 )
 from services.mobile_android_release import (
+    AndroidArtifactKind,
+    AndroidBuildPlan,
     AndroidBuildReceipt,
     build_android_release_plan,
     validate_android_device_receipt,
 )
 
 
-def _plan(*, artifact_kind: str = "apk"):
+def _plan(*, artifact_kind: AndroidArtifactKind = "apk") -> AndroidBuildPlan:
     return build_android_release_plan(
         app_id="ilaios-mobile",
         application_id="com.ilaios.mobile",
         source_sha="a" * 40,
-        artifact_kind=artifact_kind,  # type: ignore[arg-type]
+        artifact_kind=artifact_kind,
         version="1.0.0",
         build_number="1",
         signing_mode="google-play-app-signing",
@@ -31,7 +33,7 @@ def _plan(*, artifact_kind: str = "apk"):
     )
 
 
-def _project(tmp_path: Path, artifact_kind: str = "apk") -> tuple[Path, Path, bytes]:
+def _project(tmp_path: Path, artifact_kind: AndroidArtifactKind = "apk") -> tuple[Path, Path, bytes]:
     root = tmp_path / "repo"
     project = root / "apps/mobile/android/ilaios-mobile"
     suffix = "apk/release/app-release.apk" if artifact_kind == "apk" else "bundle/release/app-release.aab"
@@ -42,7 +44,9 @@ def _project(tmp_path: Path, artifact_kind: str = "apk") -> tuple[Path, Path, by
     return root, artifact, content
 
 
-def _receipt(plan, artifact: Path, content: bytes, project_root: Path) -> AndroidBuildReceipt:
+def _receipt(
+    plan: AndroidBuildPlan, artifact: Path, content: bytes, project_root: Path
+) -> AndroidBuildReceipt:
     return AndroidBuildReceipt(
         plan_sha256=plan.plan_sha256,
         source_sha=plan.source_sha,
@@ -76,7 +80,6 @@ def test_device_executor_produces_bound_receipt_for_exact_apk(tmp_path: Path) ->
     root, artifact, content = _project(tmp_path)
     project_root = root / plan.project_root
     receipt = _receipt(plan, artifact, content, project_root)
-
     result = execute_android_apk_device_e2e(
         plan=plan,
         build_receipt=receipt,
@@ -84,7 +87,6 @@ def test_device_executor_produces_bound_receipt_for_exact_apk(tmp_path: Path) ->
         adb_path=_adb(tmp_path),
         device_id="emulator-5554",
     )
-
     assert result.artifact_sha256 == hashlib.sha256(content).hexdigest()
     assert result.platform_version == "35"
     assert result.install_passed and result.launch_passed and result.smoke_passed
@@ -95,7 +97,6 @@ def test_device_executor_rejects_aab_without_evidenced_derivation(tmp_path: Path
     plan = _plan(artifact_kind="aab")
     root, artifact, content = _project(tmp_path, "aab")
     receipt = _receipt(plan, artifact, content, root / plan.project_root)
-
     with pytest.raises(AndroidDeviceExecutionError, match="requires APK"):
         execute_android_apk_device_e2e(
             plan=plan,
@@ -111,7 +112,6 @@ def test_device_executor_rejects_artifact_tampering(tmp_path: Path) -> None:
     root, artifact, content = _project(tmp_path)
     receipt = _receipt(plan, artifact, content, root / plan.project_root)
     artifact.write_bytes(b"tampered")
-
     with pytest.raises(AndroidDeviceExecutionError, match="do not match"):
         execute_android_apk_device_e2e(
             plan=plan,
@@ -126,7 +126,6 @@ def test_device_executor_fails_closed_on_adb_failure(tmp_path: Path) -> None:
     plan = _plan()
     root, artifact, content = _project(tmp_path)
     receipt = _receipt(plan, artifact, content, root / plan.project_root)
-
     with pytest.raises(AndroidDeviceExecutionError, match="adb install/launch/smoke"):
         execute_android_apk_device_e2e(
             plan=plan,
@@ -142,7 +141,6 @@ def test_device_executor_rejects_invalid_device_and_timeout(tmp_path: Path) -> N
     root, artifact, content = _project(tmp_path)
     receipt = _receipt(plan, artifact, content, root / plan.project_root)
     adb = _adb(tmp_path)
-
     with pytest.raises(AndroidDeviceExecutionError, match="device_id"):
         execute_android_apk_device_e2e(
             plan=plan,
