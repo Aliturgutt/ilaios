@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
@@ -59,6 +60,24 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
   final Future<void> Function(String requestId, GovernanceDecision decision)?
       onGovernanceDecision;
 
+  OperationalSnapshot _projectionSafeSnapshot() {
+    final events = operationalSnapshot.liveEvents;
+    if (events.isEmpty) return operationalSnapshot;
+    return OperationalSnapshot(
+      runtimeRoutes: operationalSnapshot.runtimeRoutes,
+      schedulerState: operationalSnapshot.schedulerState,
+      grantsState: operationalSnapshot.grantsState,
+      governanceState: operationalSnapshot.governanceState,
+      evidenceRecords: operationalSnapshot.evidenceRecords,
+      liveEvents: _AuthoritySafeLiveEvents(
+        events,
+        schedulerState: operationalSnapshot.schedulerState,
+        governanceState: operationalSnapshot.governanceState,
+      ),
+      agentState: operationalSnapshot.agentState,
+    );
+  }
+
   Widget _shell() => AgentProvisioningScope(
         onProvisionAgent: onProvisionAgent,
         child: HomeRuntimeBinding(
@@ -66,7 +85,7 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
           onPromptSubmit: onPromptSubmit,
           child: ReferenceDesktopShellV10(
             projection: projection,
-            operationalSnapshot: operationalSnapshot,
+            operationalSnapshot: _projectionSafeSnapshot(),
             operationalStatus: operationalStatus,
             approverId: approverId,
             identityProviders: identityProviders,
@@ -124,5 +143,71 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
         );
       },
     );
+  }
+}
+
+class _AuthoritySafeLiveEvents extends ListBase<Map<String, Object?>> {
+  _AuthoritySafeLiveEvents(
+    this._events, {
+    required Map<String, Object?> schedulerState,
+    required Map<String, Object?> governanceState,
+  }) : _authoritativeSources = <Map<String, Object?>>[
+          schedulerState,
+          governanceState,
+        ];
+
+  static const _authorityGroups = <List<String>>[
+    <String>['session_id', 'workspace_session_id', 'run_id', 'execution_id'],
+    <String>['started_at', 'start_time', 'session_started_at'],
+    <String>['elapsed', 'duration', 'session_duration'],
+    <String>['owner', 'principal_id', 'user', 'created_by'],
+    <String>['workspace_mode', 'mode', 'execution_mode'],
+    <String>['project_name', 'project', 'workspace', 'goal', 'objective'],
+    <String>['branch', 'git_branch', 'source_branch'],
+    <String>['environment', 'env', 'runtime_environment'],
+    <String>['sync_state', 'synchronization', 'sync_status'],
+    <String>['preview_url', 'browser_url', 'url', 'localhost_url'],
+    <String>['last_save', 'saved_at', 'last_saved_at'],
+  ];
+
+  final List<Map<String, Object?>> _events;
+  final List<Map<String, Object?>> _authoritativeSources;
+
+  @override
+  int get length => _events.length;
+
+  @override
+  set length(int value) => throw UnsupportedError('read-only projection');
+
+  @override
+  Map<String, Object?> operator [](int index) => _events[index];
+
+  @override
+  void operator []=(int index, Map<String, Object?> value) =>
+      throw UnsupportedError('read-only projection');
+
+  @override
+  Map<String, Object?> get last {
+    if (_events.isEmpty) throw StateError('No elements');
+    final event = Map<String, Object?>.of(_events.last);
+    for (final group in _authorityGroups) {
+      if (_hasAuthoritativeValue(group)) {
+        for (final key in group) {
+          event.remove(key);
+        }
+      }
+    }
+    return event;
+  }
+
+  bool _hasAuthoritativeValue(List<String> keys) {
+    for (final source in _authoritativeSources) {
+      for (final key in keys) {
+        final value = source[key];
+        if (value is String && value.trim().isNotEmpty) return true;
+        if (value is num || value is bool) return true;
+      }
+    }
+    return false;
   }
 }
