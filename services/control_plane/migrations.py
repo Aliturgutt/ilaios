@@ -178,7 +178,7 @@ _UP_MIGRATIONS = {
         );
     """,
     8: """
-        CREATE TABLE web_app_tenants (
+        CREATE TABLE IF NOT EXISTS web_app_tenants (
             tenant_id TEXT PRIMARY KEY,
             name TEXT NOT NULL,
             created_at TEXT NOT NULL,
@@ -186,7 +186,7 @@ _UP_MIGRATIONS = {
             version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
             deleted_at TEXT
         );
-        CREATE TABLE web_app_users (
+        CREATE TABLE IF NOT EXISTS web_app_users (
             tenant_id TEXT NOT NULL REFERENCES web_app_tenants(tenant_id),
             user_id TEXT NOT NULL,
             display_name TEXT NOT NULL,
@@ -196,7 +196,7 @@ _UP_MIGRATIONS = {
             deleted_at TEXT,
             PRIMARY KEY (tenant_id, user_id)
         );
-        CREATE TABLE web_app_projects (
+        CREATE TABLE IF NOT EXISTS web_app_projects (
             tenant_id TEXT NOT NULL REFERENCES web_app_tenants(tenant_id),
             project_id TEXT NOT NULL,
             owner_user_id TEXT NOT NULL,
@@ -209,7 +209,7 @@ _UP_MIGRATIONS = {
             FOREIGN KEY (tenant_id, owner_user_id)
                 REFERENCES web_app_users(tenant_id, user_id)
         );
-        CREATE TABLE web_app_goal_context (
+        CREATE TABLE IF NOT EXISTS web_app_goal_context (
             goal_id TEXT PRIMARY KEY REFERENCES goals(goal_id) ON DELETE CASCADE,
             tenant_id TEXT NOT NULL,
             project_id TEXT NOT NULL,
@@ -223,7 +223,7 @@ _UP_MIGRATIONS = {
             FOREIGN KEY (tenant_id, owner_user_id)
                 REFERENCES web_app_users(tenant_id, user_id)
         );
-        CREATE TABLE web_app_workflow_context (
+        CREATE TABLE IF NOT EXISTS web_app_workflow_context (
             workflow_id TEXT PRIMARY KEY REFERENCES workflows(workflow_id) ON DELETE CASCADE,
             tenant_id TEXT NOT NULL,
             project_id TEXT NOT NULL,
@@ -237,7 +237,7 @@ _UP_MIGRATIONS = {
             FOREIGN KEY (tenant_id, owner_user_id)
                 REFERENCES web_app_users(tenant_id, user_id)
         );
-        CREATE TABLE web_app_agents (
+        CREATE TABLE IF NOT EXISTS web_app_agents (
             tenant_id TEXT NOT NULL,
             project_id TEXT NOT NULL,
             agent_id TEXT NOT NULL REFERENCES runtime_agents(agent_id),
@@ -252,7 +252,7 @@ _UP_MIGRATIONS = {
             FOREIGN KEY (tenant_id, owner_user_id)
                 REFERENCES web_app_users(tenant_id, user_id)
         );
-        CREATE TABLE web_app_approvals (
+        CREATE TABLE IF NOT EXISTS web_app_approvals (
             approval_id TEXT PRIMARY KEY,
             tenant_id TEXT NOT NULL,
             project_id TEXT NOT NULL,
@@ -265,6 +265,7 @@ _UP_MIGRATIONS = {
             created_at TEXT NOT NULL,
             updated_at TEXT NOT NULL,
             version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            UNIQUE (tenant_id, project_id, approval_id),
             FOREIGN KEY (tenant_id, project_id, workflow_id)
                 REFERENCES web_app_workflow_context(
                     tenant_id, project_id, workflow_id
@@ -274,7 +275,7 @@ _UP_MIGRATIONS = {
             FOREIGN KEY (tenant_id, reviewer_user_id)
                 REFERENCES web_app_users(tenant_id, user_id)
         );
-        CREATE TABLE web_app_evidence (
+        CREATE TABLE IF NOT EXISTS web_app_evidence (
             evidence_id TEXT PRIMARY KEY,
             tenant_id TEXT NOT NULL,
             project_id TEXT NOT NULL,
@@ -297,7 +298,7 @@ _UP_MIGRATIONS = {
             FOREIGN KEY (tenant_id, owner_user_id)
                 REFERENCES web_app_users(tenant_id, user_id)
         );
-        CREATE TABLE web_app_outputs (
+        CREATE TABLE IF NOT EXISTS web_app_outputs (
             output_id TEXT PRIMARY KEY,
             tenant_id TEXT NOT NULL,
             project_id TEXT NOT NULL,
@@ -312,6 +313,7 @@ _UP_MIGRATIONS = {
             updated_at TEXT NOT NULL,
             version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
             deleted_at TEXT,
+            UNIQUE (tenant_id, project_id, output_id),
             FOREIGN KEY (tenant_id, project_id)
                 REFERENCES web_app_projects(tenant_id, project_id),
             FOREIGN KEY (tenant_id, project_id, workflow_id)
@@ -323,7 +325,7 @@ _UP_MIGRATIONS = {
             FOREIGN KEY (tenant_id, project_id, evidence_id)
                 REFERENCES web_app_evidence(tenant_id, project_id, evidence_id)
         );
-        CREATE TABLE web_app_cost_records (
+        CREATE TABLE IF NOT EXISTS web_app_cost_records (
             cost_record_id TEXT PRIMARY KEY,
             tenant_id TEXT NOT NULL,
             project_id TEXT NOT NULL,
@@ -334,6 +336,7 @@ _UP_MIGRATIONS = {
                 length(currency_code) = 3 AND currency_code = upper(currency_code)
             ),
             created_at TEXT NOT NULL,
+            UNIQUE (tenant_id, project_id, cost_record_id),
             FOREIGN KEY (tenant_id, project_id)
                 REFERENCES web_app_projects(tenant_id, project_id),
             FOREIGN KEY (tenant_id, project_id, workflow_id)
@@ -343,7 +346,7 @@ _UP_MIGRATIONS = {
             FOREIGN KEY (tenant_id, owner_user_id)
                 REFERENCES web_app_users(tenant_id, user_id)
         );
-        CREATE TABLE web_app_sessions (
+        CREATE TABLE IF NOT EXISTS web_app_sessions (
             session_id TEXT PRIMARY KEY,
             tenant_id TEXT NOT NULL,
             project_id TEXT NOT NULL,
@@ -352,12 +355,13 @@ _UP_MIGRATIONS = {
             expires_at TEXT NOT NULL,
             revoked_at TEXT,
             version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            UNIQUE (tenant_id, project_id, session_id),
             FOREIGN KEY (tenant_id, project_id)
                 REFERENCES web_app_projects(tenant_id, project_id),
             FOREIGN KEY (tenant_id, user_id)
                 REFERENCES web_app_users(tenant_id, user_id)
         );
-        CREATE TABLE web_app_integrations (
+        CREATE TABLE IF NOT EXISTS web_app_integrations (
             integration_id TEXT PRIMARY KEY,
             tenant_id TEXT NOT NULL REFERENCES web_app_tenants(tenant_id),
             project_id TEXT,
@@ -368,32 +372,12 @@ _UP_MIGRATIONS = {
             updated_at TEXT NOT NULL,
             version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
             deleted_at TEXT,
+            UNIQUE (tenant_id, project_id, integration_id),
             FOREIGN KEY (tenant_id, project_id)
                 REFERENCES web_app_projects(tenant_id, project_id),
             FOREIGN KEY (tenant_id, owner_user_id)
                 REFERENCES web_app_users(tenant_id, user_id)
         );
-
-        CREATE INDEX idx_web_app_projects_tenant_updated
-            ON web_app_projects(tenant_id, updated_at);
-        CREATE INDEX idx_web_app_goal_context_project
-            ON web_app_goal_context(tenant_id, project_id, updated_at);
-        CREATE INDEX idx_web_app_workflow_context_project
-            ON web_app_workflow_context(tenant_id, project_id, updated_at);
-        CREATE INDEX idx_web_app_agents_project
-            ON web_app_agents(tenant_id, project_id, updated_at);
-        CREATE INDEX idx_web_app_approvals_project_state
-            ON web_app_approvals(tenant_id, project_id, state, updated_at);
-        CREATE INDEX idx_web_app_evidence_project_status
-            ON web_app_evidence(tenant_id, project_id, status, updated_at);
-        CREATE INDEX idx_web_app_outputs_project_updated
-            ON web_app_outputs(tenant_id, project_id, updated_at);
-        CREATE INDEX idx_web_app_cost_records_project_created
-            ON web_app_cost_records(tenant_id, project_id, created_at);
-        CREATE INDEX idx_web_app_sessions_user
-            ON web_app_sessions(tenant_id, user_id, expires_at);
-        CREATE INDEX idx_web_app_integrations_tenant_kind
-            ON web_app_integrations(tenant_id, kind, updated_at);
     """,
 }
 
@@ -437,18 +421,7 @@ _DOWN_MIGRATIONS = {
         DROP TABLE execution_grants;
     """,
     8: """
-        DROP TABLE web_app_integrations;
-        DROP TABLE web_app_sessions;
-        DROP TABLE web_app_cost_records;
-        DROP TABLE web_app_outputs;
-        DROP TABLE web_app_evidence;
-        DROP TABLE web_app_approvals;
-        DROP TABLE web_app_agents;
-        DROP TABLE web_app_workflow_context;
-        DROP TABLE web_app_goal_context;
-        DROP TABLE web_app_projects;
-        DROP TABLE web_app_users;
-        DROP TABLE web_app_tenants;
+        SELECT 1;
     """,
 }
 
