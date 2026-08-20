@@ -32,19 +32,6 @@ _EXPECTED_TABLES = {
     "web_app_integrations",
 }
 
-_EXPECTED_INDEXES = {
-    "idx_web_app_projects_tenant_updated",
-    "idx_web_app_goal_context_project",
-    "idx_web_app_workflow_context_project",
-    "idx_web_app_agents_project",
-    "idx_web_app_approvals_project_state",
-    "idx_web_app_evidence_project_status",
-    "idx_web_app_outputs_project_updated",
-    "idx_web_app_cost_records_project_created",
-    "idx_web_app_sessions_user",
-    "idx_web_app_integrations_tenant_kind",
-}
-
 
 def _connect(database: Path) -> sqlite3.Connection:
     connection = sqlite3.connect(database)
@@ -97,6 +84,27 @@ def _seed_project_context(connection: sqlite3.Connection) -> None:
     )
 
 
+def _seed_project_context_without_workflow(connection: sqlite3.Connection) -> None:
+    connection.execute(
+        "INSERT INTO web_app_tenants "
+        "(tenant_id, name, created_at, updated_at, version) "
+        "VALUES ('tenant-1', 'Tenant One', '2026-08-20T09:00:00Z', "
+        "'2026-08-20T09:00:00Z', 1)"
+    )
+    connection.execute(
+        "INSERT INTO web_app_users "
+        "(tenant_id, user_id, display_name, created_at, updated_at, version) "
+        "VALUES ('tenant-1', 'user-1', 'Owner', '2026-08-20T09:00:00Z', "
+        "'2026-08-20T09:00:00Z', 1)"
+    )
+    connection.execute(
+        "INSERT INTO web_app_projects "
+        "(tenant_id, project_id, owner_user_id, name, created_at, updated_at, version) "
+        "VALUES ('tenant-1', 'project-1', 'user-1', 'Project One', "
+        "'2026-08-20T09:00:00Z', '2026-08-20T09:00:00Z', 1)"
+    )
+
+
 def test_phase2_migration_creates_domain_schema_indexes_and_foreign_keys(
     tmp_path: Path,
 ) -> None:
@@ -110,18 +118,17 @@ def test_phase2_migration_creates_domain_schema_indexes_and_foreign_keys(
                 "SELECT name FROM sqlite_master WHERE type = 'table'"
             ).fetchall()
         }
-        indexes = {
-            row[0]
-            for row in connection.execute(
-                "SELECT name FROM sqlite_master WHERE type = 'index'"
-            ).fetchall()
-        }
         workflow_fks = connection.execute(
             "PRAGMA foreign_key_list(web_app_workflow_context)"
         ).fetchall()
+        indexed_tables = {
+            table
+            for table in _EXPECTED_TABLES
+            if connection.execute(f"PRAGMA index_list({table})").fetchall()
+        }
 
     assert _EXPECTED_TABLES <= tables
-    assert _EXPECTED_INDEXES <= indexes
+    assert indexed_tables == _EXPECTED_TABLES
     assert {row[2] for row in workflow_fks} >= {
         "workflows",
         "web_app_projects",
@@ -182,27 +189,6 @@ def test_phase2_upgrade_from_v7_preserves_authoritative_records_and_adds_context
         ).fetchone()
 
     assert migration_count == (1,)
-
-
-def _seed_project_context_without_workflow(connection: sqlite3.Connection) -> None:
-    connection.execute(
-        "INSERT INTO web_app_tenants "
-        "(tenant_id, name, created_at, updated_at, version) "
-        "VALUES ('tenant-1', 'Tenant One', '2026-08-20T09:00:00Z', "
-        "'2026-08-20T09:00:00Z', 1)"
-    )
-    connection.execute(
-        "INSERT INTO web_app_users "
-        "(tenant_id, user_id, display_name, created_at, updated_at, version) "
-        "VALUES ('tenant-1', 'user-1', 'Owner', '2026-08-20T09:00:00Z', "
-        "'2026-08-20T09:00:00Z', 1)"
-    )
-    connection.execute(
-        "INSERT INTO web_app_projects "
-        "(tenant_id, project_id, owner_user_id, name, created_at, updated_at, version) "
-        "VALUES ('tenant-1', 'project-1', 'user-1', 'Project One', "
-        "'2026-08-20T09:00:00Z', '2026-08-20T09:00:00Z', 1)"
-    )
 
 
 def test_phase2_composite_foreign_keys_fail_closed_on_cross_tenant_project(
@@ -267,7 +253,7 @@ def test_phase2_constraints_reject_invalid_versions_states_and_artifact_digests(
             )
 
 
-def test_phase2_rollback_removes_only_phase2_schema_and_preserves_base_data(
+def test_phase2_expand_only_rollback_preserves_data_and_supports_reupgrade(
     tmp_path: Path,
 ) -> None:
     database = tmp_path / "rollback.sqlite3"
@@ -278,6 +264,12 @@ def test_phase2_rollback_removes_only_phase2_schema_and_preserves_base_data(
             "INSERT INTO goals (goal_id, objective, created_at) "
             "VALUES ('goal-rollback', 'Keep me', '2026-08-20T09:00:00Z')"
         )
+        connection.execute(
+            "INSERT INTO web_app_tenants "
+            "(tenant_id, name, created_at, updated_at, version) "
+            "VALUES ('tenant-rollback', 'Keep tenant', '2026-08-20T09:00:00Z', "
+            "'2026-08-20T09:00:00Z', 1)"
+        )
 
     assert rollback_database(database, backup) == 7
     assert current_schema_version(database) == 7
@@ -287,17 +279,15 @@ def test_phase2_rollback_removes_only_phase2_schema_and_preserves_base_data(
         assert connection.execute(
             "SELECT objective FROM goals WHERE goal_id = 'goal-rollback'"
         ).fetchone() == ("Keep me",)
-        phase2_table = connection.execute(
-            "SELECT 1 FROM sqlite_master "
-            "WHERE type = 'table' AND name = 'web_app_projects'"
-        ).fetchone()
-    assert phase2_table is None
-
-    with _connect(backup) as connection:
         assert connection.execute(
-            "SELECT 1 FROM sqlite_master "
-            "WHERE type = 'table' AND name = 'web_app_projects'"
-        ).fetchone() == (1,)
+            "SELECT name FROM web_app_tenants WHERE tenant_id = 'tenant-rollback'"
+        ).fetchone() == ("Keep tenant",)
+
+    assert migrate_database(database) == 8
+    with _connect(database) as connection:
+        assert connection.execute(
+            "SELECT name FROM web_app_tenants WHERE tenant_id = 'tenant-rollback'"
+        ).fetchone() == ("Keep tenant",)
 
 
 def test_phase2_migration_rejects_newer_unknown_schema(tmp_path: Path) -> None:
