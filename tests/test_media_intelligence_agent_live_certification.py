@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
@@ -16,7 +17,9 @@ from services.media_intelligence_agent_live_certification import (
 )
 
 
-def test_live_certification_requires_exact_source_sha(tmp_path, monkeypatch) -> None:
+def test_live_certification_requires_exact_source_sha(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     monkeypatch.delenv("GITHUB_SHA", raising=False)
 
     with pytest.raises(
@@ -31,7 +34,7 @@ def test_live_certification_requires_exact_source_sha(tmp_path, monkeypatch) -> 
 
 
 def test_live_certification_fails_closed_without_provider_configuration(
-    tmp_path, monkeypatch
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("GITHUB_SHA", "a" * 40)
     monkeypatch.setattr(
@@ -102,7 +105,7 @@ def test_desktop_projection_must_show_every_expected_agent_verified() -> None:
         "ilaios.agent.media.story.v1",
         "ilaios.agent.intelligence.research.v1",
     }
-    projection = {
+    projection: dict[str, object] = {
         "agents": [
             {
                 "agent_id": "ilaios.agent.media.story.v1",
@@ -117,7 +120,7 @@ def test_desktop_projection_must_show_every_expected_agent_verified() -> None:
 
     _assert_projected_verified(projection, expected)
 
-    poisoned = {
+    poisoned: dict[str, object] = {
         "agents": [
             {
                 "agent_id": "ilaios.agent.media.story.v1",
