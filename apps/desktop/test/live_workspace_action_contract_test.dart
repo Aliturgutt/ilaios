@@ -1,9 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
+  Widget testApp({
+    required OperationalSnapshot snapshot,
+  }) {
+    return IlaiosLocaleScope(
+      locale: IlaiosLocale.english,
+      onChanged: (_) {},
+      child: IlaiosDesktopApp(
+        projection: const ControlPlaneProjection(
+          connected: true,
+          status: 'Connected to authoritative control plane',
+          goalCount: 1,
+          jobCount: 1,
+          lastEvent: 'workspace.updated',
+          schemaVersion: '1',
+        ),
+        operationalSnapshot: snapshot,
+        operationalStatus: 'Operational APIs connected',
+      ),
+    );
+  }
+
   Future<void> openWorkspace(WidgetTester tester) async {
     await tester.tap(find.byKey(const ValueKey('nav-liveWorkspace')));
     await tester.pumpAndSettle();
@@ -29,16 +51,8 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
       await tester.pumpWidget(
-        const IlaiosDesktopApp(
-          projection: ControlPlaneProjection(
-            connected: true,
-            status: 'Connected to authoritative control plane',
-            goalCount: 1,
-            jobCount: 1,
-            lastEvent: 'workspace.updated',
-            schemaVersion: '1',
-          ),
-          operationalSnapshot: OperationalSnapshot(
+        testApp(
+          snapshot: const OperationalSnapshot(
             runtimeRoutes: <Map<String, Object?>>[],
             schedulerState: <String, Object?>{
               'workers': <Object?>[
@@ -55,7 +69,6 @@ void main() {
             evidenceRecords: <Never>[],
             liveEvents: <Map<String, Object?>>[],
           ),
-          operationalStatus: 'Operational APIs connected',
         ),
       );
       await tester.pumpAndSettle();
@@ -86,6 +99,50 @@ void main() {
         additionalActions,
         'No authoritative Desktop API contract is available for additional workspace actions.',
       );
+    },
+  );
+
+  testWidgets(
+    'scheduler and governance session state outrank stale generic live events',
+    (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(1600, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+
+      await tester.pumpWidget(
+        testApp(
+          snapshot: const OperationalSnapshot(
+            runtimeRoutes: <Map<String, Object?>>[],
+            schedulerState: <String, Object?>{
+              'project_name': 'Authoritative Project',
+              'workspace_mode': 'governed',
+              'owner': 'principal-a',
+            },
+            grantsState: <String, Object?>{},
+            governanceState: <String, Object?>{
+              'sync_state': 'authoritative-sync',
+            },
+            evidenceRecords: <Never>[],
+            liveEvents: <Map<String, Object?>>[
+              <String, Object?>{
+                'event_type': 'unrelated.telemetry.updated',
+                'project_name': 'Poisoned Project',
+                'workspace_mode': 'poisoned',
+                'owner': 'attacker',
+                'sync_state': 'stale-sync',
+              },
+            ],
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await openWorkspace(tester);
+
+      expect(find.text('Authoritative Project'), findsWidgets);
+      expect(find.text('governed'), findsWidgets);
+      expect(find.text('authoritative-sync'), findsWidgets);
+      expect(find.text('Poisoned Project'), findsNothing);
+      expect(find.text('poisoned'), findsNothing);
+      expect(find.text('stale-sync'), findsNothing);
     },
   );
 }
