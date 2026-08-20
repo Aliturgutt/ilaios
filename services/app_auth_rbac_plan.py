@@ -12,7 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 from dataclasses import dataclass
-from typing import Literal
+from typing import Literal, TypeVar
 
 from services.app_architecture_plan import ApplicationArchitecturePlan
 from services.app_data_migration_plan import DataMigrationPlan
@@ -21,6 +21,7 @@ from services.app_product_spec import ProductSpec
 
 AuthProvider = Literal["oidc", "password", "google", "apple", "microsoft", "github"]
 ResourceScope = Literal["tenant", "project", "resource"]
+_T = TypeVar("_T", bound=str)
 
 
 class AppAuthRbacPlanError(ValueError):
@@ -237,7 +238,7 @@ def _role_payload(role: RoleRequirement) -> dict[str, object]:
     }
 
 
-def _unique(values: tuple[str, ...], field: str) -> tuple[str, ...]:
+def _unique(values: tuple[_T, ...], field: str) -> tuple[_T, ...]:
     for value in values:
         _token(value, field)
     if len(values) != len(set(values)):
