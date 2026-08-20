@@ -102,8 +102,8 @@ void main() {
       find.descendant(of: metrics, matching: find.text('Needs Attention')),
       findsOneWidget,
     );
-    // Ongoing Work remains 1; Needs Attention must be 0. If Home incorrectly
-    // falls back to all pending work, the metrics row renders two standalone 1s.
+    // Authoritative empty admissions means zero governed approvals while the
+    // pending work item remains visible as one ongoing work item.
     expect(
       find.descendant(of: metrics, matching: find.text('1')),
       findsOneWidget,
