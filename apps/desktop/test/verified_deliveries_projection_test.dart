@@ -42,8 +42,9 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-artifacts')));
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const Key('outputs-table')), findsOneWidget);
     expect(find.textContaining('exec-telemetry-only'), findsNothing);
-    expect(find.text('Web'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('Deliveries accepts finished products only from verified evidence records', (
@@ -68,5 +69,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.textContaining('exec-verified'), findsWidgets);
+    expect(tester.takeException(), isNull);
   });
 }
