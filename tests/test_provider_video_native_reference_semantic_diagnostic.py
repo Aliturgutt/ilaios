@@ -6,6 +6,8 @@ import sys
 from pathlib import Path
 
 from apps.desktop.e2e.provider_video_native_reference_semantic_diagnostic_e2e import (
+    _select_failure_review,
+    _semantic_review_stage,
     semantic_review_evidence,
 )
 from src.video_automation.perceptual_review import (
@@ -15,9 +17,15 @@ from src.video_automation.perceptual_review import (
 from src.video_automation.video_skills import QaDomain
 
 
-def test_semantic_review_evidence_preserves_fail_closed_rejection_details() -> None:
-    review = PerceptualReviewSubmission(
-        review_id="native-reference-final",
+def _review(
+    *,
+    review_id: str,
+    score: float,
+    threshold: float = 0.78,
+    repair_target: str | None = None,
+) -> PerceptualReviewSubmission:
+    return PerceptualReviewSubmission(
+        review_id=review_id,
         domain=QaDomain.VISUAL,
         artifact_sha256="a" * 64,
         reviewer_id="openrouter-semantic-review:test-model",
@@ -26,10 +34,18 @@ def test_semantic_review_evidence_preserves_fail_closed_rejection_details() -> N
         criteria_id="ilaios.video.semantic-prompt-alignment",
         criteria_version="1.0.0",
         criteria_sha256="b" * 64,
-        score=0.62,
-        threshold=0.78,
+        score=score,
+        threshold=threshold,
         evidence_references=("frame-sha256:" + "c" * 64,),
         provenance_reference="openrouter-review:model=test-model:artifact=" + "a" * 64,
+        repair_target=repair_target,
+    )
+
+
+def test_semantic_review_evidence_preserves_fail_closed_rejection_details() -> None:
+    review = _review(
+        review_id="native-reference-final",
+        score=0.62,
         repair_target="preserve-product-identity",
     )
 
@@ -47,6 +63,36 @@ def test_semantic_review_evidence_preserves_fail_closed_rejection_details() -> N
         "criteria_sha256": "b" * 64,
         "provenance_reference": "openrouter-review:model=test-model:artifact=" + "a" * 64,
     }
+
+
+def test_failure_review_selection_captures_generated_shot_rejection() -> None:
+    accepted = _review(review_id="request-clip-001", score=0.91)
+    rejected = _review(
+        review_id="request-clip-002",
+        score=0.54,
+        repair_target="match-admitted-product-reference",
+    )
+
+    selected = _select_failure_review([accepted, rejected])
+
+    assert selected is rejected
+    assert _semantic_review_stage(selected) == "generated-shot"
+    assert semantic_review_evidence(selected)["repair_target"] == (
+        "match-admitted-product-reference"
+    )
+
+
+def test_failure_review_selection_preserves_final_stage() -> None:
+    final = _review(
+        review_id="request-final",
+        score=0.66,
+        repair_target="preserve-product-identity",
+    )
+
+    selected = _select_failure_review([final])
+
+    assert selected is final
+    assert _semantic_review_stage(selected) == "final"
 
 
 def test_semantic_diagnostic_direct_script_bootstraps_repo_imports(tmp_path: Path) -> None:
