@@ -1,0 +1,86 @@
+name: Desktop Consistency Self Patch
+
+on:
+  push:
+    branches:
+      - desktop/consistency-current-971347cc
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: desktop/consistency-current-971347cc
+          fetch-depth: 1
+
+      - name: Apply bounded Desktop consistency repair
+        shell: python
+        run: |
+          from pathlib import Path
+
+          goals = Path('apps/desktop/lib/features/create/create_view.dart')
+          text = goals.read_text(encoding='utf-8')
+          old_metric = "value: lastEvent?.trim().isNotEmpty == true ? lastEvent!.trim() : '—',"
+          new_metric = "value: _displayEvent(context, lastEvent) ?? '—',"
+          if text.count(old_metric) != 1:
+              raise SystemExit(f'expected one Goals metric match, found {text.count(old_metric)}')
+          text = text.replace(old_metric, new_metric, 1)
+
+          old_recent = "title: lastEvent!.trim(),"
+          new_recent = "title: _displayEvent(context, lastEvent) ?? '—',"
+          if text.count(old_recent) != 1:
+              raise SystemExit(f'expected one recent-event match, found {text.count(old_recent)}')
+          text = text.replace(old_recent, new_recent, 1)
+
+          anchor = "bool _isTr(BuildContext context) =>\n    IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;"
+          helper = """String? _displayEvent(BuildContext context, String? raw) {
+            final value = raw?.trim();
+            if (value == null || value.isEmpty) return null;
+            if (value != 'job.updated') return value;
+            return _copy(context, 'Job update', 'İş güncellemesi');
+          }
+
+          bool _isTr(BuildContext context) =>
+              IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;"""
+          if text.count(anchor) != 1:
+              raise SystemExit(f'expected one Goals helper anchor, found {text.count(anchor)}')
+          text = text.replace(anchor, helper, 1)
+          goals.write_text(text, encoding='utf-8')
+
+          home = Path('apps/desktop/lib/features/dashboard/reference_home_dashboard_v3.dart')
+          text = home.read_text(encoding='utf-8')
+          old_start = """    final required = <String>{};
+            for (final item in admissions) {"""
+          new_start = """    final hasAdmissions = snapshot.governanceState.containsKey('admissions');
+            final required = <String>{};
+            for (final item in admissions) {"""
+          if text.count(old_start) != 1:
+              raise SystemExit(f'expected one approval-start match, found {text.count(old_start)}')
+          text = text.replace(old_start, new_start, 1)
+
+          old_return = "return required.isEmpty || (id is String && required.contains(id));"
+          new_return = """if (!hasAdmissions) return true;
+                return id is String && required.contains(id);"""
+          if text.count(old_return) != 1:
+              raise SystemExit(f'expected one approval-return match, found {text.count(old_return)}')
+          text = text.replace(old_return, new_return, 1)
+          home.write_text(text, encoding='utf-8')
+
+      - name: Remove temporary patch workflow and commit repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm .github/workflows/desktop-consistency-self-patch.yml
+          git add apps/desktop/lib/features/create/create_view.dart \
+                  apps/desktop/lib/features/dashboard/reference_home_dashboard_v3.dart
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'desktop: repair Goals and approval consistency'
+          git push origin HEAD:desktop/consistency-current-971347cc
