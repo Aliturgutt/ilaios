@@ -8,11 +8,11 @@ from services.app_architecture_plan import ApplicationArchitecturePlan
 from services.app_product_spec import AppPlatform, ProductSpec
 from services.app_state_machine_plan import AppStateMachinePlan
 from services.app_ux_ia_plan import (
-    AppUxIaPlan,
     AppUxIaPlanError,
     NavigationItem,
     NavigationMode,
     ScreenRequirement,
+    UxIaPlan,
     build_ux_ia_plan,
 )
 
@@ -138,7 +138,7 @@ def _build(
     navigation_items: tuple[NavigationItem, ...] | None = None,
     search_entry_screen_id: str | None = "search",
     settings_screen_id: str | None = "settings",
-) -> AppUxIaPlan:
+) -> UxIaPlan:
     return build_ux_ia_plan(
         spec=spec or _spec(),
         architecture=architecture or _architecture(),
