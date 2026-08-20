@@ -149,12 +149,10 @@ class DeliveryArchiveStateException implements Exception {
 class DeliveryArchiveStore {
   DeliveryArchiveStore._({
     required String scopeMaterial,
-    required Map<String, String> environment,
-    required Directory systemTemp,
+    required this._environment,
+    required this._systemTemp,
     Directory? stateRoot,
   })  : _scopeDigest = sha256.convert(utf8.encode(scopeMaterial)).toString(),
-        _environment = environment,
-        _systemTemp = systemTemp,
         _stateRootOverride = stateRoot;
 
   factory DeliveryArchiveStore.forSession(
@@ -173,8 +171,8 @@ class DeliveryArchiveStore {
     }
     return DeliveryArchiveStore._(
       scopeMaterial: '$tenant\u0000$principal\u0000$provider',
-      environment: environment ?? Platform.environment,
-      systemTemp: systemTemp ?? Directory.systemTemp,
+      _environment: environment ?? Platform.environment,
+      _systemTemp: systemTemp ?? Directory.systemTemp,
       stateRoot: stateRoot,
     );
   }
