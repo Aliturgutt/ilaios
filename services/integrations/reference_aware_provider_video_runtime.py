@@ -46,6 +46,13 @@ from .video_product_intelligence import (
 from .video_runtime import VideoRuntimeError
 
 _REFERENCE_ANALYZER_MODEL_ID = "google/gemma-3-27b-it:free"
+_REFERENCE_METADATA_FALLBACK_ANALYZER_ID = "native-reference-metadata-fallback:v1"
+_TRANSIENT_REFERENCE_ANALYSIS_ERRORS = frozenset(
+    {
+        "reference image analysis failed with HTTP 429",
+        "reference image analysis failed with HTTP 503",
+    }
+)
 
 
 class ReferenceAwareProviderBackedDesktopVideoRuntime(
@@ -170,7 +177,11 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
 
         outcome["reference_asset_count"] = len(brief.reference_sha256s)
         outcome["reference_asset_sha256s"] = list(brief.reference_sha256s)
-        outcome["reference_conditioning_mode"] = "private-multimodal-brief"
+        outcome["reference_conditioning_mode"] = (
+            "native-reference-metadata-fallback"
+            if brief.analyzer_id == _REFERENCE_METADATA_FALLBACK_ANALYZER_ID
+            else "private-multimodal-brief"
+        )
         outcome["reference_analyzer_id"] = brief.analyzer_id
         outcome["reference_raw_retention"] = raw_retention
         return outcome
@@ -208,7 +219,9 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
         try:
             brief = self._reference_analyzer.analyze(references)
         except ReferenceImageAnalysisError as error:
-            raise VideoRuntimeError("reference image conditioning failed") from error
+            if str(error) not in _TRANSIENT_REFERENCE_ANALYSIS_ERRORS:
+                raise VideoRuntimeError("reference image conditioning failed") from error
+            brief = _native_reference_metadata_fallback(references)
         if brief.reference_sha256s != digests:
             raise VideoRuntimeError(
                 "reference analyzer returned a digest set that does not match bound images"
@@ -227,6 +240,30 @@ class ReferenceAwareProviderBackedDesktopVideoRuntime(
             frozen.reference_sha256s,
             frozen.analyzer_id,
         )
+
+
+def _native_reference_metadata_fallback(
+    references: tuple[ReferenceImageInput, ...],
+) -> ReferenceVisualBrief:
+    """Keep native provider references usable when only the advisory analyzer is rate-limited.
+
+    This fallback never invents visual facts and never substitutes for the actual images.
+    The managed native-reference session still supplies the admitted reference URLs to the
+    provider, and downstream semantic/reference QA remains unchanged and fail-closed.
+    """
+    digests = tuple(reference.sha256_hex for reference in references)
+    text = (
+        "The admitted reference images are bound to this request and are supplied directly "
+        "to the native reference-capable video provider. The advisory visual analyzer is "
+        "temporarily unavailable, so no inferred visual description is provided here. "
+        "Use the native reference images themselves as the source of truth; do not invent "
+        "identity, logos, text, geometry, colors, materials, or other appearance details."
+    )
+    return ReferenceVisualBrief(
+        text=text,
+        reference_sha256s=digests,
+        analyzer_id=_REFERENCE_METADATA_FALLBACK_ANALYZER_ID,
+    )
 
 
 def _conditioned_objective(
