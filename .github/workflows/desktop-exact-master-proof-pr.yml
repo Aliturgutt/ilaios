@@ -1,0 +1,71 @@
+name: Desktop Exact Master Proof PR
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/desktop-exact-master-proof-pr.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-exact-master-proof-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  windows-exact-master-proof:
+    runs-on: windows-latest
+    timeout-minutes: 55
+    env:
+      EXPECTED_MASTER_SHA: 3c9ab823d9c7f119c22a87942b3c8a183350a50a
+
+    steps:
+      - name: Checkout exact master source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ env.EXPECTED_MASTER_SHA }}
+          persist-credentials: false
+
+      - name: Prove exact source SHA
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $resolved = (git rev-parse HEAD).Trim()
+          if ($resolved -ne $env:EXPECTED_MASTER_SHA) {
+            throw "Expected exact master $env:EXPECTED_MASTER_SHA but checked out $resolved"
+          }
+          Write-Host "EXACT_MASTER_SHA=$resolved"
+
+      - name: Install pinned Flutter SDK
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $flutter = Join-Path $env:RUNNER_TEMP 'flutter'
+          git init $flutter
+          git -C $flutter remote add origin https://github.com/flutter/flutter.git
+          git -C $flutter fetch --depth 1 origin refs/tags/3.44.9:refs/tags/3.44.9
+          git -C $flutter checkout --detach 3.44.9
+          $resolved = (git -C $flutter rev-parse HEAD).Trim()
+          if ($resolved -ne '6b182d2c7585eba26d4edce0f97630effd256c33') {
+            throw "Flutter 3.44.9 resolved to unexpected revision: $resolved"
+          }
+          (Join-Path $flutter 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify and package exact-master Desktop runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./tools/desktop/verify_and_package_combined.ps1 -SourceSha $env:EXPECTED_MASTER_SHA -RunId '${{ github.run_id }}'
+
+      - name: Upload exact-master ZIP and SHA256
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-exact-master-proof-${{ env.EXPECTED_MASTER_SHA }}-${{ github.run_id }}
+          path: |
+            artifacts/ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip
+            artifacts/ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
