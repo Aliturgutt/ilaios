@@ -10,6 +10,7 @@ import '../control_plane/evidence_record.dart';
 import '../control_plane/local_runtime.dart';
 import '../control_plane/operational_snapshot.dart';
 import '../control_plane/projection.dart';
+import '../features/deliveries/delivery_local_storage.dart';
 import '../identity/identity_client.dart';
 import 'desktop_app.dart';
 import 'ilaios_locale.dart';
@@ -40,6 +41,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
   List<IdentityProviderOption> _identityProviders =
       const <IdentityProviderOption>[];
   DesktopUserSession? _userSession;
+  final DeliveryLocalStorage _deliveryStorage = DeliveryLocalStorage();
   int _lastLiveSequence = 0;
   bool _refreshing = false;
 
@@ -47,6 +49,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
   void initState() {
     super.initState();
     unawaited(_loadLocale());
+    unawaited(_deliveryStorage.cleanupDisposable());
     final config = widget.config;
     if (config == null) {
       _operationalStatus =
@@ -290,22 +293,13 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       throw const ControlPlaneClientException('Control plane is unavailable');
     }
     final artifact = await client.fetchVerifiedArtifact(record.artifactDigest);
-    final userProfile = Platform.environment['USERPROFILE']?.trim();
-    final localAppData = Platform.environment['LOCALAPPDATA']?.trim();
-    final rootPath = userProfile?.isNotEmpty == true
-        ? '$userProfile\\Downloads\\ILAIOS'
-        : (localAppData?.isNotEmpty == true
-            ? '$localAppData\\ILAIOS\\Deliveries'
-            : '${Directory.systemTemp.path}\\ILAIOS\\Deliveries');
-    final root = Directory(rootPath);
-    await root.create(recursive: true);
-    final safeExecution =
-        record.executionId.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
-    final extension =
-        record.action.toLowerCase().contains('video') ? '.mp4' : '.bin';
-    final filename =
-        'ILAIOS-$safeExecution-${artifact.digest.substring(0, 16)}$extension';
-    final output = File('${root.path}\\$filename');
+    if (artifact.digest != record.artifactDigest) {
+      throw const ControlPlaneClientException(
+        'Verified artifact digest does not match the evidence record',
+      );
+    }
+    final output = _deliveryStorage.resolveArtifactFile(record);
+    await output.parent.create(recursive: true);
     await output.writeAsBytes(artifact.bytes, flush: true);
     if (await output.length() != artifact.size) {
       throw const ControlPlaneClientException(
