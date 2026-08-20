@@ -54,8 +54,11 @@ GovernedLifecycleState resolveGovernedLifecycle(
   }
 
   final eventState = _latestMatchingEventState(snapshot.liveEvents, normalizedRequest);
-  final schedulerState = _matchingSchedulerState(snapshot.schedulerState, normalizedRequest);
-  final state = eventState ?? schedulerState ?? admittedStatus?.trim();
+  final scheduler = _matchingScheduler(snapshot.schedulerState, normalizedRequest);
+  final referenced = governance != null ||
+      _hasAdmission(snapshot.governanceState, normalizedRequest) ||
+      scheduler.referenced;
+  final state = eventState ?? scheduler.state ?? (referenced ? admittedStatus?.trim() : null);
   return _mapState(state);
 }
 
@@ -71,6 +74,15 @@ String? _matchingGovernance(Map<String, Object?> state, String requestId) {
     }
   }
   return null;
+}
+
+bool _hasAdmission(Map<String, Object?> state, String requestId) {
+  final admissions = state['admissions'];
+  if (admissions is! List<Object?>) return false;
+  for (final item in admissions.reversed) {
+    if (item is Map && item['request_id'] == requestId) return true;
+  }
+  return false;
 }
 
 bool _requiresPendingApproval(
@@ -105,7 +117,10 @@ String? _latestMatchingEventState(
   return null;
 }
 
-String? _matchingSchedulerState(Map<String, Object?> state, String requestId) {
+({String? state, bool referenced}) _matchingScheduler(
+  Map<String, Object?> state,
+  String requestId,
+) {
   final requests = state['requests'] ?? state['work'] ?? state['executions'];
   if (requests is List<Object?>) {
     for (final item in requests.reversed) {
@@ -114,18 +129,24 @@ String? _matchingSchedulerState(Map<String, Object?> state, String requestId) {
       if (itemRequest != requestId) continue;
       for (final key in const <String>['execution_status', 'status', 'state']) {
         final value = item[key];
-        if (value is String && value.trim().isNotEmpty) return value.trim();
+        if (value is String && value.trim().isNotEmpty) {
+          return (state: value.trim(), referenced: true);
+        }
       }
+      return (state: null, referenced: true);
     }
   }
   final directRequest = state['request_id'] ?? state['execution_id'];
   if (directRequest == requestId) {
     for (final key in const <String>['execution_status', 'status', 'state']) {
       final value = state[key];
-      if (value is String && value.trim().isNotEmpty) return value.trim();
+      if (value is String && value.trim().isNotEmpty) {
+        return (state: value.trim(), referenced: true);
+      }
     }
+    return (state: null, referenced: true);
   }
-  return null;
+  return (state: null, referenced: false);
 }
 
 GovernedLifecycleState _mapState(String? raw) {
