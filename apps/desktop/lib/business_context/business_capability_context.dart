@@ -11,16 +11,16 @@ enum BusinessCapabilityFamily {
   final String contextCode;
 }
 
-/// Adds a bounded, opaque business-context marker without naming a provider,
-/// worker, route, approval, tool, tenant or execution authority.
+/// Bounded display/request metadata only.
 ///
-/// The canonical backend still classifies and admits the ordinary user
-/// objective. The opaque code exists only so the governed request can retain
-/// optional business context without teaching the Desktop how to route work.
-String withBusinessCapabilityContext(
-  String objective,
-  BusinessCapabilityFamily? family,
-) {
-  if (family == null) return objective;
-  return '$objective\n\n[ILAIOS_BUSINESS_CONTEXT:${family.contextCode}]';
+/// A business-capability family may help preserve the user's operating context,
+/// but it is never embedded into the free-form objective and never selects a
+/// provider, worker, route, tenant, approval, tool, validation or execution
+/// authority. Those decisions remain exclusively backend-governed.
+class BusinessCapabilityContext {
+  const BusinessCapabilityContext(this.family);
+
+  final BusinessCapabilityFamily family;
+
+  String get contextCode => family.contextCode;
 }
