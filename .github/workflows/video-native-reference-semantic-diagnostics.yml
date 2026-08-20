@@ -1,0 +1,132 @@
+name: Video Native Reference Semantic Diagnostics
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: video-native-reference-semantic-diagnostics-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  native-reference-semantic-diagnostic:
+    name: Diagnose real native-reference final semantic rejection
+    runs-on: ubuntu-latest
+    environment: Production
+    timeout-minutes: 30
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      ILAIOS_VIDEO_PROVIDER_MODE: managed-bounded
+      ILAIOS_VIDEO_MANAGED_MODEL_ID: bytedance/seedance-2.0-fast
+      ILAIOS_VIDEO_MANAGED_MAX_TOTAL_USD: "1.00"
+      ILAIOS_VIDEO_QA_MODEL_ID: openrouter/free
+      ILAIOS_VIDEO_E2E_RESOLUTION: 480p
+      ILAIOS_REFERENCE_RELAY_UPLOAD_URL: ${{ secrets.ILAIOS_REFERENCE_RELAY_UPLOAD_URL }}
+      ILAIOS_REFERENCE_RELAY_UPLOAD_TOKEN: ${{ secrets.ILAIOS_REFERENCE_RELAY_UPLOAD_TOKEN }}
+      VIDEO_DESKTOP_NATIVE_REFERENCE_PROOF_DIR: artifacts/video-desktop-native-reference-proof
+
+    steps:
+      - name: Checkout exact source revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Install native-reference video runtime dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v ffmpeg >/dev/null 2>&1 && command -v ffprobe >/dev/null 2>&1; then
+            ffmpeg -version | head -1
+            ffprobe -version | head -1
+            exit 0
+          fi
+          export DEBIAN_FRONTEND=noninteractive
+          sudo timeout 180 apt-get \
+            -o Acquire::Retries=3 \
+            -o Acquire::ForceIPv4=true \
+            -o Acquire::http::Timeout=15 \
+            -o Acquire::https::Timeout=15 \
+            update
+          sudo timeout 600 apt-get \
+            -o Acquire::Retries=3 \
+            -o Acquire::ForceIPv4=true \
+            -o Acquire::http::Timeout=15 \
+            -o Acquire::https::Timeout=15 \
+            install --yes --no-install-recommends ffmpeg
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+
+      - name: Verify diagnostic safety boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$OPENROUTER_API_KEY"
+          test "$ILAIOS_VIDEO_PROVIDER_MODE" = managed-bounded
+          test "$ILAIOS_VIDEO_MANAGED_MAX_TOTAL_USD" = "1.00"
+          test "$ILAIOS_VIDEO_MANAGED_MODEL_ID" = bytedance/seedance-2.0-fast
+          test -n "$ILAIOS_REFERENCE_RELAY_UPLOAD_URL"
+          test -n "$ILAIOS_REFERENCE_RELAY_UPLOAD_TOKEN"
+          case "$ILAIOS_REFERENCE_RELAY_UPLOAD_URL" in
+            https://*) ;;
+            *) echo 'native reference relay must be HTTPS' >&2; exit 1 ;;
+          esac
+
+      - name: Run bounded semantic diagnostic E2E
+        id: diagnostic
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python apps/desktop/e2e/provider_video_native_reference_semantic_diagnostic_e2e.py
+
+      - name: Publish sanitized semantic diagnostic summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "## Video Factory — Native Reference Semantic Diagnostic" >> "$GITHUB_STEP_SUMMARY"
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, os
+          from pathlib import Path
+          root=Path(os.environ['VIDEO_DESKTOP_NATIVE_REFERENCE_PROOF_DIR'])
+          failure=root/'failure.json'
+          receipt=root/'receipt.json'
+          if failure.is_file():
+              document=json.loads(failure.read_text())
+              semantic=document.get('semantic_review') or {}
+              print('- Status: `FAIL`')
+              print(f"- Error: `{document.get('error')}`")
+              print(f"- Final semantic score: `{semantic.get('score')}`")
+              print(f"- Final semantic threshold: `{semantic.get('threshold')}`")
+              print(f"- Repair target: `{semantic.get('repair_target')}`")
+              print(f"- Reviewer: `{semantic.get('reviewer_id')}`")
+              print(f"- Review ID: `{semantic.get('review_id')}`")
+          elif receipt.is_file():
+              document=json.loads(receipt.read_text())
+              print('- Status: `PASS`')
+              print(f"- Artifact SHA-256: `{document.get('artifact_sha256')}`")
+              print(f"- Provider cost microusd: `{document.get('provider_cost_microusd')}`")
+          else:
+              print('- Status: `NO_EVIDENCE`')
+          PY
+
+      - name: Upload immutable semantic diagnostic proof
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-native-reference-semantic-diagnostic-${{ github.sha }}-${{ github.run_id }}
+          path: artifacts/video-desktop-native-reference-proof
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Preserve fail-closed diagnostic outcome
+        if: ${{ always() }}
+        shell: bash
+        env:
+          DIAGNOSTIC_STEP_OUTCOME: ${{ steps.diagnostic.outcome }}
+        run: |
+          set -euo pipefail
+          test "$DIAGNOSTIC_STEP_OUTCOME" = success
