@@ -95,8 +95,10 @@ deliveries = replace_once(
     "                          style: const TextStyle(fontSize: 11.0, fontWeight: FontWeight.w700),",
     "outputs-row-title",
 )
-deliveries = replace_once(
+deliveries = replace_once_in_region(
     deliveries,
+    "class _OutputRow extends StatelessWidget {",
+    "class _UnavailableCell extends StatelessWidget {",
     "                          style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 7.5),",
     "                          style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 8.7),",
     "outputs-row-subtitle",
@@ -117,8 +119,8 @@ deliveries = replace_once(
 # The 1366x768 Desktop content rail leaves about 791px for Outputs filters and
 # about 773px for the toolbar. Keep every control visible and preserve its font
 # size/semantics by compacting only fixed horizontal geometry inside Outputs.
-# Scope the generic padding literal to _Toolbar so visually identical padding
-# in other Outputs widgets cannot be modified by accident.
+# Scope generic literals to their owning widgets so unrelated matching values
+# cannot make the fail-closed normalizer ambiguous as the Outputs lifecycle grows.
 deliveries = replace_once_in_region(
     deliveries,
     "class _Toolbar extends StatelessWidget {",
@@ -139,10 +141,12 @@ deliveries = replace_once(
     "              width: 90,",
     "outputs-type-filter-width",
 )
-deliveries = replace_once(
+deliveries = replace_once_in_region(
     deliveries,
-    "_DisabledFilter(label: _copy(context, 'Tarih Aralığı', 'Date Range'), width: 118),",
-    "_DisabledFilter(label: _copy(context, 'Tarih Aralığı', 'Date Range'), width: 100),",
+    "class _Filters extends StatelessWidget {",
+    "class _FilterDropdown extends StatelessWidget {",
+    "              width: 118,",
+    "              width: 100,",
     "outputs-date-filter-width",
 )
 (root / deliveries_rel).write_text(deliveries, encoding="utf-8", newline="\n")
