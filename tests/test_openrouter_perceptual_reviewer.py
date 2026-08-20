@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from email.message import Message
+from io import BytesIO
 from pathlib import Path
+from urllib.error import HTTPError
 
 import pytest
 
@@ -10,6 +13,7 @@ from src.video_automation.openrouter_perceptual_reviewer import (
     OpenRouterPerceptualReviewError,
     OpenRouterPerceptualReviewer,
     OpenRouterReviewResponse,
+    UrllibOpenRouterReviewTransport,
 )
 from src.video_automation.perceptual_review import PerceptualReviewSubmission
 
@@ -32,6 +36,28 @@ class _QueuedTransport:
         if not self._responses:
             raise AssertionError("unexpected OpenRouter review request")
         return self._responses.pop(0)
+
+
+class _UrlopenResponse:
+    status = 200
+
+    def __init__(self, payload: bytes) -> None:
+        self._payload = payload
+
+    def __enter__(self) -> _UrlopenResponse:
+        return self
+
+    def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
+        del exc_type, exc, traceback
+
+    def read(self) -> bytes:
+        return self._payload
+
+
+def _retry_after_headers(value: str) -> Message:
+    headers = Message()
+    headers["Retry-After"] = value
+    return headers
 
 
 def _success_payload(
@@ -187,3 +213,104 @@ def test_perceptual_reviewer_fallback_remains_fail_closed_on_extra_fields(
         _review(transport, monkeypatch)
 
     assert len(transport.requests) == 2
+
+
+def test_transport_retries_429_once_when_retry_after_is_bounded(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = 0
+    sleeps: list[float] = []
+
+    def fake_urlopen(request: object, *, timeout: float) -> _UrlopenResponse:
+        nonlocal calls
+        del request, timeout
+        calls += 1
+        if calls == 1:
+            raise HTTPError(
+                "https://openrouter.ai/api/v1/chat/completions",
+                429,
+                "rate limited",
+                _retry_after_headers("0"),
+                BytesIO(b'{"error":{"code":429,"message":"rate limited"}}'),
+            )
+        return _UrlopenResponse(b'{"choices":[]}')
+
+    monkeypatch.setattr(reviewer_module, "urlopen", fake_urlopen)
+    monkeypatch.setattr(reviewer_module, "sleep", sleeps.append)
+
+    response = UrllibOpenRouterReviewTransport().post_json(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": "Bearer secret"},
+        body={"model": "openrouter/free"},
+        timeout_seconds=5.0,
+    )
+
+    assert response.status_code == 200
+    assert calls == 2
+    assert sleeps == [0.0]
+
+
+def test_transport_persistent_429_retries_only_once_then_fails_closed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = 0
+    sleeps: list[float] = []
+
+    def fake_urlopen(request: object, *, timeout: float) -> _UrlopenResponse:
+        nonlocal calls
+        del request, timeout
+        calls += 1
+        raise HTTPError(
+            "https://openrouter.ai/api/v1/chat/completions",
+            429,
+            "rate limited",
+            _retry_after_headers("0"),
+            BytesIO(b'{"error":{"code":429,"message":"rate limited"}}'),
+        )
+
+    monkeypatch.setattr(reviewer_module, "urlopen", fake_urlopen)
+    monkeypatch.setattr(reviewer_module, "sleep", sleeps.append)
+
+    response = UrllibOpenRouterReviewTransport().post_json(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": "Bearer secret"},
+        body={"model": "openrouter/free"},
+        timeout_seconds=5.0,
+    )
+
+    assert response.status_code == 429
+    assert calls == 2
+    assert sleeps == [0.0]
+
+
+def test_transport_429_without_bounded_retry_after_fails_closed_without_retry(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    calls = 0
+    sleeps: list[float] = []
+
+    def fake_urlopen(request: object, *, timeout: float) -> _UrlopenResponse:
+        nonlocal calls
+        del request, timeout
+        calls += 1
+        raise HTTPError(
+            "https://openrouter.ai/api/v1/chat/completions",
+            429,
+            "rate limited",
+            _retry_after_headers("120"),
+            BytesIO(b'{"error":{"code":429,"message":"rate limited"}}'),
+        )
+
+    monkeypatch.setattr(reviewer_module, "urlopen", fake_urlopen)
+    monkeypatch.setattr(reviewer_module, "sleep", sleeps.append)
+
+    response = UrllibOpenRouterReviewTransport().post_json(
+        "https://openrouter.ai/api/v1/chat/completions",
+        headers={"Authorization": "Bearer secret"},
+        body={"model": "openrouter/free"},
+        timeout_seconds=5.0,
+    )
+
+    assert response.status_code == 429
+    assert calls == 1
+    assert sleeps == []
