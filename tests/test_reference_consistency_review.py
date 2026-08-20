@@ -47,6 +47,26 @@ class _Transport:
         )
 
 
+class _SequenceTransport:
+    def __init__(self, responses: list[OpenRouterReviewResponse]) -> None:
+        self.responses = responses
+        self.calls: list[Mapping[str, object]] = []
+
+    def post_json(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        body: Mapping[str, object],
+        timeout_seconds: float,
+    ) -> OpenRouterReviewResponse:
+        assert url.endswith("/chat/completions")
+        assert headers["Authorization"] == "Bearer test-key"
+        assert timeout_seconds > 0
+        self.calls.append(body)
+        return self.responses.pop(0)
+
+
 def _reference(role: str, marker: bytes) -> ReferenceImageInput:
     return ReferenceImageInput(
         content=marker,
@@ -63,6 +83,32 @@ def _patch_media(monkeypatch: pytest.MonkeyPatch) -> None:
         "_sample_video_frames",
         lambda path, count: tuple(f"frame-{index}".encode() for index in range(count)),
     )
+
+
+def _passing_product_document() -> dict[str, object]:
+    return {
+        "score": 0.91,
+        "subject_score": None,
+        "product_score": 0.90,
+        "logo_score": None,
+        "detail": "Visible product geometry remains consistent.",
+        "repair_target": "preserve product geometry",
+    }
+
+
+def _response(status_code: int, document: Mapping[str, object] | None = None) -> OpenRouterReviewResponse:
+    payload: dict[str, object] = {}
+    if document is not None:
+        payload = {
+            "choices": [
+                {
+                    "message": {
+                        "content": json.dumps(document, separators=(",", ":"))
+                    }
+                }
+            ]
+        }
+    return OpenRouterReviewResponse(status_code, payload)
 
 
 def test_reference_consistency_requires_strong_threshold() -> None:
@@ -210,3 +256,58 @@ def test_missing_applicable_critical_score_fails_closed(
             video_path=video,
             references=(_reference("product", b"product-reference"),),
         )
+
+
+def test_capability_404_retries_same_free_multimodal_review_without_response_format(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_media(monkeypatch)
+    transport = _SequenceTransport(
+        [
+            _response(404),
+            _response(200, _passing_product_document()),
+        ]
+    )
+    reviewer = OpenRouterReferenceConsistencyReviewer(
+        "test-key",
+        "openrouter/free",
+        transport=transport,
+    )
+    video = tmp_path / "result.mp4"
+    video.write_bytes(b"video")
+
+    result = reviewer.review(
+        video_path=video,
+        references=(_reference("product", b"product-reference"),),
+    )
+
+    assert result.passed
+    assert len(transport.calls) == 2
+    first, second = transport.calls
+    assert first["model"] == second["model"] == "openrouter/free"
+    assert first["messages"] == second["messages"]
+    assert first["provider"] == second["provider"] == {"require_parameters": True}
+    assert "response_format" in first
+    assert "response_format" not in second
+
+
+def test_persistent_capability_404_still_fails_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _patch_media(monkeypatch)
+    transport = _SequenceTransport([_response(404), _response(404)])
+    reviewer = OpenRouterReferenceConsistencyReviewer(
+        "test-key",
+        "openrouter/free",
+        transport=transport,
+    )
+    video = tmp_path / "result.mp4"
+    video.write_bytes(b"video")
+
+    with pytest.raises(ReferenceConsistencyReviewError, match="failed with HTTP 404"):
+        reviewer.review(
+            video_path=video,
+            references=(_reference("product", b"product-reference"),),
+        )
+
+    assert len(transport.calls) == 2
