@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from email.message import Message
 from io import BytesIO
 from pathlib import Path
 from urllib.error import HTTPError
@@ -51,6 +52,12 @@ class _UrlopenResponse:
 
     def read(self) -> bytes:
         return self._payload
+
+
+def _retry_after_headers(value: str) -> Message:
+    headers = Message()
+    headers["Retry-After"] = value
+    return headers
 
 
 def _success_payload(
@@ -223,7 +230,7 @@ def test_transport_retries_429_once_when_retry_after_is_bounded(
                 "https://openrouter.ai/api/v1/chat/completions",
                 429,
                 "rate limited",
-                {"Retry-After": "0"},
+                _retry_after_headers("0"),
                 BytesIO(b'{"error":{"code":429,"message":"rate limited"}}'),
             )
         return _UrlopenResponse(b'{"choices":[]}')
@@ -257,7 +264,7 @@ def test_transport_persistent_429_retries_only_once_then_fails_closed(
             "https://openrouter.ai/api/v1/chat/completions",
             429,
             "rate limited",
-            {"Retry-After": "0"},
+            _retry_after_headers("0"),
             BytesIO(b'{"error":{"code":429,"message":"rate limited"}}'),
         )
 
@@ -290,7 +297,7 @@ def test_transport_429_without_bounded_retry_after_fails_closed_without_retry(
             "https://openrouter.ai/api/v1/chat/completions",
             429,
             "rate limited",
-            {"Retry-After": "120"},
+            _retry_after_headers("120"),
             BytesIO(b'{"error":{"code":429,"message":"rate limited"}}'),
         )
 
