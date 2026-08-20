@@ -5,7 +5,9 @@ main h1 {
   letter-spacing: -.045em !important;
 }
 
-main section {
+/* Class-bearing sections carry !important rules in earlier V2 layers. Match that
+   class specificity here so the final certification layer owns the live rhythm. */
+main section[class] {
   padding-top: 48px !important;
   padding-bottom: 48px !important;
 }
@@ -23,7 +25,21 @@ main .canonical-dual > div > span,
 main .process-ledger > article > span,
 main .verification-list span,
 main .use-step-grid article > span,
-main .availability-chip.is-preview {
+main .availability-chip.is-preview,
+main .platform-plane-list article > span,
+main .runtime-line > div span,
+main .detail-directory > a span,
+main .status-note > span,
+main .factory-truth-note > span,
+main .capability-matrix-row > span,
+main .factory-link-cloud a span,
+main .trust-gate > div span,
+main .security-process article > span,
+main .principle-directory article > span,
+main .audience-outcome-list article > span,
+main .audience-process article > span,
+main .about-principles article > span,
+main .contact-directory article > span {
   color: var(--brand-blue, #146BFF) !important;
 }
 
@@ -32,7 +48,7 @@ main .availability-chip.is-preview {
     font-size: clamp(2.15rem, 4.6vw, 2.375rem) !important;
   }
 
-  main section {
+  main section[class] {
     padding-top: 32px !important;
     padding-bottom: 32px !important;
   }
