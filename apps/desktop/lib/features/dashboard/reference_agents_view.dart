@@ -1028,27 +1028,91 @@ class _CanonicalAgentCandidate {
   final bool authorityMatchesCanonical;
 }
 
+const _agentTelemetryKeys = <String>[
+  'agent_status',
+  'worker_status',
+  'status',
+  'state',
+  'lease_state',
+  'current_task',
+  'task',
+  'workflow_name',
+  'job_id',
+  'execution_id',
+  'capacity',
+  'utilization',
+  'load',
+  'capacity_used',
+  'usage_percent',
+  'success_rate',
+  'success_ratio',
+  'success_percent',
+  'quality_score',
+  'response_seconds',
+  'latency_seconds',
+  'response_ms',
+  'latency_ms',
+  'last_activity',
+  'last_seen',
+  'updated_at',
+  'timestamp',
+  'readiness_updated_at',
+  'health',
+  'health_status',
+  'system_health',
+];
+
 List<_AgentRecord> _agentRecords(OperationalSnapshot snapshot) {
   final merged = <String, Map<String, Object?>>{};
-  void merge(Map<String, Object?> item) {
-    final id = _text(item, const ['agent_id', 'worker_id', 'executor_id', 'agent', 'worker', 'id']);
-    if (id == null) return;
-    merged[id] = <String, Object?>{...?merged[id], ...item};
+
+  // The server-projected canonical registry is the only identity/governance
+  // authority for this surface. Runtime data can enrich these identities, but
+  // it can never create a new Desktop agent or widen registry-owned authority.
+  for (final item in _maps(snapshot.agentState['agents'])) {
+    final id = _text(item, const ['agent_id']);
+    if (id == null || !id.startsWith('ilaios.agent.')) continue;
+    merged[id] = Map<String, Object?>.of(item);
   }
 
-  for (final item in _maps(snapshot.agentState['agents'])) {
-    merge(item);
+  void mergeTelemetry(Map<String, Object?> item) {
+    String? canonicalId;
+    for (final key in const [
+      'agent_id',
+      'worker_id',
+      'executor_id',
+      'agent',
+      'worker',
+      'id',
+    ]) {
+      final candidate = _text(item, [key]);
+      if (candidate != null && merged.containsKey(candidate)) {
+        canonicalId = candidate;
+        break;
+      }
+    }
+    if (canonicalId == null) return;
+
+    final telemetry = <String, Object?>{};
+    for (final key in _agentTelemetryKeys) {
+      if (item.containsKey(key)) telemetry[key] = item[key];
+    }
+    if (telemetry.isEmpty) return;
+    merged[canonicalId] = <String, Object?>{
+      ...merged[canonicalId]!,
+      ...telemetry,
+    };
   }
+
   for (final key in const ['agents', 'workers', 'executors', 'leases']) {
     for (final item in _maps(snapshot.schedulerState[key])) {
-      merge(item);
+      mergeTelemetry(item);
     }
   }
   for (final item in snapshot.runtimeRoutes) {
-    merge(item);
+    mergeTelemetry(item);
   }
   for (final item in snapshot.liveEvents) {
-    merge(item);
+    mergeTelemetry(item);
   }
 
   return merged.entries.map((entry) {
