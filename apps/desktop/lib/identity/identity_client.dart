@@ -3,15 +3,18 @@ export 'identity_client_core.dart' hide IdentityClient;
 import 'dart:convert';
 import 'dart:io';
 
+import '../business_context/business_capability_context.dart';
 import '../control_plane/client.dart';
 import '../reference_assets/reference_asset_draft.dart';
 import '../source_media/source_media_draft.dart';
 import 'identity_client_core.dart' as core;
 
 /// Backward-compatible IdentityClient that extends the existing authenticated
-/// session client with governed Web/Video reference assets and one private
-/// source-video input. Raw media bytes are uploaded separately; execution intent
-/// receives only immutable server-side asset identifiers.
+/// session client with governed Web/Video reference assets, one private source-
+/// video input, and optional bounded business-capability metadata. Raw media
+/// bytes are uploaded separately; execution intent receives only immutable
+/// server-side asset identifiers plus the optional context code. The free-form
+/// objective remains unchanged.
 class IdentityClient extends core.IdentityClient {
   factory IdentityClient({
     required Uri baseUri,
@@ -52,8 +55,9 @@ class IdentityClient extends core.IdentityClient {
   @override
   Future<core.GovernedPromptSubmission> submitPrompt(
     String objective,
-    core.DesktopUserSession session,
-  ) async {
+    core.DesktopUserSession session, {
+    BusinessCapabilityContext? businessContext,
+  }) async {
     final normalized = objective.trim();
     if (normalized.isEmpty) {
       throw const core.IdentityClientException('Prompt must not be empty');
@@ -108,6 +112,7 @@ class IdentityClient extends core.IdentityClient {
           'objective': normalized,
           'reference_asset_ids': referenceAssetIds,
           'source_media_asset_id': ?sourceAssetId,
+          'business_context_code': businessContext?.contextCode,
         },
         'authenticated intent',
         session,
@@ -130,6 +135,13 @@ class IdentityClient extends core.IdentityClient {
           executionStatus.isEmpty) {
         throw const core.IdentityClientException(
           'Authenticated intent response is malformed',
+        );
+      }
+      final returnedBusinessContextCode = payload['business_context_code'];
+      if (businessContext != null &&
+          returnedBusinessContextCode != businessContext.contextCode) {
+        throw const core.IdentityClientException(
+          'Authenticated intent business context is malformed',
         );
       }
       return core.GovernedPromptSubmission(
