@@ -732,7 +732,7 @@ class _MetricStrip extends StatelessWidget {
         icon: Icons.calendar_month_outlined,
         color: IlaiosTheme.coreBlue,
         label: _copy(context, 'Last Update', 'Son Güncelleme'),
-        value: lastEvent?.trim().isNotEmpty == true ? lastEvent!.trim() : '—',
+        value: _displayEvent(context, lastEvent) ?? '—',
         note: _copy(context, 'Authoritative event', 'Yetkili olay'),
       ),
     ];
@@ -1313,7 +1313,7 @@ class _RecentUpdates extends StatelessWidget {
     if (lastEvent?.trim().isNotEmpty == true) {
       rows.add((
         icon: Icons.bolt_outlined,
-        title: lastEvent!.trim(),
+        title: _displayEvent(context, lastEvent) ?? '—',
         detail: _copy(context, 'Authoritative event projection', 'Yetkili olay projeksiyonu'),
       ));
     }
@@ -1586,6 +1586,13 @@ BoxDecoration _cardDecoration(BuildContext context, {double radius = 8}) => BoxD
       borderRadius: BorderRadius.circular(radius),
       border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
     );
+
+String? _displayEvent(BuildContext context, String? raw) {
+  final value = raw?.trim();
+  if (value == null || value.isEmpty) return null;
+  if (value != 'job.updated') return value;
+  return _copy(context, 'Job update', 'İş güncellemesi');
+}
 
 bool _isTr(BuildContext context) =>
     IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
