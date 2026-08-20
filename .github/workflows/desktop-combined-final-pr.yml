@@ -20,12 +20,24 @@ jobs:
   windows-verify-package:
     runs-on: windows-latest
     timeout-minutes: 55
+    env:
+      EXPECTED_MASTER_SHA: af2f5206185cd79e56ed2431449d2bbb0e8ceed3
     steps:
-      - name: Checkout exact PR head
+      - name: Checkout exact master source commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.event.pull_request.head.sha }}
+          ref: ${{ env.EXPECTED_MASTER_SHA }}
           persist-credentials: false
+
+      - name: Prove exact source SHA
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $resolved = (git rev-parse HEAD).Trim()
+          if ($resolved -ne $env:EXPECTED_MASTER_SHA) {
+            throw "Expected exact master $env:EXPECTED_MASTER_SHA but checked out $resolved"
+          }
+          Write-Host "EXACT_MASTER_SHA=$resolved"
 
       - name: Install pinned Flutter SDK
         shell: pwsh
@@ -42,18 +54,18 @@ jobs:
           }
           (Join-Path $flutter 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
-      - name: Verify, build, and package combined Desktop runtime
+      - name: Verify, build, and package exact-master Desktop runtime
         shell: pwsh
         run: |
           ./tools/desktop/verify_and_package_combined.ps1 `
-            -SourceSha '${{ github.event.pull_request.head.sha }}' `
+            -SourceSha $env:EXPECTED_MASTER_SHA `
             -RunId '${{ github.run_id }}'
 
-      - name: Upload CI-verified combined package
+      - name: Upload exact-master CI-verified combined package
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: desktop-combined-ci-verified-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          name: desktop-exact-master-ci-verified-${{ env.EXPECTED_MASTER_SHA }}-${{ github.run_id }}
           path: |
             artifacts/ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip
             artifacts/ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip.sha256
