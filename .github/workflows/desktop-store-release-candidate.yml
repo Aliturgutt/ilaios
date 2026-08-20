@@ -10,10 +10,12 @@ on:
       identity_name:
         description: Partner Center Package/Identity/Name value
         required: true
+        default: 'ILAIOS.ILAIOS'
         type: string
       publisher:
         description: Partner Center Package/Identity/Publisher value
         required: true
+        default: 'CN=3BC70952-5109-4720-9A71-8B812EBCB255'
         type: string
       version:
         description: Four-part Store package version
@@ -36,6 +38,9 @@ jobs:
       EXPECTED_MASTER_SHA: ${{ inputs.expected_master_sha }}
       STORE_IDENTITY_NAME: ${{ inputs.identity_name }}
       STORE_PUBLISHER: ${{ inputs.publisher }}
+      STORE_PUBLISHER_DISPLAY_NAME: ILAIOS
+      STORE_PACKAGE_FAMILY_NAME: ILAIOS.ILAIOS_h6qnrfjyv0cv4
+      STORE_ID: 9P7787G6ZC5G
       STORE_VERSION: ${{ inputs.version }}
 
     steps:
@@ -52,11 +57,11 @@ jobs:
           if ($env:GITHUB_SHA -ne $env:EXPECTED_MASTER_SHA) {
             throw "Dispatched SHA $env:GITHUB_SHA does not match approved SHA $env:EXPECTED_MASTER_SHA"
           }
-          if ([string]::IsNullOrWhiteSpace($env:STORE_IDENTITY_NAME) -or $env:STORE_IDENTITY_NAME -eq 'ILAIOS.Desktop.CI') {
-            throw 'A real Partner Center identity_name is required.'
+          if ($env:STORE_IDENTITY_NAME -ne 'ILAIOS.ILAIOS') {
+            throw "Store identity mismatch. Expected ILAIOS.ILAIOS, got $env:STORE_IDENTITY_NAME"
           }
-          if ([string]::IsNullOrWhiteSpace($env:STORE_PUBLISHER) -or $env:STORE_PUBLISHER -match 'ILAIOS-CI-UNSIGNED') {
-            throw 'A real Partner Center publisher value is required.'
+          if ($env:STORE_PUBLISHER -ne 'CN=3BC70952-5109-4720-9A71-8B812EBCB255') {
+            throw "Store publisher mismatch. Partner Center authority value is required."
           }
           if ($env:STORE_VERSION -notmatch '^\d+\.\d+\.\d+\.\d+$') {
             throw 'version must contain four numeric components.'
@@ -125,7 +130,7 @@ jobs:
             -Publisher $env:STORE_PUBLISHER `
             -Version $env:STORE_VERSION
 
-      - name: Bind source SHA into release evidence
+      - name: Bind source and Partner Center identity into release evidence
         working-directory: apps/desktop
         shell: pwsh
         run: |
@@ -135,6 +140,9 @@ jobs:
           $evidence = Get-Content $path -Raw | ConvertFrom-Json
           $evidence | Add-Member -NotePropertyName source_sha -NotePropertyValue $env:EXPECTED_MASTER_SHA -Force
           $evidence | Add-Member -NotePropertyName github_run_id -NotePropertyValue $env:GITHUB_RUN_ID -Force
+          $evidence | Add-Member -NotePropertyName publisher_display_name -NotePropertyValue $env:STORE_PUBLISHER_DISPLAY_NAME -Force
+          $evidence | Add-Member -NotePropertyName package_family_name -NotePropertyValue $env:STORE_PACKAGE_FAMILY_NAME -Force
+          $evidence | Add-Member -NotePropertyName store_id -NotePropertyValue $env:STORE_ID -Force
           $evidence | ConvertTo-Json -Depth 6 | Set-Content -Path $path -Encoding utf8
           Get-Content $path
 

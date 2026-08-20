@@ -7,6 +7,7 @@ import '../../control_plane/evidence_record.dart';
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
 import '../../identity/identity_client.dart';
+import '../create/governed_lifecycle_projection.dart';
 import 'agent_provisioning_scope.dart';
 import 'home_runtime_binding.dart';
 import 'reference_desktop_shell_v10.dart';
@@ -85,36 +86,43 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
       );
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, constraints) {
-          const compactWidthThreshold = 1320.0;
-          const compactHeightThreshold = 720.0;
-          const designWidthFloor = 1280.0;
-          const designHeight = 900.0;
+  Widget build(BuildContext context) {
+    if (userSession == null) {
+      GovernedLifecycleProjectionStore.clear();
+    } else {
+      GovernedLifecycleProjectionStore.replace(operationalSnapshot);
+    }
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const compactWidthThreshold = 1320.0;
+        const compactHeightThreshold = 720.0;
+        const designWidthFloor = 1280.0;
+        const designHeight = 900.0;
 
-          final compact = constraints.maxWidth <= compactWidthThreshold ||
-              constraints.maxHeight < compactHeightThreshold;
-          if (!compact) return _shell();
+        final compact = constraints.maxWidth <= compactWidthThreshold ||
+            constraints.maxHeight < compactHeightThreshold;
+        if (!compact) return _shell();
 
-          final ratioMatchedWidth = constraints.maxHeight > 0
-              ? constraints.maxWidth * designHeight / constraints.maxHeight
-              : designWidthFloor;
-          final designWidth = math.max(designWidthFloor, ratioMatchedWidth);
+        final ratioMatchedWidth = constraints.maxHeight > 0
+            ? constraints.maxWidth * designHeight / constraints.maxHeight
+            : designWidthFloor;
+        final designWidth = math.max(designWidthFloor, ratioMatchedWidth);
 
-          return ClipRect(
-            key: const Key('reference-scaled-viewport-v9'),
-            child: SizedBox.expand(
-              child: FittedBox(
-                fit: BoxFit.contain,
-                alignment: Alignment.topLeft,
-                child: SizedBox(
-                  width: designWidth,
-                  height: designHeight,
-                  child: _shell(),
-                ),
+        return ClipRect(
+          key: const Key('reference-scaled-viewport-v9'),
+          child: SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.contain,
+              alignment: Alignment.topLeft,
+              child: SizedBox(
+                width: designWidth,
+                height: designHeight,
+                child: _shell(),
               ),
             ),
-          );
-        },
-      );
+          ),
+        );
+      },
+    );
+  }
 }

@@ -83,7 +83,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python apps/desktop/e2e/provider_video_native_reference_finished_product_e2e.py
+          python apps/desktop/e2e/provider_video_native_reference_semantic_diagnostic_e2e.py
 
       - name: Publish native-reference proof summary
         if: ${{ always() }}
@@ -111,10 +111,17 @@ jobs:
           import json, os
           from pathlib import Path
           failure=json.loads((Path(os.environ['VIDEO_DESKTOP_NATIVE_REFERENCE_PROOF_DIR'])/'failure.json').read_text())
+          semantic=failure.get('semantic_review') or {}
           print('- Status: `FAIL`')
           print(f"- Revision: `{failure.get('revision_sha')}`")
           print(f"- Error type: `{failure.get('error_type')}`")
           print(f"- Error: `{failure.get('error')}`")
+          if semantic:
+              print(f"- Final semantic score: `{semantic.get('score')}`")
+              print(f"- Final semantic threshold: `{semantic.get('threshold')}`")
+              print(f"- Repair target: `{semantic.get('repair_target')}`")
+              print(f"- Reviewer: `{semantic.get('reviewer_id')}`")
+              print(f"- Review ID: `{semantic.get('review_id')}`")
           PY
           else
             echo '- Status: `NO_ACCEPTED_RECEIPT`' >> "$GITHUB_STEP_SUMMARY"
