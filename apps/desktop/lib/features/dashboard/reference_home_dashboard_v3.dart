@@ -215,6 +215,7 @@ class _CommandCenterModel {
         !snapshot.governanceState.containsKey('admissions')) {
       return null;
     }
+    final hasAdmissions = snapshot.governanceState.containsKey('admissions');
     final required = <String>{};
     for (final item in admissions) {
       if (item['human_approval_required'] != true) continue;
@@ -225,7 +226,8 @@ class _CommandCenterModel {
       final id = item['request_id'];
       final state = _normalize(_text(item, const ['status', 'state']) ?? '');
       if (state != 'pending') return false;
-      return required.isEmpty || (id is String && required.contains(id));
+      if (!hasAdmissions) return true;
+      return id is String && required.contains(id);
     }).length;
   }
 
