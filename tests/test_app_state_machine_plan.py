@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import replace
+from typing import Any
 
 import pytest
 
@@ -13,6 +14,7 @@ from services.app_auth_rbac_plan import (
 )
 from services.app_product_spec import ProductSpec
 from services.app_state_machine_plan import (
+    AppStateMachinePlan,
     AppStateMachinePlanError,
     StateDefinition,
     StateMachineRequirement,
@@ -22,7 +24,7 @@ from services.app_state_machine_plan import (
 
 
 def _spec(*, notifications: bool = True) -> ProductSpec:
-    capabilities = ("authentication", "rbac", "workflows", "realtime")
+    capabilities: tuple[str, ...] = ("authentication", "rbac", "workflows", "realtime")
     if notifications:
         capabilities += ("notifications",)
     return ProductSpec(
@@ -111,7 +113,7 @@ def _auth() -> AuthRbacPlan:
     )
 
 
-def _transition(**changes: object) -> TransitionRequirement:
+def _transition(**changes: Any) -> TransitionRequirement:
     base = TransitionRequirement(
         transition_id="submit",
         from_state="draft",
@@ -164,7 +166,7 @@ def _build(
     architecture: ApplicationArchitecturePlan | None = None,
     auth: AuthRbacPlan | None = None,
     machines: tuple[StateMachineRequirement, ...] | None = None,
-):
+) -> AppStateMachinePlan:
     return build_state_machine_plan(
         spec=spec or _spec(),
         architecture=architecture or _architecture(),
