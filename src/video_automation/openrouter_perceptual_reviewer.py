@@ -333,7 +333,9 @@ def _extract_review(payload: Mapping[str, object]) -> dict[str, object]:
         raise OpenRouterPerceptualReviewError("review score is outside [0, 1]")
     if not isinstance(detail, str) or not detail.strip():
         raise OpenRouterPerceptualReviewError("review detail is invalid")
-    if not isinstance(repair_target, str):
+    if repair_target is None:
+        repair_target = ""
+    elif not isinstance(repair_target, str):
         raise OpenRouterPerceptualReviewError("review repair_target is invalid")
     return {
         "score": normalized_score,
