@@ -32,6 +32,11 @@ def test_p0_and_all_p1_identities_share_one_runtime_without_ai(tmp_path: Path) -
         engineering_skills_root=default_skills_root(ROOT),
     )
     web = compose_web_agent_runtime(p0.named_executor, ROOT)
+    with sqlite3.connect(database) as connection:
+        baseline_skill_count = connection.execute(
+            "SELECT COUNT(*) FROM runtime_skills"
+        ).fetchone()[0]
+
     media_intelligence = compose_media_intelligence_agent_runtime(
         p0.named_executor,
         ROOT,
@@ -57,7 +62,7 @@ def test_p0_and_all_p1_identities_share_one_runtime_without_ai(tmp_path: Path) -
             "SELECT COUNT(*) FROM runtime_providers"
         ).fetchone()[0]
     assert agent_count == 40
-    assert skill_count == 56
+    assert skill_count == baseline_skill_count + media_intelligence.skill_count
     assert provider_count == 6
 
 
@@ -69,6 +74,11 @@ def test_p1_composition_is_restart_idempotent_on_same_runtime(tmp_path: Path) ->
         engineering_skills_root=default_skills_root(ROOT),
     )
     compose_web_agent_runtime(p0.named_executor, ROOT)
+    with sqlite3.connect(database) as connection:
+        baseline_skill_count = connection.execute(
+            "SELECT COUNT(*) FROM runtime_skills"
+        ).fetchone()[0]
+
     first = compose_media_intelligence_agent_runtime(p0.named_executor, ROOT)
     second = compose_media_intelligence_agent_runtime(p0.named_executor, ROOT)
     assert first.target_agent_count == second.target_agent_count == 12
@@ -79,7 +89,7 @@ def test_p1_composition_is_restart_idempotent_on_same_runtime(tmp_path: Path) ->
         ).fetchone()[0] == 40
         assert connection.execute(
             "SELECT COUNT(*) FROM runtime_skills"
-        ).fetchone()[0] == 56
+        ).fetchone()[0] == baseline_skill_count + first.skill_count
         assert connection.execute(
             "SELECT COUNT(*) FROM runtime_providers"
         ).fetchone()[0] == 6
