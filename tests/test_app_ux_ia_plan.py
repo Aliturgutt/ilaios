@@ -5,12 +5,13 @@ from dataclasses import replace
 import pytest
 
 from services.app_architecture_plan import ApplicationArchitecturePlan
-from services.app_product_spec import ProductSpec
+from services.app_product_spec import AppPlatform, ProductSpec
 from services.app_state_machine_plan import AppStateMachinePlan
 from services.app_ux_ia_plan import (
     AppUxIaPlan,
     AppUxIaPlanError,
     NavigationItem,
+    NavigationMode,
     ScreenRequirement,
     build_ux_ia_plan,
 )
@@ -18,7 +19,7 @@ from services.app_ux_ia_plan import (
 
 def _spec(
     *,
-    platforms: tuple[str, ...] = ("android", "ios"),
+    platforms: tuple[AppPlatform, ...] = ("android", "ios"),
     capabilities: tuple[str, ...] | None = None,
     accessibility_required: bool = True,
 ) -> ProductSpec:
@@ -36,7 +37,7 @@ def _spec(
         project_id="proj-ux",
         product_name="ux-product",
         objective="governed product experience",
-        platforms=platforms,  # type: ignore[arg-type]
+        platforms=platforms,
         actors=("member", "admin"),
         screens=("home", "request-detail", "search", "settings"),
         capabilities=capabilities,
@@ -132,7 +133,7 @@ def _build(
     spec: ProductSpec | None = None,
     architecture: ApplicationArchitecturePlan | None = None,
     state_machines: AppStateMachinePlan | None = None,
-    navigation_mode: str = "bottom-tabs",
+    navigation_mode: NavigationMode = "bottom-tabs",
     screens: tuple[ScreenRequirement, ...] | None = None,
     navigation_items: tuple[NavigationItem, ...] | None = None,
     search_entry_screen_id: str | None = "search",
@@ -142,7 +143,7 @@ def _build(
         spec=spec or _spec(),
         architecture=architecture or _architecture(),
         state_machines=state_machines or _state_machines(),
-        navigation_mode=navigation_mode,  # type: ignore[arg-type]
+        navigation_mode=navigation_mode,
         screens=screens or _screens(),
         navigation_items=navigation_items or _navigation(),
         search_entry_screen_id=search_entry_screen_id,
