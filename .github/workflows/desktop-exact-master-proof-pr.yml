@@ -19,7 +19,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 55
     env:
-      EXPECTED_MASTER_SHA: 3c9ab823d9c7f119c22a87942b3c8a183350a50a
+      EXPECTED_MASTER_SHA: af2f5206185cd79e56ed2431449d2bbb0e8ceed3
 
     steps:
       - name: Checkout exact master source commit
@@ -63,7 +63,7 @@ jobs:
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: desktop-exact-master-proof-${{ env.EXPECTED_MASTER_SHA }}-${{ github.run_id }}
+          name: desktop-exact-master-proof-${{ env:EXPECTED_MASTER_SHA }}-${{ github.run_id }}
           path: |
             artifacts/ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip
             artifacts/ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip.sha256
