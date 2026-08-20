@@ -56,9 +56,11 @@ Future<void> _tapPopupMenuAction(
 ) async {
   final item = find.widgetWithText(PopupMenuItem<String>, label);
   expect(item, findsOneWidget);
-  final tappable = find.descendant(of: item, matching: find.byType(InkWell));
-  expect(tappable, findsOneWidget);
-  await tester.tap(tappable);
+  await tester.pump(const Duration(milliseconds: 300));
+  final labelFinder = find.descendant(of: item, matching: find.text(label));
+  expect(labelFinder, findsOneWidget);
+  await tester.tap(labelFinder);
+  await tester.pump();
 }
 
 void main() {
