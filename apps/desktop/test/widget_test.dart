@@ -83,8 +83,8 @@ void main() {
     expect(find.byKey(const Key('one-prompt-accepted')), findsOneWidget);
     expect(find.text('Goal: goal-00000003'), findsOneWidget);
     expect(find.text('Job: job-00000006'), findsOneWidget);
-    expect(find.text('Authoritative state: PENDING'), findsOneWidget);
-    expect(find.textContaining('does not treat submission as completion'), findsOneWidget);
+    expect(find.text('Lifecycle: Unavailable'), findsOneWidget);
+    expect(find.textContaining('missing evidence stays unavailable'), findsOneWidget);
   });
 
   testWidgets('home renders truthful command center without synthetic telemetry', (

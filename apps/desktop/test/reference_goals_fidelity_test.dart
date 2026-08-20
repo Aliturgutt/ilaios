@@ -62,7 +62,7 @@ void main() {
     expect(find.text('Tamamlanan'), findsOneWidget);
     expect(find.text('Ortalama İlerleme'), findsOneWidget);
     expect(find.text('Son Güncelleme'), findsOneWidget);
-    expect(find.text('Filtrele'), findsOneWidget);
+    expect(find.byKey(const Key('business-capability-selector')), findsOneWidget);
     expect(find.text('Dışa Aktar'), findsOneWidget);
     expect(find.text('Yeni Hedef'), findsOneWidget);
     expect(tester.takeException(), isNull);
