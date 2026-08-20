@@ -14,7 +14,7 @@ from src.video_automation.openrouter_perceptual_reviewer import OpenRouterPercep
 from src.video_automation.perceptual_review import PerceptualReviewSubmission  # noqa: E402
 
 _ORIGINAL_REVIEW = OpenRouterPerceptualReviewer.review
-_final_review: PerceptualReviewSubmission | None = None
+_semantic_reviews: list[PerceptualReviewSubmission] = []
 
 
 def _recording_review(
@@ -34,14 +34,12 @@ def _recording_review(
         producer_id=producer_id,
         review_id=review_id,
     )
-    if review_id.endswith("-final"):
-        global _final_review
-        _final_review = review
+    _semantic_reviews.append(review)
     return review
 
 
 def semantic_review_evidence(review: PerceptualReviewSubmission) -> dict[str, object]:
-    """Return the bounded, non-secret final-review evidence safe for CI artifacts."""
+    """Return bounded, non-secret semantic-review evidence safe for CI artifacts."""
     return {
         "review_id": review.review_id,
         "reviewer_id": review.reviewer_id,
@@ -56,7 +54,25 @@ def semantic_review_evidence(review: PerceptualReviewSubmission) -> dict[str, ob
     }
 
 
-def _augment_failure_artifact(review: PerceptualReviewSubmission) -> None:
+def _select_failure_review(
+    reviews: list[PerceptualReviewSubmission],
+) -> PerceptualReviewSubmission | None:
+    failed = [review for review in reviews if not review.passed]
+    if failed:
+        return failed[-1]
+    if reviews:
+        return reviews[-1]
+    return None
+
+
+def _semantic_review_stage(review: PerceptualReviewSubmission) -> str:
+    return "final" if review.review_id.endswith("-final") else "generated-shot"
+
+
+def _augment_failure_artifact(reviews: list[PerceptualReviewSubmission]) -> None:
+    review = _select_failure_review(reviews)
+    if review is None:
+        return
     proof_root = Path(
         os.environ.get(
             "VIDEO_DESKTOP_NATIVE_REFERENCE_PROOF_DIR",
@@ -70,7 +86,11 @@ def _augment_failure_artifact(review: PerceptualReviewSubmission) -> None:
     if not isinstance(document, dict):
         return
     evidence = semantic_review_evidence(review)
+    document["semantic_review_stage"] = _semantic_review_stage(review)
     document["semantic_review"] = evidence
+    document["semantic_reviews"] = [
+        semantic_review_evidence(item) for item in reviews if not item.passed
+    ]
     failure_path.write_text(
         json.dumps(document, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -83,14 +103,12 @@ def _augment_failure_artifact(review: PerceptualReviewSubmission) -> None:
 
 
 def main() -> int:
-    global _final_review
-    _final_review = None
+    _semantic_reviews.clear()
     setattr(OpenRouterPerceptualReviewer, "review", _recording_review)
     try:
         return certification.main()
     except BaseException:
-        if _final_review is not None:
-            _augment_failure_artifact(_final_review)
+        _augment_failure_artifact(_semantic_reviews)
         raise
     finally:
         setattr(OpenRouterPerceptualReviewer, "review", _ORIGINAL_REVIEW)

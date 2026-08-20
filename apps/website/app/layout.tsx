@@ -14,6 +14,8 @@ import "./visual-redteam-fixes.css";
 import "./brand-palette.css";
 import "./live-density-fixes.css";
 import "./final-interaction-redteam.css";
+import "./site-v2-finalization.css";
+import "./production-density-cert.css";
 import SiteChrome from "./SiteChrome";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ilaios.com";
@@ -44,7 +46,9 @@ const structuredData = {
   ],
 };
 
+const themeBootstrap = `(() => { try { const key = "ilaios-theme"; const stored = localStorage.getItem(key); const theme = stored === "light" || stored === "dark" ? stored : (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"); document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; } catch { document.documentElement.dataset.theme = "dark"; } })();`;
+
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const locale = (await headers()).get("x-ilaios-locale") === "tr" ? "tr" : "en";
-  return <html lang={locale}><body><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} /><SiteChrome>{children}</SiteChrome></body></html>;
+  return <html lang={locale} suppressHydrationWarning><body><script dangerouslySetInnerHTML={{ __html: themeBootstrap }} /><script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} /><SiteChrome>{children}</SiteChrome></body></html>;
 }
