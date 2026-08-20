@@ -127,7 +127,9 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('delete-local-artifact-1')));
     await _pumpIo(tester, frames: 2);
-    await tester.tap(find.text('Remove from list'));
+    await tester.tap(
+      find.widgetWithText(PopupMenuItem<String>, 'Remove from list'),
+    );
     await _pumpUntil(
       tester,
       find.byKey(const ValueKey('save-artifact-1')),
@@ -143,7 +145,9 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('delete-local-artifact-1')));
     await _pumpIo(tester, frames: 2);
-    await tester.tap(find.text('Restore'));
+    await tester.tap(
+      find.widgetWithText(PopupMenuItem<String>, 'Restore'),
+    );
     await _pumpUntil(
       tester,
       find.byKey(const ValueKey('save-artifact-1')),
