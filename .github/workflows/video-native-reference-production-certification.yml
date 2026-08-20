@@ -20,7 +20,7 @@ jobs:
     if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[video-native-reference-live-cert]') }}
     runs-on: ubuntu-latest
     environment: Production
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
       ILAIOS_VIDEO_PROVIDER_MODE: managed-bounded
