@@ -22,6 +22,7 @@ const requiredPublicMailboxes = ["contact@ilaios.com"];
 const requiredSocial = [
   "https://www.linkedin.com/company/ilaios/",
   "https://x.com/ilaios",
+  "https://www.crunchbase.com/organization/ilaios",
 ];
 
 async function walk(dir) {
@@ -59,7 +60,7 @@ for (const mailbox of requiredPublicMailboxes) {
   if (!mailboxIsLinked(mailbox)) failures.push(`required public mailbox missing or not linked: ${mailbox}`);
 }
 for (const social of requiredSocial) {
-  if (!source.includes(social)) failures.push(`verified social URL missing: ${social}`);
+  if (!source.includes(social)) failures.push(`verified entity URL missing: ${social}`);
 }
 
 const routes = files.filter(file => file.endsWith(`${path.sep}page.tsx`));
@@ -68,18 +69,45 @@ for (const file of routes) {
   const text = await readFile(file, "utf8");
   if (!text.includes("metadata") && !text.includes("generateMetadata")) {
     failures.push(`route lacks metadata declaration: ${rel}`);
+    continue;
   }
+  if (!/title\s*:/.test(text)) failures.push(`route lacks title metadata: ${rel}`);
+  if (!/description\s*:/.test(text)) failures.push(`route lacks description metadata: ${rel}`);
+  if (!/alternates\s*:/.test(text) || !/canonical\s*:/.test(text)) failures.push(`route lacks canonical metadata: ${rel}`);
+  if (!/languages\s*:/.test(text) || !/\ben\s*:/.test(text) || !/\btr\s*:/.test(text) || !/["']x-default["']\s*:/.test(text)) {
+    failures.push(`route lacks complete en/tr/x-default hreflang metadata: ${rel}`);
+  }
+  if (/noindex/i.test(text) || /index\s*:\s*false/.test(text)) failures.push(`public route contains noindex directive: ${rel}`);
 }
 
 const sitemap = await readFile(path.join(app, "sitemap.ts"), "utf8");
 const robots = await readFile(path.join(app, "robots.ts"), "utf8");
+if (!sitemap.includes("https://ilaios.com") && !sitemap.includes("NEXT_PUBLIC_SITE_URL")) failures.push("sitemap lacks canonical site URL authority");
 if (!sitemap.includes("/tr")) failures.push("sitemap does not enumerate Turkish routes");
+if (!robots.includes('allow: "/"')) failures.push("robots metadata does not explicitly allow public crawling");
 if (!robots.includes("sitemap")) failures.push("robots metadata does not publish sitemap");
 
 const layout = await readFile(path.join(app, "layout.tsx"), "utf8");
 if (!layout.includes("https://ilaios.com") && !layout.includes("NEXT_PUBLIC_SITE_URL")) {
   failures.push("root layout lacks canonical site URL authority");
 }
+for (const requiredSchemaToken of [
+  '"@type": "Organization"',
+  '"@type": "WebSite"',
+  '"SoftwareApplication"',
+  '"Product"',
+  'publisher: { "@id": organizationId }',
+  'about: { "@id": softwareId }',
+  'mainEntityOfPage: { "@id": websiteId }',
+]) {
+  if (!layout.includes(requiredSchemaToken)) failures.push(`structured data regression: missing ${requiredSchemaToken}`);
+}
+
+const home = await readFile(path.join(app, "page.tsx"), "utf8");
+const homeTr = await readFile(path.join(app, "tr", "page.tsx"), "utf8");
+if (!home.includes('title: "Governed AI Operating System"')) failures.push("English homepage SEO title drifted");
+if (!home.includes("governed, validated finished-product workflows with evidence")) failures.push("English homepage SEO description drifted");
+if (!homeTr.includes("Yönetilen Yapay Zekâ İşletim Sistemi")) failures.push("Turkish homepage SEO title drifted");
 
 const siteChrome = await readFile(path.join(app, "SiteChrome.tsx"), "utf8");
 if (!/<a\b[^>]*href=["']#main-content["'][^>]*>/.test(siteChrome)) {
@@ -91,8 +119,6 @@ if (!/<main\b[^>]*id=["']main-content["'][^>]*tabIndex=\{-1\}[^>]*>/.test(siteCh
 
 // ILAIOS public-site visual policy: the final override layer must remain restrained,
 // compact, high-contrast and free from generic generator-style neon/glow decoration.
-// Older compatibility layers may retain historical declarations only when the final
-// loaded overrides explicitly neutralize them.
 const adaptiveNative = await readFile(path.join(app, "adaptive-native.css"), "utf8");
 const adaptiveStructures = await readFile(path.join(app, "adaptive-structures.css"), "utf8");
 const finalVisualSource = `${adaptiveNative}\n${adaptiveStructures}`;
@@ -113,9 +139,7 @@ for (const match of finalVisualSource.matchAll(/box-shadow\s*:\s*([^;}]+)/gi)) {
   }
 }
 const globalAuraDisabled = /body::before\s*(?:,\s*body::after\s*)?\{[^}]*display\s*:\s*none/i.test(adaptiveNative);
-if (!globalAuraDisabled) {
-  failures.push("decorative global background grid/auras are not explicitly disabled");
-}
+if (!globalAuraDisabled) failures.push("decorative global background grid/auras are not explicitly disabled");
 if (!/\.journey-card::after\s*\{[^}]*display\s*:\s*none/i.test(adaptiveStructures)) {
   failures.push("legacy journey-card glow decoration is not explicitly disabled");
 }
