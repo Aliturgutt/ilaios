@@ -141,7 +141,7 @@ void main() {
         'other-request',
         admittedStatus: 'EXECUTING',
       ),
-      GovernedLifecycleState.executing,
+      GovernedLifecycleState.unavailable,
     );
   });
 
