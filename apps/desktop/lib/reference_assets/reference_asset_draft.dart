@@ -7,11 +7,17 @@ enum ReferenceAssetRoleDraft {
   environment,
   logo,
   storyboard,
+  firstFrame,
+  lastFrame,
   other,
 }
 
 extension ReferenceAssetRoleWire on ReferenceAssetRoleDraft {
-  String get wireValue => name;
+  String get wireValue => switch (this) {
+        ReferenceAssetRoleDraft.firstFrame => 'first_frame',
+        ReferenceAssetRoleDraft.lastFrame => 'last_frame',
+        _ => name,
+      };
 
   String get label => switch (this) {
         ReferenceAssetRoleDraft.style => 'Style',
@@ -20,6 +26,8 @@ extension ReferenceAssetRoleWire on ReferenceAssetRoleDraft {
         ReferenceAssetRoleDraft.environment => 'Environment',
         ReferenceAssetRoleDraft.logo => 'Logo',
         ReferenceAssetRoleDraft.storyboard => 'Storyboard',
+        ReferenceAssetRoleDraft.firstFrame => 'First frame',
+        ReferenceAssetRoleDraft.lastFrame => 'Last frame',
         ReferenceAssetRoleDraft.other => 'Other',
       };
 }

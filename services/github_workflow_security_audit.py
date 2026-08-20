@@ -27,8 +27,10 @@ _MANUAL_ONLY = frozenset(
 _SECRET_ALLOWED = frozenset(
     {
         "agent-p0-live-certification.yml",
+        "agent-web-live-certification.yml",
         "desktop-msix-signed-release.yml",
         "openrouter-production-telemetry-certification.yml",
+        "video-native-reference-production-certification.yml",
         "video-provider-production-certification.yml",
         "video-reference-production-certification.yml",
     }
@@ -36,6 +38,8 @@ _SECRET_ALLOWED = frozenset(
 _TRUSTED_MASTER_SECRET = frozenset(
     {
         "agent-p0-live-certification.yml",
+        "agent-web-live-certification.yml",
+        "video-native-reference-production-certification.yml",
         "video-reference-production-certification.yml",
     }
 )
@@ -67,6 +71,22 @@ def _checkout_blocks(text: str) -> tuple[str, ...]:
             block.append(candidate)
         result.append("\n".join(block))
     return tuple(result)
+
+
+def _indirect_manual_only_target(text: str, current_name: str) -> str | None:
+    """Reject proxy workflows that auto-dispatch a manual-only workflow."""
+    for target in sorted(_MANUAL_ONLY):
+        if target == current_name:
+            continue
+        indicators = (
+            f"gh workflow run {target}",
+            f"gh workflow run '{target}'",
+            f'gh workflow run "{target}"',
+            f"/actions/workflows/{target}/dispatches",
+        )
+        if any(indicator in text for indicator in indicators):
+            return target
+    return None
 
 
 def audit_repository(repository_root: Path) -> tuple[WorkflowSecurityFinding, ...]:
@@ -181,6 +201,15 @@ def audit_repository(repository_root: Path) -> tuple[WorkflowSecurityFinding, ..
                         "external mutation/spend cannot auto-trigger",
                     )
                 )
+        indirect_target = _indirect_manual_only_target(text, path.name)
+        if indirect_target is not None:
+            findings.append(
+                WorkflowSecurityFinding(
+                    relative,
+                    "INDIRECT_MANUAL_ONLY",
+                    f"workflow may not proxy-dispatch manual-only target {indirect_target}",
+                )
+            )
     return tuple(findings)
 
 

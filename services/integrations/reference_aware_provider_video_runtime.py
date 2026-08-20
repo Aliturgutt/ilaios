@@ -45,7 +45,7 @@ from .video_product_intelligence import (
 )
 from .video_runtime import VideoRuntimeError
 
-_REFERENCE_ANALYZER_MODEL_ID = "openrouter/free"
+_REFERENCE_ANALYZER_MODEL_ID = "google/gemma-3-27b-it:free"
 
 
 class ReferenceAwareProviderBackedDesktopVideoRuntime(

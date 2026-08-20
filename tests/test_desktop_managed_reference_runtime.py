@@ -103,6 +103,23 @@ def test_managed_budget_requires_explicit_bounded_value(monkeypatch: pytest.Monk
     assert str(_managed_budget()) == "1.00"
 
 
+def test_reference_analyzer_is_pinned_to_supported_free_multimodal_route() -> None:
+    runtime = (
+        Path(__file__).resolve().parents[1]
+        / "services"
+        / "integrations"
+        / "reference_aware_managed_provider_video_runtime.py"
+    ).read_text(encoding="utf-8")
+
+    assert (
+        '_DEFAULT_REFERENCE_ANALYZER_MODEL_ID = "google/gemma-4-26b-a4b-it:free"'
+        in runtime
+    )
+    assert "_DEFAULT_REFERENCE_ANALYZER_MODEL_ID" in runtime.split(
+        "OpenRouterReferenceImageAnalyzer(", 1
+    )[1]
+
+
 def test_desktop_sidecar_managed_mode_is_explicit_and_truthful() -> None:
     source = (
         Path(__file__).resolve().parents[1]
