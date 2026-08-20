@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'dart:math' as math;
 
@@ -8,18 +9,25 @@ import '../../app/ilaios_surface_catalog.dart';
 import '../../app/ilaios_theme.dart';
 import '../../control_plane/evidence_record.dart';
 import '../../control_plane/operational_snapshot.dart';
+import 'delivery_identity_scope.dart';
+import 'delivery_local_storage.dart';
 
 class DeliveriesView extends StatefulWidget {
   const DeliveriesView({
     required this.snapshot,
     required this.status,
     this.onSaveArtifact,
+    this.localStorage,
+    this.archiveStoreFactory,
     super.key,
   });
 
   final OperationalSnapshot snapshot;
   final String status;
   final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
+  final DeliveryLocalStorage? localStorage;
+  final DeliveryArchiveStore Function(DesktopUserSession session)?
+      archiveStoreFactory;
 
   @override
   State<DeliveriesView> createState() => _DeliveriesViewState();
@@ -27,10 +35,63 @@ class DeliveriesView extends StatefulWidget {
 
 class _DeliveriesViewState extends State<DeliveriesView> {
   final TextEditingController _searchController = TextEditingController();
+  late final DeliveryLocalStorage _localStorage =
+      widget.localStorage ?? DeliveryLocalStorage();
   String? _activeDigest;
   String? _message;
+  String? _archiveError;
+  String? _archiveScopeKey;
   String _activeTab = 'all';
   String _typeFilter = 'all';
+  Set<String> _archivedDigests = <String>{};
+  DeliveryArchiveStore? _archiveStore;
+  bool _archiveReady = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final session = DeliveryIdentityScope.maybeSessionOf(context);
+    final nextKey = session == null
+        ? null
+        : '${session.providerId}\u0000${session.tenantId}\u0000${session.principalId}';
+    if (nextKey == _archiveScopeKey) return;
+    _archiveScopeKey = nextKey;
+    _archivedDigests = <String>{};
+    _archiveStore = null;
+    _archiveReady = false;
+    _archiveError = null;
+    if (session == null) return;
+    final store = widget.archiveStoreFactory?.call(session) ??
+        DeliveryArchiveStore.forSession(session);
+    _archiveStore = store;
+    unawaited(_loadArchive(store, nextKey!));
+  }
+
+  Future<void> _loadArchive(DeliveryArchiveStore store, String scopeKey) async {
+    try {
+      final loaded = await store.load();
+      if (!mounted || _archiveScopeKey != scopeKey || _archiveStore != store) {
+        return;
+      }
+      setState(() {
+        _archivedDigests = loaded;
+        _archiveReady = true;
+        _archiveError = null;
+      });
+    } on DeliveryArchiveStateException catch (error) {
+      if (!mounted || _archiveScopeKey != scopeKey || _archiveStore != store) {
+        return;
+      }
+      setState(() {
+        _archivedDigests = <String>{};
+        _archiveReady = false;
+        _archiveError = _isTr(context)
+            ? 'Arşiv durumu okunamadı; arşivleme ve geri yükleme güvenli biçimde devre dışı bırakıldı. Kanıt kayıtları değişmedi.'
+            : 'Archive state is unreadable; archive and restore are safely disabled. Evidence records were unchanged.';
+        _message = error.message;
+      });
+    }
+  }
 
   @override
   void dispose() {
@@ -43,9 +104,28 @@ class _DeliveriesViewState extends State<DeliveriesView> {
       .take(100)
       .toList(growable: false);
 
+  List<EvidenceRecord> get _activeRecords {
+    final records = _records;
+    if (!_archiveReady) return records;
+    return records
+        .where((record) => !_archivedDigests.contains(record.artifactDigest))
+        .toList(growable: false);
+  }
+
+  List<EvidenceRecord> get _archivedRecords {
+    if (!_archiveReady) return const <EvidenceRecord>[];
+    return _records
+        .where((record) => _archivedDigests.contains(record.artifactDigest))
+        .toList(growable: false);
+  }
+
   List<EvidenceRecord> get _visibleRecords {
-    var records = _records;
-    if (_activeTab != 'all' && _activeTab != 'completed') {
+    List<EvidenceRecord> records;
+    if (_activeTab == 'archive') {
+      records = _archivedRecords;
+    } else if (_activeTab == 'all' || _activeTab == 'completed') {
+      records = _activeRecords;
+    } else {
       return const <EvidenceRecord>[];
     }
     if (_typeFilter != 'all') {
@@ -88,26 +168,8 @@ class _DeliveriesViewState extends State<DeliveriesView> {
     }
   }
 
-  File _localDeliveryFile(EvidenceRecord record) {
-    final userProfile = Platform.environment['USERPROFILE']?.trim();
-    final localAppData = Platform.environment['LOCALAPPDATA']?.trim();
-    final separator = Platform.pathSeparator;
-    final rootPath = userProfile?.isNotEmpty == true
-        ? '$userProfile${separator}Downloads${separator}ILAIOS'
-        : (localAppData?.isNotEmpty == true
-            ? '$localAppData${separator}ILAIOS${separator}Deliveries'
-            : '${Directory.systemTemp.path}${separator}ILAIOS${separator}Deliveries');
-    final safeExecution =
-        record.executionId.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
-    final extension =
-        record.action.toLowerCase().contains('video') ? '.mp4' : '.bin';
-    final digestPrefix = record.artifactDigest.length <= 16
-        ? record.artifactDigest
-        : record.artifactDigest.substring(0, 16);
-    return File(
-      '$rootPath$separator${'ILAIOS-$safeExecution-$digestPrefix$extension'}',
-    );
-  }
+  File _localDeliveryFile(EvidenceRecord record) =>
+      _localStorage.resolveArtifactFile(record);
 
   Future<void> _deleteLocalCopy(EvidenceRecord record) async {
     if (_activeDigest != null) return;
@@ -175,6 +237,48 @@ class _DeliveriesViewState extends State<DeliveriesView> {
     }
   }
 
+  Future<void> _setArchived(EvidenceRecord record, bool archived) async {
+    if (_activeDigest != null) return;
+    final store = _archiveStore;
+    if (!_archiveReady || store == null) {
+      setState(() {
+        _message = _isTr(context)
+            ? 'Arşivleme için doğrulanmış oturum ve okunabilir arşiv durumu gerekir.'
+            : 'Archiving requires a verified session and readable archive state.';
+      });
+      return;
+    }
+    final next = Set<String>.of(_archivedDigests);
+    if (archived) {
+      next.add(record.artifactDigest);
+    } else {
+      next.remove(record.artifactDigest);
+    }
+    setState(() {
+      _activeDigest = record.artifactDigest;
+      _message = null;
+    });
+    try {
+      await store.persist(next);
+      if (!mounted) return;
+      setState(() {
+        _archivedDigests = next;
+        _message = archived
+            ? (_isTr(context)
+                ? 'Çıktı aktif listeden kaldırıldı ve Arşiv’e taşındı. Kanıt kaydı korunuyor.'
+                : 'Output removed from the active list and moved to Archive. Evidence is retained.')
+            : (_isTr(context)
+                ? 'Çıktı Arşiv’den geri yüklendi.'
+                : 'Output restored from Archive.');
+      });
+    } on DeliveryArchiveStateException catch (error) {
+      if (!mounted) return;
+      setState(() => _message = error.message);
+    } finally {
+      if (mounted) setState(() => _activeDigest = null);
+    }
+  }
+
   void _clearFilters() {
     _searchController.clear();
     setState(() {
@@ -185,10 +289,16 @@ class _DeliveriesViewState extends State<DeliveriesView> {
 
   @override
   Widget build(BuildContext context) {
-    final records = _records;
+    final allRecords = _records;
+    final activeRecords = _activeRecords;
+    final archivedRecords = _archivedRecords;
     final visibleRecords = _visibleRecords;
-    final categories = _categoryCounts(records);
-    final localStorage = _localStorage(records);
+    final baseCount = _activeTab == 'archive'
+        ? archivedRecords.length
+        : activeRecords.length;
+    final categories = _categoryCounts(activeRecords);
+    final localStorage = _localStorage.summarize(allRecords);
+    final message = _archiveError ?? _message;
 
     return Container(
       key: const Key('reference-outputs-page'),
@@ -204,12 +314,9 @@ class _DeliveriesViewState extends State<DeliveriesView> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    _Header(
-                      status: widget.status,
-                      total: records.length,
-                    ),
+                    _Header(status: widget.status, total: activeRecords.length),
                     const SizedBox(height: 10),
-                    _MetricStrip(total: records.length),
+                    _MetricStrip(total: activeRecords.length),
                     const SizedBox(height: 10),
                     _Toolbar(
                       activeTab: _activeTab,
@@ -229,15 +336,19 @@ class _DeliveriesViewState extends State<DeliveriesView> {
                     Expanded(
                       child: _OutputsTable(
                         records: visibleRecords,
-                        totalCount: records.length,
+                        totalCount: baseCount,
                         activeDigest: _activeDigest,
                         saveEnabled: widget.onSaveArtifact != null,
+                        archiveEnabled: _archiveReady,
+                        archivedDigests: _archivedDigests,
                         localFileFor: _localDeliveryFile,
                         onSave: _save,
                         onDelete: _deleteLocalCopy,
+                        onArchive: (record) => _setArchived(record, true),
+                        onRestore: (record) => _setArchived(record, false),
                       ),
                     ),
-                    if (_message case final message?) ...[
+                    if (message != null) ...[
                       const SizedBox(height: 7),
                       _InlineMessage(message: message),
                     ],
@@ -249,7 +360,7 @@ class _DeliveriesViewState extends State<DeliveriesView> {
                 SizedBox(
                   width: 300,
                   child: _RightRail(
-                    records: records,
+                    records: activeRecords,
                     categories: categories,
                     localStorage: localStorage,
                   ),
@@ -360,7 +471,7 @@ class _MetricStrip extends StatelessWidget {
                 accent: IlaiosTheme.coreBlue,
                 label: _copy(context, 'Toplam Çıktı', 'Total Outputs'),
                 value: '$total',
-                note: _copy(context, 'Doğrulanmış kanıt zinciri', 'Verified evidence chain'),
+                note: _copy(context, 'Aktif doğrulanmış çıktılar', 'Active verified outputs'),
               ),
             ),
             const SizedBox(width: 8),
@@ -661,7 +772,10 @@ class _Filters extends StatelessWidget {
             const SizedBox(width: 7),
             _DisabledFilter(label: _copy(context, 'Durum', 'Status')),
             const SizedBox(width: 7),
-            _DisabledFilter(label: _copy(context, 'Tarih Aralığı', 'Date Range'), width: 118),
+            _DisabledFilter(
+              label: _copy(context, 'Tarih Aralığı', 'Date Range'),
+              width: 118,
+            ),
             const Spacer(),
             TextButton(
               onPressed: onClear,
@@ -757,18 +871,26 @@ class _OutputsTable extends StatelessWidget {
     required this.totalCount,
     required this.activeDigest,
     required this.saveEnabled,
+    required this.archiveEnabled,
+    required this.archivedDigests,
     required this.localFileFor,
     required this.onSave,
     required this.onDelete,
+    required this.onArchive,
+    required this.onRestore,
   });
 
   final List<EvidenceRecord> records;
   final int totalCount;
   final String? activeDigest;
   final bool saveEnabled;
+  final bool archiveEnabled;
+  final Set<String> archivedDigests;
   final File Function(EvidenceRecord record) localFileFor;
   final Future<void> Function(EvidenceRecord record) onSave;
   final Future<void> Function(EvidenceRecord record) onDelete;
+  final Future<void> Function(EvidenceRecord record) onArchive;
+  final Future<void> Function(EvidenceRecord record) onRestore;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -800,9 +922,13 @@ class _OutputsTable extends StatelessWidget {
                             saving: activeDigest == record.artifactDigest,
                             actionsEnabled: activeDigest == null,
                             saveEnabled: saveEnabled,
+                            archiveEnabled: archiveEnabled,
+                            archived: archivedDigests.contains(record.artifactDigest),
                             localFile: localFileFor(record),
                             onSave: () => onSave(record),
                             onDelete: () => onDelete(record),
+                            onArchive: () => onArchive(record),
+                            onRestore: () => onRestore(record),
                           );
                         },
                       ),
@@ -887,18 +1013,26 @@ class _OutputRow extends StatelessWidget {
     required this.saving,
     required this.actionsEnabled,
     required this.saveEnabled,
+    required this.archiveEnabled,
+    required this.archived,
     required this.localFile,
     required this.onSave,
     required this.onDelete,
+    required this.onArchive,
+    required this.onRestore,
   });
 
   final EvidenceRecord record;
   final bool saving;
   final bool actionsEnabled;
   final bool saveEnabled;
+  final bool archiveEnabled;
+  final bool archived;
   final File localFile;
   final VoidCallback onSave;
   final VoidCallback onDelete;
+  final VoidCallback onArchive;
+  final VoidCallback onRestore;
 
   @override
   Widget build(BuildContext context) {
@@ -954,10 +1088,7 @@ class _OutputRow extends StatelessWidget {
               flex: 11,
               child: Align(
                 alignment: Alignment.centerLeft,
-                child: _Pill(
-                  text: _typeLabel(context, type),
-                  color: accent,
-                ),
+                child: _Pill(text: _typeLabel(context, type), color: accent),
               ),
             ),
             Expanded(flex: 14, child: _UnavailableCell()),
@@ -967,8 +1098,10 @@ class _OutputRow extends StatelessWidget {
               child: Align(
                 alignment: Alignment.centerLeft,
                 child: _Pill(
-                  text: _copy(context, 'Tamamlandı', 'Completed'),
-                  color: IlaiosTheme.success,
+                  text: archived
+                      ? _copy(context, 'Arşivde', 'Archived')
+                      : _copy(context, 'Tamamlandı', 'Completed'),
+                  color: archived ? IlaiosTheme.violet : IlaiosTheme.success,
                 ),
               ),
             ),
@@ -1004,14 +1137,78 @@ class _OutputRow extends StatelessWidget {
                   SizedBox(
                     width: 27,
                     height: 30,
-                    child: IconButton(
+                    child: PopupMenuButton<String>(
                       key: ValueKey('delete-local-artifact-${record.sequence}'),
-                      tooltip: _copy(context, 'Yerel kopyayı sil', 'Delete local copy'),
+                      tooltip: _copy(context, 'Çıktı işlemleri', 'Output actions'),
                       padding: EdgeInsets.zero,
-                      visualDensity: VisualDensity.compact,
+                      enabled: actionsEnabled,
                       iconSize: 15,
-                      onPressed: actionsEnabled ? onDelete : null,
                       icon: const Icon(Icons.more_vert),
+                      onSelected: (value) {
+                        switch (value) {
+                          case 'delete-local':
+                            onDelete();
+                          case 'archive':
+                            onArchive();
+                          case 'restore':
+                            onRestore();
+                        }
+                      },
+                      itemBuilder: (context) => <PopupMenuEntry<String>>[
+                        PopupMenuItem<String>(
+                          value: 'delete-local',
+                          child: Row(
+                            children: [
+                              const Icon(Icons.delete_outline, size: 16),
+                              const SizedBox(width: 8),
+                              Text(_copy(context, 'Yerel kopyayı sil', 'Delete local copy')),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem<String>(
+                          value: archived ? 'restore' : 'archive',
+                          enabled: archiveEnabled,
+                          child: Row(
+                            children: [
+                              Icon(
+                                archived ? Icons.unarchive_outlined : Icons.archive_outlined,
+                                size: 16,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                archived
+                                    ? _copy(context, 'Geri yükle', 'Restore')
+                                    : _copy(context, 'Listeden kaldır', 'Remove from list'),
+                              ),
+                            ],
+                          ),
+                        ),
+                        PopupMenuItem<String>(
+                          enabled: false,
+                          child: Tooltip(
+                            message: _copy(
+                              context,
+                              'Yetkili remote-delete sözleşmesi yok; kalıcı silme güvenli biçimde devre dışı.',
+                              'No authoritative remote-delete contract exists; permanent purge is safely disabled.',
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.delete_forever_outlined, size: 16),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _copy(
+                                      context,
+                                      'Kalıcı olarak sil — kullanılamıyor',
+                                      'Permanently delete — unavailable',
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
@@ -1109,7 +1306,7 @@ class _RightRail extends StatelessWidget {
 
   final List<EvidenceRecord> records;
   final Map<String, int> categories;
-  final _LocalStorageSummary localStorage;
+  final DeliveryStorageSummary localStorage;
 
   @override
   Widget build(BuildContext context) => Column(
@@ -1148,9 +1345,7 @@ class _DistributionCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _RailTitle(
-              title: _copy(context, 'Çıktı Dağılımı', 'Output Distribution'),
-            ),
+            _RailTitle(title: _copy(context, 'Çıktı Dağılımı', 'Output Distribution')),
             const SizedBox(height: 8),
             Expanded(
               child: Row(
@@ -1202,8 +1397,8 @@ class _DistributionCard extends StatelessWidget {
             Text(
               _copy(
                 context,
-                '* Dağılım doğrulanmış bitmiş ürünlerden hesaplanır.',
-                '* Distribution is calculated from verified finished products.',
+                '* Dağılım aktif doğrulanmış bitmiş ürünlerden hesaplanır.',
+                '* Distribution is calculated from active verified finished products.',
               ),
               style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 7.5),
             ),
@@ -1270,9 +1465,7 @@ class _LegendRow extends StatelessWidget {
         children: [
           Icon(Icons.circle, size: 7, color: color),
           const SizedBox(width: 5),
-          Expanded(
-            child: Text(label, style: const TextStyle(fontSize: 8.2)),
-          ),
+          Expanded(child: Text(label, style: const TextStyle(fontSize: 8.2))),
           Text('$count  $percent', style: const TextStyle(fontSize: 8.2)),
         ],
       ),
@@ -1293,17 +1486,12 @@ class _ActivityCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _RailTitle(
-              title: _copy(context, 'Son Çıktı Aktivitesi', 'Recent Output Activity'),
-            ),
+            _RailTitle(title: _copy(context, 'Son Çıktı Aktivitesi', 'Recent Output Activity')),
             const SizedBox(height: 8),
             Expanded(
               child: records.isEmpty
                   ? Center(
-                      child: Text(
-                        '—',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
+                      child: Text('—', style: Theme.of(context).textTheme.titleMedium),
                     )
                   : Column(
                       children: [
@@ -1315,10 +1503,7 @@ class _ActivityCard extends StatelessWidget {
                                   width: 44,
                                   child: Text(
                                     '#${record.sequence}',
-                                    style: Theme.of(context)
-                                        .textTheme
-                                        .bodySmall
-                                        ?.copyWith(fontSize: 8),
+                                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 8),
                                   ),
                                 ),
                                 Expanded(
@@ -1330,19 +1515,13 @@ class _ActivityCard extends StatelessWidget {
                                         _outputName(record),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontSize: 9,
-                                          fontWeight: FontWeight.w600,
-                                        ),
+                                        style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600),
                                       ),
                                       Text(
                                         '${_copy(context, 'Yürütme', 'Execution')} ${record.executionId}',
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: Theme.of(context)
-                                            .textTheme
-                                            .bodySmall
-                                            ?.copyWith(fontSize: 7.5),
+                                        style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 7.5),
                                       ),
                                     ],
                                   ),
@@ -1362,7 +1541,7 @@ class _ActivityCard extends StatelessWidget {
 class _StorageCard extends StatelessWidget {
   const _StorageCard({required this.summary});
 
-  final _LocalStorageSummary summary;
+  final DeliveryStorageSummary summary;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1372,19 +1551,19 @@ class _StorageCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _RailTitle(
-              title: _copy(context, 'Depolama Kullanımı', 'Storage Usage'),
-            ),
+            _RailTitle(title: _copy(context, 'Depolama Kullanımı', 'Storage Usage')),
             const Spacer(),
             Text(
               summary.bytes == 0 ? '—' : _formatBytes(summary.bytes),
               style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 4),
-            LinearProgressIndicator(
-              value: summary.count == 0 ? 0 : 1,
-              minHeight: 5,
-              borderRadius: BorderRadius.circular(4),
+            Container(
+              height: 5,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(4),
+              ),
             ),
             const Spacer(),
             Row(
@@ -1478,13 +1657,6 @@ class _InlineMessage extends StatelessWidget {
       );
 }
 
-class _LocalStorageSummary {
-  const _LocalStorageSummary({required this.count, required this.bytes});
-
-  final int count;
-  final int bytes;
-}
-
 Map<String, int> _categoryCounts(List<EvidenceRecord> records) {
   final result = <String, int>{for (final code in _categoryOrder) code: 0};
   for (final record in records) {
@@ -1492,40 +1664,6 @@ Map<String, int> _categoryCounts(List<EvidenceRecord> records) {
     result[code] = (result[code] ?? 0) + 1;
   }
   return result;
-}
-
-_LocalStorageSummary _localStorage(List<EvidenceRecord> records) {
-  var count = 0;
-  var bytes = 0;
-  for (final record in records) {
-    final userProfile = Platform.environment['USERPROFILE']?.trim();
-    final localAppData = Platform.environment['LOCALAPPDATA']?.trim();
-    final separator = Platform.pathSeparator;
-    final rootPath = userProfile?.isNotEmpty == true
-        ? '$userProfile${separator}Downloads${separator}ILAIOS'
-        : (localAppData?.isNotEmpty == true
-            ? '$localAppData${separator}ILAIOS${separator}Deliveries'
-            : '${Directory.systemTemp.path}${separator}ILAIOS${separator}Deliveries');
-    final safeExecution =
-        record.executionId.replaceAll(RegExp(r'[^A-Za-z0-9._-]'), '_');
-    final extension =
-        record.action.toLowerCase().contains('video') ? '.mp4' : '.bin';
-    final digestPrefix = record.artifactDigest.length <= 16
-        ? record.artifactDigest
-        : record.artifactDigest.substring(0, 16);
-    final file = File(
-      '$rootPath$separator${'ILAIOS-$safeExecution-$digestPrefix$extension'}',
-    );
-    try {
-      if (file.existsSync()) {
-        count += 1;
-        bytes += file.lengthSync();
-      }
-    } on FileSystemException {
-      // Local storage telemetry is best-effort and never affects evidence truth.
-    }
-  }
-  return _LocalStorageSummary(count: count, bytes: bytes);
 }
 
 bool _safeExists(File file) {
@@ -1615,7 +1753,9 @@ IconData _typeIcon(String code) => switch (code) {
 String _outputName(EvidenceRecord record) {
   var value = record.action;
   const suffix = '.finished_product';
-  if (value.endsWith(suffix)) value = value.substring(0, value.length - suffix.length);
+  if (value.endsWith(suffix)) {
+    value = value.substring(0, value.length - suffix.length);
+  }
   value = value.replaceAll(RegExp(r'[._-]+'), ' ').trim();
   if (value.isEmpty) return record.executionId;
   return value
