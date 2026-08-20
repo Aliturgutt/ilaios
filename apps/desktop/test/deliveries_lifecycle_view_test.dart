@@ -10,7 +10,14 @@ import 'package:ilaios_desktop/features/deliveries/deliveries_view.dart';
 import 'package:ilaios_desktop/features/deliveries/delivery_identity_scope.dart';
 import 'package:ilaios_desktop/features/deliveries/delivery_local_storage.dart';
 
+Future<void> _yieldRealIo(WidgetTester tester) async {
+  await tester.runAsync(() async {
+    await Future<void>.delayed(const Duration(milliseconds: 10));
+  });
+}
+
 Future<void> _pumpIo(WidgetTester tester, {int frames = 8}) async {
+  await _yieldRealIo(tester);
   for (var i = 0; i < frames; i += 1) {
     await tester.pump(const Duration(milliseconds: 25));
   }
@@ -22,11 +29,25 @@ Future<void> _pumpUntil(
   required bool present,
 }) async {
   for (var i = 0; i < 40; i += 1) {
+    await _yieldRealIo(tester);
     await tester.pump(const Duration(milliseconds: 25));
     final found = finder.evaluate().isNotEmpty;
     if (found == present) return;
   }
   fail('Timed out waiting for $finder present=$present');
+}
+
+Future<Directory> _createTempRoot(
+  WidgetTester tester,
+  String prefix,
+) async {
+  final root = await tester.runAsync(
+    () => Directory.systemTemp.createTemp(prefix),
+  );
+  if (root == null) {
+    fail('Failed to create temporary filesystem root for $prefix');
+  }
+  return root;
 }
 
 void main() {
@@ -68,9 +89,11 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1366, 768));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final root = await Directory.systemTemp.createTemp('ilaios-archive-view-');
+    final root = await _createTempRoot(tester, 'ilaios-archive-view-');
     addTearDown(() async {
-      if (await root.exists()) await root.delete(recursive: true);
+      await tester.runAsync(() async {
+        if (await root.exists()) await root.delete(recursive: true);
+      });
     });
 
     await tester.pumpWidget(
@@ -141,9 +164,11 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final root = await Directory.systemTemp.createTemp('ilaios-output-projection-');
+    final root = await _createTempRoot(tester, 'ilaios-output-projection-');
     addTearDown(() async {
-      if (await root.exists()) await root.delete(recursive: true);
+      await tester.runAsync(() async {
+        if (await root.exists()) await root.delete(recursive: true);
+      });
     });
 
     await tester.pumpWidget(
