@@ -163,7 +163,12 @@ void main() {
       present: false,
     );
 
-    await tester.tap(find.text('All'));
+    final allTab = find.descendant(
+      of: find.byKey(const Key('outputs-tabs')),
+      matching: find.text('All'),
+    );
+    expect(allTab, findsOneWidget);
+    await tester.tap(allTab);
     await _pumpUntil(
       tester,
       find.byKey(const ValueKey('save-artifact-1')),
