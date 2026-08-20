@@ -28,6 +28,7 @@ class _Record:
     mime_type: str
     role: _Role
     instruction: str | None
+    content: bytes
 
 
 class _ReferenceStore:
@@ -39,7 +40,7 @@ class _ReferenceStore:
         return self._records
 
     def read_bytes(self, record: _Record) -> bytes:
-        return f"bytes:{record.sha256}".encode()
+        return record.content
 
 
 class _Cache:
@@ -94,6 +95,7 @@ def _runtime_with_analyzer(message: str) -> ReferenceAwareProviderBackedDesktopV
         mime_type="image/png",
         role=_Role("product"),
         instruction="Preserve the admitted product reference.",
+        content=content,
     )
     runtime = object.__new__(ReferenceAwareProviderBackedDesktopVideoRuntime)
     runtime_injected: Any = runtime
