@@ -157,6 +157,9 @@ void main() {
     );
     await tester.tap(find.byKey(const ValueKey('delete-local-artifact-7')));
     await tester.pumpAndSettle();
+    expect(find.text('Delete local copy'), findsOneWidget);
+    await tester.tap(find.text('Delete local copy'));
+    await tester.pumpAndSettle();
     expect(find.text('Delete local copy?'), findsOneWidget);
     expect(
       find.textContaining(
