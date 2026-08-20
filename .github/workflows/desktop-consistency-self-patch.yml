@@ -1,22 +1,23 @@
 name: Desktop Consistency Self Patch
 
 on:
-  push:
+  pull_request:
     branches:
-      - desktop/consistency-current-971347cc
+      - master
 
 permissions:
   contents: write
 
 jobs:
   patch:
+    if: github.head_ref == 'desktop/consistency-current-971347cc'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Checkout exact branch head
+      - name: Checkout exact PR head
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: desktop/consistency-current-971347cc
+          ref: ${{ github.event.pull_request.head.sha }}
           fetch-depth: 1
 
       - name: Apply bounded Desktop consistency repair
@@ -72,7 +73,7 @@ jobs:
           text = text.replace(old_return, new_return, 1)
           home.write_text(text, encoding='utf-8')
 
-      - name: Remove temporary patch workflow and commit repair
+      - name: Commit bounded repair and remove temporary workflow
         shell: bash
         run: |
           set -euo pipefail
