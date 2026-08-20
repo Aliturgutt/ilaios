@@ -1,0 +1,39 @@
+/* Production certification closure. Loaded last on purpose so live computed styles match the measured gate without weakening the gate itself. */
+main h1 {
+  font-size: clamp(2.2rem, 3.35vw, 3rem) !important;
+  line-height: 1 !important;
+  letter-spacing: -.045em !important;
+}
+
+main section {
+  padding-top: 48px !important;
+  padding-bottom: 48px !important;
+}
+
+main .eyebrow,
+main .text-link,
+main .panel-kicker,
+main .micro-label,
+main .detail-link-card > span,
+main .plane-card span,
+main .security-chain article > span,
+main .stack-layer span,
+main .canonical-linear > div > span,
+main .canonical-dual > div > span,
+main .process-ledger > article > span,
+main .verification-list span,
+main .use-step-grid article > span,
+main .availability-chip.is-preview {
+  color: var(--brand-blue, #146BFF) !important;
+}
+
+@media (max-width: 899px) {
+  main h1 {
+    font-size: clamp(2.15rem, 4.6vw, 2.375rem) !important;
+  }
+
+  main section {
+    padding-top: 32px !important;
+    padding-bottom: 32px !important;
+  }
+}
