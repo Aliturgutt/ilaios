@@ -49,6 +49,32 @@ def test_reference_live_secret_cannot_run_from_pull_request(tmp_path: Path) -> N
     assert any(item.rule == "TRUSTED_SECRET_TRIGGER" for item in audit_repository(tmp_path))
 
 
+def test_operations_meta_live_secret_is_trusted_master_bounded(tmp_path: Path) -> None:
+    _write(
+        tmp_path,
+        "operations-meta-agent-live-certification.yml",
+        "on:\n"
+        "  push:\n"
+        "    branches:\n"
+        "      - master\n"
+        "  workflow_dispatch:\n"
+        "permissions:\n"
+        "  contents: read\n"
+        "jobs:\n"
+        "  proof:\n"
+        "    environment: Production\n"
+        "    runs-on: ubuntu-latest\n"
+        "    env:\n"
+        "      API_KEY: ${{ secrets.OPENROUTER_API_KEY }}\n"
+        "    steps:\n"
+        "      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262\n"
+        "        with:\n"
+        "          ref: ${{ github.sha }}\n"
+        "          persist-credentials: false\n",
+    )
+    assert audit_repository(tmp_path) == ()
+
+
 def test_proxy_dispatch_of_manual_only_workflow_is_blocked(tmp_path: Path) -> None:
     _write(
         tmp_path,
