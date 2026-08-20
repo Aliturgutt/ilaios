@@ -50,6 +50,17 @@ Future<Directory> _createTempRoot(
   return root;
 }
 
+Future<void> _tapPopupMenuAction(
+  WidgetTester tester,
+  String label,
+) async {
+  final item = find.widgetWithText(PopupMenuItem<String>, label);
+  expect(item, findsOneWidget);
+  final tappable = find.descendant(of: item, matching: find.byType(InkWell));
+  expect(tappable, findsOneWidget);
+  await tester.tap(tappable);
+}
+
 void main() {
   const session = DesktopUserSession(
     sessionId: 'session-a',
@@ -127,9 +138,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('delete-local-artifact-1')));
     await _pumpIo(tester, frames: 2);
-    await tester.tap(
-      find.widgetWithText(PopupMenuItem<String>, 'Remove from list'),
-    );
+    await _tapPopupMenuAction(tester, 'Remove from list');
     await _pumpUntil(
       tester,
       find.byKey(const ValueKey('save-artifact-1')),
@@ -145,9 +154,7 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('delete-local-artifact-1')));
     await _pumpIo(tester, frames: 2);
-    await tester.tap(
-      find.widgetWithText(PopupMenuItem<String>, 'Restore'),
-    );
+    await _tapPopupMenuAction(tester, 'Restore');
     await _pumpUntil(
       tester,
       find.byKey(const ValueKey('save-artifact-1')),
