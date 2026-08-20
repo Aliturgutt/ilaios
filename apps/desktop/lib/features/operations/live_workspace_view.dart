@@ -1745,9 +1745,9 @@ class _WorkspaceFile {
 
 _SessionProjection _sessionProjection(OperationalSnapshot snapshot, String status) {
   final sources = <Map<String, Object?>>[
-    if (snapshot.liveEvents.isNotEmpty) snapshot.liveEvents.last,
     snapshot.schedulerState,
     snapshot.governanceState,
+    if (snapshot.liveEvents.isNotEmpty) snapshot.liveEvents.last,
   ];
   String? read(List<String> keys) {
     for (final source in sources) {
@@ -1898,10 +1898,11 @@ String _surface(BuildContext context, String key) =>
     IlaiosSurfaceCatalog.text(context.ilaiosLocale.locale.code, key) ?? key;
 
 void _showUnavailable(BuildContext context, String message) {
+  final title = _surface(context, 'workspace.title');
   showDialog<void>(
     context: context,
     builder: (context) => AlertDialog(
-      title: Text(_surface(context, 'workspace.title')),
+      title: Text(title),
       content: Text(message),
       actions: [
         TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
