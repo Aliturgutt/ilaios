@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/business_context/business_capability_context.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
+import 'package:ilaios_desktop/control_plane/evidence_record.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
 import 'package:ilaios_desktop/features/create/governed_lifecycle_projection.dart';
 import 'package:ilaios_desktop/identity/identity_client.dart';
