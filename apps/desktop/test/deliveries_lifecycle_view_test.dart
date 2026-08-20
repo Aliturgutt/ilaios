@@ -10,6 +10,25 @@ import 'package:ilaios_desktop/features/deliveries/deliveries_view.dart';
 import 'package:ilaios_desktop/features/deliveries/delivery_identity_scope.dart';
 import 'package:ilaios_desktop/features/deliveries/delivery_local_storage.dart';
 
+Future<void> _pumpIo(WidgetTester tester, {int frames = 8}) async {
+  for (var i = 0; i < frames; i += 1) {
+    await tester.pump(const Duration(milliseconds: 25));
+  }
+}
+
+Future<void> _pumpUntil(
+  WidgetTester tester,
+  Finder finder, {
+  required bool present,
+}) async {
+  for (var i = 0; i < 40; i += 1) {
+    await tester.pump(const Duration(milliseconds: 25));
+    final found = finder.evaluate().isNotEmpty;
+    if (found == present) return;
+  }
+  fail('Timed out waiting for $finder present=$present');
+}
+
 void main() {
   const session = DesktopUserSession(
     sessionId: 'session-a',
@@ -77,34 +96,43 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await _pumpIo(tester);
 
     expect(find.byKey(const ValueKey('save-artifact-1')), findsOneWidget);
     expect(find.byKey(const ValueKey('save-artifact-2')), findsNothing);
     expect(find.text('Completed'), findsWidgets);
 
     await tester.tap(find.byKey(const ValueKey('delete-local-artifact-1')));
-    await tester.pumpAndSettle();
+    await _pumpIo(tester, frames: 2);
     await tester.tap(find.text('Remove from list'));
-    await tester.pumpAndSettle();
+    await _pumpUntil(
+      tester,
+      find.byKey(const ValueKey('save-artifact-1')),
+      present: false,
+    );
 
-    expect(find.byKey(const ValueKey('save-artifact-1')), findsNothing);
     expect(find.textContaining('moved to Archive'), findsOneWidget);
 
     await tester.tap(find.text('Archive'));
-    await tester.pumpAndSettle();
+    await _pumpIo(tester, frames: 2);
     expect(find.byKey(const ValueKey('save-artifact-1')), findsOneWidget);
     expect(find.text('Archived'), findsWidgets);
 
     await tester.tap(find.byKey(const ValueKey('delete-local-artifact-1')));
-    await tester.pumpAndSettle();
+    await _pumpIo(tester, frames: 2);
     await tester.tap(find.text('Restore'));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('save-artifact-1')), findsNothing);
+    await _pumpUntil(
+      tester,
+      find.byKey(const ValueKey('save-artifact-1')),
+      present: false,
+    );
 
     await tester.tap(find.text('All'));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const ValueKey('save-artifact-1')), findsOneWidget);
+    await _pumpUntil(
+      tester,
+      find.byKey(const ValueKey('save-artifact-1')),
+      present: true,
+    );
     expect(tester.takeException(), isNull);
   });
 
@@ -141,7 +169,7 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    await _pumpIo(tester);
 
     expect(find.byKey(const ValueKey('save-artifact-1')), findsOneWidget);
     expect(find.byKey(const ValueKey('save-artifact-2')), findsNothing);
