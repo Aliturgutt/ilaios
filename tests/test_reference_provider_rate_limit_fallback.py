@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 from dataclasses import dataclass
+from typing import Any
 
 import pytest
 
@@ -95,9 +96,10 @@ def _runtime_with_analyzer(message: str) -> ReferenceAwareProviderBackedDesktopV
         instruction="Preserve the admitted product reference.",
     )
     runtime = object.__new__(ReferenceAwareProviderBackedDesktopVideoRuntime)
-    runtime._reference_assets = _ReferenceStore((record,))
-    runtime._reference_brief_cache = _Cache()
-    runtime._reference_analyzer = _FailingAnalyzer(message)
+    runtime_injected: Any = runtime
+    runtime_injected._reference_assets = _ReferenceStore((record,))
+    runtime_injected._reference_brief_cache = _Cache()
+    runtime_injected._reference_analyzer = _FailingAnalyzer(message)
     return runtime
 
 
@@ -127,7 +129,8 @@ def test_reference_brief_uses_metadata_fallback_for_rate_limit_only() -> None:
 
     assert brief is not None
     assert brief.analyzer_id == "native-reference-metadata-fallback:v1"
-    assert runtime._reference_brief_cache.put_calls
+    runtime_injected: Any = runtime
+    assert runtime_injected._reference_brief_cache.put_calls
 
 
 def test_reference_brief_remains_fail_closed_for_non_transient_analyzer_errors() -> None:
