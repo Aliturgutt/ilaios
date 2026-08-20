@@ -9,7 +9,6 @@ headers and a short-lived signed fetch URL in ``fetch_url``.
 from __future__ import annotations
 
 import json
-import time
 import urllib.error
 import urllib.request
 from threading import Lock
@@ -19,9 +18,11 @@ from services.reference_relay import (
     ReferenceRelayError,
     ReferenceRelayTicket,
     _require_identity,
-    _ticket_from_cloudflare_payload,
+    _require_relay_id,
     _validate_reference_bytes,
 )
+
+_ALLOWED_MIME_TYPES = frozenset({"image/jpeg", "image/png", "image/webp"})
 
 
 class CloudflareReferenceRelayClient:
@@ -116,7 +117,11 @@ class CloudflareReferenceRelayClient:
     def ready(self) -> bool:
         parsed = urlparse(self._upload_url)
         ready_url = f"{parsed.scheme}://{parsed.netloc}/health/ready"
-        request = urllib.request.Request(ready_url, method="GET", headers={"Accept": "application/json"})
+        request = urllib.request.Request(
+            ready_url,
+            method="GET",
+            headers={"Accept": "application/json"},
+        )
         try:
             with urllib.request.urlopen(request, timeout=self._timeout_seconds) as response:
                 if response.status != 200:
@@ -125,3 +130,29 @@ class CloudflareReferenceRelayClient:
         except (OSError, urllib.error.URLError, json.JSONDecodeError):
             return False
         return isinstance(payload, dict) and payload.get("status") == "ready"
+
+
+def _ticket_from_cloudflare_payload(
+    payload: object,
+    *,
+    expected_sha256: str,
+) -> ReferenceRelayTicket:
+    if not isinstance(payload, dict):
+        raise ReferenceRelayError("reference relay response must be an object")
+    relay_id = payload.get("relay_id")
+    url = payload.get("fetch_url")
+    sha256_hex = payload.get("sha256")
+    mime_type = payload.get("mime_type")
+    expires = payload.get("expires_at_epoch_s")
+    if not isinstance(relay_id, str):
+        raise ReferenceRelayError("reference relay response relay_id is invalid")
+    _require_relay_id(relay_id)
+    if not isinstance(url, str) or not url.startswith("https://"):
+        raise ReferenceRelayError("reference relay response fetch_url is not HTTPS")
+    if sha256_hex != expected_sha256:
+        raise ReferenceRelayError("reference relay response digest mismatch")
+    if not isinstance(mime_type, str) or mime_type not in _ALLOWED_MIME_TYPES:
+        raise ReferenceRelayError("reference relay response MIME is invalid")
+    if isinstance(expires, bool) or not isinstance(expires, int) or expires <= 0:
+        raise ReferenceRelayError("reference relay response expiry is invalid")
+    return ReferenceRelayTicket(relay_id, url, sha256_hex, mime_type, expires)
