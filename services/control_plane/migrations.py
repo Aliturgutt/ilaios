@@ -13,7 +13,7 @@ class MigrationError(RuntimeError):
     """Raised when a control-plane migration cannot complete safely."""
 
 
-LATEST_SCHEMA_VERSION = 7
+LATEST_SCHEMA_VERSION = 8
 
 _UP_MIGRATIONS = {
     1: """
@@ -177,6 +177,208 @@ _UP_MIGRATIONS = {
             subject_id TEXT PRIMARY KEY, stopped_at TEXT NOT NULL
         );
     """,
+    8: """
+        CREATE TABLE IF NOT EXISTS web_app_tenants (
+            tenant_id TEXT PRIMARY KEY,
+            name TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            deleted_at TEXT
+        );
+        CREATE TABLE IF NOT EXISTS web_app_users (
+            tenant_id TEXT NOT NULL REFERENCES web_app_tenants(tenant_id),
+            user_id TEXT NOT NULL,
+            display_name TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            deleted_at TEXT,
+            PRIMARY KEY (tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_projects (
+            tenant_id TEXT NOT NULL REFERENCES web_app_tenants(tenant_id),
+            project_id TEXT NOT NULL,
+            owner_user_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            deleted_at TEXT,
+            PRIMARY KEY (tenant_id, project_id),
+            FOREIGN KEY (tenant_id, owner_user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_goal_context (
+            goal_id TEXT PRIMARY KEY REFERENCES goals(goal_id) ON DELETE CASCADE,
+            tenant_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            owner_user_id TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            deleted_at TEXT,
+            UNIQUE (tenant_id, project_id, goal_id),
+            FOREIGN KEY (tenant_id, project_id)
+                REFERENCES web_app_projects(tenant_id, project_id),
+            FOREIGN KEY (tenant_id, owner_user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_workflow_context (
+            workflow_id TEXT PRIMARY KEY REFERENCES workflows(workflow_id) ON DELETE CASCADE,
+            tenant_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            owner_user_id TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            deleted_at TEXT,
+            UNIQUE (tenant_id, project_id, workflow_id),
+            FOREIGN KEY (tenant_id, project_id)
+                REFERENCES web_app_projects(tenant_id, project_id),
+            FOREIGN KEY (tenant_id, owner_user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_agents (
+            tenant_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            agent_id TEXT NOT NULL REFERENCES runtime_agents(agent_id),
+            owner_user_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            deleted_at TEXT,
+            PRIMARY KEY (tenant_id, project_id, agent_id),
+            FOREIGN KEY (tenant_id, project_id)
+                REFERENCES web_app_projects(tenant_id, project_id),
+            FOREIGN KEY (tenant_id, owner_user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_approvals (
+            approval_id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            workflow_id TEXT NOT NULL,
+            requester_user_id TEXT NOT NULL,
+            reviewer_user_id TEXT,
+            state TEXT NOT NULL CHECK (
+                state IN ('PENDING', 'REVIEWING', 'APPROVED', 'REJECTED')
+            ),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            UNIQUE (tenant_id, project_id, approval_id),
+            FOREIGN KEY (tenant_id, project_id, workflow_id)
+                REFERENCES web_app_workflow_context(
+                    tenant_id, project_id, workflow_id
+                ),
+            FOREIGN KEY (tenant_id, requester_user_id)
+                REFERENCES web_app_users(tenant_id, user_id),
+            FOREIGN KEY (tenant_id, reviewer_user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_evidence (
+            evidence_id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            workflow_id TEXT,
+            owner_user_id TEXT,
+            artifact_sha256 TEXT NOT NULL CHECK (length(artifact_sha256) = 64),
+            status TEXT NOT NULL CHECK (
+                status IN ('GENERATED', 'REVIEWED', 'VERIFIED', 'FAILED')
+            ),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            UNIQUE (tenant_id, project_id, evidence_id),
+            FOREIGN KEY (tenant_id, project_id)
+                REFERENCES web_app_projects(tenant_id, project_id),
+            FOREIGN KEY (tenant_id, project_id, workflow_id)
+                REFERENCES web_app_workflow_context(
+                    tenant_id, project_id, workflow_id
+                ),
+            FOREIGN KEY (tenant_id, owner_user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_outputs (
+            output_id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            workflow_id TEXT,
+            owner_user_id TEXT NOT NULL,
+            evidence_id TEXT,
+            kind TEXT NOT NULL,
+            artifact_sha256 TEXT CHECK (
+                artifact_sha256 IS NULL OR length(artifact_sha256) = 64
+            ),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            deleted_at TEXT,
+            UNIQUE (tenant_id, project_id, output_id),
+            FOREIGN KEY (tenant_id, project_id)
+                REFERENCES web_app_projects(tenant_id, project_id),
+            FOREIGN KEY (tenant_id, project_id, workflow_id)
+                REFERENCES web_app_workflow_context(
+                    tenant_id, project_id, workflow_id
+                ),
+            FOREIGN KEY (tenant_id, owner_user_id)
+                REFERENCES web_app_users(tenant_id, user_id),
+            FOREIGN KEY (tenant_id, project_id, evidence_id)
+                REFERENCES web_app_evidence(tenant_id, project_id, evidence_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_cost_records (
+            cost_record_id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            workflow_id TEXT,
+            owner_user_id TEXT,
+            amount_minor INTEGER NOT NULL CHECK (amount_minor >= 0),
+            currency_code TEXT NOT NULL CHECK (
+                length(currency_code) = 3 AND currency_code = upper(currency_code)
+            ),
+            created_at TEXT NOT NULL,
+            UNIQUE (tenant_id, project_id, cost_record_id),
+            FOREIGN KEY (tenant_id, project_id)
+                REFERENCES web_app_projects(tenant_id, project_id),
+            FOREIGN KEY (tenant_id, project_id, workflow_id)
+                REFERENCES web_app_workflow_context(
+                    tenant_id, project_id, workflow_id
+                ),
+            FOREIGN KEY (tenant_id, owner_user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_sessions (
+            session_id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL,
+            project_id TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            revoked_at TEXT,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            UNIQUE (tenant_id, project_id, session_id),
+            FOREIGN KEY (tenant_id, project_id)
+                REFERENCES web_app_projects(tenant_id, project_id),
+            FOREIGN KEY (tenant_id, user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS web_app_integrations (
+            integration_id TEXT PRIMARY KEY,
+            tenant_id TEXT NOT NULL REFERENCES web_app_tenants(tenant_id),
+            project_id TEXT,
+            owner_user_id TEXT,
+            kind TEXT NOT NULL,
+            external_ref TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            version INTEGER NOT NULL DEFAULT 1 CHECK (version >= 1),
+            deleted_at TEXT,
+            UNIQUE (tenant_id, project_id, integration_id),
+            FOREIGN KEY (tenant_id, project_id)
+                REFERENCES web_app_projects(tenant_id, project_id),
+            FOREIGN KEY (tenant_id, owner_user_id)
+                REFERENCES web_app_users(tenant_id, user_id)
+        );
+    """,
 }
 
 _DOWN_MIGRATIONS = {
@@ -217,6 +419,9 @@ _DOWN_MIGRATIONS = {
         DROP TABLE revoked_grants;
         DROP TABLE grant_resources;
         DROP TABLE execution_grants;
+    """,
+    8: """
+        SELECT 1;
     """,
 }
 
