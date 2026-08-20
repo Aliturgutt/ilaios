@@ -56,11 +56,9 @@ jobs:
 
           home = Path('apps/desktop/lib/features/dashboard/reference_home_dashboard_v3.dart')
           text = home.read_text(encoding='utf-8')
-          old_start = """    final required = <String>{};
-            for (final item in admissions) {"""
-          new_start = """    final hasAdmissions = snapshot.governanceState.containsKey('admissions');
-            final required = <String>{};
-            for (final item in admissions) {"""
+          old_start = "final required = <String>{};"
+          new_start = """final hasAdmissions = snapshot.governanceState.containsKey('admissions');
+              final required = <String>{};"""
           if text.count(old_start) != 1:
               raise SystemExit(f'expected one approval-start match, found {text.count(old_start)}')
           text = text.replace(old_start, new_start, 1)
