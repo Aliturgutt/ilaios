@@ -9,9 +9,9 @@ REPO_ROOT = Path(__file__).resolve().parents[3]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from apps.desktop.e2e import provider_video_native_reference_finished_product_e2e as certification
-from src.video_automation.openrouter_perceptual_reviewer import OpenRouterPerceptualReviewer
-from src.video_automation.perceptual_review import PerceptualReviewSubmission
+from apps.desktop.e2e import provider_video_native_reference_finished_product_e2e as certification  # noqa: E402
+from src.video_automation.openrouter_perceptual_reviewer import OpenRouterPerceptualReviewer  # noqa: E402
+from src.video_automation.perceptual_review import PerceptualReviewSubmission  # noqa: E402
 
 _ORIGINAL_REVIEW = OpenRouterPerceptualReviewer.review
 _final_review: PerceptualReviewSubmission | None = None
