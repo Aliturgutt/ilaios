@@ -10,9 +10,7 @@ const _snapshot = OperationalSnapshot(
   schedulerState: <String, Object?>{
     'agents': <Object?>[
       <String, Object?>{
-        'agent_id': 'agent-test-01',
-        'agent_name': 'QA Agent',
-        'role': 'QA & Test',
+        'agent_id': 'ilaios.agent.engineering.runtime-qa.v1',
         'status': 'active',
         'current_task': 'Desktop acceptance',
         'task_stage': 'E2E',
@@ -27,25 +25,6 @@ const _snapshot = OperationalSnapshot(
         'token_usage': 128400,
         'token_budget': 250000,
         'health': '98%',
-        'skills': <Object?>['Playwright', 'E2E', 'CI/CD'],
-        'performance_7d': <Object?>[72, 81, 76, 90, 84, 92, 88],
-      },
-      <String, Object?>{
-        'agent_id': 'agent-backend-02',
-        'agent_name': 'Backend Agent',
-        'role': 'Backend',
-        'status': 'busy',
-        'current_task': 'API validation',
-        'capacity': 86,
-        'success_rate': 97.3,
-      },
-      <String, Object?>{
-        'agent_id': 'agent-browser-03',
-        'agent_name': 'Browser Agent',
-        'role': 'Automation',
-        'status': 'idle',
-        'capacity': 18,
-        'success_rate': 97.5,
       },
     ],
     'pending_assignments': <Object?>[
@@ -62,7 +41,7 @@ const _snapshot = OperationalSnapshot(
     'pending_reviews': <Object?>[
       <String, Object?>{
         'id': 'review-1',
-        'agent_id': 'agent-test-01',
+        'agent_id': 'ilaios.agent.engineering.runtime-qa.v1',
         'title': 'Memory threshold review',
         'severity': 'high',
       },
@@ -71,11 +50,30 @@ const _snapshot = OperationalSnapshot(
   evidenceRecords: <EvidenceRecord>[],
   liveEvents: <Map<String, Object?>>[
     <String, Object?>{
-      'agent_id': 'agent-test-01',
+      'agent_id': 'ilaios.agent.engineering.runtime-qa.v1',
       'event_type': 'agent.started',
       'timestamp': '14:22',
     },
   ],
+  agentState: <String, Object?>{
+    'canonical_count': 1,
+    'registered_count': 1,
+    'authority_drift_count': 0,
+    'agents': <Object?>[
+      <String, Object?>{
+        'agent_id': 'ilaios.agent.engineering.runtime-qa.v1',
+        'alias': 'Argus',
+        'role': 'runtime quality assurance',
+        'team': 'engineering',
+        'capabilities': <Object?>['runtime.verify'],
+        'permissions': <Object?>['telemetry.read', 'verification.propose'],
+        'readiness': 'registered',
+        'registered': true,
+        'authority_matches_canonical': true,
+        'agent_status': 'offline',
+      },
+    ],
+  },
 );
 
 void main() {
@@ -99,7 +97,7 @@ void main() {
     expect(find.byKey(const Key('agents-table-panel')), findsWidgets);
     expect(find.byKey(const Key('selected-agent-panel')), findsWidgets);
     expect(find.byKey(const Key('agents-bottom-panels')), findsOneWidget);
-    expect(find.text('QA Agent'), findsWidgets);
+    expect(find.text('Argus'), findsWidgets);
     expect(find.text('99.1%'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
