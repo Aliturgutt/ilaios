@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import '../business_context/business_capability_context.dart';
 import '../control_plane/client.dart';
 import '../control_plane/config.dart';
 import '../control_plane/evidence_record.dart';
@@ -172,6 +173,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     final session = _userSession;
     if (client == null || session == null) return;
     await client.logout(session);
+    BusinessCapabilitySubmissionBus.clear();
     if (!mounted) return;
     setState(() {
       _userSession = null;
@@ -262,7 +264,12 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       );
     }
 
-    final submission = await identityClient.submitPrompt(objective, session);
+    final businessContext = BusinessCapabilitySubmissionBus.take();
+    final submission = await identityClient.submitPrompt(
+      objective,
+      session,
+      businessContext: businessContext,
+    );
     if (mounted) {
       setState(() {
         _operationalStatus =

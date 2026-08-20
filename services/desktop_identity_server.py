@@ -2,8 +2,9 @@
 
 The canonical HTTP/auth/session implementation remains in
 ``desktop_identity_server_core``. This wrapper only broadens the existing
-reference-bearing intent admission from Video-only to Web-or-Video while keeping
-all other capabilities fail-closed.
+reference-bearing intent admission from Video-only to Web-or-Video and accepts
+one bounded business-context metadata code without granting any routing,
+provider, tenant, approval, tool, validation, or execution authority.
 """
 
 from __future__ import annotations
@@ -40,9 +41,18 @@ _WEB_REFERENCE_OBJECTIVE_TERMS = (
     "yonetim paneli",
 )
 
+_BUSINESS_CONTEXT_CODES = frozenset({
+    "BCF01",
+    "BCF02",
+    "BCF03",
+    "BCF04",
+    "BCF05",
+    "BCF06",
+})
+
 
 class DesktopIdentityHTTPServer(_core.DesktopIdentityHTTPServer):
-    """Canonical Desktop server with the shared reference-capable handler."""
+    """Canonical Desktop server with shared reference/business-context handling."""
 
     def __init__(
         self,
@@ -64,13 +74,15 @@ class DesktopIdentityHTTPServer(_core.DesktopIdentityHTTPServer):
 
 
 class DesktopIdentityRequestHandler(_core.DesktopIdentityRequestHandler):
-    """Allow governed reference assets only for one Web or Video Factory intent."""
+    """Admit bounded Desktop metadata while preserving backend authority."""
 
     def _submit_authenticated_intent(self, body: dict[str, object]) -> None:
         session = self._authenticated_session()
         objective = _core._required_string(body, "objective")
         if len(objective) > 20_000:
             raise ValueError("objective exceeds Desktop input limit")
+
+        business_context_code = _business_context_code(body.get("business_context_code"))
         asset_ids = _core._reference_asset_ids(body.get("reference_asset_ids", []))
         if asset_ids:
             factory_count = _reference_factory_count(objective)
@@ -105,6 +117,9 @@ class DesktopIdentityRequestHandler(_core.DesktopIdentityRequestHandler):
             raise ValueError("duplicate reference image content is not allowed")
 
         request_id = f"exec-{secrets.token_hex(16)}"
+        # The business context is deliberately NOT supplied to coordinator.prepare.
+        # The canonical backend continues to classify/admit the original objective
+        # and remains the only routing/execution authority.
         execution = self.server.coordinator.prepare(
             request_id,
             objective,
@@ -124,7 +139,19 @@ class DesktopIdentityRequestHandler(_core.DesktopIdentityRequestHandler):
             self._start_execution(request_id)
         response = dict(execution)
         response["reference_asset_count"] = len(asset_ids)
+        response["business_context_code"] = business_context_code
         self._send_json(HTTPStatus.CREATED, response)
+
+
+def _business_context_code(value: object) -> str | None:
+    if value is None:
+        return None
+    if not isinstance(value, str):
+        raise ValueError("business_context_code must be a string")
+    normalized = value.strip().upper()
+    if normalized not in _BUSINESS_CONTEXT_CODES:
+        raise ValueError("business_context_code is unsupported")
+    return normalized
 
 
 def _reference_factory_count(objective: str) -> int:
