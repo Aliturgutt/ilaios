@@ -17,6 +17,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
+from time import sleep
 from types import MappingProxyType
 from typing import Protocol
 from urllib.error import HTTPError, URLError
@@ -33,6 +34,7 @@ _DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
 _CRITERIA_ID = "ilaios.video.semantic-prompt-alignment"
 _CRITERIA_VERSION = "1.0.0"
 _RETRYABLE_CAPABILITY_STATUS_CODES = frozenset({404, 503})
+_MAX_RATE_LIMIT_RETRY_AFTER_SECONDS = 60.0
 _REVIEW_KEYS = frozenset({"score", "detail", "repair_target"})
 _CRITERIA_TEXT = (
     "Judge only whether the sampled frames are a faithful visual realization of the "
@@ -80,18 +82,25 @@ class UrllibOpenRouterReviewTransport:
     ) -> OpenRouterReviewResponse:
         encoded = json.dumps(body, separators=(",", ":")).encode("utf-8")
         request = Request(url, data=encoded, headers=dict(headers), method="POST")
-        try:
-            with urlopen(request, timeout=timeout_seconds) as response:
-                status = int(response.status)
-                raw = response.read().decode("utf-8")
-        except HTTPError as exc:
-            raw = exc.read().decode("utf-8", errors="replace")
-            return OpenRouterReviewResponse(int(exc.code), _decode_object(raw))
-        except URLError as exc:
-            raise OpenRouterPerceptualReviewError(
-                f"OpenRouter perceptual review transport error: {exc.reason}"
-            ) from exc
-        return OpenRouterReviewResponse(status, _decode_object(raw))
+        for attempt in range(2):
+            try:
+                with urlopen(request, timeout=timeout_seconds) as response:
+                    status = int(response.status)
+                    raw = response.read().decode("utf-8")
+            except HTTPError as exc:
+                raw = exc.read().decode("utf-8", errors="replace")
+                if int(exc.code) == 429 and attempt == 0:
+                    retry_after = _bounded_retry_after_seconds(exc.headers)
+                    if retry_after is not None:
+                        sleep(retry_after)
+                        continue
+                return OpenRouterReviewResponse(int(exc.code), _decode_object(raw))
+            except URLError as exc:
+                raise OpenRouterPerceptualReviewError(
+                    f"OpenRouter perceptual review transport error: {exc.reason}"
+                ) from exc
+            return OpenRouterReviewResponse(status, _decode_object(raw))
+        raise OpenRouterPerceptualReviewError("OpenRouter transport retry state is invalid")
 
 
 class OpenRouterPerceptualReviewer:
@@ -341,6 +350,22 @@ def _decode_object(raw: str) -> Mapping[str, object]:
     if not isinstance(value, dict):
         raise OpenRouterPerceptualReviewError("OpenRouter response must be an object")
     return value
+
+
+def _bounded_retry_after_seconds(headers: object) -> float | None:
+    getter = getattr(headers, "get", None)
+    if not callable(getter):
+        return None
+    raw = getter("Retry-After")
+    if raw is None:
+        return None
+    try:
+        seconds = float(str(raw).strip())
+    except ValueError:
+        return None
+    if seconds < 0 or seconds > _MAX_RATE_LIMIT_RETRY_AFTER_SECONDS:
+        return None
+    return seconds
 
 
 def _sha256(name: str, value: str) -> None:
