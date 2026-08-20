@@ -1,6 +1,7 @@
 import 'package:flutter/widgets.dart';
 
 import '../../identity/identity_client.dart';
+export '../../identity/identity_client.dart' show DesktopUserSession;
 
 class DeliveryIdentityScope extends InheritedWidget {
   const DeliveryIdentityScope({
