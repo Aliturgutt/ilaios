@@ -38,6 +38,22 @@ Before a Store release candidate can be produced with production identity, all o
 
 These values are external authority. Do not guess them and do not reuse the CI placeholders `ILAIOS.Desktop.CI` or `CN=ILAIOS-CI-UNSIGNED`.
 
+## Microsoft Store production identity
+
+Partner Center product identity captured on 2026-08-20:
+
+- Product name: `ILAIOS`
+- Product type: `MSIX or PWA app`
+- `Package/Identity/Name`: `ILAIOS.ILAIOS`
+- `Package/Identity/Publisher`: `CN=3BC70952-5109-4720-9A71-8B812EBCB255`
+- `Package/Properties/PublisherDisplayName`: `ILAIOS`
+- Package Family Name (PFN): `ILAIOS.ILAIOS_h6qnrfjyv0cv4`
+- Store ID: `9P7787G6ZC5G`
+- Microsoft Store product URL: `https://apps.microsoft.com/detail/9P7787G6ZC5G`
+- Store protocol link: `ms-windows-store://pdp/?productid=9P7787G6ZC5G`
+
+These are Store identity/configuration values, not secrets. Never place private signing keys, certificate passwords, access tokens, client secrets or other credentials in this document or in repository plaintext.
+
 ## Store release-candidate packaging
 
 The controlled Store packaging entry point is:
