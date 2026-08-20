@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 
 from packages.contracts.ilaios_contracts import ReleaseState
+from services.control_plane.migrations import LATEST_SCHEMA_VERSION
 from services.operational_drills import execute_operational_drills
 from services.readiness import REQUIRED_DRILLS, evaluate_drill_artifact
 
@@ -32,7 +33,10 @@ def test_actual_runtime_drills_create_file_backed_eligibility(tmp_path: Path) ->
         "denied_after_revoke_status"
     ] == 400
     assert drills["supply-chain"]["measurements"]["tamper_detected"] is True
-    assert drills["rollback"]["measurements"]["schema_reapplied"] == 7
+    assert (
+        drills["rollback"]["measurements"]["schema_reapplied"]
+        == LATEST_SCHEMA_VERSION
+    )
 
 
 def test_artifact_tampering_blocks_eligibility(tmp_path: Path) -> None:
