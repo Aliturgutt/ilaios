@@ -24,11 +24,11 @@ Close the native photo-reference path end-to-end: secure signed short-lived HTTP
 ## Current authoritative state — 2026-08-20
 
 - Repo: `Aliturgutt/ilaios`
-- Exact current master re-read: `3c9ab823d9c7f119c22a87942b3c8a183350a50a`.
+- Exact current master re-read: `7a530e57fa021e593b14301bf61219c214c89038`.
 - Native source PR #573 is MERGED, not open/draft. Merge SHA: `142b511051adbb00a786c523be8b72d0390c1eca`; merged head: `1abf21228b124596644f48c7798dd34839fcea86`.
-- Current master is 46 commits ahead of the native merge. A live compare from `142b511...` to `3c9ab823...` showed no changes to the native Video reference implementation/workflow paths; intervening changes were Desktop/App/CI scoped.
+- Current master is 47 commits ahead of the native merge. A live compare from `142b511...` to `7a530e57...` showed no changes to the native Video reference implementation/workflow paths; intervening changes are Desktop/App/CI/docs scoped.
 - Native source implementation is therefore MERGED/source+CI implemented, but NOT production VERIFIED.
-- Exact current master combined commit-status endpoint returned no standalone statuses during this run; do not infer certification from absence/presence of status rows.
+- Exact current master combined status currently proves `ilaios/required-ci-exact-master=success`. No native-reference live-cert success status exists on this exact SHA, so production verification must not be inferred.
 - The baseline `Video Reference Production Certification` workflow still has `workflow_dispatch` and a push trigger guarded by `[video-reference-live-cert]`. The #573 merge did not use that baseline trigger token, so no baseline certification may be assumed from the merge.
 - The connected GitHub tool currently exposes read/rerun Actions operations but no safe workflow-dispatch action. Do not synthesize a trigger by bypassing normal PR/master governance.
 
