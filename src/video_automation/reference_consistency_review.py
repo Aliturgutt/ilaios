@@ -28,6 +28,7 @@ _DEFAULT_THRESHOLD = 0.82
 _CRITICAL_ROLE_THRESHOLD = 0.80
 _MAX_REVIEW_REFERENCES = 6
 _SAMPLE_COUNT = 4
+_RETRYABLE_CAPABILITY_STATUS_CODES = frozenset({404, 503})
 _CRITICAL_ROLES = frozenset({"subject", "product", "logo"})
 _RESULT_KEYS = frozenset(
     {
@@ -155,28 +156,38 @@ class OpenRouterReferenceConsistencyReviewer:
             }
         )
         content.extend(_image_part(frame) for frame in frames)
+        headers = {
+            "Authorization": f"Bearer {self._api_key}",
+            "Content-Type": "application/json",
+        }
+        base_body: dict[str, object] = {
+            "model": self._model_id,
+            "messages": ({"role": "user", "content": content},),
+            "provider": {"require_parameters": True},
+            "stream": False,
+        }
+        strict_body = dict(base_body)
+        strict_body["response_format"] = {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "ilaios_video_reference_consistency_review",
+                "strict": True,
+                "schema": _response_schema(),
+            },
+        }
         response = self._transport.post_json(
             f"{self._base_url}/chat/completions",
-            headers={
-                "Authorization": f"Bearer {self._api_key}",
-                "Content-Type": "application/json",
-            },
-            body={
-                "model": self._model_id,
-                "messages": ({"role": "user", "content": content},),
-                "response_format": {
-                    "type": "json_schema",
-                    "json_schema": {
-                        "name": "ilaios_video_reference_consistency_review",
-                        "strict": True,
-                        "schema": _response_schema(),
-                    },
-                },
-                "provider": {"require_parameters": True},
-                "stream": False,
-            },
+            headers=headers,
+            body=strict_body,
             timeout_seconds=self._timeout_seconds,
         )
+        if response.status_code in _RETRYABLE_CAPABILITY_STATUS_CODES:
+            response = self._transport.post_json(
+                f"{self._base_url}/chat/completions",
+                headers=headers,
+                body=base_body,
+                timeout_seconds=self._timeout_seconds,
+            )
         if not 200 <= response.status_code < 300:
             raise ReferenceConsistencyReviewError(
                 f"reference consistency review failed with HTTP {response.status_code}"
