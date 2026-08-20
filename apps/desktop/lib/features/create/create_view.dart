@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 
 import '../../app/ilaios_locale.dart';
 import '../../app/ilaios_theme.dart';
+import '../../business_context/business_capability_context.dart';
 import '../../control_plane/client.dart';
 import '../../control_plane/projection.dart';
 import '../../identity/identity_client.dart';
+import 'governed_lifecycle_projection.dart';
 
 /// Reference-faithful Goals surface.
 ///
@@ -48,9 +50,25 @@ class _CreateViewState extends State<CreateView> {
   String? _error;
   String _activeTab = 'all';
   _FactoryPreset? _selectedPreset;
+  BusinessCapabilityFamily? _selectedBusinessCapability;
+
+  @override
+  void didUpdateWidget(covariant CreateView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final sessionChanged =
+        oldWidget.userSession?.sessionId != widget.userSession?.sessionId;
+    if (sessionChanged || (!widget.projection.connected && oldWidget.projection.connected)) {
+      _submission = null;
+      _submittedObjective = null;
+      _error = null;
+      _selectedBusinessCapability = null;
+      BusinessCapabilitySubmissionBus.clear();
+    }
+  }
 
   @override
   void dispose() {
+    BusinessCapabilitySubmissionBus.clear();
     _controller.dispose();
     super.dispose();
   }
@@ -85,6 +103,24 @@ class _CreateViewState extends State<CreateView> {
         _FactoryPreset.software => 'Software Factory',
       };
 
+  String _businessCapabilityLabel(
+    BuildContext context,
+    BusinessCapabilityFamily family,
+  ) => switch (family) {
+        BusinessCapabilityFamily.executiveEnterpriseIntelligence =>
+          _copy(context, 'Executive', 'Yönetim'),
+        BusinessCapabilityFamily.operations =>
+          _copy(context, 'Operations', 'Operasyon'),
+        BusinessCapabilityFamily.financeCostIntelligence =>
+          _copy(context, 'Finance', 'Finans'),
+        BusinessCapabilityFamily.growthMarketing =>
+          _copy(context, 'Growth', 'Büyüme'),
+        BusinessCapabilityFamily.commerceSales =>
+          _copy(context, 'Commerce', 'Ticaret'),
+        BusinessCapabilityFamily.researchData =>
+          _copy(context, 'Research', 'Araştırma'),
+      };
+
   void _selectPreset(_FactoryPreset preset) {
     final current = _controller.text.trim();
     final starterTexts = _FactoryPreset.values
@@ -94,6 +130,7 @@ class _CreateViewState extends State<CreateView> {
     setState(() {
       _selectedPreset = preset;
       _submission = null;
+      _submittedObjective = null;
       _error = null;
       if (shouldReplace) {
         final text = _starterText(context, preset);
@@ -101,6 +138,16 @@ class _CreateViewState extends State<CreateView> {
         _controller.selection = TextSelection.collapsed(offset: text.length);
       }
     });
+  }
+
+  void _selectBusinessCapability(BusinessCapabilityFamily? family) {
+    setState(() {
+      _selectedBusinessCapability = family;
+      _submission = null;
+      _submittedObjective = null;
+      _error = null;
+    });
+    BusinessCapabilitySubmissionBus.clear();
   }
 
   Future<void> _submit() async {
@@ -122,6 +169,10 @@ class _CreateViewState extends State<CreateView> {
     final objective = preset == null
         ? rawObjective
         : '${_routePrefix(context, preset)} $rawObjective';
+    final family = _selectedBusinessCapability;
+    BusinessCapabilitySubmissionBus.stage(
+      family == null ? null : BusinessCapabilityContext(family),
+    );
     setState(() {
       _submitting = true;
       _submission = null;
@@ -139,6 +190,7 @@ class _CreateViewState extends State<CreateView> {
       if (!mounted) return;
       setState(() => _error = error.toString());
     } finally {
+      BusinessCapabilitySubmissionBus.clear();
       if (mounted) setState(() => _submitting = false);
     }
   }
@@ -150,6 +202,16 @@ class _CreateViewState extends State<CreateView> {
     final owner = widget.userSession?.displayIdentity ??
         widget.userSession?.principalId ??
         _copy(context, 'Current user', 'Mevcut kullanıcı');
+    final governedSubmission = _submission is GovernedPromptSubmission
+        ? _submission! as GovernedPromptSubmission
+        : null;
+    final lifecycle = governedSubmission == null
+        ? GovernedLifecycleState.unavailable
+        : resolveGovernedLifecycle(
+            GovernedLifecycleProjectionStore.snapshot,
+            governedSubmission.requestId,
+            admittedStatus: governedSubmission.executionStatus,
+          );
 
     return Container(
       key: const Key('reference-goals-page'),
@@ -163,8 +225,12 @@ class _CreateViewState extends State<CreateView> {
             enabled: connected && widget.onSubmit != null,
             submitting: _submitting,
             selectedPreset: _selectedPreset,
+            selectedBusinessCapability: _selectedBusinessCapability,
             presetLabel: (preset) => _presetLabel(context, preset),
+            businessCapabilityLabel: (family) =>
+                _businessCapabilityLabel(context, family),
             onPresetChanged: _selectPreset,
+            onBusinessCapabilityChanged: _selectBusinessCapability,
             onSubmit: _submit,
           ),
           const SizedBox(height: 8),
@@ -277,6 +343,7 @@ class _CreateViewState extends State<CreateView> {
             _SubmissionStatus(
               submission: _submission,
               error: _error,
+              lifecycle: lifecycle,
             ),
           ],
         ],
@@ -291,8 +358,11 @@ class _GoalsHeader extends StatelessWidget {
     required this.enabled,
     required this.submitting,
     required this.selectedPreset,
+    required this.selectedBusinessCapability,
     required this.presetLabel,
+    required this.businessCapabilityLabel,
     required this.onPresetChanged,
+    required this.onBusinessCapabilityChanged,
     required this.onSubmit,
   });
 
@@ -300,8 +370,11 @@ class _GoalsHeader extends StatelessWidget {
   final bool enabled;
   final bool submitting;
   final _FactoryPreset? selectedPreset;
+  final BusinessCapabilityFamily? selectedBusinessCapability;
   final String Function(_FactoryPreset preset) presetLabel;
+  final String Function(BusinessCapabilityFamily family) businessCapabilityLabel;
   final ValueChanged<_FactoryPreset> onPresetChanged;
+  final ValueChanged<BusinessCapabilityFamily?> onBusinessCapabilityChanged;
   final VoidCallback onSubmit;
 
   @override
@@ -370,10 +443,10 @@ class _GoalsHeader extends StatelessWidget {
               onChanged: onPresetChanged,
             ),
             const SizedBox(width: 8),
-            _HeaderButton(
-              icon: Icons.filter_alt_outlined,
-              label: _copy(context, 'Filter', 'Filtrele'),
-              onPressed: () {},
+            _BusinessCapabilitySelector(
+              selected: selectedBusinessCapability,
+              labelFor: businessCapabilityLabel,
+              onChanged: onBusinessCapabilityChanged,
             ),
             const SizedBox(width: 6),
             _HeaderButton(
@@ -406,6 +479,73 @@ class _GoalsHeader extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      );
+}
+
+class _BusinessCapabilitySelector extends StatelessWidget {
+  const _BusinessCapabilitySelector({
+    required this.selected,
+    required this.labelFor,
+    required this.onChanged,
+  });
+
+  final BusinessCapabilityFamily? selected;
+  final String Function(BusinessCapabilityFamily family) labelFor;
+  final ValueChanged<BusinessCapabilityFamily?> onChanged;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+        height: 34,
+        child: PopupMenuButton<BusinessCapabilityFamily?>(
+          key: const Key('business-capability-selector'),
+          tooltip: _copy(
+            context,
+            'Optional business context; does not select execution authority',
+            'İsteğe bağlı iş bağlamı; yürütme yetkisi seçmez',
+          ),
+          onSelected: onChanged,
+          itemBuilder: (context) => <PopupMenuEntry<BusinessCapabilityFamily?>>[
+            PopupMenuItem<BusinessCapabilityFamily?>(
+              key: const Key('business-context-none'),
+              value: null,
+              child: Text(_copy(context, 'No business context', 'İş bağlamı yok')),
+            ),
+            for (final family in BusinessCapabilityFamily.values)
+              PopupMenuItem<BusinessCapabilityFamily?>(
+                key: ValueKey('business-context-${family.contextCode}'),
+                value: family,
+                child: Text('${family.contextCode} · ${labelFor(family)}'),
+              ),
+          ],
+          child: Container(
+            constraints: const BoxConstraints(minWidth: 76, maxWidth: 92),
+            height: 34,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(5),
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.business_center_outlined, size: 14),
+                const SizedBox(width: 4),
+                Flexible(
+                  child: Text(
+                    selected == null
+                        ? _copy(context, 'Context', 'Bağlam')
+                        : selected!.contextCode,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 8.4, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const SizedBox(width: 2),
+                const Icon(Icons.arrow_drop_down, size: 14),
+              ],
+            ),
+          ),
         ),
       );
 }
@@ -1298,9 +1438,15 @@ class _UnavailablePanel extends StatelessWidget {
 }
 
 class _SubmissionStatus extends StatelessWidget {
-  const _SubmissionStatus({required this.submission, required this.error});
+  const _SubmissionStatus({
+    required this.submission,
+    required this.error,
+    required this.lifecycle,
+  });
+
   final PromptSubmission? submission;
   final String? error;
+  final GovernedLifecycleState lifecycle;
 
   @override
   Widget build(BuildContext context) {
@@ -1317,6 +1463,7 @@ class _SubmissionStatus extends StatelessWidget {
     }
     final value = submission;
     if (value == null) return const SizedBox.shrink();
+    final lifecycleLabel = _lifecycleLabel(context, lifecycle);
     return Container(
       key: const Key('one-prompt-accepted'),
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
@@ -1327,20 +1474,24 @@ class _SubmissionStatus extends StatelessWidget {
       ),
       child: Row(
         children: [
-          const Icon(Icons.check_circle_outline, size: 16, color: IlaiosTheme.success),
+          const Icon(Icons.verified_user_outlined, size: 16, color: IlaiosTheme.success),
           const SizedBox(width: 8),
           Text('Goal: ${value.goalId}', style: const TextStyle(fontSize: 8.8, fontWeight: FontWeight.w600)),
           const SizedBox(width: 14),
           Text('Job: ${value.jobId}', style: const TextStyle(fontSize: 8.8, fontWeight: FontWeight.w600)),
           const SizedBox(width: 14),
-          Text('Authoritative state: ${value.state}', style: const TextStyle(fontSize: 8.8, fontWeight: FontWeight.w600)),
+          Text(
+            lifecycleLabel,
+            key: const Key('authoritative-lifecycle-state'),
+            style: const TextStyle(fontSize: 8.8, fontWeight: FontWeight.w600),
+          ),
           const SizedBox(width: 14),
           Expanded(
             child: Text(
               _copy(
                 context,
-                'Desktop does not treat submission as completion; runtime evidence remains authoritative.',
-                'Desktop gönderimi tamamlanmış saymaz; çalışma zamanı kanıtı yetkili olmaya devam eder.',
+                'Lifecycle is projected from fresh control-plane state; missing evidence stays unavailable.',
+                'Yaşam döngüsü güncel kontrol düzlemi durumundan yansıtılır; eksik kanıt kullanılamaz kalır.',
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -1355,6 +1506,28 @@ class _SubmissionStatus extends StatelessWidget {
     );
   }
 }
+
+String _lifecycleLabel(
+  BuildContext context,
+  GovernedLifecycleState state,
+) => switch (state) {
+      GovernedLifecycleState.pendingApproval =>
+        _copy(context, 'Lifecycle: Pending approval', 'Yaşam döngüsü: Onay bekliyor'),
+      GovernedLifecycleState.admitted =>
+        _copy(context, 'Lifecycle: Admitted', 'Yaşam döngüsü: Kabul edildi'),
+      GovernedLifecycleState.executing =>
+        _copy(context, 'Lifecycle: Executing', 'Yaşam döngüsü: Yürütülüyor'),
+      GovernedLifecycleState.accepted =>
+        _copy(context, 'Lifecycle: Accepted', 'Yaşam döngüsü: Doğrulandı'),
+      GovernedLifecycleState.blocked =>
+        _copy(context, 'Lifecycle: Blocked', 'Yaşam döngüsü: Engellendi'),
+      GovernedLifecycleState.denied =>
+        _copy(context, 'Lifecycle: Denied', 'Yaşam döngüsü: Reddedildi'),
+      GovernedLifecycleState.failed =>
+        _copy(context, 'Lifecycle: Failed', 'Yaşam döngüsü: Başarısız'),
+      GovernedLifecycleState.unavailable =>
+        _copy(context, 'Lifecycle: Unavailable', 'Yaşam döngüsü: Kullanılamıyor'),
+    };
 
 class _Pill extends StatelessWidget {
   const _Pill({required this.label, required this.color});
