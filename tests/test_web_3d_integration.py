@@ -6,7 +6,7 @@ from services.web_3d_integration import (
     Web3DIntegrationError,
     integrate_web_3d_into_generated_content,
 )
-from services.web_3d_runtime import compile_web_3d_runtime_plan
+from services.web_3d_runtime import Web3DRuntimePlan, compile_web_3d_runtime_plan
 
 
 def _content() -> dict[str, bytes]:
@@ -20,7 +20,7 @@ def _content() -> dict[str, bytes]:
     }
 
 
-def _plan():
+def _plan() -> Web3DRuntimePlan:
     return compile_web_3d_runtime_plan(
         "Build a premium website with a 3D hero, scroll camera motion, "
         "interactive product rotation, and WebGL."
