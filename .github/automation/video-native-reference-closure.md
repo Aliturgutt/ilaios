@@ -1,6 +1,6 @@
 # Video Native Reference Closure Automation Checkpoint
 
-Durable checkpoint for the ILAIOS Video Factory native photo-reference closure. Every automation run must read this file first, then re-read current `master`, the authoritative PR/successor, exact-head CI, failing logs, relevant implementation, deployment/runtime evidence, and current provider documentation/catalog where provider behavior is material. Live GitHub source/CI/runtime/deployment evidence overrides stale text here.
+Durable checkpoint for the ILAIOS Video Factory native photo-reference closure. Every automation run must read this file first, then re-read current `master`, the authoritative PR/successor, exact-head/exact-master CI, failing logs, relevant implementation, deployment/runtime evidence, and current provider documentation/catalog where provider behavior is material. Live GitHub source/CI/runtime/deployment evidence overrides stale text here.
 
 ## Goal
 
@@ -23,17 +23,16 @@ Close the native photo-reference path end-to-end: secure signed short-lived HTTP
 
 ## Current authoritative state — 2026-08-20
 
-- Repo: `Aliturgutt/ilaios`
-- Exact master re-read before successor creation: `01eb6bcfe5a98d2833a77683c973062f87cb1e73`
-- Stale PR #561 was closed unmerged after its exact head became 12 master commits stale.
-- Intervening master changes were compared and did not overlap the native Video reference paths.
-- Authoritative PR: #573
-- Branch: `agent/video-native-reference-relay-r3`
-- PR base: exact master `01eb6bcfe5a98d2833a77683c973062f87cb1e73`
-- Current head before this checkpoint update: `53b0d01d39f8252d7c6853fbb757423722a41aff`; this checkpoint write advances the head again, so re-read it before any action.
-- PR remains DRAFT until fresh exact-head CI, real relay deployment, baseline private-brief certification and native live certification are evidence-backed.
+- Repo: `Aliturgutt/ilaios`.
+- Native implementation merge: PR #573, merge SHA `142b511051adbb00a786c523be8b72d0390c1eca`.
+- Exact current master at this checkpoint: `af2f5206185cd79e56ed2431449d2bbb0e8ceed3`.
+- Current master is 69 commits ahead of the native implementation merge and 0 commits behind it.
+- A live commit comparison from `142b511051adbb00a786c523be8b72d0390c1eca` to `af2f5206185cd79e56ed2431449d2bbb0e8ceed3` shows no changes to the native Video reference implementation/workflow paths. Intervening changes are Desktop/App/Web-side work only.
+- Current exact-master combined status includes `ilaios/required-ci-exact-master=success` targeting Actions run `32346877376`.
+- Native source scope is therefore still present on current master and source/CI-implemented, but native production remains NOT VERIFIED.
+- Stale checkpoint PR #585 is superseded by the current-master checkpoint successor created from `af2f5206185cd79e56ed2431449d2bbb0e8ceed3`.
 
-## Implemented on authoritative branch
+## Implemented on master
 
 - fail-closed OpenRouter `input_references` request shaping;
 - deterministic `frame_images` precedence;
@@ -53,59 +52,37 @@ Close the native photo-reference path end-to-end: secure signed short-lived HTTP
 - repaired final artifact SHA surfaced as `logo_asset_lock_repaired_artifact_sha256` when asset-lock is applied;
 - real native reference Desktop E2E harness at `apps/desktop/e2e/provider_video_native_reference_finished_product_e2e.py` using product + logo references, managed cap, final MP4/QA/SHA checks and relay access-ledger fetch proof;
 - separate trusted-master workflow `.github/workflows/video-native-reference-production-certification.yml` with exact-SHA `ILAIOS Video Native Reference Live Certification` status and immutable proof artifact;
-- baseline private visual-brief reference analyzer corrected from the prior `openrouter/free` alias to explicit `google/gemma-3-27b-it:free` after current official OpenRouter evidence confirmed that exact route is free and vision-language/multimodal. This is source-implemented only; trusted-master live certification is still required.
-
-## Provider truth revalidated on 2026-08-20
-
-Current official OpenRouter documentation confirms:
-
-- `/api/v1/videos` supports `input_references` for reference-to-video and `frame_images` for image-to-video;
-- if both are present, `frame_images` takes precedence;
-- reference assets for provider generation require stable directly downloadable public HTTPS URLs;
-- `google/gemma-3-27b-it:free` is currently listed as free and supports vision-language/image input.
-
-Provider documentation/catalog truth must be re-checked again before any paid/native live call if material provider behavior changes.
-
-## Current exact-head CI
-
-Head `53b0d01d39f8252d7c6853fbb757423722a41aff` triggered fresh CI after the analyzer correction. At last read:
-
-- Software Factory Final Evidence: running
-- Product Surface Parity Gate: running
-- Required CI Gate: pending
-- ILAIOS Desktop CI: pending
-- ILAIOS Desktop Windows Gate: pending
-- ILAIOS Desktop MSIX Packaging: pending
-- Browser Skill Playwright E2E: pending
-
-This checkpoint update creates a newer head. The next run must ignore the above as merge evidence and read workflows for the new exact head.
+- baseline private visual-brief reference analyzer source-pinned to explicit `google/gemma-3-27b-it:free`; semantic QA routing remains separate.
 
 ## Baseline private visual-brief certification
 
-Last real trusted-master blocker was OpenRouter HTTP 404 while reference analysis used `openrouter/free`. The source now pins the analyzer to explicit current free multimodal `google/gemma-3-27b-it:free`; semantic QA routing remains separate. This is not `VERIFIED`. After safe merge, rerun trusted-master `Video Reference Production Certification` on the exact merge SHA and require real reference analysis + real provider MP4 + QA + receipt + bounded cost evidence.
+The baseline source correction is merged, but a real exact-master trusted-master `Video Reference Production Certification` PASS is still required. Do not infer certification from source merge or CI. The PR #573 merge commit did not contain `[video-reference-live-cert]`, so baseline production certification must be proven by a real exact-master workflow run with real reference analysis, managed provider MP4, QA, receipt and bounded cost evidence.
 
-## External relay blocker
+## External native relay blocker — revalidated 2026-08-20
 
-Repository relay code exists, but no real public relay deployment/configuration evidence exists yet. Vercel was re-checked through the connected account on 2026-08-20: team `Aliturgut` (`team_xU1uFo3O6KclATgxI6LsumnA`) currently has zero Vercel projects. There is therefore no existing Vercel project onto which this relay can be safely deployed from the connected tooling. Do not invent a deployment or create paid/billing/DNS state.
+Repository relay code exists, but no real public relay deployment/configuration evidence exists. Connected Vercel team `Aliturgut` (`team_xU1uFo3O6KclATgxI6LsumnA`) was rechecked and still has zero Vercel projects. There is no existing safe Vercel deployment target for the relay.
 
-Existing ILAIOS AWS production ALB is intentionally restricted to the approved owner `/32`; widening it for provider fetch would violate the current network boundary. Do not silently broaden that ALB. A real native provider certification remains externally blocked until there is a separately authorized public HTTPS relay origin with bounded secrets/storage and the Production environment is configured.
+Do not invent a project, spend money, alter billing/DNS, or silently broaden the existing AWS production ALB owner `/32` boundary. Native provider certification remains externally blocked until a separately authorized public HTTPS relay origin exists with bounded secrets/storage and the Production environment is configured.
 
 Required Production secrets for native certification:
 
-- `OPENROUTER_API_KEY` (existing provider credential),
-- `ILAIOS_REFERENCE_RELAY_UPLOAD_URL` (real HTTPS upload endpoint),
-- `ILAIOS_REFERENCE_RELAY_UPLOAD_TOKEN` (server-held upload/delete/access-evidence bearer).
+- `OPENROUTER_API_KEY`;
+- `ILAIOS_REFERENCE_RELAY_UPLOAD_URL`;
+- `ILAIOS_REFERENCE_RELAY_UPLOAD_TOKEN`.
 
-Relay server additionally requires server-side `ILAIOS_REFERENCE_RELAY_PUBLIC_BASE_URL`, `ILAIOS_REFERENCE_RELAY_UPLOAD_TOKEN`, and `ILAIOS_REFERENCE_RELAY_SIGNING_SECRET` outside the repository.
+Relay server additionally requires server-side:
+
+- `ILAIOS_REFERENCE_RELAY_PUBLIC_BASE_URL`;
+- `ILAIOS_REFERENCE_RELAY_UPLOAD_TOKEN`;
+- `ILAIOS_REFERENCE_RELAY_SIGNING_SECRET`.
 
 ## Remaining order
 
-1. Re-read new exact head and fresh exact-head gates; repair only evidenced failures.
-2. Keep PR #573 current with master; if master advances, replay only the reviewed bounded delta plus the explicit analyzer correction onto one exact-current-master successor and rerun all gates.
-3. When repo work is current and exact-head green, mark PR ready and merge only with expected-head protection and the exact trusted-master trigger token required by the native workflow (`[video-native-reference-live-cert]`) if native live prerequisites are actually configured. Do not deliberately trigger a known-unconfigured native cert just to create a failure.
-4. Establish a separately authorized real public HTTPS relay deployment without weakening the existing R03 network boundary; configure bounded Production secrets.
-5. Rerun baseline private visual-brief trusted-master certification on exact merged master and require PASS.
-6. Run separate native-reference trusted-master certification. Require provider relay fetch evidence for product + logo, `provider_native_reference_url_used=true`, `native_reference_mode=input-references`, managed terminal cost `<= $1.00`, real MP4, final technical/semantic/reference-consistency PASS, and logo direct-PASS or deterministic asset-lock PASS.
-7. Validate receipt/artifact SHA and append-only evidence/provenance; only then publish exact-SHA native-reference `VERIFIED`.
+1. Keep this checkpoint/current-master evidence accurate; never reuse stale master/CI evidence.
+2. If a safe workflow-dispatch connector becomes available, run baseline `Video Reference Production Certification` on exact current master and require real PASS evidence; otherwise do not bypass governance merely to synthesize a trigger.
+3. Establish a separately authorized real public HTTPS relay deployment without weakening the existing AWS network boundary; configure bounded Production secrets.
+4. Run separate native-reference trusted-master certification only after relay URL/token Production secrets exist.
+5. Require provider relay fetch evidence for product + logo, `provider_native_reference_url_used=true`, `native_reference_mode=input-references`, managed terminal cost `<= $1.00`, real MP4, H.264/AAC/1920x1080/duration PASS, fresh semantic + reference-consistency PASS, and logo direct-PASS or deterministic asset-lock PASS.
+6. Validate receipt/artifact SHA, coordinator `ACCEPTED`, append-only evidence/provenance; only then publish exact-SHA native-reference `VERIFIED`.
 
 If external relay deployment remains blocked, continue all non-blocked repository/CI work. Never fabricate `DONE`, `PRODUCTION`, `%100`, or `VERIFIED`.
