@@ -171,8 +171,8 @@ class DeliveryArchiveStore {
     }
     return DeliveryArchiveStore._(
       scopeMaterial: '$tenant\u0000$principal\u0000$provider',
-      _environment: environment ?? Platform.environment,
-      _systemTemp: systemTemp ?? Directory.systemTemp,
+      environment: environment ?? Platform.environment,
+      systemTemp: systemTemp ?? Directory.systemTemp,
       stateRoot: stateRoot,
     );
   }
