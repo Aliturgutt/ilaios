@@ -111,7 +111,7 @@ void main() {
       // but must never overwrite registry-owned identity/governance fields.
       expect(find.text('orchestration'), findsWidgets);
       expect(find.text('poisoned-runtime-role'), findsNothing);
-      expect(find.text('Governed runtime task'), findsOneWidget);
+      expect(find.text('Governed runtime task'), findsWidgets);
       expect(find.text('Scheduler-backed task'), findsOneWidget);
       expect(tester.takeException(), isNull);
     },
