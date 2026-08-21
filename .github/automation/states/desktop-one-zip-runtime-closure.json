@@ -9,24 +9,24 @@
   "current_phase": "LOCAL_CONTROL_PLANE_RUNTIME_REPAIR",
   "master_sha": "5446e9b08a4f9deb3accbfeceabc704cab3a9574",
   "base_sha": "5446e9b08a4f9deb3accbfeceabc704cab3a9574",
-  "head_sha": "3d734f457bb30950a6d81376ff254dc2a8cc418d",
+  "head_sha": "d41b9b8e47716959507d04cf91d70e3d13552cc9",
   "branch": "desktop/local-runtime-shutdown-repair-5446e9b0",
   "pr": 784,
   "ci": {
-    "run_id": 32533346070,
-    "conclusion": "FAIL_RUNTIME_SHUTDOWN_CRASH_REPAIRED_PENDING_FRESH_CI",
-    "exact_sha": "7f1f3212facc74ebcd72e24159be59609f3c0be8"
+    "run_id": 32537010561,
+    "conclusion": "FAIL_STATE_BLOCKER_ENUM_REPAIRED_PENDING_FRESH_CI",
+    "exact_sha": "d41b9b8e47716959507d04cf91d70e3d13552cc9"
   },
-  "next_action": "Require fresh exact-head packaged cold-start/readiness/graceful-shutdown/restart evidence on PR #784 plus Required CI/SFFE/Desktop gates. Inspect any real failure; do not merge stale PASS.",
+  "next_action": "Require fresh exact-head packaged cold-start/readiness/graceful-shutdown/restart evidence on PR #784 plus controller-state validation, Required CI/SFFE/Desktop gates. Inspect any real failure; do not merge stale PASS.",
   "blocker": {
-    "type": "WAITING_FOR_EXACT_HEAD_RUNTIME_EVIDENCE",
-    "detail": "Repository-owned buffered-stdin shutdown race has a bounded source repair on PR #784; fresh packaged runtime evidence is required before claiming the defect fixed.",
+    "type": "CI",
+    "detail": "Repository-owned buffered-stdin shutdown race has a bounded source repair on PR #784; fresh exact-head packaged runtime and required CI evidence is pending before the defect can be promoted beyond implemented.",
     "human_action": null
   },
   "repair": {
-    "retry_count": 2,
-    "last_failure_fingerprint": "packaged-sidecar:graceful-shutdown:_enter_buffered_busy:stdin-buffered-reader",
-    "last_root_cause": "Daemon parent-pipe watchdog used buffered stdin read. Interpreter finalization raced that daemon thread after graceful shutdown, producing _enter_buffered_busy fatal error."
+    "retry_count": 3,
+    "last_failure_fingerprint": "execution-controller-state:invalid-blocker-enum:WAITING_FOR_EXACT_HEAD_RUNTIME_EVIDENCE",
+    "last_root_cause": "Task state used a descriptive blocker value outside the canonical validator enum. Canonical allowed blocker types are null, REPOSITORY, CI, PROVIDER, EXTERNAL, HUMAN; this waiting-for-exact-head state is CI."
   },
   "lock": {
     "owner": "desktop-one-zip-runtime-closure",
@@ -54,7 +54,9 @@
     "master-resync:5446e9b08a4f9deb3accbfeceabc704cab3a9574",
     "pr:781:merged:5446e9b08a4f9deb3accbfeceabc704cab3a9574",
     "repair-pr:784",
-    "repair-head:3d734f457bb30950a6d81376ff254dc2a8cc418d"
+    "repair-head:d41b9b8e47716959507d04cf91d70e3d13552cc9",
+    "controller-validator:ALLOWED_BLOCKERS=null|REPOSITORY|CI|PROVIDER|EXTERNAL|HUMAN",
+    "controller-state-run:32537010561:FAIL_INVALID_BLOCKER_ENUM"
   ],
-  "updated_at": "2026-08-21T23:29:00Z"
+  "updated_at": "2026-08-21T23:31:00Z"
 }
