@@ -155,3 +155,4 @@ def _bounded_existing_file(root: Path, relative: str) -> Path:
         raise AndroidDeviceExecutionError("artifact path escapes Android project")
     if not target.is_file() or target.is_symlink():
         raise AndroidDeviceExecutionError("APK artifact is unavailable")
+    return target
