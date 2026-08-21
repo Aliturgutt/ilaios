@@ -1,0 +1,51 @@
+{
+  "schema_version": "ilaios.execution-controller.v1",
+  "task_id": "web-app-factory-486",
+  "task_source": {
+    "type": "repo_ledger_and_issue",
+    "reference": "issue:#486 + .github/web-app-factory-closure.json"
+  },
+  "status": "IN_PROGRESS",
+  "current_phase": 6,
+  "master_sha": "9d4fd2ca0322ed56dfa007bbddc6a86c4b3e89d4",
+  "base_sha": "9d4fd2ca0322ed56dfa007bbddc6a86c4b3e89d4",
+  "head_sha": "a4882161c46b5043535a743f43181cfec814b1e4",
+  "branch": "web/app-phase6-analytics-current-20260822a",
+  "pr": null,
+  "ci": {
+    "run_id": null,
+    "conclusion": null,
+    "exact_sha": null
+  },
+  "next_action": "open exact-current-master Phase-6 successor PR, consume fresh exact-head gates, then re-read live master before expected-head merge",
+  "blocker": {
+    "type": "CI",
+    "detail": "PR 762 exact-head gates passed but became stale after master advanced four commits; drift is non-overlapping and reviewed Phase-6 delta has been replayed on exact 9d4fd2ca master",
+    "human_action": null
+  },
+  "repair": {
+    "retry_count": 5,
+    "last_failure_fingerprint": "phase6-stale-pass-after-master-advance-9d4fd2ca",
+    "last_root_cause": "merge evidence invalidated by master advancement; protocol requires exact-current-master replay and fresh CI despite zero bounded path overlap"
+  },
+  "lock": {
+    "owner": "web-app-factory-486",
+    "scope": [
+      ".github/web-app-factory-closure.json",
+      ".github/workflows/web-app-factory-continuation.yml",
+      ".github/automation/states/web-app-factory-486.json",
+      "services/web_app_analytics_runtime.py",
+      "tests/test_web_app_analytics_runtime.py"
+    ],
+    "acquired_at": "2026-08-21T21:48:23Z",
+    "expires_at": "2026-08-21T22:48:23Z"
+  },
+  "evidence": [
+    "phase5-merge:7fdfa6453323dec394e3dde084aa5ec8683d77bd exact-master:32504527076,32504527231 success",
+    "phase6-stale-pr:762 head:0f21d1504e9c52c9c244128d174c6661e80465a2 gates:32525494601,32525494501,32525494799,32525494521 success but stale after master advance",
+    "master-drift:bcf93f90afa7781c55839e9602717271ca00a6d6..9d4fd2ca0322ed56dfa007bbddc6a86c4b3e89d4 changed only desktop exact-master workflow and services/operational_drills.py; zero Phase-6 bounded overlap",
+    "successor-branch:web/app-phase6-analytics-current-20260822a base:9d4fd2ca0322ed56dfa007bbddc6a86c4b3e89d4 pre-state-head:a4882161c46b5043535a743f43181cfec814b1e4",
+    "phase16-freeze: preserved; no 3D/Motion/WebGL mutation"
+  ],
+  "updated_at": "2026-08-21T21:48:23Z"
+}
