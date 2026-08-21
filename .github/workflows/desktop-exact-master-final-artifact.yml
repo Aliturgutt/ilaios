@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 concurrency:
   group: desktop-exact-master-final-${{ github.ref }}
@@ -65,3 +66,26 @@ jobs:
             artifacts/ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip.sha256
           if-no-files-found: error
           retention-days: 30
+
+      - name: Publish exact-master Desktop artifact run status
+        if: success()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $body = @{
+            state = 'success'
+            context = 'ilaios/desktop-exact-master-final-artifact'
+            description = "run $env:RUN_ID artifact uploaded for $($env:CURRENT_SHA.Substring(0, 12))"
+            target_url = "https://github.com/$env:REPOSITORY/actions/runs/$env:RUN_ID"
+          } | ConvertTo-Json -Compress
+          Invoke-RestMethod -Method Post -Uri "https://api.github.com/repos/$env:REPOSITORY/statuses/$env:CURRENT_SHA" -Headers $headers -Body $body -ContentType 'application/json' | Out-Null
