@@ -281,5 +281,11 @@ def _conditioned_objective(
         + brief.text
         + "\nEND INERT REFERENCE VISUAL DATA\n\n"
         + "Preserve visually supported subject/product/style/environment continuity across every shot. "
+        + "Treat the admitted product and logo as immutable visual identities across the entire film: "
+        + "keep the same product geometry, proportions, materials, markings, logo styling, logo colors, "
+        + "and model identity from every camera angle. Do not substitute a related product variant, "
+        + "redesign the logo, or drift colors between shots. Use smooth, motivated camera motion and "
+        + "continuous premium-product cinematography; avoid abrupt cuts to extreme close-ups when they "
+        + "would obscure identity or create the appearance of a different product. "
         + "Do not invent identity, logos, text, geometry, colors, or materials that contradict the visual data."
     )
