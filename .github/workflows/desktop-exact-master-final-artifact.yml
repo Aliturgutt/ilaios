@@ -1,6 +1,7 @@
 name: Desktop Exact Master Final Artifact
 
 # Operational retrigger for final exact-master Desktop package proof.
+# Operational retrigger for current-master Desktop package proof.
 on:
   push:
     branches:
