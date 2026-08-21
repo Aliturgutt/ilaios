@@ -6,6 +6,7 @@ credentials before constructing ``VerifiedExternalIdentity``.
 
 Security properties:
 - provider identities are keyed by provider + immutable provider subject;
+- enterprise OIDC subjects are additionally namespaced by verified issuer;
 - verified email is display/recovery metadata, never an automatic merge key;
 - account linking requires an already authenticated canonical user/tenant;
 - identities already linked to another user fail closed;
@@ -49,6 +50,7 @@ class VerifiedExternalIdentity:
         email = self.email.strip().casefold() if self.email is not None else None
         if email == "":
             email = None
+        issuer = self.issuer.strip() if self.issuer else None
         if self.provider is IdentityProvider.EMAIL:
             if email is None or not self.email_verified:
                 raise CentralIdentityError("email sign-in requires verified email")
@@ -57,13 +59,24 @@ class VerifiedExternalIdentity:
                     "email provider subject must equal the verified email"
                 )
             subject = email
+        if self.provider is IdentityProvider.ENTERPRISE_OIDC and issuer is None:
+            raise CentralIdentityError("enterprise OIDC identity requires issuer")
         return VerifiedExternalIdentity(
             provider=self.provider,
             subject=subject,
             email=email,
             email_verified=self.email_verified,
-            issuer=self.issuer.strip() if self.issuer else None,
+            issuer=issuer,
         )
+
+    def key(self) -> tuple[IdentityProvider, str, str]:
+        normalized = self.normalized()
+        namespace = (
+            normalized.issuer or ""
+            if normalized.provider is IdentityProvider.ENTERPRISE_OIDC
+            else ""
+        )
+        return (normalized.provider, namespace, normalized.subject)
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,9 +99,7 @@ class IdentityLink:
 class CentralIdentityStore(Protocol):
     """Persistence boundary; production adapters must enforce atomic uniqueness."""
 
-    def find_link(
-        self, provider: IdentityProvider, subject: str
-    ) -> IdentityLink | None: ...
+    def find_link(self, identity: VerifiedExternalIdentity) -> IdentityLink | None: ...
 
     def get_account(self, user_id: str) -> CanonicalAccount | None: ...
 
@@ -111,7 +122,7 @@ class CentralIdentityService:
 
     def sign_in(self, identity: VerifiedExternalIdentity) -> CanonicalAccount:
         verified = identity.normalized()
-        existing = self._store.find_link(verified.provider, verified.subject)
+        existing = self._store.find_link(verified)
         if existing is None:
             return self._store.create_account_with_link(verified)
         account = self._store.get_account(existing.user_id)
@@ -143,7 +154,7 @@ class CentralIdentityService:
             raise CentralIdentityError("authenticated tenant mismatch")
 
         verified = identity.normalized()
-        existing = self._store.find_link(verified.provider, verified.subject)
+        existing = self._store.find_link(verified)
         if existing is not None:
             if existing.user_id != user_id or existing.tenant_id != tenant_id:
                 raise CentralIdentityError(
@@ -164,13 +175,11 @@ class InMemoryCentralIdentityStore:
 
     def __init__(self) -> None:
         self._accounts: dict[str, CanonicalAccount] = {}
-        self._links: dict[tuple[IdentityProvider, str], IdentityLink] = {}
+        self._links: dict[tuple[IdentityProvider, str, str], IdentityLink] = {}
         self._next_account = 1
 
-    def find_link(
-        self, provider: IdentityProvider, subject: str
-    ) -> IdentityLink | None:
-        return self._links.get((provider, subject))
+    def find_link(self, identity: VerifiedExternalIdentity) -> IdentityLink | None:
+        return self._links.get(identity.key())
 
     def get_account(self, user_id: str) -> CanonicalAccount | None:
         return self._accounts.get(user_id)
@@ -178,7 +187,8 @@ class InMemoryCentralIdentityStore:
     def create_account_with_link(
         self, identity: VerifiedExternalIdentity
     ) -> CanonicalAccount:
-        key = (identity.provider, identity.subject)
+        verified = identity.normalized()
+        key = verified.key()
         if key in self._links:
             raise CentralIdentityError("external identity is already linked")
         sequence = self._next_account
@@ -187,19 +197,20 @@ class InMemoryCentralIdentityStore:
             user_id=f"usr_{sequence:08d}", tenant_id=f"tnt_{sequence:08d}"
         )
         self._accounts[account.user_id] = account
-        self._links[key] = _link_for(account, identity)
+        self._links[key] = _link_for(account, verified)
         return account
 
     def add_link(
         self, account: CanonicalAccount, identity: VerifiedExternalIdentity
     ) -> IdentityLink:
-        key = (identity.provider, identity.subject)
+        verified = identity.normalized()
+        key = verified.key()
         if key in self._links:
             raise CentralIdentityError("external identity is already linked")
         stored = self._accounts.get(account.user_id)
         if stored != account:
             raise CentralIdentityError("canonical account changed during linking")
-        link = _link_for(account, identity)
+        link = _link_for(account, verified)
         self._links[key] = link
         return link
 
@@ -207,7 +218,7 @@ class InMemoryCentralIdentityStore:
         return tuple(
             sorted(
                 (link for link in self._links.values() if link.user_id == user_id),
-                key=lambda link: (link.provider.value, link.subject),
+                key=lambda link: (link.provider.value, link.issuer or "", link.subject),
             )
         )
 
