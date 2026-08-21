@@ -6,46 +6,45 @@
     "reference": "docs/identity/COMMERCIAL_IDENTITY_CLOSURE_WORKFLOW.md"
   },
   "status": "IN_PROGRESS",
-  "current_phase": "Phase 3 — Google production OAuth",
-  "master_sha": "43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8",
-  "base_sha": "43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8",
-  "head_sha": "cce355a1835e05d3c6cbc5cc94880de885b6ac2d",
-  "branch": "identity/google-current7-20260821",
-  "pr": 755,
+  "current_phase": "Phase 4 — Microsoft personal + organizational OAuth/OIDC",
+  "master_sha": "8a0118a0abc283315c7d5193567cc1b9960eda29",
+  "base_sha": "8a0118a0abc283315c7d5193567cc1b9960eda29",
+  "head_sha": null,
+  "branch": "identity/microsoft-oauth-current4-20260822",
+  "pr": null,
   "ci": {
     "run_id": null,
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation on PR #755; then re-read live master and merge only with expected-head protection. After exact-master evidence, continue to Microsoft Phase 4.",
+  "next_action": "Open the exact-current-master Microsoft Phase-4 successor PR and require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation. Merge only after immediate live-master revalidation and expected-head protection.",
   "blocker": {
     "type": null,
     "detail": null,
     "human_action": null
   },
   "repair": {
-    "retry_count": 0,
-    "last_failure_fingerprint": null,
-    "last_root_cause": null
+    "retry_count": 1,
+    "last_failure_fingerprint": "required-ci:pytest:test_authenticated_account_can_link_microsoft_github_and_email:missing-microsoft-issuer",
+    "last_root_cause": "Legacy central-identity Microsoft test fixtures omitted the now-required verified issuer namespace. The fixtures were corrected without weakening the Microsoft issuer requirement."
   },
   "lock": {
     "owner": "identity-closure-runner",
     "scope": [
-      "services/google_oidc.py",
-      "tests/test_google_oidc.py",
+      "services/microsoft_oidc.py",
+      "services/central_identity.py",
+      "tests/test_microsoft_oidc.py",
+      "tests/test_central_identity.py",
       ".github/automation/states/commercial-identity-closure.json"
     ],
-    "acquired_at": "2026-08-21T19:44:00Z",
-    "expires_at": "2026-08-21T20:44:00Z"
+    "acquired_at": "2026-08-21T22:52:00Z",
+    "expires_at": "2026-08-21T23:52:00Z"
   },
   "evidence": [
-    "master@43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8",
-    "PR#750 head f8f6dbfa1f20bdb66bdb7664704f9353bf3650db Required CI run 32515205671 success but stale after master advance",
-    "PR#750 head f8f6dbfa1f20bdb66bdb7664704f9353bf3650db Software Factory Final Evidence run 32515205522 success but stale after master advance",
-    "PR#750 head f8f6dbfa1f20bdb66bdb7664704f9353bf3650db execution-controller validation run 32515205571 success but stale after master advance",
-    "master advance from 94c73f26ac5e04df885ce5ff1d83ebb4d97c617b to 43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8 changed only Video native-reference semantic continuity runtime/test paths; no overlap with Google Phase-3 paths",
-    "Google Phase-3 runtime and regression tests replayed onto exact current master",
-    "PR#755 opened from exact master 43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8"
+    "Phase-3 Google merge f385d5747ee783c23bcc5c5a9777cd72900ec7ba has exact-master Required CI run 32521449491 success and Software Factory exact-master run 32521449365 success",
+    "Phase-4 PR#767 head 92c3e26551542ee7706ba864ca046b64d09998b4 Required CI run 32530471856 success, Software Factory Final Evidence run 32530471671 success, and Execution Controller Validation run 32530471608 success but stale after master advance",
+    "master advanced from 9d4fd2ca0322ed56dfa007bbddc6a86c4b3e89d4 through cd31fe204202855eea8a0654db0d455ae157c06a and then 8a0118a0abc283315c7d5193567cc1b9960eda29 via Web App analytics plus Desktop/Operations workflow paths; no overlap with Microsoft identity paths",
+    "Microsoft Phase-4 bounded delta and repaired central-identity tests replayed onto exact master 8a0118a0abc283315c7d5193567cc1b9960eda29 in branch identity/microsoft-oauth-current4-20260822"
   ],
-  "updated_at": "2026-08-21T19:46:20Z"
+  "updated_at": "2026-08-21T22:52:00Z"
 }
