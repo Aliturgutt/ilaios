@@ -6,9 +6,11 @@ import pytest
 
 from services.web_app_auth_contract import (
     WebAppActionPermissionContract,
+    WebAppAuthContract,
     compile_web_app_auth_contract,
 )
 from services.web_app_interaction_contract import (
+    WebAppInteractionContract,
     WebAppInteractionContractError,
     compile_web_app_interaction_contract,
 )
@@ -36,7 +38,9 @@ def _spec(*, realtime: bool = True) -> WebAppSpec:
     )
 
 
-def _compile(*, realtime: bool = True):
+def _compile(
+    *, realtime: bool = True
+) -> tuple[WebAppSpec, WebAppAuthContract, WebAppInteractionContract]:
     spec = _spec(realtime=realtime)
     auth = compile_web_app_auth_contract(spec, project_id="project-phase4")
     return spec, auth, compile_web_app_interaction_contract(spec, auth)
