@@ -9,15 +9,15 @@
   "current_phase": "Phase 3 — Google production OAuth",
   "master_sha": "177e5e55bbc1fb24dfd07f1ceaaa65cc41467e93",
   "base_sha": "177e5e55bbc1fb24dfd07f1ceaaa65cc41467e93",
-  "head_sha": null,
+  "head_sha": "4062030befd0316814ee0d23392854943605c0e8",
   "branch": "identity/google-production-oauth-current3-20260821",
-  "pr": null,
+  "pr": 737,
   "ci": {
-    "run_id": 32495737112,
-    "conclusion": "success-stale-after-master-advance",
-    "exact_sha": "d23d7e1ba4323d4cc5235a4677a4a5311d89b865"
+    "run_id": null,
+    "conclusion": null,
+    "exact_sha": null
   },
-  "next_action": "Replay the reviewed bounded Phase-3 Google delta onto exact current master, open one successor PR, and require fresh exact-head CI.",
+  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence and controller-state validation on PR #737; repair evidenced failures or merge only after live-master revalidation.",
   "blocker": {
     "type": null,
     "detail": null,
@@ -41,9 +41,10 @@
   },
   "evidence": [
     "master@177e5e55bbc1fb24dfd07f1ceaaa65cc41467e93",
-    "PR#731 head d23d7e1ba4323d4cc5235a4677a4a5311d89b865 Required CI run 32495737112 success",
-    "PR#731 head d23d7e1ba4323d4cc5235a4677a4a5311d89b865 Software Factory Final Evidence run 32495736978 success",
-    "master advance PR#733 touches only execution-controller infrastructure and does not overlap Phase-3 Google paths"
+    "PR#731 head d23d7e1ba4323d4cc5235a4677a4a5311d89b865 Required CI run 32495737112 success but stale after master advance",
+    "PR#731 head d23d7e1ba4323d4cc5235a4677a4a5311d89b865 Software Factory Final Evidence run 32495736978 success but stale after master advance",
+    "master advance PR#733 touches only execution-controller infrastructure and does not overlap Phase-3 Google paths",
+    "PR#737 successor opened from exact master 177e5e55bbc1fb24dfd07f1ceaaa65cc41467e93"
   ],
-  "updated_at": "2026-08-21T15:45:57Z"
+  "updated_at": "2026-08-21T15:49:20Z"
 }
