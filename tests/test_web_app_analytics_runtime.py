@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from datetime import datetime, timezone
 
@@ -36,10 +37,7 @@ def _contract() -> WebAppAuthContract:
         project_id="project-1",
         spec_sha256="b" * 64,
         identity_chain=("User", "Tenant", "Project", "Role", "Permission", "ResourceScope"),
-        roles=(
-            WebAppRolePermissionContract(role="Viewer", permissions=(permission.permission,)),
-            WebAppRolePermissionContract(role="Owner", permissions=(permission.permission,)),
-        ),
+        roles=(WebAppRolePermissionContract(role="Viewer", permissions=(permission.permission,)),),
         permissions=(permission,),
         routes=(),
         actions=(
@@ -68,45 +66,42 @@ def _principal(*, tenant_id: str = "tenant-1", role: str = "Viewer") -> Principa
     )
 
 
-def _runtimes(max_records: int = 1000) -> tuple[WebAppCrudRuntime, WebAppAnalyticsRuntime]:
+def _runtimes(
+    max_records: int = 1000,
+) -> tuple[sqlite3.Connection, WebAppAnalyticsRuntime]:
     contract = _contract()
     authorization = AuthorizationEngine(compile_authorization_rules(contract))
-    crud = WebAppCrudRuntime(sqlite3.connect(":memory:"), contract, authorization, AuditEngine())
-    return crud, WebAppAnalyticsRuntime(crud, max_records=max_records)
+    connection = sqlite3.connect(":memory:")
+    crud = WebAppCrudRuntime(connection, contract, authorization, AuditEngine())
+    return connection, WebAppAnalyticsRuntime(crud, max_records=max_records)
 
 
-def _seed(crud: WebAppCrudRuntime, *, tenant_id: str = "tenant-1") -> None:
-    owner_contract = _contract()
-    owner_auth = AuthorizationEngine(compile_authorization_rules(owner_contract))
-    del owner_auth
-    principal = _principal(tenant_id=tenant_id, role="Owner")
-    # Seed through the same database/runtime path without adding analytics write authority.
-    # The test contract grants read only, so insert directly as fixture data.
+def _seed(connection: sqlite3.Connection, *, tenant_id: str = "tenant-1") -> None:
     rows = (
         ("goal-1", {"status": "open", "cost": 10}),
         ("goal-2", {"status": "done", "cost": 7.5}),
         ("goal-3", {"status": "open", "cost": "2.5"}),
     )
     for resource_id, payload in rows:
-        crud._db.execute(  # noqa: SLF001 - fixture setup proves projection behavior only
+        connection.execute(
             """INSERT INTO web_app_resources
                (tenant_id, project_id, resource_type, resource_id, payload_json,
                 version, created_at, updated_at, deleted_at)
                VALUES (?, 'project-1', 'Goal', ?, ?, 1, ?, ?, NULL)""",
             (
-                principal.tenant_id,
+                tenant_id,
                 resource_id,
-                __import__("json").dumps(payload, sort_keys=True, separators=(",", ":")),
+                json.dumps(payload, sort_keys=True, separators=(",", ":")),
                 NOW.isoformat(),
                 NOW.isoformat(),
             ),
         )
-    crud._db.commit()  # noqa: SLF001
+    connection.commit()
 
 
 def test_count_series_is_derived_from_authenticated_tenant_scoped_data() -> None:
-    crud, analytics = _runtimes()
-    _seed(crud)
+    connection, analytics = _runtimes()
+    _seed(connection)
 
     series = analytics.series(
         principal=_principal(),
@@ -126,8 +121,8 @@ def test_count_series_is_derived_from_authenticated_tenant_scoped_data() -> None
 
 
 def test_sum_series_uses_real_authenticated_payload_values() -> None:
-    crud, analytics = _runtimes()
-    _seed(crud)
+    connection, analytics = _runtimes()
+    _seed(connection)
 
     series = analytics.series(
         principal=_principal(),
@@ -143,8 +138,8 @@ def test_sum_series_uses_real_authenticated_payload_values() -> None:
 
 
 def test_cross_tenant_projection_returns_no_foreign_records() -> None:
-    crud, analytics = _runtimes()
-    _seed(crud, tenant_id="tenant-1")
+    connection, analytics = _runtimes()
+    _seed(connection, tenant_id="tenant-1")
 
     series = analytics.series(
         principal=_principal(tenant_id="tenant-2"),
@@ -159,8 +154,8 @@ def test_cross_tenant_projection_returns_no_foreign_records() -> None:
 
 
 def test_default_deny_is_inherited_from_canonical_authorization() -> None:
-    crud, analytics = _runtimes()
-    _seed(crud)
+    connection, analytics = _runtimes()
+    _seed(connection)
 
     with pytest.raises(IdentityError, match="deny by default"):
         analytics.series(
@@ -172,14 +167,14 @@ def test_default_deny_is_inherited_from_canonical_authorization() -> None:
         )
 
 
-def test_invalid_or_missing_metric_data_fails_closed() -> None:
-    crud, analytics = _runtimes()
-    _seed(crud)
-    crud._db.execute(  # noqa: SLF001
+def test_invalid_metric_data_fails_closed() -> None:
+    connection, analytics = _runtimes()
+    _seed(connection)
+    connection.execute(
         "UPDATE web_app_resources SET payload_json=? WHERE resource_id='goal-2'",
         ('{"status":"done","cost":"not-a-number"}',),
     )
-    crud._db.commit()  # noqa: SLF001
+    connection.commit()
 
     with pytest.raises(WebAppAnalyticsRuntimeError) as exc:
         analytics.series(
@@ -194,8 +189,8 @@ def test_invalid_or_missing_metric_data_fails_closed() -> None:
 
 
 def test_bounded_projection_reports_truncation_instead_of_claiming_full_coverage() -> None:
-    crud, analytics = _runtimes(max_records=2)
-    _seed(crud)
+    connection, analytics = _runtimes(max_records=2)
+    _seed(connection)
 
     series = analytics.series(
         principal=_principal(),
