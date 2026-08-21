@@ -36,28 +36,53 @@ class MicrosoftOIDCEnvironment:
 
     @classmethod
     def from_environment(cls, env: Mapping[str, str]) -> MicrosoftOIDCEnvironment:
-        production_web_client_id = _required(env, "ILAIOS_MICROSOFT_PRODUCTION_WEB_CLIENT_ID")
-        development_web_client_id = _required(env, "ILAIOS_MICROSOFT_DEVELOPMENT_WEB_CLIENT_ID")
+        production_web_client_id = _required(
+            env, "ILAIOS_MICROSOFT_PRODUCTION_WEB_CLIENT_ID"
+        )
+        development_web_client_id = _required(
+            env, "ILAIOS_MICROSOFT_DEVELOPMENT_WEB_CLIENT_ID"
+        )
         desktop_client_id = _required(env, "ILAIOS_MICROSOFT_DESKTOP_CLIENT_ID")
         if production_web_client_id == development_web_client_id:
-            raise MicrosoftOIDCConfigurationError("Microsoft production and development web clients must be distinct")
+            raise MicrosoftOIDCConfigurationError(
+                "Microsoft production and development web clients must be distinct"
+            )
         raw_redirects = _required(env, "ILAIOS_MICROSOFT_PRODUCTION_WEB_REDIRECTS")
         redirects = tuple(value.strip() for value in raw_redirects.split(",") if value.strip())
         if not redirects:
-            raise MicrosoftOIDCConfigurationError("Microsoft production redirect allowlist must not be empty")
+            raise MicrosoftOIDCConfigurationError(
+                "Microsoft production redirect allowlist must not be empty"
+            )
         for redirect in redirects:
             _validate_production_redirect(redirect)
         if len(set(redirects)) != len(redirects):
-            raise MicrosoftOIDCConfigurationError("Microsoft production redirect allowlist contains duplicates")
-        return cls(production_web_client_id=production_web_client_id, development_web_client_id=development_web_client_id, desktop_client_id=desktop_client_id, production_web_redirects=redirects)
+            raise MicrosoftOIDCConfigurationError(
+                "Microsoft production redirect allowlist contains duplicates"
+            )
+        return cls(
+            production_web_client_id=production_web_client_id,
+            development_web_client_id=development_web_client_id,
+            desktop_client_id=desktop_client_id,
+            production_web_redirects=redirects,
+        )
 
     def desktop_provider(self) -> OIDCProviderConfig:
-        return OIDCProviderConfig(provider_id="microsoft", display_name="Microsoft", issuer="https://login.microsoftonline.com/common/v2.0", authorization_endpoint=MICROSOFT_AUTHORIZATION_ENDPOINT, token_endpoint=MICROSOFT_TOKEN_ENDPOINT, jwks_uri=MICROSOFT_JWKS_URI, client_id=self.desktop_client_id)
+        return OIDCProviderConfig(
+            provider_id="microsoft",
+            display_name="Microsoft",
+            issuer="https://login.microsoftonline.com/common/v2.0",
+            authorization_endpoint=MICROSOFT_AUTHORIZATION_ENDPOINT,
+            token_endpoint=MICROSOFT_TOKEN_ENDPOINT,
+            jwks_uri=MICROSOFT_JWKS_URI,
+            client_id=self.desktop_client_id,
+        )
 
     def require_production_web_redirect(self, redirect_uri: str) -> str:
         redirect = redirect_uri.strip()
         if redirect not in self.production_web_redirects:
-            raise MicrosoftOIDCConfigurationError("Microsoft production redirect URI is not allowlisted")
+            raise MicrosoftOIDCConfigurationError(
+                "Microsoft production redirect URI is not allowlisted"
+            )
         return redirect
 
 
@@ -67,17 +92,27 @@ def verified_microsoft_identity(claims: VerifiedOIDCClaims) -> VerifiedExternalI
     subject = claims.subject.strip()
     if not subject:
         raise CentralIdentityError("Microsoft identity subject is required")
+
     verified_email: str | None = None
     for key, value in claims.attributes:
         if key in {"verified_email", "preferred_username", "email"} and value.strip():
             verified_email = value.strip().casefold()
             break
-    return VerifiedExternalIdentity(provider=IdentityProvider.MICROSOFT, subject=subject, email=verified_email, email_verified=verified_email is not None, issuer=issuer).normalized()
+
+    return VerifiedExternalIdentity(
+        provider=IdentityProvider.MICROSOFT,
+        subject=subject,
+        email=verified_email,
+        email_verified=verified_email is not None,
+        issuer=issuer,
+    ).normalized()
 
 
 def _validated_token_issuer(value: str) -> str:
     issuer = value.strip()
-    if not issuer.startswith(MICROSOFT_ISSUER_PREFIX) or not issuer.endswith(MICROSOFT_ISSUER_SUFFIX):
+    if not issuer.startswith(MICROSOFT_ISSUER_PREFIX) or not issuer.endswith(
+        MICROSOFT_ISSUER_SUFFIX
+    ):
         raise CentralIdentityError("Microsoft identity issuer mismatch")
     tenant_id = issuer[len(MICROSOFT_ISSUER_PREFIX) : -len(MICROSOFT_ISSUER_SUFFIX)]
     if not tenant_id or "/" in tenant_id or tenant_id in {"common", "organizations", "consumers"}:
@@ -95,9 +130,15 @@ def _required(env: Mapping[str, str], key: str) -> str:
 def _validate_production_redirect(value: str) -> None:
     parsed = urlparse(value)
     if parsed.scheme != "https" or not parsed.netloc:
-        raise MicrosoftOIDCConfigurationError("Microsoft production redirect URI must use HTTPS")
+        raise MicrosoftOIDCConfigurationError(
+            "Microsoft production redirect URI must use HTTPS"
+        )
     if parsed.username or parsed.password or parsed.fragment:
-        raise MicrosoftOIDCConfigurationError("Microsoft production redirect URI contains forbidden components")
+        raise MicrosoftOIDCConfigurationError(
+            "Microsoft production redirect URI contains forbidden components"
+        )
     host = parsed.hostname or ""
     if host in {"localhost", "127.0.0.1", "::1"}:
-        raise MicrosoftOIDCConfigurationError("Microsoft production redirect URI must not use a loopback host")
+        raise MicrosoftOIDCConfigurationError(
+            "Microsoft production redirect URI must not use a loopback host"
+        )
