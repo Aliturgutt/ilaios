@@ -115,4 +115,70 @@ void main() {
     expect(find.byKey(const Key('focus-progress-unavailable-track')), findsOneWidget);
     expect(find.byType(LinearProgressIndicator), findsNothing);
   });
+
+  testWidgets('malformed Home telemetry fails closed instead of fabricating metrics', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const snapshot = OperationalSnapshot(
+      runtimeRoutes: <Map<String, Object?>>[],
+      schedulerState: <String, Object?>{
+        'health_percent': 'NaN',
+      },
+      grantsState: <String, Object?>{},
+      governanceState: <String, Object?>{
+        'total_cost_usd': 'not-a-number',
+        'work': <Map<String, Object?>>[
+          <String, Object?>{
+            'request_id': 'invalid-negative-progress',
+            'status': 'running',
+            'progress_percent': -1,
+          },
+          <String, Object?>{
+            'request_id': 'invalid-overflow-progress',
+            'status': 'running',
+            'progress': 101,
+          },
+          <String, Object?>{
+            'request_id': 'invalid-nan-progress',
+            'status': 'running',
+            'progress_percent': 'NaN',
+          },
+        ],
+      },
+      evidenceRecords: [],
+      liveEvents: <Map<String, Object?>>[],
+    );
+
+    await tester.pumpWidget(
+      const IlaiosDesktopApp(
+        projection: ControlPlaneProjection(
+          connected: true,
+          status: 'Connected to authoritative control plane',
+          goalCount: 1,
+          jobCount: 3,
+          lastEvent: null,
+          schemaVersion: '1',
+        ),
+        operationalSnapshot: snapshot,
+        operationalStatus: 'Operational APIs connected',
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('invalid-negative-progress'), findsOneWidget);
+    expect(find.text('invalid-overflow-progress'), findsOneWidget);
+    expect(find.text('invalid-nan-progress'), findsOneWidget);
+    expect(
+      find.byKey(const Key('focus-progress-unavailable-track')),
+      findsNWidgets(3),
+    );
+    expect(find.byType(LinearProgressIndicator), findsNothing);
+    expect(find.text('Connected'), findsWidgets);
+    expect(find.textContaining('NaN'), findsNothing);
+    expect(find.textContaining('not-a-number'), findsNothing);
+  });
 }
