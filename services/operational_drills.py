@@ -206,9 +206,12 @@ def _security_drill(base_url: str) -> dict[str, object]:
     attempts.append({"attack": "missing-token", "status": status})
     status, _ = _request(base_url, "/v1/goals", token="invalid-token")
     attempts.append({"attack": "invalid-token", "status": status})
-    oversized = b"{" + (b" " * 1_048_576)
     status, _ = _request(
-        base_url, "/v1/goals", method="POST", raw_payload=oversized
+        base_url,
+        "/v1/goals",
+        method="POST",
+        raw_payload=b"",
+        declared_content_length=1_048_577,
     )
     attempts.append({"attack": "oversized-body", "status": status})
     status, _ = _request(
@@ -444,6 +447,7 @@ def _request(
     raw_payload: bytes | None = None,
     token: str | None = _TOKEN,
     timeout: float = 10,
+    declared_content_length: int | None = None,
 ) -> tuple[int, dict[str, Any]]:
     if payload is not None and raw_payload is not None:
         raise ValueError("only one request payload form may be supplied")
@@ -453,6 +457,10 @@ def _request(
     headers = {"Content-Type": "application/json"}
     if token is not None:
         headers["Authorization"] = f"Bearer {token}"
+    if declared_content_length is not None:
+        if declared_content_length < 0:
+            raise ValueError("declared content length must be non-negative")
+        headers["Content-Length"] = str(declared_content_length)
     request = Request(base_url + path, method=method, data=data, headers=headers)
     try:
         with urlopen(request, timeout=timeout) as response:
