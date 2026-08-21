@@ -11,6 +11,7 @@ from src.video_automation.openrouter_perceptual_reviewer import (
     OpenRouterPerceptualReviewer,
     OpenRouterReviewResponse,
 )
+from src.video_automation.perceptual_review import PerceptualReviewSubmission
 
 
 class _QueuedTransport:
@@ -51,7 +52,7 @@ def _success_payload() -> dict[str, object]:
 def _review(
     transport: _QueuedTransport,
     monkeypatch: pytest.MonkeyPatch,
-):
+) -> PerceptualReviewSubmission:
     monkeypatch.setattr(
         reviewer_module,
         "_sample_frames",
