@@ -251,26 +251,30 @@ Final certification also requires exact deployed SHA, production E2E evidence, r
 
 ## Current reality checkpoint — 2026-08-21
 
-### Phase 1
+### Phase 1 — VERIFIED
 
 - Original Phase-1 PR #702 became stale after master advanced and was not merged on stale evidence.
 - Current-master successor PR #705 was merged with exact-head gate evidence.
 - Phase-1 merge lineage SHA: `1b587fbe649514ac28c4cb39f56eb1f6e073253a`.
 - Before Phase 2 started, canonical master was re-read as `2c965fa849df1a3eef1aafd1117dad2bdc7762e6`; Phase-1 lineage remained in ancestry and both `ilaios/required-ci-exact-master` and `ilaios/software-factory-exact-master` were SUCCESS on that exact master.
 
-### Phase 2 — Production Persistence
+### Phase 2 — Production Persistence — VERIFIED
 
-- Original Phase-2 PR #714 was based on `2c965fa849df1a3eef1aafd1117dad2bdc7762e6` and reached exact-head Required CI + Software Factory Final Evidence PASS at head `3cf51d600b97ee6e99880568a45fa9a5809d7982`.
-- Before merge, canonical master advanced to `1e42eec9e8759c0599ea7932c4dd38af23c46c15`; the stale #714 PASS was rejected as merge authority.
-- Compare evidence showed the master advance touched only `.github/workflows/desktop-exact-master-status.yml` and `.github/workflows/desktop-exact-master-final-artifact.yml`; there was no path overlap with the reviewed Phase-2 identity/migration delta.
-- Successor branch: `identity/production-persistence-current-20260821`, created directly from exact master `1e42eec9e8759c0599ea7932c4dd38af23c46c15`.
-- Successor PR: `#718`. Initial replay head before this checkpoint commit: `2308d3930eef1f333198f201f41e4f811dca6c39`.
-- PR #714 is closed unmerged and superseded by #718.
-- The exact reviewed five-path delta was replayed onto current master: `docs/identity/COMMERCIAL_IDENTITY_CLOSURE_WORKFLOW.md`, `services/central_identity_sqlite.py`, `services/control_plane/migrations.py`, `tests/test_central_identity_sqlite.py`, and `tests/test_web_app_domain_migrations.py`.
-- Existing authoritative DB/migration authority remains `services/control_plane/migrations.py`; no second migration engine or identity authority was introduced.
-- Schema v9 persists canonical `identity_users`, `identity_accounts`, `identity_tenants`, `identity_memberships`, `identity_sessions`, and `identity_entitlements`.
-- Provider identity uniqueness remains `provider + issuer namespace + immutable subject`; verified email is not a merge key.
-- Session storage accepts SHA-256 credential digests only and includes revocation state; entitlement state is tenant-scoped.
-- Regression coverage includes restart persistence, same-email-no-merge, enterprise issuer namespace, takeover/cross-tenant denial, session revocation/tenant binding, entitlement scoping, and rollback/re-upgrade.
-- On successor replay head `2308d3930eef1f333198f201f41e4f811dca6c39`, Software Factory Final Evidence PASS, Web App Factory Continuation Gate PASS, and Required CI was still in progress. Completed Required CI sub-gates already PASS included DB migration safety, secret scanning, API contract safety, supply-chain hardening, operational safety, assurance, structural audit, and change classification; Platform validation/quality and ClamAV remained in progress.
-- This checkpoint commit changes the exact PR head again. Therefore all pre-checkpoint PASS results are non-final evidence. Phase 2 remains IMPLEMENTED/TESTING, not VERIFIED, and must not merge until the new exact head produced by this checkpoint has fresh Required CI + Software Factory Final Evidence PASS, canonical master is re-read immediately before merge, expected-head merge succeeds, and exact-master evidence passes.
+- Original Phase-2 PR #714 became stale and was closed unmerged; stale PASS evidence was not reused.
+- Current-master successor PR #718 was merged after fresh exact-head Required CI + Software Factory Final Evidence PASS.
+- Phase-2 merge/master SHA: `2f165aff5404d9edb38ca1e50d913fe4240dcf6b`.
+- Exact-master Required CI + Software Factory evidence passed before Phase 3 began.
+- Schema v9 persists canonical User, IdentityAccount, Tenant, Membership, Session and Entitlement through the existing control-plane migration authority.
+
+### Phase 3 — Google production OAuth — IN PROGRESS
+
+- PR #725 reached exact-head Required CI + Software Factory Final Evidence PASS, but master advanced; it was closed unmerged and stale PASS was rejected.
+- PR #728 replayed the reviewed Google delta on master `687d307c6a521f68c164b510cf76d34875d242fd` and reached fresh exact-head PASS, but master advanced again through non-overlapping Operations/Meta + Desktop workflow-only changes.
+- PR #731 replayed the same reviewed delta on master `636547791e1a2cadf6731676a01b13c7feee115b` and reached exact-head Required CI run `32495737112` PASS plus Software Factory Final Evidence run `32495736978` PASS at head `d23d7e1ba4323d4cc5235a4677a4a5311d89b865`.
+- Before merge, canonical master advanced to `177e5e55bbc1fb24dfd07f1ceaaa65cc41467e93` through PR #733. PR #733 changes only `.github/automation/ILAIOS_EXECUTION_CONTROLLER_PROTOCOL.md`, `.github/automation/state-template.json`, `.github/workflows/execution-controller-state-validation.yml`, and `scripts/validate_execution_controller_state.py`; there is no overlap with the reviewed Google runtime/test/ledger paths.
+- Stale #731 PASS is therefore not merge authority. Current authoritative branch is `identity/google-production-oauth-current3-20260821`, created directly from exact master `177e5e55bbc1fb24dfd07f1ceaaa65cc41467e93`.
+- A task-specific execution-controller state/lock is adopted additively at `.github/automation/states/commercial-identity-closure.json`; the existing identity ledger remains authoritative.
+- Bounded Phase-3 scope is `services/google_oidc.py`, `tests/test_google_oidc.py`, this ledger, and the controller state file only.
+- Google authority remains pinned to official issuer/auth/token/JWKS endpoints; production/development web client IDs must be distinct; production redirects require explicit HTTPS non-loopback exact allowlisting; Desktop/native reuses the existing provider-neutral Authorization Code + PKCE boundary; immutable Google `sub` is the external identity key and verified email remains metadata only.
+- No stale PASS from #725/#728/#731 may be reused. Phase 3 remains IMPLEMENTED/TESTING until the current exact-head Required CI + Software Factory Final Evidence PASS, immediate current-master revalidation, expected-head merge, and exact-master verification complete.
+- External acceptance remains unproven and must not be fabricated: Google Cloud OAuth consent/client configuration, domain/redirect registration, production secret/config provisioning where applicable, and real Google Web/Desktop provider E2E.
