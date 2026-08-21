@@ -1,7 +1,7 @@
 name: Desktop Exact Master Final Artifact
 
 # Operational retrigger for final exact-master Desktop package proof.
-# Co-certify Desktop package and Operations/Meta evidence on one exact master revision.
+# Co-certify Desktop package and Operations/Meta evidence on exact master 2f165aff.
 on:
   push:
     branches:
