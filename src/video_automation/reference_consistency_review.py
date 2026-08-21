@@ -29,6 +29,7 @@ _CRITICAL_ROLE_THRESHOLD = 0.80
 _MAX_REVIEW_REFERENCES = 6
 _SAMPLE_COUNT = 4
 _RETRYABLE_CAPABILITY_STATUS_CODES = frozenset({404, 503})
+_FREE_VISION_FALLBACK_MODEL_ID = "google/gemma-4-26b-a4b-it-20260403:free"
 _CRITICAL_ROLES = frozenset({"subject", "product", "logo"})
 _RESULT_KEYS = frozenset(
     {
@@ -181,6 +182,7 @@ class OpenRouterReferenceConsistencyReviewer:
             body=strict_body,
             timeout_seconds=self._timeout_seconds,
         )
+        review_model_id = self._model_id
         if response.status_code in _RETRYABLE_CAPABILITY_STATUS_CODES:
             response = self._transport.post_json(
                 f"{self._base_url}/chat/completions",
@@ -188,6 +190,28 @@ class OpenRouterReferenceConsistencyReviewer:
                 body=base_body,
                 timeout_seconds=self._timeout_seconds,
             )
+        if (
+            response.status_code in _RETRYABLE_CAPABILITY_STATUS_CODES
+            and self._model_id == "openrouter/free"
+        ):
+            review_model_id = _FREE_VISION_FALLBACK_MODEL_ID
+            fallback_strict_body = dict(strict_body)
+            fallback_strict_body["model"] = review_model_id
+            response = self._transport.post_json(
+                f"{self._base_url}/chat/completions",
+                headers=headers,
+                body=fallback_strict_body,
+                timeout_seconds=self._timeout_seconds,
+            )
+            if response.status_code in _RETRYABLE_CAPABILITY_STATUS_CODES:
+                fallback_base_body = dict(base_body)
+                fallback_base_body["model"] = review_model_id
+                response = self._transport.post_json(
+                    f"{self._base_url}/chat/completions",
+                    headers=headers,
+                    body=fallback_base_body,
+                    timeout_seconds=self._timeout_seconds,
+                )
         if not 200 <= response.status_code < 300:
             raise ReferenceConsistencyReviewError(
                 f"reference consistency review failed with HTTP {response.status_code}"
@@ -195,7 +219,7 @@ class OpenRouterReferenceConsistencyReviewer:
         result = _extract_result(response)
         _validate_role_scores(result, applicable_roles)
         return ReferenceConsistencyReview(
-            reviewer_id=self.reviewer_id,
+            reviewer_id=f"openrouter-reference-consistency:{review_model_id}",
             score=_required_score(result, "score"),
             threshold=self._threshold,
             subject_score=_optional_score(result, "subject_score"),
