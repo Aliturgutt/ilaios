@@ -1,0 +1,50 @@
+{
+  "schema_version": "ilaios.execution-controller.v1",
+  "task_id": "commercial-identity-closure",
+  "task_source": {
+    "type": "repo_ledger",
+    "reference": "docs/identity/COMMERCIAL_IDENTITY_CLOSURE_WORKFLOW.md"
+  },
+  "status": "IN_PROGRESS",
+  "current_phase": "Phase 3 — Google production OAuth",
+  "master_sha": "94c73f26ac5e04df885ce5ff1d83ebb4d97c617b",
+  "base_sha": "94c73f26ac5e04df885ce5ff1d83ebb4d97c617b",
+  "head_sha": "ec9975d496e6c94bbc1427d650b8222de7a04241",
+  "branch": "identity/google-current6-20260821",
+  "pr": 750,
+  "ci": {
+    "run_id": null,
+    "conclusion": null,
+    "exact_sha": null
+  },
+  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation on PR #750; then re-read live master and merge only with expected-head protection. After exact-master evidence, continue to Microsoft Phase 4.",
+  "blocker": {
+    "type": null,
+    "detail": null,
+    "human_action": null
+  },
+  "repair": {
+    "retry_count": 0,
+    "last_failure_fingerprint": null,
+    "last_root_cause": null
+  },
+  "lock": {
+    "owner": "identity-closure-runner",
+    "scope": [
+      "services/google_oidc.py",
+      "tests/test_google_oidc.py",
+      ".github/automation/states/commercial-identity-closure.json"
+    ],
+    "acquired_at": "2026-08-21T18:48:10Z",
+    "expires_at": "2026-08-21T19:48:10Z"
+  },
+  "evidence": [
+    "master@94c73f26ac5e04df885ce5ff1d83ebb4d97c617b",
+    "PR#746 head 74cbdf076027e2b0d610f264ffa739099570e2c6 Required CI run 32510388795 success but stale after master advance",
+    "PR#746 head 74cbdf076027e2b0d610f264ffa739099570e2c6 Software Factory Final Evidence run 32510388402 success but stale after master advance",
+    "PR#746 head 74cbdf076027e2b0d610f264ffa739099570e2c6 execution-controller validation run 32510388283 success but stale after master advance",
+    "master advance from 7c9d8dc9ca2ced40374f697c2df761a802a65bc5 to 94c73f26ac5e04df885ce5ff1d83ebb4d97c617b changed only apps/desktop/e2e/provider_video_native_reference_semantic_diagnostic_e2e.py and tests/test_native_reference_semantic_diagnostic_fixture.py; no overlap with Google Phase-3 paths",
+    "PR#750 opened from exact master 94c73f26ac5e04df885ce5ff1d83ebb4d97c617b"
+  ],
+  "updated_at": "2026-08-21T18:48:10Z"
+}
