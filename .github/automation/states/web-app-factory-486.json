@@ -1,0 +1,52 @@
+{
+  "schema_version": "ilaios.execution-controller.v1",
+  "task_id": "web-app-factory-486",
+  "task_source": {
+    "type": "repo_ledger_and_issue",
+    "reference": "issue:#486 + .github/web-app-factory-closure.json"
+  },
+  "status": "IN_PROGRESS",
+  "current_phase": 6,
+  "master_sha": "43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8",
+  "base_sha": "43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8",
+  "head_sha": "0b1fc01ce31fe52f1d18497372e8f3fc2472141b",
+  "branch": "web/app-phase6-analytics-current-20260821c",
+  "pr": null,
+  "ci": {
+    "run_id": null,
+    "conclusion": null,
+    "exact_sha": null
+  },
+  "next_action": "open authoritative successor PR and consume fresh exact-head Phase-6 gates; merge only after immediate master reread and expected-head protection",
+  "blocker": {
+    "type": "CI",
+    "detail": "prior PR 749 exact-head PASS became stale when master advanced through non-overlapping Video PR 752; bounded Phase-6 delta replayed on exact current master and requires fresh gates",
+    "human_action": null
+  },
+  "repair": {
+    "retry_count": 3,
+    "last_failure_fingerprint": "phase6-stale-pass-after-master-advance",
+    "last_root_cause": "merge evidence invalidated by master advancement despite zero path overlap; protocol requires exact-current-master replay and fresh CI"
+  },
+  "lock": {
+    "owner": "web-app-factory-486",
+    "scope": [
+      ".github/web-app-factory-closure.json",
+      ".github/workflows/web-app-factory-continuation.yml",
+      ".github/automation/states/web-app-factory-486.json",
+      "services/web_app_analytics_runtime.py",
+      "tests/test_web_app_analytics_runtime.py"
+    ],
+    "acquired_at": "2026-08-21T19:45:00Z",
+    "expires_at": "2026-08-21T20:45:00Z"
+  },
+  "evidence": [
+    "phase5-merge:7fdfa6453323dec394e3dde084aa5ec8683d77bd exact-master:32504527076,32504527231 success",
+    "phase6-stale-pr:749 head:a3e35a0d380085a7f65b158331be2cf44691949a gates:32515206807,32515206361,32515206152,32515206123 success",
+    "master-drift:94c73f26ac5e04df885ce5ff1d83ebb4d97c617b..43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8 via PR 752 only Video runtime/test paths; zero bounded Phase-6 overlap",
+    "replay-base:43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8 pre-state-head:0b1fc01ce31fe52f1d18497372e8f3fc2472141b",
+    "overlap-audit: open Website/Desktop/Agent/Video/App/Identity PRs do not write Phase-6 bounded paths",
+    "phase16-freeze: preserved; no 3D/Motion/WebGL mutation"
+  ],
+  "updated_at": "2026-08-21T19:45:00Z"
+}
