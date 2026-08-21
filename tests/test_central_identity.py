@@ -17,12 +17,14 @@ def _identity(
     *,
     email: str | None = None,
     verified: bool = False,
+    issuer: str | None = None,
 ) -> VerifiedExternalIdentity:
     return VerifiedExternalIdentity(
         provider=provider,
         subject=subject,
         email=email,
         email_verified=verified,
+        issuer=issuer,
     )
 
 
@@ -188,3 +190,42 @@ def test_account_linking_is_idempotent_for_same_user() -> None:
     )
 
     assert second == first
+
+
+def test_enterprise_oidc_requires_verified_issuer_namespace() -> None:
+    service = CentralIdentityService(InMemoryCentralIdentityStore())
+
+    with pytest.raises(CentralIdentityError, match="requires issuer"):
+        service.sign_in(
+            _identity(IdentityProvider.ENTERPRISE_OIDC, "shared-subject")
+        )
+
+
+def test_enterprise_oidc_same_subject_from_different_issuers_is_distinct() -> None:
+    service = CentralIdentityService(InMemoryCentralIdentityStore())
+
+    first = service.sign_in(
+        _identity(
+            IdentityProvider.ENTERPRISE_OIDC,
+            "shared-subject",
+            issuer="https://idp-a.example.com",
+        )
+    )
+    second = service.sign_in(
+        _identity(
+            IdentityProvider.ENTERPRISE_OIDC,
+            "shared-subject",
+            issuer="https://idp-b.example.com",
+        )
+    )
+    repeated = service.sign_in(
+        _identity(
+            IdentityProvider.ENTERPRISE_OIDC,
+            "shared-subject",
+            issuer="https://idp-a.example.com",
+        )
+    )
+
+    assert first.user_id != second.user_id
+    assert first.tenant_id != second.tenant_id
+    assert repeated == first
