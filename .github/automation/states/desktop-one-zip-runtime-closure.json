@@ -9,18 +9,18 @@
   "current_phase": "LOCAL_CONTROL_PLANE_RUNTIME_REPAIR",
   "master_sha": "5446e9b08a4f9deb3accbfeceabc704cab3a9574",
   "base_sha": "5446e9b08a4f9deb3accbfeceabc704cab3a9574",
-  "head_sha": "5446e9b08a4f9deb3accbfeceabc704cab3a9574",
+  "head_sha": "3d734f457bb30950a6d81376ff254dc2a8cc418d",
   "branch": "desktop/local-runtime-shutdown-repair-5446e9b0",
-  "pr": 775,
+  "pr": 784,
   "ci": {
     "run_id": 32533346070,
-    "conclusion": "FAIL_RUNTIME_SHUTDOWN_CRASH",
+    "conclusion": "FAIL_RUNTIME_SHUTDOWN_CRASH_REPAIRED_PENDING_FRESH_CI",
     "exact_sha": "7f1f3212facc74ebcd72e24159be59609f3c0be8"
   },
-  "next_action": "Replay the evidenced parent-pipe watchdog repair and packaged runtime diagnostic onto exact current master, then require fresh exact-head cold-start/readiness/shutdown/restart and Desktop gates before merge.",
+  "next_action": "Require fresh exact-head packaged cold-start/readiness/graceful-shutdown/restart evidence on PR #784 plus Required CI/SFFE/Desktop gates. Inspect any real failure; do not merge stale PASS.",
   "blocker": {
-    "type": "REPOSITORY_OWNED_RUNTIME_SHUTDOWN_CRASH",
-    "detail": "Packaged sidecar reached identity readiness but graceful HTTP shutdown crashed with exit -1073741819 because a daemon watchdog was blocked in sys.stdin.buffer.read during interpreter finalization.",
+    "type": "WAITING_FOR_EXACT_HEAD_RUNTIME_EVIDENCE",
+    "detail": "Repository-owned buffered-stdin shutdown race has a bounded source repair on PR #784; fresh packaged runtime evidence is required before claiming the defect fixed.",
     "human_action": null
   },
   "repair": {
@@ -48,11 +48,13 @@
     "user-installed-zip-sha256:73a6696417a6f15f55c7d2eae03783102baf0881d12435a2b57cca08bb2135b9",
     "user-desktop-process:PASS>=8s",
     "user-local-control-plane-identity-readiness:FAIL",
-    "diagnostic-pr:775",
+    "diagnostic-pr:775:superseded",
     "workflow:Desktop Local Runtime Diagnostics:32533346070:FAIL",
     "runtime-failure:exit=-1073741819:_enter_buffered_busy:stdin",
     "master-resync:5446e9b08a4f9deb3accbfeceabc704cab3a9574",
-    "pr:781:merged:5446e9b08a4f9deb3accbfeceabc704cab3a9574"
+    "pr:781:merged:5446e9b08a4f9deb3accbfeceabc704cab3a9574",
+    "repair-pr:784",
+    "repair-head:3d734f457bb30950a6d81376ff254dc2a8cc418d"
   ],
-  "updated_at": "2026-08-21T23:27:00Z"
+  "updated_at": "2026-08-21T23:29:00Z"
 }
