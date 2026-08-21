@@ -1,0 +1,49 @@
+name: Desktop Local Runtime Diagnostics
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'apps/desktop/sidecar/**'
+      - 'apps/desktop/tool/build_control_plane_sidecar.ps1'
+      - 'apps/desktop/tool/smoke_control_plane_sidecar.ps1'
+      - 'apps/desktop/packaging/identity/**'
+      - 'services/desktop_oidc*.py'
+      - 'services/source_media_desktop.py'
+      - '.github/workflows/desktop-local-runtime-diagnostics.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  packaged-sidecar-runtime:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Build packaged control-plane sidecar
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $out = Join-Path $env:RUNNER_TEMP 'ilaios-sidecar-runtime'
+          ./apps/desktop/tool/build_control_plane_sidecar.ps1 -OutputDirectory $out
+          "ILAIOS_SIDECAR_PATH=$(Join-Path $out 'ilaios_control_plane.exe')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Prove cold start, identity readiness, graceful shutdown and restart
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./apps/desktop/tool/smoke_control_plane_sidecar.ps1 -SidecarPath $env:ILAIOS_SIDECAR_PATH -TimeoutSeconds 60
