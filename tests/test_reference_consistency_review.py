@@ -295,7 +295,9 @@ def test_persistent_capability_404_still_fails_closed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     _patch_media(monkeypatch)
-    transport = _SequenceTransport([_response(404), _response(404)])
+    transport = _SequenceTransport(
+        [_response(404), _response(404), _response(404), _response(404)]
+    )
     reviewer = OpenRouterReferenceConsistencyReviewer(
         "test-key",
         "openrouter/free",
@@ -310,4 +312,10 @@ def test_persistent_capability_404_still_fails_closed(
             references=(_reference("product", b"product-reference"),),
         )
 
-    assert len(transport.calls) == 2
+    assert len(transport.calls) == 4
+    assert transport.calls[0]["model"] == transport.calls[1]["model"] == "openrouter/free"
+    assert transport.calls[2]["model"] == transport.calls[3]["model"] == "google/gemma-4-26b-a4b-it-20260403:free"
+    assert "response_format" in transport.calls[0]
+    assert "response_format" not in transport.calls[1]
+    assert "response_format" in transport.calls[2]
+    assert "response_format" not in transport.calls[3]
