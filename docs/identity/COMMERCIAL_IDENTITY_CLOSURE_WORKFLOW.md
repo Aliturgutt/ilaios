@@ -75,7 +75,7 @@ Acceptance:
 - exact-head CI PASS
 - exact-master verification after merge
 
-Current checkpoint: PR #705 (current-master successor to stale PR #702).
+Current checkpoint: merged through PR #705; Phase-1 lineage remains regression-green on canonical master before Phase 2.
 
 ### Phase 2 — Production Persistence
 
@@ -251,17 +251,24 @@ Final certification also requires exact deployed SHA, production E2E evidence, r
 
 ## Current reality checkpoint — 2026-08-21
 
-- Original Phase-1 base: `2413595ebc10444a201e26b294456d5fbdb0f851`.
-- Original Phase-1 PR #702 exact head `16e32c628a05a08bd7a32a2516668db1c7946522` reached Required CI Gate PASS and Software Factory Final Evidence PASS, but became stale after master advanced by 9 commits.
-- Current canonical master for the Phase-1 replay: `cb52de093300881c4864e9f44a2594e175c8c081`.
-- Master advance touched Web App Factory/auth-contract and workflow files, not the three Phase-1 paths; stale evidence is still not reused.
-- Current Phase-1 branch: `identity/central-account-linking-current-20260821`.
-- Current Phase-1 successor PR: `#705`.
-- Replay commit before this checkpoint update: `3e7478d50d3b44107ea59634dc217d915c6e26c7`.
-- Fresh exact-head Required CI and Software Factory Final Evidence are required on PR #705 before merge.
-- Production OAuth, cross-client production auth E2E, production persistence, provider account linking UI, and entitlement/billing E2E are NOT yet certified.
-- Vercel build-rate-limit is a separate deployment blocker/noise source and must not be misclassified as identity correctness evidence.
+### Phase 1
 
-## Status update discipline
+- Original Phase-1 PR #702 became stale after master advanced and was not merged on stale evidence.
+- Current-master successor PR #705 was merged with exact-head gate evidence.
+- Phase-1 merge lineage SHA: `1b587fbe649514ac28c4cb39f56eb1f6e073253a`.
+- Before Phase 2 started, canonical master was re-read as `2c965fa849df1a3eef1aafd1117dad2bdc7762e6`; Phase-1 lineage remained in ancestry and both `ilaios/required-ci-exact-master` and `ilaios/software-factory-exact-master` were SUCCESS on that exact master.
 
-When updating this file, preserve its filename and headings. Additive edits are preferred. Never mark a phase VERIFIED unless the exact GitHub/CI/runtime evidence exists.
+### Phase 2 — Production Persistence
+
+- Base master: `2c965fa849df1a3eef1aafd1117dad2bdc7762e6`.
+- Branch: `identity/production-persistence-20260821`.
+- PR: `#714`.
+- Existing authoritative DB/migration authority is reused in place: `services/control_plane/migrations.py`; no second migration engine was introduced.
+- Schema expanded from v8 to v9 for canonical `identity_users`, `identity_accounts`, `identity_tenants`, `identity_memberships`, `identity_sessions`, and `identity_entitlements`.
+- SQLite persistence adapter implements the existing `CentralIdentityStore` boundary and keeps provider identity keyed by provider + issuer namespace + immutable subject; verified email is not a merge key.
+- Session storage accepts SHA-256 credential digests only and includes revocation state; entitlement state is tenant-scoped.
+- Added restart persistence, same-email-no-merge, enterprise issuer namespace, takeover/cross-tenant, session revocation/tenant binding, entitlement, and rollback/re-upgrade tests.
+- Initial exact-head Required CI correctly returned `REVIEW_REQUIRED` from SF-20 DB migration safety for one partial unique index and two post-create indexes due lock/compatibility risk.
+- Remediation did not weaken SF-20: the three nonessential post-create indexes were removed. Provider identity uniqueness remains an inline table `UNIQUE(provider, issuer_namespace, provider_subject)` constraint; tenant integrity remains FK/PK enforced.
+- Latest pre-checkpoint code head before this documentation commit: `7199d2ed23c933df63bb04972391dc3998bb1be4`; Software Factory Final Evidence PASS on that head, fresh Required CI pending when this checkpoint was written.
+- Phase 2 is not VERIFIED and must not merge until the new exact head created by this checkpoint has fresh Required CI + Software Factory Final Evidence PASS, master is immediately re-read, expected-head merge succeeds, and exact-master evidence passes.
