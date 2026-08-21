@@ -75,7 +75,7 @@ Acceptance:
 - exact-head CI PASS
 - exact-master verification after merge
 
-Current checkpoint: PR #705 (current-master successor to stale PR #702).
+Current checkpoint: merged through PR #705; Phase-1 lineage remains regression-green on canonical master before Phase 2.
 
 ### Phase 2 — Production Persistence
 
@@ -251,17 +251,26 @@ Final certification also requires exact deployed SHA, production E2E evidence, r
 
 ## Current reality checkpoint — 2026-08-21
 
-- Original Phase-1 base: `2413595ebc10444a201e26b294456d5fbdb0f851`.
-- Original Phase-1 PR #702 exact head `16e32c628a05a08bd7a32a2516668db1c7946522` reached Required CI Gate PASS and Software Factory Final Evidence PASS, but became stale after master advanced by 9 commits.
-- Current canonical master for the Phase-1 replay: `cb52de093300881c4864e9f44a2594e175c8c081`.
-- Master advance touched Web App Factory/auth-contract and workflow files, not the three Phase-1 paths; stale evidence is still not reused.
-- Current Phase-1 branch: `identity/central-account-linking-current-20260821`.
-- Current Phase-1 successor PR: `#705`.
-- Replay commit before this checkpoint update: `3e7478d50d3b44107ea59634dc217d915c6e26c7`.
-- Fresh exact-head Required CI and Software Factory Final Evidence are required on PR #705 before merge.
-- Production OAuth, cross-client production auth E2E, production persistence, provider account linking UI, and entitlement/billing E2E are NOT yet certified.
-- Vercel build-rate-limit is a separate deployment blocker/noise source and must not be misclassified as identity correctness evidence.
+### Phase 1
 
-## Status update discipline
+- Original Phase-1 PR #702 became stale after master advanced and was not merged on stale evidence.
+- Current-master successor PR #705 was merged with exact-head gate evidence.
+- Phase-1 merge lineage SHA: `1b587fbe649514ac28c4cb39f56eb1f6e073253a`.
+- Before Phase 2 started, canonical master was re-read as `2c965fa849df1a3eef1aafd1117dad2bdc7762e6`; Phase-1 lineage remained in ancestry and both `ilaios/required-ci-exact-master` and `ilaios/software-factory-exact-master` were SUCCESS on that exact master.
 
-When updating this file, preserve its filename and headings. Additive edits are preferred. Never mark a phase VERIFIED unless the exact GitHub/CI/runtime evidence exists.
+### Phase 2 — Production Persistence
+
+- Original Phase-2 PR #714 was based on `2c965fa849df1a3eef1aafd1117dad2bdc7762e6` and reached exact-head Required CI + Software Factory Final Evidence PASS at head `3cf51d600b97ee6e99880568a45fa9a5809d7982`.
+- Before merge, canonical master advanced to `1e42eec9e8759c0599ea7932c4dd38af23c46c15`; the stale #714 PASS was rejected as merge authority.
+- Compare evidence showed the master advance touched only `.github/workflows/desktop-exact-master-status.yml` and `.github/workflows/desktop-exact-master-final-artifact.yml`; there was no path overlap with the reviewed Phase-2 identity/migration delta.
+- Successor branch: `identity/production-persistence-current-20260821`, created directly from exact master `1e42eec9e8759c0599ea7932c4dd38af23c46c15`.
+- Successor PR: `#718`. Initial replay head before this checkpoint commit: `2308d3930eef1f333198f201f41e4f811dca6c39`.
+- PR #714 is closed unmerged and superseded by #718.
+- The exact reviewed five-path delta was replayed onto current master: `docs/identity/COMMERCIAL_IDENTITY_CLOSURE_WORKFLOW.md`, `services/central_identity_sqlite.py`, `services/control_plane/migrations.py`, `tests/test_central_identity_sqlite.py`, and `tests/test_web_app_domain_migrations.py`.
+- Existing authoritative DB/migration authority remains `services/control_plane/migrations.py`; no second migration engine or identity authority was introduced.
+- Schema v9 persists canonical `identity_users`, `identity_accounts`, `identity_tenants`, `identity_memberships`, `identity_sessions`, and `identity_entitlements`.
+- Provider identity uniqueness remains `provider + issuer namespace + immutable subject`; verified email is not a merge key.
+- Session storage accepts SHA-256 credential digests only and includes revocation state; entitlement state is tenant-scoped.
+- Regression coverage includes restart persistence, same-email-no-merge, enterprise issuer namespace, takeover/cross-tenant denial, session revocation/tenant binding, entitlement scoping, and rollback/re-upgrade.
+- On successor replay head `2308d3930eef1f333198f201f41e4f811dca6c39`, Software Factory Final Evidence PASS, Web App Factory Continuation Gate PASS, and Required CI was still in progress. Completed Required CI sub-gates already PASS included DB migration safety, secret scanning, API contract safety, supply-chain hardening, operational safety, assurance, structural audit, and change classification; Platform validation/quality and ClamAV remained in progress.
+- This checkpoint commit changes the exact PR head again. Therefore all pre-checkpoint PASS results are non-final evidence. Phase 2 remains IMPLEMENTED/TESTING, not VERIFIED, and must not merge until the new exact head produced by this checkpoint has fresh Required CI + Software Factory Final Evidence PASS, canonical master is re-read immediately before merge, expected-head merge succeeds, and exact-master evidence passes.
