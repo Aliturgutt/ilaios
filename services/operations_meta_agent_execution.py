@@ -19,6 +19,7 @@ from services.runtime import ExecutionGrant
 from services.runtime.ai_provider_adapter import (
     AIProviderAuthorizationError,
     AIProviderError,
+    AIProviderTransportError,
     GovernedAIProviderAdapter,
 )
 from services.runtime.routing import RuntimeError as RuntimeRoutingError
@@ -124,6 +125,24 @@ class OperationsMetaProviderBackedAgentResult:
     evidence_digest: str
 
 
+def _bounded_provider_failure_classification(exc: Exception) -> str:
+    """Return non-secret provider failure metadata suitable for live CI evidence."""
+    chain: list[str] = []
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and len(chain) < 6 and id(current) not in seen:
+        seen.add(id(current))
+        label = type(current).__name__
+        if isinstance(current, AIProviderTransportError):
+            label += f"(retryable={str(current.retryable).lower()}"
+            if current.retry_after_seconds is not None:
+                label += f",retry_after_seconds={current.retry_after_seconds:g}"
+            label += ")"
+        chain.append(label)
+        current = current.__cause__
+    return ">".join(chain)
+
+
 class OperationsMetaProviderBackedExecutor:
     """Execute bounded Operations/Meta proposals through canonical runtime."""
 
@@ -176,8 +195,13 @@ class OperationsMetaProviderBackedExecutor:
                     denied_models=frozenset(denied_models),
                 )
             except GovernanceError as exc:
+                detail = (
+                    ""
+                    if last_error is None
+                    else "; last_failure=" + _bounded_provider_failure_classification(last_error)
+                )
                 raise OperationsMetaAgentExecutionError(
-                    "no governed Operations/Meta AI fallback remains"
+                    "no governed Operations/Meta AI fallback remains" + detail
                 ) from (last_error or exc)
 
             payload = {
