@@ -5,20 +5,23 @@
   "phase": "LOCAL_CONTROL_PLANE_RUNTIME_DIAGNOSIS",
   "master_sha": "cc0d6861bad92ce6e5e17173a38d4ad5c85654d7",
   "base_sha": "cc0d6861bad92ce6e5e17173a38d4ad5c85654d7",
+  "head_sha": "9e7aa362f58e6c73a981164c25009d89d094ddb8",
   "branch": "desktop/local-runtime-startup-diagnostics-cc0d6861",
-  "pr": null,
+  "pr": 775,
   "last_ci_run": null,
   "last_ci_conclusion": null,
-  "next_action": "Add a real packaged-sidecar cold-start/identity-readiness/shutdown gate with captured stdout/stderr so the user-visible bundled runtime failure is diagnosed from executable evidence before any cosmetic UI work.",
-  "blocker_classification": "REPOSITORY_OBSERVABILITY_GAP",
+  "next_action": "Read fresh PR #775 packaged-sidecar runtime diagnostics. If executable startup fails, inspect captured stdout/stderr and repair only the evidenced root cause. If clean+restart PASS, narrow the user-machine failure to persistent-state/process-lifecycle differences before any product repair or UI polish.",
+  "blocker_classification": "WAITING_FOR_EXACT_HEAD_RUNTIME_EVIDENCE",
   "retry_count": 0,
   "last_failure_fingerprint": "USER_WINDOWS:Bundled local control plane did not become identity-ready",
   "lock": {
     "owner": "desktop-one-zip-runtime-closure",
     "scope": [
       "apps/desktop/tool/build_control_plane_sidecar.ps1",
+      "apps/desktop/tool/smoke_control_plane_sidecar.ps1",
       "apps/desktop/lib/control_plane/local_runtime.dart",
       "apps/desktop/test/local_runtime*",
+      ".github/workflows/desktop-local-runtime-diagnostics.yml",
       ".github/automation/states/desktop-one-zip-runtime-closure.json"
     ],
     "expires_after": "bounded active PR lifetime"
@@ -34,6 +37,8 @@
       ".github/workflows/operations-meta-agent-live-certification.yml",
       "services/operational_drills.py"
     ],
-    "desktop_runtime_code_changed_since_installed_package": false
+    "desktop_runtime_code_changed_since_installed_package": false,
+    "diagnostic_gap": "Existing exact-master packaging builds the sidecar and runs --help but does not start the packaged executable or prove /v1/auth/providers readiness.",
+    "diagnostic_pr": 775
   }
 }
