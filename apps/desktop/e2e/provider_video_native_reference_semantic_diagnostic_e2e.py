@@ -14,7 +14,31 @@ from src.video_automation.openrouter_perceptual_reviewer import OpenRouterPercep
 from src.video_automation.perceptual_review import PerceptualReviewSubmission  # noqa: E402
 
 _ORIGINAL_REVIEW = OpenRouterPerceptualReviewer.review
+_ORIGINAL_LOGO_PNG_BYTES = certification._logo_png_bytes
 _semantic_reviews: list[PerceptualReviewSubmission] = []
+
+
+def _provider_valid_logo_png_bytes() -> bytes:
+    """Build the same synthetic logo at provider-valid reference dimensions.
+
+    Seedance 2.0 reference inputs require both image dimensions to be at least
+    300 px. The historical 160x64 certification fixture was valid PNG data but
+    outside that provider boundary, which surfaced upstream as HTTP 500 instead
+    of a useful 4xx validation error.
+    """
+
+    width, height = 480, 320
+    rows = bytearray()
+    for y in range(height):
+        rows.append(0)
+        for x in range(width):
+            color = (17, 24, 39)
+            if 48 <= x < 114 and 60 <= y < 260:
+                color = (0, 194, 209)
+            if 138 <= x < 432 and (90 <= y < 120 or 200 <= y < 230):
+                color = (255, 255, 255)
+            rows.extend(color)
+    return certification._rgb_png(width, height, bytes(rows))
 
 
 def _recording_review(
@@ -105,12 +129,14 @@ def _augment_failure_artifact(reviews: list[PerceptualReviewSubmission]) -> None
 def main() -> int:
     _semantic_reviews.clear()
     setattr(OpenRouterPerceptualReviewer, "review", _recording_review)
+    setattr(certification, "_logo_png_bytes", _provider_valid_logo_png_bytes)
     try:
         return certification.main()
     except BaseException:
         _augment_failure_artifact(_semantic_reviews)
         raise
     finally:
+        setattr(certification, "_logo_png_bytes", _ORIGINAL_LOGO_PNG_BYTES)
         setattr(OpenRouterPerceptualReviewer, "review", _ORIGINAL_REVIEW)
 
 
