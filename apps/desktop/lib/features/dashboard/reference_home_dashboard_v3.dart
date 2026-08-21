@@ -917,14 +917,24 @@ class _FocusWorkRow extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 3),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(
-                    value: progress ?? 0,
-                    minHeight: 3,
-                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                if (progress == null)
+                  Container(
+                    key: const Key('focus-progress-unavailable-track'),
+                    height: 3,
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                  )
+                else
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: progress,
+                      minHeight: 3,
+                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                    ),
                   ),
-                ),
               ],
             ),
           ),

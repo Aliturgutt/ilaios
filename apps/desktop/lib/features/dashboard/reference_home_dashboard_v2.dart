@@ -7,6 +7,8 @@ import '../../identity/identity_client.dart';
 import '../navigation/desktop_section.dart';
 import 'home_runtime_binding.dart';
 import 'reference_home_dashboard_v3.dart';
+import 'reference_home_motion_surface.dart';
+import 'reference_home_truth_sanitizer.dart';
 
 /// Compatibility entry point kept for the established Desktop shell.
 ///
@@ -37,14 +39,16 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
 
   Widget _home(BuildContext context) {
     final binding = HomeRuntimeBinding.maybeOf(context);
-    return ReferenceHomeDashboardV3(
-      projection: projection,
-      snapshot: snapshot,
-      status: status,
-      userSession: userSession ?? binding?.userSession,
-      onNavigate: onNavigate,
-      onPromptSubmit: onPromptSubmit ?? binding?.onPromptSubmit,
-      onRefreshRequested: onRefreshRequested,
+    return ReferenceHomeMotionSurface(
+      child: ReferenceHomeDashboardV3(
+        projection: projection,
+        snapshot: sanitizeReferenceHomeSnapshot(snapshot),
+        status: status,
+        userSession: userSession ?? binding?.userSession,
+        onNavigate: onNavigate,
+        onPromptSubmit: onPromptSubmit ?? binding?.onPromptSubmit,
+        onRefreshRequested: onRefreshRequested,
+      ),
     );
   }
 
