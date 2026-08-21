@@ -11,6 +11,7 @@ from __future__ import annotations
 import sqlite3
 import uuid
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 from services.central_identity import (
@@ -200,7 +201,9 @@ class SQLiteCentralIdentityStore:
         created_at: str,
         expires_at: str,
     ) -> PersistedSession:
-        if len(credential_hash) != 64:
+        if len(credential_hash) != 64 or any(
+            character not in "0123456789abcdefABCDEF" for character in credential_hash
+        ):
             raise CentralIdentityError("session credential digest must be SHA-256 hex")
         account = self.get_account(user_id)
         if account is None or not account.enabled or account.tenant_id != tenant_id:
@@ -329,4 +332,4 @@ def _link_from_row(row: tuple[object, ...]) -> IdentityLink:
 
 
 def _sqlite_now() -> str:
-    return "1970-01-01T00:00:00Z"
+    return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
