@@ -162,6 +162,30 @@ def test_perceptual_reviewer_falls_back_on_404(
     _assert_capability_fallback(404, monkeypatch)
 
 
+def test_perceptual_reviewer_fails_closed_when_stale_model_404_persists(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    transport = _QueuedTransport(
+        [
+            OpenRouterReviewResponse(
+                404,
+                {"error": {"code": 404, "message": "model not found"}},
+            ),
+            OpenRouterReviewResponse(
+                404,
+                {"error": {"code": 404, "message": "model not found"}},
+            ),
+        ]
+    )
+
+    with pytest.raises(OpenRouterPerceptualReviewError, match="HTTP 404"):
+        _review(transport, monkeypatch)
+
+    assert len(transport.requests) == 2
+    assert "response_format" in transport.requests[0]
+    assert "response_format" not in transport.requests[1]
+
+
 def test_perceptual_reviewer_falls_back_on_503(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

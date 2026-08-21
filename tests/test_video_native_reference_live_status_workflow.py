@@ -22,6 +22,8 @@ def test_native_reference_live_workflow_is_exact_sha_fail_closed() -> None:
     assert "  contents: read\n  statuses: write\n" in text
     assert "pull_request:" not in text
     assert "environment: Production" in text
+    assert "ILAIOS_VIDEO_QA_MODEL_ID: openrouter/free" in text
+    assert "ILAIOS_VIDEO_QA_MODEL_ID: google/gemma-3-27b-it:free" not in text
     assert "ref: ${{ github.sha }}" in text
     assert "ILAIOS Video Native Reference Live Certification" in text
     assert "Native reference live E2E accepted: exact-SHA PASS" in text
