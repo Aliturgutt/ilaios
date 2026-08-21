@@ -8,6 +8,7 @@ import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
 import '../../identity/identity_client.dart';
 import '../create/governed_lifecycle_projection.dart';
+import '../deliveries/delivery_identity_scope.dart';
 import 'agent_provisioning_scope.dart';
 import 'home_runtime_binding.dart';
 import 'reference_desktop_shell_v10.dart';
@@ -59,28 +60,31 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
   final Future<void> Function(String requestId, GovernanceDecision decision)?
       onGovernanceDecision;
 
-  Widget _shell() => AgentProvisioningScope(
-        onProvisionAgent: onProvisionAgent,
-        child: HomeRuntimeBinding(
-          userSession: userSession,
-          onPromptSubmit: onPromptSubmit,
-          child: ReferenceDesktopShellV10(
-            projection: projection,
-            operationalSnapshot: operationalSnapshot,
-            operationalStatus: operationalStatus,
-            approverId: approverId,
-            identityProviders: identityProviders,
+  Widget _shell() => DeliveryIdentityScope(
+        session: userSession,
+        child: AgentProvisioningScope(
+          onProvisionAgent: onProvisionAgent,
+          child: HomeRuntimeBinding(
             userSession: userSession,
-            identityStatus: identityStatus,
-            themeMode: themeMode,
-            onThemeModeChanged: onThemeModeChanged,
-            onSignIn: onSignIn,
-            onLogout: onLogout,
             onPromptSubmit: onPromptSubmit,
-            onSaveArtifact: onSaveArtifact,
-            onRefreshRequested: onRefreshRequested,
-            onProvisionAgent: onProvisionAgent,
-            onGovernanceDecision: onGovernanceDecision,
+            child: ReferenceDesktopShellV10(
+              projection: projection,
+              operationalSnapshot: operationalSnapshot,
+              operationalStatus: operationalStatus,
+              approverId: approverId,
+              identityProviders: identityProviders,
+              userSession: userSession,
+              identityStatus: identityStatus,
+              themeMode: themeMode,
+              onThemeModeChanged: onThemeModeChanged,
+              onSignIn: onSignIn,
+              onLogout: onLogout,
+              onPromptSubmit: onPromptSubmit,
+              onSaveArtifact: onSaveArtifact,
+              onRefreshRequested: onRefreshRequested,
+              onProvisionAgent: onProvisionAgent,
+              onGovernanceDecision: onGovernanceDecision,
+            ),
           ),
         ),
       );

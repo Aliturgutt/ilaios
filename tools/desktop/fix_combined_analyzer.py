@@ -16,6 +16,23 @@ def replace_once(rel: str, old: str, new: str) -> None:
     path.write_text(text.replace(old, new, 1), encoding="utf-8", newline="\n")
 
 
+def replace_once_or_verify(rel: str, old: str, new: str) -> None:
+    """Apply one lint-equivalent rewrite or verify it is already present exactly once."""
+    path = root / rel
+    text = path.read_text(encoding="utf-8")
+    old_count = text.count(old)
+    new_count = text.count(new)
+    if old_count == 1 and new_count == 0:
+        path.write_text(text.replace(old, new, 1), encoding="utf-8", newline="\n")
+        return
+    if old_count == 0 and new_count == 1:
+        print(f"ANALYZER_FIX_ALREADY_APPLIED {rel}: {old!r}")
+        return
+    raise SystemExit(
+        f"ANALYZER_FIX_EQUIVALENCE_MISMATCH {rel}: old={old_count}, new={new_count}: {old!r}"
+    )
+
+
 def brace_simple_statement_ifs(rel: str) -> None:
     """Brace simple one-line statement ifs without touching collection-if syntax."""
     path = root / rel
@@ -126,18 +143,20 @@ brace_simple_statement_ifs(
     "apps/desktop/lib/features/create/create_view.dart",
 )
 
-# Equivalent lint cleanup in Deliveries; behavior is unchanged.
-replace_once(
+# Equivalent lint cleanup in Deliveries. Newer source may already carry the
+# same braces; accept only the exact unbraced or exact braced form, never an
+# ambiguous/missing anchor.
+replace_once_or_verify(
     "apps/desktop/lib/features/deliveries/deliveries_view.dart",
     "if (value.endsWith(suffix)) value = value.substring(0, value.length - suffix.length);",
     "if (value.endsWith(suffix)) {\n    value = value.substring(0, value.length - suffix.length);\n  }",
 )
-replace_once(
+replace_once_or_verify(
     "apps/desktop/lib/features/deliveries/deliveries_view.dart",
     "if (value.isEmpty) return record.executionId;",
     "if (value.isEmpty) {\n    return record.executionId;\n  }",
 )
-replace_once(
+replace_once_or_verify(
     "apps/desktop/lib/features/deliveries/deliveries_view.dart",
     "if (!_isTr(context)) return value;",
     "if (!_isTr(context)) {\n    return value;\n  }",
