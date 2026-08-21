@@ -7,26 +7,26 @@
   },
   "status": "IN_PROGRESS",
   "current_phase": 7,
-  "master_sha": "8a0118a0abc283315c7d5193567cc1b9960eda29",
-  "base_sha": "8a0118a0abc283315c7d5193567cc1b9960eda29",
-  "head_sha": "2c910daebe45161659585e7977aec910ca1ad362",
+  "master_sha": "5446e9b08a4f9deb3accbfeceabc704cab3a9574",
+  "base_sha": "5446e9b08a4f9deb3accbfeceabc704cab3a9574",
+  "head_sha": "ae0aa51934fcf7085a9f64c992e00da1fe8bb413",
   "branch": "web/app-phase7-realtime-current-20260822a",
-  "pr": null,
+  "pr": 780,
   "ci": {
-    "run_id": null,
-    "conclusion": null,
-    "exact_sha": null
+    "run_id": 32534758248,
+    "conclusion": "success-stale-after-master-advance",
+    "exact_sha": "ae0aa51934fcf7085a9f64c992e00da1fe8bb413"
   },
-  "next_action": "implement bounded Phase-7 authenticated realtime event projection, add regression coverage and exact-head continuation gates",
+  "next_action": "run fresh exact-head gates on Phase-7 branch synchronized with master 5446e9b08a4f9deb3accbfeceabc704cab3a9574; re-read live master immediately before expected-head merge",
   "blocker": {
-    "type": null,
-    "detail": null,
+    "type": "CI",
+    "detail": "Phase-7 exact-head gates passed on ae0aa51934fcf7085a9f64c992e00da1fe8bb413, but master advanced to 5446e9b08a4f9deb3accbfeceabc704cab3a9574 through PR #781. Drift changes only apps/desktop/test/deliveries_lifecycle_view_test.dart and has zero overlap with the five-file Phase-7 scope; stale PASS is invalid until the synchronized exact head reruns gates.",
     "human_action": null
   },
   "repair": {
-    "retry_count": 0,
-    "last_failure_fingerprint": null,
-    "last_root_cause": null
+    "retry_count": 1,
+    "last_failure_fingerprint": "phase7-stale-pass-after-master-5446e9b0",
+    "last_root_cause": "exact-head evidence invalidated by non-overlapping master advancement; synchronize reviewed bounded delta and rerun gates"
   },
   "lock": {
     "owner": "web-app-factory-486",
@@ -37,16 +37,17 @@
       "services/web_app_realtime_runtime.py",
       "tests/test_web_app_realtime_runtime.py"
     ],
-    "acquired_at": "2026-08-21T22:50:00Z",
-    "expires_at": "2026-08-21T23:50:00Z"
+    "acquired_at": "2026-08-21T23:47:00Z",
+    "expires_at": "2026-08-22T00:47:00Z"
   },
   "evidence": [
     "phase5-merge:7fdfa6453323dec394e3dde084aa5ec8683d77bd exact-master:32504527076,32504527231 success",
     "phase6-pr:766 exact-head:d156c9bf7861f039bea1ff8b69907219660bccfa gates:32532849804,32532849785,32532849897,32532849762 success",
     "phase6-merge:cd31fe204202855eea8a0654db0d455ae157c06a expected-head:d156c9bf7861f039bea1ff8b69907219660bccfa",
     "phase6-exact-master:software-factory=32533589517 success; required-ci=32533589860 success",
-    "master-drift:cd31fe204202855eea8a0654db0d455ae157c06a..8a0118a0abc283315c7d5193567cc1b9960eda29 via PR #776 touches only desktop/operations-meta workflow paths; zero Phase-7 bounded overlap",
+    "phase7-stale-head:ae0aa51934fcf7085a9f64c992e00da1fe8bb413 gates:32534758089,32534758156,32534758096,32534758248 success",
+    "master-drift:8a0118a0abc283315c7d5193567cc1b9960eda29..5446e9b08a4f9deb3accbfeceabc704cab3a9574 via PR #781 changes only apps/desktop/test/deliveries_lifecycle_view_test.dart; zero Phase-7 bounded overlap",
     "phase16-freeze: preserved; no 3D/Motion/WebGL mutation"
   ],
-  "updated_at": "2026-08-21T22:50:00Z"
+  "updated_at": "2026-08-21T23:47:00Z"
 }

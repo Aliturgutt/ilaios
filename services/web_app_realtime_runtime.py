@@ -172,8 +172,6 @@ class WebAppRealtimeRuntime:
     def _authorize_subscription(
         self, principal: Principal, resource_type: str, now: datetime
     ) -> None:
-        # Canonical CRUD list performs Phase-3 authorization and tenant/project scoping.
-        # No result is required; successful admission is the authorization evidence.
         self._crud.list(
             principal=principal,
             resource_type=resource_type,

@@ -28,7 +28,11 @@ Future<void> _pumpUntil(
   Finder finder, {
   required bool present,
 }) async {
-  for (var i = 0; i < 40; i += 1) {
+  // Archive persistence uses real filesystem I/O. Hosted Windows runners can
+  // exceed the previous ~400 ms wall-clock polling window under load even when
+  // the operation is healthy. Preserve the same fail-closed UI assertion while
+  // allowing a bounded ~1.2 s real-I/O window before declaring timeout.
+  for (var i = 0; i < 120; i += 1) {
     await _yieldRealIo(tester);
     await tester.pump(const Duration(milliseconds: 25));
     final found = finder.evaluate().isNotEmpty;
