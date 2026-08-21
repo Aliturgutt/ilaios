@@ -11,6 +11,7 @@ from src.video_automation.openrouter_perceptual_reviewer import (
     OpenRouterPerceptualReviewer,
     OpenRouterReviewResponse,
 )
+from src.video_automation.perceptual_review import PerceptualReviewSubmission
 
 
 _SOURCE_MODEL = "google/gemma-3-27b-it:free"
@@ -55,7 +56,7 @@ def _success_payload() -> dict[str, object]:
 def _review(
     transport: _QueuedTransport,
     monkeypatch: pytest.MonkeyPatch,
-):
+) -> PerceptualReviewSubmission:
     monkeypatch.setattr(
         reviewer_module,
         "_sample_frames",
