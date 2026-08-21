@@ -19,6 +19,7 @@ from services.runtime import ExecutionGrant
 from services.runtime.ai_provider_adapter import (
     AIProviderAuthorizationError,
     AIProviderError,
+    AIProviderTransportError,
     GovernedAIProviderAdapter,
 )
 from services.runtime.routing import RuntimeError as RuntimeRoutingError
@@ -38,70 +39,18 @@ class OperationsMetaAgentBinding:
 
 
 OPERATIONS_META_AGENT_BINDINGS: tuple[OperationsMetaAgentBinding, ...] = (
-    OperationsMetaAgentBinding(
-        "ilaios.agent.operations.automation.v1",
-        "ilaios-governance",
-        "operations.automate",
-        "workflow.read",
-        "governed-ai",
-    ),
-    OperationsMetaAgentBinding(
-        "ilaios.agent.operations.analytics.v1",
-        "ilaios-observability",
-        "operations.analyze",
-        "telemetry.read",
-        "governed-ai",
-    ),
-    OperationsMetaAgentBinding(
-        "ilaios.agent.operations.monitoring.v1",
-        "ilaios-observability",
-        "operations.monitor",
-        "telemetry.read",
-        "governed-ai",
-    ),
-    OperationsMetaAgentBinding(
-        "ilaios.agent.operations.recovery.v1",
-        "sf-recovery",
-        "operations.recover",
-        "evidence.read",
-        "governed-ai",
-    ),
-    OperationsMetaAgentBinding(
-        "ilaios.agent.operations.provider-watcher.v1",
-        "ilaios-routing-intelligence",
-        "provider.monitor",
-        "provider-health.read",
-        "governed-ai",
-    ),
-    OperationsMetaAgentBinding(
-        "ilaios.agent.operations.benchmark.v1",
-        "ilaios-routing-intelligence",
-        "benchmark.evaluate",
-        "benchmark-input.read",
-        "governed-ai",
-    ),
-    OperationsMetaAgentBinding(
-        INDEPENDENT_VERIFIER_ID,
-        "ilaios-governance",
-        "evidence.verify",
-        "evidence.read",
-        "independent-verification",
-    ),
-    OperationsMetaAgentBinding(
-        "ilaios.agent.meta.self-development.v1",
-        "ilaios-system-design",
-        "self-development.coordinate",
-        "repository.read",
-        "governed-ai",
-    ),
+    OperationsMetaAgentBinding("ilaios.agent.operations.automation.v1", "ilaios-governance", "operations.automate", "workflow.read", "governed-ai"),
+    OperationsMetaAgentBinding("ilaios.agent.operations.analytics.v1", "ilaios-observability", "operations.analyze", "telemetry.read", "governed-ai"),
+    OperationsMetaAgentBinding("ilaios.agent.operations.monitoring.v1", "ilaios-observability", "operations.monitor", "telemetry.read", "governed-ai"),
+    OperationsMetaAgentBinding("ilaios.agent.operations.recovery.v1", "sf-recovery", "operations.recover", "evidence.read", "governed-ai"),
+    OperationsMetaAgentBinding("ilaios.agent.operations.provider-watcher.v1", "ilaios-routing-intelligence", "provider.monitor", "provider-health.read", "governed-ai"),
+    OperationsMetaAgentBinding("ilaios.agent.operations.benchmark.v1", "ilaios-routing-intelligence", "benchmark.evaluate", "benchmark-input.read", "governed-ai"),
+    OperationsMetaAgentBinding(INDEPENDENT_VERIFIER_ID, "ilaios-governance", "evidence.verify", "evidence.read", "independent-verification"),
+    OperationsMetaAgentBinding("ilaios.agent.meta.self-development.v1", "ilaios-system-design", "self-development.coordinate", "repository.read", "governed-ai"),
 )
 
 _BINDINGS_BY_ID = {item.agent_id: item for item in OPERATIONS_META_AGENT_BINDINGS}
-OPERATIONS_META_GOVERNED_AI_CAPABILITIES = frozenset(
-    item.capability
-    for item in OPERATIONS_META_AGENT_BINDINGS
-    if item.execution_mode == "governed-ai"
-)
+OPERATIONS_META_GOVERNED_AI_CAPABILITIES = frozenset(item.capability for item in OPERATIONS_META_AGENT_BINDINGS if item.execution_mode == "governed-ai")
 
 
 @dataclass(frozen=True, slots=True)
@@ -124,46 +73,45 @@ class OperationsMetaProviderBackedAgentResult:
     evidence_digest: str
 
 
+def _bounded_provider_failure_classification(exc: Exception) -> str:
+    """Return non-secret provider failure metadata suitable for live CI evidence."""
+    chain: list[str] = []
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and len(chain) < 6 and id(current) not in seen:
+        seen.add(id(current))
+        label = type(current).__name__
+        if isinstance(current, AIProviderTransportError):
+            label += f"(retryable={str(current.retryable).lower()}"
+            if current.retry_after_seconds is not None:
+                label += f",retry_after_seconds={current.retry_after_seconds:g}"
+            label += ")"
+        chain.append(label)
+        current = current.__cause__
+    return ">".join(chain)
+
+
 class OperationsMetaProviderBackedExecutor:
     """Execute bounded Operations/Meta proposals through canonical runtime."""
 
-    def __init__(
-        self,
-        named_executor: NamedAgentExecutor,
-        provider_adapter: GovernedAIProviderAdapter,
-    ) -> None:
+    def __init__(self, named_executor: NamedAgentExecutor, provider_adapter: GovernedAIProviderAdapter) -> None:
         self._named = named_executor
         self._providers = provider_adapter
 
-    def execute(
-        self,
-        request: OperationsMetaProviderBackedAgentRequest,
-    ) -> OperationsMetaProviderBackedAgentResult:
+    def execute(self, request: OperationsMetaProviderBackedAgentRequest) -> OperationsMetaProviderBackedAgentResult:
         binding = operations_meta_binding_for(request.invocation.target_id)
         if binding.execution_mode != "governed-ai":
-            raise OperationsMetaAgentExecutionError(
-                "binding is not provider-backed governed AI execution"
-            )
+            raise OperationsMetaAgentExecutionError("binding is not provider-backed governed AI execution")
         if request.invocation.capability != binding.capability:
-            raise OperationsMetaAgentExecutionError(
-                "invocation capability diverges from Operations/Meta binding"
-            )
+            raise OperationsMetaAgentExecutionError("invocation capability diverges from Operations/Meta binding")
         if request.invocation.permission != binding.permission:
-            raise OperationsMetaAgentExecutionError(
-                "invocation permission diverges from Operations/Meta binding"
-            )
+            raise OperationsMetaAgentExecutionError("invocation permission diverges from Operations/Meta binding")
         if request.prompt != request.invocation.prompt:
-            raise OperationsMetaAgentExecutionError(
-                "provider prompt must equal admitted invocation prompt"
-            )
+            raise OperationsMetaAgentExecutionError("provider prompt must equal admitted invocation prompt")
         if not request.invocation.external_egress or not request.invocation.dlp_approved:
-            raise OperationsMetaAgentExecutionError(
-                "external AI execution requires explicit egress and DLP approval"
-            )
+            raise OperationsMetaAgentExecutionError("external AI execution requires explicit egress and DLP approval")
         if request.now.tzinfo is None:
-            raise OperationsMetaAgentExecutionError(
-                "execution timestamp must be timezone-aware"
-            )
+            raise OperationsMetaAgentExecutionError("execution timestamp must be timezone-aware")
         if request.input_tokens < 0 or request.max_output_tokens <= 0:
             raise OperationsMetaAgentExecutionError("token estimates must be bounded")
 
@@ -171,14 +119,10 @@ class OperationsMetaProviderBackedExecutor:
         last_error: Exception | None = None
         while True:
             try:
-                selection = self._providers.select(
-                    binding.capability,
-                    denied_models=frozenset(denied_models),
-                )
+                selection = self._providers.select(binding.capability, denied_models=frozenset(denied_models))
             except GovernanceError as exc:
-                raise OperationsMetaAgentExecutionError(
-                    "no governed Operations/Meta AI fallback remains"
-                ) from (last_error or exc)
+                detail = "" if last_error is None else "; last_failure=" + _bounded_provider_failure_classification(last_error)
+                raise OperationsMetaAgentExecutionError("no governed Operations/Meta AI fallback remains" + detail) from (last_error or exc)
 
             payload = {
                 "request_id": request.invocation.invocation_id,
@@ -187,25 +131,13 @@ class OperationsMetaProviderBackedExecutor:
                 "prompt": request.prompt,
                 "input_tokens": request.input_tokens,
                 "max_output_tokens": request.max_output_tokens,
-                "scopes": [
-                    {"kind": scope.kind.value, "scope_id": scope.scope_id}
-                    for scope in request.scopes
-                ],
+                "scopes": [{"kind": scope.kind.value, "scope_id": scope.scope_id} for scope in request.scopes],
                 "now": request.now.isoformat(),
             }
             try:
-                execution = self._named.execute(
-                    request.invocation,
-                    request.grant,
-                    skill_id=binding.primary_skill_id,
-                    payload=payload,
-                    now=request.now,
-                    preferred_provider_id=selection.provider_id,
-                )
+                execution = self._named.execute(request.invocation, request.grant, skill_id=binding.primary_skill_id, payload=payload, now=request.now, preferred_provider_id=selection.provider_id)
             except AIProviderAuthorizationError as exc:
-                raise OperationsMetaAgentExecutionError(
-                    "AI provider credential, permission, or billing gate failed"
-                ) from exc
+                raise OperationsMetaAgentExecutionError("AI provider credential, permission, or billing gate failed") from exc
             except (AIProviderError, GovernanceError, RuntimeRoutingError) as exc:
                 denied_models.add(selection.model_id)
                 last_error = exc
@@ -215,66 +147,37 @@ class OperationsMetaProviderBackedExecutor:
             if not isinstance(output, dict):
                 raise OperationsMetaAgentExecutionError("provider output evidence is missing")
             if output.get("model_id") != selection.model_id:
-                raise OperationsMetaAgentExecutionError(
-                    "persisted model identity diverged from selection"
-                )
+                raise OperationsMetaAgentExecutionError("persisted model identity diverged from selection")
             if output.get("provider_id") != selection.provider_id:
-                raise OperationsMetaAgentExecutionError(
-                    "persisted provider identity diverged from selection"
-                )
-            return OperationsMetaProviderBackedAgentResult(
-                execution=execution,
-                model_id=selection.model_id,
-                provider_id=selection.provider_id,
-                evidence_digest=execution_evidence_digest(execution),
-            )
+                raise OperationsMetaAgentExecutionError("persisted provider identity diverged from selection")
+            return OperationsMetaProviderBackedAgentResult(execution=execution, model_id=selection.model_id, provider_id=selection.provider_id, evidence_digest=execution_evidence_digest(execution))
 
 
 def operations_meta_binding_for(agent_id: str) -> OperationsMetaAgentBinding:
     try:
         return _BINDINGS_BY_ID[agent_id]
     except KeyError as exc:
-        raise OperationsMetaAgentExecutionError(
-            "agent is outside Operations/Meta execution bindings"
-        ) from exc
+        raise OperationsMetaAgentExecutionError("agent is outside Operations/Meta execution bindings") from exc
 
 
 def validate_operations_meta_agent_bindings() -> None:
-    expected_ids = {
-        item.manifest.agent_id
-        for item in CANONICAL_AGENT_REGISTRY
-        if item.manifest.team in {"operations", "meta"}
-    }
+    expected_ids = {item.manifest.agent_id for item in CANONICAL_AGENT_REGISTRY if item.manifest.team in {"operations", "meta"}}
     configured_ids = set(_BINDINGS_BY_ID)
     if configured_ids != expected_ids:
-        raise OperationsMetaAgentExecutionError(
-            "Operations/Meta binding coverage mismatch "
-            f"missing={sorted(expected_ids-configured_ids)} "
-            f"extra={sorted(configured_ids-expected_ids)}"
-        )
+        raise OperationsMetaAgentExecutionError(f"Operations/Meta binding coverage mismatch missing={sorted(expected_ids-configured_ids)} extra={sorted(configured_ids-expected_ids)}")
     if len(OPERATIONS_META_AGENT_BINDINGS) != 8:
-        raise OperationsMetaAgentExecutionError(
-            "Operations/Meta execution population must be eight"
-        )
+        raise OperationsMetaAgentExecutionError("Operations/Meta execution population must be eight")
     for binding in OPERATIONS_META_AGENT_BINDINGS:
         manifest = registration_for(binding.agent_id).manifest
         if binding.capability not in manifest.capabilities:
-            raise OperationsMetaAgentExecutionError(
-                f"binding capability exceeds manifest: {binding.agent_id}"
-            )
+            raise OperationsMetaAgentExecutionError(f"binding capability exceeds manifest: {binding.agent_id}")
         if binding.permission not in manifest.permissions:
-            raise OperationsMetaAgentExecutionError(
-                f"binding permission exceeds manifest: {binding.agent_id}"
-            )
+            raise OperationsMetaAgentExecutionError(f"binding permission exceeds manifest: {binding.agent_id}")
     verifier = operations_meta_binding_for(INDEPENDENT_VERIFIER_ID)
     if verifier.execution_mode != "independent-verification":
-        raise OperationsMetaAgentExecutionError(
-            "IndependentVerifier must remain outside generic provider execution"
-        )
+        raise OperationsMetaAgentExecutionError("IndependentVerifier must remain outside generic provider execution")
     if "evidence.verify" in OPERATIONS_META_GOVERNED_AI_CAPABILITIES:
-        raise OperationsMetaAgentExecutionError(
-            "provider boundary must not own evidence verification authority"
-        )
+        raise OperationsMetaAgentExecutionError("provider boundary must not own evidence verification authority")
 
 
 validate_operations_meta_agent_bindings()
