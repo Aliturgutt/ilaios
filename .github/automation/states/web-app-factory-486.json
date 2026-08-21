@@ -7,9 +7,9 @@
   },
   "status": "IN_PROGRESS",
   "current_phase": 6,
-  "master_sha": "9d4fd2ca0322ed56dfa007bbddc6a86c4b3e89d4",
-  "base_sha": "9d4fd2ca0322ed56dfa007bbddc6a86c4b3e89d4",
-  "head_sha": "c5318558d2671418caa1e6e97e787d052fd84dcf",
+  "master_sha": "7631ffaa7b9a497e973393a503b72ae059f3e69e",
+  "base_sha": "7631ffaa7b9a497e973393a503b72ae059f3e69e",
+  "head_sha": "ec60e6abd3e233389b64e44514b76bd34fb493c4",
   "branch": "web/app-phase6-analytics-current-20260822a",
   "pr": 766,
   "ci": {
@@ -17,16 +17,16 @@
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "consume fresh exact-head Phase-6 gates on PR 766; re-read live master immediately before expected-head merge",
+  "next_action": "consume fresh exact-head gates after syncing PR 766 onto master 7631ffaa; re-read live master immediately before expected-head merge",
   "blocker": {
     "type": "CI",
-    "detail": "PR 762 exact-head gates passed but became stale after master advanced four commits; reviewed non-overlapping Phase-6 delta is now replayed on exact 9d4fd2ca master as PR 766 and requires fresh gates",
+    "detail": "Previous exact-head gates on ec60e6abd3e233389b64e44514b76bd34fb493c4 passed but became stale when master advanced to 7631ffaa7b9a497e973393a503b72ae059f3e69e; drift has zero overlap with Phase-6 bounded paths, so the same reviewed delta is resynchronized and requires fresh gates.",
     "human_action": null
   },
   "repair": {
-    "retry_count": 5,
-    "last_failure_fingerprint": "phase6-stale-pass-after-master-advance-9d4fd2ca",
-    "last_root_cause": "merge evidence invalidated by master advancement; protocol requires exact-current-master replay and fresh CI despite zero bounded path overlap"
+    "retry_count": 6,
+    "last_failure_fingerprint": "phase6-stale-pass-after-master-advance-7631ffaa",
+    "last_root_cause": "merge evidence invalidated by master advancement; exact-current-master resynchronization required despite zero bounded path overlap"
   },
   "lock": {
     "owner": "web-app-factory-486",
@@ -37,15 +37,14 @@
       "services/web_app_analytics_runtime.py",
       "tests/test_web_app_analytics_runtime.py"
     ],
-    "acquired_at": "2026-08-21T21:48:23Z",
-    "expires_at": "2026-08-21T22:48:23Z"
+    "acquired_at": "2026-08-21T22:12:50Z",
+    "expires_at": "2026-08-21T23:12:50Z"
   },
   "evidence": [
     "phase5-merge:7fdfa6453323dec394e3dde084aa5ec8683d77bd exact-master:32504527076,32504527231 success",
-    "phase6-stale-pr:762 head:0f21d1504e9c52c9c244128d174c6661e80465a2 gates:32525494601,32525494501,32525494799,32525494521 success but stale after master advance",
-    "master-drift:bcf93f90afa7781c55839e9602717271ca00a6d6..9d4fd2ca0322ed56dfa007bbddc6a86c4b3e89d4 changed only desktop exact-master workflow and services/operational_drills.py; zero Phase-6 bounded overlap",
-    "successor-pr:766 base:9d4fd2ca0322ed56dfa007bbddc6a86c4b3e89d4 pre-state-head:c5318558d2671418caa1e6e97e787d052fd84dcf",
+    "phase6-pr:766 previous-head:ec60e6abd3e233389b64e44514b76bd34fb493c4 gates:32530422580,32530422590,32530422726,32530422610 success but stale after master advance",
+    "master-drift:9d4fd2ca0322ed56dfa007bbddc6a86c4b3e89d4..7631ffaa7b9a497e973393a503b72ae059f3e69e changed only desktop-exact-master-final-artifact.yml and operations-meta-agent-live-certification.yml; zero Phase-6 bounded overlap",
     "phase16-freeze: preserved; no 3D/Motion/WebGL mutation"
   ],
-  "updated_at": "2026-08-21T21:51:30Z"
+  "updated_at": "2026-08-21T22:12:50Z"
 }
