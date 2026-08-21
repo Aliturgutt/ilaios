@@ -9,15 +9,15 @@
   "current_phase": "Phase 3 — Google production OAuth",
   "master_sha": "7c9d8dc9ca2ced40374f697c2df761a802a65bc5",
   "base_sha": "7c9d8dc9ca2ced40374f697c2df761a802a65bc5",
-  "head_sha": "3582627e61b85ef79a6e931720ca720b21466b1d",
+  "head_sha": "78e3c6b59edb8322afe3593a68e89cdef9441f24",
   "branch": "identity/google-production-oauth-current5-20260821",
-  "pr": null,
+  "pr": 746,
   "ci": {
     "run_id": null,
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "Open exact-current-master Phase-3 successor PR; require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation; then re-read master and merge only with expected-head protection.",
+  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation on PR #746; then re-read live master and merge only with expected-head protection. After exact-master evidence, continue to Microsoft Phase 4.",
   "blocker": {
     "type": null,
     "detail": null,
@@ -35,8 +35,8 @@
       "tests/test_google_oidc.py",
       ".github/automation/states/commercial-identity-closure.json"
     ],
-    "acquired_at": "2026-08-21T17:48:42Z",
-    "expires_at": "2026-08-21T18:48:42Z"
+    "acquired_at": "2026-08-21T17:51:40Z",
+    "expires_at": "2026-08-21T18:51:40Z"
   },
   "evidence": [
     "master@7c9d8dc9ca2ced40374f697c2df761a802a65bc5",
@@ -44,7 +44,8 @@
     "PR#739 head 2c500bd760374d77cea7f1469ff1da5198970e82 Software Factory Final Evidence run 32505111833 success but stale after master advance",
     "PR#739 head 2c500bd760374d77cea7f1469ff1da5198970e82 execution-controller validation run 32505111930 success but stale after master advance",
     "master advance from 7fdfa6453323dec394e3dde084aa5ec8683d77bd to 7c9d8dc9ca2ced40374f697c2df761a802a65bc5 changed Desktop/Operations workflow paths only; no overlap with Google Phase-3 runtime/test/state paths",
-    "successor branch identity/google-production-oauth-current5-20260821 created from exact master 7c9d8dc9ca2ced40374f697c2df761a802a65bc5"
+    "PR#746 opened from exact master 7c9d8dc9ca2ced40374f697c2df761a802a65bc5",
+    "PR#739 closed unmerged as superseded after #746 existed"
   ],
-  "updated_at": "2026-08-21T17:48:42Z"
+  "updated_at": "2026-08-21T17:51:40Z"
 }
