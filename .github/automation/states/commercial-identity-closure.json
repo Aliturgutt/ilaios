@@ -1,0 +1,50 @@
+{
+  "schema_version": "ilaios.execution-controller.v1",
+  "task_id": "commercial-identity-closure",
+  "task_source": {
+    "type": "repo_ledger",
+    "reference": "docs/identity/COMMERCIAL_IDENTITY_CLOSURE_WORKFLOW.md"
+  },
+  "status": "IN_PROGRESS",
+  "current_phase": "Phase 3 — Google production OAuth",
+  "master_sha": "7fdfa6453323dec394e3dde084aa5ec8683d77bd",
+  "base_sha": "7fdfa6453323dec394e3dde084aa5ec8683d77bd",
+  "head_sha": "8cc35cda8d01f1a507aa8aaf8373fb7f825ddc2f",
+  "branch": "identity/google-production-oauth-current4-20260821",
+  "pr": null,
+  "ci": {
+    "run_id": null,
+    "conclusion": null,
+    "exact_sha": null
+  },
+  "next_action": "Open the current-master Phase-3 successor PR and require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation before merge.",
+  "blocker": {
+    "type": null,
+    "detail": null,
+    "human_action": null
+  },
+  "repair": {
+    "retry_count": 0,
+    "last_failure_fingerprint": null,
+    "last_root_cause": null
+  },
+  "lock": {
+    "owner": "identity-closure-runner",
+    "scope": [
+      "services/google_oidc.py",
+      "tests/test_google_oidc.py",
+      ".github/automation/states/commercial-identity-closure.json"
+    ],
+    "acquired_at": "2026-08-21T16:48:50Z",
+    "expires_at": "2026-08-21T17:48:50Z"
+  },
+  "evidence": [
+    "master@7fdfa6453323dec394e3dde084aa5ec8683d77bd",
+    "PR#737 head 0a0699fef547b81cf5a35e0056212a82d01533fa Required CI run 32499656378 success but stale after master advance",
+    "PR#737 head 0a0699fef547b81cf5a35e0056212a82d01533fa Software Factory Final Evidence run 32499656180 success but stale after master advance",
+    "PR#737 head 0a0699fef547b81cf5a35e0056212a82d01533fa execution-controller validation run 32499656189 success but stale after master advance",
+    "master advance PR#736 changed only .github/web-app-factory-closure.json, .github/workflows/web-app-factory-continuation.yml, services/web_app_crud_runtime.py, tests/test_web_app_crud_runtime.py; no overlap with Google Phase-3 runtime/test/state paths",
+    "Phase-3 Google runtime and regression delta replayed onto exact current master"
+  ],
+  "updated_at": "2026-08-21T16:48:50Z"
+}
