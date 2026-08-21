@@ -1,0 +1,53 @@
+{
+  "schema_version": "ilaios.execution-controller.v1",
+  "task_id": "web-app-factory-486",
+  "task_source": {
+    "type": "repo_ledger_and_issue",
+    "reference": "issue:#486 + .github/web-app-factory-closure.json"
+  },
+  "status": "IN_PROGRESS",
+  "current_phase": 6,
+  "master_sha": "94c73f26ac5e04df885ce5ff1d83ebb4d97c617b",
+  "base_sha": "94c73f26ac5e04df885ce5ff1d83ebb4d97c617b",
+  "head_sha": "1d4970ece3a9b4be0fe183fd32d6ea10e83b7cda",
+  "branch": "web/app-phase6-analytics-current-20260821b",
+  "pr": 749,
+  "ci": {
+    "run_id": 32510379592,
+    "conclusion": "failure",
+    "exact_sha": "80b19c8e33d257a2dafa9c435dedb6c3d37031d0"
+  },
+  "next_action": "consume fresh exact-head Phase-6 gates on successor PR 749; repair only evidence-backed failures",
+  "blocker": {
+    "type": "CI",
+    "detail": "stale predecessor failed strict Mypy on an unannotated records list; successor contains explicit list[CrudRecord] repair and awaits fresh exact-head evidence",
+    "human_action": null
+  },
+  "repair": {
+    "retry_count": 2,
+    "last_failure_fingerprint": "phase6-mypy-records-var-annotated",
+    "last_root_cause": "services/web_app_analytics_runtime.py records accumulator lacked the explicit element type required by strict Mypy"
+  },
+  "lock": {
+    "owner": "web-app-factory-486",
+    "scope": [
+      ".github/web-app-factory-closure.json",
+      ".github/workflows/web-app-factory-continuation.yml",
+      ".github/automation/states/web-app-factory-486.json",
+      "services/web_app_analytics_runtime.py",
+      "tests/test_web_app_analytics_runtime.py"
+    ],
+    "acquired_at": "2026-08-21T18:48:00Z",
+    "expires_at": "2026-08-21T19:48:00Z"
+  },
+  "evidence": [
+    "phase5-head:468990246185f57a7a0f31c47d5a6aded849230d runs:32499606918,32499606984,32499607177 success",
+    "phase5-merge:7fdfa6453323dec394e3dde084aa5ec8683d77bd exact-master:32504527076,32504527231 success",
+    "phase6-stale-head:80b19c8e33d257a2dafa9c435dedb6c3d37031d0 tests=52-pass ruff=pass mypy=failure run:32510379592",
+    "phase6-failure-fingerprint: records needs explicit type annotation",
+    "stale-base-drift:7c9d8dc9ca2ced40374f697c2df761a802a65bc5..94c73f26ac5e04df885ce5ff1d83ebb4d97c617b only Video diagnostic/test paths; no bounded Phase-6 overlap",
+    "successor-pr:749 base:94c73f26ac5e04df885ce5ff1d83ebb4d97c617b pre-state-head:1d4970ece3a9b4be0fe183fd32d6ea10e83b7cda",
+    "lock-reclaimed: prior same-task lock expired after predecessor became stale; no overlapping Phase-6 writer found"
+  ],
+  "updated_at": "2026-08-21T18:48:00Z"
+}
