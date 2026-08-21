@@ -1,6 +1,6 @@
 name: ILAIOS Operations Meta Agent Live Certification
 # Exact-master recertification trigger; no runtime, governance, verifier, or provider authority change.
-# Re-certify on exact master 9d4fd2ca after operational-drill repair merge.
+# Re-certify on exact master through evidence-visible trusted-master lineage.
 # Co-certify Operations/Meta and Desktop package evidence on one exact master revision.
 
 on:
@@ -16,6 +16,8 @@ on:
 
 permissions:
   contents: read
+  issues: write
+  statuses: write
 
 concurrency:
   group: operations-meta-agent-live-certification-${{ github.sha }}
@@ -122,6 +124,7 @@ jobs:
           PY
 
       - name: Upload immutable Operations Meta certification evidence
+        id: upload_live_artifact
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -129,3 +132,94 @@ jobs:
           path: artifacts/operations-meta-agent-live-proof
           if-no-files-found: error
           retention-days: 90
+
+      - name: Publish Operations Meta exact-master status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          STATE: ${{ job.status == 'success' && 'success' || 'failure' }}
+          DESCRIPTION: ${{ job.status == 'success' && format('run {0} bounded PASS 7/8', github.run_id) || format('run {0} certification failed', github.run_id) }}
+        run: |
+          set -euo pipefail
+          payload=$(python - <<'PY'
+          import json
+          import os
+
+          print(json.dumps({
+              "state": os.environ["STATE"],
+              "context": "ilaios/operations-meta-agent-live-certification",
+              "description": os.environ["DESCRIPTION"],
+              "target_url": f"https://github.com/{os.environ['REPOSITORY']}/actions/runs/{os.environ['RUN_ID']}",
+          }))
+          PY
+          )
+          curl --fail-with-body --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$REPOSITORY/statuses/$CURRENT_SHA" \
+            -d "$payload" >/dev/null
+
+      - name: Publish Operations Meta evidence checkpoint to issue 557
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          RUN_URL: https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+          ARTIFACT_ID: ${{ steps.upload_live_artifact.outputs.artifact-id }}
+          ARTIFACT_NAME: ilaios-operations-meta-agent-live-proof-${{ github.sha }}-${{ github.run_id }}
+          RECEIPT: ${{ github.workspace }}/artifacts/operations-meta-agent-live-proof/operations-meta-agent-live-receipt.json
+        run: |
+          set -euo pipefail
+          body=$(python - <<'PY'
+          import hashlib
+          import json
+          import os
+          from pathlib import Path
+
+          lines = [
+              "Operations/Meta exact-master certification checkpoint",
+              "",
+              f"- source SHA: `{os.environ['CURRENT_SHA']}`",
+              f"- workflow run: `{os.environ['RUN_ID']}` ({os.environ['RUN_URL']})",
+              f"- job status: `{os.environ['JOB_STATUS']}`",
+          ]
+          if os.environ["JOB_STATUS"] == "success":
+              artifact_id = os.environ.get("ARTIFACT_ID", "")
+              if not artifact_id:
+                  raise SystemExit("successful Operations/Meta upload did not expose artifact ID")
+              receipt_path = Path(os.environ["RECEIPT"])
+              receipt_bytes = receipt_path.read_bytes()
+              receipt = json.loads(receipt_bytes)
+              lines += [
+                  f"- artifact ID: `{artifact_id}`",
+                  f"- artifact name: `{os.environ['ARTIFACT_NAME']}`",
+                  f"- receipt SHA256: `{hashlib.sha256(receipt_bytes).hexdigest()}`",
+                  f"- automated verified agents: `{receipt['verified_agent_count']}/{receipt['target_agent_count']}`",
+                  f"- status: `{receipt['status']}`",
+                  f"- IndependentVerifier verifier: `{receipt['independent_verifier_verifier_id']}`",
+                  f"- human owner verification required: `{str(receipt['human_owner_verification_required']).lower()}`",
+                  "- automated Operations/Meta evidence: VERIFIED 7/8; 8/8 is not claimed",
+              ]
+          else:
+              lines.append("- artifact: not accepted; inspect exact workflow failure before any retry")
+          print("\n".join(lines))
+          PY
+          )
+          payload=$(python -c 'import json,sys; print(json.dumps({"body": sys.stdin.read()}))' <<<"$body")
+          curl --fail-with-body --silent --show-error \
+            -X POST \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/$REPOSITORY/issues/557/comments" \
+            -d "$payload" >/dev/null
