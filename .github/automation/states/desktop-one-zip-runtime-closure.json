@@ -1,19 +1,33 @@
 {
+  "schema_version": "ilaios.execution-controller.v1",
   "task_id": "desktop-one-zip-runtime-closure",
-  "source": "issue-539 + user Windows packaged-runtime evidence",
+  "task_source": {
+    "type": "repo_ledger_plus_user_runtime_evidence",
+    "reference": "issue #539; user packaged Windows runtime failure"
+  },
   "status": "IN_PROGRESS",
-  "phase": "LOCAL_CONTROL_PLANE_RUNTIME_DIAGNOSIS",
+  "current_phase": "LOCAL_CONTROL_PLANE_RUNTIME_DIAGNOSIS",
   "master_sha": "cc0d6861bad92ce6e5e17173a38d4ad5c85654d7",
   "base_sha": "cc0d6861bad92ce6e5e17173a38d4ad5c85654d7",
-  "head_sha": "9e7aa362f58e6c73a981164c25009d89d094ddb8",
+  "head_sha": "f727e31e76256a6b3736c1648ee3836244f3604a",
   "branch": "desktop/local-runtime-startup-diagnostics-cc0d6861",
   "pr": 775,
-  "last_ci_run": null,
-  "last_ci_conclusion": null,
-  "next_action": "Read fresh PR #775 packaged-sidecar runtime diagnostics. If executable startup fails, inspect captured stdout/stderr and repair only the evidenced root cause. If clean+restart PASS, narrow the user-machine failure to persistent-state/process-lifecycle differences before any product repair or UI polish.",
-  "blocker_classification": "WAITING_FOR_EXACT_HEAD_RUNTIME_EVIDENCE",
-  "retry_count": 0,
-  "last_failure_fingerprint": "USER_WINDOWS:Bundled local control plane did not become identity-ready",
+  "ci": {
+    "run_id": 32533291582,
+    "conclusion": "FAIL_REPAIRING_STATE_SCHEMA",
+    "exact_sha": "f727e31e76256a6b3736c1648ee3836244f3604a"
+  },
+  "next_action": "Re-run on the schema-repaired head, then inspect Desktop Local Runtime Diagnostics packaged executable evidence. Repair only an evidenced runtime root cause; keep UI polish downstream.",
+  "blocker": {
+    "type": "WAITING_FOR_EXACT_HEAD_RUNTIME_EVIDENCE",
+    "detail": "User machine proves Desktop process alive >=8s but local identity readiness fails. Existing packaging lacked a real packaged-sidecar startup probe; PR #775 adds it.",
+    "human_action": null
+  },
+  "repair": {
+    "retry_count": 1,
+    "last_failure_fingerprint": "execution-controller-state:missing-required-keys",
+    "last_root_cause": "New task state was not created from the canonical execution-controller state template; corrected without weakening validation."
+  },
   "lock": {
     "owner": "desktop-one-zip-runtime-closure",
     "scope": [
@@ -24,21 +38,17 @@
       ".github/workflows/desktop-local-runtime-diagnostics.yml",
       ".github/automation/states/desktop-one-zip-runtime-closure.json"
     ],
-    "expires_after": "bounded active PR lifetime"
+    "acquired_at": "2026-08-21T22:30:00Z",
+    "expires_at": "2026-08-22T00:30:00Z"
   },
-  "evidence": {
-    "issue": 539,
-    "installed_source_sha": "0c3fe2e545bac1fcf0536dcbb49764e59de4f983",
-    "installed_zip_sha256": "73a6696417a6f15f55c7d2eae03783102baf0881d12435a2b57cca08bb2135b9",
-    "local_desktop_process_smoke": "PASS >=8 seconds",
-    "local_control_plane_identity_readiness": "FAIL",
-    "current_master_delta_from_installed_package": [
-      ".github/workflows/desktop-exact-master-final-artifact.yml",
-      ".github/workflows/operations-meta-agent-live-certification.yml",
-      "services/operational_drills.py"
-    ],
-    "desktop_runtime_code_changed_since_installed_package": false,
-    "diagnostic_gap": "Existing exact-master packaging builds the sidecar and runs --help but does not start the packaged executable or prove /v1/auth/providers readiness.",
-    "diagnostic_pr": 775
-  }
+  "evidence": [
+    "issue:539",
+    "user-installed-source:0c3fe2e545bac1fcf0536dcbb49764e59de4f983",
+    "user-installed-zip-sha256:73a6696417a6f15f55c7d2eae03783102baf0881d12435a2b57cca08bb2135b9",
+    "user-desktop-process:PASS>=8s",
+    "user-local-control-plane-identity-readiness:FAIL",
+    "compare:0c3fe2e545bac1fcf0536dcbb49764e59de4f983..cc0d6861bad92ce6e5e17173a38d4ad5c85654d7:no-desktop-runtime-code-change",
+    "diagnostic-pr:775"
+  ],
+  "updated_at": "2026-08-21T22:32:00Z"
 }
