@@ -10,6 +10,8 @@ from services.central_identity import (
     VerifiedExternalIdentity,
 )
 
+MICROSOFT_TEST_ISSUER = "https://login.microsoftonline.com/test-tenant/v2.0"
+
 
 def _identity(
     provider: IdentityProvider,
@@ -60,7 +62,11 @@ def test_authenticated_account_can_link_microsoft_github_and_email() -> None:
     service.link_identity(
         authenticated_user_id=account.user_id,
         authenticated_tenant_id=account.tenant_id,
-        identity=_identity(IdentityProvider.MICROSOFT, "ms-sub-1"),
+        identity=_identity(
+            IdentityProvider.MICROSOFT,
+            "ms-sub-1",
+            issuer=MICROSOFT_TEST_ISSUER,
+        ),
     )
     service.link_identity(
         authenticated_user_id=account.user_id,
@@ -141,7 +147,11 @@ def test_cross_tenant_link_attempt_is_rejected() -> None:
         service.link_identity(
             authenticated_user_id=account.user_id,
             authenticated_tenant_id="tnt_other",
-            identity=_identity(IdentityProvider.MICROSOFT, "ms-sub-1"),
+            identity=_identity(
+                IdentityProvider.MICROSOFT,
+                "ms-sub-1",
+                issuer=MICROSOFT_TEST_ISSUER,
+            ),
         )
 
 
