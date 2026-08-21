@@ -1,5 +1,6 @@
 name: ILAIOS Operations Meta Agent Live Certification
 # Exact-master recertification trigger; no runtime, governance, verifier, or provider authority change.
+# Re-certify on exact master cb52de09 after non-overlapping master advancement.
 
 on:
   push:
