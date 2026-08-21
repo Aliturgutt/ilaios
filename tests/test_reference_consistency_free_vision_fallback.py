@@ -9,7 +9,10 @@ import pytest
 
 import src.video_automation.reference_consistency_review as review_module
 from src.video_automation.openrouter_perceptual_reviewer import OpenRouterReviewResponse
-from src.video_automation.reference_consistency_review import OpenRouterReferenceConsistencyReviewer
+from src.video_automation.reference_consistency_review import (
+    OpenRouterReferenceConsistencyReviewer,
+    ReferenceConsistencyReview,
+)
 from src.video_automation.reference_image_analysis import ReferenceImageInput
 
 
@@ -88,7 +91,7 @@ def _review(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     transport: _SequenceTransport,
-):
+) -> ReferenceConsistencyReview:
     _patch_media(monkeypatch)
     video = tmp_path / "result.mp4"
     video.write_bytes(b"video")
