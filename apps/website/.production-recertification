@@ -1,4 +1,4 @@
 ILAIOS website production recertification trigger
 requested_date=2026-08-21
-base_master_sha=2f165aff5404d9edb38ca1e50d913fe4240dcf6b
+base_master_sha=687d307c6a521f68c164b510cf76d34875d242fd
 purpose=force one website-scoped deployment so the existing release-attestation and browser-certification pipeline can prove SHA-to-deployment-to-domain linkage
