@@ -1,0 +1,39 @@
+{
+  "task_id": "video-native-reference-closure",
+  "source": "Video Native Reference production certification closure",
+  "status": "IN_PROGRESS",
+  "phase": "provider-cost-evidence-repair",
+  "master_sha": "8a0118a0abc283315c7d5193567cc1b9960eda29",
+  "base_sha": "8a0118a0abc283315c7d5193567cc1b9960eda29",
+  "head_sha": null,
+  "branch": "video/native-reference-cost-current-8a0118a0",
+  "pr": null,
+  "last_ci": {
+    "source_pr": 774,
+    "source_head_sha": "88f59a69c90788c18c399d75dbbe1fef3faff328",
+    "required_ci_run": 32533015359,
+    "required_ci_conclusion": "success",
+    "software_factory_run": 32533015191,
+    "software_factory_conclusion": "success",
+    "desktop_windows_gate_run": 32533015163,
+    "desktop_windows_gate_conclusion": "success"
+  },
+  "next_action": "Require fresh exact-head gates on the exact-current-master successor, then re-read live master before expected-head merge and run exact-master real provider certification.",
+  "blocker": null,
+  "retry_count": 1,
+  "last_failure_fingerprint": "terminal provider observation is missing usage cost evidence",
+  "lock": {
+    "owner": "ILAIOS Unified Closure",
+    "scope": [
+      "src/video_automation/openrouter_managed_video_runtime.py",
+      "tests/test_video_automation_openrouter_managed_video_runtime.py",
+      ".github/automation/states/video-native-reference-closure.json"
+    ],
+    "expires_at": "2026-08-22T03:00:00+03:00"
+  },
+  "evidence": [
+    "source PR #774 exact-head gates PASS",
+    "master drift cc0d6861..8a0118a0 has zero overlap with repaired runtime/test paths"
+  ],
+  "updated_at": "2026-08-22T01:56:26+03:00"
+}
