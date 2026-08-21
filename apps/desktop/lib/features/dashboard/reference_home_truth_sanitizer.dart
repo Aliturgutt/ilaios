@@ -13,9 +13,7 @@ OperationalSnapshot sanitizeReferenceHomeSnapshot(OperationalSnapshot source) {
     grantsState: source.grantsState,
     governanceState: _sanitizeGovernance(source.governanceState),
     evidenceRecords: source.evidenceRecords,
-    liveEvents: source.liveEvents
-        .map(_sanitizeEvent)
-        .toList(growable: false),
+    liveEvents: source.liveEvents.map(_sanitizeEvent).toList(growable: false),
     agentState: source.agentState,
   );
 }
@@ -76,11 +74,7 @@ Map<String, Object?> _sanitizeProgress(Map<String, Object?> source) {
   for (final key in const <String>['progress', 'progress_percent']) {
     if (!result.containsKey(key)) continue;
     final value = _finiteNumber(result[key]);
-    final valid = value != null &&
-        (key == 'progress'
-            ? value >= 0 && value <= 1
-            : value >= 0 && value <= 100);
-    if (!valid) result.remove(key);
+    if (value == null || value < 0 || value > 100) result.remove(key);
   }
   return result;
 }
