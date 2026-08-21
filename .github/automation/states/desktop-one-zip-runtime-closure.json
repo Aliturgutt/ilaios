@@ -6,31 +6,32 @@
     "reference": "issue #539; user packaged Windows runtime failure"
   },
   "status": "IN_PROGRESS",
-  "current_phase": "LOCAL_CONTROL_PLANE_RUNTIME_DIAGNOSIS",
-  "master_sha": "cc0d6861bad92ce6e5e17173a38d4ad5c85654d7",
+  "current_phase": "LOCAL_CONTROL_PLANE_RUNTIME_REPAIR",
+  "master_sha": "8a0118a0abc283315c7d5193567cc1b9960eda29",
   "base_sha": "cc0d6861bad92ce6e5e17173a38d4ad5c85654d7",
-  "head_sha": "f727e31e76256a6b3736c1648ee3836244f3604a",
+  "head_sha": "7f1f3212facc74ebcd72e24159be59609f3c0be8",
   "branch": "desktop/local-runtime-startup-diagnostics-cc0d6861",
   "pr": 775,
   "ci": {
-    "run_id": 32533291582,
-    "conclusion": "FAIL_REPAIRING_STATE_SCHEMA",
-    "exact_sha": "f727e31e76256a6b3736c1648ee3836244f3604a"
+    "run_id": 32533346070,
+    "conclusion": "FAIL_RUNTIME_SHUTDOWN_CRASH",
+    "exact_sha": "7f1f3212facc74ebcd72e24159be59609f3c0be8"
   },
-  "next_action": "Re-run on the schema-repaired head, then inspect Desktop Local Runtime Diagnostics packaged executable evidence. Repair only an evidenced runtime root cause; keep UI polish downstream.",
+  "next_action": "Repair the packaged sidecar parent-pipe watchdog so graceful runtime shutdown cannot finalize while a daemon thread holds sys.stdin.buffer; rerun packaged cold-start/readiness/shutdown/restart evidence, then re-read current master before any merge.",
   "blocker": {
-    "type": "WAITING_FOR_EXACT_HEAD_RUNTIME_EVIDENCE",
-    "detail": "User machine proves Desktop process alive >=8s but local identity readiness fails. Existing packaging lacked a real packaged-sidecar startup probe; PR #775 adds it.",
+    "type": "REPOSITORY_OWNED_RUNTIME_SHUTDOWN_CRASH",
+    "detail": "Exact-head packaged runtime diagnostic reached identity readiness and graceful shutdown, then exited -1073741819. Captured stderr: Fatal Python error _enter_buffered_busy could not acquire lock for <_io.BufferedReader name='<stdin>'> at interpreter shutdown, possibly due to daemon threads.",
     "human_action": null
   },
   "repair": {
-    "retry_count": 1,
-    "last_failure_fingerprint": "execution-controller-state:missing-required-keys",
-    "last_root_cause": "New task state was not created from the canonical execution-controller state template; corrected without weakening validation."
+    "retry_count": 2,
+    "last_failure_fingerprint": "packaged-sidecar:graceful-shutdown:_enter_buffered_busy:stdin-buffered-reader",
+    "last_root_cause": "The daemon parent-pipe watchdog blocks in sys.stdin.buffer.read(); graceful HTTP shutdown lets the interpreter finalize while that daemon thread still owns/contends for the buffered stdin lock, causing Windows process crash instead of exit 0."
   },
   "lock": {
     "owner": "desktop-one-zip-runtime-closure",
     "scope": [
+      "apps/desktop/sidecar/ilaios_control_plane_sidecar.py",
       "apps/desktop/tool/build_control_plane_sidecar.ps1",
       "apps/desktop/tool/smoke_control_plane_sidecar.ps1",
       "apps/desktop/lib/control_plane/local_runtime.dart",
@@ -39,7 +40,7 @@
       ".github/automation/states/desktop-one-zip-runtime-closure.json"
     ],
     "acquired_at": "2026-08-21T22:30:00Z",
-    "expires_at": "2026-08-22T00:30:00Z"
+    "expires_at": "2026-08-22T01:30:00Z"
   },
   "evidence": [
     "issue:539",
@@ -48,7 +49,9 @@
     "user-desktop-process:PASS>=8s",
     "user-local-control-plane-identity-readiness:FAIL",
     "compare:0c3fe2e545bac1fcf0536dcbb49764e59de4f983..cc0d6861bad92ce6e5e17173a38d4ad5c85654d7:no-desktop-runtime-code-change",
-    "diagnostic-pr:775"
+    "diagnostic-pr:775",
+    "workflow:Desktop Local Runtime Diagnostics:32533346070:FAIL",
+    "runtime-failure:exit=-1073741819:_enter_buffered_busy:stdin"
   ],
-  "updated_at": "2026-08-21T22:32:00Z"
+  "updated_at": "2026-08-21T23:24:00Z"
 }
