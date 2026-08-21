@@ -16,6 +16,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
   statuses: write
 
 concurrency:
@@ -57,6 +58,7 @@ jobs:
           ./tools/desktop/verify_and_package_combined.ps1 -SourceSha '${{ github.sha }}' -RunId '${{ github.run_id }}'
 
       - name: Upload exact-master Desktop ZIP and SHA256
+        id: upload_final_artifact
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
@@ -89,3 +91,62 @@ jobs:
             target_url = "https://github.com/$env:REPOSITORY/actions/runs/$env:RUN_ID"
           } | ConvertTo-Json -Compress
           Invoke-RestMethod -Method Post -Uri "https://api.github.com/repos/$env:REPOSITORY/statuses/$env:CURRENT_SHA" -Headers $headers -Body $body -ContentType 'application/json' | Out-Null
+
+      - name: Publish Desktop package checkpoint to issue 539
+        if: always()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+          ARTIFACT_ID: ${{ steps.upload_final_artifact.outputs.artifact-id }}
+          ARTIFACT_NAME: desktop-exact-master-final-${{ github.sha }}-${{ github.run_id }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $runUrl = "https://github.com/$env:REPOSITORY/actions/runs/$env:RUN_ID"
+          $lines = @(
+            'Desktop exact-master package workflow checkpoint',
+            '',
+            "- source SHA: ``$env:CURRENT_SHA``",
+            "- workflow run: ``$env:RUN_ID`` ($runUrl)",
+            "- job status: ``$env:JOB_STATUS``"
+          )
+          if ($env:JOB_STATUS -eq 'success') {
+            $zips = @(Get-ChildItem -Path artifacts -Filter 'ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip' -File)
+            $shaFiles = @(Get-ChildItem -Path artifacts -Filter 'ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip.sha256' -File)
+            if ($zips.Count -ne 1 -or $shaFiles.Count -ne 1) {
+              throw "Expected exactly one final ZIP and one SHA256 file; found ZIP=$($zips.Count) SHA=$($shaFiles.Count)"
+            }
+            if (-not $env:ARTIFACT_ID) {
+              throw 'Successful upload did not expose an artifact ID.'
+            }
+            $declared = (Get-Content $shaFiles[0].FullName -Raw).Trim()
+            $match = [regex]::Match($declared, '(?i)\b[0-9a-f]{64}\b')
+            if (-not $match.Success) {
+              throw 'SHA256 sidecar does not contain a 64-character hexadecimal digest.'
+            }
+            $expected = $match.Value.ToLowerInvariant()
+            $actual = (Get-FileHash -Algorithm SHA256 $zips[0].FullName).Hash.ToLowerInvariant()
+            if ($actual -ne $expected) {
+              throw "Final ZIP digest mismatch. Expected=$expected Actual=$actual"
+            }
+            $lines += @(
+              "- artifact ID: ``$env:ARTIFACT_ID``",
+              "- artifact name: ``$env:ARTIFACT_NAME``",
+              "- ZIP: ``$($zips[0].Name)``",
+              "- ZIP SHA256: ``$actual``",
+              '- repository package evidence: VERIFIED; local Windows install/runtime smoke remains a human acceptance step'
+            )
+          }
+          else {
+            $lines += '- artifact: not accepted; inspect the exact workflow run before any retry'
+          }
+          $payload = @{ body = ($lines -join "`n") } | ConvertTo-Json -Compress
+          Invoke-RestMethod -Method Post -Uri "https://api.github.com/repos/$env:REPOSITORY/issues/539/comments" -Headers $headers -Body $payload -ContentType 'application/json' | Out-Null
