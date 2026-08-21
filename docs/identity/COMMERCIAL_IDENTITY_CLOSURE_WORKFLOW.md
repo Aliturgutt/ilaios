@@ -75,7 +75,7 @@ Acceptance:
 - exact-head CI PASS
 - exact-master verification after merge
 
-Current checkpoint: PR #702.
+Current checkpoint: PR #705 (current-master successor to stale PR #702).
 
 ### Phase 2 — Production Persistence
 
@@ -251,12 +251,14 @@ Final certification also requires exact deployed SHA, production E2E evidence, r
 
 ## Current reality checkpoint — 2026-08-21
 
-- Canonical master at Phase-1 branch creation: `2413595ebc10444a201e26b294456d5fbdb0f851`.
-- Phase 1 branch: `identity/central-account-linking-20260821`.
-- Phase 1 PR: `#702`.
-- Prior Phase-1 head before this workflow checkpoint: `2d99446f89ece3ed9f4156b79f4295c02a9c7901`.
-- Software Factory Final Evidence on that prior head: PASS.
-- Required CI on that prior head was still in progress when this checkpoint file was added.
+- Original Phase-1 base: `2413595ebc10444a201e26b294456d5fbdb0f851`.
+- Original Phase-1 PR #702 exact head `16e32c628a05a08bd7a32a2516668db1c7946522` reached Required CI Gate PASS and Software Factory Final Evidence PASS, but became stale after master advanced by 9 commits.
+- Current canonical master for the Phase-1 replay: `cb52de093300881c4864e9f44a2594e175c8c081`.
+- Master advance touched Web App Factory/auth-contract and workflow files, not the three Phase-1 paths; stale evidence is still not reused.
+- Current Phase-1 branch: `identity/central-account-linking-current-20260821`.
+- Current Phase-1 successor PR: `#705`.
+- Replay commit before this checkpoint update: `3e7478d50d3b44107ea59634dc217d915c6e26c7`.
+- Fresh exact-head Required CI and Software Factory Final Evidence are required on PR #705 before merge.
 - Production OAuth, cross-client production auth E2E, production persistence, provider account linking UI, and entitlement/billing E2E are NOT yet certified.
 - Vercel build-rate-limit is a separate deployment blocker/noise source and must not be misclassified as identity correctness evidence.
 
