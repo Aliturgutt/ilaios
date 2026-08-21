@@ -14,7 +14,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Literal
 
 from services.identity import Principal
-from services.web_app_crud_runtime import WebAppCrudRuntime, WebAppCrudRuntimeError
+from services.web_app_crud_runtime import WebAppCrudRuntime
 
 AnalyticsMetric = Literal["count", "sum"]
 
