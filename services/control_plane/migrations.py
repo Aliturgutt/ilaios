@@ -13,7 +13,7 @@ class MigrationError(RuntimeError):
     """Raised when a control-plane migration cannot complete safely."""
 
 
-LATEST_SCHEMA_VERSION = 8
+LATEST_SCHEMA_VERSION = 9
 
 _UP_MIGRATIONS = {
     1: """
@@ -379,6 +379,63 @@ _UP_MIGRATIONS = {
                 REFERENCES web_app_users(tenant_id, user_id)
         );
     """,
+    9: """
+        CREATE TABLE IF NOT EXISTS identity_tenants (
+            tenant_id TEXT PRIMARY KEY,
+            status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'SUSPENDED')),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS identity_users (
+            user_id TEXT PRIMARY KEY,
+            enabled INTEGER NOT NULL CHECK (enabled IN (0, 1)),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+        CREATE TABLE IF NOT EXISTS identity_memberships (
+            tenant_id TEXT NOT NULL REFERENCES identity_tenants(tenant_id),
+            user_id TEXT NOT NULL REFERENCES identity_users(user_id),
+            role TEXT NOT NULL,
+            status TEXT NOT NULL CHECK (status IN ('ACTIVE', 'SUSPENDED', 'REVOKED')),
+            is_primary INTEGER NOT NULL DEFAULT 0 CHECK (is_primary IN (0, 1)),
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS identity_accounts (
+            identity_account_id TEXT PRIMARY KEY,
+            provider TEXT NOT NULL,
+            issuer_namespace TEXT NOT NULL DEFAULT '',
+            provider_subject TEXT NOT NULL,
+            user_id TEXT NOT NULL,
+            tenant_id TEXT NOT NULL,
+            verified_email TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            UNIQUE (provider, issuer_namespace, provider_subject),
+            FOREIGN KEY (tenant_id, user_id)
+                REFERENCES identity_memberships(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS identity_sessions (
+            session_id TEXT PRIMARY KEY,
+            user_id TEXT NOT NULL,
+            tenant_id TEXT NOT NULL,
+            credential_hash TEXT NOT NULL CHECK (length(credential_hash) = 64),
+            created_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            revoked_at TEXT,
+            FOREIGN KEY (tenant_id, user_id)
+                REFERENCES identity_memberships(tenant_id, user_id)
+        );
+        CREATE TABLE IF NOT EXISTS identity_entitlements (
+            tenant_id TEXT NOT NULL REFERENCES identity_tenants(tenant_id),
+            entitlement_key TEXT NOT NULL,
+            state TEXT NOT NULL CHECK (state IN ('ACTIVE', 'SUSPENDED', 'EXPIRED', 'REVOKED')),
+            limit_value INTEGER CHECK (limit_value IS NULL OR limit_value >= 0),
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (tenant_id, entitlement_key)
+        );
+    """,
 }
 
 _DOWN_MIGRATIONS = {
@@ -421,6 +478,9 @@ _DOWN_MIGRATIONS = {
         DROP TABLE execution_grants;
     """,
     8: """
+        SELECT 1;
+    """,
+    9: """
         SELECT 1;
     """,
 }
