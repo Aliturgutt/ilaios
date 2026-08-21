@@ -1,22 +1,33 @@
 {
+  "schema_version": "ilaios.execution-controller.v1",
   "task_id": "web-app-factory-486",
-  "source": ["issue:#486", ".github/web-app-factory-closure.json"],
-  "lifecycle_status": "IN_PROGRESS",
+  "task_source": {
+    "type": "repo_ledger_and_issue",
+    "reference": "issue:#486 + .github/web-app-factory-closure.json"
+  },
+  "status": "IN_PROGRESS",
   "current_phase": 6,
   "master_sha": "7c9d8dc9ca2ced40374f697c2df761a802a65bc5",
   "base_sha": "7c9d8dc9ca2ced40374f697c2df761a802a65bc5",
-  "head_sha": null,
+  "head_sha": "7e03f588bcee1ce1825b5bcf58864cbefcc799ba",
   "branch": "web/app-phase6-analytics-current-20260821",
-  "pr": null,
-  "last_ci": {
-    "phase5_exact_head": [32499606918, 32499606984, 32499607177],
-    "phase5_exact_master": [32504527076, 32504527231],
-    "conclusion": "success"
+  "pr": 745,
+  "ci": {
+    "run_id": 32510264046,
+    "conclusion": "failure",
+    "exact_sha": "7e03f588bcee1ce1825b5bcf58864cbefcc799ba"
   },
-  "next_action": "implement bounded authenticated charts and analytics runtime with adversarial tests",
-  "blocker": null,
-  "retry_count": 0,
-  "last_failure_fingerprint": null,
+  "next_action": "revalidate repaired controller-state schema, then consume fresh exact-head Phase-6 gates",
+  "blocker": {
+    "type": "CI",
+    "detail": "execution-controller validation rejected the first task-state shape; repository-owned schema mismatch is being repaired",
+    "human_action": null
+  },
+  "repair": {
+    "retry_count": 1,
+    "last_failure_fingerprint": "controller-state-missing-required-keys",
+    "last_root_cause": "task state was created from protocol prose rather than the canonical state-template schema"
+  },
   "lock": {
     "owner": "web-app-factory-486",
     "scope": [
@@ -29,10 +40,11 @@
     "acquired_at": "2026-08-21T17:46:00Z",
     "expires_at": "2026-08-21T18:46:00Z"
   },
-  "evidence": {
-    "phase5_merge_sha": "7fdfa6453323dec394e3dde084aa5ec8683d77bd",
-    "phase5_exact_head_sha": "468990246185f57a7a0f31c47d5a6aded849230d",
-    "phase5_lineage_to_master": "no overlap in Phase-5 bounded paths through 7c9d8dc9ca2ced40374f697c2df761a802a65bc5"
-  },
-  "updated_at": "2026-08-21T17:46:00Z"
+  "evidence": [
+    "phase5-head:468990246185f57a7a0f31c47d5a6aded849230d runs:32499606918,32499606984,32499607177 success",
+    "phase5-merge:7fdfa6453323dec394e3dde084aa5ec8683d77bd exact-master:32504527076,32504527231 success",
+    "phase5-to-current-master compare: no overlap with Phase-5 bounded paths",
+    "phase6-controller-failure run:32510264046 exact-head:7e03f588bcee1ce1825b5bcf58864cbefcc799ba"
+  ],
+  "updated_at": "2026-08-21T17:52:00Z"
 }
