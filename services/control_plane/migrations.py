@@ -402,8 +402,6 @@ _UP_MIGRATIONS = {
             updated_at TEXT NOT NULL,
             PRIMARY KEY (tenant_id, user_id)
         );
-        CREATE UNIQUE INDEX IF NOT EXISTS identity_one_primary_membership_per_user
-            ON identity_memberships(user_id) WHERE is_primary = 1;
         CREATE TABLE IF NOT EXISTS identity_accounts (
             identity_account_id TEXT PRIMARY KEY,
             provider TEXT NOT NULL,
@@ -418,8 +416,6 @@ _UP_MIGRATIONS = {
             FOREIGN KEY (tenant_id, user_id)
                 REFERENCES identity_memberships(tenant_id, user_id)
         );
-        CREATE INDEX IF NOT EXISTS identity_accounts_user_idx
-            ON identity_accounts(user_id, tenant_id);
         CREATE TABLE IF NOT EXISTS identity_sessions (
             session_id TEXT PRIMARY KEY,
             user_id TEXT NOT NULL,
@@ -431,8 +427,6 @@ _UP_MIGRATIONS = {
             FOREIGN KEY (tenant_id, user_id)
                 REFERENCES identity_memberships(tenant_id, user_id)
         );
-        CREATE INDEX IF NOT EXISTS identity_sessions_account_idx
-            ON identity_sessions(user_id, tenant_id, expires_at);
         CREATE TABLE IF NOT EXISTS identity_entitlements (
             tenant_id TEXT NOT NULL REFERENCES identity_tenants(tenant_id),
             entitlement_key TEXT NOT NULL,
