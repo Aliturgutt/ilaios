@@ -1,5 +1,6 @@
 name: ILAIOS Operations Meta Agent Live Certification
 # Exact-master recertification trigger; no runtime, governance, verifier, or provider authority change.
+# Exact-current-master recertification checkpoint: 6710e4e1.
 
 on:
   push:
