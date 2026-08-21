@@ -1,0 +1,52 @@
+{
+  "schema_version": "ilaios.execution-controller.v1",
+  "task_id": "web-app-factory-486",
+  "task_source": {
+    "type": "repo_ledger_and_issue",
+    "reference": "issue:#486 + .github/web-app-factory-closure.json"
+  },
+  "status": "IN_PROGRESS",
+  "current_phase": 6,
+  "master_sha": "bcf93f90afa7781c55839e9602717271ca00a6d6",
+  "base_sha": "bcf93f90afa7781c55839e9602717271ca00a6d6",
+  "head_sha": "70816e3d320bfe7d82da708eac9dded6a4d30781",
+  "branch": "web/app-phase6-analytics-current-20260821d",
+  "pr": 762,
+  "ci": {
+    "run_id": null,
+    "conclusion": null,
+    "exact_sha": null
+  },
+  "next_action": "consume fresh exact-head Phase-6 gates on PR 762; re-read live master immediately before expected-head merge",
+  "blocker": {
+    "type": "CI",
+    "detail": "PR 756 exact-head gates passed but became stale after non-overlapping master advancement; reviewed Phase-6 delta replayed onto exact bcf93f90 master and requires fresh gates",
+    "human_action": null
+  },
+  "repair": {
+    "retry_count": 4,
+    "last_failure_fingerprint": "phase6-stale-pass-after-master-advance-bcf93f90",
+    "last_root_cause": "merge evidence invalidated by master advancement despite zero bounded path overlap; protocol requires exact-current-master replay and fresh CI"
+  },
+  "lock": {
+    "owner": "web-app-factory-486",
+    "scope": [
+      ".github/web-app-factory-closure.json",
+      ".github/workflows/web-app-factory-continuation.yml",
+      ".github/automation/states/web-app-factory-486.json",
+      "services/web_app_analytics_runtime.py",
+      "tests/test_web_app_analytics_runtime.py"
+    ],
+    "acquired_at": "2026-08-21T20:49:00Z",
+    "expires_at": "2026-08-21T21:49:00Z"
+  },
+  "evidence": [
+    "phase5-merge:7fdfa6453323dec394e3dde084aa5ec8683d77bd exact-master:32504527076,32504527231 success",
+    "phase6-stale-pr:756 head:0edb3475d10563eff098266bd27167c35f33ac42 gates:32520392505,32520392419,32520392592,32520392389 success but stale after master advance",
+    "master-drift:43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8..bcf93f90afa7781c55839e9602717271ca00a6d6 changed only commercial-identity state, Google OIDC runtime/tests, Website recertification; zero Phase-6 bounded overlap",
+    "successor-pr:762 base:bcf93f90afa7781c55839e9602717271ca00a6d6 pre-state-head:70816e3d320bfe7d82da708eac9dded6a4d30781",
+    "overlap-audit: open Website/Desktop/Agent/Video/App/Mobile/Identity work does not write Phase-6 bounded paths; stale PR 756 is superseded authority",
+    "phase16-freeze: preserved; no 3D/Motion/WebGL mutation"
+  ],
+  "updated_at": "2026-08-21T20:49:00Z"
+}
