@@ -6,18 +6,18 @@
     "reference": "docs/identity/COMMERCIAL_IDENTITY_CLOSURE_WORKFLOW.md"
   },
   "status": "IN_PROGRESS",
-  "current_phase": "Phase 3 — Google production OAuth",
-  "master_sha": "43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8",
-  "base_sha": "43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8",
-  "head_sha": "cce355a1835e05d3c6cbc5cc94880de885b6ac2d",
-  "branch": "identity/google-current7-20260821",
-  "pr": 755,
+  "current_phase": "Phase 4 — Microsoft personal + organizational OAuth/OIDC",
+  "master_sha": "bcf93f90afa7781c55839e9602717271ca00a6d6",
+  "base_sha": "bcf93f90afa7781c55839e9602717271ca00a6d6",
+  "head_sha": "6b45ab10ce962f0e0a0cc0a5eded23cb3d26bad5",
+  "branch": "identity/microsoft-oauth-current-20260821",
+  "pr": null,
   "ci": {
     "run_id": null,
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation on PR #755; then re-read live master and merge only with expected-head protection. After exact-master evidence, continue to Microsoft Phase 4.",
+  "next_action": "Open the bounded Phase-4 Microsoft PR and require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation. Merge only after immediate live-master revalidation and expected-head protection.",
   "blocker": {
     "type": null,
     "detail": null,
@@ -31,21 +31,22 @@
   "lock": {
     "owner": "identity-closure-runner",
     "scope": [
-      "services/google_oidc.py",
-      "tests/test_google_oidc.py",
+      "services/microsoft_oidc.py",
+      "services/central_identity.py",
+      "tests/test_microsoft_oidc.py",
       ".github/automation/states/commercial-identity-closure.json"
     ],
-    "acquired_at": "2026-08-21T19:44:00Z",
-    "expires_at": "2026-08-21T20:44:00Z"
+    "acquired_at": "2026-08-21T20:47:00Z",
+    "expires_at": "2026-08-21T21:47:00Z"
   },
   "evidence": [
-    "master@43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8",
-    "PR#750 head f8f6dbfa1f20bdb66bdb7664704f9353bf3650db Required CI run 32515205671 success but stale after master advance",
-    "PR#750 head f8f6dbfa1f20bdb66bdb7664704f9353bf3650db Software Factory Final Evidence run 32515205522 success but stale after master advance",
-    "PR#750 head f8f6dbfa1f20bdb66bdb7664704f9353bf3650db execution-controller validation run 32515205571 success but stale after master advance",
-    "master advance from 94c73f26ac5e04df885ce5ff1d83ebb4d97c617b to 43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8 changed only Video native-reference semantic continuity runtime/test paths; no overlap with Google Phase-3 paths",
-    "Google Phase-3 runtime and regression tests replayed onto exact current master",
-    "PR#755 opened from exact master 43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8"
+    "Phase-3 PR#755 merged as f385d5747ee783c23bcc5c5a9777cd72900ec7ba",
+    "Phase-3 exact-master ilaios/required-ci-exact-master success via run 32521449491",
+    "Phase-3 exact-master ilaios/software-factory-exact-master success via run 32521449365",
+    "current master bcf93f90afa7781c55839e9602717271ca00a6d6 retains Phase-3 merge in direct ancestry; intervening PR#759 is website recertification",
+    "Phase-4 branch created directly from exact current master",
+    "Microsoft provider supports one common authority for personal and organizational accounts while canonical identity keys are namespaced by concrete verified token issuer + immutable subject",
+    "Microsoft production redirect configuration is exact HTTPS allowlisted; Desktop provider carries no client secret"
   ],
-  "updated_at": "2026-08-21T19:46:20Z"
+  "updated_at": "2026-08-21T20:47:00Z"
 }
