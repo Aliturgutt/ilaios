@@ -21,7 +21,7 @@ from services.web_app_auth_contract import (
     WebAppRolePermissionContract,
     compile_authorization_rules,
 )
-from services.web_app_crud_runtime import WebAppCrudRuntime
+from services.web_app_crud_runtime import WebAppCrudRuntime, WebAppCrudRuntimeError
 from src.core.audit_engine import AuditEngine
 
 NOW = datetime(2026, 8, 22, 15, 0, tzinfo=timezone.utc)
@@ -75,20 +75,20 @@ def _domain() -> DomainModelPlan:
 
 
 def _auth(*, include_create: bool = True) -> AuthRbacPlan:
-    grants = [
-        PermissionGrant(permission="resource.Goal.read", scope="resource", resource="Goal"),
-    ]
+    operations = ["read", "update", "delete"]
     if include_create:
-        grants.append(
-            PermissionGrant(permission="resource.Goal.create", scope="resource", resource="Goal")
-        )
+        operations.append("create")
+    grants = tuple(
+        PermissionGrant(permission=f"resource.Goal.{operation}", scope="resource", resource="Goal")
+        for operation in operations
+    )
     return AuthRbacPlan(
         project_id="project-1",
         spec_sha256=SPEC_SHA,
         architecture_plan_sha256=ARCH_SHA,
         data_migration_plan_sha256="e" * 64,
         auth_providers=("oidc",),
-        roles=(RoleRequirement(role_id="Owner", grants=tuple(grants)),),
+        roles=(RoleRequirement(role_id="Owner", grants=grants),),
         actor_role_bindings=(),
         authentication_required=True,
         authorization_required=True,
@@ -118,7 +118,7 @@ def _backend_contract() -> WebAppAuthContract:
             scope="resource",
             resource_type="Goal",
         )
-        for operation in ("read", "create")
+        for operation in ("read", "create", "update", "delete")
     )
     names = tuple(item.permission for item in permissions)
     return WebAppAuthContract(
@@ -131,9 +131,7 @@ def _backend_contract() -> WebAppAuthContract:
         permissions=permissions,
         routes=(),
         actions=tuple(
-            WebAppActionPermissionContract(
-                action_id=f"action:{permission}", permission=permission
-            )
+            WebAppActionPermissionContract(action_id=f"action:{permission}", permission=permission)
             for permission in names
         ),
         authentication_required=True,
@@ -189,18 +187,47 @@ def test_cross_platform_spec_reuses_real_persistent_crud_backend() -> None:
 
     assert created == observed
     assert page.items == (created,)
+    assert runtime.binding.operations == ("create", "read", "list", "update", "delete")
     assert runtime.binding.backend_authority == "services.web_app_crud_runtime.WebAppCrudRuntime"
     assert runtime.binding.authorization_authority == "services.identity.AuthorizationEngine"
     assert runtime.binding.direct_database_authority is False
     assert audit.count() == 1
 
 
+def test_update_delete_preserve_optimistic_concurrency_and_audit() -> None:
+    runtime, audit = _runtime()
+    created = runtime.create(
+        principal=_principal(), entity="Goal", resource_id="goal-2",
+        payload={"title": "Initial"}, idempotency_key="create-2", now=NOW,
+    )
+    updated = runtime.update(
+        principal=_principal(), entity="Goal", resource_id="goal-2",
+        payload={"title": "Updated"}, expected_version=created.version,
+        idempotency_key="update-2", now=NOW,
+    )
+    assert updated.version == 2
+    assert updated.payload == {"title": "Updated"}
+
+    with pytest.raises(WebAppCrudRuntimeError, match="optimistic concurrency"):
+        runtime.update(
+            principal=_principal(), entity="Goal", resource_id="goal-2",
+            payload={"title": "Stale"}, expected_version=1,
+            idempotency_key="update-stale", now=NOW,
+        )
+
+    runtime.delete(
+        principal=_principal(), entity="Goal", resource_id="goal-2",
+        expected_version=updated.version, now=NOW,
+    )
+    with pytest.raises(WebAppCrudRuntimeError, match="resource not found"):
+        runtime.read(principal=_principal(), entity="Goal", resource_id="goal-2", now=NOW)
+    assert audit.count() == 4
+
+
 def test_binding_fails_closed_when_stage2_permission_is_missing() -> None:
     with pytest.raises(AppEnterpriseRuntimeError, match="missing runtime permission"):
         bind_enterprise_runtime(
-            spec=_spec(),
-            domain_model=_domain(),
-            auth_rbac=_auth(include_create=False),
+            spec=_spec(), domain_model=_domain(), auth_rbac=_auth(include_create=False),
             backend_contract=_backend_contract(),
         )
 
@@ -208,31 +235,18 @@ def test_binding_fails_closed_when_stage2_permission_is_missing() -> None:
 def test_binding_fails_closed_on_stale_product_spec_lineage() -> None:
     backend = _backend_contract()
     stale = ProductSpec(
-        project_id="project-1",
-        product_name="EnterpriseApp",
-        objective="stale",
-        platforms=("android",),
-        actors=("operator",),
-        screens=("goals",),
-        capabilities=("crud",),
-        locales=("en",),
-        accessibility_required=True,
-        offline_required=False,
-        monetization="free",
-        spec_sha256="f" * 64,
+        project_id="project-1", product_name="EnterpriseApp", objective="stale",
+        platforms=("android",), actors=("operator",), screens=("goals",),
+        capabilities=("crud",), locales=("en",), accessibility_required=True,
+        offline_required=False, monetization="free", spec_sha256="f" * 64,
     )
     with pytest.raises(AppEnterpriseRuntimeError, match="domain model"):
         bind_enterprise_runtime(
-            spec=stale,
-            domain_model=_domain(),
-            auth_rbac=_auth(),
-            backend_contract=backend,
+            spec=stale, domain_model=_domain(), auth_rbac=_auth(), backend_contract=backend,
         )
 
 
 def test_entity_outside_bound_domain_is_rejected_before_backend_access() -> None:
     runtime, _ = _runtime()
     with pytest.raises(AppEnterpriseRuntimeError, match="not admitted"):
-        runtime.read(
-            principal=_principal(), entity="Secret", resource_id="secret-1", now=NOW
-        )
+        runtime.read(principal=_principal(), entity="Secret", resource_id="secret-1", now=NOW)
