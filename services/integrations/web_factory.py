@@ -18,8 +18,31 @@ from services.design_quality import (
     NativeDesignStrategyEngine,
 )
 from services.runtime import ExecutionGrant, GrantPolicy
+from services.web_3d_integration import integrate_web_3d_into_generated_content
+from services.web_3d_runtime import compile_web_3d_runtime_plan
 
 _REQUIRED_VIEWPORTS = (320, 360, 390, 412, 430, 768, 1024, 1440)
+_WEB3D_FEATURES = frozenset(
+    {
+        "3d-hero",
+        "scroll-camera",
+        "product-rotation",
+        "parallax",
+        "particles",
+        "webgl-background",
+        "3d-typography",
+        "pointer-interaction",
+    }
+)
+_EXPLICIT_3D_TERMS = (
+    "3d",
+    "webgl",
+    "webgpu",
+    "three-dimensional",
+    "three dimensional",
+    "üç boyutlu",
+    "uc boyutlu",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,6 +203,24 @@ class GovernedWebFactory:
             )
         )
         content = _generated_site_content(spec, strategy)
+        web3d_features = _requested_web3d_features(spec.features)
+        web3d_evidence: dict[str, object] | None = None
+        if web3d_features:
+            plan = compile_web_3d_runtime_plan(_web3d_instruction(web3d_features))
+            integrated = integrate_web_3d_into_generated_content(
+                content,
+                plan,
+                home_routes=tuple(f"{locale}/index.html" for locale in spec.locales),
+            )
+            content = integrated.content
+            web3d_evidence = {
+                "status": "SOURCE_INTEGRATED_NOT_BROWSER_CERTIFIED",
+                "features": web3d_features,
+                "plan_sha256": integrated.plan_sha256,
+                "runtime_source_sha256": integrated.runtime_source_sha256,
+                "runtime_path": integrated.runtime_path,
+                "bundle_sha256": integrated.bundle_sha256,
+            }
         artifact_hash = _content_hash(content)
         bundle_id = f"ilaios-web-{artifact_hash[:20]}"
         bundle = self._artifact_root / bundle_id
@@ -196,6 +237,8 @@ class GovernedWebFactory:
         )
         routes = _routes(spec)
         qa = _validate_generated_site(bundle, spec, strategy, routes, files)
+        if web3d_evidence is not None:
+            qa["web3d"] = web3d_evidence
         spec_hash = hashlib.sha256(
             json.dumps(spec.to_dict(), sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
@@ -363,7 +406,47 @@ def _features(normalized: str, pages: tuple[str, ...]) -> tuple[str, ...]:
         features.append("newsletter")
     if any(term in normalized for term in ("search", "arama")):
         features.append("search")
+    if any(term in normalized for term in _EXPLICIT_3D_TERMS):
+        selected: list[str] = []
+        if any(term in normalized for term in ("hero", "landing", "launch", "tanıtım", "tanitim")):
+            selected.append("3d-hero")
+        if any(term in normalized for term in ("scroll", "camera", "kamera", "scroll-driven", "scroll driven")):
+            selected.append("scroll-camera")
+        if any(term in normalized for term in ("rotate", "rotation", "product model", "model rotation", "döndür", "dondur")):
+            selected.append("product-rotation")
+        if any(term in normalized for term in ("parallax", "paralaks")):
+            selected.append("parallax")
+        if any(term in normalized for term in ("particle", "particles", "parçacık", "parcacik")):
+            selected.append("particles")
+        if any(term in normalized for term in ("webgl background", "3d background", "3d arka plan")):
+            selected.append("webgl-background")
+        if any(term in normalized for term in ("3d typography", "3d text", "3d tipografi")):
+            selected.append("3d-typography")
+        if any(term in normalized for term in ("interactive", "mouse", "pointer", "touch", "etkileşim", "etkilesim")):
+            selected.append("pointer-interaction")
+        if not selected:
+            selected.append("3d-hero")
+        features.extend(selected)
     return tuple(features)
+
+
+def _requested_web3d_features(features: tuple[str, ...]) -> tuple[str, ...]:
+    return tuple(feature for feature in features if feature in _WEB3D_FEATURES)
+
+
+def _web3d_instruction(features: tuple[str, ...]) -> str:
+    phrases = {
+        "3d-hero": "3D hero",
+        "scroll-camera": "scroll camera motion",
+        "product-rotation": "interactive product model rotation",
+        "parallax": "parallax",
+        "particles": "particles",
+        "webgl-background": "WebGL background",
+        "3d-typography": "3D typography",
+        "pointer-interaction": "interactive mouse pointer touch control",
+    }
+    requested = [phrases[feature] for feature in features]
+    return "Build a website with 3D WebGL: " + ", ".join(requested) + "."
 
 
 def _validate_spec(spec: WebsiteSpec) -> None:
@@ -568,6 +651,9 @@ def _validate_generated_site(
     files: tuple[WebsiteFile, ...],
 ) -> dict[str, object]:
     expected = {*routes, "assets/site.css", "robots.txt", "sitemap.xml"}
+    web3d_features = _requested_web3d_features(spec.features)
+    if web3d_features:
+        expected.add("assets/3d/index.html")
     actual = {
         path.relative_to(bundle).as_posix()
         for path in bundle.rglob("*")
@@ -599,6 +685,27 @@ def _validate_generated_site(
             raise ValueError("generated website responsive evidence is incomplete")
     if "@media (prefers-reduced-motion:reduce)" not in css or ":focus-visible" not in css:
         raise ValueError("generated website accessibility behavior is incomplete")
+    if web3d_features:
+        for locale in spec.locales:
+            home = (bundle / locale / "index.html").read_text(encoding="utf-8")
+            if (
+                'class="ilaios-web3d-frame"' not in home
+                or 'sandbox="allow-scripts"' not in home
+                or 'referrerpolicy="no-referrer"' not in home
+            ):
+                raise ValueError("generated website 3D integration boundary is incomplete")
+        runtime = (bundle / "assets/3d/index.html").read_text(encoding="utf-8")
+        required_runtime_fragments = (
+            "getContext('webgl2'",
+            "getContext('webgl'",
+            "prefers-reduced-motion: reduce",
+            "requestAnimationFrame",
+            "data-fallback",
+        )
+        if any(fragment not in runtime for fragment in required_runtime_fragments):
+            raise ValueError("generated website 3D runtime validation failed")
+        if "https://" in runtime or "<script src=" in runtime or "eval(" in runtime:
+            raise ValueError("generated website 3D runtime contains forbidden external authority")
     return {
         "passed": True,
         "build": "PASS",
