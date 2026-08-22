@@ -3,60 +3,74 @@
   "task_id": "desktop-one-zip-runtime-closure",
   "task_source": {
     "type": "repo_ledger_plus_user_runtime_evidence",
-    "reference": "issue #539; user packaged Windows runtime failure"
+    "reference": "issue #539; user packaged Windows runtime failure and Desktop visual correction order"
   },
   "status": "IN_PROGRESS",
-  "current_phase": "LOCAL_CONTROL_PLANE_RUNTIME_REPAIR",
-  "master_sha": "5446e9b08a4f9deb3accbfeceabc704cab3a9574",
-  "base_sha": "5446e9b08a4f9deb3accbfeceabc704cab3a9574",
-  "head_sha": "d41b9b8e47716959507d04cf91d70e3d13552cc9",
-  "branch": "desktop/local-runtime-shutdown-repair-5446e9b0",
-  "pr": 784,
+  "current_phase": "ERROR_PRESENTATION_AND_STATUS_SEMANTICS",
+  "master_sha": "04ec0271557d42c6598519c0fea287478ad3b4ae",
+  "base_sha": "04ec0271557d42c6598519c0fea287478ad3b4ae",
+  "head_sha": "a2fe2c309718108206b6d10de1a2593a215cd2b3",
+  "branch": "desktop/ui-consistency-04ec0271",
+  "pr": null,
   "ci": {
-    "run_id": 32537010561,
-    "conclusion": "FAIL_STATE_BLOCKER_ENUM_REPAIRED_PENDING_FRESH_CI",
-    "exact_sha": "d41b9b8e47716959507d04cf91d70e3d13552cc9"
+    "run_id": null,
+    "conclusion": "PENDING_FRESH_UI_PHASE_CI",
+    "exact_sha": "a2fe2c309718108206b6d10de1a2593a215cd2b3"
   },
-  "next_action": "Require fresh exact-head packaged cold-start/readiness/graceful-shutdown/restart evidence on PR #784 plus controller-state validation, Required CI/SFFE/Desktop gates. Inspect any real failure; do not merge stale PASS.",
+  "next_action": "Open the bounded current-master UI PR, require fresh targeted Flutter plus full Desktop/Windows/MSIX/Combined/Surface/SFFE/Required CI evidence, inspect real failures, then continue status vocabulary/KPI/empty-state/grid/disabled-action/status-bar/Home-spacing deltas in dependency order only after each bounded delta is green.",
   "blocker": {
     "type": "CI",
-    "detail": "Repository-owned buffered-stdin shutdown race has a bounded source repair on PR #784; fresh exact-head packaged runtime and required CI evidence is pending before the defect can be promoted beyond implemented.",
+    "detail": "Packaged sidecar lifecycle root cause is repaired and exact-head runtime/Required/Desktop gates passed on PR #784; UI presentation phase has started on exact current master and requires fresh validation before promotion.",
     "human_action": null
   },
   "repair": {
     "retry_count": 3,
-    "last_failure_fingerprint": "execution-controller-state:invalid-blocker-enum:WAITING_FOR_EXACT_HEAD_RUNTIME_EVIDENCE",
-    "last_root_cause": "Task state used a descriptive blocker value outside the canonical validator enum. Canonical allowed blocker types are null, REPOSITORY, CI, PROVIDER, EXTERNAL, HUMAN; this waiting-for-exact-head state is CI."
+    "last_failure_fingerprint": "packaged-sidecar:stdin-buffered-reader-finalization-race",
+    "last_root_cause": "Desktop parent watchdog blocked in sys.stdin.buffer.read() and raced Python interpreter finalization after graceful HTTP shutdown; PR #784 changed the watchdog to raw os.read while preserving parent-pipe EOF fail-closed behavior."
   },
   "lock": {
     "owner": "desktop-one-zip-runtime-closure",
     "scope": [
-      "apps/desktop/sidecar/ilaios_control_plane_sidecar.py",
-      "apps/desktop/tool/build_control_plane_sidecar.ps1",
-      "apps/desktop/tool/smoke_control_plane_sidecar.ps1",
-      "apps/desktop/lib/control_plane/local_runtime.dart",
-      "apps/desktop/test/local_runtime*",
-      ".github/workflows/desktop-local-runtime-diagnostics.yml",
+      "apps/desktop/lib/presentation/desktop_runtime_status.dart",
+      "apps/desktop/lib/features/dashboard/reference_home_dashboard_v2.dart",
+      "apps/desktop/lib/features/dashboard/reference_home_dashboard_v3.dart",
+      "apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart",
+      "apps/desktop/lib/features/operations/*",
+      "apps/desktop/lib/features/deliveries/*",
+      "apps/desktop/lib/features/create/*",
+      "apps/desktop/test/desktop_runtime_status_test.dart",
+      "apps/desktop/test/*visual*",
+      "apps/desktop/test/*locale*",
       ".github/automation/states/desktop-one-zip-runtime-closure.json"
     ],
-    "acquired_at": "2026-08-21T23:27:00Z",
-    "expires_at": "2026-08-22T01:30:00Z"
+    "acquired_at": "2026-08-22T00:18:00Z",
+    "expires_at": "2026-08-22T02:18:00Z"
   },
   "evidence": [
     "issue:539",
     "user-installed-source:0c3fe2e545bac1fcf0536dcbb49764e59de4f983",
     "user-installed-zip-sha256:73a6696417a6f15f55c7d2eae03783102baf0881d12435a2b57cca08bb2135b9",
     "user-desktop-process:PASS>=8s",
-    "user-local-control-plane-identity-readiness:FAIL",
+    "user-local-control-plane-identity-readiness:FAIL-on-old-package",
     "diagnostic-pr:775:superseded",
     "workflow:Desktop Local Runtime Diagnostics:32533346070:FAIL",
     "runtime-failure:exit=-1073741819:_enter_buffered_busy:stdin",
-    "master-resync:5446e9b08a4f9deb3accbfeceabc704cab3a9574",
-    "pr:781:merged:5446e9b08a4f9deb3accbfeceabc704cab3a9574",
-    "repair-pr:784",
-    "repair-head:d41b9b8e47716959507d04cf91d70e3d13552cc9",
-    "controller-validator:ALLOWED_BLOCKERS=null|REPOSITORY|CI|PROVIDER|EXTERNAL|HUMAN",
-    "controller-state-run:32537010561:FAIL_INVALID_BLOCKER_ENUM"
+    "repair-pr:784:merged:8cc8fa9a977ec6c019458fc33af9369efa162986",
+    "repair-head:3d005211d59a813746e68b5ff1e8fb07f40c6cab",
+    "workflow:Desktop Local Runtime Diagnostics:32537099725:PASS",
+    "runtime-contract:cold-start->identity-200->shutdown-exit-0->same-data-root-restart->identity-200->shutdown-exit-0:PASS",
+    "workflow:ILAIOS Desktop CI:32537099738:PASS",
+    "workflow:ILAIOS Desktop Windows Gate:32537099554:PASS",
+    "workflow:ILAIOS Desktop MSIX Packaging:32537099621:PASS",
+    "workflow:Desktop Combined Final PR Verification:32537099708:PASS",
+    "workflow:Product Surface Parity Gate:32537099608:PASS",
+    "workflow:Software Factory Final Evidence:32537099552:PASS",
+    "workflow:Required CI Gate:32537099865:PASS",
+    "master-contains-runtime-merge:04ec0271557d42c6598519c0fea287478ad3b4ae:ahead-of-8cc8fa9a-by-8:no-desktop-overlap",
+    "ui-phase-base:04ec0271557d42c6598519c0fea287478ad3b4ae",
+    "ui-status-helper:9071972a0b2172b5fe01c551cafccd9d1abcffa5",
+    "ui-home-localized-status:dfd35b90f88c76c3ab399d21e6f54053bf689884",
+    "ui-status-regression:a2fe2c309718108206b6d10de1a2593a215cd2b3"
   ],
-  "updated_at": "2026-08-21T23:31:00Z"
+  "updated_at": "2026-08-22T00:18:00Z"
 }
