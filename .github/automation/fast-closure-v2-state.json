@@ -1,27 +1,27 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-22T15:42:00Z",
+  "updated_at": "2026-08-22T19:12:00Z",
   "merge_token": {
-    "state": "EXACT_MASTER_VALIDATION",
-    "owner": "identity",
-    "reserved_master_sha": "ee9473a016f1628e922bfd4daf66e2d702137441",
-    "candidate_pr": 885,
-    "candidate_head_sha": "395b2444449cf2e46d0b5d761a5f562ba608b332",
+    "state": "RESERVED",
+    "owner": "website_v2",
+    "reserved_master_sha": "3d08defaab04c8034ce24170b7d7196f0d789060",
+    "candidate_pr": 889,
+    "candidate_head_sha": "e45f2578e57fdaf0a139069115c273692af247fa",
     "freeze_active": true,
-    "freeze_reason": "Identity PR #885 merged with expected-head protection; token remains held only for exact-master Required CI + Software Factory evidence before Phase 4 verification."
+    "freeze_reason": "Reclaimed stale Identity exact-master lock after PR #885 was merged and superseded by later verified master advances. Website PR #889 is exact-head green and non-overlapping with master delta; reserve bounded merge window for currentness validation and expected-head merge."
   },
   "scheduler_stagger": {"desktop":0,"unified":12,"identity":24,"web_app":36,"agents":48},
   "workstreams": {
-    "desktop":{"scheduler":"desktop","lifecycle":"DEVELOPING","priority_rank":1,"authoritative_issue":539,"active_pr":883,"base_sha":"4eee882dd1a27bbc25a35554c6927e74194b042b","head_sha":null,"blocked_reason":null,"next_action":"Continue bounded Settings visual-truth work; do not merge during Identity exact-master freeze."},
-    "video_native_reference":{"scheduler":"unified","lifecycle":"DEVELOPING","priority_rank":2,"authoritative_issue":null,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Continue dependency-ready bounded work; do not merge during Identity exact-master freeze."},
-    "website_v2":{"scheduler":"unified","lifecycle":"EXACT_MASTER_VERIFY","priority_rank":3,"authoritative_issue":null,"active_pr":882,"base_sha":"4eee882dd1a27bbc25a35554c6927e74194b042b","head_sha":"758c5ca60e276185879cc6e84982c0792968742d","blocked_reason":null,"next_action":"Consume production certification evidence; no merge-token hold."},
-    "identity":{"scheduler":"identity","lifecycle":"EXACT_MASTER_VERIFY","priority_rank":4,"authoritative_issue":null,"active_pr":885,"base_sha":"036ed4631b1c85cf43b95112c8c97867eac3b3d9","head_sha":"395b2444449cf2e46d0b5d761a5f562ba608b332","blocked_reason":null,"next_action":"Require exact-master Required CI + Software Factory evidence on ee9473a016f1628e922bfd4daf66e2d702137441; then mark Phase 4 VERIFIED, release token, and start Phase 5 GitHub OAuth development."},
-    "web_app":{"scheduler":"web_app","lifecycle":"DEVELOPING","priority_rank":5,"authoritative_issue":486,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Continue bounded development without merging during Identity freeze."},
-    "agents":{"scheduler":"agents","lifecycle":"DEVELOPING","priority_rank":6,"authoritative_issue":557,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Continue bounded development/evidence without merging during Identity freeze."},
-    "app_factory":{"scheduler":"unified","lifecycle":"DEVELOPING","priority_rank":7,"authoritative_issue":547,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Continue bounded work while respecting Identity freeze."},
-    "mobile_store":{"scheduler":"unified","lifecycle":"DEVELOPING","priority_rank":8,"authoritative_issue":502,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Continue safe repository-owned work and checkpoint external blockers."},
-    "microsoft_store":{"scheduler":"unified","lifecycle":"DEVELOPING","priority_rank":9,"authoritative_issue":null,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Consume exact-master Desktop package evidence; do not duplicate builds or auto-submit."}
+    "desktop":{"scheduler":"desktop","lifecycle":"DEVELOPING","priority_rank":1,"authoritative_issue":539,"active_pr":888,"base_sha":"1b085352dd52b304423401a88e1b064833e5c3e2","head_sha":null,"blocked_reason":null,"next_action":"Dedicated Desktop worker continues bounded Home motion and package evidence; do not merge during Website freeze."},
+    "video_native_reference":{"scheduler":"unified","lifecycle":"DEVELOPING","priority_rank":2,"authoritative_issue":null,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":"Last real provider certification failed semantic quality; requires evidence-driven bounded quality repair before another provider E2E.","next_action":"Inspect latest real certification evidence and prepare only the smallest semantic-quality repair; no blind rerun or threshold reduction."},
+    "website_v2":{"scheduler":"unified","lifecycle":"MERGE_READY","priority_rank":3,"authoritative_issue":null,"active_pr":889,"base_sha":"1b085352dd52b304423401a88e1b064833e5c3e2","head_sha":"e45f2578e57fdaf0a139069115c273692af247fa","blocked_reason":null,"next_action":"Re-read live master, confirm no path/semantic overlap, then expected-head merge #889; require exact-master CI/Vercel plus /api/release and live EN/TR Dark/Light/reduced-motion QA before VERIFIED."},
+    "identity":{"scheduler":"identity","lifecycle":"DEVELOPING","priority_rank":4,"authoritative_issue":null,"active_pr":886,"base_sha":"ee9473a016f1628e922bfd4daf66e2d702137441","head_sha":null,"blocked_reason":null,"next_action":"Continue GitHub OAuth Phase 5 development/CI without merging during Website freeze."},
+    "web_app":{"scheduler":"web_app","lifecycle":"DEVELOPING","priority_rank":5,"authoritative_issue":486,"active_pr":null,"base_sha":"3d08defaab04c8034ce24170b7d7196f0d789060","head_sha":null,"blocked_reason":null,"next_action":"Current master contains #887 exact-master continuation trigger; dedicated worker proceeds to next dependency-ready Web App phase after consuming its evidence."},
+    "agents":{"scheduler":"agents","lifecycle":"DEVELOPING","priority_rank":6,"authoritative_issue":557,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Continue bounded development/evidence without merging during Website freeze."},
+    "app_factory":{"scheduler":"unified","lifecycle":"TOKEN_WAIT","priority_rank":7,"authoritative_issue":547,"active_pr":890,"base_sha":"1b085352dd52b304423401a88e1b064833e5c3e2","head_sha":"ce32378ba62c4012bc3b94581c0d603190f2509b","blocked_reason":"Exact-head Required CI and Software Factory evidence are green; waiting for single-writer token behind Website #889.","next_action":"After Website token release, re-read master/overlap; replay only if required, run fresh exact-head gates if stale, then expected-head merge."},
+    "mobile_store":{"scheduler":"unified","lifecycle":"BLOCKED_INTERNAL","priority_rank":8,"authoritative_issue":502,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":"Phase 3 cannot produce genuine APK/AAB/device evidence until App Factory Stage 4 materializes a real repository-owned Android project/artifact.","next_action":"Preserve existing build/device/store contracts; resume after App Factory Stage 3/4 produces a real Android project and exact binary."},
+    "microsoft_store":{"scheduler":"unified","lifecycle":"BLOCKED_INTERNAL","priority_rank":9,"authoritative_issue":539,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":"No exact-current-master Desktop MSIX/package evidence is available for the current master; cross-SHA artifact reuse is forbidden.","next_action":"Consume exact-master Windows/MSIX evidence from the dedicated Desktop lane when available; never auto-submit/publish to Store."}
   },
-  "metrics":{"master_advances":1,"stale_pass_invalidations":1,"replay_resync_count":1,"ci_cycles":1,"successful_merges":1,"duplicate_pr_count":0,"churn_only_commit_count":0}
+  "metrics":{"master_advances":4,"stale_pass_invalidations":2,"replay_resync_count":1,"ci_cycles":3,"successful_merges":3,"duplicate_pr_count":0,"churn_only_commit_count":0}
 }
