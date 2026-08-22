@@ -6,7 +6,7 @@ credentials before constructing ``VerifiedExternalIdentity``.
 
 Security properties:
 - provider identities are keyed by provider + immutable provider subject;
-- enterprise OIDC subjects are additionally namespaced by verified issuer;
+- enterprise OIDC and Microsoft OIDC subjects are additionally namespaced by verified issuer;
 - verified email is display/recovery metadata, never an automatic merge key;
 - account linking requires an already authenticated canonical user/tenant;
 - identities already linked to another user fail closed;
@@ -59,8 +59,13 @@ class VerifiedExternalIdentity:
                     "email provider subject must equal the verified email"
                 )
             subject = email
-        if self.provider is IdentityProvider.ENTERPRISE_OIDC and issuer is None:
-            raise CentralIdentityError("enterprise OIDC identity requires issuer")
+        if self.provider in {
+            IdentityProvider.ENTERPRISE_OIDC,
+            IdentityProvider.MICROSOFT,
+        } and issuer is None:
+            raise CentralIdentityError(
+                f"{self.provider.value} identity requires issuer namespace"
+            )
         return VerifiedExternalIdentity(
             provider=self.provider,
             subject=subject,
@@ -73,7 +78,8 @@ class VerifiedExternalIdentity:
         normalized = self.normalized()
         namespace = (
             normalized.issuer or ""
-            if normalized.provider is IdentityProvider.ENTERPRISE_OIDC
+            if normalized.provider
+            in {IdentityProvider.ENTERPRISE_OIDC, IdentityProvider.MICROSOFT}
             else ""
         )
         return (normalized.provider, namespace, normalized.subject)
