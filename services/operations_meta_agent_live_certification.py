@@ -24,7 +24,11 @@ from services.agent_readiness_store import AgentReadinessStore
 from services.agent_registry import INDEPENDENT_VERIFIER_ID, RuntimeReadiness, registration_for
 from services.ai_governance import Scope, ScopeKind
 from services.control_plane.migrations import migrate_database
-from services.independent_verifier_execution import IndependentVerifierExecutor, ProducerEvidence
+from services.independent_verifier_execution import (
+    INDEPENDENT_VERIFIER_PROVIDER_ID,
+    IndependentVerifierExecutor,
+    ProducerEvidence,
+)
 from services.openrouter_agent_catalog import discover_free_openrouter_agent_configuration
 from services.operations_meta_agent_execution import (
     OPERATIONS_META_AGENT_BINDINGS,
@@ -188,12 +192,7 @@ def run_operations_meta_agent_live_certification(
         raise OperationsMetaAgentLiveCertificationError(
             "IndependentVerifier verifier authority drifted from human.owner"
         )
-    if any(
-        route.get("agent_id") == INDEPENDENT_VERIFIER_ID for route in runtime.routes()
-    ):
-        raise OperationsMetaAgentLiveCertificationError(
-            "IndependentVerifier must not appear as generic provider-backed producer route"
-        )
+    _assert_independent_verifier_routes_are_structural(runtime.routes())
 
     receipt: dict[str, object] = {
         "status": "PARTIAL",
@@ -308,6 +307,25 @@ def _assert_projected_verified(
             raise OperationsMetaAgentLiveCertificationError(
                 f"Desktop projection failed for {agent_id}"
             )
+
+
+def _assert_independent_verifier_routes_are_structural(
+    routes: tuple[dict[str, Any], ...],
+) -> None:
+    verifier_routes = [
+        route for route in routes if route.get("agent_id") == INDEPENDENT_VERIFIER_ID
+    ]
+    if len(verifier_routes) != 7:
+        raise OperationsMetaAgentLiveCertificationError(
+            "IndependentVerifier structural attestation coverage mismatch"
+        )
+    if any(
+        route.get("provider_id") != INDEPENDENT_VERIFIER_PROVIDER_ID
+        for route in verifier_routes
+    ):
+        raise OperationsMetaAgentLiveCertificationError(
+            "IndependentVerifier escaped deterministic structural attestation boundary"
+        )
 
 
 def _provider_receipt(
