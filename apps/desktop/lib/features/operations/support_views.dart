@@ -76,14 +76,16 @@ class _CostsViewState extends State<CostsView> {
 
 /// Compatibility entry point used by every Desktop shell generation.
 ///
-/// Existing callers keep their original constructor contract while the visible
-/// surface is the approved reference-faithful Settings design.
-class SettingsView extends StatelessWidget {
+/// Identity remains authoritative in DesktopBootstrap. This surface only
+/// exposes the existing callback; it never creates a second browser/auth path.
+class SettingsView extends StatefulWidget {
   const SettingsView({
     required this.projection,
     required this.identityStatus,
     required this.userSession,
     required this.providers,
+    this.onSignIn,
+    this.onLogout,
     super.key,
   });
 
@@ -91,18 +93,182 @@ class SettingsView extends StatelessWidget {
   final String identityStatus;
   final DesktopUserSession? userSession;
   final List<IdentityProviderOption> providers;
+  final Future<void> Function(String providerId)? onSignIn;
+  final Future<void> Function()? onLogout;
+
+  @override
+  State<SettingsView> createState() => _SettingsViewState();
+}
+
+class _SettingsViewState extends State<SettingsView> {
+  String? _pendingProviderId;
+  String? _error;
+
+  Future<void> _connect(IdentityProviderOption provider) async {
+    final callback = widget.onSignIn;
+    if (callback == null || widget.userSession != null || _pendingProviderId != null) {
+      return;
+    }
+    setState(() {
+      _pendingProviderId = provider.providerId;
+      _error = null;
+    });
+    try {
+      await callback(provider.providerId);
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _pendingProviderId = null);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final mode = Theme.of(context).brightness == Brightness.dark
         ? ThemeMode.dark
         : ThemeMode.light;
-    return ReferenceSettingsView(
-      projection: projection,
-      identityStatus: identityStatus,
-      userSession: userSession,
-      providers: providers,
-      themeMode: mode,
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: ReferenceSettingsView(
+            projection: widget.projection,
+            identityStatus: widget.identityStatus,
+            userSession: widget.userSession,
+            providers: widget.providers,
+            themeMode: mode,
+          ),
+        ),
+        if (widget.providers.isNotEmpty)
+          Positioned(
+            right: 29,
+            bottom: 20,
+            width: 286,
+            child: _ProviderActions(
+              providers: widget.providers,
+              session: widget.userSession,
+              pendingProviderId: _pendingProviderId,
+              error: _error,
+              onSignIn: widget.onSignIn == null ? null : _connect,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+class _ProviderActions extends StatelessWidget {
+  const _ProviderActions({
+    required this.providers,
+    required this.session,
+    required this.pendingProviderId,
+    required this.error,
+    required this.onSignIn,
+  });
+
+  final List<IdentityProviderOption> providers;
+  final DesktopUserSession? session;
+  final String? pendingProviderId;
+  final String? error;
+  final Future<void> Function(IdentityProviderOption provider)? onSignIn;
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = Localizations.localeOf(context).languageCode == 'tr';
+    return Material(
+      elevation: 0,
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(10, 8, 10, 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (final provider in providers.take(4))
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: _ProviderActionRow(
+                  provider: provider,
+                  connected: session?.providerId == provider.providerId,
+                  pending: pendingProviderId == provider.providerId,
+                  enabled: onSignIn != null && session == null && pendingProviderId == null,
+                  onPressed: onSignIn == null ? null : () => onSignIn!(provider),
+                ),
+              ),
+            if (error != null)
+              Text(
+                tr ? 'Bağlantı başarısız: $error' : 'Connection failed: $error',
+                key: const Key('settings-provider-error'),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 8,
+                  color: Theme.of(context).colorScheme.error,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProviderActionRow extends StatelessWidget {
+  const _ProviderActionRow({
+    required this.provider,
+    required this.connected,
+    required this.pending,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  final IdentityProviderOption provider;
+  final bool connected;
+  final bool pending;
+  final bool enabled;
+  final VoidCallback? onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = Localizations.localeOf(context).languageCode == 'tr';
+    final label = connected
+        ? (tr ? 'Bağlı' : 'Connected')
+        : pending
+            ? (tr ? 'Bağlanıyor…' : 'Connecting…')
+            : (tr ? 'Bağlan' : 'Connect');
+    return Row(
+      children: [
+        const Icon(Icons.cloud_outlined, size: 13),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            provider.displayName,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 8.2, fontWeight: FontWeight.w600),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Semantics(
+          button: true,
+          enabled: enabled,
+          label: connected
+              ? '${provider.displayName} ${tr ? 'bağlı' : 'connected'}'
+              : '${tr ? 'Bağlan' : 'Connect'} ${provider.displayName}',
+          child: SizedBox(
+            height: 26,
+            child: OutlinedButton(
+              key: ValueKey('settings-provider-connect-${provider.providerId}'),
+              onPressed: connected || pending || !enabled ? null : onPressed,
+              child: Text(label, style: const TextStyle(fontSize: 8)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
