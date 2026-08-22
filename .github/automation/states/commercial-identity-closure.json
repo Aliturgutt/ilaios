@@ -6,46 +6,47 @@
     "reference": "docs/identity/COMMERCIAL_IDENTITY_CLOSURE_WORKFLOW.md"
   },
   "status": "IN_PROGRESS",
-  "current_phase": "Phase 3 — Google production OAuth",
-  "master_sha": "43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8",
-  "base_sha": "43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8",
-  "head_sha": "cce355a1835e05d3c6cbc5cc94880de885b6ac2d",
-  "branch": "identity/google-current7-20260821",
-  "pr": 755,
+  "current_phase": "Phase 4 — Microsoft production OAuth",
+  "master_sha": "d2d9eb329437fe0fccf48a7730c0f9a3f0795bc8",
+  "base_sha": "d2d9eb329437fe0fccf48a7730c0f9a3f0795bc8",
+  "head_sha": "958f3cbf9212b3fa811c1eabfd7c4f484a356bd1",
+  "branch": "identity/microsoft-oauth-current14-20260822",
+  "pr": null,
   "ci": {
     "run_id": null,
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation on PR #755; then re-read live master and merge only with expected-head protection. After exact-master evidence, continue to Microsoft Phase 4.",
+  "next_action": "Open authoritative exact-current-master successor PR; require fresh exact-head Required CI, Software Factory Final Evidence, and controller validation; merge only after immediate live-master revalidation and expected-head protection.",
   "blocker": {
     "type": null,
     "detail": null,
     "human_action": null
   },
   "repair": {
-    "retry_count": 0,
-    "last_failure_fingerprint": null,
-    "last_root_cause": null
+    "retry_count": 1,
+    "last_failure_fingerprint": "PR#814 Required CI 32549852076 Ruff E701/E702 in tests/test_microsoft_oidc.py",
+    "last_root_cause": "compressed one-line Microsoft OIDC regression-test formatting; repaired without weakening issuer or redirect validation"
   },
   "lock": {
     "owner": "identity-closure-runner",
     "scope": [
-      "services/google_oidc.py",
-      "tests/test_google_oidc.py",
+      "services/microsoft_oidc.py",
+      "services/central_identity.py",
+      "tests/test_microsoft_oidc.py",
+      "tests/test_central_identity.py",
       ".github/automation/states/commercial-identity-closure.json"
     ],
-    "acquired_at": "2026-08-21T19:44:00Z",
-    "expires_at": "2026-08-21T20:44:00Z"
+    "acquired_at": "2026-08-22T07:45:00Z",
+    "expires_at": "2026-08-22T08:45:00Z"
   },
   "evidence": [
-    "master@43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8",
-    "PR#750 head f8f6dbfa1f20bdb66bdb7664704f9353bf3650db Required CI run 32515205671 success but stale after master advance",
-    "PR#750 head f8f6dbfa1f20bdb66bdb7664704f9353bf3650db Software Factory Final Evidence run 32515205522 success but stale after master advance",
-    "PR#750 head f8f6dbfa1f20bdb66bdb7664704f9353bf3650db execution-controller validation run 32515205571 success but stale after master advance",
-    "master advance from 94c73f26ac5e04df885ce5ff1d83ebb4d97c617b to 43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8 changed only Video native-reference semantic continuity runtime/test paths; no overlap with Google Phase-3 paths",
-    "Google Phase-3 runtime and regression tests replayed onto exact current master",
-    "PR#755 opened from exact master 43353a47e5da5e7108a3deb2f6078d0c1bf8b8e8"
+    "PR#848 head ebfd046d2d99766388207ee2e67de30b3b0ef59c Required CI run 32557879776 success but stale after master advance",
+    "PR#848 head ebfd046d2d99766388207ee2e67de30b3b0ef59c Software Factory Final Evidence run 32557879618 success but stale after master advance",
+    "PR#848 head ebfd046d2d99766388207ee2e67de30b3b0ef59c execution-controller validation run 32557879666 success but stale after master advance",
+    "master advanced from 136c077dbb1ea60e8d3a3b47c5cfeb3a2f53402a to d2d9eb329437fe0fccf48a7730c0f9a3f0795bc8 by 8 commits",
+    "drift changed only video native-reference and app design-system paths; zero overlap with Phase-4 Microsoft identity paths",
+    "reviewed Microsoft Phase-4 delta plus Ruff repair replayed onto exact current master"
   ],
-  "updated_at": "2026-08-21T19:46:20Z"
+  "updated_at": "2026-08-22T07:45:00Z"
 }
