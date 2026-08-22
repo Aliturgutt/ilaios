@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 
+import '../../app/ilaios_locale.dart';
 import '../../control_plane/client.dart';
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
 import '../../identity/identity_client.dart';
+import '../../presentation/desktop_runtime_status.dart';
 import '../navigation/desktop_section.dart';
 import 'home_runtime_binding.dart';
 import 'reference_home_dashboard_v3.dart';
@@ -39,11 +41,17 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
 
   Widget _home(BuildContext context) {
     final binding = HomeRuntimeBinding.maybeOf(context);
+    final locale = IlaiosLocaleScope.of(context).locale;
+    final presentedStatus = presentDesktopRuntimeStatus(
+      status,
+      connected: projection.connected,
+      turkish: locale == IlaiosLocale.turkish,
+    );
     return ReferenceHomeMotionSurface(
       child: ReferenceHomeDashboardV3(
         projection: projection,
         snapshot: sanitizeReferenceHomeSnapshot(snapshot),
-        status: status,
+        status: presentedStatus.label,
         userSession: userSession ?? binding?.userSession,
         onNavigate: onNavigate,
         onPromptSubmit: onPromptSubmit ?? binding?.onPromptSubmit,
