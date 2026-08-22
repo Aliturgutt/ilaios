@@ -7,26 +7,26 @@
   },
   "status": "IN_PROGRESS",
   "current_phase": "ERROR_PRESENTATION_AND_STATUS_SEMANTICS",
-  "master_sha": "87d7a802e5d10074aa71f25cb9b0a3d7b279f46f",
-  "base_sha": "87d7a802e5d10074aa71f25cb9b0a3d7b279f46f",
-  "head_sha": "c10823913b8625d169f9be5aced92b4c4b0eceb3",
+  "master_sha": "5d0d13d1b79f069b20fd0b8f35acd40a8e999299",
+  "base_sha": "5d0d13d1b79f069b20fd0b8f35acd40a8e999299",
+  "head_sha": "bbf4c5d4ece2fe2b3c215e17ebf6c1009790df78",
   "branch": "desktop/ui-consistency-04ec0271",
   "pr": 793,
   "ci": {
     "run_id": null,
-    "conclusion": "PENDING_FRESH_UI_PHASE_CI_AFTER_CURRENT_MASTER_RESYNC",
-    "exact_sha": "c10823913b8625d169f9be5aced92b4c4b0eceb3"
+    "conclusion": "PENDING_FRESH_UI_PHASE_CI_AFTER_RUNTIME_BUDGET_RESYNC",
+    "exact_sha": "bbf4c5d4ece2fe2b3c215e17ebf6c1009790df78"
   },
-  "next_action": "Require a fresh exact-head gate set after the current-master resync; if green, immediately re-read master, compare overlap, merge PR #793 with expected-head protection only if still current, then verify exact-master evidence before continuing to status vocabulary and KPI hierarchy.",
+  "next_action": "Require a fresh exact-head gate set after PR #820 readiness-budget ancestry sync; inspect any real failure. If green, immediately re-read master and overlap before expected-head merge of PR #793, then verify exact-master evidence before continuing to downstream visual consistency deltas.",
   "blocker": {
     "type": "CI",
-    "detail": "PR #793 previous head passed the required gate set, but master advanced. Non-overlapping master drift was resynced through PR #805; fresh exact-head evidence is mandatory before merge.",
+    "detail": "UI PR #793 is resynced to master containing merged PR #820's certified 60-second fail-closed packaged readiness contract. Fresh exact-head evidence is mandatory before merge.",
     "human_action": null
   },
   "repair": {
-    "retry_count": 3,
-    "last_failure_fingerprint": "packaged-sidecar:stdin-buffered-reader-finalization-race",
-    "last_root_cause": "Desktop parent watchdog blocked in sys.stdin.buffer.read() and raced Python interpreter finalization after graceful HTTP shutdown; PR #784 changed the watchdog to raw os.read while preserving parent-pipe EOF fail-closed behavior."
+    "retry_count": 4,
+    "last_failure_fingerprint": "windows-gate:packaged-readiness-45831ms-vs-45s-bound",
+    "last_root_cause": "The packaged Windows E2E and Desktop runtime used a 45-second readiness deadline while the separately certified packaged diagnostic contract already allowed 60 seconds for bounded PyInstaller one-file extraction and antivirus/disk variance. PR #820 aligned both fail-closed budgets to 60 seconds without weakening identity readiness probing."
   },
   "lock": {
     "owner": "desktop-one-zip-runtime-closure",
@@ -43,8 +43,8 @@
       "apps/desktop/test/*locale*",
       ".github/automation/states/desktop-one-zip-runtime-closure.json"
     ],
-    "acquired_at": "2026-08-22T02:38:00Z",
-    "expires_at": "2026-08-22T04:38:00Z"
+    "acquired_at": "2026-08-22T04:49:00Z",
+    "expires_at": "2026-08-22T06:49:00Z"
   },
   "evidence": [
     "issue:539",
@@ -66,14 +66,15 @@
     "workflow:Product Surface Parity Gate:32537099608:PASS",
     "workflow:Software Factory Final Evidence:32537099552:PASS",
     "workflow:Required CI Gate:32537099865:PASS",
-    "master-contains-runtime-merge:04ec0271557d42c6598519c0fea287478ad3b4ae:ahead-of-8cc8fa9a-by-8:no-desktop-overlap",
-    "ui-phase-base:04ec0271557d42c6598519c0fea287478ad3b4ae",
     "ui-status-helper:9071972a0b2172b5fe01c551cafccd9d1abcffa5",
     "ui-home-localized-status:dfd35b90f88c76c3ab399d21e6f54053bf689884",
     "ui-status-regression:a2fe2c309718108206b6d10de1a2593a215cd2b3",
-    "ui-pr:793:previous-head:a763660aef9635821e06a76a7303d2b9586ceaae:required-gates-PASS",
-    "master-resync:257b567c6b38b2d1d69d65a11370c225eda72849->87d7a802e5d10074aa71f25cb9b0a3d7b279f46f:no-ui-path-overlap",
-    "sync-pr:805:merged:c10823913b8625d169f9be5aced92b4c4b0eceb3"
+    "ui-pr:793:pre-runtime-budget-head:4737c8d57f14449160d5c06ba38545fe49d1d2e5",
+    "workflow:ILAIOS Desktop Windows Gate:32551485551:FAIL:packaged-readiness-45831ms",
+    "runtime-budget-pr:820:merged:5d0d13d1b79f069b20fd0b8f35acd40a8e999299",
+    "runtime-budget-contract:60s-fail-closed-readiness",
+    "master-resync:aa5a85e90c8e6a8fdde28286db4aeb9061295176->5d0d13d1b79f069b20fd0b8f35acd40a8e999299:no-ui-path-overlap",
+    "sync-pr:823:merged:bbf4c5d4ece2fe2b3c215e17ebf6c1009790df78"
   ],
-  "updated_at": "2026-08-22T02:38:00Z"
+  "updated_at": "2026-08-22T04:49:00Z"
 }
