@@ -5,6 +5,7 @@ name: Desktop Exact Master Final Artifact
 # Co-certify Desktop package and evidence-visible Operations/Meta receipt on one exact master revision.
 # Unified Web + Operations/Meta + Desktop exact-master closure co-certification trigger.
 # Final current-master Desktop artifact recertification trigger; no package behavior change.
+# Final same-SHA Desktop artifact recertification trigger; no package behavior change.
 on:
   push:
     branches:
