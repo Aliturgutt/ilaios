@@ -1,0 +1,19 @@
+{
+  "schema_version": "ilaios.execution-controller.v1",
+  "task_id": "website-v2-production-closure",
+  "task_source": {"type": "repo_ledger_plus_live_production_certification", "reference": "Website V2 production recertification / PR #759 successor"},
+  "status": "IN_PROGRESS",
+  "current_phase": "exact-current-production-recertification",
+  "master_sha": "e1db532ff87e479551182f5789065d9cdf00df0d",
+  "base_sha": "e1db532ff87e479551182f5789065d9cdf00df0d",
+  "head_sha": null,
+  "branch": "website/production-recert-e1db532f",
+  "pr": null,
+  "ci": {"run_id": null, "conclusion": "pending", "exact_sha": null},
+  "next_action": "Rebind the existing website-scoped production recertification trigger to exact current master, require fresh exact-head Required CI/SFFE/Website V2 gates, re-read master and overlap, then expected-head merge and require exact-merge-SHA Website Production Certification plus /api/release and live EN/TR browser evidence.",
+  "blocker": {"type": "CI", "detail": "Fresh exact-head website recertification gates are required before merge authority.", "human_action": null},
+  "repair": {"retry_count": 0, "last_failure_fingerprint": null, "last_root_cause": null},
+  "lock": {"owner": "ILAIOS Unified Closure", "scope": [".github/automation/states/website-v2-production-closure.json", "apps/website/.production-recertification"], "acquired_at": "2026-08-22T15:09:15+03:00", "expires_at": "2026-08-22T16:09:15+03:00"},
+  "evidence": ["PR #759 merged bounded production-recertification trigger as bcf93f90afa7781c55839e9602717271ca00a6d6", "website-production-certification.yml binds EXPECTED_SHA to github.sha and certifies ilaios.com + www.ilaios.com using production-certification-runner.py", "live master at lock acquisition e1db532ff87e479551182f5789065d9cdf00df0d", "no open Website PR found at lock acquisition"],
+  "updated_at": "2026-08-22T15:09:15+03:00"
+}
