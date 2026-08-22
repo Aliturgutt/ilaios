@@ -17,6 +17,9 @@ from .openrouter_video_provider import (
 )
 
 _DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"
+_TERMINAL_PROVIDER_STATUSES = frozenset(
+    {"completed", "succeeded", "failed", "cancelled", "canceled"}
+)
 
 
 class OpenRouterManagedVideoRuntimeError(ValueError):
@@ -64,12 +67,65 @@ class OpenRouterManagedVideoGenerationJobPoller:
             raise OpenRouterManagedVideoRuntimeError(
                 f"OpenRouter poll failed with HTTP status {response.status_code}"
             )
+        payload, usage_source = self._with_terminal_cost_evidence(response.payload)
         return _normalize_observation(
             provider_id=self._provider_id,
             provider_job_id=provider_job_id,
             base_url=self._base_url,
-            payload=response.payload,
+            payload=payload,
+            usage_source=usage_source,
         )
+
+    def _with_terminal_cost_evidence(
+        self,
+        payload: Mapping[str, object],
+    ) -> tuple[Mapping[str, object], str | None]:
+        """Recover provider-reported cost from generation metadata when needed.
+
+        OpenRouter's video poll response normally carries ``usage.cost``. A real
+        terminal provider response can omit that usage object while still carrying
+        ``generation_id``. In that case the provider's read-only generation metadata
+        endpoint is the only acceptable fallback: it reports ``data.total_cost``.
+        Missing/invalid metadata is deliberately left unresolved so settlement keeps
+        failing closed rather than treating an unknown cost as zero.
+        """
+
+        usage = payload.get("usage")
+        if isinstance(usage, Mapping):
+            return payload, "video-poll"
+
+        raw_status = payload.get("status")
+        if not isinstance(raw_status, str):
+            return payload, None
+        if raw_status.strip().lower() not in _TERMINAL_PROVIDER_STATUSES:
+            return payload, None
+
+        generation_id = payload.get("generation_id")
+        if not isinstance(generation_id, str) or not generation_id.strip():
+            return payload, None
+
+        metadata_response = self._transport.get_json(
+            f"{self._base_url}/generation?id={quote(generation_id, safe='')}",
+            headers=_auth_headers(self._api_key),
+            timeout_seconds=self._timeout_seconds,
+        )
+        if not 200 <= metadata_response.status_code < 300:
+            return payload, None
+        data = metadata_response.payload.get("data")
+        if not isinstance(data, Mapping):
+            return payload, None
+        total_cost = data.get("total_cost")
+        if isinstance(total_cost, bool) or not isinstance(total_cost, (int, float, str)):
+            return payload, None
+        try:
+            decimal_cost = Decimal(str(total_cost))
+            usd_to_microusd(decimal_cost)
+        except (InvalidOperation, ManagedCreditError):
+            return payload, None
+
+        enriched = dict(payload)
+        enriched["usage"] = {"cost": total_cost}
+        return MappingProxyType(enriched), "generation-metadata"
 
 
 def actual_cost_microusd_from_observation(
@@ -125,6 +181,7 @@ def _normalize_observation(
     provider_job_id: str,
     base_url: str,
     payload: Mapping[str, object],
+    usage_source: str | None = None,
 ) -> ProviderJobObservation:
     raw_status = payload.get("status")
     if not isinstance(raw_status, str) or not raw_status.strip():
@@ -159,6 +216,8 @@ def _normalize_observation(
         metadata["usage_json"] = json.dumps(
             dict(usage), sort_keys=True, separators=(",", ":")
         )
+        if usage_source is not None:
+            metadata["usage_evidence_source"] = usage_source
 
     if status is ProviderJobStatus.SUCCEEDED:
         return ProviderJobObservation(
