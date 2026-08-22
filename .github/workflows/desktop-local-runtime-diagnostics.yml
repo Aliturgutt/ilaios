@@ -1,6 +1,7 @@
 name: Desktop Local Runtime Diagnostics
 # Unified Web + Operations/Meta + Desktop exact-master closure co-certification trigger.
 # Final same-SHA Desktop runtime recertification trigger; no behavior change.
+# Exact-current d2d9eb32 Desktop runtime recertification trigger; no behavior change.
 
 on:
   push:

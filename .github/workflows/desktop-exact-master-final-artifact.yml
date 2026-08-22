@@ -6,6 +6,7 @@ name: Desktop Exact Master Final Artifact
 # Unified Web + Operations/Meta + Desktop exact-master closure co-certification trigger.
 # Final current-master Desktop artifact recertification trigger; no package behavior change.
 # Final same-SHA Desktop artifact recertification trigger; no package behavior change.
+# Exact-current d2d9eb32 Desktop artifact recertification trigger; no package behavior change.
 on:
   push:
     branches:
