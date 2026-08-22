@@ -182,6 +182,13 @@ class OpenRouterReferenceConsistencyReviewer:
             body=strict_body,
             timeout_seconds=self._timeout_seconds,
         )
+        if response.status_code == 429:
+            response = self._transport.post_json(
+                f"{self._base_url}/chat/completions",
+                headers=headers,
+                body=strict_body,
+                timeout_seconds=self._timeout_seconds,
+            )
         review_model_id = self._model_id
         if response.status_code in _RETRYABLE_CAPABILITY_STATUS_CODES:
             response = self._transport.post_json(
