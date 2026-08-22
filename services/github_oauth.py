@@ -15,11 +15,7 @@ from urllib.parse import urlencode, urlparse
 
 import requests
 
-from services.central_identity import (
-    CentralIdentityError,
-    IdentityProvider,
-    VerifiedExternalIdentity,
-)
+from services.central_identity import IdentityProvider, VerifiedExternalIdentity
 
 GITHUB_AUTHORIZATION_ENDPOINT = "https://github.com/login/oauth/authorize"
 GITHUB_TOKEN_ENDPOINT = "https://github.com/login/oauth/access_token"
