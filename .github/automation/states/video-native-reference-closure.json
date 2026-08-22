@@ -1,0 +1,47 @@
+{
+  "schema_version": "ilaios.execution-controller.v1",
+  "task_id": "video-native-reference-closure",
+  "task_source": {
+    "type": "repo_ledger_plus_live_provider_certification",
+    "reference": "Video Native Reference production certification closure"
+  },
+  "status": "IN_PROGRESS",
+  "current_phase": "provider-cost-evidence-repair",
+  "master_sha": "136c077dbb1ea60e8d3a3b47c5cfeb3a2f53402a",
+  "base_sha": "136c077dbb1ea60e8d3a3b47c5cfeb3a2f53402a",
+  "head_sha": null,
+  "branch": "video/native-reference-cost-136c077d",
+  "pr": null,
+  "ci": {
+    "run_id": null,
+    "conclusion": "pending",
+    "exact_sha": null
+  },
+  "next_action": "Require fresh Required CI, Software Factory Final Evidence, Desktop Windows and controller-state validation on the exact successor head; re-read live master; merge only if current and non-overlapping; then run exact-master real provider certification.",
+  "blocker": {
+    "type": "CI",
+    "detail": "Fresh exact-current-master successor requires exact-head validation before merge.",
+    "human_action": null
+  },
+  "repair": {
+    "retry_count": 10,
+    "last_failure_fingerprint": "stale-exact-head-after-agent-desktop-same-sha-recert-merge",
+    "last_root_cause": "PR #846 exact reviewed repair was rooted at 796cae1e; master advanced to 136c077d only through non-overlapping Agent/Desktop certification paths, so stale PASS cannot be reused."
+  },
+  "lock": {
+    "owner": "ILAIOS Unified Closure",
+    "scope": [
+      "src/video_automation/openrouter_managed_video_runtime.py",
+      "tests/test_video_automation_openrouter_managed_video_runtime.py",
+      ".github/automation/states/video-native-reference-closure.json"
+    ],
+    "acquired_at": "2026-08-22T10:00:00+03:00",
+    "expires_at": "2026-08-22T11:00:00+03:00"
+  },
+  "evidence": [
+    "PR #846 reviewed head 24282423887a3bdc629b5e9903992b39332a21f3 contains the provider-cost recovery repair and regression tests",
+    "compare 796cae1e -> 136c077d changes only Desktop/Operations-Meta certification workflows and services/independent_verifier_execution.py; bounded Video paths do not overlap",
+    "reviewed provider-cost repair and regression tests replayed onto branch rooted at exact 136c077d"
+  ],
+  "updated_at": "2026-08-22T10:00:00+03:00"
+}
