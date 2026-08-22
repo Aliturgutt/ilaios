@@ -4,12 +4,14 @@ from pathlib import Path
 
 import pytest
 
+from services.control_plane.migrations import migrate_database
 from services.governance import GateError, GovernedRuntimeGateway
 from services.runtime import GovernedRuntime
 
 
 def _gateway(tmp_path: Path) -> GovernedRuntimeGateway:
     state = tmp_path / "runtime.sqlite3"
+    migrate_database(state)
     return GovernedRuntimeGateway(
         tmp_path / "governance.sqlite3",
         GovernedRuntime(state),
