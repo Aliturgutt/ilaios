@@ -9,18 +9,18 @@
   "current_phase": "provider-cost-evidence-repair",
   "master_sha": "87d7a802e5d10074aa71f25cb9b0a3d7b279f46f",
   "base_sha": "87d7a802e5d10074aa71f25cb9b0a3d7b279f46f",
-  "head_sha": "df93759653b83e86b4fc19ab7762c7fc39e81aed",
+  "head_sha": "346be47da2d520c8b561fc65beb7fb91412653fe",
   "branch": "video/native-reference-cost-current-87d7a802",
-  "pr": null,
+  "pr": 809,
   "ci": {
     "run_id": null,
     "conclusion": "pending",
-    "exact_sha": "df93759653b83e86b4fc19ab7762c7fc39e81aed"
+    "exact_sha": "346be47da2d520c8b561fc65beb7fb91412653fe"
   },
-  "next_action": "Open exact-current-master successor PR, require fresh Required CI, Software Factory Final Evidence, Desktop Windows and controller-state validation; then re-read live master and merge only if current/non-overlapping.",
+  "next_action": "Require fresh PR #809 exact-head Required CI, Software Factory Final Evidence, Desktop Windows and controller-state validation; re-read live master; if current and non-overlapping, expected-head merge and run exact-master real provider certification.",
   "blocker": {
     "type": "CI",
-    "detail": "Fresh exact-head validation is required on the current-master replay before merge.",
+    "detail": "PR #809 is the exact-current-master successor and requires fresh exact-head validation before merge.",
     "human_action": null
   },
   "repair": {
@@ -41,7 +41,8 @@
   "evidence": [
     "PR #804 exact-head Required CI, Software Factory Final Evidence, Desktop Windows Gate and Execution Controller State Validation PASS",
     "compare a27424fcceeccff273fe21707dd7dd4e35c2c158..87d7a802e5d10074aa71f25cb9b0a3d7b279f46f shows only Agent/Desktop/Operations workflow drift and no overlap with bounded Video paths",
-    "reviewed runtime blob f08f6e0f68d2fff5abda78c07b9c2a52057d7453 and test blob 2a7c88e6d994ce9d496bee007df7640266fa4577 replayed unchanged onto exact current master"
+    "reviewed runtime blob f08f6e0f68d2fff5abda78c07b9c2a52057d7453 and test blob 2a7c88e6d994ce9d496bee007df7640266fa4577 replayed unchanged onto exact current master",
+    "PR #809 opened from exact base 87d7a802e5d10074aa71f25cb9b0a3d7b279f46f"
   ],
-  "updated_at": "2026-08-22T05:59:00+03:00"
+  "updated_at": "2026-08-22T06:00:30+03:00"
 }
