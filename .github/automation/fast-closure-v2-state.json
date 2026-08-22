@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-22T13:56:00Z",
+  "updated_at": "2026-08-22T15:27:00Z",
   "merge_token": {
-    "state": "AVAILABLE",
-    "owner": null,
-    "reserved_master_sha": null,
-    "candidate_pr": null,
-    "candidate_head_sha": null,
-    "freeze_active": false,
-    "freeze_reason": null
+    "state": "PRE_MERGE_VALIDATION",
+    "owner": "identity",
+    "reserved_master_sha": "036ed4631b1c85cf43b95112c8c97867eac3b3d9",
+    "candidate_pr": 880,
+    "candidate_head_sha": "8c28a979954e471b4896b8f69bc9165e95310488",
+    "freeze_active": true,
+    "freeze_reason": "Identity is the best dependency-ready merge candidate after Website #882 merged; Desktop #883 remains DEVELOPING and no higher-priority merge-ready candidate is evidenced."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -24,11 +24,11 @@
       "lifecycle": "DEVELOPING",
       "priority_rank": 1,
       "authoritative_issue": 539,
-      "active_pr": null,
-      "base_sha": null,
+      "active_pr": 883,
+      "base_sha": "4eee882dd1a27bbc25a35554c6927e74194b042b",
       "head_sha": null,
       "blocked_reason": null,
-      "next_action": "Re-read live Desktop truth and continue the authoritative bounded closure candidate."
+      "next_action": "Continue bounded Settings visual-truth development/CI; do not merge during Identity freeze."
     },
     "video_native_reference": {
       "scheduler": "unified",
@@ -39,29 +39,29 @@
       "base_sha": null,
       "head_sha": null,
       "blocked_reason": null,
-      "next_action": "Re-read live Video certification truth and continue only dependency-ready bounded work."
+      "next_action": "Continue only dependency-ready bounded Video work; do not merge during Identity freeze."
     },
     "website_v2": {
       "scheduler": "unified",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "EXACT_MASTER_VERIFY",
       "priority_rank": 3,
       "authoritative_issue": null,
-      "active_pr": null,
-      "base_sha": null,
-      "head_sha": null,
+      "active_pr": 882,
+      "base_sha": "4eee882dd1a27bbc25a35554c6927e74194b042b",
+      "head_sha": "758c5ca60e276185879cc6e84982c0792968742d",
       "blocked_reason": null,
-      "next_action": "Re-read live Website production evidence and continue safe closure work."
+      "next_action": "Consume exact-master production certification evidence for merge SHA 036ed4631b1c85cf43b95112c8c97867eac3b3d9; no unrelated merge token hold."
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "MERGING",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": null,
-      "base_sha": null,
-      "head_sha": null,
+      "active_pr": 880,
+      "base_sha": "dd3224f5e64c2613249438d52396fbbf1c0e4c43",
+      "head_sha": "8c28a979954e471b4896b8f69bc9165e95310488",
       "blocked_reason": null,
-      "next_action": "Continue dependency-order identity closure without merging during a higher-priority freeze."
+      "next_action": "Replay reviewed Microsoft Phase-4 delta onto reserved exact master, run fresh exact-head gates, then expected-head merge and exact-master verification."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -72,7 +72,7 @@
       "base_sha": null,
       "head_sha": null,
       "blocked_reason": null,
-      "next_action": "Continue the authoritative current phase and prepare merge-ready evidence."
+      "next_action": "Continue authoritative current phase and prepare merge-ready evidence without merging during Identity freeze."
     },
     "agents": {
       "scheduler": "agents",
@@ -83,7 +83,7 @@
       "base_sha": null,
       "head_sha": null,
       "blocked_reason": null,
-      "next_action": "Continue current canonical Agent closure and evidence preparation."
+      "next_action": "Continue current canonical Agent closure and evidence preparation without merging during Identity freeze."
     },
     "app_factory": {
       "scheduler": "unified",
@@ -94,7 +94,7 @@
       "base_sha": null,
       "head_sha": null,
       "blocked_reason": null,
-      "next_action": "Continue dependency-ready bounded App Factory work while respecting merge-token priority."
+      "next_action": "Continue dependency-ready bounded App Factory work while respecting Identity merge freeze."
     },
     "mobile_store": {
       "scheduler": "unified",
@@ -120,8 +120,8 @@
     }
   },
   "metrics": {
-    "master_advances": 0,
-    "stale_pass_invalidations": 0,
+    "master_advances": 1,
+    "stale_pass_invalidations": 1,
     "replay_resync_count": 0,
     "ci_cycles": 0,
     "successful_merges": 0,
