@@ -9,15 +9,15 @@
   "current_phase": "Phase 4 — Microsoft production OAuth",
   "master_sha": "65f0657bf936f496b7b245b5d6811106e9aa2f6f",
   "base_sha": "65f0657bf936f496b7b245b5d6811106e9aa2f6f",
-  "head_sha": "ee23632a7703178187d2f9a006db76d55d5ff57b",
+  "head_sha": "3a939dc2769224ade501cf5d8a4ee03ac990a6be",
   "branch": "identity/microsoft-oauth-current17-20260822",
-  "pr": null,
+  "pr": 871,
   "ci": {
     "run_id": null,
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "Open authoritative exact-current-master successor PR; require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation; merge only after immediate live-master revalidation and expected-head protection.",
+  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation on PR #871; then re-read live master and merge only with expected-head protection.",
   "blocker": {
     "type": null,
     "detail": null,
@@ -46,7 +46,7 @@
     "PR#865 head 9a36333af992b3047de7f79353d39e1e714412fa execution-controller validation run 32566049872 success but stale after master advance",
     "master advanced from 2bff515d46284dad03eb25be6af972249a90229d to 65f0657bf936f496b7b245b5d6811106e9aa2f6f by 5 commits",
     "drift changed only Video/OpenRouter paths; zero overlap with Microsoft Phase-4 identity paths",
-    "reviewed Microsoft Phase-4 delta replayed onto exact current master"
+    "PR#871 opened from exact current master with reviewed Microsoft Phase-4 delta"
   ],
-  "updated_at": "2026-08-22T11:46:18Z"
+  "updated_at": "2026-08-22T11:49:30Z"
 }
