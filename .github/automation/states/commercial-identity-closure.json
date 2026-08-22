@@ -6,46 +6,45 @@
     "reference": "docs/identity/COMMERCIAL_IDENTITY_CLOSURE_WORKFLOW.md"
   },
   "status": "IN_PROGRESS",
-  "current_phase": "Phase 4 — Microsoft production OAuth",
-  "master_sha": "036ed4631b1c85cf43b95112c8c97867eac3b3d9",
-  "base_sha": "036ed4631b1c85cf43b95112c8c97867eac3b3d9",
-  "head_sha": "613c67a120dc0fab37f2a388ab7d6e1478598dee",
-  "branch": "identity/microsoft-oauth-current20-20260822",
-  "pr": 885,
+  "current_phase": "Phase 5 — GitHub OAuth",
+  "master_sha": "b93ebdfb9b5887fe7b691b7d34ce2a4fcc674e9f",
+  "base_sha": "b93ebdfb9b5887fe7b691b7d34ce2a4fcc674e9f",
+  "head_sha": "24510f40da761cf224872edd20c224f584755bb6",
+  "branch": "identity/github-oauth-phase5-current-b93ebdfb",
+  "pr": null,
   "ci": {
     "run_id": null,
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation on PR #885; immediately re-read live master/token before expected-head merge; then exact-master verify before Phase 5 GitHub OAuth.",
+  "next_action": "Open the exact-current-master Phase-5 successor, require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation, then immediately re-read live master and merge ownership before expected-head merge and exact-master verification.",
   "blocker": {
     "type": null,
     "detail": null,
     "human_action": null
   },
   "repair": {
-    "retry_count": 1,
-    "last_failure_fingerprint": "prior Phase-4 Ruff formatting failure",
-    "last_root_cause": "legacy Microsoft fixtures and formatting repaired without weakening issuer or redirect validation"
+    "retry_count": 2,
+    "last_failure_fingerprint": "Phase-5 Ruff unused import then strict-mypy HTTP test-double incompatibility",
+    "last_root_cause": "removed unused import and narrowed HTTP dependency injection to structural Protocol without weakening OAuth validation"
   },
   "lock": {
     "owner": "identity-closure-runner",
     "scope": [
-      "services/microsoft_oidc.py",
-      "services/central_identity.py",
-      "tests/test_microsoft_oidc.py",
-      "tests/test_central_identity.py",
+      "services/github_oauth.py",
+      "tests/test_github_oauth.py",
       ".github/automation/states/commercial-identity-closure.json"
     ],
-    "acquired_at": "2026-08-22T15:27:00Z",
-    "expires_at": "2026-08-22T16:27:00Z"
+    "acquired_at": "2026-08-22T22:24:00Z",
+    "expires_at": "2026-08-22T23:24:00Z"
   },
   "evidence": [
-    "PR#880 head 8c28a979954e471b4896b8f69bc9165e95310488 Required CI 32576746308, SFFE 32576746224, controller validation 32576746215 all success but stale at merge window",
-    "Fast-Closure V2 merge window reserved for Identity after Website PR#882 merged; branch-only coordination state remains non-authoritative until PR#881 merges",
-    "master advanced from dd3224f5e64c2613249438d52396fbbf1c0e4c43 to 036ed4631b1c85cf43b95112c8c97867eac3b3d9 by 8 commits",
-    "drift changed only Website recertification and Desktop presentation/runtime-status paths; zero overlap with Microsoft Phase-4 identity paths",
-    "PR#885 opened from exact current master with reviewed Microsoft Phase-4 delta replayed"
+    "Phase 4 Microsoft exact-master verified on ee9473a016f1628e922bfd4daf66e2d702137441",
+    "PR#893 head df5a9637445b518663b9d193d800b4e56295f976 Required CI 32596667270, SFFE 32596667200, controller validation 32596667208 all success but stale for merge after master advance",
+    "Fast-Closure V2 state file remains absent on live master; PR#881 branch checkpoint at e09358d1c2b0bde0990da9c3827e23472971f46f shows merge token AVAILABLE and Identity next_action current-master replay/fresh gates, but branch-only state is coordination signal only",
+    "master advanced from c4a2987afd8d26a5b186bd8dcc701119360840ee to b93ebdfb9b5887fe7b691b7d34ce2a4fcc674e9f by App Factory changes only",
+    "drift changed services/app_enterprise_runtime.py and tests/test_app_enterprise_runtime.py only; zero path or semantic overlap with Phase-5 GitHub OAuth scope",
+    "reviewed Phase-5 GitHub OAuth delta replayed onto exact current master b93ebdfb9b5887fe7b691b7d34ce2a4fcc674e9f"
   ],
-  "updated_at": "2026-08-22T15:29:00Z"
+  "updated_at": "2026-08-22T22:24:00Z"
 }
