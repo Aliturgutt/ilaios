@@ -1,4 +1,5 @@
 name: ILAIOS Agent Web Live Certification
+# Exact-master recertification trigger for Agent 47/47 closure; no runtime or governance behavior change.
 
 on:
   push:
