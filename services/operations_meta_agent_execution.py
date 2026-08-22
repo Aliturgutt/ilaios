@@ -41,56 +41,56 @@ class OperationsMetaAgentBinding:
 OPERATIONS_META_AGENT_BINDINGS: tuple[OperationsMetaAgentBinding, ...] = (
     OperationsMetaAgentBinding(
         "ilaios.agent.operations.automation.v1",
-        "ilaios-governance",
+        "ilaios.skill.operations.automation.v1",
         "operations.automate",
         "workflow.read",
         "governed-ai",
     ),
     OperationsMetaAgentBinding(
         "ilaios.agent.operations.analytics.v1",
-        "ilaios-observability",
+        "ilaios.skill.operations.analytics.v1",
         "operations.analyze",
         "telemetry.read",
         "governed-ai",
     ),
     OperationsMetaAgentBinding(
         "ilaios.agent.operations.monitoring.v1",
-        "ilaios-observability",
+        "ilaios.skill.operations.monitoring.v1",
         "operations.monitor",
         "telemetry.read",
         "governed-ai",
     ),
     OperationsMetaAgentBinding(
         "ilaios.agent.operations.recovery.v1",
-        "sf-recovery",
+        "ilaios.skill.operations.recovery.v1",
         "operations.recover",
         "evidence.read",
         "governed-ai",
     ),
     OperationsMetaAgentBinding(
         "ilaios.agent.operations.provider-watcher.v1",
-        "ilaios-routing-intelligence",
+        "ilaios.skill.operations.provider-watcher.v1",
         "provider.monitor",
         "provider-health.read",
         "governed-ai",
     ),
     OperationsMetaAgentBinding(
         "ilaios.agent.operations.benchmark.v1",
-        "ilaios-routing-intelligence",
+        "ilaios.skill.operations.benchmark.v1",
         "benchmark.evaluate",
         "benchmark-input.read",
         "governed-ai",
     ),
     OperationsMetaAgentBinding(
         INDEPENDENT_VERIFIER_ID,
-        "ilaios-governance",
+        "ilaios.skill.meta.independent-verification.v1",
         "evidence.verify",
         "evidence.read",
         "independent-verification",
     ),
     OperationsMetaAgentBinding(
         "ilaios.agent.meta.self-development.v1",
-        "ilaios-system-design",
+        "ilaios.skill.meta.self-development.v1",
         "self-development.coordinate",
         "repository.read",
         "governed-ai",
@@ -151,6 +151,13 @@ class OperationsMetaProviderBackedExecutor:
         named_executor: NamedAgentExecutor,
         provider_adapter: GovernedAIProviderAdapter,
     ) -> None:
+        # Lazy import avoids a module cycle while keeping skill provisioning
+        # additive and idempotent on the already-composed canonical runtime.
+        from services.operations_meta_agent_skill_catalog import (
+            ensure_operations_meta_agent_skills,
+        )
+
+        ensure_operations_meta_agent_skills(named_executor)
         self._named = named_executor
         self._providers = provider_adapter
 
