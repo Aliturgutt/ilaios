@@ -338,7 +338,9 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     def stop_identity_if_parent_pipe_closes() -> None:
         try:
-            sys.stdin.buffer.read()
+            stdin_fd = sys.stdin.fileno()
+            while os.read(stdin_fd, 4096):
+                pass
         except (OSError, ValueError):
             pass
         identity_server.shutdown()

@@ -19,6 +19,7 @@ from services.runtime import ExecutionGrant
 from services.runtime.ai_provider_adapter import (
     AIProviderAuthorizationError,
     AIProviderError,
+    AIProviderTransportError,
     GovernedAIProviderAdapter,
 )
 from services.runtime.routing import RuntimeError as RuntimeRoutingError
@@ -40,56 +41,56 @@ class OperationsMetaAgentBinding:
 OPERATIONS_META_AGENT_BINDINGS: tuple[OperationsMetaAgentBinding, ...] = (
     OperationsMetaAgentBinding(
         "ilaios.agent.operations.automation.v1",
-        "ilaios-governance",
+        "ilaios.skill.operations.automation.v1",
         "operations.automate",
         "workflow.read",
         "governed-ai",
     ),
     OperationsMetaAgentBinding(
         "ilaios.agent.operations.analytics.v1",
-        "ilaios-observability",
+        "ilaios.skill.operations.analytics.v1",
         "operations.analyze",
         "telemetry.read",
         "governed-ai",
     ),
     OperationsMetaAgentBinding(
         "ilaios.agent.operations.monitoring.v1",
-        "ilaios-observability",
+        "ilaios.skill.operations.monitoring.v1",
         "operations.monitor",
         "telemetry.read",
         "governed-ai",
     ),
     OperationsMetaAgentBinding(
         "ilaios.agent.operations.recovery.v1",
-        "sf-recovery",
+        "ilaios.skill.operations.recovery.v1",
         "operations.recover",
         "evidence.read",
         "governed-ai",
     ),
     OperationsMetaAgentBinding(
         "ilaios.agent.operations.provider-watcher.v1",
-        "ilaios-routing-intelligence",
+        "ilaios.skill.operations.provider-watcher.v1",
         "provider.monitor",
         "provider-health.read",
         "governed-ai",
     ),
     OperationsMetaAgentBinding(
         "ilaios.agent.operations.benchmark.v1",
-        "ilaios-routing-intelligence",
+        "ilaios.skill.operations.benchmark.v1",
         "benchmark.evaluate",
         "benchmark-input.read",
         "governed-ai",
     ),
     OperationsMetaAgentBinding(
         INDEPENDENT_VERIFIER_ID,
-        "ilaios-governance",
+        "ilaios.skill.meta.independent-verification.v1",
         "evidence.verify",
         "evidence.read",
         "independent-verification",
     ),
     OperationsMetaAgentBinding(
         "ilaios.agent.meta.self-development.v1",
-        "ilaios-system-design",
+        "ilaios.skill.meta.self-development.v1",
         "self-development.coordinate",
         "repository.read",
         "governed-ai",
@@ -124,6 +125,24 @@ class OperationsMetaProviderBackedAgentResult:
     evidence_digest: str
 
 
+def _bounded_provider_failure_classification(exc: Exception) -> str:
+    """Return non-secret provider failure metadata suitable for live CI evidence."""
+    chain: list[str] = []
+    current: BaseException | None = exc
+    seen: set[int] = set()
+    while current is not None and len(chain) < 6 and id(current) not in seen:
+        seen.add(id(current))
+        label = type(current).__name__
+        if isinstance(current, AIProviderTransportError):
+            label += f"(retryable={str(current.retryable).lower()}"
+            if current.retry_after_seconds is not None:
+                label += f",retry_after_seconds={current.retry_after_seconds:g}"
+            label += ")"
+        chain.append(label)
+        current = current.__cause__
+    return ">".join(chain)
+
+
 class OperationsMetaProviderBackedExecutor:
     """Execute bounded Operations/Meta proposals through canonical runtime."""
 
@@ -132,6 +151,13 @@ class OperationsMetaProviderBackedExecutor:
         named_executor: NamedAgentExecutor,
         provider_adapter: GovernedAIProviderAdapter,
     ) -> None:
+        # Lazy import avoids a module cycle while keeping skill provisioning
+        # additive and idempotent on the already-composed canonical runtime.
+        from services.operations_meta_agent_skill_catalog import (
+            ensure_operations_meta_agent_skills,
+        )
+
+        ensure_operations_meta_agent_skills(named_executor)
         self._named = named_executor
         self._providers = provider_adapter
 
@@ -176,8 +202,13 @@ class OperationsMetaProviderBackedExecutor:
                     denied_models=frozenset(denied_models),
                 )
             except GovernanceError as exc:
+                detail = (
+                    ""
+                    if last_error is None
+                    else "; last_failure=" + _bounded_provider_failure_classification(last_error)
+                )
                 raise OperationsMetaAgentExecutionError(
-                    "no governed Operations/Meta AI fallback remains"
+                    "no governed Operations/Meta AI fallback remains" + detail
                 ) from (last_error or exc)
 
             payload = {

@@ -7,26 +7,26 @@
   },
   "status": "IN_PROGRESS",
   "current_phase": 7,
-  "master_sha": "5446e9b08a4f9deb3accbfeceabc704cab3a9574",
-  "base_sha": "5446e9b08a4f9deb3accbfeceabc704cab3a9574",
-  "head_sha": "ae0aa51934fcf7085a9f64c992e00da1fe8bb413",
+  "master_sha": "04ec0271557d42c6598519c0fea287478ad3b4ae",
+  "base_sha": "04ec0271557d42c6598519c0fea287478ad3b4ae",
+  "head_sha": "8b674197ba669bcfe3aa9236a885a6b6a53eb924",
   "branch": "web/app-phase7-realtime-current-20260822a",
   "pr": 780,
   "ci": {
-    "run_id": 32534758248,
+    "run_id": 32538253785,
     "conclusion": "success-stale-after-master-advance",
-    "exact_sha": "ae0aa51934fcf7085a9f64c992e00da1fe8bb413"
+    "exact_sha": "8b674197ba669bcfe3aa9236a885a6b6a53eb924"
   },
-  "next_action": "run fresh exact-head gates on Phase-7 branch synchronized with master 5446e9b08a4f9deb3accbfeceabc704cab3a9574; re-read live master immediately before expected-head merge",
+  "next_action": "run fresh exact-head gates after non-force merge-parent synchronization with master 04ec0271557d42c6598519c0fea287478ad3b4ae; re-read live master and overlap immediately before expected-head merge",
   "blocker": {
     "type": "CI",
-    "detail": "Phase-7 exact-head gates passed on ae0aa51934fcf7085a9f64c992e00da1fe8bb413, but master advanced to 5446e9b08a4f9deb3accbfeceabc704cab3a9574 through PR #781. Drift changes only apps/desktop/test/deliveries_lifecycle_view_test.dart and has zero overlap with the five-file Phase-7 scope; stale PASS is invalid until the synchronized exact head reruns gates.",
+    "detail": "Phase-7 exact-head gates passed on 8b674197ba669bcfe3aa9236a885a6b6a53eb924, but master advanced to 04ec0271557d42c6598519c0fea287478ad3b4ae. Compare 5446e9b08a4f9deb3accbfeceabc704cab3a9574..04ec0271557d42c6598519c0fea287478ad3b4ae shows only Desktop runtime and Operations/Meta paths with zero overlap against the five-file Phase-7 scope; stale PASS is invalid until the synchronized exact head reruns gates.",
     "human_action": null
   },
   "repair": {
-    "retry_count": 1,
-    "last_failure_fingerprint": "phase7-stale-pass-after-master-5446e9b0",
-    "last_root_cause": "exact-head evidence invalidated by non-overlapping master advancement; synchronize reviewed bounded delta and rerun gates"
+    "retry_count": 2,
+    "last_failure_fingerprint": "phase7-stale-pass-after-master-04ec0271",
+    "last_root_cause": "exact-head evidence invalidated by non-overlapping master advancement; replay/synchronize only the reviewed bounded Phase-7 delta and rerun exact-head gates"
   },
   "lock": {
     "owner": "web-app-factory-486",
@@ -37,17 +37,17 @@
       "services/web_app_realtime_runtime.py",
       "tests/test_web_app_realtime_runtime.py"
     ],
-    "acquired_at": "2026-08-21T23:47:00Z",
-    "expires_at": "2026-08-22T00:47:00Z"
+    "acquired_at": "2026-08-22T00:50:00Z",
+    "expires_at": "2026-08-22T02:50:00Z"
   },
   "evidence": [
     "phase5-merge:7fdfa6453323dec394e3dde084aa5ec8683d77bd exact-master:32504527076,32504527231 success",
     "phase6-pr:766 exact-head:d156c9bf7861f039bea1ff8b69907219660bccfa gates:32532849804,32532849785,32532849897,32532849762 success",
     "phase6-merge:cd31fe204202855eea8a0654db0d455ae157c06a expected-head:d156c9bf7861f039bea1ff8b69907219660bccfa",
     "phase6-exact-master:software-factory=32533589517 success; required-ci=32533589860 success",
-    "phase7-stale-head:ae0aa51934fcf7085a9f64c992e00da1fe8bb413 gates:32534758089,32534758156,32534758096,32534758248 success",
-    "master-drift:8a0118a0abc283315c7d5193567cc1b9960eda29..5446e9b08a4f9deb3accbfeceabc704cab3a9574 via PR #781 changes only apps/desktop/test/deliveries_lifecycle_view_test.dart; zero Phase-7 bounded overlap",
+    "phase7-head:8b674197ba669bcfe3aa9236a885a6b6a53eb924 gates:web=32538253683 software-factory=32538253693 controller=32538253706 required-ci=32538253785 success but stale after master advance",
+    "master-drift:5446e9b08a4f9deb3accbfeceabc704cab3a9574..04ec0271557d42c6598519c0fea287478ad3b4ae ahead_by=15; changed paths only Desktop runtime and Operations/Meta; zero Phase-7 bounded overlap",
     "phase16-freeze: preserved; no 3D/Motion/WebGL mutation"
   ],
-  "updated_at": "2026-08-21T23:47:00Z"
+  "updated_at": "2026-08-22T00:50:00Z"
 }
