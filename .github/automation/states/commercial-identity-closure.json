@@ -1,52 +1,24 @@
 {
   "schema_version": "ilaios.execution-controller.v1",
   "task_id": "commercial-identity-closure",
-  "task_source": {
-    "type": "repo_ledger",
-    "reference": "docs/identity/COMMERCIAL_IDENTITY_CLOSURE_WORKFLOW.md"
-  },
+  "task_source": {"type": "repo_ledger", "reference": "docs/identity/COMMERCIAL_IDENTITY_CLOSURE_WORKFLOW.md"},
   "status": "IN_PROGRESS",
   "current_phase": "Phase 4 — Microsoft production OAuth",
   "master_sha": "c1bf8fa6edbba58b81f4060cc2b24b9241cb2392",
   "base_sha": "c1bf8fa6edbba58b81f4060cc2b24b9241cb2392",
-  "head_sha": null,
+  "head_sha": "09948b8ade14ec66a5b4a7f261e292b9f7c1e18f",
   "branch": "identity/microsoft-oauth-current18-20260822",
-  "pr": null,
-  "ci": {
-    "run_id": null,
-    "conclusion": null,
-    "exact_sha": null
-  },
-  "next_action": "Open current-master successor PR; require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation; then re-read live master and merge only with expected-head protection.",
-  "blocker": {
-    "type": null,
-    "detail": null,
-    "human_action": null
-  },
-  "repair": {
-    "retry_count": 1,
-    "last_failure_fingerprint": "prior Phase-4 Ruff formatting failure",
-    "last_root_cause": "compressed Microsoft OIDC regression-test formatting repaired without weakening issuer or redirect validation"
-  },
-  "lock": {
-    "owner": "identity-closure-runner",
-    "scope": [
-      "services/microsoft_oidc.py",
-      "services/central_identity.py",
-      "tests/test_microsoft_oidc.py",
-      "tests/test_central_identity.py",
-      ".github/automation/states/commercial-identity-closure.json"
-    ],
-    "acquired_at": "2026-08-22T12:48:54Z",
-    "expires_at": "2026-08-22T13:48:54Z"
-  },
+  "pr": 876,
+  "ci": {"run_id": null, "conclusion": null, "exact_sha": null},
+  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation on PR #876; then re-read live master and merge only with expected-head protection.",
+  "blocker": {"type": null, "detail": null, "human_action": null},
+  "repair": {"retry_count": 1, "last_failure_fingerprint": "prior Phase-4 Ruff formatting failure", "last_root_cause": "compressed Microsoft OIDC regression-test formatting repaired without weakening issuer or redirect validation"},
+  "lock": {"owner": "identity-closure-runner", "scope": ["services/microsoft_oidc.py", "services/central_identity.py", "tests/test_microsoft_oidc.py", "tests/test_central_identity.py", ".github/automation/states/commercial-identity-closure.json"], "acquired_at": "2026-08-22T12:48:54Z", "expires_at": "2026-08-22T13:48:54Z"},
   "evidence": [
-    "PR#871 head 4eb96cc72b0a3141e0ff24e1e8d6b79616ac2b02 Required CI run 32571305654 success but stale after master advance",
-    "PR#871 head 4eb96cc72b0a3141e0ff24e1e8d6b79616ac2b02 Software Factory Final Evidence run 32571305566 success but stale after master advance",
-    "PR#871 head 4eb96cc72b0a3141e0ff24e1e8d6b79616ac2b02 execution-controller validation run 32571305563 success but stale after master advance",
+    "PR#871 head 4eb96cc72b0a3141e0ff24e1e8d6b79616ac2b02 Required CI 32571305654, SFFE 32571305566, controller validation 32571305563 all success but stale after master advance",
     "master advanced from 65f0657bf936f496b7b245b5d6811106e9aa2f6f to c1bf8fa6edbba58b81f4060cc2b24b9241cb2392 by 10 commits",
-    "drift changed only Video, Desktop, Website recertification, and identity action-scope client paths; zero overlap with Microsoft Phase-4 identity paths",
-    "reviewed Microsoft Phase-4 delta replayed onto exact current master"
+    "drift has zero overlap with Microsoft Phase-4 identity paths",
+    "PR#876 opened from exact current master with reviewed Microsoft Phase-4 delta"
   ],
-  "updated_at": "2026-08-22T12:48:54Z"
+  "updated_at": "2026-08-22T12:51:50Z"
 }
