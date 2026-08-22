@@ -6,9 +6,9 @@ binds the Stage-2 ProductSpec/Domain/Auth contracts to the already implemented
 ``WebAppCrudRuntime`` persistence/runtime boundary so Web, Windows, Android and iOS
 clients can converge on one governed application backend contract.
 
-This first Stage-3 slice proves deterministic lineage and entity/permission binding
-for persistent create/read/list operations. Update/delete, API transport, realtime,
-files, integrations and commerce remain separate dependency-ordered slices.
+This slice proves deterministic lineage and entity/permission binding for persistent
+create/read/list/update/delete operations. API transport, realtime, files,
+integrations and commerce remain separate dependency-ordered slices.
 """
 
 from __future__ import annotations
@@ -26,6 +26,8 @@ from services.identity import Principal
 from services.web_app_auth_contract import WebAppAuthContract
 from services.web_app_crud_runtime import CrudPage, CrudRecord, WebAppCrudRuntime
 
+EnterpriseOperation = Literal["create", "read", "list", "update", "delete"]
+
 
 class AppEnterpriseRuntimeError(ValueError):
     """Stage-3 runtime binding is incomplete, stale, or authority-unsafe."""
@@ -38,7 +40,7 @@ class AppEnterpriseRuntimeBinding:
     domain_model_sha256: str
     auth_rbac_plan_sha256: str
     entities: tuple[str, ...]
-    operations: tuple[Literal["create", "read", "list"], ...]
+    operations: tuple[EnterpriseOperation, ...]
     backend_authority: Literal["services.web_app_crud_runtime.WebAppCrudRuntime"]
     authorization_authority: Literal["services.identity.AuthorizationEngine"]
     implementation_authority: Literal["software-factory"]
@@ -75,11 +77,9 @@ def bind_enterprise_runtime(
     if not entities:
         raise AppEnterpriseRuntimeError("enterprise persistence runtime requires domain entities")
     backend_permissions = frozenset(permission.permission for permission in backend_contract.permissions)
-    planned_permissions = frozenset(
-        grant.permission for role in auth_rbac.roles for grant in role.grants
-    )
+    planned_permissions = frozenset(grant.permission for role in auth_rbac.roles for grant in role.grants)
     for entity in entities:
-        for operation in ("create", "read"):
+        for operation in ("create", "read", "update", "delete"):
             permission = f"resource.{entity}.{operation}"
             if permission not in planned_permissions:
                 raise AppEnterpriseRuntimeError(
@@ -90,6 +90,7 @@ def bind_enterprise_runtime(
                     f"CRUD backend contract is missing runtime permission {permission}"
                 )
 
+    operations: tuple[EnterpriseOperation, ...] = ("create", "read", "list", "update", "delete")
     canonical: dict[str, object] = {
         "auth_rbac_plan_sha256": auth_rbac.plan_sha256,
         "authorization_authority": "services.identity.AuthorizationEngine",
@@ -98,7 +99,7 @@ def bind_enterprise_runtime(
         "domain_model_sha256": domain_model.model_sha256,
         "entities": list(entities),
         "implementation_authority": "software-factory",
-        "operations": ["create", "read", "list"],
+        "operations": list(operations),
         "project_id": spec.project_id,
         "spec_sha256": spec.spec_sha256,
     }
@@ -108,7 +109,7 @@ def bind_enterprise_runtime(
         domain_model_sha256=domain_model.model_sha256,
         auth_rbac_plan_sha256=auth_rbac.plan_sha256,
         entities=entities,
-        operations=("create", "read", "list"),
+        operations=operations,
         backend_authority="services.web_app_crud_runtime.WebAppCrudRuntime",
         authorization_authority="services.identity.AuthorizationEngine",
         implementation_authority="software-factory",
@@ -120,11 +121,7 @@ def bind_enterprise_runtime(
 class AppEnterpriseRuntime:
     """Cross-platform App Factory adapter over one existing governed CRUD runtime."""
 
-    def __init__(
-        self,
-        binding: AppEnterpriseRuntimeBinding,
-        backend: WebAppCrudRuntime,
-    ) -> None:
+    def __init__(self, binding: AppEnterpriseRuntimeBinding, backend: WebAppCrudRuntime) -> None:
         self._binding = binding
         self._backend = backend
         self._entities = frozenset(binding.entities)
@@ -133,59 +130,25 @@ class AppEnterpriseRuntime:
     def binding(self) -> AppEnterpriseRuntimeBinding:
         return self._binding
 
-    def create(
-        self,
-        *,
-        principal: Principal,
-        entity: str,
-        resource_id: str,
-        payload: dict[str, object],
-        idempotency_key: str,
-        now: datetime,
-    ) -> CrudRecord:
+    def create(self, *, principal: Principal, entity: str, resource_id: str, payload: dict[str, object], idempotency_key: str, now: datetime) -> CrudRecord:
         self._require_entity(entity)
-        return self._backend.create(
-            principal=principal,
-            resource_type=entity,
-            resource_id=resource_id,
-            payload=payload,
-            idempotency_key=idempotency_key,
-            now=now,
-        )
+        return self._backend.create(principal=principal, resource_type=entity, resource_id=resource_id, payload=payload, idempotency_key=idempotency_key, now=now)
 
-    def read(
-        self,
-        *,
-        principal: Principal,
-        entity: str,
-        resource_id: str,
-        now: datetime,
-    ) -> CrudRecord:
+    def read(self, *, principal: Principal, entity: str, resource_id: str, now: datetime) -> CrudRecord:
         self._require_entity(entity)
-        return self._backend.read(
-            principal=principal,
-            resource_type=entity,
-            resource_id=resource_id,
-            now=now,
-        )
+        return self._backend.read(principal=principal, resource_type=entity, resource_id=resource_id, now=now)
 
-    def list(
-        self,
-        *,
-        principal: Principal,
-        entity: str,
-        now: datetime,
-        offset: int = 0,
-        limit: int = 50,
-    ) -> CrudPage:
+    def list(self, *, principal: Principal, entity: str, now: datetime, offset: int = 0, limit: int = 50) -> CrudPage:
         self._require_entity(entity)
-        return self._backend.list(
-            principal=principal,
-            resource_type=entity,
-            now=now,
-            offset=offset,
-            limit=limit,
-        )
+        return self._backend.list(principal=principal, resource_type=entity, now=now, offset=offset, limit=limit)
+
+    def update(self, *, principal: Principal, entity: str, resource_id: str, payload: dict[str, object], expected_version: int, idempotency_key: str, now: datetime) -> CrudRecord:
+        self._require_entity(entity)
+        return self._backend.update(principal=principal, resource_type=entity, resource_id=resource_id, payload=payload, expected_version=expected_version, idempotency_key=idempotency_key, now=now)
+
+    def delete(self, *, principal: Principal, entity: str, resource_id: str, expected_version: int, now: datetime) -> None:
+        self._require_entity(entity)
+        self._backend.delete(principal=principal, resource_type=entity, resource_id=resource_id, expected_version=expected_version, now=now)
 
     def _require_entity(self, entity: str) -> None:
         if entity not in self._entities:
