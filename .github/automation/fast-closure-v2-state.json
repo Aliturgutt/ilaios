@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-22T15:27:00Z",
+  "updated_at": "2026-08-22T15:30:00Z",
   "merge_token": {
     "state": "PRE_MERGE_VALIDATION",
     "owner": "identity",
     "reserved_master_sha": "036ed4631b1c85cf43b95112c8c97867eac3b3d9",
-    "candidate_pr": 880,
-    "candidate_head_sha": "8c28a979954e471b4896b8f69bc9165e95310488",
+    "candidate_pr": 885,
+    "candidate_head_sha": "395b2444449cf2e46d0b5d761a5f562ba608b332",
     "freeze_active": true,
-    "freeze_reason": "Identity is the best dependency-ready merge candidate after Website #882 merged; Desktop #883 remains DEVELOPING and no higher-priority merge-ready candidate is evidenced."
+    "freeze_reason": "Identity owns the bounded merge window; PR #885 is replayed on the reserved master and fresh exact-head Required CI is pending while SFFE/controller validation already pass."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,14 +54,14 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "MERGING",
+      "lifecycle": "CI_RUNNING",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": 880,
-      "base_sha": "dd3224f5e64c2613249438d52396fbbf1c0e4c43",
-      "head_sha": "8c28a979954e471b4896b8f69bc9165e95310488",
+      "active_pr": 885,
+      "base_sha": "036ed4631b1c85cf43b95112c8c97867eac3b3d9",
+      "head_sha": "395b2444449cf2e46d0b5d761a5f562ba608b332",
       "blocked_reason": null,
-      "next_action": "Replay reviewed Microsoft Phase-4 delta onto reserved exact master, run fresh exact-head gates, then expected-head merge and exact-master verification."
+      "next_action": "Wait for fresh Required CI on exact head; if PASS re-read master/token and expected-head merge, then exact-master verify before Phase 5."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -122,8 +122,8 @@
   "metrics": {
     "master_advances": 1,
     "stale_pass_invalidations": 1,
-    "replay_resync_count": 0,
-    "ci_cycles": 0,
+    "replay_resync_count": 1,
+    "ci_cycles": 1,
     "successful_merges": 0,
     "duplicate_pr_count": 0,
     "churn_only_commit_count": 0
