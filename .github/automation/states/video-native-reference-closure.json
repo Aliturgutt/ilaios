@@ -1,0 +1,47 @@
+{
+  "schema_version": "ilaios.execution-controller.v1",
+  "task_id": "video-native-reference-closure",
+  "task_source": {
+    "type": "repo_ledger_plus_live_provider_certification",
+    "reference": "Video Native Reference production certification closure"
+  },
+  "status": "IN_PROGRESS",
+  "current_phase": "provider-cost-evidence-repair",
+  "master_sha": "87d7a802e5d10074aa71f25cb9b0a3d7b279f46f",
+  "base_sha": "87d7a802e5d10074aa71f25cb9b0a3d7b279f46f",
+  "head_sha": "df93759653b83e86b4fc19ab7762c7fc39e81aed",
+  "branch": "video/native-reference-cost-current-87d7a802",
+  "pr": null,
+  "ci": {
+    "run_id": null,
+    "conclusion": "pending",
+    "exact_sha": "df93759653b83e86b4fc19ab7762c7fc39e81aed"
+  },
+  "next_action": "Open exact-current-master successor PR, require fresh Required CI, Software Factory Final Evidence, Desktop Windows and controller-state validation; then re-read live master and merge only if current/non-overlapping.",
+  "blocker": {
+    "type": "CI",
+    "detail": "Fresh exact-head validation is required on the current-master replay before merge.",
+    "human_action": null
+  },
+  "repair": {
+    "retry_count": 4,
+    "last_failure_fingerprint": "stale-exact-head-after-master-advance",
+    "last_root_cause": "PR #804 exact-head gates passed, but master advanced by six non-overlapping Agent/Desktop workflow commits; stale PASS cannot be reused."
+  },
+  "lock": {
+    "owner": "ILAIOS Unified Closure",
+    "scope": [
+      "src/video_automation/openrouter_managed_video_runtime.py",
+      "tests/test_video_automation_openrouter_managed_video_runtime.py",
+      ".github/automation/states/video-native-reference-closure.json"
+    ],
+    "acquired_at": "2026-08-22T05:59:00+03:00",
+    "expires_at": "2026-08-22T06:59:00+03:00"
+  },
+  "evidence": [
+    "PR #804 exact-head Required CI, Software Factory Final Evidence, Desktop Windows Gate and Execution Controller State Validation PASS",
+    "compare a27424fcceeccff273fe21707dd7dd4e35c2c158..87d7a802e5d10074aa71f25cb9b0a3d7b279f46f shows only Agent/Desktop/Operations workflow drift and no overlap with bounded Video paths",
+    "reviewed runtime blob f08f6e0f68d2fff5abda78c07b9c2a52057d7453 and test blob 2a7c88e6d994ce9d496bee007df7640266fa4577 replayed unchanged onto exact current master"
+  ],
+  "updated_at": "2026-08-22T05:59:00+03:00"
+}
