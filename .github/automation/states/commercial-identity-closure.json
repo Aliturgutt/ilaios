@@ -6,46 +6,46 @@
     "reference": "docs/identity/COMMERCIAL_IDENTITY_CLOSURE_WORKFLOW.md"
   },
   "status": "IN_PROGRESS",
-  "current_phase": "Phase 4 — Microsoft production OAuth",
-  "master_sha": "036ed4631b1c85cf43b95112c8c97867eac3b3d9",
-  "base_sha": "036ed4631b1c85cf43b95112c8c97867eac3b3d9",
-  "head_sha": "613c67a120dc0fab37f2a388ab7d6e1478598dee",
-  "branch": "identity/microsoft-oauth-current20-20260822",
-  "pr": 885,
+  "current_phase": "Phase 5 — GitHub OAuth",
+  "master_sha": "a80474d784dabc6e7dbf700e5da6e50a0228877a",
+  "base_sha": "a80474d784dabc6e7dbf700e5da6e50a0228877a",
+  "head_sha": "39eaece5b8434257ada4c05b83c2b131fed9a20d",
+  "branch": "identity/github-oauth-phase5-current-a80474d7",
+  "pr": 897,
   "ci": {
     "run_id": null,
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation on PR #885; immediately re-read live master/token before expected-head merge; then exact-master verify before Phase 5 GitHub OAuth.",
+  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation on PR #897; immediately before merge re-read exact live master and Fast-Closure V2 merge token, merge only with expected-head protection, then exact-master verify before Phase 6 Email.",
   "blocker": {
     "type": null,
     "detail": null,
     "human_action": null
   },
   "repair": {
-    "retry_count": 1,
-    "last_failure_fingerprint": "prior Phase-4 Ruff formatting failure",
-    "last_root_cause": "legacy Microsoft fixtures and formatting repaired without weakening issuer or redirect validation"
+    "retry_count": 2,
+    "last_failure_fingerprint": "Phase-5 Ruff unused import then strict-mypy HTTP test-double incompatibility",
+    "last_root_cause": "removed unused import and narrowed HTTP dependency injection to structural Protocol without weakening OAuth validation"
   },
   "lock": {
     "owner": "identity-closure-runner",
     "scope": [
-      "services/microsoft_oidc.py",
-      "services/central_identity.py",
-      "tests/test_microsoft_oidc.py",
-      "tests/test_central_identity.py",
+      "services/github_oauth.py",
+      "tests/test_github_oauth.py",
       ".github/automation/states/commercial-identity-closure.json"
     ],
-    "acquired_at": "2026-08-22T15:27:00Z",
-    "expires_at": "2026-08-22T16:27:00Z"
+    "acquired_at": "2026-08-22T23:27:00Z",
+    "expires_at": "2026-08-23T00:27:00Z"
   },
   "evidence": [
-    "PR#880 head 8c28a979954e471b4896b8f69bc9165e95310488 Required CI 32576746308, SFFE 32576746224, controller validation 32576746215 all success but stale at merge window",
-    "Fast-Closure V2 merge window reserved for Identity after Website PR#882 merged; branch-only coordination state remains non-authoritative until PR#881 merges",
-    "master advanced from dd3224f5e64c2613249438d52396fbbf1c0e4c43 to 036ed4631b1c85cf43b95112c8c97867eac3b3d9 by 8 commits",
-    "drift changed only Website recertification and Desktop presentation/runtime-status paths; zero overlap with Microsoft Phase-4 identity paths",
-    "PR#885 opened from exact current master with reviewed Microsoft Phase-4 delta replayed"
+    "Phase 4 Microsoft exact-master verified on ee9473a016f1628e922bfd4daf66e2d702137441",
+    "PR#894 head 20e85adb2af0e559159f85d57eaa23e26227066a Required CI 32602468684, SFFE 32602468583, controller validation 32602468586 all success but stale for merge after master advance",
+    "Fast-Closure V2 merged to live master through PR#895; durable merge token on master is AVAILABLE",
+    "master advanced from b93ebdfb9b5887fe7b691b7d34ce2a4fcc674e9f to a80474d784dabc6e7dbf700e5da6e50a0228877a only through Fast-Closure V2 coordination protocol/state/validator files",
+    "zero path or semantic overlap with services/github_oauth.py and tests/test_github_oauth.py",
+    "reviewed Phase-5 GitHub OAuth delta replayed onto exact current master a80474d784dabc6e7dbf700e5da6e50a0228877a",
+    "PR#897 opened as authoritative exact-current-master successor"
   ],
-  "updated_at": "2026-08-22T15:29:00Z"
+  "updated_at": "2026-08-22T23:27:00Z"
 }
