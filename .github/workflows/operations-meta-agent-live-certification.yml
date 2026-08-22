@@ -2,6 +2,7 @@ name: ILAIOS Operations Meta Agent Live Certification
 # Exact-master recertification trigger; no runtime, governance, verifier, or provider authority change.
 # Re-certify on exact master through evidence-visible trusted-master lineage.
 # Co-certify Operations/Meta and Desktop package evidence on one exact master revision.
+# Co-certify exact-master closure on the eventual Desktop evidence merge SHA.
 
 on:
   push:
