@@ -1,3 +1,4 @@
+// Final current-master Desktop recertification trigger; no runtime behavior change.
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
