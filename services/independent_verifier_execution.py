@@ -7,6 +7,8 @@ through the same governed runtime using the built-in ``canonical-json-sha256``
 adapter.
 """
 
+# Final same-SHA Agent recertification trigger; no execution behavior change.
+
 from __future__ import annotations
 
 import hashlib
