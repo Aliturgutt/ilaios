@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# Agent closure exact-master co-certification trigger; no test behavior change.
 import pytest
 
 from services.agent_registry import INDEPENDENT_VERIFIER_ID, registration_for
