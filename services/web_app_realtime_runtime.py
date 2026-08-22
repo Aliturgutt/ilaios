@@ -52,9 +52,21 @@ class RealtimeBatch:
 
 
 class WebAppRealtimeRuntime:
-    """In-process replayable event journal with authenticated subscriptions."""
+    """In-process replayable event journal with authenticated subscriptions.
 
-    def __init__(self, crud: WebAppCrudRuntime, *, max_history: int = 1000, max_batch: int = 100) -> None:
+    The journal is intentionally a projection boundary rather than a source of
+    truth. A deployment may expose batches through SSE/WebSocket transport, but
+    reconnect cursors and authorization are enforced here independently of the
+    transport implementation.
+    """
+
+    def __init__(
+        self,
+        crud: WebAppCrudRuntime,
+        *,
+        max_history: int = 1000,
+        max_batch: int = 100,
+    ) -> None:
         if max_history < 1 or max_history > 10_000:
             raise ValueError("max_history outside bounded range")
         if max_batch < 1 or max_batch > 500:
@@ -65,24 +77,64 @@ class WebAppRealtimeRuntime:
         self._sequence = 0
         self._lock = threading.Lock()
 
-    def publish(self, *, principal: Principal, resource_type: str, resource_id: str, event_type: RealtimeEventType, payload: dict[str, object], now: datetime, resource_version: int | None = None) -> RealtimeEvent:
+    def publish(
+        self,
+        *,
+        principal: Principal,
+        resource_type: str,
+        resource_id: str,
+        event_type: RealtimeEventType,
+        payload: dict[str, object],
+        now: datetime,
+        resource_version: int | None = None,
+    ) -> RealtimeEvent:
+        """Append one bounded projection event after canonical read authorization."""
         self._token(resource_type, "resource_type")
         self._token(resource_id, "resource_id")
         if event_type not in ("created", "updated", "deleted", "state_changed"):
             raise WebAppRealtimeRuntimeError("INVALID_EVENT_TYPE", "unsupported realtime event")
         if resource_version is not None and resource_version < 1:
-            raise WebAppRealtimeRuntimeError("INVALID_RESOURCE_VERSION", "resource_version must be positive")
+            raise WebAppRealtimeRuntimeError(
+                "INVALID_RESOURCE_VERSION", "resource_version must be positive"
+            )
         self._payload(payload)
         self._authorize_subscription(principal, resource_type, now)
         occurred_at = self._utc(now)
         with self._lock:
             self._sequence += 1
             sequence = self._sequence
-            event = RealtimeEvent(sequence=sequence, event_id=self._event_id(sequence, principal.tenant_id, resource_type, resource_id, event_type, occurred_at), event_type=event_type, tenant_id=principal.tenant_id, resource_type=resource_type, resource_id=resource_id, resource_version=resource_version, occurred_at=occurred_at, payload=dict(payload))
+            event = RealtimeEvent(
+                sequence=sequence,
+                event_id=self._event_id(
+                    sequence,
+                    principal.tenant_id,
+                    resource_type,
+                    resource_id,
+                    event_type,
+                    occurred_at,
+                ),
+                event_type=event_type,
+                tenant_id=principal.tenant_id,
+                resource_type=resource_type,
+                resource_id=resource_id,
+                resource_version=resource_version,
+                occurred_at=occurred_at,
+                payload=dict(payload),
+            )
             self._events.append(event)
             return event
 
-    def subscribe(self, *, principal: Principal, resource_type: str, now: datetime, after_sequence: int = 0, resource_id: str | None = None, limit: int | None = None) -> RealtimeBatch:
+    def subscribe(
+        self,
+        *,
+        principal: Principal,
+        resource_type: str,
+        now: datetime,
+        after_sequence: int = 0,
+        resource_id: str | None = None,
+        limit: int | None = None,
+    ) -> RealtimeBatch:
+        """Return a replay batch suitable for SSE/WebSocket reconnect semantics."""
         self._token(resource_type, "resource_type")
         if resource_id is not None:
             self._token(resource_id, "resource_id")
@@ -92,33 +144,74 @@ class WebAppRealtimeRuntime:
         if batch_limit < 1 or batch_limit > self._max_batch:
             raise WebAppRealtimeRuntimeError("INVALID_LIMIT", "limit outside bounded range")
         self._authorize_subscription(principal, resource_type, now)
+
         with self._lock:
             snapshot = tuple(self._events)
             latest_sequence = self._sequence
-        if snapshot and after_sequence < snapshot[0].sequence - 1:
-            raise WebAppRealtimeRuntimeError("STALE_CURSOR", "realtime cursor predates retained history; full refresh required", 409)
-        matching = tuple(event for event in snapshot if event.sequence > after_sequence and event.tenant_id == principal.tenant_id and event.resource_type == resource_type and (resource_id is None or event.resource_id == resource_id))
-        return RealtimeBatch(events=matching[:batch_limit], latest_sequence=latest_sequence, has_more=len(matching) > batch_limit)
 
-    def _authorize_subscription(self, principal: Principal, resource_type: str, now: datetime) -> None:
-        self._crud.list(principal=principal, resource_type=resource_type, now=now, offset=0, limit=1, sort_field="resource_id")
+        if snapshot and after_sequence < snapshot[0].sequence - 1:
+            raise WebAppRealtimeRuntimeError(
+                "STALE_CURSOR",
+                "realtime cursor predates retained history; full refresh required",
+                409,
+            )
+        matching = tuple(
+            event
+            for event in snapshot
+            if event.sequence > after_sequence
+            and event.tenant_id == principal.tenant_id
+            and event.resource_type == resource_type
+            and (resource_id is None or event.resource_id == resource_id)
+        )
+        return RealtimeBatch(
+            events=matching[:batch_limit],
+            latest_sequence=latest_sequence,
+            has_more=len(matching) > batch_limit,
+        )
+
+    def _authorize_subscription(
+        self, principal: Principal, resource_type: str, now: datetime
+    ) -> None:
+        self._crud.list(
+            principal=principal,
+            resource_type=resource_type,
+            now=now,
+            offset=0,
+            limit=1,
+            sort_field="resource_id",
+        )
 
     @staticmethod
-    def _event_id(sequence: int, tenant_id: str, resource_type: str, resource_id: str, event_type: RealtimeEventType, occurred_at: str) -> str:
-        raw = "|".join((str(sequence), tenant_id, resource_type, resource_id, event_type, occurred_at)).encode("utf-8")
+    def _event_id(
+        sequence: int,
+        tenant_id: str,
+        resource_type: str,
+        resource_id: str,
+        event_type: RealtimeEventType,
+        occurred_at: str,
+    ) -> str:
+        raw = "|".join(
+            (str(sequence), tenant_id, resource_type, resource_id, event_type, occurred_at)
+        ).encode("utf-8")
         return hashlib.sha256(raw).hexdigest()
 
     @staticmethod
     def _token(value: str, label: str) -> None:
-        if not value or len(value) > 120 or not all(character.isalnum() or character in "-_.:" for character in value):
+        if not value or len(value) > 120 or not all(
+            character.isalnum() or character in "-_.:" for character in value
+        ):
             raise WebAppRealtimeRuntimeError("INVALID_TOKEN", f"invalid {label}")
 
     @staticmethod
     def _payload(payload: dict[str, object]) -> None:
         try:
-            encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+            encoded = json.dumps(
+                payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+            ).encode("utf-8")
         except (TypeError, ValueError) as exc:
-            raise WebAppRealtimeRuntimeError("INVALID_PAYLOAD", "payload must be JSON serializable") from exc
+            raise WebAppRealtimeRuntimeError(
+                "INVALID_PAYLOAD", "payload must be JSON serializable"
+            ) from exc
         if len(encoded) > 64 * 1024:
             raise WebAppRealtimeRuntimeError("PAYLOAD_TOO_LARGE", "payload exceeds 64 KiB")
 
@@ -129,4 +222,10 @@ class WebAppRealtimeRuntime:
         return value.astimezone(timezone.utc).isoformat()
 
 
-__all__ = ["RealtimeBatch", "RealtimeEvent", "RealtimeEventType", "WebAppRealtimeRuntime", "WebAppRealtimeRuntimeError"]
+__all__ = [
+    "RealtimeBatch",
+    "RealtimeEvent",
+    "RealtimeEventType",
+    "WebAppRealtimeRuntime",
+    "WebAppRealtimeRuntimeError",
+]
