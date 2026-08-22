@@ -183,6 +183,7 @@ void main() {
     final connect = find.byKey(const ValueKey('settings-provider-connect-google'));
     expect(connect, findsOneWidget);
     expect(tester.widget<OutlinedButton>(connect).onPressed, isNull);
+    expect(find.text('Unavailable'), findsOneWidget);
   });
 
   testWidgets('Settings provider callback failure is visible and truthful', (
