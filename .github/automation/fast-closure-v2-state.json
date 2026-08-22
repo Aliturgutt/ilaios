@@ -1,131 +1,27 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-22T15:30:00Z",
+  "updated_at": "2026-08-22T15:42:00Z",
   "merge_token": {
-    "state": "PRE_MERGE_VALIDATION",
+    "state": "EXACT_MASTER_VALIDATION",
     "owner": "identity",
-    "reserved_master_sha": "036ed4631b1c85cf43b95112c8c97867eac3b3d9",
+    "reserved_master_sha": "ee9473a016f1628e922bfd4daf66e2d702137441",
     "candidate_pr": 885,
     "candidate_head_sha": "395b2444449cf2e46d0b5d761a5f562ba608b332",
     "freeze_active": true,
-    "freeze_reason": "Identity owns the bounded merge window; PR #885 is replayed on the reserved master and fresh exact-head Required CI is pending while SFFE/controller validation already pass."
+    "freeze_reason": "Identity PR #885 merged with expected-head protection; token remains held only for exact-master Required CI + Software Factory evidence before Phase 4 verification."
   },
-  "scheduler_stagger": {
-    "desktop": 0,
-    "unified": 12,
-    "identity": 24,
-    "web_app": 36,
-    "agents": 48
-  },
+  "scheduler_stagger": {"desktop":0,"unified":12,"identity":24,"web_app":36,"agents":48},
   "workstreams": {
-    "desktop": {
-      "scheduler": "desktop",
-      "lifecycle": "DEVELOPING",
-      "priority_rank": 1,
-      "authoritative_issue": 539,
-      "active_pr": 883,
-      "base_sha": "4eee882dd1a27bbc25a35554c6927e74194b042b",
-      "head_sha": null,
-      "blocked_reason": null,
-      "next_action": "Continue bounded Settings visual-truth development/CI; do not merge during Identity freeze."
-    },
-    "video_native_reference": {
-      "scheduler": "unified",
-      "lifecycle": "DEVELOPING",
-      "priority_rank": 2,
-      "authoritative_issue": null,
-      "active_pr": null,
-      "base_sha": null,
-      "head_sha": null,
-      "blocked_reason": null,
-      "next_action": "Continue only dependency-ready bounded Video work; do not merge during Identity freeze."
-    },
-    "website_v2": {
-      "scheduler": "unified",
-      "lifecycle": "EXACT_MASTER_VERIFY",
-      "priority_rank": 3,
-      "authoritative_issue": null,
-      "active_pr": 882,
-      "base_sha": "4eee882dd1a27bbc25a35554c6927e74194b042b",
-      "head_sha": "758c5ca60e276185879cc6e84982c0792968742d",
-      "blocked_reason": null,
-      "next_action": "Consume exact-master production certification evidence for merge SHA 036ed4631b1c85cf43b95112c8c97867eac3b3d9; no unrelated merge token hold."
-    },
-    "identity": {
-      "scheduler": "identity",
-      "lifecycle": "CI_RUNNING",
-      "priority_rank": 4,
-      "authoritative_issue": null,
-      "active_pr": 885,
-      "base_sha": "036ed4631b1c85cf43b95112c8c97867eac3b3d9",
-      "head_sha": "395b2444449cf2e46d0b5d761a5f562ba608b332",
-      "blocked_reason": null,
-      "next_action": "Wait for fresh Required CI on exact head; if PASS re-read master/token and expected-head merge, then exact-master verify before Phase 5."
-    },
-    "web_app": {
-      "scheduler": "web_app",
-      "lifecycle": "DEVELOPING",
-      "priority_rank": 5,
-      "authoritative_issue": 486,
-      "active_pr": null,
-      "base_sha": null,
-      "head_sha": null,
-      "blocked_reason": null,
-      "next_action": "Continue authoritative current phase and prepare merge-ready evidence without merging during Identity freeze."
-    },
-    "agents": {
-      "scheduler": "agents",
-      "lifecycle": "DEVELOPING",
-      "priority_rank": 6,
-      "authoritative_issue": 557,
-      "active_pr": null,
-      "base_sha": null,
-      "head_sha": null,
-      "blocked_reason": null,
-      "next_action": "Continue current canonical Agent closure and evidence preparation without merging during Identity freeze."
-    },
-    "app_factory": {
-      "scheduler": "unified",
-      "lifecycle": "DEVELOPING",
-      "priority_rank": 7,
-      "authoritative_issue": 547,
-      "active_pr": null,
-      "base_sha": null,
-      "head_sha": null,
-      "blocked_reason": null,
-      "next_action": "Continue dependency-ready bounded App Factory work while respecting Identity merge freeze."
-    },
-    "mobile_store": {
-      "scheduler": "unified",
-      "lifecycle": "DEVELOPING",
-      "priority_rank": 8,
-      "authoritative_issue": 502,
-      "active_pr": null,
-      "base_sha": null,
-      "head_sha": null,
-      "blocked_reason": null,
-      "next_action": "Continue safe repository-owned Mobile Store work and checkpoint external blockers."
-    },
-    "microsoft_store": {
-      "scheduler": "unified",
-      "lifecycle": "DEVELOPING",
-      "priority_rank": 9,
-      "authoritative_issue": null,
-      "active_pr": null,
-      "base_sha": null,
-      "head_sha": null,
-      "blocked_reason": null,
-      "next_action": "Consume exact-master Desktop package evidence; do not duplicate Desktop builds or auto-submit."
-    }
+    "desktop":{"scheduler":"desktop","lifecycle":"DEVELOPING","priority_rank":1,"authoritative_issue":539,"active_pr":883,"base_sha":"4eee882dd1a27bbc25a35554c6927e74194b042b","head_sha":null,"blocked_reason":null,"next_action":"Continue bounded Settings visual-truth work; do not merge during Identity exact-master freeze."},
+    "video_native_reference":{"scheduler":"unified","lifecycle":"DEVELOPING","priority_rank":2,"authoritative_issue":null,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Continue dependency-ready bounded work; do not merge during Identity exact-master freeze."},
+    "website_v2":{"scheduler":"unified","lifecycle":"EXACT_MASTER_VERIFY","priority_rank":3,"authoritative_issue":null,"active_pr":882,"base_sha":"4eee882dd1a27bbc25a35554c6927e74194b042b","head_sha":"758c5ca60e276185879cc6e84982c0792968742d","blocked_reason":null,"next_action":"Consume production certification evidence; no merge-token hold."},
+    "identity":{"scheduler":"identity","lifecycle":"EXACT_MASTER_VERIFY","priority_rank":4,"authoritative_issue":null,"active_pr":885,"base_sha":"036ed4631b1c85cf43b95112c8c97867eac3b3d9","head_sha":"395b2444449cf2e46d0b5d761a5f562ba608b332","blocked_reason":null,"next_action":"Require exact-master Required CI + Software Factory evidence on ee9473a016f1628e922bfd4daf66e2d702137441; then mark Phase 4 VERIFIED, release token, and start Phase 5 GitHub OAuth development."},
+    "web_app":{"scheduler":"web_app","lifecycle":"DEVELOPING","priority_rank":5,"authoritative_issue":486,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Continue bounded development without merging during Identity freeze."},
+    "agents":{"scheduler":"agents","lifecycle":"DEVELOPING","priority_rank":6,"authoritative_issue":557,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Continue bounded development/evidence without merging during Identity freeze."},
+    "app_factory":{"scheduler":"unified","lifecycle":"DEVELOPING","priority_rank":7,"authoritative_issue":547,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Continue bounded work while respecting Identity freeze."},
+    "mobile_store":{"scheduler":"unified","lifecycle":"DEVELOPING","priority_rank":8,"authoritative_issue":502,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Continue safe repository-owned work and checkpoint external blockers."},
+    "microsoft_store":{"scheduler":"unified","lifecycle":"DEVELOPING","priority_rank":9,"authoritative_issue":null,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Consume exact-master Desktop package evidence; do not duplicate builds or auto-submit."}
   },
-  "metrics": {
-    "master_advances": 1,
-    "stale_pass_invalidations": 1,
-    "replay_resync_count": 1,
-    "ci_cycles": 1,
-    "successful_merges": 0,
-    "duplicate_pr_count": 0,
-    "churn_only_commit_count": 0
-  }
+  "metrics":{"master_advances":1,"stale_pass_invalidations":1,"replay_resync_count":1,"ci_cycles":1,"successful_merges":1,"duplicate_pr_count":0,"churn_only_commit_count":0}
 }
