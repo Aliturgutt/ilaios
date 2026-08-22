@@ -8,6 +8,7 @@ from services.app_design_system_spec import (
     AppDesignSystemSpecError,
     ColorToken,
     ComponentVariant,
+    DesignSystemSpec,
     TypographyToken,
     build_design_system_spec,
 )
@@ -89,7 +90,7 @@ def _components() -> tuple[ComponentVariant, ...]:
     )
 
 
-def _build(**overrides: object):
+def _build(**overrides: object) -> DesignSystemSpec:
     values: dict[str, object] = {
         "product_spec": _product_spec(),
         "ux_ia": _ux(),
