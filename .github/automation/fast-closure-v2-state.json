@@ -1,0 +1,131 @@
+{
+  "schema_version": 1,
+  "mode": "FAST_CLOSURE_V2",
+  "updated_at": "2026-08-22T13:56:00Z",
+  "merge_token": {
+    "state": "AVAILABLE",
+    "owner": null,
+    "reserved_master_sha": null,
+    "candidate_pr": null,
+    "candidate_head_sha": null,
+    "freeze_active": false,
+    "freeze_reason": null
+  },
+  "scheduler_stagger": {
+    "desktop": 0,
+    "unified": 12,
+    "identity": 24,
+    "web_app": 36,
+    "agents": 48
+  },
+  "workstreams": {
+    "desktop": {
+      "scheduler": "desktop",
+      "lifecycle": "DEVELOPING",
+      "priority_rank": 1,
+      "authoritative_issue": 539,
+      "active_pr": null,
+      "base_sha": null,
+      "head_sha": null,
+      "blocked_reason": null,
+      "next_action": "Re-read live Desktop truth and continue the authoritative bounded closure candidate."
+    },
+    "video_native_reference": {
+      "scheduler": "unified",
+      "lifecycle": "DEVELOPING",
+      "priority_rank": 2,
+      "authoritative_issue": null,
+      "active_pr": null,
+      "base_sha": null,
+      "head_sha": null,
+      "blocked_reason": null,
+      "next_action": "Re-read live Video certification truth and continue only dependency-ready bounded work."
+    },
+    "website_v2": {
+      "scheduler": "unified",
+      "lifecycle": "DEVELOPING",
+      "priority_rank": 3,
+      "authoritative_issue": null,
+      "active_pr": null,
+      "base_sha": null,
+      "head_sha": null,
+      "blocked_reason": null,
+      "next_action": "Re-read live Website production evidence and continue safe closure work."
+    },
+    "identity": {
+      "scheduler": "identity",
+      "lifecycle": "DEVELOPING",
+      "priority_rank": 4,
+      "authoritative_issue": null,
+      "active_pr": null,
+      "base_sha": null,
+      "head_sha": null,
+      "blocked_reason": null,
+      "next_action": "Continue dependency-order identity closure without merging during a higher-priority freeze."
+    },
+    "web_app": {
+      "scheduler": "web_app",
+      "lifecycle": "DEVELOPING",
+      "priority_rank": 5,
+      "authoritative_issue": 486,
+      "active_pr": null,
+      "base_sha": null,
+      "head_sha": null,
+      "blocked_reason": null,
+      "next_action": "Continue the authoritative current phase and prepare merge-ready evidence."
+    },
+    "agents": {
+      "scheduler": "agents",
+      "lifecycle": "DEVELOPING",
+      "priority_rank": 6,
+      "authoritative_issue": 557,
+      "active_pr": null,
+      "base_sha": null,
+      "head_sha": null,
+      "blocked_reason": null,
+      "next_action": "Continue current canonical Agent closure and evidence preparation."
+    },
+    "app_factory": {
+      "scheduler": "unified",
+      "lifecycle": "DEVELOPING",
+      "priority_rank": 7,
+      "authoritative_issue": 547,
+      "active_pr": null,
+      "base_sha": null,
+      "head_sha": null,
+      "blocked_reason": null,
+      "next_action": "Continue dependency-ready bounded App Factory work while respecting merge-token priority."
+    },
+    "mobile_store": {
+      "scheduler": "unified",
+      "lifecycle": "DEVELOPING",
+      "priority_rank": 8,
+      "authoritative_issue": 502,
+      "active_pr": null,
+      "base_sha": null,
+      "head_sha": null,
+      "blocked_reason": null,
+      "next_action": "Continue safe repository-owned Mobile Store work and checkpoint external blockers."
+    },
+    "microsoft_store": {
+      "scheduler": "unified",
+      "lifecycle": "DEVELOPING",
+      "priority_rank": 9,
+      "authoritative_issue": null,
+      "active_pr": null,
+      "base_sha": null,
+      "head_sha": null,
+      "blocked_reason": null,
+      "next_action": "Consume exact-master Desktop package evidence; do not duplicate Desktop builds or auto-submit."
+    }
+  },
+  "metrics": {
+    "master_advances": 0,
+    "stale_pass_invalidations": 0,
+    "replay_resync_count": 0,
+    "ci_cycles": 0,
+    "successful_merges": 0,
+    "duplicate_pr_count": 0,
+    "churn_only_commit_count": 0
+  }
+}
