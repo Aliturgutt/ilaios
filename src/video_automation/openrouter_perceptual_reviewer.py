@@ -207,8 +207,9 @@ class OpenRouterPerceptualReviewer:
                 "schema": schema,
             },
         }
+        endpoint = f"{self._base_url}/chat/completions"
         response = self._transport.post_json(
-            f"{self._base_url}/chat/completions",
+            endpoint,
             headers=headers,
             body=strict_body,
             timeout_seconds=self._timeout_seconds,
@@ -216,7 +217,7 @@ class OpenRouterPerceptualReviewer:
         review_route = "json-schema"
         if response.status_code in _RETRYABLE_CAPABILITY_STATUS_CODES:
             response = self._transport.post_json(
-                f"{self._base_url}/chat/completions",
+                endpoint,
                 headers=headers,
                 body=base_body,
                 timeout_seconds=self._timeout_seconds,
@@ -226,7 +227,23 @@ class OpenRouterPerceptualReviewer:
             raise OpenRouterPerceptualReviewError(
                 f"OpenRouter perceptual review failed with HTTP {response.status_code}"
             )
-        result = _extract_review(response.payload)
+        try:
+            result = _extract_review(response.payload)
+        except OpenRouterPerceptualReviewError as exc:
+            if review_route != "prompt-json-fallback" or str(exc) != "review content is not valid JSON":
+                raise
+            response = self._transport.post_json(
+                endpoint,
+                headers=headers,
+                body=base_body,
+                timeout_seconds=self._timeout_seconds,
+            )
+            if not 200 <= response.status_code < 300:
+                raise OpenRouterPerceptualReviewError(
+                    f"OpenRouter perceptual review failed with HTTP {response.status_code}"
+                )
+            result = _extract_review(response.payload)
+            review_route = "prompt-json-fallback-retry"
         score = result["score"]
         assert isinstance(score, float)
         detail = result["detail"]
