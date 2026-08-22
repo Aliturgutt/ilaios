@@ -2,6 +2,7 @@ from __future__ import annotations
 
 # Final Agent closure exact-master recertification trigger; no test behavior change.
 # Agent closure exact-master co-certification trigger; no test behavior change.
+# Final current-master Operations/Meta recertification trigger; no test behavior change.
 import pytest
 
 from services.agent_registry import INDEPENDENT_VERIFIER_ID, registration_for
