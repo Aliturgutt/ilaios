@@ -31,6 +31,7 @@ from services.ai_governance import (
 )
 from services.p0_ai_provider_config import P0AIProviderConfiguration
 from services.runtime.ai_provider_adapter import (
+    AIProviderTransportError,
     GovernedAIProviderAdapter,
     OpenAICompatibleTransport,
     ProviderEndpoint,
@@ -86,7 +87,7 @@ class _StrictOpenRouterTransport(OpenAICompatibleTransport):
             max_retries=endpoint.max_retries,
             requires_api_key=endpoint.requires_api_key,
         )
-        return super().complete(
+        result = super().complete(
             wire_endpoint,
             api_key=api_key,
             model_id=model_id,
@@ -96,6 +97,12 @@ class _StrictOpenRouterTransport(OpenAICompatibleTransport):
             response_format=response_format,
             require_parameters=True,
         )
+        if result.output_tokens > max_output_tokens:
+            raise AIProviderTransportError(
+                "OpenRouter downstream exceeded the required output-token ceiling",
+                retryable=True,
+            )
+        return result
 
 
 class _TenantTemplateUsageGovernor(UsageGovernor):
