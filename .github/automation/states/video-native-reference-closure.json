@@ -1,0 +1,47 @@
+{
+  "schema_version": "ilaios.execution-controller.v1",
+  "task_id": "video-native-reference-closure",
+  "task_source": {
+    "type": "repo_ledger_plus_live_provider_certification",
+    "reference": "Video Native Reference production certification closure"
+  },
+  "status": "IN_PROGRESS",
+  "current_phase": "provider-cost-evidence-repair",
+  "master_sha": "c55b4c9d0e9c9821600fdab806304d271c4670f7",
+  "base_sha": "c55b4c9d0e9c9821600fdab806304d271c4670f7",
+  "head_sha": "4bec0617357cdb8bccf090eb4961e4a32a26e03d",
+  "branch": "video/native-reference-cost-current-c55b4c9",
+  "pr": null,
+  "ci": {
+    "run_id": null,
+    "conclusion": "pending",
+    "exact_sha": "4bec0617357cdb8bccf090eb4961e4a32a26e03d"
+  },
+  "next_action": "Open current-master successor PR, bind its exact head, require fresh exact-head Required CI, Software Factory Final Evidence, Desktop Windows and controller-state validation; re-read live master; merge only if current and non-overlapping; then run exact-master real provider certification.",
+  "blocker": {
+    "type": "CI",
+    "detail": "Fresh current-master successor requires exact-head validation before merge.",
+    "human_action": null
+  },
+  "repair": {
+    "retry_count": 8,
+    "last_failure_fingerprint": "stale-exact-head-after-master-advance",
+    "last_root_cause": "PR #834 became stale when App Factory UX/IA PR #830 advanced master to c55b4c9 through non-overlapping paths; stale PASS cannot be reused."
+  },
+  "lock": {
+    "owner": "ILAIOS Unified Closure",
+    "scope": [
+      "src/video_automation/openrouter_managed_video_runtime.py",
+      "tests/test_video_automation_openrouter_managed_video_runtime.py",
+      ".github/automation/states/video-native-reference-closure.json"
+    ],
+    "acquired_at": "2026-08-22T08:30:00+03:00",
+    "expires_at": "2026-08-22T09:30:00+03:00"
+  },
+  "evidence": [
+    "PR #834 carried the reviewed provider-cost evidence repair on cd9ef684",
+    "current master c55b4c9 contains App Factory UX/IA merge and does not modify the bounded Video runtime/test paths",
+    "reviewed Video runtime and regression tests replayed onto branch rooted at exact c55b4c9"
+  ],
+  "updated_at": "2026-08-22T08:30:00+03:00"
+}
