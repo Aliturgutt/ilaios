@@ -14,6 +14,7 @@ from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
+from services.cloudflare_reference_relay import CloudflareReferenceRelayClient
 from services.evidence import EvidenceStore
 from services.governance import GovernedRuntimeGateway
 from services.reference_assets import ReferenceAssetStore
@@ -38,6 +39,8 @@ _VERIFIED_FREE = "verified-free"
 _MANAGED_BOUNDED = "managed-bounded"
 _MAX_MANAGED_DESKTOP_BUDGET_USD = Decimal("1.00")
 _DEFAULT_MANAGED_MODEL_ID = "bytedance/seedance-2.0-fast"
+_LEGACY_RELAY_PROTOCOL = "legacy-json-v1"
+_CLOUDFLARE_RELAY_PROTOCOL = "cloudflare-r2-d1-v1"
 
 
 @dataclass(frozen=True, slots=True)
@@ -178,6 +181,10 @@ def _managed_budget() -> Decimal:
 def _reference_relay_from_environment(mode: str) -> ReferenceRelay | None:
     upload_url = os.environ.get("ILAIOS_REFERENCE_RELAY_UPLOAD_URL", "").strip()
     upload_token = os.environ.get("ILAIOS_REFERENCE_RELAY_UPLOAD_TOKEN", "").strip()
+    protocol = os.environ.get(
+        "ILAIOS_REFERENCE_RELAY_PROTOCOL",
+        _LEGACY_RELAY_PROTOCOL,
+    ).strip()
     if not upload_url and not upload_token:
         return None
     if not upload_url or not upload_token:
@@ -188,10 +195,22 @@ def _reference_relay_from_environment(mode: str) -> ReferenceRelay | None:
         raise VideoRuntimeError(
             "native reference relay is supported only in explicit managed-bounded mode"
         )
+    if protocol not in {_LEGACY_RELAY_PROTOCOL, _CLOUDFLARE_RELAY_PROTOCOL}:
+        raise VideoRuntimeError("native reference relay protocol is unsupported")
     try:
+        if protocol == _CLOUDFLARE_RELAY_PROTOCOL:
+            relay = CloudflareReferenceRelayClient(
+                upload_url=upload_url,
+                bearer_token=upload_token,
+            )
+            if not relay.ready():
+                raise VideoRuntimeError("native reference relay readiness check failed")
+            return relay
         return HttpReferenceRelayClient(
             upload_url=upload_url,
             bearer_token=upload_token,
         )
+    except VideoRuntimeError:
+        raise
     except Exception as error:
         raise VideoRuntimeError("native reference relay configuration is invalid") from error
