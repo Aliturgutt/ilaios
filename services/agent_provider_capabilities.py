@@ -4,6 +4,7 @@ This module does not route work. It only defines which canonical agent capabilit
 may be advertised by the existing governed AI provider adapter as agent teams are
 wired into the single runtime.
 """
+# Final current-master Agent closure recertification trigger; no capability behavior change.
 from __future__ import annotations
 
 from services.media_intelligence_agent_execution import (
