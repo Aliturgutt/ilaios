@@ -7,20 +7,20 @@
   },
   "status": "IN_PROGRESS",
   "current_phase": "ERROR_PRESENTATION_AND_STATUS_SEMANTICS",
-  "master_sha": "04ec0271557d42c6598519c0fea287478ad3b4ae",
-  "base_sha": "04ec0271557d42c6598519c0fea287478ad3b4ae",
-  "head_sha": "a2fe2c309718108206b6d10de1a2593a215cd2b3",
+  "master_sha": "87d7a802e5d10074aa71f25cb9b0a3d7b279f46f",
+  "base_sha": "87d7a802e5d10074aa71f25cb9b0a3d7b279f46f",
+  "head_sha": "c10823913b8625d169f9be5aced92b4c4b0eceb3",
   "branch": "desktop/ui-consistency-04ec0271",
-  "pr": null,
+  "pr": 793,
   "ci": {
     "run_id": null,
-    "conclusion": "PENDING_FRESH_UI_PHASE_CI",
-    "exact_sha": "a2fe2c309718108206b6d10de1a2593a215cd2b3"
+    "conclusion": "PENDING_FRESH_UI_PHASE_CI_AFTER_CURRENT_MASTER_RESYNC",
+    "exact_sha": "c10823913b8625d169f9be5aced92b4c4b0eceb3"
   },
-  "next_action": "Open the bounded current-master UI PR, require fresh targeted Flutter plus full Desktop/Windows/MSIX/Combined/Surface/SFFE/Required CI evidence, inspect real failures, then continue status vocabulary/KPI/empty-state/grid/disabled-action/status-bar/Home-spacing deltas in dependency order only after each bounded delta is green.",
+  "next_action": "Require a fresh exact-head gate set after the current-master resync; if green, immediately re-read master, compare overlap, merge PR #793 with expected-head protection only if still current, then verify exact-master evidence before continuing to status vocabulary and KPI hierarchy.",
   "blocker": {
     "type": "CI",
-    "detail": "Packaged sidecar lifecycle root cause is repaired and exact-head runtime/Required/Desktop gates passed on PR #784; UI presentation phase has started on exact current master and requires fresh validation before promotion.",
+    "detail": "PR #793 previous head passed the required gate set, but master advanced. Non-overlapping master drift was resynced through PR #805; fresh exact-head evidence is mandatory before merge.",
     "human_action": null
   },
   "repair": {
@@ -43,8 +43,8 @@
       "apps/desktop/test/*locale*",
       ".github/automation/states/desktop-one-zip-runtime-closure.json"
     ],
-    "acquired_at": "2026-08-22T00:18:00Z",
-    "expires_at": "2026-08-22T02:18:00Z"
+    "acquired_at": "2026-08-22T02:38:00Z",
+    "expires_at": "2026-08-22T04:38:00Z"
   },
   "evidence": [
     "issue:539",
@@ -70,7 +70,10 @@
     "ui-phase-base:04ec0271557d42c6598519c0fea287478ad3b4ae",
     "ui-status-helper:9071972a0b2172b5fe01c551cafccd9d1abcffa5",
     "ui-home-localized-status:dfd35b90f88c76c3ab399d21e6f54053bf689884",
-    "ui-status-regression:a2fe2c309718108206b6d10de1a2593a215cd2b3"
+    "ui-status-regression:a2fe2c309718108206b6d10de1a2593a215cd2b3",
+    "ui-pr:793:previous-head:a763660aef9635821e06a76a7303d2b9586ceaae:required-gates-PASS",
+    "master-resync:257b567c6b38b2d1d69d65a11370c225eda72849->87d7a802e5d10074aa71f25cb9b0a3d7b279f46f:no-ui-path-overlap",
+    "sync-pr:805:merged:c10823913b8625d169f9be5aced92b4c4b0eceb3"
   ],
-  "updated_at": "2026-08-22T00:18:00Z"
+  "updated_at": "2026-08-22T02:38:00Z"
 }
