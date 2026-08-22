@@ -1,0 +1,47 @@
+{
+  "schema_version": "ilaios.execution-controller.v1",
+  "task_id": "video-native-reference-closure",
+  "task_source": {
+    "type": "repo_ledger_plus_live_provider_certification",
+    "reference": "Video Native Reference production certification closure"
+  },
+  "status": "IN_PROGRESS",
+  "current_phase": "provider-cost-evidence-repair",
+  "master_sha": "796cae1e4432ec5909621ed1f5c4e99cb584fd93",
+  "base_sha": "796cae1e4432ec5909621ed1f5c4e99cb584fd93",
+  "head_sha": null,
+  "branch": "video/native-reference-cost-796cae1e",
+  "pr": null,
+  "ci": {
+    "run_id": null,
+    "conclusion": "pending",
+    "exact_sha": null
+  },
+  "next_action": "Open exact-current-master successor PR, require fresh Required CI, Software Factory Final Evidence, Desktop Windows and controller-state validation; re-read live master; merge only if current and non-overlapping; then run exact-master real provider certification.",
+  "blocker": {
+    "type": "CI",
+    "detail": "Fresh exact-current-master successor requires exact-head validation before merge.",
+    "human_action": null
+  },
+  "repair": {
+    "retry_count": 9,
+    "last_failure_fingerprint": "stale-exact-head-after-agent-output-reservation-merge",
+    "last_root_cause": "PR #838 exact-head gates passed on c55b4c9d, then non-overlapping Agent PR #840 advanced master to 796cae1e; stale PASS cannot be reused."
+  },
+  "lock": {
+    "owner": "ILAIOS Unified Closure",
+    "scope": [
+      "src/video_automation/openrouter_managed_video_runtime.py",
+      "tests/test_video_automation_openrouter_managed_video_runtime.py",
+      ".github/automation/states/video-native-reference-closure.json"
+    ],
+    "acquired_at": "2026-08-22T09:11:50+03:00",
+    "expires_at": "2026-08-22T10:11:50+03:00"
+  },
+  "evidence": [
+    "PR #838 head 4e1cfd59 passed Required CI 32554653720, Software Factory 32554653586, Desktop Windows 32554653617 and controller validation 32554653587",
+    "master advanced from c55b4c9d to 796cae1e only through Agent output-reservation merge #840; bounded Video runtime/test paths remain unchanged on master",
+    "reviewed provider-cost repair and regression tests replayed onto branch rooted at exact 796cae1e"
+  ],
+  "updated_at": "2026-08-22T09:11:50+03:00"
+}
