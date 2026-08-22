@@ -1,27 +1,27 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-22T19:12:00Z",
+  "updated_at": "2026-08-22T19:21:09Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "website_v2",
     "reserved_master_sha": "3d08defaab04c8034ce24170b7d7196f0d789060",
-    "candidate_pr": 889,
-    "candidate_head_sha": "e45f2578e57fdaf0a139069115c273692af247fa",
+    "candidate_pr": 891,
+    "candidate_head_sha": "ef6aa3703c26acd19ab2df167dcdf4f4e132a886",
     "freeze_active": true,
-    "freeze_reason": "Reclaimed stale Identity exact-master lock after PR #885 was merged and superseded by later verified master advances. Website PR #889 is exact-head green and non-overlapping with master delta; reserve bounded merge window for currentness validation and expected-head merge."
+    "freeze_reason": "PR #889 was exact-head green but branch protection rejected merge after master advanced through non-overlapping #887. Replayed only the reviewed six-file Website delta onto exact current master as successor #891; hold Website merge token until fresh exact-head gates complete."
   },
   "scheduler_stagger": {"desktop":0,"unified":12,"identity":24,"web_app":36,"agents":48},
   "workstreams": {
     "desktop":{"scheduler":"desktop","lifecycle":"DEVELOPING","priority_rank":1,"authoritative_issue":539,"active_pr":888,"base_sha":"1b085352dd52b304423401a88e1b064833e5c3e2","head_sha":null,"blocked_reason":null,"next_action":"Dedicated Desktop worker continues bounded Home motion and package evidence; do not merge during Website freeze."},
     "video_native_reference":{"scheduler":"unified","lifecycle":"DEVELOPING","priority_rank":2,"authoritative_issue":null,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":"Last real provider certification failed semantic quality; requires evidence-driven bounded quality repair before another provider E2E.","next_action":"Inspect latest real certification evidence and prepare only the smallest semantic-quality repair; no blind rerun or threshold reduction."},
-    "website_v2":{"scheduler":"unified","lifecycle":"MERGE_READY","priority_rank":3,"authoritative_issue":null,"active_pr":889,"base_sha":"1b085352dd52b304423401a88e1b064833e5c3e2","head_sha":"e45f2578e57fdaf0a139069115c273692af247fa","blocked_reason":null,"next_action":"Re-read live master, confirm no path/semantic overlap, then expected-head merge #889; require exact-master CI/Vercel plus /api/release and live EN/TR Dark/Light/reduced-motion QA before VERIFIED."},
+    "website_v2":{"scheduler":"unified","lifecycle":"CI_RUNNING","priority_rank":3,"authoritative_issue":null,"active_pr":891,"base_sha":"3d08defaab04c8034ce24170b7d7196f0d789060","head_sha":"ef6aa3703c26acd19ab2df167dcdf4f4e132a886","blocked_reason":null,"next_action":"Consume fresh exact-head Website/Required CI/Software Factory/Product Surface gates on #891; if green, re-read live master/currentness and expected-head merge. After merge require exact-master Vercel plus /api/release and live EN/TR Dark/Light/reduced-motion QA before VERIFIED."},
     "identity":{"scheduler":"identity","lifecycle":"DEVELOPING","priority_rank":4,"authoritative_issue":null,"active_pr":886,"base_sha":"ee9473a016f1628e922bfd4daf66e2d702137441","head_sha":null,"blocked_reason":null,"next_action":"Continue GitHub OAuth Phase 5 development/CI without merging during Website freeze."},
     "web_app":{"scheduler":"web_app","lifecycle":"DEVELOPING","priority_rank":5,"authoritative_issue":486,"active_pr":null,"base_sha":"3d08defaab04c8034ce24170b7d7196f0d789060","head_sha":null,"blocked_reason":null,"next_action":"Current master contains #887 exact-master continuation trigger; dedicated worker proceeds to next dependency-ready Web App phase after consuming its evidence."},
     "agents":{"scheduler":"agents","lifecycle":"DEVELOPING","priority_rank":6,"authoritative_issue":557,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Continue bounded development/evidence without merging during Website freeze."},
-    "app_factory":{"scheduler":"unified","lifecycle":"TOKEN_WAIT","priority_rank":7,"authoritative_issue":547,"active_pr":890,"base_sha":"1b085352dd52b304423401a88e1b064833e5c3e2","head_sha":"ce32378ba62c4012bc3b94581c0d603190f2509b","blocked_reason":"Exact-head Required CI and Software Factory evidence are green; waiting for single-writer token behind Website #889.","next_action":"After Website token release, re-read master/overlap; replay only if required, run fresh exact-head gates if stale, then expected-head merge."},
+    "app_factory":{"scheduler":"unified","lifecycle":"TOKEN_WAIT","priority_rank":7,"authoritative_issue":547,"active_pr":890,"base_sha":"1b085352dd52b304423401a88e1b064833e5c3e2","head_sha":"ce32378ba62c4012bc3b94581c0d603190f2509b","blocked_reason":"Exact-head Required CI and Software Factory evidence are green; waiting for single-writer token behind Website successor #891.","next_action":"After Website token release, re-read master/overlap; replay only if required, run fresh exact-head gates if stale, then expected-head merge."},
     "mobile_store":{"scheduler":"unified","lifecycle":"BLOCKED_INTERNAL","priority_rank":8,"authoritative_issue":502,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":"Phase 3 cannot produce genuine APK/AAB/device evidence until App Factory Stage 4 materializes a real repository-owned Android project/artifact.","next_action":"Preserve existing build/device/store contracts; resume after App Factory Stage 3/4 produces a real Android project and exact binary."},
     "microsoft_store":{"scheduler":"unified","lifecycle":"BLOCKED_INTERNAL","priority_rank":9,"authoritative_issue":539,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":"No exact-current-master Desktop MSIX/package evidence is available for the current master; cross-SHA artifact reuse is forbidden.","next_action":"Consume exact-master Windows/MSIX evidence from the dedicated Desktop lane when available; never auto-submit/publish to Store."}
   },
-  "metrics":{"master_advances":4,"stale_pass_invalidations":2,"replay_resync_count":1,"ci_cycles":3,"successful_merges":3,"duplicate_pr_count":0,"churn_only_commit_count":0}
+  "metrics":{"master_advances":4,"stale_pass_invalidations":3,"replay_resync_count":2,"ci_cycles":4,"successful_merges":3,"duplicate_pr_count":0,"churn_only_commit_count":0}
 }
