@@ -151,6 +151,13 @@ class OperationsMetaProviderBackedExecutor:
         named_executor: NamedAgentExecutor,
         provider_adapter: GovernedAIProviderAdapter,
     ) -> None:
+        # Lazy import avoids a module cycle while keeping skill provisioning
+        # additive and idempotent on the already-composed canonical runtime.
+        from services.operations_meta_agent_skill_catalog import (
+            ensure_operations_meta_agent_skills,
+        )
+
+        ensure_operations_meta_agent_skills(named_executor)
         self._named = named_executor
         self._providers = provider_adapter
 
