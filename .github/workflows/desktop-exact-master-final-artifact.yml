@@ -1,7 +1,8 @@
 name: Desktop Exact Master Final Artifact
 
-# Operational retrigger for final exact-master Desktop package proof.
+# Agent closure exact-master co-certification retrigger for final Desktop package proof.
 # Co-certify Desktop package and evidence-visible Operations/Meta receipt on one exact master revision.
+# Unified Web + Operations/Meta + Desktop exact-master closure co-certification trigger.
 on:
   push:
     branches:
