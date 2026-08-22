@@ -4,6 +4,7 @@ name: ILAIOS Operations Meta Agent Live Certification
 # Co-certify Operations/Meta and Desktop package evidence on one exact master revision.
 # Co-certify exact-master closure on the eventual Desktop evidence merge SHA.
 # Unified Web + Operations/Meta + Desktop exact-master closure co-certification trigger.
+# Final same-SHA Agent and Desktop recertification trigger; no behavior change.
 
 on:
   push:
