@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any, cast
 
 import pytest
 
@@ -11,8 +12,10 @@ from scripts.validate_fast_closure_v2_state import validate
 STATE_PATH = Path(".github/automation/fast-closure-v2-state.json")
 
 
-def load_state() -> dict:
-    return json.loads(STATE_PATH.read_text(encoding="utf-8"))
+def load_state() -> dict[str, Any]:
+    raw = json.loads(STATE_PATH.read_text(encoding="utf-8"))
+    assert isinstance(raw, dict)
+    return cast(dict[str, Any], raw)
 
 
 def test_repository_fast_closure_state_is_valid() -> None:
