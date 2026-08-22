@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+# Agent closure exact-master co-certification trigger; no test behavior change.
 import json
 from datetime import datetime, timezone
 from decimal import Decimal

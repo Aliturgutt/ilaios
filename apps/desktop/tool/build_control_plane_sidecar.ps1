@@ -1,3 +1,4 @@
+# Agent closure exact-master co-certification trigger; no package behavior change.
 param(
   [string]$OutputDirectory = ''
 )
