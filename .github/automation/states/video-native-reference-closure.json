@@ -1,27 +1,33 @@
 {
+  "schema_version": "ilaios.execution-controller.v1",
   "task_id": "video-native-reference-closure",
-  "source": "Video Native Reference production certification closure",
-  "status": "IN_PROGRESS",
-  "phase": "provider-cost-evidence-repair",
-  "master_sha": "8a0118a0abc283315c7d5193567cc1b9960eda29",
-  "base_sha": "8a0118a0abc283315c7d5193567cc1b9960eda29",
-  "head_sha": "0df88004d7bf1a8e31b0b2392d3558e86f5541b0",
-  "branch": "video/native-reference-cost-current-8a0118a0",
-  "pr": 782,
-  "last_ci": {
-    "source_pr": 774,
-    "source_head_sha": "88f59a69c90788c18c399d75dbbe1fef3faff328",
-    "required_ci_run": 32533015359,
-    "required_ci_conclusion": "success",
-    "software_factory_run": 32533015191,
-    "software_factory_conclusion": "success",
-    "desktop_windows_gate_run": 32533015163,
-    "desktop_windows_gate_conclusion": "success"
+  "task_source": {
+    "type": "repo_ledger_plus_live_provider_certification",
+    "reference": "Video Native Reference production certification closure"
   },
-  "next_action": "Require fresh exact-head gates on PR #782, then re-read live master before expected-head merge and run exact-master real provider certification.",
-  "blocker": null,
-  "retry_count": 1,
-  "last_failure_fingerprint": "terminal provider observation is missing usage cost evidence",
+  "status": "IN_PROGRESS",
+  "current_phase": "provider-cost-evidence-repair",
+  "master_sha": "6798dafb3754c082142048e5b7667971b7ab47d6",
+  "base_sha": "6798dafb3754c082142048e5b7667971b7ab47d6",
+  "head_sha": "bcc36a86e96e42fea9ff2532118bfd89fc137649",
+  "branch": "video/native-reference-cost-current-6798dafb",
+  "pr": 792,
+  "ci": {
+    "run_id": 32539456587,
+    "conclusion": "in_progress",
+    "exact_sha": "bcc36a86e96e42fea9ff2532118bfd89fc137649"
+  },
+  "next_action": "Require fresh exact-head Required CI, Software Factory, Desktop Windows and controller-state validation; then re-read live master before expected-head merge and run exact-master real provider certification.",
+  "blocker": {
+    "type": "CI",
+    "detail": "Execution Controller State Validation failed because the prior Video state file predated the canonical execution-controller schema; schema repair is now applied on PR #792 and must be revalidated.",
+    "human_action": null
+  },
+  "repair": {
+    "retry_count": 2,
+    "last_failure_fingerprint": "execution-controller-state:missing schema_version,task_source,current_phase,ci,repair",
+    "last_root_cause": "Video closure state used a legacy ad-hoc shape that became invalid after canonical execution-controller validation was introduced."
+  },
   "lock": {
     "owner": "ILAIOS Unified Closure",
     "scope": [
@@ -29,12 +35,14 @@
       "tests/test_video_automation_openrouter_managed_video_runtime.py",
       ".github/automation/states/video-native-reference-closure.json"
     ],
-    "expires_at": "2026-08-22T03:00:00+03:00"
+    "acquired_at": "2026-08-22T03:05:00+03:00",
+    "expires_at": "2026-08-22T04:05:00+03:00"
   },
   "evidence": [
     "source PR #774 exact-head Required CI, Software Factory Final Evidence and Desktop Windows Gate PASS",
-    "master drift cc0d6861..8a0118a0 has zero overlap with repaired runtime/test paths",
-    "exact-current-master successor PR #782 created"
+    "master drift to 6798dafb has zero overlap with repaired Video runtime/test/state paths",
+    "exact-current-master successor PR #792 created at head bcc36a86e96e42fea9ff2532118bfd89fc137649",
+    "controller-state run 32539456485 failed only on legacy Video state schema shape"
   ],
-  "updated_at": "2026-08-22T01:58:38+03:00"
+  "updated_at": "2026-08-22T03:12:00+03:00"
 }
