@@ -9,18 +9,18 @@
   "current_phase": 7,
   "master_sha": "aa5a85e90c8e6a8fdde28286db4aeb9061295176",
   "base_sha": "aa5a85e90c8e6a8fdde28286db4aeb9061295176",
-  "head_sha": "4bdd5d4c09c6fa17d992e6174c630a23608beb61",
+  "head_sha": "c3530863c05112ed16783ab527655d88565c9bcb",
   "branch": "web/app-phase7-realtime-current-20260822d",
-  "pr": null,
+  "pr": 815,
   "ci": {
     "run_id": null,
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "open current-master Phase 7 successor PR; consume fresh exact-head gates; re-read master and overlap before expected-head merge",
+  "next_action": "consume fresh exact-head gates on PR 815; re-read live master and overlap immediately before expected-head merge",
   "blocker": {
     "type": "CI",
-    "detail": "PR 807 exact-head gates all passed but became stale after master advanced from 87d7a802 to aa5a85e9. The intervening merged Agent/Desktop certification work does not touch the five Phase-7 bounded paths. Reviewed Phase-7 runtime/test/workflow blobs were replayed on exact current master; fresh exact-head gates are required.",
+    "detail": "PR 807 exact-head gates all passed but became stale after master advanced from 87d7a802 to aa5a85e9. Intervening Agent/Desktop certification and workflow-security changes do not overlap the five Phase-7 bounded paths. Reviewed Phase-7 runtime/test/workflow blobs were replayed on exact current master as PR 815; fresh exact-head gates are required.",
     "human_action": null
   },
   "repair": {
@@ -47,8 +47,8 @@
     "phase6-exact-master:software-factory=32533589517 success; required-ci=32533589860 success",
     "phase7-pr:807 stale-head:9f949e2b57f63bc18de2f1b8070d9a84509daaf0 gates:software-factory=32547291619 controller=32547291670 web=32547291625 required-ci=32547291727 success but stale after master advance",
     "master-drift:87d7a802e5d10074aa71f25cb9b0a3d7b279f46f..aa5a85e90c8e6a8fdde28286db4aeb9061295176; merged work is Agent/Desktop certification/workflow-security scope and does not overlap Phase-7 bounded files",
-    "phase7-successor-branch:web/app-phase7-realtime-current-20260822d base=aa5a85e90c8e6a8fdde28286db4aeb9061295176 reviewed_source=PR807 exact-runtime-test-workflow-blobs",
+    "phase7-successor:PR815 branch=web/app-phase7-realtime-current-20260822d base=aa5a85e90c8e6a8fdde28286db4aeb9061295176 reviewed_source=PR807 exact-runtime-test-workflow-blobs",
     "phase16-freeze: preserved; no 3D/Motion/WebGL mutation"
   ],
-  "updated_at": "2026-08-22T03:46:45Z"
+  "updated_at": "2026-08-22T03:49:30Z"
 }
