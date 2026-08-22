@@ -1,27 +1,27 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-22T19:21:09Z",
+  "updated_at": "2026-08-22T21:12:00Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "website_v2",
-    "reserved_master_sha": "3d08defaab04c8034ce24170b7d7196f0d789060",
-    "candidate_pr": 891,
-    "candidate_head_sha": "ef6aa3703c26acd19ab2df167dcdf4f4e132a886",
+    "owner": "app_factory",
+    "reserved_master_sha": "c4a2987afd8d26a5b186bd8dcc701119360840ee",
+    "candidate_pr": 892,
+    "candidate_head_sha": "149a03206e29248a01fb1d373b9d011a1cb83f26",
     "freeze_active": true,
-    "freeze_reason": "PR #889 was exact-head green but branch protection rejected merge after master advanced through non-overlapping #887. Replayed only the reviewed six-file Website delta onto exact current master as successor #891; hold Website merge token until fresh exact-head gates complete."
+    "freeze_reason": "Website successor #891 merged and exact-master Required CI, Software Factory Final Evidence, and Vercel status are green. Transfer the single-writer merge token to fresh current-master App Factory PR #892; Website live /api/release and browser production certification remain evidence work and do not retain merge ownership."
   },
   "scheduler_stagger": {"desktop":0,"unified":12,"identity":24,"web_app":36,"agents":48},
   "workstreams": {
-    "desktop":{"scheduler":"desktop","lifecycle":"DEVELOPING","priority_rank":1,"authoritative_issue":539,"active_pr":888,"base_sha":"1b085352dd52b304423401a88e1b064833e5c3e2","head_sha":null,"blocked_reason":null,"next_action":"Dedicated Desktop worker continues bounded Home motion and package evidence; do not merge during Website freeze."},
+    "desktop":{"scheduler":"desktop","lifecycle":"DEVELOPING","priority_rank":1,"authoritative_issue":539,"active_pr":888,"base_sha":"1b085352dd52b304423401a88e1b064833e5c3e2","head_sha":null,"blocked_reason":null,"next_action":"Dedicated Desktop worker continues bounded Home motion and package evidence; do not overlap Unified product mutations."},
     "video_native_reference":{"scheduler":"unified","lifecycle":"DEVELOPING","priority_rank":2,"authoritative_issue":null,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":"Last real provider certification failed semantic quality; requires evidence-driven bounded quality repair before another provider E2E.","next_action":"Inspect latest real certification evidence and prepare only the smallest semantic-quality repair; no blind rerun or threshold reduction."},
-    "website_v2":{"scheduler":"unified","lifecycle":"CI_RUNNING","priority_rank":3,"authoritative_issue":null,"active_pr":891,"base_sha":"3d08defaab04c8034ce24170b7d7196f0d789060","head_sha":"ef6aa3703c26acd19ab2df167dcdf4f4e132a886","blocked_reason":null,"next_action":"Consume fresh exact-head Website/Required CI/Software Factory/Product Surface gates on #891; if green, re-read live master/currentness and expected-head merge. After merge require exact-master Vercel plus /api/release and live EN/TR Dark/Light/reduced-motion QA before VERIFIED."},
-    "identity":{"scheduler":"identity","lifecycle":"DEVELOPING","priority_rank":4,"authoritative_issue":null,"active_pr":886,"base_sha":"ee9473a016f1628e922bfd4daf66e2d702137441","head_sha":null,"blocked_reason":null,"next_action":"Continue GitHub OAuth Phase 5 development/CI without merging during Website freeze."},
-    "web_app":{"scheduler":"web_app","lifecycle":"DEVELOPING","priority_rank":5,"authoritative_issue":486,"active_pr":null,"base_sha":"3d08defaab04c8034ce24170b7d7196f0d789060","head_sha":null,"blocked_reason":null,"next_action":"Current master contains #887 exact-master continuation trigger; dedicated worker proceeds to next dependency-ready Web App phase after consuming its evidence."},
-    "agents":{"scheduler":"agents","lifecycle":"DEVELOPING","priority_rank":6,"authoritative_issue":557,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Continue bounded development/evidence without merging during Website freeze."},
-    "app_factory":{"scheduler":"unified","lifecycle":"TOKEN_WAIT","priority_rank":7,"authoritative_issue":547,"active_pr":890,"base_sha":"1b085352dd52b304423401a88e1b064833e5c3e2","head_sha":"ce32378ba62c4012bc3b94581c0d603190f2509b","blocked_reason":"Exact-head Required CI and Software Factory evidence are green; waiting for single-writer token behind Website successor #891.","next_action":"After Website token release, re-read master/overlap; replay only if required, run fresh exact-head gates if stale, then expected-head merge."},
+    "website_v2":{"scheduler":"unified","lifecycle":"EXACT_MASTER_VERIFY","priority_rank":3,"authoritative_issue":null,"active_pr":null,"base_sha":"3d08defaab04c8034ce24170b7d7196f0d789060","head_sha":"ef6aa3703c26acd19ab2df167dcdf4f4e132a886","blocked_reason":"Source merge and exact-master CI/Vercel status are green, but live /api/release exact-SHA plus EN/TR Dark/Light/reduced-motion browser QA evidence is still missing.","next_action":"Obtain exact production /api/release attribution for merge SHA c4a2987afd8d26a5b186bd8dcc701119360840ee and complete live ilaios.com/www.ilaios.com EN/TR Dark/Light/reduced-motion QA before VERIFIED."},
+    "identity":{"scheduler":"identity","lifecycle":"DEVELOPING","priority_rank":4,"authoritative_issue":null,"active_pr":886,"base_sha":"ee9473a016f1628e922bfd4daf66e2d702137441","head_sha":null,"blocked_reason":null,"next_action":"Continue GitHub OAuth Phase 5 development/CI without overlapping the active merge token."},
+    "web_app":{"scheduler":"web_app","lifecycle":"DEVELOPING","priority_rank":5,"authoritative_issue":486,"active_pr":null,"base_sha":"3d08defaab04c8034ce24170b7d7196f0d789060","head_sha":null,"blocked_reason":null,"next_action":"Dedicated Web App worker proceeds only on dependency-ready, non-overlapping work and revalidates current master before mutation."},
+    "agents":{"scheduler":"agents","lifecycle":"DEVELOPING","priority_rank":6,"authoritative_issue":557,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Continue bounded development/evidence without overlapping the active merge token."},
+    "app_factory":{"scheduler":"unified","lifecycle":"MERGE_READY","priority_rank":7,"authoritative_issue":547,"active_pr":892,"base_sha":"c4a2987afd8d26a5b186bd8dcc701119360840ee","head_sha":"149a03206e29248a01fb1d373b9d011a1cb83f26","blocked_reason":null,"next_action":"Re-read live master and exact-head Required CI/Software Factory evidence; if current and green, merge #892 with expected-head protection, then require exact-master CI before advancing Stage 3."},
     "mobile_store":{"scheduler":"unified","lifecycle":"BLOCKED_INTERNAL","priority_rank":8,"authoritative_issue":502,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":"Phase 3 cannot produce genuine APK/AAB/device evidence until App Factory Stage 4 materializes a real repository-owned Android project/artifact.","next_action":"Preserve existing build/device/store contracts; resume after App Factory Stage 3/4 produces a real Android project and exact binary."},
     "microsoft_store":{"scheduler":"unified","lifecycle":"BLOCKED_INTERNAL","priority_rank":9,"authoritative_issue":539,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":"No exact-current-master Desktop MSIX/package evidence is available for the current master; cross-SHA artifact reuse is forbidden.","next_action":"Consume exact-master Windows/MSIX evidence from the dedicated Desktop lane when available; never auto-submit/publish to Store."}
   },
-  "metrics":{"master_advances":4,"stale_pass_invalidations":3,"replay_resync_count":2,"ci_cycles":4,"successful_merges":3,"duplicate_pr_count":0,"churn_only_commit_count":0}
+  "metrics":{"master_advances":5,"stale_pass_invalidations":4,"replay_resync_count":3,"ci_cycles":5,"successful_merges":4,"duplicate_pr_count":0,"churn_only_commit_count":0}
 }
