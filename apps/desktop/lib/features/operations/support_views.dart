@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
+import '../../identity/desktop_identity_action_scope.dart';
 import '../../identity/identity_client.dart';
 import 'reference_costs_view_v3.dart';
 import 'reference_settings_view.dart';
@@ -104,11 +105,11 @@ class _SettingsViewState extends State<SettingsView> {
   String? _pendingProviderId;
   String? _error;
 
-  Future<void> _connect(IdentityProviderOption provider) async {
-    final callback = widget.onSignIn;
-    if (callback == null || widget.userSession != null || _pendingProviderId != null) {
-      return;
-    }
+  Future<void> _connect(
+    IdentityProviderOption provider,
+    Future<void> Function(String providerId) callback,
+  ) async {
+    if (widget.userSession != null || _pendingProviderId != null) return;
     setState(() {
       _pendingProviderId = provider.providerId;
       _error = null;
@@ -128,6 +129,8 @@ class _SettingsViewState extends State<SettingsView> {
     final mode = Theme.of(context).brightness == Brightness.dark
         ? ThemeMode.dark
         : ThemeMode.light;
+    final scope = DesktopIdentityActionScope.maybeOf(context);
+    final signIn = widget.onSignIn ?? scope?.onSignIn;
     return Stack(
       children: [
         Positioned.fill(
@@ -149,7 +152,9 @@ class _SettingsViewState extends State<SettingsView> {
               session: widget.userSession,
               pendingProviderId: _pendingProviderId,
               error: _error,
-              onSignIn: widget.onSignIn == null ? null : _connect,
+              onSignIn: signIn == null
+                  ? null
+                  : (provider) => _connect(provider, signIn),
             ),
           ),
       ],
