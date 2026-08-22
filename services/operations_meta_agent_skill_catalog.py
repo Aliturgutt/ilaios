@@ -11,10 +11,7 @@ from dataclasses import dataclass
 
 from services.agent_registry import INDEPENDENT_VERIFIER_ID, registration_for
 from services.named_agent_executor import NamedAgentExecutor
-from services.operations_meta_agent_execution import (
-    OPERATIONS_META_AGENT_BINDINGS,
-    operations_meta_binding_for,
-)
+from services.operations_meta_agent_execution import operations_meta_binding_for
 
 
 class OperationsMetaSkillCatalogError(ValueError):
