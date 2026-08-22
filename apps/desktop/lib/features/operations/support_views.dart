@@ -207,14 +207,27 @@ class _ProviderActions extends StatelessWidget {
                 ),
               ),
             if (error != null)
-              Text(
-                tr ? 'Bağlantı başarısız: $error' : 'Connection failed: $error',
+              Container(
                 key: const Key('settings-provider-error'),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 8,
-                  color: Theme.of(context).colorScheme.error,
+                margin: const EdgeInsets.only(top: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.errorContainer.withValues(alpha: .55),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: Theme.of(context).colorScheme.error.withValues(alpha: .45),
+                  ),
+                ),
+                child: Text(
+                  tr ? 'Bağlantı başarısız: $error' : 'Connection failed: $error',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 9,
+                    height: 1.25,
+                    color: Theme.of(context).colorScheme.onErrorContainer,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
           ],
@@ -242,14 +255,30 @@ class _ProviderActionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tr = Localizations.localeOf(context).languageCode == 'tr';
+    final unavailable = !connected && !pending && !enabled;
     final label = connected
         ? (tr ? 'Bağlı' : 'Connected')
         : pending
             ? (tr ? 'Bağlanıyor…' : 'Connecting…')
-            : (tr ? 'Bağlan' : 'Connect');
+            : unavailable
+                ? (tr ? 'Kullanılamıyor' : 'Unavailable')
+                : (tr ? 'Bağlan' : 'Connect');
+    final semanticLabel = connected
+        ? '${provider.displayName} ${tr ? 'bağlı' : 'connected'}'
+        : pending
+            ? '${provider.displayName} ${tr ? 'bağlanıyor' : 'connecting'}'
+            : unavailable
+                ? '${provider.displayName} ${tr ? 'bağlantısı kullanılamıyor' : 'connection unavailable'}'
+                : '${tr ? 'Bağlan' : 'Connect'} ${provider.displayName}';
     return Row(
       children: [
-        const Icon(Icons.cloud_outlined, size: 13),
+        Icon(
+          connected ? Icons.cloud_done_outlined : Icons.cloud_outlined,
+          size: 13,
+          color: connected
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
@@ -263,14 +292,21 @@ class _ProviderActionRow extends StatelessWidget {
         Semantics(
           button: true,
           enabled: enabled,
-          label: connected
-              ? '${provider.displayName} ${tr ? 'bağlı' : 'connected'}'
-              : '${tr ? 'Bağlan' : 'Connect'} ${provider.displayName}',
+          label: semanticLabel,
           child: SizedBox(
             height: 26,
             child: OutlinedButton(
               key: ValueKey('settings-provider-connect-${provider.providerId}'),
               onPressed: connected || pending || !enabled ? null : onPressed,
+              style: unavailable
+                  ? OutlinedButton.styleFrom(
+                      disabledForegroundColor:
+                          Theme.of(context).colorScheme.onSurfaceVariant.withValues(alpha: .56),
+                      side: BorderSide(
+                        color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: .65),
+                      ),
+                    )
+                  : null,
               child: Text(label, style: const TextStyle(fontSize: 8)),
             ),
           ),
