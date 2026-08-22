@@ -1,5 +1,6 @@
 """Repository-wide deterministic GitHub Actions security audit."""
 
+# Final Agent closure exact-master recertification trigger; no audit behavior change.
 from __future__ import annotations
 
 import argparse
