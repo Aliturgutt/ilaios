@@ -6,27 +6,27 @@
     "reference": "issue:#486 + .github/web-app-factory-closure.json"
   },
   "status": "IN_PROGRESS",
-  "current_phase": 6,
-  "master_sha": "cc0d6861bad92ce6e5e17173a38d4ad5c85654d7",
-  "base_sha": "cc0d6861bad92ce6e5e17173a38d4ad5c85654d7",
-  "head_sha": "46b4c56913e9aea4eac851c490abfbb805cc1eea",
-  "branch": "web/app-phase6-analytics-current-20260822a",
-  "pr": 766,
+  "current_phase": 7,
+  "master_sha": "d2d9eb329437fe0fccf48a7730c0f9a3f0795bc8",
+  "base_sha": "d2d9eb329437fe0fccf48a7730c0f9a3f0795bc8",
+  "head_sha": "af402f68b4042f7637999ef7e1503c9dac57bf6c",
+  "branch": "web/app-phase7-realtime-current-20260822h",
+  "pr": null,
   "ci": {
     "run_id": null,
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "consume fresh exact-head gates after syncing PR 766 onto master cc0d6861; re-read live master immediately before expected-head merge",
+  "next_action": "open the authoritative Phase-7 successor PR on exact d2d9eb32 master, bind the PR number into this state, then require a completely fresh exact-head gate set before merge",
   "blocker": {
     "type": "CI",
-    "detail": "Previous exact-head gates on 46b4c56913e9aea4eac851c490abfbb805cc1eea passed but became stale when zero-diff certification PR #771 advanced master to cc0d6861bad92ce6e5e17173a38d4ad5c85654d7; tree is unchanged and Phase-6 bounded paths have zero overlap, but exact-SHA policy requires fresh gates.",
+    "detail": "PR 850 exact-head Software Factory 32558059233, Execution Controller 32558059236, Web App Factory 32558059244 and Required CI 32558059339 all passed on 169612689d471b927710c9f6dc0fdc16adf57ef5. Live master advanced by 8 commits from 136c077d to d2d9eb32. Compact compare proves changed files are only App DesignSystemSpec and Video native-reference cost/state paths, with zero overlap against the five Phase-7 bounded paths. GitHub nevertheless rejected expected-head merge because Required CI Gate was expected on current ancestry. Prior PASS is therefore stale and the reviewed five-file Phase-7 delta is replayed on exact current master.",
     "human_action": null
   },
   "repair": {
-    "retry_count": 7,
-    "last_failure_fingerprint": "phase6-stale-pass-after-zero-diff-master-cc0d6861",
-    "last_root_cause": "merge evidence invalidated by master commit advancement despite tree equivalence; exact-current-master policy requires resynchronization"
+    "retry_count": 9,
+    "last_failure_fingerprint": "phase7-pr850-repository-rule-required-ci-expected-on-stale-ancestry",
+    "last_root_cause": "repository merge policy requires current-master ancestry/current Required CI despite proven zero path overlap; replayed only the reviewed bounded Phase-7 delta on exact d2d9eb32 master"
   },
   "lock": {
     "owner": "web-app-factory-486",
@@ -34,18 +34,22 @@
       ".github/web-app-factory-closure.json",
       ".github/workflows/web-app-factory-continuation.yml",
       ".github/automation/states/web-app-factory-486.json",
-      "services/web_app_analytics_runtime.py",
-      "tests/test_web_app_analytics_runtime.py"
+      "services/web_app_realtime_runtime.py",
+      "tests/test_web_app_realtime_runtime.py"
     ],
-    "acquired_at": "2026-08-21T22:16:40Z",
-    "expires_at": "2026-08-21T23:16:40Z"
+    "acquired_at": "2026-08-22T07:49:00Z",
+    "expires_at": "2026-08-22T09:49:00Z"
   },
   "evidence": [
     "phase5-merge:7fdfa6453323dec394e3dde084aa5ec8683d77bd exact-master:32504527076,32504527231 success",
-    "phase6-pr:766 stale-head:ec60e6abd3e233389b64e44514b76bd34fb493c4 gates:32530422580,32530422590,32530422726,32530422610 success",
-    "phase6-pr:766 stale-head:46b4c56913e9aea4eac851c490abfbb805cc1eea gates:32532135586,32532135528,32532135623,32532135521 success but stale after master advanced",
-    "master-drift:7631ffaa7b9a497e973393a503b72ae059f3e69e..cc0d6861bad92ce6e5e17173a38d4ad5c85654d7 is zero-diff/tree-equivalent certification merge #771; zero Phase-6 bounded overlap",
+    "phase6-pr:766 exact-head:d156c9bf7861f039bea1ff8b69907219660bccfa gates:32532849804,32532849785,32532849897,32532849762 success",
+    "phase6-merge:cd31fe204202855eea8a0654db0d455ae157c06a expected-head:d156c9bf7861f039bea1ff8b69907219660bccfa",
+    "phase6-exact-master:software-factory=32533589517 success; required-ci=32533589860 success",
+    "phase7-pr:850 stale-head:169612689d471b927710c9f6dc0fdc16adf57ef5 gates:software-factory=32558059233 controller=32558059236 web=32558059244 required-ci=32558059339 success",
+    "master-drift:136c077dbb1ea60e8d3a3b47c5cfeb3a2f53402a..d2d9eb329437fe0fccf48a7730c0f9a3f0795bc8 total_commits=8; files=.github/automation/states/video-native-reference-closure.json,services/app_design_system_spec.py,src/video_automation/openrouter_managed_video_runtime.py,tests/test_app_design_system_spec.py,tests/test_video_automation_openrouter_managed_video_runtime.py; zero overlap with Phase-7 five-file scope",
+    "merge-attempt:PR850 expected-head=169612689d471b927710c9f6dc0fdc16adf57ef5 rejected 405 by repository rule because Required CI Gate was expected on current ancestry; no merge occurred",
+    "phase7-replay:branch=web/app-phase7-realtime-current-20260822h base=d2d9eb329437fe0fccf48a7730c0f9a3f0795bc8 reviewed_source=PR850 five-file delta only",
     "phase16-freeze: preserved; no 3D/Motion/WebGL mutation"
   ],
-  "updated_at": "2026-08-21T22:16:40Z"
+  "updated_at": "2026-08-22T07:49:00Z"
 }
