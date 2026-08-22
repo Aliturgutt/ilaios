@@ -6,27 +6,30 @@ import 'package:ilaios_desktop/features/dashboard/reference_home_motion_surface.
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('Home renders exact closure viewports without geometry regressions', (
+  testWidgets('Home renders closure viewports in both themes without geometry regressions', (
     WidgetTester tester,
   ) async {
-    for (final size in <Size>[
-      const Size(1366, 768),
-      const Size(1440, 900),
-      const Size(1920, 1080),
-    ]) {
-      await tester.binding.setSurfaceSize(size);
-      await tester.pumpWidget(const IlaiosDesktopApp());
-      await tester.pumpAndSettle();
+    for (final mode in <ThemeMode>[ThemeMode.dark, ThemeMode.light]) {
+      for (final size in <Size>[
+        const Size(1366, 768),
+        const Size(1440, 900),
+        const Size(1920, 1080),
+      ]) {
+        await tester.binding.setSurfaceSize(size);
+        await tester.pumpWidget(IlaiosDesktopApp(themeMode: mode));
+        await tester.pump(const Duration(milliseconds: 40));
 
-      expect(tester.takeException(), isNull, reason: 'viewport $size');
-      expect(find.byKey(const Key('command-center-home')), findsOneWidget);
-      expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
-      expect(find.byKey(const Key('reference-bottom-status-v2')), findsOneWidget);
+        expect(tester.takeException(), isNull, reason: '$mode viewport $size');
+        expect(find.byKey(const Key('command-center-home')), findsOneWidget);
+        expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
+        expect(find.byKey(const Key('command-center-orbit-motion')), findsOneWidget);
+        expect(find.byKey(const Key('reference-bottom-status-v2')), findsOneWidget);
+      }
     }
     await tester.binding.setSurfaceSize(null);
   });
 
-  testWidgets('Turkish light Home remains truthful with the motion layer present', (
+  testWidgets('Turkish light Home remains truthful with the layered motion field present', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
@@ -38,7 +41,7 @@ void main() {
         themeMode: ThemeMode.light,
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 40));
 
     expect(tester.takeException(), isNull);
     expect(find.text('Ana Kontrol Merkezi'), findsOneWidget);
@@ -47,7 +50,30 @@ void main() {
     expect(find.textContaining(r'$3.21'), findsNothing);
   });
 
-  testWidgets('platform reduced motion keeps the existing hero static', (
+  testWidgets('live theme switch preserves one motion component and geometry', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const IlaiosDesktopApp(themeMode: ThemeMode.dark));
+    await tester.pump(const Duration(milliseconds: 80));
+    final motionFinder = find.byType(ReferenceHomeMotionSurface);
+    expect(motionFinder, findsOneWidget);
+    final beforeState = tester.state(motionFinder);
+    final beforeRect = tester.getRect(find.byKey(const Key('command-center-orbit-motion')));
+
+    await tester.pumpWidget(const IlaiosDesktopApp(themeMode: ThemeMode.light));
+    await tester.pump(const Duration(milliseconds: 40));
+
+    final afterState = tester.state(motionFinder);
+    final afterRect = tester.getRect(find.byKey(const Key('command-center-orbit-motion')));
+    expect(identical(beforeState, afterState), isTrue);
+    expect(afterRect, beforeRect);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('platform reduced motion freezes a static layered symbol', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
@@ -66,10 +92,11 @@ void main() {
         ),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('static-home-underlay')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-orbit-motion')), findsNothing);
+    expect(find.byKey(const Key('command-center-orbit-motion')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('missing work progress renders an unavailable track, never fake zero', (
@@ -108,7 +135,7 @@ void main() {
         operationalStatus: 'Operational APIs connected',
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 40));
 
     expect(tester.takeException(), isNull);
     expect(find.text('work-without-authoritative-progress'), findsOneWidget);
@@ -166,7 +193,7 @@ void main() {
         operationalStatus: 'Operational APIs connected',
       ),
     );
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 40));
 
     expect(tester.takeException(), isNull);
     expect(find.text('invalid-negative-progress'), findsOneWidget);
