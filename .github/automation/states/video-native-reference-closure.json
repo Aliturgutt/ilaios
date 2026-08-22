@@ -9,18 +9,18 @@
   "current_phase": "provider-cost-evidence-repair",
   "master_sha": "a27424fcceeccff273fe21707dd7dd4e35c2c158",
   "base_sha": "a27424fcceeccff273fe21707dd7dd4e35c2c158",
-  "head_sha": "e9f0696ae140e94afda9f12fdc03fa044cc23cfe",
+  "head_sha": "8a4c015f86782b2b87f73d76262e06abcff47d52",
   "branch": "video/native-reference-cost-current-a27424fc",
-  "pr": null,
+  "pr": 804,
   "ci": {
     "run_id": null,
     "conclusion": "pending",
-    "exact_sha": "e9f0696ae140e94afda9f12fdc03fa044cc23cfe"
+    "exact_sha": "8a4c015f86782b2b87f73d76262e06abcff47d52"
   },
-  "next_action": "Open exact-current-master successor PR; require fresh exact-head Required CI, Software Factory Final Evidence, Desktop Windows and controller-state validation; then re-read live master before expected-head merge and exact-master real provider certification.",
+  "next_action": "Require fresh PR #804 exact-head Required CI, Software Factory Final Evidence, Desktop Windows and controller-state validation; re-read live master; if current and non-overlapping, expected-head merge and run exact-master real provider certification.",
   "blocker": {
     "type": "CI",
-    "detail": "Fresh exact-current-master successor requires new exact-head validation because master advanced after PR #792 passed its gates.",
+    "detail": "PR #804 is the exact-current-master successor and requires fresh exact-head validation before merge.",
     "human_action": null
   },
   "repair": {
@@ -41,7 +41,8 @@
   "evidence": [
     "PR #792 exact-head Required CI, Software Factory Final Evidence, Desktop Windows Gate and Execution Controller State Validation PASS",
     "compare 6798dafb3754c082142048e5b7667971b7ab47d6..a27424fcceeccff273fe21707dd7dd4e35c2c158 shows no overlap with the bounded Video runtime/test/state paths",
-    "reviewed runtime blob f08f6e0f68d2fff5abda78c07b9c2a52057d7453 and test blob 2a7c88e6d994ce9d496bee007df7640266fa4577 replayed unchanged onto exact current master"
+    "reviewed runtime blob f08f6e0f68d2fff5abda78c07b9c2a52057d7453 and test blob 2a7c88e6d994ce9d496bee007df7640266fa4577 replayed unchanged onto exact current master",
+    "PR #804 opened from exact base a27424fcceeccff273fe21707dd7dd4e35c2c158"
   ],
-  "updated_at": "2026-08-22T05:11:17+03:00"
+  "updated_at": "2026-08-22T05:14:00+03:00"
 }
