@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "mode": "FAST_CLOSURE_V2",
+  "updated_at": "2026-08-22T22:11:00Z",
+  "merge_token": {
+    "state": "AVAILABLE",
+    "owner": null,
+    "reserved_master_sha": "b93ebdfb9b5887fe7b691b7d34ce2a4fcc674e9f",
+    "candidate_pr": null,
+    "candidate_head_sha": null,
+    "freeze_active": false,
+    "freeze_reason": null
+  },
+  "scheduler_stagger": {"desktop":0,"unified":12,"identity":24,"web_app":36,"agents":48},
+  "workstreams": {
+    "desktop":{"scheduler":"desktop","lifecycle":"DEVELOPING","priority_rank":1,"authoritative_issue":539,"active_pr":888,"base_sha":"1b085352dd52b304423401a88e1b064833e5c3e2","head_sha":null,"blocked_reason":null,"next_action":"Dedicated Desktop worker continues bounded Home motion and package evidence; do not overlap Unified product mutations."},
+    "video_native_reference":{"scheduler":"unified","lifecycle":"DEVELOPING","priority_rank":2,"authoritative_issue":null,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":"Last real provider certification failed semantic quality; requires evidence-driven bounded quality repair before another provider E2E.","next_action":"Inspect latest real certification evidence and prepare only the smallest semantic-quality repair; no blind rerun or threshold reduction."},
+    "website_v2":{"scheduler":"unified","lifecycle":"EXACT_MASTER_VERIFY","priority_rank":3,"authoritative_issue":null,"active_pr":null,"base_sha":"3d08defaab04c8034ce24170b7d7196f0d789060","head_sha":"ef6aa3703c26acd19ab2df167dcdf4f4e132a886","blocked_reason":"Source merge and exact-master CI/Vercel status are green, but live /api/release exact-SHA plus EN/TR Dark/Light/reduced-motion browser QA evidence is still missing.","next_action":"Obtain exact production /api/release attribution for Website merge SHA c4a2987afd8d26a5b186bd8dcc701119360840ee and complete live ilaios.com/www.ilaios.com EN/TR Dark/Light/reduced-motion QA before VERIFIED."},
+    "identity":{"scheduler":"identity","lifecycle":"DEVELOPING","priority_rank":4,"authoritative_issue":null,"active_pr":893,"base_sha":"c4a2987afd8d26a5b186bd8dcc701119360840ee","head_sha":"df5a9637445b518663b9d193d800b4e56295f976","blocked_reason":null,"next_action":"Merge token is available. Dedicated Identity worker must re-read exact live master and currentness/overlap, replay only if required, rerun fresh exact-head gates, then acquire token before merge."},
+    "web_app":{"scheduler":"web_app","lifecycle":"DEVELOPING","priority_rank":5,"authoritative_issue":486,"active_pr":null,"base_sha":"3d08defaab04c8034ce24170b7d7196f0d789060","head_sha":null,"blocked_reason":null,"next_action":"Dedicated Web App worker proceeds only on dependency-ready, non-overlapping work and revalidates current master before mutation."},
+    "agents":{"scheduler":"agents","lifecycle":"DEVELOPING","priority_rank":6,"authoritative_issue":557,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":null,"next_action":"Continue bounded development/evidence without overlapping any acquired merge token."},
+    "app_factory":{"scheduler":"unified","lifecycle":"DEVELOPING","priority_rank":7,"authoritative_issue":547,"active_pr":null,"base_sha":"c4a2987afd8d26a5b186bd8dcc701119360840ee","head_sha":"149a03206e29248a01fb1d373b9d011a1cb83f26","blocked_reason":null,"next_action":"Exact-master Required CI and Software Factory evidence are green on b93ebdfb9b5887fe7b691b7d34ce2a4fcc674e9f. Continue the next dependency-ready Stage-3 slice from that exact master; do not claim whole Stage 3 VERIFIED yet."},
+    "mobile_store":{"scheduler":"unified","lifecycle":"BLOCKED_INTERNAL","priority_rank":8,"authoritative_issue":502,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":"Phase 3 cannot produce genuine APK/AAB/device evidence until App Factory Stage 4 materializes a real repository-owned Android project/artifact.","next_action":"Preserve existing build/device/store contracts; resume after App Factory Stage 3/4 produces a real Android project and exact binary."},
+    "microsoft_store":{"scheduler":"unified","lifecycle":"BLOCKED_INTERNAL","priority_rank":9,"authoritative_issue":539,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":"No exact-current-master Desktop MSIX/package evidence is available for the current master; cross-SHA artifact reuse is forbidden.","next_action":"Consume exact-master Windows/MSIX evidence from the dedicated Desktop lane when available; never auto-submit/publish to Store."}
+  },
+  "metrics":{"master_advances":6,"stale_pass_invalidations":4,"replay_resync_count":3,"ci_cycles":6,"successful_merges":5,"duplicate_pr_count":0,"churn_only_commit_count":0}
+}
