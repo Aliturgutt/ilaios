@@ -11,6 +11,7 @@ import secrets
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from typing import Protocol
 from urllib.parse import urlencode, urlparse
 
 import requests
@@ -26,6 +27,31 @@ _FLOW_LIFETIME = timedelta(minutes=5)
 
 class GitHubOAuthError(PermissionError):
     """GitHub OAuth configuration, callback, or provider evidence failed closed."""
+
+
+class _HTTPResponse(Protocol):
+    def json(self) -> object: ...
+
+    def raise_for_status(self) -> None: ...
+
+
+class _HTTPSession(Protocol):
+    def post(
+        self,
+        url: str,
+        *,
+        data: Mapping[str, str],
+        headers: Mapping[str, str],
+        timeout: int,
+    ) -> _HTTPResponse: ...
+
+    def get(
+        self,
+        url: str,
+        *,
+        headers: Mapping[str, str],
+        timeout: int,
+    ) -> _HTTPResponse: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,10 +126,10 @@ class GitHubOAuthService:
         self,
         environment: GitHubOAuthEnvironment,
         *,
-        request_session: requests.Session | None = None,
+        request_session: _HTTPSession | None = None,
     ) -> None:
         self._environment = environment
-        self._http = request_session or requests.Session()
+        self._http: _HTTPSession = request_session or requests.Session()
         self._flows: dict[str, _GitHubFlow] = {}
 
     def start(
