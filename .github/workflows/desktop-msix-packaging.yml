@@ -1,5 +1,6 @@
 name: ILAIOS Desktop MSIX Packaging
 # Unified Web + Operations/Meta + Desktop exact-master closure co-certification trigger.
+# Final same-SHA MSIX recertification trigger; no package behavior change.
 
 on:
   push:
