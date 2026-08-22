@@ -1,3 +1,4 @@
+# Agent closure exact-master co-certification trigger; no package behavior change.
 [CmdletBinding()]
 param(
   [Parameter(Mandatory = $true)][string]$SourceSha,

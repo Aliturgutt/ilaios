@@ -26,6 +26,7 @@ _MANUAL_ONLY = frozenset(
 )
 _SECRET_ALLOWED = frozenset(
     {
+        "agent-media-intelligence-live-certification.yml",
         "agent-p0-live-certification.yml",
         "agent-web-live-certification.yml",
         "desktop-msix-signed-release.yml",
@@ -38,6 +39,7 @@ _SECRET_ALLOWED = frozenset(
 )
 _TRUSTED_MASTER_SECRET = frozenset(
     {
+        "agent-media-intelligence-live-certification.yml",
         "agent-p0-live-certification.yml",
         "agent-web-live-certification.yml",
         "operations-meta-agent-live-certification.yml",
