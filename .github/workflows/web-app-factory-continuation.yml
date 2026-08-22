@@ -1,6 +1,19 @@
 name: Web App Factory Continuation Gate
 
 on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'services/web_app_*.py'
+      - 'services/web_reference_semantics.py'
+      - 'services/web_source_*.py'
+      - 'services/control_plane/migrations.py'
+      - 'tests/test_web_app_*.py'
+      - 'tests/test_web_reference_semantics.py'
+      - 'tests/test_web_source_*.py'
+      - '.github/web-app-factory-closure.json'
+      - '.github/workflows/web-app-factory-continuation.yml'
   pull_request:
     branches:
       - master
