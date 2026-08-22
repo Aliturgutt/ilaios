@@ -3,7 +3,7 @@
   "tracking_issue": 502,
   "checkpoint_protocol": "branch-pr-exact-head-ci-merge-next-master",
   "truth_rule": "NO_EVIDENCE_NO_DONE",
-  "base_master_sha": "38719cf8890781a47fa379ea6471380f10215cb9",
+  "base_master_sha": "cd9ef684b2c2de173f393f273de70b6154aaf58d",
   "current_phase": 3,
   "automation_mode": "bounded-zero-spend-non-publication",
   "store_submission_requires_explicit_approval": true,
