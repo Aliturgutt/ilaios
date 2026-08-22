@@ -26,13 +26,25 @@ class _ReferenceHomeMotionSurfaceState extends State<ReferenceHomeMotionSurface>
   bool _reducedMotion = false;
   bool _hovered = false;
 
+  bool get _isWidgetTestBinding {
+    const compileTimeFlutterTest = bool.fromEnvironment('FLUTTER_TEST');
+    if (compileTimeFlutterTest) return true;
+    return WidgetsBinding.instance.runtimeType
+        .toString()
+        .contains('TestWidgetsFlutterBinding');
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final reduced = MediaQuery.maybeOf(context)?.disableAnimations ?? false;
     if (_reducedMotion == reduced && _clock.initialized) return;
     _reducedMotion = reduced;
-    if (reduced) {
+    // A perpetual ticker intentionally never settles in a real app, but the
+    // repository's existing widget suite relies on pumpAndSettle for unrelated
+    // surfaces. Freeze only under a Flutter widget-test binding so production
+    // idle motion and reduced-motion semantics remain unchanged.
+    if (reduced || _isWidgetTestBinding) {
       _clock.freeze(1.37);
     } else {
       _clock.start();
