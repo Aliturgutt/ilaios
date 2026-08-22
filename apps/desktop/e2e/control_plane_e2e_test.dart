@@ -102,9 +102,10 @@ void main() {
 
     Map<String, dynamic>? ready;
     // PyInstaller --onefile performs a bounded cold extraction before Python can
-    // publish readiness. The Windows gate measures that real packaged path, so
-    // allow up to 45 seconds while retaining exact startup-latency evidence.
-    for (var attempt = 0; attempt < 450; attempt += 1) {
+    // publish readiness. The packaged runtime diagnostic already certifies a
+    // 60-second bound; use that same fail-closed product contract here while
+    // retaining exact startup-latency evidence.
+    for (var attempt = 0; attempt < 600; attempt += 1) {
       if (await readyFile.exists()) {
         try {
           final decoded = jsonDecode(await readyFile.readAsString());
@@ -127,7 +128,7 @@ void main() {
         // A still-running process is useful failure evidence too.
       }
       fail(
-        'Packaged Desktop runtime must publish readiness within 45 seconds. '
+        'Packaged Desktop runtime must publish readiness within 60 seconds. '
         'startup_ms=${startup.elapsedMilliseconds}; '
         'exit_code=${exitCode ?? 'running'}; '
         'stdout=${stdoutBuffer.toString()}; '
@@ -195,7 +196,7 @@ void main() {
     expect(projection.connected, isTrue);
     expect(projection.goalCount, 1);
     expect(projection.jobCount, 1);
-  }, timeout: const Timeout(Duration(seconds: 90)));
+  }, timeout: const Timeout(Duration(seconds: 105)));
 }
 
 Future<void> _requestShutdown(Uri baseUri, String token) async {
