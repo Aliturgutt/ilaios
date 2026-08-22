@@ -6,27 +6,27 @@
     "reference": "issue:#486 + .github/web-app-factory-closure.json"
   },
   "status": "IN_PROGRESS",
-  "current_phase": 6,
-  "master_sha": "cc0d6861bad92ce6e5e17173a38d4ad5c85654d7",
-  "base_sha": "cc0d6861bad92ce6e5e17173a38d4ad5c85654d7",
-  "head_sha": "46b4c56913e9aea4eac851c490abfbb805cc1eea",
-  "branch": "web/app-phase6-analytics-current-20260822a",
-  "pr": 766,
+  "current_phase": 7,
+  "master_sha": "b26f6339c1ee353134667ecd46e40d9f133b7596",
+  "base_sha": "b26f6339c1ee353134667ecd46e40d9f133b7596",
+  "head_sha": "587c6154be7ac15b57f33c4b0581871d651bb1e8",
+  "branch": "web/app-phase7-realtime-current-20260822b",
+  "pr": 802,
   "ci": {
     "run_id": null,
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "consume fresh exact-head gates after syncing PR 766 onto master cc0d6861; re-read live master immediately before expected-head merge",
+  "next_action": "consume fresh exact-head gates on PR 802; re-read live master and overlap immediately before expected-head merge",
   "blocker": {
     "type": "CI",
-    "detail": "Previous exact-head gates on 46b4c56913e9aea4eac851c490abfbb805cc1eea passed but became stale when zero-diff certification PR #771 advanced master to cc0d6861bad92ce6e5e17173a38d4ad5c85654d7; tree is unchanged and Phase-6 bounded paths have zero overlap, but exact-SHA policy requires fresh gates.",
+    "detail": "PR 780 exact-head gates passed but became stale after master advanced to b26f6339c1ee353134667ecd46e40d9f133b7596. Drift from 04ec0271 to b26f6339 is 8 commits, Desktop/Operations-Meta only, with zero overlap against Phase-7 bounded paths. Reviewed delta replayed on exact current master as successor PR 802; fresh exact-head gates required.",
     "human_action": null
   },
   "repair": {
-    "retry_count": 7,
-    "last_failure_fingerprint": "phase6-stale-pass-after-zero-diff-master-cc0d6861",
-    "last_root_cause": "merge evidence invalidated by master commit advancement despite tree equivalence; exact-current-master policy requires resynchronization"
+    "retry_count": 3,
+    "last_failure_fingerprint": "phase7-stale-pass-after-master-b26f6339",
+    "last_root_cause": "exact-head evidence invalidated by non-overlapping master advancement; replayed only reviewed bounded Phase-7 delta on exact current master"
   },
   "lock": {
     "owner": "web-app-factory-486",
@@ -34,18 +34,21 @@
       ".github/web-app-factory-closure.json",
       ".github/workflows/web-app-factory-continuation.yml",
       ".github/automation/states/web-app-factory-486.json",
-      "services/web_app_analytics_runtime.py",
-      "tests/test_web_app_analytics_runtime.py"
+      "services/web_app_realtime_runtime.py",
+      "tests/test_web_app_realtime_runtime.py"
     ],
-    "acquired_at": "2026-08-21T22:16:40Z",
-    "expires_at": "2026-08-21T23:16:40Z"
+    "acquired_at": "2026-08-22T01:46:30Z",
+    "expires_at": "2026-08-22T03:46:30Z"
   },
   "evidence": [
     "phase5-merge:7fdfa6453323dec394e3dde084aa5ec8683d77bd exact-master:32504527076,32504527231 success",
-    "phase6-pr:766 stale-head:ec60e6abd3e233389b64e44514b76bd34fb493c4 gates:32530422580,32530422590,32530422726,32530422610 success",
-    "phase6-pr:766 stale-head:46b4c56913e9aea4eac851c490abfbb805cc1eea gates:32532135586,32532135528,32532135623,32532135521 success but stale after master advanced",
-    "master-drift:7631ffaa7b9a497e973393a503b72ae059f3e69e..cc0d6861bad92ce6e5e17173a38d4ad5c85654d7 is zero-diff/tree-equivalent certification merge #771; zero Phase-6 bounded overlap",
+    "phase6-pr:766 exact-head:d156c9bf7861f039bea1ff8b69907219660bccfa gates:32532849804,32532849785,32532849897,32532849762 success",
+    "phase6-merge:cd31fe204202855eea8a0654db0d455ae157c06a expected-head:d156c9bf7861f039bea1ff8b69907219660bccfa",
+    "phase6-exact-master:software-factory=32533589517 success; required-ci=32533589860 success",
+    "phase7-pr:780 stale-head:152fbde0dc1156a296fb4a801de6625852264795 gates:web=32541659242 software-factory=32541659249 controller=32541659238 required-ci=32541659368 success but stale after master advance",
+    "master-drift:04ec0271557d42c6598519c0fea287478ad3b4ae..b26f6339c1ee353134667ecd46e40d9f133b7596 ahead_by=8; changed paths only Desktop and Operations/Meta; zero Phase-7 bounded overlap",
+    "phase7-successor:PR802 base=b26f6339c1ee353134667ecd46e40d9f133b7596 reviewed_source=PR780",
     "phase16-freeze: preserved; no 3D/Motion/WebGL mutation"
   ],
-  "updated_at": "2026-08-21T22:16:40Z"
+  "updated_at": "2026-08-22T01:46:30Z"
 }
