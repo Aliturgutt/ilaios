@@ -1,0 +1,19 @@
+{
+  "schema_version": "ilaios.execution-controller.v1",
+  "task_id": "website-v2-production-closure",
+  "task_source": {"type": "repo_ledger_plus_live_production_certification", "reference": "Website V2 production recertification / PR #759 successor"},
+  "status": "IN_PROGRESS",
+  "current_phase": "exact-current-production-recertification",
+  "master_sha": "215da678b18b31bbb98e99593f3b1f4b86b513cb",
+  "base_sha": "215da678b18b31bbb98e99593f3b1f4b86b513cb",
+  "head_sha": null,
+  "branch": "website/production-recert-215da678",
+  "pr": null,
+  "ci": {"run_id": null, "conclusion": "pending", "exact_sha": null},
+  "next_action": "Rebind the existing website-scoped production recertification trigger to exact current master, require fresh exact-head Required CI/SFFE/Website V2 gates, re-read master and overlap, then expected-head merge and require exact-merge-SHA Website Production Certification plus /api/release and live EN/TR browser evidence.",
+  "blocker": {"type": "DEPLOYMENT", "detail": "Current master Vercel status reports hobby build-rate-limit failure; safe repository recertification work continues, but production closure requires a successful exact-master deployment after quota availability.", "human_action": null},
+  "repair": {"retry_count": 1, "last_failure_fingerprint": "vercel-build-rate-limit-215da678", "last_root_cause": "Vercel hobby build rate limit, external to repository code."},
+  "lock": {"owner": "ILAIOS Unified Closure", "scope": [".github/automation/states/website-v2-production-closure.json", "apps/website/.production-recertification"], "acquired_at": "2026-08-22T15:24:00+03:00", "expires_at": "2026-08-22T16:24:00+03:00"},
+  "evidence": ["PR #759 merged bounded production-recertification trigger as bcf93f90afa7781c55839e9602717271ca00a6d6", "stale successor PR #873 exact head 0833fa8a19a5d47f5da3113879964aaccd0586d0 passed Required CI 32572653625, SFFE 32572653550, controller validation 32572653515 and Website V2 Visual QA 32572653531 but became stale when Video PR #872 advanced master", "current master at replay 215da678b18b31bbb98e99593f3b1f4b86b513cb", "current master Vercel status failure target indicates build-rate-limit", "no overlapping Website path mutation in Video merge #872"],
+  "updated_at": "2026-08-22T15:24:00+03:00"
+}
