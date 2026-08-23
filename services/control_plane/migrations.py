@@ -47,7 +47,7 @@ _UP_MIGRATIONS = {
     """,
     3: """
         CREATE TABLE workflows (
-            workflow_id TEXT NOT NULL PRIMARY KEY,
+            workflow_id TEXT PRIMARY KEY,
             status TEXT NOT NULL,
             created_at TEXT NOT NULL
         );
