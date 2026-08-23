@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from typing import Literal
 
 from services.identity import Principal
-from services.web_app_crud_runtime import WebAppCrudRuntime
+from services.web_app_crud_runtime import CrudOperation, WebAppCrudRuntime
 
 RealtimeEventType = Literal["created", "updated", "deleted", "state_changed"]
 
@@ -189,13 +189,13 @@ class WebAppRealtimeRuntime:
         event_type: RealtimeEventType,
         now: datetime,
     ) -> None:
-        operation = {
+        operations: dict[RealtimeEventType, CrudOperation] = {
             "created": "create",
             "updated": "update",
             "deleted": "delete",
             "state_changed": "update",
-        }[event_type]
-        self._crud._authorize(principal, resource_type, operation, now)
+        }
+        self._crud._authorize(principal, resource_type, operations[event_type], now)
 
     def _authorize_subscription(
         self, principal: Principal, resource_type: str, now: datetime
