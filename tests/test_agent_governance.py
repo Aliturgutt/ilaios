@@ -139,3 +139,46 @@ def test_provider_or_prompt_metadata_cannot_promote_output_into_authority() -> N
                 _grant(),
                 NOW,
             )
+
+
+def test_execution_grant_scope_expiry_and_budget_abuse_fail_closed() -> None:
+    policy = GrantPolicy()
+    firewall = PermissionFirewall((_manifest(),), policy)
+
+    wrong_subject = ExecutionGrant(
+        "grant-wrong-subject",
+        "agent-attacker",
+        frozenset({"read"}),
+        frozenset({"agent-01"}),
+        NOW + timedelta(minutes=5),
+        BlastRadiusBudget(1, 1),
+    )
+    with pytest.raises(AgentSecurityError, match="execution grant denied"):
+        firewall.admit(_invocation(), wrong_subject, NOW)
+
+    expired = ExecutionGrant(
+        "grant-expired",
+        "agent-01",
+        frozenset({"read"}),
+        frozenset({"agent-01"}),
+        NOW,
+        BlastRadiusBudget(1, 1),
+    )
+    with pytest.raises(AgentSecurityError, match="execution grant denied"):
+        firewall.admit(_invocation(), expired, NOW)
+
+    out_of_scope = ExecutionGrant(
+        "grant-wrong-resource",
+        "agent-01",
+        frozenset({"read"}),
+        frozenset({"agent-other"}),
+        NOW + timedelta(minutes=5),
+        BlastRadiusBudget(1, 1),
+    )
+    with pytest.raises(AgentSecurityError, match="execution grant denied"):
+        firewall.admit(_invocation(), out_of_scope, NOW)
+
+    exhausted = _grant()
+    policy.record_side_effect(exhausted, "agent-01")
+    with pytest.raises(AgentSecurityError, match="execution grant denied"):
+        firewall.admit(_invocation(), exhausted, NOW)
