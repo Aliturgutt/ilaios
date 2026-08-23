@@ -31,7 +31,7 @@ def _contract() -> WebAppAuthContract:
             resource_type="Goal",
             privileged=False,
         )
-        for operation in ("read", "create")
+        for operation in ("read", "create", "update", "delete")
     )
     permission_names = tuple(permission.permission for permission in permissions)
     return WebAppAuthContract(
@@ -40,7 +40,12 @@ def _contract() -> WebAppAuthContract:
         project_id="project-1",
         spec_sha256="c" * 64,
         identity_chain=("User", "Tenant", "Project", "Role", "Permission", "ResourceScope"),
-        roles=(WebAppRolePermissionContract(role="Viewer", permissions=permission_names),),
+        roles=(
+            WebAppRolePermissionContract(role="Viewer", permissions=permission_names),
+            WebAppRolePermissionContract(
+                role="Reader", permissions=("resource.Goal.read",)
+            ),
+        ),
         permissions=permissions,
         routes=(),
         actions=tuple(
@@ -204,6 +209,25 @@ def test_publish_rejects_stale_version_and_uses_authoritative_version() -> None:
         now=NOW,
     )
     assert event.resource_version == 1
+
+
+def test_read_only_role_cannot_publish_mutation_projection_events() -> None:
+    realtime = _runtime()
+    reader = _principal(role="Reader")
+
+    batch = realtime.subscribe(principal=reader, resource_type="Goal", now=NOW)
+    assert batch.events == ()
+
+    for event_type in ("created", "updated", "deleted", "state_changed"):
+        with pytest.raises(IdentityError, match="deny by default"):
+            realtime.publish(
+                principal=reader,
+                resource_type="Goal",
+                resource_id="goal-1",
+                event_type=event_type,
+                payload={"status": "forged"},
+                now=NOW,
+            )
 
 
 def test_default_deny_is_inherited_for_publish_and_subscribe() -> None:
