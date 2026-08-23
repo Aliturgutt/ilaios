@@ -13,7 +13,7 @@ from services.web_app_auth_contract import (
     WebAppRolePermissionContract,
     compile_authorization_rules,
 )
-from services.web_app_crud_runtime import WebAppCrudRuntime
+from services.web_app_crud_runtime import WebAppCrudRuntime, WebAppCrudRuntimeError
 from services.web_app_realtime_runtime import (
     WebAppRealtimeRuntime,
     WebAppRealtimeRuntimeError,
@@ -24,25 +24,30 @@ NOW = datetime(2026, 8, 21, 22, 55, tzinfo=timezone.utc)
 
 
 def _contract() -> WebAppAuthContract:
-    permission = WebAppPermissionRequirement(
-        permission="resource.Goal.read",
-        scope="resource",
-        resource_type="Goal",
-        privileged=False,
+    permissions = tuple(
+        WebAppPermissionRequirement(
+            permission=f"resource.Goal.{operation}",
+            scope="resource",
+            resource_type="Goal",
+            privileged=False,
+        )
+        for operation in ("read", "create")
     )
+    permission_names = tuple(permission.permission for permission in permissions)
     return WebAppAuthContract(
         schema_version="ilaios.web-app-auth-contract.v1",
         app_id="app-realtime",
         project_id="project-1",
         spec_sha256="c" * 64,
         identity_chain=("User", "Tenant", "Project", "Role", "Permission", "ResourceScope"),
-        roles=(WebAppRolePermissionContract(role="Viewer", permissions=(permission.permission,)),),
-        permissions=(permission,),
+        roles=(WebAppRolePermissionContract(role="Viewer", permissions=permission_names),),
+        permissions=permissions,
         routes=(),
-        actions=(
+        actions=tuple(
             WebAppActionPermissionContract(
-                action_id="action:resource.Goal.read", permission=permission.permission
-            ),
+                action_id=f"action:{permission}", permission=permission
+            )
+            for permission in permission_names
         ),
         authentication_required=True,
         default_deny=True,
@@ -70,6 +75,16 @@ def _runtime(*, max_history: int = 1000, max_batch: int = 100) -> WebAppRealtime
     authorization = AuthorizationEngine(compile_authorization_rules(contract))
     connection = sqlite3.connect(":memory:")
     crud = WebAppCrudRuntime(connection, contract, authorization, AuditEngine())
+    principal = _principal()
+    for index in range(3):
+        crud.create(
+            principal=principal,
+            resource_type="Goal",
+            resource_id=f"goal-{index}",
+            payload={"index": index},
+            idempotency_key=f"seed-{index}",
+            now=NOW,
+        )
     return WebAppRealtimeRuntime(crud, max_history=max_history, max_batch=max_batch)
 
 
@@ -91,11 +106,12 @@ def test_publish_and_reconnect_replay_use_monotonic_sequences() -> None:
         event_type="updated",
         payload={"status": "done"},
         now=NOW,
-        resource_version=2,
     )
     assert first.sequence == 1
     assert second.sequence == 2
     assert first.event_id != second.event_id
+    assert first.resource_version == 1
+    assert second.resource_version == 1
 
     batch = realtime.subscribe(
         principal=_principal(),
@@ -149,6 +165,45 @@ def test_other_tenant_history_eviction_cannot_stale_or_advance_cursor() -> None:
     assert batch.events == ()
     assert batch.latest_sequence == 0
     assert batch.has_more is False
+
+
+def test_publish_rejects_nonexistent_resource_projection() -> None:
+    realtime = _runtime()
+    with pytest.raises(WebAppCrudRuntimeError, match="resource not found"):
+        realtime.publish(
+            principal=_principal(),
+            resource_type="Goal",
+            resource_id="goal-missing",
+            event_type="updated",
+            payload={"status": "forged"},
+            now=NOW,
+        )
+
+
+def test_publish_rejects_stale_version_and_uses_authoritative_version() -> None:
+    realtime = _runtime()
+    with pytest.raises(WebAppRealtimeRuntimeError) as mismatch:
+        realtime.publish(
+            principal=_principal(),
+            resource_type="Goal",
+            resource_id="goal-1",
+            event_type="updated",
+            payload={"status": "stale"},
+            now=NOW,
+            resource_version=2,
+        )
+    assert mismatch.value.code == "RESOURCE_VERSION_MISMATCH"
+    assert mismatch.value.status_code == 409
+
+    event = realtime.publish(
+        principal=_principal(),
+        resource_type="Goal",
+        resource_id="goal-1",
+        event_type="updated",
+        payload={"status": "current"},
+        now=NOW,
+    )
+    assert event.resource_version == 1
 
 
 def test_default_deny_is_inherited_for_publish_and_subscribe() -> None:
