@@ -78,6 +78,7 @@ def validate(data: dict[str, Any]) -> None:
         require(token.get("freeze_active") is False, f"{token_state} token must not keep freeze_active")
     else:
         require(bool(isinstance(owner, str) and owner), f"{token_state} token requires an owner")
+        require(token.get("freeze_active") is True, f"{token_state} token must keep freeze_active")
 
     workstreams_raw = data.get("workstreams")
     require(isinstance(workstreams_raw, dict), "workstreams must be an object")
