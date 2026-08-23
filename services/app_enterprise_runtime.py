@@ -1,14 +1,16 @@
-"""Stage-3 enterprise App Factory runtime binding over the incumbent CRUD backend.
+"""Stage-3 enterprise App Factory runtime binding over incumbent backend services.
 
 This module deliberately does not create a second backend, identity engine, policy
-engine, approval engine, tool gateway, audit authority, or evidence authority. It
-binds the Stage-2 ProductSpec/Domain/Auth contracts to the already implemented
-``WebAppCrudRuntime`` persistence/runtime boundary so Web, Windows, Android and iOS
-clients can converge on one governed application backend contract.
+engine, approval engine, tool gateway, audit authority, evidence authority, or
+realtime authority. It binds the Stage-2 ProductSpec/Domain/Auth contracts to the
+already implemented ``WebAppCrudRuntime`` persistence boundary and the existing
+``WebAppRealtimeRuntime`` authenticated event projection so Web, Windows, Android
+and iOS clients can converge on one governed application backend contract.
 
-This slice proves deterministic lineage and entity/permission binding for persistent
-create/read/list/update/delete operations. API transport, realtime, files,
-integrations and commerce remain separate dependency-ordered slices.
+This slice proves deterministic lineage plus entity/permission binding for
+persistent create/read/list/update/delete operations and authenticated replayable
+realtime projection. API transport, files, integrations and commerce remain
+separate dependency-ordered slices.
 """
 
 from __future__ import annotations
@@ -25,6 +27,12 @@ from services.app_product_spec import ProductSpec
 from services.identity import Principal
 from services.web_app_auth_contract import WebAppAuthContract
 from services.web_app_crud_runtime import CrudPage, CrudRecord, WebAppCrudRuntime
+from services.web_app_realtime_runtime import (
+    RealtimeBatch,
+    RealtimeEvent,
+    RealtimeEventType,
+    WebAppRealtimeRuntime,
+)
 
 EnterpriseOperation = Literal["create", "read", "list", "update", "delete"]
 
@@ -42,9 +50,11 @@ class AppEnterpriseRuntimeBinding:
     entities: tuple[str, ...]
     operations: tuple[EnterpriseOperation, ...]
     backend_authority: Literal["services.web_app_crud_runtime.WebAppCrudRuntime"]
+    realtime_authority: Literal["services.web_app_realtime_runtime.WebAppRealtimeRuntime"]
     authorization_authority: Literal["services.identity.AuthorizationEngine"]
     implementation_authority: Literal["software-factory"]
     direct_database_authority: Literal[False]
+    direct_realtime_mutation_authority: Literal[False]
     binding_sha256: str
 
 
@@ -55,7 +65,7 @@ def bind_enterprise_runtime(
     auth_rbac: AuthRbacPlan,
     backend_contract: WebAppAuthContract,
 ) -> AppEnterpriseRuntimeBinding:
-    """Bind immutable Stage-2 contracts to the incumbent real CRUD runtime."""
+    """Bind immutable Stage-2 contracts to incumbent CRUD and realtime runtimes."""
     if domain_model.project_id != spec.project_id or domain_model.spec_sha256 != spec.spec_sha256:
         raise AppEnterpriseRuntimeError("domain model is not bound to the supplied ProductSpec")
     if auth_rbac.project_id != spec.project_id or auth_rbac.spec_sha256 != spec.spec_sha256:
@@ -96,11 +106,13 @@ def bind_enterprise_runtime(
         "authorization_authority": "services.identity.AuthorizationEngine",
         "backend_authority": "services.web_app_crud_runtime.WebAppCrudRuntime",
         "direct_database_authority": False,
+        "direct_realtime_mutation_authority": False,
         "domain_model_sha256": domain_model.model_sha256,
         "entities": list(entities),
         "implementation_authority": "software-factory",
         "operations": list(operations),
         "project_id": spec.project_id,
+        "realtime_authority": "services.web_app_realtime_runtime.WebAppRealtimeRuntime",
         "spec_sha256": spec.spec_sha256,
     }
     return AppEnterpriseRuntimeBinding(
@@ -111,19 +123,27 @@ def bind_enterprise_runtime(
         entities=entities,
         operations=operations,
         backend_authority="services.web_app_crud_runtime.WebAppCrudRuntime",
+        realtime_authority="services.web_app_realtime_runtime.WebAppRealtimeRuntime",
         authorization_authority="services.identity.AuthorizationEngine",
         implementation_authority="software-factory",
         direct_database_authority=False,
+        direct_realtime_mutation_authority=False,
         binding_sha256=_sha256_json(canonical),
     )
 
 
 class AppEnterpriseRuntime:
-    """Cross-platform App Factory adapter over one existing governed CRUD runtime."""
+    """Cross-platform adapter over existing governed CRUD and realtime runtimes."""
 
-    def __init__(self, binding: AppEnterpriseRuntimeBinding, backend: WebAppCrudRuntime) -> None:
+    def __init__(
+        self,
+        binding: AppEnterpriseRuntimeBinding,
+        backend: WebAppCrudRuntime,
+        realtime: WebAppRealtimeRuntime,
+    ) -> None:
         self._binding = binding
         self._backend = backend
+        self._realtime = realtime
         self._entities = frozenset(binding.entities)
 
     @property
@@ -149,6 +169,50 @@ class AppEnterpriseRuntime:
     def delete(self, *, principal: Principal, entity: str, resource_id: str, expected_version: int, now: datetime) -> None:
         self._require_entity(entity)
         self._backend.delete(principal=principal, resource_type=entity, resource_id=resource_id, expected_version=expected_version, now=now)
+
+    def publish_realtime(
+        self,
+        *,
+        principal: Principal,
+        entity: str,
+        resource_id: str,
+        event_type: RealtimeEventType,
+        payload: dict[str, object],
+        now: datetime,
+        resource_version: int | None = None,
+    ) -> RealtimeEvent:
+        """Publish through the incumbent authenticated realtime projection only."""
+        self._require_entity(entity)
+        return self._realtime.publish(
+            principal=principal,
+            resource_type=entity,
+            resource_id=resource_id,
+            event_type=event_type,
+            payload=payload,
+            now=now,
+            resource_version=resource_version,
+        )
+
+    def subscribe_realtime(
+        self,
+        *,
+        principal: Principal,
+        entity: str,
+        now: datetime,
+        after_sequence: int = 0,
+        resource_id: str | None = None,
+        limit: int | None = None,
+    ) -> RealtimeBatch:
+        """Replay authorized entity events without introducing transport authority."""
+        self._require_entity(entity)
+        return self._realtime.subscribe(
+            principal=principal,
+            resource_type=entity,
+            now=now,
+            after_sequence=after_sequence,
+            resource_id=resource_id,
+            limit=limit,
+        )
 
     def _require_entity(self, entity: str) -> None:
         if entity not in self._entities:
