@@ -5,3 +5,30 @@ __pycache__/
 .ruff_cache/
 build/
 dist/
+
+# Local environment / secrets
+.env
+.env.*
+!.env.example
+!.env.template
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*.cer
+*.jks
+*.keystore
+*.mobileprovision
+*.secrets
+secrets/
+.secret/
+credentials.json
+service-account*.json
+
+# Local runtime credentials/config
+.aws/
+.azure/
+.gcloud/
+.npmrc
+.pypirc
