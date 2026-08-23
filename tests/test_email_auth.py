@@ -7,6 +7,12 @@ from pathlib import Path
 import pytest
 
 from services.central_identity import IdentityProvider
+from services.control_plane.migrations import (
+    LATEST_SCHEMA_VERSION,
+    current_schema_version,
+    migrate_database,
+    rollback_database,
+)
 from services.email_auth import (
     EmailAuthError,
     EmailAuthService,
@@ -26,18 +32,9 @@ def _service(*, max_issues: int = 5) -> EmailAuthService:
     )
 
 
-def _create_email_challenge_schema(database_path: Path) -> None:
-    with sqlite3.connect(database_path) as connection:
-        connection.execute(
-            "CREATE TABLE identity_email_challenges ("
-            "challenge_id TEXT PRIMARY KEY, "
-            "email TEXT NOT NULL, "
-            "secret_digest TEXT NOT NULL CHECK (length(secret_digest) = 64), "
-            "issued_at TEXT NOT NULL, "
-            "expires_at TEXT NOT NULL, "
-            "consumed_at TEXT"
-            ")"
-        )
+def _migrate_email_challenge_schema(database_path: Path) -> None:
+    assert migrate_database(database_path) == 10 == LATEST_SCHEMA_VERSION
+    assert current_schema_version(database_path) == 10
 
 
 def _sqlite_service(database_path: Path, *, max_issues: int = 5) -> EmailAuthService:
@@ -191,9 +188,32 @@ def test_sqlite_store_fails_closed_until_canonical_schema_exists(tmp_path: Path)
         SQLiteEmailChallengeStore(database_path)
 
 
+def test_v10_migration_creates_email_challenge_table_with_expected_contract(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "identity.db"
+    _migrate_email_challenge_schema(database_path)
+
+    with sqlite3.connect(database_path) as connection:
+        columns = {
+            row[1]: (row[2], row[3], row[5])
+            for row in connection.execute(
+                "PRAGMA table_info(identity_email_challenges)"
+            ).fetchall()
+        }
+    assert columns == {
+        "challenge_id": ("TEXT", 0, 1),
+        "email": ("TEXT", 1, 0),
+        "secret_digest": ("TEXT", 1, 0),
+        "issued_at": ("TEXT", 1, 0),
+        "expires_at": ("TEXT", 1, 0),
+        "consumed_at": ("TEXT", 0, 0),
+    }
+
+
 def test_sqlite_challenge_survives_restart_and_remains_single_use(tmp_path: Path) -> None:
     database_path = tmp_path / "identity.db"
-    _create_email_challenge_schema(database_path)
+    _migrate_email_challenge_schema(database_path)
     issued = _sqlite_service(database_path).issue("user@example.com", now=NOW)
 
     identity = _sqlite_service(database_path).verify(
@@ -215,7 +235,7 @@ def test_sqlite_challenge_survives_restart_and_remains_single_use(tmp_path: Path
 
 def test_sqlite_rate_limit_survives_restart(tmp_path: Path) -> None:
     database_path = tmp_path / "identity.db"
-    _create_email_challenge_schema(database_path)
+    _migrate_email_challenge_schema(database_path)
     _sqlite_service(database_path, max_issues=2).issue("user@example.com", now=NOW)
     _sqlite_service(database_path, max_issues=2).issue(
         "user@example.com", now=NOW + timedelta(minutes=1)
@@ -229,7 +249,7 @@ def test_sqlite_rate_limit_survives_restart(tmp_path: Path) -> None:
 
 def test_sqlite_store_never_persists_raw_secret(tmp_path: Path) -> None:
     database_path = tmp_path / "identity.db"
-    _create_email_challenge_schema(database_path)
+    _migrate_email_challenge_schema(database_path)
     issued = _sqlite_service(database_path).issue("user@example.com", now=NOW)
 
     with sqlite3.connect(database_path) as connection:
@@ -240,3 +260,28 @@ def test_sqlite_store_never_persists_raw_secret(tmp_path: Path) -> None:
     assert row is not None
     assert row[0] != issued.secret
     assert len(str(row[0])) == 64
+
+
+def test_v10_rollback_and_reupgrade_recreate_challenge_persistence(tmp_path: Path) -> None:
+    database_path = tmp_path / "identity.db"
+    backup_path = tmp_path / "identity-v10-backup.db"
+    _migrate_email_challenge_schema(database_path)
+    issued = _sqlite_service(database_path).issue("user@example.com", now=NOW)
+
+    assert rollback_database(database_path, backup_path) == 9
+    assert current_schema_version(database_path) == 9
+    with pytest.raises(EmailAuthError, match="persistence schema is unavailable"):
+        SQLiteEmailChallengeStore(database_path)
+
+    assert current_schema_version(backup_path) == 10
+    with sqlite3.connect(backup_path) as connection:
+        backed_up = connection.execute(
+            "SELECT challenge_id FROM identity_email_challenges WHERE challenge_id = ?",
+            (issued.challenge_id,),
+        ).fetchone()
+    assert backed_up == (issued.challenge_id,)
+
+    assert migrate_database(database_path) == 10
+    restarted = _sqlite_service(database_path)
+    replacement = restarted.issue("user@example.com", now=NOW + timedelta(minutes=16))
+    assert replacement.email == "user@example.com"
