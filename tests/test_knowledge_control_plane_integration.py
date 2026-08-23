@@ -61,15 +61,26 @@ def _running_service(tmp_path: Path) -> Iterator[str]:
         text=True,
     )
     deadline = time.monotonic() + 10
-    while not ready_file.exists():
+    ready: dict[str, Any] | None = None
+    while ready is None:
         if process.poll() is not None:
             output = process.stdout.read() if process.stdout is not None else ""
             raise AssertionError(f"control-plane process exited early: {output}")
+        if ready_file.exists():
+            payload = ready_file.read_text(encoding="utf-8")
+            if payload.strip():
+                try:
+                    decoded = json.loads(payload)
+                except json.JSONDecodeError:
+                    pass
+                else:
+                    if isinstance(decoded, dict):
+                        ready = cast(dict[str, Any], decoded)
+                        break
         if time.monotonic() >= deadline:
             process.kill()
             raise AssertionError("control-plane process did not become ready")
         time.sleep(0.01)
-    ready = json.loads(ready_file.read_text(encoding="utf-8"))
     assert ready["knowledge_enabled"] is True
     try:
         yield f"http://{ready['host']}:{ready['port']}"
