@@ -38,7 +38,7 @@ def _provider_quality_product_png_bytes() -> bytes:
         for x in range(width):
             # Neutral studio backdrop with a restrained vertical luminance falloff.
             background = max(25, min(58, 48 - abs(y - 150) // 7))
-            color = (background, background + 2, background + 5)
+            color: tuple[int, ...] = (background, background + 2, background + 5)
 
             # Soft elliptical floor shadow below the object.
             dx_shadow = (x - 326) / 214.0
