@@ -188,6 +188,17 @@ def test_execution_grant_scope_expiry_and_budget_abuse_fail_closed() -> None:
     with pytest.raises(AgentSecurityError, match="execution grant denied"):
         firewall.admit(_invocation(), wrong_subject, NOW)
 
+    wrong_action = ExecutionGrant(
+        "grant-wrong-action",
+        "agent-01",
+        frozenset({"write"}),
+        frozenset({"agent-01"}),
+        NOW + timedelta(minutes=5),
+        BlastRadiusBudget(1, 1),
+    )
+    with pytest.raises(AgentSecurityError, match="execution grant denied"):
+        firewall.admit(_invocation(), wrong_action, NOW)
+
     expired = ExecutionGrant(
         "grant-expired",
         "agent-01",
