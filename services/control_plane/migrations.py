@@ -437,7 +437,7 @@ _UP_MIGRATIONS = {
         );
     """,
     10: """
-        CREATE TABLE identity_email_challenges (
+        CREATE TABLE IF NOT EXISTS identity_email_challenges (
             challenge_id TEXT PRIMARY KEY,
             email TEXT NOT NULL,
             secret_digest TEXT NOT NULL CHECK (length(secret_digest) = 64),
@@ -494,7 +494,7 @@ _DOWN_MIGRATIONS = {
         SELECT 1;
     """,
     10: """
-        DROP TABLE identity_email_challenges;
+        SELECT 1;
     """,
 }
 
