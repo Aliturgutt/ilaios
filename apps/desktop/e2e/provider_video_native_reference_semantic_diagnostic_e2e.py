@@ -14,19 +14,106 @@ from src.video_automation.openrouter_perceptual_reviewer import OpenRouterPercep
 from src.video_automation.perceptual_review import PerceptualReviewSubmission  # noqa: E402
 
 _ORIGINAL_REVIEW = OpenRouterPerceptualReviewer.review
+_ORIGINAL_PRODUCT_PNG_BYTES = certification._product_png_bytes
 _ORIGINAL_LOGO_PNG_BYTES = certification._logo_png_bytes
 _semantic_reviews: list[PerceptualReviewSubmission] = []
 
 
-def _provider_valid_logo_png_bytes() -> bytes:
-    """Build the same synthetic logo at provider-valid reference dimensions.
+def _provider_quality_product_png_bytes() -> bytes:
+    """Build a deterministic premium product reference for the live provider proof.
 
-    Seedance 2.0 reference inputs require both image dimensions to be at least
-    300 px. The historical 160x64 certification fixture was valid PNG data but
-    outside that provider boundary, which surfaced upstream as HTTP 500 instead
-    of a useful 4xx validation error.
+    The old certification fixture was intentionally primitive: a flat rectangle,
+    a cyan stripe, and a hard-edged orange circle. The latest real provider
+    evidence showed that this source-of-truth was too weak for the semantic
+    quality gate. Keep the fixture synthetic and repository-owned, but provide
+    perspective, material depth, studio lighting, a bounded cyan light channel,
+    and a clean inset emblem so the provider receives an unambiguous product
+    identity rather than a diagram-like placeholder.
     """
 
+    width, height = 640, 360
+    rows = bytearray()
+    for y in range(height):
+        rows.append(0)
+        for x in range(width):
+            background = max(25, min(58, 48 - abs(y - 150) // 7))
+            color: tuple[int, ...] = (background, background + 2, background + 5)
+
+            dx_shadow = (x - 326) / 214.0
+            dy_shadow = (y - 292) / 27.0
+            shadow = dx_shadow * dx_shadow + dy_shadow * dy_shadow
+            if shadow <= 1.0:
+                shade = int(22 + 14 * shadow)
+                color = (shade, shade + 1, shade + 3)
+
+            if 76 <= y <= 286:
+                taper = (y - 76) / 210.0
+                left = int(164 - 12 * taper)
+                right = int(478 + 14 * taper)
+                if left <= x <= right:
+                    rel_x = (x - left) / max(1, right - left)
+                    rel_y = (y - 76) / 210.0
+                    edge = min(rel_x, 1.0 - rel_x)
+                    highlight = max(0.0, 1.0 - abs(rel_x - 0.36) / 0.34)
+                    vertical = 1.0 - abs(rel_y - 0.38) * 0.28
+                    base = 31 + int(18 * highlight * vertical) + int(7 * edge)
+                    color = (base, base + 5, base + 10)
+
+                    if rel_x < 0.055:
+                        bevel = int(16 * (1.0 - rel_x / 0.055))
+                        color = (max(20, base - bevel), max(24, base + 2 - bevel), max(28, base + 6 - bevel))
+                    elif rel_x > 0.91:
+                        depth = int(14 * ((rel_x - 0.91) / 0.09))
+                        color = (max(18, base - depth), max(22, base + 1 - depth), max(27, base + 5 - depth))
+
+                    if 0.10 < rel_x < 0.88 and y % 17 == 0:
+                        color = tuple(min(255, channel + 3) for channel in color)
+
+            if 162 <= x <= 479 and 68 <= y <= 87:
+                top_left = 174 - (y - 68) // 2
+                top_right = 468 + (y - 68) // 2
+                if top_left <= x <= top_right:
+                    t = (x - top_left) / max(1, top_right - top_left)
+                    level = 61 - int(22 * t)
+                    color = (level, level + 5, level + 9)
+
+            if 301 <= x <= 338 and 96 <= y <= 267:
+                edge_distance = min(x - 301, 338 - x)
+                if edge_distance <= 3:
+                    color = (18, 72, 78)
+                else:
+                    intensity = min(1.0, edge_distance / 15.0)
+                    color = (
+                        int(2 + 3 * intensity),
+                        int(126 + 68 * intensity),
+                        int(139 + 70 * intensity),
+                    )
+            if 296 <= x <= 343 and 91 <= y <= 272 and not (301 <= x <= 338 and 96 <= y <= 267):
+                color = (23, 31, 37)
+
+            dx = x - 421
+            dy = y - 132
+            radius_sq = dx * dx + dy * dy
+            if radius_sq <= 35 * 35:
+                if radius_sq >= 30 * 30:
+                    color = (24, 29, 34)
+                else:
+                    radial = max(0.0, 1.0 - radius_sq / float(30 * 30))
+                    specular = max(0.0, 1.0 - ((dx + 9) ** 2 + (dy + 10) ** 2) / 380.0)
+                    color = (
+                        min(246, 211 + int(25 * radial) + int(10 * specular)),
+                        min(139, 80 + int(29 * radial) + int(18 * specular)),
+                        min(72, 31 + int(20 * radial) + int(8 * specular)),
+                    )
+
+            if (182 <= x <= 235 or 427 <= x <= 480) and 282 <= y <= 292:
+                color = (22, 27, 31)
+
+            rows.extend(color)
+    return certification._rgb_png(width, height, bytes(rows))
+
+
+def _provider_valid_logo_png_bytes() -> bytes:
     width, height = 480, 320
     rows = bytearray()
     for y in range(height):
@@ -63,7 +150,6 @@ def _recording_review(
 
 
 def semantic_review_evidence(review: PerceptualReviewSubmission) -> dict[str, object]:
-    """Return bounded, non-secret semantic-review evidence safe for CI artifacts."""
     return {
         "review_id": review.review_id,
         "reviewer_id": review.reviewer_id,
@@ -129,6 +215,7 @@ def _augment_failure_artifact(reviews: list[PerceptualReviewSubmission]) -> None
 def main() -> int:
     _semantic_reviews.clear()
     setattr(OpenRouterPerceptualReviewer, "review", _recording_review)
+    setattr(certification, "_product_png_bytes", _provider_quality_product_png_bytes)
     setattr(certification, "_logo_png_bytes", _provider_valid_logo_png_bytes)
     try:
         return certification.main()
@@ -136,6 +223,7 @@ def main() -> int:
         _augment_failure_artifact(_semantic_reviews)
         raise
     finally:
+        setattr(certification, "_product_png_bytes", _ORIGINAL_PRODUCT_PNG_BYTES)
         setattr(certification, "_logo_png_bytes", _ORIGINAL_LOGO_PNG_BYTES)
         setattr(OpenRouterPerceptualReviewer, "review", _ORIGINAL_REVIEW)
 
