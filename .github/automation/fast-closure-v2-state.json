@@ -1,19 +1,19 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-23T00:03:00Z",
+  "updated_at": "2026-08-23T01:05:00Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "desktop",
-    "reserved_master_sha": "a80474d784dabc6e7dbf700e5da6e50a0228877a",
-    "candidate_pr": 888,
-    "candidate_head_sha": "dcfc7a8402f0ffaf34bb6f56700537aedd8cbbbc",
+    "reserved_master_sha": "e38026ff8a5245ecbf22b7174c57155bc18dc824",
+    "candidate_pr": 899,
+    "candidate_head_sha": "0dc4db173483ff4998a3c5a06483f38d399247ec",
     "freeze_active": true,
-    "freeze_reason": "Desktop #888 exact-current merge window"
+    "freeze_reason": "Desktop #899 merged; hold token through exact-master package verification"
   },
   "scheduler_stagger": {"desktop":0,"unified":12,"identity":24,"web_app":36,"agents":48},
   "workstreams": {
-    "desktop":{"scheduler":"desktop","lifecycle":"MERGE_READY","priority_rank":1,"authoritative_issue":539,"active_pr":888,"base_sha":"1b085352dd52b304423401a88e1b064833e5c3e2","head_sha":"dcfc7a8402f0ffaf34bb6f56700537aedd8cbbbc","blocked_reason":null,"next_action":"Merge token reserved for Desktop. Re-read live master, inspect path and semantic overlap, replay only the reviewed bounded Home motion delta onto exact current master if required, rerun fresh exact-head gates, then merge with expected-head protection."},
+    "desktop":{"scheduler":"desktop","lifecycle":"EXACT_MASTER_VERIFY","priority_rank":1,"authoritative_issue":539,"active_pr":null,"base_sha":"904086c087538b96395d8a037d7720824d2d6a0c","head_sha":"e38026ff8a5245ecbf22b7174c57155bc18dc824","blocked_reason":null,"next_action":"Run Desktop Exact Master Final Artifact on exact current master, verify one ZIP plus matching SHA256 and artifact lineage, then complete local Windows Dark/Light Home motion, Google Connect, >=8-second smoke and page-by-page acceptance before VERIFIED."},
     "video_native_reference":{"scheduler":"unified","lifecycle":"DEVELOPING","priority_rank":2,"authoritative_issue":null,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":"Last real provider certification failed semantic quality; requires evidence-driven bounded quality repair before another provider E2E.","next_action":"Inspect latest real certification evidence and prepare only the smallest semantic-quality repair; no blind rerun or threshold reduction."},
     "website_v2":{"scheduler":"unified","lifecycle":"EXACT_MASTER_VERIFY","priority_rank":3,"authoritative_issue":null,"active_pr":null,"base_sha":"3d08defaab04c8034ce24170b7d7196f0d789060","head_sha":"ef6aa3703c26acd19ab2df167dcdf4f4e132a886","blocked_reason":"Source merge and exact-master CI/Vercel status are green, but live /api/release exact-SHA plus EN/TR Dark/Light/reduced-motion browser QA evidence is still missing.","next_action":"Obtain exact production /api/release attribution for Website merge SHA c4a2987afd8d26a5b186bd8dcc701119360840ee and complete live ilaios.com/www.ilaios.com EN/TR Dark/Light/reduced-motion QA before VERIFIED."},
     "identity":{"scheduler":"identity","lifecycle":"DEVELOPING","priority_rank":4,"authoritative_issue":null,"active_pr":893,"base_sha":"c4a2987afd8d26a5b186bd8dcc701119360840ee","head_sha":"df5a9637445b518663b9d193d800b4e56295f976","blocked_reason":null,"next_action":"Desktop owns the merge token. Continue only non-overlapping Identity development/evidence and do not merge until the token is released."},
@@ -23,5 +23,5 @@
     "mobile_store":{"scheduler":"unified","lifecycle":"BLOCKED_INTERNAL","priority_rank":8,"authoritative_issue":502,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":"Phase 3 cannot produce genuine APK/AAB/device evidence until App Factory Stage 4 materializes a real repository-owned Android project/artifact.","next_action":"Preserve existing build/device/store contracts; resume after App Factory Stage 3/4 produces a real Android project and exact binary."},
     "microsoft_store":{"scheduler":"unified","lifecycle":"BLOCKED_INTERNAL","priority_rank":9,"authoritative_issue":539,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":"No exact-current-master Desktop MSIX/package evidence is available for the current master; cross-SHA artifact reuse is forbidden.","next_action":"Consume exact-master Windows/MSIX evidence from the dedicated Desktop lane when available; never auto-submit/publish to Store."}
   },
-  "metrics":{"master_advances":6,"stale_pass_invalidations":4,"replay_resync_count":3,"ci_cycles":6,"successful_merges":5,"duplicate_pr_count":0,"churn_only_commit_count":0}
+  "metrics":{"master_advances":7,"stale_pass_invalidations":4,"replay_resync_count":3,"ci_cycles":7,"successful_merges":6,"duplicate_pr_count":0,"churn_only_commit_count":0}
 }
