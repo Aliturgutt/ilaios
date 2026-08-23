@@ -25,6 +25,9 @@ from pathlib import Path
 from typing import Protocol
 
 from services.central_identity import IdentityProvider, VerifiedExternalIdentity
+from services.control_plane.migrations import current_schema_version
+
+_EMAIL_CHALLENGE_SCHEMA_VERSION = 10
 
 
 class EmailAuthError(PermissionError):
@@ -161,6 +164,8 @@ class SQLiteEmailChallengeStore:
         self._database_path = database_path
         if not database_path.is_file():
             raise EmailAuthError("canonical identity database is unavailable")
+        if current_schema_version(database_path) < _EMAIL_CHALLENGE_SCHEMA_VERSION:
+            raise EmailAuthError("email challenge persistence schema is unavailable")
         with self._connect() as connection:
             exists = connection.execute(
                 "SELECT 1 FROM sqlite_master WHERE type = 'table' "
