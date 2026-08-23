@@ -28,7 +28,7 @@ for (const [locale, page] of [["en", pageEn], ["tr", pageTr]]) {
 }
 if (!recovery.includes("/website-v2/homepage-light.avif") || !recovery.includes("/website-v2/homepage-dark.avif")) failures.push("recovery homepage does not integrate supplied homepage Dark/Light pair");
 if (!recovery.includes("SystemMotionSignature") || !recovery.includes("v2-hero-motion")) failures.push("canonical dimensional orbital core is not bound to the recovery hero");
-if ((recovery.match(/SystemMotionSignature/g) ?? []).length !== 2) failures.push("dimensional motion identity must remain hero-only on the recovery homepage");
+if ((recovery.match(/<SystemMotionSignature\b/g) ?? []).length !== 1) failures.push("dimensional motion identity must remain hero-only on the recovery homepage");
 if (!recovery.includes("v2-process-rail") || !recovery.includes("v2-factory-index") || !recovery.includes("v2-control-rail")) failures.push("recovery homepage is missing required editorial/process/control hierarchy");
 
 if (failures.length) {
