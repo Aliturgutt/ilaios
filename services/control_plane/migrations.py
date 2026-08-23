@@ -13,7 +13,7 @@ class MigrationError(RuntimeError):
     """Raised when a control-plane migration cannot complete safely."""
 
 
-LATEST_SCHEMA_VERSION = 9
+LATEST_SCHEMA_VERSION = 10
 
 _UP_MIGRATIONS = {
     1: """
@@ -47,7 +47,7 @@ _UP_MIGRATIONS = {
     """,
     3: """
         CREATE TABLE workflows (
-            workflow_id TEXT PRIMARY KEY,
+            workflow_id TEXT NOT NULL PRIMARY KEY,
             status TEXT NOT NULL,
             created_at TEXT NOT NULL
         );
@@ -436,6 +436,16 @@ _UP_MIGRATIONS = {
             PRIMARY KEY (tenant_id, entitlement_key)
         );
     """,
+    10: """
+        CREATE TABLE identity_email_challenges (
+            challenge_id TEXT PRIMARY KEY,
+            email TEXT NOT NULL,
+            secret_digest TEXT NOT NULL CHECK (length(secret_digest) = 64),
+            issued_at TEXT NOT NULL,
+            expires_at TEXT NOT NULL,
+            consumed_at TEXT
+        );
+    """,
 }
 
 _DOWN_MIGRATIONS = {
@@ -482,6 +492,9 @@ _DOWN_MIGRATIONS = {
     """,
     9: """
         SELECT 1;
+    """,
+    10: """
+        DROP TABLE identity_email_challenges;
     """,
 }
 
