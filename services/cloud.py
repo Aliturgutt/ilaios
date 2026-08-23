@@ -32,8 +32,16 @@ class TenantBoundary:
         self._blocked: set[str] = set()
 
     def register(self, policy: TenantPolicy) -> None:
-        if policy.request_quota < 1 or not policy.billing_account:
-            raise CloudPolicyError("tenant requires quota and billing")
+        if (
+            not policy.tenant_id
+            or not policy.region
+            or policy.request_quota < 1
+            or not policy.billing_account
+        ):
+            raise CloudPolicyError("tenant requires identity, region, quota and billing")
+        existing = self._policies.get(policy.tenant_id)
+        if existing is not None and existing != policy:
+            raise CloudPolicyError("tenant policy replacement denied")
         self._policies[policy.tenant_id] = policy
 
     def authorize(
