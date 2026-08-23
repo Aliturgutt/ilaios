@@ -1,9 +1,8 @@
 """Verified email magic-link / OTP boundary for commercial identity.
 
 This module owns challenge generation and verification only. It does not send
-email, create web sessions, or persist production data by itself. Production
-adapters must implement ``EmailChallengeStore`` using the canonical identity
-persistence authority.
+email or create web sessions. Production adapters must use the canonical
+identity database and schema migration authority.
 
 Security properties:
 - raw challenge secrets are returned only to the caller that will deliver them;
@@ -19,8 +18,10 @@ from __future__ import annotations
 
 import hashlib
 import secrets
+import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Protocol
 
 from services.central_identity import IdentityProvider, VerifiedExternalIdentity
@@ -147,6 +148,107 @@ class EmailAuthService:
         ).normalized()
 
 
+class SQLiteEmailChallengeStore:
+    """SQLite adapter for the canonical identity database.
+
+    Schema creation is deliberately *not* performed here. The authoritative
+    control-plane migration chain must create ``identity_email_challenges``.
+    Until that migration is present, construction fails closed instead of
+    silently creating a parallel schema authority.
+    """
+
+    def __init__(self, database_path: Path) -> None:
+        self._database_path = database_path
+        if not database_path.is_file():
+            raise EmailAuthError("canonical identity database is unavailable")
+        with self._connect() as connection:
+            exists = connection.execute(
+                "SELECT 1 FROM sqlite_master WHERE type = 'table' "
+                "AND name = 'identity_email_challenges'"
+            ).fetchone()
+        if exists is None:
+            raise EmailAuthError("email challenge persistence schema is unavailable")
+
+    def recent_issue_count(self, email: str, since: datetime) -> int:
+        normalized_since = _sqlite_time(_utc(since))
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT COUNT(*) FROM identity_email_challenges "
+                "WHERE email = ? AND issued_at >= ?",
+                (email, normalized_since),
+            ).fetchone()
+        return int(row[0]) if row is not None else 0
+
+    def put(self, challenge: EmailChallenge) -> None:
+        if challenge.consumed_at is not None:
+            raise EmailAuthError("new email challenge must not be pre-consumed")
+        try:
+            with self._connect() as connection:
+                connection.execute(
+                    "INSERT INTO identity_email_challenges "
+                    "(challenge_id, email, secret_digest, issued_at, expires_at, consumed_at) "
+                    "VALUES (?, ?, ?, ?, ?, NULL)",
+                    (
+                        challenge.challenge_id,
+                        challenge.email,
+                        challenge.secret_digest,
+                        _sqlite_time(challenge.issued_at),
+                        _sqlite_time(challenge.expires_at),
+                    ),
+                )
+        except sqlite3.IntegrityError as error:
+            raise EmailAuthError("email challenge persistence failed closed") from error
+
+    def consume(
+        self,
+        *,
+        challenge_id: str,
+        email: str,
+        secret_digest: str,
+        now: datetime,
+    ) -> EmailChallenge | None:
+        current = _utc(now)
+        current_text = _sqlite_time(current)
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT challenge_id, email, secret_digest, issued_at, expires_at, consumed_at "
+                "FROM identity_email_challenges WHERE challenge_id = ?",
+                (challenge_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            stored = _challenge_from_row(row)
+            if stored.consumed_at is not None:
+                return None
+            if stored.email != email:
+                return None
+            if stored.expires_at <= current:
+                return None
+            if not secrets.compare_digest(stored.secret_digest, secret_digest):
+                return None
+            cursor = connection.execute(
+                "UPDATE identity_email_challenges SET consumed_at = ? "
+                "WHERE challenge_id = ? AND consumed_at IS NULL",
+                (current_text, challenge_id),
+            )
+            if cursor.rowcount != 1:
+                return None
+        return EmailChallenge(
+            challenge_id=stored.challenge_id,
+            email=stored.email,
+            secret_digest=stored.secret_digest,
+            issued_at=stored.issued_at,
+            expires_at=stored.expires_at,
+            consumed_at=current,
+        )
+
+    def _connect(self) -> sqlite3.Connection:
+        connection = sqlite3.connect(self._database_path)
+        connection.execute("PRAGMA foreign_keys = ON")
+        return connection
+
+
 class InMemoryEmailChallengeStore:
     """Deterministic reference store for tests and local integration only."""
 
@@ -196,6 +298,17 @@ class InMemoryEmailChallengeStore:
         return consumed
 
 
+def _challenge_from_row(row: tuple[object, ...]) -> EmailChallenge:
+    return EmailChallenge(
+        challenge_id=str(row[0]),
+        email=str(row[1]),
+        secret_digest=str(row[2]),
+        issued_at=_parse_sqlite_time(str(row[3])),
+        expires_at=_parse_sqlite_time(str(row[4])),
+        consumed_at=_parse_sqlite_time(str(row[5])) if row[5] is not None else None,
+    )
+
+
 def _normalize_email(value: str) -> str:
     normalized = value.strip().casefold()
     if not normalized or len(normalized) > 254:
@@ -219,3 +332,15 @@ def _utc(value: datetime | None) -> datetime:
     if current.tzinfo is None or current.utcoffset() is None:
         raise EmailAuthError("email challenge time must be timezone-aware")
     return current.astimezone(timezone.utc)
+
+
+def _sqlite_time(value: datetime) -> str:
+    return _utc(value).isoformat().replace("+00:00", "Z")
+
+
+def _parse_sqlite_time(value: str) -> datetime:
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError as error:
+        raise EmailAuthError("persisted email challenge timestamp is invalid") from error
+    return _utc(parsed)
