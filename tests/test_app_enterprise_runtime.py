@@ -22,6 +22,7 @@ from services.web_app_auth_contract import (
     compile_authorization_rules,
 )
 from services.web_app_crud_runtime import WebAppCrudRuntime, WebAppCrudRuntimeError
+from services.web_app_realtime_runtime import WebAppRealtimeRuntime
 from src.core.audit_engine import AuditEngine
 
 NOW = datetime(2026, 8, 22, 15, 0, tzinfo=timezone.utc)
@@ -39,7 +40,7 @@ def _spec() -> ProductSpec:
         platforms=("android", "ios"),
         actors=("operator",),
         screens=("goals",),
-        capabilities=("authentication", "rbac", "crud"),
+        capabilities=("authentication", "rbac", "crud", "realtime"),
         locales=("en",),
         accessibility_required=True,
         offline_required=False,
@@ -144,10 +145,14 @@ def _backend_contract() -> WebAppAuthContract:
     )
 
 
-def _principal(*, roles: frozenset[str] = frozenset({"Owner"})) -> Principal:
+def _principal(
+    *,
+    roles: frozenset[str] = frozenset({"Owner"}),
+    tenant_id: str = "tenant-1",
+) -> Principal:
     return Principal(
         principal_id="user-1",
-        tenant_id="tenant-1",
+        tenant_id=tenant_id,
         kind=IdentityKind.HUMAN,
         roles=roles,
         attributes=frozenset(),
@@ -167,7 +172,8 @@ def _runtime() -> tuple[AppEnterpriseRuntime, AuditEngine]:
         AuthorizationEngine(compile_authorization_rules(contract)),
         audit,
     )
-    return AppEnterpriseRuntime(binding, backend), audit
+    realtime = WebAppRealtimeRuntime(backend)
+    return AppEnterpriseRuntime(binding, backend, realtime), audit
 
 
 def test_cross_platform_spec_reuses_real_persistent_crud_backend() -> None:
@@ -189,8 +195,12 @@ def test_cross_platform_spec_reuses_real_persistent_crud_backend() -> None:
     assert page.items == (created,)
     assert runtime.binding.operations == ("create", "read", "list", "update", "delete")
     assert runtime.binding.backend_authority == "services.web_app_crud_runtime.WebAppCrudRuntime"
+    assert runtime.binding.realtime_authority == (
+        "services.web_app_realtime_runtime.WebAppRealtimeRuntime"
+    )
     assert runtime.binding.authorization_authority == "services.identity.AuthorizationEngine"
     assert runtime.binding.direct_database_authority is False
+    assert runtime.binding.direct_realtime_mutation_authority is False
     assert audit.count() == 1
 
 
@@ -222,6 +232,46 @@ def test_update_delete_preserve_optimistic_concurrency_and_audit() -> None:
     with pytest.raises(WebAppCrudRuntimeError, match="resource not found"):
         runtime.read(principal=_principal(), entity="Goal", resource_id="goal-2", now=NOW)
     assert audit.count() == 4
+
+
+def test_realtime_projection_reuses_crud_authorization_and_replay() -> None:
+    runtime, _ = _runtime()
+    principal = _principal()
+    created = runtime.create(
+        principal=principal,
+        entity="Goal",
+        resource_id="goal-live",
+        payload={"title": "Realtime"},
+        idempotency_key="create-live",
+        now=NOW,
+    )
+    event = runtime.publish_realtime(
+        principal=principal,
+        entity="Goal",
+        resource_id="goal-live",
+        event_type="created",
+        payload={"title": created.payload["title"]},
+        now=NOW,
+        resource_version=created.version,
+    )
+    batch = runtime.subscribe_realtime(
+        principal=principal,
+        entity="Goal",
+        resource_id="goal-live",
+        after_sequence=0,
+        now=NOW,
+    )
+
+    assert batch.events == (event,)
+    assert batch.latest_sequence == event.sequence
+    assert event.tenant_id == principal.tenant_id
+    assert event.resource_type == "Goal"
+
+
+def test_realtime_projection_fails_closed_for_unadmitted_entity() -> None:
+    runtime, _ = _runtime()
+    with pytest.raises(AppEnterpriseRuntimeError, match="not admitted"):
+        runtime.subscribe_realtime(principal=_principal(), entity="Secret", now=NOW)
 
 
 def test_binding_fails_closed_when_stage2_permission_is_missing() -> None:
