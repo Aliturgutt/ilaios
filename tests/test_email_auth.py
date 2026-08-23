@@ -139,13 +139,17 @@ def test_email_challenge_rate_window_recovers_without_disabling_limits() -> None
     assert issued.email == "user@example.com"
 
 
-@pytest.mark.parametrize(
-    "email",
-    ["", "missing-at.example.com", "@example.com", "user@localhost", "a b@example.com"],
-)
-def test_email_challenge_rejects_malformed_email(email: str) -> None:
-    with pytest.raises(EmailAuthError, match="email address is invalid"):
-        _service().issue(email, now=NOW)
+def test_email_challenge_rejects_malformed_email() -> None:
+    malformed_emails = (
+        "",
+        "missing-at.example.com",
+        "@example.com",
+        "user@localhost",
+        "a b@example.com",
+    )
+    for email in malformed_emails:
+        with pytest.raises(EmailAuthError, match="email address is invalid"):
+            _service().issue(email, now=NOW)
 
 
 def test_email_auth_rejects_naive_clock_input() -> None:
