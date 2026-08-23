@@ -1,113 +1,112 @@
 .system-motion-signature {
   --motion-cyan: #00c2d1;
+  --motion-blue: #4f8cff;
   --motion-struct: #8ea3b7;
-  --motion-primary-alpha: .46;
-  --motion-primary-low: .33;
-  --motion-secondary-alpha: .18;
-  --motion-secondary-low: .12;
-  --motion-secondary-hover: .22;
-  --motion-secondary-mobile: .10;
-  --motion-guide-alpha: .08;
-  --motion-guide-mobile: .055;
-  --motion-face-alpha: .09;
-  --motion-face-left-alpha: .065;
-  --motion-face-right-alpha: .106;
-  width: min(100%, 420px);
-  margin: 1.25rem 0 .4rem;
+  --motion-guide-alpha: .075;
+  --motion-struct-alpha: .22;
+  --motion-struct-low: .14;
+  --motion-face-alpha: .08;
+  --motion-face-left-alpha: .05;
+  --motion-face-right-alpha: .095;
+  width: min(100%, 440px);
+  margin: 0;
   color: var(--motion-cyan);
-  transform-origin: 50% 55%;
+  transform-origin: 50% 54%;
   contain: layout paint style;
+  transition: transform 240ms ease, opacity 240ms ease;
 }
 
 html[data-theme="light"] .system-motion-signature {
   --motion-struct: #1f2937;
-  --motion-primary-alpha: .58;
-  --motion-primary-low: .42;
-  --motion-secondary-alpha: .26;
-  --motion-secondary-low: .17;
-  --motion-secondary-hover: .32;
-  --motion-secondary-mobile: .14;
-  --motion-guide-alpha: .12;
-  --motion-guide-mobile: .08;
-  --motion-face-alpha: .055;
-  --motion-face-left-alpha: .04;
-  --motion-face-right-alpha: .065;
+  --motion-guide-alpha: .105;
+  --motion-struct-alpha: .31;
+  --motion-struct-low: .19;
+  --motion-face-alpha: .045;
+  --motion-face-left-alpha: .03;
+  --motion-face-right-alpha: .06;
 }
 
-.system-motion-signature svg { display: block; width: 100%; height: auto; overflow: visible; }
+.system-motion-signature svg { display:block; width:100%; height:auto; overflow:visible; }
 .system-motion-signature ellipse,
 .system-motion-signature line,
 .system-motion-signature polyline,
 .system-motion-signature polygon,
-.system-motion-signature circle { vector-effect: non-scaling-stroke; }
+.system-motion-signature circle { vector-effect:non-scaling-stroke; }
 
-.motion-guides { fill: none; stroke: var(--motion-struct); stroke-width: 1; opacity: var(--motion-guide-alpha); }
-.motion-secondary-rings,
-.motion-primary-rings,
-.motion-orbit-arcs { fill: none; transform-box: fill-box; transform-origin: center; }
-.secondary-ring { stroke: var(--motion-struct); stroke-width: .8; opacity: var(--motion-secondary-alpha); animation: motion-secondary 6s ease-in-out infinite; }
-.primary-ring { stroke: var(--motion-cyan); stroke-width: 1.15; opacity: var(--motion-primary-alpha); animation: motion-primary 2.6s ease-in-out infinite; }
-.phase-1 { animation-delay: -.72s; }
-.phase-2 { animation-delay: -1.38s; }
-.phase-3 { animation-delay: -2.14s; }
+.motion-guides { fill:none; stroke:var(--motion-struct); stroke-width:.9; opacity:var(--motion-guide-alpha); }
+.motion-depth-orbits,
+.motion-structural-rings,
+.motion-orbit-arcs { fill:none; transform-box:fill-box; transform-origin:center; }
 
-.orbit-arc { stroke: var(--motion-cyan); stroke-width: 1.2; stroke-dasharray: 13 87; opacity: .55; transform-box: fill-box; transform-origin: center; }
-.orbit-1 { animation: motion-spin 6s linear infinite; }
-.orbit-2 { animation: motion-spin-reverse 9s linear infinite; opacity: .42; stroke-dasharray: 9 91; }
-.orbit-3 { animation: motion-spin 13s linear infinite; opacity: .34; stroke-dasharray: 18 82; }
-.orbit-4 { animation: motion-spin-reverse 11s linear infinite; opacity: .24; stroke-dasharray: 7 93; }
+.depth-ring { stroke:var(--motion-blue); stroke-width:1; opacity:.22; }
+.depth-1 { transform:rotate(-23deg); animation:motion-depth-a 13s ease-in-out infinite; }
+.depth-2 { transform:rotate(18deg); animation:motion-depth-b 9s ease-in-out infinite; opacity:.18; }
+.depth-3 { transform:rotate(-8deg); animation:motion-depth-a 13s ease-in-out infinite reverse; opacity:.13; }
 
-.motion-axis { stroke: var(--motion-cyan); fill: none; }
-.axis-base { opacity: .18; stroke-width: 1; }
-.axis-pulse { opacity: .68; stroke-width: 1.5; stroke-dasharray: 18 56; animation: motion-axis 3s linear infinite; }
+.structural-ring { stroke:var(--motion-struct); stroke-width:.9; opacity:var(--motion-struct-alpha); animation:motion-structural 9s ease-in-out infinite; }
+.phase-1 { animation-delay:-1.7s; }
+.phase-2 { animation-delay:-3.4s; }
+.phase-3 { animation-delay:-5.1s; }
 
-.motion-markers { fill: var(--motion-cyan); }
-.marker { opacity: .62; transform-box: fill-box; transform-origin: center; animation: motion-marker 4.8s ease-in-out infinite; }
-.marker-b { animation-delay: -1.6s; opacity: .46; }
-.marker-c { animation-delay: -3.2s; opacity: .38; }
+.orbit-arc { stroke:var(--motion-cyan); stroke-width:1.2; stroke-dasharray:13 87; opacity:.52; transform-box:fill-box; transform-origin:center; }
+.orbit-1 { animation:motion-spin 6s linear infinite; }
+.orbit-2 { animation:motion-spin-reverse 9s linear infinite; opacity:.4; stroke-dasharray:9 91; }
+.orbit-3 { animation:motion-spin 13s linear infinite; opacity:.31; stroke-dasharray:18 82; }
+.orbit-4 { animation:motion-spin-reverse 11s linear infinite; opacity:.22; stroke-dasharray:7 93; }
 
-.motion-cube { transform-box: fill-box; transform-origin: center; animation: motion-cube 8s ease-in-out infinite; }
-.cube-face { stroke: none; fill: var(--motion-cyan); opacity: var(--motion-face-alpha); }
-.cube-left { opacity: var(--motion-face-left-alpha); }
-.cube-right { opacity: var(--motion-face-right-alpha); }
-.cube-wire { fill: none; stroke: var(--motion-cyan); stroke-width: 1.25; opacity: .74; }
-.cube-highlight { fill: none; stroke: var(--motion-struct); stroke-width: 1; opacity: .32; }
+.motion-axis { stroke:var(--motion-cyan); fill:none; }
+.axis-base { opacity:.16; stroke-width:1; }
+.axis-pulse { opacity:.56; stroke-width:1.35; stroke-dasharray:18 60; animation:motion-axis 9s linear infinite; }
 
-.motion-core { transform-box: fill-box; transform-origin: center; }
-.core-halo { fill: none; stroke: var(--motion-cyan); stroke-width: 1; opacity: .24; animation: motion-halo 3.4s ease-in-out infinite; }
-.core-breath { fill: none; stroke: var(--motion-cyan); stroke-width: 1.25; opacity: .52; animation: motion-core 1.8s ease-in-out infinite; }
-.core-node { fill: var(--motion-cyan); opacity: .88; }
-.motion-float { transform-box: fill-box; transform-origin: center; animation: motion-float 6s ease-in-out infinite; }
+.motion-markers { fill:var(--motion-cyan); }
+.marker { opacity:.58; transform-box:fill-box; transform-origin:center; animation:motion-marker 7s ease-in-out infinite; }
+.marker-b { animation-delay:-2.3s; opacity:.43; }
+.marker-c { animation-delay:-4.6s; opacity:.34; }
 
-.system-motion-signature:hover { transform: scale(1.045); }
-.system-motion-signature:hover .motion-cube { animation-duration: 6.8s; }
-.system-motion-signature:hover .orbit-1 { animation-duration: 5.2s; }
-.system-motion-signature:hover .orbit-2 { animation-duration: 7.8s; }
-.system-motion-signature:hover .core-node { opacity: 1; }
-.system-motion-signature:hover .secondary-ring { opacity: var(--motion-secondary-hover); }
+.motion-cube { transform-box:fill-box; transform-origin:center; animation:motion-cube 8s ease-in-out infinite; }
+.cube-depth polygon { fill:var(--motion-cyan); stroke:none; opacity:var(--motion-face-alpha); }
+.cube-depth polygon:nth-child(2) { opacity:var(--motion-face-left-alpha); }
+.cube-depth polygon:nth-child(3) { opacity:var(--motion-face-right-alpha); }
+.cube-wire { fill:none; stroke:var(--motion-cyan); stroke-width:1.25; opacity:.74; }
+.cube-inner { fill:none; stroke:var(--motion-blue); stroke-width:.9; opacity:.34; }
+.cube-highlight { fill:none; stroke:var(--motion-struct); stroke-width:1; opacity:.28; }
 
-@keyframes motion-primary { 0%,100% { opacity: var(--motion-primary-low); transform: scale(.985); } 50% { opacity: var(--motion-primary-alpha); transform: scale(1.015); } }
-@keyframes motion-secondary { 0%,100% { opacity: var(--motion-secondary-low); transform: scale(.99); } 50% { opacity: var(--motion-secondary-alpha); transform: scale(1.01); } }
-@keyframes motion-spin { to { transform: rotate(360deg); } }
-@keyframes motion-spin-reverse { to { transform: rotate(-360deg); } }
-@keyframes motion-axis { to { stroke-dashoffset: -74; } }
-@keyframes motion-marker { 0%,100% { opacity: .35; transform: scale(.9); } 50% { opacity: .72; transform: scale(1.15); } }
-@keyframes motion-cube { 0%,100% { transform: skewY(0deg) scaleX(1); } 50% { transform: skewY(-2.2deg) scaleX(.93); } }
-@keyframes motion-core { 0%,100% { opacity: .34; transform: scale(.9); } 50% { opacity: .68; transform: scale(1.08); } }
-@keyframes motion-halo { 0%,100% { opacity: .12; transform: scale(.92); } 50% { opacity: .3; transform: scale(1.08); } }
-@keyframes motion-float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.motion-core { transform-box:fill-box; transform-origin:center; }
+.core-halo { fill:none; stroke:var(--motion-cyan); stroke-width:1; opacity:.2; animation:motion-halo 6.5s ease-in-out infinite; }
+.core-breath { fill:none; stroke:var(--motion-cyan); stroke-width:1.2; opacity:.46; animation:motion-core 5.6s ease-in-out infinite; }
+.core-node { fill:var(--motion-cyan); opacity:.86; }
+.motion-float { transform-box:fill-box; transform-origin:center; animation:motion-float 6s ease-in-out infinite; }
 
-@media (max-width: 720px) {
-  .system-motion-signature { width: min(88vw, 360px); margin-top: .9rem; }
-  .secondary-ring:nth-child(n+6) { opacity: var(--motion-secondary-mobile); }
-  .motion-guides { opacity: var(--motion-guide-mobile); }
+.system-motion-signature:hover { transform:scale(1.045); }
+.system-motion-signature:hover .motion-cube { animation-duration:7.4s; }
+.system-motion-signature:hover .orbit-1 { animation-duration:5.7s; }
+.system-motion-signature:hover .orbit-2 { animation-duration:8.4s; }
+.system-motion-signature:hover .core-node { opacity:.96; }
+
+@keyframes motion-structural { 0%,100% { opacity:var(--motion-struct-low); transform:scale(.994); } 50% { opacity:var(--motion-struct-alpha); transform:scale(1.008); } }
+@keyframes motion-depth-a { 0%,100% { opacity:.13; transform:rotate(-23deg) scaleX(.985); } 50% { opacity:.24; transform:rotate(-20deg) scaleX(1.012); } }
+@keyframes motion-depth-b { 0%,100% { opacity:.12; transform:rotate(18deg) scaleX(1.01); } 50% { opacity:.22; transform:rotate(15deg) scaleX(.99); } }
+@keyframes motion-spin { to { transform:rotate(360deg); } }
+@keyframes motion-spin-reverse { to { transform:rotate(-360deg); } }
+@keyframes motion-axis { to { stroke-dashoffset:-78; } }
+@keyframes motion-marker { 0%,100% { opacity:.3; transform:scale(.94); } 50% { opacity:.66; transform:scale(1.08); } }
+@keyframes motion-cube { 0%,100% { transform:skewY(0deg) scaleX(1); } 50% { transform:skewY(-1.8deg) scaleX(.955); } }
+@keyframes motion-core { 0%,100% { opacity:.38; transform:scale(.96); } 50% { opacity:.6; transform:scale(1.045); } }
+@keyframes motion-halo { 0%,100% { opacity:.12; transform:scale(.96); } 50% { opacity:.24; transform:scale(1.045); } }
+@keyframes motion-float { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-4px); } }
+
+@media (max-width:720px) {
+  .system-motion-signature { width:min(86vw,360px); }
+  .depth-3,.structural-ring:nth-child(n+6),.marker-c { display:none; }
+  .motion-guides { opacity:.05; }
 }
 
 @media (prefers-reduced-motion: reduce) {
   .system-motion-signature,
   .system-motion-signature *,
   .system-motion-signature:hover,
-  .system-motion-signature:hover * { animation: none !important; transform: none !important; transition: none !important; }
-  .core-halo { opacity: .2; }
-  .core-breath { opacity: .48; }
+  .system-motion-signature:hover * { animation:none !important; transform:none !important; transition:none !important; }
+  .depth-ring { opacity:.16; }
+  .core-halo { opacity:.18; }
+  .core-breath { opacity:.42; }
 }
