@@ -88,7 +88,7 @@ class WebAppRealtimeRuntime:
         now: datetime,
         resource_version: int | None = None,
     ) -> RealtimeEvent:
-        """Append one bounded projection event after canonical read authorization."""
+        """Append one bounded projection event after canonical resource authorization."""
         self._token(resource_type, "resource_type")
         self._token(resource_id, "resource_id")
         if event_type not in ("created", "updated", "deleted", "state_changed"):
@@ -98,7 +98,19 @@ class WebAppRealtimeRuntime:
                 "INVALID_RESOURCE_VERSION", "resource_version must be positive"
             )
         self._payload(payload)
-        self._authorize_subscription(principal, resource_type, now)
+        record = self._crud.read(
+            principal=principal,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            now=now,
+        )
+        if resource_version is not None and resource_version != record.version:
+            raise WebAppRealtimeRuntimeError(
+                "RESOURCE_VERSION_MISMATCH",
+                "realtime projection version does not match authoritative resource",
+                409,
+            )
+        authoritative_version = record.version
         occurred_at = self._utc(now)
         with self._lock:
             self._sequence += 1
@@ -117,7 +129,7 @@ class WebAppRealtimeRuntime:
                 tenant_id=principal.tenant_id,
                 resource_type=resource_type,
                 resource_id=resource_id,
-                resource_version=resource_version,
+                resource_version=authoritative_version,
                 occurred_at=occurred_at,
                 payload=dict(payload),
             )
