@@ -127,6 +127,31 @@ def test_unregistered_target_and_out_of_manifest_action_fail_closed() -> None:
         firewall.admit(_invocation(input_class="credential"), _grant(), NOW)
 
 
+@pytest.mark.parametrize("status", [AgentStatus.SUSPENDED, AgentStatus.RETIRED])
+def test_inactive_agent_status_cannot_be_invoked(status: AgentStatus) -> None:
+    manifest = _manifest()
+    inactive = AgentManifest(
+        manifest.agent_id,
+        manifest.alias,
+        manifest.role,
+        manifest.team,
+        manifest.capabilities,
+        manifest.permissions,
+        manifest.inputs,
+        manifest.outputs,
+        manifest.dependencies,
+        manifest.allowed_callers,
+        manifest.allowed_targets,
+        manifest.escalation_path,
+        manifest.verifier_id,
+        manifest.version,
+        status,
+    )
+    firewall = PermissionFirewall((inactive,), GrantPolicy())
+    with pytest.raises(AgentSecurityError, match="target agent is unavailable"):
+        firewall.admit(_invocation(), _grant(), NOW)
+
+
 def test_provider_or_prompt_metadata_cannot_promote_output_into_authority() -> None:
     firewall = PermissionFirewall((_manifest(),), GrantPolicy())
     for forged_output in ("approval", "evidence", "success", "tool_result"):
