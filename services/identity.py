@@ -76,7 +76,7 @@ class AuthenticationBoundary:
             raise IdentityError("token is not currently valid")
         if claims.expires_at - claims.issued_at > self._policy.maximum_session:
             raise IdentityError("token lifetime exceeds policy")
-        if not claims.subject or not claims.tenant_id:
+        if not claims.subject.strip() or not claims.tenant_id.strip():
             raise IdentityError("subject and tenant claims are required")
         return Principal(
             claims.subject,
@@ -202,6 +202,12 @@ class SessionRegistry:
     def issue(
         self, session_id: str, principal: Principal, now: datetime, lifetime: timedelta
     ) -> Session:
+        if (
+            not session_id.strip()
+            or not principal.principal_id.strip()
+            or not principal.tenant_id.strip()
+        ):
+            raise IdentityError("session identity is required")
         if lifetime <= timedelta(0) or lifetime > self._maximum_lifetime:
             raise IdentityError("session lifetime violates policy")
         if (
@@ -216,6 +222,8 @@ class SessionRegistry:
         return session
 
     def validate(self, session_id: str, tenant_id: str, now: datetime) -> Session:
+        if not session_id.strip() or not tenant_id.strip():
+            raise IdentityError("session is invalid or revoked")
         session = self._sessions.get(session_id)
         if (
             session is None
@@ -230,6 +238,8 @@ class SessionRegistry:
         self._sessions.pop(session_id, None)
 
     def revoke_principal(self, principal_id: str) -> None:
+        if not principal_id.strip():
+            raise IdentityError("principal identity is required")
         self._revoked_principals.add(principal_id)
 
 

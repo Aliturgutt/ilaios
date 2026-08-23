@@ -96,7 +96,15 @@ def test_oidc_boundary_validates_federation_audience_expiry_and_short_lifetime()
             "opaque-to-boundary", NOW
         )
     with pytest.raises(IdentityError, match="subject and tenant"):
+        AuthenticationBoundary(_Verifier(_claims(subject="   ")), policy).authenticate(
+            "opaque-to-boundary", NOW
+        )
+    with pytest.raises(IdentityError, match="subject and tenant"):
         AuthenticationBoundary(_Verifier(_claims(tenant_id="")), policy).authenticate(
+            "opaque-to-boundary", NOW
+        )
+    with pytest.raises(IdentityError, match="subject and tenant"):
+        AuthenticationBoundary(_Verifier(_claims(tenant_id="\t")), policy).authenticate(
             "opaque-to-boundary", NOW
         )
     with pytest.raises(IdentityError, match="lifetime"):
@@ -252,6 +260,42 @@ def test_sessions_are_short_lived_tenant_bound_unique_and_revocable() -> None:
     registry.revoke_session(session.session_id)
     with pytest.raises(IdentityError, match="invalid or revoked"):
         registry.validate(session.session_id, "tenant-a", NOW)
+
+
+def test_session_boundary_rejects_blank_session_principal_and_tenant_identity() -> None:
+    registry = SessionRegistry(timedelta(minutes=15))
+    for session_id in ("", "   ", "\t"):
+        with pytest.raises(IdentityError, match="session identity"):
+            registry.issue(session_id, _principal(), NOW, timedelta(minutes=5))
+
+    blank_principal = Principal(
+        "   ",
+        "tenant-a",
+        IdentityKind.HUMAN,
+        frozenset({"operator"}),
+        frozenset(),
+        frozenset({"mfa"}),
+    )
+    with pytest.raises(IdentityError, match="session identity"):
+        registry.issue("session-blank-principal", blank_principal, NOW, timedelta(minutes=5))
+
+    blank_tenant = Principal(
+        "human-1",
+        " ",
+        IdentityKind.HUMAN,
+        frozenset({"operator"}),
+        frozenset(),
+        frozenset({"mfa"}),
+    )
+    with pytest.raises(IdentityError, match="session identity"):
+        registry.issue("session-blank-tenant", blank_tenant, NOW, timedelta(minutes=5))
+
+    with pytest.raises(IdentityError, match="invalid or revoked"):
+        registry.validate(" ", "tenant-a", NOW)
+    with pytest.raises(IdentityError, match="invalid or revoked"):
+        registry.validate("session-unknown", " ", NOW)
+    with pytest.raises(IdentityError, match="principal identity"):
+        registry.revoke_principal("   ")
 
 
 def test_revoked_principal_cannot_reissue_or_validate_session() -> None:
