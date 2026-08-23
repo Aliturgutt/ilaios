@@ -147,22 +147,22 @@ class WebAppRealtimeRuntime:
 
         with self._lock:
             snapshot = tuple(self._events)
-            latest_sequence = self._sequence
 
-        if snapshot and after_sequence < snapshot[0].sequence - 1:
+        scoped = tuple(
+            event
+            for event in snapshot
+            if event.tenant_id == principal.tenant_id
+            and event.resource_type == resource_type
+            and (resource_id is None or event.resource_id == resource_id)
+        )
+        if scoped and after_sequence < scoped[0].sequence - 1:
             raise WebAppRealtimeRuntimeError(
                 "STALE_CURSOR",
                 "realtime cursor predates retained history; full refresh required",
                 409,
             )
-        matching = tuple(
-            event
-            for event in snapshot
-            if event.sequence > after_sequence
-            and event.tenant_id == principal.tenant_id
-            and event.resource_type == resource_type
-            and (resource_id is None or event.resource_id == resource_id)
-        )
+        matching = tuple(event for event in scoped if event.sequence > after_sequence)
+        latest_sequence = scoped[-1].sequence if scoped else after_sequence
         return RealtimeBatch(
             events=matching[:batch_limit],
             latest_sequence=latest_sequence,
