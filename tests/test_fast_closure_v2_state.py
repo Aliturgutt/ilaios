@@ -40,6 +40,20 @@ def test_external_blocker_requires_reason() -> None:
         validate(state)
 
 
+def test_pre_merge_validation_is_a_valid_merge_owner_lifecycle() -> None:
+    state = load_state()
+    state["merge_token"].update(
+        {
+            "state": "PRE_MERGE_VALIDATION",
+            "owner": "web_app",
+            "freeze_active": True,
+        }
+    )
+    state["workstreams"]["web_app"]["lifecycle"] = "PRE_MERGE_VALIDATION"
+
+    validate(state)
+
+
 def test_merge_token_owner_must_be_in_merge_lifecycle() -> None:
     state = load_state()
     state["merge_token"].update(
