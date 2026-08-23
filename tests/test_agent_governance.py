@@ -225,3 +225,22 @@ def test_execution_grant_scope_expiry_and_budget_abuse_fail_closed() -> None:
     policy.record_side_effect(exhausted, "agent-01")
     with pytest.raises(AgentSecurityError, match="execution grant denied"):
         firewall.admit(_invocation(), exhausted, NOW)
+
+
+def test_revoked_execution_grant_cannot_be_reused_at_agent_boundary() -> None:
+    policy = GrantPolicy()
+    firewall = PermissionFirewall((_manifest(),), policy)
+    grant = _grant()
+    policy.revoke(grant.grant_id)
+
+    with pytest.raises(AgentSecurityError, match="execution grant denied"):
+        firewall.admit(_invocation(), grant, NOW)
+
+
+def test_kill_switch_blocks_agent_even_with_otherwise_valid_grant() -> None:
+    policy = GrantPolicy()
+    firewall = PermissionFirewall((_manifest(),), policy)
+    policy.kill("agent-01")
+
+    with pytest.raises(AgentSecurityError, match="execution grant denied"):
+        firewall.admit(_invocation(), _grant(), NOW)
