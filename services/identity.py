@@ -133,6 +133,7 @@ class AuthorizationEngine:
     ) -> None:
         self._rules = rules
         self._approvals = {item.approval_id: item for item in approvals}
+        self._consumed_approvals: set[str] = set()
         self._privileged_mfa = privileged_mfa_methods
 
     def authorize(
@@ -146,8 +147,9 @@ class AuthorizationEngine:
             principal.authentication_methods & self._privileged_mfa
         ):
             raise IdentityError("privileged access requires MFA")
+        approval_id: str | None = None
         if request.high_risk:
-            self._check_approval(principal, request, now)
+            approval_id = self._check_approval(principal, request, now)
         for rule in self._rules:
             if (
                 rule.action == request.action
@@ -156,15 +158,19 @@ class AuthorizationEngine:
                 and rule.subject_attributes <= principal.attributes
                 and rule.resource_attributes <= request.resource_attributes
             ):
+                if approval_id is not None:
+                    self._consumed_approvals.add(approval_id)
                 return
         raise IdentityError("deny by default")
 
     def _check_approval(
         self, principal: Principal, request: AccessRequest, now: datetime
-    ) -> None:
-        approval = self._approvals.get(request.approval_id or "")
+    ) -> str:
+        approval_id = request.approval_id or ""
+        approval = self._approvals.get(approval_id)
         if (
             approval is None
+            or approval_id in self._consumed_approvals
             or approval.revoked
             or approval.expires_at <= now
             or approval.tenant_id != principal.tenant_id
@@ -173,6 +179,7 @@ class AuthorizationEngine:
             or approval.approver_id == principal.principal_id
         ):
             raise IdentityError("valid independent approval is required")
+        return approval_id
 
 
 @dataclass(frozen=True, slots=True)
