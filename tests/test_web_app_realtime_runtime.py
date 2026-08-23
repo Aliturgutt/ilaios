@@ -125,6 +125,30 @@ def test_subscription_is_tenant_scoped() -> None:
         now=NOW,
     )
     assert batch.events == ()
+    assert batch.latest_sequence == 0
+
+
+def test_other_tenant_history_eviction_cannot_stale_or_advance_cursor() -> None:
+    realtime = _runtime(max_history=2)
+    for index in range(3):
+        realtime.publish(
+            principal=_principal(tenant_id="tenant-1"),
+            resource_type="Goal",
+            resource_id=f"goal-{index}",
+            event_type="updated",
+            payload={"index": index},
+            now=NOW,
+        )
+
+    batch = realtime.subscribe(
+        principal=_principal(tenant_id="tenant-2"),
+        resource_type="Goal",
+        after_sequence=0,
+        now=NOW,
+    )
+    assert batch.events == ()
+    assert batch.latest_sequence == 0
+    assert batch.has_more is False
 
 
 def test_default_deny_is_inherited_for_publish_and_subscribe() -> None:
