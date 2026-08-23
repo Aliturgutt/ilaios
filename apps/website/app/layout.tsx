@@ -17,6 +17,7 @@ import "./final-interaction-redteam.css";
 import "./site-v2-finalization.css";
 import "./production-density-cert.css";
 import "./system-motion-signature.css";
+import "./v2-premium-refinement.css";
 import SiteChrome from "./SiteChrome";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ilaios.com";
