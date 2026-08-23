@@ -31,6 +31,21 @@ def test_available_token_must_not_have_owner() -> None:
         validate(state)
 
 
+def test_reserved_token_requires_freeze() -> None:
+    state = load_state()
+    state["merge_token"].update(
+        {
+            "state": "RESERVED",
+            "owner": "agents",
+            "freeze_active": False,
+        }
+    )
+    state["workstreams"]["agents"]["lifecycle"] = "PRE_MERGE_VALIDATION"
+
+    with pytest.raises(ValueError, match="must keep freeze_active"):
+        validate(state)
+
+
 def test_external_blocker_requires_reason() -> None:
     state = load_state()
     state["workstreams"]["website_v2"]["lifecycle"] = "BLOCKED_EXTERNAL"
