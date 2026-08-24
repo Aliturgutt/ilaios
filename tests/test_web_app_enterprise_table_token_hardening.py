@@ -8,17 +8,14 @@ from services.web_app_enterprise_table_runtime import (
 )
 
 
-@pytest.mark.parametrize(
-    "token",
-    (
+def test_enterprise_table_tokens_reject_ambiguous_or_nonprintable_values() -> None:
+    for token in (
         " id",
         "id ",
         "id\u200b",
         "status\u007f",
-    ),
-)
-def test_enterprise_table_tokens_reject_ambiguous_or_nonprintable_values(token: str) -> None:
-    with pytest.raises(WebAppEnterpriseTableError) as exc:
-        WebAppEnterpriseTableRuntime._token(token, "column.key")
+    ):
+        with pytest.raises(WebAppEnterpriseTableError) as exc:
+            WebAppEnterpriseTableRuntime._token(token, "column.key")
 
-    assert exc.value.code == "INVALID_TOKEN"
+        assert exc.value.code == "INVALID_TOKEN"
