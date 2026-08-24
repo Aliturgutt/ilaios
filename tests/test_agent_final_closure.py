@@ -7,14 +7,21 @@ from services.agent_final_closure import (
     validate_agent_final_closure_receipt,
 )
 from services.agent_readiness import EXPECTED_AGENT_COUNT, EXPECTED_TEAM_COUNTS
+from services.agent_registry import CANONICAL_AGENT_REGISTRY
+
+
+def _canonical_agent_ids() -> list[str]:
+    return [item.manifest.agent_id for item in CANONICAL_AGENT_REGISTRY]
 
 
 def _receipt() -> dict[str, object]:
+    canonical_agent_ids = _canonical_agent_ids()
     return {
         "agent_workstream": "CLOSED",
         "exact_master_sha": "a" * 40,
         "canonical_agent_count": EXPECTED_AGENT_COUNT,
         "verified_agent_count": EXPECTED_AGENT_COUNT,
+        "verified_agent_ids": canonical_agent_ids,
         "runtime_active_count": 3,
         "verified_family_breakdown": dict(EXPECTED_TEAM_COUNTS),
         "registry_identity_result": "VERIFIED",
@@ -54,8 +61,7 @@ def _receipt() -> dict[str, object]:
         "exact_head_ci_evidence_ref": "github-actions://required-ci/head",
         "exact_master_ci_evidence_ref": "github-actions://required-ci/master",
         "agent_execution_evidence_refs": [
-            "evidence://exec-final-001/ilaios.agent.core.orchestrator.v1",
-            "evidence://exec-final-001/ilaios.agent.core.planner.v1",
+            f"evidence://exec-final-001/{agent_id}" for agent_id in canonical_agent_ids
         ],
         "provider_tool_receipt_ids": ["receipt-provider-001", "receipt-tool-001"],
         "output_artifact_sha256": "c" * 64,
@@ -79,6 +85,7 @@ def test_final_closure_receipt_rejects_incomplete_or_blocked_evidence() -> None:
         ("agent_workstream", "PARTIAL"),
         ("exact_master_sha", "unknown"),
         ("verified_agent_count", EXPECTED_AGENT_COUNT - 1),
+        ("verified_agent_ids", []),
         ("registry_identity_result", "NOT_VERIFIED"),
         ("runtime_state_truth_result", "PARTIAL"),
         ("runtime_e2e_result", "NOT_VERIFIED"),
@@ -143,9 +150,34 @@ def test_final_closure_receipt_rejects_registry_count_or_family_drift() -> None:
         validate_agent_final_closure_receipt(receipt)
 
 
+def test_final_closure_receipt_rejects_wrong_or_duplicate_agent_identities() -> None:
+    receipt = _receipt()
+    verified_agent_ids = _canonical_agent_ids()
+    verified_agent_ids[-1] = "ilaios.agent.meta.not-canonical.v1"
+    receipt["verified_agent_ids"] = verified_agent_ids
+    with pytest.raises(AgentFinalClosureError, match="current canonical Agent identities"):
+        validate_agent_final_closure_receipt(receipt)
+
+    receipt = _receipt()
+    verified_agent_ids = _canonical_agent_ids()
+    verified_agent_ids[-1] = verified_agent_ids[0]
+    receipt["verified_agent_ids"] = verified_agent_ids
+    with pytest.raises(AgentFinalClosureError, match="duplicate Agent identities"):
+        validate_agent_final_closure_receipt(receipt)
+
+
+def test_final_closure_receipt_rejects_incomplete_agent_evidence_coverage() -> None:
+    receipt = _receipt()
+    receipt["agent_execution_evidence_refs"] = ["evidence://exec-final-001/one-agent"]
+    with pytest.raises(AgentFinalClosureError, match="cover every canonical Agent"):
+        validate_agent_final_closure_receipt(receipt)
+
+
 def test_final_closure_receipt_rejects_malformed_lineage_sequences() -> None:
     receipt = _receipt()
-    receipt["agent_execution_evidence_refs"] = ["evidence://valid", ""]
+    evidence_refs = list(receipt["agent_execution_evidence_refs"])
+    evidence_refs[-1] = ""
+    receipt["agent_execution_evidence_refs"] = evidence_refs
     with pytest.raises(AgentFinalClosureError, match="agent_execution_evidence_refs"):
         validate_agent_final_closure_receipt(receipt)
 
