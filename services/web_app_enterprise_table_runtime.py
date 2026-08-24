@@ -243,6 +243,11 @@ class WebAppEnterpriseTableRuntime:
     @staticmethod
     def _token(value: str, field: str) -> str:
         normalized = value.strip()
-        if not normalized or len(normalized) > 128 or any(ord(char) < 32 for char in normalized):
+        if (
+            not normalized
+            or normalized != value
+            or len(normalized) > 128
+            or any(not char.isprintable() for char in normalized)
+        ):
             raise WebAppEnterpriseTableError("INVALID_TOKEN", f"invalid {field}")
         return normalized
