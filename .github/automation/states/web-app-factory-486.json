@@ -9,18 +9,18 @@
   "current_phase": 8,
   "master_sha": "00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
   "base_sha": "00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
-  "head_sha": "cf204c0c6b154659b81fff70ee414b5136023015",
+  "head_sha": "5c8502af6ea73b3e10924f1cd2cd43dccf78e4b2",
   "branch": "web/app-phase8-enterprise-tables-00fb991e",
-  "pr": null,
+  "pr": 968,
   "ci": {
     "run_id": null,
     "conclusion": null,
-    "exact_sha": null
+    "exact_sha": "5c8502af6ea73b3e10924f1cd2cd43dccf78e4b2"
   },
-  "next_action": "implement the smallest canonical Phase-8 enterprise table runtime on top of Phase-5 CRUD authorization/data contracts; add adversarial tenant/RBAC/pagination/sort/filter/selection regressions; open bounded PR and require fresh exact-head Web App Factory + Required CI + SFFE before merge",
+  "next_action": "consume fresh exact-head Web App Factory + Required CI + SFFE for PR 968; on FAIL inspect the real job and repair minimally; on PASS reread live master/token/head/overlap before expected-head merge and exact-master verification",
   "blocker": {
-    "type": null,
-    "detail": null,
+    "type": "CI",
+    "detail": "PR 968 opened on exact current master; fresh exact-head checks are required before merge",
     "human_action": null
   },
   "repair": {
@@ -46,8 +46,9 @@
     "phase7-exact-master:software-factory run=32749923857 success",
     "phase7-exact-master:required-ci run=32749924156 success",
     "phase7-verdict:VERIFIED on exact master 00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
-    "phase8-start:branch=web/app-phase8-enterprise-tables-00fb991e base=00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
+    "phase8-pr:968 branch=web/app-phase8-enterprise-tables-00fb991e base=00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827 head=5c8502af6ea73b3e10924f1cd2cd43dccf78e4b2 changed_paths=4",
+    "phase8-runtime:canonical CRUD-backed enterprise table projection with tenant/RBAC/selection validation and fail-closed sorting contracts",
     "phase16-freeze: preserved; optional 3D/Motion/WebGL remains outside baseline closure"
   ],
-  "updated_at": "2026-08-24T16:20:00Z"
+  "updated_at": "2026-08-24T16:42:00Z"
 }
