@@ -36,9 +36,8 @@ def test_final_closure_receipt_accepts_complete_evidence_only() -> None:
     validate_agent_final_closure_receipt(_receipt())
 
 
-@pytest.mark.parametrize(
-    ("field", "value"),
-    [
+def test_final_closure_receipt_rejects_incomplete_or_blocked_evidence() -> None:
+    cases: list[tuple[str, object]] = [
         ("agent_workstream", "PARTIAL"),
         ("exact_master_sha", "unknown"),
         ("verified_agent_count", EXPECTED_AGENT_COUNT - 1),
@@ -50,16 +49,12 @@ def test_final_closure_receipt_accepts_complete_evidence_only() -> None:
         ("windows_msix_packaged_runtime_result", "BLOCKED_EXTERNAL"),
         ("human_owner_state", "PARTIAL"),
         ("remaining_external_blockers", ["windows-user-machine"]),
-    ],
-)
-def test_final_closure_receipt_rejects_incomplete_or_blocked_evidence(
-    field: str,
-    value: object,
-) -> None:
-    receipt = _receipt()
-    receipt[field] = value
-    with pytest.raises(AgentFinalClosureError):
-        validate_agent_final_closure_receipt(receipt)
+    ]
+    for field, value in cases:
+        receipt = _receipt()
+        receipt[field] = value
+        with pytest.raises(AgentFinalClosureError):
+            validate_agent_final_closure_receipt(receipt)
 
 
 def test_final_closure_receipt_rejects_registry_count_or_family_drift() -> None:
