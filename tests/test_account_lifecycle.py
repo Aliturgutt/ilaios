@@ -83,6 +83,7 @@ def test_unlink_requires_distinct_linked_reauthentication(tmp_path: Path) -> Non
         authenticated_user_id=account.user_id,
         authenticated_tenant_id=account.tenant_id,
         identity=github,
+        recent_authentication_verified=True,
     )
 
     with pytest.raises(CentralIdentityError, match="different re-authenticated identity"):
@@ -112,6 +113,7 @@ def test_unlink_removes_only_target_and_survives_restart(tmp_path: Path) -> None
         authenticated_user_id=account.user_id,
         authenticated_tenant_id=account.tenant_id,
         identity=github,
+        recent_authentication_verified=True,
     )
 
     removed = lifecycle.unlink_identity(
@@ -151,6 +153,7 @@ def test_cross_account_reauthentication_cannot_authorize_unlink(tmp_path: Path) 
         authenticated_user_id=first.user_id,
         authenticated_tenant_id=first.tenant_id,
         identity=first_github,
+        recent_authentication_verified=True,
     )
     attacker = central.sign_in(_identity(IdentityProvider.APPLE, "apple-attacker"))
 
