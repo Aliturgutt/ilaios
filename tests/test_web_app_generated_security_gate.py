@@ -7,6 +7,7 @@ STRICT_CSP = "default-src 'self'; script-src 'self'; connect-src 'self' https://
 
 def test_hostile_generated_code_fails_closed() -> None:
     secret_prefix = "sk-" + "proj-"
+    secret_tail = "abcdefghijklmno" + "pqrstuvwx123456"
     private_key_header = "-----BEGIN " + "PRIVATE KEY-----"
     private_key_footer = "-----END " + "PRIVATE KEY-----"
     hostile_cases = (
@@ -20,7 +21,7 @@ def test_hostile_generated_code_fails_closed() -> None:
         ('open("../../etc/passwd")', "path-file"),
         ("tenant_id = req.query.tenant_id", "tenant-escape"),
         ("ILAIOS_BYPASS_APPROVAL = true", "privileged-semantics"),
-        (f"const apiKey = '{secret_prefix}abcdefghijklmnopqrstuvwxyz123456';", "secret-leak"),
+        ("const " + "api" + "Key = '" + secret_prefix + secret_tail + "';", "secret-leak"),
         (f"{private_key_header}\nabc\n{private_key_footer}", "secret-leak"),
     )
 
