@@ -78,6 +78,7 @@ class WebAppEnterpriseTableRuntime:
     ) -> EnterpriseTablePage:
         self._validate_columns(columns)
         self._validate_density(density)
+        self._validate_query_inputs(filters=filters, search=search)
         sort_field = self._resolve_sort_field(columns, sort_key)
         page = self._crud.list(
             principal=principal,
@@ -176,6 +177,23 @@ class WebAppEnterpriseTableRuntime:
             elif column.payload_key is not None:
                 raise WebAppEnterpriseTableError(
                     "INVALID_COLUMN", "metadata column cannot define payload_key"
+                )
+
+    @classmethod
+    def _validate_query_inputs(
+        cls, *, filters: dict[str, object] | None, search: str | None
+    ) -> None:
+        if filters is not None:
+            if len(filters) > 16:
+                raise WebAppEnterpriseTableError(
+                    "FILTERS_TOO_LARGE", "filter count exceeds bounded maximum"
+                )
+            for key in filters:
+                cls._token(key, "filter.key")
+        if search is not None:
+            if len(search) > 512 or any(ord(char) < 32 for char in search):
+                raise WebAppEnterpriseTableError(
+                    "INVALID_SEARCH", "search text exceeds bounded or safe input limits"
                 )
 
     @staticmethod
