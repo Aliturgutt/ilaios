@@ -51,6 +51,7 @@ class AccountDepartureService:
                 self._audit_in_transaction(
                     connection, actor, tenant, target, timestamp, "DENIED", "actor_not_authorized"
                 )
+                connection.commit()
                 raise CentralIdentityError("departure actor is not authorized")
 
             target_row = connection.execute(
@@ -62,6 +63,7 @@ class AccountDepartureService:
                 self._audit_in_transaction(
                     connection, actor, tenant, target, timestamp, "DENIED", "target_not_active"
                 )
+                connection.commit()
                 raise CentralIdentityError("target membership is not active")
 
             if target_row[0] == "OWNER":
@@ -74,6 +76,7 @@ class AccountDepartureService:
                     self._audit_in_transaction(
                         connection, actor, tenant, target, timestamp, "DENIED", "last_owner"
                     )
+                    connection.commit()
                     raise CentralIdentityError("cannot remove the last active tenant owner")
 
             cursor = connection.execute(
@@ -99,7 +102,13 @@ class AccountDepartureService:
                     (timestamp, target),
                 )
             self._audit_in_transaction(
-                connection, actor, tenant, target, timestamp, "SUCCESS", "membership_revoked",
+                connection,
+                actor,
+                tenant,
+                target,
+                timestamp,
+                "SUCCESS",
+                "membership_revoked",
                 revoked_sessions=sessions,
             )
             return sessions
