@@ -12,6 +12,7 @@ from collections.abc import Mapping, Sequence
 from services.agent_readiness import EXPECTED_AGENT_COUNT, EXPECTED_TEAM_COUNTS
 
 _SHA40 = re.compile(r"^[0-9a-f]{40}$")
+_SHA256 = re.compile(r"^[0-9a-f]{64}$")
 _REQUIRED_RESULTS = (
     "registry_identity_result",
     "runtime_state_truth_result",
@@ -34,6 +35,22 @@ _REQUIRED_RESULTS = (
     "exact_head_release_governance_result",
     "exact_master_release_governance_result",
 )
+_REQUIRED_NONEMPTY_STRINGS = (
+    "execution_id",
+    "job_id",
+    "user_id",
+    "tenant_id",
+    "session_id",
+    "skill_route",
+    "tool_route",
+    "provider_route",
+    "cost_usage_evidence_ref",
+    "evidence_record_id",
+)
+_REQUIRED_NONEMPTY_SEQUENCES = (
+    "agent_execution_evidence_refs",
+    "provider_tool_receipt_ids",
+)
 
 
 class AgentFinalClosureError(ValueError):
@@ -43,6 +60,20 @@ class AgentFinalClosureError(ValueError):
 def _require_verified_result(receipt: Mapping[str, object], key: str) -> None:
     if receipt.get(key) != "VERIFIED":
         raise AgentFinalClosureError(f"{key} must be VERIFIED")
+
+
+def _require_nonempty_string(receipt: Mapping[str, object], key: str) -> None:
+    value = receipt.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise AgentFinalClosureError(f"{key} must be a non-empty string")
+
+
+def _require_nonempty_string_sequence(receipt: Mapping[str, object], key: str) -> None:
+    value = receipt.get(key)
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or not value:
+        raise AgentFinalClosureError(f"{key} must be a non-empty sequence")
+    if any(not isinstance(item, str) or not item.strip() for item in value):
+        raise AgentFinalClosureError(f"{key} must contain only non-empty strings")
 
 
 def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
@@ -82,6 +113,21 @@ def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
     for key in _REQUIRED_RESULTS:
         _require_verified_result(receipt, key)
 
+    for key in _REQUIRED_NONEMPTY_STRINGS:
+        _require_nonempty_string(receipt, key)
+    for key in _REQUIRED_NONEMPTY_SEQUENCES:
+        _require_nonempty_string_sequence(receipt, key)
+
+    output_artifact_sha256 = receipt.get("output_artifact_sha256")
+    if (
+        not isinstance(output_artifact_sha256, str)
+        or _SHA256.fullmatch(output_artifact_sha256) is None
+    ):
+        raise AgentFinalClosureError("output_artifact_sha256 must be lowercase SHA-256")
+
+    if receipt.get("output_validation_result") != "VERIFIED":
+        raise AgentFinalClosureError("output_validation_result must be VERIFIED")
+
     human_owner_required = receipt.get("human_owner_required")
     human_owner_state = receipt.get("human_owner_state")
     if human_owner_required is True and human_owner_state != "VERIFIED":
@@ -96,5 +142,5 @@ def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
         raise AgentFinalClosureError("Agent closure still has external blockers")
 
     evidence_digest = receipt.get("closure_evidence_sha256")
-    if not isinstance(evidence_digest, str) or re.fullmatch(r"[0-9a-f]{64}", evidence_digest) is None:
+    if not isinstance(evidence_digest, str) or _SHA256.fullmatch(evidence_digest) is None:
         raise AgentFinalClosureError("closure_evidence_sha256 must be lowercase SHA-256")
