@@ -10,6 +10,7 @@ import re
 from collections.abc import Mapping, Sequence
 
 from services.agent_readiness import EXPECTED_AGENT_COUNT, EXPECTED_TEAM_COUNTS
+from services.agent_registry import CANONICAL_AGENT_REGISTRY
 
 _SHA40 = re.compile(r"^[0-9a-f]{40}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
@@ -85,6 +86,22 @@ def _require_nonempty_string_sequence(receipt: Mapping[str, object], key: str) -
         raise AgentFinalClosureError(f"{key} must contain only non-empty strings")
 
 
+def _require_exact_canonical_agent_identities(receipt: Mapping[str, object]) -> None:
+    value = receipt.get("verified_agent_ids")
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or not value:
+        raise AgentFinalClosureError("verified_agent_ids must be a non-empty sequence")
+    if any(not isinstance(item, str) or not item.strip() for item in value):
+        raise AgentFinalClosureError("verified_agent_ids must contain only non-empty strings")
+    verified_ids = tuple(str(item) for item in value)
+    canonical_ids = tuple(item.manifest.agent_id for item in CANONICAL_AGENT_REGISTRY)
+    if len(verified_ids) != EXPECTED_AGENT_COUNT:
+        raise AgentFinalClosureError("verified_agent_ids must contain every canonical Agent exactly once")
+    if len(set(verified_ids)) != len(verified_ids):
+        raise AgentFinalClosureError("verified_agent_ids contains duplicate Agent identities")
+    if set(verified_ids) != set(canonical_ids):
+        raise AgentFinalClosureError("verified_agent_ids does not match current canonical Agent identities")
+
+
 def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
     """Validate that a receipt is sufficient for full Agent workstream closure.
 
@@ -105,6 +122,7 @@ def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
         raise AgentFinalClosureError("canonical Agent count does not match current source")
     if verified_count != EXPECTED_AGENT_COUNT:
         raise AgentFinalClosureError("all canonical Agents are not VERIFIED")
+    _require_exact_canonical_agent_identities(receipt)
 
     runtime_active_count = receipt.get("runtime_active_count")
     if not isinstance(runtime_active_count, int) or isinstance(runtime_active_count, bool):
@@ -126,6 +144,16 @@ def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
         _require_nonempty_string(receipt, key)
     for key in _REQUIRED_NONEMPTY_SEQUENCES:
         _require_nonempty_string_sequence(receipt, key)
+
+    agent_execution_evidence_refs = receipt.get("agent_execution_evidence_refs")
+    if not isinstance(agent_execution_evidence_refs, Sequence) or isinstance(
+        agent_execution_evidence_refs, (str, bytes)
+    ):
+        raise AgentFinalClosureError("agent_execution_evidence_refs must be a sequence")
+    if len(agent_execution_evidence_refs) < EXPECTED_AGENT_COUNT:
+        raise AgentFinalClosureError(
+            "agent_execution_evidence_refs must cover every canonical Agent"
+        )
 
     output_artifact_sha256 = receipt.get("output_artifact_sha256")
     if (
