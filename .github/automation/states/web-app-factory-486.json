@@ -6,49 +6,48 @@
     "reference": "issue:#486 + .github/web-app-factory-closure.json"
   },
   "status": "IN_PROGRESS",
-  "current_phase": 7,
-  "master_sha": "64e36798f441bb02132e24932e599e7a2997c917",
-  "base_sha": "64e36798f441bb02132e24932e599e7a2997c917",
-  "head_sha": "f3e43286c45a793f57875a3bbff6d384cb832d97",
-  "branch": "web/app-phase7-realtime-current-20260822i",
-  "pr": 862,
+  "current_phase": 8,
+  "master_sha": "00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
+  "base_sha": "00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
+  "head_sha": "cf204c0c6b154659b81fff70ee414b5136023015",
+  "branch": "web/app-phase8-enterprise-tables-00fb991e",
+  "pr": null,
   "ci": {
     "run_id": null,
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "consume a completely fresh exact-head gate set on PR 862; while gates are pending make no Phase-7 mutation; once all mandatory gates PASS, re-read live master/head/overlap before expected-head merge",
+  "next_action": "implement the smallest canonical Phase-8 enterprise table runtime on top of Phase-5 CRUD authorization/data contracts; add adversarial tenant/RBAC/pagination/sort/filter/selection regressions; open bounded PR and require fresh exact-head Web App Factory + Required CI + SFFE before merge",
   "blocker": {
-    "type": "CI",
-    "detail": "PR 857 exact-head Software Factory 32560720299, Execution Controller 32560720301, Web App Factory 32560720306 and Required CI 32560720430 all passed on 8bcd8db185746555a6c850b5615f2ce9fad3e48f. Live master then advanced 4 commits from d2d9eb329437fe0fccf48a7730c0f9a3f0795bc8 to 64e36798f441bb02132e24932e599e7a2997c917. Compact compare proves drift touches only Mobile, Desktop/Agent certification and independent-verifier paths, with zero overlap against the five Phase-7 bounded paths. GitHub reports PR 857 non-mergeable/currentness false, so its PASS set is stale. PR 862 is the exact-current-master replay and requires a fresh gate set.",
+    "type": null,
+    "detail": null,
     "human_action": null
   },
   "repair": {
     "retry_count": 10,
-    "last_failure_fingerprint": "phase7-pr857-stale-after-master-64e36798-nonmergeable",
-    "last_root_cause": "master advanced four commits with zero Phase-7 path overlap but repository currentness made PR 857 non-mergeable; replayed only the reviewed bounded five-file Phase-7 delta on exact 64e36798 master"
+    "last_failure_fingerprint": null,
+    "last_root_cause": null
   },
   "lock": {
     "owner": "web-app-factory-486",
     "scope": [
       ".github/web-app-factory-closure.json",
-      ".github/workflows/web-app-factory-continuation.yml",
       ".github/automation/states/web-app-factory-486.json",
-      "services/web_app_realtime_runtime.py",
-      "tests/test_web_app_realtime_runtime.py"
+      "services/web_app_enterprise_table_runtime.py",
+      "tests/test_web_app_enterprise_table_runtime.py"
     ],
-    "acquired_at": "2026-08-22T08:50:25Z",
-    "expires_at": "2026-08-22T12:50:25Z"
+    "acquired_at": "2026-08-24T16:20:00Z",
+    "expires_at": "2026-08-24T20:20:00Z"
   },
   "evidence": [
-    "phase5-merge:7fdfa6453323dec394e3dde084aa5ec8683d77bd exact-master:32504527076,32504527231 success",
-    "phase6-pr:766 exact-head:d156c9bf7861f039bea1ff8b69907219660bccfa gates:32532849804,32532849785,32532849897,32532849762 success",
-    "phase6-merge:cd31fe204202855eea8a0654db0d455ae157c06a expected-head:d156c9bf7861f039bea1ff8b69907219660bccfa",
-    "phase6-exact-master:software-factory=32533589517 success; required-ci=32533589860 success",
-    "phase7-pr:857 stale-head:8bcd8db185746555a6c850b5615f2ce9fad3e48f gates:software-factory=32560720299 controller=32560720301 web=32560720306 required-ci=32560720430 success",
-    "master-drift:d2d9eb329437fe0fccf48a7730c0f9a3f0795bc8..64e36798f441bb02132e24932e599e7a2997c917 total_commits=4; files=.github/mobile-store-factory-closure.json,.github/workflows/desktop-exact-master-final-artifact.yml,.github/workflows/desktop-local-runtime-diagnostics.yml,.github/workflows/desktop-msix-packaging.yml,.github/workflows/mobile-store-factory-continuation.yml,.github/workflows/operations-meta-agent-live-certification.yml,services/independent_verifier_execution.py,services/mobile_android_device_executor.py,tests/test_mobile_android_device_executor.py; zero overlap with Phase-7 five-file scope",
-    "phase7-successor:PR862 branch=web/app-phase7-realtime-current-20260822i base=64e36798f441bb02132e24932e599e7a2997c917 reviewed_source=PR857 five-file delta only",
-    "phase16-freeze: preserved; no 3D/Motion/WebGL mutation"
+    "phase7-final-merge-lineage:PR965 merge=75f68f31edecc72a83041bbbac9985c7c5d172b6",
+    "phase7-exact-master-evidence-publisher:PR967 merge=00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
+    "phase7-exact-master:web-app-factory run=32749923875 success",
+    "phase7-exact-master:software-factory run=32749923857 success",
+    "phase7-exact-master:required-ci run=32749924156 success",
+    "phase7-verdict:VERIFIED on exact master 00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
+    "phase8-start:branch=web/app-phase8-enterprise-tables-00fb991e base=00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
+    "phase16-freeze: preserved; optional 3D/Motion/WebGL remains outside baseline closure"
   ],
-  "updated_at": "2026-08-22T08:50:25Z"
+  "updated_at": "2026-08-24T16:20:00Z"
 }
