@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from typing import Literal
 
 from services.identity import Principal
-from services.web_app_crud_runtime import CrudOperation, WebAppCrudRuntime
+from services.web_app_crud_runtime import CrudOperation, WebAppCrudRuntime, WebAppCrudRuntimeError
 
 RealtimeEventType = Literal["created", "updated", "deleted", "state_changed"]
 
@@ -99,19 +99,18 @@ class WebAppRealtimeRuntime:
             )
         self._payload(payload)
         self._authorize_publish(principal, resource_type, event_type, now)
-        record = self._crud.read(
+        authoritative_version = self._authoritative_projection_version(
             principal=principal,
             resource_type=resource_type,
             resource_id=resource_id,
-            now=now,
+            event_type=event_type,
         )
-        if resource_version is not None and resource_version != record.version:
+        if resource_version is not None and resource_version != authoritative_version:
             raise WebAppRealtimeRuntimeError(
                 "RESOURCE_VERSION_MISMATCH",
                 "realtime projection version does not match authoritative resource",
                 409,
             )
-        authoritative_version = record.version
         occurred_at = self._utc(now)
         with self._lock:
             self._sequence += 1
@@ -196,6 +195,31 @@ class WebAppRealtimeRuntime:
             "state_changed": "update",
         }
         self._crud._authorize(principal, resource_type, operations[event_type], now)
+
+    def _authoritative_projection_version(
+        self,
+        *,
+        principal: Principal,
+        resource_type: str,
+        resource_id: str,
+        event_type: RealtimeEventType,
+    ) -> int:
+        """Bind a projection to canonical CRUD state, including post-delete tombstones."""
+        deleted_clause = "IS NOT NULL" if event_type == "deleted" else "IS NULL"
+        row = self._crud._db.execute(
+            f"""SELECT version FROM web_app_resources
+                WHERE tenant_id=? AND project_id=? AND resource_type=? AND resource_id=?
+                  AND deleted_at {deleted_clause}""",
+            (
+                principal.tenant_id,
+                self._crud._contract.project_id,
+                resource_type,
+                resource_id,
+            ),
+        ).fetchone()
+        if row is None:
+            raise WebAppCrudRuntimeError("NOT_FOUND", "resource not found", 404)
+        return int(row["version"])
 
     def _authorize_subscription(
         self, principal: Principal, resource_type: str, now: datetime
