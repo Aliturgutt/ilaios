@@ -8,8 +8,10 @@ Security properties:
 - provider identities are keyed by provider + immutable provider subject;
 - enterprise OIDC and Microsoft OIDC subjects are additionally namespaced by verified issuer;
 - verified email is display/recovery metadata, never an automatic merge key;
-- account linking requires an already authenticated canonical user/tenant;
+- account linking/unlinking requires an already authenticated canonical user/tenant;
+- sensitive linking/unlinking requires recent-authentication proof from the caller;
 - identities already linked to another user fail closed;
+- removing the final usable sign-in method fails closed;
 - supported provider types are explicit and provider-neutral at the core.
 """
 
@@ -117,6 +119,10 @@ class CentralIdentityStore(Protocol):
         self, account: CanonicalAccount, identity: VerifiedExternalIdentity
     ) -> IdentityLink: ...
 
+    def remove_link(
+        self, account: CanonicalAccount, identity: VerifiedExternalIdentity
+    ) -> IdentityLink: ...
+
     def list_links(self, user_id: str) -> tuple[IdentityLink, ...]: ...
 
 
@@ -146,34 +152,73 @@ class CentralIdentityService:
         authenticated_user_id: str,
         authenticated_tenant_id: str,
         identity: VerifiedExternalIdentity,
+        recent_authentication_verified: bool,
     ) -> IdentityLink:
-        """Link a new provider only from an already authenticated account."""
+        """Link a new provider only after recent authentication of the account."""
 
-        user_id = authenticated_user_id.strip()
-        tenant_id = authenticated_tenant_id.strip()
-        if not user_id or not tenant_id:
-            raise CentralIdentityError("authenticated user and tenant are required")
-        account = self._store.get_account(user_id)
-        if account is None or not account.enabled:
-            raise CentralIdentityError("authenticated account is unavailable")
-        if account.tenant_id != tenant_id:
-            raise CentralIdentityError("authenticated tenant mismatch")
-
+        account = self._require_authenticated_account(
+            authenticated_user_id=authenticated_user_id,
+            authenticated_tenant_id=authenticated_tenant_id,
+            recent_authentication_verified=recent_authentication_verified,
+        )
         verified = identity.normalized()
         existing = self._store.find_link(verified)
         if existing is not None:
-            if existing.user_id != user_id or existing.tenant_id != tenant_id:
+            if existing.user_id != account.user_id or existing.tenant_id != account.tenant_id:
                 raise CentralIdentityError(
                     "external identity is already linked to another account"
                 )
             return existing
         return self._store.add_link(account, verified)
 
+    def unlink_identity(
+        self,
+        *,
+        authenticated_user_id: str,
+        authenticated_tenant_id: str,
+        identity: VerifiedExternalIdentity,
+        recent_authentication_verified: bool,
+    ) -> IdentityLink:
+        """Remove one verified provider link while preserving a recovery path."""
+
+        account = self._require_authenticated_account(
+            authenticated_user_id=authenticated_user_id,
+            authenticated_tenant_id=authenticated_tenant_id,
+            recent_authentication_verified=recent_authentication_verified,
+        )
+        verified = identity.normalized()
+        existing = self._store.find_link(verified)
+        if existing is None:
+            raise CentralIdentityError("external identity is not linked")
+        if existing.user_id != account.user_id or existing.tenant_id != account.tenant_id:
+            raise CentralIdentityError("external identity belongs to another account")
+        return self._store.remove_link(account, verified)
+
     def linked_identities(self, user_id: str) -> tuple[IdentityLink, ...]:
         account = self._store.get_account(user_id.strip())
         if account is None or not account.enabled:
             raise CentralIdentityError("account is unavailable")
         return self._store.list_links(account.user_id)
+
+    def _require_authenticated_account(
+        self,
+        *,
+        authenticated_user_id: str,
+        authenticated_tenant_id: str,
+        recent_authentication_verified: bool,
+    ) -> CanonicalAccount:
+        user_id = authenticated_user_id.strip()
+        tenant_id = authenticated_tenant_id.strip()
+        if not user_id or not tenant_id:
+            raise CentralIdentityError("authenticated user and tenant are required")
+        if recent_authentication_verified is not True:
+            raise CentralIdentityError("recent authentication is required")
+        account = self._store.get_account(user_id)
+        if account is None or not account.enabled:
+            raise CentralIdentityError("authenticated account is unavailable")
+        if account.tenant_id != tenant_id:
+            raise CentralIdentityError("authenticated tenant mismatch")
+        return account
 
 
 class InMemoryCentralIdentityStore:
@@ -219,6 +264,24 @@ class InMemoryCentralIdentityStore:
         link = _link_for(account, verified)
         self._links[key] = link
         return link
+
+    def remove_link(
+        self, account: CanonicalAccount, identity: VerifiedExternalIdentity
+    ) -> IdentityLink:
+        verified = identity.normalized()
+        key = verified.key()
+        existing = self._links.get(key)
+        if existing is None:
+            raise CentralIdentityError("external identity is not linked")
+        if existing.user_id != account.user_id or existing.tenant_id != account.tenant_id:
+            raise CentralIdentityError("external identity belongs to another account")
+        account_links = [
+            link for link in self._links.values() if link.user_id == account.user_id
+        ]
+        if len(account_links) <= 1:
+            raise CentralIdentityError("cannot remove the last usable sign-in method")
+        del self._links[key]
+        return existing
 
     def list_links(self, user_id: str) -> tuple[IdentityLink, ...]:
         return tuple(
