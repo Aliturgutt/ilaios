@@ -249,6 +249,36 @@ def test_query_filter_and_search_inputs_are_bounded_fail_closed() -> None:
         )
     assert invalid_filter_key.value.code == "INVALID_TOKEN"
 
+    with pytest.raises(WebAppEnterpriseTableError) as oversized_filter_value:
+        tables.query(
+            principal=principal,
+            resource_type="Goal",
+            columns=_columns(),
+            now=NOW,
+            filters={"status": "x" * 513},
+        )
+    assert oversized_filter_value.value.code == "INVALID_FILTER_VALUE"
+
+    with pytest.raises(WebAppEnterpriseTableError) as nested_filter_value:
+        tables.query(
+            principal=principal,
+            resource_type="Goal",
+            columns=_columns(),
+            now=NOW,
+            filters={"status": {"$ne": "done"}},
+        )
+    assert nested_filter_value.value.code == "INVALID_FILTER_VALUE"
+
+    with pytest.raises(WebAppEnterpriseTableError) as nonfinite_filter_value:
+        tables.query(
+            principal=principal,
+            resource_type="Goal",
+            columns=_columns(),
+            now=NOW,
+            filters={"score": float("inf")},
+        )
+    assert nonfinite_filter_value.value.code == "INVALID_FILTER_VALUE"
+
     with pytest.raises(WebAppEnterpriseTableError) as oversized_search:
         tables.query(
             principal=principal,
