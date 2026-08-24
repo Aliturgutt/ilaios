@@ -8,6 +8,7 @@ the canonical CRUD runtime and therefore inherit its fail-closed authorization.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Literal
@@ -188,13 +189,34 @@ class WebAppEnterpriseTableRuntime:
                 raise WebAppEnterpriseTableError(
                     "FILTERS_TOO_LARGE", "filter count exceeds bounded maximum"
                 )
-            for key in filters:
+            for key, value in filters.items():
                 cls._token(key, "filter.key")
+                cls._validate_filter_value(value)
         if search is not None:
             if len(search) > 512 or any(ord(char) < 32 for char in search):
                 raise WebAppEnterpriseTableError(
                     "INVALID_SEARCH", "search text exceeds bounded or safe input limits"
                 )
+
+    @staticmethod
+    def _validate_filter_value(value: object) -> None:
+        if value is None or isinstance(value, bool | int):
+            return
+        if isinstance(value, float):
+            if not math.isfinite(value):
+                raise WebAppEnterpriseTableError(
+                    "INVALID_FILTER_VALUE", "filter value must be finite"
+                )
+            return
+        if isinstance(value, str):
+            if len(value) > 512 or any(ord(char) < 32 for char in value):
+                raise WebAppEnterpriseTableError(
+                    "INVALID_FILTER_VALUE", "filter text exceeds bounded or safe input limits"
+                )
+            return
+        raise WebAppEnterpriseTableError(
+            "INVALID_FILTER_VALUE", "filter values must be bounded scalar values"
+        )
 
     @staticmethod
     def _validate_density(density: str) -> None:
