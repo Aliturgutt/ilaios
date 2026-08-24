@@ -15,9 +15,13 @@ _SHA40 = re.compile(r"^[0-9a-f]{40}$")
 _REQUIRED_RESULTS = (
     "runtime_e2e_result",
     "provider_tool_execution_result",
+    "provider_tool_receipt_binding_result",
     "g1_security_result",
     "evidence_integrity_result",
+    "execution_evidence_lineage_result",
+    "cross_tenant_artifact_evidence_substitution_result",
     "cost_usage_truth_result",
+    "tenant_bound_cost_usage_result",
     "restart_recovery_result",
     "desktop_projection_result",
     "windows_msix_packaged_runtime_result",
