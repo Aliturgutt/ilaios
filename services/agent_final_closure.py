@@ -44,7 +44,16 @@ _REQUIRED_NONEMPTY_STRINGS = (
     "skill_route",
     "tool_route",
     "provider_route",
+    "runtime_e2e_evidence_ref",
+    "g1_security_evidence_ref",
+    "evidence_integrity_evidence_ref",
+    "restart_recovery_evidence_ref",
+    "desktop_projection_evidence_ref",
+    "windows_msix_evidence_ref",
+    "exact_head_ci_evidence_ref",
+    "exact_master_ci_evidence_ref",
     "cost_usage_evidence_ref",
+    "human_owner_evidence_ref",
     "evidence_record_id",
 )
 _REQUIRED_NONEMPTY_SEQUENCES = (
