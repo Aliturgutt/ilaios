@@ -2,12 +2,9 @@
 
 This module extends the existing canonical central identity authority without
 creating a parallel identity store. Linking remains owned by
-``CentralIdentityService``. This boundary adds two sensitive operations:
-
-- recovery of an *existing* canonical account from an already-verified linked
-  provider identity without creating a new account;
-- unlinking only after canonical authentication plus re-authentication through
-  a different, already-linked provider identity.
+``CentralIdentityService``. This boundary adds sensitive account recovery and
+unlink operations plus durable audit projection into the existing canonical
+control-plane ``events`` table.
 
 Email/login metadata is never used as an account key. Provider immutable keys
 remain the only external identity authority.
@@ -15,7 +12,10 @@ remain the only external identity authority.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import sqlite3
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
 
@@ -41,6 +41,20 @@ class IdentityLinkRemovalStore(Protocol):
     ) -> IdentityLink: ...
 
 
+class AccountLifecycleAuditStore(Protocol):
+    """Durable projection boundary for sensitive account lifecycle events."""
+
+    def record(
+        self,
+        *,
+        action: str,
+        status: str,
+        user_id: str | None,
+        tenant_id: str | None,
+        identity: VerifiedExternalIdentity,
+    ) -> None: ...
+
+
 class AccountLifecycleService:
     """Fail-closed account recovery and unlinking policy."""
 
@@ -49,9 +63,11 @@ class AccountLifecycleService:
         *,
         identity_store: CentralIdentityStore,
         removal_store: IdentityLinkRemovalStore,
+        audit_store: AccountLifecycleAuditStore | None = None,
     ) -> None:
         self._identity_store = identity_store
         self._removal_store = removal_store
+        self._audit_store = audit_store
 
     def recover_existing_account(
         self, identity: VerifiedExternalIdentity
@@ -59,14 +75,32 @@ class AccountLifecycleService:
         """Recover only an existing linked account; never create or auto-merge."""
 
         verified = identity.normalized()
-        link = self._identity_store.find_link(verified)
-        if link is None:
-            raise CentralIdentityError("recovery identity is not linked")
-        account = self._identity_store.get_account(link.user_id)
-        if account is None or not account.enabled:
-            raise CentralIdentityError("recovery account is unavailable")
-        if account.tenant_id != link.tenant_id:
-            raise CentralIdentityError("recovery identity tenant mismatch")
+        try:
+            link = self._identity_store.find_link(verified)
+            if link is None:
+                raise CentralIdentityError("recovery identity is not linked")
+            account = self._identity_store.get_account(link.user_id)
+            if account is None or not account.enabled:
+                raise CentralIdentityError("recovery account is unavailable")
+            if account.tenant_id != link.tenant_id:
+                raise CentralIdentityError("recovery identity tenant mismatch")
+        except CentralIdentityError:
+            self._audit(
+                action="recover_existing_account",
+                status="denied",
+                user_id=None,
+                tenant_id=None,
+                identity=verified,
+            )
+            raise
+
+        self._audit(
+            action="recover_existing_account",
+            status="success",
+            user_id=account.user_id,
+            tenant_id=account.tenant_id,
+            identity=verified,
+        )
         return account
 
     def unlink_identity(
@@ -81,38 +115,78 @@ class AccountLifecycleService:
 
         user_id = authenticated_user_id.strip()
         tenant_id = authenticated_tenant_id.strip()
-        if not user_id or not tenant_id:
-            raise CentralIdentityError("authenticated user and tenant are required")
-
-        account = self._identity_store.get_account(user_id)
-        if account is None or not account.enabled:
-            raise CentralIdentityError("authenticated account is unavailable")
-        if account.tenant_id != tenant_id:
-            raise CentralIdentityError("authenticated tenant mismatch")
-
         target = identity.normalized()
         reauth = reauthenticated_identity.normalized()
-        if target.key() == reauth.key():
-            raise CentralIdentityError("unlink requires a different re-authenticated identity")
+        try:
+            if not user_id or not tenant_id:
+                raise CentralIdentityError("authenticated user and tenant are required")
 
-        target_link = self._identity_store.find_link(target)
-        if target_link is None:
-            raise CentralIdentityError("identity to unlink is not linked")
-        _require_owned_link(target_link, user_id=user_id, tenant_id=tenant_id)
+            account = self._identity_store.get_account(user_id)
+            if account is None or not account.enabled:
+                raise CentralIdentityError("authenticated account is unavailable")
+            if account.tenant_id != tenant_id:
+                raise CentralIdentityError("authenticated tenant mismatch")
 
-        reauth_link = self._identity_store.find_link(reauth)
-        if reauth_link is None:
-            raise CentralIdentityError("re-authenticated identity is not linked")
-        _require_owned_link(reauth_link, user_id=user_id, tenant_id=tenant_id)
+            if target.key() == reauth.key():
+                raise CentralIdentityError(
+                    "unlink requires a different re-authenticated identity"
+                )
 
-        links = self._identity_store.list_links(user_id)
-        if len(links) < 2:
-            raise CentralIdentityError("cannot remove the last usable login identity")
+            target_link = self._identity_store.find_link(target)
+            if target_link is None:
+                raise CentralIdentityError("identity to unlink is not linked")
+            _require_owned_link(target_link, user_id=user_id, tenant_id=tenant_id)
 
-        return self._removal_store.remove_link_if_alternate_exists(
+            reauth_link = self._identity_store.find_link(reauth)
+            if reauth_link is None:
+                raise CentralIdentityError("re-authenticated identity is not linked")
+            _require_owned_link(reauth_link, user_id=user_id, tenant_id=tenant_id)
+
+            links = self._identity_store.list_links(user_id)
+            if len(links) < 2:
+                raise CentralIdentityError("cannot remove the last usable login identity")
+
+            removed = self._removal_store.remove_link_if_alternate_exists(
+                user_id=user_id,
+                tenant_id=tenant_id,
+                identity=target,
+            )
+        except CentralIdentityError:
+            self._audit(
+                action="unlink_identity",
+                status="denied",
+                user_id=user_id or None,
+                tenant_id=tenant_id or None,
+                identity=target,
+            )
+            raise
+
+        self._audit(
+            action="unlink_identity",
+            status="success",
             user_id=user_id,
             tenant_id=tenant_id,
             identity=target,
+        )
+        return removed
+
+    def _audit(
+        self,
+        *,
+        action: str,
+        status: str,
+        user_id: str | None,
+        tenant_id: str | None,
+        identity: VerifiedExternalIdentity,
+    ) -> None:
+        if self._audit_store is None:
+            return
+        self._audit_store.record(
+            action=action,
+            status=status,
+            user_id=user_id,
+            tenant_id=tenant_id,
+            identity=identity,
         )
 
 
@@ -179,6 +253,58 @@ class SQLiteIdentityLinkRemovalStore:
         connection = sqlite3.connect(self._database_path)
         connection.execute("PRAGMA foreign_keys = ON")
         return connection
+
+
+class SQLiteAccountLifecycleAuditStore:
+    """Append lifecycle events to the canonical persistent control-plane event log."""
+
+    def __init__(self, database_path: Path) -> None:
+        self._database_path = database_path
+        version = migrate_database(database_path)
+        if version < 1:
+            raise CentralIdentityError("canonical audit event store is unavailable")
+
+    def record(
+        self,
+        *,
+        action: str,
+        status: str,
+        user_id: str | None,
+        tenant_id: str | None,
+        identity: VerifiedExternalIdentity,
+    ) -> None:
+        if status not in {"success", "denied"}:
+            raise CentralIdentityError("unsupported account lifecycle audit status")
+        verified = identity.normalized()
+        payload = {
+            "action": action,
+            "status": status,
+            "user_id": user_id,
+            "tenant_id": tenant_id,
+            "provider": verified.provider.value,
+            "identity_key_sha256": _identity_key_digest(verified),
+        }
+        aggregate_id = user_id or _identity_key_digest(verified)
+        occurred_at = datetime.now(timezone.utc).isoformat()
+        with sqlite3.connect(self._database_path) as connection:
+            connection.execute(
+                "INSERT INTO events "
+                "(event_type, aggregate_id, payload_json, occurred_at, schema_version) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (
+                    "identity.account_lifecycle",
+                    aggregate_id,
+                    json.dumps(payload, sort_keys=True, separators=(",", ":")),
+                    occurred_at,
+                    "account-lifecycle.v1",
+                ),
+            )
+
+
+def _identity_key_digest(identity: VerifiedExternalIdentity) -> str:
+    provider, issuer_namespace, subject = identity.key()
+    material = "\x1f".join((provider.value, issuer_namespace, subject)).encode("utf-8")
+    return hashlib.sha256(material).hexdigest()
 
 
 def _require_owned_link(link: IdentityLink, *, user_id: str, tenant_id: str) -> None:
