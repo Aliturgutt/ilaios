@@ -14,14 +14,19 @@ def _canonical_agent_ids() -> list[str]:
     return [item.manifest.agent_id for item in CANONICAL_AGENT_REGISTRY]
 
 
+def _agent_evidence_refs() -> list[str]:
+    return [
+        f"evidence://exec-final-001/{agent_id}" for agent_id in _canonical_agent_ids()
+    ]
+
+
 def _receipt() -> dict[str, object]:
-    canonical_agent_ids = _canonical_agent_ids()
     return {
         "agent_workstream": "CLOSED",
         "exact_master_sha": "a" * 40,
         "canonical_agent_count": EXPECTED_AGENT_COUNT,
         "verified_agent_count": EXPECTED_AGENT_COUNT,
-        "verified_agent_ids": canonical_agent_ids,
+        "verified_agent_ids": _canonical_agent_ids(),
         "runtime_active_count": 3,
         "verified_family_breakdown": dict(EXPECTED_TEAM_COUNTS),
         "registry_identity_result": "VERIFIED",
@@ -60,9 +65,7 @@ def _receipt() -> dict[str, object]:
         "windows_msix_evidence_ref": "evidence://exec-final-001/windows-msix",
         "exact_head_ci_evidence_ref": "github-actions://required-ci/head",
         "exact_master_ci_evidence_ref": "github-actions://required-ci/master",
-        "agent_execution_evidence_refs": [
-            f"evidence://exec-final-001/{agent_id}" for agent_id in canonical_agent_ids
-        ],
+        "agent_execution_evidence_refs": _agent_evidence_refs(),
         "provider_tool_receipt_ids": ["receipt-provider-001", "receipt-tool-001"],
         "output_artifact_sha256": "c" * 64,
         "output_validation_result": "VERIFIED",
@@ -175,7 +178,7 @@ def test_final_closure_receipt_rejects_incomplete_agent_evidence_coverage() -> N
 
 def test_final_closure_receipt_rejects_malformed_lineage_sequences() -> None:
     receipt = _receipt()
-    evidence_refs = list(receipt["agent_execution_evidence_refs"])
+    evidence_refs = _agent_evidence_refs()
     evidence_refs[-1] = ""
     receipt["agent_execution_evidence_refs"] = evidence_refs
     with pytest.raises(AgentFinalClosureError, match="agent_execution_evidence_refs"):
