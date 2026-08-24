@@ -109,7 +109,7 @@ def test_phase2_migration_creates_domain_schema_indexes_and_foreign_keys(
     tmp_path: Path,
 ) -> None:
     database = tmp_path / "state.sqlite3"
-    assert migrate_database(database) == 9 == LATEST_SCHEMA_VERSION
+    assert migrate_database(database) == LATEST_SCHEMA_VERSION == 10
 
     with _connect(database) as connection:
         tables = {
@@ -155,8 +155,8 @@ def test_phase2_upgrade_from_v7_preserves_authoritative_records_and_adds_context
             "VALUES ('agent-1', '[]')"
         )
 
-    assert migrate_database(database) == 9
-    assert migrate_database(database) == 9
+    assert migrate_database(database) == LATEST_SCHEMA_VERSION
+    assert migrate_database(database) == LATEST_SCHEMA_VERSION
 
     with _connect(database) as connection:
         assert connection.execute(
@@ -257,7 +257,8 @@ def test_phase2_expand_only_rollback_preserves_data_and_supports_reupgrade(
     tmp_path: Path,
 ) -> None:
     database = tmp_path / "rollback.sqlite3"
-    backup = tmp_path / "rollback-backup.sqlite3"
+    backup_v10 = tmp_path / "rollback-v10-backup.sqlite3"
+    backup_v9 = tmp_path / "rollback-v9-backup.sqlite3"
     migrate_database(database)
     with _connect(database) as connection:
         connection.execute(
@@ -271,9 +272,12 @@ def test_phase2_expand_only_rollback_preserves_data_and_supports_reupgrade(
             "'2026-08-20T09:00:00Z', 1)"
         )
 
-    assert rollback_database(database, backup) == 8
+    assert rollback_database(database, backup_v10) == 9
+    assert current_schema_version(database) == 9
+    assert current_schema_version(backup_v10) == 10
+    assert rollback_database(database, backup_v9) == 8
     assert current_schema_version(database) == 8
-    assert current_schema_version(backup) == 9
+    assert current_schema_version(backup_v9) == 9
 
     with _connect(database) as connection:
         assert connection.execute(
@@ -283,7 +287,7 @@ def test_phase2_expand_only_rollback_preserves_data_and_supports_reupgrade(
             "SELECT name FROM web_app_tenants WHERE tenant_id = 'tenant-rollback'"
         ).fetchone() == ("Keep tenant",)
 
-    assert migrate_database(database) == 9
+    assert migrate_database(database) == LATEST_SCHEMA_VERSION
     with _connect(database) as connection:
         assert connection.execute(
             "SELECT name FROM web_app_tenants WHERE tenant_id = 'tenant-rollback'"

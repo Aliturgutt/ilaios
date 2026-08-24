@@ -45,7 +45,7 @@ def _connect(database: Path) -> sqlite3.Connection:
 
 def test_migration_v9_creates_canonical_identity_tables(tmp_path: Path) -> None:
     database = tmp_path / "identity.sqlite3"
-    assert migrate_database(database) == 9 == LATEST_SCHEMA_VERSION
+    assert migrate_database(database) == LATEST_SCHEMA_VERSION == 10
     with _connect(database) as connection:
         tables = {
             row[0]
@@ -211,13 +211,17 @@ def test_entitlement_is_tenant_scoped_and_upserted(tmp_path: Path) -> None:
 
 def test_v9_expand_only_rollback_preserves_identity_data(tmp_path: Path) -> None:
     database = tmp_path / "identity.sqlite3"
-    backup = tmp_path / "identity-backup.sqlite3"
+    backup_v10 = tmp_path / "identity-v10-backup.sqlite3"
+    backup_v9 = tmp_path / "identity-v9-backup.sqlite3"
     service = CentralIdentityService(SQLiteCentralIdentityStore(database))
     account = service.sign_in(_identity(IdentityProvider.GOOGLE, "google-1"))
 
-    assert rollback_database(database, backup) == 8
+    assert rollback_database(database, backup_v10) == 9
+    assert current_schema_version(database) == 9
+    assert current_schema_version(backup_v10) == 10
+    assert rollback_database(database, backup_v9) == 8
     assert current_schema_version(database) == 8
-    assert current_schema_version(backup) == 9
+    assert current_schema_version(backup_v9) == 9
     with _connect(database) as connection:
         assert connection.execute(
             "SELECT tenant_id FROM identity_users AS u "
@@ -226,6 +230,6 @@ def test_v9_expand_only_rollback_preserves_identity_data(tmp_path: Path) -> None
             (account.user_id,),
         ).fetchone() == (account.tenant_id,)
 
-    assert migrate_database(database) == 9
+    assert migrate_database(database) == LATEST_SCHEMA_VERSION
     restarted = CentralIdentityService(SQLiteCentralIdentityStore(database))
     assert restarted.sign_in(_identity(IdentityProvider.GOOGLE, "google-1")) == account
