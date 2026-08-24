@@ -61,6 +61,17 @@ _CERTIFICATION_INPUT_TOKEN_RESERVATION = 4096
 _CERTIFICATION_OUTPUT_TOKEN_RESERVATION = 2048
 
 
+def _required_revision_sha() -> str:
+    revision = os.environ.get("GITHUB_SHA", "").strip()
+    if len(revision) != 40 or any(
+        character not in "0123456789abcdef" for character in revision.lower()
+    ):
+        raise P0LiveCertificationError(
+            "exact 40-hex GITHUB_SHA is required for P0 certification"
+        )
+    return revision.lower()
+
+
 def run_p0_live_certification(
     *,
     repository_root: Path,
@@ -73,6 +84,7 @@ def run_p0_live_certification(
     observed_at = now or datetime.now(timezone.utc)
     if observed_at.tzinfo is None:
         raise P0LiveCertificationError("certification timestamp must be timezone-aware")
+    revision_sha = _required_revision_sha()
 
     configuration = discover_free_openrouter_agent_configuration()
     if configuration is None:
@@ -332,7 +344,7 @@ def run_p0_live_certification(
     receipt: dict[str, object] = {
         "status": "VERIFIED",
         "scope": "P0",
-        "revision_sha": os.environ.get("GITHUB_SHA", "unknown"),
+        "revision_sha": revision_sha,
         "observed_at": observed_at.isoformat(),
         "target_agent_count": 21,
         "verified_agent_count": len(proofs),
