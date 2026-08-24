@@ -20,6 +20,13 @@ def _agent_evidence_refs() -> list[str]:
     ]
 
 
+def _agent_evidence_bindings() -> dict[str, str]:
+    return {
+        agent_id: f"evidence://exec-final-001/{agent_id}"
+        for agent_id in _canonical_agent_ids()
+    }
+
+
 def _receipt() -> dict[str, object]:
     return {
         "agent_workstream": "CLOSED",
@@ -66,6 +73,7 @@ def _receipt() -> dict[str, object]:
         "exact_head_ci_evidence_ref": "github-actions://required-ci/head",
         "exact_master_ci_evidence_ref": "github-actions://required-ci/master",
         "agent_execution_evidence_refs": _agent_evidence_refs(),
+        "agent_execution_evidence_bindings": _agent_evidence_bindings(),
         "provider_tool_receipt_ids": ["receipt-provider-001", "receipt-tool-001"],
         "output_artifact_sha256": "c" * 64,
         "output_validation_result": "VERIFIED",
@@ -122,6 +130,7 @@ def test_final_closure_receipt_rejects_incomplete_or_blocked_evidence() -> None:
         ("exact_head_ci_evidence_ref", ""),
         ("exact_master_ci_evidence_ref", ""),
         ("agent_execution_evidence_refs", []),
+        ("agent_execution_evidence_bindings", {}),
         ("provider_tool_receipt_ids", []),
         ("output_artifact_sha256", "unknown"),
         ("output_validation_result", "NOT_VERIFIED"),
@@ -173,6 +182,41 @@ def test_final_closure_receipt_rejects_incomplete_agent_evidence_coverage() -> N
     receipt = _receipt()
     receipt["agent_execution_evidence_refs"] = ["evidence://exec-final-001/one-agent"]
     with pytest.raises(AgentFinalClosureError, match="cover every canonical Agent"):
+        validate_agent_final_closure_receipt(receipt)
+
+
+def test_final_closure_receipt_rejects_unbound_or_reused_agent_evidence() -> None:
+    receipt = _receipt()
+    bindings = _agent_evidence_bindings()
+    missing_agent = _canonical_agent_ids()[-1]
+    del bindings[missing_agent]
+    bindings["ilaios.agent.meta.not-canonical.v1"] = (
+        "evidence://exec-final-001/ilaios.agent.meta.not-canonical.v1"
+    )
+    receipt["agent_execution_evidence_bindings"] = bindings
+    with pytest.raises(
+        AgentFinalClosureError,
+        match="bind every canonical Agent exactly once",
+    ):
+        validate_agent_final_closure_receipt(receipt)
+
+    receipt = _receipt()
+    bindings = _agent_evidence_bindings()
+    first, second = _canonical_agent_ids()[:2]
+    bindings[second] = bindings[first]
+    receipt["agent_execution_evidence_bindings"] = bindings
+    with pytest.raises(AgentFinalClosureError, match="unique evidence refs"):
+        validate_agent_final_closure_receipt(receipt)
+
+    receipt = _receipt()
+    bindings = _agent_evidence_bindings()
+    first = _canonical_agent_ids()[0]
+    bindings[first] = f"evidence://other-execution/{first}"
+    receipt["agent_execution_evidence_bindings"] = bindings
+    with pytest.raises(
+        AgentFinalClosureError,
+        match="exact execution and Agent identity",
+    ):
         validate_agent_final_closure_receipt(receipt)
 
 
