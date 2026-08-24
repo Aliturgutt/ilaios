@@ -12,7 +12,7 @@ from dataclasses import dataclass
 from enum import Enum
 from hashlib import sha256
 from types import MappingProxyType
-from typing import Mapping
+from typing import Callable, Mapping, TypeVar
 
 from services.reference_assets import (
     ReferenceAssetRecord,
@@ -465,12 +465,13 @@ def _ownership(spec_tenant: str, spec_job: str, tenant_id: str, job_id: str) -> 
         raise ContinuityContractError("cross-tenant or cross-job continuity substitution denied")
 
 
-def _unique_map(label: str, values: tuple[object, ...], key: object) -> dict[str, object]:
-    # `key` is intentionally callable but kept dependency-free for Python 3.11 typing.
-    mapper = key  # type: ignore[assignment]
-    result: dict[str, object] = {}
+T = TypeVar("T")
+
+
+def _unique_map(label: str, values: tuple[T, ...], key: Callable[[T], str]) -> dict[str, T]:
+    result: dict[str, T] = {}
     for value in values:
-        identifier = mapper(value)  # type: ignore[operator]
+        identifier = key(value)
         if identifier in result:
             raise ContinuityContractError(f"duplicate {label} id")
         result[identifier] = value
