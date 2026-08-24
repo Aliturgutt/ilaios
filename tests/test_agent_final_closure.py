@@ -137,8 +137,9 @@ def test_final_closure_receipt_rejects_malformed_lineage_sequences() -> None:
         validate_agent_final_closure_receipt(receipt)
 
 
-def test_final_closure_receipt_requires_human_owner_only_when_contract_requires_it() -> None:
+def test_final_closure_receipt_cannot_disable_human_owner_requirement() -> None:
     receipt = _receipt()
     receipt["human_owner_required"] = False
     receipt["human_owner_state"] = "NOT_REQUIRED"
-    validate_agent_final_closure_receipt(receipt)
+    with pytest.raises(AgentFinalClosureError, match="human-owner IndependentVerifier"):
+        validate_agent_final_closure_receipt(receipt)
