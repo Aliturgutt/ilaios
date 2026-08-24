@@ -13,9 +13,13 @@ from services.agent_readiness import EXPECTED_AGENT_COUNT, EXPECTED_TEAM_COUNTS
 
 _SHA40 = re.compile(r"^[0-9a-f]{40}$")
 _REQUIRED_RESULTS = (
+    "registry_identity_result",
+    "runtime_state_truth_result",
     "runtime_e2e_result",
+    "family_runtime_execution_result",
     "provider_tool_execution_result",
     "provider_tool_receipt_binding_result",
+    "browser_tool_egress_security_result",
     "g1_security_result",
     "evidence_integrity_result",
     "execution_evidence_lineage_result",
@@ -23,6 +27,7 @@ _REQUIRED_RESULTS = (
     "cost_usage_truth_result",
     "tenant_bound_cost_usage_result",
     "restart_recovery_result",
+    "operations_meta_runtime_result",
     "desktop_projection_result",
     "windows_msix_packaged_runtime_result",
     "cross_client_identity_tenant_result",
