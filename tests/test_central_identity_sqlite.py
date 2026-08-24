@@ -138,18 +138,56 @@ def test_link_takeover_and_cross_tenant_fail_closed(tmp_path: Path) -> None:
         authenticated_user_id=first.user_id,
         authenticated_tenant_id=first.tenant_id,
         identity=github,
+        recent_authentication_verified=True,
     )
     with pytest.raises(CentralIdentityError, match="already linked"):
         service.link_identity(
             authenticated_user_id=second.user_id,
             authenticated_tenant_id=second.tenant_id,
             identity=github,
+            recent_authentication_verified=True,
         )
     with pytest.raises(CentralIdentityError, match="tenant mismatch"):
         service.link_identity(
             authenticated_user_id=first.user_id,
             authenticated_tenant_id=second.tenant_id,
-            identity=_identity(IdentityProvider.MICROSOFT, "ms-1"),
+            identity=_identity(
+                IdentityProvider.MICROSOFT,
+                "ms-1",
+                issuer="https://login.microsoftonline.com/test/v2.0",
+            ),
+            recent_authentication_verified=True,
+        )
+
+
+def test_persistent_unlink_is_atomic_and_preserves_last_sign_in(tmp_path: Path) -> None:
+    database = tmp_path / "identity.sqlite3"
+    service = CentralIdentityService(SQLiteCentralIdentityStore(database))
+    account = service.sign_in(_identity(IdentityProvider.GOOGLE, "google-1"))
+    github = _identity(IdentityProvider.GITHUB, "github-1")
+    service.link_identity(
+        authenticated_user_id=account.user_id,
+        authenticated_tenant_id=account.tenant_id,
+        identity=github,
+        recent_authentication_verified=True,
+    )
+    removed = service.unlink_identity(
+        authenticated_user_id=account.user_id,
+        authenticated_tenant_id=account.tenant_id,
+        identity=github,
+        recent_authentication_verified=True,
+    )
+    assert removed.provider is IdentityProvider.GITHUB
+    restarted = CentralIdentityService(SQLiteCentralIdentityStore(database))
+    assert {link.provider for link in restarted.linked_identities(account.user_id)} == {
+        IdentityProvider.GOOGLE
+    }
+    with pytest.raises(CentralIdentityError, match="last usable sign-in method"):
+        restarted.unlink_identity(
+            authenticated_user_id=account.user_id,
+            authenticated_tenant_id=account.tenant_id,
+            identity=_identity(IdentityProvider.GOOGLE, "google-1"),
+            recent_authentication_verified=True,
         )
 
 
