@@ -10,6 +10,7 @@ from services.reference_assets import (
     ReferenceAssetRole,
     ReferenceAssetStore,
 )
+from services.video_continuity import VideoContinuityContractBinder
 from src.video_automation.continuity_contracts import (
     BRAND_THRESHOLDS_V1,
     CHARACTER_THRESHOLDS_V1,
@@ -23,7 +24,6 @@ from src.video_automation.continuity_contracts import (
     ContinuityVerdict,
     ProviderContinuityCapabilities,
     ShotContinuityBinding,
-    VideoContinuityContractBinder,
     validate_brand_continuity,
     validate_character_continuity,
 )
