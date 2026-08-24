@@ -37,6 +37,23 @@ def _receipt() -> dict[str, object]:
         "cross_client_identity_tenant_result": "VERIFIED",
         "exact_head_release_governance_result": "VERIFIED",
         "exact_master_release_governance_result": "VERIFIED",
+        "execution_id": "exec-final-001",
+        "job_id": "job-final-001",
+        "user_id": "user-final-001",
+        "tenant_id": "tenant-final-001",
+        "session_id": "session-final-001",
+        "skill_route": "ilaios.skill.final-certification.v1",
+        "tool_route": "ilaios.tool.gateway/governed",
+        "provider_route": "openrouter/zero-cost-governed",
+        "agent_execution_evidence_refs": [
+            "evidence://exec-final-001/ilaios.agent.core.orchestrator.v1",
+            "evidence://exec-final-001/ilaios.agent.core.planner.v1",
+        ],
+        "provider_tool_receipt_ids": ["receipt-provider-001", "receipt-tool-001"],
+        "output_artifact_sha256": "c" * 64,
+        "output_validation_result": "VERIFIED",
+        "cost_usage_evidence_ref": "evidence://exec-final-001/cost-usage",
+        "evidence_record_id": "evidence-final-001",
         "human_owner_required": True,
         "human_owner_state": "VERIFIED",
         "remaining_external_blockers": [],
@@ -73,6 +90,16 @@ def test_final_closure_receipt_rejects_incomplete_or_blocked_evidence() -> None:
         ("cross_client_identity_tenant_result", "NOT_VERIFIED"),
         ("exact_head_release_governance_result", "PARTIAL"),
         ("exact_master_release_governance_result", "NOT_VERIFIED"),
+        ("execution_id", ""),
+        ("job_id", ""),
+        ("tenant_id", ""),
+        ("provider_route", ""),
+        ("agent_execution_evidence_refs", []),
+        ("provider_tool_receipt_ids", []),
+        ("output_artifact_sha256", "unknown"),
+        ("output_validation_result", "NOT_VERIFIED"),
+        ("cost_usage_evidence_ref", ""),
+        ("evidence_record_id", ""),
         ("human_owner_state", "PARTIAL"),
         ("remaining_external_blockers", ["windows-user-machine"]),
     ]
@@ -95,6 +122,18 @@ def test_final_closure_receipt_rejects_registry_count_or_family_drift() -> None:
     breakdown["media"] += 1
     receipt["verified_family_breakdown"] = breakdown
     with pytest.raises(AgentFinalClosureError, match="family breakdown"):
+        validate_agent_final_closure_receipt(receipt)
+
+
+def test_final_closure_receipt_rejects_malformed_lineage_sequences() -> None:
+    receipt = _receipt()
+    receipt["agent_execution_evidence_refs"] = ["evidence://valid", ""]
+    with pytest.raises(AgentFinalClosureError, match="agent_execution_evidence_refs"):
+        validate_agent_final_closure_receipt(receipt)
+
+    receipt = _receipt()
+    receipt["provider_tool_receipt_ids"] = ["receipt-provider-001", 7]
+    with pytest.raises(AgentFinalClosureError, match="provider_tool_receipt_ids"):
         validate_agent_final_closure_receipt(receipt)
 
 
