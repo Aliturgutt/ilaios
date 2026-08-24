@@ -222,3 +222,49 @@ def test_invalid_columns_density_and_selection_fail_closed() -> None:
             selected_resource_ids=("goal-1", "goal-1"),
         )
     assert duplicate_selection.value.code == "DUPLICATE_SELECTION"
+
+
+def test_query_filter_and_search_inputs_are_bounded_fail_closed() -> None:
+    crud, tables = _runtime()
+    principal = _principal()
+    _seed(crud, principal)
+
+    with pytest.raises(WebAppEnterpriseTableError) as too_many_filters:
+        tables.query(
+            principal=principal,
+            resource_type="Goal",
+            columns=_columns(),
+            now=NOW,
+            filters={f"field-{index}": index for index in range(17)},
+        )
+    assert too_many_filters.value.code == "FILTERS_TOO_LARGE"
+
+    with pytest.raises(WebAppEnterpriseTableError) as invalid_filter_key:
+        tables.query(
+            principal=principal,
+            resource_type="Goal",
+            columns=_columns(),
+            now=NOW,
+            filters={"status\nheader": "open"},
+        )
+    assert invalid_filter_key.value.code == "INVALID_TOKEN"
+
+    with pytest.raises(WebAppEnterpriseTableError) as oversized_search:
+        tables.query(
+            principal=principal,
+            resource_type="Goal",
+            columns=_columns(),
+            now=NOW,
+            search="x" * 513,
+        )
+    assert oversized_search.value.code == "INVALID_SEARCH"
+
+    with pytest.raises(WebAppEnterpriseTableError) as control_search:
+        tables.query(
+            principal=principal,
+            resource_type="Goal",
+            columns=_columns(),
+            now=NOW,
+            search="Goal\nopen",
+        )
+    assert control_search.value.code == "INVALID_SEARCH"
