@@ -25,8 +25,8 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install project test dependencies
-        run: python -m pip install -r requirements-dev.txt
+      - name: Install bounded test tools
+        run: python -m pip install pytest ruff mypy
 
       - name: Run provenance regressions
         run: python -m pytest -q tests/test_web_generation_provenance_gate.py
