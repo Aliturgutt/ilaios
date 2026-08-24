@@ -130,10 +130,12 @@ def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
 
     human_owner_required = receipt.get("human_owner_required")
     human_owner_state = receipt.get("human_owner_state")
-    if human_owner_required is True and human_owner_state != "VERIFIED":
+    if human_owner_required is not True:
+        raise AgentFinalClosureError(
+            "final Agent closure requires human-owner IndependentVerifier evidence"
+        )
+    if human_owner_state != "VERIFIED":
         raise AgentFinalClosureError("required human-owner IndependentVerifier is not VERIFIED")
-    if human_owner_required not in (True, False):
-        raise AgentFinalClosureError("human_owner_required must be boolean")
 
     blockers = receipt.get("remaining_external_blockers")
     if not isinstance(blockers, Sequence) or isinstance(blockers, (str, bytes)):
