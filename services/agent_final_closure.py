@@ -21,6 +21,9 @@ _REQUIRED_RESULTS = (
     "restart_recovery_result",
     "desktop_projection_result",
     "windows_msix_packaged_runtime_result",
+    "cross_client_identity_tenant_result",
+    "exact_head_release_governance_result",
+    "exact_master_release_governance_result",
 )
 
 
