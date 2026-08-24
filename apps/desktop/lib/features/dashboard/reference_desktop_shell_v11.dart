@@ -94,6 +94,31 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
         ),
       );
 
+  Widget _shellWithIdentityExit(BuildContext context) {
+    final shell = _shell();
+    if (userSession == null || onLogout == null) return shell;
+    final tr = Localizations.localeOf(context).languageCode == 'tr';
+    return Stack(
+      children: [
+        Positioned.fill(child: shell),
+        Positioned(
+          top: 8,
+          right: 12,
+          child: Semantics(
+            button: true,
+            label: tr ? 'Google oturumundan çık' : 'Sign out of Google session',
+            child: OutlinedButton.icon(
+              key: const Key('desktop-identity-logout'),
+              onPressed: onLogout,
+              icon: const Icon(Icons.logout, size: 14),
+              label: Text(tr ? 'Çıkış' : 'Sign out'),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     if (userSession == null) {
@@ -110,7 +135,7 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
 
         final compact = constraints.maxWidth <= compactWidthThreshold ||
             constraints.maxHeight < compactHeightThreshold;
-        if (!compact) return _shell();
+        if (!compact) return _shellWithIdentityExit(context);
 
         final ratioMatchedWidth = constraints.maxHeight > 0
             ? constraints.maxWidth * designHeight / constraints.maxHeight
@@ -126,7 +151,7 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
               child: SizedBox(
                 width: designWidth,
                 height: designHeight,
-                child: _shell(),
+                child: _shellWithIdentityExit(context),
               ),
             ),
           ),
