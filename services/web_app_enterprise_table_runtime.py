@@ -193,7 +193,7 @@ class WebAppEnterpriseTableRuntime:
                 cls._token(key, "filter.key")
                 cls._validate_filter_value(value)
         if search is not None:
-            if len(search) > 512 or any(ord(char) < 32 for char in search):
+            if len(search) > 512 or any(not char.isprintable() for char in search):
                 raise WebAppEnterpriseTableError(
                     "INVALID_SEARCH", "search text exceeds bounded or safe input limits"
                 )
@@ -209,7 +209,7 @@ class WebAppEnterpriseTableRuntime:
                 )
             return
         if isinstance(value, str):
-            if len(value) > 512 or any(ord(char) < 32 for char in value):
+            if len(value) > 512 or any(not char.isprintable() for char in value):
                 raise WebAppEnterpriseTableError(
                     "INVALID_FILTER_VALUE", "filter text exceeds bounded or safe input limits"
                 )
