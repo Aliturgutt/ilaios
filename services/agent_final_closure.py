@@ -102,6 +102,42 @@ def _require_exact_canonical_agent_identities(receipt: Mapping[str, object]) -> 
         raise AgentFinalClosureError("verified_agent_ids does not match current canonical Agent identities")
 
 
+def _require_agent_evidence_bindings(receipt: Mapping[str, object]) -> None:
+    value = receipt.get("agent_execution_evidence_bindings")
+    if not isinstance(value, Mapping):
+        raise AgentFinalClosureError("agent_execution_evidence_bindings must be a mapping")
+
+    canonical_ids = {item.manifest.agent_id for item in CANONICAL_AGENT_REGISTRY}
+    normalized: dict[str, str] = {}
+    for key, evidence_ref in value.items():
+        agent_id = str(key)
+        if not isinstance(evidence_ref, str) or not evidence_ref.strip():
+            raise AgentFinalClosureError(
+                "agent_execution_evidence_bindings must contain non-empty evidence refs"
+            )
+        normalized[agent_id] = evidence_ref.strip()
+
+    if set(normalized) != canonical_ids:
+        raise AgentFinalClosureError(
+            "agent_execution_evidence_bindings must bind every canonical Agent exactly once"
+        )
+    if len(set(normalized.values())) != EXPECTED_AGENT_COUNT:
+        raise AgentFinalClosureError(
+            "agent_execution_evidence_bindings must use unique evidence refs per canonical Agent"
+        )
+
+    execution_id = receipt.get("execution_id")
+    if not isinstance(execution_id, str) or not execution_id.strip():
+        raise AgentFinalClosureError(
+            "execution_id must be present before validating Agent evidence bindings"
+        )
+    for agent_id, evidence_ref in normalized.items():
+        if execution_id not in evidence_ref or agent_id not in evidence_ref:
+            raise AgentFinalClosureError(
+                "Agent evidence bindings must include the exact execution and Agent identity"
+            )
+
+
 def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
     """Validate that a receipt is sufficient for full Agent workstream closure.
 
@@ -144,6 +180,7 @@ def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
         _require_nonempty_string(receipt, key)
     for key in _REQUIRED_NONEMPTY_SEQUENCES:
         _require_nonempty_string_sequence(receipt, key)
+    _require_agent_evidence_bindings(receipt)
 
     agent_execution_evidence_refs = receipt.get("agent_execution_evidence_refs")
     if not isinstance(agent_execution_evidence_refs, Sequence) or isinstance(
