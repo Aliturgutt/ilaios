@@ -6,46 +6,43 @@
     "reference": "docs/identity/COMMERCIAL_IDENTITY_CLOSURE_WORKFLOW.md"
   },
   "status": "IN_PROGRESS",
-  "current_phase": "Phase 4 — Microsoft production OAuth",
-  "master_sha": "036ed4631b1c85cf43b95112c8c97867eac3b3d9",
-  "base_sha": "036ed4631b1c85cf43b95112c8c97867eac3b3d9",
-  "head_sha": "613c67a120dc0fab37f2a388ab7d6e1478598dee",
-  "branch": "identity/microsoft-oauth-current20-20260822",
-  "pr": 885,
+  "current_phase": "Phase 5 — GitHub OAuth",
+  "master_sha": "69966335916fef55a16306d2a1b5f4691fdb7c0f",
+  "base_sha": "69966335916fef55a16306d2a1b5f4691fdb7c0f",
+  "head_sha": "8587ef5d32d0432477f4316f042edd9a4fc7aeb9",
+  "branch": "identity/github-oauth-phase5-current-69966335",
+  "pr": 918,
   "ci": {
     "run_id": null,
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence, and execution-controller validation on PR #885; immediately re-read live master/token before expected-head merge; then exact-master verify before Phase 5 GitHub OAuth.",
+  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence, Execution Controller Validation, and applicable Identity/security gates on PR #918; then re-read live master/token/semantic overlap and merge only with expected-head protection. After merge require exact-master Required CI + SFFE before Phase 6 Email magic-link/OTP.",
   "blocker": {
     "type": null,
     "detail": null,
     "human_action": null
   },
   "repair": {
-    "retry_count": 1,
-    "last_failure_fingerprint": "prior Phase-4 Ruff formatting failure",
-    "last_root_cause": "legacy Microsoft fixtures and formatting repaired without weakening issuer or redirect validation"
+    "retry_count": 2,
+    "last_failure_fingerprint": "historical Phase-5 Ruff/mypy compatibility failures repaired before current-master replay",
+    "last_root_cause": "GitHub OAuth HTTP protocol typing and formatting were repaired without weakening immutable subject, state, redirect, or provider validation"
   },
   "lock": {
     "owner": "identity-closure-runner",
     "scope": [
-      "services/microsoft_oidc.py",
-      "services/central_identity.py",
-      "tests/test_microsoft_oidc.py",
-      "tests/test_central_identity.py",
+      "services/github_oauth.py",
+      "tests/test_github_oauth.py",
       ".github/automation/states/commercial-identity-closure.json"
     ],
-    "acquired_at": "2026-08-22T15:27:00Z",
-    "expires_at": "2026-08-22T16:27:00Z"
+    "acquired_at": "2026-08-23T16:27:25Z",
+    "expires_at": "2026-08-23T17:27:25Z"
   },
   "evidence": [
-    "PR#880 head 8c28a979954e471b4896b8f69bc9165e95310488 Required CI 32576746308, SFFE 32576746224, controller validation 32576746215 all success but stale at merge window",
-    "Fast-Closure V2 merge window reserved for Identity after Website PR#882 merged; branch-only coordination state remains non-authoritative until PR#881 merges",
-    "master advanced from dd3224f5e64c2613249438d52396fbbf1c0e4c43 to 036ed4631b1c85cf43b95112c8c97867eac3b3d9 by 8 commits",
-    "drift changed only Website recertification and Desktop presentation/runtime-status paths; zero overlap with Microsoft Phase-4 identity paths",
-    "PR#885 opened from exact current master with reviewed Microsoft Phase-4 delta replayed"
+    "Fast-Closure coordination PR#917 merged as 69966335916fef55a16306d2a1b5f4691fdb7c0f after Required CI 32648544645 and SFFE 32648544551 success",
+    "prior Phase-5 PR#897 PASS is stale because shared services/identity.py and auth/security regressions changed after its base",
+    "compare a80474d784dabc6e7dbf700e5da6e50a0228877a -> 69966335916fef55a16306d2a1b5f4691fdb7c0f includes services/identity.py, tests/test_identity_access.py, and tests/test_web_app_auth_contract.py",
+    "PR#918 opened from exact current master with reviewed GitHub OAuth runtime/test delta replayed"
   ],
-  "updated_at": "2026-08-22T15:29:00Z"
+  "updated_at": "2026-08-23T16:29:30Z"
 }

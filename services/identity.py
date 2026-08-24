@@ -76,7 +76,7 @@ class AuthenticationBoundary:
             raise IdentityError("token is not currently valid")
         if claims.expires_at - claims.issued_at > self._policy.maximum_session:
             raise IdentityError("token lifetime exceeds policy")
-        if not claims.subject or not claims.tenant_id:
+        if not claims.subject.strip() or not claims.tenant_id.strip():
             raise IdentityError("subject and tenant claims are required")
         return Principal(
             claims.subject,
@@ -133,6 +133,7 @@ class AuthorizationEngine:
     ) -> None:
         self._rules = rules
         self._approvals = {item.approval_id: item for item in approvals}
+        self._consumed_approvals: set[str] = set()
         self._privileged_mfa = privileged_mfa_methods
 
     def authorize(
@@ -146,8 +147,9 @@ class AuthorizationEngine:
             principal.authentication_methods & self._privileged_mfa
         ):
             raise IdentityError("privileged access requires MFA")
+        approval_id: str | None = None
         if request.high_risk:
-            self._check_approval(principal, request, now)
+            approval_id = self._check_approval(principal, request, now)
         for rule in self._rules:
             if (
                 rule.action == request.action
@@ -156,15 +158,19 @@ class AuthorizationEngine:
                 and rule.subject_attributes <= principal.attributes
                 and rule.resource_attributes <= request.resource_attributes
             ):
+                if approval_id is not None:
+                    self._consumed_approvals.add(approval_id)
                 return
         raise IdentityError("deny by default")
 
     def _check_approval(
         self, principal: Principal, request: AccessRequest, now: datetime
-    ) -> None:
-        approval = self._approvals.get(request.approval_id or "")
+    ) -> str:
+        approval_id = request.approval_id or ""
+        approval = self._approvals.get(approval_id)
         if (
             approval is None
+            or approval_id in self._consumed_approvals
             or approval.revoked
             or approval.expires_at <= now
             or approval.tenant_id != principal.tenant_id
@@ -173,6 +179,7 @@ class AuthorizationEngine:
             or approval.approver_id == principal.principal_id
         ):
             raise IdentityError("valid independent approval is required")
+        return approval_id
 
 
 @dataclass(frozen=True, slots=True)
@@ -195,6 +202,12 @@ class SessionRegistry:
     def issue(
         self, session_id: str, principal: Principal, now: datetime, lifetime: timedelta
     ) -> Session:
+        if (
+            not session_id.strip()
+            or not principal.principal_id.strip()
+            or not principal.tenant_id.strip()
+        ):
+            raise IdentityError("session identity is required")
         if lifetime <= timedelta(0) or lifetime > self._maximum_lifetime:
             raise IdentityError("session lifetime violates policy")
         if (
@@ -209,6 +222,8 @@ class SessionRegistry:
         return session
 
     def validate(self, session_id: str, tenant_id: str, now: datetime) -> Session:
+        if not session_id.strip() or not tenant_id.strip():
+            raise IdentityError("session is invalid or revoked")
         session = self._sessions.get(session_id)
         if (
             session is None
@@ -223,6 +238,8 @@ class SessionRegistry:
         self._sessions.pop(session_id, None)
 
     def revoke_principal(self, principal_id: str) -> None:
+        if not principal_id.strip():
+            raise IdentityError("principal identity is required")
         self._revoked_principals.add(principal_id)
 
 

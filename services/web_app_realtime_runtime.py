@@ -17,7 +17,7 @@ from datetime import datetime, timezone
 from typing import Literal
 
 from services.identity import Principal
-from services.web_app_crud_runtime import WebAppCrudRuntime
+from services.web_app_crud_runtime import CrudOperation, WebAppCrudRuntime, WebAppCrudRuntimeError
 
 RealtimeEventType = Literal["created", "updated", "deleted", "state_changed"]
 
@@ -88,7 +88,7 @@ class WebAppRealtimeRuntime:
         now: datetime,
         resource_version: int | None = None,
     ) -> RealtimeEvent:
-        """Append one bounded projection event after canonical read authorization."""
+        """Append one bounded projection event after canonical resource authorization."""
         self._token(resource_type, "resource_type")
         self._token(resource_id, "resource_id")
         if event_type not in ("created", "updated", "deleted", "state_changed"):
@@ -98,7 +98,19 @@ class WebAppRealtimeRuntime:
                 "INVALID_RESOURCE_VERSION", "resource_version must be positive"
             )
         self._payload(payload)
-        self._authorize_subscription(principal, resource_type, now)
+        self._authorize_publish(principal, resource_type, event_type, now)
+        authoritative_version = self._authoritative_projection_version(
+            principal=principal,
+            resource_type=resource_type,
+            resource_id=resource_id,
+            event_type=event_type,
+        )
+        if resource_version is not None and resource_version != authoritative_version:
+            raise WebAppRealtimeRuntimeError(
+                "RESOURCE_VERSION_MISMATCH",
+                "realtime projection version does not match authoritative resource",
+                409,
+            )
         occurred_at = self._utc(now)
         with self._lock:
             self._sequence += 1
@@ -117,7 +129,7 @@ class WebAppRealtimeRuntime:
                 tenant_id=principal.tenant_id,
                 resource_type=resource_type,
                 resource_id=resource_id,
-                resource_version=resource_version,
+                resource_version=authoritative_version,
                 occurred_at=occurred_at,
                 payload=dict(payload),
             )
@@ -147,27 +159,67 @@ class WebAppRealtimeRuntime:
 
         with self._lock:
             snapshot = tuple(self._events)
-            latest_sequence = self._sequence
 
-        if snapshot and after_sequence < snapshot[0].sequence - 1:
+        scoped = tuple(
+            event
+            for event in snapshot
+            if event.tenant_id == principal.tenant_id
+            and event.resource_type == resource_type
+            and (resource_id is None or event.resource_id == resource_id)
+        )
+        if scoped and after_sequence < scoped[0].sequence - 1:
             raise WebAppRealtimeRuntimeError(
                 "STALE_CURSOR",
                 "realtime cursor predates retained history; full refresh required",
                 409,
             )
-        matching = tuple(
-            event
-            for event in snapshot
-            if event.sequence > after_sequence
-            and event.tenant_id == principal.tenant_id
-            and event.resource_type == resource_type
-            and (resource_id is None or event.resource_id == resource_id)
-        )
+        matching = tuple(event for event in scoped if event.sequence > after_sequence)
+        latest_sequence = scoped[-1].sequence if scoped else after_sequence
         return RealtimeBatch(
             events=matching[:batch_limit],
             latest_sequence=latest_sequence,
             has_more=len(matching) > batch_limit,
         )
+
+    def _authorize_publish(
+        self,
+        principal: Principal,
+        resource_type: str,
+        event_type: RealtimeEventType,
+        now: datetime,
+    ) -> None:
+        operations: dict[RealtimeEventType, CrudOperation] = {
+            "created": "create",
+            "updated": "update",
+            "deleted": "delete",
+            "state_changed": "update",
+        }
+        self._crud._authorize(principal, resource_type, operations[event_type], now)
+
+    def _authoritative_projection_version(
+        self,
+        *,
+        principal: Principal,
+        resource_type: str,
+        resource_id: str,
+        event_type: RealtimeEventType,
+    ) -> int:
+        """Bind a projection to canonical CRUD state, including post-delete tombstones."""
+        deleted_clause = "IS NOT NULL" if event_type == "deleted" else "IS NULL"
+        row = self._crud._db.execute(
+            f"""SELECT version FROM web_app_resources
+                WHERE tenant_id=? AND project_id=? AND resource_type=? AND resource_id=?
+                  AND deleted_at {deleted_clause}""",
+            (
+                principal.tenant_id,
+                self._crud._contract.project_id,
+                resource_type,
+                resource_id,
+            ),
+        ).fetchone()
+        if row is None:
+            raise WebAppCrudRuntimeError("NOT_FOUND", "resource not found", 404)
+        return int(row["version"])
 
     def _authorize_subscription(
         self, principal: Principal, resource_type: str, now: datetime

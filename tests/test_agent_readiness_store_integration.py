@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 
 from services.agent_readiness import AgentReadinessProof
-from services.agent_readiness_store import AgentReadinessStore
+from services.agent_readiness_store import AgentReadinessStore, AgentReadinessStoreError
 from services.agent_registry import ORCHESTRATOR_ID, registration_for
 
 
@@ -53,3 +53,43 @@ def test_verified_requires_regression_after_all_executable_gates(tmp_path: Path)
         created_at=datetime.now(timezone.utc),
     )
     assert record.readiness.value == "verified"
+
+
+def test_verify_rejects_tampered_readiness_record_even_if_update_trigger_is_removed(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "agent-readiness.sqlite3"
+    store = AgentReadinessStore(path)
+    store.persist(
+        _proof(executable=True, regression=True),
+        created_at=datetime.now(timezone.utc),
+    )
+
+    with sqlite3.connect(path) as connection:
+        connection.execute("DROP TRIGGER agent_readiness_no_update")
+        connection.execute(
+            "UPDATE agent_readiness_evidence SET record_digest = ? WHERE sequence = 1",
+            ("0" * 64,),
+        )
+
+    with pytest.raises(AgentReadinessStoreError, match="digest mismatch"):
+        store.verify()
+
+
+def test_verify_rejects_sequence_gap_even_if_delete_trigger_is_removed(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "agent-readiness.sqlite3"
+    store = AgentReadinessStore(path)
+    store.persist(_proof(executable=False), created_at=datetime.now(timezone.utc))
+    store.persist(
+        _proof(executable=True, regression=True),
+        created_at=datetime.now(timezone.utc),
+    )
+
+    with sqlite3.connect(path) as connection:
+        connection.execute("DROP TRIGGER agent_readiness_no_delete")
+        connection.execute("DELETE FROM agent_readiness_evidence WHERE sequence = 1")
+
+    with pytest.raises(AgentReadinessStoreError, match="sequence has a gap"):
+        store.verify()

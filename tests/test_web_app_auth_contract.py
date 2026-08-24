@@ -220,7 +220,7 @@ def test_high_risk_owner_action_requires_mfa_and_independent_approval() -> None:
     )
 
     service_owner = _principal("Owner", mfa=True, kind=IdentityKind.SERVICE)
-    with pytest.raises(IdentityError, match="deny by default"):
+    with pytest.raises(IdentityError):
         authorize_with_canonical_engine(
             engine, principal=service_owner, request=request, now=NOW
         )

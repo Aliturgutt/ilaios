@@ -181,6 +181,49 @@ class SQLiteCentralIdentityStore:
             issuer=verified.issuer,
         )
 
+    def remove_link(
+        self, account: CanonicalAccount, identity: VerifiedExternalIdentity
+    ) -> IdentityLink:
+        verified = identity.normalized()
+        provider, issuer_namespace, subject = verified.key()
+        current = self.get_account(account.user_id)
+        if current != account or not account.enabled:
+            raise CentralIdentityError("canonical account changed during unlinking")
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT provider, provider_subject, user_id, tenant_id, verified_email, "
+                "issuer_namespace FROM identity_accounts WHERE provider = ? "
+                "AND issuer_namespace = ? AND provider_subject = ?",
+                (provider.value, issuer_namespace, subject),
+            ).fetchone()
+            if row is None:
+                raise CentralIdentityError("external identity is not linked")
+            existing = _link_from_row(row)
+            if existing.user_id != account.user_id or existing.tenant_id != account.tenant_id:
+                raise CentralIdentityError("external identity belongs to another account")
+            count_row = connection.execute(
+                "SELECT COUNT(*) FROM identity_accounts WHERE user_id = ? AND tenant_id = ?",
+                (account.user_id, account.tenant_id),
+            ).fetchone()
+            if count_row is None or int(count_row[0]) <= 1:
+                raise CentralIdentityError("cannot remove the last usable sign-in method")
+            cursor = connection.execute(
+                "DELETE FROM identity_accounts WHERE provider = ? "
+                "AND issuer_namespace = ? AND provider_subject = ? "
+                "AND user_id = ? AND tenant_id = ?",
+                (
+                    provider.value,
+                    issuer_namespace,
+                    subject,
+                    account.user_id,
+                    account.tenant_id,
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise CentralIdentityError("external identity unlink failed closed")
+        return existing
+
     def list_links(self, user_id: str) -> tuple[IdentityLink, ...]:
         with self._connect() as connection:
             rows = connection.execute(

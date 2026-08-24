@@ -26,6 +26,7 @@ LIFECYCLE_STATES = {
     "CI_RUNNING",
     "MERGE_READY",
     "TOKEN_WAIT",
+    "PRE_MERGE_VALIDATION",
     "MERGING",
     "EXACT_MASTER_VERIFY",
     "BLOCKED_EXTERNAL",
@@ -77,6 +78,7 @@ def validate(data: dict[str, Any]) -> None:
         require(token.get("freeze_active") is False, f"{token_state} token must not keep freeze_active")
     else:
         require(bool(isinstance(owner, str) and owner), f"{token_state} token requires an owner")
+        require(token.get("freeze_active") is True, f"{token_state} token must keep freeze_active")
 
     workstreams_raw = data.get("workstreams")
     require(isinstance(workstreams_raw, dict), "workstreams must be an object")
@@ -105,7 +107,8 @@ def validate(data: dict[str, Any]) -> None:
         require(isinstance(owner, str) and owner in workstreams, "merge token owner must name a known workstream")
         owner_state = cast(dict[str, Any], workstreams[cast(str, owner)])
         require(
-            owner_state["lifecycle"] in {"MERGE_READY", "TOKEN_WAIT", "MERGING", "EXACT_MASTER_VERIFY"},
+            owner_state["lifecycle"]
+            in {"MERGE_READY", "TOKEN_WAIT", "PRE_MERGE_VALIDATION", "MERGING", "EXACT_MASTER_VERIFY"},
             "merge token owner lifecycle must be merge-related",
         )
 

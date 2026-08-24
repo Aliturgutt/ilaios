@@ -14,6 +14,7 @@ on:
       - 'tests/test_web_source_*.py'
       - '.github/web-app-factory-closure.json'
       - '.github/workflows/web-app-factory-continuation.yml'
+      - '.github/workflows/web-app-factory-exact-master-status.yml'
   pull_request:
     branches:
       - master
@@ -27,6 +28,7 @@ on:
       - 'tests/test_web_source_*.py'
       - '.github/web-app-factory-closure.json'
       - '.github/workflows/web-app-factory-continuation.yml'
+      - '.github/workflows/web-app-factory-exact-master-status.yml'
   workflow_dispatch:
 
 permissions:
