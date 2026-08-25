@@ -4,7 +4,7 @@ This runtime does not own identity, session, authorization, tenant, audit, or
 persistence authority. It authenticates and binds a canonical session through
 ``AuthenticationBoundary``/``SessionRegistry``, delegates authorization to the
 canonical ``AuthorizationEngine``, resolves only declared lifecycle projection
-routes, and calls the existing lifecycle service. Client payload never selects
+routes, and calls existing lifecycle services. Client payload never selects
 canonical user or tenant authority.
 """
 
@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Mapping, Protocol
+from typing import Any, Mapping, Protocol
 
 from services.account_lifecycle_projection import (
     AccountLifecycleProjectionError,
@@ -35,8 +35,6 @@ from services.web_app_auth_contract import (
 
 
 class AccountDeletionAuthority(Protocol):
-    """Exact canonical service contract consumed by the HTTP adapter."""
-
     def delete_account(
         self,
         *,
@@ -47,10 +45,18 @@ class AccountDeletionAuthority(Protocol):
     ) -> tuple[int, int, int]: ...
 
 
+class AccountDataExportAuthority(Protocol):
+    def export_my_data(
+        self,
+        *,
+        user_id: str,
+        recent_authentication_verified: bool,
+        occurred_at: str,
+    ) -> dict[str, Any]: ...
+
+
 @dataclass(frozen=True, slots=True)
 class AccountLifecycleHttpRequest:
-    """Trusted server request context plus an untrusted client body."""
-
     path: str
     method: str
     encoded_token: str
@@ -75,11 +81,13 @@ class AccountLifecycleHttpRuntime:
         sessions: SessionRegistry,
         authorization: AuthorizationEngine,
         account_deletion: AccountDeletionAuthority,
+        account_export: AccountDataExportAuthority | None = None,
     ) -> None:
         self._authentication = authentication
         self._sessions = sessions
         self._authorization = authorization
         self._account_deletion = account_deletion
+        self._account_export = account_export
 
     def handle(
         self,
@@ -87,8 +95,6 @@ class AccountLifecycleHttpRuntime:
         *,
         now: datetime,
     ) -> AccountLifecycleHttpResponse:
-        """Handle one declared lifecycle route or return a sanitized denial."""
-
         try:
             projection = resolve_account_lifecycle_projection(
                 path=request.path,
@@ -97,7 +103,9 @@ class AccountLifecycleHttpRuntime:
         except AccountLifecycleProjectionError:
             return self._error(404, "LIFECYCLE_ROUTE_NOT_FOUND")
 
-        if projection.surface_id != "account.delete":
+        if projection.surface_id not in {"account.delete", "account.export_my_data"}:
+            return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
+        if projection.surface_id == "account.export_my_data" and self._account_export is None:
             return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
 
         try:
@@ -117,17 +125,29 @@ class AccountLifecycleHttpRuntime:
             if projection.recent_auth_required and not request.recent_authentication_verified:
                 raise IdentityError("recent authentication is required")
 
-            authorization_request = AccessRequest(
-                tenant_id=principal.tenant_id,
-                resource_tenant_id=principal.tenant_id,
-                action=projection.action,
-            )
             authorize_with_canonical_engine(
                 self._authorization,
                 principal=principal,
-                request=authorization_request,
+                request=AccessRequest(
+                    tenant_id=principal.tenant_id,
+                    resource_tenant_id=principal.tenant_id,
+                    action=projection.action,
+                ),
                 now=now,
             )
+
+            if projection.surface_id == "account.export_my_data":
+                self._empty_body(request.body)
+                assert self._account_export is not None
+                export = self._account_export.export_my_data(
+                    user_id=principal.principal_id,
+                    recent_authentication_verified=request.recent_authentication_verified,
+                    occurred_at=self._utc(now),
+                )
+                return AccountLifecycleHttpResponse(
+                    status_code=200,
+                    body={"status": "exported", "data": export},
+                )
 
             confirmation = self._deletion_confirmation(request.body)
             revoked_memberships, revoked_sessions, deleted_identities = (
@@ -141,7 +161,12 @@ class AccountLifecycleHttpRuntime:
         except IdentityError:
             return self._error(403, "IDENTITY_DENIED")
         except CentralIdentityError:
-            return self._error(409, "ACCOUNT_DELETE_DENIED")
+            code = (
+                "ACCOUNT_EXPORT_DENIED"
+                if projection.surface_id == "account.export_my_data"
+                else "ACCOUNT_DELETE_DENIED"
+            )
+            return self._error(409, code)
         except ValueError:
             return self._error(400, "INVALID_REQUEST")
 
@@ -156,11 +181,15 @@ class AccountLifecycleHttpRuntime:
         )
 
     @staticmethod
+    def _empty_body(body: Mapping[str, object]) -> None:
+        if body:
+            raise ValueError("account export does not accept client authority fields")
+
+    @staticmethod
     def _deletion_confirmation(body: Mapping[str, object]) -> bool:
         if set(body) != {"confirm"}:
             raise ValueError("account delete body must contain only confirmation")
-        confirmation = body.get("confirm")
-        if confirmation is not True:
+        if body.get("confirm") is not True:
             raise CentralIdentityError("explicit account deletion confirmation is required")
         return True
 
@@ -172,7 +201,4 @@ class AccountLifecycleHttpRuntime:
 
     @staticmethod
     def _error(status_code: int, code: str) -> AccountLifecycleHttpResponse:
-        return AccountLifecycleHttpResponse(
-            status_code=status_code,
-            body={"error": code},
-        )
+        return AccountLifecycleHttpResponse(status_code=status_code, body={"error": code})
