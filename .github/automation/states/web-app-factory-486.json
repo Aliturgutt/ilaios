@@ -6,54 +6,48 @@
     "reference": "issue:#486 + .github/web-app-factory-closure.json"
   },
   "status": "IN_PROGRESS",
-  "current_phase": 8,
-  "master_sha": "827e6e97aff532bbdd5c1ac6e06131fc34010db3",
-  "base_sha": "827e6e97aff532bbdd5c1ac6e06131fc34010db3",
+  "current_phase": 9,
+  "master_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
+  "base_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
   "head_sha": null,
-  "branch": "web/app-phase8-enterprise-tables-57f359b7",
-  "pr": 988,
+  "branch": "web/app-phase9-files-outputs-bbebbfdc",
+  "pr": null,
   "ci": {
     "run_id": null,
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "require a completely fresh exact-head Web App Factory + Required CI + Software Factory Final Evidence + Execution Controller gate set on PR #988, then reread live master/token/head/overlap before expected-head merge and exact-master verification",
+  "next_action": "prepare the smallest Phase-9 files/outputs runtime slice from exact master without creating a second artifact/evidence authority; require fresh exact-head Web App Factory + Required CI + Software Factory Final Evidence + Execution Controller gates before any merge",
   "blocker": {
-    "type": "CI",
-    "detail": "PR #986 exact head 8fc23594033866c22f253e746a7e27ec25c92a9b passed Web App Factory run 32848480564, Execution Controller run 32848480502 and Software Factory run 32848480499, but Required CI run 32848480770 failed because the stale branch snapshot carried identity lifecycle VERIFIED while the current validator rejects that lifecycle. Live master advanced two commits from 57f359b7 to 827e6e97 only in .github/automation/fast-closure-v2-state.json, with zero overlap against the five reviewed Phase-8 paths. Under the reserved Web App token the branch was reset to exact current master and only the reviewed five-path delta was replayed. GitHub auto-closed #986 when the ref temporarily equaled master; successor #988 now carries the replay. All historical PASS is invalid.",
+    "type": "TOKEN_ARBITRATION",
+    "detail": "Phase 8 is exact-master verified on bbebbfdc578715fcc0062ebd93f41ef33829fbed. Coordination-only PR #989 is open and proposes handing the single-writer merge token to Identity. Phase-9 development may proceed only on non-overlapping paths; no Web App merge while another lane owns the token.",
     "human_action": null
   },
   "repair": {
     "retry_count": 11,
     "last_failure_fingerprint": "phase8-pr986-required-ci-invalid-stale-identity-verified-lifecycle",
-    "last_root_cause": "stale branch snapshot contained Fast-Closure identity lifecycle VERIFIED; current master PR #987 corrected the durable state to a validator-compatible lifecycle, so the safe repair was current-master bounded replay rather than expanding Phase-8 scope"
+    "last_root_cause": "stale Phase-8 branch state was repaired by exact-current-master bounded replay; successor PR #988 merged and exact-master gates passed"
   },
   "lock": {
     "owner": "web-app-factory-486",
     "scope": [
       ".github/web-app-factory-closure.json",
-      ".github/automation/states/web-app-factory-486.json",
-      "services/web_app_enterprise_table_runtime.py",
-      "tests/test_web_app_enterprise_table_runtime.py",
-      "tests/test_web_app_enterprise_table_token_hardening.py"
+      ".github/automation/states/web-app-factory-486.json"
     ],
-    "acquired_at": "2026-08-25T13:36:00Z",
+    "acquired_at": "2026-08-25T14:30:00Z",
     "expires_at": null
   },
   "evidence": [
-    "phase7-final-merge-lineage:PR965 merge=75f68f31edecc72a83041bbbac9985c7c5d172b6",
-    "phase7-exact-master-evidence-publisher:PR967 merge=00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
-    "phase7-exact-master:web-app-factory run=32749923875 success",
-    "phase7-exact-master:software-factory run=32749923857 success",
-    "phase7-exact-master:required-ci run=32749924156 success",
     "phase7-verdict:VERIFIED on exact master 00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
-    "phase8-pr986-stale-head:8fc23594033866c22f253e746a7e27ec25c92a9b web=32848480564 success controller=32848480502 success sffe=32848480499 success required-ci=32848480770 failure",
-    "phase8-required-ci-root-cause:3 failed 2706 passed 1 skipped; failures all originate from invalid stale identity lifecycle VERIFIED in Fast-Closure branch snapshot",
-    "phase8-current-master:827e6e97aff532bbdd5c1ac6e06131fc34010db3",
-    "phase8-current-drift:57f359b7fbfc7cea82bec049e2a1fff28fb371d5..827e6e97aff532bbdd5c1ac6e06131fc34010db3 two commits; only .github/automation/fast-closure-v2-state.json changed; zero overlap with five Phase-8 paths",
-    "phase8-replay:PR #986 branch reset to exact current master and reviewed five-path delta replayed only",
-    "phase8-successor:PR988 base=827e6e97aff532bbdd5c1ac6e06131fc34010db3 exact five-path current-master replay; fresh gates mandatory",
+    "phase8-successor:PR988 exact head=313e79a45993d575e9b9424099d7bf01efba2e00",
+    "phase8-exact-head:execution-controller run=32855126904 success",
+    "phase8-merge:PR988 merge=bbebbfdc578715fcc0062ebd93f41ef33829fbed",
+    "phase8-exact-master:web-app-factory run=32858157336 success",
+    "phase8-exact-master:software-factory run=32858157334 success",
+    "phase8-exact-master:required-ci run=32858157637 success",
+    "phase8-verdict:VERIFIED on exact master bbebbfdc578715fcc0062ebd93f41ef33829fbed",
+    "phase9-start:branch=web/app-phase9-files-outputs-bbebbfdc base=bbebbfdc578715fcc0062ebd93f41ef33829fbed",
     "phase16-freeze: preserved; optional 3D/Motion/WebGL remains outside baseline closure"
   ],
-  "updated_at": "2026-08-25T13:44:00Z"
+  "updated_at": "2026-08-25T14:30:00Z"
 }
