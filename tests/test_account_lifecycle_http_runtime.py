@@ -65,6 +65,31 @@ class _AccountDeletion:
         return 2, 3, 4
 
 
+class _AccountExport:
+    def __init__(self) -> None:
+        self.calls: list[dict[str, object]] = []
+
+    def export_my_data(
+        self,
+        *,
+        user_id: str,
+        recent_authentication_verified: bool,
+        occurred_at: str,
+    ) -> dict[str, object]:
+        self.calls.append(
+            {
+                "user_id": user_id,
+                "recent_authentication_verified": recent_authentication_verified,
+                "occurred_at": occurred_at,
+            }
+        )
+        return {
+            "schema_version": "ilaios.account-export.v1",
+            "user": {"user_id": user_id},
+            "sessions": [{"tenant_id": "tenant-1", "revoked_at": None}],
+        }
+
+
 def _runtime(
     *,
     verifier: _Verifier | None = None,
@@ -107,6 +132,48 @@ def _runtime(
     return runtime, deletion, sessions
 
 
+def _export_runtime(
+    *,
+    verifier: _Verifier | None = None,
+) -> tuple[AccountLifecycleHttpRuntime, _AccountExport]:
+    boundary = AuthenticationBoundary(
+        verifier or _Verifier(),
+        IdentityPolicy(
+            trusted_issuers=frozenset({"https://issuer.example"}),
+            audience="ilaios-web",
+            maximum_session=timedelta(hours=1),
+        ),
+    )
+    sessions = SessionRegistry(maximum_lifetime=timedelta(hours=1))
+    principal = Principal(
+        principal_id="user-1",
+        tenant_id="tenant-1",
+        kind=IdentityKind.HUMAN,
+        roles=frozenset({"Owner"}),
+        attributes=frozenset(),
+        authentication_methods=frozenset({"mfa"}),
+    )
+    sessions.issue("session-1", principal, NOW, timedelta(minutes=30))
+    authorization = AuthorizationEngine(
+        (
+            AuthorizationRule(
+                action="identity.account.export",
+                roles=frozenset({"Owner"}),
+                identity_kinds=frozenset({IdentityKind.HUMAN}),
+            ),
+        )
+    )
+    export = _AccountExport()
+    runtime = AccountLifecycleHttpRuntime(
+        authentication=boundary,
+        sessions=sessions,
+        authorization=authorization,
+        account_deletion=_AccountDeletion(),
+        account_export=export,
+    )
+    return runtime, export
+
+
 def _request(
     *,
     path: str = "/api/account/delete",
@@ -128,9 +195,7 @@ def _request(
 
 def test_account_delete_http_wiring_delegates_only_canonical_principal() -> None:
     runtime, deletion, _ = _runtime()
-
     response = runtime.handle(_request(), now=NOW)
-
     assert response.status_code == 200
     assert response.body == {
         "status": "deleted",
@@ -152,9 +217,7 @@ def test_account_delete_http_wiring_delegates_only_canonical_principal() -> None
 
 def test_account_delete_http_wiring_is_unauthenticated_default_deny() -> None:
     runtime, deletion, _ = _runtime()
-
     response = runtime.handle(_request(encoded_token=""), now=NOW)
-
     assert response.status_code == 403
     assert response.body == {"error": "IDENTITY_DENIED"}
     assert deletion.calls == []
@@ -162,9 +225,7 @@ def test_account_delete_http_wiring_is_unauthenticated_default_deny() -> None:
 
 def test_account_delete_http_wiring_binds_session_to_authenticated_principal() -> None:
     runtime, deletion, _ = _runtime(verifier=_Verifier(subject="attacker"))
-
     response = runtime.handle(_request(), now=NOW)
-
     assert response.status_code == 403
     assert response.body == {"error": "IDENTITY_DENIED"}
     assert deletion.calls == []
@@ -172,9 +233,7 @@ def test_account_delete_http_wiring_binds_session_to_authenticated_principal() -
 
 def test_account_delete_http_wiring_denies_cross_tenant_session_binding() -> None:
     runtime, deletion, _ = _runtime(verifier=_Verifier(tenant_id="tenant-2"))
-
     response = runtime.handle(_request(), now=NOW)
-
     assert response.status_code == 403
     assert response.body == {"error": "IDENTITY_DENIED"}
     assert deletion.calls == []
@@ -182,16 +241,10 @@ def test_account_delete_http_wiring_denies_cross_tenant_session_binding() -> Non
 
 def test_account_delete_http_wiring_requires_recent_auth_and_confirmation() -> None:
     runtime, deletion, _ = _runtime()
-
     recent_auth_denied = runtime.handle(
-        _request(recent_authentication_verified=False),
-        now=NOW,
+        _request(recent_authentication_verified=False), now=NOW
     )
-    confirmation_denied = runtime.handle(
-        _request(body={"confirm": False}),
-        now=NOW,
-    )
-
+    confirmation_denied = runtime.handle(_request(body={"confirm": False}), now=NOW)
     assert recent_auth_denied.status_code == 403
     assert recent_auth_denied.body == {"error": "IDENTITY_DENIED"}
     assert confirmation_denied.status_code == 409
@@ -201,12 +254,10 @@ def test_account_delete_http_wiring_requires_recent_auth_and_confirmation() -> N
 
 def test_account_delete_http_wiring_rejects_client_identity_override_fields() -> None:
     runtime, deletion, _ = _runtime()
-
     response = runtime.handle(
         _request(body={"confirm": True, "user_id": "victim", "tenant_id": "tenant-2"}),
         now=NOW,
     )
-
     assert response.status_code == 400
     assert response.body == {"error": "INVALID_REQUEST"}
     assert deletion.calls == []
@@ -214,7 +265,6 @@ def test_account_delete_http_wiring_rejects_client_identity_override_fields() ->
 
 def test_account_delete_http_wiring_requires_exact_route_and_method() -> None:
     runtime, deletion, _ = _runtime()
-
     for request in (
         _request(path="/api/account/delete/extra"),
         _request(method="POST"),
@@ -227,3 +277,59 @@ def test_account_delete_http_wiring_requires_exact_route_and_method() -> None:
             "LIFECYCLE_ROUTE_NOT_WIRED",
         }
     assert deletion.calls == []
+
+
+def test_account_export_http_wiring_uses_canonical_principal_and_sanitized_session_data() -> None:
+    runtime, export = _export_runtime()
+    response = runtime.handle(
+        _request(path="/api/account/export", method="POST", body={}), now=NOW
+    )
+    assert response.status_code == 200
+    assert response.body["status"] == "exported"
+    assert export.calls == [
+        {
+            "user_id": "user-1",
+            "recent_authentication_verified": True,
+            "occurred_at": NOW.isoformat(),
+        }
+    ]
+    assert "session-1" not in repr(response.body)
+
+
+def test_account_export_http_wiring_requires_auth_session_and_recent_auth() -> None:
+    runtime, export = _export_runtime()
+    unauthenticated = runtime.handle(
+        _request(path="/api/account/export", method="POST", body={}, encoded_token=""),
+        now=NOW,
+    )
+    stale_auth = runtime.handle(
+        _request(
+            path="/api/account/export",
+            method="POST",
+            body={},
+            recent_authentication_verified=False,
+        ),
+        now=NOW,
+    )
+    assert unauthenticated.status_code == 403
+    assert stale_auth.status_code == 403
+    assert export.calls == []
+
+
+def test_account_export_http_wiring_rejects_client_authority_fields_and_wrong_method() -> None:
+    runtime, export = _export_runtime()
+    override = runtime.handle(
+        _request(
+            path="/api/account/export",
+            method="POST",
+            body={"user_id": "victim", "tenant_id": "tenant-2"},
+        ),
+        now=NOW,
+    )
+    wrong_method = runtime.handle(
+        _request(path="/api/account/export", method="GET", body={}), now=NOW
+    )
+    assert override.status_code == 400
+    assert override.body == {"error": "INVALID_REQUEST"}
+    assert wrong_method.status_code == 404
+    assert export.calls == []
