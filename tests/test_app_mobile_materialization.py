@@ -10,19 +10,19 @@ from services.app_mobile_materialization import (
     build_flutter_android_materialization_plan,
     build_flutter_android_release_plan,
 )
-from services.app_product_spec import admit_project, build_product_spec
+from services.app_product_spec import AppPlatform, ProductSpec, admit_project, build_product_spec
 from services.mobile_android_executor import AndroidSourceChange
 
 
 OBJECTIVE = "Materialize the governed ILAIOS mobile client"
 
 
-def _spec(*, platforms: tuple[str, ...] = ("android",)):
+def _spec(*, platforms: tuple[AppPlatform, ...] = ("android",)) -> ProductSpec:
     admission = admit_project(
         project_id="project-mobile",
         intent="new",
         objective=OBJECTIVE,
-        platforms=platforms,  # type: ignore[arg-type]
+        platforms=platforms,
     )
     return build_product_spec(
         admission=admission,
@@ -34,19 +34,25 @@ def _spec(*, platforms: tuple[str, ...] = ("android",)):
     )
 
 
-def _projection(**overrides: object) -> AppRequestProjection:
-    value: AppRequestProjection = {
+def _projection(
+    *,
+    objective: str = OBJECTIVE,
+    platform: str = "android",
+    action: str = "client_change_request",
+    approved_for_review: bool = True,
+    approver: str = "owner-review",
+    client_mutated: bool = False,
+) -> AppRequestProjection:
+    return {
         "request_id": "appreq-mobile-materialization",
-        "platform": "android",
-        "action": "client_change_request",
-        "objective": OBJECTIVE,
+        "platform": platform,
+        "action": action,
+        "objective": objective,
         "request_sha256": "a" * 64,
-        "approved_for_review": True,
-        "approver": "owner-review",
-        "client_mutated": False,
+        "approved_for_review": approved_for_review,
+        "approver": approver,
+        "client_mutated": client_mutated,
     }
-    value.update(overrides)  # type: ignore[typeddict-item]
-    return value
 
 
 def _changes() -> tuple[AndroidSourceChange, ...]:
