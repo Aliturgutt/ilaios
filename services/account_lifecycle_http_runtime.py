@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Mapping, Protocol
+from typing import Any, Mapping, Protocol, runtime_checkable
 
 from services.account_lifecycle_projection import (
     AccountLifecycleProjectionError,
@@ -56,6 +56,8 @@ class AccountDataExportAuthority(Protocol):
 
 
 class AccountSessionLifecycleAuthority(Protocol):
+    """Backward-compatible logout capability already accepted by this runtime."""
+
     def logout_session(
         self,
         *,
@@ -63,6 +65,19 @@ class AccountSessionLifecycleAuthority(Protocol):
         authenticated_tenant_id: str,
         session_id: str,
     ) -> bool: ...
+
+
+@runtime_checkable
+class AccountSessionRevocationAuthority(Protocol):
+    """Additional fail-closed capability required only by revoke-all routing."""
+
+    def revoke_all_sessions(
+        self,
+        *,
+        authenticated_user_id: str,
+        authenticated_tenant_id: str,
+        recent_authentication_verified: bool,
+    ) -> int: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -119,11 +134,16 @@ class AccountLifecycleHttpRuntime:
             "account.delete",
             "account.export_my_data",
             "account.logout",
+            "account.revoke_all_sessions",
         }:
             return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
         if projection.surface_id == "account.export_my_data" and self._account_export is None:
             return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
         if projection.surface_id == "account.logout" and self._account_sessions is None:
+            return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
+        if projection.surface_id == "account.revoke_all_sessions" and not isinstance(
+            self._account_sessions, AccountSessionRevocationAuthority
+        ):
             return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
 
         try:
@@ -167,6 +187,19 @@ class AccountLifecycleHttpRuntime:
                     body={"status": "logged_out"},
                 )
 
+            if projection.surface_id == "account.revoke_all_sessions":
+                self._empty_body(request.body)
+                assert isinstance(self._account_sessions, AccountSessionRevocationAuthority)
+                revoked_count = self._account_sessions.revoke_all_sessions(
+                    authenticated_user_id=principal.principal_id,
+                    authenticated_tenant_id=principal.tenant_id,
+                    recent_authentication_verified=request.recent_authentication_verified,
+                )
+                return AccountLifecycleHttpResponse(
+                    status_code=200,
+                    body={"status": "sessions_revoked", "revoked_sessions": revoked_count},
+                )
+
             if projection.surface_id == "account.export_my_data":
                 self._empty_body(request.body)
                 assert self._account_export is not None
@@ -196,6 +229,8 @@ class AccountLifecycleHttpRuntime:
                 code = "ACCOUNT_EXPORT_DENIED"
             elif projection.surface_id == "account.logout":
                 code = "ACCOUNT_LOGOUT_DENIED"
+            elif projection.surface_id == "account.revoke_all_sessions":
+                code = "ACCOUNT_REVOKE_ALL_DENIED"
             else:
                 code = "ACCOUNT_DELETE_DENIED"
             return self._error(409, code)
