@@ -234,3 +234,65 @@ def test_retention_blocks_delete_until_expiry() -> None:
         now=NOW + timedelta(hours=2),
     )
     assert record.object_key not in storage.objects
+
+
+def test_successful_file_operations_bind_canonical_audit_metadata_without_content() -> None:
+    contract = _contract()
+    storage = MemoryStorage()
+    audit = AuditEngine()
+    runtime = WebAppFilesOutputsRuntime(
+        sqlite3.connect(":memory:"),
+        contract,
+        AuthorizationEngine(compile_authorization_rules(contract)),
+        audit,
+        storage,
+    )
+    principal = _principal()
+
+    record = runtime.store(
+        principal=principal,
+        output_id="audit-output",
+        filename="private-report.txt",
+        mime_type="text/plain",
+        content=b"secret-content-must-not-enter-audit",
+        now=NOW,
+    )
+    runtime.download(
+        principal=principal,
+        output_id="audit-output",
+        version=record.version,
+        now=NOW + timedelta(seconds=1),
+    )
+    runtime.delete(
+        principal=principal,
+        output_id="audit-output",
+        version=record.version,
+        now=NOW + timedelta(seconds=2),
+    )
+
+    records = audit.get_records(component="web_app_files_outputs_runtime")
+    assert tuple(item.action for item in records) == ("store", "download", "delete")
+    assert all(item.status == "success" for item in records)
+    assert all(item.details["tenant_id"] == principal.tenant_id for item in records)
+    assert all(item.details["project_id"] == contract.project_id for item in records)
+    assert all(item.details["output_id"] == "audit-output" for item in records)
+    assert all(item.details["sha256"] == record.sha256 for item in records)
+    serialized_details = repr(tuple(dict(item.details) for item in records))
+    assert "secret-content-must-not-enter-audit" not in serialized_details
+    assert "private-report.txt" not in serialized_details
+
+
+def test_naive_operation_time_fails_closed_with_typed_error() -> None:
+    runtime, _storage = _runtime()
+    naive_now = datetime(2026, 8, 25, 15, 30)
+
+    with pytest.raises(WebAppFilesOutputsError) as exc:
+        runtime.store(
+            principal=_principal(),
+            output_id="naive-time",
+            filename="safe.txt",
+            mime_type="text/plain",
+            content=b"safe",
+            now=naive_now,
+        )
+    assert exc.value.code == "INVALID_TIME"
