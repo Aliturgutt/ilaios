@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-25T23:50:31Z",
+  "updated_at": "2026-08-26T00:00:00Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "agents",
-    "reserved_master_sha": "79b0804d6d4a3fdefa376876aa44966f04ccd666",
-    "candidate_pr": 946,
-    "candidate_head_sha": "af3aa7628722edd649048e4019227b182ccbd3a0",
+    "reserved_master_sha": "becabf91bb642e439e9d8578ed11bb73e829f06d",
+    "candidate_pr": 1000,
+    "candidate_head_sha": "6bc683097f2f00095e7a9e36020df3f778c9b59d",
     "freeze_active": true,
-    "freeze_reason": "Web App Phase-9 successor #998 is merged as exact master 79b0804d and exact-master Web App Factory, Required CI and Software Factory Final Evidence statuses are SUCCESS. Higher-ranked repository lanes are externally blocked or have no dependency-ready current merge candidate. Reserve the single-writer merge window for Agent #946 currentness/replay validation only; historical #946 PASS is not merge authority until bounded replay onto exact current master and fresh exact-head gates."
+    "freeze_reason": "Agent single-writer reservation #999 is merged and exact-master Required CI 32912914372 plus Software Factory Final Evidence 32912914209 are SUCCESS on becabf91. Historical #946 is closed as superseded; #1000 is the exact-current replay successor. Keep freeze through bounded receipt-lineage hardening, fresh exact-head gates, expected-head merge and exact-master validation."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -72,18 +72,18 @@
       "base_sha": "79b0804d6d4a3fdefa376876aa44966f04ccd666",
       "head_sha": "79b0804d6d4a3fdefa376876aa44966f04ccd666",
       "blocked_reason": null,
-      "next_action": "Phase 9 is exact-master verified on 79b0804d; continue the next dependency-ready Web App phase only after the Agent single-writer window is released."
+      "next_action": "Phase 9 is exact-master verified; continue the next dependency-ready Web App phase only after the Agent single-writer window is released."
     },
     "agents": {
       "scheduler": "agents",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 6,
       "authoritative_issue": 557,
-      "active_pr": 946,
-      "base_sha": "7e06c5e8ef42ae685cffd98ccc3dcc0448293eb4",
-      "head_sha": "af3aa7628722edd649048e4019227b182ccbd3a0",
+      "active_pr": 1000,
+      "base_sha": "becabf91bb642e439e9d8578ed11bb73e829f06d",
+      "head_sha": "6bc683097f2f00095e7a9e36020df3f778c9b59d",
       "blocked_reason": null,
-      "next_action": "Reread live master/head/path and semantic overlap, replay only still-required #946 final-receipt delta onto exact current master, close the remaining evidence-context lineage gap, invalidate historical PASS, require fresh exact-head Required CI/SFFE and applicable Agent/security/runtime gates, then merge only with expected-head protection."
+      "next_action": "Close the remaining final-receipt context-lineage gap without creating parallel authority; then require fresh exact-head Required CI/SFFE and applicable Agent/security/runtime gates, reread current master/token/overlap/head and merge only with expected-head protection."
     },
     "app_factory": {
       "scheduler": "unified",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 22,
-    "stale_pass_invalidations": 17,
-    "replay_resync_count": 6,
-    "ci_cycles": 15,
-    "successful_merges": 22,
+    "master_advances": 23,
+    "stale_pass_invalidations": 18,
+    "replay_resync_count": 7,
+    "ci_cycles": 16,
+    "successful_merges": 23,
     "duplicate_pr_count": 0,
     "churn_only_commit_count": 0
   }
