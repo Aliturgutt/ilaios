@@ -102,7 +102,7 @@ def _require_exact_canonical_agent_identities(receipt: Mapping[str, object]) -> 
         raise AgentFinalClosureError("verified_agent_ids does not match current canonical Agent identities")
 
 
-def _require_agent_evidence_bindings(receipt: Mapping[str, object]) -> None:
+def _require_agent_evidence_bindings(receipt: Mapping[str, object]) -> dict[str, str]:
     value = receipt.get("agent_execution_evidence_bindings")
     if not isinstance(value, Mapping):
         raise AgentFinalClosureError("agent_execution_evidence_bindings must be a mapping")
@@ -136,6 +136,7 @@ def _require_agent_evidence_bindings(receipt: Mapping[str, object]) -> None:
             raise AgentFinalClosureError(
                 "Agent evidence bindings must include the exact execution and Agent identity"
             )
+    return normalized
 
 
 def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
@@ -180,16 +181,23 @@ def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
         _require_nonempty_string(receipt, key)
     for key in _REQUIRED_NONEMPTY_SEQUENCES:
         _require_nonempty_string_sequence(receipt, key)
-    _require_agent_evidence_bindings(receipt)
+    normalized_bindings = _require_agent_evidence_bindings(receipt)
 
     agent_execution_evidence_refs = receipt.get("agent_execution_evidence_refs")
     if not isinstance(agent_execution_evidence_refs, Sequence) or isinstance(
         agent_execution_evidence_refs, (str, bytes)
     ):
         raise AgentFinalClosureError("agent_execution_evidence_refs must be a sequence")
-    if len(agent_execution_evidence_refs) < EXPECTED_AGENT_COUNT:
+    normalized_refs = tuple(str(item).strip() for item in agent_execution_evidence_refs)
+    if len(normalized_refs) != EXPECTED_AGENT_COUNT:
         raise AgentFinalClosureError(
-            "agent_execution_evidence_refs must cover every canonical Agent"
+            "agent_execution_evidence_refs must contain exactly one ref per canonical Agent"
+        )
+    if len(set(normalized_refs)) != EXPECTED_AGENT_COUNT:
+        raise AgentFinalClosureError("agent_execution_evidence_refs must be unique")
+    if set(normalized_refs) != set(normalized_bindings.values()):
+        raise AgentFinalClosureError(
+            "agent_execution_evidence_refs must exactly match canonical Agent evidence bindings"
         )
 
     output_artifact_sha256 = receipt.get("output_artifact_sha256")
