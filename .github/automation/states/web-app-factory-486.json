@@ -7,26 +7,26 @@
   },
   "status": "IN_PROGRESS",
   "current_phase": 9,
-  "master_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
+  "master_sha": "c90245687b0d60af5b1cc0ddbf8b610904493653",
   "base_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
-  "head_sha": null,
+  "head_sha": "a1124d2d1f6e79e3b193153897e0e4b4bd4ef8dd",
   "branch": "web/app-phase9-files-outputs-bbebbfdc",
   "pr": 990,
   "ci": {
-    "run_id": null,
+    "run_id": 32879099050,
     "conclusion": null,
-    "exact_sha": null
+    "exact_sha": "a1124d2d1f6e79e3b193153897e0e4b4bd4ef8dd"
   },
-  "next_action": "validate the bounded Phase-9 files/outputs runtime with fresh exact-head Web App Factory + Required CI + Software Factory Final Evidence + Execution Controller gates; do not merge while Identity owns the single-writer token",
+  "next_action": "require the completely fresh exact-head Web App Factory + Required CI + Software Factory Final Evidence + Execution Controller gate set after the atomic concurrent-version allocator repair; do not merge while Identity owns the single-writer token; at the legal Web App merge window reread master/token/head/overlap and replay only the bounded reviewed Phase-9 delta if currentness requires it",
   "blocker": {
     "type": "REPOSITORY",
-    "detail": "Fast-Closure V2 reserves the single-writer merge token for Identity. Phase-9 development and CI may proceed on the non-overlapping Web App lock, but no Web App merge is authorized until live token ownership changes and current master/head/overlap are re-read.",
+    "detail": "Fast-Closure V2 reserves the single-writer merge token for Identity and active current-master Identity PR #993 touches services/account_lifecycle_http_runtime.py plus tests/test_account_lifecycle_http_runtime.py. Phase-9 development and CI are non-overlapping and may proceed, but no Web App merge is authorized until live token ownership changes and current master/head/overlap are re-read.",
     "human_action": null
   },
   "repair": {
-    "retry_count": 12,
-    "last_failure_fingerprint": "phase9-controller-invalid-token-arbitration-blocker-type",
-    "last_root_cause": "task state used TOKEN_ARBITRATION although the canonical execution-controller schema only accepts REPOSITORY/CI/PROVIDER/EXTERNAL/HUMAN blocker classes; corrected without weakening the validator"
+    "retry_count": 13,
+    "last_failure_fingerprint": "phase9-concurrent-store-max-version-object-key-collision",
+    "last_root_cause": "store allocated version with SELECT MAX(version)+1 before external object write; concurrent writers could select the same version/object key and a losing DB insert could compensate by deleting the winning writer's object. Repaired with a short BEGIN IMMEDIATE monotonic allocator transaction that reserves each tenant/project/output version before external storage I/O, plus a concurrent two-writer regression."
   },
   "lock": {
     "owner": "web-app-factory-486",
@@ -34,7 +34,8 @@
       ".github/web-app-factory-closure.json",
       ".github/automation/states/web-app-factory-486.json",
       "services/web_app_files_outputs_runtime.py",
-      "tests/test_web_app_files_outputs_runtime.py"
+      "tests/test_web_app_files_outputs_runtime.py",
+      "tests/test_web_app_files_outputs_concurrency.py"
     ],
     "acquired_at": "2026-08-25T14:30:00Z",
     "expires_at": null
@@ -50,8 +51,14 @@
     "phase8-verdict:VERIFIED on exact master bbebbfdc578715fcc0062ebd93f41ef33829fbed",
     "phase9-start:branch=web/app-phase9-files-outputs-bbebbfdc base=bbebbfdc578715fcc0062ebd93f41ef33829fbed",
     "phase9-runtime:tenant/project-scoped output metadata + MIME allowlist + SHA-256 + versioning + retention + exact-hash download verification + canonical AuthorizationEngine boundary",
-    "phase9-controller-failure:run=32867350690 invalid blocker type repaired without validator weakening",
+    "phase9-audit-hardening:store/download/delete bind canonical AuditEngine metadata without file content or filename leakage; naive datetime fails closed",
+    "phase9-concurrency-repair:atomic tenant/project/output version allocator prevents concurrent object-key reuse and destructive compensation",
+    "phase9-concurrency-regression:tests/test_web_app_files_outputs_concurrency.py launches two simultaneous stores against one SQLite metadata database and requires versions={1,2}, distinct object keys, both objects retained and ordered metadata",
+    "phase9-pr990-pre-repair-exact-head:3b359dee6e26a658b4422c8c4d411aa9ab195719 Web App=32873228696 success RequiredCI=32873229038 success SFFE=32873228772 success Controller=32873228720 success; invalidated by new repair head",
+    "phase9-fresh-ci:head=a1124d2d1f6e79e3b193153897e0e4b4bd4ef8dd RequiredCI=32879099050 pending WebApp=32879098813 pending SFFE=32879098704 in_progress Controller=32879098837 in_progress",
+    "live-master-at-repair:c90245687b0d60af5b1cc0ddbf8b610904493653",
+    "identity-overlap-check:PR993 paths=services/account_lifecycle_http_runtime.py,tests/test_account_lifecycle_http_runtime.py; zero direct path overlap with Phase-9 lock",
     "phase16-freeze: preserved; optional 3D/Motion/WebGL remains outside baseline closure"
   ],
-  "updated_at": "2026-08-25T15:44:00Z"
+  "updated_at": "2026-08-25T17:39:30Z"
 }
