@@ -84,6 +84,7 @@ _REQUIRED_NONEMPTY_SEQUENCES = (
     "agent_execution_evidence_refs",
     "provider_tool_receipt_ids",
 )
+_CONTEXT_KEYS = ("execution_id", "job_id", "user_id", "tenant_id", "session_id")
 
 
 class AgentFinalClosureError(ValueError):
@@ -179,6 +180,49 @@ def _require_agent_evidence_bindings(receipt: Mapping[str, object]) -> dict[str,
                 "Agent evidence bindings must include the exact execution and Agent identity"
             )
     return normalized
+
+
+def _require_evidence_context_bindings(
+    receipt: Mapping[str, object], *, evidence_refs: Sequence[str]
+) -> None:
+    value = receipt.get("evidence_context_bindings")
+    if not isinstance(value, Mapping):
+        raise AgentFinalClosureError("evidence_context_bindings must be a mapping")
+
+    required_refs = set(evidence_refs)
+    provider_receipts = receipt.get("provider_tool_receipt_ids")
+    if isinstance(provider_receipts, Sequence) and not isinstance(provider_receipts, (str, bytes)):
+        required_refs.update(
+            str(item).strip()
+            for item in provider_receipts
+            if isinstance(item, str) and item.strip()
+        )
+
+    normalized: dict[str, Mapping[object, object]] = {}
+    for raw_ref, raw_context in value.items():
+        ref = str(raw_ref).strip()
+        if not ref or not isinstance(raw_context, Mapping):
+            raise AgentFinalClosureError(
+                "evidence_context_bindings must map non-empty evidence refs to context mappings"
+            )
+        normalized[ref] = raw_context
+
+    if set(normalized) != required_refs:
+        raise AgentFinalClosureError(
+            "evidence_context_bindings must cover exactly all Agent evidence and provider/tool receipts"
+        )
+
+    expected = {key: receipt.get(key) for key in _CONTEXT_KEYS}
+    for context in normalized.values():
+        if {str(key) for key in context} != set(_CONTEXT_KEYS):
+            raise AgentFinalClosureError(
+                "evidence context must contain exact execution/job/user/tenant/session keys"
+            )
+        for key, expected_value in expected.items():
+            if context.get(key) != expected_value:
+                raise AgentFinalClosureError(
+                    "evidence context is stale, cross-job, cross-user, cross-tenant, or cross-session"
+                )
 
 
 def _require_evidence_revision_bindings(
@@ -308,6 +352,7 @@ def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
             "agent_execution_evidence_refs must exactly match canonical Agent evidence bindings"
         )
 
+    _require_evidence_context_bindings(receipt, evidence_refs=normalized_refs)
     _require_evidence_revision_bindings(
         receipt,
         exact_head_sha=exact_head_sha,
