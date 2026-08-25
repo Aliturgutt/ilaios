@@ -55,6 +55,16 @@ class AccountDataExportAuthority(Protocol):
     ) -> dict[str, Any]: ...
 
 
+class AccountSessionLifecycleAuthority(Protocol):
+    def logout_session(
+        self,
+        *,
+        authenticated_user_id: str,
+        authenticated_tenant_id: str,
+        session_id: str,
+    ) -> bool: ...
+
+
 @dataclass(frozen=True, slots=True)
 class AccountLifecycleHttpRequest:
     path: str
@@ -82,12 +92,14 @@ class AccountLifecycleHttpRuntime:
         authorization: AuthorizationEngine,
         account_deletion: AccountDeletionAuthority,
         account_export: AccountDataExportAuthority | None = None,
+        account_sessions: AccountSessionLifecycleAuthority | None = None,
     ) -> None:
         self._authentication = authentication
         self._sessions = sessions
         self._authorization = authorization
         self._account_deletion = account_deletion
         self._account_export = account_export
+        self._account_sessions = account_sessions
 
     def handle(
         self,
@@ -103,9 +115,15 @@ class AccountLifecycleHttpRuntime:
         except AccountLifecycleProjectionError:
             return self._error(404, "LIFECYCLE_ROUTE_NOT_FOUND")
 
-        if projection.surface_id not in {"account.delete", "account.export_my_data"}:
+        if projection.surface_id not in {
+            "account.delete",
+            "account.export_my_data",
+            "account.logout",
+        }:
             return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
         if projection.surface_id == "account.export_my_data" and self._account_export is None:
+            return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
+        if projection.surface_id == "account.logout" and self._account_sessions is None:
             return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
 
         try:
@@ -136,6 +154,19 @@ class AccountLifecycleHttpRuntime:
                 now=now,
             )
 
+            if projection.surface_id == "account.logout":
+                self._empty_body(request.body)
+                assert self._account_sessions is not None
+                self._account_sessions.logout_session(
+                    authenticated_user_id=principal.principal_id,
+                    authenticated_tenant_id=principal.tenant_id,
+                    session_id=request.session_id,
+                )
+                return AccountLifecycleHttpResponse(
+                    status_code=200,
+                    body={"status": "logged_out"},
+                )
+
             if projection.surface_id == "account.export_my_data":
                 self._empty_body(request.body)
                 assert self._account_export is not None
@@ -161,11 +192,12 @@ class AccountLifecycleHttpRuntime:
         except IdentityError:
             return self._error(403, "IDENTITY_DENIED")
         except CentralIdentityError:
-            code = (
-                "ACCOUNT_EXPORT_DENIED"
-                if projection.surface_id == "account.export_my_data"
-                else "ACCOUNT_DELETE_DENIED"
-            )
+            if projection.surface_id == "account.export_my_data":
+                code = "ACCOUNT_EXPORT_DENIED"
+            elif projection.surface_id == "account.logout":
+                code = "ACCOUNT_LOGOUT_DENIED"
+            else:
+                code = "ACCOUNT_DELETE_DENIED"
             return self._error(409, code)
         except ValueError:
             return self._error(400, "INVALID_REQUEST")
@@ -183,7 +215,7 @@ class AccountLifecycleHttpRuntime:
     @staticmethod
     def _empty_body(body: Mapping[str, object]) -> None:
         if body:
-            raise ValueError("account export does not accept client authority fields")
+            raise ValueError("lifecycle route does not accept client authority fields")
 
     @staticmethod
     def _deletion_confirmation(body: Mapping[str, object]) -> bool:
