@@ -181,7 +181,10 @@ def test_final_closure_receipt_rejects_wrong_or_duplicate_agent_identities() -> 
 def test_final_closure_receipt_rejects_incomplete_agent_evidence_coverage() -> None:
     receipt = _receipt()
     receipt["agent_execution_evidence_refs"] = ["evidence://exec-final-001/one-agent"]
-    with pytest.raises(AgentFinalClosureError, match="cover every canonical Agent"):
+    with pytest.raises(
+        AgentFinalClosureError,
+        match="exactly one ref per canonical Agent",
+    ):
         validate_agent_final_closure_receipt(receipt)
 
 
@@ -217,6 +220,25 @@ def test_final_closure_receipt_rejects_unbound_or_reused_agent_evidence() -> Non
         AgentFinalClosureError,
         match="exact execution and Agent identity",
     ):
+        validate_agent_final_closure_receipt(receipt)
+
+
+def test_final_closure_receipt_rejects_evidence_ref_binding_divergence() -> None:
+    receipt = _receipt()
+    evidence_refs = _agent_evidence_refs()
+    evidence_refs[-1] = "evidence://exec-final-001/unrelated-but-nonempty"
+    receipt["agent_execution_evidence_refs"] = evidence_refs
+    with pytest.raises(
+        AgentFinalClosureError,
+        match="exactly match canonical Agent evidence bindings",
+    ):
+        validate_agent_final_closure_receipt(receipt)
+
+    receipt = _receipt()
+    evidence_refs = _agent_evidence_refs()
+    evidence_refs[-1] = evidence_refs[0]
+    receipt["agent_execution_evidence_refs"] = evidence_refs
+    with pytest.raises(AgentFinalClosureError, match="must be unique"):
         validate_agent_final_closure_receipt(receipt)
 
 
