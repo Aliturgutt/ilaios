@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-25T22:33:50Z",
+  "updated_at": "2026-08-25T23:50:31Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "web_app",
-    "reserved_master_sha": "09ac49e3f3a7bca59e20147bc3a367987ca607ac",
-    "candidate_pr": 990,
-    "candidate_head_sha": "8afab638bb3682bd16cfaff70e0c81f41fa836b1",
+    "owner": "agents",
+    "reserved_master_sha": "79b0804d6d4a3fdefa376876aa44966f04ccd666",
+    "candidate_pr": 946,
+    "candidate_head_sha": "af3aa7628722edd649048e4019227b182ccbd3a0",
     "freeze_active": true,
-    "freeze_reason": "Identity PR #996 is merged as exact master 09ac49e3 and exact-master Software Factory Final Evidence run 32905073083 plus Required CI run 32905073725 are SUCCESS. No newer active Identity successor is present in the latest live PR set. Reserve the single-writer merge window for Web App Phase-9 currentness/replay validation only; historical #990 PASS is not merge authority until bounded replay onto exact current master and completely fresh exact-head gates."
+    "freeze_reason": "Web App Phase-9 successor #998 is merged as exact master 79b0804d and exact-master Web App Factory, Required CI and Software Factory Final Evidence statuses are SUCCESS. Higher-ranked repository lanes are externally blocked or have no dependency-ready current merge candidate. Reserve the single-writer merge window for Agent #946 currentness/replay validation only; historical #946 PASS is not merge authority until bounded replay onto exact current master and fresh exact-head gates."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -27,8 +27,8 @@
       "active_pr": 951,
       "base_sha": "859920c438e7a28fa5fad95ad1e548e9b144b436",
       "head_sha": "a693c63cd35b4696c190a9c1f7f37f1492d8cc5f",
-      "blocked_reason": "Repository/package verification is complete, but final Desktop acceptance still requires the user machine. A bounded logout/reconnect repair exists on stale PR #951 and must not merge without a legal Desktop window, current-master replay, fresh Desktop/Required CI/SFFE gates, and renewed local acceptance.",
-      "next_action": "Keep Desktop human-blocked; when a legal Desktop window exists, revalidate whether #951 is still required, replay only the reviewed delta on exact current master, then require fresh package/local acceptance before Microsoft Store readiness."
+      "blocked_reason": "Final Desktop acceptance requires exact-current Windows user-machine install/process/runtime/visual evidence; stale PR #951 is not merge authority.",
+      "next_action": "Keep Desktop human-blocked; on a legal Desktop window replay only still-required bounded delta and require fresh package plus local acceptance evidence."
     },
     "video_native_reference": {
       "scheduler": "unified",
@@ -38,8 +38,8 @@
       "active_pr": null,
       "base_sha": "892c248d899659ea558821df110e2b0be5468c6c",
       "head_sha": "892c248d899659ea558821df110e2b0be5468c6c",
-      "blocked_reason": "Repository implementation checkpoint is complete on exact master 892c248d: Character Continuity, Brand/Logo Continuity, semantic native-reference quality repair, exact-master Required CI, SFFE and applicable package evidence are green. Final real-provider visual production certification still requires an external managed provider execution; do not auto-dispatch paid provider work without explicit approval.",
-      "next_action": "Keep Video final production certification open. When explicit provider-execution approval is available, run the exact-master Video Native Reference production certification, verify receipt/artifact/provider/reference/continuity/cost/final MP4 evidence, and only then promote production VERIFIED. Do not weaken thresholds or silently degrade unsupported strict continuity."
+      "blocked_reason": "Final real-provider visual production certification requires an approved external provider execution; no paid fallback is authorized.",
+      "next_action": "Run exact-current real-provider Video certification only when authorized zero-cost/bounded-cost provider execution is available, then verify immutable receipt/artifact/cost/MP4 evidence."
     },
     "website_v2": {
       "scheduler": "unified",
@@ -49,8 +49,8 @@
       "active_pr": null,
       "base_sha": "4751fccce6fa91c3218e72eb79f16ecf8145d170",
       "head_sha": "4751fccce6fa91c3218e72eb79f16ecf8145d170",
-      "blocked_reason": "Website V2 source recovery is merged and exact-master Required CI/SFFE plus Vercel commit status are SUCCESS, but production /api/release exact-SHA attribution and live EN/TR Dark/Light responsive/reduced-motion browser evidence could not be fetched from this runtime due DNS resolution failure and Vercel deployment lookup not-found.",
-      "next_action": "Keep Website production verification open without holding the repository merge token. Retry exact-production /api/release and live EN/TR Dark/Light desktop/tablet/mobile/reduced-motion QA when network/deployment access is available; production verification requires exact SHA attribution and live evidence."
+      "blocked_reason": "Production /api/release exact-SHA attribution and live EN/TR Dark/Light responsive browser evidence remain externally unavailable from the prior runtime.",
+      "next_action": "Retry production release attribution and live browser QA when network/deployment access is available; do not promote source CI to production verification."
     },
     "identity": {
       "scheduler": "identity",
@@ -61,29 +61,29 @@
       "base_sha": "09ac49e3f3a7bca59e20147bc3a367987ca607ac",
       "head_sha": "09ac49e3f3a7bca59e20147bc3a367987ca607ac",
       "blocked_reason": null,
-      "next_action": "Tenant-delete HTTP wiring PR #996 is exact-master VERIFIED on 09ac49e3. Continue only the next smallest remaining non-overlapping lifecycle/client wiring slice after the Web App single-writer window is released; preserve canonical AuthenticationBoundary, SessionRegistry, AuthorizationEngine and existing lifecycle services."
+      "next_action": "Continue only the next dependency-ready non-overlapping identity lifecycle/client slice after the Agent single-writer window is released."
     },
     "web_app": {
       "scheduler": "web_app",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 5,
       "authoritative_issue": 486,
-      "active_pr": 990,
-      "base_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
-      "head_sha": "8afab638bb3682bd16cfaff70e0c81f41fa836b1",
+      "active_pr": null,
+      "base_sha": "79b0804d6d4a3fdefa376876aa44966f04ccd666",
+      "head_sha": "79b0804d6d4a3fdefa376876aa44966f04ccd666",
       "blocked_reason": null,
-      "next_action": "Phase-9 PR #990 exact head 8afab638 has fresh Web App Factory run 32902036704, Execution Controller run 32902036873, Software Factory Final Evidence run 32902037041 and Required CI run 32902037004 all SUCCESS, but its base is stale. In the reserved Web App merge window reread live master/head and changed-path plus semantic overlap, replay only the reviewed bounded six-path Phase-9 delta onto exact current master if still required, invalidate historical PASS, require completely fresh applicable gates, then merge with expected-head protection and require exact-master Web App/Required CI/SFFE evidence before Phase 9 VERIFIED."
+      "next_action": "Phase 9 is exact-master verified on 79b0804d; continue the next dependency-ready Web App phase only after the Agent single-writer window is released."
     },
     "agents": {
       "scheduler": "agents",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 6,
       "authoritative_issue": 557,
       "active_pr": 946,
       "base_sha": "7e06c5e8ef42ae685cffd98ccc3dcc0448293eb4",
-      "head_sha": "373068478cf58d6b45fdf3fbd1d33757f6790b08",
-      "blocked_reason": "Agent final-closure validator remains token-blocked; P0 21/21 provider checkpoint does not imply 47/47 closure. Current branch work is evidence-only preparation and must be replayed/revalidated at a legal Agent merge window if still required.",
-      "next_action": "Preserve Agent preparation. At a legal Agents merge window reread current master/token and replay only still-valid evidence-validator work with fresh Required CI/SFFE and applicable Agent/security/runtime gates."
+      "head_sha": "af3aa7628722edd649048e4019227b182ccbd3a0",
+      "blocked_reason": null,
+      "next_action": "Reread live master/head/path and semantic overlap, replay only still-required #946 final-receipt delta onto exact current master, close the remaining evidence-context lineage gap, invalidate historical PASS, require fresh exact-head Required CI/SFFE and applicable Agent/security/runtime gates, then merge only with expected-head protection."
     },
     "app_factory": {
       "scheduler": "unified",
@@ -93,8 +93,8 @@
       "active_pr": null,
       "base_sha": "7b8c397d8dc7437555da9b5af1548f14a30b466f",
       "head_sha": "7b8c397d8dc7437555da9b5af1548f14a30b466f",
-      "blocked_reason": "PR #977 is merged and exact-master verified. Repository-owned Flutter/Android source generation is present, but a genuine governed materialization/build run with an approved ProductSpec/projection and Gradle wrapper binary input has not yet produced exact APK/AAB/device evidence.",
-      "next_action": "Acquire the repository token only after live audit identifies the next bounded App Factory materialization/build candidate. Then materialize a real approved Flutter Android project through the incumbent governed Software Factory and run exact binary build/device evidence; do not claim APK/AAB/signing/Store readiness before evidence."
+      "blocked_reason": null,
+      "next_action": "When selected, materialize a real approved Flutter Android project through the incumbent governed Software Factory and produce exact binary/device evidence without Store publication."
     },
     "mobile_store": {
       "scheduler": "unified",
@@ -104,8 +104,8 @@
       "active_pr": null,
       "base_sha": null,
       "head_sha": null,
-      "blocked_reason": "Phase 3 cannot produce genuine APK/AAB/device evidence until the governed Software Factory path materializes a real repository-owned Android project from the now-verified Stage-4 source generator.",
-      "next_action": "Preserve existing build/device/store contracts. Materialize the real Flutter Android project through the incumbent governed Software Factory, then run the exact binary build and emulator/device evidence chain."
+      "blocked_reason": "Genuine APK/AAB/device evidence depends on governed App Factory materialization/build output.",
+      "next_action": "Preserve existing Store contracts and continue after real Android project materialization produces exact binary/device evidence."
     },
     "microsoft_store": {
       "scheduler": "unified",
@@ -115,16 +115,16 @@
       "active_pr": null,
       "base_sha": "859920c438e7a28fa5fad95ad1e548e9b144b436",
       "head_sha": "859920c438e7a28fa5fad95ad1e548e9b144b436",
-      "blocked_reason": "Exact-master Desktop ZIP/package evidence exists, but Store progression remains blocked on human local Windows acceptance and explicit publication decisions; automatic Partner Center submission/publication is prohibited.",
-      "next_action": "After issue #539 records successful local Windows acceptance on an exact-current package, prepare the explicit Microsoft Store submission checkpoint without auto-publishing."
+      "blocked_reason": "Store progression remains blocked on exact-current human Windows acceptance and explicit publication decisions.",
+      "next_action": "After issue #539 records exact-current Windows acceptance, prepare the explicit Microsoft Store submission checkpoint without auto-publishing."
     }
   },
   "metrics": {
-    "master_advances": 21,
-    "stale_pass_invalidations": 16,
+    "master_advances": 22,
+    "stale_pass_invalidations": 17,
     "replay_resync_count": 6,
     "ci_cycles": 15,
-    "successful_merges": 21,
+    "successful_merges": 22,
     "duplicate_pr_count": 0,
     "churn_only_commit_count": 0
   }
