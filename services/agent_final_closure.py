@@ -79,6 +79,7 @@ _REQUIRED_NONEMPTY_STRINGS = (
     "cost_usage_evidence_ref",
     "human_owner_evidence_ref",
     "evidence_record_id",
+    "output_artifact_evidence_ref",
 )
 _REQUIRED_NONEMPTY_SEQUENCES = (
     "agent_execution_evidence_refs",
@@ -197,6 +198,9 @@ def _require_evidence_context_bindings(
             for item in provider_receipts
             if isinstance(item, str) and item.strip()
         )
+    output_evidence_ref = receipt.get("output_artifact_evidence_ref")
+    if isinstance(output_evidence_ref, str) and output_evidence_ref.strip():
+        required_refs.add(output_evidence_ref.strip())
 
     normalized: dict[str, Mapping[object, object]] = {}
     for raw_ref, raw_context in value.items():
@@ -209,7 +213,7 @@ def _require_evidence_context_bindings(
 
     if set(normalized) != required_refs:
         raise AgentFinalClosureError(
-            "evidence_context_bindings must cover exactly all Agent evidence and provider/tool receipts"
+            "evidence_context_bindings must cover exactly all Agent evidence and provider/tool/output receipts"
         )
 
     expected = {key: receipt.get(key) for key in _CONTEXT_KEYS}
@@ -266,6 +270,7 @@ def _require_evidence_revision_bindings(
         "cost_usage_evidence_ref",
         "human_owner_evidence_ref",
         "evidence_record_id",
+        "output_artifact_evidence_ref",
     ):
         evidence_ref = receipt.get(key)
         if isinstance(evidence_ref, str) and evidence_ref.strip():
@@ -285,6 +290,22 @@ def _require_evidence_revision_bindings(
     stale = sorted(ref for ref in master_bound_refs if normalized.get(ref) != exact_master_sha)
     if stale:
         raise AgentFinalClosureError("final closure evidence contains stale or cross-SHA bindings")
+
+
+def _require_output_artifact_evidence_binding(receipt: Mapping[str, object]) -> None:
+    value = receipt.get("output_artifact_evidence_binding")
+    if not isinstance(value, Mapping):
+        raise AgentFinalClosureError("output_artifact_evidence_binding must be a mapping")
+    if {str(key) for key in value} != {"evidence_ref", "sha256"}:
+        raise AgentFinalClosureError(
+            "output_artifact_evidence_binding must contain exact evidence_ref and sha256 keys"
+        )
+    evidence_ref = receipt.get("output_artifact_evidence_ref")
+    artifact_sha = receipt.get("output_artifact_sha256")
+    if value.get("evidence_ref") != evidence_ref or value.get("sha256") != artifact_sha:
+        raise AgentFinalClosureError(
+            "output artifact evidence must bind the exact evidence ref to the exact artifact SHA-256"
+        )
 
 
 def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
@@ -366,6 +387,7 @@ def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
         or _SHA256.fullmatch(output_artifact_sha256) is None
     ):
         raise AgentFinalClosureError("output_artifact_sha256 must be lowercase SHA-256")
+    _require_output_artifact_evidence_binding(receipt)
 
     if receipt.get("output_validation_result") != "VERIFIED":
         raise AgentFinalClosureError("output_validation_result must be VERIFIED")
