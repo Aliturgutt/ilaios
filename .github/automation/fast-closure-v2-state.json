@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-25T16:24:13Z",
+  "updated_at": "2026-08-25T22:33:50Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "identity",
-    "reserved_master_sha": "7566776abba30041b44e0d8fc73beae5aaf4460b",
-    "candidate_pr": null,
-    "candidate_head_sha": null,
+    "owner": "web_app",
+    "reserved_master_sha": "09ac49e3f3a7bca59e20147bc3a367987ca607ac",
+    "candidate_pr": 990,
+    "candidate_head_sha": "8afab638bb3682bd16cfaff70e0c81f41fa836b1",
     "freeze_active": true,
-    "freeze_reason": "Identity account-delete HTTP wiring PR #991 is merged as exact master 7566776a and exact-master Required CI run 32870493018 plus Software Factory Final Evidence run 32870492806 are SUCCESS. Refresh the bounded Identity lock to exact current master before starting the next lifecycle HTTP/client wiring slice; stale bbebbfdc reservation must not authorize new mutation."
+    "freeze_reason": "Identity PR #996 is merged as exact master 09ac49e3 and exact-master Software Factory Final Evidence run 32905073083 plus Required CI run 32905073725 are SUCCESS. No newer active Identity successor is present in the latest live PR set. Reserve the single-writer merge window for Web App Phase-9 currentness/replay validation only; historical #990 PASS is not merge authority until bounded replay onto exact current master and completely fresh exact-head gates."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,25 +54,25 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 4,
       "authoritative_issue": null,
       "active_pr": null,
-      "base_sha": "7566776abba30041b44e0d8fc73beae5aaf4460b",
-      "head_sha": "7566776abba30041b44e0d8fc73beae5aaf4460b",
+      "base_sha": "09ac49e3f3a7bca59e20147bc3a367987ca607ac",
+      "head_sha": "09ac49e3f3a7bca59e20147bc3a367987ca607ac",
       "blocked_reason": null,
-      "next_action": "Account-delete HTTP wiring PR #991 is exact-master VERIFIED on 7566776a. From this exact current master, re-audit the remaining lifecycle routes recovery, unlink, logout, revoke-all, export-my-data, tenant delete and privacy delete plus actual client/UI wiring. Implement only the next smallest dependency-ready slice through canonical AuthenticationBoundary, SessionRegistry, AuthorizationEngine and existing lifecycle services; require fresh exact-head Required CI/SFFE/applicable Identity/Web/security/controller gates, expected-head merge and exact-master verification."
+      "next_action": "Tenant-delete HTTP wiring PR #996 is exact-master VERIFIED on 09ac49e3. Continue only the next smallest remaining non-overlapping lifecycle/client wiring slice after the Web App single-writer window is released; preserve canonical AuthenticationBoundary, SessionRegistry, AuthorizationEngine and existing lifecycle services."
     },
     "web_app": {
       "scheduler": "web_app",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 5,
       "authoritative_issue": 486,
-      "active_pr": null,
+      "active_pr": 990,
       "base_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
-      "head_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
+      "head_sha": "8afab638bb3682bd16cfaff70e0c81f41fa836b1",
       "blocked_reason": null,
-      "next_action": "Phase-8 enterprise-table successor PR #988 is merged and exact-master Web App Factory, Required CI and SFFE are SUCCESS on bbebbfdc. Do not retain the repository token for this completed slice; preserve remaining Web App acceptance work for its next legal current-master candidate."
+      "next_action": "Phase-9 PR #990 exact head 8afab638 has fresh Web App Factory run 32902036704, Execution Controller run 32902036873, Software Factory Final Evidence run 32902037041 and Required CI run 32902037004 all SUCCESS, but its base is stale. In the reserved Web App merge window reread live master/head and changed-path plus semantic overlap, replay only the reviewed bounded six-path Phase-9 delta onto exact current master if still required, invalidate historical PASS, require completely fresh applicable gates, then merge with expected-head protection and require exact-master Web App/Required CI/SFFE evidence before Phase 9 VERIFIED."
     },
     "agents": {
       "scheduler": "agents",
@@ -121,7 +121,7 @@
   },
   "metrics": {
     "master_advances": 21,
-    "stale_pass_invalidations": 15,
+    "stale_pass_invalidations": 16,
     "replay_resync_count": 6,
     "ci_cycles": 15,
     "successful_merges": 21,
