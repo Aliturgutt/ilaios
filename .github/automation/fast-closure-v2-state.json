@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-25T10:34:24Z",
+  "updated_at": "2026-08-25T13:16:27Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "web_app",
@@ -54,7 +54,7 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "VERIFIED",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 4,
       "authoritative_issue": null,
       "active_pr": null,
