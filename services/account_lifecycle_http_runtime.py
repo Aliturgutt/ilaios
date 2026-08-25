@@ -80,6 +80,18 @@ class AccountSessionRevocationAuthority(Protocol):
     ) -> int: ...
 
 
+class TenantDeletionAuthority(Protocol):
+    def delete_tenant(
+        self,
+        *,
+        actor_user_id: str,
+        tenant_id: str,
+        recent_authentication_verified: bool,
+        deletion_confirmation_verified: bool,
+        occurred_at: str,
+    ) -> tuple[int, int, int, int]: ...
+
+
 @dataclass(frozen=True, slots=True)
 class AccountLifecycleHttpRequest:
     path: str
@@ -108,6 +120,7 @@ class AccountLifecycleHttpRuntime:
         account_deletion: AccountDeletionAuthority,
         account_export: AccountDataExportAuthority | None = None,
         account_sessions: AccountSessionLifecycleAuthority | None = None,
+        tenant_deletion: TenantDeletionAuthority | None = None,
     ) -> None:
         self._authentication = authentication
         self._sessions = sessions
@@ -115,6 +128,7 @@ class AccountLifecycleHttpRuntime:
         self._account_deletion = account_deletion
         self._account_export = account_export
         self._account_sessions = account_sessions
+        self._tenant_deletion = tenant_deletion
 
     def handle(
         self,
@@ -135,6 +149,7 @@ class AccountLifecycleHttpRuntime:
             "account.export_my_data",
             "account.logout",
             "account.revoke_all_sessions",
+            "tenant.delete",
         }:
             return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
         if projection.surface_id == "account.export_my_data" and self._account_export is None:
@@ -144,6 +159,8 @@ class AccountLifecycleHttpRuntime:
         if projection.surface_id == "account.revoke_all_sessions" and not isinstance(
             self._account_sessions, AccountSessionRevocationAuthority
         ):
+            return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
+        if projection.surface_id == "tenant.delete" and self._tenant_deletion is None:
             return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
 
         try:
@@ -213,7 +230,41 @@ class AccountLifecycleHttpRuntime:
                     body={"status": "exported", "data": export},
                 )
 
-            confirmation = self._deletion_confirmation(request.body)
+            if projection.surface_id == "tenant.delete":
+                confirmation = self._deletion_confirmation(
+                    request.body,
+                    error_message="tenant delete body must contain only confirmation",
+                    denial_message="explicit tenant deletion confirmation is required",
+                )
+                assert self._tenant_deletion is not None
+                (
+                    revoked_memberships,
+                    revoked_sessions,
+                    revoked_entitlements,
+                    disabled_users,
+                ) = self._tenant_deletion.delete_tenant(
+                    actor_user_id=principal.principal_id,
+                    tenant_id=principal.tenant_id,
+                    recent_authentication_verified=request.recent_authentication_verified,
+                    deletion_confirmation_verified=confirmation,
+                    occurred_at=self._utc(now),
+                )
+                return AccountLifecycleHttpResponse(
+                    status_code=200,
+                    body={
+                        "status": "tenant_deleted",
+                        "revoked_memberships": revoked_memberships,
+                        "revoked_sessions": revoked_sessions,
+                        "revoked_entitlements": revoked_entitlements,
+                        "disabled_users": disabled_users,
+                    },
+                )
+
+            confirmation = self._deletion_confirmation(
+                request.body,
+                error_message="account delete body must contain only confirmation",
+                denial_message="explicit account deletion confirmation is required",
+            )
             revoked_memberships, revoked_sessions, deleted_identities = (
                 self._account_deletion.delete_account(
                     user_id=principal.principal_id,
@@ -231,6 +282,8 @@ class AccountLifecycleHttpRuntime:
                 code = "ACCOUNT_LOGOUT_DENIED"
             elif projection.surface_id == "account.revoke_all_sessions":
                 code = "ACCOUNT_REVOKE_ALL_DENIED"
+            elif projection.surface_id == "tenant.delete":
+                code = "TENANT_DELETE_DENIED"
             else:
                 code = "ACCOUNT_DELETE_DENIED"
             return self._error(409, code)
@@ -253,11 +306,16 @@ class AccountLifecycleHttpRuntime:
             raise ValueError("lifecycle route does not accept client authority fields")
 
     @staticmethod
-    def _deletion_confirmation(body: Mapping[str, object]) -> bool:
+    def _deletion_confirmation(
+        body: Mapping[str, object],
+        *,
+        error_message: str,
+        denial_message: str,
+    ) -> bool:
         if set(body) != {"confirm"}:
-            raise ValueError("account delete body must contain only confirmation")
+            raise ValueError(error_message)
         if body.get("confirm") is not True:
-            raise CentralIdentityError("explicit account deletion confirmation is required")
+            raise CentralIdentityError(denial_message)
         return True
 
     @staticmethod
