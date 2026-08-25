@@ -24,6 +24,7 @@ from services.store_release_certification import (
 
 AndroidArtifactKind = Literal["apk", "aab"]
 AndroidSigningMode = Literal["google-play-app-signing", "external-upload-key"]
+AndroidProjectLayout = Literal["android", "flutter"]
 
 
 class AndroidReleaseError(StoreCertificationError):
@@ -40,6 +41,7 @@ class AndroidBuildPlan:
     application_id: str
     source_sha: str
     project_root: str
+    project_layout: AndroidProjectLayout
     artifact_kind: AndroidArtifactKind
     gradle_task: str
     version: str
@@ -105,8 +107,15 @@ def build_android_release_plan(
     build_number: str,
     signing_mode: AndroidSigningMode,
     signing_credential: CredentialReference | None,
+    project_layout: AndroidProjectLayout = "android",
 ) -> AndroidBuildPlan:
-    """Build an immutable plan with a fixed Gradle release task and opaque signing ref."""
+    """Build an immutable plan with a fixed Gradle release task and opaque signing ref.
+
+    Native Android projects retain the historical repository root. Flutter-first mobile
+    projects use their repository-owned ``android/`` subproject so the existing bounded
+    Gradle build executor can build exact Flutter-generated Android source without
+    introducing a second build authority.
+    """
     if _APP_ID.fullmatch(app_id) is None:
         raise AndroidReleaseError("app_id must be a lowercase bounded path token")
     if _APPLICATION_ID.fullmatch(application_id) is None:
@@ -115,12 +124,15 @@ def build_android_release_plan(
         raise AndroidReleaseError("source_sha must be a lowercase 40-character git SHA")
     _require_token(version, "version")
     _require_token(build_number, "build_number")
+    if project_layout not in {"android", "flutter"}:
+        raise AndroidReleaseError("unsupported Android project layout")
     if signing_mode == "external-upload-key" and signing_credential is None:
         raise AndroidReleaseError("external upload-key mode requires an opaque credential reference")
     if signing_credential is not None and "android.sign" not in signing_credential.scopes:
         raise AndroidReleaseError("signing credential is missing android.sign scope")
 
-    project_root = f"apps/mobile/android/{app_id}"
+    app_root = f"apps/mobile/android/{app_id}"
+    project_root = app_root if project_layout == "android" else f"{app_root}/android"
     gradle_task = _ALLOWED_TASKS[artifact_kind]
     canonical: dict[str, object] = {
         "app_id": app_id,
@@ -128,6 +140,7 @@ def build_android_release_plan(
         "artifact_kind": artifact_kind,
         "build_number": build_number,
         "gradle_task": gradle_task,
+        "project_layout": project_layout,
         "project_root": project_root,
         "signing_credential_id": None if signing_credential is None else signing_credential.credential_id,
         "signing_credential_scopes": [] if signing_credential is None else list(signing_credential.scopes),
@@ -144,6 +157,7 @@ def build_android_release_plan(
         application_id=application_id,
         source_sha=source_sha,
         project_root=project_root,
+        project_layout=project_layout,
         artifact_kind=artifact_kind,
         gradle_task=gradle_task,
         version=version,
