@@ -14,6 +14,8 @@ from services.agent_registry import CANONICAL_AGENT_REGISTRY
 
 _SHA40 = re.compile(r"^[0-9a-f]{40}$")
 _SHA256 = re.compile(r"^[0-9a-f]{64}$")
+_PLANNER_AGENT_ID = "ilaios.agent.core.planner.v1"
+_ORCHESTRATOR_AGENT_ID = "ilaios.agent.core.orchestrator.v1"
 _REQUIRED_RESULTS = (
     "registry_identity_result",
     "runtime_state_truth_result",
@@ -144,6 +146,35 @@ def _require_exact_canonical_agent_identities(receipt: Mapping[str, object]) -> 
         raise AgentFinalClosureError("verified_agent_ids contains duplicate Agent identities")
     if set(verified_ids) != set(canonical_ids):
         raise AgentFinalClosureError("verified_agent_ids does not match current canonical Agent identities")
+
+
+def _require_runtime_active_agent_identities(receipt: Mapping[str, object]) -> tuple[str, ...]:
+    active_count = receipt.get("runtime_active_count")
+    if not isinstance(active_count, int) or isinstance(active_count, bool):
+        raise AgentFinalClosureError("runtime_active_count must be an integer")
+    if active_count < 1 or active_count > EXPECTED_AGENT_COUNT:
+        raise AgentFinalClosureError("runtime_active_count is outside canonical bounds")
+
+    value = receipt.get("runtime_active_agent_ids")
+    if not isinstance(value, Sequence) or isinstance(value, (str, bytes)) or not value:
+        raise AgentFinalClosureError("runtime_active_agent_ids must be a non-empty sequence")
+    if any(not isinstance(item, str) or not item.strip() for item in value):
+        raise AgentFinalClosureError("runtime_active_agent_ids must contain only non-empty strings")
+
+    active_ids = tuple(str(item) for item in value)
+    if len(active_ids) != active_count:
+        raise AgentFinalClosureError("runtime_active_agent_ids must match runtime_active_count")
+    if len(set(active_ids)) != len(active_ids):
+        raise AgentFinalClosureError("runtime_active_agent_ids contains duplicate Agent identities")
+
+    canonical_ids = {item.manifest.agent_id for item in CANONICAL_AGENT_REGISTRY}
+    if not set(active_ids).issubset(canonical_ids):
+        raise AgentFinalClosureError("runtime_active_agent_ids contains non-canonical Agent identities")
+    if _PLANNER_AGENT_ID not in active_ids:
+        raise AgentFinalClosureError("canonical Planner must be runtime-active")
+    if _ORCHESTRATOR_AGENT_ID not in active_ids:
+        raise AgentFinalClosureError("canonical Orchestrator must be runtime-active")
+    return active_ids
 
 
 def _require_agent_evidence_bindings(receipt: Mapping[str, object]) -> dict[str, str]:
@@ -332,12 +363,7 @@ def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
     if verified_count != EXPECTED_AGENT_COUNT:
         raise AgentFinalClosureError("all canonical Agents are not VERIFIED")
     _require_exact_canonical_agent_identities(receipt)
-
-    runtime_active_count = receipt.get("runtime_active_count")
-    if not isinstance(runtime_active_count, int) or isinstance(runtime_active_count, bool):
-        raise AgentFinalClosureError("runtime_active_count must be an integer")
-    if runtime_active_count < 1 or runtime_active_count > EXPECTED_AGENT_COUNT:
-        raise AgentFinalClosureError("runtime_active_count is outside canonical bounds")
+    _require_runtime_active_agent_identities(receipt)
 
     family_breakdown = receipt.get("verified_family_breakdown")
     if not isinstance(family_breakdown, Mapping):
