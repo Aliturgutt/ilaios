@@ -139,6 +139,68 @@ def _require_agent_evidence_bindings(receipt: Mapping[str, object]) -> dict[str,
     return normalized
 
 
+def _require_evidence_revision_bindings(
+    receipt: Mapping[str, object],
+    *,
+    exact_head_sha: str,
+    exact_master_sha: str,
+    agent_evidence_refs: Sequence[str],
+) -> None:
+    value = receipt.get("evidence_revision_bindings")
+    if not isinstance(value, Mapping):
+        raise AgentFinalClosureError("evidence_revision_bindings must be a mapping")
+
+    normalized: dict[str, str] = {}
+    for evidence_ref, revision_sha in value.items():
+        if not isinstance(evidence_ref, str) or not evidence_ref.strip():
+            raise AgentFinalClosureError(
+                "evidence_revision_bindings must use non-empty evidence references"
+            )
+        if not isinstance(revision_sha, str) or _SHA40.fullmatch(revision_sha) is None:
+            raise AgentFinalClosureError(
+                "evidence_revision_bindings must bind references to lowercase 40-hex SHAs"
+            )
+        normalized[evidence_ref.strip()] = revision_sha
+
+    exact_head_ref = receipt.get("exact_head_ci_evidence_ref")
+    if not isinstance(exact_head_ref, str) or not exact_head_ref.strip():
+        raise AgentFinalClosureError("exact_head_ci_evidence_ref must be present")
+    if normalized.get(exact_head_ref.strip()) != exact_head_sha:
+        raise AgentFinalClosureError("exact-head CI evidence is not bound to exact_head_sha")
+
+    master_bound_refs: set[str] = set(agent_evidence_refs)
+    for key in (
+        "runtime_e2e_evidence_ref",
+        "g1_security_evidence_ref",
+        "evidence_integrity_evidence_ref",
+        "restart_recovery_evidence_ref",
+        "desktop_projection_evidence_ref",
+        "windows_msix_evidence_ref",
+        "exact_master_ci_evidence_ref",
+        "cost_usage_evidence_ref",
+        "human_owner_evidence_ref",
+        "evidence_record_id",
+    ):
+        evidence_ref = receipt.get(key)
+        if isinstance(evidence_ref, str) and evidence_ref.strip():
+            master_bound_refs.add(evidence_ref.strip())
+
+    provider_receipts = receipt.get("provider_tool_receipt_ids")
+    if isinstance(provider_receipts, Sequence) and not isinstance(provider_receipts, (str, bytes)):
+        master_bound_refs.update(
+            str(item).strip()
+            for item in provider_receipts
+            if isinstance(item, str) and item.strip()
+        )
+
+    missing = sorted(ref for ref in master_bound_refs if ref not in normalized)
+    if missing:
+        raise AgentFinalClosureError("final closure evidence is missing exact-master revision bindings")
+    stale = sorted(ref for ref in master_bound_refs if normalized.get(ref) != exact_master_sha)
+    if stale:
+        raise AgentFinalClosureError("final closure evidence contains stale or cross-SHA bindings")
+
+
 def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
     """Validate that a receipt is sufficient for full Agent workstream closure.
 
@@ -152,6 +214,9 @@ def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
     revision_sha = receipt.get("exact_master_sha")
     if not isinstance(revision_sha, str) or _SHA40.fullmatch(revision_sha) is None:
         raise AgentFinalClosureError("exact_master_sha must be lowercase 40-hex")
+    exact_head_sha = receipt.get("exact_head_sha")
+    if not isinstance(exact_head_sha, str) or _SHA40.fullmatch(exact_head_sha) is None:
+        raise AgentFinalClosureError("exact_head_sha must be lowercase 40-hex")
 
     canonical_count = receipt.get("canonical_agent_count")
     verified_count = receipt.get("verified_agent_count")
@@ -199,6 +264,13 @@ def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
         raise AgentFinalClosureError(
             "agent_execution_evidence_refs must exactly match canonical Agent evidence bindings"
         )
+
+    _require_evidence_revision_bindings(
+        receipt,
+        exact_head_sha=exact_head_sha,
+        exact_master_sha=revision_sha,
+        agent_evidence_refs=normalized_refs,
+    )
 
     output_artifact_sha256 = receipt.get("output_artifact_sha256")
     if (
