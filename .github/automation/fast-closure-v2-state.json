@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-25T05:23:31Z",
+  "updated_at": "2026-08-25T07:12:36Z",
   "merge_token": {
-    "state": "RESERVED",
-    "owner": "identity",
-    "reserved_master_sha": "7b8c397d8dc7437555da9b5af1548f14a30b466f",
-    "candidate_pr": 966,
-    "candidate_head_sha": "194bf0b902707f7051a94bc4b5614109dec5bd0c",
-    "freeze_active": true,
-    "freeze_reason": "App Factory PR #977 is merged and exact-master verified on 7b8c397d with Required CI run 32811873109 and Software Factory Final Evidence run 32811872860 SUCCESS. No active exact-current App Factory successor is open. Hand the single-writer repository token to Identity PRE_MERGE_VALIDATION for stale-base privacy-retention PR #966; #966 historical PASS is not merge authority and must be replayed/revalidated on exact current master before any merge."
+    "state": "RELEASED",
+    "owner": null,
+    "reserved_master_sha": "33b5cb133e4ae2427cdb8ca2de37195c12945e75",
+    "candidate_pr": null,
+    "candidate_head_sha": null,
+    "freeze_active": false,
+    "freeze_reason": "Identity privacy-retention PR #979 is merged on master 33b5cb13 and exact-master Required CI run 32817075417 plus Software Factory Final Evidence run 32817075239 are SUCCESS. The stale Identity reservation is released at this safe checkpoint. Website and Video remain external-production blocked; the next repository token must be acquired only by the next exact-current dependency-ready bounded candidate after live overlap reread."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,14 +54,14 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": 966,
-      "base_sha": "620f006fc55fa841b1deadb6bf15f3fac28a2a37",
-      "head_sha": "194bf0b902707f7051a94bc4b5614109dec5bd0c",
+      "active_pr": null,
+      "base_sha": "33b5cb133e4ae2427cdb8ca2de37195c12945e75",
+      "head_sha": "33b5cb133e4ae2427cdb8ca2de37195c12945e75",
       "blocked_reason": null,
-      "next_action": "At the legal Identity merge window reread exact current master 7b8c397d and semantic/path overlap, replay only the reviewed two-file privacy-retention delta from #966 if still valid, require fully fresh Required CI + SFFE + applicable privacy/security/controller gates, then expected-head merge and exact-master verification."
+      "next_action": "Treat #979 privacy retention as exact-master verified. Re-audit remaining production Identity/Account plus Billing/Subscription/Entitlement dependencies on live master; open only the smallest exact-current bounded candidate for a real uncovered gap, with fresh Required CI/SFFE and applicable security/controller gates."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -71,7 +71,7 @@
       "active_pr": 968,
       "base_sha": "00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
       "head_sha": "9a1aade05c58d83f65512e5acafa4508e7a3142f",
-      "blocked_reason": "Phase 7 is exact-master verified. Draft Phase-8 enterprise-table work is stale-base relative to current master and must not merge ahead of the Identity token window.",
+      "blocked_reason": "Phase 7 is exact-master verified. Draft Phase-8 enterprise-table work is stale-base relative to current master and must not merge before a legal Web App token window and current-master replay.",
       "next_action": "Keep #968 as development/test preparation only. At a legal Web App merge window reread exact master and semantic overlap, then replay only still-required Phase-8 delta and require fresh gates before merge."
     },
     "agents": {
@@ -81,8 +81,8 @@
       "authoritative_issue": 557,
       "active_pr": 946,
       "base_sha": "7e06c5e8ef42ae685cffd98ccc3dcc0448293eb4",
-      "head_sha": "1f69a1aec7ef3718bba2d50763e0d4e7512c388c",
-      "blocked_reason": "Agent final-closure validator is stale-base and token-blocked; P0 21/21 provider checkpoint does not imply 47/47 closure.",
+      "head_sha": "373068478cf58d6b45fdf3fbd1d33757f6790b08",
+      "blocked_reason": "Agent final-closure validator remains token-blocked; P0 21/21 provider checkpoint does not imply 47/47 closure. Current branch work is evidence-only preparation and must be replayed/revalidated at a legal Agent merge window if still required.",
       "next_action": "Preserve Agent preparation. At a legal Agents merge window reread current master/token and replay only still-valid evidence-validator work with fresh Required CI/SFFE and applicable Agent/security/runtime gates."
     },
     "app_factory": {
@@ -94,7 +94,7 @@
       "base_sha": "7b8c397d8dc7437555da9b5af1548f14a30b466f",
       "head_sha": "7b8c397d8dc7437555da9b5af1548f14a30b466f",
       "blocked_reason": "PR #977 is merged and exact-master verified. Repository-owned Flutter/Android source generation is present, but a genuine governed materialization/build run with an approved ProductSpec/projection and Gradle wrapper binary input has not yet produced exact APK/AAB/device evidence.",
-      "next_action": "Release the repository merge token. Later, through the existing governed Software Factory path, materialize a real approved Flutter Android project and then run the exact binary build/device evidence chain; do not claim APK/AAB/signing/Store readiness before evidence."
+      "next_action": "Acquire the repository token only after live audit identifies the next bounded App Factory materialization/build candidate. Then materialize a real approved Flutter Android project through the incumbent governed Software Factory and run exact binary build/device evidence; do not claim APK/AAB/signing/Store readiness before evidence."
     },
     "mobile_store": {
       "scheduler": "unified",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 18,
+    "master_advances": 19,
     "stale_pass_invalidations": 13,
     "replay_resync_count": 6,
     "ci_cycles": 14,
-    "successful_merges": 18,
+    "successful_merges": 19,
     "duplicate_pr_count": 0,
     "churn_only_commit_count": 0
   }
