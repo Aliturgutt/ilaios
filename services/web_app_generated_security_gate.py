@@ -28,16 +28,67 @@ _SECRET_PATTERNS: tuple[tuple[str, re.Pattern[str]], ...] = (
 )
 
 _CODE_RULES: tuple[tuple[str, str, re.Pattern[str]], ...] = (
-    ("xss", "dangerous-dom-html", re.compile(r"\b(?:innerHTML|outerHTML)\s*=|dangerouslySetInnerHTML|document\.write\s*\(")),
+    (
+        "xss",
+        "dangerous-dom-html",
+        re.compile(
+            r"\b(?:innerHTML|outerHTML|srcdoc)\s*=|dangerouslySetInnerHTML|document\.write\s*\(|insertAdjacentHTML\s*\("
+        ),
+    ),
     ("script-injection", "dynamic-code-execution", re.compile(r"\b(?:eval|Function)\s*\(")),
-    ("remote-script", "remote-script-source", re.compile(r"<script[^>]+src\s*=\s*[\"']https?://|\bimport\s*\([^)]*[\"']https?://", re.IGNORECASE)),
-    ("ssrf", "metadata-or-loopback-fetch", re.compile(r"(?:fetch|axios\.(?:get|post)|requests?\.get)\s*\([^\n]*(?:169\.254\.169\.254|127\.0\.0\.1|localhost|0\.0\.0\.0|file://)", re.IGNORECASE)),
-    ("open-redirect", "unvalidated-location-assignment", re.compile(r"(?:window\.)?location(?:\.href)?\s*=\s*(?:new\s+URLSearchParams|searchParams|getQuery|query\b|params\b)", re.IGNORECASE)),
-    ("client-token-leak", "browser-storage-secret", re.compile(r"(?:localStorage|sessionStorage|indexedDB)[^\n]{0,120}(?:token|secret|credential|session)", re.IGNORECASE)),
+    (
+        "remote-script",
+        "remote-script-source",
+        re.compile(
+            r"<script[^>]+src\s*=\s*[\"'](?:https?:)?//|\bimport\s*\([^)]*[\"'](?:https?:)?//",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "ssrf",
+        "metadata-or-loopback-fetch",
+        re.compile(
+            r"(?:fetch|axios\.(?:get|post)|requests?\.get)\s*\([^\n]*(?:169\.254\.169\.254|metadata\.google\.internal|127\.0\.0\.1|\[?::1\]?|localhost|0\.0\.0\.0|file://)",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "open-redirect",
+        "unvalidated-location-assignment",
+        re.compile(
+            r"(?:(?:window\.)?location(?:\.href)?\s*=|(?:window\.)?location\.(?:assign|replace)\s*\()\s*(?:new\s+URLSearchParams|searchParams|getQuery|query\b|params\b)",
+            re.IGNORECASE,
+        ),
+    ),
+    (
+        "client-token-leak",
+        "browser-storage-secret",
+        re.compile(
+            r"(?:(?:localStorage|sessionStorage|indexedDB)[^\n]{0,120}|document\.cookie\s*=[^\n]{0,120})(?:token|secret|credential|session)",
+            re.IGNORECASE,
+        ),
+    ),
     ("unsafe-template", "unsafe-html-template", re.compile(r"\|\s*safe\b|\bMarkup\s*\(|\bv-html\s*=", re.IGNORECASE)),
-    ("path-file", "archive-or-path-traversal", re.compile(r"(?:extract|writeFile|open|Path|join)[^\n]{0,160}(?:\.\./|\.\.\\\\)", re.IGNORECASE)),
-    ("tenant-escape", "caller-controlled-tenant-authority", re.compile(r"tenant[_-]?id\s*=\s*(?:req\.(?:query|params)|request\.(?:query|args)|searchParams)", re.IGNORECASE)),
-    ("privileged-semantics", "governance-bypass-marker", re.compile(r"(?:BYPASS|DISABLE|SKIP)[_-]?(?:POLICY|APPROVAL|TOOL_GATEWAY|EVIDENCE|TENANT|AUTH)", re.IGNORECASE)),
+    (
+        "path-file",
+        "archive-or-path-traversal",
+        re.compile(r"(?:extract|writeFile|open|Path|join)[^\n]{0,160}(?:\.\./|\.\.\\\\)", re.IGNORECASE),
+    ),
+    (
+        "path-file",
+        "unsafe-symlink-creation",
+        re.compile(r"\b(?:os\.symlink|fs\.symlink|symlinkSync)\s*\(", re.IGNORECASE),
+    ),
+    (
+        "tenant-escape",
+        "caller-controlled-tenant-authority",
+        re.compile(r"tenant[_-]?id\s*=\s*(?:req\.(?:query|params)|request\.(?:query|args)|searchParams)", re.IGNORECASE),
+    ),
+    (
+        "privileged-semantics",
+        "governance-bypass-marker",
+        re.compile(r"(?:BYPASS|DISABLE|SKIP)[_-]?(?:POLICY|APPROVAL|TOOL_GATEWAY|EVIDENCE|TENANT|AUTH)", re.IGNORECASE),
+    ),
 )
 
 
@@ -100,6 +151,8 @@ def _validate_csp(content_security_policy: str | None) -> list[GeneratedSecurity
     default_src = directives.get("default-src")
     script_src = directives.get("script-src", default_src)
     connect_src = directives.get("connect-src", default_src)
+    object_src = directives.get("object-src")
+    base_uri = directives.get("base-uri")
 
     if default_src is None or "'self'" not in default_src:
         findings.append(GeneratedSecurityFinding("csp", "<headers>", "default-src-self-required"))
@@ -114,5 +167,9 @@ def _validate_csp(content_security_policy: str | None) -> list[GeneratedSecurity
         findings.append(GeneratedSecurityFinding("csp", "<headers>", "connect-src-required"))
     elif "*" in connect_src:
         findings.append(GeneratedSecurityFinding("csp", "<headers>", "unbounded-connect-src"))
+    if object_src != ("'none'",):
+        findings.append(GeneratedSecurityFinding("csp", "<headers>", "object-src-none-required"))
+    if base_uri is None or not ({"'none'", "'self'"} & set(base_uri)):
+        findings.append(GeneratedSecurityFinding("csp", "<headers>", "base-uri-restriction-required"))
 
     return findings
