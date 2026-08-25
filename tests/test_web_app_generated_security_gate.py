@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from services.web_app_generated_security_gate import evaluate_generated_web_product
 
-STRICT_CSP = "default-src 'self'; script-src 'self'; connect-src 'self' https://api.example.com"
+STRICT_CSP = (
+    "default-src 'self'; script-src 'self'; connect-src 'self' https://api.example.com; "
+    "object-src 'none'; base-uri 'self'"
+)
 
 
 def test_hostile_generated_code_fails_closed() -> None:
@@ -12,13 +15,21 @@ def test_hostile_generated_code_fails_closed() -> None:
     private_key_footer = "-----END " + "PRIVATE KEY-----"
     hostile_cases = (
         ("node.innerHTML = attacker", "xss"),
+        ("node.insertAdjacentHTML('beforeend', attacker)", "xss"),
+        ("iframe.srcdoc = attacker", "xss"),
         ("eval(userControlled)", "script-injection"),
         ('<script src="https://evil.example/payload.js"></script>', "remote-script"),
+        ('<script src="//evil.example/payload.js"></script>', "remote-script"),
         ('fetch("http://169.254.169.254/latest/meta-data")', "ssrf"),
+        ('fetch("http://metadata.google.internal/computeMetadata/v1/")', "ssrf"),
+        ('fetch("http://[::1]/admin")', "ssrf"),
         ("window.location = new URLSearchParams(location.search)", "open-redirect"),
+        ("window.location.replace(searchParams)", "open-redirect"),
         ('localStorage.setItem("auth_token", token)', "client-token-leak"),
+        ('document.cookie = "session_token=" + token', "client-token-leak"),
         ("{{ body | safe }}", "unsafe-template"),
         ('open("../../etc/passwd")', "path-file"),
+        ('os.symlink("/etc/passwd", output)', "path-file"),
         ("tenant_id = req.query.tenant_id", "tenant-escape"),
         ("ILAIOS_BYPASS_APPROVAL = true", "privileged-semantics"),
         ("const " + "api" + "Key = '" + secret_prefix + secret_tail + "';", "secret-leak"),
@@ -57,11 +68,25 @@ def test_missing_or_weak_csp_fails_closed() -> None:
         {"index.html": "<main>safe</main>"},
         content_security_policy="default-src *; script-src 'unsafe-inline' *; connect-src *",
     )
+    missing_object_and_base = evaluate_generated_web_product(
+        {"index.html": "<main>safe</main>"},
+        content_security_policy="default-src 'self'; script-src 'self'; connect-src 'self'",
+    )
 
     assert missing.verdict == "FAIL"
     assert any(finding.rule == "missing-content-security-policy" for finding in missing.findings)
     assert weak.verdict == "FAIL"
-    assert {finding.rule for finding in weak.findings} >= {"unsafe-script-src", "unbounded-connect-src"}
+    assert {finding.rule for finding in weak.findings} >= {
+        "unsafe-script-src",
+        "unbounded-connect-src",
+        "object-src-none-required",
+        "base-uri-restriction-required",
+    }
+    assert missing_object_and_base.verdict == "FAIL"
+    assert {finding.rule for finding in missing_object_and_base.findings} >= {
+        "object-src-none-required",
+        "base-uri-restriction-required",
+    }
 
 
 def test_empty_evidence_is_not_verified() -> None:
