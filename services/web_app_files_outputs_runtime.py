@@ -115,12 +115,7 @@ class WebAppFilesOutputsRuntime:
         self._authorize(principal, "create", now)
 
         digest = hashlib.sha256(content).hexdigest()
-        prior = self._db.execute(
-            """SELECT MAX(version) AS version FROM web_app_outputs
-               WHERE tenant_id=? AND project_id=? AND output_id=?""",
-            (principal.tenant_id, self._contract.project_id, output_id),
-        ).fetchone()
-        version = 1 if prior is None or prior["version"] is None else int(prior["version"]) + 1
+        version = self._allocate_version(principal.tenant_id, output_id)
         object_key = self._object_key(principal.tenant_id, output_id, version, digest)
 
         self._storage.put(object_key=object_key, content=content)
@@ -283,6 +278,43 @@ class WebAppFilesOutputsRuntime:
             raise WebAppFilesOutputsError("NOT_FOUND", "output not found", 404)
         return self._row(row)
 
+    def _allocate_version(self, tenant_id: str, output_id: str) -> int:
+        """Reserve a unique monotonic version before touching external byte storage.
+
+        SQLite serializes the short allocator transaction. Committing the reservation
+        before storage I/O prevents two writers from sharing an object key; failed
+        writes may leave a harmless version gap, but can never reuse another write's
+        version or delete another successful write during compensation.
+        """
+        try:
+            self._db.execute("BEGIN IMMEDIATE")
+            row = self._db.execute(
+                """SELECT next_version FROM web_app_output_version_allocator
+                   WHERE tenant_id=? AND project_id=? AND output_id=?""",
+                (tenant_id, self._contract.project_id, output_id),
+            ).fetchone()
+            if row is None:
+                version = 1
+                self._db.execute(
+                    """INSERT INTO web_app_output_version_allocator
+                       (tenant_id, project_id, output_id, next_version)
+                       VALUES (?, ?, ?, ?)""",
+                    (tenant_id, self._contract.project_id, output_id, 2),
+                )
+            else:
+                version = int(row["next_version"])
+                self._db.execute(
+                    """UPDATE web_app_output_version_allocator
+                       SET next_version=?
+                       WHERE tenant_id=? AND project_id=? AND output_id=?""",
+                    (version + 1, tenant_id, self._contract.project_id, output_id),
+                )
+            self._db.commit()
+            return version
+        except Exception:
+            self._db.rollback()
+            raise
+
     @staticmethod
     def _row(row: sqlite3.Row) -> FileOutputRecord:
         return FileOutputRecord(
@@ -318,6 +350,13 @@ class WebAppFilesOutputsRuntime:
             );
             CREATE INDEX IF NOT EXISTS idx_web_app_outputs_scope
               ON web_app_outputs(tenant_id, project_id, output_id, version);
+            CREATE TABLE IF NOT EXISTS web_app_output_version_allocator (
+              tenant_id TEXT NOT NULL,
+              project_id TEXT NOT NULL,
+              output_id TEXT NOT NULL,
+              next_version INTEGER NOT NULL CHECK(next_version >= 1),
+              PRIMARY KEY (tenant_id, project_id, output_id)
+            );
             """
         )
         self._db.commit()
