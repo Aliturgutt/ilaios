@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-25T09:15:00Z",
+  "updated_at": "2026-08-25T10:34:24Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "identity",
-    "reserved_master_sha": "2d75bb0209e8f722ecc0820650dd9c62a85fcddd",
-    "candidate_pr": 982,
-    "candidate_head_sha": "13627e9a98ff511400df5552a1f72ce7ba46e5a8",
+    "owner": "web_app",
+    "reserved_master_sha": "f63e03941e7d5b4e0b9449c7c18663a7643f3bcd",
+    "candidate_pr": 968,
+    "candidate_head_sha": "9a1aade05c58d83f65512e5acafa4508e7a3142f",
     "freeze_active": true,
-    "freeze_reason": "Identity account-lifecycle projection PR #982 is the highest-priority exact-current dependency-ready candidate. Its exact head 13627e9a has fresh Required CI run 32825612791 and Software Factory Final Evidence run 32825612504 SUCCESS. Reserve the single-writer token for live currentness/overlap revalidation and expected-head merge; stale branches and historical PASS remain non-authoritative."
+    "freeze_reason": "Identity successor PR #984 is merged as exact master f63e0394, and exact-master Software Factory Final Evidence run 32835957939 plus Required CI run 32835958780 are SUCCESS. The prior Identity reservation is stale. Web App Phase-8 enterprise-table work is the next dependency-ready merge candidate, but PR #968 is stale-base and its historical PASS is not merge authority. Reserve the single-writer token for Web App currentness/overlap revalidation, bounded replay onto exact current master if still required, completely fresh applicable gates, expected-head merge, and exact-master verification."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,25 +54,25 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "VERIFIED",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": 982,
-      "base_sha": "2d75bb0209e8f722ecc0820650dd9c62a85fcddd",
-      "head_sha": "13627e9a98ff511400df5552a1f72ce7ba46e5a8",
+      "active_pr": null,
+      "base_sha": "5014913ce70315013080da97bd5e7c9059b9790e",
+      "head_sha": "f63e03941e7d5b4e0b9449c7c18663a7643f3bcd",
       "blocked_reason": null,
-      "next_action": "Re-read live master/state/head and semantic overlap immediately before merge. If master remains 2d75bb02 and #982 head remains 13627e9a with fresh Required CI/SFFE SUCCESS, merge only with expected-head protection, then require exact-master Required CI/SFFE before promoting this projection slice."
+      "next_action": "Identity account-lifecycle projection slice is merged via PR #984 and exact-master Required CI/SFFE are SUCCESS on f63e0394. Do not retain the repository merge token for this completed slice; select the next dependency-ready Identity task only through a new current-master checkpoint."
     },
     "web_app": {
       "scheduler": "web_app",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 5,
       "authoritative_issue": 486,
       "active_pr": 968,
       "base_sha": "00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
       "head_sha": "9a1aade05c58d83f65512e5acafa4508e7a3142f",
-      "blocked_reason": "Phase 7 is exact-master verified. Draft Phase-8 enterprise-table work is stale-base relative to current master and must not merge before a legal Web App token window and current-master replay.",
-      "next_action": "Keep #968 as development/test preparation only. At a legal Web App merge window reread exact master and semantic overlap, then replay only still-required Phase-8 delta and require fresh gates before merge."
+      "blocked_reason": "Phase 7 is exact-master verified, but live closure ledger reconciliation and Phase-8 enterprise-table delta are still unmerged. PR #968 is stale-base relative to f63e0394 and historical PASS is invalid for merge.",
+      "next_action": "Under the reserved Web App token, re-read current master/head and changed-path plus semantic overlap. Replay only the still-required bounded Phase-8 delta onto exact f63e0394 if safe, require a completely fresh Web App Factory + Required CI + SFFE + Execution Controller gate set, merge only with expected-head protection, then require exact-master evidence before Phase-8 promotion."
     },
     "agents": {
       "scheduler": "agents",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 19,
-    "stale_pass_invalidations": 13,
+    "master_advances": 20,
+    "stale_pass_invalidations": 14,
     "replay_resync_count": 6,
     "ci_cycles": 14,
-    "successful_merges": 19,
+    "successful_merges": 20,
     "duplicate_pr_count": 0,
     "churn_only_commit_count": 0
   }
