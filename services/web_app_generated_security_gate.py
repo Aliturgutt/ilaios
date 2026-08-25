@@ -35,7 +35,16 @@ _CODE_RULES: tuple[tuple[str, str, re.Pattern[str]], ...] = (
             r"\b(?:innerHTML|outerHTML|srcdoc)\s*=|dangerouslySetInnerHTML|document\.write\s*\(|insertAdjacentHTML\s*\("
         ),
     ),
-    ("script-injection", "dynamic-code-execution", re.compile(r"\b(?:eval|Function)\s*\(")),
+    (
+        "script-injection",
+        "dynamic-code-execution",
+        re.compile(r"\b(?:eval|Function)\s*\(|\b(?:setTimeout|setInterval)\s*\(\s*[\"']", re.IGNORECASE),
+    ),
+    (
+        "script-injection",
+        "javascript-url-execution",
+        re.compile(r"(?:href|src|action)\s*=\s*[\"']\s*javascript\s*:|[\"']javascript\s*:", re.IGNORECASE),
+    ),
     (
         "remote-script",
         "remote-script-source",
