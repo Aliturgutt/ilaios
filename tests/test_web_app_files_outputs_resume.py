@@ -3,6 +3,7 @@ from __future__ import annotations
 import sqlite3
 from collections.abc import Mapping
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
@@ -121,6 +122,21 @@ def _runtime(
     return runtime, connection, storage, selected_audit
 
 
+def _runtime_with_connection(
+    connection: sqlite3.Connection,
+    storage: MemoryStorage,
+    audit: AuditEngine,
+) -> WebAppFilesOutputsRuntime:
+    contract = _contract()
+    return WebAppFilesOutputsRuntime(
+        connection,
+        contract,
+        AuthorizationEngine(compile_authorization_rules(contract)),
+        audit,
+        storage,
+    )
+
+
 def test_delete_restores_bytes_when_metadata_transaction_fails() -> None:
     runtime, connection, storage, _audit = _runtime()
     principal = _principal()
@@ -177,3 +193,58 @@ def test_delete_retry_finishes_pending_audit_without_duplicate_storage_mutation(
     assert len(delete_records) == 1
     assert delete_records[0].details["output_id"] == "audit-retry"
     assert "operation_id" in delete_records[0].details
+
+
+def test_delete_retry_resumes_after_process_restart_without_second_storage_delete(
+    tmp_path: Path,
+) -> None:
+    database_path = tmp_path / "web-app-files-outputs.sqlite3"
+    storage = MemoryStorage()
+    principal = _principal()
+
+    first_connection = sqlite3.connect(database_path)
+    first_audit = FailDeleteAuditOnce()
+    first_runtime = _runtime_with_connection(first_connection, storage, first_audit)
+    record = first_runtime.store(
+        principal=principal,
+        output_id="restart-audit-retry",
+        filename="safe.txt",
+        mime_type="text/plain",
+        content=b"delete-once-across-restart",
+        now=NOW,
+    )
+
+    with pytest.raises(WebAppFilesOutputsError) as pending:
+        first_runtime.delete(
+            principal=principal,
+            output_id="restart-audit-retry",
+            version=1,
+            now=NOW,
+        )
+    assert pending.value.code == "AUDIT_PENDING"
+    assert record.object_key not in storage.objects
+    assert storage.delete_calls == 1
+    first_connection.close()
+
+    restarted_connection = sqlite3.connect(database_path)
+    restarted_audit = AuditEngine()
+    restarted_runtime = _runtime_with_connection(
+        restarted_connection,
+        storage,
+        restarted_audit,
+    )
+    restarted_runtime.delete(
+        principal=principal,
+        output_id="restart-audit-retry",
+        version=1,
+        now=NOW,
+    )
+
+    assert storage.delete_calls == 1
+    delete_records = restarted_audit.get_records(
+        component="web_app_files_outputs_runtime", action="delete", status="success"
+    )
+    assert len(delete_records) == 1
+    assert delete_records[0].details["output_id"] == "restart-audit-retry"
+    assert "operation_id" in delete_records[0].details
+    restarted_connection.close()
