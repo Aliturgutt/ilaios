@@ -79,6 +79,7 @@ def _receipt() -> dict[str, object]:
         "verified_agent_count": EXPECTED_AGENT_COUNT,
         "verified_agent_ids": _canonical_agent_ids(),
         "runtime_active_count": 3,
+        "runtime_active_agent_ids": _canonical_agent_ids()[:3],
         "verified_family_breakdown": dict(EXPECTED_TEAM_COUNTS),
         "registry_identity_result": "VERIFIED",
         "runtime_state_truth_result": "VERIFIED",
