@@ -380,11 +380,20 @@ class WebAppFilesOutputsRuntime:
         return self._row(row)
 
     def _read_deletion(self, tenant_id: str, output_id: str, version: int) -> sqlite3.Row | None:
-        return self._db.execute(
+        row = self._db.execute(
             """SELECT * FROM web_app_output_deletions
                WHERE tenant_id=? AND project_id=? AND output_id=? AND version=?""",
             (tenant_id, self._contract.project_id, output_id, version),
         ).fetchone()
+        if row is None:
+            return None
+        if not isinstance(row, sqlite3.Row):
+            raise WebAppFilesOutputsError(
+                "INVALID_DELETE_STATE",
+                "delete checkpoint returned an unexpected row type",
+                500,
+            )
+        return row
 
     def _allocate_version(self, tenant_id: str, output_id: str) -> int:
         """Reserve a unique monotonic version before touching external byte storage.
