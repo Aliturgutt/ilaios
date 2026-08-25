@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-25T13:16:27Z",
+  "updated_at": "2026-08-25T14:25:00Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "web_app",
-    "reserved_master_sha": "f63e03941e7d5b4e0b9449c7c18663a7643f3bcd",
-    "candidate_pr": 968,
-    "candidate_head_sha": "9a1aade05c58d83f65512e5acafa4508e7a3142f",
+    "owner": "identity",
+    "reserved_master_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
+    "candidate_pr": null,
+    "candidate_head_sha": null,
     "freeze_active": true,
-    "freeze_reason": "Identity successor PR #984 is merged as exact master f63e0394, and exact-master Software Factory Final Evidence run 32835957939 plus Required CI run 32835958780 are SUCCESS. The prior Identity reservation is stale. Web App Phase-8 enterprise-table work is the next dependency-ready merge candidate, but PR #968 is stale-base and its historical PASS is not merge authority. Reserve the single-writer token for Web App currentness/overlap revalidation, bounded replay onto exact current master if still required, completely fresh applicable gates, expected-head merge, and exact-master verification."
+    "freeze_reason": "Web App Phase-8 enterprise-table successor PR #988 is merged on exact master bbebbfdc and exact-master Required CI run 32858157637, Software Factory Final Evidence run 32858157334, Web App Factory exact-master run 32858157336, and Vercel are SUCCESS. Web App repository work no longer needs to hold the single-writer token. Reserve the next legal merge window for Identity to close the remaining actual HTTP/client lifecycle wiring gap from exact current master with fresh gates and expected-head protection."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,25 +54,25 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 4,
       "authoritative_issue": null,
       "active_pr": null,
-      "base_sha": "5014913ce70315013080da97bd5e7c9059b9790e",
-      "head_sha": "f63e03941e7d5b4e0b9449c7c18663a7643f3bcd",
+      "base_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
+      "head_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
       "blocked_reason": null,
-      "next_action": "Identity account-lifecycle projection slice is merged via PR #984 and exact-master Required CI/SFFE are SUCCESS on f63e0394. Do not retain the repository merge token for this completed slice; select the next dependency-ready Identity task only through a new current-master checkpoint."
+      "next_action": "From exact current master bbebbfdc, re-audit existing Web/App auth/session/router/runtime authorities and implement the smallest real HTTP/client account-lifecycle wiring slice that delegates to canonical lifecycle services and AuthenticationBoundary/AuthorizationEngine/SessionRegistry. Require unauthenticated/default-deny, canonical principal/user binding, tenant isolation, recent-auth and explicit destructive confirmation, exact route/method matching, sanitized output, fresh Required CI/SFFE/applicable Identity/Web/security/controller gates, expected-head merge, and exact-master verification."
     },
     "web_app": {
       "scheduler": "web_app",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 5,
       "authoritative_issue": 486,
-      "active_pr": 968,
-      "base_sha": "00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
-      "head_sha": "9a1aade05c58d83f65512e5acafa4508e7a3142f",
-      "blocked_reason": "Phase 7 is exact-master verified, but live closure ledger reconciliation and Phase-8 enterprise-table delta are still unmerged. PR #968 is stale-base relative to f63e0394 and historical PASS is invalid for merge.",
-      "next_action": "Under the reserved Web App token, re-read current master/head and changed-path plus semantic overlap. Replay only the still-required bounded Phase-8 delta onto exact f63e0394 if safe, require a completely fresh Web App Factory + Required CI + SFFE + Execution Controller gate set, merge only with expected-head protection, then require exact-master evidence before Phase-8 promotion."
+      "active_pr": null,
+      "base_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
+      "head_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
+      "blocked_reason": null,
+      "next_action": "Phase-8 enterprise-table successor PR #988 is merged and exact-master Web App Factory, Required CI and SFFE are SUCCESS on bbebbfdc. Do not retain the repository token for this completed slice; preserve remaining Web App acceptance work for its next legal current-master candidate."
     },
     "agents": {
       "scheduler": "agents",
