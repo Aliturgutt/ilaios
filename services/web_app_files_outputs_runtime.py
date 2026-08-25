@@ -194,20 +194,64 @@ class WebAppFilesOutputsRuntime:
         self._token(output_id, "output_id")
         if version < 1:
             raise WebAppFilesOutputsError("INVALID_VERSION", "version must be positive", 400)
-        self._utc(now)
+        timestamp = self._utc(now)
         self._authorize(principal, "delete", now)
-        record = self._read_record(principal.tenant_id, output_id, version)
+
+        try:
+            record = self._read_record(principal.tenant_id, output_id, version)
+        except WebAppFilesOutputsError as exc:
+            if exc.code != "NOT_FOUND":
+                raise
+            deletion = self._read_deletion(principal.tenant_id, output_id, version)
+            if deletion is None:
+                raise
+            self._ensure_delete_audit(
+                principal=principal,
+                output_id=output_id,
+                version=version,
+                digest=str(deletion["sha256"]),
+                now=now,
+            )
+            return
+
         if record.retain_until is not None and self._parse_utc(record.retain_until) > now.astimezone(timezone.utc):
             raise WebAppFilesOutputsError("RETENTION_ACTIVE", "output is retention protected", 409)
+
+        content = self._storage.get(object_key=record.object_key)
+        if len(content) != record.size_bytes or hashlib.sha256(content).hexdigest() != record.sha256:
+            raise WebAppFilesOutputsError(
+                "OUTPUT_INTEGRITY_FAILURE", "stored output failed exact hash/size validation", 500
+            )
+
         self._storage.delete(object_key=record.object_key)
-        self._db.execute(
-            """DELETE FROM web_app_outputs
-               WHERE tenant_id=? AND project_id=? AND output_id=? AND version=?""",
-            (principal.tenant_id, self._contract.project_id, output_id, version),
-        )
-        self._db.commit()
-        self._audit_success(
-            operation="delete",
+        try:
+            self._db.execute(
+                """DELETE FROM web_app_outputs
+                   WHERE tenant_id=? AND project_id=? AND output_id=? AND version=?""",
+                (principal.tenant_id, self._contract.project_id, output_id, version),
+            )
+            self._db.execute(
+                """INSERT INTO web_app_output_deletions
+                   (tenant_id, project_id, output_id, version, sha256, object_key,
+                    deleted_at, audit_recorded)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, 0)""",
+                (
+                    principal.tenant_id,
+                    self._contract.project_id,
+                    output_id,
+                    version,
+                    record.sha256,
+                    record.object_key,
+                    timestamp,
+                ),
+            )
+            self._db.commit()
+        except Exception:
+            self._db.rollback()
+            self._storage.put(object_key=record.object_key, content=content)
+            raise
+
+        self._ensure_delete_audit(
             principal=principal,
             output_id=output_id,
             version=version,
@@ -252,21 +296,78 @@ class WebAppFilesOutputsRuntime:
         version: int,
         digest: str,
         now: datetime,
+        operation_id: str | None = None,
     ) -> None:
+        details = {
+            "principal_id": principal.principal_id,
+            "tenant_id": principal.tenant_id,
+            "project_id": self._contract.project_id,
+            "output_id": output_id,
+            "version": str(version),
+            "sha256": digest,
+        }
+        if operation_id is not None:
+            details["operation_id"] = operation_id
         self._audit.record(
             "web_app_files_outputs_runtime",
             operation,
             "success",
-            {
-                "principal_id": principal.principal_id,
-                "tenant_id": principal.tenant_id,
-                "project_id": self._contract.project_id,
-                "output_id": output_id,
-                "version": str(version),
-                "sha256": digest,
-            },
+            details,
             timestamp=now.astimezone(timezone.utc),
         )
+
+    def _ensure_delete_audit(
+        self,
+        *,
+        principal: Principal,
+        output_id: str,
+        version: int,
+        digest: str,
+        now: datetime,
+    ) -> None:
+        deletion = self._read_deletion(principal.tenant_id, output_id, version)
+        if deletion is None:
+            raise WebAppFilesOutputsError("DELETE_STATE_MISSING", "delete checkpoint is missing", 500)
+        if int(deletion["audit_recorded"]) == 1:
+            return
+
+        operation_id = hashlib.sha256(
+            (
+                f"delete\0{principal.tenant_id}\0{self._contract.project_id}\0"
+                f"{output_id}\0{version}\0{digest}"
+            ).encode("utf-8")
+        ).hexdigest()
+        already_recorded = any(
+            record.action == "delete"
+            and record.status == "success"
+            and record.details.get("operation_id") == operation_id
+            for record in self._audit.get_records(component="web_app_files_outputs_runtime")
+        )
+        try:
+            if not already_recorded:
+                self._audit_success(
+                    operation="delete",
+                    principal=principal,
+                    output_id=output_id,
+                    version=version,
+                    digest=digest,
+                    now=now,
+                    operation_id=operation_id,
+                )
+            self._db.execute(
+                """UPDATE web_app_output_deletions
+                   SET audit_recorded=1
+                   WHERE tenant_id=? AND project_id=? AND output_id=? AND version=?""",
+                (principal.tenant_id, self._contract.project_id, output_id, version),
+            )
+            self._db.commit()
+        except Exception as exc:
+            self._db.rollback()
+            raise WebAppFilesOutputsError(
+                "AUDIT_PENDING",
+                "delete committed but canonical audit checkpoint is pending; retry same delete",
+                503,
+            ) from exc
 
     def _read_record(self, tenant_id: str, output_id: str, version: int) -> FileOutputRecord:
         row = self._db.execute(
@@ -277,6 +378,13 @@ class WebAppFilesOutputsRuntime:
         if row is None:
             raise WebAppFilesOutputsError("NOT_FOUND", "output not found", 404)
         return self._row(row)
+
+    def _read_deletion(self, tenant_id: str, output_id: str, version: int) -> sqlite3.Row | None:
+        return self._db.execute(
+            """SELECT * FROM web_app_output_deletions
+               WHERE tenant_id=? AND project_id=? AND output_id=? AND version=?""",
+            (tenant_id, self._contract.project_id, output_id, version),
+        ).fetchone()
 
     def _allocate_version(self, tenant_id: str, output_id: str) -> int:
         """Reserve a unique monotonic version before touching external byte storage.
@@ -356,6 +464,17 @@ class WebAppFilesOutputsRuntime:
               output_id TEXT NOT NULL,
               next_version INTEGER NOT NULL CHECK(next_version >= 1),
               PRIMARY KEY (tenant_id, project_id, output_id)
+            );
+            CREATE TABLE IF NOT EXISTS web_app_output_deletions (
+              tenant_id TEXT NOT NULL,
+              project_id TEXT NOT NULL,
+              output_id TEXT NOT NULL,
+              version INTEGER NOT NULL CHECK(version >= 1),
+              sha256 TEXT NOT NULL,
+              object_key TEXT NOT NULL,
+              deleted_at TEXT NOT NULL,
+              audit_recorded INTEGER NOT NULL DEFAULT 0 CHECK(audit_recorded IN (0, 1)),
+              PRIMARY KEY (tenant_id, project_id, output_id, version)
             );
             """
         )
