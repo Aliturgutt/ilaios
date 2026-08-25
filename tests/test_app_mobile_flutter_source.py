@@ -5,10 +5,10 @@ import hashlib
 import pytest
 
 from services.app_mobile_flutter_source import build_flutter_android_project_sources
-from services.mobile_android_executor import AndroidImplementationError
+from services.mobile_android_executor import AndroidImplementationError, AndroidSourceChange
 
 
-def _by_path(changes):
+def _by_path(changes: tuple[AndroidSourceChange, ...]) -> dict[str, AndroidSourceChange]:
     return {change.relative_path: change for change in changes}
 
 
@@ -75,28 +75,21 @@ def test_sources_escape_display_name_for_xml_and_dart() -> None:
     assert "ILAIOS & Founder\\'s" in main
 
 
-@pytest.mark.parametrize(
-    ("app_id", "application_id", "display_name", "wrapper"),
-    [
+def test_sources_fail_closed_on_invalid_identity_or_missing_binary_wrapper() -> None:
+    invalid_inputs: tuple[tuple[str, str, str, bytes], ...] = (
         ("ILAIOS", "com.ilaios.mobile", "ILAIOS", b"wrapper"),
         ("ilaios-mobile", "ilaios", "ILAIOS", b"wrapper"),
         ("ilaios-mobile", "com.ilaios.mobile", " ILAIOS", b"wrapper"),
         ("ilaios-mobile", "com.ilaios.mobile", "ILAIOS", b""),
-    ],
-)
-def test_sources_fail_closed_on_invalid_identity_or_missing_binary_wrapper(
-    app_id: str,
-    application_id: str,
-    display_name: str,
-    wrapper: bytes,
-) -> None:
-    with pytest.raises(AndroidImplementationError):
-        build_flutter_android_project_sources(
-            app_id=app_id,
-            application_id=application_id,
-            display_name=display_name,
-            gradle_wrapper_jar=wrapper,
-        )
+    )
+    for app_id, application_id, display_name, wrapper in invalid_inputs:
+        with pytest.raises(AndroidImplementationError):
+            build_flutter_android_project_sources(
+                app_id=app_id,
+                application_id=application_id,
+                display_name=display_name,
+                gradle_wrapper_jar=wrapper,
+            )
 
 
 def test_wrapper_payload_is_bounded() -> None:
