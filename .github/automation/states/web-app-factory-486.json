@@ -6,54 +6,59 @@
     "reference": "issue:#486 + .github/web-app-factory-closure.json"
   },
   "status": "IN_PROGRESS",
-  "current_phase": 8,
-  "master_sha": "827e6e97aff532bbdd5c1ac6e06131fc34010db3",
-  "base_sha": "827e6e97aff532bbdd5c1ac6e06131fc34010db3",
-  "head_sha": null,
-  "branch": "web/app-phase8-enterprise-tables-57f359b7",
-  "pr": 988,
+  "current_phase": 9,
+  "master_sha": "c90245687b0d60af5b1cc0ddbf8b610904493653",
+  "base_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
+  "head_sha": "a1124d2d1f6e79e3b193153897e0e4b4bd4ef8dd",
+  "branch": "web/app-phase9-files-outputs-bbebbfdc",
+  "pr": 990,
   "ci": {
-    "run_id": null,
+    "run_id": 32879099050,
     "conclusion": null,
-    "exact_sha": null
+    "exact_sha": "a1124d2d1f6e79e3b193153897e0e4b4bd4ef8dd"
   },
-  "next_action": "require a completely fresh exact-head Web App Factory + Required CI + Software Factory Final Evidence + Execution Controller gate set on PR #988, then reread live master/token/head/overlap before expected-head merge and exact-master verification",
+  "next_action": "require the completely fresh exact-head Web App Factory + Required CI + Software Factory Final Evidence + Execution Controller gate set after the atomic concurrent-version allocator repair; do not merge while Identity owns the single-writer token; at the legal Web App merge window reread master/token/head/overlap and replay only the bounded reviewed Phase-9 delta if currentness requires it",
   "blocker": {
-    "type": "CI",
-    "detail": "PR #986 exact head 8fc23594033866c22f253e746a7e27ec25c92a9b passed Web App Factory run 32848480564, Execution Controller run 32848480502 and Software Factory run 32848480499, but Required CI run 32848480770 failed because the stale branch snapshot carried identity lifecycle VERIFIED while the current validator rejects that lifecycle. Live master advanced two commits from 57f359b7 to 827e6e97 only in .github/automation/fast-closure-v2-state.json, with zero overlap against the five reviewed Phase-8 paths. Under the reserved Web App token the branch was reset to exact current master and only the reviewed five-path delta was replayed. GitHub auto-closed #986 when the ref temporarily equaled master; successor #988 now carries the replay. All historical PASS is invalid.",
+    "type": "REPOSITORY",
+    "detail": "Fast-Closure V2 reserves the single-writer merge token for Identity and active current-master Identity PR #993 touches services/account_lifecycle_http_runtime.py plus tests/test_account_lifecycle_http_runtime.py. Phase-9 development and CI are non-overlapping and may proceed, but no Web App merge is authorized until live token ownership changes and current master/head/overlap are re-read.",
     "human_action": null
   },
   "repair": {
-    "retry_count": 11,
-    "last_failure_fingerprint": "phase8-pr986-required-ci-invalid-stale-identity-verified-lifecycle",
-    "last_root_cause": "stale branch snapshot contained Fast-Closure identity lifecycle VERIFIED; current master PR #987 corrected the durable state to a validator-compatible lifecycle, so the safe repair was current-master bounded replay rather than expanding Phase-8 scope"
+    "retry_count": 13,
+    "last_failure_fingerprint": "phase9-concurrent-store-max-version-object-key-collision",
+    "last_root_cause": "store allocated version with SELECT MAX(version)+1 before external object write; concurrent writers could select the same version/object key and a losing DB insert could compensate by deleting the winning writer's object. Repaired with a short BEGIN IMMEDIATE monotonic allocator transaction that reserves each tenant/project/output version before external storage I/O, plus a concurrent two-writer regression."
   },
   "lock": {
     "owner": "web-app-factory-486",
     "scope": [
       ".github/web-app-factory-closure.json",
       ".github/automation/states/web-app-factory-486.json",
-      "services/web_app_enterprise_table_runtime.py",
-      "tests/test_web_app_enterprise_table_runtime.py",
-      "tests/test_web_app_enterprise_table_token_hardening.py"
+      "services/web_app_files_outputs_runtime.py",
+      "tests/test_web_app_files_outputs_runtime.py",
+      "tests/test_web_app_files_outputs_concurrency.py"
     ],
-    "acquired_at": "2026-08-25T13:36:00Z",
+    "acquired_at": "2026-08-25T14:30:00Z",
     "expires_at": null
   },
   "evidence": [
-    "phase7-final-merge-lineage:PR965 merge=75f68f31edecc72a83041bbbac9985c7c5d172b6",
-    "phase7-exact-master-evidence-publisher:PR967 merge=00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
-    "phase7-exact-master:web-app-factory run=32749923875 success",
-    "phase7-exact-master:software-factory run=32749923857 success",
-    "phase7-exact-master:required-ci run=32749924156 success",
     "phase7-verdict:VERIFIED on exact master 00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
-    "phase8-pr986-stale-head:8fc23594033866c22f253e746a7e27ec25c92a9b web=32848480564 success controller=32848480502 success sffe=32848480499 success required-ci=32848480770 failure",
-    "phase8-required-ci-root-cause:3 failed 2706 passed 1 skipped; failures all originate from invalid stale identity lifecycle VERIFIED in Fast-Closure branch snapshot",
-    "phase8-current-master:827e6e97aff532bbdd5c1ac6e06131fc34010db3",
-    "phase8-current-drift:57f359b7fbfc7cea82bec049e2a1fff28fb371d5..827e6e97aff532bbdd5c1ac6e06131fc34010db3 two commits; only .github/automation/fast-closure-v2-state.json changed; zero overlap with five Phase-8 paths",
-    "phase8-replay:PR #986 branch reset to exact current master and reviewed five-path delta replayed only",
-    "phase8-successor:PR988 base=827e6e97aff532bbdd5c1ac6e06131fc34010db3 exact five-path current-master replay; fresh gates mandatory",
+    "phase8-successor:PR988 exact head=313e79a45993d575e9b9424099d7bf01efba2e00",
+    "phase8-exact-head:execution-controller run=32855126904 success",
+    "phase8-merge:PR988 merge=bbebbfdc578715fcc0062ebd93f41ef33829fbed",
+    "phase8-exact-master:web-app-factory run=32858157336 success",
+    "phase8-exact-master:software-factory run=32858157334 success",
+    "phase8-exact-master:required-ci run=32858157637 success",
+    "phase8-verdict:VERIFIED on exact master bbebbfdc578715fcc0062ebd93f41ef33829fbed",
+    "phase9-start:branch=web/app-phase9-files-outputs-bbebbfdc base=bbebbfdc578715fcc0062ebd93f41ef33829fbed",
+    "phase9-runtime:tenant/project-scoped output metadata + MIME allowlist + SHA-256 + versioning + retention + exact-hash download verification + canonical AuthorizationEngine boundary",
+    "phase9-audit-hardening:store/download/delete bind canonical AuditEngine metadata without file content or filename leakage; naive datetime fails closed",
+    "phase9-concurrency-repair:atomic tenant/project/output version allocator prevents concurrent object-key reuse and destructive compensation",
+    "phase9-concurrency-regression:tests/test_web_app_files_outputs_concurrency.py launches two simultaneous stores against one SQLite metadata database and requires versions={1,2}, distinct object keys, both objects retained and ordered metadata",
+    "phase9-pr990-pre-repair-exact-head:3b359dee6e26a658b4422c8c4d411aa9ab195719 Web App=32873228696 success RequiredCI=32873229038 success SFFE=32873228772 success Controller=32873228720 success; invalidated by new repair head",
+    "phase9-fresh-ci:head=a1124d2d1f6e79e3b193153897e0e4b4bd4ef8dd RequiredCI=32879099050 pending WebApp=32879098813 pending SFFE=32879098704 in_progress Controller=32879098837 in_progress",
+    "live-master-at-repair:c90245687b0d60af5b1cc0ddbf8b610904493653",
+    "identity-overlap-check:PR993 paths=services/account_lifecycle_http_runtime.py,tests/test_account_lifecycle_http_runtime.py; zero direct path overlap with Phase-9 lock",
     "phase16-freeze: preserved; optional 3D/Motion/WebGL remains outside baseline closure"
   ],
-  "updated_at": "2026-08-25T13:44:00Z"
+  "updated_at": "2026-08-25T17:39:30Z"
 }
