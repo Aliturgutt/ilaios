@@ -108,7 +108,9 @@ class WebAppFilesOutputsRuntime:
             raise WebAppFilesOutputsError("EMPTY_OUTPUT", "empty output is not accepted", 400)
         if len(content) > self._MAX_BYTES:
             raise WebAppFilesOutputsError("OUTPUT_TOO_LARGE", "output exceeds bounded size", 413)
-        if retain_until is not None and retain_until <= now:
+        timestamp = self._utc(now)
+        retention = None if retain_until is None else self._utc(retain_until)
+        if retention is not None and self._parse_utc(retention) <= self._parse_utc(timestamp):
             raise WebAppFilesOutputsError("INVALID_RETENTION", "retention must be in the future", 400)
         self._authorize(principal, "create", now)
 
@@ -120,8 +122,6 @@ class WebAppFilesOutputsRuntime:
         ).fetchone()
         version = 1 if prior is None or prior["version"] is None else int(prior["version"]) + 1
         object_key = self._object_key(principal.tenant_id, output_id, version, digest)
-        timestamp = self._utc(now)
-        retention = None if retain_until is None else self._utc(retain_until)
 
         self._storage.put(object_key=object_key, content=content)
         try:
@@ -149,6 +149,14 @@ class WebAppFilesOutputsRuntime:
             self._db.rollback()
             self._storage.delete(object_key=object_key)
             raise
+        self._audit_success(
+            operation="store",
+            principal=principal,
+            output_id=output_id,
+            version=version,
+            digest=digest,
+            now=now,
+        )
         return self._read_record(principal.tenant_id, output_id, version)
 
     def download(
@@ -162,6 +170,7 @@ class WebAppFilesOutputsRuntime:
         self._token(output_id, "output_id")
         if version < 1:
             raise WebAppFilesOutputsError("INVALID_VERSION", "version must be positive", 400)
+        self._utc(now)
         self._authorize(principal, "read", now)
         record = self._read_record(principal.tenant_id, output_id, version)
         content = self._storage.get(object_key=record.object_key)
@@ -169,6 +178,14 @@ class WebAppFilesOutputsRuntime:
             raise WebAppFilesOutputsError(
                 "OUTPUT_INTEGRITY_FAILURE", "stored output failed exact hash/size validation", 500
             )
+        self._audit_success(
+            operation="download",
+            principal=principal,
+            output_id=output_id,
+            version=version,
+            digest=record.sha256,
+            now=now,
+        )
         return record, content
 
     def delete(
@@ -182,6 +199,7 @@ class WebAppFilesOutputsRuntime:
         self._token(output_id, "output_id")
         if version < 1:
             raise WebAppFilesOutputsError("INVALID_VERSION", "version must be positive", 400)
+        self._utc(now)
         self._authorize(principal, "delete", now)
         record = self._read_record(principal.tenant_id, output_id, version)
         if record.retain_until is not None and self._parse_utc(record.retain_until) > now.astimezone(timezone.utc):
@@ -193,6 +211,14 @@ class WebAppFilesOutputsRuntime:
             (principal.tenant_id, self._contract.project_id, output_id, version),
         )
         self._db.commit()
+        self._audit_success(
+            operation="delete",
+            principal=principal,
+            output_id=output_id,
+            version=version,
+            digest=record.sha256,
+            now=now,
+        )
 
     def list_versions(
         self,
@@ -202,6 +228,7 @@ class WebAppFilesOutputsRuntime:
         now: datetime,
     ) -> tuple[FileOutputRecord, ...]:
         self._token(output_id, "output_id")
+        self._utc(now)
         self._authorize(principal, "read", now)
         rows = self._db.execute(
             """SELECT * FROM web_app_outputs
@@ -219,6 +246,31 @@ class WebAppFilesOutputsRuntime:
         )
         authorize_with_canonical_engine(
             self._authorization, principal=principal, request=request, now=now
+        )
+
+    def _audit_success(
+        self,
+        *,
+        operation: str,
+        principal: Principal,
+        output_id: str,
+        version: int,
+        digest: str,
+        now: datetime,
+    ) -> None:
+        self._audit.record(
+            "web_app_files_outputs_runtime",
+            operation,
+            "success",
+            {
+                "principal_id": principal.principal_id,
+                "tenant_id": principal.tenant_id,
+                "project_id": self._contract.project_id,
+                "output_id": output_id,
+                "version": str(version),
+                "sha256": digest,
+            },
+            timestamp=now.astimezone(timezone.utc),
         )
 
     def _read_record(self, tenant_id: str, output_id: str, version: int) -> FileOutputRecord:
