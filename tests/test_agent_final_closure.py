@@ -29,6 +29,32 @@ def _agent_evidence_bindings() -> dict[str, str]:
     }
 
 
+def _g1_adversarial_verdicts() -> dict[str, str]:
+    return {
+        "approval_replay": "VERIFIED DENY",
+        "wrong_action": "VERIFIED DENY",
+        "wrong_tenant": "VERIFIED DENY",
+        "expired_grant": "VERIFIED DENY",
+        "revoked_grant": "VERIFIED DENY",
+        "direct_tool_gateway_bypass": "VERIFIED DENY",
+        "forged_provider_success": "VERIFIED DENY",
+        "forged_evidence": "VERIFIED DENY",
+        "forged_approval": "VERIFIED DENY",
+        "forged_tool_result": "VERIFIED DENY",
+        "kill_switch": "VERIFIED DENY",
+        "unavailable_agent": "VERIFIED DENY",
+        "suspended_agent": "VERIFIED DENY",
+        "retired_agent": "VERIFIED DENY",
+        "out_of_manifest_permission": "VERIFIED DENY",
+        "out_of_manifest_capability": "VERIFIED DENY",
+        "out_of_manifest_input": "VERIFIED DENY",
+        "secret_bearing_input": "VERIFIED DENY",
+        "unapproved_egress": "VERIFIED DENY",
+        "exhausted_budget": "VERIFIED DENY",
+        "cross_tenant_artifact_evidence_substitution": "VERIFIED DENY",
+    }
+
+
 def _receipt() -> dict[str, object]:
     exact_master_sha = "a" * 40
     exact_head_sha = "d" * 40
@@ -49,6 +75,7 @@ def _receipt() -> dict[str, object]:
         "provider_tool_receipt_binding_result": "VERIFIED",
         "browser_tool_egress_security_result": "VERIFIED",
         "g1_security_result": "VERIFIED",
+        "g1_adversarial_verdicts": _g1_adversarial_verdicts(),
         "evidence_integrity_result": "VERIFIED",
         "execution_evidence_lineage_result": "VERIFIED",
         "cross_tenant_artifact_evidence_substitution_result": "VERIFIED",
@@ -173,6 +200,27 @@ def test_final_closure_receipt_rejects_incomplete_or_blocked_evidence() -> None:
         receipt[field] = value
         with pytest.raises(AgentFinalClosureError):
             validate_agent_final_closure_receipt(receipt)
+
+
+def test_final_closure_receipt_requires_complete_g1_adversarial_matrix() -> None:
+    receipt = _receipt()
+    receipt["g1_adversarial_verdicts"] = {}
+    with pytest.raises(AgentFinalClosureError, match="complete canonical negative-case matrix"):
+        validate_agent_final_closure_receipt(receipt)
+
+    receipt = _receipt()
+    verdicts = _g1_adversarial_verdicts()
+    verdicts["wrong_tenant"] = "NOT VERIFIED"
+    receipt["g1_adversarial_verdicts"] = verdicts
+    with pytest.raises(AgentFinalClosureError, match="VERIFIED DENY"):
+        validate_agent_final_closure_receipt(receipt)
+
+    receipt = _receipt()
+    verdicts = _g1_adversarial_verdicts()
+    verdicts["unexpected_case"] = "VERIFIED DENY"
+    receipt["g1_adversarial_verdicts"] = verdicts
+    with pytest.raises(AgentFinalClosureError, match="complete canonical negative-case matrix"):
+        validate_agent_final_closure_receipt(receipt)
 
 
 def test_final_closure_receipt_rejects_registry_count_or_family_drift() -> None:
