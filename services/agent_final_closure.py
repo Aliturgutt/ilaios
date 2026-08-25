@@ -36,6 +36,29 @@ _REQUIRED_RESULTS = (
     "exact_head_release_governance_result",
     "exact_master_release_governance_result",
 )
+_REQUIRED_G1_ADVERSARIAL_VERDICTS = (
+    "approval_replay",
+    "wrong_action",
+    "wrong_tenant",
+    "expired_grant",
+    "revoked_grant",
+    "direct_tool_gateway_bypass",
+    "forged_provider_success",
+    "forged_evidence",
+    "forged_approval",
+    "forged_tool_result",
+    "kill_switch",
+    "unavailable_agent",
+    "suspended_agent",
+    "retired_agent",
+    "out_of_manifest_permission",
+    "out_of_manifest_capability",
+    "out_of_manifest_input",
+    "secret_bearing_input",
+    "unapproved_egress",
+    "exhausted_budget",
+    "cross_tenant_artifact_evidence_substitution",
+)
 _REQUIRED_NONEMPTY_STRINGS = (
     "execution_id",
     "job_id",
@@ -70,6 +93,25 @@ class AgentFinalClosureError(ValueError):
 def _require_verified_result(receipt: Mapping[str, object], key: str) -> None:
     if receipt.get(key) != "VERIFIED":
         raise AgentFinalClosureError(f"{key} must be VERIFIED")
+
+
+def _require_g1_adversarial_verdicts(receipt: Mapping[str, object]) -> None:
+    value = receipt.get("g1_adversarial_verdicts")
+    if not isinstance(value, Mapping):
+        raise AgentFinalClosureError("g1_adversarial_verdicts must be a mapping")
+    normalized = {str(key): verdict for key, verdict in value.items()}
+    required = set(_REQUIRED_G1_ADVERSARIAL_VERDICTS)
+    if set(normalized) != required:
+        raise AgentFinalClosureError(
+            "g1_adversarial_verdicts must contain the complete canonical negative-case matrix"
+        )
+    failed = sorted(
+        key for key in _REQUIRED_G1_ADVERSARIAL_VERDICTS if normalized.get(key) != "VERIFIED DENY"
+    )
+    if failed:
+        raise AgentFinalClosureError(
+            "all mandatory G1 adversarial verdicts must be VERIFIED DENY"
+        )
 
 
 def _require_nonempty_string(receipt: Mapping[str, object], key: str) -> None:
@@ -241,6 +283,7 @@ def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
 
     for key in _REQUIRED_RESULTS:
         _require_verified_result(receipt, key)
+    _require_g1_adversarial_verdicts(receipt)
 
     for key in _REQUIRED_NONEMPTY_STRINGS:
         _require_nonempty_string(receipt, key)
