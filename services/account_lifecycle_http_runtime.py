@@ -81,7 +81,7 @@ class AccountLifecycleHttpRuntime:
         sessions: SessionRegistry,
         authorization: AuthorizationEngine,
         account_deletion: AccountDeletionAuthority,
-        account_export: AccountDataExportAuthority,
+        account_export: AccountDataExportAuthority | None = None,
     ) -> None:
         self._authentication = authentication
         self._sessions = sessions
@@ -104,6 +104,8 @@ class AccountLifecycleHttpRuntime:
             return self._error(404, "LIFECYCLE_ROUTE_NOT_FOUND")
 
         if projection.surface_id not in {"account.delete", "account.export_my_data"}:
+            return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
+        if projection.surface_id == "account.export_my_data" and self._account_export is None:
             return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
 
         try:
@@ -136,6 +138,7 @@ class AccountLifecycleHttpRuntime:
 
             if projection.surface_id == "account.export_my_data":
                 self._empty_body(request.body)
+                assert self._account_export is not None
                 export = self._account_export.export_my_data(
                     user_id=principal.principal_id,
                     recent_authentication_verified=request.recent_authentication_verified,
