@@ -28,9 +28,12 @@ def _agent_evidence_bindings() -> dict[str, str]:
 
 
 def _receipt() -> dict[str, object]:
-    return {
+    exact_master_sha = "a" * 40
+    exact_head_sha = "d" * 40
+    receipt: dict[str, object] = {
         "agent_workstream": "CLOSED",
-        "exact_master_sha": "a" * 40,
+        "exact_master_sha": exact_master_sha,
+        "exact_head_sha": exact_head_sha,
         "canonical_agent_count": EXPECTED_AGENT_COUNT,
         "verified_agent_count": EXPECTED_AGENT_COUNT,
         "verified_agent_ids": _canonical_agent_ids(),
@@ -85,6 +88,27 @@ def _receipt() -> dict[str, object]:
         "remaining_external_blockers": [],
         "closure_evidence_sha256": "b" * 64,
     }
+    master_refs = set(_agent_evidence_refs())
+    master_refs.update(
+        {
+            "evidence://exec-final-001/runtime-e2e",
+            "evidence://exec-final-001/g1-security",
+            "evidence://exec-final-001/integrity",
+            "evidence://exec-final-001/restart-recovery",
+            "evidence://exec-final-001/desktop-projection",
+            "evidence://exec-final-001/windows-msix",
+            "github-actions://required-ci/master",
+            "evidence://exec-final-001/cost-usage",
+            "evidence://exec-final-001/human-owner",
+            "evidence-final-001",
+            "receipt-provider-001",
+            "receipt-tool-001",
+        }
+    )
+    revision_bindings = {ref: exact_master_sha for ref in master_refs}
+    revision_bindings["github-actions://required-ci/head"] = exact_head_sha
+    receipt["evidence_revision_bindings"] = revision_bindings
+    return receipt
 
 
 def test_final_closure_receipt_accepts_complete_evidence_only() -> None:
@@ -95,6 +119,7 @@ def test_final_closure_receipt_rejects_incomplete_or_blocked_evidence() -> None:
     cases: list[tuple[str, object]] = [
         ("agent_workstream", "PARTIAL"),
         ("exact_master_sha", "unknown"),
+        ("exact_head_sha", "unknown"),
         ("verified_agent_count", EXPECTED_AGENT_COUNT - 1),
         ("verified_agent_ids", []),
         ("registry_identity_result", "NOT_VERIFIED"),
@@ -132,6 +157,7 @@ def test_final_closure_receipt_rejects_incomplete_or_blocked_evidence() -> None:
         ("agent_execution_evidence_refs", []),
         ("agent_execution_evidence_bindings", {}),
         ("provider_tool_receipt_ids", []),
+        ("evidence_revision_bindings", {}),
         ("output_artifact_sha256", "unknown"),
         ("output_validation_result", "NOT_VERIFIED"),
         ("cost_usage_evidence_ref", ""),
@@ -239,6 +265,29 @@ def test_final_closure_receipt_rejects_evidence_ref_binding_divergence() -> None
     evidence_refs[-1] = evidence_refs[0]
     receipt["agent_execution_evidence_refs"] = evidence_refs
     with pytest.raises(AgentFinalClosureError, match="must be unique"):
+        validate_agent_final_closure_receipt(receipt)
+
+
+def test_final_closure_receipt_rejects_stale_or_missing_revision_bindings() -> None:
+    receipt = _receipt()
+    revision_bindings = dict(receipt["evidence_revision_bindings"])
+    revision_bindings["evidence://exec-final-001/runtime-e2e"] = "e" * 40
+    receipt["evidence_revision_bindings"] = revision_bindings
+    with pytest.raises(AgentFinalClosureError, match="stale or cross-SHA"):
+        validate_agent_final_closure_receipt(receipt)
+
+    receipt = _receipt()
+    revision_bindings = dict(receipt["evidence_revision_bindings"])
+    del revision_bindings["receipt-provider-001"]
+    receipt["evidence_revision_bindings"] = revision_bindings
+    with pytest.raises(AgentFinalClosureError, match="missing exact-master revision bindings"):
+        validate_agent_final_closure_receipt(receipt)
+
+    receipt = _receipt()
+    revision_bindings = dict(receipt["evidence_revision_bindings"])
+    revision_bindings["github-actions://required-ci/head"] = "a" * 40
+    receipt["evidence_revision_bindings"] = revision_bindings
+    with pytest.raises(AgentFinalClosureError, match="exact-head CI evidence"):
         validate_agent_final_closure_receipt(receipt)
 
 
