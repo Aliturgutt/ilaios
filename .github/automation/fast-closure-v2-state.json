@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-25T07:12:36Z",
+  "updated_at": "2026-08-25T09:15:00Z",
   "merge_token": {
-    "state": "RELEASED",
-    "owner": null,
-    "reserved_master_sha": "33b5cb133e4ae2427cdb8ca2de37195c12945e75",
-    "candidate_pr": null,
-    "candidate_head_sha": null,
-    "freeze_active": false,
-    "freeze_reason": "Identity privacy-retention PR #979 is merged on master 33b5cb13 and exact-master Required CI run 32817075417 plus Software Factory Final Evidence run 32817075239 are SUCCESS. The stale Identity reservation is released at this safe checkpoint. Website and Video remain external-production blocked; the next repository token must be acquired only by the next exact-current dependency-ready bounded candidate after live overlap reread."
+    "state": "RESERVED",
+    "owner": "identity",
+    "reserved_master_sha": "2d75bb0209e8f722ecc0820650dd9c62a85fcddd",
+    "candidate_pr": 982,
+    "candidate_head_sha": "13627e9a98ff511400df5552a1f72ce7ba46e5a8",
+    "freeze_active": true,
+    "freeze_reason": "Identity account-lifecycle projection PR #982 is the highest-priority exact-current dependency-ready candidate. Its exact head 13627e9a has fresh Required CI run 32825612791 and Software Factory Final Evidence run 32825612504 SUCCESS. Reserve the single-writer token for live currentness/overlap revalidation and expected-head merge; stale branches and historical PASS remain non-authoritative."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,14 +54,14 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": null,
-      "base_sha": "33b5cb133e4ae2427cdb8ca2de37195c12945e75",
-      "head_sha": "33b5cb133e4ae2427cdb8ca2de37195c12945e75",
+      "active_pr": 982,
+      "base_sha": "2d75bb0209e8f722ecc0820650dd9c62a85fcddd",
+      "head_sha": "13627e9a98ff511400df5552a1f72ce7ba46e5a8",
       "blocked_reason": null,
-      "next_action": "Treat #979 privacy retention as exact-master verified. Re-audit remaining production Identity/Account plus Billing/Subscription/Entitlement dependencies on live master; open only the smallest exact-current bounded candidate for a real uncovered gap, with fresh Required CI/SFFE and applicable security/controller gates."
+      "next_action": "Re-read live master/state/head and semantic overlap immediately before merge. If master remains 2d75bb02 and #982 head remains 13627e9a with fresh Required CI/SFFE SUCCESS, merge only with expected-head protection, then require exact-master Required CI/SFFE before promoting this projection slice."
     },
     "web_app": {
       "scheduler": "web_app",
