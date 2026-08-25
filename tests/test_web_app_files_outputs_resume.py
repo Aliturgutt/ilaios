@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from collections.abc import Mapping
 from datetime import datetime, timezone
 
 import pytest
@@ -17,7 +18,7 @@ from services.web_app_files_outputs_runtime import (
     WebAppFilesOutputsError,
     WebAppFilesOutputsRuntime,
 )
-from src.core.audit_engine import AuditEngine
+from src.core.audit_engine import AuditEngine, AuditRecord
 
 NOW = datetime(2026, 8, 25, 19, 30, tzinfo=timezone.utc)
 
@@ -43,7 +44,15 @@ class FailDeleteAuditOnce(AuditEngine):
         super().__init__()
         self.failed = False
 
-    def record(self, component, action, status, details=None, *, timestamp=None):  # type: ignore[no-untyped-def]
+    def record(
+        self,
+        component: str,
+        action: str,
+        status: str,
+        details: Mapping[str, str] | None = None,
+        *,
+        timestamp: datetime | None = None,
+    ) -> AuditRecord:
         if action == "delete" and not self.failed:
             self.failed = True
             raise RuntimeError("injected audit failure")
