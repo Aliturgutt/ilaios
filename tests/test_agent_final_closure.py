@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import cast
+
 import pytest
 
 from services.agent_final_closure import (
@@ -270,21 +272,27 @@ def test_final_closure_receipt_rejects_evidence_ref_binding_divergence() -> None
 
 def test_final_closure_receipt_rejects_stale_or_missing_revision_bindings() -> None:
     receipt = _receipt()
-    revision_bindings = dict(receipt["evidence_revision_bindings"])
+    revision_bindings = dict(
+        cast(dict[str, str], receipt["evidence_revision_bindings"])
+    )
     revision_bindings["evidence://exec-final-001/runtime-e2e"] = "e" * 40
     receipt["evidence_revision_bindings"] = revision_bindings
     with pytest.raises(AgentFinalClosureError, match="stale or cross-SHA"):
         validate_agent_final_closure_receipt(receipt)
 
     receipt = _receipt()
-    revision_bindings = dict(receipt["evidence_revision_bindings"])
+    revision_bindings = dict(
+        cast(dict[str, str], receipt["evidence_revision_bindings"])
+    )
     del revision_bindings["receipt-provider-001"]
     receipt["evidence_revision_bindings"] = revision_bindings
     with pytest.raises(AgentFinalClosureError, match="missing exact-master revision bindings"):
         validate_agent_final_closure_receipt(receipt)
 
     receipt = _receipt()
-    revision_bindings = dict(receipt["evidence_revision_bindings"])
+    revision_bindings = dict(
+        cast(dict[str, str], receipt["evidence_revision_bindings"])
+    )
     revision_bindings["github-actions://required-ci/head"] = "a" * 40
     receipt["evidence_revision_bindings"] = revision_bindings
     with pytest.raises(AgentFinalClosureError, match="exact-head CI evidence"):
