@@ -11,28 +11,30 @@
   "base_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
   "head_sha": null,
   "branch": "web/app-phase9-files-outputs-bbebbfdc",
-  "pr": null,
+  "pr": 990,
   "ci": {
     "run_id": null,
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "prepare the smallest Phase-9 files/outputs runtime slice from exact master without creating a second artifact/evidence authority; require fresh exact-head Web App Factory + Required CI + Software Factory Final Evidence + Execution Controller gates before any merge",
+  "next_action": "validate the bounded Phase-9 files/outputs runtime with fresh exact-head Web App Factory + Required CI + Software Factory Final Evidence + Execution Controller gates; do not merge while Identity owns the single-writer token",
   "blocker": {
-    "type": "TOKEN_ARBITRATION",
-    "detail": "Phase 8 is exact-master verified on bbebbfdc578715fcc0062ebd93f41ef33829fbed. Coordination-only PR #989 is open and proposes handing the single-writer merge token to Identity. Phase-9 development may proceed only on non-overlapping paths; no Web App merge while another lane owns the token.",
+    "type": "REPOSITORY",
+    "detail": "Fast-Closure V2 reserves the single-writer merge token for Identity. Phase-9 development and CI may proceed on the non-overlapping Web App lock, but no Web App merge is authorized until live token ownership changes and current master/head/overlap are re-read.",
     "human_action": null
   },
   "repair": {
-    "retry_count": 11,
-    "last_failure_fingerprint": "phase8-pr986-required-ci-invalid-stale-identity-verified-lifecycle",
-    "last_root_cause": "stale Phase-8 branch state was repaired by exact-current-master bounded replay; successor PR #988 merged and exact-master gates passed"
+    "retry_count": 12,
+    "last_failure_fingerprint": "phase9-controller-invalid-token-arbitration-blocker-type",
+    "last_root_cause": "task state used TOKEN_ARBITRATION although the canonical execution-controller schema only accepts REPOSITORY/CI/PROVIDER/EXTERNAL/HUMAN blocker classes; corrected without weakening the validator"
   },
   "lock": {
     "owner": "web-app-factory-486",
     "scope": [
       ".github/web-app-factory-closure.json",
-      ".github/automation/states/web-app-factory-486.json"
+      ".github/automation/states/web-app-factory-486.json",
+      "services/web_app_files_outputs_runtime.py",
+      "tests/test_web_app_files_outputs_runtime.py"
     ],
     "acquired_at": "2026-08-25T14:30:00Z",
     "expires_at": null
@@ -47,7 +49,9 @@
     "phase8-exact-master:required-ci run=32858157637 success",
     "phase8-verdict:VERIFIED on exact master bbebbfdc578715fcc0062ebd93f41ef33829fbed",
     "phase9-start:branch=web/app-phase9-files-outputs-bbebbfdc base=bbebbfdc578715fcc0062ebd93f41ef33829fbed",
+    "phase9-runtime:tenant/project-scoped output metadata + MIME allowlist + SHA-256 + versioning + retention + exact-hash download verification + canonical AuthorizationEngine boundary",
+    "phase9-controller-failure:run=32867350690 invalid blocker type repaired without validator weakening",
     "phase16-freeze: preserved; optional 3D/Motion/WebGL remains outside baseline closure"
   ],
-  "updated_at": "2026-08-25T14:30:00Z"
+  "updated_at": "2026-08-25T15:44:00Z"
 }
