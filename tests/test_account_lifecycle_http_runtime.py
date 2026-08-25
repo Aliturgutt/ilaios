@@ -6,6 +6,7 @@ from services.account_lifecycle_http_runtime import (
     AccountLifecycleHttpRequest,
     AccountLifecycleHttpRuntime,
 )
+from services.central_identity import CentralIdentityError
 from services.identity import (
     AuthenticationBoundary,
     AuthorizationEngine,
@@ -90,6 +91,30 @@ class _AccountExport:
         }
 
 
+class _AccountSessions:
+    def __init__(self, *, fail: bool = False) -> None:
+        self.calls: list[dict[str, str]] = []
+        self._fail = fail
+
+    def logout_session(
+        self,
+        *,
+        authenticated_user_id: str,
+        authenticated_tenant_id: str,
+        session_id: str,
+    ) -> bool:
+        if self._fail:
+            raise CentralIdentityError("session revoke denied")
+        self.calls.append(
+            {
+                "authenticated_user_id": authenticated_user_id,
+                "authenticated_tenant_id": authenticated_tenant_id,
+                "session_id": session_id,
+            }
+        )
+        return True
+
+
 def _runtime(
     *,
     verifier: _Verifier | None = None,
@@ -172,6 +197,49 @@ def _export_runtime(
         account_export=export,
     )
     return runtime, export
+
+
+def _logout_runtime(
+    *,
+    verifier: _Verifier | None = None,
+    account_sessions: _AccountSessions | None = None,
+) -> tuple[AccountLifecycleHttpRuntime, _AccountSessions]:
+    boundary = AuthenticationBoundary(
+        verifier or _Verifier(),
+        IdentityPolicy(
+            trusted_issuers=frozenset({"https://issuer.example"}),
+            audience="ilaios-web",
+            maximum_session=timedelta(hours=1),
+        ),
+    )
+    sessions = SessionRegistry(maximum_lifetime=timedelta(hours=1))
+    principal = Principal(
+        principal_id="user-1",
+        tenant_id="tenant-1",
+        kind=IdentityKind.HUMAN,
+        roles=frozenset({"Owner"}),
+        attributes=frozenset(),
+        authentication_methods=frozenset({"mfa"}),
+    )
+    sessions.issue("session-1", principal, NOW, timedelta(minutes=30))
+    authorization = AuthorizationEngine(
+        (
+            AuthorizationRule(
+                action="identity.session.logout",
+                roles=frozenset({"Owner"}),
+                identity_kinds=frozenset({IdentityKind.HUMAN}),
+            ),
+        )
+    )
+    session_lifecycle = account_sessions or _AccountSessions()
+    runtime = AccountLifecycleHttpRuntime(
+        authentication=boundary,
+        sessions=sessions,
+        authorization=authorization,
+        account_deletion=_AccountDeletion(),
+        account_sessions=session_lifecycle,
+    )
+    return runtime, session_lifecycle
 
 
 def _request(
@@ -333,3 +401,72 @@ def test_account_export_http_wiring_rejects_client_authority_fields_and_wrong_me
     assert override.body == {"error": "INVALID_REQUEST"}
     assert wrong_method.status_code == 404
     assert export.calls == []
+
+
+def test_account_logout_http_wiring_revokes_only_canonical_bound_session() -> None:
+    runtime, account_sessions = _logout_runtime()
+    response = runtime.handle(
+        _request(
+            path="/api/account/sessions/logout",
+            method="POST",
+            body={},
+            recent_authentication_verified=False,
+        ),
+        now=NOW,
+    )
+    assert response.status_code == 200
+    assert response.body == {"status": "logged_out"}
+    assert account_sessions.calls == [
+        {
+            "authenticated_user_id": "user-1",
+            "authenticated_tenant_id": "tenant-1",
+            "session_id": "session-1",
+        }
+    ]
+    assert "user-1" not in repr(response.body)
+    assert "session-1" not in repr(response.body)
+
+
+def test_account_logout_http_wiring_denies_auth_or_session_mismatch() -> None:
+    runtime, account_sessions = _logout_runtime(verifier=_Verifier(subject="attacker"))
+    response = runtime.handle(
+        _request(path="/api/account/sessions/logout", method="POST", body={}), now=NOW
+    )
+    assert response.status_code == 403
+    assert response.body == {"error": "IDENTITY_DENIED"}
+    assert account_sessions.calls == []
+
+
+def test_account_logout_http_wiring_rejects_client_authority_fields() -> None:
+    runtime, account_sessions = _logout_runtime()
+    response = runtime.handle(
+        _request(
+            path="/api/account/sessions/logout",
+            method="POST",
+            body={"session_id": "victim-session", "tenant_id": "tenant-2"},
+        ),
+        now=NOW,
+    )
+    assert response.status_code == 400
+    assert response.body == {"error": "INVALID_REQUEST"}
+    assert account_sessions.calls == []
+
+
+def test_account_logout_http_wiring_fails_closed_when_service_denies() -> None:
+    denied = _AccountSessions(fail=True)
+    runtime, account_sessions = _logout_runtime(account_sessions=denied)
+    response = runtime.handle(
+        _request(path="/api/account/sessions/logout", method="POST", body={}), now=NOW
+    )
+    assert response.status_code == 409
+    assert response.body == {"error": "ACCOUNT_LOGOUT_DENIED"}
+    assert account_sessions.calls == []
+
+
+def test_account_logout_http_wiring_requires_bound_authority() -> None:
+    runtime, _, _ = _runtime()
+    response = runtime.handle(
+        _request(path="/api/account/sessions/logout", method="POST", body={}), now=NOW
+    )
+    assert response.status_code == 404
+    assert response.body == {"error": "LIFECYCLE_ROUTE_NOT_WIRED"}
