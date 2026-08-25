@@ -1,27 +1,131 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-25T04:16:00Z",
+  "updated_at": "2026-08-25T05:23:31Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "app_factory",
-    "reserved_master_sha": "a5a24e318bfb5600921960e2ba5a5cf146248b76",
-    "candidate_pr": 977,
-    "candidate_head_sha": "820a403d9bebce10f696871ab326790440a7c3f7",
+    "owner": "identity",
+    "reserved_master_sha": "7b8c397d8dc7437555da9b5af1548f14a30b466f",
+    "candidate_pr": 966,
+    "candidate_head_sha": "194bf0b902707f7051a94bc4b5614109dec5bd0c",
     "freeze_active": true,
-    "freeze_reason": "App Factory materialization binding #976 is exact-master verified on a5a24e31 with Required CI and Software Factory Final Evidence SUCCESS. The next bounded Stage-4 dependency-ready slice is PR #977, which generates the repository-owned Flutter/Android source set as AndroidSourceChange inputs for the incumbent governed Software Factory path. Keep the single-writer token on App Factory through fresh exact-head Required CI/SFFE/Mobile gates, immediate current-master overlap reread, expected-head merge, and exact-master verification. No APK/AAB, device, signing, Store submission or publication claim exists yet."
+    "freeze_reason": "App Factory PR #977 is merged and exact-master verified on 7b8c397d with Required CI run 32811873109 and Software Factory Final Evidence run 32811872860 SUCCESS. No active exact-current App Factory successor is open. Hand the single-writer repository token to Identity PRE_MERGE_VALIDATION for stale-base privacy-retention PR #966; #966 historical PASS is not merge authority and must be replayed/revalidated on exact current master before any merge."
   },
-  "scheduler_stagger": {"desktop":0,"unified":12,"identity":24,"web_app":36,"agents":48},
+  "scheduler_stagger": {
+    "desktop": 0,
+    "unified": 12,
+    "identity": 24,
+    "web_app": 36,
+    "agents": 48
+  },
   "workstreams": {
-    "desktop":{"scheduler":"desktop","lifecycle":"BLOCKED_EXTERNAL","priority_rank":1,"authoritative_issue":539,"active_pr":951,"base_sha":"859920c438e7a28fa5fad95ad1e548e9b144b436","head_sha":"a693c63cd35b4696c190a9c1f7f37f1492d8cc5f","blocked_reason":"Repository/package verification is complete, but final Desktop acceptance still requires the user machine. A bounded logout/reconnect repair exists on stale PR #951 and must not merge without a legal Desktop window, current-master replay, fresh Desktop/Required CI/SFFE gates, and renewed local acceptance.","next_action":"Keep Desktop human-blocked; when a legal Desktop window exists, revalidate whether #951 is still required, replay only the reviewed delta on exact current master, then require fresh package/local acceptance before Microsoft Store readiness."},
-    "video_native_reference":{"scheduler":"unified","lifecycle":"BLOCKED_EXTERNAL","priority_rank":2,"authoritative_issue":null,"active_pr":null,"base_sha":"892c248d899659ea558821df110e2b0be5468c6c","head_sha":"892c248d899659ea558821df110e2b0be5468c6c","blocked_reason":"Repository implementation checkpoint is complete on exact master 892c248d: Character Continuity, Brand/Logo Continuity, semantic native-reference quality repair, exact-master Required CI, SFFE and applicable package evidence are green. Final real-provider visual production certification still requires an external managed provider execution; do not auto-dispatch paid provider work without explicit approval.","next_action":"Keep Video final production certification open. When explicit provider-execution approval is available, run the exact-master Video Native Reference production certification, verify receipt/artifact/provider/reference/continuity/cost/final MP4 evidence, and only then promote production VERIFIED. Do not weaken thresholds or silently degrade unsupported strict continuity."},
-    "website_v2":{"scheduler":"unified","lifecycle":"BLOCKED_EXTERNAL","priority_rank":3,"authoritative_issue":null,"active_pr":null,"base_sha":"4751fccce6fa91c3218e72eb79f16ecf8145d170","head_sha":"4751fccce6fa91c3218e72eb79f16ecf8145d170","blocked_reason":"Website V2 source recovery is merged and exact-master Required CI/SFFE plus Vercel commit status are SUCCESS, but production /api/release exact-SHA attribution and live EN/TR Dark/Light responsive/reduced-motion browser evidence could not be fetched from this runtime due DNS resolution failure and Vercel deployment lookup not-found.","next_action":"Keep Website production verification open without holding the repository merge token. Retry exact-production /api/release and live EN/TR Dark/Light desktop/tablet/mobile/reduced-motion QA when network/deployment access is available; production verification requires exact SHA attribution and live evidence."},
-    "identity":{"scheduler":"identity","lifecycle":"DEVELOPING","priority_rank":4,"authoritative_issue":null,"active_pr":966,"base_sha":"620f006fc55fa841b1deadb6bf15f3fac28a2a37","head_sha":"194bf0b902707f7051a94bc4b5614109dec5bd0c","blocked_reason":"Identity core/account/billing checkpoint is safe; privacy-retention preparation #966 is stale-base and token-blocked by higher-priority unified closure work.","next_action":"Preserve the current Identity checkpoint. At the next legal Identity window reread current master and replay only still-valid privacy-retention work with fresh gates."},
-    "web_app":{"scheduler":"web_app","lifecycle":"DEVELOPING","priority_rank":5,"authoritative_issue":486,"active_pr":968,"base_sha":"00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827","head_sha":"9a1aade05c58d83f65512e5acafa4508e7a3142f","blocked_reason":"Phase 7 is exact-master verified. Draft Phase-8 enterprise-table work is stale-base relative to current master and must not merge ahead of the App Factory token window.","next_action":"Keep #968 as development/test preparation only. At a legal Web App merge window reread exact master and semantic overlap, then replay only still-required Phase-8 delta and require fresh gates before merge."},
-    "agents":{"scheduler":"agents","lifecycle":"DEVELOPING","priority_rank":6,"authoritative_issue":557,"active_pr":946,"base_sha":"7e06c5e8ef42ae685cffd98ccc3dcc0448293eb4","head_sha":"1f69a1aec7ef3718bba2d50763e0d4e7512c388c","blocked_reason":"Agent final-closure validator is stale-base and token-blocked; P0 21/21 provider checkpoint does not imply 47/47 closure.","next_action":"Preserve Agent preparation. At a legal Agents merge window reread current master/token and replay only still-valid evidence-validator work with fresh Required CI/SFFE and applicable Agent/security/runtime gates."},
-    "app_factory":{"scheduler":"unified","lifecycle":"PRE_MERGE_VALIDATION","priority_rank":7,"authoritative_issue":547,"active_pr":977,"base_sha":"a5a24e318bfb5600921960e2ba5a5cf146248b76","head_sha":"820a403d9bebce10f696871ab326790440a7c3f7","blocked_reason":null,"next_action":"Require fresh exact-head Required CI, Software Factory Final Evidence and applicable Mobile Store/security gates on PR #977. On PASS, reread live master/token/active overlap immediately, merge only with expected-head protection, then exact-master verify. After that execute the existing governed Software Factory materialization path with a real approved ProductSpec/projection and governed Gradle wrapper binary input to create the repository-owned Flutter Android project; only then advance toward an exact APK/AAB build."},
-    "mobile_store":{"scheduler":"unified","lifecycle":"BLOCKED_INTERNAL","priority_rank":8,"authoritative_issue":502,"active_pr":null,"base_sha":null,"head_sha":null,"blocked_reason":"Phase 3 cannot produce genuine APK/AAB/device evidence until App Factory Stage 4 source generation is merged and the governed Software Factory path materializes a real repository-owned Android project.","next_action":"Preserve existing build/device/store contracts. After #977 exact-master verification, materialize the real Flutter Android project through the incumbent governed Software Factory, then run the exact binary build and emulator/device evidence chain."},
-    "microsoft_store":{"scheduler":"unified","lifecycle":"BLOCKED_EXTERNAL","priority_rank":9,"authoritative_issue":539,"active_pr":null,"base_sha":"859920c438e7a28fa5fad95ad1e548e9b144b436","head_sha":"859920c438e7a28fa5fad95ad1e548e9b144b436","blocked_reason":"Exact-master Desktop ZIP/package evidence exists, but Store progression remains blocked on human local Windows acceptance and explicit publication decisions; automatic Partner Center submission/publication is prohibited.","next_action":"After issue #539 records successful local Windows acceptance on an exact-current package, prepare the explicit Microsoft Store submission checkpoint without auto-publishing."}
+    "desktop": {
+      "scheduler": "desktop",
+      "lifecycle": "BLOCKED_EXTERNAL",
+      "priority_rank": 1,
+      "authoritative_issue": 539,
+      "active_pr": 951,
+      "base_sha": "859920c438e7a28fa5fad95ad1e548e9b144b436",
+      "head_sha": "a693c63cd35b4696c190a9c1f7f37f1492d8cc5f",
+      "blocked_reason": "Repository/package verification is complete, but final Desktop acceptance still requires the user machine. A bounded logout/reconnect repair exists on stale PR #951 and must not merge without a legal Desktop window, current-master replay, fresh Desktop/Required CI/SFFE gates, and renewed local acceptance.",
+      "next_action": "Keep Desktop human-blocked; when a legal Desktop window exists, revalidate whether #951 is still required, replay only the reviewed delta on exact current master, then require fresh package/local acceptance before Microsoft Store readiness."
+    },
+    "video_native_reference": {
+      "scheduler": "unified",
+      "lifecycle": "BLOCKED_EXTERNAL",
+      "priority_rank": 2,
+      "authoritative_issue": null,
+      "active_pr": null,
+      "base_sha": "892c248d899659ea558821df110e2b0be5468c6c",
+      "head_sha": "892c248d899659ea558821df110e2b0be5468c6c",
+      "blocked_reason": "Repository implementation checkpoint is complete on exact master 892c248d: Character Continuity, Brand/Logo Continuity, semantic native-reference quality repair, exact-master Required CI, SFFE and applicable package evidence are green. Final real-provider visual production certification still requires an external managed provider execution; do not auto-dispatch paid provider work without explicit approval.",
+      "next_action": "Keep Video final production certification open. When explicit provider-execution approval is available, run the exact-master Video Native Reference production certification, verify receipt/artifact/provider/reference/continuity/cost/final MP4 evidence, and only then promote production VERIFIED. Do not weaken thresholds or silently degrade unsupported strict continuity."
+    },
+    "website_v2": {
+      "scheduler": "unified",
+      "lifecycle": "BLOCKED_EXTERNAL",
+      "priority_rank": 3,
+      "authoritative_issue": null,
+      "active_pr": null,
+      "base_sha": "4751fccce6fa91c3218e72eb79f16ecf8145d170",
+      "head_sha": "4751fccce6fa91c3218e72eb79f16ecf8145d170",
+      "blocked_reason": "Website V2 source recovery is merged and exact-master Required CI/SFFE plus Vercel commit status are SUCCESS, but production /api/release exact-SHA attribution and live EN/TR Dark/Light responsive/reduced-motion browser evidence could not be fetched from this runtime due DNS resolution failure and Vercel deployment lookup not-found.",
+      "next_action": "Keep Website production verification open without holding the repository merge token. Retry exact-production /api/release and live EN/TR Dark/Light desktop/tablet/mobile/reduced-motion QA when network/deployment access is available; production verification requires exact SHA attribution and live evidence."
+    },
+    "identity": {
+      "scheduler": "identity",
+      "lifecycle": "PRE_MERGE_VALIDATION",
+      "priority_rank": 4,
+      "authoritative_issue": null,
+      "active_pr": 966,
+      "base_sha": "620f006fc55fa841b1deadb6bf15f3fac28a2a37",
+      "head_sha": "194bf0b902707f7051a94bc4b5614109dec5bd0c",
+      "blocked_reason": null,
+      "next_action": "At the legal Identity merge window reread exact current master 7b8c397d and semantic/path overlap, replay only the reviewed two-file privacy-retention delta from #966 if still valid, require fully fresh Required CI + SFFE + applicable privacy/security/controller gates, then expected-head merge and exact-master verification."
+    },
+    "web_app": {
+      "scheduler": "web_app",
+      "lifecycle": "DEVELOPING",
+      "priority_rank": 5,
+      "authoritative_issue": 486,
+      "active_pr": 968,
+      "base_sha": "00fb991e1e3fd3388dd5b65b7d3caa9d1b4f2827",
+      "head_sha": "9a1aade05c58d83f65512e5acafa4508e7a3142f",
+      "blocked_reason": "Phase 7 is exact-master verified. Draft Phase-8 enterprise-table work is stale-base relative to current master and must not merge ahead of the Identity token window.",
+      "next_action": "Keep #968 as development/test preparation only. At a legal Web App merge window reread exact master and semantic overlap, then replay only still-required Phase-8 delta and require fresh gates before merge."
+    },
+    "agents": {
+      "scheduler": "agents",
+      "lifecycle": "DEVELOPING",
+      "priority_rank": 6,
+      "authoritative_issue": 557,
+      "active_pr": 946,
+      "base_sha": "7e06c5e8ef42ae685cffd98ccc3dcc0448293eb4",
+      "head_sha": "1f69a1aec7ef3718bba2d50763e0d4e7512c388c",
+      "blocked_reason": "Agent final-closure validator is stale-base and token-blocked; P0 21/21 provider checkpoint does not imply 47/47 closure.",
+      "next_action": "Preserve Agent preparation. At a legal Agents merge window reread current master/token and replay only still-valid evidence-validator work with fresh Required CI/SFFE and applicable Agent/security/runtime gates."
+    },
+    "app_factory": {
+      "scheduler": "unified",
+      "lifecycle": "DEVELOPING",
+      "priority_rank": 7,
+      "authoritative_issue": 547,
+      "active_pr": null,
+      "base_sha": "7b8c397d8dc7437555da9b5af1548f14a30b466f",
+      "head_sha": "7b8c397d8dc7437555da9b5af1548f14a30b466f",
+      "blocked_reason": "PR #977 is merged and exact-master verified. Repository-owned Flutter/Android source generation is present, but a genuine governed materialization/build run with an approved ProductSpec/projection and Gradle wrapper binary input has not yet produced exact APK/AAB/device evidence.",
+      "next_action": "Release the repository merge token. Later, through the existing governed Software Factory path, materialize a real approved Flutter Android project and then run the exact binary build/device evidence chain; do not claim APK/AAB/signing/Store readiness before evidence."
+    },
+    "mobile_store": {
+      "scheduler": "unified",
+      "lifecycle": "BLOCKED_INTERNAL",
+      "priority_rank": 8,
+      "authoritative_issue": 502,
+      "active_pr": null,
+      "base_sha": null,
+      "head_sha": null,
+      "blocked_reason": "Phase 3 cannot produce genuine APK/AAB/device evidence until the governed Software Factory path materializes a real repository-owned Android project from the now-verified Stage-4 source generator.",
+      "next_action": "Preserve existing build/device/store contracts. Materialize the real Flutter Android project through the incumbent governed Software Factory, then run the exact binary build and emulator/device evidence chain."
+    },
+    "microsoft_store": {
+      "scheduler": "unified",
+      "lifecycle": "BLOCKED_EXTERNAL",
+      "priority_rank": 9,
+      "authoritative_issue": 539,
+      "active_pr": null,
+      "base_sha": "859920c438e7a28fa5fad95ad1e548e9b144b436",
+      "head_sha": "859920c438e7a28fa5fad95ad1e548e9b144b436",
+      "blocked_reason": "Exact-master Desktop ZIP/package evidence exists, but Store progression remains blocked on human local Windows acceptance and explicit publication decisions; automatic Partner Center submission/publication is prohibited.",
+      "next_action": "After issue #539 records successful local Windows acceptance on an exact-current package, prepare the explicit Microsoft Store submission checkpoint without auto-publishing."
+    }
   },
-  "metrics":{"master_advances":17,"stale_pass_invalidations":13,"replay_resync_count":6,"ci_cycles":13,"successful_merges":17,"duplicate_pr_count":0,"churn_only_commit_count":0}
+  "metrics": {
+    "master_advances": 18,
+    "stale_pass_invalidations": 13,
+    "replay_resync_count": 6,
+    "ci_cycles": 14,
+    "successful_merges": 18,
+    "duplicate_pr_count": 0,
+    "churn_only_commit_count": 0
+  }
 }
