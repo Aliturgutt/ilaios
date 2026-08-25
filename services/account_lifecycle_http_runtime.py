@@ -64,6 +64,14 @@ class AccountSessionLifecycleAuthority(Protocol):
         session_id: str,
     ) -> bool: ...
 
+    def revoke_all_sessions(
+        self,
+        *,
+        authenticated_user_id: str,
+        authenticated_tenant_id: str,
+        recent_authentication_verified: bool,
+    ) -> int: ...
+
 
 @dataclass(frozen=True, slots=True)
 class AccountLifecycleHttpRequest:
@@ -119,11 +127,15 @@ class AccountLifecycleHttpRuntime:
             "account.delete",
             "account.export_my_data",
             "account.logout",
+            "account.revoke_all_sessions",
         }:
             return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
         if projection.surface_id == "account.export_my_data" and self._account_export is None:
             return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
-        if projection.surface_id == "account.logout" and self._account_sessions is None:
+        if projection.surface_id in {
+            "account.logout",
+            "account.revoke_all_sessions",
+        } and self._account_sessions is None:
             return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
 
         try:
@@ -167,6 +179,19 @@ class AccountLifecycleHttpRuntime:
                     body={"status": "logged_out"},
                 )
 
+            if projection.surface_id == "account.revoke_all_sessions":
+                self._empty_body(request.body)
+                assert self._account_sessions is not None
+                revoked_count = self._account_sessions.revoke_all_sessions(
+                    authenticated_user_id=principal.principal_id,
+                    authenticated_tenant_id=principal.tenant_id,
+                    recent_authentication_verified=request.recent_authentication_verified,
+                )
+                return AccountLifecycleHttpResponse(
+                    status_code=200,
+                    body={"status": "sessions_revoked", "revoked_sessions": revoked_count},
+                )
+
             if projection.surface_id == "account.export_my_data":
                 self._empty_body(request.body)
                 assert self._account_export is not None
@@ -196,6 +221,8 @@ class AccountLifecycleHttpRuntime:
                 code = "ACCOUNT_EXPORT_DENIED"
             elif projection.surface_id == "account.logout":
                 code = "ACCOUNT_LOGOUT_DENIED"
+            elif projection.surface_id == "account.revoke_all_sessions":
+                code = "ACCOUNT_REVOKE_ALL_DENIED"
             else:
                 code = "ACCOUNT_DELETE_DENIED"
             return self._error(409, code)
