@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-25T14:25:00Z",
+  "updated_at": "2026-08-25T16:24:13Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "identity",
-    "reserved_master_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
+    "reserved_master_sha": "7566776abba30041b44e0d8fc73beae5aaf4460b",
     "candidate_pr": null,
     "candidate_head_sha": null,
     "freeze_active": true,
-    "freeze_reason": "Web App Phase-8 enterprise-table successor PR #988 is merged on exact master bbebbfdc and exact-master Required CI run 32858157637, Software Factory Final Evidence run 32858157334, Web App Factory exact-master run 32858157336, and Vercel are SUCCESS. Web App repository work no longer needs to hold the single-writer token. Reserve the next legal merge window for Identity to close the remaining actual HTTP/client lifecycle wiring gap from exact current master with fresh gates and expected-head protection."
+    "freeze_reason": "Identity account-delete HTTP wiring PR #991 is merged as exact master 7566776a and exact-master Required CI run 32870493018 plus Software Factory Final Evidence run 32870492806 are SUCCESS. Refresh the bounded Identity lock to exact current master before starting the next lifecycle HTTP/client wiring slice; stale bbebbfdc reservation must not authorize new mutation."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -58,10 +58,10 @@
       "priority_rank": 4,
       "authoritative_issue": null,
       "active_pr": null,
-      "base_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
-      "head_sha": "bbebbfdc578715fcc0062ebd93f41ef33829fbed",
+      "base_sha": "7566776abba30041b44e0d8fc73beae5aaf4460b",
+      "head_sha": "7566776abba30041b44e0d8fc73beae5aaf4460b",
       "blocked_reason": null,
-      "next_action": "From exact current master bbebbfdc, re-audit existing Web/App auth/session/router/runtime authorities and implement the smallest real HTTP/client account-lifecycle wiring slice that delegates to canonical lifecycle services and AuthenticationBoundary/AuthorizationEngine/SessionRegistry. Require unauthenticated/default-deny, canonical principal/user binding, tenant isolation, recent-auth and explicit destructive confirmation, exact route/method matching, sanitized output, fresh Required CI/SFFE/applicable Identity/Web/security/controller gates, expected-head merge, and exact-master verification."
+      "next_action": "Account-delete HTTP wiring PR #991 is exact-master VERIFIED on 7566776a. From this exact current master, re-audit the remaining lifecycle routes recovery, unlink, logout, revoke-all, export-my-data, tenant delete and privacy delete plus actual client/UI wiring. Implement only the next smallest dependency-ready slice through canonical AuthenticationBoundary, SessionRegistry, AuthorizationEngine and existing lifecycle services; require fresh exact-head Required CI/SFFE/applicable Identity/Web/security/controller gates, expected-head merge and exact-master verification."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 20,
-    "stale_pass_invalidations": 14,
+    "master_advances": 21,
+    "stale_pass_invalidations": 15,
     "replay_resync_count": 6,
-    "ci_cycles": 14,
-    "successful_merges": 20,
+    "ci_cycles": 15,
+    "successful_merges": 21,
     "duplicate_pr_count": 0,
     "churn_only_commit_count": 0
   }
