@@ -55,9 +55,21 @@ def _g1_adversarial_verdicts() -> dict[str, str]:
     }
 
 
+def _evidence_context_bindings(refs: set[str]) -> dict[str, dict[str, str]]:
+    context = {
+        "execution_id": "exec-final-001",
+        "job_id": "job-final-001",
+        "user_id": "user-final-001",
+        "tenant_id": "tenant-final-001",
+        "session_id": "session-final-001",
+    }
+    return {ref: dict(context) for ref in refs}
+
+
 def _receipt() -> dict[str, object]:
     exact_master_sha = "a" * 40
     exact_head_sha = "d" * 40
+    provider_receipts = ["receipt-provider-001", "receipt-tool-001"]
     receipt: dict[str, object] = {
         "agent_workstream": "CLOSED",
         "exact_master_sha": exact_master_sha,
@@ -106,7 +118,10 @@ def _receipt() -> dict[str, object]:
         "exact_master_ci_evidence_ref": "github-actions://required-ci/master",
         "agent_execution_evidence_refs": _agent_evidence_refs(),
         "agent_execution_evidence_bindings": _agent_evidence_bindings(),
-        "provider_tool_receipt_ids": ["receipt-provider-001", "receipt-tool-001"],
+        "provider_tool_receipt_ids": provider_receipts,
+        "evidence_context_bindings": _evidence_context_bindings(
+            set(_agent_evidence_refs()) | set(provider_receipts)
+        ),
         "output_artifact_sha256": "c" * 64,
         "output_validation_result": "VERIFIED",
         "cost_usage_evidence_ref": "evidence://exec-final-001/cost-usage",
@@ -186,6 +201,7 @@ def test_final_closure_receipt_rejects_incomplete_or_blocked_evidence() -> None:
         ("agent_execution_evidence_refs", []),
         ("agent_execution_evidence_bindings", {}),
         ("provider_tool_receipt_ids", []),
+        ("evidence_context_bindings", {}),
         ("evidence_revision_bindings", {}),
         ("output_artifact_sha256", "unknown"),
         ("output_validation_result", "NOT_VERIFIED"),
@@ -315,6 +331,49 @@ def test_final_closure_receipt_rejects_evidence_ref_binding_divergence() -> None
     evidence_refs[-1] = evidence_refs[0]
     receipt["agent_execution_evidence_refs"] = evidence_refs
     with pytest.raises(AgentFinalClosureError, match="must be unique"):
+        validate_agent_final_closure_receipt(receipt)
+
+
+def test_final_closure_receipt_rejects_wrong_job_or_tenant_context() -> None:
+    receipt = _receipt()
+    contexts = cast(
+        dict[str, dict[str, str]], receipt["evidence_context_bindings"]
+    )
+    first_ref = _agent_evidence_refs()[0]
+    contexts[first_ref]["job_id"] = "job-other-999"
+    with pytest.raises(AgentFinalClosureError, match="cross-job"):
+        validate_agent_final_closure_receipt(receipt)
+
+    receipt = _receipt()
+    contexts = cast(
+        dict[str, dict[str, str]], receipt["evidence_context_bindings"]
+    )
+    contexts["receipt-provider-001"]["tenant_id"] = "tenant-other-999"
+    with pytest.raises(AgentFinalClosureError, match="cross-job"):
+        validate_agent_final_closure_receipt(receipt)
+
+
+def test_final_closure_receipt_rejects_missing_or_extra_context_bindings() -> None:
+    receipt = _receipt()
+    contexts = cast(
+        dict[str, dict[str, str]], receipt["evidence_context_bindings"]
+    )
+    del contexts[_agent_evidence_refs()[0]]
+    with pytest.raises(AgentFinalClosureError, match="cover exactly"):
+        validate_agent_final_closure_receipt(receipt)
+
+    receipt = _receipt()
+    contexts = cast(
+        dict[str, dict[str, str]], receipt["evidence_context_bindings"]
+    )
+    contexts["receipt-unrelated-999"] = {
+        "execution_id": "exec-final-001",
+        "job_id": "job-final-001",
+        "user_id": "user-final-001",
+        "tenant_id": "tenant-final-001",
+        "session_id": "session-final-001",
+    }
+    with pytest.raises(AgentFinalClosureError, match="cover exactly"):
         validate_agent_final_closure_receipt(receipt)
 
 
