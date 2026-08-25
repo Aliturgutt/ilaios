@@ -70,6 +70,7 @@ def _receipt() -> dict[str, object]:
     exact_master_sha = "a" * 40
     exact_head_sha = "d" * 40
     provider_receipts = ["receipt-provider-001", "receipt-tool-001"]
+    output_evidence_ref = "evidence://exec-final-001/output-artifact"
     receipt: dict[str, object] = {
         "agent_workstream": "CLOSED",
         "exact_master_sha": exact_master_sha,
@@ -120,9 +121,14 @@ def _receipt() -> dict[str, object]:
         "agent_execution_evidence_bindings": _agent_evidence_bindings(),
         "provider_tool_receipt_ids": provider_receipts,
         "evidence_context_bindings": _evidence_context_bindings(
-            set(_agent_evidence_refs()) | set(provider_receipts)
+            set(_agent_evidence_refs()) | set(provider_receipts) | {output_evidence_ref}
         ),
         "output_artifact_sha256": "c" * 64,
+        "output_artifact_evidence_ref": output_evidence_ref,
+        "output_artifact_evidence_binding": {
+            "evidence_ref": output_evidence_ref,
+            "sha256": "c" * 64,
+        },
         "output_validation_result": "VERIFIED",
         "cost_usage_evidence_ref": "evidence://exec-final-001/cost-usage",
         "human_owner_evidence_ref": "evidence://exec-final-001/human-owner",
@@ -147,6 +153,7 @@ def _receipt() -> dict[str, object]:
             "evidence-final-001",
             "receipt-provider-001",
             "receipt-tool-001",
+            output_evidence_ref,
         }
     )
     revision_bindings = {ref: exact_master_sha for ref in master_refs}
@@ -204,6 +211,8 @@ def test_final_closure_receipt_rejects_incomplete_or_blocked_evidence() -> None:
         ("evidence_context_bindings", {}),
         ("evidence_revision_bindings", {}),
         ("output_artifact_sha256", "unknown"),
+        ("output_artifact_evidence_ref", ""),
+        ("output_artifact_evidence_binding", {}),
         ("output_validation_result", "NOT_VERIFIED"),
         ("cost_usage_evidence_ref", ""),
         ("human_owner_evidence_ref", ""),
@@ -403,6 +412,26 @@ def test_final_closure_receipt_rejects_stale_or_missing_revision_bindings() -> N
     revision_bindings["github-actions://required-ci/head"] = "a" * 40
     receipt["evidence_revision_bindings"] = revision_bindings
     with pytest.raises(AgentFinalClosureError, match="exact-head CI evidence"):
+        validate_agent_final_closure_receipt(receipt)
+
+
+def test_final_closure_receipt_rejects_output_artifact_lineage_mismatch() -> None:
+    receipt = _receipt()
+    binding = cast(dict[str, str], receipt["output_artifact_evidence_binding"])
+    binding["sha256"] = "e" * 64
+    with pytest.raises(AgentFinalClosureError, match="output artifact evidence"):
+        validate_agent_final_closure_receipt(receipt)
+
+    receipt = _receipt()
+    contexts = cast(dict[str, dict[str, str]], receipt["evidence_context_bindings"])
+    contexts["evidence://exec-final-001/output-artifact"]["job_id"] = "job-other-999"
+    with pytest.raises(AgentFinalClosureError, match="cross-job"):
+        validate_agent_final_closure_receipt(receipt)
+
+    receipt = _receipt()
+    revision_bindings = cast(dict[str, str], receipt["evidence_revision_bindings"])
+    revision_bindings["evidence://exec-final-001/output-artifact"] = "e" * 40
+    with pytest.raises(AgentFinalClosureError, match="stale or cross-SHA"):
         validate_agent_final_closure_receipt(receipt)
 
 
