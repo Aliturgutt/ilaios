@@ -92,6 +92,17 @@ class TenantDeletionAuthority(Protocol):
     ) -> tuple[int, int, int, int]: ...
 
 
+class PrivacyDeletionAuthority(Protocol):
+    def purge_closed_account(
+        self,
+        *,
+        user_id: str,
+        retention_cutoff: str,
+        privacy_deletion_confirmed: bool,
+        occurred_at: str,
+    ) -> tuple[int, int, int]: ...
+
+
 @dataclass(frozen=True, slots=True)
 class AccountLifecycleHttpRequest:
     path: str
@@ -100,6 +111,7 @@ class AccountLifecycleHttpRequest:
     session_id: str
     body: Mapping[str, object]
     recent_authentication_verified: bool
+    retention_cutoff: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -121,6 +133,7 @@ class AccountLifecycleHttpRuntime:
         account_export: AccountDataExportAuthority | None = None,
         account_sessions: AccountSessionLifecycleAuthority | None = None,
         tenant_deletion: TenantDeletionAuthority | None = None,
+        privacy_retention: PrivacyDeletionAuthority | None = None,
     ) -> None:
         self._authentication = authentication
         self._sessions = sessions
@@ -129,6 +142,7 @@ class AccountLifecycleHttpRuntime:
         self._account_export = account_export
         self._account_sessions = account_sessions
         self._tenant_deletion = tenant_deletion
+        self._privacy_retention = privacy_retention
 
     def handle(
         self,
@@ -150,6 +164,7 @@ class AccountLifecycleHttpRuntime:
             "account.logout",
             "account.revoke_all_sessions",
             "tenant.delete",
+            "account.privacy_delete",
         }:
             return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
         if projection.surface_id == "account.export_my_data" and self._account_export is None:
@@ -161,6 +176,8 @@ class AccountLifecycleHttpRuntime:
         ):
             return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
         if projection.surface_id == "tenant.delete" and self._tenant_deletion is None:
+            return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
+        if projection.surface_id == "account.privacy_delete" and self._privacy_retention is None:
             return self._error(404, "LIFECYCLE_ROUTE_NOT_WIRED")
 
         try:
@@ -260,6 +277,34 @@ class AccountLifecycleHttpRuntime:
                     },
                 )
 
+            if projection.surface_id == "account.privacy_delete":
+                confirmation = self._deletion_confirmation(
+                    request.body,
+                    error_message="privacy delete body must contain only confirmation",
+                    denial_message="explicit privacy deletion confirmation is required",
+                )
+                cutoff = (request.retention_cutoff or "").strip()
+                if not cutoff:
+                    raise ValueError("trusted retention cutoff is required")
+                assert self._privacy_retention is not None
+                deleted_sessions, deleted_memberships, deleted_user = (
+                    self._privacy_retention.purge_closed_account(
+                        user_id=principal.principal_id,
+                        retention_cutoff=cutoff,
+                        privacy_deletion_confirmed=confirmation,
+                        occurred_at=self._utc(now),
+                    )
+                )
+                return AccountLifecycleHttpResponse(
+                    status_code=200,
+                    body={
+                        "status": "privacy_deleted",
+                        "deleted_sessions": deleted_sessions,
+                        "deleted_memberships": deleted_memberships,
+                        "deleted_user": deleted_user,
+                    },
+                )
+
             confirmation = self._deletion_confirmation(
                 request.body,
                 error_message="account delete body must contain only confirmation",
@@ -284,6 +329,8 @@ class AccountLifecycleHttpRuntime:
                 code = "ACCOUNT_REVOKE_ALL_DENIED"
             elif projection.surface_id == "tenant.delete":
                 code = "TENANT_DELETE_DENIED"
+            elif projection.surface_id == "account.privacy_delete":
+                code = "PRIVACY_DELETE_DENIED"
             else:
                 code = "ACCOUNT_DELETE_DENIED"
             return self._error(409, code)
