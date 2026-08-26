@@ -13,7 +13,7 @@ import json
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Protocol
+from typing import Literal, Protocol
 
 from services.identity import AuthorizationEngine, Principal
 from services.web_app_auth_contract import (
@@ -44,6 +44,20 @@ class IntegrationCapabilityAdapter(Protocol):
         project_id: str,
         idempotency_key: str,
     ) -> dict[str, object]: ...
+
+
+@dataclass(frozen=True, slots=True)
+class IntegrationReconciliationResult:
+    """Provider-backed resolution for a durable invocation claim.
+
+    `COMPLETED` means the canonical backend capability authority has proven that the
+    external effect completed and provides its bounded response. `NOT_EXECUTED` means
+    that authority has positively proven that no external effect occurred, so retry is
+    safe. Absence/ambiguity is not represented and therefore remains fail-closed.
+    """
+
+    outcome: Literal["COMPLETED", "NOT_EXECUTED"]
+    response: dict[str, object] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -205,50 +219,126 @@ class WebAppIntegrationsSettingsRuntime:
             project_id=self._contract.project_id,
             idempotency_key=idempotency_key,
         )
-        response_json = self._safe_payload(response)
-        result = json.loads(response_json)
-        if not isinstance(result, dict):
-            raise WebAppIntegrationsSettingsError(
-                "INVALID_RESPONSE", "capability response is invalid", 502
-            )
-
-        try:
-            self._db.execute("BEGIN IMMEDIATE")
-            self._db.execute(
-                """INSERT INTO web_app_integration_invocations
-                   (tenant_id, project_id, integration_id, operation, idempotency_key,
-                    payload_sha256, response_json, created_at)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
-                (
-                    principal.tenant_id,
-                    self._contract.project_id,
-                    integration_id,
-                    operation,
-                    idempotency_key,
-                    payload_sha,
-                    response_json,
-                    timestamp,
-                ),
-            )
-            self._db.execute(
-                """DELETE FROM web_app_integration_invocation_claims
-                   WHERE tenant_id=? AND project_id=? AND integration_id=?
-                     AND operation=? AND idempotency_key=?""",
-                (
-                    principal.tenant_id,
-                    self._contract.project_id,
-                    integration_id,
-                    operation,
-                    idempotency_key,
-                ),
-            )
-            self._db.commit()
-        except Exception:
-            self._db.rollback()
-            raise
-
+        result = self._validated_response(response)
+        self._complete_invocation(
+            tenant_id=principal.tenant_id,
+            integration_id=integration_id,
+            operation=operation,
+            idempotency_key=idempotency_key,
+            payload_sha=payload_sha,
+            result=result,
+            created_at=timestamp,
+        )
         self._audit_success("invoke_integration", principal, integration_id, now)
         return result
+
+    def reconcile_invocation(
+        self,
+        *,
+        principal: Principal,
+        integration_id: str,
+        operation: str,
+        payload: dict[str, object],
+        idempotency_key: str,
+        now: datetime,
+    ) -> dict[str, object]:
+        """Resolve a durable pending claim without blindly repeating an external effect."""
+
+        self._token(integration_id, "integration_id")
+        self._token(operation, "operation")
+        self._token(idempotency_key, "idempotency_key")
+        timestamp = self._utc(now)
+        self._authorize(principal, "integration.use", now)
+        binding = self._read_binding(principal.tenant_id, integration_id)
+        payload_json = self._safe_payload(payload)
+        payload_sha = hashlib.sha256(payload_json.encode("utf-8")).hexdigest()
+
+        prior = self._read_completed_invocation(
+            tenant_id=principal.tenant_id,
+            integration_id=integration_id,
+            operation=operation,
+            idempotency_key=idempotency_key,
+        )
+        if prior is not None:
+            return self._completed_response(prior, payload_sha)
+
+        claim = self._read_pending_claim(
+            tenant_id=principal.tenant_id,
+            integration_id=integration_id,
+            operation=operation,
+            idempotency_key=idempotency_key,
+        )
+        if claim is None:
+            raise WebAppIntegrationsSettingsError(
+                "IDEMPOTENCY_CLAIM_NOT_FOUND", "pending invocation claim not found", 404
+            )
+        if str(claim["payload_sha256"]) != payload_sha:
+            raise WebAppIntegrationsSettingsError(
+                "IDEMPOTENCY_CONFLICT",
+                "idempotency key is reserved for different input",
+                409,
+            )
+
+        reconcile = getattr(self._capability_adapter, "reconcile", None)
+        if not callable(reconcile):
+            raise WebAppIntegrationsSettingsError(
+                "RECONCILIATION_UNAVAILABLE",
+                "backend capability cannot prove pending invocation outcome",
+                409,
+            )
+        resolution = reconcile(
+            capability_ref=binding.capability_ref,
+            operation=operation,
+            payload=json.loads(payload_json),
+            tenant_id=principal.tenant_id,
+            project_id=self._contract.project_id,
+            idempotency_key=idempotency_key,
+        )
+        if not isinstance(resolution, IntegrationReconciliationResult):
+            raise WebAppIntegrationsSettingsError(
+                "INVALID_RECONCILIATION",
+                "backend capability returned invalid reconciliation evidence",
+                502,
+            )
+
+        if resolution.outcome == "COMPLETED":
+            if resolution.response is None:
+                raise WebAppIntegrationsSettingsError(
+                    "INVALID_RECONCILIATION", "completed reconciliation lacks response", 502
+                )
+            result = self._validated_response(resolution.response)
+            self._complete_invocation(
+                tenant_id=principal.tenant_id,
+                integration_id=integration_id,
+                operation=operation,
+                idempotency_key=idempotency_key,
+                payload_sha=payload_sha,
+                result=result,
+                created_at=timestamp,
+            )
+            self._audit_success("reconcile_integration_completed", principal, integration_id, now)
+            return result
+
+        if resolution.outcome == "NOT_EXECUTED":
+            if resolution.response is not None:
+                raise WebAppIntegrationsSettingsError(
+                    "INVALID_RECONCILIATION",
+                    "not-executed reconciliation cannot include response",
+                    502,
+                )
+            self._delete_pending_claim(
+                tenant_id=principal.tenant_id,
+                integration_id=integration_id,
+                operation=operation,
+                idempotency_key=idempotency_key,
+                payload_sha=payload_sha,
+            )
+            self._audit_success("reconcile_integration_retry_allowed", principal, integration_id, now)
+            return {"status": "RETRY_ALLOWED"}
+
+        raise WebAppIntegrationsSettingsError(
+            "INVALID_RECONCILIATION", "unknown reconciliation outcome", 502
+        )
 
     def set_setting(
         self, *, principal: Principal, key: str, value: str, now: datetime
@@ -327,6 +417,34 @@ class WebAppIntegrationsSettingsRuntime:
             )
         return row
 
+    def _read_pending_claim(
+        self,
+        *,
+        tenant_id: str,
+        integration_id: str,
+        operation: str,
+        idempotency_key: str,
+    ) -> sqlite3.Row | None:
+        row = self._db.execute(
+            """SELECT payload_sha256, created_at FROM web_app_integration_invocation_claims
+               WHERE tenant_id=? AND project_id=? AND integration_id=?
+                 AND operation=? AND idempotency_key=?""",
+            (
+                tenant_id,
+                self._contract.project_id,
+                integration_id,
+                operation,
+                idempotency_key,
+            ),
+        ).fetchone()
+        if row is None:
+            return None
+        if not isinstance(row, sqlite3.Row):
+            raise WebAppIntegrationsSettingsError(
+                "INVALID_CHECKPOINT", "pending invocation checkpoint is invalid", 500
+            )
+        return row
+
     def _completed_response(self, row: sqlite3.Row, payload_sha: str) -> dict[str, object]:
         if str(row["payload_sha256"]) != payload_sha:
             raise WebAppIntegrationsSettingsError(
@@ -394,6 +512,98 @@ class WebAppIntegrationsSettingsRuntime:
             "idempotent integration invocation is already in progress or requires reconciliation",
             409,
         )
+
+    def _complete_invocation(
+        self,
+        *,
+        tenant_id: str,
+        integration_id: str,
+        operation: str,
+        idempotency_key: str,
+        payload_sha: str,
+        result: dict[str, object],
+        created_at: str,
+    ) -> None:
+        response_json = self._safe_payload(result)
+        try:
+            self._db.execute("BEGIN IMMEDIATE")
+            self._db.execute(
+                """INSERT INTO web_app_integration_invocations
+                   (tenant_id, project_id, integration_id, operation, idempotency_key,
+                    payload_sha256, response_json, created_at)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+                (
+                    tenant_id,
+                    self._contract.project_id,
+                    integration_id,
+                    operation,
+                    idempotency_key,
+                    payload_sha,
+                    response_json,
+                    created_at,
+                ),
+            )
+            self._db.execute(
+                """DELETE FROM web_app_integration_invocation_claims
+                   WHERE tenant_id=? AND project_id=? AND integration_id=?
+                     AND operation=? AND idempotency_key=? AND payload_sha256=?""",
+                (
+                    tenant_id,
+                    self._contract.project_id,
+                    integration_id,
+                    operation,
+                    idempotency_key,
+                    payload_sha,
+                ),
+            )
+            self._db.commit()
+        except Exception:
+            self._db.rollback()
+            raise
+
+    def _delete_pending_claim(
+        self,
+        *,
+        tenant_id: str,
+        integration_id: str,
+        operation: str,
+        idempotency_key: str,
+        payload_sha: str,
+    ) -> None:
+        try:
+            self._db.execute("BEGIN IMMEDIATE")
+            cursor = self._db.execute(
+                """DELETE FROM web_app_integration_invocation_claims
+                   WHERE tenant_id=? AND project_id=? AND integration_id=?
+                     AND operation=? AND idempotency_key=? AND payload_sha256=?""",
+                (
+                    tenant_id,
+                    self._contract.project_id,
+                    integration_id,
+                    operation,
+                    idempotency_key,
+                    payload_sha,
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise WebAppIntegrationsSettingsError(
+                    "IDEMPOTENCY_STATE_LOST",
+                    "pending invocation claim changed during reconciliation",
+                    409,
+                )
+            self._db.commit()
+        except Exception:
+            self._db.rollback()
+            raise
+
+    def _validated_response(self, response: dict[str, object]) -> dict[str, object]:
+        response_json = self._safe_payload(response)
+        result = json.loads(response_json)
+        if not isinstance(result, dict):
+            raise WebAppIntegrationsSettingsError(
+                "INVALID_RESPONSE", "capability response is invalid", 502
+            )
+        return result
 
     def _authorize(self, principal: Principal, permission: str, now: datetime) -> None:
         request = action_access_request(
