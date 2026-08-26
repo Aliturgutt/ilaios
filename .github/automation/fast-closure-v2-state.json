@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-26T09:35:00Z",
+  "updated_at": "2026-08-26T11:46:00Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "web_app",
-    "reserved_master_sha": "21a53a00ec9f016440384a5299fc0917304509e5",
-    "candidate_pr": 1001,
-    "candidate_head_sha": "b83ba1ad8947181ecc336eb6e43a4f4a7dc5a33d",
+    "owner": "agents",
+    "reserved_master_sha": "cd207f2d60c753998679a2044a7c9fb4059b7fc3",
+    "candidate_pr": 1006,
+    "candidate_head_sha": "fe899044645b9f8d812f811722aef167305d4aa8",
     "freeze_active": true,
-    "freeze_reason": "Identity recovery successor #1011 is merged on exact master 21a53a00 and that exact master has Required CI 32951939466 plus Software Factory Final Evidence 32951939282 SUCCESS. Identity #1012 is closed/unmerged. Hand the next dependency-ready single-writer merge window to Web App Phase 10; PR #1001 is stale-base and must be currentness/overlap-audited and replayed only if required, with completely fresh gates before merge."
+    "freeze_reason": "Web App Phase-10 predecessor #1001 is closed/unmerged, exact-current successor #1014 is merged, generated-code security successor #1015 is merged, and no current Web App merge candidate owns the reviewed Phase-10 scope. Reclaim the stale Web App reservation and hand the next dependency-ready single-writer merge window to Agents. PR #1006 is development preparation only and must be currentness-audited/superseded onto exact current master with the digest helper integrated into the incumbent validator and completely fresh gates before merge."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -65,25 +65,25 @@
     },
     "web_app": {
       "scheduler": "web_app",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 5,
       "authoritative_issue": 486,
-      "active_pr": 1001,
-      "base_sha": "becabf91bb642e439e9d8578ed11bb73e829f06d",
-      "head_sha": "b83ba1ad8947181ecc336eb6e43a4f4a7dc5a33d",
+      "active_pr": null,
+      "base_sha": "cd207f2d60c753998679a2044a7c9fb4059b7fc3",
+      "head_sha": "cd207f2d60c753998679a2044a7c9fb4059b7fc3",
       "blocked_reason": null,
-      "next_action": "Phase 9 is exact-master verified. Re-read exact current master, PR #1001 head, all seven reviewed Phase-10 paths and semantic overlap; replay only the bounded Phase-10 delta if currentness requires it, invalidate historical PASS, require completely fresh Web App Factory + Required CI + SFFE + applicable controller/security evidence, then merge only with expected-head protection and exact-master verification."
+      "next_action": "Preserve merged Phase 10 (#1014) and generated-code security (#1015) checkpoints. Do not hold the merge token without a new dependency-ready current-base Web App candidate; continue later from then-current master with fresh evidence."
     },
     "agents": {
       "scheduler": "agents",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 6,
       "authoritative_issue": 557,
       "active_pr": 1006,
       "base_sha": "1e46f271f48a4cc8c5d8abd4b0e41e8f88d99361",
       "head_sha": "fe899044645b9f8d812f811722aef167305d4aa8",
       "blocked_reason": null,
-      "next_action": "Agent receipt-lineage hardening has a safe verified predecessor checkpoint, but remaining 47/47 closure stays development-only until a later legal Agent window. Do not treat P0/live partial evidence as full Agent closure."
+      "next_action": "Re-read exact current master, #1006 bounded digest preparation and semantic/path overlap. Supersede/replay only the still-required digest delta onto exact current master, integrate it in-place into the incumbent final-closure validator with validator-level tamper regression, invalidate historical PASS, require completely fresh Required CI + SFFE + applicable Agent/security evidence, then merge only with expected-head protection and exact-master verification. Do not treat source merge or P0 partial evidence as 47/47 closure."
     },
     "app_factory": {
       "scheduler": "unified",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 25,
-    "stale_pass_invalidations": 20,
+    "master_advances": 26,
+    "stale_pass_invalidations": 21,
     "replay_resync_count": 7,
     "ci_cycles": 19,
-    "successful_merges": 25,
+    "successful_merges": 27,
     "duplicate_pr_count": 0,
     "churn_only_commit_count": 0
   }
