@@ -70,20 +70,34 @@ def evaluate_generated_sandbox(evidence: GeneratedSandboxEvidence) -> SandboxGat
         failures.append("no separate-origin or equivalently strong process sandbox evidence")
 
     csp = _normalize_csp(evidence.csp)
+    duplicate_directives = _duplicate_csp_directives(evidence.csp)
+    if duplicate_directives:
+        failures.append("CSP contains duplicate directives")
     for required in ("default-src", "script-src", "connect-src", "object-src", "base-uri"):
         if required not in csp:
             failures.append(f"CSP is missing {required}")
+    if csp.get("default-src") != ("'none'",):
+        failures.append("CSP default-src must be 'none'")
+    if not _strict_script_sources(csp.get("script-src", ())):
+        failures.append("CSP script-src permits unsafe or remote script execution")
     if csp.get("object-src") != ("'none'",):
         failures.append("CSP object-src must be 'none'")
     if csp.get("base-uri") != ("'none'",):
         failures.append("CSP base-uri must be 'none'")
-    if "*" in csp.get("connect-src", ()):
-        failures.append("CSP connect-src cannot allow wildcard egress")
 
-    if not evidence.allowed_egress_hosts:
+    normalized_egress_hosts = tuple(host.strip().casefold() for host in evidence.allowed_egress_hosts)
+    if not normalized_egress_hosts:
         failures.append("controlled egress allowlist evidence is empty")
-    if any(not _valid_host(host) for host in evidence.allowed_egress_hosts):
+    if any(not _valid_host(host) for host in normalized_egress_hosts):
         failures.append("egress allowlist contains an invalid or wildcard host")
+
+    connect_sources = csp.get("connect-src", ())
+    if "*" in connect_sources:
+        failures.append("CSP connect-src cannot allow wildcard egress")
+    if any(not _valid_host(source) for source in connect_sources):
+        failures.append("CSP connect-src contains a non-host or unsafe source")
+    if any(source.casefold() not in normalized_egress_hosts for source in connect_sources):
+        failures.append("CSP connect-src exceeds the controlled egress allowlist")
 
     forbidden_capabilities = {
         "privileged cookie": evidence.privileged_cookie_access,
@@ -142,6 +156,35 @@ def _normalize_csp(value: str) -> dict[str, tuple[str, ...]]:
             continue
         directives[tokens[0].casefold()] = tokens[1:]
     return directives
+
+
+def _duplicate_csp_directives(value: str) -> set[str]:
+    seen: set[str] = set()
+    duplicates: set[str] = set()
+    for segment in value.split(";"):
+        tokens = tuple(token for token in segment.strip().split() if token)
+        if not tokens:
+            continue
+        directive = tokens[0].casefold()
+        if directive in seen:
+            duplicates.add(directive)
+        seen.add(directive)
+    return duplicates
+
+
+def _strict_script_sources(sources: tuple[str, ...]) -> bool:
+    if not sources:
+        return False
+    for source in sources:
+        normalized = source.casefold()
+        if normalized == "'self'":
+            continue
+        if normalized.startswith("'nonce-") and normalized.endswith("'"):
+            continue
+        if normalized.startswith(("'sha256-", "'sha384-", "'sha512-")) and normalized.endswith("'"):
+            continue
+        return False
+    return True
 
 
 def _valid_host(value: str) -> bool:
