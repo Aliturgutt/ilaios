@@ -150,6 +150,38 @@ def test_egress_allowlist_rejects_wildcards_urls_and_paths() -> None:
         assert "egress allowlist contains an invalid or wildcard host" in result.reasons
 
 
+def test_egress_allowlist_rejects_privileged_and_nonpublic_targets() -> None:
+    for host in ("localhost", "127.0.0.1", "10.0.0.1", "169.254.169.254", "::1"):
+        csp_host = host if ":" not in host else "localhost"
+        result = evaluate_generated_sandbox(
+            replace(
+                _evidence(),
+                allowed_egress_hosts=(host,),
+                csp=(
+                    "default-src 'none'; script-src 'self'; "
+                    f"connect-src {csp_host}; object-src 'none'; base-uri 'none'"
+                ),
+            )
+        )
+        assert result.verdict is SandboxVerdict.FAIL
+        assert any("privileged or non-public target" in reason for reason in result.reasons)
+
+
+def test_csp_rejects_privileged_nonpublic_connect_target() -> None:
+    result = evaluate_generated_sandbox(
+        replace(
+            _evidence(),
+            allowed_egress_hosts=("127.0.0.1",),
+            csp=(
+                "default-src 'none'; script-src 'self'; connect-src 127.0.0.1; "
+                "object-src 'none'; base-uri 'none'"
+            ),
+        )
+    )
+    assert result.verdict is SandboxVerdict.FAIL
+    assert "CSP connect-src contains a privileged or non-public target" in result.reasons
+
+
 def test_cross_sha_or_malformed_digest_evidence_fails() -> None:
     result = evaluate_generated_sandbox(
         replace(_evidence(), source_sha256="not-a-sha", artifact_sha256="z" * 64)
