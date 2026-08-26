@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-26T13:25:00Z",
+  "updated_at": "2026-08-26T18:35:00Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "identity",
-    "reserved_master_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
-    "candidate_pr": null,
-    "candidate_head_sha": null,
+    "owner": "web_app",
+    "reserved_master_sha": "42e7a7b2f365ec190e04f7218218d96f1786b804",
+    "candidate_pr": 1023,
+    "candidate_head_sha": "833e1dfa6df0b5c6fe451c55f4e9c90bffadcc9c",
     "freeze_active": true,
-    "freeze_reason": "Agent exact-current successor #1019 is merged and exact-master verified on 8cf5cbe4 with Required CI, Software Factory Final Evidence, Agent P0 Live Certification, and Skill Engineering live-provider evidence all SUCCESS. Release the completed Agent repository window and hand the next dependency-ready single-writer window to Identity. Identity must first audit trusted unlink reauthentication proof on exact current master and create only one bounded fail-closed candidate with fresh gates."
+    "freeze_reason": "Identity PR #1022 is merged on exact master 42e7a7b2 and exact-master Required CI plus Software Factory Final Evidence are SUCCESS. Hand the next single-writer window to Web App for Phase-11 pre-merge validation. PR #1023 has fresh exact-head Web App Factory, Required CI and SFFE PASS but is stale-base; its PASS is development evidence only until bounded replay/currentness analysis on the legal Web App merge window and a completely fresh gate set."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,25 +54,25 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 4,
       "authoritative_issue": null,
       "active_pr": null,
-      "base_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
-      "head_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
+      "base_sha": "42e7a7b2f365ec190e04f7218218d96f1786b804",
+      "head_sha": "42e7a7b2f365ec190e04f7218218d96f1786b804",
       "blocked_reason": null,
-      "next_action": "Preserve exact-master verified GitHub recovery from merged #1011. On exact current master, audit existing trusted provider reauthentication proof/callback authorities for unlink. Create only one bounded current-base unlink adapter/handler if a server-trusted DISTINCT VerifiedExternalIdentity plus trusted target identity reference can be supplied without raw client provider subject/email authority; then require fresh Required CI + SFFE + applicable Identity/security/controller gates before expected-head merge and exact-master verification."
+      "next_action": "Preserve merged #1022 trusted GitHub unlink proof adapter and exact-master Required CI/SFFE evidence. Do not hold the merge token without a new dependency-ready exact-current Identity candidate."
     },
     "web_app": {
       "scheduler": "web_app",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 5,
       "authoritative_issue": 486,
-      "active_pr": null,
-      "base_sha": "cd207f2d60c753998679a2044a7c9fb4059b7fc3",
-      "head_sha": "cd207f2d60c753998679a2044a7c9fb4059b7fc3",
-      "blocked_reason": null,
-      "next_action": "Preserve merged Phase 10 (#1014) and generated-code security (#1015) checkpoints. Do not hold the merge token without a new dependency-ready current-base Web App candidate; continue later from then-current master with fresh evidence."
+      "active_pr": 1023,
+      "base_sha": "1f9747b09d633b1e0eb3719d0b874dab9c99a980",
+      "head_sha": "833e1dfa6df0b5c6fe451c55f4e9c90bffadcc9c",
+      "blocked_reason": "PR #1023 is green but stale-base. Historical exact-head PASS is not merge authority after master advanced through Identity #1022.",
+      "next_action": "In the legal Web App merge window, compare 1f9747b0 -> exact current master against the three reviewed #1023 paths. If overlap/currentness requires replay, replay only the bounded delta, require a completely fresh Web App Factory + Required CI + SFFE and applicable controller/security gates, then merge only with expected-head protection. Preserve #1018 as the separate non-overlapping package-hook denial prerequisite."
     },
     "agents": {
       "scheduler": "agents",
