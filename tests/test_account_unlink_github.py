@@ -3,7 +3,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import pytest
-import requests
 
 from services.account_unlink_github import (
     CentralIdentityOwnedReferenceResolver,
