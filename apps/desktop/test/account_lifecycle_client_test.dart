@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/control_plane/account_lifecycle_client.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
+import 'package:ilaios_desktop/identity/identity_client_core.dart';
 
 class _FakeTransport implements ControlPlaneTransport {
   _FakeTransport(this.responses);
@@ -32,32 +33,15 @@ class _FakeTransport implements ControlPlaneTransport {
   }
 }
 
+const _session = DesktopUserSession(
+  sessionId: 'session-1',
+  providerId: 'github',
+  principalId: 'user-1',
+  tenantId: 'tenant-1',
+);
+
 void main() {
-  test('logout invokes only canonical account lifecycle route', () async {
-    final transport = _FakeTransport(<String, ControlPlaneResponse>{
-      '/api/account/sessions/logout': const ControlPlaneResponse(
-        statusCode: 200,
-        body: '{"status":"logged_out"}',
-      ),
-    });
-    final client = AccountLifecycleClient(
-      baseUri: Uri.parse('http://127.0.0.1:4123'),
-      token: 'runtime-secret',
-      transport: transport,
-    );
-
-    await client.logoutCurrentSession();
-
-    final request = transport.requests.single;
-    expect(request.method, 'POST');
-    expect(request.uri.path, '/api/account/sessions/logout');
-    expect(request.headers, <String, String>{
-      'Authorization': 'Bearer runtime-secret',
-    });
-    expect(jsonDecode(request.body), <String, dynamic>{});
-  });
-
-  test('export invokes canonical route without client identity authority', () async {
+  test('export invokes canonical route with canonical desktop session binding', () async {
     final transport = _FakeTransport(<String, ControlPlaneResponse>{
       '/api/account/export': const ControlPlaneResponse(
         statusCode: 200,
@@ -70,27 +54,35 @@ void main() {
       transport: transport,
     );
 
-    final data = await client.exportMyData();
+    final data = await client.exportMyData(_session);
 
     expect(data['user'], <String, dynamic>{'user_id': 'user-1'});
     final request = transport.requests.single;
+    expect(request.method, 'POST');
     expect(request.uri.path, '/api/account/export');
+    expect(request.headers, <String, String>{
+      'Authorization': 'Bearer runtime-secret',
+      'X-ILAIOS-Session': 'session-1',
+    });
     expect(jsonDecode(request.body), <String, dynamic>{});
+    expect(request.body, isNot(contains('user-1')));
+    expect(request.body, isNot(contains('tenant-1')));
+    expect(request.body, isNot(contains('github')));
   });
 
-  test('lifecycle client fails closed on auth and malformed response', () async {
+  test('export fails closed on auth and malformed response', () async {
     final denied = AccountLifecycleClient(
       baseUri: Uri.parse('http://127.0.0.1:4123'),
       token: 'runtime-secret',
       transport: _FakeTransport(<String, ControlPlaneResponse>{
-        '/api/account/sessions/logout': const ControlPlaneResponse(
+        '/api/account/export': const ControlPlaneResponse(
           statusCode: 403,
           body: '{"error":"IDENTITY_DENIED"}',
         ),
       }),
     );
     await expectLater(
-      denied.logoutCurrentSession(),
+      denied.exportMyData(_session),
       throwsA(isA<ControlPlaneClientException>()),
     );
 
@@ -105,12 +97,12 @@ void main() {
       }),
     );
     await expectLater(
-      malformed.exportMyData(),
+      malformed.exportMyData(_session),
       throwsA(isA<ControlPlaneClientException>()),
     );
   });
 
-  test('lifecycle client rejects non-loopback endpoints and ambiguous tokens', () {
+  test('export rejects invalid loopback token and session authority', () async {
     expect(
       () => AccountLifecycleClient(
         baseUri: Uri.parse('https://ilaios.com'),
@@ -122,10 +114,26 @@ void main() {
     expect(
       () => AccountLifecycleClient(
         baseUri: Uri.parse('http://127.0.0.1:4123'),
-        token: ' runtime-secret ',
+        token: 'runtime secret',
         transport: _FakeTransport(const <String, ControlPlaneResponse>{}),
       ),
       throwsArgumentError,
+    );
+
+    final client = AccountLifecycleClient(
+      baseUri: Uri.parse('http://127.0.0.1:4123'),
+      token: 'runtime-secret',
+      transport: _FakeTransport(const <String, ControlPlaneResponse>{}),
+    );
+    const invalidSession = DesktopUserSession(
+      sessionId: 'session 1',
+      providerId: 'github',
+      principalId: 'user-1',
+      tenantId: 'tenant-1',
+    );
+    await expectLater(
+      client.exportMyData(invalidSession),
+      throwsA(isA<ControlPlaneClientException>()),
     );
   });
 }
