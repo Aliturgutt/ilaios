@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-26T05:10:00Z",
+  "updated_at": "2026-08-26T07:24:00Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "website_v2",
-    "reserved_master_sha": "1e46f271f48a4cc8c5d8abd4b0e41e8f88d99361",
-    "candidate_pr": 1005,
-    "candidate_head_sha": "1b46109dcf046599d05438c39ea9ca28b21ca2ff",
+    "owner": "identity",
+    "reserved_master_sha": "d6acdfdbd06064c19a148588341689965a229b57",
+    "candidate_pr": 1008,
+    "candidate_head_sha": "64ff4900dd615e577a46344067107bebc9a6dc54",
     "freeze_active": true,
-    "freeze_reason": "Identity privacy-delete HTTP boundary PR #1004 is merged and exact-master Required CI 32929370151 plus Software Factory Final Evidence 32929369994 are SUCCESS on 1e46f271. Preserve that safe checkpoint and reserve the next dependency-ready single-writer window for the authoritative ILAIOS corporate Website V2 rebuild successor PR #1005."
+    "freeze_reason": "Corporate Website V2 successor PR #1009 is merged and exact-master Required CI 32941707459 plus Software Factory Final Evidence 32941707127 are SUCCESS on d6acdfdb, with Vercel deployment success on the same SHA. Preserve Website production evidence separately and hand the next dependency-ready single-writer window to Identity. PR #1008 is stale-base and must be replayed/currentness-audited with completely fresh gates before merge."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -43,25 +43,25 @@
     },
     "website_v2": {
       "scheduler": "unified",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 3,
       "authoritative_issue": null,
-      "active_pr": 1005,
-      "base_sha": "1e46f271f48a4cc8c5d8abd4b0e41e8f88d99361",
-      "head_sha": "1b46109dcf046599d05438c39ea9ca28b21ca2ff",
+      "active_pr": null,
+      "base_sha": "d6acdfdbd06064c19a148588341689965a229b57",
+      "head_sha": "d6acdfdbd06064c19a148588341689965a229b57",
       "blocked_reason": null,
-      "next_action": "Complete the authoritative corporate Website V2 rebuild gate on PR #1005. Required CI, SFFE, Product Surface Parity and Website V2 Visual QA are SUCCESS on the exact head; Website Rebuild Closure browser QA passed and its website-quality job was runner-cancelled during setup-node, so consume the justified fresh rerun, then reread master/head/overlap and merge only with expected-head protection."
+      "next_action": "Corporate Website V2 rebuild is repository exact-master verified on d6acdfdb. Preserve /api/release attribution and live EN/TR Dark/Light responsive/reduced-motion production QA as separate production evidence; do not hold the repository merge token for those external/live checks."
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": null,
-      "base_sha": "1e46f271f48a4cc8c5d8abd4b0e41e8f88d99361",
-      "head_sha": "1e46f271f48a4cc8c5d8abd4b0e41e8f88d99361",
+      "active_pr": 1008,
+      "base_sha": "d6acdfdbd06064c19a148588341689965a229b57",
+      "head_sha": "64ff4900dd615e577a46344067107bebc9a6dc54",
       "blocked_reason": null,
-      "next_action": "Identity privacy-delete HTTP boundary is exact-master verified on 1e46f271. Continue only later dependency-ready Identity/Billing/Subscription/Entitlement closure work; do not preempt the Website V2 single-writer window."
+      "next_action": "Re-audit stale GitHub recovery PR #1008 against exact current master d6acdfdb. If the reviewed two-file delta remains semantically disjoint from intervening Identity/provider/account changes, replay only that delta onto exact current master, require completely fresh Required CI + SFFE + applicable Identity/security/controller gates, then merge only with expected-head protection and exact-master verification. Historical #1008 PASS is not merge authority."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -70,20 +70,20 @@
       "authoritative_issue": 486,
       "active_pr": 1001,
       "base_sha": "79b0804d6d4a3fdefa376876aa44966f04ccd666",
-      "head_sha": "5d9c70dbac6b881880a06e2516345568ab375993",
+      "head_sha": "9dd20575f2b3b19918aeda6ac432320f37da6cc8",
       "blocked_reason": null,
-      "next_action": "Phase 9 is exact-master verified; keep Phase 10 development/CI preparation non-merging until higher-priority Website V2 closure reaches a safe checkpoint."
+      "next_action": "Phase 9 is exact-master verified; keep Phase 10 development/CI preparation non-merging while higher-priority Identity owns the single-writer token."
     },
     "agents": {
       "scheduler": "agents",
       "lifecycle": "DEVELOPING",
       "priority_rank": 6,
       "authoritative_issue": 557,
-      "active_pr": null,
-      "base_sha": "5c0ac1874884c611aa04ffdde08de953a368f9e1",
-      "head_sha": "5c0ac1874884c611aa04ffdde08de953a368f9e1",
+      "active_pr": 1006,
+      "base_sha": "1e46f271f48a4cc8c5d8abd4b0e41e8f88d99361",
+      "head_sha": "fe899044645b9f8d812f811722aef167305d4aa8",
       "blocked_reason": null,
-      "next_action": "Agent receipt-lineage hardening is exact-master verified with P0 live certification on 5c0ac187. Continue remaining 47/47 closure only in a later legal Agent window and do not treat P0 21/21 as full Agent closure."
+      "next_action": "Agent receipt-lineage hardening has a safe verified predecessor checkpoint, but remaining 47/47 closure stays development-only until a later legal Agent window. Do not treat P0/live partial evidence as full Agent closure."
     },
     "app_factory": {
       "scheduler": "unified",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 23,
-    "stale_pass_invalidations": 18,
+    "master_advances": 24,
+    "stale_pass_invalidations": 19,
     "replay_resync_count": 7,
-    "ci_cycles": 17,
-    "successful_merges": 23,
+    "ci_cycles": 18,
+    "successful_merges": 24,
     "duplicate_pr_count": 0,
     "churn_only_commit_count": 0
   }
