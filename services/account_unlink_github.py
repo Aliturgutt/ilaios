@@ -162,13 +162,14 @@ class GitHubAccountUnlinkService:
             authenticated_tenant_id=authenticated_tenant_id,
         )
         reference = target_reference.strip()
-        target = self._targets.pop(reference, None)
+        target = self._targets.get(reference)
         if target is None or target.expires_at <= current:
             raise CentralIdentityError("unlink target reference is invalid or expired")
         if target.user_id != user_id or target.tenant_id != tenant_id:
             raise CentralIdentityError("unlink target belongs to another canonical account")
 
         start = self._github_oauth.start(redirect_uri, current)
+        self._targets.pop(reference, None)
         expires_at = min(target.expires_at, start.expires_at)
         self._pending[start.state] = _PendingUnlink(
             state=start.state,
@@ -199,12 +200,13 @@ class GitHubAccountUnlinkService:
             authenticated_user_id=authenticated_user_id,
             authenticated_tenant_id=authenticated_tenant_id,
         )
-        pending = self._pending.pop(state, None)
+        pending = self._pending.get(state)
         if pending is None or pending.expires_at <= current:
             raise CentralIdentityError("unlink reauthentication state is invalid or expired")
         if pending.user_id != user_id or pending.tenant_id != tenant_id:
             raise CentralIdentityError("unlink reauthentication belongs to another account")
 
+        self._pending.pop(state, None)
         reauthenticated = self._github_oauth.complete(
             state=state,
             code=code,
