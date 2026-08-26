@@ -6,6 +6,7 @@ security authority. It validates evidence emitted by the canonical governed runt
 
 from __future__ import annotations
 
+import ipaddress
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -90,12 +91,16 @@ def evaluate_generated_sandbox(evidence: GeneratedSandboxEvidence) -> SandboxGat
         failures.append("controlled egress allowlist evidence is empty")
     if any(not _valid_host(host) for host in normalized_egress_hosts):
         failures.append("egress allowlist contains an invalid or wildcard host")
+    if any(_privileged_egress_target(host) for host in normalized_egress_hosts):
+        failures.append("egress allowlist contains a privileged or non-public target")
 
     connect_sources = csp.get("connect-src", ())
     if "*" in connect_sources:
         failures.append("CSP connect-src cannot allow wildcard egress")
     if any(not _valid_host(source) for source in connect_sources):
         failures.append("CSP connect-src contains a non-host or unsafe source")
+    if any(_privileged_egress_target(source) for source in connect_sources):
+        failures.append("CSP connect-src contains a privileged or non-public target")
     if any(source.casefold() not in normalized_egress_hosts for source in connect_sources):
         failures.append("CSP connect-src exceeds the controlled egress allowlist")
 
@@ -192,6 +197,17 @@ def _valid_host(value: str) -> bool:
     if not host or "*" in host or "://" in host or "/" in host:
         return False
     return all(part and part.replace("-", "").isalnum() for part in host.split("."))
+
+
+def _privileged_egress_target(value: str) -> bool:
+    host = value.strip().casefold().rstrip(".")
+    if host == "localhost" or host.endswith(".localhost"):
+        return True
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        return False
+    return not address.is_global
 
 
 def _is_hex(value: str) -> bool:
