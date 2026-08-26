@@ -660,11 +660,7 @@ class WebAppIntegrationsSettingsRuntime:
         return normalized
 
     def _safe_payload(self, payload: dict[str, object]) -> str:
-        for key in payload:
-            if self._looks_secret(str(key)):
-                raise WebAppIntegrationsSettingsError(
-                    "SECRET_PAYLOAD_FORBIDDEN", "secret-like payload key is forbidden", 400
-                )
+        self._reject_secret_payload_keys(payload)
         try:
             encoded = json.dumps(
                 payload, sort_keys=True, separators=(",", ":"), allow_nan=False
@@ -678,6 +674,21 @@ class WebAppIntegrationsSettingsRuntime:
                 "PAYLOAD_TOO_LARGE", "payload exceeds bounded size", 413
             )
         return encoded
+
+    def _reject_secret_payload_keys(self, value: object) -> None:
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if self._looks_secret(str(key)):
+                    raise WebAppIntegrationsSettingsError(
+                        "SECRET_PAYLOAD_FORBIDDEN",
+                        "secret-like payload key is forbidden",
+                        400,
+                    )
+                self._reject_secret_payload_keys(item)
+            return
+        if isinstance(value, (list, tuple)):
+            for item in value:
+                self._reject_secret_payload_keys(item)
 
     @classmethod
     def _looks_secret(cls, key: str) -> bool:
