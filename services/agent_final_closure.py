@@ -88,6 +88,13 @@ _REQUIRED_NONEMPTY_SEQUENCES = (
     "provider_tool_receipt_ids",
 )
 _CONTEXT_KEYS = ("execution_id", "job_id", "user_id", "tenant_id", "session_id")
+_CONTEXT_BOUND_EVIDENCE_KEYS = (
+    "runtime_e2e_evidence_ref",
+    "evidence_integrity_evidence_ref",
+    "restart_recovery_evidence_ref",
+    "cost_usage_evidence_ref",
+    "evidence_record_id",
+)
 
 
 class AgentFinalClosureError(ValueError):
@@ -232,6 +239,10 @@ def _require_evidence_context_bindings(
     output_evidence_ref = receipt.get("output_artifact_evidence_ref")
     if isinstance(output_evidence_ref, str) and output_evidence_ref.strip():
         required_refs.add(output_evidence_ref.strip())
+    for key in _CONTEXT_BOUND_EVIDENCE_KEYS:
+        evidence_ref = receipt.get(key)
+        if isinstance(evidence_ref, str) and evidence_ref.strip():
+            required_refs.add(evidence_ref.strip())
 
     normalized: dict[str, Mapping[object, object]] = {}
     for raw_ref, raw_context in value.items():
@@ -244,7 +255,7 @@ def _require_evidence_context_bindings(
 
     if set(normalized) != required_refs:
         raise AgentFinalClosureError(
-            "evidence_context_bindings must cover exactly all Agent evidence and provider/tool/output receipts"
+            "evidence_context_bindings must cover exactly all context-bound closure evidence"
         )
 
     expected = {key: receipt.get(key) for key in _CONTEXT_KEYS}
