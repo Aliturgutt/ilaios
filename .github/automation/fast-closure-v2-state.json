@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-26T13:25:00Z",
+  "updated_at": "2026-08-26T19:08:00Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "identity",
-    "reserved_master_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
-    "candidate_pr": null,
-    "candidate_head_sha": null,
+    "owner": "desktop",
+    "reserved_master_sha": "42e7a7b2f365ec190e04f7218218d96f1786b804",
+    "candidate_pr": 1017,
+    "candidate_head_sha": "bfcf3282a4d6db96e49dbce51de31f761d8f5526",
     "freeze_active": true,
-    "freeze_reason": "Agent exact-current successor #1019 is merged and exact-master verified on 8cf5cbe4 with Required CI, Software Factory Final Evidence, Agent P0 Live Certification, and Skill Engineering live-provider evidence all SUCCESS. Release the completed Agent repository window and hand the next dependency-ready single-writer window to Identity. Identity must first audit trusted unlink reauthentication proof on exact current master and create only one bounded fail-closed candidate with fresh gates."
+    "freeze_reason": "Identity bounded unlink proof PR #1022 is merged on exact master 42e7a7b2 and current-master statuses ilaios/required-ci-exact-master + ilaios/software-factory-exact-master are SUCCESS. Hand the single-writer window to Desktop for exact-current replay of the reviewed #1017 logout/launch/Offline regression delta, fresh Desktop gates, expected-head merge, and exact-master package lineage."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -21,14 +21,14 @@
   "workstreams": {
     "desktop": {
       "scheduler": "desktop",
-      "lifecycle": "BLOCKED_EXTERNAL",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 1,
       "authoritative_issue": 539,
-      "active_pr": 951,
-      "base_sha": "859920c438e7a28fa5fad95ad1e548e9b144b436",
-      "head_sha": "a693c63cd35b4696c190a9c1f7f37f1492d8cc5f",
-      "blocked_reason": "Final Desktop acceptance requires exact-current Windows user-machine install/process/runtime/visual evidence; stale PR #951 is not merge authority.",
-      "next_action": "Keep Desktop human-blocked; on a legal Desktop window replay only still-required bounded delta and require fresh package plus local acceptance evidence."
+      "active_pr": 1017,
+      "base_sha": "cd207f2d60c753998679a2044a7c9fb4059b7fc3",
+      "head_sha": "bfcf3282a4d6db96e49dbce51de31f761d8f5526",
+      "blocked_reason": null,
+      "next_action": "Re-read exact current master and overlap; replay only the reviewed bounded #1017 Desktop delta onto exact current master because its PASS is stale to current ancestry, require fresh Required CI/SFFE/Product Surface/Desktop CI/Windows Gate/MSIX/Combined Final, then expected-head merge and exact-master portable ZIP/SHA256 lineage before Windows acceptance."
     },
     "video_native_reference": {
       "scheduler": "unified",
@@ -54,14 +54,14 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 4,
       "authoritative_issue": null,
       "active_pr": null,
-      "base_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
-      "head_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
+      "base_sha": "42e7a7b2f365ec190e04f7218218d96f1786b804",
+      "head_sha": "42e7a7b2f365ec190e04f7218218d96f1786b804",
       "blocked_reason": null,
-      "next_action": "Preserve exact-master verified GitHub recovery from merged #1011. On exact current master, audit existing trusted provider reauthentication proof/callback authorities for unlink. Create only one bounded current-base unlink adapter/handler if a server-trusted DISTINCT VerifiedExternalIdentity plus trusted target identity reference can be supplied without raw client provider subject/email authority; then require fresh Required CI + SFFE + applicable Identity/security/controller gates before expected-head merge and exact-master verification."
+      "next_action": "Preserve merged #1022 trusted GitHub unlink proof on exact master 42e7a7b2 with current-master Required CI and Software Factory exact-master SUCCESS. Do not retain the repository merge token without a new dependency-ready Identity candidate."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 26,
-    "stale_pass_invalidations": 21,
+    "master_advances": 27,
+    "stale_pass_invalidations": 22,
     "replay_resync_count": 7,
     "ci_cycles": 19,
-    "successful_merges": 27,
+    "successful_merges": 28,
     "duplicate_pr_count": 0,
     "churn_only_commit_count": 0
   }
