@@ -22,6 +22,7 @@ def _evidence() -> GeneratedSandboxEvidence:
             "object-src 'none'; base-uri 'none'"
         ),
         allowed_egress_hosts=("api.example.com",),
+        resolved_egress=(("api.example.com", "93.184.216.34"),),
         privileged_cookie_access=False,
         privileged_token_access=False,
         secret_material_access=False,
@@ -157,6 +158,7 @@ def test_egress_allowlist_rejects_privileged_and_nonpublic_targets() -> None:
             replace(
                 _evidence(),
                 allowed_egress_hosts=(host,),
+                resolved_egress=((host, "93.184.216.34"),),
                 csp=(
                     "default-src 'none'; script-src 'self'; "
                     f"connect-src {csp_host}; object-src 'none'; base-uri 'none'"
@@ -172,6 +174,7 @@ def test_csp_rejects_privileged_nonpublic_connect_target() -> None:
         replace(
             _evidence(),
             allowed_egress_hosts=("127.0.0.1",),
+            resolved_egress=(("127.0.0.1", "127.0.0.1"),),
             csp=(
                 "default-src 'none'; script-src 'self'; connect-src 127.0.0.1; "
                 "object-src 'none'; base-uri 'none'"
@@ -180,6 +183,61 @@ def test_csp_rejects_privileged_nonpublic_connect_target() -> None:
     )
     assert result.verdict is SandboxVerdict.FAIL
     assert "CSP connect-src contains a privileged or non-public target" in result.reasons
+
+
+def test_missing_resolved_egress_is_not_verified() -> None:
+    result = evaluate_generated_sandbox(replace(_evidence(), resolved_egress=()))
+    assert result.verdict is SandboxVerdict.NOT_VERIFIED
+    assert "missing evidence: resolved egress" in result.reasons
+
+
+def test_each_allowed_host_requires_resolution_evidence() -> None:
+    result = evaluate_generated_sandbox(
+        replace(
+            _evidence(),
+            allowed_egress_hosts=("api.example.com", "cdn.example.com"),
+            csp=(
+                "default-src 'none'; script-src 'self'; connect-src api.example.com; "
+                "object-src 'none'; base-uri 'none'"
+            ),
+        )
+    )
+    assert result.verdict is SandboxVerdict.NOT_VERIFIED
+    assert "missing evidence: resolved egress for cdn.example.com" in result.reasons
+
+
+def test_dns_rebinding_to_nonpublic_ip_fails_closed() -> None:
+    for target in ("127.0.0.1", "10.10.0.5", "169.254.169.254", "::1"):
+        result = evaluate_generated_sandbox(
+            replace(_evidence(), resolved_egress=(("api.example.com", target),))
+        )
+        assert result.verdict is SandboxVerdict.FAIL
+        assert (
+            "resolved egress maps an allowed host to a privileged or non-public IP"
+            in result.reasons
+        )
+
+
+def test_resolved_egress_cannot_introduce_unapproved_host() -> None:
+    result = evaluate_generated_sandbox(
+        replace(
+            _evidence(),
+            resolved_egress=(
+                ("api.example.com", "93.184.216.34"),
+                ("evil.example", "93.184.216.35"),
+            ),
+        )
+    )
+    assert result.verdict is SandboxVerdict.FAIL
+    assert "resolved egress contains a host outside the controlled allowlist" in result.reasons
+
+
+def test_invalid_resolved_ip_fails_closed() -> None:
+    result = evaluate_generated_sandbox(
+        replace(_evidence(), resolved_egress=(("api.example.com", "not-an-ip"),))
+    )
+    assert result.verdict is SandboxVerdict.FAIL
+    assert "resolved egress contains an invalid IP address" in result.reasons
 
 
 def test_cross_sha_or_malformed_digest_evidence_fails() -> None:
