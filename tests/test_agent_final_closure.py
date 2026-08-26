@@ -71,6 +71,13 @@ def _receipt() -> dict[str, object]:
     exact_head_sha = "d" * 40
     provider_receipts = ["receipt-provider-001", "receipt-tool-001"]
     output_evidence_ref = "evidence://exec-final-001/output-artifact"
+    context_bound_closure_refs = {
+        "evidence://exec-final-001/runtime-e2e",
+        "evidence://exec-final-001/integrity",
+        "evidence://exec-final-001/restart-recovery",
+        "evidence://exec-final-001/cost-usage",
+        "evidence-final-001",
+    }
     receipt: dict[str, object] = {
         "agent_workstream": "CLOSED",
         "exact_master_sha": exact_master_sha,
@@ -122,7 +129,10 @@ def _receipt() -> dict[str, object]:
         "agent_execution_evidence_bindings": _agent_evidence_bindings(),
         "provider_tool_receipt_ids": provider_receipts,
         "evidence_context_bindings": _evidence_context_bindings(
-            set(_agent_evidence_refs()) | set(provider_receipts) | {output_evidence_ref}
+            set(_agent_evidence_refs())
+            | set(provider_receipts)
+            | {output_evidence_ref}
+            | context_bound_closure_refs
         ),
         "output_artifact_sha256": "c" * 64,
         "output_artifact_evidence_ref": output_evidence_ref,
@@ -360,6 +370,32 @@ def test_final_closure_receipt_rejects_wrong_job_or_tenant_context() -> None:
     )
     contexts["receipt-provider-001"]["tenant_id"] = "tenant-other-999"
     with pytest.raises(AgentFinalClosureError, match="cross-job"):
+        validate_agent_final_closure_receipt(receipt)
+
+
+def test_final_closure_receipt_rejects_runtime_cost_or_final_record_context_drift() -> None:
+    receipt = _receipt()
+    contexts = cast(
+        dict[str, dict[str, str]], receipt["evidence_context_bindings"]
+    )
+    contexts["evidence://exec-final-001/runtime-e2e"]["job_id"] = "job-other-999"
+    with pytest.raises(AgentFinalClosureError, match="cross-job"):
+        validate_agent_final_closure_receipt(receipt)
+
+    receipt = _receipt()
+    contexts = cast(
+        dict[str, dict[str, str]], receipt["evidence_context_bindings"]
+    )
+    contexts["evidence://exec-final-001/cost-usage"]["tenant_id"] = "tenant-other-999"
+    with pytest.raises(AgentFinalClosureError, match="cross-job"):
+        validate_agent_final_closure_receipt(receipt)
+
+    receipt = _receipt()
+    contexts = cast(
+        dict[str, dict[str, str]], receipt["evidence_context_bindings"]
+    )
+    del contexts["evidence-final-001"]
+    with pytest.raises(AgentFinalClosureError, match="cover exactly"):
         validate_agent_final_closure_receipt(receipt)
 
 
