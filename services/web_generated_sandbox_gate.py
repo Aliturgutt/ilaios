@@ -139,13 +139,13 @@ def evaluate_generated_sandbox(evidence: GeneratedSandboxEvidence) -> SandboxGat
     _check_positive_bound("memory limit", evidence.memory_limit_mb, missing, failures)
     _check_positive_bound("CPU limit", evidence.cpu_limit_millis, missing, failures)
 
+    if failures:
+        return SandboxGateResult(SandboxVerdict.FAIL, tuple(sorted(set(failures))))
     if missing:
         return SandboxGateResult(
             SandboxVerdict.NOT_VERIFIED,
             tuple(sorted(set(f"missing evidence: {item}" for item in missing))),
         )
-    if failures:
-        return SandboxGateResult(SandboxVerdict.FAIL, tuple(sorted(set(failures))))
     return SandboxGateResult(SandboxVerdict.PASS, ())
 
 
