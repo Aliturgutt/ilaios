@@ -97,6 +97,50 @@ def test_csp_wildcard_egress_and_missing_hardening_fail() -> None:
     assert "CSP is missing base-uri" in result.reasons
 
 
+def test_csp_default_and_script_sources_fail_closed() -> None:
+    hostile_csp = (
+        "default-src *; script-src 'self'; connect-src api.example.com; "
+        "object-src 'none'; base-uri 'none'",
+        "default-src 'none'; script-src *; connect-src api.example.com; "
+        "object-src 'none'; base-uri 'none'",
+        "default-src 'none'; script-src https://cdn.example.com; connect-src api.example.com; "
+        "object-src 'none'; base-uri 'none'",
+        "default-src 'none'; script-src 'unsafe-eval'; connect-src api.example.com; "
+        "object-src 'none'; base-uri 'none'",
+    )
+    for csp in hostile_csp:
+        result = evaluate_generated_sandbox(replace(_evidence(), csp=csp))
+        assert result.verdict is SandboxVerdict.FAIL
+
+
+def test_csp_connect_sources_cannot_exceed_runtime_egress_allowlist() -> None:
+    result = evaluate_generated_sandbox(
+        replace(
+            _evidence(),
+            csp=(
+                "default-src 'none'; script-src 'self'; connect-src api.example.com evil.example; "
+                "object-src 'none'; base-uri 'none'"
+            ),
+        )
+    )
+    assert result.verdict is SandboxVerdict.FAIL
+    assert "CSP connect-src exceeds the controlled egress allowlist" in result.reasons
+
+
+def test_csp_duplicate_directives_fail_closed() -> None:
+    result = evaluate_generated_sandbox(
+        replace(
+            _evidence(),
+            csp=(
+                "default-src 'none'; script-src 'self'; connect-src api.example.com; "
+                "connect-src evil.example; object-src 'none'; base-uri 'none'"
+            ),
+        )
+    )
+    assert result.verdict is SandboxVerdict.FAIL
+    assert "CSP contains duplicate directives" in result.reasons
+
+
 def test_egress_allowlist_rejects_wildcards_urls_and_paths() -> None:
     for host in ("*", "*.example.com", "https://api.example.com", "api.example.com/v1"):
         result = evaluate_generated_sandbox(
