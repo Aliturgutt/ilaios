@@ -9,6 +9,10 @@ from __future__ import annotations
 import re
 from collections.abc import Mapping, Sequence
 
+from services.agent_final_closure_digest import (
+    AgentFinalClosureDigestError,
+    verify_agent_final_closure_sha256,
+)
 from services.agent_readiness import EXPECTED_AGENT_COUNT, EXPECTED_TEAM_COUNTS
 from services.agent_registry import CANONICAL_AGENT_REGISTRY
 
@@ -444,6 +448,7 @@ def validate_agent_final_closure_receipt(receipt: Mapping[str, object]) -> None:
     if len(blockers) != 0:
         raise AgentFinalClosureError("Agent closure still has external blockers")
 
-    evidence_digest = receipt.get("closure_evidence_sha256")
-    if not isinstance(evidence_digest, str) or _SHA256.fullmatch(evidence_digest) is None:
-        raise AgentFinalClosureError("closure_evidence_sha256 must be lowercase SHA-256")
+    try:
+        verify_agent_final_closure_sha256(receipt)
+    except AgentFinalClosureDigestError as exc:
+        raise AgentFinalClosureError(str(exc)) from exc
