@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-26T00:00:00Z",
+  "updated_at": "2026-08-26T00:13:00Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "agents",
     "reserved_master_sha": "becabf91bb642e439e9d8578ed11bb73e829f06d",
     "candidate_pr": 1000,
-    "candidate_head_sha": "6bc683097f2f00095e7a9e36020df3f778c9b59d",
+    "candidate_head_sha": "63e229bb58941ad9302ac42a00031e29781b1016",
     "freeze_active": true,
     "freeze_reason": "Agent single-writer reservation #999 is merged and exact-master Required CI 32912914372 plus Software Factory Final Evidence 32912914209 are SUCCESS on becabf91. Historical #946 is closed as superseded; #1000 is the exact-current replay successor. Keep freeze through bounded receipt-lineage hardening, fresh exact-head gates, expected-head merge and exact-master validation."
   },
@@ -76,12 +76,12 @@
     },
     "agents": {
       "scheduler": "agents",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 6,
       "authoritative_issue": 557,
       "active_pr": 1000,
       "base_sha": "becabf91bb642e439e9d8578ed11bb73e829f06d",
-      "head_sha": "6bc683097f2f00095e7a9e36020df3f778c9b59d",
+      "head_sha": "63e229bb58941ad9302ac42a00031e29781b1016",
       "blocked_reason": null,
       "next_action": "Close the remaining final-receipt context-lineage gap without creating parallel authority; then require fresh exact-head Required CI/SFFE and applicable Agent/security/runtime gates, reread current master/token/overlap/head and merge only with expected-head protection."
     },
@@ -123,7 +123,7 @@
     "master_advances": 23,
     "stale_pass_invalidations": 18,
     "replay_resync_count": 7,
-    "ci_cycles": 16,
+    "ci_cycles": 17,
     "successful_merges": 23,
     "duplicate_pr_count": 0,
     "churn_only_commit_count": 0
