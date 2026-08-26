@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-26T00:13:00Z",
+  "updated_at": "2026-08-26T01:14:00Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "agents",
-    "reserved_master_sha": "becabf91bb642e439e9d8578ed11bb73e829f06d",
-    "candidate_pr": 1000,
-    "candidate_head_sha": "63e229bb58941ad9302ac42a00031e29781b1016",
+    "owner": "identity",
+    "reserved_master_sha": "5c0ac1874884c611aa04ffdde08de953a368f9e1",
+    "candidate_pr": null,
+    "candidate_head_sha": null,
     "freeze_active": true,
-    "freeze_reason": "Agent single-writer reservation #999 is merged and exact-master Required CI 32912914372 plus Software Factory Final Evidence 32912914209 are SUCCESS on becabf91. Historical #946 is closed as superseded; #1000 is the exact-current replay successor. Keep freeze through bounded receipt-lineage hardening, fresh exact-head gates, expected-head merge and exact-master validation."
+    "freeze_reason": "Agent PR #1000 is merged and exact-master Required CI 32916705220, Software Factory Final Evidence 32916705063 and Agent P0 Live Certification 32916705010 are SUCCESS on 5c0ac187. Release the completed Agent merge window at this safe checkpoint and reserve the next dependency-ready single-writer window for Production Identity/Account lifecycle closure."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,36 +54,36 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 4,
       "authoritative_issue": null,
       "active_pr": null,
-      "base_sha": "09ac49e3f3a7bca59e20147bc3a367987ca607ac",
-      "head_sha": "09ac49e3f3a7bca59e20147bc3a367987ca607ac",
+      "base_sha": "5c0ac1874884c611aa04ffdde08de953a368f9e1",
+      "head_sha": "5c0ac1874884c611aa04ffdde08de953a368f9e1",
       "blocked_reason": null,
-      "next_action": "Continue only the next dependency-ready non-overlapping identity lifecycle/client slice after the Agent single-writer window is released."
+      "next_action": "Audit the remaining projected-but-unwired canonical account lifecycle routes on exact current master and implement only the smallest dependency-ready fail-closed HTTP/client slice using existing Identity authorities."
     },
     "web_app": {
       "scheduler": "web_app",
       "lifecycle": "DEVELOPING",
       "priority_rank": 5,
       "authoritative_issue": 486,
-      "active_pr": null,
+      "active_pr": 1001,
       "base_sha": "79b0804d6d4a3fdefa376876aa44966f04ccd666",
-      "head_sha": "79b0804d6d4a3fdefa376876aa44966f04ccd666",
+      "head_sha": "5d9c70dbac6b881880a06e2516345568ab375993",
       "blocked_reason": null,
-      "next_action": "Phase 9 is exact-master verified; continue the next dependency-ready Web App phase only after the Agent single-writer window is released."
+      "next_action": "Phase 9 is exact-master verified; keep Phase 10 development/CI preparation non-merging until the higher-priority Identity single-writer window reaches a safe checkpoint."
     },
     "agents": {
       "scheduler": "agents",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 6,
       "authoritative_issue": 557,
-      "active_pr": 1000,
-      "base_sha": "becabf91bb642e439e9d8578ed11bb73e829f06d",
-      "head_sha": "63e229bb58941ad9302ac42a00031e29781b1016",
+      "active_pr": null,
+      "base_sha": "5c0ac1874884c611aa04ffdde08de953a368f9e1",
+      "head_sha": "5c0ac1874884c611aa04ffdde08de953a368f9e1",
       "blocked_reason": null,
-      "next_action": "Close the remaining final-receipt context-lineage gap without creating parallel authority; then require fresh exact-head Required CI/SFFE and applicable Agent/security/runtime gates, reread current master/token/overlap/head and merge only with expected-head protection."
+      "next_action": "Agent receipt-lineage hardening is exact-master verified with P0 live certification on 5c0ac187. Continue remaining 47/47 closure only in a later legal Agent window and do not treat P0 21/21 as full Agent closure."
     },
     "app_factory": {
       "scheduler": "unified",
