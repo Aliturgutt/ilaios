@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
-import 'package:ilaios_desktop/control_plane/projection.dart';
 import 'package:ilaios_desktop/features/dashboard/reference_home_dashboard_v3.dart';
 import 'package:ilaios_desktop/identity/identity_client.dart';
 import 'package:ilaios_desktop/main.dart';
