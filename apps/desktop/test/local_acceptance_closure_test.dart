@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
 import 'package:ilaios_desktop/features/dashboard/reference_home_dashboard_v3.dart';
@@ -130,13 +131,17 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
-      MaterialApp(
-        home: Scaffold(
-          body: ReferenceHomeDashboardV3(
-            projection: const ControlPlaneProjection.unavailable(),
-            snapshot: const OperationalSnapshot.unavailable(),
-            status: 'Operational APIs not connected',
-            onNavigate: (_) {},
+      IlaiosLocaleScope(
+        locale: IlaiosLocale.english,
+        onChanged: (_) {},
+        child: MaterialApp(
+          home: Scaffold(
+            body: ReferenceHomeDashboardV3(
+              projection: const ControlPlaneProjection.unavailable(),
+              snapshot: const OperationalSnapshot.unavailable(),
+              status: 'Operational APIs not connected',
+              onNavigate: (_) {},
+            ),
           ),
         ),
       ),
