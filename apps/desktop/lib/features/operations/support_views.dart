@@ -78,7 +78,7 @@ class _CostsViewState extends State<CostsView> {
 /// Compatibility entry point used by every Desktop shell generation.
 ///
 /// Identity remains authoritative in DesktopBootstrap. This surface only
-/// exposes the existing callback; it never creates a second browser/auth path.
+/// exposes the existing callbacks; it never creates a second browser/auth path.
 class SettingsView extends StatefulWidget {
   const SettingsView({
     required this.projection,
@@ -124,6 +124,22 @@ class _SettingsViewState extends State<SettingsView> {
     }
   }
 
+  Future<void> _logout(Future<void> Function() callback) async {
+    if (widget.userSession == null || _pendingProviderId != null) return;
+    setState(() {
+      _pendingProviderId = widget.userSession!.providerId;
+      _error = null;
+    });
+    try {
+      await callback();
+    } catch (error) {
+      if (!mounted) return;
+      setState(() => _error = error.toString());
+    } finally {
+      if (mounted) setState(() => _pendingProviderId = null);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final mode = Theme.of(context).brightness == Brightness.dark
@@ -131,6 +147,7 @@ class _SettingsViewState extends State<SettingsView> {
         : ThemeMode.light;
     final scope = DesktopIdentityActionScope.maybeOf(context);
     final signIn = widget.onSignIn ?? scope?.onSignIn;
+    final logout = widget.onLogout ?? scope?.onLogout;
     return Stack(
       children: [
         Positioned.fill(
@@ -155,6 +172,7 @@ class _SettingsViewState extends State<SettingsView> {
               onSignIn: signIn == null
                   ? null
                   : (provider) => _connect(provider, signIn),
+              onLogout: logout == null ? null : () => _logout(logout),
             ),
           ),
       ],
@@ -169,6 +187,7 @@ class _ProviderActions extends StatelessWidget {
     required this.pendingProviderId,
     required this.error,
     required this.onSignIn,
+    required this.onLogout,
   });
 
   final List<IdentityProviderOption> providers;
@@ -176,6 +195,7 @@ class _ProviderActions extends StatelessWidget {
   final String? pendingProviderId;
   final String? error;
   final Future<void> Function(IdentityProviderOption provider)? onSignIn;
+  final Future<void> Function()? onLogout;
 
   @override
   Widget build(BuildContext context) {
@@ -200,15 +220,21 @@ class _ProviderActions extends StatelessWidget {
                   provider: provider,
                   connected: session?.providerId == provider.providerId,
                   pending: pendingProviderId == provider.providerId,
-                  enabled: onSignIn != null &&
+                  connectEnabled: onSignIn != null &&
                       session == null &&
                       pendingProviderId == null,
-                  onPressed: onSignIn == null ? null : () => onSignIn!(provider),
+                  logoutEnabled: onLogout != null &&
+                      session?.providerId == provider.providerId &&
+                      pendingProviderId == null,
+                  onConnect: onSignIn == null ? null : () => onSignIn!(provider),
+                  onLogout: onLogout,
                 ),
               ),
             if (error != null)
               Text(
-                tr ? 'Bağlantı başarısız: $error' : 'Connection failed: $error',
+                tr
+                    ? 'Bağlantı işlemi başarısız: $error'
+                    : 'Identity action failed: $error',
                 key: const Key('settings-provider-error'),
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
@@ -229,24 +255,30 @@ class _ProviderActionRow extends StatelessWidget {
     required this.provider,
     required this.connected,
     required this.pending,
-    required this.enabled,
-    required this.onPressed,
+    required this.connectEnabled,
+    required this.logoutEnabled,
+    required this.onConnect,
+    required this.onLogout,
   });
 
   final IdentityProviderOption provider;
   final bool connected;
   final bool pending;
-  final bool enabled;
-  final VoidCallback? onPressed;
+  final bool connectEnabled;
+  final bool logoutEnabled;
+  final VoidCallback? onConnect;
+  final VoidCallback? onLogout;
 
   @override
   Widget build(BuildContext context) {
     final tr = Localizations.localeOf(context).languageCode == 'tr';
-    final label = connected
-        ? (tr ? 'Bağlı' : 'Connected')
-        : pending
-            ? (tr ? 'Bağlanıyor…' : 'Connecting…')
+    final label = pending
+        ? (tr ? 'İşleniyor…' : 'Working…')
+        : connected
+            ? (tr ? 'Çıkış' : 'Sign out')
             : (tr ? 'Bağlan' : 'Connect');
+    final enabled = connected ? logoutEnabled : connectEnabled;
+    final action = connected ? onLogout : onConnect;
     return Row(
       children: [
         const Icon(Icons.cloud_outlined, size: 13),
@@ -264,13 +296,13 @@ class _ProviderActionRow extends StatelessWidget {
           button: true,
           enabled: enabled,
           label: connected
-              ? '${provider.displayName} ${tr ? 'bağlı' : 'connected'}'
+              ? '${tr ? 'Çıkış yap' : 'Sign out'} ${provider.displayName}'
               : '${tr ? 'Bağlan' : 'Connect'} ${provider.displayName}',
           child: SizedBox(
             height: 26,
             child: OutlinedButton(
               key: ValueKey('settings-provider-connect-${provider.providerId}'),
-              onPressed: connected || pending || !enabled ? null : onPressed,
+              onPressed: pending || !enabled ? null : action,
               child: Text(label, style: const TextStyle(fontSize: 8)),
             ),
           ),
