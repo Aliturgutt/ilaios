@@ -8,6 +8,7 @@ from services.agent_final_closure import (
     AgentFinalClosureError,
     validate_agent_final_closure_receipt,
 )
+from services.agent_final_closure_digest import compute_agent_final_closure_sha256
 from services.agent_readiness import EXPECTED_AGENT_COUNT, EXPECTED_TEAM_COUNTS
 from services.agent_registry import CANONICAL_AGENT_REGISTRY
 
@@ -170,6 +171,7 @@ def _receipt() -> dict[str, object]:
     revision_bindings = {ref: exact_master_sha for ref in master_refs}
     revision_bindings["github-actions://required-ci/head"] = exact_head_sha
     receipt["evidence_revision_bindings"] = revision_bindings
+    receipt["closure_evidence_sha256"] = compute_agent_final_closure_sha256(receipt)
     return receipt
 
 
@@ -356,18 +358,14 @@ def test_final_closure_receipt_rejects_evidence_ref_binding_divergence() -> None
 
 def test_final_closure_receipt_rejects_wrong_job_or_tenant_context() -> None:
     receipt = _receipt()
-    contexts = cast(
-        dict[str, dict[str, str]], receipt["evidence_context_bindings"]
-    )
+    contexts = cast(dict[str, dict[str, str]], receipt["evidence_context_bindings"])
     first_ref = _agent_evidence_refs()[0]
     contexts[first_ref]["job_id"] = "job-other-999"
     with pytest.raises(AgentFinalClosureError, match="cross-job"):
         validate_agent_final_closure_receipt(receipt)
 
     receipt = _receipt()
-    contexts = cast(
-        dict[str, dict[str, str]], receipt["evidence_context_bindings"]
-    )
+    contexts = cast(dict[str, dict[str, str]], receipt["evidence_context_bindings"])
     contexts["receipt-provider-001"]["tenant_id"] = "tenant-other-999"
     with pytest.raises(AgentFinalClosureError, match="cross-job"):
         validate_agent_final_closure_receipt(receipt)
@@ -375,25 +373,19 @@ def test_final_closure_receipt_rejects_wrong_job_or_tenant_context() -> None:
 
 def test_final_closure_receipt_rejects_runtime_cost_or_final_record_context_drift() -> None:
     receipt = _receipt()
-    contexts = cast(
-        dict[str, dict[str, str]], receipt["evidence_context_bindings"]
-    )
+    contexts = cast(dict[str, dict[str, str]], receipt["evidence_context_bindings"])
     contexts["evidence://exec-final-001/runtime-e2e"]["job_id"] = "job-other-999"
     with pytest.raises(AgentFinalClosureError, match="cross-job"):
         validate_agent_final_closure_receipt(receipt)
 
     receipt = _receipt()
-    contexts = cast(
-        dict[str, dict[str, str]], receipt["evidence_context_bindings"]
-    )
+    contexts = cast(dict[str, dict[str, str]], receipt["evidence_context_bindings"])
     contexts["evidence://exec-final-001/cost-usage"]["tenant_id"] = "tenant-other-999"
     with pytest.raises(AgentFinalClosureError, match="cross-job"):
         validate_agent_final_closure_receipt(receipt)
 
     receipt = _receipt()
-    contexts = cast(
-        dict[str, dict[str, str]], receipt["evidence_context_bindings"]
-    )
+    contexts = cast(dict[str, dict[str, str]], receipt["evidence_context_bindings"])
     del contexts["evidence-final-001"]
     with pytest.raises(AgentFinalClosureError, match="cover exactly"):
         validate_agent_final_closure_receipt(receipt)
@@ -401,17 +393,13 @@ def test_final_closure_receipt_rejects_runtime_cost_or_final_record_context_drif
 
 def test_final_closure_receipt_rejects_missing_or_extra_context_bindings() -> None:
     receipt = _receipt()
-    contexts = cast(
-        dict[str, dict[str, str]], receipt["evidence_context_bindings"]
-    )
+    contexts = cast(dict[str, dict[str, str]], receipt["evidence_context_bindings"])
     del contexts[_agent_evidence_refs()[0]]
     with pytest.raises(AgentFinalClosureError, match="cover exactly"):
         validate_agent_final_closure_receipt(receipt)
 
     receipt = _receipt()
-    contexts = cast(
-        dict[str, dict[str, str]], receipt["evidence_context_bindings"]
-    )
+    contexts = cast(dict[str, dict[str, str]], receipt["evidence_context_bindings"])
     contexts["receipt-unrelated-999"] = {
         "execution_id": "exec-final-001",
         "job_id": "job-final-001",
@@ -425,27 +413,21 @@ def test_final_closure_receipt_rejects_missing_or_extra_context_bindings() -> No
 
 def test_final_closure_receipt_rejects_stale_or_missing_revision_bindings() -> None:
     receipt = _receipt()
-    revision_bindings = dict(
-        cast(dict[str, str], receipt["evidence_revision_bindings"])
-    )
+    revision_bindings = dict(cast(dict[str, str], receipt["evidence_revision_bindings"]))
     revision_bindings["evidence://exec-final-001/runtime-e2e"] = "e" * 40
     receipt["evidence_revision_bindings"] = revision_bindings
     with pytest.raises(AgentFinalClosureError, match="stale or cross-SHA"):
         validate_agent_final_closure_receipt(receipt)
 
     receipt = _receipt()
-    revision_bindings = dict(
-        cast(dict[str, str], receipt["evidence_revision_bindings"])
-    )
+    revision_bindings = dict(cast(dict[str, str], receipt["evidence_revision_bindings"]))
     del revision_bindings["receipt-provider-001"]
     receipt["evidence_revision_bindings"] = revision_bindings
     with pytest.raises(AgentFinalClosureError, match="missing exact-master revision bindings"):
         validate_agent_final_closure_receipt(receipt)
 
     receipt = _receipt()
-    revision_bindings = dict(
-        cast(dict[str, str], receipt["evidence_revision_bindings"])
-    )
+    revision_bindings = dict(cast(dict[str, str], receipt["evidence_revision_bindings"]))
     revision_bindings["github-actions://required-ci/head"] = "a" * 40
     receipt["evidence_revision_bindings"] = revision_bindings
     with pytest.raises(AgentFinalClosureError, match="exact-head CI evidence"):
@@ -491,4 +473,11 @@ def test_final_closure_receipt_cannot_disable_human_owner_requirement() -> None:
     receipt["human_owner_required"] = False
     receipt["human_owner_state"] = "NOT_REQUIRED"
     with pytest.raises(AgentFinalClosureError, match="human-owner IndependentVerifier"):
+        validate_agent_final_closure_receipt(receipt)
+
+
+def test_final_closure_receipt_rejects_material_tampering_after_digest() -> None:
+    receipt = _receipt()
+    receipt["skill_route"] = "ilaios.skill.tampered-but-nonempty.v1"
+    with pytest.raises(AgentFinalClosureError, match="does not bind"):
         validate_agent_final_closure_receipt(receipt)
