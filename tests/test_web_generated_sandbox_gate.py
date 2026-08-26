@@ -59,18 +59,19 @@ def test_same_trust_domain_fails_closed() -> None:
 
 
 def test_privileged_capability_exposure_fails() -> None:
-    for field_name in (
-        "privileged_cookie_access",
-        "privileged_token_access",
-        "secret_material_access",
-        "host_shell_access",
-        "docker_socket_access",
-        "control_plane_db_access",
-        "unrestricted_filesystem_access",
-        "unrestricted_network_access",
-        "signing_material_access",
-    ):
-        result = evaluate_generated_sandbox(replace(_evidence(), **{field_name: True}))
+    hostile_evidence = (
+        replace(_evidence(), privileged_cookie_access=True),
+        replace(_evidence(), privileged_token_access=True),
+        replace(_evidence(), secret_material_access=True),
+        replace(_evidence(), host_shell_access=True),
+        replace(_evidence(), docker_socket_access=True),
+        replace(_evidence(), control_plane_db_access=True),
+        replace(_evidence(), unrestricted_filesystem_access=True),
+        replace(_evidence(), unrestricted_network_access=True),
+        replace(_evidence(), signing_material_access=True),
+    )
+    for evidence in hostile_evidence:
+        result = evaluate_generated_sandbox(evidence)
         assert result.verdict is SandboxVerdict.FAIL
         assert any("forbidden capability" in reason for reason in result.reasons)
 
