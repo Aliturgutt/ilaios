@@ -103,15 +103,14 @@ def evaluate_generated_sandbox(evidence: GeneratedSandboxEvidence) -> SandboxGat
     if not evidence.package_install_scripts_disabled:
         failures.append("package lifecycle scripts are not proven disabled")
 
-    for label, value in (
-        ("wall clock timeout", evidence.wall_clock_timeout_seconds),
-        ("memory limit", evidence.memory_limit_mb),
-        ("CPU limit", evidence.cpu_limit_millis),
-    ):
-        if value is None:
-            missing.append(label)
-        elif value <= 0:
-            failures.append(f"{label} must be a positive enforced bound")
+    _check_positive_bound(
+        "wall clock timeout",
+        evidence.wall_clock_timeout_seconds,
+        missing,
+        failures,
+    )
+    _check_positive_bound("memory limit", evidence.memory_limit_mb, missing, failures)
+    _check_positive_bound("CPU limit", evidence.cpu_limit_millis, missing, failures)
 
     if missing:
         return SandboxGateResult(
@@ -121,6 +120,18 @@ def evaluate_generated_sandbox(evidence: GeneratedSandboxEvidence) -> SandboxGat
     if failures:
         return SandboxGateResult(SandboxVerdict.FAIL, tuple(sorted(set(failures))))
     return SandboxGateResult(SandboxVerdict.PASS, ())
+
+
+def _check_positive_bound(
+    label: str,
+    value: int | None,
+    missing: list[str],
+    failures: list[str],
+) -> None:
+    if value is None:
+        missing.append(label)
+    elif value <= 0:
+        failures.append(f"{label} must be a positive enforced bound")
 
 
 def _normalize_csp(value: str) -> dict[str, tuple[str, ...]]:
