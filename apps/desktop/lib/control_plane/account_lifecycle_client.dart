@@ -5,13 +5,23 @@ import '../identity/identity_client_core.dart';
 import 'client.dart';
 
 class AccountLifecycleClient {
-  AccountLifecycleClient({
+  factory AccountLifecycleClient({
     required Uri baseUri,
     required String token,
     required ControlPlaneTransport transport,
-  })  : _baseUri = _validateBaseUri(baseUri),
-        _token = _validateToken(token),
-        _transport = transport;
+  }) {
+    return AccountLifecycleClient._(
+      baseUri: _validateBaseUri(baseUri),
+      token: _validateToken(token),
+      transport: transport,
+    );
+  }
+
+  AccountLifecycleClient._({
+    required this._baseUri,
+    required this._token,
+    required this._transport,
+  });
 
   final Uri _baseUri;
   final String _token;
