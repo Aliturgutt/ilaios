@@ -201,7 +201,7 @@ def test_target_reference_is_single_use_and_bound_to_canonical_account() -> None
     service, provider_session, _, account = _service()
     reference = _google_reference(service, account)
 
-    with pytest.raises(CentralIdentityError, match="another canonical account"):
+    with pytest.raises(CentralIdentityError, match="authenticated tenant mismatch"):
         service.start(
             target_reference=reference,
             authenticated_user_id=account.user_id,
@@ -212,6 +212,15 @@ def test_target_reference_is_single_use_and_bound_to_canonical_account() -> None
         )
 
     assert provider_session.provider_calls == 0
+    start = service.start(
+        target_reference=reference,
+        authenticated_user_id=account.user_id,
+        authenticated_tenant_id=account.tenant_id,
+        recent_authentication_verified=True,
+        redirect_uri=REDIRECT,
+        now=NOW,
+    )
+    assert start.state
     with pytest.raises(CentralIdentityError, match="invalid or expired"):
         service.start(
             target_reference=reference,
@@ -271,7 +280,7 @@ def test_pending_state_is_account_bound_one_use_and_expires_before_provider_call
         now=NOW,
     )
 
-    with pytest.raises(CentralIdentityError, match="another account"):
+    with pytest.raises(CentralIdentityError, match="authenticated tenant mismatch"):
         service.complete(
             state=start.state,
             code="oauth-code",
@@ -282,35 +291,45 @@ def test_pending_state_is_account_bound_one_use_and_expires_before_provider_call
         )
     assert provider_session.provider_calls == 0
 
+    result = service.complete(
+        state=start.state,
+        code="oauth-code",
+        authenticated_user_id=account.user_id,
+        authenticated_tenant_id=account.tenant_id,
+        recent_authentication_verified=True,
+        now=NOW,
+    )
+    assert result.status == "unlinked"
     with pytest.raises(CentralIdentityError, match="invalid or expired"):
         service.complete(
             state=start.state,
-            code="oauth-code",
+            code="replayed-code",
             authenticated_user_id=account.user_id,
             authenticated_tenant_id=account.tenant_id,
             recent_authentication_verified=True,
             now=NOW,
         )
 
-    reference = _google_reference(service, account)
-    expired_start = service.start(
-        target_reference=reference,
-        authenticated_user_id=account.user_id,
-        authenticated_tenant_id=account.tenant_id,
+    expiring_service, expiring_session, _, expiring_account = _service()
+    expiring_reference = _google_reference(expiring_service, expiring_account)
+    expired_start = expiring_service.start(
+        target_reference=expiring_reference,
+        authenticated_user_id=expiring_account.user_id,
+        authenticated_tenant_id=expiring_account.tenant_id,
         recent_authentication_verified=True,
         redirect_uri=REDIRECT,
         now=NOW,
     )
     with pytest.raises(CentralIdentityError, match="invalid or expired"):
-        service.complete(
+        expiring_service.complete(
             state=expired_start.state,
             code="oauth-code",
-            authenticated_user_id=account.user_id,
-            authenticated_tenant_id=account.tenant_id,
+            authenticated_user_id=expiring_account.user_id,
+            authenticated_tenant_id=expiring_account.tenant_id,
             recent_authentication_verified=True,
             now=NOW + timedelta(minutes=6),
         )
-    assert provider_session.provider_calls == 0
+    assert expiring_session.provider_calls == 0
 
 
 def test_same_github_identity_reauth_is_denied_by_canonical_unlink_authority() -> None:
