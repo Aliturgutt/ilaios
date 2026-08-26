@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../identity/identity_client_core.dart';
 import 'client.dart';
 
 class AccountLifecycleClient {
@@ -16,17 +17,38 @@ class AccountLifecycleClient {
   final String _token;
   final ControlPlaneTransport _transport;
 
-  Future<void> logoutCurrentSession() async {
-    final payload = await _post('/api/account/sessions/logout', 'account logout');
-    if (payload['status'] != 'logged_out') {
+  Future<Map<String, Object?>> exportMyData(DesktopUserSession session) async {
+    final sessionId = _validateSessionId(session.sessionId);
+    final response = await _transport.post(
+      _baseUri.resolve('/api/account/export'),
+      body: '{}',
+      headers: <String, String>{
+        'Authorization': 'Bearer $_token',
+        'X-ILAIOS-Session': sessionId,
+      },
+    );
+    if (response.statusCode == HttpStatus.unauthorized ||
+        response.statusCode == HttpStatus.forbidden) {
       throw const ControlPlaneClientException(
-        'Control plane returned malformed account logout result',
+        'Desktop lifecycle session is invalid or expired',
       );
     }
-  }
+    if (response.statusCode != HttpStatus.ok) {
+      throw const ControlPlaneClientException('Control plane account export failed');
+    }
 
-  Future<Map<String, Object?>> exportMyData() async {
-    final payload = await _post('/api/account/export', 'account export');
+    final Map<String, dynamic> payload;
+    try {
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException('response is not an object');
+      }
+      payload = decoded;
+    } on FormatException {
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed account export response',
+      );
+    }
     if (payload['status'] != 'exported' || payload['data'] is! Map<String, dynamic>) {
       throw const ControlPlaneClientException(
         'Control plane returned malformed account export result',
@@ -35,34 +57,6 @@ class AccountLifecycleClient {
     return Map<String, Object?>.unmodifiable(
       Map<String, Object?>.from(payload['data'] as Map<String, dynamic>),
     );
-  }
-
-  Future<Map<String, dynamic>> _post(String path, String label) async {
-    final response = await _transport.post(
-      _baseUri.resolve(path),
-      body: '{}',
-      headers: <String, String>{'Authorization': 'Bearer $_token'},
-    );
-    if (response.statusCode == HttpStatus.unauthorized ||
-        response.statusCode == HttpStatus.forbidden) {
-      throw const ControlPlaneClientException(
-        'Control plane authentication failed',
-      );
-    }
-    if (response.statusCode != HttpStatus.ok) {
-      throw ControlPlaneClientException('Control plane $label failed');
-    }
-    try {
-      final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic>) {
-        throw const FormatException('response is not an object');
-      }
-      return decoded;
-    } on FormatException {
-      throw ControlPlaneClientException(
-        'Control plane returned malformed $label response',
-      );
-    }
   }
 
   static Uri _validateBaseUri(Uri uri) {
@@ -80,8 +74,18 @@ class AccountLifecycleClient {
 
   static String _validateToken(String token) {
     final normalized = token.trim();
-    if (normalized.isEmpty || normalized != token) {
+    if (normalized.isEmpty || normalized != token || token.contains(RegExp(r'\s'))) {
       throw ArgumentError.value(token, 'token', 'A canonical bearer token is required');
+    }
+    return normalized;
+  }
+
+  static String _validateSessionId(String sessionId) {
+    final normalized = sessionId.trim();
+    if (normalized.isEmpty ||
+        normalized != sessionId ||
+        sessionId.contains(RegExp(r'\s'))) {
+      throw const ControlPlaneClientException('Desktop lifecycle session is invalid');
     }
     return normalized;
   }
