@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-26T19:08:00Z",
+  "updated_at": "2026-08-26T20:25:00Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "desktop",
-    "reserved_master_sha": "42e7a7b2f365ec190e04f7218218d96f1786b804",
-    "candidate_pr": 1017,
-    "candidate_head_sha": "bfcf3282a4d6db96e49dbce51de31f761d8f5526",
+    "owner": "identity",
+    "reserved_master_sha": "bb17ac9aea3dc50aca4cbea31cc0708eda87df91",
+    "candidate_pr": null,
+    "candidate_head_sha": null,
     "freeze_active": true,
-    "freeze_reason": "Identity bounded unlink proof PR #1022 is merged on exact master 42e7a7b2 and current-master statuses ilaios/required-ci-exact-master + ilaios/software-factory-exact-master are SUCCESS. Hand the single-writer window to Desktop for exact-current replay of the reviewed #1017 logout/launch/Offline regression delta, fresh Desktop gates, expected-head merge, and exact-master package lineage."
+    "freeze_reason": "Desktop PR #1026 is merged on exact master bb17ac9a with current-master Required CI + Software Factory exact-master SUCCESS, Desktop MSIX packaging SUCCESS, and exact-master portable artifact lineage bound to workflow run 33009237246. Remaining user-machine installation/runtime/visual acceptance is external human evidence and must not hold the repository token. Hand the next single-writer window to Identity for the smallest dependency-ready client invocation binding."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -21,14 +21,14 @@
   "workstreams": {
     "desktop": {
       "scheduler": "desktop",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "BLOCKED_EXTERNAL",
       "priority_rank": 1,
       "authoritative_issue": 539,
-      "active_pr": 1017,
-      "base_sha": "cd207f2d60c753998679a2044a7c9fb4059b7fc3",
-      "head_sha": "bfcf3282a4d6db96e49dbce51de31f761d8f5526",
-      "blocked_reason": null,
-      "next_action": "Re-read exact current master and overlap; replay only the reviewed bounded #1017 Desktop delta onto exact current master because its PASS is stale to current ancestry, require fresh Required CI/SFFE/Product Surface/Desktop CI/Windows Gate/MSIX/Combined Final, then expected-head merge and exact-master portable ZIP/SHA256 lineage before Windows acceptance."
+      "active_pr": null,
+      "base_sha": "bb17ac9aea3dc50aca4cbea31cc0708eda87df91",
+      "head_sha": "bb17ac9aea3dc50aca4cbea31cc0708eda87df91",
+      "blocked_reason": "Desktop repository/package checkpoint is exact-master verified. Final user-machine installation, 8-second runtime smoke, and visual acceptance require human Windows execution.",
+      "next_action": "Preserve merged #1026 on exact master bb17ac9a with Required CI/SFFE/MSIX SUCCESS and exact-master portable artifact digest sha256:f674e63520cee900ee3a1c9b3eda4a3edf1b66c737f15d1a26d5b6813a963b83 from run 33009237246. Complete user-machine installation/runtime/visual acceptance separately; do not hold the repository merge token for that external evidence."
     },
     "video_native_reference": {
       "scheduler": "unified",
@@ -54,14 +54,14 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 4,
       "authoritative_issue": null,
       "active_pr": null,
-      "base_sha": "42e7a7b2f365ec190e04f7218218d96f1786b804",
-      "head_sha": "42e7a7b2f365ec190e04f7218218d96f1786b804",
+      "base_sha": "bb17ac9aea3dc50aca4cbea31cc0708eda87df91",
+      "head_sha": "bb17ac9aea3dc50aca4cbea31cc0708eda87df91",
       "blocked_reason": null,
-      "next_action": "Preserve merged #1022 trusted GitHub unlink proof on exact master 42e7a7b2 with current-master Required CI and Software Factory exact-master SUCCESS. Do not retain the repository merge token without a new dependency-ready Identity candidate."
+      "next_action": "Preserve merged #1022 trusted GitHub unlink proof. On exact current master bb17ac9a, re-audit the genuine user-facing Web/App client authority for lifecycle invocation. Implement only the smallest dependency-ready client binding, preferring export-my-data or logout, through existing canonical Web/App auth/session/runtime authorities; no second router/client/auth authority. Require fresh gates and exact-master verification."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 27,
+    "master_advances": 28,
     "stale_pass_invalidations": 22,
     "replay_resync_count": 7,
-    "ci_cycles": 19,
-    "successful_merges": 28,
+    "ci_cycles": 20,
+    "successful_merges": 29,
     "duplicate_pr_count": 0,
     "churn_only_commit_count": 0
   }
