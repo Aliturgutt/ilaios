@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-26T07:24:00Z",
+  "updated_at": "2026-08-26T09:35:00Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "identity",
-    "reserved_master_sha": "d6acdfdbd06064c19a148588341689965a229b57",
-    "candidate_pr": 1008,
-    "candidate_head_sha": "64ff4900dd615e577a46344067107bebc9a6dc54",
+    "owner": "web_app",
+    "reserved_master_sha": "21a53a00ec9f016440384a5299fc0917304509e5",
+    "candidate_pr": 1001,
+    "candidate_head_sha": "b83ba1ad8947181ecc336eb6e43a4f4a7dc5a33d",
     "freeze_active": true,
-    "freeze_reason": "Corporate Website V2 successor PR #1009 is merged and exact-master Required CI 32941707459 plus Software Factory Final Evidence 32941707127 are SUCCESS on d6acdfdb, with Vercel deployment success on the same SHA. Preserve Website production evidence separately and hand the next dependency-ready single-writer window to Identity. PR #1008 is stale-base and must be replayed/currentness-audited with completely fresh gates before merge."
+    "freeze_reason": "Identity recovery successor #1011 is merged on exact master 21a53a00 and that exact master has Required CI 32951939466 plus Software Factory Final Evidence 32951939282 SUCCESS. Identity #1012 is closed/unmerged. Hand the next dependency-ready single-writer merge window to Web App Phase 10; PR #1001 is stale-base and must be currentness/overlap-audited and replayed only if required, with completely fresh gates before merge."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,25 +54,25 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": 1008,
-      "base_sha": "d6acdfdbd06064c19a148588341689965a229b57",
-      "head_sha": "64ff4900dd615e577a46344067107bebc9a6dc54",
+      "active_pr": null,
+      "base_sha": "21a53a00ec9f016440384a5299fc0917304509e5",
+      "head_sha": "21a53a00ec9f016440384a5299fc0917304509e5",
       "blocked_reason": null,
-      "next_action": "Re-audit stale GitHub recovery PR #1008 against exact current master d6acdfdb. If the reviewed two-file delta remains semantically disjoint from intervening Identity/provider/account changes, replay only that delta onto exact current master, require completely fresh Required CI + SFFE + applicable Identity/security/controller gates, then merge only with expected-head protection and exact-master verification. Historical #1008 PASS is not merge authority."
+      "next_action": "Preserve the exact-master verified GitHub recovery checkpoint from merged #1011. Do not hold the merge token while no current Identity merge candidate exists; continue later only from then-current master with fresh evidence."
     },
     "web_app": {
       "scheduler": "web_app",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 5,
       "authoritative_issue": 486,
       "active_pr": 1001,
-      "base_sha": "79b0804d6d4a3fdefa376876aa44966f04ccd666",
-      "head_sha": "9dd20575f2b3b19918aeda6ac432320f37da6cc8",
+      "base_sha": "becabf91bb642e439e9d8578ed11bb73e829f06d",
+      "head_sha": "b83ba1ad8947181ecc336eb6e43a4f4a7dc5a33d",
       "blocked_reason": null,
-      "next_action": "Phase 9 is exact-master verified; keep Phase 10 development/CI preparation non-merging while higher-priority Identity owns the single-writer token."
+      "next_action": "Phase 9 is exact-master verified. Re-read exact current master, PR #1001 head, all seven reviewed Phase-10 paths and semantic overlap; replay only the bounded Phase-10 delta if currentness requires it, invalidate historical PASS, require completely fresh Web App Factory + Required CI + SFFE + applicable controller/security evidence, then merge only with expected-head protection and exact-master verification."
     },
     "agents": {
       "scheduler": "agents",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 24,
-    "stale_pass_invalidations": 19,
+    "master_advances": 25,
+    "stale_pass_invalidations": 20,
     "replay_resync_count": 7,
-    "ci_cycles": 18,
-    "successful_merges": 24,
+    "ci_cycles": 19,
+    "successful_merges": 25,
     "duplicate_pr_count": 0,
     "churn_only_commit_count": 0
   }
