@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-26T01:14:00Z",
+  "updated_at": "2026-08-26T05:10:00Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "identity",
-    "reserved_master_sha": "5c0ac1874884c611aa04ffdde08de953a368f9e1",
-    "candidate_pr": null,
-    "candidate_head_sha": null,
+    "owner": "website_v2",
+    "reserved_master_sha": "1e46f271f48a4cc8c5d8abd4b0e41e8f88d99361",
+    "candidate_pr": 1005,
+    "candidate_head_sha": "1b46109dcf046599d05438c39ea9ca28b21ca2ff",
     "freeze_active": true,
-    "freeze_reason": "Agent PR #1000 is merged and exact-master Required CI 32916705220, Software Factory Final Evidence 32916705063 and Agent P0 Live Certification 32916705010 are SUCCESS on 5c0ac187. Release the completed Agent merge window at this safe checkpoint and reserve the next dependency-ready single-writer window for Production Identity/Account lifecycle closure."
+    "freeze_reason": "Identity privacy-delete HTTP boundary PR #1004 is merged and exact-master Required CI 32929370151 plus Software Factory Final Evidence 32929369994 are SUCCESS on 1e46f271. Preserve that safe checkpoint and reserve the next dependency-ready single-writer window for the authoritative ILAIOS corporate Website V2 rebuild successor PR #1005."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -43,25 +43,25 @@
     },
     "website_v2": {
       "scheduler": "unified",
-      "lifecycle": "BLOCKED_EXTERNAL",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 3,
       "authoritative_issue": null,
-      "active_pr": null,
-      "base_sha": "4751fccce6fa91c3218e72eb79f16ecf8145d170",
-      "head_sha": "4751fccce6fa91c3218e72eb79f16ecf8145d170",
-      "blocked_reason": "Production /api/release exact-SHA attribution and live EN/TR Dark/Light responsive browser evidence remain externally unavailable from the prior runtime.",
-      "next_action": "Retry production release attribution and live browser QA when network/deployment access is available; do not promote source CI to production verification."
+      "active_pr": 1005,
+      "base_sha": "1e46f271f48a4cc8c5d8abd4b0e41e8f88d99361",
+      "head_sha": "1b46109dcf046599d05438c39ea9ca28b21ca2ff",
+      "blocked_reason": null,
+      "next_action": "Complete the authoritative corporate Website V2 rebuild gate on PR #1005. Required CI, SFFE, Product Surface Parity and Website V2 Visual QA are SUCCESS on the exact head; Website Rebuild Closure browser QA passed and its website-quality job was runner-cancelled during setup-node, so consume the justified fresh rerun, then reread master/head/overlap and merge only with expected-head protection."
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 4,
       "authoritative_issue": null,
       "active_pr": null,
-      "base_sha": "5c0ac1874884c611aa04ffdde08de953a368f9e1",
-      "head_sha": "5c0ac1874884c611aa04ffdde08de953a368f9e1",
+      "base_sha": "1e46f271f48a4cc8c5d8abd4b0e41e8f88d99361",
+      "head_sha": "1e46f271f48a4cc8c5d8abd4b0e41e8f88d99361",
       "blocked_reason": null,
-      "next_action": "Audit the remaining projected-but-unwired canonical account lifecycle routes on exact current master and implement only the smallest dependency-ready fail-closed HTTP/client slice using existing Identity authorities."
+      "next_action": "Identity privacy-delete HTTP boundary is exact-master verified on 1e46f271. Continue only later dependency-ready Identity/Billing/Subscription/Entitlement closure work; do not preempt the Website V2 single-writer window."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -72,7 +72,7 @@
       "base_sha": "79b0804d6d4a3fdefa376876aa44966f04ccd666",
       "head_sha": "5d9c70dbac6b881880a06e2516345568ab375993",
       "blocked_reason": null,
-      "next_action": "Phase 9 is exact-master verified; keep Phase 10 development/CI preparation non-merging until the higher-priority Identity single-writer window reaches a safe checkpoint."
+      "next_action": "Phase 9 is exact-master verified; keep Phase 10 development/CI preparation non-merging until higher-priority Website V2 closure reaches a safe checkpoint."
     },
     "agents": {
       "scheduler": "agents",
