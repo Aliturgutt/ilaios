@@ -344,6 +344,10 @@ class WebAppIntegrationsSettingsRuntime:
         self, *, principal: Principal, key: str, value: str, now: datetime
     ) -> ProjectSetting:
         self._token(key, "setting_key")
+        if self._looks_secret(key):
+            raise WebAppIntegrationsSettingsError(
+                "SECRET_SETTING_FORBIDDEN", "secret-like setting key is forbidden", 400
+            )
         self._text(value, "setting_value")
         timestamp = self._utc(now)
         self._authorize(principal, "project.manage", now)
