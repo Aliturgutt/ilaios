@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-26T11:46:00Z",
+  "updated_at": "2026-08-26T13:25:00Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "agents",
-    "reserved_master_sha": "cd207f2d60c753998679a2044a7c9fb4059b7fc3",
-    "candidate_pr": 1006,
-    "candidate_head_sha": "fe899044645b9f8d812f811722aef167305d4aa8",
+    "owner": "identity",
+    "reserved_master_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
+    "candidate_pr": null,
+    "candidate_head_sha": null,
     "freeze_active": true,
-    "freeze_reason": "Web App Phase-10 predecessor #1001 is closed/unmerged, exact-current successor #1014 is merged, generated-code security successor #1015 is merged, and no current Web App merge candidate owns the reviewed Phase-10 scope. Reclaim the stale Web App reservation and hand the next dependency-ready single-writer merge window to Agents. PR #1006 is development preparation only and must be currentness-audited/superseded onto exact current master with the digest helper integrated into the incumbent validator and completely fresh gates before merge."
+    "freeze_reason": "Agent exact-current successor #1019 is merged and exact-master verified on 8cf5cbe4 with Required CI, Software Factory Final Evidence, Agent P0 Live Certification, and Skill Engineering live-provider evidence all SUCCESS. Release the completed Agent repository window and hand the next dependency-ready single-writer window to Identity. Identity must first audit trusted unlink reauthentication proof on exact current master and create only one bounded fail-closed candidate with fresh gates."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,14 +54,14 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 4,
       "authoritative_issue": null,
       "active_pr": null,
-      "base_sha": "21a53a00ec9f016440384a5299fc0917304509e5",
-      "head_sha": "21a53a00ec9f016440384a5299fc0917304509e5",
+      "base_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
+      "head_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
       "blocked_reason": null,
-      "next_action": "Preserve the exact-master verified GitHub recovery checkpoint from merged #1011. Do not hold the merge token while no current Identity merge candidate exists; continue later only from then-current master with fresh evidence."
+      "next_action": "Preserve exact-master verified GitHub recovery from merged #1011. On exact current master, audit existing trusted provider reauthentication proof/callback authorities for unlink. Create only one bounded current-base unlink adapter/handler if a server-trusted DISTINCT VerifiedExternalIdentity plus trusted target identity reference can be supplied without raw client provider subject/email authority; then require fresh Required CI + SFFE + applicable Identity/security/controller gates before expected-head merge and exact-master verification."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -76,14 +76,14 @@
     },
     "agents": {
       "scheduler": "agents",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 6,
       "authoritative_issue": 557,
-      "active_pr": 1006,
-      "base_sha": "1e46f271f48a4cc8c5d8abd4b0e41e8f88d99361",
-      "head_sha": "fe899044645b9f8d812f811722aef167305d4aa8",
+      "active_pr": null,
+      "base_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
+      "head_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
       "blocked_reason": null,
-      "next_action": "Re-read exact current master, #1006 bounded digest preparation and semantic/path overlap. Supersede/replay only the still-required digest delta onto exact current master, integrate it in-place into the incumbent final-closure validator with validator-level tamper regression, invalidate historical PASS, require completely fresh Required CI + SFFE + applicable Agent/security evidence, then merge only with expected-head protection and exact-master verification. Do not treat source merge or P0 partial evidence as 47/47 closure."
+      "next_action": "Preserve merged #1019 exact-master repository verification on 8cf5cbe4, including Required CI, SFFE, Agent P0 Live Certification and Skill Engineering live-provider SUCCESS. Do not hold the repository token without a new dependency-ready current-base Agent candidate; any remaining external/human evidence must be tracked separately."
     },
     "app_factory": {
       "scheduler": "unified",
