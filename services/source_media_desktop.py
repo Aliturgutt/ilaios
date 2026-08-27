@@ -16,6 +16,7 @@ import hmac
 import json
 import os
 import secrets
+import threading
 from datetime import datetime, timezone
 from http import HTTPStatus
 from typing import Any
@@ -61,9 +62,26 @@ class SourceMediaDesktopIdentityHTTPServer(DesktopIdentityHTTPServer):
         )
         self.source_media = source_media
         self.native_frame_relay_configured = _native_frame_relay_configured()
+        # BaseServer.shutdown() deadlocks when called from the same thread after
+        # serve_forever() has already returned. The packaged sidecar may receive
+        # a watchdog shutdown and then enter its bounded cleanup finally block,
+        # so keep the shutdown operation idempotent around the active serve loop.
+        self._serve_forever_active = threading.Event()
         # The server has not started serving yet. Replacing only the request
         # handler preserves the canonical lifecycle, recovery and auth boundary.
         self.RequestHandlerClass = SourceMediaDesktopIdentityRequestHandler
+
+    def serve_forever(self, poll_interval: float = 0.5) -> None:
+        self._serve_forever_active.set()
+        try:
+            super().serve_forever(poll_interval=poll_interval)
+        finally:
+            self._serve_forever_active.clear()
+
+    def shutdown(self) -> None:
+        if not self._serve_forever_active.is_set():
+            return
+        super().shutdown()
 
 
 class SourceMediaDesktopIdentityRequestHandler(DesktopIdentityRequestHandler):
