@@ -120,7 +120,22 @@ def test_generated_origin_cannot_equal_privileged_session_origin() -> None:
     )
     assert result.verdict is SandboxVerdict.FAIL
     assert (
-        "generated runtime origin is not isolated from privileged session origin"
+        "generated runtime host is not isolated from privileged session host"
+        in result.reasons
+    )
+
+
+def test_separate_origin_cannot_rely_on_port_only() -> None:
+    result = evaluate_generated_sandbox(
+        replace(
+            _evidence(),
+            generated_runtime_origin="https://app.example.com:8443",
+            privileged_session_origin="https://app.example.com",
+        )
+    )
+    assert result.verdict is SandboxVerdict.FAIL
+    assert (
+        "generated runtime host is not isolated from privileged session host"
         in result.reasons
     )
 
