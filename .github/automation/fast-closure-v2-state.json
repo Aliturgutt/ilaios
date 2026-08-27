@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-27T18:13:00Z",
+  "updated_at": "2026-08-27T18:41:00Z",
   "merge_token": {
-    "state": "RELEASED",
-    "owner": null,
-    "reserved_master_sha": null,
-    "candidate_pr": null,
-    "candidate_head_sha": null,
-    "freeze_active": false,
-    "freeze_reason": "Desktop repository-owned P0 repair reached exact-master safe checkpoint on 695f05890d1dbe6cc481b0a02996744ba01d27d1. Required CI, Software Factory Final Evidence, Desktop Local Runtime Diagnostics and Desktop MSIX Packaging are SUCCESS on that exact SHA. Remaining Windows install/launch/login/logout/relogin/UI acceptance is genuine user-machine evidence and must not hold the repository merge token."
+    "state": "RESERVED",
+    "owner": "web_app",
+    "reserved_master_sha": "28c38e78ae91386b6742646134e118ea7a2d8c2c",
+    "candidate_pr": 1056,
+    "candidate_head_sha": "466477572850fe809b11762d783f6190db015044",
+    "freeze_active": true,
+    "freeze_reason": "Web App Phase 11 is the dependency-ready current-master candidate. PR #1056 replays only reviewed non-overlapping generated-runtime sandbox and egress-parser deltas onto exact master 28c38e78ae91386b6742646134e118ea7a2d8c2c. Fresh exact-head gates, immediate live master/head/overlap reread, expected-head merge and exact-master verification remain mandatory."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -65,14 +65,14 @@
     },
     "web_app": {
       "scheduler": "web_app",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 5,
       "authoritative_issue": 486,
-      "active_pr": null,
-      "base_sha": "96d2f59732c54ba29751df40ed9d6841d3acaa90",
-      "head_sha": "96d2f59732c54ba29751df40ed9d6841d3acaa90",
+      "active_pr": 1056,
+      "base_sha": "28c38e78ae91386b6742646134e118ea7a2d8c2c",
+      "head_sha": "466477572850fe809b11762d783f6190db015044",
       "blocked_reason": null,
-      "next_action": "Preserve merged PR #1040 on exact master 96d2f597. Do not retain the merge token without a new dependency-ready exact-current Web App successor."
+      "next_action": "Require fresh exact-head Web App Factory, Web Generated Runtime Sandbox, Required CI and SFFE on PR #1056. Then immediately re-read live master/head/token and changed-path/semantic overlap; merge only with expected-head protection; require exact-master verification before Phase 11 promotion."
     },
     "agents": {
       "scheduler": "agents",
