@@ -17,6 +17,7 @@ class _RecordingBoundary(DockerSecureCommandBoundary):
     def __init__(self) -> None:
         super().__init__(runtime_image="ilaios/generated-runtime:test")
         self.calls: list[tuple[str, ...]] = []
+        self.cleanup_names: list[str | None] = []
         self.next_result = subprocess.CompletedProcess(("docker",), 0, "", "")
 
     def _host_identity(self) -> tuple[int, int]:
@@ -31,10 +32,27 @@ class _RecordingBoundary(DockerSecureCommandBoundary):
         args: tuple[str, ...],
         *,
         timeout_seconds: int,
+        cleanup_container_name: str | None = None,
     ) -> subprocess.CompletedProcess[str]:
         assert timeout_seconds == 45
         self.calls.append(args)
+        self.cleanup_names.append(cleanup_container_name)
         return self.next_result
+
+
+class _CleanupRecordingBoundary(DockerSecureCommandBoundary):
+    def __init__(self, *, docker_executable: str, output_limit_bytes: int = 16_384) -> None:
+        super().__init__(
+            runtime_image="ilaios/generated-runtime:test",
+            docker_executable=docker_executable,
+            output_limit_bytes=output_limit_bytes,
+        )
+        self.removed: list[str] = []
+
+    def _force_remove_container(self, container_name: str, timeout_seconds: int) -> bool:
+        assert timeout_seconds > 0
+        self.removed.append(container_name)
+        return True
 
 
 def _policy(**overrides: object) -> ExecutionPolicy:
@@ -68,7 +86,14 @@ def test_boundary_builds_fail_closed_docker_isolation_command(tmp_path: Path) ->
     assert result.stderr_sha256 == hashlib.sha256(b"warn\n").hexdigest()
     assert len(boundary.calls) == 1
     argv = boundary.calls[0]
-    assert argv[:5] == ("run", "--rm", "--network=none", "--read-only", "--cap-drop=ALL")
+    assert argv[:3] == ("run", "--rm", "--name")
+    container_name = argv[3]
+    assert container_name.startswith("ilaios-web-sandbox-")
+    assert len(container_name) == len("ilaios-web-sandbox-") + 32
+    assert boundary.cleanup_names == [container_name]
+    assert "--network=none" in argv
+    assert "--read-only" in argv
+    assert "--cap-drop=ALL" in argv
     assert "--security-opt=no-new-privileges" in argv
     assert "--pids-limit=256" in argv
     assert "--memory=1024m" in argv
@@ -128,7 +153,7 @@ def test_boundary_keeps_failed_command_as_failed_evidence(tmp_path: Path) -> Non
     assert result.stderr_sha256 == hashlib.sha256(b"blocked").hexdigest()
 
 
-def test_boundary_kills_host_output_flood_before_control_plane_memory_growth(
+def test_boundary_kills_host_output_flood_and_forces_container_cleanup(
     tmp_path: Path,
 ) -> None:
     executable = tmp_path / "fake-docker"
@@ -142,11 +167,31 @@ def test_boundary_kills_host_output_flood_before_control_plane_memory_growth(
         encoding="utf-8",
     )
     executable.chmod(0o755)
-    boundary = DockerSecureCommandBoundary(
-        runtime_image="ilaios/generated-runtime:test",
-        docker_executable=str(executable),
-        output_limit_bytes=16_384,
-    )
+    boundary = _CleanupRecordingBoundary(docker_executable=str(executable))
+    container_name = "ilaios-web-sandbox-" + "b" * 32
 
     with pytest.raises(SoftwareFactoryError, match="output exceeds bounded capture limit"):
-        boundary._docker_run(("run",), timeout_seconds=5)
+        boundary._docker_run(
+            ("run", "--name", container_name),
+            timeout_seconds=5,
+            cleanup_container_name=container_name,
+        )
+
+    assert boundary.removed == [container_name]
+
+
+def test_boundary_timeout_forces_container_cleanup(tmp_path: Path) -> None:
+    executable = tmp_path / "fake-docker"
+    executable.write_text("#!/bin/sh\nsleep 10\n", encoding="utf-8")
+    executable.chmod(0o755)
+    boundary = _CleanupRecordingBoundary(docker_executable=str(executable))
+    container_name = "ilaios-web-sandbox-" + "c" * 32
+
+    with pytest.raises(subprocess.TimeoutExpired):
+        boundary._docker_run(
+            ("run", "--name", container_name),
+            timeout_seconds=1,
+            cleanup_container_name=container_name,
+        )
+
+    assert boundary.removed == [container_name]
