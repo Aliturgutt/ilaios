@@ -139,6 +139,45 @@ class VercelWebDeploymentAdapter:
         self._max_inline_bytes = max_inline_bytes
         self._sleeper = sleeper
 
+    def preview(
+        self,
+        project_root: Path,
+        *,
+        source_commit_sha: str,
+        expected_artifact_sha256: str | None = None,
+        preview_authorization_proven: bool,
+        budget_proven: bool,
+        now: datetime | None = None,
+    ) -> WebDeploymentReceipt:
+        """Create and verify an immutable preview without production authority.
+
+        Preview is deliberately a terminal operation: it never calls the Vercel
+        promotion or production-alias endpoints, and its receipt can never be
+        mistaken for public-production evidence.
+        """
+
+        self._assert_preview_side_effect_authorized(
+            preview_authorization_proven=preview_authorization_proven,
+            budget_proven=budget_proven,
+        )
+        deployment_id, artifact_sha, preview_url = self._create_healthy_preview(
+            project_root,
+            source_commit_sha=source_commit_sha,
+            expected_artifact_sha256=expected_artifact_sha256,
+        )
+        return WebDeploymentReceipt(
+            contract=self.deployment_contract,
+            provider=self.provider_id,
+            deployment_id=deployment_id,
+            source_commit_sha=source_commit_sha,
+            artifact_sha256=artifact_sha,
+            live_url=preview_url,
+            health="HEALTHY_PUBLIC_PREVIEW",
+            rollback_reference=None,
+            deployed_at=_timestamp(now),
+            public_production_proven=False,
+        )
+
     def deploy(
         self,
         project_root: Path,
@@ -154,58 +193,12 @@ class VercelWebDeploymentAdapter:
             authorization_proven=authorization_proven,
             budget_proven=budget_proven,
         )
-        source = project_root.resolve()
-        if not source.is_dir():
-            raise WebDeploymentError("Vercel Web deployment source project is missing")
-        if not _valid_sha(source_commit_sha):
-            raise WebDeploymentError("Vercel Web source commit SHA is malformed")
-        artifact_sha = tree_sha256(source)
-        if expected_artifact_sha256 and artifact_sha != expected_artifact_sha256:
-            raise WebDeploymentError("Vercel Web deployment artifact digest mismatch")
-        files = self._inline_project_files(source)
-        token = self._credential()
-
-        # Deliberately omit target=production. The deployment must remain preview-only
-        # until READY, provenance and immutable preview health are all proven.
-        create_body: dict[str, object] = {
-            "name": self.project_name,
-            "project": self.project_id,
-            "files": files,
-            "gitMetadata": {
-                "commitRef": "ilaios-generated",
-                "commitSha": source_commit_sha,
-                "dirty": False,
-                "ci": True,
-                "ciType": "ilaios",
-            },
-            "meta": self._provenance(source_commit_sha, artifact_sha),
-            "projectSettings": {
-                "framework": "nextjs",
-                "buildCommand": "npm run build",
-                "installCommand": "npm install --ignore-scripts",
-            },
-        }
-        status, created = self._transport.api(
-            "POST",
-            "/v13/deployments",
-            token=token,
-            team_id=self.team_id,
-            json_body=create_body,
-        )
-        if status not in {200, 201, 202}:
-            raise WebDeploymentError(
-                f"Vercel deployment creation failed with HTTP {status}"
-            )
-        deployment_id = _required_string(created, "id", "Vercel deployment id")
-        ready = self._await_ready(deployment_id, token=token)
-        self._assert_provider_provenance(
-            ready,
+        deployment_id, artifact_sha, _preview_url = self._create_healthy_preview(
+            project_root,
             source_commit_sha=source_commit_sha,
-            artifact_sha256=artifact_sha,
+            expected_artifact_sha256=expected_artifact_sha256,
         )
-        preview_url = self._deployment_url(ready)
-        self._assert_healthy_https(preview_url, expected_host=_hostname(preview_url))
-
+        token = self._credential()
         self._promote(deployment_id, token=token)
         live_url = self._await_expected_production_alias(deployment_id, token=token)
         self._assert_healthy_https(live_url, expected_host=self.production_host)
@@ -265,6 +258,7 @@ class VercelWebDeploymentAdapter:
             artifact_sha256=expected_artifact_sha256,
         )
         preview_url = self._deployment_url(ready)
+        self._assert_preview_host_isolated(preview_url)
         self._assert_healthy_https(preview_url, expected_host=_hostname(preview_url))
         live_url = self._await_expected_production_alias(deployment_id, token=token)
         self._assert_healthy_https(live_url, expected_host=self.production_host)
@@ -280,6 +274,78 @@ class VercelWebDeploymentAdapter:
             deployed_at=_timestamp(now),
             public_production_proven=True,
         )
+
+    def _create_healthy_preview(
+        self,
+        project_root: Path,
+        *,
+        source_commit_sha: str,
+        expected_artifact_sha256: str | None,
+    ) -> tuple[str, str, str]:
+        source = project_root.resolve()
+        if not source.is_dir():
+            raise WebDeploymentError("Vercel Web deployment source project is missing")
+        if not _valid_sha(source_commit_sha):
+            raise WebDeploymentError("Vercel Web source commit SHA is malformed")
+        artifact_sha = tree_sha256(source)
+        if expected_artifact_sha256 and artifact_sha != expected_artifact_sha256:
+            raise WebDeploymentError("Vercel Web deployment artifact digest mismatch")
+        files = self._inline_project_files(source)
+        token = self._credential()
+
+        # Deliberately omit target=production. The deployment remains preview-only
+        # unless the explicit production path subsequently calls _promote().
+        create_body: dict[str, object] = {
+            "name": self.project_name,
+            "project": self.project_id,
+            "files": files,
+            "gitMetadata": {
+                "commitRef": "ilaios-generated",
+                "commitSha": source_commit_sha,
+                "dirty": False,
+                "ci": True,
+                "ciType": "ilaios",
+            },
+            "meta": self._provenance(source_commit_sha, artifact_sha),
+            "projectSettings": {
+                "framework": "nextjs",
+                "buildCommand": "npm run build",
+                "installCommand": "npm install --ignore-scripts",
+            },
+        }
+        status, created = self._transport.api(
+            "POST",
+            "/v13/deployments",
+            token=token,
+            team_id=self.team_id,
+            json_body=create_body,
+        )
+        if status not in {200, 201, 202}:
+            raise WebDeploymentError(
+                f"Vercel deployment creation failed with HTTP {status}"
+            )
+        deployment_id = _required_string(created, "id", "Vercel deployment id")
+        ready = self._await_ready(deployment_id, token=token)
+        self._assert_provider_provenance(
+            ready,
+            source_commit_sha=source_commit_sha,
+            artifact_sha256=artifact_sha,
+        )
+        preview_url = self._deployment_url(ready)
+        self._assert_preview_host_isolated(preview_url)
+        self._assert_healthy_https(preview_url, expected_host=_hostname(preview_url))
+        return deployment_id, artifact_sha, preview_url
+
+    def _assert_preview_side_effect_authorized(
+        self,
+        *,
+        preview_authorization_proven: bool,
+        budget_proven: bool,
+    ) -> None:
+        if preview_authorization_proven is not True:
+            raise WebDeploymentError("Web preview authorization is not proven")
+        if budget_proven is not True:
+            raise WebDeploymentError("Web preview budget is not proven")
 
     def _assert_public_side_effect_authorized(
         self,
@@ -386,6 +452,10 @@ class VercelWebDeploymentAdapter:
         if not isinstance(value, str) or not value.strip():
             raise WebDeploymentError("Vercel immutable deployment URL is missing")
         return _https_url(value)
+
+    def _assert_preview_host_isolated(self, preview_url: str) -> None:
+        if _hostname(preview_url) == self.production_host:
+            raise WebDeploymentError("Vercel preview host is not isolated from production")
 
     def _promote(self, deployment_id: str, *, token: str) -> None:
         status, _ = self._transport.api(
