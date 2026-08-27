@@ -12,12 +12,14 @@ import os
 import re
 import subprocess
 import threading
+import uuid
 from pathlib import Path
 
 from services.software_factory import ExecutionPolicy, SoftwareFactoryError
 from services.software_factory_runtime import RuntimeCommand, RuntimeStepResult
 
 _SHA256_IMAGE_ID = re.compile(r"^sha256:[0-9a-f]{64}$")
+_CONTAINER_NAME = re.compile(r"^ilaios-web-sandbox-[0-9a-f]{32}$")
 
 
 class DockerSecureCommandBoundary:
@@ -85,11 +87,14 @@ class DockerSecureCommandBoundary:
 
         uid, gid = self._host_identity()
         image_id = self._resolve_image_id(policy.timeout_seconds)
+        container_name = f"ilaios-web-sandbox-{uuid.uuid4().hex}"
         relative_working = working.relative_to(root).as_posix()
         container_working = "/workspace" if relative_working == "." else f"/workspace/{relative_working}"
         docker_args = (
             "run",
             "--rm",
+            "--name",
+            container_name,
             "--network=none",
             "--read-only",
             "--cap-drop=ALL",
@@ -111,7 +116,11 @@ class DockerSecureCommandBoundary:
             *command.argv,
         )
         try:
-            completed = self._docker_run(docker_args, timeout_seconds=policy.timeout_seconds)
+            completed = self._docker_run(
+                docker_args,
+                timeout_seconds=policy.timeout_seconds,
+                cleanup_container_name=container_name,
+            )
         except (subprocess.TimeoutExpired, OSError) as error:
             raise SoftwareFactoryError("generated sandbox execution failed closed") from error
 
@@ -153,6 +162,7 @@ class DockerSecureCommandBoundary:
         args: tuple[str, ...],
         *,
         timeout_seconds: int,
+        cleanup_container_name: str | None = None,
     ) -> subprocess.CompletedProcess[str]:
         process = subprocess.Popen(
             (self._docker, *args),
@@ -162,6 +172,7 @@ class DockerSecureCommandBoundary:
         )
         if process.stdout is None or process.stderr is None:
             process.kill()
+            self._cleanup_container_or_fail(cleanup_container_name, timeout_seconds)
             raise SoftwareFactoryError("generated sandbox output capture is unavailable")
 
         overflow = threading.Event()
@@ -190,18 +201,26 @@ class DockerSecureCommandBoundary:
         stderr_thread = threading.Thread(target=drain, args=(process.stderr, stderr_buffer), daemon=True)
         stdout_thread.start()
         stderr_thread.start()
+        timed_out = False
         try:
             returncode = process.wait(timeout=timeout_seconds)
         except subprocess.TimeoutExpired:
+            timed_out = True
             process.kill()
             process.wait()
-            raise
+            returncode = process.returncode
         finally:
             stdout_thread.join(timeout=1)
             stderr_thread.join(timeout=1)
 
-        if stdout_thread.is_alive() or stderr_thread.is_alive():
+        drain_failed = stdout_thread.is_alive() or stderr_thread.is_alive()
+        bounded_failure = timed_out or drain_failed or overflow.is_set()
+        if bounded_failure:
             process.kill()
+            self._cleanup_container_or_fail(cleanup_container_name, timeout_seconds)
+        if timed_out:
+            raise subprocess.TimeoutExpired((self._docker, *args), timeout_seconds)
+        if drain_failed:
             raise SoftwareFactoryError("generated sandbox output drain failed closed")
         if overflow.is_set():
             raise SoftwareFactoryError("generated sandbox output exceeds bounded capture limit")
@@ -212,3 +231,53 @@ class DockerSecureCommandBoundary:
             stdout_buffer.decode("utf-8", errors="replace"),
             stderr_buffer.decode("utf-8", errors="replace"),
         )
+
+    def _cleanup_container_or_fail(
+        self,
+        container_name: str | None,
+        timeout_seconds: int,
+    ) -> None:
+        if container_name is None:
+            return
+        if _CONTAINER_NAME.fullmatch(container_name) is None:
+            raise SoftwareFactoryError("generated sandbox cleanup identity is invalid")
+        if not self._force_remove_container(container_name, timeout_seconds):
+            raise SoftwareFactoryError("generated sandbox container cleanup could not be verified")
+
+    def _force_remove_container(self, container_name: str, timeout_seconds: int) -> bool:
+        cleanup_timeout = min(max(timeout_seconds, 1), 10)
+        env = {"PATH": os.environ.get("PATH", "")}
+        try:
+            removed = subprocess.run(
+                (self._docker, "rm", "--force", container_name),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+                timeout=cleanup_timeout,
+                env=env,
+            )
+        except (subprocess.TimeoutExpired, OSError):
+            return False
+        if removed.returncode == 0:
+            return True
+        if self._is_missing_container_error(removed.stderr):
+            return True
+        try:
+            inspected = subprocess.run(
+                (self._docker, "container", "inspect", container_name),
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                check=False,
+                timeout=cleanup_timeout,
+                env=env,
+            )
+        except (subprocess.TimeoutExpired, OSError):
+            return False
+        return inspected.returncode != 0 and self._is_missing_container_error(inspected.stderr)
+
+    @staticmethod
+    def _is_missing_container_error(stderr: str | None) -> bool:
+        message = (stderr or "").lower()
+        return "no such container" in message or "no such object" in message
