@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-27T11:10:17Z",
+  "updated_at": "2026-08-27T13:48:37Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "agents",
-    "reserved_master_sha": "2bfe85b944461c21ce9ee4b7926dad73a55b2474",
-    "candidate_pr": 1043,
-    "candidate_head_sha": "d9827da09ad4989c944af02297882839ddda6621",
+    "owner": "desktop",
+    "reserved_master_sha": "dc5af14c60cdfdd57b2bd3e727ab47d06e430dbf",
+    "candidate_pr": 1045,
+    "candidate_head_sha": "20a670f2e783c25e35386a4494cf9f6517e597d1",
     "freeze_active": true,
-    "freeze_reason": "Agent same-SHA automated 46/47 certification PR #1043 is the legal in-flight single-writer batch. Required CI exposed only a coordination-state lifecycle invariant; preserve Agent ownership and rerun fresh exact-head gates after the bounded state correction."
+    "freeze_reason": "Agent exact-master Automated 46/47 certification is SUCCESS on dc5af14c60cdfdd57b2bd3e727ab47d06e430dbf (run 33076305932; immutable artifact 9648460534, sha256:c88110d5621a27e9a84f93dc367f1611c4daeaea4ef5184b8202810c50bc900d) with genuine human.owner still pending. Desktop PR #1045 is the next dependency-ready repository candidate. Its five changed paths do not overlap the only master drift since its base, .github/workflows/agent-automated-46-of-47-certification.yml. Desktop must still perform its own live merge-window currentness/semantic-overlap reread and refresh stale merge authority as required before expected-head merge."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -21,14 +21,14 @@
   "workstreams": {
     "desktop": {
       "scheduler": "desktop",
-      "lifecycle": "BLOCKED_EXTERNAL",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 1,
       "authoritative_issue": 539,
-      "active_pr": null,
-      "base_sha": "bb17ac9aea3dc50aca4cbea31cc0708eda87df91",
-      "head_sha": "bb17ac9aea3dc50aca4cbea31cc0708eda87df91",
-      "blocked_reason": "Desktop repository/package checkpoint is exact-master verified. Final user-machine installation, 8-second runtime smoke, and visual acceptance require human Windows execution.",
-      "next_action": "Preserve merged #1026 on exact master bb17ac9a with Required CI/SFFE/MSIX SUCCESS and exact-master portable artifact digest sha256:f674e63520cee900ee3a1c9b3eda4a3edf1b66c737f15d1a26d5b6813a963b83 from run 33009237246. Complete user-machine installation/runtime/visual acceptance separately; do not hold the repository merge token for that external evidence."
+      "active_pr": 1045,
+      "base_sha": "33e3528936518933320f3c41d79f1ddaf044f248",
+      "head_sha": "20a670f2e783c25e35386a4494cf9f6517e597d1",
+      "blocked_reason": null,
+      "next_action": "At the legal Desktop merge window, re-read exact live master/token/PR head and path+semantic overlap. Current evidence shows #1045 head has Required CI, SFFE, Product Surface Parity, Desktop CI, Desktop Combined Final PR Verification, Windows Gate, MSIX Packaging and Local Runtime Diagnostics SUCCESS, while master drift from its base touches only the Agent 46/47 workflow. Do not reuse stale merge authority merely because paths are disjoint: refresh currentness/gates as required, merge only with expected-head protection, then require exact-master package/runtime lineage. Final user-machine normal-window-close/orphan-sidecar acceptance remains genuine human evidence."
     },
     "video_native_reference": {
       "scheduler": "unified",
@@ -76,14 +76,14 @@
     },
     "agents": {
       "scheduler": "agents",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 6,
       "authoritative_issue": 557,
-      "active_pr": 1043,
-      "base_sha": "2bfe85b944461c21ce9ee4b7926dad73a55b2474",
-      "head_sha": "d9827da09ad4989c944af02297882839ddda6621",
+      "active_pr": null,
+      "base_sha": "dc5af14c60cdfdd57b2bd3e727ab47d06e430dbf",
+      "head_sha": "dc5af14c60cdfdd57b2bd3e727ab47d06e430dbf",
       "blocked_reason": null,
-      "next_action": "Run completely fresh exact-head Required CI/SFFE/Browser and applicable Agent gates for PR #1043 after this coordination-state correction. If all pass, immediately re-read live master/token/head/overlap and merge only with expected-head protection; then require exact-master automated 46/47 aggregate evidence. Preserve IndependentVerifier as human.owner and do not claim 47/47 closure."
+      "next_action": "Preserve exact-master Required CI PASS run 33076306190, SFFE PASS run 33076305834, and Automated 46/47 SUCCESS run 33076305932 on dc5af14c60cdfdd57b2bd3e727ab47d06e430dbf. The immutable aggregate artifact is 9648460534 with sha256:c88110d5621a27e9a84f93dc367f1611c4daeaea4ef5184b8202810c50bc900d. This proves automated Core/Engineering/Security 21/21, governed BrowserQA, Web 6/6, Media+Intelligence 12/12 and Operations+Meta bounded 7/8 on the same SHA; it does NOT prove 47/47. Continue final closure only when all incumbent final-receipt requirements are same-line complete, including Desktop/Windows packaged-runtime lineage, cost/restart/Evidence/cross-client bindings, and genuine IndependentVerifier human.owner evidence. Never synthesize the 47th verification."
     },
     "app_factory": {
       "scheduler": "unified",
