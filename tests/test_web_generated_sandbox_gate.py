@@ -33,6 +33,11 @@ def _evidence() -> GeneratedSandboxEvidence:
         unrestricted_network_access=False,
         signing_material_access=False,
         package_install_scripts_disabled=True,
+        canonical_policy_secure_mode=True,
+        canonical_policy_network_allowed=False,
+        canonical_policy_secrets_allowed=False,
+        canonical_policy_timeout_seconds=120,
+        controlled_egress_gateway=True,
         wall_clock_timeout_seconds=120,
         memory_limit_mb=1024,
         cpu_limit_millis=1000,
@@ -49,6 +54,36 @@ def test_missing_enforced_resource_bound_is_not_verified() -> None:
     result = evaluate_generated_sandbox(replace(_evidence(), memory_limit_mb=None))
     assert result.verdict is SandboxVerdict.NOT_VERIFIED
     assert "missing evidence: memory limit" in result.reasons
+
+
+def test_canonical_policy_binding_is_required() -> None:
+    missing = evaluate_generated_sandbox(
+        replace(_evidence(), canonical_policy_timeout_seconds=None)
+    )
+    assert missing.verdict is SandboxVerdict.NOT_VERIFIED
+    assert "missing evidence: canonical policy timeout" in missing.reasons
+
+    hostile_policy = (
+        replace(_evidence(), canonical_policy_secure_mode=False),
+        replace(_evidence(), canonical_policy_network_allowed=True),
+        replace(_evidence(), canonical_policy_secrets_allowed=True),
+        replace(_evidence(), controlled_egress_gateway=False),
+    )
+    for evidence in hostile_policy:
+        result = evaluate_generated_sandbox(evidence)
+        assert result.verdict is SandboxVerdict.FAIL
+
+
+def test_runtime_timeout_cannot_exceed_canonical_policy() -> None:
+    result = evaluate_generated_sandbox(
+        replace(
+            _evidence(),
+            canonical_policy_timeout_seconds=60,
+            wall_clock_timeout_seconds=61,
+        )
+    )
+    assert result.verdict is SandboxVerdict.FAIL
+    assert "sandbox wall clock timeout exceeds canonical execution policy" in result.reasons
 
 
 def test_same_trust_domain_fails_closed() -> None:
