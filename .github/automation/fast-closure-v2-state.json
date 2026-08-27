@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-27T07:46:00Z",
+  "updated_at": "2026-08-27T09:10:00Z",
   "merge_token": {
-    "state": "RELEASED",
-    "owner": null,
-    "reserved_master_sha": null,
-    "candidate_pr": null,
-    "candidate_head_sha": null,
-    "freeze_active": false,
-    "freeze_reason": null
+    "state": "RESERVED",
+    "owner": "web_app",
+    "reserved_master_sha": "ba3457f25dd7e880c720fdb9f3b9d7325957a898",
+    "candidate_pr": 1040,
+    "candidate_head_sha": "ab842b116463397141e8fac52f269411e506226a",
+    "freeze_active": true,
+    "freeze_reason": "GLOBAL P0 generated-code dependency install-hook denial is in exact-current pre-merge validation on PR #1040."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -65,14 +65,14 @@
     },
     "web_app": {
       "scheduler": "web_app",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 5,
       "authoritative_issue": 486,
-      "active_pr": null,
-      "base_sha": "240b87af4550b5b14895072bdd78205751e78602",
-      "head_sha": "240b87af4550b5b14895072bdd78205751e78602",
+      "active_pr": 1040,
+      "base_sha": "ba3457f25dd7e880c720fdb9f3b9d7325957a898",
+      "head_sha": "ab842b116463397141e8fac52f269411e506226a",
       "blocked_reason": null,
-      "next_action": "Preserve merged exact-current successor #1038 on master 240b87af with Required CI, SFFE and Web App Factory exact-master SUCCESS. The stale #1023 reservation is cleared; runtime sandbox production evidence remains separate from repository source acceptance."
+      "next_action": "Complete fresh exact-head gates for PR #1040 after this reservation commit, then re-read live master/token/head/overlap and merge only with expected-head protection. After merge require exact-master Required CI/SFFE/Web App evidence."
     },
     "agents": {
       "scheduler": "agents",
