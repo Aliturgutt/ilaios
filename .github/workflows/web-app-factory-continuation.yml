@@ -6,10 +6,12 @@ on:
       - master
     paths:
       - 'services/web_app_*.py'
+      - 'services/web_generated_sandbox_gate.py'
       - 'services/web_reference_semantics.py'
       - 'services/web_source_*.py'
       - 'services/control_plane/migrations.py'
       - 'tests/test_web_app_*.py'
+      - 'tests/test_web_generated_sandbox_gate.py'
       - 'tests/test_web_reference_semantics.py'
       - 'tests/test_web_source_*.py'
       - '.github/web-app-factory-closure.json'
@@ -20,10 +22,12 @@ on:
       - master
     paths:
       - 'services/web_app_*.py'
+      - 'services/web_generated_sandbox_gate.py'
       - 'services/web_reference_semantics.py'
       - 'services/web_source_*.py'
       - 'services/control_plane/migrations.py'
       - 'tests/test_web_app_*.py'
+      - 'tests/test_web_generated_sandbox_gate.py'
       - 'tests/test_web_reference_semantics.py'
       - 'tests/test_web_source_*.py'
       - '.github/web-app-factory-closure.json'
@@ -112,7 +116,8 @@ jobs:
             tests/test_web_app_interaction_contract.py \
             tests/test_web_app_crud_runtime.py \
             tests/test_web_app_analytics_runtime.py \
-            tests/test_web_app_realtime_runtime.py
+            tests/test_web_app_realtime_runtime.py \
+            tests/test_web_generated_sandbox_gate.py
 
       - name: Run focused Ruff
         shell: bash
@@ -127,6 +132,7 @@ jobs:
             services/web_app_crud_runtime.py \
             services/web_app_analytics_runtime.py \
             services/web_app_realtime_runtime.py \
+            services/web_generated_sandbox_gate.py \
             services/control_plane/migrations.py \
             tests/test_web_reference_semantics.py \
             tests/test_web_app_spec.py \
@@ -136,7 +142,8 @@ jobs:
             tests/test_web_app_interaction_contract.py \
             tests/test_web_app_crud_runtime.py \
             tests/test_web_app_analytics_runtime.py \
-            tests/test_web_app_realtime_runtime.py
+            tests/test_web_app_realtime_runtime.py \
+            tests/test_web_generated_sandbox_gate.py
 
       - name: Run focused strict Mypy
         shell: bash
@@ -149,6 +156,7 @@ jobs:
             services/web_app_crud_runtime.py \
             services/web_app_analytics_runtime.py \
             services/web_app_realtime_runtime.py \
+            services/web_generated_sandbox_gate.py \
             services/control_plane/migrations.py \
             tests/test_web_app_design_contract.py \
             tests/test_web_app_domain_migrations.py \
@@ -156,7 +164,8 @@ jobs:
             tests/test_web_app_interaction_contract.py \
             tests/test_web_app_crud_runtime.py \
             tests/test_web_app_analytics_runtime.py \
-            tests/test_web_app_realtime_runtime.py
+            tests/test_web_app_realtime_runtime.py \
+            tests/test_web_generated_sandbox_gate.py
 
       - name: Publish checkpoint summary
         if: always()
