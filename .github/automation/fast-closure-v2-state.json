@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-27T09:10:00Z",
+  "updated_at": "2026-08-27T09:45:57Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "web_app",
-    "reserved_master_sha": "ba3457f25dd7e880c720fdb9f3b9d7325957a898",
-    "candidate_pr": 1040,
-    "candidate_head_sha": "ab842b116463397141e8fac52f269411e506226a",
+    "owner": "agents",
+    "reserved_master_sha": "96d2f59732c54ba29751df40ed9d6841d3acaa90",
+    "candidate_pr": null,
+    "candidate_head_sha": "96d2f59732c54ba29751df40ed9d6841d3acaa90",
     "freeze_active": true,
-    "freeze_reason": "GLOBAL P0 generated-code dependency install-hook denial is in exact-current pre-merge validation on PR #1040."
+    "freeze_reason": "Stale Web App reservation reclaimed after PR #1040 merged on exact current master. Agents are the next dependency-ready repository workstream for exact-current runtime/evidence closure preparation."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -65,14 +65,14 @@
     },
     "web_app": {
       "scheduler": "web_app",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 5,
       "authoritative_issue": 486,
-      "active_pr": 1040,
-      "base_sha": "ba3457f25dd7e880c720fdb9f3b9d7325957a898",
-      "head_sha": "ab842b116463397141e8fac52f269411e506226a",
+      "active_pr": null,
+      "base_sha": "96d2f59732c54ba29751df40ed9d6841d3acaa90",
+      "head_sha": "96d2f59732c54ba29751df40ed9d6841d3acaa90",
       "blocked_reason": null,
-      "next_action": "Complete fresh exact-head gates for PR #1040 after this reservation commit, then re-read live master/token/head/overlap and merge only with expected-head protection. After merge require exact-master Required CI/SFFE/Web App evidence."
+      "next_action": "Preserve merged PR #1040 on exact master 96d2f597. Do not retain the merge token without a new dependency-ready exact-current Web App successor."
     },
     "agents": {
       "scheduler": "agents",
@@ -80,10 +80,10 @@
       "priority_rank": 6,
       "authoritative_issue": 557,
       "active_pr": null,
-      "base_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
-      "head_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
+      "base_sha": "96d2f59732c54ba29751df40ed9d6841d3acaa90",
+      "head_sha": "96d2f59732c54ba29751df40ed9d6841d3acaa90",
       "blocked_reason": null,
-      "next_action": "Re-read exact current master before any Agent mutation. Preserve merged #1019 repository verification as historical evidence only; produce exact-current same-SHA governed runtime/provider/tool certification for all applicable Agent families, immutable evidence lineage, cost/restart truth, Desktop/Windows package lineage and genuine human.owner evidence before 47/47 closure."
+      "next_action": "On legal Agent ownership, re-read exact current master and overlapping work, then produce exact-current same-SHA governed runtime/provider/tool certification for all applicable Agent families, immutable evidence lineage, truthful cost/restart evidence, Desktop/Windows package lineage, and preserve genuine human.owner as an external final gate. Do not promote historical receipts across SHA."
     },
     "app_factory": {
       "scheduler": "unified",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 30,
-    "stale_pass_invalidations": 23,
+    "master_advances": 31,
+    "stale_pass_invalidations": 24,
     "replay_resync_count": 7,
     "ci_cycles": 21,
-    "successful_merges": 31,
+    "successful_merges": 32,
     "duplicate_pr_count": 0,
     "churn_only_commit_count": 0
   }
