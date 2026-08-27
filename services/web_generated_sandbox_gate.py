@@ -200,8 +200,10 @@ def _validate_origin_binding(
         failures=failures,
     )
     if evidence.separate_origin and generated is not None and privileged is not None:
-        if generated == privileged:
-            failures.append("generated runtime origin is not isolated from privileged session origin")
+        if generated[1] == privileged[1]:
+            failures.append(
+                "generated runtime host is not isolated from privileged session host"
+            )
 
 
 def _exact_https_origin(
