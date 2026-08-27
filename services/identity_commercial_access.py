@@ -17,6 +17,7 @@ from services.commercial_access import (
     CommercialAccessStore,
     CommercialEntitlement,
     EntitlementState,
+    ProviderSubscriptionBinding,
 )
 from services.control_plane.migrations import migrate_database
 from src.video_automation.managed_credits import (
@@ -35,6 +36,37 @@ class IdentityBoundCommercialAccess:
         self._commercial = commercial
         if migrate_database(identity_database) < 9:
             raise CommercialAccessError("commercial identity schema is unavailable")
+
+    def create_provider_subscription_binding(
+        self,
+        *,
+        provider_subscription_id: str,
+        tenant_id: str,
+        user_id: str,
+        plan_id: str,
+        now: datetime,
+    ) -> ProviderSubscriptionBinding:
+        """Create a trusted binding only for an active canonical membership."""
+
+        self._require_active_identity(tenant_id=tenant_id, user_id=user_id)
+        return self._commercial.create_provider_subscription_binding(
+            provider_subscription_id=provider_subscription_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            plan_id=plan_id,
+            now=now,
+        )
+
+    def apply_verified_provider_event(
+        self, *, event: object, now: datetime
+    ) -> ProviderSubscriptionBinding:
+        """Apply verified provider state without allowing webhook account selection."""
+
+        binding = self._commercial.get_provider_subscription_binding(
+            provider_subscription_id=str(getattr(event, "provider_subscription_id", ""))
+        )
+        self._require_active_identity(tenant_id=binding.tenant_id, user_id=binding.user_id)
+        return self._commercial.apply_verified_provider_event(event=event, now=now)
 
     def apply_entitlement(
         self,
