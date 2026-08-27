@@ -160,6 +160,29 @@ def test_egress_allowlist_rejects_wildcards_urls_and_paths() -> None:
         assert evaluate_generated_sandbox(replace(_evidence(), allowed_egress_hosts=(host,))).verdict is SandboxVerdict.FAIL
 
 
+def test_egress_allowlist_rejects_legacy_numeric_and_unicode_host_spellings() -> None:
+    for host in (
+        "2130706433",
+        "0177.0.0.1",
+        "0x7f000001",
+        "127.1",
+        "127.0.1",
+        "api.exämple.com",
+    ):
+        result = evaluate_generated_sandbox(
+            replace(
+                _evidence(),
+                allowed_egress_hosts=(host,),
+                resolved_egress=((host, "93.184.216.34"),),
+                csp=(
+                    "default-src 'none'; script-src 'self'; "
+                    f"connect-src {host}; object-src 'none'; base-uri 'none'"
+                ),
+            )
+        )
+        assert result.verdict is SandboxVerdict.FAIL
+
+
 def test_egress_allowlist_rejects_privileged_and_nonpublic_targets() -> None:
     for host in ("localhost", "127.0.0.1", "10.0.0.1", "169.254.169.254", "::1"):
         csp_host = host if ":" not in host else "localhost"
