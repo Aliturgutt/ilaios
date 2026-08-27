@@ -83,7 +83,12 @@ class CommercialWebhookVerifier:
             raise CommercialAccessError("commercial webhook body exceeds size limit")
 
         timestamp_seconds, presented_signature = _parse_signature_header(signature_header)
-        signature_time = datetime.fromtimestamp(timestamp_seconds, tz=timezone.utc)
+        try:
+            signature_time = datetime.fromtimestamp(timestamp_seconds, tz=timezone.utc)
+        except (OverflowError, OSError, ValueError) as error:
+            raise CommercialAccessError(
+                "commercial webhook signature timestamp is invalid"
+            ) from error
         age_seconds = (now.astimezone(timezone.utc) - signature_time).total_seconds()
         if age_seconds < 0 or age_seconds > self._max_signature_age_seconds:
             raise CommercialAccessError("commercial webhook signature timestamp is outside policy")
