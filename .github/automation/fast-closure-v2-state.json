@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-27T06:37:00Z",
+  "updated_at": "2026-08-27T07:46:00Z",
   "merge_token": {
-    "state": "RESERVED",
-    "owner": "web_app",
-    "reserved_master_sha": "9a39c5cbf12431710a7bfa8f26b91d13441c7fbc",
-    "candidate_pr": 1023,
-    "candidate_head_sha": "38f52c1273a42b2e01ea94162b200f5be7e7eb2e",
-    "freeze_active": true,
-    "freeze_reason": "Identity PR #1036 is merged on exact master 9a39c5cb and exact-master Required CI is SUCCESS. No exact-current Identity successor is open. Reclaim the stale Identity reservation for the dependency-ready Web App Phase-11 sandbox acceptance lineage; #1023 remains stale-base and MUST be replayed onto exact current master with fresh gates before merge."
+    "state": "RELEASED",
+    "owner": null,
+    "reserved_master_sha": null,
+    "candidate_pr": null,
+    "candidate_head_sha": null,
+    "freeze_active": false,
+    "freeze_reason": null
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -61,18 +61,18 @@
       "base_sha": "9a39c5cbf12431710a7bfa8f26b91d13441c7fbc",
       "head_sha": "9a39c5cbf12431710a7bfa8f26b91d13441c7fbc",
       "blocked_reason": null,
-      "next_action": "Preserve merged #1036 and exact-master Required CI on 9a39c5cb. Do not hold the repository merge token without a new dependency-ready exact-current Identity candidate."
+      "next_action": "Preserve merged #1036 and exact-master Required CI. Do not hold the repository merge token without a new dependency-ready exact-current Identity candidate."
     },
     "web_app": {
       "scheduler": "web_app",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 5,
       "authoritative_issue": 486,
-      "active_pr": 1023,
-      "base_sha": "1f9747b09d633b1e0eb3719d0b874dab9c99a980",
-      "head_sha": "38f52c1273a42b2e01ea94162b200f5be7e7eb2e",
-      "blocked_reason": "PR #1023 is green historical development evidence but stale-base after 36 non-overlapping master commits; replay is required in the legal Web App merge window and stale PASS is invalid.",
-      "next_action": "Replay only the reviewed three-path Phase-11 sandbox acceptance delta from #1023 onto exact current master 9a39c5cb after re-reading overlap/currentness; require completely fresh Web App Factory + Required CI + SFFE and applicable security/controller gates before expected-head merge and exact-master verification."
+      "active_pr": null,
+      "base_sha": "240b87af4550b5b14895072bdd78205751e78602",
+      "head_sha": "240b87af4550b5b14895072bdd78205751e78602",
+      "blocked_reason": null,
+      "next_action": "Preserve merged exact-current successor #1038 on master 240b87af with Required CI, SFFE and Web App Factory exact-master SUCCESS. The stale #1023 reservation is cleared; runtime sandbox production evidence remains separate from repository source acceptance."
     },
     "agents": {
       "scheduler": "agents",
@@ -83,7 +83,7 @@
       "base_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
       "head_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
       "blocked_reason": null,
-      "next_action": "Preserve merged #1019 exact-master repository verification on 8cf5cbe4, including Required CI, SFFE, Agent P0 Live Certification and Skill Engineering live-provider SUCCESS. Do not hold the repository token without a new dependency-ready current-base Agent candidate; any remaining external/human evidence must be tracked separately."
+      "next_action": "Re-read exact current master before any Agent mutation. Preserve merged #1019 repository verification as historical evidence only; produce exact-current same-SHA governed runtime/provider/tool certification for all applicable Agent families, immutable evidence lineage, cost/restart truth, Desktop/Windows package lineage and genuine human.owner evidence before 47/47 closure."
     },
     "app_factory": {
       "scheduler": "unified",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 29,
-    "stale_pass_invalidations": 22,
+    "master_advances": 30,
+    "stale_pass_invalidations": 23,
     "replay_resync_count": 7,
     "ci_cycles": 21,
-    "successful_merges": 30,
+    "successful_merges": 31,
     "duplicate_pr_count": 0,
     "churn_only_commit_count": 0
   }
