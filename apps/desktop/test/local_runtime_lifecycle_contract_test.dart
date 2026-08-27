@@ -4,12 +4,17 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   test('bundled runtime is detached from the launching shell but keeps app cleanup', () {
-    final source = File('lib/control_plane/local_runtime.dart').readAsStringSync();
+    final runtimeSource =
+        File('lib/control_plane/local_runtime.dart').readAsStringSync();
+    final bootstrapSource = File('lib/app/desktop_bootstrap.dart').readAsStringSync();
 
-    expect(source, contains('ProcessStartMode.detachedWithStdio'));
-    expect(source, isNot(contains('mode: ProcessStartMode.normal')));
-    expect(source, contains("/v1/runtime/shutdown"));
-    expect(source, contains('await process.stdin.close()'));
-    expect(source, contains('process.kill()'));
+    expect(runtimeSource, contains('ProcessStartMode.detachedWithStdio'));
+    expect(runtimeSource, isNot(contains('mode: ProcessStartMode.normal')));
+    expect(bootstrapSource, contains('widget.runtime?.dispose()'));
+    expect(runtimeSource, contains('void dispose()'));
+    expect(runtimeSource, contains('_shutdownBundledRuntime()'));
+    expect(runtimeSource, contains("/v1/runtime/shutdown"));
+    expect(runtimeSource, contains('await process.stdin.close()'));
+    expect(runtimeSource, contains('process.kill()'));
   });
 }
