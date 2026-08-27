@@ -38,6 +38,11 @@ class GeneratedSandboxEvidence:
     unrestricted_network_access: bool
     signing_material_access: bool
     package_install_scripts_disabled: bool
+    canonical_policy_secure_mode: bool
+    canonical_policy_network_allowed: bool
+    canonical_policy_secrets_allowed: bool
+    canonical_policy_timeout_seconds: int | None
+    controlled_egress_gateway: bool
     wall_clock_timeout_seconds: int | None
     memory_limit_mb: int | None
     cpu_limit_millis: int | None
@@ -70,6 +75,21 @@ def evaluate_generated_sandbox(evidence: GeneratedSandboxEvidence) -> SandboxGat
 
     if not (evidence.separate_origin or evidence.strong_process_sandbox):
         failures.append("no separate-origin or equivalently strong process sandbox evidence")
+
+    if not evidence.canonical_policy_secure_mode:
+        failures.append("canonical execution policy is not in secure mode")
+    if evidence.canonical_policy_network_allowed:
+        failures.append("canonical execution policy grants direct network authority")
+    if evidence.canonical_policy_secrets_allowed:
+        failures.append("canonical execution policy grants secret authority")
+    if not evidence.controlled_egress_gateway:
+        failures.append("controlled egress is not proven to use the governed gateway boundary")
+    _check_positive_bound(
+        "canonical policy timeout",
+        evidence.canonical_policy_timeout_seconds,
+        missing,
+        failures,
+    )
 
     csp = _normalize_csp(evidence.csp)
     duplicate_directives = _duplicate_csp_directives(evidence.csp)
@@ -138,6 +158,13 @@ def evaluate_generated_sandbox(evidence: GeneratedSandboxEvidence) -> SandboxGat
     )
     _check_positive_bound("memory limit", evidence.memory_limit_mb, missing, failures)
     _check_positive_bound("CPU limit", evidence.cpu_limit_millis, missing, failures)
+    if (
+        evidence.canonical_policy_timeout_seconds is not None
+        and evidence.wall_clock_timeout_seconds is not None
+        and evidence.canonical_policy_timeout_seconds > 0
+        and evidence.wall_clock_timeout_seconds > evidence.canonical_policy_timeout_seconds
+    ):
+        failures.append("sandbox wall clock timeout exceeds canonical execution policy")
 
     if failures:
         return SandboxGateResult(SandboxVerdict.FAIL, tuple(sorted(set(failures))))
