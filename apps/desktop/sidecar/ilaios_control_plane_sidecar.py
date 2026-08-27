@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ctypes
 import json
 import os
 import re
@@ -62,6 +63,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--data-root", type=Path, required=True)
     parser.add_argument("--ready-file", type=Path, required=True)
+    parser.add_argument("--desktop-pid", type=int)
     parser.add_argument("--lease-seconds", type=int, default=30)
     parser.add_argument("--hard-cap-minor", type=int, default=100)
     arguments = parser.parse_args(argv)
@@ -69,6 +71,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     token = os.environ.get("ILAIOS_CONTROL_PLANE_TOKEN", "").strip()
     if not token:
         parser.error("ILAIOS_CONTROL_PLANE_TOKEN is required")
+    if arguments.desktop_pid is not None and arguments.desktop_pid < 1:
+        parser.error("--desktop-pid must be positive")
     if arguments.lease_seconds < 1:
         parser.error("--lease-seconds must be positive")
     if arguments.hard_cap_minor < 0:
@@ -345,6 +349,13 @@ def main(argv: Sequence[str] | None = None) -> int:
             pass
         identity_server.shutdown()
 
+    def stop_identity_if_desktop_exits() -> None:
+        desktop_pid = arguments.desktop_pid
+        if desktop_pid is None:
+            return
+        _wait_for_windows_process_exit(desktop_pid)
+        identity_server.shutdown()
+
     control_watchdog = threading.Thread(
         target=stop_identity_if_control_plane_exits,
         name="ilaios-control-plane-watchdog",
@@ -355,8 +366,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         name="ilaios-desktop-parent-watchdog",
         daemon=True,
     )
+    desktop_watchdog = threading.Thread(
+        target=stop_identity_if_desktop_exits,
+        name="ilaios-desktop-process-watchdog",
+        daemon=True,
+    )
     control_watchdog.start()
     parent_watchdog.start()
+    desktop_watchdog.start()
 
     try:
         identity_server.serve_forever()
@@ -369,6 +386,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         control_server.server_close()
         control_thread.join(timeout=5)
     return 0
+
+
+def _wait_for_windows_process_exit(process_id: int) -> None:
+    """Block until the owning Windows Desktop process exits.
+
+    The bundled sidecar is detached from the shell that launched the GUI, so
+    stdin EOF is retained only as a fallback. An explicit OS process handle
+    binds crash cleanup to the actual Desktop process without coupling runtime
+    lifetime to PowerShell, Explorer, or another external launcher.
+    """
+    if os.name != "nt":
+        return
+    synchronize = 0x00100000
+    infinite = 0xFFFFFFFF
+    kernel32 = ctypes.windll.kernel32
+    kernel32.OpenProcess.restype = ctypes.c_void_p
+    handle = kernel32.OpenProcess(synchronize, False, process_id)
+    if not handle:
+        return
+    try:
+        kernel32.WaitForSingleObject(ctypes.c_void_p(handle), infinite)
+    finally:
+        kernel32.CloseHandle(ctypes.c_void_p(handle))
 
 
 def _software_factory_skills_path() -> Path:
