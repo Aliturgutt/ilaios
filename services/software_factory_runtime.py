@@ -287,7 +287,13 @@ class NodeRuntimeAdapter(_CommandRuntimeAdapter):
         return ("pnpm", "--version")
 
     def _dependency_command(self) -> tuple[str, ...]:
-        return ("pnpm", "install", "--offline", "--frozen-lockfile")
+        return (
+            "pnpm",
+            "install",
+            "--offline",
+            "--frozen-lockfile",
+            "--ignore-scripts",
+        )
 
     def _lint_command(self) -> tuple[str, ...]:
         return ("pnpm", "run", "lint")
