@@ -17,7 +17,9 @@ from services.commercial_access import (
     CommercialAccessStore,
     CommercialEntitlement,
     EntitlementState,
+    ProviderSubscriptionBinding,
 )
+from services.commercial_webhook import VerifiedCommercialWebhookEvent
 from services.control_plane.migrations import migrate_database
 from src.video_automation.managed_credits import (
     CreditAuthorizationOutcome,
@@ -35,6 +37,40 @@ class IdentityBoundCommercialAccess:
         self._commercial = commercial
         if migrate_database(identity_database) < 9:
             raise CommercialAccessError("commercial identity schema is unavailable")
+
+    def create_provider_subscription_binding(
+        self,
+        *,
+        provider_subscription_id: str,
+        tenant_id: str,
+        user_id: str,
+        plan_id: str,
+        now: datetime,
+    ) -> ProviderSubscriptionBinding:
+        """Create a trusted binding only for an active canonical membership."""
+
+        self._require_active_identity(tenant_id=tenant_id, user_id=user_id)
+        return self._commercial.create_provider_subscription_binding(
+            provider_subscription_id=provider_subscription_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            plan_id=plan_id,
+            now=now,
+        )
+
+    def apply_verified_provider_event(
+        self, *, event: object, now: datetime
+    ) -> ProviderSubscriptionBinding:
+        """Apply verified provider state to an already-trusted durable binding.
+
+        Identity activity is intentionally not re-required here: cancellation,
+        refund, and failed-payment reconciliation must remain recordable after a
+        membership/user is disabled. This method never mints entitlement.
+        """
+
+        if not isinstance(event, VerifiedCommercialWebhookEvent):
+            raise CommercialAccessError("provider event must be cryptographically verified")
+        return self._commercial.apply_verified_provider_event(event=event, now=now)
 
     def apply_entitlement(
         self,

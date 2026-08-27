@@ -36,6 +36,13 @@ class EntitlementState(str, Enum):
     CANCELLED = "CANCELLED"
 
 
+class ProviderSubscriptionState(str, Enum):
+    PENDING = "PENDING"
+    ACTIVE = "ACTIVE"
+    SUSPENDED = "SUSPENDED"
+    CANCELLED = "CANCELLED"
+
+
 @dataclass(frozen=True, slots=True)
 class CommercialEntitlement:
     tenant_id: str
@@ -53,6 +60,28 @@ class CommercialEntitlement:
             raise CommercialAccessError("valid_until must be timezone-aware")
         if self.version < 1:
             raise CommercialAccessError("entitlement version must be positive")
+
+
+@dataclass(frozen=True, slots=True)
+class ProviderSubscriptionBinding:
+    provider_subscription_id: str
+    tenant_id: str
+    user_id: str
+    plan_id: str
+    state: ProviderSubscriptionState
+    created_at: datetime
+    updated_at: datetime
+    last_provider_event_at: datetime | None
+
+    def __post_init__(self) -> None:
+        for name in ("provider_subscription_id", "tenant_id", "user_id", "plan_id"):
+            _require_text(name, getattr(self, name))
+        _require_time("created_at", self.created_at)
+        _require_time("updated_at", self.updated_at)
+        if self.last_provider_event_at is not None:
+            _require_time("last_provider_event_at", self.last_provider_event_at)
+        if not isinstance(self.state, ProviderSubscriptionState):
+            raise CommercialAccessError("provider subscription state is invalid")
 
 
 _SCHEMA = """
@@ -75,7 +104,36 @@ CREATE TABLE IF NOT EXISTS commercial_entitlement_events (
  snapshot_json TEXT NOT NULL,
  applied_at TEXT NOT NULL
 );
+CREATE TABLE IF NOT EXISTS commercial_provider_subscriptions (
+ provider_subscription_id TEXT PRIMARY KEY,
+ tenant_id TEXT NOT NULL,
+ user_id TEXT NOT NULL,
+ plan_id TEXT NOT NULL,
+ state TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ updated_at TEXT NOT NULL,
+ last_provider_event_at TEXT
+);
+CREATE TABLE IF NOT EXISTS commercial_provider_events (
+ provider_event_id TEXT PRIMARY KEY,
+ provider_subscription_id TEXT NOT NULL,
+ event_type TEXT NOT NULL,
+ payload_sha256 TEXT NOT NULL,
+ snapshot_json TEXT NOT NULL,
+ applied_at TEXT NOT NULL,
+ FOREIGN KEY(provider_subscription_id)
+   REFERENCES commercial_provider_subscriptions(provider_subscription_id)
+);
 """
+
+_PROVIDER_EVENT_STATES = {
+    "subscription.activated": ProviderSubscriptionState.ACTIVE,
+    "subscription.renewed": ProviderSubscriptionState.ACTIVE,
+    "subscription.suspended": ProviderSubscriptionState.SUSPENDED,
+    "payment.failed": ProviderSubscriptionState.SUSPENDED,
+    "subscription.cancelled": ProviderSubscriptionState.CANCELLED,
+    "payment.refunded": ProviderSubscriptionState.CANCELLED,
+}
 
 
 class CommercialAccessStore:
@@ -91,7 +149,178 @@ class CommercialAccessStore:
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self._database, timeout=10)
         connection.row_factory = sqlite3.Row
+        connection.execute("PRAGMA foreign_keys = ON")
         return connection
+
+    def create_provider_subscription_binding(
+        self,
+        *,
+        provider_subscription_id: str,
+        tenant_id: str,
+        user_id: str,
+        plan_id: str,
+        now: datetime,
+    ) -> ProviderSubscriptionBinding:
+        """Persist one trusted server-side provider subscription binding.
+
+        This API deliberately accepts canonical account coordinates only from its
+        trusted caller. Verified webhook payloads never contain these fields and
+        therefore cannot create or retarget a binding.
+        """
+
+        for name, value in (
+            ("provider_subscription_id", provider_subscription_id),
+            ("tenant_id", tenant_id),
+            ("user_id", user_id),
+            ("plan_id", plan_id),
+        ):
+            _require_text(name, value)
+        _require_time("now", now)
+        candidate = ProviderSubscriptionBinding(
+            provider_subscription_id=provider_subscription_id,
+            tenant_id=tenant_id,
+            user_id=user_id,
+            plan_id=plan_id,
+            state=ProviderSubscriptionState.PENDING,
+            created_at=now,
+            updated_at=now,
+            last_provider_event_at=None,
+        )
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            existing = connection.execute(
+                "SELECT * FROM commercial_provider_subscriptions "
+                "WHERE provider_subscription_id = ?",
+                (provider_subscription_id,),
+            ).fetchone()
+            if existing is not None:
+                stored = _provider_binding_from_row(existing)
+                if (
+                    stored.tenant_id != tenant_id
+                    or stored.user_id != user_id
+                    or stored.plan_id != plan_id
+                ):
+                    raise CommercialAccessError(
+                        "provider subscription conflicts with canonical binding"
+                    )
+                return stored
+            connection.execute(
+                "INSERT INTO commercial_provider_subscriptions "
+                "(provider_subscription_id,tenant_id,user_id,plan_id,state,"
+                "created_at,updated_at,last_provider_event_at) VALUES (?,?,?,?,?,?,?,?)",
+                (
+                    candidate.provider_subscription_id,
+                    candidate.tenant_id,
+                    candidate.user_id,
+                    candidate.plan_id,
+                    candidate.state.value,
+                    candidate.created_at.isoformat(),
+                    candidate.updated_at.isoformat(),
+                    None,
+                ),
+            )
+        return candidate
+
+    def get_provider_subscription_binding(
+        self, *, provider_subscription_id: str
+    ) -> ProviderSubscriptionBinding:
+        _require_text("provider_subscription_id", provider_subscription_id)
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM commercial_provider_subscriptions "
+                "WHERE provider_subscription_id = ?",
+                (provider_subscription_id,),
+            ).fetchone()
+        if row is None:
+            raise CommercialAccessError("provider subscription binding does not exist")
+        return _provider_binding_from_row(row)
+
+    def apply_verified_provider_event(
+        self, *, event: object, now: datetime
+    ) -> ProviderSubscriptionBinding:
+        """Apply a verified provider lifecycle event to an existing binding only.
+
+        This slice intentionally updates provider-subscription lifecycle state only.
+        It does not mint or mutate entitlement; entitlement projection remains a
+        separate downstream authority boundary.
+        """
+
+        from services.commercial_webhook import VerifiedCommercialWebhookEvent
+
+        if not isinstance(event, VerifiedCommercialWebhookEvent):
+            raise CommercialAccessError("provider event must be cryptographically verified")
+        _require_time("now", now)
+        state = _PROVIDER_EVENT_STATES.get(event.event_type)
+        if state is None:
+            raise CommercialAccessError("provider subscription event type is unsupported")
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            existing_event = connection.execute(
+                "SELECT payload_sha256, provider_subscription_id, event_type, snapshot_json "
+                "FROM commercial_provider_events WHERE provider_event_id = ?",
+                (event.event_id,),
+            ).fetchone()
+            if existing_event is not None:
+                if (
+                    str(existing_event["payload_sha256"]) != event.payload_sha256
+                    or str(existing_event["provider_subscription_id"])
+                    != event.provider_subscription_id
+                    or str(existing_event["event_type"]) != event.event_type
+                ):
+                    raise CommercialAccessError(
+                        "provider event_id conflicts with different verified content"
+                    )
+                return _provider_binding_from_json(str(existing_event["snapshot_json"]))
+
+            row = connection.execute(
+                "SELECT * FROM commercial_provider_subscriptions "
+                "WHERE provider_subscription_id = ?",
+                (event.provider_subscription_id,),
+            ).fetchone()
+            if row is None:
+                raise CommercialAccessError("provider subscription binding does not exist")
+            binding = _provider_binding_from_row(row)
+            if (
+                binding.last_provider_event_at is not None
+                and event.occurred_at <= binding.last_provider_event_at
+            ):
+                raise CommercialAccessError("provider subscription event is out of order")
+
+            updated = ProviderSubscriptionBinding(
+                provider_subscription_id=binding.provider_subscription_id,
+                tenant_id=binding.tenant_id,
+                user_id=binding.user_id,
+                plan_id=binding.plan_id,
+                state=state,
+                created_at=binding.created_at,
+                updated_at=now,
+                last_provider_event_at=event.occurred_at,
+            )
+            connection.execute(
+                "UPDATE commercial_provider_subscriptions SET state = ?, updated_at = ?, "
+                "last_provider_event_at = ? WHERE provider_subscription_id = ?",
+                (
+                    updated.state.value,
+                    updated.updated_at.isoformat(),
+                    event.occurred_at.isoformat(),
+                    updated.provider_subscription_id,
+                ),
+            )
+            snapshot = _provider_binding_json(updated)
+            connection.execute(
+                "INSERT INTO commercial_provider_events "
+                "(provider_event_id,provider_subscription_id,event_type,payload_sha256,"
+                "snapshot_json,applied_at) VALUES (?,?,?,?,?,?)",
+                (
+                    event.event_id,
+                    event.provider_subscription_id,
+                    event.event_type,
+                    event.payload_sha256,
+                    snapshot,
+                    now.isoformat(),
+                ),
+            )
+        return updated
 
     def apply_entitlement(
         self,
@@ -105,13 +334,7 @@ class CommercialAccessStore:
         paid_provider_allowed: bool,
         now: datetime,
     ) -> CommercialEntitlement:
-        """Apply one idempotent external/admin entitlement event.
-
-        ``event_id`` is deliberately provider-neutral. A future payment adapter may
-        pass a verified webhook/event identity, while an administrative grant may
-        pass its own audited identity. Reusing an event with different content is
-        rejected.
-        """
+        """Apply one idempotent external/admin entitlement event."""
 
         _require_text("event_id", event_id)
         for name, value in (
@@ -235,8 +458,6 @@ class CommercialAccessStore:
         return entitlement
 
     def seed_credit_account(self, account: ManagedCreditAccount) -> ManagedCreditAccount:
-        """Delegate account creation to the existing managed-credit authority."""
-
         return self._credits.seed_account(account)
 
     def reserve_provider_spend(
@@ -249,8 +470,6 @@ class CommercialAccessStore:
         routing_decision_id: str,
         quote: ProviderCostQuote,
     ) -> CreditAuthorizationOutcome:
-        """Require commercial access, then reserve through the canonical ledger."""
-
         self.require_access(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -275,8 +494,6 @@ class CommercialAccessStore:
         actual_cost_microusd: int,
         provider_job_id: str,
     ) -> CreditSettlementOutcome:
-        """Settle in-flight spend even if entitlement later changes state."""
-
         try:
             return self._credits.settle(
                 authorization_id=authorization_id,
@@ -287,8 +504,6 @@ class CommercialAccessStore:
             raise CommercialAccessError(str(error)) from error
 
     def release_provider_spend(self, *, authorization_id: str) -> ManagedCreditAccount:
-        """Release an unused reservation through the canonical ledger."""
-
         try:
             return self._credits.release(authorization_id=authorization_id)
         except ManagedCreditError as error:
@@ -315,6 +530,62 @@ def _event_payload(
         },
         sort_keys=True,
         separators=(",", ":"),
+    )
+
+
+def _provider_binding_json(binding: ProviderSubscriptionBinding) -> str:
+    return json.dumps(
+        {
+            "provider_subscription_id": binding.provider_subscription_id,
+            "tenant_id": binding.tenant_id,
+            "user_id": binding.user_id,
+            "plan_id": binding.plan_id,
+            "state": binding.state.value,
+            "created_at": binding.created_at.isoformat(),
+            "updated_at": binding.updated_at.isoformat(),
+            "last_provider_event_at": (
+                None
+                if binding.last_provider_event_at is None
+                else binding.last_provider_event_at.isoformat()
+            ),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _provider_binding_from_json(value: str) -> ProviderSubscriptionBinding:
+    payload = json.loads(value)
+    if not isinstance(payload, dict):
+        raise CommercialAccessError("stored provider subscription snapshot is malformed")
+    last_event = payload.get("last_provider_event_at")
+    return ProviderSubscriptionBinding(
+        provider_subscription_id=str(payload["provider_subscription_id"]),
+        tenant_id=str(payload["tenant_id"]),
+        user_id=str(payload["user_id"]),
+        plan_id=str(payload["plan_id"]),
+        state=ProviderSubscriptionState(str(payload["state"])),
+        created_at=datetime.fromisoformat(str(payload["created_at"])),
+        updated_at=datetime.fromisoformat(str(payload["updated_at"])),
+        last_provider_event_at=(
+            None if last_event is None else datetime.fromisoformat(str(last_event))
+        ),
+    )
+
+
+def _provider_binding_from_row(row: sqlite3.Row) -> ProviderSubscriptionBinding:
+    last_event = row["last_provider_event_at"]
+    return ProviderSubscriptionBinding(
+        provider_subscription_id=str(row["provider_subscription_id"]),
+        tenant_id=str(row["tenant_id"]),
+        user_id=str(row["user_id"]),
+        plan_id=str(row["plan_id"]),
+        state=ProviderSubscriptionState(str(row["state"])),
+        created_at=datetime.fromisoformat(str(row["created_at"])),
+        updated_at=datetime.fromisoformat(str(row["updated_at"])),
+        last_provider_event_at=(
+            None if last_event is None else datetime.fromisoformat(str(last_event))
+        ),
     )
 
 
@@ -371,4 +642,6 @@ __all__ = [
     "CommercialAccessStore",
     "CommercialEntitlement",
     "EntitlementState",
+    "ProviderSubscriptionBinding",
+    "ProviderSubscriptionState",
 ]
