@@ -336,6 +336,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     print(json.dumps({"event": "desktop_ready", **ready}, sort_keys=True), flush=True)
 
+    desktop_exit_cleanup_complete = threading.Event()
+
     def stop_identity_if_control_plane_exits() -> None:
         control_thread.join()
         identity_server.shutdown()
@@ -349,12 +351,28 @@ def main(argv: Sequence[str] | None = None) -> int:
             pass
         identity_server.shutdown()
 
+    def _force_exit_if_desktop_cleanup_stalls() -> None:
+        if not desktop_exit_cleanup_complete.wait(timeout=5):
+            os._exit(0)
+
     def stop_identity_if_desktop_exits() -> None:
         desktop_pid = arguments.desktop_pid
         if desktop_pid is None:
             return
         _wait_for_windows_process_exit(desktop_pid)
+        # A GUI crash/forced termination cannot run DesktopRuntime.dispose().
+        # Start a bounded fail-safe before graceful server shutdown so any
+        # non-daemon runtime worker or PyInstaller child cannot leave the
+        # packaged control plane orphaned indefinitely. Normal app exit still
+        # reaches the authenticated /v1/runtime/shutdown path first; this is a
+        # crash/owner-loss fallback only.
+        threading.Thread(
+            target=_force_exit_if_desktop_cleanup_stalls,
+            name="ilaios-desktop-bounded-exit",
+            daemon=True,
+        ).start()
         identity_server.shutdown()
+        control_server.shutdown()
 
     control_watchdog = threading.Thread(
         target=stop_identity_if_control_plane_exits,
@@ -385,6 +403,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         control_server.shutdown()
         control_server.server_close()
         control_thread.join(timeout=5)
+        desktop_exit_cleanup_complete.set()
     return 0
 
 
