@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-27T09:45:57Z",
+  "updated_at": "2026-08-27T11:10:17Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "agents",
-    "reserved_master_sha": "96d2f59732c54ba29751df40ed9d6841d3acaa90",
-    "candidate_pr": null,
-    "candidate_head_sha": "96d2f59732c54ba29751df40ed9d6841d3acaa90",
+    "reserved_master_sha": "2bfe85b944461c21ce9ee4b7926dad73a55b2474",
+    "candidate_pr": 1043,
+    "candidate_head_sha": "d9827da09ad4989c944af02297882839ddda6621",
     "freeze_active": true,
-    "freeze_reason": "Stale Web App reservation reclaimed after PR #1040 merged on exact current master. Agents are the next dependency-ready repository workstream for exact-current runtime/evidence closure preparation."
+    "freeze_reason": "Agent same-SHA automated 46/47 certification PR #1043 is the legal in-flight single-writer batch. Required CI exposed only a coordination-state lifecycle invariant; preserve Agent ownership and rerun fresh exact-head gates after the bounded state correction."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -76,14 +76,14 @@
     },
     "agents": {
       "scheduler": "agents",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 6,
       "authoritative_issue": 557,
-      "active_pr": null,
-      "base_sha": "96d2f59732c54ba29751df40ed9d6841d3acaa90",
-      "head_sha": "96d2f59732c54ba29751df40ed9d6841d3acaa90",
+      "active_pr": 1043,
+      "base_sha": "2bfe85b944461c21ce9ee4b7926dad73a55b2474",
+      "head_sha": "d9827da09ad4989c944af02297882839ddda6621",
       "blocked_reason": null,
-      "next_action": "On legal Agent ownership, re-read exact current master and overlapping work, then produce exact-current same-SHA governed runtime/provider/tool certification for all applicable Agent families, immutable evidence lineage, truthful cost/restart evidence, Desktop/Windows package lineage, and preserve genuine human.owner as an external final gate. Do not promote historical receipts across SHA."
+      "next_action": "Run completely fresh exact-head Required CI/SFFE/Browser and applicable Agent gates for PR #1043 after this coordination-state correction. If all pass, immediately re-read live master/token/head/overlap and merge only with expected-head protection; then require exact-master automated 46/47 aggregate evidence. Preserve IndependentVerifier as human.owner and do not claim 47/47 closure."
     },
     "app_factory": {
       "scheduler": "unified",
