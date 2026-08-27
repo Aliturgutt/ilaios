@@ -82,27 +82,20 @@ def test_boundary_builds_fail_closed_docker_isolation_command(tmp_path: Path) ->
     assert all("docker.sock" not in item for item in argv)
 
 
-@pytest.mark.parametrize(
-    ("policy", "message"),
-    [
-        (_policy(network_allowed=True, secure_mode=False), "secure no-network no-secret"),
-        (_policy(secrets_allowed=True, secure_mode=False), "secure no-network no-secret"),
-        (_policy(secure_mode=False), "secure no-network no-secret"),
-    ],
-)
-def test_boundary_rejects_non_secure_policy(
-    tmp_path: Path,
-    policy: ExecutionPolicy,
-    message: str,
-) -> None:
+def test_boundary_rejects_non_secure_policy(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     workspace.mkdir()
-    boundary = _RecordingBoundary()
+    cases: tuple[ExecutionPolicy, ...] = (
+        _policy(network_allowed=True, secure_mode=False),
+        _policy(secrets_allowed=True, secure_mode=False),
+        _policy(secure_mode=False),
+    )
 
-    with pytest.raises(SoftwareFactoryError, match=message):
-        boundary.execute(workspace, RuntimeCommand("test", ("pytest",), "."), policy)
-
-    assert boundary.calls == []
+    for policy in cases:
+        boundary = _RecordingBoundary()
+        with pytest.raises(SoftwareFactoryError, match="secure no-network no-secret"):
+            boundary.execute(workspace, RuntimeCommand("test", ("pytest",), "."), policy)
+        assert boundary.calls == []
 
 
 def test_boundary_rejects_working_directory_escape(tmp_path: Path) -> None:
