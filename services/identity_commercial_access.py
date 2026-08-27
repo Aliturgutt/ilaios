@@ -61,14 +61,15 @@ class IdentityBoundCommercialAccess:
     def apply_verified_provider_event(
         self, *, event: object, now: datetime
     ) -> ProviderSubscriptionBinding:
-        """Apply verified provider state without allowing webhook account selection."""
+        """Apply verified provider state to an already-trusted durable binding.
+
+        Identity activity is intentionally not re-required here: cancellation,
+        refund, and failed-payment reconciliation must remain recordable after a
+        membership/user is disabled. This method never mints entitlement.
+        """
 
         if not isinstance(event, VerifiedCommercialWebhookEvent):
             raise CommercialAccessError("provider event must be cryptographically verified")
-        binding = self._commercial.get_provider_subscription_binding(
-            provider_subscription_id=event.provider_subscription_id
-        )
-        self._require_active_identity(tenant_id=binding.tenant_id, user_id=binding.user_id)
         return self._commercial.apply_verified_provider_event(event=event, now=now)
 
     def apply_entitlement(
