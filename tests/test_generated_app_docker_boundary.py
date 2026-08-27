@@ -26,6 +26,9 @@ class _RecordingBoundary(DockerSecureCommandBoundary):
         assert timeout_seconds == 45
         return _IMAGE_ID
 
+    def _container_name(self) -> str:
+        return "ilaios-generated-test"
+
     def _docker_run(
         self,
         args: tuple[str, ...],
@@ -35,6 +38,21 @@ class _RecordingBoundary(DockerSecureCommandBoundary):
         assert timeout_seconds == 45
         self.calls.append(args)
         return self.next_result
+
+
+class _InterruptedBoundary(_RecordingBoundary):
+    def _docker_run(
+        self,
+        args: tuple[str, ...],
+        *,
+        timeout_seconds: int,
+    ) -> subprocess.CompletedProcess[str]:
+        self.calls.append(args)
+        if args and args[0] == "run":
+            raise SoftwareFactoryError("simulated interrupted Docker client")
+        assert args == ("rm", "--force", "ilaios-generated-test")
+        assert timeout_seconds == 30
+        return subprocess.CompletedProcess(("docker", *args), 0, "", "")
 
 
 def _policy(**overrides: object) -> ExecutionPolicy:
@@ -68,7 +86,14 @@ def test_boundary_builds_fail_closed_docker_isolation_command(tmp_path: Path) ->
     assert result.stderr_sha256 == hashlib.sha256(b"warn\n").hexdigest()
     assert len(boundary.calls) == 1
     argv = boundary.calls[0]
-    assert argv[:5] == ("run", "--rm", "--network=none", "--read-only", "--cap-drop=ALL")
+    assert argv[:6] == (
+        "run",
+        "--rm",
+        "--name=ilaios-generated-test",
+        "--network=none",
+        "--read-only",
+        "--cap-drop=ALL",
+    )
     assert "--security-opt=no-new-privileges" in argv
     assert "--pids-limit=256" in argv
     assert "--memory=1024m" in argv
@@ -126,6 +151,48 @@ def test_boundary_keeps_failed_command_as_failed_evidence(tmp_path: Path) -> Non
     assert result.passed is False
     assert result.exit_code == 9
     assert result.stderr_sha256 == hashlib.sha256(b"blocked").hexdigest()
+
+
+def test_boundary_force_removes_container_after_interrupted_client(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    boundary = _InterruptedBoundary()
+
+    with pytest.raises(SoftwareFactoryError, match="execution failed closed"):
+        boundary.execute(
+            workspace,
+            RuntimeCommand("test", ("pnpm", "test"), "."),
+            _policy(),
+        )
+
+    assert boundary.calls == [
+        (
+            "run",
+            "--rm",
+            "--name=ilaios-generated-test",
+            "--network=none",
+            "--read-only",
+            "--cap-drop=ALL",
+            "--security-opt=no-new-privileges",
+            "--pids-limit=256",
+            "--memory=1024m",
+            "--cpus=1.0",
+            "--tmpfs",
+            "/tmp:rw,nosuid,nodev,noexec,size=256m",
+            "--env",
+            "HOME=/tmp/ilaios-home",
+            "--user",
+            "1000:1000",
+            "--mount",
+            f"type=bind,src={workspace.resolve()},dst=/workspace",
+            "--workdir",
+            "/workspace",
+            _IMAGE_ID,
+            "pnpm",
+            "test",
+        ),
+        ("rm", "--force", "ilaios-generated-test"),
+    ]
 
 
 def test_boundary_kills_host_output_flood_before_control_plane_memory_growth(
