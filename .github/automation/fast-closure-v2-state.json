@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-27T14:02:00Z",
+  "updated_at": "2026-08-27T18:13:00Z",
   "merge_token": {
-    "state": "RESERVED",
-    "owner": "desktop",
-    "reserved_master_sha": "dc5af14c60cdfdd57b2bd3e727ab47d06e430dbf",
-    "candidate_pr": 1045,
-    "candidate_head_sha": "20a670f2e783c25e35386a4494cf9f6517e597d1",
-    "freeze_active": true,
-    "freeze_reason": "Agent PR #1043 is merged and exact-master ILAIOS Agent Automated 46 of 47 Certification run 33076305932 passed on dc5af14c. Hand off the single-writer merge token to the highest-priority Desktop P0 lifecycle/logout closure. PR #1045 has fresh exact-head required Desktop gates PASS but its base predates current master, so replay only the reviewed bounded delta onto exact current master before merge."
+    "state": "RELEASED",
+    "owner": null,
+    "reserved_master_sha": null,
+    "candidate_pr": null,
+    "candidate_head_sha": null,
+    "freeze_active": false,
+    "freeze_reason": "Desktop repository-owned P0 repair reached exact-master safe checkpoint on 695f05890d1dbe6cc481b0a02996744ba01d27d1. Required CI, Software Factory Final Evidence, Desktop Local Runtime Diagnostics and Desktop MSIX Packaging are SUCCESS on that exact SHA. Remaining Windows install/launch/login/logout/relogin/UI acceptance is genuine user-machine evidence and must not hold the repository merge token."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -21,14 +21,14 @@
   "workstreams": {
     "desktop": {
       "scheduler": "desktop",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "BLOCKED_EXTERNAL",
       "priority_rank": 1,
       "authoritative_issue": 539,
-      "active_pr": 1045,
-      "base_sha": "33e3528936518933320f3c41d79f1ddaf044f248",
-      "head_sha": "20a670f2e783c25e35386a4494cf9f6517e597d1",
-      "blocked_reason": null,
-      "next_action": "Re-read live master after this token handoff merges, compare path+semantic overlap from 33e35289 to exact current master, replay only the reviewed four-file Desktop P0 lifecycle/logout delta if safe, rerun fresh exact-head Desktop Windows Gate, Desktop CI, MSIX, Combined Final, Product Surface, Local Runtime Diagnostics, Required CI and SFFE, then expected-head merge. After merge require exact-master evidence and a new portable ZIP/SHA256 before Windows user-machine acceptance."
+      "active_pr": null,
+      "base_sha": "695f05890d1dbe6cc481b0a02996744ba01d27d1",
+      "head_sha": "695f05890d1dbe6cc481b0a02996744ba01d27d1",
+      "blocked_reason": "Repository-owned Desktop owner-exit/sidecar cleanup is exact-master verified. Final acceptance requires a real Windows user machine: Explorer direct launch independent of shell, first launch, Google login/logout/relogin, normal window close with no orphan sidecar, update/rollback/uninstall sanity and UI acceptance.",
+      "next_action": "Preserve exact-master Desktop evidence and package lineage. Complete real Windows user-machine acceptance under issue #539; do not retain the repository merge token while waiting on this human/device boundary."
     },
     "video_native_reference": {
       "scheduler": "unified",
@@ -113,19 +113,19 @@
       "priority_rank": 9,
       "authoritative_issue": 539,
       "active_pr": null,
-      "base_sha": "859920c438e7a28fa5fad95ad1e548e9b144b436",
-      "head_sha": "859920c438e7a28fa5fad95ad1e548e9b144b436",
-      "blocked_reason": "Store progression remains blocked on exact-current human Windows acceptance and explicit publication decisions.",
-      "next_action": "After issue #539 records exact-current Windows acceptance, prepare the explicit Microsoft Store submission checkpoint without auto-publishing."
+      "base_sha": "695f05890d1dbe6cc481b0a02996744ba01d27d1",
+      "head_sha": "695f05890d1dbe6cc481b0a02996744ba01d27d1",
+      "blocked_reason": "Exact-current Desktop repository/package evidence is available, but Store progression remains blocked on real Windows acceptance and an explicit human submission/publication decision.",
+      "next_action": "After issue #539 records exact-current Windows acceptance, prepare the explicit Microsoft Store release-candidate/submission checkpoint without auto-publishing."
     }
   },
   "metrics": {
-    "master_advances": 31,
+    "master_advances": 32,
     "stale_pass_invalidations": 24,
     "replay_resync_count": 7,
-    "ci_cycles": 21,
-    "successful_merges": 32,
-    "duplicate_pr_count": 0,
+    "ci_cycles": 22,
+    "successful_merges": 33,
+    "duplicate_pr_count": 1,
     "churn_only_commit_count": 0
   }
 }
