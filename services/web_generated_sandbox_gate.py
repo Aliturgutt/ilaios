@@ -9,6 +9,7 @@ from __future__ import annotations
 import ipaddress
 from dataclasses import dataclass
 from enum import StrEnum
+from urllib.parse import urlsplit
 
 
 class SandboxVerdict(StrEnum):
@@ -25,6 +26,8 @@ class GeneratedSandboxEvidence:
     artifact_sha256: str
     separate_origin: bool
     strong_process_sandbox: bool
+    generated_runtime_origin: str
+    privileged_session_origin: str
     csp: str
     allowed_egress_hosts: tuple[str, ...]
     resolved_egress: tuple[tuple[str, str], ...]
@@ -75,6 +78,7 @@ def evaluate_generated_sandbox(evidence: GeneratedSandboxEvidence) -> SandboxGat
 
     if not (evidence.separate_origin or evidence.strong_process_sandbox):
         failures.append("no separate-origin or equivalently strong process sandbox evidence")
+    _validate_origin_binding(evidence, missing, failures)
 
     if not evidence.canonical_policy_secure_mode:
         failures.append("canonical execution policy is not in secure mode")
@@ -174,6 +178,62 @@ def evaluate_generated_sandbox(evidence: GeneratedSandboxEvidence) -> SandboxGat
             tuple(sorted(set(f"missing evidence: {item}" for item in missing))),
         )
     return SandboxGateResult(SandboxVerdict.PASS, ())
+
+
+def _validate_origin_binding(
+    evidence: GeneratedSandboxEvidence,
+    missing: list[str],
+    failures: list[str],
+) -> None:
+    generated = _exact_https_origin(
+        "generated runtime origin",
+        evidence.generated_runtime_origin,
+        required=evidence.separate_origin,
+        missing=missing,
+        failures=failures,
+    )
+    privileged = _exact_https_origin(
+        "privileged session origin",
+        evidence.privileged_session_origin,
+        required=evidence.separate_origin,
+        missing=missing,
+        failures=failures,
+    )
+    if evidence.separate_origin and generated is not None and privileged is not None:
+        if generated == privileged:
+            failures.append("generated runtime origin is not isolated from privileged session origin")
+
+
+def _exact_https_origin(
+    label: str,
+    raw_value: str,
+    *,
+    required: bool,
+    missing: list[str],
+    failures: list[str],
+) -> tuple[str, str, int] | None:
+    value = raw_value.strip()
+    if not value:
+        if required:
+            missing.append(label)
+        return None
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError:
+        failures.append(f"{label} is malformed")
+        return None
+    if parsed.scheme.casefold() != "https" or parsed.hostname is None:
+        failures.append(f"{label} must be an exact HTTPS origin")
+        return None
+    if parsed.username is not None or parsed.password is not None:
+        failures.append(f"{label} cannot contain userinfo")
+    if parsed.path not in ("", "/") or parsed.query or parsed.fragment:
+        failures.append(f"{label} must not contain path, query, or fragment")
+    hostname = parsed.hostname.casefold().rstrip(".")
+    if not _valid_host(hostname) or _privileged_egress_target(hostname):
+        failures.append(f"{label} contains an invalid or privileged host")
+    return ("https", hostname, 443 if port is None else port)
 
 
 def _validate_resolved_egress(
