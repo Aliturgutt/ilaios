@@ -83,7 +83,13 @@ class DesktopRuntime {
         readyFile.path,
       ],
       environment: environment,
-      mode: ProcessStartMode.normal,
+      // The bundled runtime is owned by the Desktop application, not by the
+      // terminal or shell that happened to launch the GUI. Keep stdio so the
+      // existing parent-pipe watchdog can still observe an intentional Desktop
+      // exit/crash, while detaching the process group from an external console
+      // lifetime. DesktopRuntime.dispose() remains the authoritative graceful
+      // shutdown path through /v1/runtime/shutdown.
+      mode: ProcessStartMode.detachedWithStdio,
     );
     unawaited(process.stdout.drain<void>());
     unawaited(process.stderr.drain<void>());
