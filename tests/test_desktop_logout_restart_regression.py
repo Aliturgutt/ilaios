@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
+import pytest
+
 import services.desktop_oidc_threaded as threaded
 from services.desktop_oidc import OIDCProviderConfig
 from services.identity import IdentityKind, VerifiedOIDCClaims
@@ -84,7 +86,7 @@ class _Verifier:
 
 
 def test_google_logout_clears_persistent_credential_and_restart_stays_signed_out(
-    monkeypatch,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     store = _Store()
     http = _HTTP()
@@ -113,7 +115,7 @@ def test_google_logout_clears_persistent_credential_and_restart_stays_signed_out
     )
     restarted = threaded.DesktopOIDCService(
         (_provider(),),
-        request_session=http,  # type: ignore[arg-type]
+        request_session=http,
         credential_store=store,
     )
     restored = restarted.status("__ilaios_restore__", now=NOW)
