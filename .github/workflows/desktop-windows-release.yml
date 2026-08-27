@@ -145,6 +145,69 @@ jobs:
         shell: pwsh
         run: ./tool/build_control_plane_sidecar.ps1
 
+      - name: Prove terminal-independent packaged Desktop lifetime
+        working-directory: apps/desktop
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $release = Join-Path (Get-Location) 'build\windows\x64\runner\Release'
+          $exe = Join-Path $release 'ilaios_desktop.exe'
+          $pidFile = Join-Path $env:RUNNER_TEMP 'ilaios-desktop-child.pid'
+          $launcherScript = Join-Path $env:RUNNER_TEMP 'launch-ilaios-child.ps1'
+          @"
+          `$ErrorActionPreference = 'Stop'
+          `$child = Start-Process -FilePath '$exe' -WorkingDirectory '$release' -PassThru
+          Set-Content -Path '$pidFile' -Value `$child.Id -NoNewline
+          "@ | Set-Content -Path $launcherScript -Encoding utf8
+
+          $launcher = Start-Process -FilePath 'powershell.exe' -ArgumentList @(
+            '-NoProfile',
+            '-NonInteractive',
+            '-ExecutionPolicy', 'Bypass',
+            '-File', $launcherScript
+          ) -PassThru
+          $launcher.WaitForExit()
+          if ($launcher.ExitCode -ne 0) {
+            throw "Launch-parent PowerShell exited with $($launcher.ExitCode)"
+          }
+          if (-not (Test-Path $pidFile)) {
+            throw 'Launch-parent did not publish Desktop PID'
+          }
+
+          $desktopPid = [int](Get-Content $pidFile -Raw)
+          Start-Sleep -Seconds 8
+          $desktop = Get-Process -Id $desktopPid -ErrorAction SilentlyContinue
+          if ($null -eq $desktop -or $desktop.HasExited) {
+            throw 'ILAIOS Desktop did not survive launch-parent PowerShell exit for 8 seconds'
+          }
+          $sidecars = Get-CimInstance Win32_Process | Where-Object {
+            $_.Name -eq 'ilaios_control_plane.exe' -and
+            $_.ExecutablePath -eq (Join-Path $release 'ilaios_control_plane.exe')
+          }
+          if (@($sidecars).Count -lt 1) {
+            throw 'Bundled control plane did not remain healthy after launch-parent exit'
+          }
+          Write-Host 'ILAIOS_DESKTOP_SHELL_INDEPENDENCE=PASS'
+
+          [void]$desktop.CloseMainWindow()
+          if (-not $desktop.WaitForExit(10000)) {
+            Stop-Process -Id $desktopPid -Force -ErrorAction SilentlyContinue
+            throw 'ILAIOS Desktop did not close through the normal window path'
+          }
+          $deadline = (Get-Date).AddSeconds(8)
+          do {
+            $remaining = @(Get-CimInstance Win32_Process | Where-Object {
+              $_.Name -eq 'ilaios_control_plane.exe' -and
+              $_.ExecutablePath -eq (Join-Path $release 'ilaios_control_plane.exe')
+            })
+            if ($remaining.Count -eq 0) { break }
+            Start-Sleep -Milliseconds 250
+          } while ((Get-Date) -lt $deadline)
+          if ($remaining.Count -ne 0) {
+            throw 'Bundled control plane remained orphaned after intentional Desktop exit'
+          }
+          Write-Host 'ILAIOS_DESKTOP_BOUNDED_SIDECAR_SHUTDOWN=PASS'
+
       - name: Packaged Desktop to control-plane E2E
         working-directory: apps/desktop
         shell: pwsh
