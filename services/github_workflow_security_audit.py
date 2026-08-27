@@ -28,6 +28,7 @@ _MANUAL_ONLY = frozenset(
 )
 _SECRET_ALLOWED = frozenset(
     {
+        "agent-automated-46-of-47-certification.yml",
         "agent-media-intelligence-live-certification.yml",
         "agent-p0-live-certification.yml",
         "agent-web-live-certification.yml",
@@ -41,6 +42,7 @@ _SECRET_ALLOWED = frozenset(
 )
 _TRUSTED_MASTER_SECRET = frozenset(
     {
+        "agent-automated-46-of-47-certification.yml",
         "agent-media-intelligence-live-certification.yml",
         "agent-p0-live-certification.yml",
         "agent-web-live-certification.yml",
