@@ -12,6 +12,7 @@ import os
 import re
 import subprocess
 import threading
+import uuid
 from pathlib import Path
 
 from services.software_factory import ExecutionPolicy, SoftwareFactoryError
@@ -27,7 +28,7 @@ class DockerSecureCommandBoundary:
     command itself: no network, read-only container root, no added capabilities,
     no-new-privileges, bounded pids/memory/CPU, isolated tmpfs, no Docker socket,
     no host environment/secret inheritance, bounded host-side output capture,
-    and only the governed workspace bind.
+    forced cleanup of interrupted containers, and only the governed workspace bind.
     """
 
     def __init__(
@@ -85,11 +86,13 @@ class DockerSecureCommandBoundary:
 
         uid, gid = self._host_identity()
         image_id = self._resolve_image_id(policy.timeout_seconds)
+        container_name = self._container_name()
         relative_working = working.relative_to(root).as_posix()
         container_working = "/workspace" if relative_working == "." else f"/workspace/{relative_working}"
         docker_args = (
             "run",
             "--rm",
+            f"--name={container_name}",
             "--network=none",
             "--read-only",
             "--cap-drop=ALL",
@@ -112,7 +115,8 @@ class DockerSecureCommandBoundary:
         )
         try:
             completed = self._docker_run(docker_args, timeout_seconds=policy.timeout_seconds)
-        except (subprocess.TimeoutExpired, OSError) as error:
+        except (SoftwareFactoryError, subprocess.TimeoutExpired, OSError) as error:
+            self._force_remove_container(container_name, timeout_seconds=min(policy.timeout_seconds, 30))
             raise SoftwareFactoryError("generated sandbox execution failed closed") from error
 
         stdout = completed.stdout or ""
@@ -134,6 +138,20 @@ class DockerSecureCommandBoundary:
         if uid == 0:
             raise SoftwareFactoryError("generated sandbox refuses a root host identity")
         return uid, gid
+
+    def _container_name(self) -> str:
+        return f"ilaios-generated-{uuid.uuid4().hex}"
+
+    def _force_remove_container(self, container_name: str, *, timeout_seconds: int) -> None:
+        try:
+            completed = self._docker_run(
+                ("rm", "--force", container_name),
+                timeout_seconds=timeout_seconds,
+            )
+        except (SoftwareFactoryError, subprocess.TimeoutExpired, OSError) as error:
+            raise SoftwareFactoryError("generated sandbox interrupted container cleanup failed") from error
+        if completed.returncode != 0:
+            raise SoftwareFactoryError("generated sandbox interrupted container cleanup failed")
 
     def _resolve_image_id(self, timeout_seconds: int) -> str:
         try:
