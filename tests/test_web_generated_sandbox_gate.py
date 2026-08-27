@@ -17,6 +17,8 @@ def _evidence() -> GeneratedSandboxEvidence:
         artifact_sha256="b" * 64,
         separate_origin=True,
         strong_process_sandbox=True,
+        generated_runtime_origin="https://preview.example.com",
+        privileged_session_origin="https://app.example.com",
         csp=(
             "default-src 'none'; script-src 'self'; connect-src api.example.com; "
             "object-src 'none'; base-uri 'none'"
@@ -92,6 +94,54 @@ def test_same_trust_domain_fails_closed() -> None:
     )
     assert result.verdict is SandboxVerdict.FAIL
     assert any("separate-origin" in reason for reason in result.reasons)
+
+
+def test_separate_origin_requires_exact_origin_binding() -> None:
+    missing_generated = evaluate_generated_sandbox(
+        replace(_evidence(), generated_runtime_origin="")
+    )
+    assert missing_generated.verdict is SandboxVerdict.NOT_VERIFIED
+    assert "missing evidence: generated runtime origin" in missing_generated.reasons
+
+    missing_privileged = evaluate_generated_sandbox(
+        replace(_evidence(), privileged_session_origin="")
+    )
+    assert missing_privileged.verdict is SandboxVerdict.NOT_VERIFIED
+    assert "missing evidence: privileged session origin" in missing_privileged.reasons
+
+
+def test_generated_origin_cannot_equal_privileged_session_origin() -> None:
+    result = evaluate_generated_sandbox(
+        replace(
+            _evidence(),
+            generated_runtime_origin="https://app.example.com",
+            privileged_session_origin="https://app.example.com/",
+        )
+    )
+    assert result.verdict is SandboxVerdict.FAIL
+    assert (
+        "generated runtime origin is not isolated from privileged session origin"
+        in result.reasons
+    )
+
+
+def test_origin_binding_rejects_non_https_or_non_origin_values() -> None:
+    hostile_pairs = (
+        ("http://preview.example.com", "https://app.example.com"),
+        ("https://preview.example.com/path", "https://app.example.com"),
+        ("https://user@preview.example.com", "https://app.example.com"),
+        ("https://preview.example.com", "https://localhost"),
+    )
+    for generated, privileged in hostile_pairs:
+        result = evaluate_generated_sandbox(
+            replace(
+                _evidence(),
+                generated_runtime_origin=generated,
+                privileged_session_origin=privileged,
+            )
+        )
+        assert result.verdict is SandboxVerdict.FAIL
+        assert any("origin" in reason for reason in result.reasons)
 
 
 def test_privileged_capability_exposure_fails() -> None:
