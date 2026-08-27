@@ -302,7 +302,7 @@ class CommercialAccessStore:
                 (
                     updated.state.value,
                     updated.updated_at.isoformat(),
-                    updated.last_provider_event_at.isoformat(),
+                    event.occurred_at.isoformat(),
                     updated.provider_subscription_id,
                 ),
             )
