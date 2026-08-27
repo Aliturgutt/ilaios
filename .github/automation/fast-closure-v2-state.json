@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-26T23:12:00Z",
+  "updated_at": "2026-08-27T04:49:00Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "identity",
-    "reserved_master_sha": "790f60ccdce33f7775f88ab6079578eb0bfb2b9c",
-    "candidate_pr": null,
-    "candidate_head_sha": null,
+    "owner": "web_app",
+    "reserved_master_sha": "686a2859656cd017a310d6a4d71c2c3ff816a03d",
+    "candidate_pr": 1023,
+    "candidate_head_sha": "70c64068b28ab5cc15a70113415a04a1c6765b1a",
     "freeze_active": true,
-    "freeze_reason": "Identity/Desktop lifecycle client PR #1028 is merged and exact-master Required CI, Software Factory Final Evidence, Desktop MSIX Packaging, and Vercel are SUCCESS on 790f60cc. Preserve the legal Identity window for the next dependency-ready Production Identity/Billing/Subscription/Entitlement boundary."
+    "freeze_reason": "Identity PR #1034 is merged on exact current master 686a2859 and exact-master Required CI/SFFE are SUCCESS. No active current Identity mutation remains. Web App PR #1023 is the best dependency-ready next candidate by current priority/time-to-close and has fresh exact-head Required CI, SFFE, and Web App Factory Continuation Gate SUCCESS on 70c64068; reserve the legal merge window for Web App currentness/replay validation before any merge."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,36 +54,36 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 4,
       "authoritative_issue": null,
       "active_pr": null,
-      "base_sha": "790f60ccdce33f7775f88ab6079578eb0bfb2b9c",
-      "head_sha": "790f60ccdce33f7775f88ab6079578eb0bfb2b9c",
+      "base_sha": "686a2859656cd017a310d6a4d71c2c3ff816a03d",
+      "head_sha": "686a2859656cd017a310d6a4d71c2c3ff816a03d",
       "blocked_reason": null,
-      "next_action": "Preserve merged #1028 and exact-master gates on 790f60cc. Audit the canonical commercial-access/payment boundary next: checkout/payment-provider authority, webhook authenticity, idempotency/replay, subscription lifecycle, server-authoritative entitlement/quota, renewal/cancel/refund/failed-payment reconciliation and usage/cost binding. Implement only the smallest dependency-ready fail-closed slice using CommercialAccessStore and existing managed-credit authority; no provider activation or spend."
+      "next_action": "Preserve merged #1034 and exact-master Required CI/SFFE on 686a2859. Do not retain the repository token without a new dependency-ready exact-current Identity candidate; continue later from then-current master with fresh evidence."
     },
     "web_app": {
       "scheduler": "web_app",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 5,
       "authoritative_issue": 486,
-      "active_pr": null,
-      "base_sha": "cd207f2d60c753998679a2044a7c9fb4059b7fc3",
-      "head_sha": "cd207f2d60c753998679a2044a7c9fb4059b7fc3",
+      "active_pr": 1023,
+      "base_sha": "1f9747b09d633b1e0eb3719d0b874dab9c99a980",
+      "head_sha": "70c64068b28ab5cc15a70113415a04a1c6765b1a",
       "blocked_reason": null,
-      "next_action": "Preserve merged Phase 10 (#1014) and generated-code security (#1015) checkpoints. Do not hold the merge token without a new dependency-ready current-base Web App candidate; continue later from then-current master with fresh evidence."
+      "next_action": "Web App now owns the legal merge window. Re-read exact current master, #1023 head, changed-path and semantic overlap. Because #1023 base is stale, do not merge historical PASS directly: replay only the reviewed three-path sandbox acceptance delta onto exact current master if still applicable, require fresh Required CI + SFFE + Web App Factory Continuation Gate, then merge only with expected-head protection and exact-master validation."
     },
     "agents": {
       "scheduler": "agents",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "TOKEN_WAIT",
       "priority_rank": 6,
       "authoritative_issue": 557,
       "active_pr": null,
       "base_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
       "head_sha": "8cf5cbe48f31e09db933eaf4b163ee4c6c337d31",
-      "blocked_reason": null,
-      "next_action": "Preserve merged #1019 exact-master repository verification on 8cf5cbe4, including Required CI, SFFE, Agent P0 Live Certification and Skill Engineering live-provider SUCCESS. Do not hold the repository token without a new dependency-ready current-base Agent candidate; any remaining external/human evidence must be tracked separately."
+      "blocked_reason": "Single-writer merge token is reserved for the higher-priority Web App merge window. Exact-current full Agent-family runtime/provider/tool certification is still missing and historical cross-SHA receipts cannot be promoted.",
+      "next_action": "While TOKEN_WAIT, preserve current Agent source and evidence integrity. After the Web App merge window settles, re-read exact master/token/registry and run or prepare same-SHA P0 + Web + Media/Intelligence + Operations/Meta governed runtime/provider/tool certification without churn-only commits or paid fallback."
     },
     "app_factory": {
       "scheduler": "unified",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 29,
-    "stale_pass_invalidations": 22,
+    "master_advances": 30,
+    "stale_pass_invalidations": 23,
     "replay_resync_count": 7,
     "ci_cycles": 21,
-    "successful_merges": 30,
+    "successful_merges": 31,
     "duplicate_pr_count": 0,
     "churn_only_commit_count": 0
   }
