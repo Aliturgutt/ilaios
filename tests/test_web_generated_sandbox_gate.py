@@ -25,6 +25,8 @@ def _evidence() -> GeneratedSandboxEvidence:
         ),
         allowed_egress_hosts=("api.example.com",),
         resolved_egress=(("api.example.com", "93.184.216.34"),),
+        dns_snapshot_complete=True,
+        dns_snapshot_age_seconds=30,
         privileged_cookie_access=False,
         privileged_token_access=False,
         secret_material_access=False,
@@ -304,6 +306,34 @@ def test_each_allowed_host_requires_resolution_evidence() -> None:
     )
     assert result.verdict is SandboxVerdict.NOT_VERIFIED
     assert "missing evidence: resolved egress for cdn.example.com" in result.reasons
+
+
+def test_dns_snapshot_must_be_complete_and_fresh() -> None:
+    incomplete = evaluate_generated_sandbox(
+        replace(_evidence(), dns_snapshot_complete=False)
+    )
+    assert incomplete.verdict is SandboxVerdict.NOT_VERIFIED
+    assert "missing evidence: complete DNS resolution snapshot" in incomplete.reasons
+
+    missing_age = evaluate_generated_sandbox(
+        replace(_evidence(), dns_snapshot_age_seconds=None)
+    )
+    assert missing_age.verdict is SandboxVerdict.NOT_VERIFIED
+    assert "missing evidence: DNS resolution snapshot age" in missing_age.reasons
+
+    stale = evaluate_generated_sandbox(
+        replace(_evidence(), dns_snapshot_age_seconds=301)
+    )
+    assert stale.verdict is SandboxVerdict.NOT_VERIFIED
+    assert "missing evidence: fresh DNS resolution snapshot" in stale.reasons
+
+
+def test_dns_snapshot_rejects_invalid_negative_age() -> None:
+    result = evaluate_generated_sandbox(
+        replace(_evidence(), dns_snapshot_age_seconds=-1)
+    )
+    assert result.verdict is SandboxVerdict.FAIL
+    assert "DNS resolution snapshot age cannot be negative" in result.reasons
 
 
 def test_dns_rebinding_to_nonpublic_ip_fails_closed() -> None:
