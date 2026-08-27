@@ -11,6 +11,7 @@ import hashlib
 import os
 import re
 import subprocess
+import threading
 from pathlib import Path
 
 from services.software_factory import ExecutionPolicy, SoftwareFactoryError
@@ -25,7 +26,8 @@ class DockerSecureCommandBoundary:
     Security properties are enforced by Docker rather than by the generated
     command itself: no network, read-only container root, no added capabilities,
     no-new-privileges, bounded pids/memory/CPU, isolated tmpfs, no Docker socket,
-    no host environment/secret inheritance, and only the governed workspace bind.
+    no host environment/secret inheritance, bounded host-side output capture,
+    and only the governed workspace bind.
     """
 
     def __init__(
@@ -36,6 +38,7 @@ class DockerSecureCommandBoundary:
         memory_limit: str = "1024m",
         cpu_limit: str = "1.0",
         pids_limit: int = 256,
+        output_limit_bytes: int = 1_048_576,
     ) -> None:
         if not runtime_image.strip() or any(char in runtime_image for char in "\r\n\x00"):
             raise SoftwareFactoryError("generated sandbox runtime image is invalid")
@@ -49,11 +52,14 @@ class DockerSecureCommandBoundary:
             raise SoftwareFactoryError("generated sandbox CPU limit is invalid")
         if pids_limit < 16 or pids_limit > 4096:
             raise SoftwareFactoryError("generated sandbox pids limit is invalid")
+        if output_limit_bytes < 16_384 or output_limit_bytes > 16_777_216:
+            raise SoftwareFactoryError("generated sandbox output limit is invalid")
         self._runtime_image = runtime_image
         self._docker = docker_executable
         self._memory_limit = memory_limit
         self._cpu_limit = cpu_limit
         self._pids_limit = pids_limit
+        self._output_limit_bytes = output_limit_bytes
 
     def execute(
         self,
@@ -148,11 +154,61 @@ class DockerSecureCommandBoundary:
         *,
         timeout_seconds: int,
     ) -> subprocess.CompletedProcess[str]:
-        return subprocess.run(
+        process = subprocess.Popen(
             (self._docker, *args),
-            check=False,
-            capture_output=True,
-            text=True,
-            timeout=timeout_seconds,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             env={"PATH": os.environ.get("PATH", "")},
+        )
+        if process.stdout is None or process.stderr is None:
+            process.kill()
+            raise SoftwareFactoryError("generated sandbox output capture is unavailable")
+
+        overflow = threading.Event()
+        stdout_buffer = bytearray()
+        stderr_buffer = bytearray()
+
+        def drain(stream: object, target: bytearray) -> None:
+            reader = getattr(stream, "read", None)
+            if reader is None:
+                overflow.set()
+                process.kill()
+                return
+            while True:
+                chunk = reader(65_536)
+                if not chunk:
+                    return
+                remaining = self._output_limit_bytes - len(target)
+                if remaining > 0:
+                    target.extend(chunk[:remaining])
+                if len(chunk) > remaining:
+                    overflow.set()
+                    process.kill()
+                    return
+
+        stdout_thread = threading.Thread(target=drain, args=(process.stdout, stdout_buffer), daemon=True)
+        stderr_thread = threading.Thread(target=drain, args=(process.stderr, stderr_buffer), daemon=True)
+        stdout_thread.start()
+        stderr_thread.start()
+        try:
+            returncode = process.wait(timeout=timeout_seconds)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait()
+            raise
+        finally:
+            stdout_thread.join(timeout=1)
+            stderr_thread.join(timeout=1)
+
+        if stdout_thread.is_alive() or stderr_thread.is_alive():
+            process.kill()
+            raise SoftwareFactoryError("generated sandbox output drain failed closed")
+        if overflow.is_set():
+            raise SoftwareFactoryError("generated sandbox output exceeds bounded capture limit")
+
+        return subprocess.CompletedProcess(
+            (self._docker, *args),
+            returncode,
+            stdout_buffer.decode("utf-8", errors="replace"),
+            stderr_buffer.decode("utf-8", errors="replace"),
         )
