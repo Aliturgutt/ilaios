@@ -18,6 +18,7 @@ from services.commercial_access import (
     CommercialEntitlement,
     EntitlementState,
     ProviderSubscriptionBinding,
+    ProviderSubscriptionState,
 )
 from services.commercial_webhook import VerifiedCommercialWebhookEvent
 from services.control_plane.migrations import migrate_database
@@ -71,6 +72,42 @@ class IdentityBoundCommercialAccess:
         if not isinstance(event, VerifiedCommercialWebhookEvent):
             raise CommercialAccessError("provider event must be cryptographically verified")
         return self._commercial.apply_verified_provider_event(event=event, now=now)
+
+    def reconcile_verified_provider_entitlement(
+        self, *, event: object, now: datetime
+    ) -> tuple[ProviderSubscriptionBinding, CommercialEntitlement | None]:
+        """Project verified negative provider lifecycle state into entitlement denial.
+
+        Activation/renewal intentionally does not mint access because the current
+        verified provider event contract does not carry server-authoritative billing
+        period validity or checkout grant evidence. Suspension, failed-payment,
+        cancellation, and refund may only reduce access, so they are projected
+        fail-closed through the incumbent ``CommercialAccessStore`` authority even
+        if the canonical identity later becomes inactive.
+        """
+
+        if not isinstance(event, VerifiedCommercialWebhookEvent):
+            raise CommercialAccessError("provider event must be cryptographically verified")
+        binding = self._commercial.apply_verified_provider_event(event=event, now=now)
+        if binding.state is ProviderSubscriptionState.ACTIVE:
+            return binding, None
+        if binding.state is ProviderSubscriptionState.SUSPENDED:
+            entitlement_state = EntitlementState.SUSPENDED
+        elif binding.state is ProviderSubscriptionState.CANCELLED:
+            entitlement_state = EntitlementState.CANCELLED
+        else:
+            raise CommercialAccessError("provider subscription state cannot reconcile entitlement")
+        entitlement = self._commercial.apply_entitlement(
+            event_id=f"provider-entitlement:{event.event_id}",
+            tenant_id=binding.tenant_id,
+            user_id=binding.user_id,
+            plan_id=binding.plan_id,
+            state=entitlement_state,
+            valid_until=None,
+            paid_provider_allowed=False,
+            now=now,
+        )
+        return binding, entitlement
 
     def apply_entitlement(
         self,
