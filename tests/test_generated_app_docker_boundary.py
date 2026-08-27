@@ -126,3 +126,27 @@ def test_boundary_keeps_failed_command_as_failed_evidence(tmp_path: Path) -> Non
     assert result.passed is False
     assert result.exit_code == 9
     assert result.stderr_sha256 == hashlib.sha256(b"blocked").hexdigest()
+
+
+def test_boundary_kills_host_output_flood_before_control_plane_memory_growth(
+    tmp_path: Path,
+) -> None:
+    executable = tmp_path / "fake-docker"
+    executable.write_text(
+        "#!/bin/sh\n"
+        "i=0\n"
+        "while [ \"$i\" -lt 20000 ]; do\n"
+        "  printf x\n"
+        "  i=$((i + 1))\n"
+        "done\n",
+        encoding="utf-8",
+    )
+    executable.chmod(0o755)
+    boundary = DockerSecureCommandBoundary(
+        runtime_image="ilaios/generated-runtime:test",
+        docker_executable=str(executable),
+        output_limit_bytes=16_384,
+    )
+
+    with pytest.raises(SoftwareFactoryError, match="output exceeds bounded capture limit"):
+        boundary._docker_run(("run",), timeout_seconds=5)
