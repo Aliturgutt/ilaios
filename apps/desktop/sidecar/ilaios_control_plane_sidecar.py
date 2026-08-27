@@ -336,6 +336,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     print(json.dumps({"event": "desktop_ready", **ready}, sort_keys=True), flush=True)
 
+    desktop_exit_cleanup_complete = threading.Event()
+
     def stop_identity_if_control_plane_exits() -> None:
         control_thread.join()
         identity_server.shutdown()
@@ -349,12 +351,29 @@ def main(argv: Sequence[str] | None = None) -> int:
             pass
         identity_server.shutdown()
 
+    def _force_exit_if_desktop_cleanup_stalls() -> None:
+        if not desktop_exit_cleanup_complete.wait(timeout=5):
+            _terminate_frozen_sidecar_parent()
+            os._exit(0)
+
     def stop_identity_if_desktop_exits() -> None:
         desktop_pid = arguments.desktop_pid
         if desktop_pid is None:
             return
         _wait_for_windows_process_exit(desktop_pid)
+        # A GUI crash/forced termination cannot run DesktopRuntime.dispose().
+        # Start a bounded fail-safe before graceful server shutdown so any
+        # non-daemon runtime worker or PyInstaller bootloader cannot leave the
+        # packaged control plane orphaned indefinitely. Normal app exit still
+        # reaches the authenticated /v1/runtime/shutdown path first; this is a
+        # crash/owner-loss fallback only.
+        threading.Thread(
+            target=_force_exit_if_desktop_cleanup_stalls,
+            name="ilaios-desktop-bounded-exit",
+            daemon=True,
+        ).start()
         identity_server.shutdown()
+        control_server.shutdown()
 
     control_watchdog = threading.Thread(
         target=stop_identity_if_control_plane_exits,
@@ -385,7 +404,47 @@ def main(argv: Sequence[str] | None = None) -> int:
         control_server.shutdown()
         control_server.server_close()
         control_thread.join(timeout=5)
+        desktop_exit_cleanup_complete.set()
     return 0
+
+
+def _terminate_frozen_sidecar_parent() -> None:
+    """Terminate only this frozen sidecar's matching PyInstaller parent.
+
+    PyInstaller one-file mode keeps a bootloader parent process with the same
+    executable image as the Python child. ``os._exit`` terminates only the
+    child, so owner-loss cleanup must also bound that instance-specific parent.
+    The executable-path equality guard prevents terminating an unrelated shell
+    or another ILAIOS Desktop instance.
+    """
+    if os.name != "nt" or not getattr(sys, "frozen", False):
+        return
+    parent_pid = os.getppid()
+    if parent_pid < 1 or parent_pid == os.getpid():
+        return
+    process_query_limited_information = 0x1000
+    process_terminate = 0x0001
+    kernel32 = ctypes.windll.kernel32
+    kernel32.OpenProcess.restype = ctypes.c_void_p
+    handle = kernel32.OpenProcess(
+        process_query_limited_information | process_terminate,
+        False,
+        parent_pid,
+    )
+    if not handle:
+        return
+    try:
+        buffer = ctypes.create_unicode_buffer(32768)
+        size = ctypes.c_ulong(len(buffer))
+        if not kernel32.QueryFullProcessImageNameW(handle, 0, buffer, ctypes.byref(size)):
+            return
+        parent_image = os.path.normcase(os.path.abspath(buffer.value))
+        current_image = os.path.normcase(os.path.abspath(sys.executable))
+        if parent_image != current_image:
+            return
+        kernel32.TerminateProcess(handle, 0)
+    finally:
+        kernel32.CloseHandle(ctypes.c_void_p(handle))
 
 
 def _wait_for_windows_process_exit(process_id: int) -> None:
