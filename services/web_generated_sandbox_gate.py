@@ -11,6 +11,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from urllib.parse import urlsplit
 
+_MAX_DNS_SNAPSHOT_AGE_SECONDS = 300
+
 
 class SandboxVerdict(StrEnum):
     PASS = "PASS"
@@ -31,6 +33,8 @@ class GeneratedSandboxEvidence:
     csp: str
     allowed_egress_hosts: tuple[str, ...]
     resolved_egress: tuple[tuple[str, str], ...]
+    dns_snapshot_complete: bool
+    dns_snapshot_age_seconds: int | None
     privileged_cookie_access: bool
     privileged_token_access: bool
     secret_material_access: bool
@@ -119,6 +123,7 @@ def evaluate_generated_sandbox(evidence: GeneratedSandboxEvidence) -> SandboxGat
     if any(_privileged_egress_target(host) for host in normalized_egress_hosts):
         failures.append("egress allowlist contains a privileged or non-public target")
 
+    _validate_dns_snapshot_metadata(evidence, missing, failures)
     _validate_resolved_egress(
         normalized_egress_hosts,
         evidence.resolved_egress,
@@ -236,6 +241,22 @@ def _exact_https_origin(
     if not _valid_host(hostname) or _privileged_egress_target(hostname):
         failures.append(f"{label} contains an invalid or privileged host")
     return ("https", hostname, 443 if port is None else port)
+
+
+def _validate_dns_snapshot_metadata(
+    evidence: GeneratedSandboxEvidence,
+    missing: list[str],
+    failures: list[str],
+) -> None:
+    if not evidence.dns_snapshot_complete:
+        missing.append("complete DNS resolution snapshot")
+    age = evidence.dns_snapshot_age_seconds
+    if age is None:
+        missing.append("DNS resolution snapshot age")
+    elif age < 0:
+        failures.append("DNS resolution snapshot age cannot be negative")
+    elif age > _MAX_DNS_SNAPSHOT_AGE_SECONDS:
+        missing.append("fresh DNS resolution snapshot")
 
 
 def _validate_resolved_egress(
