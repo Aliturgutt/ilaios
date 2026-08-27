@@ -182,7 +182,7 @@ class VercelWebDeploymentAdapter:
             "projectSettings": {
                 "framework": "nextjs",
                 "buildCommand": "npm run build",
-                "installCommand": "npm install",
+                "installCommand": "npm install --ignore-scripts",
             },
         }
         status, created = self._transport.api(
