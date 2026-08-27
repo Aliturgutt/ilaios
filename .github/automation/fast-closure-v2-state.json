@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-26T23:12:00Z",
+  "updated_at": "2026-08-27T06:37:00Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "identity",
-    "reserved_master_sha": "790f60ccdce33f7775f88ab6079578eb0bfb2b9c",
-    "candidate_pr": null,
-    "candidate_head_sha": null,
+    "owner": "web_app",
+    "reserved_master_sha": "9a39c5cbf12431710a7bfa8f26b91d13441c7fbc",
+    "candidate_pr": 1023,
+    "candidate_head_sha": "38f52c1273a42b2e01ea94162b200f5be7e7eb2e",
     "freeze_active": true,
-    "freeze_reason": "Identity/Desktop lifecycle client PR #1028 is merged and exact-master Required CI, Software Factory Final Evidence, Desktop MSIX Packaging, and Vercel are SUCCESS on 790f60cc. Preserve the legal Identity window for the next dependency-ready Production Identity/Billing/Subscription/Entitlement boundary."
+    "freeze_reason": "Identity PR #1036 is merged on exact master 9a39c5cb and exact-master Required CI is SUCCESS. No exact-current Identity successor is open. Reclaim the stale Identity reservation for the dependency-ready Web App Phase-11 sandbox acceptance lineage; #1023 remains stale-base and MUST be replayed onto exact current master with fresh gates before merge."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,25 +54,25 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 4,
       "authoritative_issue": null,
       "active_pr": null,
-      "base_sha": "790f60ccdce33f7775f88ab6079578eb0bfb2b9c",
-      "head_sha": "790f60ccdce33f7775f88ab6079578eb0bfb2b9c",
+      "base_sha": "9a39c5cbf12431710a7bfa8f26b91d13441c7fbc",
+      "head_sha": "9a39c5cbf12431710a7bfa8f26b91d13441c7fbc",
       "blocked_reason": null,
-      "next_action": "Preserve merged #1028 and exact-master gates on 790f60cc. Audit the canonical commercial-access/payment boundary next: checkout/payment-provider authority, webhook authenticity, idempotency/replay, subscription lifecycle, server-authoritative entitlement/quota, renewal/cancel/refund/failed-payment reconciliation and usage/cost binding. Implement only the smallest dependency-ready fail-closed slice using CommercialAccessStore and existing managed-credit authority; no provider activation or spend."
+      "next_action": "Preserve merged #1036 and exact-master Required CI on 9a39c5cb. Do not hold the repository merge token without a new dependency-ready exact-current Identity candidate."
     },
     "web_app": {
       "scheduler": "web_app",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 5,
       "authoritative_issue": 486,
-      "active_pr": null,
-      "base_sha": "cd207f2d60c753998679a2044a7c9fb4059b7fc3",
-      "head_sha": "cd207f2d60c753998679a2044a7c9fb4059b7fc3",
-      "blocked_reason": null,
-      "next_action": "Preserve merged Phase 10 (#1014) and generated-code security (#1015) checkpoints. Do not hold the merge token without a new dependency-ready current-base Web App candidate; continue later from then-current master with fresh evidence."
+      "active_pr": 1023,
+      "base_sha": "1f9747b09d633b1e0eb3719d0b874dab9c99a980",
+      "head_sha": "38f52c1273a42b2e01ea94162b200f5be7e7eb2e",
+      "blocked_reason": "PR #1023 is green historical development evidence but stale-base after 36 non-overlapping master commits; replay is required in the legal Web App merge window and stale PASS is invalid.",
+      "next_action": "Replay only the reviewed three-path Phase-11 sandbox acceptance delta from #1023 onto exact current master 9a39c5cb after re-reading overlap/currentness; require completely fresh Web App Factory + Required CI + SFFE and applicable security/controller gates before expected-head merge and exact-master verification."
     },
     "agents": {
       "scheduler": "agents",
