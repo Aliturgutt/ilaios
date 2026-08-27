@@ -19,6 +19,7 @@ from services.commercial_access import (
     EntitlementState,
     ProviderSubscriptionBinding,
 )
+from services.commercial_webhook import VerifiedCommercialWebhookEvent
 from services.control_plane.migrations import migrate_database
 from src.video_automation.managed_credits import (
     CreditAuthorizationOutcome,
@@ -62,8 +63,10 @@ class IdentityBoundCommercialAccess:
     ) -> ProviderSubscriptionBinding:
         """Apply verified provider state without allowing webhook account selection."""
 
+        if not isinstance(event, VerifiedCommercialWebhookEvent):
+            raise CommercialAccessError("provider event must be cryptographically verified")
         binding = self._commercial.get_provider_subscription_binding(
-            provider_subscription_id=str(getattr(event, "provider_subscription_id", ""))
+            provider_subscription_id=event.provider_subscription_id
         )
         self._require_active_identity(tenant_id=binding.tenant_id, user_id=binding.user_id)
         return self._commercial.apply_verified_provider_event(event=event, now=now)
