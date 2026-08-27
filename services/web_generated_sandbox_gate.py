@@ -206,9 +206,7 @@ def _validate_origin_binding(
     )
     if evidence.separate_origin and generated is not None and privileged is not None:
         if generated[1] == privileged[1]:
-            failures.append(
-                "generated runtime host is not isolated from privileged session host"
-            )
+            failures.append("generated runtime host is not isolated from privileged session host")
 
 
 def _exact_https_origin(
@@ -343,10 +341,23 @@ def _strict_script_sources(sources: tuple[str, ...]) -> bool:
 
 
 def _valid_host(value: str) -> bool:
-    host = value.strip().casefold()
-    if not host or "*" in host or "://" in host or "/" in host:
+    host = value.strip().casefold().rstrip(".")
+    if not host or not host.isascii() or "*" in host or "://" in host or "/" in host:
         return False
-    return all(part and part.replace("-", "").isalnum() for part in host.split("."))
+
+    try:
+        address = ipaddress.ip_address(host)
+    except ValueError:
+        labels = host.split(".")
+        if all(label.isdigit() for label in labels):
+            return False
+        if len(labels) == 1 and host.startswith("0x") and all(
+            character in "0123456789abcdef" for character in host[2:]
+        ):
+            return False
+        return all(part and part.replace("-", "").isalnum() for part in labels)
+
+    return isinstance(address, ipaddress.IPv4Address) and str(address) == host
 
 
 def _privileged_egress_target(value: str) -> bool:
