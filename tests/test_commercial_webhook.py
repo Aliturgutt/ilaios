@@ -63,27 +63,24 @@ def test_tampered_body_fails_signature_verification() -> None:
         )
 
 
-@pytest.mark.parametrize(
-    "signed_at",
-    [
+def test_stale_or_future_signature_fails_closed() -> None:
+    body = _body()
+    signed_times = (
         _NOW - timedelta(seconds=301),
         _NOW + timedelta(seconds=1),
-    ],
-)
-def test_stale_or_future_signature_fails_closed(signed_at: datetime) -> None:
+    )
+    for signed_at in signed_times:
+        with pytest.raises(CommercialAccessError, match="timestamp is outside policy"):
+            CommercialWebhookVerifier(_SECRET).verify(
+                raw_body=body,
+                signature_header=_signature(body, when=signed_at),
+                now=_NOW,
+            )
+
+
+def test_malformed_signature_header_fails_closed() -> None:
     body = _body()
-
-    with pytest.raises(CommercialAccessError, match="timestamp is outside policy"):
-        CommercialWebhookVerifier(_SECRET).verify(
-            raw_body=body,
-            signature_header=_signature(body, when=signed_at),
-            now=_NOW,
-        )
-
-
-@pytest.mark.parametrize(
-    "header",
-    [
+    headers = (
         "",
         "t=123",
         "v1=" + "0" * 64,
@@ -91,17 +88,14 @@ def test_stale_or_future_signature_fails_closed(signed_at: datetime) -> None:
         "t=nope,v1=" + "0" * 64,
         "t=123,v2=" + "0" * 64,
         "t=123,v1=xyz",
-    ],
-)
-def test_malformed_signature_header_fails_closed(header: str) -> None:
-    body = _body()
-
-    with pytest.raises(CommercialAccessError, match="signature"):
-        CommercialWebhookVerifier(_SECRET).verify(
-            raw_body=body,
-            signature_header=header,
-            now=_NOW,
-        )
+    )
+    for header in headers:
+        with pytest.raises(CommercialAccessError, match="signature"):
+            CommercialWebhookVerifier(_SECRET).verify(
+                raw_body=body,
+                signature_header=header,
+                now=_NOW,
+            )
 
 
 def test_payload_cannot_smuggle_canonical_account_authority() -> None:
@@ -115,24 +109,21 @@ def test_payload_cannot_smuggle_canonical_account_authority() -> None:
         )
 
 
-@pytest.mark.parametrize(
-    "overrides",
-    [
+def test_invalid_provider_event_fields_fail_closed() -> None:
+    invalid_payloads: tuple[dict[str, object], ...] = (
         {"event_type": "checkout.admin_override"},
         {"event_id": " "},
         {"provider_subscription_id": ""},
         {"occurred_at": "not-a-time"},
-    ],
-)
-def test_invalid_provider_event_fields_fail_closed(overrides: dict[str, object]) -> None:
-    body = _body(**overrides)
-
-    with pytest.raises(CommercialAccessError):
-        CommercialWebhookVerifier(_SECRET).verify(
-            raw_body=body,
-            signature_header=_signature(body),
-            now=_NOW,
-        )
+    )
+    for overrides in invalid_payloads:
+        body = _body(**overrides)
+        with pytest.raises(CommercialAccessError):
+            CommercialWebhookVerifier(_SECRET).verify(
+                raw_body=body,
+                signature_header=_signature(body),
+                now=_NOW,
+            )
 
 
 def test_wrong_secret_fails_closed() -> None:
@@ -151,6 +142,18 @@ def test_weak_secret_and_unsafe_age_policy_are_rejected() -> None:
         CommercialWebhookVerifier(b"short")
     with pytest.raises(CommercialAccessError, match="age policy is invalid"):
         CommercialWebhookVerifier(_SECRET, max_signature_age_seconds=0)
+
+
+def test_invalid_timestamp_range_fails_closed() -> None:
+    body = _body()
+    header = "t=999999999999999999999999999999,v1=" + "0" * 64
+
+    with pytest.raises(CommercialAccessError, match="timestamp is invalid"):
+        CommercialWebhookVerifier(_SECRET).verify(
+            raw_body=body,
+            signature_header=header,
+            now=_NOW,
+        )
 
 
 def test_verifier_does_not_mutate_entitlement_or_accept_account_mapping() -> None:
