@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-26T20:25:00Z",
+  "updated_at": "2026-08-26T23:12:00Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "identity",
-    "reserved_master_sha": "bb17ac9aea3dc50aca4cbea31cc0708eda87df91",
+    "reserved_master_sha": "790f60ccdce33f7775f88ab6079578eb0bfb2b9c",
     "candidate_pr": null,
     "candidate_head_sha": null,
     "freeze_active": true,
-    "freeze_reason": "Desktop PR #1026 is merged on exact master bb17ac9a with current-master Required CI + Software Factory exact-master SUCCESS, Desktop MSIX packaging SUCCESS, and exact-master portable artifact lineage bound to workflow run 33009237246. Remaining user-machine installation/runtime/visual acceptance is external human evidence and must not hold the repository token. Hand the next single-writer window to Identity for the smallest dependency-ready client invocation binding."
+    "freeze_reason": "Identity/Desktop lifecycle client PR #1028 is merged and exact-master Required CI, Software Factory Final Evidence, Desktop MSIX Packaging, and Vercel are SUCCESS on 790f60cc. Preserve the legal Identity window for the next dependency-ready Production Identity/Billing/Subscription/Entitlement boundary."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -58,10 +58,10 @@
       "priority_rank": 4,
       "authoritative_issue": null,
       "active_pr": null,
-      "base_sha": "bb17ac9aea3dc50aca4cbea31cc0708eda87df91",
-      "head_sha": "bb17ac9aea3dc50aca4cbea31cc0708eda87df91",
+      "base_sha": "790f60ccdce33f7775f88ab6079578eb0bfb2b9c",
+      "head_sha": "790f60ccdce33f7775f88ab6079578eb0bfb2b9c",
       "blocked_reason": null,
-      "next_action": "Preserve merged #1022 trusted GitHub unlink proof. On exact current master bb17ac9a, re-audit the genuine user-facing Web/App client authority for lifecycle invocation. Implement only the smallest dependency-ready client binding, preferring export-my-data or logout, through existing canonical Web/App auth/session/runtime authorities; no second router/client/auth authority. Require fresh gates and exact-master verification."
+      "next_action": "Preserve merged #1028 and exact-master gates on 790f60cc. Audit the canonical commercial-access/payment boundary next: checkout/payment-provider authority, webhook authenticity, idempotency/replay, subscription lifecycle, server-authoritative entitlement/quota, renewal/cancel/refund/failed-payment reconciliation and usage/cost binding. Implement only the smallest dependency-ready fail-closed slice using CommercialAccessStore and existing managed-credit authority; no provider activation or spend."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 28,
+    "master_advances": 29,
     "stale_pass_invalidations": 22,
     "replay_resync_count": 7,
-    "ci_cycles": 20,
-    "successful_merges": 29,
+    "ci_cycles": 21,
+    "successful_merges": 30,
     "duplicate_pr_count": 0,
     "churn_only_commit_count": 0
   }
