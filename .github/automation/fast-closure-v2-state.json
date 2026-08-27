@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-27T11:10:17Z",
+  "updated_at": "2026-08-27T14:02:00Z",
   "merge_token": {
     "state": "RESERVED",
-    "owner": "agents",
-    "reserved_master_sha": "2bfe85b944461c21ce9ee4b7926dad73a55b2474",
-    "candidate_pr": 1043,
-    "candidate_head_sha": "d9827da09ad4989c944af02297882839ddda6621",
+    "owner": "desktop",
+    "reserved_master_sha": "dc5af14c60cdfdd57b2bd3e727ab47d06e430dbf",
+    "candidate_pr": 1045,
+    "candidate_head_sha": "20a670f2e783c25e35386a4494cf9f6517e597d1",
     "freeze_active": true,
-    "freeze_reason": "Agent same-SHA automated 46/47 certification PR #1043 is the legal in-flight single-writer batch. Required CI exposed only a coordination-state lifecycle invariant; preserve Agent ownership and rerun fresh exact-head gates after the bounded state correction."
+    "freeze_reason": "Agent PR #1043 is merged and exact-master ILAIOS Agent Automated 46 of 47 Certification run 33076305932 passed on dc5af14c. Hand off the single-writer merge token to the highest-priority Desktop P0 lifecycle/logout closure. PR #1045 has fresh exact-head required Desktop gates PASS but its base predates current master, so replay only the reviewed bounded delta onto exact current master before merge."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -21,14 +21,14 @@
   "workstreams": {
     "desktop": {
       "scheduler": "desktop",
-      "lifecycle": "BLOCKED_EXTERNAL",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 1,
       "authoritative_issue": 539,
-      "active_pr": null,
-      "base_sha": "bb17ac9aea3dc50aca4cbea31cc0708eda87df91",
-      "head_sha": "bb17ac9aea3dc50aca4cbea31cc0708eda87df91",
-      "blocked_reason": "Desktop repository/package checkpoint is exact-master verified. Final user-machine installation, 8-second runtime smoke, and visual acceptance require human Windows execution.",
-      "next_action": "Preserve merged #1026 on exact master bb17ac9a with Required CI/SFFE/MSIX SUCCESS and exact-master portable artifact digest sha256:f674e63520cee900ee3a1c9b3eda4a3edf1b66c737f15d1a26d5b6813a963b83 from run 33009237246. Complete user-machine installation/runtime/visual acceptance separately; do not hold the repository merge token for that external evidence."
+      "active_pr": 1045,
+      "base_sha": "33e3528936518933320f3c41d79f1ddaf044f248",
+      "head_sha": "20a670f2e783c25e35386a4494cf9f6517e597d1",
+      "blocked_reason": null,
+      "next_action": "Re-read live master after this token handoff merges, compare path+semantic overlap from 33e35289 to exact current master, replay only the reviewed four-file Desktop P0 lifecycle/logout delta if safe, rerun fresh exact-head Desktop Windows Gate, Desktop CI, MSIX, Combined Final, Product Surface, Local Runtime Diagnostics, Required CI and SFFE, then expected-head merge. After merge require exact-master evidence and a new portable ZIP/SHA256 before Windows user-machine acceptance."
     },
     "video_native_reference": {
       "scheduler": "unified",
@@ -76,14 +76,14 @@
     },
     "agents": {
       "scheduler": "agents",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "BLOCKED_EXTERNAL",
       "priority_rank": 6,
       "authoritative_issue": 557,
-      "active_pr": 1043,
-      "base_sha": "2bfe85b944461c21ce9ee4b7926dad73a55b2474",
-      "head_sha": "d9827da09ad4989c944af02297882839ddda6621",
-      "blocked_reason": null,
-      "next_action": "Run completely fresh exact-head Required CI/SFFE/Browser and applicable Agent gates for PR #1043 after this coordination-state correction. If all pass, immediately re-read live master/token/head/overlap and merge only with expected-head protection; then require exact-master automated 46/47 aggregate evidence. Preserve IndependentVerifier as human.owner and do not claim 47/47 closure."
+      "active_pr": null,
+      "base_sha": "dc5af14c60cdfdd57b2bd3e727ab47d06e430dbf",
+      "head_sha": "dc5af14c60cdfdd57b2bd3e727ab47d06e430dbf",
+      "blocked_reason": "Automated 46/47 exact-master certification is verified on run 33076305932. IndependentVerifier remains genuine human.owner and cannot be self-promoted by automation.",
+      "next_action": "Preserve exact-master automated 46/47 evidence. Complete IndependentVerifier only through genuine human.owner evidence; do not retain the repository merge token for this external final gate."
     },
     "app_factory": {
       "scheduler": "unified",
