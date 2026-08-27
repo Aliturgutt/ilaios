@@ -81,9 +81,18 @@ class DesktopRuntime {
         dataRoot.path,
         '--ready-file',
         readyFile.path,
+        '--desktop-pid',
+        '$pid',
       ],
       environment: environment,
-      mode: ProcessStartMode.normal,
+      // The bundled runtime is owned by the Desktop application, not by the
+      // terminal or shell that happened to launch the GUI. Keep stdio so the
+      // existing parent-pipe watchdog remains a bounded fallback, while the
+      // explicit Desktop PID gives the sidecar an OS-backed crash ownership
+      // boundary even when pipe EOF is delayed by a detached Windows process.
+      // DesktopRuntime.dispose() remains the authoritative graceful shutdown
+      // path through /v1/runtime/shutdown.
+      mode: ProcessStartMode.detachedWithStdio,
     );
     unawaited(process.stdout.drain<void>());
     unawaited(process.stderr.drain<void>());
