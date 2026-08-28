@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T01:09:59Z",
+  "updated_at": "2026-08-28T01:20:00Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "identity",
-    "reserved_master_sha": "230200d627deb80416206fbbdc7d2ad8e3db4457",
-    "candidate_pr": null,
-    "candidate_head_sha": "230200d627deb80416206fbbdc7d2ad8e3db4457",
+    "reserved_master_sha": "5c30328ecb54df9aaac075e538443a7b19b15475",
+    "candidate_pr": 1069,
+    "candidate_head_sha": "0b23c6d34501b153bc9c4aa08cce354a30fced93",
     "freeze_active": false,
     "freeze_reason": null
   },
@@ -54,14 +54,14 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "TOKEN_WAIT",
+      "lifecycle": "CI_RUNNING",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": null,
-      "base_sha": "230200d627deb80416206fbbdc7d2ad8e3db4457",
-      "head_sha": "230200d627deb80416206fbbdc7d2ad8e3db4457",
+      "active_pr": 1069,
+      "base_sha": "5c30328ecb54df9aaac075e538443a7b19b15475",
+      "head_sha": "0b23c6d34501b153bc9c4aa08cce354a30fced93",
       "blocked_reason": null,
-      "next_action": "On this bounded Identity/Billing token, extend the incumbent signed commercial webhook with server-authoritative billing-period evidence for positive subscription lifecycle events, then project ACTIVE entitlement only through the existing CommercialAccessStore and canonical Identity binding. No payment-provider activation or spend."
+      "next_action": "Require completely fresh exact-head Required CI + SFFE for PR #1069. On failure inspect real evidence and repair minimally. On PASS re-read live master/token/head and path/semantic overlap before expected-head merge, then require exact-master validation. Positive provider lifecycle grants only bounded base entitlement from signed billing-period evidence; paid-provider spend remains separately denied until server-owned plan/quota policy exists. Production payment-provider activation/E2E remains HUMAN/EXTERNAL."
     },
     "web_app": {
       "scheduler": "web_app",
