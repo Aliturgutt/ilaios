@@ -258,4 +258,27 @@ jobs:
           Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'desktop-combined-ci.patch') (Join-Path $artifactRoot 'desktop-combined-ci.patch')
 
           $hashes = Get-ChildItem $runtime -File -Recurse | Sort-Object FullName | ForEach-Object {
+            $relative = $_.FullName.Substring($runtime.Length + 1)
+            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
+            "$hash  runtime/$($relative -replace '\\','/')"
+          }
+          $hashes | Set-Content -Encoding ascii (Join-Path $artifactRoot 'SHA256SUMS.txt')
 
+          $short = $sha.Substring(0,8)
+          $zip = Join-Path $env:GITHUB_WORKSPACE "artifacts\ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_$short.zip"
+          Compress-Archive -Path (Join-Path $artifactRoot '*') -DestinationPath $zip -CompressionLevel Optimal -Force
+          $zipHash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
+          Set-Content -Encoding ascii -Path "$zip.sha256" -Value "$zipHash  $(Split-Path $zip -Leaf)"
+          Write-Host "FINAL_ZIP=$zip"
+          Write-Host "FINAL_ZIP_SHA256=$zipHash"
+
+      - name: Upload CI-verified Desktop combined package
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-combined-ci-verified-${{ github.sha }}-${{ github.run_id }}
+          path: |
+            artifacts/ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip
+            artifacts/ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
