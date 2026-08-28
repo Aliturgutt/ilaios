@@ -26,16 +26,24 @@ def promote_store_ready(
     *,
     current: CertificationState,
     profile: SubmissionProfile,
+    certified_profile_sha256: str,
     policy_snapshot: PolicySnapshot,
     evidence: CertificationEvidence,
 ) -> CertificationState:
     """Promote only fully bound certification evidence to STORE_READY.
+
+    ``certified_profile_sha256`` is the immutable submission-profile identity recorded
+    by the certification producer. The guard compares it to the current canonical
+    profile before policy evaluation, preventing profile substitution between
+    certification and STORE_READY promotion.
 
     External receipts remain opaque references/hashes here; this function validates
     their required presence and cross-contract identity but never fabricates them.
     """
     if current not in {"STORE_CERTIFYING", "RE_CERTIFYING"}:
         raise StoreCertificationError("STORE_READY promotion requires a certifying state")
+    if certified_profile_sha256 != profile.profile_sha256:
+        raise StoreCertificationError("certification evidence is bound to a stale submission profile")
     if profile.store != policy_snapshot.store:
         raise StoreCertificationError("submission profile and policy snapshot stores differ")
 
