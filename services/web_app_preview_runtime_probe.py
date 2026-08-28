@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from typing import Mapping, Protocol
-from urllib.request import Request, build_opener
+from urllib.request import ProxyHandler, Request, build_opener
 
 from services.software_factory import SoftwareFactoryError
 from services.web_app_preview_sandbox_observer import (
@@ -65,7 +65,11 @@ class UrllibPreviewHttpTransport:
             },
         )
         try:
-            with build_opener().open(request, timeout=timeout_seconds) as response:
+            # Never inherit host HTTP(S)_PROXY configuration or proxy credentials.
+            # Governed egress gateways must be supplied explicitly by the incumbent
+            # runtime through another PreviewHttpTransport implementation.
+            opener = build_opener(ProxyHandler({}))
+            with opener.open(request, timeout=timeout_seconds) as response:
                 headers = {str(key): str(value) for key, value in response.headers.items()}
                 return PreviewHttpProbeResult(final_url=response.geturl(), response_headers=headers)
         except Exception as error:
