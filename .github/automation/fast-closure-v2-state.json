@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T17:39:00Z",
+  "updated_at": "2026-08-28T18:24:00Z",
   "merge_token": {
-    "state": "RELEASED",
-    "owner": null,
-    "reserved_master_sha": null,
-    "candidate_pr": null,
-    "candidate_head_sha": null,
-    "freeze_active": false,
-    "freeze_reason": null
+    "state": "RESERVED",
+    "owner": "identity",
+    "reserved_master_sha": "b32a99ed258b64ae1b52c22472fb05ebbefc1372",
+    "candidate_pr": 1100,
+    "candidate_head_sha": "0c423d26a33dc3c1b4e0e4d40d8e8f6db8c1562d",
+    "freeze_active": true,
+    "freeze_reason": "Identity Phase-9 Web session cookie/CSRF security exact-current validation"
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,14 +54,14 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": null,
-      "base_sha": "8b25574ba4bc644fb9d21bb2577e44855cee490c",
-      "head_sha": "8b25574ba4bc644fb9d21bb2577e44855cee490c",
-      "blocked_reason": "Positive entitlement projection is exact-master verified through #1078. Real checkout/payment-provider activation, provider-owned production configuration and real payment/webhook/customer-flow evidence remain HUMAN/EXTERNAL and are not authorized for spend in automation.",
-      "next_action": "Preserve #1078 exact-master evidence. Continue only safe repository-owned Billing/Identity dependencies that do not activate a provider or spend; require real production checkout/webhook/renewal/cancel/refund/reconciliation E2E before commercial closure."
+      "active_pr": 1100,
+      "base_sha": "b32a99ed258b64ae1b52c22472fb05ebbefc1372",
+      "head_sha": "0c423d26a33dc3c1b4e0e4d40d8e8f6db8c1562d",
+      "blocked_reason": null,
+      "next_action": "Require fresh exact-head Required CI + SFFE and applicable Identity/security/controller gates for #1100, then live master/token/head/overlap reread, expected-head merge and exact-master verification. Production Google OAuth configuration, real browser callback/session delivery, and real checkout/payment/customer E2E remain separate external evidence."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -121,9 +121,9 @@
   },
   "metrics": {
     "master_advances": 42,
-    "stale_pass_invalidations": 33,
-    "replay_resync_count": 8,
-    "ci_cycles": 30,
+    "stale_pass_invalidations": 34,
+    "replay_resync_count": 9,
+    "ci_cycles": 31,
     "successful_merges": 43,
     "duplicate_pr_count": 3,
     "churn_only_commit_count": 0
