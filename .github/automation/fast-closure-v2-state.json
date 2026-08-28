@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T17:30:00Z",
+  "updated_at": "2026-08-28T17:34:00Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "identity",
     "reserved_master_sha": "477650952f86c8cf1715f56d885e8e5f3b055dc3",
     "candidate_pr": 1097,
-    "candidate_head_sha": "43ef55f85df6baaf79a3128e9fb7b4e17ec58c9a",
+    "candidate_head_sha": "5fb6dba769380ed8688afc2b649256727b9d6c4a",
     "freeze_active": true,
     "freeze_reason": "Identity Phase-9 Web session cookie/CSRF security exact-current validation"
   },
@@ -59,7 +59,7 @@
       "authoritative_issue": null,
       "active_pr": 1097,
       "base_sha": "477650952f86c8cf1715f56d885e8e5f3b055dc3",
-      "head_sha": "43ef55f85df6baaf79a3128e9fb7b4e17ec58c9a",
+      "head_sha": "5fb6dba769380ed8688afc2b649256727b9d6c4a",
       "blocked_reason": null,
       "next_action": "Require fresh exact-head Required CI + SFFE for #1097, then live master/token/head/overlap reread, expected-head merge and exact-master verification. Production Google OAuth configuration and real checkout/payment/customer E2E remain separate external evidence."
     },
@@ -121,9 +121,9 @@
   },
   "metrics": {
     "master_advances": 41,
-    "stale_pass_invalidations": 31,
+    "stale_pass_invalidations": 32,
     "replay_resync_count": 8,
-    "ci_cycles": 29,
+    "ci_cycles": 30,
     "successful_merges": 42,
     "duplicate_pr_count": 3,
     "churn_only_commit_count": 0
