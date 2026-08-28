@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T02:12:00Z",
+  "updated_at": "2026-08-28T03:27:00Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "identity",
-    "reserved_master_sha": "5c30328ecb54df9aaac075e538443a7b19b15475",
-    "candidate_pr": 1069,
-    "candidate_head_sha": "d22b7ac5d993d6cb99dcc0965a8a123329fe0fb0",
+    "reserved_master_sha": "6796823f7eaf551f85ceca644e7a2099738f58b0",
+    "candidate_pr": 1071,
+    "candidate_head_sha": "116b98f9d9bb3f67b2656a307d61c06e6895287d",
     "freeze_active": true,
-    "freeze_reason": "Identity/Billing PR #1069 is the legal single-writer candidate; preserve the merge freeze through fresh exact-head Required CI/SFFE, live-master overlap reread, expected-head merge, and exact-master validation."
+    "freeze_reason": "Identity/Billing remediation PR #1071 is the legal single-writer candidate after unsafe #1069 merged. Preserve freeze through fresh exact-head Required CI/SFFE, live-master overlap reread, expected-head merge, and exact-master validation before any trusted-grant work."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -57,11 +57,11 @@
       "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": 1069,
-      "base_sha": "5c30328ecb54df9aaac075e538443a7b19b15475",
-      "head_sha": "d22b7ac5d993d6cb99dcc0965a8a123329fe0fb0",
-      "blocked_reason": null,
-      "next_action": "The previous exact head failed only because coordination state violated Fast-Closure invariants. Keep #1069 frozen as the legal Identity/Billing candidate, run completely fresh exact-head Required CI + SFFE after this state repair, then re-read live master/token/head and path/semantic overlap before expected-head merge. Positive provider lifecycle may grant only bounded base entitlement from signed billing-period evidence; paid-provider spend remains denied. Production payment-provider activation/E2E remains HUMAN/EXTERNAL."
+      "active_pr": 1071,
+      "base_sha": "6796823f7eaf551f85ceca644e7a2099738f58b0",
+      "head_sha": "116b98f9d9bb3f67b2656a307d61c06e6895287d",
+      "blocked_reason": "Unsafe #1069 merged provider-owned billing-period authority into positive entitlement. Remediation must restore negative-only reconciliation before positive Billing work resumes.",
+      "next_action": "Validate #1071 on the exact current master with completely fresh Required CI + SFFE and applicable security/controller gates; reread live master/token/head/overlap; merge expected-head only if current. Require exact-master Required CI + SFFE. After remediation is VERIFIED, implement a separate durable server-owned trusted grant policy before any positive activation/renewal projection."
     },
     "web_app": {
       "scheduler": "web_app",
