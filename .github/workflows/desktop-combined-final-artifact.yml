@@ -79,6 +79,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'git diff --check failed' }
 
           $expected = @(
+            'apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart',
             'apps/desktop/lib/features/deliveries/deliveries_view.dart',
             'apps/desktop/lib/app/desktop_app.dart',
             'apps/desktop/lib/features/create/create_view.dart',
