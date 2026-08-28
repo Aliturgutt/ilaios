@@ -19,6 +19,7 @@ from services.commercial_access import (
     EntitlementState,
     ProviderSubscriptionBinding,
     ProviderSubscriptionState,
+    TrustedCommercialGrant,
 )
 from services.commercial_webhook import VerifiedCommercialWebhookEvent
 from services.control_plane.migrations import migrate_database
@@ -56,6 +57,39 @@ class IdentityBoundCommercialAccess:
             tenant_id=tenant_id,
             user_id=user_id,
             plan_id=plan_id,
+            now=now,
+        )
+
+    def create_trusted_grant(
+        self,
+        *,
+        grant_id: str,
+        provider_subscription_id: str,
+        period_start: datetime,
+        period_end: datetime,
+        paid_provider_allowed: bool,
+        now: datetime,
+    ) -> TrustedCommercialGrant:
+        """Persist server-owned grant policy for the binding's active identity.
+
+        Canonical tenant/user/plan are deliberately not caller-selectable here. They
+        are read from the existing trusted provider-subscription binding and the
+        resulting membership is revalidated before the grant is persisted.
+        """
+
+        binding = self._commercial.get_provider_subscription_binding(
+            provider_subscription_id=provider_subscription_id
+        )
+        self._require_active_identity(
+            tenant_id=binding.tenant_id,
+            user_id=binding.user_id,
+        )
+        return self._commercial.create_trusted_grant(
+            grant_id=grant_id,
+            provider_subscription_id=provider_subscription_id,
+            period_start=period_start,
+            period_end=period_end,
+            paid_provider_allowed=paid_provider_allowed,
             now=now,
         )
 
