@@ -10,6 +10,7 @@ from services.commercial_access import (
     MAX_TRUSTED_GRANT_DURATION,
     CommercialAccessError,
     CommercialAccessStore,
+    EntitlementState,
 )
 from services.control_plane.migrations import migrate_database
 from services.identity_commercial_access import IdentityBoundCommercialAccess
@@ -61,7 +62,6 @@ def test_trusted_grant_uses_binding_coordinates_and_does_not_mint_entitlement(
 ) -> None:
     access, commercial, _ = _identity_bound(tmp_path)
     _bind(access)
-
     grant = access.create_trusted_grant(
         grant_id="grant-1",
         provider_subscription_id="sub-provider-1",
@@ -70,7 +70,6 @@ def test_trusted_grant_uses_binding_coordinates_and_does_not_mint_entitlement(
         paid_provider_allowed=False,
         now=NOW,
     )
-
     assert grant.tenant_id == "tenant-1"
     assert grant.user_id == "user-1"
     assert grant.plan_id == "pro"
@@ -102,7 +101,6 @@ def test_grant_id_is_idempotent_and_conflicting_policy_fails_closed(tmp_path: Pa
         now=NOW + timedelta(minutes=1),
     )
     assert repeated == first
-
     with pytest.raises(CommercialAccessError, match="conflicts"):
         access.create_trusted_grant(
             grant_id="grant-1",
@@ -125,7 +123,6 @@ def test_unknown_subscription_and_inactive_identity_fail_closed(tmp_path: Path) 
             paid_provider_allowed=False,
             now=NOW,
         )
-
     _bind(access)
     with sqlite3.connect(database) as connection:
         connection.execute("UPDATE identity_users SET enabled = 0 WHERE user_id = 'user-1'")
@@ -143,7 +140,6 @@ def test_unknown_subscription_and_inactive_identity_fail_closed(tmp_path: Path) 
 def test_invalid_expired_inverted_and_overlong_periods_fail_closed(tmp_path: Path) -> None:
     access, _, _ = _identity_bound(tmp_path)
     _bind(access)
-
     with pytest.raises(CommercialAccessError, match="end after"):
         access.create_trusted_grant(
             grant_id="grant-inverted",
@@ -173,10 +169,9 @@ def test_invalid_expired_inverted_and_overlong_periods_fail_closed(tmp_path: Pat
         )
 
 
-def test_client_or_webhook_cannot_select_account_plan_or_period_authority(tmp_path: Path) -> None:
+def test_client_or_webhook_cannot_select_account_plan_authority(tmp_path: Path) -> None:
     access, _, _ = _identity_bound(tmp_path)
     _bind(access)
-
     with pytest.raises(TypeError):
         access.create_trusted_grant(  # type: ignore[call-arg]
             grant_id="grant-smuggle",
@@ -199,12 +194,11 @@ def test_grant_creation_does_not_change_existing_entitlement(tmp_path: Path) -> 
         tenant_id="tenant-1",
         user_id="user-1",
         plan_id="legacy",
-        state=__import__("services.commercial_access", fromlist=["EntitlementState"]).EntitlementState.SUSPENDED,
+        state=EntitlementState.SUSPENDED,
         valid_until=None,
         paid_provider_allowed=False,
         now=NOW,
     )
-
     access.create_trusted_grant(
         grant_id="grant-1",
         provider_subscription_id="sub-provider-1",
