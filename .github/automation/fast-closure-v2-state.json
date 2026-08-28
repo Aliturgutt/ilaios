@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T03:27:00Z",
+  "updated_at": "2026-08-28T05:11:00Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "identity",
-    "reserved_master_sha": "6796823f7eaf551f85ceca644e7a2099738f58b0",
-    "candidate_pr": 1071,
-    "candidate_head_sha": "116b98f9d9bb3f67b2656a307d61c06e6895287d",
+    "reserved_master_sha": "bde6cd7f9812406a90746b577dc4e48de1203c45",
+    "candidate_pr": 1073,
+    "candidate_head_sha": "45eeaa55fa07ea289a0d044cea9b58f5e316e1f9",
     "freeze_active": true,
-    "freeze_reason": "Identity/Billing remediation PR #1071 is the legal single-writer candidate after unsafe #1069 merged. Preserve freeze through fresh exact-head Required CI/SFFE, live-master overlap reread, expected-head merge, and exact-master validation before any trusted-grant work."
+    "freeze_reason": "#1071 remediation is exact-master verified on bde6cd7f with Required CI and SFFE PASS. Identity retains the legal single-writer window for bounded trusted server-side grant policy PR #1073. Preserve freeze through fresh exact-head gates after this state refresh, live master/token/head/overlap reread, expected-head merge, and exact-master validation."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -57,11 +57,11 @@
       "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": 1071,
-      "base_sha": "6796823f7eaf551f85ceca644e7a2099738f58b0",
-      "head_sha": "116b98f9d9bb3f67b2656a307d61c06e6895287d",
-      "blocked_reason": "Unsafe #1069 merged provider-owned billing-period authority into positive entitlement. Remediation must restore negative-only reconciliation before positive Billing work resumes.",
-      "next_action": "Validate #1071 on the exact current master with completely fresh Required CI + SFFE and applicable security/controller gates; reread live master/token/head/overlap; merge expected-head only if current. Require exact-master Required CI + SFFE. After remediation is VERIFIED, implement a separate durable server-owned trusted grant policy before any positive activation/renewal projection."
+      "active_pr": 1073,
+      "base_sha": "bde6cd7f9812406a90746b577dc4e48de1203c45",
+      "head_sha": "45eeaa55fa07ea289a0d044cea9b58f5e316e1f9",
+      "blocked_reason": null,
+      "next_action": "Run completely fresh Required CI + SFFE and applicable DB/security/controller gates after this state refresh on PR #1073. Then reread live master/token/head/overlap and merge only with expected-head protection if still exact-current. Require exact-master Required CI + SFFE before any positive activation/renewal projection."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 34,
-    "stale_pass_invalidations": 25,
+    "master_advances": 35,
+    "stale_pass_invalidations": 26,
     "replay_resync_count": 7,
-    "ci_cycles": 24,
-    "successful_merges": 35,
+    "ci_cycles": 25,
+    "successful_merges": 36,
     "duplicate_pr_count": 3,
     "churn_only_commit_count": 0
   }

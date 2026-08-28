@@ -12,7 +12,7 @@ import hashlib
 import json
 import sqlite3
 from dataclasses import asdict, dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from enum import Enum
 from pathlib import Path
 
@@ -41,6 +41,9 @@ class ProviderSubscriptionState(str, Enum):
     ACTIVE = "ACTIVE"
     SUSPENDED = "SUSPENDED"
     CANCELLED = "CANCELLED"
+
+
+MAX_TRUSTED_GRANT_DURATION = timedelta(days=370)
 
 
 @dataclass(frozen=True, slots=True)
@@ -84,6 +87,44 @@ class ProviderSubscriptionBinding:
             raise CommercialAccessError("provider subscription state is invalid")
 
 
+@dataclass(frozen=True, slots=True)
+class TrustedCommercialGrant:
+    """Server-owned positive-entitlement policy evidence.
+
+    Canonical account/plan coordinates are copied from the already-trusted provider
+    subscription binding. Webhook/client payloads are never accepted as grant
+    coordinate or validity authority.
+    """
+
+    grant_id: str
+    version: int
+    provider_subscription_id: str
+    tenant_id: str
+    user_id: str
+    plan_id: str
+    period_start: datetime
+    period_end: datetime
+    paid_provider_allowed: bool
+    created_at: datetime
+
+    def __post_init__(self) -> None:
+        for name in (
+            "grant_id",
+            "provider_subscription_id",
+            "tenant_id",
+            "user_id",
+            "plan_id",
+        ):
+            _require_text(name, getattr(self, name))
+        if self.version < 1:
+            raise CommercialAccessError("trusted grant version must be positive")
+        _require_time("period_start", self.period_start)
+        _require_time("period_end", self.period_end)
+        _require_time("created_at", self.created_at)
+        if not isinstance(self.paid_provider_allowed, bool):
+            raise CommercialAccessError("paid_provider_allowed must be boolean")
+
+
 _SCHEMA = """
 CREATE TABLE IF NOT EXISTS commercial_entitlements (
  tenant_id TEXT NOT NULL,
@@ -124,6 +165,23 @@ CREATE TABLE IF NOT EXISTS commercial_provider_events (
  FOREIGN KEY(provider_subscription_id)
    REFERENCES commercial_provider_subscriptions(provider_subscription_id)
 );
+CREATE TABLE IF NOT EXISTS commercial_trusted_grants (
+ grant_id TEXT PRIMARY KEY,
+ version INTEGER NOT NULL CHECK (version >= 1),
+ provider_subscription_id TEXT NOT NULL,
+ tenant_id TEXT NOT NULL,
+ user_id TEXT NOT NULL,
+ plan_id TEXT NOT NULL,
+ period_start TEXT NOT NULL,
+ period_end TEXT NOT NULL,
+ paid_provider_allowed INTEGER NOT NULL CHECK (paid_provider_allowed IN (0, 1)),
+ payload_sha256 TEXT NOT NULL,
+ created_at TEXT NOT NULL,
+ FOREIGN KEY(provider_subscription_id)
+   REFERENCES commercial_provider_subscriptions(provider_subscription_id)
+);
+CREATE INDEX IF NOT EXISTS commercial_trusted_grants_subscription_idx
+ ON commercial_trusted_grants(provider_subscription_id, period_end);
 """
 
 _PROVIDER_EVENT_STATES = {
@@ -161,13 +219,6 @@ class CommercialAccessStore:
         plan_id: str,
         now: datetime,
     ) -> ProviderSubscriptionBinding:
-        """Persist one trusted server-side provider subscription binding.
-
-        This API deliberately accepts canonical account coordinates only from its
-        trusted caller. Verified webhook payloads never contain these fields and
-        therefore cannot create or retarget a binding.
-        """
-
         for name, value in (
             ("provider_subscription_id", provider_subscription_id),
             ("tenant_id", tenant_id),
@@ -189,8 +240,7 @@ class CommercialAccessStore:
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             existing = connection.execute(
-                "SELECT * FROM commercial_provider_subscriptions "
-                "WHERE provider_subscription_id = ?",
+                "SELECT * FROM commercial_provider_subscriptions WHERE provider_subscription_id = ?",
                 (provider_subscription_id,),
             ).fetchone()
             if existing is not None:
@@ -206,8 +256,8 @@ class CommercialAccessStore:
                 return stored
             connection.execute(
                 "INSERT INTO commercial_provider_subscriptions "
-                "(provider_subscription_id,tenant_id,user_id,plan_id,state,"
-                "created_at,updated_at,last_provider_event_at) VALUES (?,?,?,?,?,?,?,?)",
+                "(provider_subscription_id,tenant_id,user_id,plan_id,state,created_at,updated_at,last_provider_event_at) "
+                "VALUES (?,?,?,?,?,?,?,?)",
                 (
                     candidate.provider_subscription_id,
                     candidate.tenant_id,
@@ -227,24 +277,119 @@ class CommercialAccessStore:
         _require_text("provider_subscription_id", provider_subscription_id)
         with self._connect() as connection:
             row = connection.execute(
-                "SELECT * FROM commercial_provider_subscriptions "
-                "WHERE provider_subscription_id = ?",
+                "SELECT * FROM commercial_provider_subscriptions WHERE provider_subscription_id = ?",
                 (provider_subscription_id,),
             ).fetchone()
         if row is None:
             raise CommercialAccessError("provider subscription binding does not exist")
         return _provider_binding_from_row(row)
 
+    def create_trusted_grant(
+        self,
+        *,
+        grant_id: str,
+        provider_subscription_id: str,
+        period_start: datetime,
+        period_end: datetime,
+        paid_provider_allowed: bool,
+        now: datetime,
+    ) -> TrustedCommercialGrant:
+        """Persist server-owned policy evidence without mutating entitlement.
+
+        Canonical tenant/user/plan are loaded exclusively from the existing trusted
+        provider-subscription binding. This API intentionally exposes no parameters
+        that allow webhook/client callers to select those coordinates.
+        """
+
+        _require_text("grant_id", grant_id)
+        _require_text("provider_subscription_id", provider_subscription_id)
+        _require_time("period_start", period_start)
+        _require_time("period_end", period_end)
+        _require_time("now", now)
+        if not isinstance(paid_provider_allowed, bool):
+            raise CommercialAccessError("paid_provider_allowed must be boolean")
+        if period_end <= period_start:
+            raise CommercialAccessError("trusted grant period must end after it starts")
+        if period_end <= now:
+            raise CommercialAccessError("trusted grant period is already expired")
+        if period_end - period_start > MAX_TRUSTED_GRANT_DURATION:
+            raise CommercialAccessError("trusted grant period exceeds policy maximum")
+
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            binding_row = connection.execute(
+                "SELECT * FROM commercial_provider_subscriptions WHERE provider_subscription_id = ?",
+                (provider_subscription_id,),
+            ).fetchone()
+            if binding_row is None:
+                raise CommercialAccessError("provider subscription binding does not exist")
+            binding = _provider_binding_from_row(binding_row)
+            payload = _trusted_grant_payload(
+                provider_subscription_id=provider_subscription_id,
+                tenant_id=binding.tenant_id,
+                user_id=binding.user_id,
+                plan_id=binding.plan_id,
+                period_start=period_start,
+                period_end=period_end,
+                paid_provider_allowed=paid_provider_allowed,
+            )
+            payload_sha256 = hashlib.sha256(payload.encode("utf-8")).hexdigest()
+            existing = connection.execute(
+                "SELECT * FROM commercial_trusted_grants WHERE grant_id = ?",
+                (grant_id,),
+            ).fetchone()
+            if existing is not None:
+                if str(existing["payload_sha256"]) != payload_sha256:
+                    raise CommercialAccessError(
+                        "trusted grant_id conflicts with different policy content"
+                    )
+                return _trusted_grant_from_row(existing)
+            grant = TrustedCommercialGrant(
+                grant_id=grant_id,
+                version=1,
+                provider_subscription_id=provider_subscription_id,
+                tenant_id=binding.tenant_id,
+                user_id=binding.user_id,
+                plan_id=binding.plan_id,
+                period_start=period_start,
+                period_end=period_end,
+                paid_provider_allowed=paid_provider_allowed,
+                created_at=now,
+            )
+            connection.execute(
+                "INSERT INTO commercial_trusted_grants "
+                "(grant_id,version,provider_subscription_id,tenant_id,user_id,plan_id,period_start,period_end,"
+                "paid_provider_allowed,payload_sha256,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                (
+                    grant.grant_id,
+                    grant.version,
+                    grant.provider_subscription_id,
+                    grant.tenant_id,
+                    grant.user_id,
+                    grant.plan_id,
+                    grant.period_start.isoformat(),
+                    grant.period_end.isoformat(),
+                    int(grant.paid_provider_allowed),
+                    payload_sha256,
+                    grant.created_at.isoformat(),
+                ),
+            )
+        return grant
+
+    def get_trusted_grant(self, *, grant_id: str) -> TrustedCommercialGrant:
+        _require_text("grant_id", grant_id)
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT * FROM commercial_trusted_grants WHERE grant_id = ?",
+                (grant_id,),
+            ).fetchone()
+        if row is None:
+            raise CommercialAccessError("trusted commercial grant does not exist")
+        return _trusted_grant_from_row(row)
+
     def apply_verified_provider_event(
         self, *, event: object, now: datetime
     ) -> ProviderSubscriptionBinding:
-        """Apply a verified provider lifecycle event to an existing binding only.
-
-        This slice intentionally updates provider-subscription lifecycle state only.
-        It does not mint or mutate entitlement; entitlement projection remains a
-        separate downstream authority boundary.
-        """
-
         from services.commercial_webhook import VerifiedCommercialWebhookEvent
 
         if not isinstance(event, VerifiedCommercialWebhookEvent):
@@ -271,10 +416,8 @@ class CommercialAccessStore:
                         "provider event_id conflicts with different verified content"
                     )
                 return _provider_binding_from_json(str(existing_event["snapshot_json"]))
-
             row = connection.execute(
-                "SELECT * FROM commercial_provider_subscriptions "
-                "WHERE provider_subscription_id = ?",
+                "SELECT * FROM commercial_provider_subscriptions WHERE provider_subscription_id = ?",
                 (event.provider_subscription_id,),
             ).fetchone()
             if row is None:
@@ -285,7 +428,6 @@ class CommercialAccessStore:
                 and event.occurred_at <= binding.last_provider_event_at
             ):
                 raise CommercialAccessError("provider subscription event is out of order")
-
             updated = ProviderSubscriptionBinding(
                 provider_subscription_id=binding.provider_subscription_id,
                 tenant_id=binding.tenant_id,
@@ -309,8 +451,8 @@ class CommercialAccessStore:
             snapshot = _provider_binding_json(updated)
             connection.execute(
                 "INSERT INTO commercial_provider_events "
-                "(provider_event_id,provider_subscription_id,event_type,payload_sha256,"
-                "snapshot_json,applied_at) VALUES (?,?,?,?,?,?)",
+                "(provider_event_id,provider_subscription_id,event_type,payload_sha256,snapshot_json,applied_at) "
+                "VALUES (?,?,?,?,?,?)",
                 (
                     event.event_id,
                     event.provider_subscription_id,
@@ -334,8 +476,6 @@ class CommercialAccessStore:
         paid_provider_allowed: bool,
         now: datetime,
     ) -> CommercialEntitlement:
-        """Apply one idempotent external/admin entitlement event."""
-
         _require_text("event_id", event_id)
         for name, value in (
             ("tenant_id", tenant_id),
@@ -350,7 +490,6 @@ class CommercialAccessStore:
             raise CommercialAccessError("state must be an EntitlementState")
         if not isinstance(paid_provider_allowed, bool):
             raise CommercialAccessError("paid_provider_allowed must be boolean")
-
         payload = _event_payload(
             tenant_id=tenant_id,
             user_id=user_id,
@@ -363,8 +502,7 @@ class CommercialAccessStore:
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             existing_event = connection.execute(
-                "SELECT payload_sha256, snapshot_json "
-                "FROM commercial_entitlement_events WHERE event_id = ?",
+                "SELECT payload_sha256, snapshot_json FROM commercial_entitlement_events WHERE event_id = ?",
                 (event_id,),
             ).fetchone()
             if existing_event is not None:
@@ -373,10 +511,8 @@ class CommercialAccessStore:
                         "entitlement event_id conflicts with different content"
                     )
                 return _entitlement_from_json(str(existing_event["snapshot_json"]))
-
             current = connection.execute(
-                "SELECT version FROM commercial_entitlements "
-                "WHERE tenant_id = ? AND user_id = ?",
+                "SELECT version FROM commercial_entitlements WHERE tenant_id = ? AND user_id = ?",
                 (tenant_id, user_id),
             ).fetchone()
             version = 1 if current is None else int(current["version"]) + 1
@@ -392,13 +528,10 @@ class CommercialAccessStore:
             updated_at = now.isoformat()
             connection.execute(
                 "INSERT INTO commercial_entitlements "
-                "(tenant_id,user_id,plan_id,state,valid_until,paid_provider_allowed,"
-                "version,updated_at) VALUES (?,?,?,?,?,?,?,?) "
-                "ON CONFLICT(tenant_id,user_id) DO UPDATE SET "
-                "plan_id=excluded.plan_id,state=excluded.state,"
-                "valid_until=excluded.valid_until,"
-                "paid_provider_allowed=excluded.paid_provider_allowed,"
-                "version=excluded.version,updated_at=excluded.updated_at",
+                "(tenant_id,user_id,plan_id,state,valid_until,paid_provider_allowed,version,updated_at) "
+                "VALUES (?,?,?,?,?,?,?,?) ON CONFLICT(tenant_id,user_id) DO UPDATE SET "
+                "plan_id=excluded.plan_id,state=excluded.state,valid_until=excluded.valid_until,"
+                "paid_provider_allowed=excluded.paid_provider_allowed,version=excluded.version,updated_at=excluded.updated_at",
                 (
                     tenant_id,
                     user_id,
@@ -413,14 +546,7 @@ class CommercialAccessStore:
             snapshot = _entitlement_json(entitlement)
             connection.execute(
                 "INSERT INTO commercial_entitlement_events VALUES (?,?,?,?,?,?)",
-                (
-                    event_id,
-                    tenant_id,
-                    user_id,
-                    payload_sha256,
-                    snapshot,
-                    updated_at,
-                ),
+                (event_id, tenant_id, user_id, payload_sha256, snapshot, updated_at),
             )
         return entitlement
 
@@ -429,8 +555,7 @@ class CommercialAccessStore:
         _require_text("user_id", user_id)
         with self._connect() as connection:
             row = connection.execute(
-                "SELECT * FROM commercial_entitlements "
-                "WHERE tenant_id = ? AND user_id = ?",
+                "SELECT * FROM commercial_entitlements WHERE tenant_id = ? AND user_id = ?",
                 (tenant_id, user_id),
             ).fetchone()
         if row is None:
@@ -452,9 +577,7 @@ class CommercialAccessStore:
         if entitlement.valid_until is not None and now >= entitlement.valid_until:
             raise CommercialAccessError("commercial entitlement is expired")
         if paid_provider and not entitlement.paid_provider_allowed:
-            raise CommercialAccessError(
-                "commercial entitlement does not authorize paid providers"
-            )
+            raise CommercialAccessError("commercial entitlement does not authorize paid providers")
         return entitlement
 
     def seed_credit_account(self, account: ManagedCreditAccount) -> ManagedCreditAccount:
@@ -470,12 +593,7 @@ class CommercialAccessStore:
         routing_decision_id: str,
         quote: ProviderCostQuote,
     ) -> CreditAuthorizationOutcome:
-        self.require_access(
-            tenant_id=tenant_id,
-            user_id=user_id,
-            now=now,
-            paid_provider=True,
-        )
+        self.require_access(tenant_id=tenant_id, user_id=user_id, now=now, paid_provider=True)
         try:
             account = self._credits.get_account(tenant_id=tenant_id, user_id=user_id)
             return self._credits.reserve(
@@ -508,6 +626,46 @@ class CommercialAccessStore:
             return self._credits.release(authorization_id=authorization_id)
         except ManagedCreditError as error:
             raise CommercialAccessError(str(error)) from error
+
+
+def _trusted_grant_payload(
+    *,
+    provider_subscription_id: str,
+    tenant_id: str,
+    user_id: str,
+    plan_id: str,
+    period_start: datetime,
+    period_end: datetime,
+    paid_provider_allowed: bool,
+) -> str:
+    return json.dumps(
+        {
+            "provider_subscription_id": provider_subscription_id,
+            "tenant_id": tenant_id,
+            "user_id": user_id,
+            "plan_id": plan_id,
+            "period_start": period_start.isoformat(),
+            "period_end": period_end.isoformat(),
+            "paid_provider_allowed": paid_provider_allowed,
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    )
+
+
+def _trusted_grant_from_row(row: sqlite3.Row) -> TrustedCommercialGrant:
+    return TrustedCommercialGrant(
+        grant_id=str(row["grant_id"]),
+        version=int(row["version"]),
+        provider_subscription_id=str(row["provider_subscription_id"]),
+        tenant_id=str(row["tenant_id"]),
+        user_id=str(row["user_id"]),
+        plan_id=str(row["plan_id"]),
+        period_start=datetime.fromisoformat(str(row["period_start"])),
+        period_end=datetime.fromisoformat(str(row["period_end"])),
+        paid_provider_allowed=bool(row["paid_provider_allowed"]),
+        created_at=datetime.fromisoformat(str(row["created_at"])),
+    )
 
 
 def _event_payload(
@@ -642,6 +800,8 @@ __all__ = [
     "CommercialAccessStore",
     "CommercialEntitlement",
     "EntitlementState",
+    "MAX_TRUSTED_GRANT_DURATION",
     "ProviderSubscriptionBinding",
     "ProviderSubscriptionState",
+    "TrustedCommercialGrant",
 ]
