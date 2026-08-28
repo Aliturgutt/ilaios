@@ -200,10 +200,14 @@ def test_cross_principal_session_substitution_fails_closed() -> None:
 
 
 def test_production_origin_and_cookie_inputs_fail_closed() -> None:
-    with pytest.raises(WebIdentitySessionError):
-        WebIdentitySessionBoundary(production_origins=("http://app.ilaios.com",))
-    with pytest.raises(WebIdentitySessionError):
-        WebIdentitySessionBoundary(production_origins=("https://localhost",))
+    for unsafe_origin in (
+        "http://app.ilaios.com",
+        "https://localhost",
+        "https://127.0.0.1",
+        "https://[::1]",
+    ):
+        with pytest.raises(WebIdentitySessionError):
+            WebIdentitySessionBoundary(production_origins=(unsafe_origin,))
     with pytest.raises(WebIdentitySessionError):
         WebIdentitySessionBoundary(
             production_origins=("https://app.ilaios.com", "https://APP.ilaios.com")
