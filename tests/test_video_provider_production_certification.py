@@ -206,6 +206,27 @@ def test_request_is_single_item_and_bound_to_managed_provider() -> None:
     assert items[0]["generate_audio"] is False
 
 
+def test_paid_rerun_is_blocked_before_network(tmp_path: Path) -> None:
+    proof_dir = tmp_path / "proof"
+
+    with pytest.raises(
+        ProviderProductionCertificationError,
+        match="re-runs are forbidden",
+    ):
+        run_certification(
+            api_key="would-not-be-used",
+            proof_dir=proof_dir,
+            revision_sha="a" * 40,
+            run_id="31879000000",
+            run_attempt="2",
+        )
+
+    receipt = json.loads((proof_dir / "provider-receipt.json").read_text())
+    assert receipt["status"] == "BLOCKED_REPEAT_PAID_ATTEMPT"
+    assert "external_job_id" not in receipt
+    assert not (proof_dir / "provider-proof.mp4").exists()
+
+
 def test_missing_secret_writes_blocker_receipt_without_network(tmp_path: Path) -> None:
     proof_dir = tmp_path / "proof"
 
