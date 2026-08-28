@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T11:12:00Z",
+  "updated_at": "2026-08-28T17:15:00Z",
   "merge_token": {
-    "state": "RELEASED",
-    "owner": null,
-    "reserved_master_sha": null,
-    "candidate_pr": null,
-    "candidate_head_sha": null,
-    "freeze_active": false,
-    "freeze_reason": null
+    "state": "RESERVED",
+    "owner": "web_app",
+    "reserved_master_sha": "477650952f86c8cf1715f56d885e8e5f3b055dc3",
+    "candidate_pr": 1096,
+    "candidate_head_sha": "1026bc993c442b3f950df0dda36556d225868fc0",
+    "freeze_active": true,
+    "freeze_reason": "Reserve the single-writer merge window for bounded Web App PR #1096 after repairing its deterministic insecure-policy regression test. The reviewed functional head before this state-only reservation is 1026bc993c442b3f950df0dda36556d225868fc0; this reservation commit advances the PR head, so merge authority MUST use a fresh live PR-head reread plus completely fresh exact-head Web App Continuation, Required CI, and SFFE on the post-reservation head. No preview-runtime, production deployment, provider, device, payment, or Store evidence is claimed."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -68,11 +68,11 @@
       "lifecycle": "DEVELOPING",
       "priority_rank": 5,
       "authoritative_issue": 486,
-      "active_pr": null,
-      "base_sha": "5ed3648b55bf2d006bfbe59370a400fab5c53fdc",
-      "head_sha": "5ed3648b55bf2d006bfbe59370a400fab5c53fdc",
+      "active_pr": 1096,
+      "base_sha": "477650952f86c8cf1715f56d885e8e5f3b055dc3",
+      "head_sha": "1026bc993c442b3f950df0dda36556d225868fc0",
       "blocked_reason": null,
-      "next_action": "PR #1074 sandbox-evidence producer is merged and preserved. Real preview/runtime observations, governed origin/DNS/egress, privileged secret/session isolation, publish separation and app.ilaios.com production E2E remain unverified."
+      "next_action": "PR #1096 binds trusted-host preview runtime/HTTP observations into the incumbent GeneratedPreviewSandboxObservation contract without adding runtime/policy/deployment authority. Its deterministic test failure was repaired without weakening canonical secure ExecutionPolicy. Re-read the post-reservation PR head and require fresh exact-head Web App Factory Continuation, Required CI, and SFFE before expected-head merge. Real preview runtime emission, governed origin/DNS/egress, privileged secret/session isolation, publish separation and app.ilaios.com production E2E remain unverified."
     },
     "agents": {
       "scheduler": "agents",
@@ -121,9 +121,9 @@
   },
   "metrics": {
     "master_advances": 41,
-    "stale_pass_invalidations": 31,
+    "stale_pass_invalidations": 32,
     "replay_resync_count": 8,
-    "ci_cycles": 28,
+    "ci_cycles": 29,
     "successful_merges": 42,
     "duplicate_pr_count": 3,
     "churn_only_commit_count": 0
