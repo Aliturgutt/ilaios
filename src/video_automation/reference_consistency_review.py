@@ -31,6 +31,8 @@ _SAMPLE_COUNT = 4
 _RETRYABLE_CAPABILITY_STATUS_CODES = frozenset({404, 503})
 _FREE_VISION_FALLBACK_MODEL_ID = "google/gemma-4-26b-a4b-it-20260403:free"
 _CRITICAL_ROLES = frozenset({"subject", "product", "logo"})
+_BOUNDARY_ROLES = frozenset({"first_frame", "last_frame"})
+_CRITERIA_VERSION = "ilaios.video.reference-consistency.v3"
 _RESULT_KEYS = frozenset(
     {
         "score",
@@ -48,8 +50,10 @@ _CRITERIA_TEXT = (
     "non-sensitive visual details; do not identify a real person, perform biometric matching, "
     "or infer sensitive traits. For PRODUCT references compare geometry, proportions, materials, "
     "colors and visible markings. For LOGO references compare visible shape, text/mark structure, "
-    "colors and placement when the logo is expected to appear. Penalize substitutions, distorted "
-    "logos, contradictory geometry/colors/materials, or severe continuity drift."
+    "colors and placement when the logo is expected to appear. FIRST_FRAME and LAST_FRAME "
+    "references must be compared specifically against the labeled exact boundary frame supplied "
+    "for that role. Penalize substitutions, distorted logos, contradictory geometry/colors/"
+    "materials, boundary-frame drift, or severe continuity drift."
 )
 
 
@@ -60,6 +64,7 @@ class ReferenceConsistencyReviewError(RuntimeError):
 @dataclass(frozen=True, slots=True)
 class ReferenceConsistencyReview:
     reviewer_id: str
+    criteria_version: str
     score: float
     threshold: float
     subject_score: float | None
@@ -68,7 +73,10 @@ class ReferenceConsistencyReview:
     detail: str
     repair_target: str
     reference_sha256s: tuple[str, ...]
+    reference_roles: tuple[str, ...]
     frame_sha256s: tuple[str, ...]
+    first_frame_sha256: str | None
+    last_frame_sha256: str | None
 
     @property
     def passed(self) -> bool:
@@ -127,12 +135,13 @@ class OpenRouterReferenceConsistencyReviewer:
             raise ReferenceConsistencyReviewError("reference consistency requires references")
         selected = _select_references(references)
         frames = _sample_video_frames(video_path, _SAMPLE_COUNT)
+        boundaries = _sample_boundary_frames(video_path, selected)
         applicable_roles = frozenset(reference.role for reference in selected) & _CRITICAL_ROLES
         content: list[dict[str, object]] = [
             {
                 "type": "text",
                 "text": (
-                    f"{_CRITERIA_TEXT}\n\n"
+                    f"CRITERIA_VERSION={_CRITERIA_VERSION}\n{_CRITERIA_TEXT}\n\n"
                     f"APPLICABLE CRITICAL ROLES: {', '.join(sorted(applicable_roles)) or 'none'}\n"
                     "Return a strict JSON object. score is overall reference fidelity from 0 to 1. "
                     "subject_score/product_score/logo_score must be null when that role is absent, "
@@ -153,10 +162,18 @@ class OpenRouterReferenceConsistencyReviewer:
         content.append(
             {
                 "type": "text",
-                "text": "The following images are chronological samples from the finished video.",
+                "text": "The following images are chronological interior samples from the finished video.",
             }
         )
         content.extend(_image_part(frame) for frame in frames)
+        for role, frame in boundaries:
+            content.append(
+                {
+                    "type": "text",
+                    "text": f"EXACT BOUNDARY FRAME; ROLE={role}",
+                }
+            )
+            content.append(_image_part(frame))
         headers = {
             "Authorization": f"Bearer {self._api_key}",
             "Content-Type": "application/json",
@@ -225,8 +242,10 @@ class OpenRouterReferenceConsistencyReviewer:
             )
         result = _extract_result(response)
         _validate_role_scores(result, applicable_roles)
+        boundary_hashes = {role: sha256(frame).hexdigest() for role, frame in boundaries}
         return ReferenceConsistencyReview(
             reviewer_id=f"openrouter-reference-consistency:{review_model_id}",
+            criteria_version=_CRITERIA_VERSION,
             score=_required_score(result, "score"),
             threshold=self._threshold,
             subject_score=_optional_score(result, "subject_score"),
@@ -235,7 +254,10 @@ class OpenRouterReferenceConsistencyReviewer:
             detail=_required_text(result, "detail"),
             repair_target=_required_text(result, "repair_target"),
             reference_sha256s=tuple(reference.sha256_hex for reference in selected),
+            reference_roles=tuple(reference.role for reference in selected),
             frame_sha256s=tuple(sha256(frame).hexdigest() for frame in frames),
+            first_frame_sha256=boundary_hashes.get("first_frame"),
+            last_frame_sha256=boundary_hashes.get("last_frame"),
         )
 
 
@@ -372,28 +394,50 @@ def _sample_video_frames(path: Path, count: int) -> tuple[bytes, ...]:
     positions = tuple(
         observation.duration_seconds * (index + 1) / (count + 1) for index in range(count)
     )
-    return tuple(
-        _ffmpeg_image(
-            (
-                "ffmpeg",
-                "-v",
-                "error",
-                "-ss",
-                f"{position:.3f}",
-                "-i",
-                str(path),
-                "-frames:v",
-                "1",
-                "-vf",
-                "scale=768:-2",
-                "-f",
-                "image2pipe",
-                "-vcodec",
-                "mjpeg",
-                "pipe:1",
-            )
+    return tuple(_sample_frame(path, position) for position in positions)
+
+
+def _sample_boundary_frames(
+    path: Path,
+    references: Sequence[ReferenceImageInput],
+) -> tuple[tuple[str, bytes], ...]:
+    required = frozenset(reference.role for reference in references) & _BOUNDARY_ROLES
+    if not required:
+        return ()
+    if not path.is_file():
+        raise ReferenceConsistencyReviewError("review video does not exist")
+    observation = FfprobeMediaTechnicalProbe(timeout_seconds=30).probe(path)
+    duration = observation.duration_seconds
+    if duration <= 0:
+        raise ReferenceConsistencyReviewError("review video duration is invalid")
+    frames: list[tuple[str, bytes]] = []
+    if "first_frame" in required:
+        frames.append(("first_frame", _sample_frame(path, 0.0)))
+    if "last_frame" in required:
+        frames.append(("last_frame", _sample_frame(path, max(duration - 0.001, 0.0))))
+    return tuple(frames)
+
+
+def _sample_frame(path: Path, position: float) -> bytes:
+    return _ffmpeg_image(
+        (
+            "ffmpeg",
+            "-v",
+            "error",
+            "-ss",
+            f"{position:.3f}",
+            "-i",
+            str(path),
+            "-frames:v",
+            "1",
+            "-vf",
+            "scale=768:-2",
+            "-f",
+            "image2pipe",
+            "-vcodec",
+            "mjpeg",
+            "pipe:1",
         )
-        for position in positions
     )
 
 

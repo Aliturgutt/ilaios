@@ -13,6 +13,7 @@ def _review(
 ) -> ReferenceConsistencyReview:
     return ReferenceConsistencyReview(
         reviewer_id="reviewer",
+        criteria_version="ilaios.video.reference-consistency.v3",
         score=score,
         threshold=0.82,
         subject_score=subject,
@@ -21,7 +22,10 @@ def _review(
         detail="visible evidence",
         repair_target="repair logo",
         reference_sha256s=("a" * 64,),
+        reference_roles=("logo",),
         frame_sha256s=("b" * 64,),
+        first_frame_sha256=None,
+        last_frame_sha256=None,
     )
 
 

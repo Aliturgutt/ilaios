@@ -10,13 +10,16 @@ provider routing, generation, thresholds, cost policy, or acceptance decisions.
 
 from __future__ import annotations
 
+import json
 from contextvars import ContextVar
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from src.video_automation.logo_asset_lock import LogoAssetLockResult
 from src.video_automation.reference_consistency_review import (
     OpenRouterReferenceConsistencyReviewer,
+    ReferenceConsistencyReview,
 )
 
 from .native_reference_verified_runtime import (
@@ -70,6 +73,17 @@ def _is_sha256(value: object) -> bool:
     )
 
 
+def _reference_bindings(review: ReferenceConsistencyReview) -> list[dict[str, object]]:
+    if len(review.reference_sha256s) != len(review.reference_roles):
+        raise RuntimeError("native reference review role/hash cardinality mismatch")
+    return [
+        {"order": index, "role": role, "sha256": digest}
+        for index, (role, digest) in enumerate(
+            zip(review.reference_roles, review.reference_sha256s, strict=True), start=1
+        )
+    ]
+
+
 class ReceiptBoundNativeReferenceManagedDesktopVideoRuntime(
     NativeReferenceVerifiedManagedDesktopVideoRuntime
 ):
@@ -90,6 +104,59 @@ class ReceiptBoundNativeReferenceManagedDesktopVideoRuntime(
             default=None,
         )
 
+    def _record_consistency_evidence(
+        self,
+        *,
+        request_id: str,
+        job_id: str,
+        review: ReferenceConsistencyReview,
+        asset_lock_result: LogoAssetLockResult | None,
+    ) -> dict[str, object]:
+        evidence = super()._record_consistency_evidence(
+            request_id=request_id,
+            job_id=job_id,
+            review=review,
+            asset_lock_result=asset_lock_result,
+        )
+        bindings = _reference_bindings(review)
+        document = {
+            "schema": "ilaios.video.native-reference-review-binding.v1",
+            "request_id": request_id,
+            "job_id": job_id,
+            "reviewer_id": review.reviewer_id,
+            "criteria_version": review.criteria_version,
+            "score": review.score,
+            "threshold": review.threshold,
+            "repair_target": review.repair_target,
+            "reference_bindings": bindings,
+            "interior_frame_sha256s": list(review.frame_sha256s),
+            "first_frame_sha256": review.first_frame_sha256,
+            "last_frame_sha256": review.last_frame_sha256,
+            "parent_consistency_evidence_digest": evidence[
+                "reference_consistency_evidence_digest"
+            ],
+            "passed": review.passed,
+        }
+        body = json.dumps(document, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        artifact = self._evidence.put_artifact(body)
+        provenance = self._evidence.append_provenance(
+            job_id,
+            artifact,
+            "video.reference_consistency_binding",
+        )
+        evidence.update(
+            {
+                "reference_consistency_criteria_version": review.criteria_version,
+                "reference_consistency_reference_bindings": bindings,
+                "reference_consistency_frame_sha256s": review.frame_sha256s,
+                "reference_consistency_first_frame_sha256": review.first_frame_sha256,
+                "reference_consistency_last_frame_sha256": review.last_frame_sha256,
+                "reference_consistency_binding_evidence_digest": artifact.digest,
+                "reference_consistency_binding_provenance_hash": provenance.record_hash,
+            }
+        )
+        return evidence
+
     def _generate_finished_product(
         self,
         *,
@@ -106,6 +173,37 @@ class ReceiptBoundNativeReferenceManagedDesktopVideoRuntime(
             objective=objective,
             duration_seconds=duration_seconds,
         )
+        artifact_sha256 = outcome.get("artifact_sha256")
+        if not _is_sha256(artifact_sha256):
+            raise RuntimeError("native reference final artifact digest is invalid")
+        binding_digest = outcome.get("reference_consistency_binding_evidence_digest")
+        if not _is_sha256(binding_digest):
+            raise RuntimeError("native reference consistency binding evidence is invalid")
+        document = {
+            "schema": "ilaios.video.native-reference-final-artifact-binding.v1",
+            "request_id": request_id,
+            "job_id": job_id,
+            "artifact_sha256": artifact_sha256,
+            "criteria_version": outcome.get("reference_consistency_criteria_version"),
+            "score": outcome.get("reference_consistency_score"),
+            "threshold": outcome.get("reference_consistency_threshold"),
+            "reference_bindings": outcome.get("reference_consistency_reference_bindings"),
+            "interior_frame_sha256s": outcome.get("reference_consistency_frame_sha256s"),
+            "first_frame_sha256": outcome.get("reference_consistency_first_frame_sha256"),
+            "last_frame_sha256": outcome.get("reference_consistency_last_frame_sha256"),
+            "provider_native_reference_sha256s": outcome.get("native_reference_sha256s"),
+            "review_binding_evidence_digest": binding_digest,
+            "passed": outcome.get("reference_consistency_passed") is True,
+        }
+        body = json.dumps(document, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        artifact = self._evidence.put_artifact(body)
+        provenance = self._evidence.append_provenance(
+            job_id,
+            artifact,
+            "video.native_reference_final_artifact_binding",
+        )
+        outcome["reference_consistency_final_artifact_evidence_digest"] = artifact.digest
+        outcome["reference_consistency_final_artifact_provenance_hash"] = provenance.record_hash
         self._native_receipt_context.set(native_receipt_evidence(outcome))
         return outcome
 
