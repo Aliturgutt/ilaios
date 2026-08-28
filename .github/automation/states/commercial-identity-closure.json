@@ -6,43 +6,46 @@
     "reference": "docs/identity/COMMERCIAL_IDENTITY_CLOSURE_WORKFLOW.md"
   },
   "status": "IN_PROGRESS",
-  "current_phase": "Phase 5 — GitHub OAuth",
-  "master_sha": "69966335916fef55a16306d2a1b5f4691fdb7c0f",
-  "base_sha": "69966335916fef55a16306d2a1b5f4691fdb7c0f",
-  "head_sha": "8587ef5d32d0432477f4316f042edd9a4fc7aeb9",
-  "branch": "identity/github-oauth-phase5-current-69966335",
-  "pr": 918,
+  "current_phase": "Google production Web OAuth repository hardening",
+  "master_sha": "07e14b9f02e13842c934c5d124a986ec41b3beb5",
+  "base_sha": "07e14b9f02e13842c934c5d124a986ec41b3beb5",
+  "head_sha": "2aa4a575751549edf8ae890eff2600eb182ba90b",
+  "branch": "identity/google-web-oauth-07e14b9f",
+  "pr": 1102,
   "ci": {
     "run_id": null,
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence, Execution Controller Validation, and applicable Identity/security gates on PR #918; then re-read live master/token/semantic overlap and merge only with expected-head protection. After merge require exact-master Required CI + SFFE before Phase 6 Email magic-link/OTP.",
+  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence, Execution Controller Validation, and applicable Identity/security/DB gates on the final PR #1102 coordination head. Repair only evidenced failures. Durable OAuth replay denial now uses the incumbent canonical Identity one-use challenge ledger without a second DB/migration authority. Then re-read live master/token/semantic overlap and merge only with expected-head protection. Real Google Console configuration and provider/browser E2E remain external evidence.",
   "blocker": {
     "type": null,
     "detail": null,
     "human_action": null
   },
   "repair": {
-    "retry_count": 2,
-    "last_failure_fingerprint": "historical Phase-5 Ruff/mypy compatibility failures repaired before current-master replay",
-    "last_root_cause": "GitHub OAuth HTTP protocol typing and formatting were repaired without weakening immutable subject, state, redirect, or provider validation"
+    "retry_count": 0,
+    "last_failure_fingerprint": null,
+    "last_root_cause": null
   },
   "lock": {
     "owner": "identity-closure-runner",
     "scope": [
-      "services/github_oauth.py",
-      "tests/test_github_oauth.py",
+      "services/google_web_oauth.py",
+      "tests/test_google_web_oauth.py",
+      ".github/automation/fast-closure-v2-state.json",
       ".github/automation/states/commercial-identity-closure.json"
     ],
-    "acquired_at": "2026-08-23T16:27:25Z",
-    "expires_at": "2026-08-23T17:27:25Z"
+    "acquired_at": "2026-08-28T19:30:00Z",
+    "expires_at": "2026-08-28T20:30:00Z"
   },
   "evidence": [
-    "Fast-Closure coordination PR#917 merged as 69966335916fef55a16306d2a1b5f4691fdb7c0f after Required CI 32648544645 and SFFE 32648544551 success",
-    "prior Phase-5 PR#897 PASS is stale because shared services/identity.py and auth/security regressions changed after its base",
-    "compare a80474d784dabc6e7dbf700e5da6e50a0228877a -> 69966335916fef55a16306d2a1b5f4691fdb7c0f includes services/identity.py, tests/test_identity_access.py, and tests/test_web_app_auth_contract.py",
-    "PR#918 opened from exact current master with reviewed GitHub OAuth runtime/test delta replayed"
+    "master@07e14b9f02e13842c934c5d124a986ec41b3beb5",
+    "PR#1100 merged as 07e14b9f02e13842c934c5d124a986ec41b3beb5",
+    "exact-master ilaios/software-factory-exact-master success via run 33202762983",
+    "exact-master ilaios/required-ci-exact-master success via run 33202763247",
+    "repo audit: production Google config/immutable-sub bridge and Desktop Authorization Code + PKCE existed; no production Google Web broker existed",
+    "PR#1102 reviewed product/test head 2aa4a575751549edf8ae890eff2600eb182ba90b adds Web Authorization Code + PKCE/state/nonce, server-side token exchange, JWT verification, redirect tamper denial, and durable restart-safe replay denial via incumbent Identity challenge ledger"
   ],
-  "updated_at": "2026-08-23T16:29:30Z"
+  "updated_at": "2026-08-28T19:34:00Z"
 }
