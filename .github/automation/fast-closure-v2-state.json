@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T20:10:46Z",
+  "updated_at": "2026-08-28T22:23:26Z",
   "merge_token": {
-    "state": "RELEASED",
-    "owner": null,
-    "reserved_master_sha": null,
-    "candidate_pr": null,
-    "candidate_head_sha": null,
-    "freeze_active": false,
-    "freeze_reason": null
+    "state": "RESERVED",
+    "owner": "identity",
+    "reserved_master_sha": "da7577c47c0113ff5180e7a13503343fbe944806",
+    "candidate_pr": 1105,
+    "candidate_head_sha": "b5841da1c860acdb9eef59b2933d114c2594a885",
+    "freeze_active": true,
+    "freeze_reason": "Identity PR #1105 exact-current Google Web canonical-account composition is in PRE_MERGE_VALIDATION; candidate_head_sha records the reviewed product head immediately before this coordination-only reservation commit."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,14 +54,14 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "BLOCKED_EXTERNAL",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": null,
-      "base_sha": "1a9f82026b66e1e60c3f9f4beb3daadfdf8306ca",
-      "head_sha": "1a9f82026b66e1e60c3f9f4beb3daadfdf8306ca",
-      "blocked_reason": "PR #1102 Google Web OAuth Authorization Code + PKCE boundary is merged and exact-master Required CI plus Software Factory status are success. Final Production Identity closure still requires external Google production project/consent/domain/client configuration, secret provisioning, real Google callback/token exchange, production browser session delivery, cross-client same User/Tenant proof and logout/revoke/relogin production E2E.",
-      "next_action": "Preserve merged #1102 repository boundary and released merge token. Complete Google Console/provider/browser E2E only through authorized external configuration, then bind exact production deployment/source evidence to immutable provider subject -> canonical User -> Tenant -> Membership -> Role -> Session -> Entitlement and cross-client relogin proof."
+      "active_pr": 1105,
+      "base_sha": "da7577c47c0113ff5180e7a13503343fbe944806",
+      "head_sha": "b5841da1c860acdb9eef59b2933d114c2594a885",
+      "blocked_reason": null,
+      "next_action": "Require fresh exact-head Required CI + Software Factory Final Evidence on the coordination-refreshed #1105 head, then immediately re-read live master/token/head/path+semantic overlap and merge only with expected-head protection if master remains exact base. After merge require exact-master Required CI + SFFE before advancing to canonical membership/role/session/browser composition."
     },
     "web_app": {
       "scheduler": "web_app",
