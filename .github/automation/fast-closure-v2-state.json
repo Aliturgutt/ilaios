@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T18:24:00Z",
+  "updated_at": "2026-08-28T19:30:00Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "identity",
-    "reserved_master_sha": "b32a99ed258b64ae1b52c22472fb05ebbefc1372",
-    "candidate_pr": 1100,
-    "candidate_head_sha": "0c423d26a33dc3c1b4e0e4d40d8e8f6db8c1562d",
+    "reserved_master_sha": "07e14b9f02e13842c934c5d124a986ec41b3beb5",
+    "candidate_pr": 1102,
+    "candidate_head_sha": "d8b652c65dc234d1e5d08c28322b67b1c881cb77",
     "freeze_active": true,
-    "freeze_reason": "Identity Phase-9 Web session cookie/CSRF security exact-current validation"
+    "freeze_reason": "Identity Google Web OAuth Authorization Code + PKCE exact-current validation"
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -57,11 +57,11 @@
       "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": 1100,
-      "base_sha": "b32a99ed258b64ae1b52c22472fb05ebbefc1372",
-      "head_sha": "0c423d26a33dc3c1b4e0e4d40d8e8f6db8c1562d",
+      "active_pr": 1102,
+      "base_sha": "07e14b9f02e13842c934c5d124a986ec41b3beb5",
+      "head_sha": "d8b652c65dc234d1e5d08c28322b67b1c881cb77",
       "blocked_reason": null,
-      "next_action": "Require fresh exact-head Required CI + SFFE and applicable Identity/security/controller gates for #1100, then live master/token/head/overlap reread, expected-head merge and exact-master verification. Production Google OAuth configuration, real browser callback/session delivery, and real checkout/payment/customer E2E remain separate external evidence."
+      "next_action": "Require fresh exact-head Required CI + SFFE and applicable Identity/security/controller gates for #1102. Production flow-state persistence must remain server-owned and durable before repository production closure. Then live master/token/head/overlap reread, expected-head merge and exact-master verification. Google Console configuration and real provider/browser E2E remain external evidence."
     },
     "web_app": {
       "scheduler": "web_app",
