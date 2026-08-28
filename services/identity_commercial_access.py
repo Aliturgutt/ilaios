@@ -93,6 +93,69 @@ class IdentityBoundCommercialAccess:
             now=now,
         )
 
+    def activate_from_trusted_grant(
+        self,
+        *,
+        event: object,
+        grant_id: str,
+        now: datetime,
+    ) -> tuple[ProviderSubscriptionBinding, CommercialEntitlement]:
+        """Project verified positive lifecycle evidence through trusted grant policy.
+
+        The provider event proves only lifecycle transition and event lineage. The
+        trusted server grant remains authoritative for canonical tenant/user/plan,
+        billing-period validity, and paid-provider policy. Identity is revalidated
+        immediately before ACTIVE entitlement is persisted.
+        """
+
+        if not isinstance(event, VerifiedCommercialWebhookEvent):
+            raise CommercialAccessError("provider event must be cryptographically verified")
+        if event.event_type not in {"subscription.activated", "subscription.renewed"}:
+            raise CommercialAccessError("provider event is not a positive lifecycle transition")
+        if event.occurred_at > now:
+            raise CommercialAccessError("provider event cannot occur in the future")
+
+        grant = self._commercial.get_trusted_grant(grant_id=grant_id)
+        if grant.provider_subscription_id != event.provider_subscription_id:
+            raise CommercialAccessError("trusted grant does not match provider subscription")
+        if now < grant.period_start:
+            raise CommercialAccessError("trusted grant is not yet valid")
+        if now >= grant.period_end:
+            raise CommercialAccessError("trusted grant is expired")
+
+        binding = self._commercial.get_provider_subscription_binding(
+            provider_subscription_id=event.provider_subscription_id
+        )
+        if (
+            binding.tenant_id != grant.tenant_id
+            or binding.user_id != grant.user_id
+            or binding.plan_id != grant.plan_id
+        ):
+            raise CommercialAccessError("trusted grant conflicts with canonical binding")
+
+        updated = self._commercial.apply_verified_provider_event(event=event, now=now)
+        if updated.state is not ProviderSubscriptionState.ACTIVE:
+            raise CommercialAccessError("provider lifecycle did not become active")
+        if (
+            updated.tenant_id != grant.tenant_id
+            or updated.user_id != grant.user_id
+            or updated.plan_id != grant.plan_id
+        ):
+            raise CommercialAccessError("provider lifecycle conflicts with trusted grant")
+
+        self._require_active_identity(tenant_id=grant.tenant_id, user_id=grant.user_id)
+        entitlement = self._commercial.apply_entitlement(
+            event_id=f"provider-entitlement:{event.event_id}",
+            tenant_id=grant.tenant_id,
+            user_id=grant.user_id,
+            plan_id=grant.plan_id,
+            state=EntitlementState.ACTIVE,
+            valid_until=grant.period_end,
+            paid_provider_allowed=grant.paid_provider_allowed,
+            now=now,
+        )
+        return updated, entitlement
+
     def apply_verified_provider_event(
         self, *, event: object, now: datetime
     ) -> ProviderSubscriptionBinding:
