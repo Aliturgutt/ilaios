@@ -8,6 +8,7 @@ only binds browser transport to the existing ``AuthenticationBoundary`` and
 from __future__ import annotations
 
 import hmac
+import ipaddress
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
@@ -91,7 +92,9 @@ class WebIdentitySessionBoundary:
             f"{_CSRF_COOKIE}=; {common}; SameSite=Strict",
         )
 
-    def credentials(self, request: WebIdentitySessionRequest) -> WebIdentitySessionCredentials:
+    def credentials(
+        self, request: WebIdentitySessionRequest
+    ) -> WebIdentitySessionCredentials:
         """Extract browser credentials after origin/CSRF checks, fail closed."""
         method = request.method.strip().upper()
         if not method:
@@ -148,7 +151,9 @@ class WebIdentitySessionBoundary:
 
 
 def _header(headers: Mapping[str, str], name: str) -> str | None:
-    matches = [value for key, value in headers.items() if key.casefold() == name.casefold()]
+    matches = [
+        value for key, value in headers.items() if key.casefold() == name.casefold()
+    ]
     if len(matches) > 1:
         raise WebIdentitySessionError(f"ambiguous {name} header")
     if not matches:
@@ -195,10 +200,19 @@ def _production_origin(value: str) -> str:
         normalized_host = host.encode("ascii").decode("ascii").casefold()
     except UnicodeError as error:
         raise WebIdentitySessionError("production origin host must be ASCII") from error
+    try:
+        ipaddress.ip_address(normalized_host)
+    except ValueError:
+        pass
+    else:
+        raise WebIdentitySessionError("production origin must use public DNS")
     if (
         normalized_host == "localhost"
         or normalized_host.endswith(".localhost")
         or "." not in normalized_host
+        or normalized_host.startswith(".")
+        or normalized_host.endswith(".")
+        or ".." in normalized_host
     ):
         raise WebIdentitySessionError("production origin host is not public DNS")
     return f"https://{normalized_host}"
