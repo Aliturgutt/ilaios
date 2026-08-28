@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+import subprocess
 import sys
 
 root = Path(sys.argv[1])
@@ -35,6 +36,69 @@ def replace_last(rel, old, new):
     if pos < 0:
         raise SystemExit(f"LAST_ANCHOR_MISMATCH {rel}: {old[:100]!r}")
     write(rel, text[:pos] + new + text[pos + len(old) :])
+
+
+def brace_simple_statement_ifs(rel: str) -> None:
+    """Brace simple one-line statement ifs without touching collection-if syntax."""
+    path = p(rel)
+    lines = path.read_text(encoding="utf-8").splitlines()
+    output: list[str] = []
+    count = 0
+
+    for line in lines:
+        stripped = line.lstrip(" \t")
+        indent = line[: len(line) - len(stripped)]
+        if not stripped.startswith("if ("):
+            output.append(line)
+            continue
+
+        open_index = stripped.find("(")
+        depth = 0
+        close_index = -1
+        quote: str | None = None
+        escaped = False
+        for index in range(open_index, len(stripped)):
+            char = stripped[index]
+            if quote is not None:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == quote:
+                    quote = None
+                continue
+            if char in {"'", '"'}:
+                quote = char
+                continue
+            if char == "(":
+                depth += 1
+            elif char == ")":
+                depth -= 1
+                if depth == 0:
+                    close_index = index
+                    break
+
+        if close_index < 0:
+            output.append(line)
+            continue
+
+        body = stripped[close_index + 1 :].strip()
+        condition = stripped[open_index + 1 : close_index]
+        if not body or body.startswith("{") or not body.endswith(";"):
+            output.append(line)
+            continue
+
+        output.extend(
+            [
+                f"{indent}if ({condition}) {{",
+                f"{indent}  {body}",
+                f"{indent}}}",
+            ]
+        )
+        count += 1
+
+    path.write_text("\n".join(output) + "\n", encoding="utf-8", newline="\n")
+    print(f"BRACED_SIMPLE_STATEMENT_IFS {rel}={count}")
 
 
 def replace_font_sizes(rel, mapping):
@@ -468,6 +532,10 @@ replace_once(
     attach_class + "class _FactoryRouteStrip extends StatelessWidget {",
 )
 
+# Keep the generator itself lint-clean for create_view.dart. The production
+# artifact workflow intentionally does not invoke fix_combined_analyzer.py.
+brace_simple_statement_ifs(create_view)
+
 # Context-aware picker labels while retaining existing picker behavior.
 replace_once(
     picker_core,
@@ -671,5 +739,16 @@ void main() {
 }
 """,
 )
+
+# The candidate patch above intentionally establishes the shared reference UI
+# before the typography normalization runs. Keep the shell at its checked-out
+# scale and apply the typography uplift only to the Outputs reading surfaces;
+# otherwise fixed-height views elsewhere in Desktop overflow during the full
+# widget suite. This is part of the production generator path because the
+# combined workflow invokes this script directly.
+normalizer = root / "tools/desktop/normalize_combined_typography.py"
+if not normalizer.is_file():
+    raise SystemExit(f"NORMALIZER_MISSING {normalizer}")
+subprocess.run([sys.executable, str(normalizer), str(root)], check=True)
 
 print("COMBINED_PATCH_APPLIED")
