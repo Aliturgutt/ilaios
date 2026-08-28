@@ -6,6 +6,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 PATCH_SCRIPT = ROOT / "tools" / "desktop" / "apply_combined_typography_reference_patch.py"
+ANALYZER_FIXER = ROOT / "tools" / "desktop" / "fix_combined_analyzer.py"
 PATCH_INPUTS = (
     "apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart",
     "apps/desktop/lib/features/deliveries/deliveries_view.dart",
@@ -22,8 +23,38 @@ def _generate_patch_output(tmp_path: Path) -> Path:
         destination = tmp_path / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, destination)
+    subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
+    subprocess.run(
+        ["git", "config", "user.email", "desktop-regression@ilaios.invalid"],
+        cwd=tmp_path,
+        check=True,
+    )
+    subprocess.run(
+        ["git", "config", "user.name", "ILAIOS Desktop Regression"],
+        cwd=tmp_path,
+        check=True,
+    )
+    subprocess.run(["git", "add", "apps/desktop"], cwd=tmp_path, check=True)
+    subprocess.run(
+        ["git", "commit", "-m", "fixture"],
+        cwd=tmp_path,
+        check=True,
+        capture_output=True,
+    )
     subprocess.run(
         [sys.executable, str(PATCH_SCRIPT), str(tmp_path)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    tools = tmp_path / "tools/desktop"
+    tools.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(
+        ROOT / "tools/desktop/normalize_combined_typography.py",
+        tools / "normalize_combined_typography.py",
+    )
+    subprocess.run(
+        [sys.executable, str(ANALYZER_FIXER), str(tmp_path)],
         check=True,
         capture_output=True,
         text=True,
