@@ -119,6 +119,8 @@ class IdentityBoundCommercialAccess:
             provider_subscription_id=event.provider_subscription_id,
             now=now,
         )
+        if event.occurred_at < grant.period_start:
+            raise CommercialAccessError("provider event predates trusted grant period")
         binding = self._commercial.get_provider_subscription_binding(
             provider_subscription_id=event.provider_subscription_id
         )
