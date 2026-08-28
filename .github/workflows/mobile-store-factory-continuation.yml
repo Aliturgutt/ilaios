@@ -108,6 +108,7 @@ jobs:
             tests/test_app_factory.py \
             tests/test_app_design_quality.py \
             tests/test_store_release_certification.py \
+            tests/test_store_ready_guard.py \
             tests/test_mobile_android_executor.py \
             tests/test_mobile_android_release.py \
             tests/test_mobile_android_build_executor.py \
@@ -121,6 +122,7 @@ jobs:
             services/app_factory.py \
             services/app_design_quality.py \
             services/store_release_certification.py \
+            services/store_ready_guard.py \
             services/mobile_android_executor.py \
             services/mobile_android_release.py \
             services/mobile_android_build_executor.py \
@@ -128,6 +130,7 @@ jobs:
             tests/test_app_factory.py \
             tests/test_app_design_quality.py \
             tests/test_store_release_certification.py \
+            tests/test_store_ready_guard.py \
             tests/test_mobile_android_executor.py \
             tests/test_mobile_android_release.py \
             tests/test_mobile_android_build_executor.py \
@@ -141,11 +144,13 @@ jobs:
             services/app_factory.py \
             services/app_design_quality.py \
             services/store_release_certification.py \
+            services/store_ready_guard.py \
             services/mobile_android_executor.py \
             services/mobile_android_release.py \
             services/mobile_android_build_executor.py \
             services/mobile_android_device_executor.py \
             tests/test_store_release_certification.py \
+            tests/test_store_ready_guard.py \
             tests/test_mobile_android_executor.py \
             tests/test_mobile_android_release.py \
             tests/test_mobile_android_build_executor.py \

@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T09:12:30Z",
+  "updated_at": "2026-08-28T10:14:00Z",
   "merge_token": {
-    "state": "RELEASED",
-    "owner": null,
-    "reserved_master_sha": "8b25574ba4bc644fb9d21bb2577e44855cee490c",
-    "candidate_pr": null,
-    "candidate_head_sha": null,
-    "freeze_active": false,
-    "freeze_reason": "PR #1078 is merged as exact master 8b25574ba4bc644fb9d21bb2577e44855cee490c and fresh exact-master Required CI + Software Factory Final Evidence are SUCCESS. Release the stale Identity single-writer window. Production checkout/payment-provider activation and real production Billing E2E remain external/not verified and do not retain repository merge authority."
+    "state": "RESERVED",
+    "owner": "mobile_store",
+    "reserved_master_sha": "5ed3648b55bf2d006bfbe59370a400fab5c53fdc",
+    "candidate_pr": 1080,
+    "candidate_head_sha": "0cd2a2aa0209ef60b5e1e56d57b386e3e93cca9c",
+    "freeze_active": true,
+    "freeze_reason": "Reserve the single-writer merge window for bounded Mobile Store PR #1080 after exact-current reconciliation. The reviewed functional head before this state-only reservation is 0cd2a2aa0209ef60b5e1e56d57b386e3e93cca9c; this reservation commit advances the PR head, so merge authority MUST use a fresh live PR-head reread plus completely fresh exact-head Mobile Store Continuation, Required CI, and SFFE on the post-reservation head. No external device/signing/Store evidence is claimed."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -68,11 +68,11 @@
       "lifecycle": "DEVELOPING",
       "priority_rank": 5,
       "authoritative_issue": 486,
-      "active_pr": 1074,
-      "base_sha": "8b25574ba4bc644fb9d21bb2577e44855cee490c",
-      "head_sha": "8b25574ba4bc644fb9d21bb2577e44855cee490c",
+      "active_pr": null,
+      "base_sha": "5ed3648b55bf2d006bfbe59370a400fab5c53fdc",
+      "head_sha": "5ed3648b55bf2d006bfbe59370a400fab5c53fdc",
       "blocked_reason": null,
-      "next_action": "Phase-11 preview-versus-production-promotion separation remains verified. PR #1074 has been replayed on exact 8b25574 master as development/CI preparation for sandbox evidence production; it has no merge authority until Web App legally acquires the token and completely fresh exact-head gates plus live overlap/currentness checks pass."
+      "next_action": "PR #1074 sandbox-evidence producer is merged as exact master 5ed3648b55bf2d006bfbe59370a400fab5c53fdc with fresh exact-master Required CI, Software Factory, and Web App Factory status success. Preserve this source-level checkpoint; real preview/runtime observations, governed origin/DNS/egress, privileged secret/session isolation, publish separation and app.ilaios.com production E2E remain unverified."
     },
     "agents": {
       "scheduler": "agents",
@@ -98,14 +98,14 @@
     },
     "mobile_store": {
       "scheduler": "unified",
-      "lifecycle": "BLOCKED_INTERNAL",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 8,
       "authoritative_issue": 502,
-      "active_pr": null,
-      "base_sha": null,
-      "head_sha": null,
-      "blocked_reason": "Genuine APK/AAB/device evidence depends on governed App Factory materialization/build output.",
-      "next_action": "Preserve existing Store contracts and continue after real Android project materialization produces exact binary/device evidence."
+      "active_pr": 1080,
+      "base_sha": "5ed3648b55bf2d006bfbe59370a400fab5c53fdc",
+      "head_sha": "0cd2a2aa0209ef60b5e1e56d57b386e3e93cca9c",
+      "blocked_reason": "Final Mobile Store closure still depends on genuine governed APK/AAB, real-device/runtime evidence, signing/account evidence and external Store actions. PR #1080 is only a repository-owned fail-closed STORE_READY promotion guard and cannot satisfy those external dependencies.",
+      "next_action": "On the post-reservation exact PR head, require fresh Mobile Store Factory Continuation + Required CI + SFFE PASS, then reread live master/token/head/overlap and merge #1080 only with expected-head protection if master remains 5ed3648b55bf2d006bfbe59370a400fab5c53fdc. After merge require exact-master gates; do not mark Mobile Store CLOSED without genuine binary/device/provider evidence."
     },
     "microsoft_store": {
       "scheduler": "unified",
@@ -121,9 +121,9 @@
   },
   "metrics": {
     "master_advances": 38,
-    "stale_pass_invalidations": 29,
+    "stale_pass_invalidations": 30,
     "replay_resync_count": 8,
-    "ci_cycles": 27,
+    "ci_cycles": 28,
     "successful_merges": 39,
     "duplicate_pr_count": 3,
     "churn_only_commit_count": 0
