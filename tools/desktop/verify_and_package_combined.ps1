@@ -23,13 +23,10 @@ function Run-Native([string]$Label, [scriptblock]$Command) {
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $desktopRoot = Join-Path $repoRoot 'apps\desktop'
 $patcher = Join-Path $PSScriptRoot 'apply_combined_typography_reference_patch.py'
-$analyzerFixer = Join-Path $PSScriptRoot 'fix_combined_analyzer.py'
 
 if (-not (Test-Path $patcher -PathType Leaf)) { Fail "Patch helper missing: $patcher" }
-if (-not (Test-Path $analyzerFixer -PathType Leaf)) { Fail "Analyzer helper missing: $analyzerFixer" }
 
 Run-Native 'Apply fail-closed combined patch' { python $patcher $repoRoot }
-Run-Native 'Apply fail-closed analyzer fixes' { python $analyzerFixer $repoRoot }
 
 Push-Location $desktopRoot
 try {
@@ -54,7 +51,6 @@ finally {
 Run-Native 'Git diff whitespace check' { git -C $repoRoot diff --check }
 
 $expected = @(
-  'apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart',
   'apps/desktop/lib/features/deliveries/deliveries_view.dart',
   'apps/desktop/lib/app/desktop_app.dart',
   'apps/desktop/lib/features/create/create_view.dart',
