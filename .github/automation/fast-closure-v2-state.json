@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-27T20:16:00Z",
+  "updated_at": "2026-08-28T00:13:51Z",
   "merge_token": {
-    "state": "RESERVED",
-    "owner": "web_app",
-    "reserved_master_sha": "95d184950d2689bf75982154bb76b6575b8222bf",
+    "state": "RELEASED",
+    "owner": null,
+    "reserved_master_sha": "cc11ab0dbcb9c497fe9f8dedea659ec8e46377b8",
     "candidate_pr": null,
-    "candidate_head_sha": "95d184950d2689bf75982154bb76b6575b8222bf",
-    "freeze_active": true,
-    "freeze_reason": "Web App Phase 11 PR #1058 merged with expected-head protection onto exact master 95d184950d2689bf75982154bb76b6575b8222bf. Hold the single-writer token only through exact-master Required CI/SFFE/Web App verification; do not promote Phase 11 or release the token until those exact-master gates are terminal-success."
+    "candidate_head_sha": "cc11ab0dbcb9c497fe9f8dedea659ec8e46377b8",
+    "freeze_active": false,
+    "freeze_reason": null
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -24,11 +24,11 @@
       "lifecycle": "BLOCKED_EXTERNAL",
       "priority_rank": 1,
       "authoritative_issue": 539,
-      "active_pr": null,
-      "base_sha": "695f05890d1dbe6cc481b0a02996744ba01d27d1",
-      "head_sha": "695f05890d1dbe6cc481b0a02996744ba01d27d1",
-      "blocked_reason": "Repository-owned Desktop owner-exit/sidecar cleanup is exact-master verified. Final acceptance requires a real Windows user machine: Explorer direct launch independent of shell, first launch, Google login/logout/relogin, normal window close with no orphan sidecar, update/rollback/uninstall sanity and UI acceptance.",
-      "next_action": "Preserve exact-master Desktop evidence and package lineage. Complete real Windows user-machine acceptance under issue #539; do not retain the repository merge token while waiting on this human/device boundary."
+      "active_pr": 1065,
+      "base_sha": "fdaa7dcc21714c800cda75a0d3fcdb54278b621f",
+      "head_sha": "7e7860c3e8c74310de5c94a6f05eff2a649e5b5d",
+      "blocked_reason": "Repository-owned Desktop package lineage is verified, but final acceptance remains a real Windows user-machine boundary. PR #1065 is a non-owner development repair derived from that real-machine reproduction and must be replayed on exact current master only when Desktop legally acquires the merge token.",
+      "next_action": "Preserve exact-master Desktop evidence. Before any #1065 merge, acquire the legal Desktop token, replay only the reviewed sidecar-lifetime delta onto exact current master if still applicable, rerun all Desktop gates, then require real Windows Explorer/login/logout/relogin/orphan/update/uninstall/UI acceptance."
     },
     "video_native_reference": {
       "scheduler": "unified",
@@ -50,7 +50,7 @@
       "base_sha": "d6acdfdbd06064c19a148588341689965a229b57",
       "head_sha": "d6acdfdbd06064c19a148588341689965a229b57",
       "blocked_reason": null,
-      "next_action": "Corporate Website V2 rebuild is repository exact-master verified on d6acdfdb. Preserve /api/release attribution and live EN/TR Dark/Light responsive/reduced-motion production QA as separate production evidence; do not hold the repository merge token for those external/live checks."
+      "next_action": "Corporate Website V2 rebuild repository checkpoint is preserved. Complete exact production /api/release attribution plus live ilaios.com/www EN/TR Dark/Light responsive/accessibility/SEO/network/visual acceptance; do not claim CLOSED from source CI alone."
     },
     "identity": {
       "scheduler": "identity",
@@ -61,18 +61,18 @@
       "base_sha": "9a39c5cbf12431710a7bfa8f26b91d13441c7fbc",
       "head_sha": "9a39c5cbf12431710a7bfa8f26b91d13441c7fbc",
       "blocked_reason": null,
-      "next_action": "Preserve merged #1036 and exact-master Required CI. Do not hold the repository merge token without a new dependency-ready exact-current Identity candidate."
+      "next_action": "Continue only a dependency-ready exact-current Production Identity/Billing/Entitlement slice. External Google Console ownership/verification and real payment-provider activation remain HUMAN/EXTERNAL; do not reserve the token without a concrete bounded candidate."
     },
     "web_app": {
       "scheduler": "web_app",
-      "lifecycle": "EXACT_MASTER_VERIFY",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 5,
       "authoritative_issue": 486,
       "active_pr": null,
-      "base_sha": "95d184950d2689bf75982154bb76b6575b8222bf",
-      "head_sha": "95d184950d2689bf75982154bb76b6575b8222bf",
+      "base_sha": "cc11ab0dbcb9c497fe9f8dedea659ec8e46377b8",
+      "head_sha": "cc11ab0dbcb9c497fe9f8dedea659ec8e46377b8",
       "blocked_reason": null,
-      "next_action": "Require exact-master Required CI, Software Factory Final Evidence and Web App Factory exact-master PASS on 95d184950d2689bf75982154bb76b6575b8222bf. If all pass, release the Web App token at a safe checkpoint and continue the dependency-ready closure order; if any fail, inspect the exact-master evidence and repair only the real root cause."
+      "next_action": "Phase-11 preview-versus-production-promotion separation is exact-master verified on cc11ab0d with Required CI, Software Factory Final Evidence and Web Factory Browser E2E PASS. Token released at this safe checkpoint. Continue the next dependency-ready Web App acceptance item only after legal token acquisition and exact-current replay."
     },
     "agents": {
       "scheduler": "agents",
@@ -82,7 +82,7 @@
       "active_pr": null,
       "base_sha": "dc5af14c60cdfdd57b2bd3e727ab47d06e430dbf",
       "head_sha": "dc5af14c60cdfdd57b2bd3e727ab47d06e430dbf",
-      "blocked_reason": "Automated 46/47 exact-master certification is verified on run 33076305932. IndependentVerifier remains genuine human.owner and cannot be self-promoted by automation.",
+      "blocked_reason": "Automated 46/47 exact-master certification is verified. IndependentVerifier remains genuine human.owner and cannot be self-promoted by automation.",
       "next_action": "Preserve exact-master automated 46/47 evidence. Complete IndependentVerifier only through genuine human.owner evidence; do not retain the repository merge token for this external final gate."
     },
     "app_factory": {
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 33,
-    "stale_pass_invalidations": 24,
+    "master_advances": 34,
+    "stale_pass_invalidations": 25,
     "replay_resync_count": 7,
-    "ci_cycles": 23,
-    "successful_merges": 34,
+    "ci_cycles": 24,
+    "successful_merges": 35,
     "duplicate_pr_count": 3,
     "churn_only_commit_count": 0
   }
