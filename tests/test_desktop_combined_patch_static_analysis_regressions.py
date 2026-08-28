@@ -6,7 +6,6 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 PATCH_SCRIPT = ROOT / "tools" / "desktop" / "apply_combined_typography_reference_patch.py"
-ANALYZER_FIXER = ROOT / "tools" / "desktop" / "fix_combined_analyzer.py"
 PATCH_INPUTS = (
     "apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart",
     "apps/desktop/lib/features/deliveries/deliveries_view.dart",
@@ -47,18 +46,6 @@ def _generate_patch_output(tmp_path: Path) -> Path:
         capture_output=True,
         text=True,
     )
-    tools = tmp_path / "tools/desktop"
-    tools.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(
-        ROOT / "tools/desktop/normalize_combined_typography.py",
-        tools / "normalize_combined_typography.py",
-    )
-    subprocess.run(
-        [sys.executable, str(ANALYZER_FIXER), str(tmp_path)],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
     return tmp_path
 
 
@@ -88,3 +75,5 @@ def test_generated_reference_attach_callbacks_use_lint_safe_blocks(
     assert "if (!scope.open) {\n                  scope.onToggle();" in create_view
     assert "if (scope.target != target) scope.onTargetChanged(target);" not in create_view
     assert "if (!scope.open) scope.onToggle();" not in create_view
+    assert "if (scope == null) {\n      return const SizedBox.shrink();\n    }" in create_view
+    assert "if (scope == null) return const SizedBox.shrink();" not in create_view
