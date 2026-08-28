@@ -80,7 +80,7 @@ def _evidence(snapshot_sha: str) -> CertificationEvidence:
     )
 
 
-def test_store_ready_requires_bound_policy_and_external_evidence_presence() -> None:
+def test_store_ready_requires_bound_policy_profile_and_external_evidence_presence() -> None:
     profile = _profile()
     snapshot = _snapshot()
     evidence = _evidence(snapshot.snapshot_sha256)
@@ -89,16 +89,28 @@ def test_store_ready_requires_bound_policy_and_external_evidence_presence() -> N
         promote_store_ready(
             current="STORE_CERTIFYING",
             profile=profile,
+            certified_profile_sha256=profile.profile_sha256,
             policy_snapshot=snapshot,
             evidence=evidence,
         )
         == "STORE_READY"
     )
 
+    substituted_profile = _profile(monetization="subscription")
+    with pytest.raises(StoreCertificationError, match="stale submission profile"):
+        promote_store_ready(
+            current="STORE_CERTIFYING",
+            profile=substituted_profile,
+            certified_profile_sha256=profile.profile_sha256,
+            policy_snapshot=snapshot,
+            evidence=evidence,
+        )
+
     with pytest.raises(StoreCertificationError, match="stale policy snapshot"):
         promote_store_ready(
             current="STORE_CERTIFYING",
             profile=profile,
+            certified_profile_sha256=profile.profile_sha256,
             policy_snapshot=snapshot,
             evidence=replace(evidence, policy_snapshot_sha256="c" * 64),
         )
@@ -107,6 +119,7 @@ def test_store_ready_requires_bound_policy_and_external_evidence_presence() -> N
         promote_store_ready(
             current="STORE_CERTIFYING",
             profile=profile,
+            certified_profile_sha256=profile.profile_sha256,
             policy_snapshot=snapshot,
             evidence=replace(evidence, device_test_receipts=()),
         )
@@ -115,6 +128,7 @@ def test_store_ready_requires_bound_policy_and_external_evidence_presence() -> N
         promote_store_ready(
             current="STORE_CERTIFYING",
             profile=profile,
+            certified_profile_sha256=profile.profile_sha256,
             policy_snapshot=snapshot,
             evidence=replace(evidence, runtime_receipts=()),
         )
@@ -123,28 +137,33 @@ def test_store_ready_requires_bound_policy_and_external_evidence_presence() -> N
         promote_store_ready(
             current="STORE_CERTIFYING",
             profile=profile,
+            certified_profile_sha256=profile.profile_sha256,
             policy_snapshot=snapshot,
             evidence=replace(evidence, screenshot_sha256s=()),
         )
 
 
 def test_store_ready_fails_closed_on_policy_and_commerce() -> None:
+    blocked_profile = _profile()
     blocked_snapshot = _snapshot(blocking=True)
     blocked_evidence = _evidence(blocked_snapshot.snapshot_sha256)
     with pytest.raises(StoreCertificationError, match="policy evaluation blocks"):
         promote_store_ready(
             current="STORE_CERTIFYING",
-            profile=_profile(),
+            profile=blocked_profile,
+            certified_profile_sha256=blocked_profile.profile_sha256,
             policy_snapshot=blocked_snapshot,
             evidence=blocked_evidence,
         )
 
+    paid_profile = _profile(monetization="subscription")
     paid_snapshot = _snapshot()
     paid_evidence = _evidence(paid_snapshot.snapshot_sha256)
     with pytest.raises(StoreCertificationError, match="commerce E2E evidence"):
         promote_store_ready(
             current="STORE_CERTIFYING",
-            profile=_profile(monetization="subscription"),
+            profile=paid_profile,
+            certified_profile_sha256=paid_profile.profile_sha256,
             policy_snapshot=paid_snapshot,
             evidence=paid_evidence,
         )
@@ -152,7 +171,8 @@ def test_store_ready_fails_closed_on_policy_and_commerce() -> None:
     assert (
         promote_store_ready(
             current="RE_CERTIFYING",
-            profile=_profile(monetization="subscription"),
+            profile=paid_profile,
+            certified_profile_sha256=paid_profile.profile_sha256,
             policy_snapshot=paid_snapshot,
             evidence=replace(paid_evidence, commerce_e2e_receipts=("commerce://receipt/1",)),
         )
@@ -161,11 +181,13 @@ def test_store_ready_fails_closed_on_policy_and_commerce() -> None:
 
 
 def test_store_ready_rejects_non_certifying_state() -> None:
+    profile = _profile()
     snapshot = _snapshot()
     with pytest.raises(StoreCertificationError, match="certifying state"):
         promote_store_ready(
             current="TESTED",
-            profile=_profile(),
+            profile=profile,
+            certified_profile_sha256=profile.profile_sha256,
             policy_snapshot=snapshot,
             evidence=_evidence(snapshot.snapshot_sha256),
         )
