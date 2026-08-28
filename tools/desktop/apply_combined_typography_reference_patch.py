@@ -397,7 +397,9 @@ class _ReferencePromptAttach extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scope = ReferenceAssetUiScope.maybeOf(context);
-    if (scope == null) return const SizedBox.shrink();
+    if (scope == null) {
+      return const SizedBox.shrink();
+    }
 
     final target = switch (selectedPreset) {
       _FactoryPreset.web => ReferenceFactoryTarget.web,
