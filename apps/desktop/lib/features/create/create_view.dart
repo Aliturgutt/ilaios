@@ -1462,9 +1462,7 @@ class _SubmissionStatus extends StatelessWidget {
       );
     }
     final value = submission;
-    if (value == null) {
-      return const SizedBox.shrink();
-    }
+    if (value == null) return const SizedBox.shrink();
     final lifecycleLabel = _lifecycleLabel(context, lifecycle);
     return Container(
       key: const Key('one-prompt-accepted'),
