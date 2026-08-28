@@ -263,6 +263,14 @@ if n != 1:
     raise SystemExit(f"DESKTOP_ROUTING_HELPER_REMOVAL expected 1 actual {n}")
 text = text.replace("_referenceFactoryCount(", "referenceFactoryCount(")
 text = text.replace("_isVideoFactoryObjective(", "isVideoFactoryObjective(")
+text = text.replace(
+    "final referenceFactoryCount = referenceFactoryCount(objective);",
+    "final referenceTargetCount = referenceFactoryCount(objective);",
+)
+text = text.replace(
+    "hasReferences && referenceFactoryCount",
+    "hasReferences && referenceTargetCount",
+)
 write(desktop_app, text)
 
 replace_once(
@@ -416,8 +424,12 @@ class _ReferencePromptAttach extends StatelessWidget {
         key: const Key('prompt-reference-attach'),
         onPressed: enabled
             ? () {
-                if (scope.target != target) scope.onTargetChanged(target);
-                if (!scope.open) scope.onToggle();
+                if (scope.target != target) {
+                  scope.onTargetChanged(target);
+                }
+                if (!scope.open) {
+                  scope.onToggle();
+                }
               }
             : null,
         style: TextButton.styleFrom(
