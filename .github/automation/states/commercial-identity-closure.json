@@ -9,7 +9,7 @@
   "current_phase": "Google production Web OAuth repository hardening",
   "master_sha": "07e14b9f02e13842c934c5d124a986ec41b3beb5",
   "base_sha": "07e14b9f02e13842c934c5d124a986ec41b3beb5",
-  "head_sha": "d8b652c65dc234d1e5d08c28322b67b1c881cb77",
+  "head_sha": "2aa4a575751549edf8ae890eff2600eb182ba90b",
   "branch": "identity/google-web-oauth-07e14b9f",
   "pr": 1102,
   "ci": {
@@ -17,7 +17,7 @@
     "conclusion": null,
     "exact_sha": null
   },
-  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence, Execution Controller Validation, and applicable Identity/security gates on PR #1102. Repair only evidenced failures. Production OAuth flow-state persistence must be durable under the incumbent canonical identity DB/migration authority before repository production closure. Then re-read live master/token/semantic overlap and merge only with expected-head protection. Real Google Console configuration and provider/browser E2E remain external evidence.",
+  "next_action": "Require fresh exact-head Required CI, Software Factory Final Evidence, Execution Controller Validation, and applicable Identity/security/DB gates on the final PR #1102 coordination head. Repair only evidenced failures. Durable OAuth replay denial now uses the incumbent canonical Identity one-use challenge ledger without a second DB/migration authority. Then re-read live master/token/semantic overlap and merge only with expected-head protection. Real Google Console configuration and provider/browser E2E remain external evidence.",
   "blocker": {
     "type": null,
     "detail": null,
@@ -44,8 +44,8 @@
     "PR#1100 merged as 07e14b9f02e13842c934c5d124a986ec41b3beb5",
     "exact-master ilaios/software-factory-exact-master success via run 33202762983",
     "exact-master ilaios/required-ci-exact-master success via run 33202763247",
-    "repo audit: services/google_oidc.py has production Google endpoints/client/redirect and immutable-sub bridge; services/desktop_oidc.py has Authorization Code + PKCE/state/nonce; no production Google Web OAuth broker existed on exact master",
-    "PR#1102 opened from exact current master with bounded Google Web OAuth broker + regression tests"
+    "repo audit: production Google config/immutable-sub bridge and Desktop Authorization Code + PKCE existed; no production Google Web broker existed",
+    "PR#1102 reviewed product/test head 2aa4a575751549edf8ae890eff2600eb182ba90b adds Web Authorization Code + PKCE/state/nonce, server-side token exchange, JWT verification, redirect tamper denial, and durable restart-safe replay denial via incumbent Identity challenge ledger"
   ],
-  "updated_at": "2026-08-28T19:30:00Z"
+  "updated_at": "2026-08-28T19:34:00Z"
 }
