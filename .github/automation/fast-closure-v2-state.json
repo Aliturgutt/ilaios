@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T19:34:00Z",
+  "updated_at": "2026-08-28T20:10:46Z",
   "merge_token": {
-    "state": "RESERVED",
-    "owner": "identity",
-    "reserved_master_sha": "07e14b9f02e13842c934c5d124a986ec41b3beb5",
-    "candidate_pr": 1102,
-    "candidate_head_sha": "2aa4a575751549edf8ae890eff2600eb182ba90b",
-    "freeze_active": true,
-    "freeze_reason": "Identity Google Web OAuth Authorization Code + PKCE exact-current validation"
+    "state": "RELEASED",
+    "owner": null,
+    "reserved_master_sha": null,
+    "candidate_pr": null,
+    "candidate_head_sha": null,
+    "freeze_active": false,
+    "freeze_reason": null
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,14 +54,14 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "BLOCKED_EXTERNAL",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": 1102,
-      "base_sha": "07e14b9f02e13842c934c5d124a986ec41b3beb5",
-      "head_sha": "2aa4a575751549edf8ae890eff2600eb182ba90b",
-      "blocked_reason": null,
-      "next_action": "Require fresh exact-head Required CI + SFFE and applicable Identity/security/controller/DB gates for #1102 on the final coordination head. Durable replay denial now reuses the incumbent canonical Identity one-use challenge ledger with no new DB/migration authority. Then live master/token/head/overlap reread, expected-head merge and exact-master verification. Google Console configuration and real provider/browser E2E remain external evidence."
+      "active_pr": null,
+      "base_sha": "1a9f82026b66e1e60c3f9f4beb3daadfdf8306ca",
+      "head_sha": "1a9f82026b66e1e60c3f9f4beb3daadfdf8306ca",
+      "blocked_reason": "PR #1102 Google Web OAuth Authorization Code + PKCE boundary is merged and exact-master Required CI plus Software Factory status are success. Final Production Identity closure still requires external Google production project/consent/domain/client configuration, secret provisioning, real Google callback/token exchange, production browser session delivery, cross-client same User/Tenant proof and logout/revoke/relogin production E2E.",
+      "next_action": "Preserve merged #1102 repository boundary and released merge token. Complete Google Console/provider/browser E2E only through authorized external configuration, then bind exact production deployment/source evidence to immutable provider subject -> canonical User -> Tenant -> Membership -> Role -> Session -> Entitlement and cross-client relogin proof."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 42,
+    "master_advances": 43,
     "stale_pass_invalidations": 34,
     "replay_resync_count": 9,
     "ci_cycles": 32,
-    "successful_merges": 43,
+    "successful_merges": 44,
     "duplicate_pr_count": 3,
     "churn_only_commit_count": 0
   }
