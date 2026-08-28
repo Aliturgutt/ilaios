@@ -100,7 +100,6 @@ def test_positive_activation_uses_trusted_grant_authority(tmp_path: Path) -> Non
 
     binding, entitlement = access.activate_from_trusted_grant(
         event=_event("evt-active"),
-        grant_id="grant-1",
         now=NOW + timedelta(minutes=1),
     )
 
@@ -114,7 +113,7 @@ def test_positive_activation_uses_trusted_grant_authority(tmp_path: Path) -> Non
     assert commercial.get_entitlement(tenant_id="tenant-1", user_id="user-1") == entitlement
 
 
-def test_missing_grant_fails_before_positive_projection(tmp_path: Path) -> None:
+def test_missing_current_grant_fails_before_positive_projection(tmp_path: Path) -> None:
     access, commercial, _ = _access(tmp_path)
     access.create_provider_subscription_binding(
         provider_subscription_id="sub-provider-1",
@@ -124,10 +123,9 @@ def test_missing_grant_fails_before_positive_projection(tmp_path: Path) -> None:
         now=NOW,
     )
 
-    with pytest.raises(CommercialAccessError, match="grant does not exist"):
+    with pytest.raises(CommercialAccessError, match="current trusted commercial grant"):
         access.activate_from_trusted_grant(
             event=_event("evt-active"),
-            grant_id="missing-grant",
             now=NOW + timedelta(minutes=1),
         )
 
@@ -147,19 +145,43 @@ def test_not_yet_valid_and_expired_grants_fail_closed(tmp_path: Path) -> None:
         period_end=NOW + timedelta(days=1),
     )
 
-    with pytest.raises(CommercialAccessError, match="not yet valid"):
+    with pytest.raises(CommercialAccessError, match="current trusted commercial grant"):
         access.activate_from_trusted_grant(
             event=_event("evt-too-early"),
-            grant_id="grant-1",
             now=NOW + timedelta(minutes=1),
         )
-    with pytest.raises(CommercialAccessError, match="expired"):
+    with pytest.raises(CommercialAccessError, match="current trusted commercial grant"):
         access.activate_from_trusted_grant(
             event=_event("evt-expired", minute=60 * 24 + 1),
-            grant_id="grant-1",
             now=NOW + timedelta(days=1, minutes=1),
         )
 
+    with pytest.raises(CommercialAccessError, match="does not exist"):
+        commercial.get_entitlement(tenant_id="tenant-1", user_id="user-1")
+
+
+def test_overlapping_current_grants_fail_closed_as_ambiguous(tmp_path: Path) -> None:
+    access, commercial, _ = _access(tmp_path)
+    _bind_and_grant(access, grant_id="grant-1")
+    access.create_trusted_grant(
+        grant_id="grant-2",
+        provider_subscription_id="sub-provider-1",
+        period_start=NOW,
+        period_end=NOW + timedelta(days=10),
+        paid_provider_allowed=False,
+        now=NOW,
+    )
+
+    with pytest.raises(CommercialAccessError, match="ambiguous"):
+        access.activate_from_trusted_grant(
+            event=_event("evt-ambiguous"),
+            now=NOW + timedelta(minutes=1),
+        )
+
+    binding = commercial.get_provider_subscription_binding(
+        provider_subscription_id="sub-provider-1"
+    )
+    assert binding.state is ProviderSubscriptionState.PENDING
     with pytest.raises(CommercialAccessError, match="does not exist"):
         commercial.get_entitlement(tenant_id="tenant-1", user_id="user-1")
 
@@ -173,7 +195,6 @@ def test_inactive_identity_cannot_receive_active_entitlement(tmp_path: Path) -> 
     with pytest.raises(CommercialAccessError, match="membership is not active"):
         access.activate_from_trusted_grant(
             event=_event("evt-inactive"),
-            grant_id="grant-1",
             now=NOW + timedelta(minutes=1),
         )
 
@@ -185,7 +206,7 @@ def test_inactive_identity_cannot_receive_active_entitlement(tmp_path: Path) -> 
         commercial.get_entitlement(tenant_id="tenant-1", user_id="user-1")
 
 
-def test_grant_cannot_activate_a_different_provider_subscription(tmp_path: Path) -> None:
+def test_event_for_ungranted_subscription_cannot_activate(tmp_path: Path) -> None:
     access, commercial, _ = _access(tmp_path)
     _bind_and_grant(access)
     access.create_provider_subscription_binding(
@@ -196,10 +217,9 @@ def test_grant_cannot_activate_a_different_provider_subscription(tmp_path: Path)
         now=NOW,
     )
 
-    with pytest.raises(CommercialAccessError, match="does not match provider subscription"):
+    with pytest.raises(CommercialAccessError, match="current trusted commercial grant"):
         access.activate_from_trusted_grant(
             event=_event("evt-wrong-sub", provider_subscription_id="sub-provider-2"),
-            grant_id="grant-1",
             now=NOW + timedelta(minutes=1),
         )
 
@@ -216,12 +236,10 @@ def test_provider_event_lineage_is_idempotent_and_conflicts_fail_closed(tmp_path
 
     _, first = access.activate_from_trusted_grant(
         event=event,
-        grant_id="grant-1",
         now=NOW + timedelta(minutes=1),
     )
     _, replayed = access.activate_from_trusted_grant(
         event=event,
-        grant_id="grant-1",
         now=NOW + timedelta(minutes=2),
     )
 
@@ -237,7 +255,6 @@ def test_provider_event_lineage_is_idempotent_and_conflicts_fail_closed(tmp_path
     with pytest.raises(CommercialAccessError, match="event_id conflicts"):
         access.activate_from_trusted_grant(
             event=conflicting,
-            grant_id="grant-1",
             now=NOW + timedelta(minutes=3),
         )
     assert commercial.get_entitlement(tenant_id="tenant-1", user_id="user-1") == first
@@ -256,7 +273,6 @@ def test_out_of_order_activation_cannot_reverse_newer_cancellation(tmp_path: Pat
     with pytest.raises(CommercialAccessError, match="out of order"):
         access.activate_from_trusted_grant(
             event=_event("evt-old-active", minute=4),
-            grant_id="grant-1",
             now=NOW + timedelta(minutes=6),
         )
 
@@ -265,11 +281,12 @@ def test_out_of_order_activation_cannot_reverse_newer_cancellation(tmp_path: Pat
     assert stored.paid_provider_allowed is False
 
 
-def test_positive_projection_exposes_no_canonical_or_period_caller_authority() -> None:
+def test_positive_projection_exposes_no_canonical_period_or_grant_caller_authority() -> None:
     parameters = inspect.signature(
         IdentityBoundCommercialAccess.activate_from_trusted_grant
     ).parameters
 
+    assert "grant_id" not in parameters
     assert "tenant_id" not in parameters
     assert "user_id" not in parameters
     assert "plan_id" not in parameters
@@ -284,12 +301,27 @@ def test_paid_provider_policy_comes_only_from_trusted_grant(tmp_path: Path) -> N
 
     _, entitlement = access.activate_from_trusted_grant(
         event=_event("evt-free-policy"),
-        grant_id="grant-1",
         now=NOW + timedelta(minutes=1),
     )
 
     assert entitlement.state is EntitlementState.ACTIVE
     assert entitlement.paid_provider_allowed is False
+
+
+def test_future_provider_event_cannot_activate_entitlement(tmp_path: Path) -> None:
+    access, commercial, _ = _access(tmp_path)
+    _bind_and_grant(access)
+
+    with pytest.raises(CommercialAccessError, match="cannot occur in the future"):
+        access.activate_from_trusted_grant(
+            event=_event("evt-future", minute=5),
+            now=NOW + timedelta(minutes=1),
+        )
+
+    binding = commercial.get_provider_subscription_binding(
+        provider_subscription_id="sub-provider-1"
+    )
+    assert binding.state is ProviderSubscriptionState.PENDING
 
 
 def test_unverified_positive_event_cannot_activate_entitlement(tmp_path: Path) -> None:
@@ -302,7 +334,6 @@ def test_unverified_positive_event_cannot_activate_entitlement(tmp_path: Path) -
     with pytest.raises(CommercialAccessError, match="cryptographically verified"):
         access.activate_from_trusted_grant(
             event=FakeEvent(),
-            grant_id="grant-1",
             now=NOW + timedelta(minutes=1),
         )
     with pytest.raises(CommercialAccessError, match="does not exist"):
