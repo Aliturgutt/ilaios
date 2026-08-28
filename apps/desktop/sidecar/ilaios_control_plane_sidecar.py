@@ -380,10 +380,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         name="ilaios-control-plane-watchdog",
         daemon=True,
     )
-    parent_watchdog = threading.Thread(
-        target=stop_identity_if_parent_pipe_closes,
-        name="ilaios-desktop-parent-watchdog",
-        daemon=True,
+    parent_watchdog = (
+        threading.Thread(
+            target=stop_identity_if_parent_pipe_closes,
+            name="ilaios-desktop-parent-watchdog",
+            daemon=True,
+        )
+        if arguments.desktop_pid is None
+        else None
     )
     desktop_watchdog = threading.Thread(
         target=stop_identity_if_desktop_exits,
@@ -391,7 +395,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         daemon=True,
     )
     control_watchdog.start()
-    parent_watchdog.start()
+    if parent_watchdog is not None:
+        parent_watchdog.start()
     desktop_watchdog.start()
 
     try:
