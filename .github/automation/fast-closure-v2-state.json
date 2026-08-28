@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T19:30:00Z",
+  "updated_at": "2026-08-28T19:34:00Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "identity",
     "reserved_master_sha": "07e14b9f02e13842c934c5d124a986ec41b3beb5",
     "candidate_pr": 1102,
-    "candidate_head_sha": "d8b652c65dc234d1e5d08c28322b67b1c881cb77",
+    "candidate_head_sha": "2aa4a575751549edf8ae890eff2600eb182ba90b",
     "freeze_active": true,
     "freeze_reason": "Identity Google Web OAuth Authorization Code + PKCE exact-current validation"
   },
@@ -59,9 +59,9 @@
       "authoritative_issue": null,
       "active_pr": 1102,
       "base_sha": "07e14b9f02e13842c934c5d124a986ec41b3beb5",
-      "head_sha": "d8b652c65dc234d1e5d08c28322b67b1c881cb77",
+      "head_sha": "2aa4a575751549edf8ae890eff2600eb182ba90b",
       "blocked_reason": null,
-      "next_action": "Require fresh exact-head Required CI + SFFE and applicable Identity/security/controller gates for #1102. Production flow-state persistence must remain server-owned and durable before repository production closure. Then live master/token/head/overlap reread, expected-head merge and exact-master verification. Google Console configuration and real provider/browser E2E remain external evidence."
+      "next_action": "Require fresh exact-head Required CI + SFFE and applicable Identity/security/controller/DB gates for #1102 on the final coordination head. Durable replay denial now reuses the incumbent canonical Identity one-use challenge ledger with no new DB/migration authority. Then live master/token/head/overlap reread, expected-head merge and exact-master verification. Google Console configuration and real provider/browser E2E remain external evidence."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -123,7 +123,7 @@
     "master_advances": 42,
     "stale_pass_invalidations": 34,
     "replay_resync_count": 9,
-    "ci_cycles": 31,
+    "ci_cycles": 32,
     "successful_merges": 43,
     "duplicate_pr_count": 3,
     "churn_only_commit_count": 0
