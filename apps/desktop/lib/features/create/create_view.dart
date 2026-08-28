@@ -1589,8 +1589,12 @@ BoxDecoration _cardDecoration(BuildContext context, {double radius = 8}) => BoxD
 
 String? _displayEvent(BuildContext context, String? raw) {
   final value = raw?.trim();
-  if (value == null || value.isEmpty) return null;
-  if (value != 'job.updated') return value;
+  if (value == null || value.isEmpty) {
+    return null;
+  }
+  if (value != 'job.updated') {
+    return value;
+  }
   return _copy(context, 'Job update', 'İş güncellemesi');
 }
 
