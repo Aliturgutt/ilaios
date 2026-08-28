@@ -1,5 +1,6 @@
 from pathlib import Path
 import re
+import subprocess
 import sys
 
 root = Path(sys.argv[1])
@@ -738,5 +739,16 @@ void main() {
 }
 """,
 )
+
+# The candidate patch above intentionally establishes the shared reference UI
+# before the typography normalization runs. Keep the shell at its checked-out
+# scale and apply the typography uplift only to the Outputs reading surfaces;
+# otherwise fixed-height views elsewhere in Desktop overflow during the full
+# widget suite. This is part of the production generator path because the
+# combined workflow invokes this script directly.
+normalizer = root / "tools/desktop/normalize_combined_typography.py"
+if not normalizer.is_file():
+    raise SystemExit(f"NORMALIZER_MISSING {normalizer}")
+subprocess.run([sys.executable, str(normalizer), str(root)], check=True)
 
 print("COMBINED_PATCH_APPLIED")
