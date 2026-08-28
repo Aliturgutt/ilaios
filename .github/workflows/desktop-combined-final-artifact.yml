@@ -55,7 +55,11 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          $baseline = Join-Path $env:RUNNER_TEMP 'reference_desktop_shell_v10.baseline.dart'
+          git show HEAD:apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart |
+            Out-File -FilePath $baseline -Encoding utf8
           dart format `
+            $baseline `
             lib/features/dashboard/reference_desktop_shell_v10.dart `
             lib/features/deliveries/deliveries_view.dart `
             lib/app/desktop_app.dart `
@@ -94,13 +98,10 @@ jobs:
             if ($path -notin $changed) { throw "Expected patched file missing: $path" }
           }
 
-          $v10 = @(git diff -- apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart)
-          $forbidden = @($v10 | Where-Object {
-            $_ -match '^[+-](?![+-]).*(\bwidth\s*:|\bheight\s*:|EdgeInsets|SizedBox\(|\bpadding\s*:|\bmargin\s*:)'
-          })
-          if ($forbidden.Count -gt 0) {
-            throw "Protected shell geometry changed:`n$($forbidden -join "`n")"
-          }
+          python tools/desktop/check_protected_shell_geometry.py `
+            (Join-Path $env:RUNNER_TEMP 'reference_desktop_shell_v10.baseline.dart') `
+            apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart
+          if ($LASTEXITCODE -ne 0) { throw 'Protected shell geometry changed' }
           git diff --binary | Out-File -Encoding utf8 desktop-combined-ci.patch
 
       - name: Resolve locked dependencies
@@ -257,27 +258,4 @@ jobs:
           Copy-Item (Join-Path $env:GITHUB_WORKSPACE 'desktop-combined-ci.patch') (Join-Path $artifactRoot 'desktop-combined-ci.patch')
 
           $hashes = Get-ChildItem $runtime -File -Recurse | Sort-Object FullName | ForEach-Object {
-            $relative = $_.FullName.Substring($runtime.Length + 1)
-            $hash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLowerInvariant()
-            "$hash  runtime/$($relative -replace '\\','/')"
-          }
-          $hashes | Set-Content -Encoding ascii (Join-Path $artifactRoot 'SHA256SUMS.txt')
 
-          $short = $sha.Substring(0,8)
-          $zip = Join-Path $env:GITHUB_WORKSPACE "artifacts\ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_$short.zip"
-          Compress-Archive -Path (Join-Path $artifactRoot '*') -DestinationPath $zip -CompressionLevel Optimal -Force
-          $zipHash = (Get-FileHash $zip -Algorithm SHA256).Hash.ToLowerInvariant()
-          Set-Content -Encoding ascii -Path "$zip.sha256" -Value "$zipHash  $(Split-Path $zip -Leaf)"
-          Write-Host "FINAL_ZIP=$zip"
-          Write-Host "FINAL_ZIP_SHA256=$zipHash"
-
-      - name: Upload CI-verified Desktop combined package
-        if: success()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: desktop-combined-ci-verified-${{ github.sha }}-${{ github.run_id }}
-          path: |
-            artifacts/ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip
-            artifacts/ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip.sha256
-          if-no-files-found: error
-          retention-days: 30
