@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T22:23:26Z",
+  "updated_at": "2026-08-28T23:25:20Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "identity",
     "reserved_master_sha": "da7577c47c0113ff5180e7a13503343fbe944806",
-    "candidate_pr": 1105,
+    "candidate_pr": 1107,
     "candidate_head_sha": "b5841da1c860acdb9eef59b2933d114c2594a885",
     "freeze_active": true,
-    "freeze_reason": "Identity PR #1105 exact-current Google Web canonical-account composition is in PRE_MERGE_VALIDATION; candidate_head_sha records the reviewed product head immediately before this coordination-only reservation commit."
+    "freeze_reason": "Identity PR #1107 exact-current Google Web canonical-account composition is in PRE_MERGE_VALIDATION; candidate_head_sha records the reviewed product head before coordination-only reservation commits."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -57,11 +57,11 @@
       "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": 1105,
+      "active_pr": 1107,
       "base_sha": "da7577c47c0113ff5180e7a13503343fbe944806",
       "head_sha": "b5841da1c860acdb9eef59b2933d114c2594a885",
       "blocked_reason": null,
-      "next_action": "Require fresh exact-head Required CI + Software Factory Final Evidence on the coordination-refreshed #1105 head, then immediately re-read live master/token/head/path+semantic overlap and merge only with expected-head protection if master remains exact base. After merge require exact-master Required CI + SFFE before advancing to canonical membership/role/session/browser composition."
+      "next_action": "Require fresh exact-head Required CI + Software Factory Final Evidence on the coordination-refreshed #1107 head, then immediately re-read live master/token/head/path+semantic overlap and merge only with expected-head protection if master remains exact base. After merge require exact-master Required CI + SFFE before advancing to canonical membership/role/session/browser composition."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -125,7 +125,7 @@
     "replay_resync_count": 9,
     "ci_cycles": 32,
     "successful_merges": 44,
-    "duplicate_pr_count": 3,
+    "duplicate_pr_count": 4,
     "churn_only_commit_count": 0
   }
 }
