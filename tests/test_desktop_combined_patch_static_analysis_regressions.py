@@ -1,4 +1,5 @@
 from pathlib import Path
+import re
 import shutil
 import subprocess
 import sys
@@ -77,3 +78,7 @@ def test_generated_reference_attach_callbacks_use_lint_safe_blocks(
     assert "if (!scope.open) scope.onToggle();" not in create_view
     assert "if (scope == null) {\n      return const SizedBox.shrink();\n    }" in create_view
     assert "if (scope == null) return const SizedBox.shrink();" not in create_view
+    simple_statement_if = re.compile(
+        r"(?m)^\s*if\s*\(.+\)\s+(?!\{).+;\s*$"
+    )
+    assert simple_statement_if.search(create_view) is None
