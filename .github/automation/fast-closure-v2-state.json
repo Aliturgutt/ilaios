@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T05:11:00Z",
+  "updated_at": "2026-08-28T06:30:00Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "identity",
-    "reserved_master_sha": "bde6cd7f9812406a90746b577dc4e48de1203c45",
-    "candidate_pr": 1073,
-    "candidate_head_sha": "45eeaa55fa07ea289a0d044cea9b58f5e316e1f9",
+    "reserved_master_sha": "447034919ce9fe6480d88dad69ca43a43ab95197",
+    "candidate_pr": 1076,
+    "candidate_head_sha": "eb4173ef6c3c1464c083c9fe1c8873b298e51186",
     "freeze_active": true,
-    "freeze_reason": "#1071 remediation is exact-master verified on bde6cd7f with Required CI and SFFE PASS. Identity retains the legal single-writer window for bounded trusted server-side grant policy PR #1073. Preserve freeze through fresh exact-head gates after this state refresh, live master/token/head/overlap reread, expected-head merge, and exact-master validation."
+    "freeze_reason": "#1073 trusted server-side grant policy is exact-master verified on 44703491 with Required CI and SFFE PASS. Identity retains the legal single-writer window for bounded positive activation/renewal PR #1076. Preserve freeze through fresh exact-head gates after this state refresh, live master/token/head/overlap reread, expected-head merge, and exact-master verification."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -57,11 +57,11 @@
       "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": 1073,
-      "base_sha": "bde6cd7f9812406a90746b577dc4e48de1203c45",
-      "head_sha": "45eeaa55fa07ea289a0d044cea9b58f5e316e1f9",
+      "active_pr": 1076,
+      "base_sha": "447034919ce9fe6480d88dad69ca43a43ab95197",
+      "head_sha": "eb4173ef6c3c1464c083c9fe1c8873b298e51186",
       "blocked_reason": null,
-      "next_action": "Run completely fresh Required CI + SFFE and applicable DB/security/controller gates after this state refresh on PR #1073. Then reread live master/token/head/overlap and merge only with expected-head protection if still exact-current. Require exact-master Required CI + SFFE before any positive activation/renewal projection."
+      "next_action": "Run completely fresh Required CI + SFFE and applicable Identity/security/controller/DB gates after this state refresh on PR #1076. Then reread live master/token/head/overlap and merge only with expected-head protection if still exact-current. Require exact-master Required CI + SFFE before positive activation/renewal is VERIFIED."
     },
     "web_app": {
       "scheduler": "web_app",
