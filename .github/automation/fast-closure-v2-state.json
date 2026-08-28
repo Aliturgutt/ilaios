@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T17:26:00Z",
+  "updated_at": "2026-08-28T17:39:00Z",
   "merge_token": {
-    "state": "RESERVED",
-    "owner": "web_app",
-    "reserved_master_sha": "477650952f86c8cf1715f56d885e8e5f3b055dc3",
-    "candidate_pr": 1096,
-    "candidate_head_sha": "1026bc993c442b3f950df0dda36556d225868fc0",
-    "freeze_active": true,
-    "freeze_reason": "Reserve the single-writer merge window for bounded Web App PR #1096 after repairing its deterministic insecure-policy regression test. The reviewed functional head before state-only reservation is 1026bc993c442b3f950df0dda36556d225868fc0. Fresh Required CI on the first reserved head proved the product/test repair clean except for this state lifecycle invariant; web_app is therefore PRE_MERGE_VALIDATION while the token remains RESERVED. Merge authority MUST use a fresh live post-fix PR-head reread plus completely fresh exact-head Web App Continuation, Required CI, and SFFE. No preview-runtime, production deployment, provider, device, payment, or Store evidence is claimed."
+    "state": "RELEASED",
+    "owner": null,
+    "reserved_master_sha": null,
+    "candidate_pr": null,
+    "candidate_head_sha": null,
+    "freeze_active": false,
+    "freeze_reason": null
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -65,14 +65,14 @@
     },
     "web_app": {
       "scheduler": "web_app",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 5,
       "authoritative_issue": 486,
-      "active_pr": 1096,
-      "base_sha": "477650952f86c8cf1715f56d885e8e5f3b055dc3",
-      "head_sha": "1026bc993c442b3f950df0dda36556d225868fc0",
+      "active_pr": null,
+      "base_sha": "47ef006dc3c6d84c6f1b140769c327b79f86c7bd",
+      "head_sha": "47ef006dc3c6d84c6f1b140769c327b79f86c7bd",
       "blocked_reason": null,
-      "next_action": "PR #1096 binds trusted-host preview runtime/HTTP observations into the incumbent GeneratedPreviewSandboxObservation contract without adding runtime/policy/deployment authority. Its deterministic insecure-policy regression test is repaired without weakening canonical secure ExecutionPolicy. First reserved-head Required CI passed 2918 tests and exposed only this state lifecycle invariant, now corrected to PRE_MERGE_VALIDATION. Re-read the new post-fix PR head and require fresh exact-head Web App Factory Continuation, Required CI, and SFFE before expected-head merge. Real preview runtime emission, governed origin/DNS/egress, privileged secret/session isolation, publish separation and app.ilaios.com production E2E remain unverified."
+      "next_action": "PR #1096 trusted preview sandbox observer is merged at exact master 47ef006dc3c6d84c6f1b140769c327b79f86c7bd after fresh exact-head Web App Factory Continuation, Required CI and SFFE PASS. Phase 11 remains IN_PROGRESS: wire the incumbent preview/runtime boundary to emit real trusted observations and prove governed separate origin/CSP/DNS/egress, privileged cookie/token/secret isolation, publish separation and runtime E2E before phase verification."
     },
     "agents": {
       "scheduler": "agents",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 41,
+    "master_advances": 42,
     "stale_pass_invalidations": 33,
     "replay_resync_count": 8,
     "ci_cycles": 30,
-    "successful_merges": 42,
+    "successful_merges": 43,
     "duplicate_pr_count": 3,
     "churn_only_commit_count": 0
   }
