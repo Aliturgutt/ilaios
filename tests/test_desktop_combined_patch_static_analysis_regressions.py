@@ -7,6 +7,7 @@ import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 PATCH_SCRIPT = ROOT / "tools" / "desktop" / "apply_combined_typography_reference_patch.py"
+NORMALIZER = ROOT / "tools" / "desktop" / "normalize_combined_typography.py"
 PATCH_INPUTS = (
     "apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart",
     "apps/desktop/lib/features/deliveries/deliveries_view.dart",
@@ -23,6 +24,9 @@ def _generate_patch_output(tmp_path: Path) -> Path:
         destination = tmp_path / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
         shutil.copyfile(source, destination)
+    normalizer_destination = tmp_path / "tools" / "desktop" / NORMALIZER.name
+    normalizer_destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(NORMALIZER, normalizer_destination)
     subprocess.run(["git", "init"], cwd=tmp_path, check=True, capture_output=True)
     subprocess.run(
         ["git", "config", "user.email", "desktop-regression@ilaios.invalid"],
@@ -82,3 +86,20 @@ def test_generated_reference_attach_callbacks_use_lint_safe_blocks(
         r"(?m)^\s*if\s*\(.+\)\s+(?!\{).+;\s*$"
     )
     assert simple_statement_if.search(create_view) is None
+
+
+def test_generated_typography_is_scoped_without_global_shell_zoom(
+    tmp_path: Path,
+) -> None:
+    output = _generate_patch_output(tmp_path)
+    shell = (
+        output
+        / "apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart"
+    ).read_text(encoding="utf-8")
+    deliveries = (
+        output / "apps/desktop/lib/features/deliveries/deliveries_view.dart"
+    ).read_text(encoding="utf-8")
+
+    assert "final desktopTextScale = math.max(1.10, systemTextScale);" not in shell
+    assert "TextScaler.linear(desktopTextScale)" not in shell
+    assert "fontSize: 25.5" in deliveries
