@@ -138,6 +138,7 @@ jobs:
             services/web_app_crud_runtime.py \
             services/web_app_analytics_runtime.py \
             services/web_app_realtime_runtime.py \
+            services/web_app_build_sandbox_observer.py \
             services/web_app_sandbox_evidence.py \
             services/web_generated_sandbox_gate.py \
             services/software_factory_runtime.py \
@@ -166,6 +167,7 @@ jobs:
             services/web_app_crud_runtime.py \
             services/web_app_analytics_runtime.py \
             services/web_app_realtime_runtime.py \
+            services/web_app_build_sandbox_observer.py \
             services/web_app_sandbox_evidence.py \
             services/web_generated_sandbox_gate.py \
             services/software_factory_runtime.py \
