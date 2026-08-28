@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T01:20:00Z",
+  "updated_at": "2026-08-28T02:12:00Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "identity",
     "reserved_master_sha": "5c30328ecb54df9aaac075e538443a7b19b15475",
     "candidate_pr": 1069,
-    "candidate_head_sha": "0b23c6d34501b153bc9c4aa08cce354a30fced93",
-    "freeze_active": false,
-    "freeze_reason": null
+    "candidate_head_sha": "d22b7ac5d993d6cb99dcc0965a8a123329fe0fb0",
+    "freeze_active": true,
+    "freeze_reason": "Identity/Billing PR #1069 is the legal single-writer candidate; preserve the merge freeze through fresh exact-head Required CI/SFFE, live-master overlap reread, expected-head merge, and exact-master validation."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,14 +54,14 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "CI_RUNNING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 4,
       "authoritative_issue": null,
       "active_pr": 1069,
       "base_sha": "5c30328ecb54df9aaac075e538443a7b19b15475",
-      "head_sha": "0b23c6d34501b153bc9c4aa08cce354a30fced93",
+      "head_sha": "d22b7ac5d993d6cb99dcc0965a8a123329fe0fb0",
       "blocked_reason": null,
-      "next_action": "Require completely fresh exact-head Required CI + SFFE for PR #1069. On failure inspect real evidence and repair minimally. On PASS re-read live master/token/head and path/semantic overlap before expected-head merge, then require exact-master validation. Positive provider lifecycle grants only bounded base entitlement from signed billing-period evidence; paid-provider spend remains separately denied until server-owned plan/quota policy exists. Production payment-provider activation/E2E remains HUMAN/EXTERNAL."
+      "next_action": "The previous exact head failed only because coordination state violated Fast-Closure invariants. Keep #1069 frozen as the legal Identity/Billing candidate, run completely fresh exact-head Required CI + SFFE after this state repair, then re-read live master/token/head and path/semantic overlap before expected-head merge. Positive provider lifecycle may grant only bounded base entitlement from signed billing-period evidence; paid-provider spend remains denied. Production payment-provider activation/E2E remains HUMAN/EXTERNAL."
     },
     "web_app": {
       "scheduler": "web_app",
