@@ -50,6 +50,7 @@ def _preview() -> GeneratedPreviewSandboxObservation:
         source_sha256="a" * 64,
         artifact_sha256="b" * 64,
         separate_origin=True,
+        strong_process_sandbox=True,
         generated_runtime_origin="https://preview.example.com",
         privileged_session_origin="https://app.example.com",
         csp=(
@@ -61,6 +62,18 @@ def _preview() -> GeneratedPreviewSandboxObservation:
         dns_snapshot_complete=True,
         dns_snapshot_age_seconds=30,
         controlled_egress_gateway=True,
+        privileged_cookie_access=False,
+        privileged_token_access=False,
+        secret_material_access=False,
+        host_shell_access=False,
+        docker_socket_access=False,
+        control_plane_db_access=False,
+        unrestricted_filesystem_access=False,
+        unrestricted_network_access=False,
+        signing_material_access=False,
+        wall_clock_timeout_seconds=90,
+        memory_limit_mb=768,
+        cpu_limit_millis=750,
     )
 
 
@@ -99,10 +112,14 @@ def test_producer_binds_runtime_preview_and_canonical_policy() -> None:
     )
     assert evidence.execution_id == "exec-web-1"
     assert evidence.tenant_id == "tenant-a"
+    assert evidence.strong_process_sandbox is True
     assert evidence.canonical_policy_secure_mode is True
     assert evidence.canonical_policy_network_allowed is False
     assert evidence.canonical_policy_secrets_allowed is False
     assert evidence.canonical_policy_timeout_seconds == 120
+    assert evidence.wall_clock_timeout_seconds == 120
+    assert evidence.memory_limit_mb == 1024
+    assert evidence.cpu_limit_millis == 1000
     assert evaluate_generated_sandbox(evidence).verdict is SandboxVerdict.PASS
 
 
@@ -131,6 +148,85 @@ def test_policy_authority_is_derived_not_caller_fabricated() -> None:
     assert result.verdict is SandboxVerdict.FAIL
     assert "canonical execution policy is not in secure mode" in result.reasons
     assert "canonical execution policy grants direct network authority" in result.reasons
+
+
+def test_preview_forbidden_capability_cannot_be_masked_by_safe_build() -> None:
+    cases: tuple[tuple[GeneratedPreviewSandboxObservation, str], ...] = (
+        (
+            replace(_preview(), privileged_cookie_access=True),
+            "generated runtime exposes forbidden capability: privileged cookie",
+        ),
+        (
+            replace(_preview(), privileged_token_access=True),
+            "generated runtime exposes forbidden capability: privileged token",
+        ),
+        (
+            replace(_preview(), secret_material_access=True),
+            "generated runtime exposes forbidden capability: secret material",
+        ),
+        (
+            replace(_preview(), host_shell_access=True),
+            "generated runtime exposes forbidden capability: host shell",
+        ),
+        (
+            replace(_preview(), docker_socket_access=True),
+            "generated runtime exposes forbidden capability: Docker socket",
+        ),
+        (
+            replace(_preview(), control_plane_db_access=True),
+            "generated runtime exposes forbidden capability: control-plane DB",
+        ),
+        (
+            replace(_preview(), unrestricted_filesystem_access=True),
+            "generated runtime exposes forbidden capability: unrestricted filesystem",
+        ),
+        (
+            replace(_preview(), unrestricted_network_access=True),
+            "generated runtime exposes forbidden capability: unrestricted network",
+        ),
+        (
+            replace(_preview(), signing_material_access=True),
+            "generated runtime exposes forbidden capability: signing material",
+        ),
+    )
+    for preview, reason in cases:
+        evidence = produce_generated_sandbox_evidence(
+            build=_build(),
+            preview=preview,
+            policy=_policy(),
+        )
+        result = evaluate_generated_sandbox(evidence)
+        assert result.verdict is SandboxVerdict.FAIL
+        assert reason in result.reasons
+
+
+def test_preview_process_or_resource_evidence_cannot_be_masked_by_build() -> None:
+    weak_process = produce_generated_sandbox_evidence(
+        build=_build(),
+        preview=replace(_preview(), strong_process_sandbox=False, separate_origin=False),
+        policy=_policy(),
+    )
+    weak_result = evaluate_generated_sandbox(weak_process)
+    assert weak_result.verdict is SandboxVerdict.FAIL
+    assert "no separate-origin or equivalently strong process sandbox evidence" in weak_result.reasons
+
+    missing_bound = produce_generated_sandbox_evidence(
+        build=_build(),
+        preview=replace(_preview(), memory_limit_mb=None),
+        policy=_policy(),
+    )
+    missing_result = evaluate_generated_sandbox(missing_bound)
+    assert missing_result.verdict is SandboxVerdict.NOT_VERIFIED
+    assert "missing evidence: memory limit" in missing_result.reasons
+
+    over_policy = produce_generated_sandbox_evidence(
+        build=_build(),
+        preview=replace(_preview(), wall_clock_timeout_seconds=180),
+        policy=_policy(),
+    )
+    over_policy_result = evaluate_generated_sandbox(over_policy)
+    assert over_policy_result.verdict is SandboxVerdict.FAIL
+    assert "sandbox wall clock timeout exceeds canonical execution policy" in over_policy_result.reasons
 
 
 def test_build_observation_is_derived_from_incumbent_docker_runtime_evidence() -> None:
