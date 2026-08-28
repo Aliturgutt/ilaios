@@ -47,13 +47,7 @@ def _access(tmp_path: Path) -> tuple[IdentityBoundCommercialAccess, CommercialAc
     return IdentityBoundCommercialAccess(database, commercial), commercial, database
 
 
-def _event(
-    event_id: str,
-    event_type: str,
-    minute: int,
-    *,
-    billing_period_end: datetime | None = None,
-) -> VerifiedCommercialWebhookEvent:
+def _event(event_id: str, event_type: str, minute: int) -> VerifiedCommercialWebhookEvent:
     occurred_at = NOW + timedelta(minutes=minute)
     return VerifiedCommercialWebhookEvent(
         event_id=event_id,
@@ -62,7 +56,6 @@ def _event(
         occurred_at=occurred_at,
         payload_sha256=event_id.encode("utf-8").hex().ljust(64, "0")[:64],
         signature_timestamp=occurred_at,
-        billing_period_end=billing_period_end,
     )
 
 
@@ -90,7 +83,7 @@ def _bind_and_grant(
     )
 
 
-def test_active_provider_event_without_period_fails_before_state_mutation(tmp_path: Path) -> None:
+def test_active_provider_event_does_not_mint_entitlement(tmp_path: Path) -> None:
     access, commercial, _ = _access(tmp_path)
     access.create_provider_subscription_binding(
         provider_subscription_id="sub-provider-1",
@@ -99,119 +92,14 @@ def test_active_provider_event_without_period_fails_before_state_mutation(tmp_pa
         plan_id="pro",
         now=NOW,
     )
-
-    with pytest.raises(CommercialAccessError, match="billing period"):
-        access.reconcile_verified_provider_entitlement(
-            event=_event("evt-active", "subscription.activated", 1),
-            now=NOW + timedelta(minutes=1),
-        )
-
-    binding = commercial.get_provider_subscription_binding(
-        provider_subscription_id="sub-provider-1"
-    )
-    assert binding.state is ProviderSubscriptionState.PENDING
-    with pytest.raises(CommercialAccessError, match="does not exist"):
-        commercial.get_entitlement(tenant_id="tenant-1", user_id="user-1")
-
-
-def test_active_provider_event_grants_bounded_base_entitlement(tmp_path: Path) -> None:
-    access, commercial, _ = _access(tmp_path)
-    access.create_provider_subscription_binding(
-        provider_subscription_id="sub-provider-1",
-        tenant_id="tenant-1",
-        user_id="user-1",
-        plan_id="pro",
-        now=NOW,
-    )
-    period_end = NOW + timedelta(days=30)
 
     binding, entitlement = access.reconcile_verified_provider_entitlement(
-        event=_event(
-            "evt-active",
-            "subscription.activated",
-            1,
-            billing_period_end=period_end,
-        ),
+        event=_event("evt-active", "subscription.activated", 1),
         now=NOW + timedelta(minutes=1),
     )
 
     assert binding.state is ProviderSubscriptionState.ACTIVE
-    assert entitlement is not None
-    assert entitlement.state is EntitlementState.ACTIVE
-    assert entitlement.plan_id == "pro"
-    assert entitlement.valid_until == period_end
-    assert entitlement.paid_provider_allowed is False
-    assert commercial.require_access(
-        tenant_id="tenant-1",
-        user_id="user-1",
-        now=NOW + timedelta(days=1),
-    ) == entitlement
-    with pytest.raises(CommercialAccessError, match="does not authorize paid providers"):
-        commercial.require_access(
-            tenant_id="tenant-1",
-            user_id="user-1",
-            now=NOW + timedelta(days=1),
-            paid_provider=True,
-        )
-
-
-def test_positive_period_must_be_current_and_bounded(tmp_path: Path) -> None:
-    access, commercial, _ = _access(tmp_path)
-    access.create_provider_subscription_binding(
-        provider_subscription_id="sub-provider-1",
-        tenant_id="tenant-1",
-        user_id="user-1",
-        plan_id="pro",
-        now=NOW,
-    )
-    invalid_periods = (
-        NOW,
-        NOW + timedelta(days=401),
-    )
-    for index, period_end in enumerate(invalid_periods):
-        with pytest.raises(CommercialAccessError, match="billing period"):
-            access.reconcile_verified_provider_entitlement(
-                event=_event(
-                    f"evt-invalid-{index}",
-                    "subscription.activated",
-                    1,
-                    billing_period_end=period_end,
-                ),
-                now=NOW + timedelta(minutes=1),
-            )
-    binding = commercial.get_provider_subscription_binding(
-        provider_subscription_id="sub-provider-1"
-    )
-    assert binding.state is ProviderSubscriptionState.PENDING
-
-
-def test_positive_event_does_not_reactivate_disabled_identity(tmp_path: Path) -> None:
-    access, commercial, database = _access(tmp_path)
-    access.create_provider_subscription_binding(
-        provider_subscription_id="sub-provider-1",
-        tenant_id="tenant-1",
-        user_id="user-1",
-        plan_id="pro",
-        now=NOW,
-    )
-    with sqlite3.connect(database) as connection:
-        connection.execute("UPDATE identity_users SET enabled = 0 WHERE user_id = 'user-1'")
-
-    with pytest.raises(CommercialAccessError, match="membership is not active"):
-        access.reconcile_verified_provider_entitlement(
-            event=_event(
-                "evt-active",
-                "subscription.activated",
-                1,
-                billing_period_end=NOW + timedelta(days=30),
-            ),
-            now=NOW + timedelta(minutes=1),
-        )
-
-    binding = commercial.get_provider_subscription_binding(
-        provider_subscription_id="sub-provider-1"
-    )
-    assert binding.state is ProviderSubscriptionState.ACTIVE
+    assert entitlement is None
     with pytest.raises(CommercialAccessError, match="does not exist"):
         commercial.get_entitlement(tenant_id="tenant-1", user_id="user-1")
 
@@ -276,36 +164,6 @@ def test_reconciliation_replay_is_idempotent(tmp_path: Path) -> None:
     assert first is not None
     assert replayed == first
     assert replayed.version == 2
-
-
-def test_positive_reconciliation_replay_is_idempotent(tmp_path: Path) -> None:
-    access, _, _ = _access(tmp_path)
-    access.create_provider_subscription_binding(
-        provider_subscription_id="sub-provider-1",
-        tenant_id="tenant-1",
-        user_id="user-1",
-        plan_id="pro",
-        now=NOW,
-    )
-    event = _event(
-        "evt-active",
-        "subscription.activated",
-        1,
-        billing_period_end=NOW + timedelta(days=30),
-    )
-
-    _, first = access.reconcile_verified_provider_entitlement(
-        event=event,
-        now=NOW + timedelta(minutes=1),
-    )
-    _, replayed = access.reconcile_verified_provider_entitlement(
-        event=event,
-        now=NOW + timedelta(minutes=2),
-    )
-
-    assert first is not None
-    assert replayed == first
-    assert replayed.version == 1
 
 
 def test_unverified_object_cannot_mutate_entitlement(tmp_path: Path) -> None:
