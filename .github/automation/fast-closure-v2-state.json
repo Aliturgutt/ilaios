@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T07:27:00Z",
+  "updated_at": "2026-08-28T08:11:00Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "identity",
     "reserved_master_sha": "9c9fcec51b4620ef4fcf8d14210346dbaa80b42f",
     "candidate_pr": 1078,
-    "candidate_head_sha": "331c5241043c9c78d4be19c083aed6b8ac2f2d04",
+    "candidate_head_sha": "5aad5adab197bd7397d453cf4b7891990ae1221b",
     "freeze_active": true,
-    "freeze_reason": "Exact current master 9c9fcec51b4620ef4fcf8d14210346dbaa80b42f is repository-verified after Desktop #1077. Identity replays the reviewed trusted-grant positive entitlement projection as bounded PR #1078 because stale #1076 cannot reuse old-head PASS evidence. Preserve this single-writer window through fresh exact-head Required CI + SFFE, immediate live master/token/head/semantic-overlap reread, expected-head merge and exact-master verification."
+    "freeze_reason": "Exact current master 9c9fcec51b4620ef4fcf8d14210346dbaa80b42f is exact-master verified after Desktop #1077. Identity PR #1078 carries the bounded trusted-grant positive entitlement projection plus fail-closed grant-period lineage hardening. Preserve this single-writer window through completely fresh exact-head Required CI + SFFE, immediate live master/token/head/semantic-overlap reread, expected-head merge and exact-master verification."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -59,9 +59,9 @@
       "authoritative_issue": null,
       "active_pr": 1078,
       "base_sha": "9c9fcec51b4620ef4fcf8d14210346dbaa80b42f",
-      "head_sha": "331c5241043c9c78d4be19c083aed6b8ac2f2d04",
+      "head_sha": "5aad5adab197bd7397d453cf4b7891990ae1221b",
       "blocked_reason": null,
-      "next_action": "Run completely fresh Required CI + SFFE and applicable Identity/security/controller/DB gates on replay PR #1078 after this reservation refresh. Then reread live master/token/head/path+semantic overlap and merge only with expected-head protection if still exact-current. Require exact-master Required CI + SFFE before continuing Billing closure."
+      "next_action": "Run completely fresh Required CI + SFFE and applicable Identity/security/controller/DB gates on PR #1078 after grant-period lineage hardening. Then reread live master/token/head/path+semantic overlap and merge only with expected-head protection if still exact-current. Require exact-master Required CI + SFFE before continuing Billing closure."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -121,9 +121,9 @@
   },
   "metrics": {
     "master_advances": 38,
-    "stale_pass_invalidations": 28,
+    "stale_pass_invalidations": 29,
     "replay_resync_count": 8,
-    "ci_cycles": 26,
+    "ci_cycles": 27,
     "successful_merges": 39,
     "duplicate_pr_count": 3,
     "churn_only_commit_count": 0
