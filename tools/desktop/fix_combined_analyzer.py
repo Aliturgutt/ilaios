@@ -105,36 +105,36 @@ if not normalizer.is_file():
 subprocess.run([sys.executable, str(normalizer), str(root)], check=True)
 
 # Shared helper function must not be shadowed by a local variable of the same name.
-replace_once(
+replace_once_or_verify(
     "apps/desktop/lib/app/desktop_app.dart",
     "final referenceFactoryCount = referenceFactoryCount(objective);",
-    "final factoryCount = referenceFactoryCount(objective);",
+    "final referenceTargetCount = referenceFactoryCount(objective);",
 )
-replace_once(
+replace_once_or_verify(
     "apps/desktop/lib/app/desktop_app.dart",
     "if (hasReferences && referenceFactoryCount == 0)",
-    "if (hasReferences && factoryCount == 0)",
+    "if (hasReferences && referenceTargetCount == 0)",
 )
-replace_once(
+replace_once_or_verify(
     "apps/desktop/lib/app/desktop_app.dart",
     "if (hasReferences && referenceFactoryCount != 1)",
-    "if (hasReferences && factoryCount != 1)",
+    "if (hasReferences && referenceTargetCount != 1)",
 )
-replace_once(
+replace_once_or_verify(
     "apps/desktop/lib/app/desktop_app.dart",
     "if ((hasReferences && referenceFactoryCount == 1) || hasSourceVideo)",
-    "if ((hasReferences && factoryCount == 1) || hasSourceVideo)",
+    "if ((hasReferences && referenceTargetCount == 1) || hasSourceVideo)",
 )
 
 # The generated compact attachment callback contains one-line ifs. Brace those
 # exact anchors first, then safely brace remaining simple statement ifs in the
 # existing Create view so flutter_lints remains clean after line shifts.
-replace_once(
+replace_once_or_verify(
     "apps/desktop/lib/features/create/create_view.dart",
     "if (scope.target != target) scope.onTargetChanged(target);",
     "if (scope.target != target) {\n                  scope.onTargetChanged(target);\n                }",
 )
-replace_once(
+replace_once_or_verify(
     "apps/desktop/lib/features/create/create_view.dart",
     "if (!scope.open) scope.onToggle();",
     "if (!scope.open) {\n                  scope.onToggle();\n                }",
