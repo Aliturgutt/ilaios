@@ -108,6 +108,7 @@ def test_observer_rejects_missing_csp_and_insecure_policy() -> None:
     insecure = ExecutionPolicy(
         allowed_roots=frozenset({"generated-web"}),
         timeout_seconds=120,
+        secure_mode=False,
         network_allowed=True,
     )
     with pytest.raises(SoftwareFactoryError, match="secure governed policy"):
