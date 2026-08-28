@@ -1,9 +1,9 @@
 """Provider-neutral signed webhook verification for commercial lifecycle events.
 
 This boundary authenticates external commercial subscription events, but it does not
-mint entitlement or select an ILAIOS user/tenant. A later server-side subscription
-binding must map the verified provider subscription identifier to canonical
-commercial access before ``CommercialAccessStore`` may be mutated.
+select an ILAIOS user/tenant. Canonical account/plan authority remains the server-side
+provider-subscription binding. Positive subscription events may carry only bounded,
+signed billing-period validity used by that existing binding to project entitlement.
 """
 
 from __future__ import annotations
@@ -19,10 +19,11 @@ from services.commercial_access import CommercialAccessError
 
 _MAX_WEBHOOK_BODY_BYTES = 64 * 1024
 _DEFAULT_MAX_SIGNATURE_AGE_SECONDS = 300
+MAX_COMMERCIAL_BILLING_PERIOD_SECONDS = 400 * 24 * 60 * 60
+_POSITIVE_EVENT_TYPES = frozenset({"subscription.activated", "subscription.renewed"})
 _ALLOWED_EVENT_TYPES = frozenset(
     {
-        "subscription.activated",
-        "subscription.renewed",
+        *_POSITIVE_EVENT_TYPES,
         "subscription.suspended",
         "subscription.cancelled",
         "payment.failed",
@@ -32,6 +33,7 @@ _ALLOWED_EVENT_TYPES = frozenset(
 _REQUIRED_PAYLOAD_KEYS = frozenset(
     {"event_id", "event_type", "provider_subscription_id", "occurred_at"}
 )
+_OPTIONAL_PAYLOAD_KEYS = frozenset({"billing_period_end"})
 
 
 @dataclass(frozen=True, slots=True)
@@ -44,6 +46,7 @@ class VerifiedCommercialWebhookEvent:
     occurred_at: datetime
     payload_sha256: str
     signature_timestamp: datetime
+    billing_period_end: datetime | None = None
 
 
 class CommercialWebhookVerifier:
@@ -108,7 +111,12 @@ class CommercialWebhookVerifier:
         if event_type not in _ALLOWED_EVENT_TYPES:
             raise CommercialAccessError("commercial webhook event type is unsupported")
         provider_subscription_id = _required_text(payload, "provider_subscription_id")
-        occurred_at = _parse_event_time(_required_text(payload, "occurred_at"))
+        occurred_at = _parse_event_time("occurred_at", _required_text(payload, "occurred_at"))
+        billing_period_end = _billing_period_end(
+            payload=payload,
+            event_type=event_type,
+            occurred_at=occurred_at,
+        )
 
         return VerifiedCommercialWebhookEvent(
             event_id=event_id,
@@ -117,6 +125,7 @@ class CommercialWebhookVerifier:
             occurred_at=occurred_at,
             payload_sha256=hashlib.sha256(raw_body).hexdigest(),
             signature_timestamp=signature_time,
+            billing_period_end=billing_period_end,
         )
 
 
@@ -155,7 +164,10 @@ def _parse_payload(raw_body: bytes) -> dict[str, object]:
         raise CommercialAccessError("commercial webhook payload is malformed") from error
     if not isinstance(payload, dict):
         raise CommercialAccessError("commercial webhook payload must be an object")
-    if set(payload) != _REQUIRED_PAYLOAD_KEYS:
+    keys = set(payload)
+    if not _REQUIRED_PAYLOAD_KEYS.issubset(keys) or not keys.issubset(
+        _REQUIRED_PAYLOAD_KEYS | _OPTIONAL_PAYLOAD_KEYS
+    ):
         raise CommercialAccessError("commercial webhook payload fields are invalid")
     return payload
 
@@ -169,12 +181,39 @@ def _required_text(payload: dict[str, object], name: str) -> str:
     return value
 
 
-def _parse_event_time(value: str) -> datetime:
+def _billing_period_end(
+    *,
+    payload: dict[str, object],
+    event_type: str,
+    occurred_at: datetime,
+) -> datetime | None:
+    has_period = "billing_period_end" in payload
+    if event_type not in _POSITIVE_EVENT_TYPES:
+        if has_period:
+            raise CommercialAccessError(
+                "commercial webhook billing_period_end is not allowed for this event type"
+            )
+        return None
+    if not has_period:
+        raise CommercialAccessError(
+            "commercial webhook billing_period_end is required for positive subscription events"
+        )
+    period_end = _parse_event_time(
+        "billing_period_end",
+        _required_text(payload, "billing_period_end"),
+    )
+    period_seconds = (period_end - occurred_at).total_seconds()
+    if period_seconds <= 0 or period_seconds > MAX_COMMERCIAL_BILLING_PERIOD_SECONDS:
+        raise CommercialAccessError("commercial webhook billing period is outside policy")
+    return period_end
+
+
+def _parse_event_time(name: str, value: str) -> datetime:
     try:
         parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError as error:
-        raise CommercialAccessError("commercial webhook occurred_at is invalid") from error
-    _require_aware_time("occurred_at", parsed)
+        raise CommercialAccessError(f"commercial webhook {name} is invalid") from error
+    _require_aware_time(name, parsed)
     return parsed
 
 
@@ -183,4 +222,8 @@ def _require_aware_time(name: str, value: datetime) -> None:
         raise CommercialAccessError(f"commercial webhook {name} must be timezone-aware")
 
 
-__all__ = ["CommercialWebhookVerifier", "VerifiedCommercialWebhookEvent"]
+__all__ = [
+    "CommercialWebhookVerifier",
+    "MAX_COMMERCIAL_BILLING_PERIOD_SECONDS",
+    "VerifiedCommercialWebhookEvent",
+]

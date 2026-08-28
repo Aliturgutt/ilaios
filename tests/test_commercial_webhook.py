@@ -13,6 +13,7 @@ from services.commercial_webhook import CommercialWebhookVerifier
 
 _SECRET = b"s" * 32
 _NOW = datetime(2026, 8, 27, 0, 20, tzinfo=timezone.utc)
+_POSITIVE_EVENTS = frozenset({"subscription.activated", "subscription.renewed"})
 
 
 def _body(**overrides: object) -> bytes:
@@ -23,6 +24,8 @@ def _body(**overrides: object) -> bytes:
         "occurred_at": "2026-08-27T00:19:00+00:00",
     }
     payload.update(overrides)
+    if payload.get("event_type") in _POSITIVE_EVENTS and "billing_period_end" not in payload:
+        payload["billing_period_end"] = "2026-09-27T00:19:00+00:00"
     return json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
@@ -47,6 +50,7 @@ def test_verified_event_exposes_provider_identity_only() -> None:
     assert verified.event_id == "evt-sub-1"
     assert verified.event_type == "subscription.activated"
     assert verified.provider_subscription_id == "sub-provider-1"
+    assert verified.billing_period_end == datetime(2026, 9, 27, 0, 19, tzinfo=timezone.utc)
     assert verified.payload_sha256 == hashlib.sha256(body).hexdigest()
     assert verified.signature_timestamp == _NOW
 
@@ -102,6 +106,45 @@ def test_payload_cannot_smuggle_canonical_account_authority() -> None:
     body = _body(user_id="user-attacker")
 
     with pytest.raises(CommercialAccessError, match="payload fields are invalid"):
+        CommercialWebhookVerifier(_SECRET).verify(
+            raw_body=body,
+            signature_header=_signature(body),
+            now=_NOW,
+        )
+
+
+def test_positive_events_require_bounded_signed_billing_period() -> None:
+    missing_period = json.dumps(
+        {
+            "event_id": "evt-missing-period",
+            "event_type": "subscription.activated",
+            "provider_subscription_id": "sub-provider-1",
+            "occurred_at": "2026-08-27T00:19:00+00:00",
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    invalid_periods = (
+        missing_period,
+        _body(billing_period_end="2026-08-27T00:18:00+00:00"),
+        _body(billing_period_end="2028-01-01T00:19:00+00:00"),
+    )
+    for body in invalid_periods:
+        with pytest.raises(CommercialAccessError, match="billing"):
+            CommercialWebhookVerifier(_SECRET).verify(
+                raw_body=body,
+                signature_header=_signature(body),
+                now=_NOW,
+            )
+
+
+def test_negative_event_rejects_positive_billing_period_authority() -> None:
+    body = _body(
+        event_type="payment.failed",
+        billing_period_end="2026-09-27T00:19:00+00:00",
+    )
+
+    with pytest.raises(CommercialAccessError, match="not allowed"):
         CommercialWebhookVerifier(_SECRET).verify(
             raw_body=body,
             signature_header=_signature(body),
@@ -165,6 +208,7 @@ def test_verifier_does_not_mutate_entitlement_or_accept_account_mapping() -> Non
     )
 
     assert verified.event_type == "payment.failed"
+    assert verified.billing_period_end is None
     assert not hasattr(verified, "tenant_id")
     assert not hasattr(verified, "user_id")
     assert not hasattr(verified, "plan_id")
