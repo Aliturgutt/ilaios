@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T05:11:00Z",
+  "updated_at": "2026-08-28T06:12:00Z",
   "merge_token": {
-    "state": "RESERVED",
-    "owner": "identity",
-    "reserved_master_sha": "bde6cd7f9812406a90746b577dc4e48de1203c45",
-    "candidate_pr": 1073,
-    "candidate_head_sha": "45eeaa55fa07ea289a0d044cea9b58f5e316e1f9",
-    "freeze_active": true,
-    "freeze_reason": "#1071 remediation is exact-master verified on bde6cd7f with Required CI and SFFE PASS. Identity retains the legal single-writer window for bounded trusted server-side grant policy PR #1073. Preserve freeze through fresh exact-head gates after this state refresh, live master/token/head/overlap reread, expected-head merge, and exact-master validation."
+    "state": "RELEASED",
+    "owner": null,
+    "reserved_master_sha": null,
+    "candidate_pr": null,
+    "candidate_head_sha": null,
+    "freeze_active": false,
+    "freeze_reason": "Identity trusted server-side grant policy PR #1073 reached exact-master safe checkpoint on 447034919ce9fe6480d88dad69ca43a43ab95197. Required CI Gate run 33144623136 and Software Factory Final Evidence run 33144622984 are SUCCESS on that exact SHA. Positive activation/renewal projection, production checkout/provider activation and real production E2E remain separate later evidence; do not retain the repository merge token without a new dependency-ready exact-current candidate."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,14 +54,14 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": 1073,
-      "base_sha": "bde6cd7f9812406a90746b577dc4e48de1203c45",
-      "head_sha": "45eeaa55fa07ea289a0d044cea9b58f5e316e1f9",
+      "active_pr": null,
+      "base_sha": "447034919ce9fe6480d88dad69ca43a43ab95197",
+      "head_sha": "447034919ce9fe6480d88dad69ca43a43ab95197",
       "blocked_reason": null,
-      "next_action": "Run completely fresh Required CI + SFFE and applicable DB/security/controller gates after this state refresh on PR #1073. Then reread live master/token/head/overlap and merge only with expected-head protection if still exact-current. Require exact-master Required CI + SFFE before any positive activation/renewal projection."
+      "next_action": "Trusted server-owned grant authority from #1073 is exact-master verified on 447034919ce9fe6480d88dad69ca43a43ab95197. Next bounded Identity/Billing slice may project positive activation/renewal only from this trusted grant authority while preserving server-owned tenant/user/plan, fail-closed identity checks and paid-provider authorization separation. Production checkout/provider activation and real production E2E remain HUMAN/EXTERNAL where applicable."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 35,
-    "stale_pass_invalidations": 26,
+    "master_advances": 36,
+    "stale_pass_invalidations": 27,
     "replay_resync_count": 7,
-    "ci_cycles": 25,
-    "successful_merges": 36,
+    "ci_cycles": 26,
+    "successful_merges": 37,
     "duplicate_pr_count": 3,
     "churn_only_commit_count": 0
   }
