@@ -143,11 +143,42 @@ jobs:
           $evidence | Add-Member -NotePropertyName publisher_display_name -NotePropertyValue $env:STORE_PUBLISHER_DISPLAY_NAME -Force
           $evidence | Add-Member -NotePropertyName package_family_name -NotePropertyValue $env:STORE_PACKAGE_FAMILY_NAME -Force
           $evidence | Add-Member -NotePropertyName store_id -NotePropertyValue $env:STORE_ID -Force
+          $evidence | Add-Member -NotePropertyName submission_authority -NotePropertyValue 'human.owner via Partner Center' -Force
+          $evidence | Add-Member -NotePropertyName submission_state -NotePropertyValue 'BLOCKED_EXTERNAL' -Force
+          $evidence | Add-Member -NotePropertyName publication_state -NotePropertyValue 'BLOCKED_EXTERNAL' -Force
+          $evidence | Add-Member -NotePropertyName lifecycle_acceptance -NotePropertyValue ([ordered]@{
+            store_install = 'BLOCKED_EXTERNAL'
+            update = 'BLOCKED_EXTERNAL'
+            rollback = 'BLOCKED_EXTERNAL'
+            uninstall = 'BLOCKED_EXTERNAL'
+            human_device_acceptance_required = $true
+          }) -Force
           $evidence | ConvertTo-Json -Depth 6 | Set-Content -Path $path -Encoding utf8
           Get-Content $path
 
+      - name: Validate Store lifecycle acceptance boundary
+        working-directory: apps/desktop
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $path = 'build\msix\store-release-evidence.json'
+          $evidence = Get-Content $path -Raw | ConvertFrom-Json
+          if ($evidence.source_sha -ne $env:EXPECTED_MASTER_SHA) { throw 'Store source SHA evidence drifted.' }
+          if ($evidence.submission_authority -ne 'human.owner via Partner Center') { throw 'Store submission authority drifted.' }
+          if ($evidence.submission_state -ne 'BLOCKED_EXTERNAL') { throw 'Store submission must remain externally blocked before human action.' }
+          if ($evidence.publication_state -ne 'BLOCKED_EXTERNAL') { throw 'Store publication must remain externally blocked before Microsoft certification.' }
+          foreach ($field in @('store_install', 'update', 'rollback', 'uninstall')) {
+            if ($evidence.lifecycle_acceptance.$field -ne 'BLOCKED_EXTERNAL') {
+              throw "Store lifecycle acceptance field '$field' must remain BLOCKED_EXTERNAL before real Store/device evidence."
+            }
+          }
+          if ($evidence.lifecycle_acceptance.human_device_acceptance_required -ne $true) {
+            throw 'Store lifecycle contract must require genuine human/device acceptance.'
+          }
+          Write-Host 'ILAIOS_DESKTOP_STORE_LIFECYCLE_CONTRACT=PASS'
+
       - name: Upload Store release candidate
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ilaios-desktop-store-rc-${{ inputs.version }}-${{ inputs.expected_master_sha }}
           path: |
