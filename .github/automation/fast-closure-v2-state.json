@@ -1,13 +1,13 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T00:13:51Z",
+  "updated_at": "2026-08-28T01:09:59Z",
   "merge_token": {
-    "state": "RELEASED",
-    "owner": null,
-    "reserved_master_sha": "cc11ab0dbcb9c497fe9f8dedea659ec8e46377b8",
+    "state": "RESERVED",
+    "owner": "identity",
+    "reserved_master_sha": "230200d627deb80416206fbbdc7d2ad8e3db4457",
     "candidate_pr": null,
-    "candidate_head_sha": "cc11ab0dbcb9c497fe9f8dedea659ec8e46377b8",
+    "candidate_head_sha": "230200d627deb80416206fbbdc7d2ad8e3db4457",
     "freeze_active": false,
     "freeze_reason": null
   },
@@ -54,14 +54,14 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "TOKEN_WAIT",
       "priority_rank": 4,
       "authoritative_issue": null,
       "active_pr": null,
-      "base_sha": "9a39c5cbf12431710a7bfa8f26b91d13441c7fbc",
-      "head_sha": "9a39c5cbf12431710a7bfa8f26b91d13441c7fbc",
+      "base_sha": "230200d627deb80416206fbbdc7d2ad8e3db4457",
+      "head_sha": "230200d627deb80416206fbbdc7d2ad8e3db4457",
       "blocked_reason": null,
-      "next_action": "Continue only a dependency-ready exact-current Production Identity/Billing/Entitlement slice. External Google Console ownership/verification and real payment-provider activation remain HUMAN/EXTERNAL; do not reserve the token without a concrete bounded candidate."
+      "next_action": "On this bounded Identity/Billing token, extend the incumbent signed commercial webhook with server-authoritative billing-period evidence for positive subscription lifecycle events, then project ACTIVE entitlement only through the existing CommercialAccessStore and canonical Identity binding. No payment-provider activation or spend."
     },
     "web_app": {
       "scheduler": "web_app",
