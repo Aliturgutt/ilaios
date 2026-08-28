@@ -387,6 +387,34 @@ class CommercialAccessStore:
             raise CommercialAccessError("trusted commercial grant does not exist")
         return _trusted_grant_from_row(row)
 
+    def resolve_trusted_grant(
+        self, *, provider_subscription_id: str, now: datetime
+    ) -> TrustedCommercialGrant:
+        """Resolve exactly one current server-owned grant for a trusted subscription.
+
+        The positive projection caller cannot select a grant ID, billing period, plan,
+        or paid-provider policy. Multiple overlapping current grants are ambiguous and
+        therefore fail closed instead of allowing caller-controlled policy selection.
+        """
+
+        _require_text("provider_subscription_id", provider_subscription_id)
+        _require_time("now", now)
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT * FROM commercial_trusted_grants WHERE provider_subscription_id = ?",
+                (provider_subscription_id,),
+            ).fetchall()
+        matches = [
+            grant
+            for grant in (_trusted_grant_from_row(row) for row in rows)
+            if grant.period_start <= now < grant.period_end
+        ]
+        if not matches:
+            raise CommercialAccessError("current trusted commercial grant does not exist")
+        if len(matches) != 1:
+            raise CommercialAccessError("current trusted commercial grant is ambiguous")
+        return matches[0]
+
     def apply_verified_provider_event(
         self, *, event: object, now: datetime
     ) -> ProviderSubscriptionBinding:
