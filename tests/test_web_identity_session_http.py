@@ -6,6 +6,7 @@ import pytest
 
 from services.identity import (
     AuthenticationBoundary,
+    IdentityError,
     IdentityKind,
     IdentityPolicy,
     Principal,
@@ -189,7 +190,7 @@ def test_cross_principal_session_substitution_fails_closed() -> None:
     )
     sessions.issue(_SESSION, attacker, _NOW, timedelta(minutes=30))
 
-    with pytest.raises(Exception, match="session principal"):
+    with pytest.raises(IdentityError, match="session principal"):
         _boundary().authenticate_and_bind(
             authentication=authentication,
             sessions=sessions,
