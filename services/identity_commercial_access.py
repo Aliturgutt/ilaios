@@ -20,10 +20,7 @@ from services.commercial_access import (
     ProviderSubscriptionBinding,
     ProviderSubscriptionState,
 )
-from services.commercial_webhook import (
-    MAX_COMMERCIAL_BILLING_PERIOD_SECONDS,
-    VerifiedCommercialWebhookEvent,
-)
+from services.commercial_webhook import VerifiedCommercialWebhookEvent
 from services.control_plane.migrations import migrate_database
 from src.video_automation.managed_credits import (
     CreditAuthorizationOutcome,
@@ -31,8 +28,6 @@ from src.video_automation.managed_credits import (
     ManagedCreditAccount,
     ProviderCostQuote,
 )
-
-_POSITIVE_PROVIDER_EVENTS = frozenset({"subscription.activated", "subscription.renewed"})
 
 
 class IdentityBoundCommercialAccess:
@@ -81,40 +76,21 @@ class IdentityBoundCommercialAccess:
     def reconcile_verified_provider_entitlement(
         self, *, event: object, now: datetime
     ) -> tuple[ProviderSubscriptionBinding, CommercialEntitlement | None]:
-        """Project verified provider lifecycle state through existing entitlement authority.
+        """Project verified negative provider lifecycle state into entitlement denial.
 
-        Positive activation/renewal may grant base commercial access only when the
-        signed provider event carries a bounded billing-period end and the canonical
-        Identity membership is still active. The provider never selects user, tenant,
-        or plan; those coordinates come only from the existing server-owned
-        subscription binding. Positive provider events deliberately do *not* authorize
-        paid-provider spend: that remains a separate server-owned plan/quota policy.
-
-        Negative lifecycle events may only reduce access and remain recordable even if
-        the canonical identity later becomes inactive.
+        Activation/renewal intentionally does not mint access because the current
+        verified provider event contract does not carry server-authoritative billing
+        period validity or checkout grant evidence. Suspension, failed-payment,
+        cancellation, and refund may only reduce access, so they are projected
+        fail-closed through the incumbent ``CommercialAccessStore`` authority even
+        if the canonical identity later becomes inactive.
         """
 
         if not isinstance(event, VerifiedCommercialWebhookEvent):
             raise CommercialAccessError("provider event must be cryptographically verified")
-        if event.event_type in _POSITIVE_PROVIDER_EVENTS:
-            _require_positive_billing_period(event=event, now=now)
-
         binding = self._commercial.apply_verified_provider_event(event=event, now=now)
         if binding.state is ProviderSubscriptionState.ACTIVE:
-            if event.billing_period_end is None:
-                raise CommercialAccessError("positive provider event lacks billing period evidence")
-            self._require_active_identity(tenant_id=binding.tenant_id, user_id=binding.user_id)
-            entitlement = self._commercial.apply_entitlement(
-                event_id=f"provider-entitlement:{event.event_id}",
-                tenant_id=binding.tenant_id,
-                user_id=binding.user_id,
-                plan_id=binding.plan_id,
-                state=EntitlementState.ACTIVE,
-                valid_until=event.billing_period_end,
-                paid_provider_allowed=False,
-                now=now,
-            )
-            return binding, entitlement
+            return binding, None
         if binding.state is ProviderSubscriptionState.SUSPENDED:
             entitlement_state = EntitlementState.SUSPENDED
         elif binding.state is ProviderSubscriptionState.CANCELLED:
@@ -243,22 +219,3 @@ class IdentityBoundCommercialAccess:
             raise CommercialAccessError("canonical identity membership does not exist")
         if not bool(row[0]) or row[1] != "ACTIVE" or row[2] != "ACTIVE":
             raise CommercialAccessError("canonical identity membership is not active")
-
-
-def _require_positive_billing_period(
-    *, event: VerifiedCommercialWebhookEvent, now: datetime
-) -> None:
-    if now.tzinfo is None:
-        raise CommercialAccessError("commercial reconciliation now must be timezone-aware")
-    if event.occurred_at.tzinfo is None:
-        raise CommercialAccessError("positive provider event occurred_at must be timezone-aware")
-    period_end = event.billing_period_end
-    if period_end is None or period_end.tzinfo is None:
-        raise CommercialAccessError("positive provider event lacks billing period evidence")
-    if event.occurred_at > now:
-        raise CommercialAccessError("positive provider event occurred_at cannot be in the future")
-    period_seconds = (period_end - event.occurred_at).total_seconds()
-    if period_seconds <= 0 or period_seconds > MAX_COMMERCIAL_BILLING_PERIOD_SECONDS:
-        raise CommercialAccessError("positive provider billing period is outside policy")
-    if period_end <= now:
-        raise CommercialAccessError("positive provider billing period is already expired")
