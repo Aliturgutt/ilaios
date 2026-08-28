@@ -7,8 +7,11 @@ import pytest
 from services.store_ready_guard import promote_store_ready
 from services.store_release_certification import (
     CertificationEvidence,
+    Monetization,
     PolicyRule,
+    PolicySnapshot,
     StoreCertificationError,
+    SubmissionProfile,
     build_artifact_identity,
     build_policy_snapshot,
     build_submission_profile,
@@ -18,7 +21,7 @@ _SHA256 = "a" * 64
 _SOURCE_SHA = "b" * 40
 
 
-def _profile(*, monetization: str = "free"):
+def _profile(*, monetization: Monetization = "free") -> SubmissionProfile:
     return build_submission_profile(
         app_id="com.ilaios.mobile",
         platform="android",
@@ -31,7 +34,7 @@ def _profile(*, monetization: str = "free"):
     )
 
 
-def _snapshot(*, blocking: bool = False):
+def _snapshot(*, blocking: bool = False) -> PolicySnapshot:
     rule = PolicyRule(
         rule_id="PLAY-READY-001",
         store="google-play",
