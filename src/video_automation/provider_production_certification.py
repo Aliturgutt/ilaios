@@ -355,6 +355,13 @@ def run_certification(
         "started_at": _utc_now(),
     }
     _persist(receipt_path, receipt)
+    if run_attempt != "1":
+        _fail(
+            receipt_path,
+            receipt,
+            "BLOCKED_REPEAT_PAID_ATTEMPT",
+            "paid Video certification re-runs are forbidden; use a new exact revision after review.",
+        )
     if not api_key or not api_key.strip():
         _fail(
             receipt_path,
