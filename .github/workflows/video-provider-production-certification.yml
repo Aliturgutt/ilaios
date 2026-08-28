@@ -6,16 +6,22 @@ on:
       proof_mode:
         description: Video provider certification path
         required: true
-        default: managed-bounded
+        default: free-only
         type: choice
         options:
           - managed-bounded
           - desktop-managed-bounded
           - desktop-one-prompt
           - free-only
+      authorize_paid:
+        description: Explicitly authorize one paid Video certification for this exact SHA
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: video-provider-production-certification-${{ github.ref }}
@@ -119,6 +125,45 @@ jobs:
             "") echo "desktop-managed-bounded model is empty" >&2; exit 1 ;;
             *) ;;
           esac
+
+      - name: Enforce one paid Video certification per exact SHA
+        if: ${{ inputs.proof_mode == 'managed-bounded' || inputs.proof_mode == 'desktop-managed-bounded' }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if [[ "${{ inputs.authorize_paid }}" != "true" ]]; then
+            echo "Paid Video certification requires explicit authorize_paid=true." >&2
+            exit 1
+          fi
+          if [[ "$GITHUB_RUN_ATTEMPT" != "1" ]]; then
+            echo "Paid Video certification re-runs are forbidden; use a new exact SHA after review." >&2
+            exit 1
+          fi
+          lock_name="video-paid-certification-spend-lock-${GITHUB_SHA}"
+          existing="$(gh api --method GET "repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${lock_name}" --jq '.total_count')"
+          if [[ "${existing}" != "0" ]]; then
+            echo "Paid Video certification is already spend-locked for exact SHA ${GITHUB_SHA}." >&2
+            exit 1
+          fi
+
+      - name: Seal paid Video spend lock before provider dispatch
+        if: ${{ (inputs.proof_mode == 'managed-bounded' || inputs.proof_mode == 'desktop-managed-bounded') && inputs.authorize_paid }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/video-paid-spend-lock
+          printf '{"revision_sha":"%s","run_id":"%s","run_attempt":"%s","max_total_cost_usd":"1.00","retry_allowed":false}\n'             "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"             > artifacts/video-paid-spend-lock/lock.json
+
+      - name: Persist immutable paid Video spend lock
+        if: ${{ (inputs.proof_mode == 'managed-bounded' || inputs.proof_mode == 'desktop-managed-bounded') && inputs.authorize_paid }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: video-paid-certification-spend-lock-${{ github.sha }}
+          path: artifacts/video-paid-spend-lock/lock.json
+          if-no-files-found: error
+          retention-days: 90
 
       - name: Run real provider-backed Desktop verified-free finished-product E2E
         if: ${{ inputs.proof_mode == 'desktop-one-prompt' }}
