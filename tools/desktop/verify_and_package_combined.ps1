@@ -51,7 +51,6 @@ finally {
 Run-Native 'Git diff whitespace check' { git -C $repoRoot diff --check }
 
 $expected = @(
-  'apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart',
   'apps/desktop/lib/features/deliveries/deliveries_view.dart',
   'apps/desktop/lib/app/desktop_app.dart',
   'apps/desktop/lib/features/create/create_view.dart',
