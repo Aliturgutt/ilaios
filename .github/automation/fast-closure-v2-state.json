@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-28T17:15:00Z",
+  "updated_at": "2026-08-28T17:26:00Z",
   "merge_token": {
     "state": "RESERVED",
     "owner": "web_app",
@@ -9,7 +9,7 @@
     "candidate_pr": 1096,
     "candidate_head_sha": "1026bc993c442b3f950df0dda36556d225868fc0",
     "freeze_active": true,
-    "freeze_reason": "Reserve the single-writer merge window for bounded Web App PR #1096 after repairing its deterministic insecure-policy regression test. The reviewed functional head before this state-only reservation is 1026bc993c442b3f950df0dda36556d225868fc0; this reservation commit advances the PR head, so merge authority MUST use a fresh live PR-head reread plus completely fresh exact-head Web App Continuation, Required CI, and SFFE on the post-reservation head. No preview-runtime, production deployment, provider, device, payment, or Store evidence is claimed."
+    "freeze_reason": "Reserve the single-writer merge window for bounded Web App PR #1096 after repairing its deterministic insecure-policy regression test. The reviewed functional head before state-only reservation is 1026bc993c442b3f950df0dda36556d225868fc0. Fresh Required CI on the first reserved head proved the product/test repair clean except for this state lifecycle invariant; web_app is therefore PRE_MERGE_VALIDATION while the token remains RESERVED. Merge authority MUST use a fresh live post-fix PR-head reread plus completely fresh exact-head Web App Continuation, Required CI, and SFFE. No preview-runtime, production deployment, provider, device, payment, or Store evidence is claimed."
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -49,8 +49,8 @@
       "active_pr": null,
       "base_sha": "d6acdfdbd06064c19a148588341689965a229b57",
       "head_sha": "d6acdfdbd06064c19a148588341689965a229b57",
-      "blocked_reason": "Current master Vercel status is rate-limited/failing for exact production attribution; source CI cannot close Website V2.",
-      "next_action": "Complete exact production /api/release attribution plus live ilaios.com/www EN/TR Dark/Light responsive/accessibility/SEO/network/overflow/visual acceptance after a fresh exact-current production deployment."
+      "blocked_reason": "Current master has a successful Vercel deployment status, but exact production /api/release attribution plus live ilaios.com/www browser acceptance remain unverified; source or deploy status alone cannot close Website V2.",
+      "next_action": "Complete exact production /api/release attribution plus live ilaios.com/www EN/TR Dark/Light responsive/accessibility/SEO/network/overflow/visual acceptance against exact current production deployment."
     },
     "identity": {
       "scheduler": "identity",
@@ -65,14 +65,14 @@
     },
     "web_app": {
       "scheduler": "web_app",
-      "lifecycle": "DEVELOPING",
+      "lifecycle": "PRE_MERGE_VALIDATION",
       "priority_rank": 5,
       "authoritative_issue": 486,
       "active_pr": 1096,
       "base_sha": "477650952f86c8cf1715f56d885e8e5f3b055dc3",
       "head_sha": "1026bc993c442b3f950df0dda36556d225868fc0",
       "blocked_reason": null,
-      "next_action": "PR #1096 binds trusted-host preview runtime/HTTP observations into the incumbent GeneratedPreviewSandboxObservation contract without adding runtime/policy/deployment authority. Its deterministic test failure was repaired without weakening canonical secure ExecutionPolicy. Re-read the post-reservation PR head and require fresh exact-head Web App Factory Continuation, Required CI, and SFFE before expected-head merge. Real preview runtime emission, governed origin/DNS/egress, privileged secret/session isolation, publish separation and app.ilaios.com production E2E remain unverified."
+      "next_action": "PR #1096 binds trusted-host preview runtime/HTTP observations into the incumbent GeneratedPreviewSandboxObservation contract without adding runtime/policy/deployment authority. Its deterministic insecure-policy regression test is repaired without weakening canonical secure ExecutionPolicy. First reserved-head Required CI passed 2918 tests and exposed only this state lifecycle invariant, now corrected to PRE_MERGE_VALIDATION. Re-read the new post-fix PR head and require fresh exact-head Web App Factory Continuation, Required CI, and SFFE before expected-head merge. Real preview runtime emission, governed origin/DNS/egress, privileged secret/session isolation, publish separation and app.ilaios.com production E2E remain unverified."
     },
     "agents": {
       "scheduler": "agents",
@@ -121,9 +121,9 @@
   },
   "metrics": {
     "master_advances": 41,
-    "stale_pass_invalidations": 32,
+    "stale_pass_invalidations": 33,
     "replay_resync_count": 8,
-    "ci_cycles": 29,
+    "ci_cycles": 30,
     "successful_merges": 42,
     "duplicate_pr_count": 3,
     "churn_only_commit_count": 0
