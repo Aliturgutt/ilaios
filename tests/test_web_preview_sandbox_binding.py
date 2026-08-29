@@ -230,19 +230,28 @@ def test_rejects_cross_deployment_isolation_attestation_before_network() -> None
     assert transport.calls == []
 
 
-@pytest.mark.parametrize(
-    ("field", "value", "message"),
-    [
-        ("provider", "other.provider", "isolation provider does not match"),
-        ("source_commit_sha", "d" * 40, "isolation source commit does not match"),
-        ("artifact_sha256", "d" * 64, "isolation artifact does not match"),
-        ("preview_origin", "https://other-preview.example.net", "isolation origin does not match"),
-    ],
-)
-def test_rejects_cross_lineage_isolation_attestation(field: str, value: str, message: str) -> None:
-    attestation = replace(_attestation(), **{field: value})
-    with pytest.raises(WebDeploymentError, match=message):
-        bind_isolation_attestation_to_receipt(receipt=_receipt(), attestation=attestation)
+def test_rejects_cross_lineage_isolation_attestations() -> None:
+    cases = (
+        (
+            replace(_attestation(), provider="other.provider"),
+            "isolation provider does not match",
+        ),
+        (
+            replace(_attestation(), source_commit_sha="d" * 40),
+            "isolation source commit does not match",
+        ),
+        (
+            replace(_attestation(), artifact_sha256="d" * 64),
+            "isolation artifact does not match",
+        ),
+        (
+            replace(_attestation(), preview_origin="https://other-preview.example.net"),
+            "isolation origin does not match",
+        ),
+    )
+    for attestation, message in cases:
+        with pytest.raises(WebDeploymentError, match=message):
+            bind_isolation_attestation_to_receipt(receipt=_receipt(), attestation=attestation)
 
 
 def test_rejects_noncanonical_isolation_attestation_contract() -> None:
