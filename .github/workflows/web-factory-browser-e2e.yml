@@ -7,6 +7,11 @@ on:
       - 'services/execution_adapters.py'
       - 'services/execution_coordinator.py'
       - 'services/design_quality.py'
+      - 'services/web_factory_skills.py'
+      - 'tools/web-factory/skills/**'
+      - 'tests/test_web_factory_native_skills.py'
+      - 'tests/test_design_quality.py'
+      - 'tests/test_web_motion_runtime.py'
       - 'services/integrations/web_factory.py'
       - 'services/integrations/web_product_runtime.py'
       - 'services/integrations/web_product_runtime_recovery.py'
@@ -24,6 +29,11 @@ on:
       - 'services/execution_adapters.py'
       - 'services/execution_coordinator.py'
       - 'services/design_quality.py'
+      - 'services/web_factory_skills.py'
+      - 'tools/web-factory/skills/**'
+      - 'tests/test_web_factory_native_skills.py'
+      - 'tests/test_design_quality.py'
+      - 'tests/test_web_motion_runtime.py'
       - 'services/integrations/web_factory.py'
       - 'services/integrations/web_product_runtime.py'
       - 'services/integrations/web_product_runtime_recovery.py'
@@ -81,6 +91,9 @@ jobs:
           PYTHONPATH: ${{ github.workspace }}
         run: |
           python -m pytest -q \
+            tests/test_web_factory_native_skills.py \
+            tests/test_design_quality.py \
+            tests/test_web_motion_runtime.py \
             tests/test_web_assurance_delivery.py \
             tests/test_web_vercel_delivery.py
 
