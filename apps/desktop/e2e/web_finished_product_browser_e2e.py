@@ -353,6 +353,7 @@ def _browser_certify(
 
             _assert_global_seo(context, base_url)
             _assert_functional_modules(context, base_url, features)
+            _assert_motion_runtime(context, base_url)
             context.close()
             browser.close()
         return {
@@ -433,6 +434,65 @@ def _assert_page_quality(page: Page, route: str, viewport: dict[str, int]) -> No
             if selector in {"input", "textarea"} and element_id:
                 if page.locator(f'label[for="{element_id}"]').count() != 1:
                     raise RuntimeError(f"form label missing for {element_id} on {route}")
+
+
+
+def _assert_motion_runtime(context: BrowserContext, base_url: str) -> None:
+    page = context.new_page()
+    try:
+        response = page.goto(f"{base_url}/en", wait_until="networkidle", timeout=30_000)
+        if response is None or response.status != 200:
+            raise RuntimeError("motion runtime home route failed")
+        main = page.locator("main#main")
+        for attribute in (
+            "data-motion-intensity",
+            "data-interaction-density",
+            "data-scroll-behavior",
+            "data-showcase-behavior",
+            "data-motion-accessibility",
+        ):
+            if not main.get_attribute(attribute):
+                raise RuntimeError(f"motion design contract missing from generated runtime: {attribute}")
+        reveals = page.locator('[data-motion="reveal"]')
+        reveal_count = reveals.count()
+        if reveal_count < 1:
+            raise RuntimeError("generated runtime has no motion reveal surfaces")
+        if page.evaluate("document.documentElement.dataset.reducedMotion") != "false":
+            raise RuntimeError("default motion preference was not observed")
+        for index in range(reveal_count):
+            reveals.nth(index).scroll_into_view_if_needed()
+            page.wait_for_function(
+                "(itemIndex) => document.querySelectorAll('[data-motion=\"reveal\"]')[itemIndex]?.classList.contains('is-visible') === true",
+                arg=index,
+                timeout=5_000,
+            )
+        scroll_progress = float(
+            page.evaluate(
+                "parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ilaios-scroll-progress') || '0')"
+            )
+        )
+        if scroll_progress <= 0:
+            raise RuntimeError("scroll-linked motion progress did not update after reveal traversal")
+
+        page.emulate_media(reduced_motion="reduce")
+        page.reload(wait_until="networkidle")
+        page.wait_for_function(
+            "() => document.documentElement.dataset.reducedMotion === 'true'",
+            timeout=5_000,
+        )
+        reduced = page.locator('[data-motion="reveal"]').first
+        styles = reduced.evaluate(
+            "el => ({opacity:getComputedStyle(el).opacity, transform:getComputedStyle(el).transform})"
+        )
+        if styles["opacity"] != "1" or styles["transform"] != "none":
+            raise RuntimeError(f"reduced-motion static equivalent failed: {styles}")
+        tilt = page.locator('[data-interactive="tilt"]').first
+        if tilt.count():
+            transform = tilt.evaluate("el => getComputedStyle(el).transform")
+            if transform != "none":
+                raise RuntimeError("reduced-motion interactive tilt was not disabled")
+    finally:
+        page.close()
 
 
 def _assert_global_seo(context: BrowserContext, base_url: str) -> None:

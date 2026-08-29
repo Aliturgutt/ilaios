@@ -127,7 +127,15 @@ SKILL_TAXONOMY: Final[tuple[SkillTaxonomyNode, ...]] = (
         "factories",
         "web",
         "design",
-        backing_skill_ids=("ilaios-web-design",),
+        backing_skill_ids=(
+            "ilaios-web-design",
+            "ilaios-web-motion-design",
+            "ilaios-web-interaction-design",
+            "ilaios-web-scroll-composition",
+            "ilaios-web-interactive-showcase",
+            "ilaios-web-motion-accessibility",
+            "ilaios-web-motion-qa",
+        ),
     ),
     _node(
         "factories",

@@ -75,6 +75,7 @@ def _project_files(
         "app/layout.tsx": _layout_source(spec).encode(),
         "app/page.tsx": _root_source(spec).encode(),
         "components/PageShell.tsx": _page_shell_source().encode(),
+        "components/MotionRuntime.tsx": _motion_runtime_source().encode(),
     }
     for locale in spec.locales:
         for page in spec.pages:
@@ -204,6 +205,11 @@ def _page_source(
         "secondaryCompositions": secondary,
         "trustRequirement": spec.trust_requirement,
         "informationDensity": spec.information_density,
+        "motionIntensity": str(design_strategy.get("motion_intensity", "restrained")),
+        "interactionDensity": str(design_strategy.get("interaction_density", "moderate")),
+        "scrollBehavior": str(design_strategy.get("scroll_behavior", "section-linked")),
+        "showcaseBehavior": str(design_strategy.get("showcase_behavior", "contextual-interactive")),
+        "motionAccessibility": str(design_strategy.get("motion_accessibility", "reduced-motion-static-equivalent")),
         "hasNewsletter": "newsletter" in spec.features,
     }
     import_path = (
@@ -222,7 +228,9 @@ export default function GeneratedPage() {{
 
 
 def _page_shell_source() -> str:
-    return '''type Props = {
+    return '''import { MotionRuntime } from "./MotionRuntime";
+
+type Props = {
   locale: string;
   businessName: string;
   businessCategory: string;
@@ -236,6 +244,11 @@ def _page_shell_source() -> str:
   secondaryCompositions: readonly string[];
   trustRequirement: string;
   informationDensity: string;
+  motionIntensity: string;
+  interactionDensity: string;
+  scrollBehavior: string;
+  showcaseBehavior: string;
+  motionAccessibility: string;
   hasNewsletter: boolean;
 };
 
@@ -291,7 +304,7 @@ function ContextSections(props: Props) {
   return (
     <section className="context-grid" aria-label={props.locale === "tr" ? "Yaklaşım" : "Approach"}>
       {focus.map((item, index) => (
-        <article className="context-block" key={item}>
+        <article className="context-block" key={item} data-motion="reveal" data-motion-index={index}>
           <span className="context-index">0{index + 1}</span>
           <h2>{item}</h2>
           <p>{props.locale === "tr" ? `${props.businessName}, ${item.toLocaleLowerCase("tr-TR")} odağını ${props.audience} için net bir kullanıcı yoluna dönüştürür.` : `${props.businessName} turns ${item.toLowerCase()} into a clear user path for ${props.audience}.`}</p>
@@ -318,16 +331,16 @@ export function PageShell(props: Props) {
           ))}
         </div>
       </header>
-      <main id="main" className={compositionClass} data-composition={props.primaryComposition} data-density={props.informationDensity} data-trust={props.trustRequirement}>
+      <main id="main" className={compositionClass} data-composition={props.primaryComposition} data-density={props.informationDensity} data-trust={props.trustRequirement} data-motion-intensity={props.motionIntensity} data-interaction-density={props.interactionDensity} data-scroll-behavior={props.scrollBehavior} data-showcase-behavior={props.showcaseBehavior} data-motion-accessibility={props.motionAccessibility}>
         <section className={props.pageName === "home" ? "hero" : "content-block"}>
-          <div className="hero-copy">
+          <div className="hero-copy" data-motion="reveal">
             <p className="eyebrow">{props.businessCategory}</p>
             <h1>{props.headline}</h1>
             <p className="lede">{props.copy}</p>
             {props.pageName === "home" && <a className="primary-action" href={href(props.locale, "contact")}>{props.locale === "tr" ? "Görüşme başlat" : "Start a conversation"}</a>}
           </div>
           {props.pageName === "home" && (
-            <aside className="composition-note" aria-label={props.locale === "tr" ? "Tasarım yaklaşımı" : "Design approach"}>
+            <aside className="composition-note" data-interactive="tilt" aria-label={props.locale === "tr" ? "Tasarım yaklaşımı" : "Design approach"}>
               <strong>{props.primaryComposition.replaceAll("-", " ")}</strong>
               <span>{props.secondaryCompositions.join(" · ")}</span>
             </aside>
@@ -337,12 +350,99 @@ export function PageShell(props: Props) {
         </section>
         {props.pageName === "home" && <ContextSections {...props} />}
       </main>
+      <MotionRuntime />
       <footer>
         {props.hasNewsletter && props.pageName === "home" && <NewsletterForm locale={props.locale} />}
         <p>{props.locale === "tr" ? "Netlik, güven ve ölçülebilir aksiyon için tasarlandı." : "Built for clarity, trust, and measurable action."}</p>
       </footer>
     </>
   );
+}
+'''
+
+
+
+def _motion_runtime_source() -> str:
+    return r'''"use client";
+
+import { useEffect } from "react";
+
+export function MotionRuntime() {
+  useEffect(() => {
+    const root = document.documentElement;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const coarsePointer = window.matchMedia("(pointer: coarse)");
+    const observed = Array.from(document.querySelectorAll<HTMLElement>("[data-motion='reveal']"));
+    const interactive = Array.from(document.querySelectorAll<HTMLElement>("[data-interactive='tilt']"));
+    let frame = 0;
+
+    const applyMotionPreference = () => {
+      root.dataset.reducedMotion = reduceMotion.matches ? "true" : "false";
+      if (reduceMotion.matches) observed.forEach((node) => node.classList.add("is-visible"));
+    };
+
+    const updateScroll = () => {
+      frame = 0;
+      const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+      root.style.setProperty("--ilaios-scroll-progress", String(Math.min(1, Math.max(0, window.scrollY / max))));
+    };
+
+    const onScroll = () => {
+      if (!frame) frame = window.requestAnimationFrame(updateScroll);
+    };
+
+    const observer = !reduceMotion.matches && "IntersectionObserver" in window
+      ? new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting) {
+              (entry.target as HTMLElement).classList.add("is-visible");
+              observer?.unobserve(entry.target);
+            }
+          });
+        }, { threshold: 0.16, rootMargin: "0px 0px -8% 0px" })
+      : null;
+
+    observed.forEach((node) => observer?.observe(node));
+    if (!observer) observed.forEach((node) => node.classList.add("is-visible"));
+
+    const cleanups = interactive.map((node) => {
+      const onPointerMove = (event: PointerEvent) => {
+        if (reduceMotion.matches || coarsePointer.matches) return;
+        const rect = node.getBoundingClientRect();
+        const x = Math.min(1, Math.max(0, (event.clientX - rect.left) / Math.max(1, rect.width)));
+        const y = Math.min(1, Math.max(0, (event.clientY - rect.top) / Math.max(1, rect.height)));
+        node.style.setProperty("--tilt-x", `${(0.5 - y) * 4}deg`);
+        node.style.setProperty("--tilt-y", `${(x - 0.5) * 6}deg`);
+      };
+      const reset = () => {
+        node.style.removeProperty("--tilt-x");
+        node.style.removeProperty("--tilt-y");
+      };
+      node.addEventListener("pointermove", onPointerMove, { passive: true });
+      node.addEventListener("pointerleave", reset);
+      return () => {
+        node.removeEventListener("pointermove", onPointerMove);
+        node.removeEventListener("pointerleave", reset);
+      };
+    });
+
+    applyMotionPreference();
+    updateScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    reduceMotion.addEventListener("change", applyMotionPreference);
+
+    return () => {
+      observer?.disconnect();
+      cleanups.forEach((cleanup) => cleanup());
+      window.removeEventListener("scroll", onScroll);
+      reduceMotion.removeEventListener("change", applyMotionPreference);
+      if (frame) window.cancelAnimationFrame(frame);
+      root.style.removeProperty("--ilaios-scroll-progress");
+      delete root.dataset.reducedMotion;
+    };
+  }, []);
+
+  return null;
 }
 '''
 
@@ -422,7 +522,8 @@ def _css() -> str:
 :root{--ink:#101828;--muted:#475467;--line:#d0d5dd;--accent:#0b5fff;--surface:#f8fafc;--max:1180px}*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;font-family:Arial,Helvetica,sans-serif;color:var(--ink);background:#fff;line-height:1.55}a{color:inherit}a:focus-visible,button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:3px}.skip-link{position:absolute;left:-999px;top:0}.skip-link:focus{left:1rem;top:1rem;background:#fff;padding:.75rem;z-index:10}.site-header{max-width:var(--max);margin:auto;padding:1.2rem 1.5rem;display:grid;grid-template-columns:auto 1fr auto;gap:clamp(1.25rem,3vw,3rem);align-items:center;border-bottom:1px solid var(--line)}.brand{font-weight:800;text-decoration:none}nav{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap}nav a,.languages a{display:inline-flex;align-items:center;min-height:40px;text-decoration:none}main{max-width:var(--max);margin:auto;padding:clamp(2rem,6vw,6rem) 1.5rem}.hero{min-height:58vh;display:grid;align-content:center;gap:clamp(2rem,5vw,5rem)}.hero-copy{max-width:780px}.hero h1,.content-block h1{font-size:clamp(2.6rem,7vw,6rem);line-height:1;letter-spacing:-.05em;max-width:13ch;margin:.4rem 0 1.4rem}.eyebrow{text-transform:uppercase;letter-spacing:.14em;font-size:.78rem;font-weight:700;color:var(--muted)}.lede{font-size:clamp(1.05rem,1.8vw,1.35rem);max-width:60ch}.primary-action{display:inline-flex;align-items:center;min-height:44px;width:max-content;margin-top:1.5rem;background:var(--ink);color:#fff;padding:.75rem 1rem;text-decoration:none}.composition-note{border-left:1px solid var(--line);padding-left:1rem;display:grid;gap:.35rem;align-content:end;color:var(--muted);text-transform:capitalize}.composition-note strong{color:var(--ink)}.context-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--line);margin-top:clamp(1rem,4vw,4rem);border:1px solid var(--line)}.context-block{background:#fff;padding:clamp(1.25rem,3vw,2.5rem);min-height:220px}.context-index{font-size:.75rem;color:var(--muted)}.context-block h2{font-size:clamp(1.4rem,2.5vw,2.2rem);margin:2rem 0 .75rem}.content-block{max-width:850px}.evidence-line{display:grid;grid-template-columns:140px 1fr;gap:1rem;border-top:1px solid var(--line);padding-top:1rem;margin-top:3rem}.contact-form{display:grid;gap:.65rem;margin-top:2rem;max-width:620px}.contact-form input,.contact-form textarea,.newsletter-form input{font:inherit;padding:.8rem;border:1px solid var(--line)}.contact-form textarea{min-height:150px}.contact-form button,.newsletter-form button{font:inherit;min-height:44px;padding:.75rem 1rem;border:0;background:var(--ink);color:#fff;width:max-content}.newsletter-form{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.5rem 1rem;align-items:end;max-width:620px;margin-bottom:1.5rem}.newsletter-form label{grid-column:1/-1;color:var(--ink)}footer{max-width:var(--max);margin:3rem auto 0;padding:2rem 1.5rem;border-top:1px solid var(--line);color:var(--muted)}
 .composition-minimal-institutional .hero{grid-template-columns:minmax(0,1.5fr) minmax(220px,.5fr);align-items:end}.composition-minimal-institutional .context-grid{grid-template-columns:1.4fr 1fr 1fr}.composition-technical-flow .hero,.composition-layered-architecture .hero{grid-template-columns:minmax(0,1.15fr) minmax(260px,.85fr);background:linear-gradient(90deg,#fff 0 68%,var(--surface) 68%);padding-left:clamp(1rem,3vw,3rem);padding-right:clamp(1rem,3vw,3rem)}.composition-technical-flow .context-grid,.composition-layered-architecture .context-grid{grid-template-columns:repeat(3,minmax(0,1fr));counter-reset:step}.composition-product-showcase .hero{grid-template-columns:minmax(0,1fr) minmax(280px,.8fr)}.composition-product-showcase .composition-note{background:var(--surface);padding:2rem;border-left:0}.composition-visual-portfolio .hero,.composition-media-led .hero{min-height:70vh;grid-template-columns:minmax(0,.8fr) minmax(300px,1.2fr);align-items:end}.composition-visual-portfolio .context-grid,.composition-media-led .context-grid{grid-template-columns:1.6fr .7fr .7fr}.composition-editorial-split .hero,.composition-narrative-scroll .hero{grid-template-columns:minmax(0,1fr) minmax(240px,.6fr)}.composition-evidence-trust .context-grid{grid-template-columns:1fr 1fr 1fr}.composition-documentation-led .hero{min-height:46vh}.composition-documentation-led .context-grid{grid-template-columns:1fr}.composition-structured-comparison .context-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
 [data-density="high"] .context-block{min-height:180px;padding:1.5rem}[data-trust="high"] .context-grid{border-top:3px solid var(--ink)}
-@media(max-width:768px){.site-header{grid-template-columns:1fr;align-items:start}nav{justify-content:flex-start}.evidence-line{grid-template-columns:1fr}.hero h1,.content-block h1{font-size:clamp(2.5rem,11vw,4.7rem)}.hero,.composition-minimal-institutional .hero,.composition-technical-flow .hero,.composition-layered-architecture .hero,.composition-product-showcase .hero,.composition-visual-portfolio .hero,.composition-media-led .hero,.composition-editorial-split .hero,.composition-narrative-scroll .hero{grid-template-columns:1fr;background:#fff;min-height:auto}.context-grid,.composition-minimal-institutional .context-grid,.composition-visual-portfolio .context-grid,.composition-media-led .context-grid{grid-template-columns:1fr 1fr}.composition-note{border-left:0;border-top:1px solid var(--line);padding:1rem 0 0}.context-block{min-height:auto}}@media(max-width:430px){main{padding-top:2.25rem}.site-header{padding:1rem}nav{display:grid;grid-template-columns:1fr 1fr;gap:.4rem}.context-grid,.composition-minimal-institutional .context-grid,.composition-visual-portfolio .context-grid,.composition-media-led .context-grid{grid-template-columns:1fr}.contact-form button,.newsletter-form button{width:100%}.newsletter-form{grid-template-columns:1fr}}@media(max-width:360px){nav{grid-template-columns:1fr}}@media(max-width:320px){body{font-size:15px}main{padding-left:1rem;padding-right:1rem}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+[data-motion="reveal"]{opacity:0;transform:translate3d(0,24px,0);transition:opacity .55s ease,transform .7s cubic-bezier(.2,.7,.2,1);transition-delay:calc(var(--motion-delay,0)*70ms);will-change:opacity,transform}[data-motion="reveal"].is-visible{opacity:1;transform:translate3d(0,0,0)}[data-motion-index="1"]{--motion-delay:1}[data-motion-index="2"]{--motion-delay:2}[data-interactive="tilt"]{--tilt-x:0deg;--tilt-y:0deg;transform:perspective(900px) rotateX(var(--tilt-x)) rotateY(var(--tilt-y));transition:transform .22s ease;transform-origin:center}[data-scroll-behavior="section-linked"] .hero::after,[data-scroll-behavior="narrative-linked"] .hero::after{content:"";display:block;grid-column:1/-1;height:2px;transform:scaleX(var(--ilaios-scroll-progress,0));transform-origin:left;background:var(--accent);opacity:.65}[data-motion-intensity="low"] [data-motion="reveal"]{transform:none;transition-duration:.25s}[data-interaction-density="low"] [data-interactive="tilt"]{transform:none!important}
+@media(max-width:768px){.site-header{grid-template-columns:1fr;align-items:start}nav{justify-content:flex-start}.evidence-line{grid-template-columns:1fr}.hero h1,.content-block h1{font-size:clamp(2.5rem,11vw,4.7rem)}.hero,.composition-minimal-institutional .hero,.composition-technical-flow .hero,.composition-layered-architecture .hero,.composition-product-showcase .hero,.composition-visual-portfolio .hero,.composition-media-led .hero,.composition-editorial-split .hero,.composition-narrative-scroll .hero{grid-template-columns:1fr;background:#fff;min-height:auto}.context-grid,.composition-minimal-institutional .context-grid,.composition-visual-portfolio .context-grid,.composition-media-led .context-grid{grid-template-columns:1fr 1fr}.composition-note{border-left:0;border-top:1px solid var(--line);padding:1rem 0 0}.context-block{min-height:auto}}@media(max-width:430px){main{padding-top:2.25rem}.site-header{padding:1rem}nav{display:grid;grid-template-columns:1fr 1fr;gap:.4rem}.context-grid,.composition-minimal-institutional .context-grid,.composition-visual-portfolio .context-grid,.composition-media-led .context-grid{grid-template-columns:1fr}.contact-form button,.newsletter-form button{width:100%}.newsletter-form{grid-template-columns:1fr}}@media(max-width:360px){nav{grid-template-columns:1fr}}@media(max-width:320px){body{font-size:15px}main{padding-left:1rem;padding-right:1rem}}@media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}[data-motion="reveal"]{opacity:1!important;transform:none!important}[data-interactive="tilt"]{transform:none!important}}
 """.strip()
 
 

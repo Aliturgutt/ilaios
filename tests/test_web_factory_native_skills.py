@@ -23,7 +23,14 @@ def _accepted_local_manifest() -> dict[str, object]:
         "job_state_proven": True,
         "site_id": "site-test",
         "spec_hash": "spec-sha",
-        "design_strategy": {"primary_composition": "editorial"},
+        "design_strategy": {
+            "primary_composition": "editorial",
+            "motion_intensity": "restrained",
+            "interaction_density": "moderate",
+            "scroll_behavior": "section-linked",
+            "showcase_behavior": "contextual-interactive",
+            "motion_accessibility": "reduced-motion-static-equivalent",
+        },
         "qa": {"passed": True},
         "artifact_digest": "artifact-sha",
         "source_project_digest": "source-sha",
@@ -36,12 +43,18 @@ def test_web_factory_native_skill_registry_is_ordered_and_unique() -> None:
     assert WEB_FACTORY_NATIVE_SKILL_IDS == (
         "ilaios-web-architecture",
         "ilaios-web-design",
+        "ilaios-web-motion-design",
+        "ilaios-web-interaction-design",
+        "ilaios-web-scroll-composition",
+        "ilaios-web-interactive-showcase",
+        "ilaios-web-motion-accessibility",
+        "ilaios-web-motion-qa",
         "ilaios-web-accessibility",
         "ilaios-web-performance",
         "ilaios-web-validation",
         "ilaios-web-production-qa",
     )
-    assert len({item.capability for item in WEB_FACTORY_NATIVE_SKILLS}) == 6
+    assert len({item.capability for item in WEB_FACTORY_NATIVE_SKILLS}) == 12
     assert tuple(item["skill_id"] for item in web_factory_native_skill_plan()) == (
         WEB_FACTORY_NATIVE_SKILL_IDS
     )
@@ -101,9 +114,10 @@ def test_native_web_skill_evidence_binding_is_not_execution_claim() -> None:
     )
     assert tuple(item["skill_id"] for item in bindings) == WEB_FACTORY_NATIVE_SKILL_IDS
     assert bindings[0]["status"] == "EVIDENCE_BOUND"
-    assert bindings[2]["status"] == "QA_EVIDENCE_BOUND"
-    assert bindings[4]["status"] == "VALIDATION_EVIDENCE_BOUND"
-    assert bindings[5]["status"] == "BLOCKED_DEPLOYMENT"
+    assert bindings[2]["status"] == "DESIGN_CONTRACT_EVIDENCE_BOUND"
+    assert bindings[6]["status"] == "QA_EVIDENCE_BOUND"
+    assert bindings[10]["status"] == "VALIDATION_EVIDENCE_BOUND"
+    assert bindings[11]["status"] == "BLOCKED_DEPLOYMENT"
 
 
 def test_native_web_skill_evidence_binding_cannot_fake_production_verification() -> None:
