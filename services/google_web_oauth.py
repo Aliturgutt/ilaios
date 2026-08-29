@@ -44,6 +44,18 @@ class GoogleWebOAuthError(PermissionError):
     """Google Web OAuth evidence is missing, stale, replayed, or invalid."""
 
 
+class GoogleWebOAuthStateError(GoogleWebOAuthError):
+    """OAuth state is malformed, expired, replayed, or fails redirect binding."""
+
+
+class GoogleWebOAuthTokenExchangeError(GoogleWebOAuthError):
+    """The provider token endpoint did not return an acceptable response."""
+
+
+class GoogleWebOAuthIDTokenVerificationError(GoogleWebOAuthError):
+    """The returned Google ID token cannot be verified under policy."""
+
+
 @dataclass(frozen=True, slots=True)
 class GoogleWebOAuthCredentials:
     """Server-only Google Web OAuth credentials and state-derivation secret."""
@@ -216,32 +228,32 @@ class GoogleWebOAuthService:
         self, *, state: str, code: str, now: datetime
     ) -> VerifiedExternalIdentity:
         current = _utc(now)
-        normalized_state = _opaque(state, "OAuth state")
-        normalized_code = _opaque(code, "authorization code")
-        challenge_id, redirect_index = _state_coordinates(normalized_state)
-        if not self._replay_store.consume(
-            challenge_id=challenge_id,
-            state_digest=_state_digest(normalized_state),
-            now=current,
-        ):
-            raise GoogleWebOAuthError("OAuth state is invalid, expired, or replayed")
         try:
+            normalized_state = _opaque(state, "OAuth state")
+            normalized_code = _opaque(code, "authorization code")
+            challenge_id, redirect_index = _state_coordinates(normalized_state)
+            if not self._replay_store.consume(
+                challenge_id=challenge_id,
+                state_digest=_state_digest(normalized_state),
+                now=current,
+            ):
+                raise GoogleWebOAuthError("OAuth state is invalid, expired, or replayed")
             redirect = self._oidc.production_web_redirects[redirect_index]
-        except IndexError as error:
-            raise GoogleWebOAuthError("OAuth state redirect binding is invalid") from error
-        redirect = self._oidc.require_production_web_redirect(redirect)
-        nonce = _derive(
-            self._credentials.state_secret,
-            "nonce",
-            normalized_state,
-            size=32,
-        )
-        verifier_value = _derive(
-            self._credentials.state_secret,
-            "pkce-verifier",
-            normalized_state,
-            size=64,
-        )
+            redirect = self._oidc.require_production_web_redirect(redirect)
+            nonce = _derive(
+                self._credentials.state_secret,
+                "nonce",
+                normalized_state,
+                size=32,
+            )
+            verifier_value = _derive(
+                self._credentials.state_secret,
+                "pkce-verifier",
+                normalized_state,
+                size=64,
+            )
+        except (GoogleWebOAuthError, IndexError) as error:
+            raise GoogleWebOAuthStateError(str(error)) from error
 
         try:
             response = self._http.post(
@@ -258,35 +270,45 @@ class GoogleWebOAuthService:
                 timeout=10,
             )
         except requests.RequestException as error:
-            raise GoogleWebOAuthError("Google token exchange failed") from error
+            raise GoogleWebOAuthTokenExchangeError(
+                "Google token exchange failed"
+            ) from error
 
         try:
             payload = response.json()
         except ValueError as error:
-            raise GoogleWebOAuthError("Google token response is malformed") from error
+            raise GoogleWebOAuthTokenExchangeError(
+                "Google token response is malformed"
+            ) from error
         try:
             response.raise_for_status()
         except requests.RequestException as error:
-            raise GoogleWebOAuthError("Google token exchange failed") from error
+            raise GoogleWebOAuthTokenExchangeError(
+                "Google token exchange failed"
+            ) from error
         if not isinstance(payload, dict):
-            raise GoogleWebOAuthError("Google token response is malformed")
+            raise GoogleWebOAuthTokenExchangeError("Google token response is malformed")
         encoded_token = payload.get("id_token")
         if not isinstance(encoded_token, str) or not encoded_token.strip():
-            raise GoogleWebOAuthError("Google token response did not contain an ID token")
+            raise GoogleWebOAuthTokenExchangeError(
+                "Google token response did not contain an ID token"
+            )
 
         token_verifier = self._verifier_factory(
             self._oidc.production_web_client_id, nonce
         )
         try:
             claims = token_verifier.verify(encoded_token)
+            _validate_verified_claims(
+                claims,
+                client_id=self._oidc.production_web_client_id,
+                now=current,
+            )
+            return verified_google_identity(claims)
         except Exception as error:
-            raise GoogleWebOAuthError("Google ID token verification failed") from error
-        _validate_verified_claims(
-            claims,
-            client_id=self._oidc.production_web_client_id,
-            now=current,
-        )
-        return verified_google_identity(claims)
+            raise GoogleWebOAuthIDTokenVerificationError(
+                "Google ID token verification failed"
+            ) from error
 
 
 class _GoogleIDTokenVerifier(OIDCTokenVerifier):

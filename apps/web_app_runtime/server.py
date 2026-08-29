@@ -9,6 +9,7 @@ the public apps/website marketing runtime.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import secrets
 import sqlite3
@@ -41,7 +42,10 @@ from services.google_web_canonical_identity import (
 from services.google_web_oauth import (
     GoogleWebOAuthCredentials,
     GoogleWebOAuthError,
+    GoogleWebOAuthIDTokenVerificationError,
     GoogleWebOAuthService,
+    GoogleWebOAuthStateError,
+    GoogleWebOAuthTokenExchangeError,
     IdentityChallengeGoogleWebOAuthReplayStore,
 )
 from services.sqlite_central_identity import SQLiteCentralIdentityStore
@@ -60,6 +64,16 @@ _MAX_SESSION_SECONDS: Final = 86_400
 _ALLOWED_CALLBACK_QUERY_KEYS: Final = frozenset(
     {"state", "code", "scope", "authuser", "prompt", "hd", "iss"}
 )
+_AUTH_FAILURE_STAGES: Final = frozenset(
+    {
+        "oauth_state_rejected",
+        "token_exchange_rejected",
+        "id_token_verification_rejected",
+        "canonical_identity_rejected",
+        "session_issue_rejected",
+    }
+)
+_LOGGER = logging.getLogger(__name__)
 
 
 class AppRuntimeConfigurationError(ValueError):
@@ -217,13 +231,18 @@ class AppRuntime:
             return self._json_error(HTTPStatus.NOT_FOUND, "not found")
         except WebIdentitySessionError:
             return self._json_error(HTTPStatus.FORBIDDEN, "request denied")
-        except (
-            GoogleWebOAuthError,
-            GoogleWebCanonicalIdentityError,
-            CanonicalBrowserSessionError,
-            CentralIdentityError,
-        ):
-            return self._json_error(HTTPStatus.UNAUTHORIZED, "authentication denied")
+        except GoogleWebOAuthStateError:
+            return self._authentication_denied("oauth_state_rejected")
+        except GoogleWebOAuthTokenExchangeError:
+            return self._authentication_denied("token_exchange_rejected")
+        except GoogleWebOAuthIDTokenVerificationError:
+            return self._authentication_denied("id_token_verification_rejected")
+        except GoogleWebOAuthError:
+            return self._authentication_denied("id_token_verification_rejected")
+        except (GoogleWebCanonicalIdentityError, CentralIdentityError):
+            return self._authentication_denied("canonical_identity_rejected")
+        except CanonicalBrowserSessionError:
+            return self._authentication_denied("session_issue_rejected")
         except (sqlite3.Error, OSError):
             return self._json_error(HTTPStatus.SERVICE_UNAVAILABLE, "service unavailable")
 
@@ -393,6 +412,13 @@ class AppRuntime:
             "method not allowed",
             extra_headers=(("Allow", allowed),),
         )
+
+    @staticmethod
+    def _authentication_denied(stage: str) -> RuntimeResponse:
+        if stage not in _AUTH_FAILURE_STAGES:
+            raise ValueError("authentication failure stage is invalid")
+        _LOGGER.warning("app_auth_failure stage=%s", stage)
+        return AppRuntime._json_error(HTTPStatus.UNAUTHORIZED, "authentication denied")
 
     @staticmethod
     def _json(status: HTTPStatus, payload: Mapping[str, object]) -> RuntimeResponse:
