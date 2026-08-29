@@ -1,6 +1,6 @@
 ---
 name: ilaios-web-interaction-design
-description: Produce bounded, accessible interaction behavior for Web Factory outputs across pointer, touch, keyboard, focus, direct manipulation, and state feedback.
+description: Provider-independent Produce bounded, accessible interaction behavior for Web Factory outputs across pointer, touch, keyboard, focus, direct manipulation, and state feedback.
 ---
 # ILAIOS Web Interaction Design
 Status: IMPLEMENTED
