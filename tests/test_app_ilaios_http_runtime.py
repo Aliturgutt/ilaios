@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import logging
 import sqlite3
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
@@ -11,19 +12,27 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
+import apps.web_app_runtime.server as runtime_server
 from apps.web_app_runtime.server import (
     AppRuntime,
     AppRuntimeConfigurationError,
     AppRuntimeEnvironment,
     RuntimeRequest,
 )
-from services.canonical_browser_session import CanonicalBrowserSessionAuthority
+from services.canonical_browser_session import (
+    CanonicalBrowserSessionAuthority,
+    CanonicalBrowserSessionError,
+)
 from services.central_identity import IdentityProvider, VerifiedExternalIdentity
 from services.control_plane.migrations import migrate_database
 from services.google_web_oauth import (
+    GoogleWebOAuthIDTokenVerificationError,
     GoogleWebOAuthService,
     GoogleWebOAuthStart,
+    GoogleWebOAuthStateError,
+    GoogleWebOAuthTokenExchangeError,
 )
+from services.google_web_canonical_identity import GoogleWebCanonicalIdentityError
 from services.web_identity_session_http import WebIdentitySessionBoundary
 
 _NOW = datetime(2026, 8, 29, 14, 0, tzinfo=UTC)
@@ -62,6 +71,21 @@ class _OAuth:
             email="owner@example.com",
             email_verified=True,
         )
+
+
+class _FailingOAuth(_OAuth):
+    def __init__(self, error: Exception) -> None:
+        super().__init__()
+        self._error = error
+
+    def complete(
+        self,
+        *,
+        state: str,
+        code: str,
+        now: datetime,
+    ) -> VerifiedExternalIdentity:
+        raise self._error
 
 
 def _environment(database: Path) -> AppRuntimeEnvironment:
@@ -163,6 +187,123 @@ def test_callback_accepts_google_issuer_parameter(tmp_path: Path) -> None:
     )
     assert response.status is HTTPStatus.SEE_OTHER
     assert oauth.completions == [("state-value-12345", "code-value-123456")]
+
+
+@pytest.mark.parametrize(  # type: ignore[misc, unused-ignore]
+    ("error", "stage"),
+    (
+        (
+            GoogleWebOAuthStateError("state=state-should-never-be-logged"),
+            "oauth_state_rejected",
+        ),
+        (
+            GoogleWebOAuthTokenExchangeError("code=code-should-never-be-logged"),
+            "token_exchange_rejected",
+        ),
+        (
+            GoogleWebOAuthIDTokenVerificationError("token-should-never-be-logged"),
+            "id_token_verification_rejected",
+        ),
+    ),
+)
+def test_oauth_failure_logs_only_safe_stage_and_returns_generic_denial(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    error: Exception,
+    stage: str,
+) -> None:
+    runtime, _oauth = _runtime(tmp_path / "identity.db", _FailingOAuth(error))
+    caplog.set_level(logging.WARNING, logger=runtime_server.__name__)
+
+    response = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target=(
+                "/auth/google/callback?state=state-should-never-be-logged&"
+                "code=code-should-never-be-logged"
+            ),
+            headers={},
+        ),
+        now=_NOW,
+    )
+
+    assert response.status is HTTPStatus.UNAUTHORIZED
+    assert response.body == b'{"error":"authentication denied"}'
+    assert caplog.messages == [f"app_auth_failure stage={stage}"]
+    for unsafe_value in (
+        "state-should-never-be-logged",
+        "code-should-never-be-logged",
+        "token-should-never-be-logged",
+    ):
+        assert unsafe_value not in caplog.text
+        assert unsafe_value.encode() not in response.body
+
+
+def test_canonical_and_session_failure_log_only_safe_stage(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime, _oauth = _runtime(tmp_path / "identity.db")
+    caplog.set_level(logging.WARNING, logger=runtime_server.__name__)
+
+    def reject_canonical(*_args: object, **_kwargs: object) -> object:
+        raise GoogleWebCanonicalIdentityError("subject-should-never-be-logged")
+
+    monkeypatch.setattr(
+        runtime_server.GoogleWebCanonicalIdentityFlow,  # type: ignore[attr-defined]
+        "complete",
+        reject_canonical,
+    )
+    canonical = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/google/callback?state=state&code=code",
+            headers={},
+        ),
+        now=_NOW,
+    )
+    assert canonical.status is HTTPStatus.UNAUTHORIZED
+    assert canonical.body == b'{"error":"authentication denied"}'
+    assert caplog.messages == [
+        "app_auth_failure stage=canonical_identity_rejected"
+    ]
+    assert "subject-should-never-be-logged" not in caplog.text
+
+    monkeypatch.undo()
+    caplog.clear()
+
+    def reject_session(*_args: object, **_kwargs: object) -> object:
+        raise CanonicalBrowserSessionError("credential-should-never-be-logged")
+
+    monkeypatch.setattr(
+        CanonicalBrowserSessionAuthority,
+        "issue",
+        reject_session,
+    )
+    session = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/google/callback?state=state&code=code",
+            headers={},
+        ),
+        now=_NOW,
+    )
+    assert session.status is HTTPStatus.UNAUTHORIZED
+    assert session.body == b'{"error":"authentication denied"}'
+    assert caplog.messages == ["app_auth_failure stage=session_issue_rejected"]
+    assert "credential-should-never-be-logged" not in caplog.text
+
+
+def test_successful_callback_does_not_emit_auth_failure_log(
+    tmp_path: Path, caplog: pytest.LogCaptureFixture
+) -> None:
+    runtime, _oauth = _runtime(tmp_path / "identity.db")
+    caplog.set_level(logging.WARNING, logger=runtime_server.__name__)
+
+    _callback(runtime)
+
+    assert caplog.messages == []
 
 
 def test_callback_issues_digest_only_canonical_session_and_safe_metadata(

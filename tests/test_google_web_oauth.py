@@ -19,8 +19,11 @@ from services.google_oidc import (
 from services.google_web_oauth import (
     GoogleWebOAuthCredentials,
     GoogleWebOAuthError,
+    GoogleWebOAuthIDTokenVerificationError,
     GoogleWebOAuthReplayStore,
     GoogleWebOAuthService,
+    GoogleWebOAuthStateError,
+    GoogleWebOAuthTokenExchangeError,
     IdentityChallengeGoogleWebOAuthReplayStore,
 )
 from services.identity import IdentityKind, VerifiedOIDCClaims
@@ -192,7 +195,7 @@ def test_state_is_single_use_and_replay_fails_before_second_provider_call() -> N
     start = service.start(redirect_uri=_REDIRECT, now=_NOW)
 
     service.complete(state=start.state, code="authorization-code", now=_NOW)
-    with pytest.raises(GoogleWebOAuthError, match="replayed"):
+    with pytest.raises(GoogleWebOAuthStateError, match="replayed"):
         service.complete(state=start.state, code="authorization-code", now=_NOW)
 
     assert len(http.calls) == 1
@@ -202,7 +205,7 @@ def test_expired_state_fails_closed_without_provider_call() -> None:
     service, http, _ = _service()
     start = service.start(redirect_uri=_REDIRECT, now=_NOW)
 
-    with pytest.raises(GoogleWebOAuthError, match="expired"):
+    with pytest.raises(GoogleWebOAuthStateError, match="expired"):
         service.complete(
             state=start.state,
             code="authorization-code",
@@ -220,7 +223,7 @@ def test_tampered_redirect_binding_cannot_select_another_allowlisted_redirect() 
     parts = start.state.split(".")
     tampered = f"{parts[0]}.1.{parts[2]}"
 
-    with pytest.raises(GoogleWebOAuthError, match="invalid"):
+    with pytest.raises(GoogleWebOAuthStateError, match="invalid"):
         service.complete(state=tampered, code="authorization-code", now=_NOW)
 
     identity = service.complete(state=start.state, code="authorization-code", now=_NOW)
@@ -247,8 +250,16 @@ def test_verified_claims_reject_wrong_issuer_audience_and_time() -> None:
     for verifier in cases:
         service, _, _ = _service(verifier=verifier)
         start = service.start(redirect_uri=_REDIRECT, now=_NOW)
-        with pytest.raises(GoogleWebOAuthError):
+        with pytest.raises(GoogleWebOAuthIDTokenVerificationError):
             service.complete(state=start.state, code="authorization-code", now=_NOW)
+
+
+def test_complete_classifies_missing_id_token_as_token_exchange_failure() -> None:
+    service, _, _ = _service(session=_Session(payload={}))
+    start = service.start(redirect_uri=_REDIRECT, now=_NOW)
+
+    with pytest.raises(GoogleWebOAuthTokenExchangeError):
+        service.complete(state=start.state, code="authorization-code", now=_NOW)
 
 
 def test_credentials_require_distinct_server_secrets() -> None:
@@ -309,7 +320,7 @@ def test_sqlite_replay_marker_survives_restart_and_stores_no_raw_state(
     second_restart, second_http, _ = _service(
         replay_store=_sqlite_replay_store(database)
     )
-    with pytest.raises(GoogleWebOAuthError, match="replayed"):
+    with pytest.raises(GoogleWebOAuthStateError, match="replayed"):
         second_restart.complete(
             state=start.state,
             code="authorization-code",
