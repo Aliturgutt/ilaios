@@ -395,18 +395,24 @@ def _patch_page_shell(
         ),
         1,
     )
-    aside_marker = (
-        '            <aside className="composition-note" aria-label={props.locale === "tr" '
-        '? "Tasarım yaklaşımı" : "Design approach"}>\n'
-        '              <strong>{props.primaryComposition.replaceAll("-", " ")}</strong>'
-    )
-    if aside_marker not in text:
+    aside_prefix = '            <aside className="composition-note"'
+    strong_marker = '              <strong>{props.primaryComposition.replaceAll("-", " ")}</strong>'
+    if text.count(aside_prefix) != 1:
         raise WebProductRuntimeError(
             "generated Web reference render insertion point is missing"
         )
-    reference_render = (
-        '            <aside className="composition-note" aria-label={props.locale === "tr" '
-        '? "Tasarım yaklaşımı" : "Design approach"}>\n'
+    aside_start = text.index(aside_prefix)
+    strong_start = text.find(strong_marker, aside_start)
+    if strong_start < 0:
+        raise WebProductRuntimeError(
+            "generated Web reference render insertion point is missing"
+        )
+    aside_open_end = text.find("\n", aside_start, strong_start)
+    if aside_open_end < 0 or text[aside_open_end + 1 : strong_start].strip():
+        raise WebProductRuntimeError(
+            "generated Web reference render insertion point is missing"
+        )
+    asset_render = (
         '              {referenceAssets.length > 0 && (\n'
         '                <div className="reference-assets" aria-label={props.locale === "tr" ? "Referans görseller" : "Reference images"}>\n'
         '                  {referenceAssets.map((asset) => (\n'
@@ -417,9 +423,8 @@ def _patch_page_shell(
         '                  ))}\n'
         '                </div>\n'
         '              )}\n'
-        '              <strong>{props.primaryComposition.replaceAll("-", " ")}</strong>'
     )
-    text = text.replace(aside_marker, reference_render, 1)
+    text = text[:strong_start] + asset_render + text[strong_start:]
     return text.encode("utf-8")
 
 
