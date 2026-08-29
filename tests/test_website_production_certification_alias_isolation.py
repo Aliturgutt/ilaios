@@ -4,6 +4,8 @@ import importlib.util
 import sys
 import types
 from pathlib import Path
+from types import ModuleType
+from typing import Any
 
 import pytest
 
@@ -11,13 +13,13 @@ import pytest
 SCRIPT = Path(__file__).resolve().parents[1] / "apps" / "website" / "scripts" / "production-certification.py"
 
 
-def _load_module():
+def _load_module() -> ModuleType:
     playwright = types.ModuleType("playwright")
     sync_api = types.ModuleType("playwright.sync_api")
-    sync_api.Page = object
-    sync_api.Response = object
-    sync_api.sync_playwright = lambda: None
-    playwright.sync_api = sync_api
+    setattr(sync_api, "Page", object)
+    setattr(sync_api, "Response", object)
+    setattr(sync_api, "sync_playwright", lambda: None)
+    setattr(playwright, "sync_api", sync_api)
     sys.modules["playwright"] = playwright
     sys.modules["playwright.sync_api"] = sync_api
     spec = importlib.util.spec_from_file_location("website_production_certification_test", SCRIPT)
@@ -57,7 +59,7 @@ def test_alias_probe_error_remains_blocking_and_page_closes(monkeypatch: pytest.
     module = _load_module()
     context = _Context()
 
-    def fail(_page):
+    def fail(_page: Any) -> None:
         raise RuntimeError("www alias failed")
 
     monkeypatch.setattr(module, "check_www_alias", fail)
