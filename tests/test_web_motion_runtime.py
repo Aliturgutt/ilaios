@@ -77,6 +77,20 @@ def test_generated_next_project_contains_native_motion_runtime(tmp_path: Path) -
     assert '"motion"' not in package
 
 
+def test_browser_motion_certification_traverses_reveals_before_asserting_visibility() -> None:
+    source = (
+        Path(__file__).resolve().parents[1]
+        / "apps"
+        / "desktop"
+        / "e2e"
+        / "web_finished_product_browser_e2e.py"
+    ).read_text(encoding="utf-8")
+
+    assert "scroll_into_view_if_needed()" in source
+    assert "scroll-linked motion progress did not update after reveal traversal" in source
+    assert "querySelectorAll('[data-motion=\\\"reveal\\\"]')).every" not in source
+
+
 def test_motion_project_generation_is_deterministic(tmp_path: Path) -> None:
     strategy = NativeDesignStrategyEngine().plan(
         DesignContext(
