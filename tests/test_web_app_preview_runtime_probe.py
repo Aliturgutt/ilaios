@@ -112,6 +112,76 @@ def test_probe_cross_origin_redirect_fails_closed_in_canonical_observer() -> Non
         observe_generated_preview_sandbox(runtime=runtime, policy=_policy())
 
 
+def _assert_probe_rejects_non_public_target(preview_url: str) -> None:
+    transport = _Transport(
+        PreviewHttpProbeResult(
+            final_url="https://preview.example.com",
+            response_headers={"Content-Security-Policy": "default-src 'none'"},
+        )
+    )
+    with pytest.raises(SoftwareFactoryError, match="target"):
+        probe_preview_runtime_boundary(
+            preview_url=preview_url,
+            execution_id="exec-1",
+            tenant_id="tenant-a",
+            source_sha256="a" * 64,
+            artifact_sha256="b" * 64,
+            privileged_session_origin="https://app.ilaios.com",
+            isolation=_isolation(),
+            transport=transport,
+        )
+    assert transport.calls == []
+
+
+def test_probe_rejects_http_target_before_transport() -> None:
+    _assert_probe_rejects_non_public_target("http://preview.example.com")
+
+
+def test_probe_rejects_localhost_target_before_transport() -> None:
+    _assert_probe_rejects_non_public_target("https://localhost")
+
+
+def test_probe_rejects_localhost_subdomain_before_transport() -> None:
+    _assert_probe_rejects_non_public_target("https://preview.localhost")
+
+
+def test_probe_rejects_loopback_ipv4_target_before_transport() -> None:
+    _assert_probe_rejects_non_public_target("https://127.0.0.1")
+
+
+def test_probe_rejects_link_local_metadata_target_before_transport() -> None:
+    _assert_probe_rejects_non_public_target("https://169.254.169.254/latest/meta-data")
+
+
+def test_probe_rejects_private_ipv4_target_before_transport() -> None:
+    _assert_probe_rejects_non_public_target("https://10.0.0.8")
+
+
+def test_probe_rejects_loopback_ipv6_target_before_transport() -> None:
+    _assert_probe_rejects_non_public_target("https://[::1]")
+
+
+def test_probe_rejects_private_final_target_from_injected_transport() -> None:
+    transport = _Transport(
+        PreviewHttpProbeResult(
+            final_url="https://169.254.169.254/latest/meta-data",
+            response_headers={"Content-Security-Policy": "default-src 'none'"},
+        )
+    )
+    with pytest.raises(SoftwareFactoryError, match="globally routable"):
+        probe_preview_runtime_boundary(
+            preview_url="https://preview.example.com",
+            execution_id="exec-1",
+            tenant_id="tenant-a",
+            source_sha256="a" * 64,
+            artifact_sha256="b" * 64,
+            privileged_session_origin="https://app.ilaios.com",
+            isolation=_isolation(),
+            transport=transport,
+        )
+    assert transport.calls == [("https://preview.example.com", 15)]
+
+
 def test_default_transport_rejects_unbounded_timeout_before_network() -> None:
     with pytest.raises(SoftwareFactoryError, match="timeout"):
         UrllibPreviewHttpTransport().get("https://preview.example.com", timeout_seconds=61)

@@ -8,8 +8,10 @@ trusted isolation facts supplied by the incumbent runtime boundary.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Mapping, Protocol
-from urllib.request import ProxyHandler, Request, build_opener
+from ipaddress import ip_address
+from typing import Any, Mapping, Protocol
+from urllib.parse import urlsplit
+from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
 
 from services.software_factory import SoftwareFactoryError
 from services.web_app_preview_sandbox_observer import (
@@ -48,12 +50,28 @@ class PreviewHttpTransport(Protocol):
     def get(self, url: str, *, timeout_seconds: int) -> PreviewHttpProbeResult: ...
 
 
+class _RejectPreviewRedirects(HTTPRedirectHandler):
+    """Prevent the observer host from following untrusted preview redirects."""
+
+    def redirect_request(
+        self,
+        req: Request,
+        fp: Any,
+        code: int,
+        msg: str,
+        headers: Any,
+        newurl: str,
+    ) -> Request | None:
+        raise SoftwareFactoryError("generated preview redirect denied before follow")
+
+
 class UrllibPreviewHttpTransport:
     """Credential-free stdlib HTTPS transport used by the trusted observer host."""
 
     def get(self, url: str, *, timeout_seconds: int) -> PreviewHttpProbeResult:
         if timeout_seconds < 1 or timeout_seconds > 60:
             raise SoftwareFactoryError("preview probe timeout is invalid")
+        _validate_public_https_target(url)
         request = Request(
             url,
             method="GET",
@@ -67,11 +85,17 @@ class UrllibPreviewHttpTransport:
         try:
             # Never inherit host HTTP(S)_PROXY configuration or proxy credentials.
             # Governed egress gateways must be supplied explicitly by the incumbent
-            # runtime through another PreviewHttpTransport implementation.
-            opener = build_opener(ProxyHandler({}))
+            # runtime through another PreviewHttpTransport implementation. Redirects
+            # are denied before follow so an untrusted preview cannot turn this
+            # trusted observer into an SSRF primitive against an internal target.
+            opener = build_opener(ProxyHandler({}), _RejectPreviewRedirects())
             with opener.open(request, timeout=timeout_seconds) as response:
                 headers = {str(key): str(value) for key, value in response.headers.items()}
-                return PreviewHttpProbeResult(final_url=response.geturl(), response_headers=headers)
+                final_url = response.geturl()
+                _validate_public_https_target(final_url)
+                return PreviewHttpProbeResult(final_url=final_url, response_headers=headers)
+        except SoftwareFactoryError:
+            raise
         except Exception as error:
             raise SoftwareFactoryError("generated preview HTTPS probe failed closed") from error
 
@@ -91,8 +115,13 @@ def probe_preview_runtime_boundary(
     """Emit trusted runtime observation from a real credential-free HTTP probe."""
     if not preview_url.strip():
         raise SoftwareFactoryError("generated preview URL is missing")
+    # Validate before invoking even an injected transport. The transport may be the
+    # incumbent governed egress adapter, but the observer must never authorize an
+    # obviously local/private target on its behalf.
+    _validate_public_https_target(preview_url)
     client = transport or UrllibPreviewHttpTransport()
     result = client.get(preview_url, timeout_seconds=timeout_seconds)
+    _validate_public_https_target(result.final_url)
     csp = _header(result.response_headers, "content-security-policy")
     return PreviewRuntimeBoundaryObservation(
         execution_id=execution_id,
@@ -124,6 +153,31 @@ def probe_preview_runtime_boundary(
         memory_limit_mb=isolation.memory_limit_mb,
         cpu_limit_millis=isolation.cpu_limit_millis,
     )
+
+
+def _validate_public_https_target(value: str) -> None:
+    raw = value.strip()
+    try:
+        parsed = urlsplit(raw)
+        port = parsed.port
+    except ValueError as error:
+        raise SoftwareFactoryError("generated preview target is malformed") from error
+    if parsed.scheme.casefold() != "https" or parsed.hostname is None:
+        raise SoftwareFactoryError("generated preview target must be HTTPS")
+    if parsed.username is not None or parsed.password is not None:
+        raise SoftwareFactoryError("generated preview target cannot contain userinfo")
+    if port is not None and (port < 1 or port > 65535):
+        raise SoftwareFactoryError("generated preview target port is invalid")
+
+    host = parsed.hostname.casefold().rstrip(".")
+    if not host or host == "localhost" or host.endswith(".localhost"):
+        raise SoftwareFactoryError("generated preview target cannot be local")
+    try:
+        address = ip_address(host)
+    except ValueError:
+        return
+    if not address.is_global:
+        raise SoftwareFactoryError("generated preview target IP must be globally routable")
 
 
 def _header(headers: Mapping[str, str], name: str) -> str:
