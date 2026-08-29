@@ -1,6 +1,6 @@
 ---
 name: ilaios-web-motion-qa
-description: Run deterministic motion and interaction QA over generated Web Factory output for continuity, jank, fallback, input parity, cleanup, and accessibility.
+description: Provider-independent Run deterministic motion and interaction QA over generated Web Factory output for continuity, jank, fallback, input parity, cleanup, and accessibility.
 ---
 # ILAIOS Web Motion QA
 Status: IMPLEMENTED
