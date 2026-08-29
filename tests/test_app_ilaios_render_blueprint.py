@@ -62,7 +62,7 @@ def test_app_ilaios_runtime_dependency_lock_is_minimal() -> None:
     ).splitlines()
 
     assert requirements == [
-        "PyJWT==2.13.0",
+        "PyJWT[crypto]==2.13.0",
         "python-dotenv==1.2.2",
         "requests==2.34.2",
     ]
