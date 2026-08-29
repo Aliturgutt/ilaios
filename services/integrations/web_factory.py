@@ -409,19 +409,13 @@ def _features(normalized: str, pages: tuple[str, ...]) -> tuple[str, ...]:
     if any(term in normalized for term in ("search", "arama")):
         features.append("search")
     if any(term in normalized for term in _WEB3D_EXPLICIT_TERMS):
-        web3d = compile_web_3d_runtime_plan(normalized)
+        web3d = compile_web_3d_runtime_plan(f"website {normalized}")
         features.extend(feature for feature in web3d.features if feature not in features)
     return tuple(features)
 
 
 def _has_web3d_features(features: tuple[str, ...]) -> bool:
-    selected = set(features).intersection(_WEB3D_FEATURES)
-    if not selected:
-        return False
-    unknown = selected.difference(_WEB3D_FEATURES)
-    if unknown:
-        raise ValueError("generated website contains unsupported 3D features")
-    return True
+    return bool(set(features).intersection(_WEB3D_FEATURES))
 
 
 def _compile_web3d_plan(features: tuple[str, ...]) -> Web3DRuntimePlan:
@@ -438,7 +432,9 @@ def _compile_web3d_plan(features: tuple[str, ...]) -> Web3DRuntimePlan:
         "3d-typography": "3D typography",
         "pointer-interaction": "pointer touch interaction",
     }
-    objective = "Build a website with " + ", ".join(phrases[feature] for feature in selected) + "."
+    objective = "Build a website with explicit 3D capability: " + ", ".join(
+        phrases[feature] for feature in selected
+    ) + "."
     plan = compile_web_3d_runtime_plan(objective)
     if set(plan.features) != set(selected):
         raise ValueError("3D runtime plan did not preserve the requested feature set")
