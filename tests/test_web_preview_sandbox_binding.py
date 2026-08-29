@@ -6,6 +6,8 @@ import pytest
 
 from services.integrations.web_delivery import WebDeploymentError, WebDeploymentReceipt
 from services.integrations.web_preview_sandbox_binding import (
+    PreviewIsolationAttestation,
+    bind_isolation_attestation_to_receipt,
     bind_preview_sandbox_to_receipt,
     probe_and_bind_preview_sandbox_to_receipt,
 )
@@ -76,6 +78,19 @@ def _isolation() -> PreviewIsolationBoundaryFacts:
     )
 
 
+def _attestation() -> PreviewIsolationAttestation:
+    receipt = _receipt()
+    return PreviewIsolationAttestation(
+        contract="web.preview-isolation-attestation.v1",
+        provider=receipt.provider,
+        deployment_id=receipt.deployment_id,
+        source_commit_sha=receipt.source_commit_sha,
+        artifact_sha256=receipt.artifact_sha256,
+        preview_origin=receipt.live_url,
+        facts=_isolation(),
+    )
+
+
 def _runtime() -> PreviewRuntimeBoundaryObservation:
     return PreviewRuntimeBoundaryObservation(
         execution_id="exec-preview-1",
@@ -122,7 +137,7 @@ def test_binds_exact_preview_receipt_to_trusted_runtime_observation() -> None:
     assert evidence.separate_origin is True
 
 
-def test_probe_uses_exact_receipt_url_and_artifact_lineage() -> None:
+def test_probe_uses_exact_receipt_url_artifact_and_isolation_lineage() -> None:
     transport = _Transport(
         PreviewHttpProbeResult(
             final_url=PREVIEW_ORIGIN,
@@ -137,7 +152,7 @@ def test_probe_uses_exact_receipt_url_and_artifact_lineage() -> None:
         tenant_id="tenant-1",
         source_sha256=SOURCE_SHA256,
         privileged_session_origin="https://app.ilaios.com",
-        isolation=_isolation(),
+        isolation_attestation=_attestation(),
         policy=_policy(),
         transport=transport,
         timeout_seconds=9,
@@ -166,7 +181,7 @@ def test_probe_rejects_non_preview_receipt_before_network() -> None:
             tenant_id="tenant-1",
             source_sha256=SOURCE_SHA256,
             privileged_session_origin="https://app.ilaios.com",
-            isolation=_isolation(),
+            isolation_attestation=_attestation(),
             policy=_policy(),
             transport=transport,
         )
@@ -187,10 +202,53 @@ def test_probe_rejects_cross_origin_redirect_after_exact_receipt_probe() -> None
             tenant_id="tenant-1",
             source_sha256=SOURCE_SHA256,
             privileged_session_origin="https://app.ilaios.com",
-            isolation=_isolation(),
+            isolation_attestation=_attestation(),
             policy=_policy(),
             transport=transport,
         )
+
+
+def test_rejects_cross_deployment_isolation_attestation_before_network() -> None:
+    transport = _Transport(
+        PreviewHttpProbeResult(
+            final_url=PREVIEW_ORIGIN,
+            response_headers={"Content-Security-Policy": "default-src 'none'"},
+        )
+    )
+    attestation = replace(_attestation(), deployment_id="dpl_other")
+    with pytest.raises(WebDeploymentError, match="isolation deployment does not match"):
+        probe_and_bind_preview_sandbox_to_receipt(
+            receipt=_receipt(),
+            execution_id="exec-preview-1",
+            tenant_id="tenant-1",
+            source_sha256=SOURCE_SHA256,
+            privileged_session_origin="https://app.ilaios.com",
+            isolation_attestation=attestation,
+            policy=_policy(),
+            transport=transport,
+        )
+    assert transport.calls == []
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("provider", "other.provider", "isolation provider does not match"),
+        ("source_commit_sha", "d" * 40, "isolation source commit does not match"),
+        ("artifact_sha256", "d" * 64, "isolation artifact does not match"),
+        ("preview_origin", "https://other-preview.example.net", "isolation origin does not match"),
+    ],
+)
+def test_rejects_cross_lineage_isolation_attestation(field: str, value: str, message: str) -> None:
+    attestation = replace(_attestation(), **{field: value})
+    with pytest.raises(WebDeploymentError, match=message):
+        bind_isolation_attestation_to_receipt(receipt=_receipt(), attestation=attestation)
+
+
+def test_rejects_noncanonical_isolation_attestation_contract() -> None:
+    attestation = replace(_attestation(), contract="web.preview-isolation-attestation.v2")
+    with pytest.raises(WebDeploymentError, match="attestation contract"):
+        bind_isolation_attestation_to_receipt(receipt=_receipt(), attestation=attestation)
 
 
 def test_rejects_cross_artifact_preview_evidence_reuse() -> None:
