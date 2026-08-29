@@ -8,7 +8,9 @@ import yaml
 def test_app_ilaios_render_blueprint_is_bounded_and_persistent() -> None:
     blueprint = yaml.safe_load(Path("render.yaml").read_text(encoding="utf-8"))
 
-    assert blueprint["version"] == "1"\n\n    services = blueprint["services"]
+    assert blueprint["version"] == "1"
+
+    services = blueprint["services"]
     assert len(services) == 1
     service = services[0]
 
