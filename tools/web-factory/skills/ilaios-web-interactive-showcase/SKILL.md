@@ -1,6 +1,6 @@
 ---
 name: ilaios-web-interactive-showcase
-description: Produce bounded interactive product, media, architecture, or system showcases with context-derived behavior and complete static fallbacks.
+description: Provider-independent Produce bounded interactive product, media, architecture, or system showcases with context-derived behavior and complete static fallbacks.
 ---
 # ILAIOS Web Interactive Showcase
 Status: IMPLEMENTED
