@@ -7,45 +7,46 @@
   },
   "status": "IN_PROGRESS",
   "current_phase": "Canonical Membership/Role projection onto verified Google account",
-  "master_sha": "ca4c1b4f9718a511bff880e579de6f42cb3e3462",
-  "base_sha": "ca4c1b4f9718a511bff880e579de6f42cb3e3462",
-  "head_sha": "b5a3fea22a7f0b391ddd3922c64545d2b547a99e",
+  "master_sha": "c9814c11dd711050a1d3cc1fcebcde0ad6e874df",
+  "base_sha": "c9814c11dd711050a1d3cc1fcebcde0ad6e874df",
+  "head_sha": "ecfb9e2fa49c7a68f1260792b35b40a7c15924e6",
   "branch": "automation/identity-membership-role-projection-1120",
-  "pr": 1120,
+  "pr": 1122,
   "ci": {
-    "run_id": 33240830391,
-    "conclusion": "failure",
-    "exact_sha": "b5a3fea22a7f0b391ddd3922c64545d2b547a99e"
+    "run_id": 33243044899,
+    "conclusion": "success",
+    "exact_sha": "ecfb9e2fa49c7a68f1260792b35b40a7c15924e6"
   },
-  "next_action": "Require fresh exact-head controller validation, Required CI and SFFE after the canonical state-schema repair; then re-read live master/token/overlap before expected-head merge. After this phase, continue only with incumbent SessionRegistry/browser-session composition; production Google Console/provider/browser E2E remains HUMAN until separately proven.",
+  "next_action": "Require fresh exact-head controller validation, Required CI and Software Factory Final Evidence after this live-state reconciliation; then re-read live master, merge token, PR head and overlap immediately before expected-head merge. After merge, require exact-master gates before advancing to incumbent SessionRegistry/browser-session composition. Production Google Console/provider/browser E2E remains HUMAN until separately proven.",
   "blocker": {
     "type": "CI",
-    "detail": "Controller validation on b5a3fea22a7f0b391ddd3922c64545d2b547a99e rejected non-canonical status DEVELOPING; repository state schema repair applied.",
+    "detail": "The bounded Identity product delta passed Required CI, SFFE and controller validation on PR #1122 head ecfb9e2fa49c7a68f1260792b35b40a7c15924e6, but this ledger still referenced stale PR #1120/base ca4c1b4f9718a511bff880e579de6f42cb3e3462. Live-state reconciliation requires fresh gates on the resulting head before merge.",
     "human_action": null
   },
   "repair": {
-    "retry_count": 2,
-    "last_failure_fingerprint": "controller-state invalid status DEVELOPING on PR #1120 head b5a3fea22a7f0b391ddd3922c64545d2b547a99e",
-    "last_root_cause": "Task ledger used FAST_CLOSURE lifecycle vocabulary instead of execution-controller ALLOWED_STATUS; repaired to IN_PROGRESS and canonical blocker shape."
+    "retry_count": 3,
+    "last_failure_fingerprint": "stale commercial-identity ledger base/pr after master advanced via #1121",
+    "last_root_cause": "The successor PR reused the bounded Identity branch after master advanced, but its task-specific durable ledger was not reconciled from PR #1120/base ca4c1b4f9718a511bff880e579de6f42cb3e3462 to PR #1122/base c9814c11dd711050a1d3cc1fcebcde0ad6e874df."
   },
   "lock": {
-    "owner": "identity-closure-runner",
+    "owner": "unified-closure-runner",
     "scope": [
       "services/canonical_identity_principal.py",
       "tests/test_canonical_identity_principal.py",
       ".github/automation/states/commercial-identity-closure.json"
     ],
-    "acquired_at": "2026-08-29T07:22:00Z",
-    "expires_at": "2026-08-29T08:22:00Z"
+    "acquired_at": "2026-08-29T09:13:00Z",
+    "expires_at": "2026-08-29T09:28:00Z"
   },
   "evidence": [
     "PR#1119 merged as ca4c1b4f9718a511bff880e579de6f42cb3e3462",
-    "exact-master Software Factory Final Evidence run 33238366969 success on ca4c1b4f9718a511bff880e579de6f42cb3e3462",
-    "exact-master Required CI Gate run 33238367091 success on ca4c1b4f9718a511bff880e579de6f42cb3e3462",
-    "exact-master status contexts ilaios/software-factory-exact-master and ilaios/required-ci-exact-master are success",
-    "Vercel deployment status is success on exact master ca4c1b4f9718a511bff880e579de6f42cb3e3462 but does not prove Google provider/browser production flow",
-    "PR#1120 base ca4c1b4f9718a511bff880e579de6f42cb3e3462 product checkpoint b777307445fa2feeca37c03b035f86adfcf6a2a5 adds only canonical migration-v9 Membership/Role -> incumbent Principal projection plus substitution/inactive regressions",
-    "controller run 33240830391 failed only because status DEVELOPING is outside execution-controller schema; root cause identified and minimally repaired"
+    "PR#1121 advanced master to c9814c11dd711050a1d3cc1fcebcde0ad6e874df with non-overlapping Agent CI workflow change",
+    "PR#1122 exact-current base c9814c11dd711050a1d3cc1fcebcde0ad6e874df and bounded head ecfb9e2fa49c7a68f1260792b35b40a7c15924e6",
+    "PR#1122 Software Factory Final Evidence run 33243044724 success on ecfb9e2fa49c7a68f1260792b35b40a7c15924e6",
+    "PR#1122 Execution Controller State Validation run 33243044735 success on ecfb9e2fa49c7a68f1260792b35b40a7c15924e6",
+    "PR#1122 Required CI Gate run 33243044899 success on ecfb9e2fa49c7a68f1260792b35b40a7c15924e6",
+    "Product delta remains limited to canonical migration-v9 Membership/Role -> incumbent services.identity.Principal projection plus fail-closed substitution/inactive regression coverage; no second Identity or authorization authority is introduced",
+    "Production Google OAuth/provider/browser flow remains unverified and is not promoted by repository CI"
   ],
-  "updated_at": "2026-08-29T07:28:00Z"
+  "updated_at": "2026-08-29T09:13:00Z"
 }
