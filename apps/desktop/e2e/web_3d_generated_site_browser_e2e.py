@@ -265,13 +265,14 @@ def _mobile_touch_proof(browser: Browser, base_url: str) -> dict[str, object]:
 
 
 def _assert_parent_contract(page: Page, web3d: dict[str, object]) -> None:
-    iframe = page.locator("iframe.ilaios-web3d-frame")
+    container = page.locator("section.ilaios-web3d")
+    iframe = container.locator("iframe.ilaios-web3d-frame")
     iframe.wait_for(state="visible")
     if iframe.get_attribute("sandbox") != "allow-scripts":
         raise RuntimeError("3D runtime iframe sandbox authority changed")
     if iframe.get_attribute("referrerpolicy") != "no-referrer":
         raise RuntimeError("3D runtime iframe referrer policy changed")
-    if iframe.get_attribute("data-ilaios-web3d") != web3d["plan_sha256"]:
+    if container.get_attribute("data-plan-sha") != web3d["plan_sha256"]:
         raise RuntimeError("parent page is not bound to the exact 3D plan SHA")
     csp = page.locator('meta[http-equiv="Content-Security-Policy"]').get_attribute("content") or ""
     if "script-src 'none'" not in csp:
