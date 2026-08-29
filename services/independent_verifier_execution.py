@@ -9,6 +9,7 @@ adapter.
 
 # Final same-SHA Agent recertification trigger; no execution behavior change.
 # Exact-current d2d9eb32 Agent recertification trigger; no execution behavior change.
+# Exact-current 992f33e0 Agent recertification trigger; no execution behavior change.
 
 from __future__ import annotations
 
