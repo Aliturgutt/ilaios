@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: ilaios-web-app
+    runtime: python
+    region: frankfurt
+    plan: starter
+    branch: master
+    buildCommand: pip install --disable-pip-version-check -r apps/web_app_runtime/requirements.txt
+    startCommand: python -m apps.web_app_runtime.server
+    healthCheckPath: /health/ready
+    autoDeployTrigger: checksPass
+    numInstances: 1
+    domains:
+      - app.ilaios.com
+    disk:
+      name: ilaios-identity
+      mountPath: /var/data
+      sizeGB: 1
+    envVars:
+      - key: ILAIOS_IDENTITY_DATABASE_PATH
+        value: /var/data/ilaios_identity.db
+      - key: ILAIOS_APP_HTTP_HOST
+        value: 0.0.0.0
+      - key: ILAIOS_WEB_SESSION_LIFETIME_SECONDS
+        value: "3600"
+      - key: ILAIOS_GOOGLE_PRODUCTION_WEB_REDIRECTS
+        value: https://app.ilaios.com/auth/google/callback
+      - key: ILAIOS_GOOGLE_PRODUCTION_WEB_CLIENT_ID
+        sync: false
+      - key: ILAIOS_GOOGLE_DEVELOPMENT_WEB_CLIENT_ID
+        sync: false
+      - key: ILAIOS_GOOGLE_DESKTOP_CLIENT_ID
+        sync: false
+      - key: ILAIOS_GOOGLE_PRODUCTION_WEB_CLIENT_SECRET
+        sync: false
+      - key: ILAIOS_GOOGLE_WEB_OAUTH_STATE_SECRET
+        generateValue: true

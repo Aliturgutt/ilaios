@@ -86,7 +86,7 @@ class AppRuntimeEnvironment:
         if not host:
             raise AppRuntimeConfigurationError("ILAIOS_APP_HTTP_HOST is invalid")
 
-        raw_port = env.get("ILAIOS_APP_HTTP_PORT", str(_DEFAULT_PORT)).strip()
+        raw_port = env.get("ILAIOS_APP_HTTP_PORT", env.get("PORT", str(_DEFAULT_PORT))).strip()
         raw_session = env.get(
             "ILAIOS_WEB_SESSION_LIFETIME_SECONDS",
             str(_DEFAULT_SESSION_SECONDS),

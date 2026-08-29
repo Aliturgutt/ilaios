@@ -455,3 +455,15 @@ def test_environment_requires_database_and_valid_runtime_bounds(tmp_path: Path) 
                 "ILAIOS_WEB_SESSION_LIFETIME_SECONDS": "86401",
             }
         )
+
+
+def test_environment_uses_platform_port_when_app_port_is_absent(tmp_path: Path) -> None:
+    environment = AppRuntimeEnvironment.from_environment(
+        {
+            "ILAIOS_IDENTITY_DATABASE_PATH": str(tmp_path / "identity.db"),
+            "PORT": "10000",
+        }
+    )
+
+    assert environment.host == "0.0.0.0"
+    assert environment.port == 10000
