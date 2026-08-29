@@ -1,15 +1,15 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-29T01:24:00Z",
+  "updated_at": "2026-08-29T02:23:03Z",
   "merge_token": {
-    "state": "RESERVED",
-    "owner": "identity",
-    "reserved_master_sha": "992f33e0600fd2eb3fe678f850336a2daf4159c8",
-    "candidate_pr": 1111,
-    "candidate_head_sha": "e404ebaa88bb82863ed35a51870bd3efc3ec3621",
-    "freeze_active": true,
-    "freeze_reason": "Identity PR #1111 exact-current Google Web canonical-account composition is in PRE_MERGE_VALIDATION; candidate_head_sha records the reviewed product head before this coordination-only reservation commit."
+    "state": "RELEASED",
+    "owner": null,
+    "reserved_master_sha": null,
+    "candidate_pr": null,
+    "candidate_head_sha": null,
+    "freeze_active": false,
+    "freeze_reason": null
   },
   "scheduler_stagger": {
     "desktop": 0,
@@ -54,14 +54,14 @@
     },
     "identity": {
       "scheduler": "identity",
-      "lifecycle": "PRE_MERGE_VALIDATION",
+      "lifecycle": "DEVELOPING",
       "priority_rank": 4,
       "authoritative_issue": null,
-      "active_pr": 1111,
-      "base_sha": "992f33e0600fd2eb3fe678f850336a2daf4159c8",
-      "head_sha": "e404ebaa88bb82863ed35a51870bd3efc3ec3621",
+      "active_pr": null,
+      "base_sha": "f65a88d5e9aba001cc94bb4045bc34add0c5e42a",
+      "head_sha": "f65a88d5e9aba001cc94bb4045bc34add0c5e42a",
       "blocked_reason": null,
-      "next_action": "Require fresh exact-head Required CI + Software Factory Final Evidence on the coordination-refreshed #1111 head, then immediately re-read live master/token/head/path+semantic overlap and merge only with expected-head protection if master remains exact base. After merge require exact-master Required CI + SFFE before advancing to canonical membership/role/session/browser composition."
+      "next_action": "PR #1111 canonical Google Web immutable-provider-subject to canonical User/Tenant binding is merged and exact-master VERIFIED by Required CI run 33228391238 and Software Factory Final Evidence run 33228391111. Audit and implement only the next real repository-owned gap: compose canonical membership/role/session authority and secure browser-session transport onto the verified Google callback path, with substitution/replay/logout/relogin regressions; then use a new exact-current reservation and fresh gates. Production Google Console/provider/browser E2E remains HUMAN/EXTERNAL until separately proven."
     },
     "web_app": {
       "scheduler": "web_app",
@@ -120,11 +120,11 @@
     }
   },
   "metrics": {
-    "master_advances": 43,
+    "master_advances": 44,
     "stale_pass_invalidations": 36,
     "replay_resync_count": 11,
-    "ci_cycles": 34,
-    "successful_merges": 44,
+    "ci_cycles": 35,
+    "successful_merges": 45,
     "duplicate_pr_count": 5,
     "churn_only_commit_count": 0
   }
