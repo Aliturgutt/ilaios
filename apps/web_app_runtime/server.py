@@ -58,7 +58,7 @@ _DEFAULT_PORT: Final = 8080
 _DEFAULT_SESSION_SECONDS: Final = 3600
 _MAX_SESSION_SECONDS: Final = 86_400
 _ALLOWED_CALLBACK_QUERY_KEYS: Final = frozenset(
-    {"state", "code", "scope", "authuser", "prompt", "hd"}
+    {"state", "code", "scope", "authuser", "prompt", "hd", "iss"}
 )
 
 
@@ -266,6 +266,11 @@ class AppRuntime:
         if not set(parsed).issubset(_ALLOWED_CALLBACK_QUERY_KEYS):
             return self._json_error(
                 HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+            )
+        issuer = self._one(parsed, "iss")
+        if issuer is not None and issuer != "https://accounts.google.com":
+            return self._json_error(
+                HTTPStatus.BAD_REQUEST, "unexpected issuer"
             )
         state = self._one(parsed, "state")
         code = self._one(parsed, "code")

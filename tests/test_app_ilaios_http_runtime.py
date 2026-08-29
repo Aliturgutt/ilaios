@@ -144,6 +144,27 @@ def test_readiness_and_google_start_use_exact_production_callback(tmp_path: Path
     assert parse_qs(parsed.query)["redirect_uri"] == [_CALLBACK]
 
 
+
+def test_callback_accepts_google_issuer_parameter(tmp_path: Path) -> None:
+    database = tmp_path / "identity.db"
+    runtime, oauth = _runtime(database)
+
+    response = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target=(
+                "/auth/google/callback?"
+                "state=state-value-12345&code=code-value-123456&"
+                "iss=https%3A%2F%2Faccounts.google.com"
+            ),
+            headers={},
+        ),
+        now=_NOW,
+    )
+    assert response.status is HTTPStatus.SEE_OTHER
+    assert oauth.completions == [("state-value-12345", "code-value-123456")]
+
+
 def test_callback_issues_digest_only_canonical_session_and_safe_metadata(
     tmp_path: Path,
 ) -> None:
