@@ -272,16 +272,32 @@ class _ProviderActionRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tr = Localizations.localeOf(context).languageCode == 'tr';
+    final enabled = connected ? logoutEnabled : connectEnabled;
+    final unavailable = !connected && !pending && !connectEnabled;
     final label = pending
         ? (tr ? 'İşleniyor…' : 'Working…')
         : connected
             ? (tr ? 'Çıkış' : 'Sign out')
-            : (tr ? 'Bağlan' : 'Connect');
-    final enabled = connected ? logoutEnabled : connectEnabled;
+            : unavailable
+                ? (tr ? 'Kullanılamıyor' : 'Unavailable')
+                : (tr ? 'Bağlan' : 'Connect');
+    final semanticLabel = connected
+        ? '${tr ? 'Çıkış yap' : 'Sign out'} ${provider.displayName}'
+        : pending
+            ? '${provider.displayName} ${tr ? 'işleniyor' : 'working'}'
+            : unavailable
+                ? '${provider.displayName} ${tr ? 'bağlantısı kullanılamıyor' : 'connection unavailable'}'
+                : '${tr ? 'Bağlan' : 'Connect'} ${provider.displayName}';
     final action = connected ? onLogout : onConnect;
     return Row(
       children: [
-        const Icon(Icons.cloud_outlined, size: 13),
+        Icon(
+          connected ? Icons.cloud_done_outlined : Icons.cloud_outlined,
+          size: 13,
+          color: connected
+              ? Theme.of(context).colorScheme.primary
+              : Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
         const SizedBox(width: 6),
         Expanded(
           child: Text(
@@ -295,9 +311,7 @@ class _ProviderActionRow extends StatelessWidget {
         Semantics(
           button: true,
           enabled: enabled,
-          label: connected
-              ? '${tr ? 'Çıkış yap' : 'Sign out'} ${provider.displayName}'
-              : '${tr ? 'Bağlan' : 'Connect'} ${provider.displayName}',
+          label: semanticLabel,
           child: SizedBox(
             height: 26,
             child: OutlinedButton(
