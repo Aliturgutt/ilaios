@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "task": "commercial-identity-billing-closure",
+  "workstream": "identity",
+  "lifecycle": "DEVELOPING",
+  "phase": "sqlite-central-identity-persistence",
+  "master_sha": "f15ad5740e4ce13be037ae2f67ee65f449027241",
+  "base_sha": "f15ad5740e4ce13be037ae2f67ee65f449027241",
+  "reviewed_product_head_sha": "28e47dcfe584a660170e3f05f0d05dd6cf11dd95",
+  "branch": "identity/sqlite-central-store-current-20260829",
+  "pr": 1117,
+  "tests": "focused SQLite CentralIdentity persistence and negative regressions included in PR #1117",
+  "exact_head_ci": {
+    "required_ci": {"run_id": 33235548116, "conclusion": "success", "head_sha": "28e47dcfe584a660170e3f05f0d05dd6cf11dd95"},
+    "sffe": {"run_id": 33235548001, "conclusion": "success", "head_sha": "28e47dcfe584a660170e3f05f0d05dd6cf11dd95"}
+  },
+  "blocker": "coordination checkpoint changed PR head; fresh exact-head CI required before merge",
+  "next_action": "wait for fresh Required CI and SFFE on coordination head, reread live master and central merge token/freeze, then expected-head merge if exact-current and non-overlapping",
+  "lock": {
+    "owner": "identity-closure-runner",
+    "scope": ["services/sqlite_central_identity.py", "tests/test_sqlite_central_identity.py", ".github/automation/states/identity-billing-closure.json"],
+    "state": "ACTIVE",
+    "reserved_master_sha": "f15ad5740e4ce13be037ae2f67ee65f449027241",
+    "central_merge_token_observed": "RELEASED"
+  },
+  "evidence": {
+    "pr": "https://github.com/Aliturgutt/ilaios/pull/1117",
+    "required_ci_run_id": 33235548116,
+    "sffe_run_id": 33235548001
+  },
+  "updated_at": "2026-08-29T05:24:00Z"
+}
