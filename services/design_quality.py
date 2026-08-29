@@ -52,6 +52,10 @@ class DesignStrategy:
     cta_hierarchy: str
     diagram_usage: str
     motion_intensity: str
+    interaction_density: str
+    scroll_behavior: str
+    showcase_behavior: str
+    motion_accessibility: str
     navigation_behavior: str
     mobile_transformation: str
 
@@ -121,6 +125,27 @@ class NativeDesignStrategyEngine:
                 "editorial-split",
                 ("narrative-scroll", "structured-comparison"),
             )
+        if trusted:
+            motion_intensity = "low"
+            interaction_density = "low"
+            scroll_behavior = "standard"
+            showcase_behavior = "static-evidence"
+        elif visual:
+            motion_intensity = "expressive"
+            interaction_density = "high"
+            scroll_behavior = "narrative-linked"
+            showcase_behavior = "asset-led-interactive"
+        elif category in {"developer platform", "saas", "software", "enterprise software"}:
+            motion_intensity = "restrained"
+            interaction_density = "moderate"
+            scroll_behavior = "section-linked"
+            showcase_behavior = "system-or-product-interactive"
+        else:
+            motion_intensity = "restrained"
+            interaction_density = "moderate"
+            scroll_behavior = "section-linked"
+            showcase_behavior = "contextual-interactive"
+
         return DesignStrategy(
             primary,
             secondary,
@@ -130,7 +155,11 @@ class NativeDesignStrategyEngine:
             "asset-led" if visual else "diagram-and-type-led",
             "single-primary-with-contextual-secondary",
             "high" if context.product_complexity in {"high", "complex"} else "contextual",
-            "low" if trusted else "restrained",
+            motion_intensity,
+            interaction_density,
+            scroll_behavior,
+            showcase_behavior,
+            "reduced-motion-static-equivalent",
             "dense" if dense else "progressive-disclosure",
             "reorder-reduce-and-recompose",
         )
@@ -178,6 +207,10 @@ class DesignObservation:
     non_interruptible_motion_failures: int = 0
     velocity_handoff_failures: int = 0
     spatial_transition_failures: int = 0
+    scroll_jank_failures: int = 0
+    pointer_tracking_failures: int = 0
+    motion_budget_failures: int = 0
+    showcase_fallback_failures: int = 0
     text_scaling_failures: int = 0
     reduced_motion_supported: bool = True
     reduced_transparency_supported: bool = True
@@ -219,7 +252,7 @@ class DesignAssessment:
 
 class NativeDesignQualityEvaluator:
     evaluator_id = "design.final-polish"
-    version = "1.3.0"
+    version = "1.4.0"
 
     def evaluate(self, observations: Iterable[DesignObservation]) -> DesignAssessment:
         rows = tuple(observations)
@@ -305,6 +338,10 @@ class NativeDesignQualityEvaluator:
             "non_interruptible_motion_failures",
             "velocity_handoff_failures",
             "spatial_transition_failures",
+            "scroll_jank_failures",
+            "pointer_tracking_failures",
+            "motion_budget_failures",
+            "showcase_fallback_failures",
             "text_scaling_failures",
         )
         for name in fields:
@@ -459,6 +496,34 @@ class NativeDesignQualityEvaluator:
                 "p2",
                 "Enter, exit, or reversible transitions break spatial continuity.",
                 "Keep reversible transitions anchored to the same spatial source and path.",
+            ),
+            (
+                "scroll_jank_failures",
+                "design.motion-performance",
+                "p2",
+                "Scroll-linked motion introduces visible jank or blocking work.",
+                "Move scroll work to bounded animation-frame updates and compositor-friendly properties.",
+            ),
+            (
+                "pointer_tracking_failures",
+                "design.interaction-quality",
+                "p2",
+                "Pointer-driven presentation loses continuity or exceeds its bounded surface.",
+                "Keep pointer effects local, interruptible, and synchronized with the active surface.",
+            ),
+            (
+                "motion_budget_failures",
+                "design.motion-performance",
+                "p2",
+                "Motion exceeds the accepted runtime performance budget.",
+                "Reduce continuous work, animated area, or dependency cost before acceptance.",
+            ),
+            (
+                "showcase_fallback_failures",
+                "design.motion-accessibility",
+                "major",
+                "Interactive showcase lacks an equivalent static or reduced-motion fallback.",
+                "Provide a complete non-motion representation with the same information and actions.",
             ),
             (
                 "text_scaling_failures",
