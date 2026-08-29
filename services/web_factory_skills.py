@@ -14,6 +14,12 @@ class WebFactorySkill:
 WEB_FACTORY_NATIVE_SKILLS: tuple[WebFactorySkill, ...] = (
     WebFactorySkill("ilaios-web-architecture", "web.architecture", "architecture"),
     WebFactorySkill("ilaios-web-design", "web.design", "design"),
+    WebFactorySkill("ilaios-web-motion-design", "web.motion-design", "motion-design"),
+    WebFactorySkill("ilaios-web-interaction-design", "web.interaction-design", "interaction-design"),
+    WebFactorySkill("ilaios-web-scroll-composition", "web.scroll-composition", "scroll-composition"),
+    WebFactorySkill("ilaios-web-interactive-showcase", "web.interactive-showcase", "interactive-showcase"),
+    WebFactorySkill("ilaios-web-motion-accessibility", "web.motion-accessibility", "motion-accessibility"),
+    WebFactorySkill("ilaios-web-motion-qa", "web.motion-qa", "motion-qa"),
     WebFactorySkill("ilaios-web-accessibility", "web.accessibility", "accessibility"),
     WebFactorySkill("ilaios-web-performance", "web.performance", "performance"),
     WebFactorySkill("ilaios-web-validation", "web.validate", "validation"),
@@ -43,8 +49,8 @@ WEB_FACTORY_BROWSER_SKILL_IDS: tuple[str, ...] = tuple(
 
 def validate_web_factory_native_skills() -> None:
     ids = WEB_FACTORY_NATIVE_SKILL_IDS
-    if len(ids) != 6 or len(set(ids)) != 6:
-        raise ValueError("Web Factory native skill family must contain six unique skills")
+    if len(ids) != 12 or len(set(ids)) != 12:
+        raise ValueError("Web Factory native skill family must contain twelve unique skills")
     if ids[0] != "ilaios-web-architecture" or ids[-1] != "ilaios-web-production-qa":
         raise ValueError("Web Factory native skill order drifted")
     for skill in WEB_FACTORY_NATIVE_SKILLS:
@@ -102,7 +108,7 @@ def bind_web_factory_native_skill_evidence(
 ) -> dict[str, object]:
     """Project canonical Web runtime evidence onto native skill coverage.
 
-    This function does not dispatch or execute the six native skills. It only binds
+    This function does not dispatch or execute the native skills. It only binds
     already-observed canonical Web runtime evidence to the skill stages whose
     contracts are covered by that evidence. Therefore the returned field is named
     ``native_skill_evidence_binding`` rather than ``native_skill_execution``.
@@ -119,8 +125,19 @@ def bind_web_factory_native_skill_evidence(
         raise ValueError("native Web skill evidence requires proven terminal job state")
     if not manifest.get("site_id") or not manifest.get("spec_hash"):
         raise ValueError("Web architecture evidence is incomplete")
-    if not isinstance(manifest.get("design_strategy"), dict):
+    design_strategy = manifest.get("design_strategy")
+    if not isinstance(design_strategy, dict):
         raise ValueError("Web design evidence is incomplete")
+    motion_evidence_complete = all(
+        key in design_strategy
+        for key in (
+            "motion_intensity",
+            "interaction_density",
+            "scroll_behavior",
+            "showcase_behavior",
+            "motion_accessibility",
+        )
+    )
     qa = manifest.get("qa")
     if not isinstance(qa, dict) or qa.get("passed") is not True:
         raise ValueError("Web local quality evidence is incomplete")
@@ -128,16 +145,32 @@ def bind_web_factory_native_skill_evidence(
         raise ValueError("Web validation evidence is incomplete")
 
     deployment_state = str(manifest.get("deployment_state", ""))
-    local_statuses = (
-        "EVIDENCE_BOUND",
-        "EVIDENCE_BOUND",
-        "QA_EVIDENCE_BOUND",
-        "QA_EVIDENCE_BOUND",
-        "VALIDATION_EVIDENCE_BOUND",
+    motion_status = (
+        "DESIGN_CONTRACT_EVIDENCE_BOUND"
+        if motion_evidence_complete
+        else "NOT_EVIDENCE_BOUND"
     )
+    local_status_by_id = {
+        "ilaios-web-architecture": "EVIDENCE_BOUND",
+        "ilaios-web-design": "EVIDENCE_BOUND",
+        "ilaios-web-motion-design": motion_status,
+        "ilaios-web-interaction-design": motion_status,
+        "ilaios-web-scroll-composition": motion_status,
+        "ilaios-web-interactive-showcase": motion_status,
+        "ilaios-web-motion-accessibility": (
+            "QA_EVIDENCE_BOUND" if motion_evidence_complete else "NOT_EVIDENCE_BOUND"
+        ),
+        "ilaios-web-motion-qa": (
+            "QA_EVIDENCE_BOUND" if motion_evidence_complete else "NOT_EVIDENCE_BOUND"
+        ),
+        "ilaios-web-accessibility": "QA_EVIDENCE_BOUND",
+        "ilaios-web-performance": "QA_EVIDENCE_BOUND",
+        "ilaios-web-validation": "VALIDATION_EVIDENCE_BOUND",
+    }
     bindings: list[dict[str, object]] = []
     local_skills = WEB_FACTORY_NATIVE_SKILLS[:-1]
-    for skill, status in zip(local_skills, local_statuses, strict=True):
+    for skill in local_skills:
+        status = local_status_by_id[skill.skill_id]
         bindings.append(
             {
                 "skill_id": skill.skill_id,
