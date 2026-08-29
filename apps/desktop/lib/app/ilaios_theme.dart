@@ -113,11 +113,12 @@ abstract final class IlaiosTheme {
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: ButtonStyle(
-          foregroundColor: const WidgetStatePropertyAll(carbon),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) return mutedColor;
+            return carbon;
+          }),
           backgroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.disabled)) {
-              return enterpriseCyan.withValues(alpha: .28);
-            }
+            if (states.contains(WidgetState.disabled)) return raisedColor;
             if (states.contains(WidgetState.hovered) ||
                 states.contains(WidgetState.focused)) {
               return coreBlue;
@@ -132,12 +133,17 @@ abstract final class IlaiosTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: ButtonStyle(
-          foregroundColor: const WidgetStatePropertyAll(coreBlue),
+          foregroundColor: WidgetStateProperty.resolveWith((states) {
+            if (states.contains(WidgetState.disabled)) return mutedColor;
+            return coreBlue;
+          }),
           side: WidgetStateProperty.resolveWith(
             (states) => BorderSide(
-              color: states.contains(WidgetState.hovered)
-                  ? enterpriseCyan
-                  : coreBlue.withValues(alpha: .72),
+              color: states.contains(WidgetState.disabled)
+                  ? outlineColor
+                  : states.contains(WidgetState.hovered)
+                      ? enterpriseCyan
+                      : coreBlue.withValues(alpha: .72),
             ),
           ),
           overlayColor: const WidgetStatePropertyAll(blueWash),
