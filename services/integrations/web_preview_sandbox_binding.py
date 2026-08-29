@@ -13,6 +13,11 @@ from urllib.parse import urlsplit
 
 from services.integrations.web_delivery import WebDeploymentError, WebDeploymentReceipt
 from services.software_factory import ExecutionPolicy
+from services.web_app_preview_runtime_probe import (
+    PreviewHttpTransport,
+    PreviewIsolationBoundaryFacts,
+    probe_preview_runtime_boundary,
+)
 from services.web_app_preview_sandbox_observer import (
     PreviewRuntimeBoundaryObservation,
     observe_generated_preview_sandbox,
@@ -22,6 +27,40 @@ from services.web_app_sandbox_evidence import GeneratedPreviewSandboxObservation
 _COMMIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
+def probe_and_bind_preview_sandbox_to_receipt(
+    *,
+    receipt: WebDeploymentReceipt,
+    execution_id: str,
+    tenant_id: str,
+    source_sha256: str,
+    privileged_session_origin: str,
+    isolation: PreviewIsolationBoundaryFacts,
+    policy: ExecutionPolicy,
+    transport: PreviewHttpTransport | None = None,
+    timeout_seconds: int = 15,
+) -> GeneratedPreviewSandboxObservation:
+    """Probe the exact receipt URL, then bind the observation to that same receipt.
+
+    The caller cannot substitute a different preview URL or artifact digest. Both are
+    derived from the canonical deployment receipt before the trusted probe runs.
+    This wires the incumbent live HTTPS observation producer into the existing
+    receipt/evidence lineage without granting deploy or publish authority.
+    """
+    _validate_preview_receipt(receipt)
+    runtime = probe_preview_runtime_boundary(
+        preview_url=receipt.live_url,
+        execution_id=execution_id,
+        tenant_id=tenant_id,
+        source_sha256=source_sha256,
+        artifact_sha256=receipt.artifact_sha256,
+        privileged_session_origin=privileged_session_origin,
+        isolation=isolation,
+        transport=transport,
+        timeout_seconds=timeout_seconds,
+    )
+    return bind_preview_sandbox_to_receipt(receipt=receipt, runtime=runtime, policy=policy)
+
+
 def bind_preview_sandbox_to_receipt(
     *,
     receipt: WebDeploymentReceipt,
@@ -29,16 +68,7 @@ def bind_preview_sandbox_to_receipt(
     policy: ExecutionPolicy,
 ) -> GeneratedPreviewSandboxObservation:
     """Return sandbox evidence only when runtime and preview receipt are exact-lineage bound."""
-    if receipt.contract != "web.deployment-receipt.v1":
-        raise WebDeploymentError("preview receipt contract is not canonical")
-    if receipt.public_production_proven:
-        raise WebDeploymentError("production receipt cannot be used as preview sandbox evidence")
-    if not receipt.deployment_id.strip() or not receipt.provider.strip():
-        raise WebDeploymentError("preview receipt identity is incomplete")
-    if _COMMIT_SHA_RE.fullmatch(receipt.source_commit_sha) is None:
-        raise WebDeploymentError("preview receipt source commit SHA is malformed")
-    if receipt.health not in {"HEALTHY_PUBLIC_PREVIEW", "HEALTHY_SANDBOX_PREVIEW"}:
-        raise WebDeploymentError("preview receipt health is not accepted for sandbox evidence")
+    _validate_preview_receipt(receipt)
     if runtime.artifact_sha256.lower() != receipt.artifact_sha256.lower():
         raise WebDeploymentError("preview runtime artifact does not match deployment receipt")
     receipt_origin = _origin(receipt.live_url)
@@ -49,6 +79,19 @@ def bind_preview_sandbox_to_receipt(
     if observation.generated_runtime_origin != receipt_origin:
         raise WebDeploymentError("preview observation origin does not match deployment receipt")
     return observation
+
+
+def _validate_preview_receipt(receipt: WebDeploymentReceipt) -> None:
+    if receipt.contract != "web.deployment-receipt.v1":
+        raise WebDeploymentError("preview receipt contract is not canonical")
+    if receipt.public_production_proven:
+        raise WebDeploymentError("production receipt cannot be used as preview sandbox evidence")
+    if not receipt.deployment_id.strip() or not receipt.provider.strip():
+        raise WebDeploymentError("preview receipt identity is incomplete")
+    if _COMMIT_SHA_RE.fullmatch(receipt.source_commit_sha) is None:
+        raise WebDeploymentError("preview receipt source commit SHA is malformed")
+    if receipt.health not in {"HEALTHY_PUBLIC_PREVIEW", "HEALTHY_SANDBOX_PREVIEW"}:
+        raise WebDeploymentError("preview receipt health is not accepted for sandbox evidence")
 
 
 def _origin(value: str) -> str:
@@ -65,3 +108,9 @@ def _origin(value: str) -> str:
     if not host:
         raise WebDeploymentError("preview receipt host is invalid")
     return f"https://{host}" if port in (None, 443) else f"https://{host}:{port}"
+
+
+__all__ = [
+    "bind_preview_sandbox_to_receipt",
+    "probe_and_bind_preview_sandbox_to_receipt",
+]
