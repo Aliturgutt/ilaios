@@ -454,14 +454,25 @@ def _assert_motion_runtime(context: BrowserContext, base_url: str) -> None:
             if not main.get_attribute(attribute):
                 raise RuntimeError(f"motion design contract missing from generated runtime: {attribute}")
         reveals = page.locator('[data-motion="reveal"]')
-        if reveals.count() < 1:
+        reveal_count = reveals.count()
+        if reveal_count < 1:
             raise RuntimeError("generated runtime has no motion reveal surfaces")
-        page.wait_for_function(
-            "() => Array.from(document.querySelectorAll('[data-motion=\"reveal\"]')).every((el) => el.classList.contains('is-visible'))",
-            timeout=5_000,
-        )
         if page.evaluate("document.documentElement.dataset.reducedMotion") != "false":
             raise RuntimeError("default motion preference was not observed")
+        for index in range(reveal_count):
+            reveals.nth(index).scroll_into_view_if_needed()
+            page.wait_for_function(
+                "(itemIndex) => document.querySelectorAll('[data-motion=\"reveal\"]')[itemIndex]?.classList.contains('is-visible') === true",
+                arg=index,
+                timeout=5_000,
+            )
+        scroll_progress = float(
+            page.evaluate(
+                "parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--ilaios-scroll-progress') || '0')"
+            )
+        )
+        if scroll_progress <= 0:
+            raise RuntimeError("scroll-linked motion progress did not update after reveal traversal")
 
         page.emulate_media(reduced_motion="reduce")
         page.reload(wait_until="networkidle")
