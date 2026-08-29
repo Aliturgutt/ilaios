@@ -301,6 +301,14 @@ def check_www_alias(page: Page) -> dict[str, Any]:
     }
 
 
+def check_www_alias_isolated(context: Any) -> dict[str, Any]:
+    page = context.new_page()
+    try:
+        return check_www_alias(page)
+    finally:
+        page.close()
+
+
 def main() -> int:
     started = datetime.now(timezone.utc).isoformat()
     evidence: dict[str, Any] = {
@@ -331,8 +339,8 @@ def main() -> int:
                 reduced_motion="reduce",
                 locale="en-US",
             )
+            evidence["wwwAlias"] = check_www_alias_isolated(context)
             page = context.new_page()
-            evidence["wwwAlias"] = check_www_alias(page)
 
             for url in urls:
                 for width, height in ALL_ROUTE_VIEWPORTS:
