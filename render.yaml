@@ -1,9 +1,11 @@
+version: "1"
+
 services:
   - type: web
     name: ilaios-web-app
     runtime: python
     region: frankfurt
-    plan: starter
+    plan: 0.5c-512mb
     branch: master
     buildCommand: pip install --disable-pip-version-check -r apps/web_app_runtime/requirements.txt
     startCommand: python -m apps.web_app_runtime.server
