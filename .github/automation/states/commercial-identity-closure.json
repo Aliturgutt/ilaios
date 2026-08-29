@@ -5,41 +5,43 @@
     "type": "repo_ledger",
     "reference": "docs/identity/COMMERCIAL_IDENTITY_CLOSURE_WORKFLOW.md"
   },
-  "status": "BLOCKED",
-  "current_phase": "Google production Web OAuth external verification",
-  "master_sha": "1a9f82026b66e1e60c3f9f4beb3daadfdf8306ca",
-  "base_sha": "1a9f82026b66e1e60c3f9f4beb3daadfdf8306ca",
-  "head_sha": "1a9f82026b66e1e60c3f9f4beb3daadfdf8306ca",
-  "branch": null,
+  "status": "DEVELOPING",
+  "current_phase": "Canonical Membership/Role projection onto verified Google account",
+  "master_sha": "ca4c1b4f9718a511bff880e579de6f42cb3e3462",
+  "base_sha": "ca4c1b4f9718a511bff880e579de6f42cb3e3462",
+  "head_sha": "b777307445fa2feeca37c03b035f86adfcf6a2a5",
+  "branch": "automation/identity-membership-role-projection-1120",
   "pr": null,
   "ci": {
-    "run_id": 33205147604,
-    "conclusion": "success",
-    "exact_sha": "1a9f82026b66e1e60c3f9f4beb3daadfdf8306ca"
+    "run_id": null,
+    "conclusion": "pending",
+    "exact_sha": "b777307445fa2feeca37c03b035f86adfcf6a2a5"
   },
-  "next_action": "Complete authorized Google production project/consent/domain/client configuration and secret provisioning, then execute real Google browser Authorization Code + PKCE callback/token exchange and bind the immutable provider subject to the incumbent canonical User/Tenant/Membership/Role/Session/Entitlement flow. Require cross-client same User/Tenant plus logout/revoke/relogin production evidence. No repository merge token is retained while waiting for this external boundary.",
-  "blocker": {
-    "type": "HUMAN",
-    "detail": "Repository-owned Google Web OAuth boundary is merged and exact-master CI is green, but Google Console production configuration, production credentials, real provider callback/token exchange and browser/session E2E are not evidenced.",
-    "human_action": "Use authorized Google Cloud ownership to verify/configure production consent, domains, exact redirect URI and production Web OAuth client credentials; then provide or run the real production browser/provider E2E without exposing secrets."
-  },
+  "next_action": "Open the bounded exact-current PR for canonical Membership/Role projection, require fresh exact-head Required CI + SFFE and controller validation, then re-read live master/token/overlap before expected-head merge. After this phase, continue only with incumbent SessionRegistry/browser-session composition; production Google Console/provider/browser E2E remains HUMAN until separately proven.",
+  "blocker": null,
   "repair": {
     "retry_count": 1,
     "last_failure_fingerprint": "execution-controller rejected non-canonical BLOCKED_EXTERNAL status and HUMAN_EXTERNAL blocker type",
     "last_root_cause": "Reconciliation used semantic labels outside the controller schema instead of canonical BLOCKED + HUMAN values."
   },
   "lock": {
-    "owner": null,
-    "scope": [],
-    "acquired_at": null,
-    "expires_at": null
+    "owner": "identity-closure-runner",
+    "scope": [
+      "services/canonical_identity_principal.py",
+      "tests/test_canonical_identity_principal.py",
+      ".github/automation/states/commercial-identity-closure.json"
+    ],
+    "acquired_at": "2026-08-29T07:22:00Z",
+    "expires_at": "2026-08-29T08:22:00Z"
   },
   "evidence": [
-    "PR#1102 merged as 1a9f82026b66e1e60c3f9f4beb3daadfdf8306ca",
-    "exact-master ilaios/software-factory-exact-master success via run 33205147409",
-    "exact-master ilaios/required-ci-exact-master success via run 33205147604",
-    "Vercel commit status success on exact master 1a9f82026b66e1e60c3f9f4beb3daadfdf8306ca; deployment status alone is not Google OAuth/browser production verification",
-    "PR#1102 repository boundary includes Authorization Code + PKCE/state/nonce, exact redirect allowlisting, server-side token exchange, Google JWT issuer/audience/signature/expiry/nonce validation, immutable sub projection and restart-safe replay denial via incumbent Identity challenge ledger"
+    "PR#1119 merged as ca4c1b4f9718a511bff880e579de6f42cb3e3462",
+    "exact-master Software Factory Final Evidence run 33238366969 success on ca4c1b4f9718a511bff880e579de6f42cb3e3462",
+    "exact-master Required CI Gate run 33238367091 success on ca4c1b4f9718a511bff880e579de6f42cb3e3462",
+    "exact-master status contexts ilaios/software-factory-exact-master and ilaios/required-ci-exact-master are success",
+    "Vercel deployment status is success on exact master ca4c1b4f9718a511bff880e579de6f42cb3e3462 but does not prove Google provider/browser production flow",
+    "branch automation/identity-membership-role-projection-1120 created from exact master ca4c1b4f9718a511bff880e579de6f42cb3e3462",
+    "product checkpoint b777307445fa2feeca37c03b035f86adfcf6a2a5 adds only canonical migration-v9 Membership/Role -> incumbent Principal projection plus substitution/inactive regressions; no new session/token/authorization authority"
   ],
-  "updated_at": "2026-08-28T20:14:30Z"
+  "updated_at": "2026-08-29T07:22:00Z"
 }
