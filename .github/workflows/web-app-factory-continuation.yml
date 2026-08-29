@@ -9,12 +9,14 @@ on:
       - 'services/web_generated_sandbox_gate.py'
       - 'services/web_reference_semantics.py'
       - 'services/web_source_*.py'
+      - 'services/integrations/web_preview_sandbox_binding.py'
       - 'services/software_factory_runtime.py'
       - 'services/control_plane/migrations.py'
       - 'tests/test_web_app_*.py'
       - 'tests/test_web_generated_sandbox_gate.py'
       - 'tests/test_web_reference_semantics.py'
       - 'tests/test_web_source_*.py'
+      - 'tests/test_web_preview_sandbox_binding.py'
       - 'tests/test_software_factory_runtime.py'
       - '.github/web-app-factory-closure.json'
       - '.github/workflows/web-app-factory-continuation.yml'
@@ -27,12 +29,14 @@ on:
       - 'services/web_generated_sandbox_gate.py'
       - 'services/web_reference_semantics.py'
       - 'services/web_source_*.py'
+      - 'services/integrations/web_preview_sandbox_binding.py'
       - 'services/software_factory_runtime.py'
       - 'services/control_plane/migrations.py'
       - 'tests/test_web_app_*.py'
       - 'tests/test_web_generated_sandbox_gate.py'
       - 'tests/test_web_reference_semantics.py'
       - 'tests/test_web_source_*.py'
+      - 'tests/test_web_preview_sandbox_binding.py'
       - 'tests/test_software_factory_runtime.py'
       - '.github/web-app-factory-closure.json'
       - '.github/workflows/web-app-factory-continuation.yml'
@@ -122,6 +126,8 @@ jobs:
             tests/test_web_app_analytics_runtime.py \
             tests/test_web_app_realtime_runtime.py \
             tests/test_web_app_sandbox_evidence.py \
+            tests/test_web_app_preview_runtime_probe.py \
+            tests/test_web_preview_sandbox_binding.py \
             tests/test_web_generated_sandbox_gate.py \
             tests/test_software_factory_runtime.py
 
@@ -140,6 +146,8 @@ jobs:
             services/web_app_realtime_runtime.py \
             services/web_app_build_sandbox_observer.py \
             services/web_app_sandbox_evidence.py \
+            services/web_app_preview_runtime_probe.py \
+            services/integrations/web_preview_sandbox_binding.py \
             services/web_generated_sandbox_gate.py \
             services/software_factory_runtime.py \
             services/control_plane/migrations.py \
@@ -153,6 +161,8 @@ jobs:
             tests/test_web_app_analytics_runtime.py \
             tests/test_web_app_realtime_runtime.py \
             tests/test_web_app_sandbox_evidence.py \
+            tests/test_web_app_preview_runtime_probe.py \
+            tests/test_web_preview_sandbox_binding.py \
             tests/test_web_generated_sandbox_gate.py \
             tests/test_software_factory_runtime.py
 
@@ -169,6 +179,8 @@ jobs:
             services/web_app_realtime_runtime.py \
             services/web_app_build_sandbox_observer.py \
             services/web_app_sandbox_evidence.py \
+            services/web_app_preview_runtime_probe.py \
+            services/integrations/web_preview_sandbox_binding.py \
             services/web_generated_sandbox_gate.py \
             services/software_factory_runtime.py \
             services/control_plane/migrations.py \
@@ -180,6 +192,8 @@ jobs:
             tests/test_web_app_analytics_runtime.py \
             tests/test_web_app_realtime_runtime.py \
             tests/test_web_app_sandbox_evidence.py \
+            tests/test_web_app_preview_runtime_probe.py \
+            tests/test_web_preview_sandbox_binding.py \
             tests/test_web_generated_sandbox_gate.py \
             tests/test_software_factory_runtime.py
 
