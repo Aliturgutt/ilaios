@@ -5,24 +5,28 @@
     "type": "repo_ledger",
     "reference": "docs/identity/COMMERCIAL_IDENTITY_CLOSURE_WORKFLOW.md"
   },
-  "status": "DEVELOPING",
+  "status": "IN_PROGRESS",
   "current_phase": "Canonical Membership/Role projection onto verified Google account",
   "master_sha": "ca4c1b4f9718a511bff880e579de6f42cb3e3462",
   "base_sha": "ca4c1b4f9718a511bff880e579de6f42cb3e3462",
-  "head_sha": "b777307445fa2feeca37c03b035f86adfcf6a2a5",
+  "head_sha": "b5a3fea22a7f0b391ddd3922c64545d2b547a99e",
   "branch": "automation/identity-membership-role-projection-1120",
-  "pr": null,
+  "pr": 1120,
   "ci": {
-    "run_id": null,
-    "conclusion": "pending",
-    "exact_sha": "b777307445fa2feeca37c03b035f86adfcf6a2a5"
+    "run_id": 33240830391,
+    "conclusion": "failure",
+    "exact_sha": "b5a3fea22a7f0b391ddd3922c64545d2b547a99e"
   },
-  "next_action": "Open the bounded exact-current PR for canonical Membership/Role projection, require fresh exact-head Required CI + SFFE and controller validation, then re-read live master/token/overlap before expected-head merge. After this phase, continue only with incumbent SessionRegistry/browser-session composition; production Google Console/provider/browser E2E remains HUMAN until separately proven.",
-  "blocker": null,
+  "next_action": "Require fresh exact-head controller validation, Required CI and SFFE after the canonical state-schema repair; then re-read live master/token/overlap before expected-head merge. After this phase, continue only with incumbent SessionRegistry/browser-session composition; production Google Console/provider/browser E2E remains HUMAN until separately proven.",
+  "blocker": {
+    "type": "CI",
+    "detail": "Controller validation on b5a3fea22a7f0b391ddd3922c64545d2b547a99e rejected non-canonical status DEVELOPING; repository state schema repair applied.",
+    "human_action": null
+  },
   "repair": {
-    "retry_count": 1,
-    "last_failure_fingerprint": "execution-controller rejected non-canonical BLOCKED_EXTERNAL status and HUMAN_EXTERNAL blocker type",
-    "last_root_cause": "Reconciliation used semantic labels outside the controller schema instead of canonical BLOCKED + HUMAN values."
+    "retry_count": 2,
+    "last_failure_fingerprint": "controller-state invalid status DEVELOPING on PR #1120 head b5a3fea22a7f0b391ddd3922c64545d2b547a99e",
+    "last_root_cause": "Task ledger used FAST_CLOSURE lifecycle vocabulary instead of execution-controller ALLOWED_STATUS; repaired to IN_PROGRESS and canonical blocker shape."
   },
   "lock": {
     "owner": "identity-closure-runner",
@@ -40,8 +44,8 @@
     "exact-master Required CI Gate run 33238367091 success on ca4c1b4f9718a511bff880e579de6f42cb3e3462",
     "exact-master status contexts ilaios/software-factory-exact-master and ilaios/required-ci-exact-master are success",
     "Vercel deployment status is success on exact master ca4c1b4f9718a511bff880e579de6f42cb3e3462 but does not prove Google provider/browser production flow",
-    "branch automation/identity-membership-role-projection-1120 created from exact master ca4c1b4f9718a511bff880e579de6f42cb3e3462",
-    "product checkpoint b777307445fa2feeca37c03b035f86adfcf6a2a5 adds only canonical migration-v9 Membership/Role -> incumbent Principal projection plus substitution/inactive regressions; no new session/token/authorization authority"
+    "PR#1120 base ca4c1b4f9718a511bff880e579de6f42cb3e3462 product checkpoint b777307445fa2feeca37c03b035f86adfcf6a2a5 adds only canonical migration-v9 Membership/Role -> incumbent Principal projection plus substitution/inactive regressions",
+    "controller run 33240830391 failed only because status DEVELOPING is outside execution-controller schema; root cause identified and minimally repaired"
   ],
-  "updated_at": "2026-08-29T07:22:00Z"
+  "updated_at": "2026-08-29T07:28:00Z"
 }
