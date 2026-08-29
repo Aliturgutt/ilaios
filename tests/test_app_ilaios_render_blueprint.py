@@ -8,6 +8,8 @@ import yaml
 def test_app_ilaios_render_blueprint_is_bounded_and_persistent() -> None:
     blueprint = yaml.safe_load(Path("render.yaml").read_text(encoding="utf-8"))
 
+    assert blueprint["version"] == "1"
+
     services = blueprint["services"]
     assert len(services) == 1
     service = services[0]
@@ -16,7 +18,7 @@ def test_app_ilaios_render_blueprint_is_bounded_and_persistent() -> None:
     assert service["name"] == "ilaios-web-app"
     assert service["runtime"] == "python"
     assert service["region"] == "frankfurt"
-    assert service["plan"] == "starter"
+    assert service["plan"] == "0.5c-512mb"
     assert service["branch"] == "master"
     assert service["startCommand"] == "python -m apps.web_app_runtime.server"
     assert service["healthCheckPath"] == "/health/ready"
