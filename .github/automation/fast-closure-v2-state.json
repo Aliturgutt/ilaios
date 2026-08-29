@@ -1,131 +1,27 @@
 {
   "schema_version": 1,
   "mode": "FAST_CLOSURE_V2",
-  "updated_at": "2026-08-29T02:23:03Z",
+  "updated_at": "2026-08-29T03:25:00Z",
   "merge_token": {
-    "state": "RELEASED",
-    "owner": null,
-    "reserved_master_sha": null,
+    "state": "RESERVED",
+    "owner": "identity",
+    "reserved_master_sha": "f7fcb75427914fbfa5b17581258d1489181bf046",
     "candidate_pr": null,
     "candidate_head_sha": null,
-    "freeze_active": false,
-    "freeze_reason": null
+    "freeze_active": true,
+    "freeze_reason": "Identity production persistence closure from exact master f7fcb75427914fbfa5b17581258d1489181bf046"
   },
-  "scheduler_stagger": {
-    "desktop": 0,
-    "unified": 12,
-    "identity": 24,
-    "web_app": 36,
-    "agents": 48
-  },
+  "scheduler_stagger": {"desktop": 0, "unified": 12, "identity": 24, "web_app": 36, "agents": 48},
   "workstreams": {
-    "desktop": {
-      "scheduler": "desktop",
-      "lifecycle": "BLOCKED_EXTERNAL",
-      "priority_rank": 1,
-      "authoritative_issue": 539,
-      "active_pr": null,
-      "base_sha": "9c9fcec51b4620ef4fcf8d14210346dbaa80b42f",
-      "head_sha": "9c9fcec51b4620ef4fcf8d14210346dbaa80b42f",
-      "blocked_reason": "Repository-owned Desktop sidecar owner-lifetime repair from PR #1077 is merged and preserved in current master. Final acceptance remains a real Windows user-machine boundary requiring Explorer launch, backend/sidecar connection, Google login/logout/relogin, orphan/process lifetime checks, update/rollback/uninstall sanity and UI acceptance.",
-      "next_action": "Preserve merged Desktop source/package lineage. Do not retain the merge token while waiting for genuine Windows device evidence; require fresh exact-current package/hash lineage plus real Windows Explorer/login/logout/relogin/orphan/update/uninstall/UI evidence before Desktop closure."
-    },
-    "video_native_reference": {
-      "scheduler": "unified",
-      "lifecycle": "BLOCKED_EXTERNAL",
-      "priority_rank": 2,
-      "authoritative_issue": 330,
-      "active_pr": null,
-      "base_sha": "dc80127dbb4e2e78c57da1546700b529b1c570fb",
-      "head_sha": "dc80127dbb4e2e78c57da1546700b529b1c570fb",
-      "blocked_reason": "PR #1083 paid-certification rerun protection and PR #1081 native-reference criteria/boundary evidence binding are merged in current master. Final closure still requires a real approved provider execution with relay fetch/release, immutable receipt/cost, real MP4, technical QA, semantic/reference consistency, coordinator acceptance and exact-master certification. No paid execution is authorized by this state reconciliation.",
-      "next_action": "Preserve #1083/#1081 repository safety and evidence binding. Run real-provider native-reference certification only when an approved zero-cost or explicitly authorized bounded-cost execution is available; then bind exact source SHA, provider receipt/cost, relay evidence, MP4 SHA, QA and coordinator acceptance."
-    },
-    "website_v2": {
-      "scheduler": "unified",
-      "lifecycle": "DEVELOPING",
-      "priority_rank": 3,
-      "authoritative_issue": null,
-      "active_pr": null,
-      "base_sha": "d6acdfdbd06064c19a148588341689965a229b57",
-      "head_sha": "d6acdfdbd06064c19a148588341689965a229b57",
-      "blocked_reason": "Current master has a successful Vercel deployment status, but exact production /api/release attribution plus live ilaios.com/www browser acceptance remain unverified; source or deploy status alone cannot close Website V2.",
-      "next_action": "Complete exact production /api/release attribution plus live ilaios.com/www EN/TR Dark/Light responsive/accessibility/SEO/network/overflow/visual acceptance against exact current production deployment."
-    },
-    "identity": {
-      "scheduler": "identity",
-      "lifecycle": "DEVELOPING",
-      "priority_rank": 4,
-      "authoritative_issue": null,
-      "active_pr": null,
-      "base_sha": "f65a88d5e9aba001cc94bb4045bc34add0c5e42a",
-      "head_sha": "f65a88d5e9aba001cc94bb4045bc34add0c5e42a",
-      "blocked_reason": null,
-      "next_action": "PR #1111 canonical Google Web immutable-provider-subject to canonical User/Tenant binding is merged and exact-master VERIFIED by Required CI run 33228391238 and Software Factory Final Evidence run 33228391111. Audit and implement only the next real repository-owned gap: compose canonical membership/role/session authority and secure browser-session transport onto the verified Google callback path, with substitution/replay/logout/relogin regressions; then use a new exact-current reservation and fresh gates. Production Google Console/provider/browser E2E remains HUMAN/EXTERNAL until separately proven."
-    },
-    "web_app": {
-      "scheduler": "web_app",
-      "lifecycle": "DEVELOPING",
-      "priority_rank": 5,
-      "authoritative_issue": 486,
-      "active_pr": null,
-      "base_sha": "47ef006dc3c6d84c6f1b140769c327b79f86c7bd",
-      "head_sha": "47ef006dc3c6d84c6f1b140769c327b79f86c7bd",
-      "blocked_reason": null,
-      "next_action": "PR #1096 trusted preview sandbox observer is merged at exact master 47ef006dc3c6d84c6f1b140769c327b79f86c7bd after fresh exact-head Web App Factory Continuation, Required CI and SFFE PASS. Phase 11 remains IN_PROGRESS: wire the incumbent preview/runtime boundary to emit real trusted observations and prove governed separate origin/CSP/DNS/egress, privileged cookie/token/secret isolation, publish separation and runtime E2E before phase verification."
-    },
-    "agents": {
-      "scheduler": "agents",
-      "lifecycle": "BLOCKED_EXTERNAL",
-      "priority_rank": 6,
-      "authoritative_issue": 557,
-      "active_pr": null,
-      "base_sha": "dc5af14c60cdfdd57b2bd3e727ab47d06e430dbf",
-      "head_sha": "dc5af14c60cdfdd57b2bd3e727ab47d06e430dbf",
-      "blocked_reason": "Automated 46/47 exact-master certification is verified. IndependentVerifier remains genuine human.owner and cannot be self-promoted by automation.",
-      "next_action": "Preserve exact-master automated 46/47 evidence. Complete IndependentVerifier only through genuine human.owner evidence; do not retain the repository merge token for this external final gate."
-    },
-    "app_factory": {
-      "scheduler": "unified",
-      "lifecycle": "DEVELOPING",
-      "priority_rank": 7,
-      "authoritative_issue": 547,
-      "active_pr": null,
-      "base_sha": "7b8c397d8dc7437555da9b5af1548f14a30b466f",
-      "head_sha": "7b8c397d8dc7437555da9b5af1548f14a30b466f",
-      "blocked_reason": null,
-      "next_action": "When selected, materialize a real approved Flutter Android project through the incumbent governed Software Factory and produce exact binary/device evidence without Store publication."
-    },
-    "mobile_store": {
-      "scheduler": "unified",
-      "lifecycle": "BLOCKED_EXTERNAL",
-      "priority_rank": 8,
-      "authoritative_issue": 502,
-      "active_pr": null,
-      "base_sha": "904c4627f5809fadcfee0626fc48accea7f6863e",
-      "head_sha": "904c4627f5809fadcfee0626fc48accea7f6863e",
-      "blocked_reason": "PR #1080 repository-owned fail-closed STORE_READY promotion guard is merged and inherited by current master. Final Mobile Store closure still depends on genuine governed APK/AAB, real-device/runtime evidence, signing/account evidence and external Store actions.",
-      "next_action": "Preserve #1080 repository evidence. Do not retain the merge token while waiting for genuine binary/device/signing/provider evidence; do not mark Mobile Store CLOSED without that evidence."
-    },
-    "microsoft_store": {
-      "scheduler": "unified",
-      "lifecycle": "BLOCKED_EXTERNAL",
-      "priority_rank": 9,
-      "authoritative_issue": 539,
-      "active_pr": null,
-      "base_sha": "695f05890d1dbe6cc481b0a02996744ba01d27d1",
-      "head_sha": "695f05890d1dbe6cc481b0a02996744ba01d27d1",
-      "blocked_reason": "Exact-current Desktop repository/package evidence is available, but Store progression remains blocked on real Windows acceptance and an explicit human submission/publication decision.",
-      "next_action": "After issue #539 records exact-current Windows acceptance, prepare the explicit Microsoft Store release-candidate/submission checkpoint without auto-publishing."
-    }
+    "desktop": {"scheduler":"desktop","lifecycle":"BLOCKED_EXTERNAL","priority_rank":1,"authoritative_issue":539,"active_pr":null,"base_sha":"9c9fcec51b4620ef4fcf8d14210346dbaa80b42f","head_sha":"9c9fcec51b4620ef4fcf8d14210346dbaa80b42f","blocked_reason":"Repository-owned Desktop sidecar owner-lifetime repair from PR #1077 is merged and preserved in current master. Final acceptance remains a real Windows user-machine boundary requiring Explorer launch, backend/sidecar connection, Google login/logout/relogin, orphan/process lifetime checks, update/rollback/uninstall sanity and UI acceptance.","next_action":"Preserve merged Desktop source/package lineage. Do not retain the merge token while waiting for genuine Windows device evidence; require fresh exact-current package/hash lineage plus real Windows Explorer/login/logout/relogin/orphan/update/uninstall/UI evidence before Desktop closure."},
+    "video_native_reference": {"scheduler":"unified","lifecycle":"BLOCKED_EXTERNAL","priority_rank":2,"authoritative_issue":330,"active_pr":null,"base_sha":"dc80127dbb4e2e78c57da1546700b529b1c570fb","head_sha":"dc80127dbb4e2e78c57da1546700b529b1c570fb","blocked_reason":"PR #1083 paid-certification rerun protection and PR #1081 native-reference criteria/boundary evidence binding are merged in current master. Final closure still requires a real approved provider execution with relay fetch/release, immutable receipt/cost, real MP4, technical QA, semantic/reference consistency, coordinator acceptance and exact-master certification. No paid execution is authorized by this state reconciliation.","next_action":"Preserve #1083/#1081 repository safety and evidence binding. Run real-provider native-reference certification only when an approved zero-cost or explicitly authorized bounded-cost execution is available; then bind exact source SHA, provider receipt/cost, relay evidence, MP4 SHA, QA and coordinator acceptance."},
+    "website_v2": {"scheduler":"unified","lifecycle":"DEVELOPING","priority_rank":3,"authoritative_issue":null,"active_pr":null,"base_sha":"d6acdfdbd06064c19a148588341689965a229b57","head_sha":"d6acdfdbd06064c19a148588341689965a229b57","blocked_reason":"Current master has a successful Vercel deployment status, but exact production /api/release attribution plus live ilaios.com/www browser acceptance remain unverified; source or deploy status alone cannot close Website V2.","next_action":"Complete exact production /api/release attribution plus live ilaios.com/www EN/TR Dark/Light responsive/accessibility/SEO/network/overflow/visual acceptance against exact current production deployment."},
+    "identity": {"scheduler":"identity","lifecycle":"DEVELOPING","priority_rank":4,"authoritative_issue":null,"active_pr":null,"base_sha":"f7fcb75427914fbfa5b17581258d1489181bf046","head_sha":null,"blocked_reason":null,"next_action":"Implement the smallest production CentralIdentityStore adapter against canonical migration v9 identity tables; prove restart persistence, immutable provider-subject uniqueness, email non-aliasing, cross-tenant denial and last-link protection. Then run fresh exact-head Required CI + SFFE + applicable Identity/DB/security gates, reread current master/token/overlap, and expected-head merge only if current."},
+    "web_app": {"scheduler":"web_app","lifecycle":"DEVELOPING","priority_rank":5,"authoritative_issue":486,"active_pr":null,"base_sha":"47ef006dc3c6d84c6f1b140769c327b79f86c7bd","head_sha":"47ef006dc3c6d84c6f1b140769c327b79f86c7bd","blocked_reason":null,"next_action":"PR #1096 trusted preview sandbox observer is merged at exact master 47ef006dc3c6d84c6f1b140769c327b79f86c7bd after fresh exact-head Web App Factory Continuation, Required CI and SFFE PASS. Phase 11 remains IN_PROGRESS: wire the incumbent preview/runtime boundary to emit real trusted observations and prove governed separate origin/CSP/DNS/egress, privileged cookie/token/secret isolation, publish separation and runtime E2E before phase verification."},
+    "agents": {"scheduler":"agents","lifecycle":"BLOCKED_EXTERNAL","priority_rank":6,"authoritative_issue":557,"active_pr":null,"base_sha":"dc5af14c60cdfdd57b2bd3e727ab47d06e430dbf","head_sha":"dc5af14c60cdfdd57b2bd3e727ab47d06e430dbf","blocked_reason":"Automated 46/47 exact-master certification is verified. IndependentVerifier remains genuine human.owner and cannot be self-promoted by automation.","next_action":"Preserve exact-master automated 46/47 evidence. Complete IndependentVerifier only through genuine human.owner evidence; do not retain the repository merge token for this external final gate."},
+    "app_factory": {"scheduler":"unified","lifecycle":"DEVELOPING","priority_rank":7,"authoritative_issue":547,"active_pr":null,"base_sha":"7b8c397d8dc7437555da9b5af1548f14a30b466f","head_sha":"7b8c397d8dc7437555da9b5af1548f14a30b466f","blocked_reason":null,"next_action":"When selected, materialize a real approved Flutter Android project through the incumbent governed Software Factory and produce exact binary/device evidence without Store publication."},
+    "mobile_store": {"scheduler":"unified","lifecycle":"BLOCKED_EXTERNAL","priority_rank":8,"authoritative_issue":502,"active_pr":null,"base_sha":"904c4627f5809fadcfee0626fc48accea7f6863e","head_sha":"904c4627f5809fadcfee0626fc48accea7f6863e","blocked_reason":"PR #1080 repository-owned fail-closed STORE_READY promotion guard is merged and inherited by current master. Final Mobile Store closure still depends on genuine governed APK/AAB, real-device/runtime evidence, signing/account evidence and external Store actions.","next_action":"Preserve #1080 repository evidence. Do not retain the merge token while waiting for genuine binary/device/signing/provider evidence; do not mark Mobile Store CLOSED without that evidence."},
+    "microsoft_store": {"scheduler":"unified","lifecycle":"BLOCKED_EXTERNAL","priority_rank":9,"authoritative_issue":539,"active_pr":null,"base_sha":"695f05890d1dbe6cc481b0a02996744ba01d27d1","head_sha":"695f05890d1dbe6cc481b0a02996744ba01d27d1","blocked_reason":"Exact-current Desktop repository/package evidence is available, but Store progression remains blocked on real Windows acceptance and an explicit human submission/publication decision.","next_action":"After issue #539 records exact-current Windows acceptance, prepare the explicit Microsoft Store release-candidate/submission checkpoint without auto-publishing."}
   },
-  "metrics": {
-    "master_advances": 44,
-    "stale_pass_invalidations": 36,
-    "replay_resync_count": 11,
-    "ci_cycles": 35,
-    "successful_merges": 45,
-    "duplicate_pr_count": 5,
-    "churn_only_commit_count": 0
-  }
+  "metrics": {"master_advances":44,"stale_pass_invalidations":36,"replay_resync_count":11,"ci_cycles":35,"successful_merges":45,"duplicate_pr_count":5,"churn_only_commit_count":0}
 }
