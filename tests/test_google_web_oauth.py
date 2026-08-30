@@ -239,7 +239,7 @@ def test_tampered_redirect_binding_cannot_select_another_allowlisted_redirect() 
     assert data["redirect_uri"] == _REDIRECT
 
 
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # type: ignore[misc, unused-ignore]
     ("verifier", "error_type"),
     (
         (
