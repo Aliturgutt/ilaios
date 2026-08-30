@@ -14,6 +14,7 @@ import pytest
 
 import apps.web_app_runtime.server as runtime_server
 from apps.web_app_runtime.server import (
+    AppRateLimiter,
     AppRuntime,
     AppRuntimeConfigurationError,
     AppRuntimeEnvironment,
@@ -107,7 +108,11 @@ def _environment(database: Path) -> AppRuntimeEnvironment:
     )
 
 
-def _runtime(database: Path, oauth: _OAuth | None = None) -> tuple[AppRuntime, _OAuth]:
+def _runtime(
+    database: Path,
+    oauth: _OAuth | None = None,
+    rate_limiter: AppRateLimiter | None = None,
+) -> tuple[AppRuntime, _OAuth]:
     fake = oauth or _OAuth()
     environment = _environment(database)
     runtime = AppRuntime(
@@ -118,6 +123,7 @@ def _runtime(database: Path, oauth: _OAuth | None = None) -> tuple[AppRuntime, _
             environment.session_lifetime,
         ),
         browser=WebIdentitySessionBoundary(production_origins=(_ORIGIN,)),
+        rate_limiter=rate_limiter,
     )
     return runtime, fake
 
@@ -614,6 +620,131 @@ def test_unknown_route_and_unsupported_methods_are_bounded(tmp_path: Path) -> No
     )
     assert wrong_method.status is HTTPStatus.METHOD_NOT_ALLOWED
     assert dict(wrong_method.headers)["Allow"] == "POST"
+
+
+
+def test_auth_rate_limit_is_bounded_per_source_and_path(tmp_path: Path) -> None:
+    limiter = AppRateLimiter({"/auth/google/start": (2, 60)})
+    runtime, _oauth = _runtime(tmp_path / "identity.db", rate_limiter=limiter)
+
+    first = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/google/start",
+            headers={},
+            source="198.51.100.10",
+        ),
+        now=_NOW,
+    )
+    second = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/google/start",
+            headers={},
+            source="198.51.100.10",
+        ),
+        now=_NOW + timedelta(seconds=1),
+    )
+    limited = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/google/start",
+            headers={},
+            source="198.51.100.10",
+        ),
+        now=_NOW + timedelta(seconds=2),
+    )
+    other_source = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/google/start",
+            headers={},
+            source="198.51.100.11",
+        ),
+        now=_NOW + timedelta(seconds=2),
+    )
+
+    assert first.status is HTTPStatus.FOUND
+    assert second.status is HTTPStatus.FOUND
+    assert limited.status is HTTPStatus.TOO_MANY_REQUESTS
+    assert limited.body == b'{"error":"rate limit exceeded"}'
+    assert dict(limited.headers)["Retry-After"] == "58"
+    assert other_source.status is HTTPStatus.FOUND
+
+
+def test_auth_rate_limit_window_recovers_and_health_is_not_limited(tmp_path: Path) -> None:
+    limiter = AppRateLimiter({"/auth/session": (1, 10)})
+    runtime, _oauth = _runtime(tmp_path / "identity.db", rate_limiter=limiter)
+
+    first = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/session",
+            headers={},
+            source="203.0.113.7",
+        ),
+        now=_NOW,
+    )
+    limited = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/session",
+            headers={},
+            source="203.0.113.7",
+        ),
+        now=_NOW + timedelta(seconds=1),
+    )
+    recovered = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/session",
+            headers={},
+            source="203.0.113.7",
+        ),
+        now=_NOW + timedelta(seconds=10),
+    )
+    ready = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/health/ready",
+            headers={},
+            source="203.0.113.7",
+        ),
+        now=_NOW + timedelta(seconds=1),
+    )
+
+    assert first.status is HTTPStatus.FORBIDDEN
+    assert limited.status is HTTPStatus.TOO_MANY_REQUESTS
+    assert dict(limited.headers)["Retry-After"] == "9"
+    assert recovered.status is HTTPStatus.FORBIDDEN
+    assert ready.status is HTTPStatus.OK
+
+
+def test_rate_limiter_ignores_untrusted_forwarding_headers(tmp_path: Path) -> None:
+    limiter = AppRateLimiter({"/auth/google/start": (1, 60)})
+    runtime, _oauth = _runtime(tmp_path / "identity.db", rate_limiter=limiter)
+
+    first = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/google/start",
+            headers={"X-Forwarded-For": "198.51.100.1"},
+            source="192.0.2.10",
+        ),
+        now=_NOW,
+    )
+    spoofed = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/google/start",
+            headers={"X-Forwarded-For": "198.51.100.2"},
+            source="192.0.2.10",
+        ),
+        now=_NOW + timedelta(seconds=1),
+    )
+
+    assert first.status is HTTPStatus.FOUND
+    assert spoofed.status is HTTPStatus.TOO_MANY_REQUESTS
 
 
 def test_environment_requires_database_and_valid_runtime_bounds(tmp_path: Path) -> None:
