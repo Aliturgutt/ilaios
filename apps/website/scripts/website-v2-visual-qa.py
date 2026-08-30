@@ -278,6 +278,105 @@ def main() -> int:
             if not ok:
                 failures.append(f"internal link {target}: HTTP {status}")
 
+        # Explicitly certify both Light and Dark homepage themes. The default
+        # browser color scheme is not evidence for the alternate theme.
+        for theme in ("light", "dark"):
+            for locale in ("en", "tr"):
+                for viewport_name, width, height in (("desktop", 1440, 1000), ("mobile", 390, 844)):
+                    path = localized_path(locale, "")
+                    page = context.new_page()
+                    page.set_viewport_size({"width": width, "height": height})
+                    page.add_init_script(
+                        f"localStorage.setItem('ilaios-theme', '{theme}')"
+                    )
+                    try:
+                        response = page.goto(
+                            f"{BASE_URL}{path}", wait_until="networkidle", timeout=45_000
+                        )
+                        if response is None or response.status >= 400:
+                            raise RuntimeError(f"HTTP {response.status if response else 0}")
+                        actual_theme = page.evaluate("document.documentElement.dataset.theme")
+                        if actual_theme != theme:
+                            raise RuntimeError(
+                                f"theme bootstrap mismatch: expected {theme}, got {actual_theme}"
+                            )
+                        contrast = float(
+                            page.evaluate(
+                                """() => {
+                                  const parse = (value) => {
+                                    const m = value.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/);
+                                    return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
+                                  };
+                                  const lum = (rgb) => {
+                                    const c = rgb.map(v => {
+                                      const s = v / 255;
+                                      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+                                    });
+                                    return 0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2];
+                                  };
+                                  const h1 = document.querySelector('.homepage-v2 h1');
+                                  const host = document.querySelector('.homepage-v2');
+                                  if (!h1 || !host) return 0;
+                                  const fg = parse(getComputedStyle(h1).color);
+                                  const bg = parse(getComputedStyle(host).backgroundColor) ||
+                                             parse(getComputedStyle(document.body).backgroundColor);
+                                  if (!fg || !bg) return 0;
+                                  const l1 = lum(fg), l2 = lum(bg);
+                                  return (Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05);
+                                }"""
+                            )
+                        )
+                        if contrast < 4.5:
+                            raise RuntimeError(
+                                f"{theme} homepage H1 contrast too low: {contrast:.2f}"
+                            )
+                        gradients = page.locator(".homepage-v2 *").evaluate_all(
+                            """els => els.filter((el) =>
+                              (getComputedStyle(el).backgroundImage || '').includes('gradient(')
+                            ).length"""
+                        )
+                        if gradients:
+                            raise RuntimeError(
+                                f"{theme} homepage contains {gradients} decorative gradients"
+                            )
+                        file_name = (
+                            f"theme__{theme}__{locale}__home__{viewport_name}-{width}x{height}.png"
+                        )
+                        page.screenshot(path=str(screenshots / file_name), full_page=True)
+                        records.append(
+                            {
+                                "locale": locale,
+                                "route": path,
+                                "route_name": "home-theme",
+                                "viewport": viewport_name,
+                                "width": width,
+                                "height": height,
+                                "theme": theme,
+                                "h1_contrast": contrast,
+                                "screenshot": f"screenshots/{file_name}",
+                                "result": "PASS",
+                            }
+                        )
+                    except Exception as exc:  # noqa: BLE001
+                        failures.append(
+                            f"{locale} {path} {theme} {viewport_name}: {exc}"
+                        )
+                        records.append(
+                            {
+                                "locale": locale,
+                                "route": path,
+                                "route_name": "home-theme",
+                                "viewport": viewport_name,
+                                "width": width,
+                                "height": height,
+                                "theme": theme,
+                                "result": "FAIL",
+                                "failure": str(exc),
+                            }
+                        )
+                    finally:
+                        page.close()
+
         context.close()
         browser.close()
 
@@ -290,7 +389,7 @@ def main() -> int:
         "checks": len(records),
         "internal_link_targets": len(internal_link_results),
         "internal_link_results": internal_link_results,
-        "screenshots_expected": len(SCREENSHOT_ROUTE_NAMES) * 2 * 2,
+        "screenshots_expected": len(SCREENSHOT_ROUTE_NAMES) * 2 * 2 + 8,
         "failures": failures,
         "status": "FAIL" if failures else "PASS",
         "records": records,
