@@ -422,4 +422,3 @@ def test_github_standard_error_uri_callback_is_not_rejected_as_unexpected_query(
 
     assert response.status is HTTPStatus.UNAUTHORIZED
     assert response.body == b'{"error":"authentication denied"}'
-
