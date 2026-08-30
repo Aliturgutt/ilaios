@@ -73,6 +73,12 @@ from services.google_web_oauth import (
     GoogleWebOAuthTokenExchangeError,
     IdentityChallengeGoogleWebOAuthReplayStore,
 )
+from services.identity import Principal
+from services.li_founder_operator import (
+    LiAccessError,
+    LiFounderOperator,
+    LiMemoryError,
+)
 from services.microsoft_web_oauth import (
     IdentityChallengeMicrosoftWebOAuthReplayStore,
     MicrosoftWebOAuthCompletion,
@@ -113,6 +119,10 @@ _RATE_LIMITS: Final = {
     "/auth/logout": (120, 60),
     "/auth/session": (600, 60),
     "/auth/desktop/canonicalize": (120, 60),
+    "/li": (300, 60),
+    "/li/app.js": (300, 60),
+    "/api/li/state": (300, 60),
+    "/api/li/memories": (120, 60),
 }
 _ALLOWED_CALLBACK_QUERY_KEYS: Final = frozenset(
     {"state", "code", "scope", "authuser", "prompt", "hd", "iss"}
@@ -288,12 +298,14 @@ class AppRuntime:
         desktop_client_id: str,
         microsoft_oauth: MicrosoftWebOAuthService | None = None,
         github_oauth: GitHubWebOAuthService | None = None,
+        li: LiFounderOperator | None = None,
         rate_limiter: AppRateLimiter | None = None,
     ) -> None:
         self.environment = environment
         self.oauth = oauth
         self.microsoft_oauth = microsoft_oauth
         self.github_oauth = github_oauth
+        self.li = li
         self.sessions = sessions
         self.browser = browser
         self.desktop_client_id = desktop_client_id.strip()
@@ -345,6 +357,10 @@ class AppRuntime:
             runtime_environment.session_lifetime,
         )
         browser = WebIdentitySessionBoundary(production_origins=(_ORIGIN,))
+        li = LiFounderOperator.from_environment(
+            identity_database=runtime_environment.identity_database,
+            env=env,
+        )
         return cls(
             environment=runtime_environment,
             oauth=oauth,
@@ -353,6 +369,7 @@ class AppRuntime:
             desktop_client_id=oidc.desktop_client_id,
             microsoft_oauth=microsoft_oauth,
             github_oauth=github_oauth,
+            li=li,
         )
 
     def dispatch(
@@ -483,7 +500,45 @@ class AppRuntime:
                         HTTPStatus.BAD_REQUEST, "unexpected query parameters"
                     )
                 return self._desktop_canonicalize(request, current)
+            if path == "/li":
+                if method != "GET":
+                    return self._method_not_allowed("GET")
+                if split.query:
+                    return self._json_error(
+                        HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+                    )
+                return self._li_page(request, current)
+            if path == "/li/app.js":
+                if method != "GET":
+                    return self._method_not_allowed("GET")
+                if split.query:
+                    return self._json_error(
+                        HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+                    )
+                return self._li_script(request, current)
+            if path == "/api/li/state":
+                if method != "GET":
+                    return self._method_not_allowed("GET")
+                if split.query:
+                    return self._json_error(
+                        HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+                    )
+                return self._li_state(request, current)
+            if path == "/api/li/memories":
+                if split.query:
+                    return self._json_error(
+                        HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+                    )
+                if method == "GET":
+                    return self._li_memories(request, current)
+                if method == "POST":
+                    return self._li_remember(request, current)
+                return self._method_not_allowed("GET, POST")
             return self._json_error(HTTPStatus.NOT_FOUND, "not found")
+        except LiAccessError:
+            return self._json_error(HTTPStatus.FORBIDDEN, "request denied")
+        except LiMemoryError as error:
+            return self._json_error(HTTPStatus.BAD_REQUEST, str(error))
         except WebIdentitySessionError:
             return self._json_error(HTTPStatus.FORBIDDEN, "request denied")
         except GoogleDesktopIdentityVerificationError:
@@ -941,6 +996,163 @@ class AppRuntime:
                 "user_id": principal.principal_id,
                 "tenant_id": principal.tenant_id,
                 "roles": sorted(principal.roles),
+            },
+        )
+
+    def _li_operator(self) -> LiFounderOperator | None:
+        return self.li
+
+    def _li_principal(
+        self, request: RuntimeRequest, now: datetime
+    ) -> tuple[LiFounderOperator, Principal]:
+        li = self._li_operator()
+        if li is None:
+            raise LiAccessError("Li access denied")
+        credentials = self.browser.credentials(self._web_request(request))
+        principal = self.sessions.verify(
+            credentials.session_id,
+            credentials.encoded_token,
+            now,
+        )
+        li.authorize(principal)
+        return li, principal
+
+    def _li_page(self, request: RuntimeRequest, now: datetime) -> RuntimeResponse:
+        self._li_principal(request, now)
+        body = (
+            b"<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+            b"<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+            b"<title>Li | ILAIOS</title></head><body><main>"
+            b"<h1>Li</h1><p>Founder Operator</p>"
+            b"<section><h2>Current state</h2><pre id=\"state\">Loading...</pre></section>"
+            b"<section><h2>Memory</h2><form id=\"memory\">"
+            b"<label>Kind <select name=\"kind\">"
+            b"<option value=\"working\">Working</option>"
+            b"<option value=\"episodic\">Episodic</option>"
+            b"<option value=\"semantic\">Semantic</option>"
+            b"</select></label>"
+            b"<label>Remember <textarea name=\"content\" maxlength=\"8000\" required></textarea></label>"
+            b"<button type=\"submit\">Remember</button></form>"
+            b"<p id=\"status\" role=\"status\" aria-live=\"polite\"></p>"
+            b"<ul id=\"memories\"></ul></section>"
+            b"</main><script src=\"/li/app.js\" defer></script></body></html>"
+        )
+        return RuntimeResponse(
+            status=HTTPStatus.OK,
+            body=body,
+            headers=(
+                ("Content-Type", "text/html; charset=utf-8"),
+                ("Cache-Control", "no-store"),
+                (
+                    "Content-Security-Policy",
+                    "default-src 'none'; script-src 'self'; connect-src 'self'; "
+                    "style-src 'none'; img-src 'none'; base-uri 'none'; "
+                    "frame-ancestors 'none'; form-action 'none'",
+                ),
+            ),
+        )
+
+    def _li_script(self, request: RuntimeRequest, now: datetime) -> RuntimeResponse:
+        self._li_principal(request, now)
+        body = (
+            b"(function(){\"use strict\";"
+            b"const state=document.getElementById('state');"
+            b"const list=document.getElementById('memories');"
+            b"const form=document.getElementById('memory');"
+            b"const status=document.getElementById('status');"
+            b"function csrf(){const prefix='__Host-ilaios_csrf=';"
+            b"for(const part of document.cookie.split(';')){const value=part.trim();"
+            b"if(value.startsWith(prefix)){return decodeURIComponent(value.slice(prefix.length));}}"
+            b"return '';}"
+            b"async function load(){"
+            b"const s=await fetch('/api/li/state',{credentials:'same-origin',cache:'no-store'});"
+            b"if(!s.ok){throw new Error('state denied');}"
+            b"state.textContent=JSON.stringify(await s.json(),null,2);"
+            b"const m=await fetch('/api/li/memories',{credentials:'same-origin',cache:'no-store'});"
+            b"if(!m.ok){throw new Error('memory denied');}"
+            b"const payload=await m.json();list.replaceChildren();"
+            b"for(const item of payload.memories){const li=document.createElement('li');"
+            b"li.textContent=item.kind+': '+item.content;list.appendChild(li);}}"
+            b"form.addEventListener('submit',async function(event){event.preventDefault();"
+            b"const token=csrf();if(!token){status.textContent='CSRF unavailable.';return;}"
+            b"const data=new FormData(form);const content=String(data.get('content')||'').trim();"
+            b"const kind=String(data.get('kind')||'working');if(!content){return;}"
+            b"status.textContent='Saving...';"
+            b"const response=await fetch('/api/li/memories',{method:'POST',"
+            b"credentials:'same-origin',cache:'no-store',"
+            b"headers:{'Content-Type':'application/json','X-CSRF-Token':token},"
+            b"body:JSON.stringify({kind:kind,content:content})});"
+            b"if(!response.ok){status.textContent='Save failed.';return;}"
+            b"form.reset();status.textContent='Saved.';await load();});"
+            b"load().catch(function(){state.textContent='Unavailable';"
+            b"status.textContent='Li unavailable.';});})();"
+        )
+        return RuntimeResponse(
+            status=HTTPStatus.OK,
+            body=body,
+            headers=(
+                ("Content-Type", "text/javascript; charset=utf-8"),
+                ("Cache-Control", "no-store"),
+            ),
+        )
+
+    def _li_state(self, request: RuntimeRequest, now: datetime) -> RuntimeResponse:
+        li, principal = self._li_principal(request, now)
+        return self._json(HTTPStatus.OK, li.snapshot(principal, now=now))
+
+    def _li_memories(self, request: RuntimeRequest, now: datetime) -> RuntimeResponse:
+        li, principal = self._li_principal(request, now)
+        memories = li.list_memories(principal)
+        return self._json(
+            HTTPStatus.OK,
+            {
+                "memories": [
+                    {
+                        "memory_id": item.memory_id,
+                        "kind": item.kind,
+                        "content": item.content,
+                        "source": item.source,
+                        "confidence": item.confidence,
+                        "sensitivity": item.sensitivity,
+                        "created_at": item.created_at.isoformat(),
+                    }
+                    for item in memories
+                ]
+            },
+        )
+
+    def _li_remember(self, request: RuntimeRequest, now: datetime) -> RuntimeResponse:
+        li, principal = self._li_principal(request, now)
+        content_type = request.headers.get("Content-Type", "")
+        if content_type.split(";", 1)[0].strip().casefold() != "application/json":
+            return self._json_error(
+                HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+                "application/json is required",
+            )
+        if not request.body or len(request.body) > _MAX_REQUEST_BODY_BYTES:
+            return self._json_error(HTTPStatus.BAD_REQUEST, "request body is invalid")
+        try:
+            document = json.loads(request.body)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return self._json_error(HTTPStatus.BAD_REQUEST, "request body is invalid")
+        if not isinstance(document, dict) or set(document) != {"kind", "content"}:
+            return self._json_error(HTTPStatus.BAD_REQUEST, "request body is invalid")
+        kind = document.get("kind")
+        content = document.get("content")
+        if not isinstance(kind, str) or not isinstance(content, str):
+            return self._json_error(HTTPStatus.BAD_REQUEST, "request body is invalid")
+        record = li.remember(
+            principal,
+            kind=kind,
+            content=content,
+            now=now,
+        )
+        return self._json(
+            HTTPStatus.CREATED,
+            {
+                "memory_id": record.memory_id,
+                "kind": record.kind,
+                "created_at": record.created_at.isoformat(),
             },
         )
 
