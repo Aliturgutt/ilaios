@@ -292,6 +292,12 @@ class DesktopOIDCService:
                 maximum_session=_SESSION_LIFETIME,
             ),
         ).authenticate(encoded_token, current)
+        principal = self._canonicalize_principal(
+            provider.provider_id,
+            encoded_token,
+            principal,
+            current,
+        )
         verified_expiry = getattr(verifier, "verified_expires_at", None)
         if not isinstance(verified_expiry, datetime):
             raise DesktopIdentityError(
@@ -353,6 +359,16 @@ class DesktopOIDCService:
             status="pending",
             provider_id=flow.provider_id,
         )
+
+    def _canonicalize_principal(
+        self,
+        provider_id: str,
+        encoded_token: str,
+        principal: Principal,
+        now: datetime,
+    ) -> Principal:
+        """Provider-specific composition hook; base broker keeps verified claims unchanged."""
+        return principal
 
     def validate_session(
         self,
