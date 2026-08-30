@@ -1,8 +1,9 @@
 """Provider-neutral stock-source adapter contracts for ILAIOS Video Factory.
 
-This module defines fail-closed request/result and governance boundaries for future
-stock-media providers. It does not perform network access, select a provider,
-resolve credentials, download assets, or grant runtime authority.
+This module defines fail-closed request/result and governance boundaries for stock
+media providers. Concrete provider adapters are deliberately transport-injected:
+they do not resolve credentials, bypass governed routing, or select fallback
+providers. Runtime/provider E2E evidence is required before VERIFIED maturity.
 """
 
 from __future__ import annotations
@@ -124,6 +125,74 @@ class GovernedStockSourceAdapter(Protocol):
     def search(self, request: StockSearchRequest) -> StockSearchResult:
         """Return validated candidates or fail closed; never silently fallback."""
         ...
+
+
+class StockProviderTransport(Protocol):
+    """Credential/network boundary supplied by the existing governed runtime."""
+
+    def search(
+        self,
+        *,
+        provider: StockProvider,
+        tenant_id: str,
+        job_id: str,
+        query: str,
+        max_results: int,
+    ) -> StockSearchResult:
+        """Execute one provider request and return a fully attributed result."""
+        ...
+
+
+class _BoundProviderAdapter:
+    """Fail-closed provider binding shared by concrete stock adapters."""
+
+    provider: StockProvider
+
+    def __init__(self, transport: StockProviderTransport) -> None:
+        self._transport = transport
+
+    def search(self, request: StockSearchRequest) -> StockSearchResult:
+        if request.provider is not self.provider:
+            raise StockSourceError(
+                f"{self.provider.value} adapter cannot execute "
+                f"{request.provider.value} request"
+            )
+        result = self._transport.search(
+            provider=self.provider,
+            tenant_id=request.tenant_id,
+            job_id=request.job_id,
+            query=request.query,
+            max_results=request.max_results,
+        )
+        if result.request != request:
+            raise StockSourceError("transport result request must match adapter request")
+        if result.request.provider is not self.provider:
+            raise StockSourceError("transport result provider must match adapter provider")
+        return result
+
+
+class PexelsStockSourceAdapter(_BoundProviderAdapter):
+    provider = StockProvider.PEXELS
+
+
+class PixabayStockSourceAdapter(_BoundProviderAdapter):
+    provider = StockProvider.PIXABAY
+
+
+class UnsplashStockSourceAdapter(_BoundProviderAdapter):
+    provider = StockProvider.UNSPLASH
+
+
+class WikimediaStockSourceAdapter(_BoundProviderAdapter):
+    provider = StockProvider.WIKIMEDIA
+
+
+class NasaStockSourceAdapter(_BoundProviderAdapter):
+    provider = StockProvider.NASA
+
+
+class InternetArchiveStockSourceAdapter(_BoundProviderAdapter):
+    provider = StockProvider.INTERNET_ARCHIVE
 
 
 def _require_non_blank(name: str, value: str) -> None:
