@@ -18,8 +18,34 @@ from services.design_quality import (
     NativeDesignStrategyEngine,
 )
 from services.runtime import ExecutionGrant, GrantPolicy
+from services.web_3d_integration import (
+    Web3DIntegratedBundle,
+    integrate_web_3d_into_generated_content,
+)
+from services.web_3d_runtime import Web3DRuntimePlan, compile_web_3d_runtime_plan
 
 _REQUIRED_VIEWPORTS = (320, 360, 390, 412, 430, 768, 1024, 1440)
+_WEB3D_FEATURES = frozenset(
+    {
+        "3d-hero",
+        "scroll-camera",
+        "product-rotation",
+        "parallax",
+        "particles",
+        "webgl-background",
+        "3d-typography",
+        "pointer-interaction",
+    }
+)
+_WEB3D_EXPLICIT_TERMS = (
+    "3d",
+    "webgl",
+    "webgpu",
+    "three-dimensional",
+    "three dimensional",
+    "üç boyutlu",
+    "uc boyutlu",
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -180,6 +206,16 @@ class GovernedWebFactory:
             )
         )
         content = _generated_site_content(spec, strategy)
+        web3d_plan: Web3DRuntimePlan | None = None
+        web3d_bundle: Web3DIntegratedBundle | None = None
+        if _has_web3d_features(spec.features):
+            web3d_plan = _compile_web3d_plan(spec.features)
+            web3d_bundle = integrate_web_3d_into_generated_content(
+                content,
+                web3d_plan,
+                home_routes=tuple(f"{locale}/index.html" for locale in spec.locales),
+            )
+            content = web3d_bundle.content
         artifact_hash = _content_hash(content)
         bundle_id = f"ilaios-web-{artifact_hash[:20]}"
         bundle = self._artifact_root / bundle_id
@@ -196,6 +232,15 @@ class GovernedWebFactory:
         )
         routes = _routes(spec)
         qa = _validate_generated_site(bundle, spec, strategy, routes, files)
+        if web3d_plan is not None and web3d_bundle is not None:
+            qa["web3d"] = {
+                "status": "SOURCE_INTEGRATED_NOT_BROWSER_CERTIFIED",
+                "runtime_path": web3d_bundle.runtime_path,
+                "plan_sha256": web3d_plan.plan_sha256,
+                "runtime_source_sha256": web3d_bundle.runtime_source_sha256,
+                "bundle_sha256": web3d_bundle.bundle_sha256,
+                "features": list(web3d_plan.features),
+            }
         spec_hash = hashlib.sha256(
             json.dumps(spec.to_dict(), sort_keys=True, separators=(",", ":")).encode()
         ).hexdigest()
@@ -363,7 +408,37 @@ def _features(normalized: str, pages: tuple[str, ...]) -> tuple[str, ...]:
         features.append("newsletter")
     if any(term in normalized for term in ("search", "arama")):
         features.append("search")
+    if any(term in normalized for term in _WEB3D_EXPLICIT_TERMS):
+        web3d = compile_web_3d_runtime_plan(f"website {normalized}")
+        features.extend(feature for feature in web3d.features if feature not in features)
     return tuple(features)
+
+
+def _has_web3d_features(features: tuple[str, ...]) -> bool:
+    return bool(set(features).intersection(_WEB3D_FEATURES))
+
+
+def _compile_web3d_plan(features: tuple[str, ...]) -> Web3DRuntimePlan:
+    selected = [feature for feature in features if feature in _WEB3D_FEATURES]
+    if not selected:
+        raise ValueError("3D runtime plan requires explicit 3D features")
+    phrases = {
+        "3d-hero": "3D hero",
+        "scroll-camera": "scroll camera",
+        "product-rotation": "product model rotation",
+        "parallax": "parallax",
+        "particles": "particles",
+        "webgl-background": "WebGL background",
+        "3d-typography": "3D typography",
+        "pointer-interaction": "pointer touch interaction",
+    }
+    objective = "Build a website with explicit 3D capability: " + ", ".join(
+        phrases[feature] for feature in selected
+    ) + "."
+    plan = compile_web_3d_runtime_plan(objective)
+    if set(plan.features) != set(selected):
+        raise ValueError("3D runtime plan did not preserve the requested feature set")
+    return plan
 
 
 def _validate_spec(spec: WebsiteSpec) -> None:
@@ -568,6 +643,8 @@ def _validate_generated_site(
     files: tuple[WebsiteFile, ...],
 ) -> dict[str, object]:
     expected = {*routes, "assets/site.css", "robots.txt", "sitemap.xml"}
+    if any(item.relative_path == "assets/3d/index.html" for item in files):
+        expected.add("assets/3d/index.html")
     actual = {
         path.relative_to(bundle).as_posix()
         for path in bundle.rglob("*")

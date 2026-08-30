@@ -8,10 +8,15 @@ on:
       - 'services/execution_coordinator.py'
       - 'services/design_quality.py'
       - 'services/web_factory_skills.py'
+      - 'services/web_3d_integration.py'
+      - 'services/web_3d_runtime.py'
       - 'tools/web-factory/skills/**'
       - 'tests/test_web_factory_native_skills.py'
       - 'tests/test_design_quality.py'
       - 'tests/test_web_motion_runtime.py'
+      - 'tests/test_web_3d_factory_wiring.py'
+      - 'tests/test_web_3d_integration.py'
+      - 'tests/test_web_3d_runtime.py'
       - 'services/integrations/web_factory.py'
       - 'services/integrations/web_product_runtime.py'
       - 'services/integrations/web_product_runtime_recovery.py'
@@ -22,6 +27,7 @@ on:
       - 'tests/test_web_assurance_delivery.py'
       - 'tests/test_web_vercel_delivery.py'
       - 'apps/desktop/e2e/web_finished_product_browser_e2e.py'
+      - 'apps/desktop/e2e/web_3d_generated_site_browser_e2e.py'
       - '.github/workflows/web-factory-browser-e2e.yml'
   push:
     branches: [master]
@@ -30,10 +36,15 @@ on:
       - 'services/execution_coordinator.py'
       - 'services/design_quality.py'
       - 'services/web_factory_skills.py'
+      - 'services/web_3d_integration.py'
+      - 'services/web_3d_runtime.py'
       - 'tools/web-factory/skills/**'
       - 'tests/test_web_factory_native_skills.py'
       - 'tests/test_design_quality.py'
       - 'tests/test_web_motion_runtime.py'
+      - 'tests/test_web_3d_factory_wiring.py'
+      - 'tests/test_web_3d_integration.py'
+      - 'tests/test_web_3d_runtime.py'
       - 'services/integrations/web_factory.py'
       - 'services/integrations/web_product_runtime.py'
       - 'services/integrations/web_product_runtime_recovery.py'
@@ -44,6 +55,7 @@ on:
       - 'tests/test_web_assurance_delivery.py'
       - 'tests/test_web_vercel_delivery.py'
       - 'apps/desktop/e2e/web_finished_product_browser_e2e.py'
+      - 'apps/desktop/e2e/web_3d_generated_site_browser_e2e.py'
       - '.github/workflows/web-factory-browser-e2e.yml'
   workflow_dispatch:
 
@@ -94,6 +106,9 @@ jobs:
             tests/test_web_factory_native_skills.py \
             tests/test_design_quality.py \
             tests/test_web_motion_runtime.py \
+            tests/test_web_3d_factory_wiring.py \
+            tests/test_web_3d_integration.py \
+            tests/test_web_3d_runtime.py \
             tests/test_web_assurance_delivery.py \
             tests/test_web_vercel_delivery.py
 
@@ -103,11 +118,26 @@ jobs:
           ILAIOS_WEB_E2E_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/web-local-finished-product
         run: python apps/desktop/e2e/web_finished_product_browser_e2e.py
 
+      - name: Run generated-site 3D runtime E2E in Chromium
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ILAIOS_WEB_3D_E2E_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/web-local-3d-generated-site
+        run: python apps/desktop/e2e/web_3d_generated_site_browser_e2e.py
+
       - name: Upload exact Web finished-product browser evidence
         if: success()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: web-local-finished-product-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}
           path: artifacts/web-local-finished-product
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload exact generated-site 3D browser evidence
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: web-local-3d-generated-site-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}
+          path: artifacts/web-local-3d-generated-site
           if-no-files-found: error
           retention-days: 30
