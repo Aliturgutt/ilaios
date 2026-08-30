@@ -21,6 +21,9 @@ from services.google_web_oauth import (
     GoogleWebOAuthError,
     GoogleWebOAuthIDTokenVerificationError,
     GoogleWebOAuthIssuerAudienceError,
+    GoogleWebOAuthExpiredTokenError,
+    GoogleWebOAuthIssuedAtFutureError,
+    GoogleWebOAuthLifetimeExceededError,
     GoogleWebOAuthMalformedClaimsError,
     GoogleWebOAuthReplayStore,
     GoogleWebOAuthService,
@@ -258,14 +261,14 @@ def test_tampered_redirect_binding_cannot_select_another_allowlisted_redirect() 
                 client_id="prod.apps.googleusercontent.com",
                 issued_at=_NOW + timedelta(seconds=1),
             ),
-            GoogleWebOAuthTemporalClaimsError,
+            GoogleWebOAuthIssuedAtFutureError,
         ),
         (
             _Verifier(
                 client_id="prod.apps.googleusercontent.com",
                 expires_at=_NOW,
             ),
-            GoogleWebOAuthTemporalClaimsError,
+            GoogleWebOAuthExpiredTokenError,
         ),
         (
             _Verifier(
@@ -273,7 +276,7 @@ def test_tampered_redirect_binding_cannot_select_another_allowlisted_redirect() 
                 issued_at=_NOW - timedelta(minutes=1),
                 expires_at=_NOW + timedelta(hours=3),
             ),
-            GoogleWebOAuthTemporalClaimsError,
+            GoogleWebOAuthLifetimeExceededError,
         ),
         (
             _Verifier(
