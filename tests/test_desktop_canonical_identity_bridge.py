@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import cast
 
+import jwt
 import pytest
 import requests
 
@@ -33,11 +34,11 @@ def test_google_desktop_token_verifier_binds_google_subject_and_desktop_audience
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(
-        google_oidc.jwt,
+        jwt,
         "get_unverified_header",
         lambda _token: {"alg": "RS256"},
     )
-    monkeypatch.setattr(google_oidc.jwt, "PyJWKClient", _JwksClient)
+    monkeypatch.setattr(jwt, "PyJWKClient", _JwksClient)
 
     observed: dict[str, object] = {}
 
@@ -70,7 +71,7 @@ def test_google_desktop_token_verifier_binds_google_subject_and_desktop_audience
             "email_verified": True,
         }
 
-    monkeypatch.setattr(google_oidc.jwt, "decode", decode)
+    monkeypatch.setattr(jwt, "decode", decode)
 
     identity = verify_google_desktop_id_token(
         "signed.desktop.token",
