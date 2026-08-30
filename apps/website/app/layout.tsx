@@ -5,6 +5,7 @@ import "./locale.css";
 import "./mobile-redteam.css";
 import "./canonical-detail.css";
 import "./brand-palette.css";
+import "./final-interaction-redteam.css";
 import "./system-motion-signature.css";
 import "./site-v2-finalization.css";
 import SiteChrome from "./SiteChrome";
