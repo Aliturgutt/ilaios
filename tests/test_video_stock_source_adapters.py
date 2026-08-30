@@ -1,10 +1,12 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import pytest
 
 from src.video_automation.stock_source_adapters import (
+    GovernedStockSourceAdapter,
     InternetArchiveStockSourceAdapter,
     NasaStockSourceAdapter,
     PexelsStockSourceAdapter,
@@ -13,6 +15,7 @@ from src.video_automation.stock_source_adapters import (
     SourceProvenance,
     StockAssetCandidate,
     StockProvider,
+    StockProviderTransport,
     StockSearchRequest,
     StockSearchResult,
     StockSourceError,
@@ -176,7 +179,7 @@ def test_valid_result_preserves_provider_provenance_and_rate_limit() -> None:
 )
 def test_concrete_provider_adapters_preserve_governed_provenance(
     provider: StockProvider,
-    adapter_type: type[PexelsStockSourceAdapter],
+    adapter_type: Callable[[StockProviderTransport], GovernedStockSourceAdapter],
 ) -> None:
     request = _request(provider)
     result = adapter_type(_FakeTransport()).search(request)
