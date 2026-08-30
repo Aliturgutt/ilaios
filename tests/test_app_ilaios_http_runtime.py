@@ -450,7 +450,7 @@ def test_desktop_google_canonicalization_returns_same_canonical_account(
             body=json.dumps(
                 {
                     "provider_id": "google",
-                    "id_token": "signed-desktop-id-token",
+                    "id_token": "token",
                 }
             ).encode(),
         ),
@@ -462,7 +462,7 @@ def test_desktop_google_canonicalization_returns_same_canonical_account(
     assert desktop_payload["user_id"] == web_payload["user_id"]
     assert desktop_payload["tenant_id"] == web_payload["tenant_id"]
     assert observed == {
-        "token": "signed-desktop-id-token",
+        "token": "token",
         "client_id": "desktop-client-id",
         "now": _NOW,
     }
