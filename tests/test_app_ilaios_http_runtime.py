@@ -28,7 +28,10 @@ from services.control_plane.migrations import migrate_database
 from services.google_web_oauth import (
     GoogleWebOAuthIDTokenVerificationError,
     GoogleWebOAuthIssuerAudienceError,
+    GoogleWebOAuthExpiredTokenError,
+    GoogleWebOAuthIssuedAtFutureError,
     GoogleWebOAuthJwksResolutionError,
+    GoogleWebOAuthLifetimeExceededError,
     GoogleWebOAuthJWTDecodeError,
     GoogleWebOAuthMalformedClaimsError,
     GoogleWebOAuthNonceError,
@@ -215,6 +218,9 @@ def test_callback_accepts_google_issuer_parameter(tmp_path: Path) -> None:
         (GoogleWebOAuthIssuerAudienceError("token"), "issuer_or_audience_rejected"),
         (GoogleWebOAuthNonceError("token"), "nonce_rejected"),
         (GoogleWebOAuthTemporalClaimsError("token"), "temporal_claims_rejected"),
+        (GoogleWebOAuthIssuedAtFutureError("token"), "issued_at_future_rejected"),
+        (GoogleWebOAuthExpiredTokenError("token"), "expired_token_rejected"),
+        (GoogleWebOAuthLifetimeExceededError("token"), "token_lifetime_exceeded"),
         (GoogleWebOAuthMalformedClaimsError("token"), "malformed_claims_rejected"),
     ),
 )
