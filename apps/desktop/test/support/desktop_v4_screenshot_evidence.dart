@@ -20,12 +20,9 @@ const v4EvidencePages = <(String, String?)>[
   ('settings', 'nav-settings'),
 ];
 
-Future<void> _pumpEvidenceFrame(WidgetTester tester) async {
-  await tester.pump();
-  await tester.pump(const Duration(milliseconds: 16));
-  await tester.pump(const Duration(milliseconds: 100));
-  await tester.pump(const Duration(milliseconds: 250));
-  await tester.pump(const Duration(milliseconds: 500));
+void _drawEvidenceFrame(WidgetTester tester) {
+  tester.binding.scheduleFrame();
+  tester.binding.drawFrame();
   expect(tester.takeException(), isNull);
 }
 
@@ -73,13 +70,13 @@ Future<void> captureV4ScreenshotEvidence(
       child: IlaiosDesktopApp(themeMode: themeMode),
     ),
   );
-  await _pumpEvidenceFrame(tester);
+  _drawEvidenceFrame(tester);
 
   final files = <Map<String, Object>>[];
   for (final page in v4EvidencePages) {
     if (page.$2 != null) {
       _navigateWithoutPointerGesture(tester, page.$2!);
-      await _pumpEvidenceFrame(tester);
+      _drawEvidenceFrame(tester);
     }
 
     final boundary = captureKey.currentContext!.findRenderObject()!
