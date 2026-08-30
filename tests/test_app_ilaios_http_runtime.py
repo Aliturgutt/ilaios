@@ -485,7 +485,7 @@ def test_desktop_canonicalization_rejects_bad_body_and_hides_token(
     )
     assert malformed.status is HTTPStatus.UNSUPPORTED_MEDIA_TYPE
 
-    token = "desktop-token-should-never-be-logged"
+    token = "test-token"
 
     def reject_desktop(
         _encoded_token: str,
