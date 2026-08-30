@@ -64,7 +64,7 @@ if ($securitySkillFiles.Count -ne 5) {
   throw "Canonical Security Factory methodology registry is incomplete: found $($securitySkillFiles.Count)."
 }
 $webSkillFiles = @(Get-ChildItem -Path $webFactorySkills -Recurse -Filter 'SKILL.md' -File)
-if ($webSkillFiles.Count -ne 6) {
+if ($webSkillFiles.Count -ne 12) {
   throw "Canonical Web Factory skill registry is incomplete: found $($webSkillFiles.Count)."
 }
 $browserSkillFiles = @(Get-ChildItem -Path $webBrowserSkills -Recurse -Filter 'SKILL.md' -File)
