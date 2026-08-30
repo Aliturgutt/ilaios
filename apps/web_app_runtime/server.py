@@ -583,7 +583,7 @@ class AppRuntime:
         now: datetime,
     ) -> RuntimeResponse:
         parsed = parse_qs(query, keep_blank_values=True, strict_parsing=True)
-        allowed = {"state", "code", "error", "error_description"}
+        allowed = {"state", "code", "error", "error_description", "error_uri"}
         if not set(parsed).issubset(allowed):
             return self._json_error(
                 HTTPStatus.BAD_REQUEST, "unexpected query parameters"
