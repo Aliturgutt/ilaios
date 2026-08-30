@@ -515,7 +515,7 @@ class AppRuntime:
                     return self._json_error(
                         HTTPStatus.BAD_REQUEST, "unexpected query parameters"
                     )
-                return self._li_script()
+                return self._li_script(request, current)
             if path == "/api/li/state":
                 if method != "GET":
                     return self._method_not_allowed("GET")
@@ -1052,8 +1052,8 @@ class AppRuntime:
             ),
         )
 
-    @staticmethod
-    def _li_script() -> RuntimeResponse:
+    def _li_script(self, request: RuntimeRequest, now: datetime) -> RuntimeResponse:
+        self._li_principal(request, now)
         body = (
             b"(function(){\"use strict\";"
             b"const state=document.getElementById('state');"
