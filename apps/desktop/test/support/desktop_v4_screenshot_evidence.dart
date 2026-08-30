@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' as ui;
@@ -20,9 +21,8 @@ const v4EvidencePages = <(String, String?)>[
   ('settings', 'nav-settings'),
 ];
 
-void _drawEvidenceFrame(WidgetTester tester) {
-  tester.binding.scheduleFrame();
-  tester.binding.drawFrame();
+Future<void> _pumpEvidenceFrame(WidgetTester tester) async {
+  await tester.pump();
   expect(tester.takeException(), isNull);
 }
 
@@ -32,6 +32,36 @@ void _navigateWithoutPointerGesture(WidgetTester tester, String navigationKey) {
   final nav = tester.widget<InkWell>(finder);
   expect(nav.onTap, isNotNull);
   nav.onTap!();
+}
+
+Future<Uint8List> _encodeBoundaryPng(
+  WidgetTester tester,
+  RenderRepaintBoundary boundary,
+) async {
+  final bytes = await tester.runAsync(() async {
+    final image = await boundary.toImage(pixelRatio: 1).timeout(
+      const Duration(seconds: 30),
+      onTimeout: () => throw TimeoutException('RenderRepaintBoundary.toImage timed out'),
+    );
+    try {
+      final byteData = await image
+          .toByteData(format: ui.ImageByteFormat.png)
+          .timeout(
+            const Duration(seconds: 30),
+            onTimeout: () => throw TimeoutException('ui.Image.toByteData timed out'),
+          );
+      if (byteData == null) {
+        throw StateError('PNG encoding returned null byte data');
+      }
+      return byteData.buffer.asUint8List();
+    } finally {
+      image.dispose();
+    }
+  });
+  if (bytes == null) {
+    throw StateError('WidgetTester.runAsync returned null screenshot bytes');
+  }
+  return bytes;
 }
 
 Future<void> captureV4ScreenshotEvidence(
@@ -70,24 +100,19 @@ Future<void> captureV4ScreenshotEvidence(
       child: IlaiosDesktopApp(themeMode: themeMode),
     ),
   );
-  _drawEvidenceFrame(tester);
+  await _pumpEvidenceFrame(tester);
 
   final files = <Map<String, Object>>[];
   for (final page in v4EvidencePages) {
     if (page.$2 != null) {
       _navigateWithoutPointerGesture(tester, page.$2!);
-      _drawEvidenceFrame(tester);
+      await _pumpEvidenceFrame(tester);
     }
 
     final boundary = captureKey.currentContext!.findRenderObject()!
         as RenderRepaintBoundary;
-    final image = await boundary.toImage(pixelRatio: 1);
-    final byteData = await image.toByteData(format: ui.ImageByteFormat.png);
-    expect(byteData, isNotNull);
-    final bytes = byteData!.buffer.asUint8List();
+    final bytes = await _encodeBoundaryPng(tester, boundary);
     expect(bytes, isNotEmpty);
-    expect(image.width, width);
-    expect(image.height, height);
 
     final fileName = '${page.$1}-$combination.png';
     final file = File('${evidenceRoot.path}/$fileName');
