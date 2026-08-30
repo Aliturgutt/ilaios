@@ -25,7 +25,7 @@ from services.central_identity import IdentityProvider, VerifiedExternalIdentity
 from services.email_auth import EmailChallenge, EmailChallengeStore
 
 _FLOW_LIFETIME = timedelta(minutes=5)
-_MAX_ID_TOKEN_LIFETIME = timedelta(hours=2)
+_MAX_ID_TOKEN_LIFETIME = timedelta(days=1)
 _STATE_PREFIX = "msa_"
 _REPLAY_SENTINEL = "microsoft-web-oauth@internal.invalid"
 _AUTHORIZATION_ENDPOINT = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
