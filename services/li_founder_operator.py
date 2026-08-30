@@ -131,12 +131,12 @@ class LiFounderOperator:
         self,
         principal: Principal,
         *,
-        kind: MemoryKind,
+        kind: str,
         content: str,
         now: datetime,
         source: str = "founder",
         confidence: float = 1.0,
-        sensitivity: MemorySensitivity = "private",
+        sensitivity: str = "private",
     ) -> LiMemoryRecord:
         self.authorize(principal)
         normalized_kind = str(kind).strip()
