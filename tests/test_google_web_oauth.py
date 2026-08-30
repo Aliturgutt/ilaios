@@ -20,9 +20,12 @@ from services.google_web_oauth import (
     GoogleWebOAuthCredentials,
     GoogleWebOAuthError,
     GoogleWebOAuthIDTokenVerificationError,
+    GoogleWebOAuthIssuerAudienceError,
+    GoogleWebOAuthMalformedClaimsError,
     GoogleWebOAuthReplayStore,
     GoogleWebOAuthService,
     GoogleWebOAuthStateError,
+    GoogleWebOAuthTemporalClaimsError,
     GoogleWebOAuthTokenExchangeError,
     IdentityChallengeGoogleWebOAuthReplayStore,
 )
@@ -77,11 +80,13 @@ class _Verifier:
         issuer: str = GOOGLE_ISSUER,
         issued_at: datetime = _NOW - timedelta(minutes=1),
         expires_at: datetime = _NOW + timedelta(minutes=30),
+        subject: str = "google-sub-123",
     ) -> None:
         self._client_id = client_id
         self._issuer = issuer
         self._issued_at = issued_at
         self._expires_at = expires_at
+        self._subject = subject
         self.tokens: list[str] = []
 
     def verify(self, encoded_token: str) -> VerifiedOIDCClaims:
@@ -89,7 +94,7 @@ class _Verifier:
         return VerifiedOIDCClaims(
             issuer=self._issuer,
             audience=self._client_id,
-            subject="google-sub-123",
+            subject=self._subject,
             tenant_id="provider-derived-not-canonical",
             expires_at=self._expires_at,
             issued_at=self._issued_at,
@@ -234,24 +239,59 @@ def test_tampered_redirect_binding_cannot_select_another_allowlisted_redirect() 
     assert data["redirect_uri"] == _REDIRECT
 
 
-def test_verified_claims_reject_wrong_issuer_audience_and_time() -> None:
-    cases = (
-        _Verifier(client_id="prod.apps.googleusercontent.com", issuer="https://evil.example"),
-        _Verifier(client_id="wrong.apps.googleusercontent.com"),
-        _Verifier(
-            client_id="prod.apps.googleusercontent.com",
-            issued_at=_NOW + timedelta(seconds=1),
+@pytest.mark.parametrize(
+    ("verifier", "error_type"),
+    (
+        (
+            _Verifier(
+                client_id="prod.apps.googleusercontent.com",
+                issuer="https://evil.example",
+            ),
+            GoogleWebOAuthIssuerAudienceError,
         ),
-        _Verifier(
-            client_id="prod.apps.googleusercontent.com",
-            expires_at=_NOW,
+        (
+            _Verifier(client_id="wrong.apps.googleusercontent.com"),
+            GoogleWebOAuthIssuerAudienceError,
         ),
-    )
-    for verifier in cases:
-        service, _, _ = _service(verifier=verifier)
-        start = service.start(redirect_uri=_REDIRECT, now=_NOW)
-        with pytest.raises(GoogleWebOAuthIDTokenVerificationError):
-            service.complete(state=start.state, code="authorization-code", now=_NOW)
+        (
+            _Verifier(
+                client_id="prod.apps.googleusercontent.com",
+                issued_at=_NOW + timedelta(seconds=1),
+            ),
+            GoogleWebOAuthTemporalClaimsError,
+        ),
+        (
+            _Verifier(
+                client_id="prod.apps.googleusercontent.com",
+                expires_at=_NOW,
+            ),
+            GoogleWebOAuthTemporalClaimsError,
+        ),
+        (
+            _Verifier(
+                client_id="prod.apps.googleusercontent.com",
+                issued_at=_NOW - timedelta(minutes=1),
+                expires_at=_NOW + timedelta(hours=3),
+            ),
+            GoogleWebOAuthTemporalClaimsError,
+        ),
+        (
+            _Verifier(
+                client_id="prod.apps.googleusercontent.com",
+                subject="",
+            ),
+            GoogleWebOAuthMalformedClaimsError,
+        ),
+    ),
+)
+def test_verified_claims_use_specific_safe_failure_categories(
+    verifier: _Verifier,
+    error_type: type[GoogleWebOAuthIDTokenVerificationError],
+) -> None:
+    service, _, _ = _service(verifier=verifier)
+    start = service.start(redirect_uri=_REDIRECT, now=_NOW)
+    with pytest.raises(error_type):
+        service.complete(state=start.state, code="authorization-code", now=_NOW)
 
 
 def test_complete_classifies_missing_id_token_as_token_exchange_failure() -> None:
