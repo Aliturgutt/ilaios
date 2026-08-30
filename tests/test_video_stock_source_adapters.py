@@ -166,26 +166,27 @@ def test_valid_result_preserves_provider_provenance_and_rate_limit() -> None:
     assert result.rate_limit.remaining == 9
 
 
-@pytest.mark.parametrize(
-    ("provider", "adapter_type"),
-    [
+def test_concrete_provider_adapters_preserve_governed_provenance() -> None:
+    adapter_cases: tuple[
+        tuple[
+            StockProvider,
+            Callable[[StockProviderTransport], GovernedStockSourceAdapter],
+        ],
+        ...,
+    ] = (
         (StockProvider.PEXELS, PexelsStockSourceAdapter),
         (StockProvider.PIXABAY, PixabayStockSourceAdapter),
         (StockProvider.UNSPLASH, UnsplashStockSourceAdapter),
         (StockProvider.WIKIMEDIA, WikimediaStockSourceAdapter),
         (StockProvider.NASA, NasaStockSourceAdapter),
         (StockProvider.INTERNET_ARCHIVE, InternetArchiveStockSourceAdapter),
-    ],
-)
-def test_concrete_provider_adapters_preserve_governed_provenance(
-    provider: StockProvider,
-    adapter_type: Callable[[StockProviderTransport], GovernedStockSourceAdapter],
-) -> None:
-    request = _request(provider)
-    result = adapter_type(_FakeTransport()).search(request)
-    assert result.request == request
-    assert result.candidates[0].provenance.provider is provider
-    assert result.candidates[0].provenance.license_name == "provider-license"
+    )
+    for provider, adapter_type in adapter_cases:
+        request = _request(provider)
+        result = adapter_type(_FakeTransport()).search(request)
+        assert result.request == request
+        assert result.candidates[0].provenance.provider is provider
+        assert result.candidates[0].provenance.license_name == "provider-license"
 
 
 def test_provider_adapter_rejects_cross_provider_request() -> None:
