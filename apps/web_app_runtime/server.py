@@ -164,7 +164,6 @@ _MICROSOFT_ID_TOKEN_FAILURE_REASONS: Final = {
     "Microsoft exp claim is invalid": "exp_claim",
     "Microsoft ID token issued-at claim is in the future": "issued_at_future",
     "Microsoft ID token is expired": "expired",
-    "Microsoft ID token lifetime exceeds policy": "lifetime_exceeded",
     "Microsoft ID token verification failed": "verification_wrapper",
     "Microsoft verifier returned wrong provider": "wrong_provider",
 }
