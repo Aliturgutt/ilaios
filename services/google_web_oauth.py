@@ -76,6 +76,18 @@ class GoogleWebOAuthTemporalClaimsError(GoogleWebOAuthIDTokenVerificationError):
     """Google ID token temporal claims failed validation."""
 
 
+class GoogleWebOAuthIssuedAtFutureError(GoogleWebOAuthTemporalClaimsError):
+    """Google ID token issued-at claim is in the future."""
+
+
+class GoogleWebOAuthExpiredTokenError(GoogleWebOAuthTemporalClaimsError):
+    """Google ID token is expired."""
+
+
+class GoogleWebOAuthLifetimeExceededError(GoogleWebOAuthTemporalClaimsError):
+    """Google ID token lifetime exceeds policy."""
+
+
 class GoogleWebOAuthMalformedClaimsError(GoogleWebOAuthIDTokenVerificationError):
     """Google ID token claims were malformed or incomplete."""
 
@@ -371,9 +383,13 @@ class _GoogleIDTokenVerifier(OIDCTokenVerifier):
             raise GoogleWebOAuthIssuerAudienceError(
                 "Google ID token issuer or audience rejected"
             ) from error
-        except (jwt.ExpiredSignatureError, jwt.ImmatureSignatureError) as error:
-            raise GoogleWebOAuthTemporalClaimsError(
-                "Google ID token temporal claims rejected"
+        except jwt.ExpiredSignatureError as error:
+            raise GoogleWebOAuthExpiredTokenError(
+                "Google ID token is expired"
+            ) from error
+        except jwt.ImmatureSignatureError as error:
+            raise GoogleWebOAuthIssuedAtFutureError(
+                "Google ID token is not yet valid"
             ) from error
         except jwt.InvalidTokenError as error:
             raise GoogleWebOAuthJWTDecodeError(
@@ -432,10 +448,14 @@ def _validate_verified_claims(
         raise GoogleWebOAuthIssuerAudienceError("Google ID token issuer mismatch")
     if claims.audience != client_id:
         raise GoogleWebOAuthIssuerAudienceError("Google ID token audience mismatch")
-    if claims.issued_at > now or claims.expires_at <= now:
-        raise GoogleWebOAuthTemporalClaimsError("Google ID token is not currently valid")
+    if claims.issued_at > now:
+        raise GoogleWebOAuthIssuedAtFutureError(
+            "Google ID token issued-at claim is in the future"
+        )
+    if claims.expires_at <= now:
+        raise GoogleWebOAuthExpiredTokenError("Google ID token is expired")
     if claims.expires_at - claims.issued_at > _MAX_ID_TOKEN_LIFETIME:
-        raise GoogleWebOAuthTemporalClaimsError(
+        raise GoogleWebOAuthLifetimeExceededError(
             "Google ID token lifetime exceeds policy"
         )
     if not claims.subject.strip():
