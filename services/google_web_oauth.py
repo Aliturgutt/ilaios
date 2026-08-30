@@ -328,13 +328,13 @@ class GoogleWebOAuthService:
                 client_id=self._oidc.production_web_client_id,
                 now=current,
             )
-            return verified_google_identity(claims)
         except GoogleWebOAuthIDTokenVerificationError:
             raise
         except Exception as error:
             raise GoogleWebOAuthIDTokenVerificationError(
                 "Google ID token verification failed"
             ) from error
+        return verified_google_identity(claims)
 
 
 class _GoogleIDTokenVerifier(OIDCTokenVerifier):
@@ -429,15 +429,19 @@ def _validate_verified_claims(
     claims: VerifiedOIDCClaims, *, client_id: str, now: datetime
 ) -> None:
     if claims.issuer != GOOGLE_ISSUER:
-        raise GoogleWebOAuthError("Google ID token issuer mismatch")
+        raise GoogleWebOAuthIssuerAudienceError("Google ID token issuer mismatch")
     if claims.audience != client_id:
-        raise GoogleWebOAuthError("Google ID token audience mismatch")
+        raise GoogleWebOAuthIssuerAudienceError("Google ID token audience mismatch")
     if claims.issued_at > now or claims.expires_at <= now:
-        raise GoogleWebOAuthError("Google ID token is not currently valid")
+        raise GoogleWebOAuthTemporalClaimsError("Google ID token is not currently valid")
     if claims.expires_at - claims.issued_at > _MAX_ID_TOKEN_LIFETIME:
-        raise GoogleWebOAuthError("Google ID token lifetime exceeds policy")
+        raise GoogleWebOAuthTemporalClaimsError(
+            "Google ID token lifetime exceeds policy"
+        )
     if not claims.subject.strip():
-        raise GoogleWebOAuthError("Google ID token subject is required")
+        raise GoogleWebOAuthMalformedClaimsError(
+            "Google ID token subject is required"
+        )
 
 
 def _state_coordinates(state: str) -> tuple[str, int]:
