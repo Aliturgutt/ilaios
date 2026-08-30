@@ -21,6 +21,12 @@ services:
     envVars:
       - key: ILAIOS_IDENTITY_DATABASE_PATH
         value: /var/data/ilaios_identity.db
+      - key: ILAIOS_LI_DATABASE_PATH
+        value: /var/data/ilaios_li.db
+      - key: ILAIOS_LI_FOUNDER_USER_ID
+        sync: false
+      - key: ILAIOS_LI_FOUNDER_TENANT_ID
+        sync: false
       - key: ILAIOS_APP_HTTP_HOST
         value: 0.0.0.0
       - key: ILAIOS_WEB_SESSION_LIFETIME_SECONDS
