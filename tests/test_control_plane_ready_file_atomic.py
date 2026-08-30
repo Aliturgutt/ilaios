@@ -1,12 +1,15 @@
 import inspect
 import json
+import os
 from pathlib import Path
+
+import pytest
 
 from services.control_plane import server
 
 
 def test_ready_file_is_published_only_after_complete_json(
-    tmp_path: Path, monkeypatch,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     target = tmp_path / "control-plane-ready.json"
     payload: dict[str, object] = {
@@ -16,7 +19,7 @@ def test_ready_file_is_published_only_after_complete_json(
         "knowledge_enabled": False,
     }
     observed_replace = False
-    real_replace = server.os.replace
+    real_replace = os.replace
 
     def observing_replace(source: str | Path, destination: str | Path) -> None:
         nonlocal observed_replace
@@ -27,7 +30,7 @@ def test_ready_file_is_published_only_after_complete_json(
         assert json.loads(source_path.read_text(encoding="utf-8")) == payload
         real_replace(source, destination)
 
-    monkeypatch.setattr(server.os, "replace", observing_replace)
+    monkeypatch.setattr(os, "replace", observing_replace)
 
     server._write_ready_file_atomically(target, payload)
 
