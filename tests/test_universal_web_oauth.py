@@ -5,6 +5,7 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
+import services.microsoft_web_oauth as microsoft_module
 from services.central_identity import IdentityProvider, VerifiedExternalIdentity
 from services.github_web_oauth import (
     GitHubWebOAuthCredentials,
@@ -250,3 +251,6 @@ def test_github_web_oauth_uses_pkce_and_verified_immutable_user_id() -> None:
             redirect_uri=callback,
             now=_NOW + timedelta(seconds=2),
         )
+
+def test_microsoft_id_token_lifetime_policy_matches_supported_day() -> None:
+    assert microsoft_module._MAX_ID_TOKEN_LIFETIME == timedelta(days=1)
