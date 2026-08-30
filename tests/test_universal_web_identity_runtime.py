@@ -468,4 +468,3 @@ def test_github_callback_rejects_duplicate_reserved_parameters(
 
     assert response.status is HTTPStatus.BAD_REQUEST
     assert response.body == b'{"error":"invalid callback parameters"}'
-
