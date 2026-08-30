@@ -42,6 +42,18 @@ if ($dirtyBefore.Count -gt 0) {
   Fail "V4 contract validation mutated source: $($dirtyBefore -join ', ')"
 }
 
+$iconPath = Join-Path $desktopRoot 'windows\runner\resources\app_icon.ico'
+$brandScratch = Join-Path $desktopRoot 'brand'
+$iconBackup = Join-Path $env:RUNNER_TEMP "ilaios-combined-app-icon-$RunId.ico"
+if (-not (Test-Path $iconPath -PathType Leaf)) {
+  Fail "Tracked Windows icon missing before build: $iconPath"
+}
+if (Test-Path $brandScratch) {
+  Fail "Unexpected Desktop brand staging directory before build: $brandScratch"
+}
+Copy-Item $iconPath $iconBackup -Force
+$iconHashBefore = (Get-FileHash $iconPath -Algorithm SHA256).Hash.ToLowerInvariant()
+
 Push-Location $desktopRoot
 try {
   Run-Native 'Resolve locked dependencies' { flutter pub get --enforce-lockfile }
@@ -55,12 +67,25 @@ try {
 }
 finally {
   Pop-Location
+  if (Test-Path $iconBackup -PathType Leaf) {
+    Copy-Item $iconBackup $iconPath -Force
+    Remove-Item $iconBackup -Force -ErrorAction SilentlyContinue
+  }
+  if (Test-Path $brandScratch) {
+    Remove-Item $brandScratch -Recurse -Force
+  }
+}
+
+$iconHashAfter = (Get-FileHash $iconPath -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($iconHashAfter -ne $iconHashBefore) {
+  Fail "Combined verification failed to restore the tracked Windows icon exactly. before=$iconHashBefore after=$iconHashAfter"
 }
 
 $dirtyAfter = @(git -C $repoRoot status --porcelain)
 if ($dirtyAfter.Count -gt 0) {
   Fail "Combined verification left source mutations: $($dirtyAfter -join ', ')"
 }
+Write-Host 'ILAIOS_DESKTOP_COMBINED_SOURCE_CLEAN=PASS'
 
 $release = Join-Path $desktopRoot 'build\windows\x64\runner\Release'
 $exe = Join-Path $release 'ilaios_desktop.exe'
