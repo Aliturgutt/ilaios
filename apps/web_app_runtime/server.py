@@ -146,6 +146,29 @@ _AUTH_FAILURE_STAGES: Final = frozenset(
 )
 _LOGGER = logging.getLogger(__name__)
 
+_MICROSOFT_ID_TOKEN_FAILURE_REASONS: Final = {
+    "Microsoft signing algorithm or key id is invalid": "header_or_algorithm",
+    "Microsoft ID token signature or claims are invalid": "signature_or_required_claims",
+    "Microsoft nonce validation failed": "nonce",
+    "Microsoft tid claim is invalid": "tid_claim",
+    "Microsoft tid claim is not canonical": "tid_claim",
+    "Microsoft oid claim is invalid": "oid_claim",
+    "Microsoft oid claim is not canonical": "oid_claim",
+    "Microsoft tenant/issuer binding failed": "tenant_issuer_binding",
+    "Microsoft signing-key metadata is unavailable": "signing_key_metadata",
+    "Microsoft signing-key metadata is malformed": "signing_key_metadata",
+    "Microsoft signing-key metadata is ambiguous": "signing_key_metadata",
+    "Microsoft signing-key issuer is missing": "signing_key_metadata",
+    "Microsoft signing-key issuer binding failed": "signing_key_issuer_binding",
+    "Microsoft iat claim is invalid": "temporal_claims",
+    "Microsoft exp claim is invalid": "temporal_claims",
+    "Microsoft ID token issued-at claim is in the future": "temporal_claims",
+    "Microsoft ID token is expired": "temporal_claims",
+    "Microsoft ID token lifetime exceeds policy": "temporal_claims",
+    "Microsoft ID token verification failed": "verification_wrapper",
+    "Microsoft verifier returned wrong provider": "wrong_provider",
+}
+
 
 class AppRuntimeConfigurationError(ValueError):
     """Production Web App runtime configuration is missing or unsafe."""
@@ -470,8 +493,17 @@ class AppRuntime:
             return self._authentication_denied("microsoft_oauth_state_rejected")
         except MicrosoftWebOAuthTokenExchangeError:
             return self._authentication_denied("microsoft_token_exchange_rejected")
-        except MicrosoftWebOAuthIDTokenError:
-            return self._authentication_denied("microsoft_id_token_rejected")
+        except MicrosoftWebOAuthIDTokenError as error:
+            reason = _MICROSOFT_ID_TOKEN_FAILURE_REASONS.get(
+                str(error), "unknown"
+            )
+            _LOGGER.warning(
+                "app_auth_failure stage=microsoft_id_token_rejected reason=%s",
+                reason,
+            )
+            return self._json_error(
+                HTTPStatus.UNAUTHORIZED, "authentication denied"
+            )
         except MicrosoftWebOAuthError:
             return self._authentication_denied("microsoft_oauth_rejected")
         except GitHubWebOAuthStateError:
