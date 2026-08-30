@@ -36,7 +36,11 @@ from services.central_identity import (
 )
 from services.control_plane.migrations import migrate_database
 from services.email_auth import SQLiteEmailChallengeStore
-from services.google_oidc import GoogleOIDCEnvironment
+from services.google_oidc import (
+    GoogleDesktopIdentityVerificationError,
+    GoogleOIDCEnvironment,
+    verify_google_desktop_id_token,
+)
 from services.google_web_canonical_identity import (
     GoogleWebCanonicalIdentityError,
     GoogleWebCanonicalIdentityFlow,
@@ -72,11 +76,13 @@ _DEFAULT_HOST: Final = "0.0.0.0"
 _DEFAULT_PORT: Final = 8080
 _DEFAULT_SESSION_SECONDS: Final = 3600
 _MAX_SESSION_SECONDS: Final = 86_400
+_MAX_REQUEST_BODY_BYTES: Final = 16_384
 _RATE_LIMITS: Final = {
     "/auth/google/start": (120, 60),
     "/auth/google/callback": (240, 60),
     "/auth/logout": (120, 60),
     "/auth/session": (600, 60),
+    "/auth/desktop/canonicalize": (120, 60),
 }
 _ALLOWED_CALLBACK_QUERY_KEYS: Final = frozenset(
     {"state", "code", "scope", "authuser", "prompt", "hd", "iss"}
@@ -97,6 +103,7 @@ _AUTH_FAILURE_STAGES: Final = frozenset(
         "malformed_claims_rejected",
         "canonical_identity_rejected",
         "session_issue_rejected",
+        "desktop_id_token_rejected",
     }
 )
 _LOGGER = logging.getLogger(__name__)
@@ -158,6 +165,7 @@ class RuntimeRequest:
     target: str
     headers: Mapping[str, str]
     source: str = "unknown"
+    body: bytes = b""
 
 
 class AppRateLimiter:
@@ -217,12 +225,16 @@ class AppRuntime:
         oauth: GoogleWebOAuthService,
         sessions: CanonicalBrowserSessionAuthority,
         browser: WebIdentitySessionBoundary,
+        desktop_client_id: str,
         rate_limiter: AppRateLimiter | None = None,
     ) -> None:
         self.environment = environment
         self.oauth = oauth
         self.sessions = sessions
         self.browser = browser
+        self.desktop_client_id = desktop_client_id.strip()
+        if not self.desktop_client_id:
+            raise AppRuntimeConfigurationError("Desktop Google client id is unavailable")
         self.rate_limiter = rate_limiter or AppRateLimiter()
 
     @classmethod
@@ -251,6 +263,7 @@ class AppRuntime:
             oauth=oauth,
             sessions=sessions,
             browser=browser,
+            desktop_client_id=oidc.desktop_client_id,
         )
 
     def dispatch(
@@ -294,13 +307,23 @@ class AppRuntime:
                     return self._method_not_allowed("GET")
                 return self._google_callback(split.query, current)
             if path == "/auth/logout":
-                if method != "POST":
-                    return self._method_not_allowed("POST")
                 if split.query:
                     return self._json_error(
                         HTTPStatus.BAD_REQUEST, "unexpected query parameters"
                     )
-                return self._logout(request, current)
+                if method == "GET":
+                    return self._logout_page(request, current)
+                if method == "POST":
+                    return self._logout(request, current)
+                return self._method_not_allowed("GET, POST")
+            if path == "/auth/logout.js":
+                if method != "GET":
+                    return self._method_not_allowed("GET")
+                if split.query:
+                    return self._json_error(
+                        HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+                    )
+                return self._logout_script()
             if path == "/auth/session":
                 if method != "GET":
                     return self._method_not_allowed("GET")
@@ -309,9 +332,19 @@ class AppRuntime:
                         HTTPStatus.BAD_REQUEST, "unexpected query parameters"
                     )
                 return self._session(request, current)
+            if path == "/auth/desktop/canonicalize":
+                if method != "POST":
+                    return self._method_not_allowed("POST")
+                if split.query:
+                    return self._json_error(
+                        HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+                    )
+                return self._desktop_canonicalize(request, current)
             return self._json_error(HTTPStatus.NOT_FOUND, "not found")
         except WebIdentitySessionError:
             return self._json_error(HTTPStatus.FORBIDDEN, "request denied")
+        except GoogleDesktopIdentityVerificationError:
+            return self._authentication_denied("desktop_id_token_rejected")
         except GoogleWebOAuthStateError:
             return self._authentication_denied("oauth_state_rejected")
         except GoogleWebOAuthTokenExchangeError:
@@ -440,6 +473,67 @@ class AppRuntime:
             ),
         )
 
+    def _logout_page(self, request: RuntimeRequest, now: datetime) -> RuntimeResponse:
+        credentials = self.browser.credentials(self._web_request(request))
+        self.sessions.verify(
+            credentials.session_id,
+            credentials.encoded_token,
+            now,
+        )
+        body = (
+            b"<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+            b"<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+            b"<title>ILAIOS sign out</title></head><body>"
+            b"<main><h1>Sign out of ILAIOS</h1>"
+            b"<button id=\"logout\" type=\"button\">Sign out</button>"
+            b"<p id=\"status\" role=\"status\" aria-live=\"polite\"></p></main>"
+            b"<script src=\"/auth/logout.js\" defer></script></body></html>"
+        )
+        return RuntimeResponse(
+            status=HTTPStatus.OK,
+            body=body,
+            headers=(
+                ("Content-Type", "text/html; charset=utf-8"),
+                ("Cache-Control", "no-store"),
+                (
+                    "Content-Security-Policy",
+                    "default-src 'none'; script-src 'self'; connect-src 'self'; "
+                    "style-src 'none'; img-src 'none'; base-uri 'none'; "
+                    "frame-ancestors 'none'; form-action 'self'",
+                ),
+            ),
+        )
+
+    @staticmethod
+    def _logout_script() -> RuntimeResponse:
+        body = (
+            b"(function(){\"use strict\";"
+            b"const button=document.getElementById('logout');"
+            b"const status=document.getElementById('status');"
+            b"function csrf(){const prefix='__Host-ilaios_csrf=';"
+            b"for(const part of document.cookie.split(';')){const value=part.trim();"
+            b"if(value.startsWith(prefix)){return decodeURIComponent(value.slice(prefix.length));}}"
+            b"return '';}"
+            b"button.addEventListener('click',async function(){button.disabled=true;"
+            b"status.textContent='Signing out...';"
+            b"const token=csrf();if(!token){status.textContent='Unable to sign out safely.';"
+            b"button.disabled=false;return;}"
+            b"try{const response=await fetch('/auth/logout',{method:'POST',"
+            b"credentials:'same-origin',cache:'no-store',"
+            b"headers:{'X-CSRF-Token':token}});"
+            b"if(response.status===204){window.location.replace('/auth/session');return;}"
+            b"status.textContent='Sign out failed.';}catch(_error){"
+            b"status.textContent='Sign out failed.';}button.disabled=false;});})();"
+        )
+        return RuntimeResponse(
+            status=HTTPStatus.OK,
+            body=body,
+            headers=(
+                ("Content-Type", "text/javascript; charset=utf-8"),
+                ("Cache-Control", "no-store"),
+            ),
+        )
+
     def _logout(self, request: RuntimeRequest, now: datetime) -> RuntimeResponse:
         web_request = self._web_request(request)
         credentials = self.browser.credentials(web_request)
@@ -456,6 +550,50 @@ class AppRuntime:
                 for value in self.browser.clear_cookie_headers()
             )
             + (("Cache-Control", "no-store"),),
+        )
+
+    def _desktop_canonicalize(
+        self,
+        request: RuntimeRequest,
+        now: datetime,
+    ) -> RuntimeResponse:
+        content_type = request.headers.get("Content-Type", "")
+        if content_type.split(";", 1)[0].strip().casefold() != "application/json":
+            return self._json_error(
+                HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+                "application/json is required",
+            )
+        if not request.body or len(request.body) > _MAX_REQUEST_BODY_BYTES:
+            return self._json_error(HTTPStatus.BAD_REQUEST, "request body is invalid")
+        try:
+            document = json.loads(request.body)
+        except (UnicodeDecodeError, json.JSONDecodeError):
+            return self._json_error(HTTPStatus.BAD_REQUEST, "request body is invalid")
+        if not isinstance(document, dict) or set(document) != {"provider_id", "id_token"}:
+            return self._json_error(HTTPStatus.BAD_REQUEST, "request body is invalid")
+        provider_id = document.get("provider_id")
+        encoded_token = document.get("id_token")
+        if provider_id != "google" or not isinstance(encoded_token, str):
+            return self._json_error(HTTPStatus.BAD_REQUEST, "request body is invalid")
+
+        verified = verify_google_desktop_id_token(
+            encoded_token,
+            client_id=self.desktop_client_id,
+            now=now,
+        )
+        with sqlite3.connect(self.environment.identity_database) as connection:
+            connection.execute("PRAGMA foreign_keys = ON")
+            account = CentralIdentityService(
+                SQLiteCentralIdentityStore(connection)
+            ).sign_in(verified)
+        if not account.enabled:
+            raise CentralIdentityError("canonical account is disabled")
+        return self._json(
+            HTTPStatus.OK,
+            {
+                "user_id": account.user_id,
+                "tenant_id": account.tenant_id,
+            },
         )
 
     def _session(self, request: RuntimeRequest, now: datetime) -> RuntimeResponse:
@@ -578,13 +716,32 @@ class AppHTTPRequestHandler(BaseHTTPRequestHandler):
     def _serve(self, method: str) -> None:
         headers = {key: value for key, value in self.headers.items()}
         try:
-            response = self.server.runtime.dispatch(
-                RuntimeRequest(
-                    method=method,
-                    target=self.path,
-                    headers=headers,
-                    source=str(self.client_address[0]),
+            transfer_encoding = self.headers.get("Transfer-Encoding")
+            if transfer_encoding is not None:
+                response = AppRuntime._json_error(
+                    HTTPStatus.BAD_REQUEST, "request body is invalid"
                 )
+            else:
+                raw_length = self.headers.get("Content-Length", "0").strip()
+                length = int(raw_length)
+                if length < 0 or length > _MAX_REQUEST_BODY_BYTES:
+                    response = AppRuntime._json_error(
+                        HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "request body is too large"
+                    )
+                else:
+                    body = self.rfile.read(length) if length else b""
+                    response = self.server.runtime.dispatch(
+                        RuntimeRequest(
+                            method=method,
+                            target=self.path,
+                            headers=headers,
+                            source=str(self.client_address[0]),
+                            body=body,
+                        )
+                    )
+        except (TypeError, ValueError):
+            response = AppRuntime._json_error(
+                HTTPStatus.BAD_REQUEST, "request body is invalid"
             )
         except Exception:
             response = AppRuntime._json_error(
@@ -592,16 +749,21 @@ class AppHTTPRequestHandler(BaseHTTPRequestHandler):
             )
         self.send_response(response.status)
         emitted_content_type = False
+        emitted_csp = False
         for key, value in response.headers:
             self.send_header(key, value)
-            if key.casefold() == "content-type":
+            header_name = key.casefold()
+            if header_name == "content-type":
                 emitted_content_type = True
+            if header_name == "content-security-policy":
+                emitted_csp = True
         if response.body and not emitted_content_type:
             self.send_header("Content-Type", "application/octet-stream")
         self.send_header("Content-Length", str(len(response.body)))
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header("Content-Security-Policy", "default-src 'none'")
+        if not emitted_csp:
+            self.send_header("Content-Security-Policy", "default-src 'none'")
         self.end_headers()
         if response.body:
             self.wfile.write(response.body)

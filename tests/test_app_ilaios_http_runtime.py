@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import sqlite3
 from datetime import UTC, datetime, timedelta
@@ -26,23 +27,24 @@ from services.canonical_browser_session import (
 )
 from services.central_identity import IdentityProvider, VerifiedExternalIdentity
 from services.control_plane.migrations import migrate_database
+from services.google_oidc import GoogleDesktopIdentityVerificationError
+from services.google_web_canonical_identity import GoogleWebCanonicalIdentityError
 from services.google_web_oauth import (
+    GoogleWebOAuthExpiredTokenError,
     GoogleWebOAuthIDTokenVerificationError,
     GoogleWebOAuthIssuerAudienceError,
-    GoogleWebOAuthExpiredTokenError,
     GoogleWebOAuthIssuedAtFutureError,
     GoogleWebOAuthJwksResolutionError,
-    GoogleWebOAuthLifetimeExceededError,
     GoogleWebOAuthJWTDecodeError,
+    GoogleWebOAuthLifetimeExceededError,
     GoogleWebOAuthMalformedClaimsError,
     GoogleWebOAuthNonceError,
     GoogleWebOAuthService,
     GoogleWebOAuthStart,
     GoogleWebOAuthStateError,
-    GoogleWebOAuthTokenExchangeError,
     GoogleWebOAuthTemporalClaimsError,
+    GoogleWebOAuthTokenExchangeError,
 )
-from services.google_web_canonical_identity import GoogleWebCanonicalIdentityError
 from services.web_identity_session_http import WebIdentitySessionBoundary
 
 _NOW = datetime(2026, 8, 29, 14, 0, tzinfo=UTC)
@@ -123,6 +125,7 @@ def _runtime(
             environment.session_lifetime,
         ),
         browser=WebIdentitySessionBoundary(production_origins=(_ORIGIN,)),
+        desktop_client_id="desktop-client-id",
         rate_limiter=rate_limiter,
     )
     return runtime, fake
@@ -395,6 +398,193 @@ def test_returning_google_subject_keeps_same_user_and_tenant(tmp_path: Path) -> 
     assert first.body == second.body
 
 
+
+
+def test_desktop_google_canonicalization_returns_same_canonical_account(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = tmp_path / "identity.db"
+    runtime, _oauth = _runtime(database)
+    cookies, _, _ = _callback(runtime)
+
+    web_session = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/session",
+            headers={"Cookie": _cookie_header(cookies)},
+        ),
+        now=_NOW,
+    )
+    assert web_session.status is HTTPStatus.OK
+    web_payload = json.loads(web_session.body)
+
+    observed: dict[str, object] = {}
+
+    def verify_desktop(
+        encoded_token: str,
+        *,
+        client_id: str,
+        now: datetime,
+    ) -> VerifiedExternalIdentity:
+        observed["token"] = encoded_token
+        observed["client_id"] = client_id
+        observed["now"] = now
+        return VerifiedExternalIdentity(
+            provider=IdentityProvider.GOOGLE,
+            subject="google-subject-123",
+            email="owner@example.com",
+            email_verified=True,
+        )
+
+    monkeypatch.setattr(
+        runtime_server,
+        "verify_google_desktop_id_token",
+        verify_desktop,
+    )
+    desktop = runtime.dispatch(
+        RuntimeRequest(
+            method="POST",
+            target="/auth/desktop/canonicalize",
+            headers={"Content-Type": "application/json"},
+            body=json.dumps(
+                {
+                    "provider_id": "google",
+                    "id_token": "token",
+                }
+            ).encode(),
+        ),
+        now=_NOW,
+    )
+
+    assert desktop.status is HTTPStatus.OK
+    desktop_payload = json.loads(desktop.body)
+    assert desktop_payload["user_id"] == web_payload["user_id"]
+    assert desktop_payload["tenant_id"] == web_payload["tenant_id"]
+    assert observed == {
+        "token": "token",
+        "client_id": "desktop-client-id",
+        "now": _NOW,
+    }
+
+
+def test_desktop_canonicalization_rejects_bad_body_and_hides_token(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    runtime, _oauth = _runtime(tmp_path / "identity.db")
+    malformed = runtime.dispatch(
+        RuntimeRequest(
+            method="POST",
+            target="/auth/desktop/canonicalize",
+            headers={"Content-Type": "text/plain"},
+            body=b"not-json",
+        ),
+        now=_NOW,
+    )
+    assert malformed.status is HTTPStatus.UNSUPPORTED_MEDIA_TYPE
+
+    token = "test-token"
+
+    def reject_desktop(
+        _encoded_token: str,
+        *,
+        client_id: str,
+        now: datetime,
+    ) -> VerifiedExternalIdentity:
+        assert client_id == "desktop-client-id"
+        assert now == _NOW
+        raise GoogleDesktopIdentityVerificationError(token)
+
+    monkeypatch.setattr(
+        runtime_server,
+        "verify_google_desktop_id_token",
+        reject_desktop,
+    )
+    caplog.set_level(logging.WARNING, logger=runtime_server.__name__)
+    denied = runtime.dispatch(
+        RuntimeRequest(
+            method="POST",
+            target="/auth/desktop/canonicalize",
+            headers={"Content-Type": "application/json"},
+            body=json.dumps(
+                {"provider_id": "google", "id_token": token}
+            ).encode(),
+        ),
+        now=_NOW,
+    )
+    assert denied.status is HTTPStatus.UNAUTHORIZED
+    assert denied.body == b'{"error":"authentication denied"}'
+    assert caplog.messages == ["app_auth_failure stage=desktop_id_token_rejected"]
+    assert token not in caplog.text
+    assert token.encode() not in denied.body
+
+
+def test_logout_page_requires_authenticated_session_and_uses_safe_same_origin_script(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "identity.db"
+    runtime, _oauth = _runtime(database)
+
+    denied = runtime.dispatch(
+        RuntimeRequest(method="GET", target="/auth/logout", headers={}),
+        now=_NOW,
+    )
+    assert denied.status is HTTPStatus.FORBIDDEN
+
+    cookies, _, _ = _callback(runtime)
+    page = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/logout",
+            headers={"Cookie": _cookie_header(cookies)},
+        ),
+        now=_NOW,
+    )
+    assert page.status is HTTPStatus.OK
+    headers = dict(page.headers)
+    assert headers["Content-Type"] == "text/html; charset=utf-8"
+    assert headers["Cache-Control"] == "no-store"
+    csp = headers["Content-Security-Policy"]
+    assert "script-src 'self'" in csp
+    assert "connect-src 'self'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert b"/auth/logout.js" in page.body
+    assert cookies["__Host-ilaios_csrf"].encode() not in page.body
+    assert cookies["__Host-ilaios_auth"].encode() not in page.body
+
+    script = runtime.dispatch(
+        RuntimeRequest(method="GET", target="/auth/logout.js", headers={}),
+        now=_NOW,
+    )
+    assert script.status is HTTPStatus.OK
+    assert dict(script.headers)["Content-Type"] == "text/javascript; charset=utf-8"
+    assert b"X-CSRF-Token" in script.body
+    assert b"credentials:'same-origin'" in script.body
+    assert b"window.location.replace('/auth/session')" in script.body
+    assert cookies["__Host-ilaios_csrf"].encode() not in script.body
+    assert cookies["__Host-ilaios_auth"].encode() not in script.body
+
+
+def test_logout_get_does_not_revoke_session(tmp_path: Path) -> None:
+    database = tmp_path / "identity.db"
+    runtime, _oauth = _runtime(database)
+    cookies, credential, session_id = _callback(runtime)
+
+    page = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/logout",
+            headers={"Cookie": _cookie_header(cookies)},
+        ),
+        now=_NOW,
+    )
+    assert page.status is HTTPStatus.OK
+    principal = runtime.sessions.verify(session_id, credential, _NOW)
+    assert principal.principal_id
+
+
 def test_logout_requires_origin_csrf_revokes_and_clears_all_cookies(
     tmp_path: Path,
 ) -> None:
@@ -615,11 +805,11 @@ def test_unknown_route_and_unsupported_methods_are_bounded(tmp_path: Path) -> No
     assert unknown.status is HTTPStatus.NOT_FOUND
 
     wrong_method = runtime.dispatch(
-        RuntimeRequest(method="GET", target="/auth/logout", headers={}),
+        RuntimeRequest(method="PUT", target="/auth/logout", headers={}),
         now=_NOW,
     )
     assert wrong_method.status is HTTPStatus.METHOD_NOT_ALLOWED
-    assert dict(wrong_method.headers)["Allow"] == "POST"
+    assert dict(wrong_method.headers)["Allow"] == "GET, POST"
 
 
 

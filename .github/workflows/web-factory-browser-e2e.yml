@@ -31,32 +31,6 @@ on:
       - '.github/workflows/web-factory-browser-e2e.yml'
   push:
     branches: [master]
-    paths:
-      - 'services/execution_adapters.py'
-      - 'services/execution_coordinator.py'
-      - 'services/design_quality.py'
-      - 'services/web_factory_skills.py'
-      - 'services/web_3d_integration.py'
-      - 'services/web_3d_runtime.py'
-      - 'tools/web-factory/skills/**'
-      - 'tests/test_web_factory_native_skills.py'
-      - 'tests/test_design_quality.py'
-      - 'tests/test_web_motion_runtime.py'
-      - 'tests/test_web_3d_factory_wiring.py'
-      - 'tests/test_web_3d_integration.py'
-      - 'tests/test_web_3d_runtime.py'
-      - 'services/integrations/web_factory.py'
-      - 'services/integrations/web_product_runtime.py'
-      - 'services/integrations/web_product_runtime_recovery.py'
-      - 'services/integrations/web_project.py'
-      - 'services/integrations/web_assurance.py'
-      - 'services/integrations/web_delivery.py'
-      - 'services/integrations/web_vercel_delivery.py'
-      - 'tests/test_web_assurance_delivery.py'
-      - 'tests/test_web_vercel_delivery.py'
-      - 'apps/desktop/e2e/web_finished_product_browser_e2e.py'
-      - 'apps/desktop/e2e/web_3d_generated_site_browser_e2e.py'
-      - '.github/workflows/web-factory-browser-e2e.yml'
   workflow_dispatch:
 
 permissions:
