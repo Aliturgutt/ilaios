@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 import logging
 import sqlite3
 from datetime import UTC, datetime, timedelta
@@ -26,23 +27,24 @@ from services.canonical_browser_session import (
 )
 from services.central_identity import IdentityProvider, VerifiedExternalIdentity
 from services.control_plane.migrations import migrate_database
+from services.google_oidc import GoogleDesktopIdentityVerificationError
+from services.google_web_canonical_identity import GoogleWebCanonicalIdentityError
 from services.google_web_oauth import (
+    GoogleWebOAuthExpiredTokenError,
     GoogleWebOAuthIDTokenVerificationError,
     GoogleWebOAuthIssuerAudienceError,
-    GoogleWebOAuthExpiredTokenError,
     GoogleWebOAuthIssuedAtFutureError,
     GoogleWebOAuthJwksResolutionError,
-    GoogleWebOAuthLifetimeExceededError,
     GoogleWebOAuthJWTDecodeError,
+    GoogleWebOAuthLifetimeExceededError,
     GoogleWebOAuthMalformedClaimsError,
     GoogleWebOAuthNonceError,
     GoogleWebOAuthService,
     GoogleWebOAuthStart,
     GoogleWebOAuthStateError,
-    GoogleWebOAuthTokenExchangeError,
     GoogleWebOAuthTemporalClaimsError,
+    GoogleWebOAuthTokenExchangeError,
 )
-from services.google_web_canonical_identity import GoogleWebCanonicalIdentityError
 from services.web_identity_session_http import WebIdentitySessionBoundary
 
 _NOW = datetime(2026, 8, 29, 14, 0, tzinfo=UTC)
@@ -123,6 +125,7 @@ def _runtime(
             environment.session_lifetime,
         ),
         browser=WebIdentitySessionBoundary(production_origins=(_ORIGIN,)),
+        desktop_client_id="desktop-client-id",
         rate_limiter=rate_limiter,
     )
     return runtime, fake
@@ -394,6 +397,128 @@ def test_returning_google_subject_keeps_same_user_and_tenant(tmp_path: Path) -> 
     assert first_session != second_session
     assert first.body == second.body
 
+
+
+
+def test_desktop_google_canonicalization_returns_same_canonical_account(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = tmp_path / "identity.db"
+    runtime, _oauth = _runtime(database)
+    cookies, _, _ = _callback(runtime)
+
+    web_session = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/session",
+            headers={"Cookie": _cookie_header(cookies)},
+        ),
+        now=_NOW,
+    )
+    assert web_session.status is HTTPStatus.OK
+    web_payload = json.loads(web_session.body)
+
+    observed: dict[str, object] = {}
+
+    def verify_desktop(
+        encoded_token: str,
+        *,
+        client_id: str,
+        now: datetime,
+    ) -> VerifiedExternalIdentity:
+        observed["token"] = encoded_token
+        observed["client_id"] = client_id
+        observed["now"] = now
+        return VerifiedExternalIdentity(
+            provider=IdentityProvider.GOOGLE,
+            subject="google-subject-123",
+            email="owner@example.com",
+            email_verified=True,
+        )
+
+    monkeypatch.setattr(
+        runtime_server,
+        "verify_google_desktop_id_token",
+        verify_desktop,
+    )
+    desktop = runtime.dispatch(
+        RuntimeRequest(
+            method="POST",
+            target="/auth/desktop/canonicalize",
+            headers={"Content-Type": "application/json"},
+            body=json.dumps(
+                {
+                    "provider_id": "google",
+                    "id_token": "signed-desktop-id-token",
+                }
+            ).encode(),
+        ),
+        now=_NOW,
+    )
+
+    assert desktop.status is HTTPStatus.OK
+    desktop_payload = json.loads(desktop.body)
+    assert desktop_payload["user_id"] == web_payload["user_id"]
+    assert desktop_payload["tenant_id"] == web_payload["tenant_id"]
+    assert observed == {
+        "token": "signed-desktop-id-token",
+        "client_id": "desktop-client-id",
+        "now": _NOW,
+    }
+
+
+def test_desktop_canonicalization_rejects_bad_body_and_hides_token(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    runtime, _oauth = _runtime(tmp_path / "identity.db")
+    malformed = runtime.dispatch(
+        RuntimeRequest(
+            method="POST",
+            target="/auth/desktop/canonicalize",
+            headers={"Content-Type": "text/plain"},
+            body=b"not-json",
+        ),
+        now=_NOW,
+    )
+    assert malformed.status is HTTPStatus.UNSUPPORTED_MEDIA_TYPE
+
+    token = "desktop-token-should-never-be-logged"
+
+    def reject_desktop(
+        _encoded_token: str,
+        *,
+        client_id: str,
+        now: datetime,
+    ) -> VerifiedExternalIdentity:
+        assert client_id == "desktop-client-id"
+        assert now == _NOW
+        raise GoogleDesktopIdentityVerificationError(token)
+
+    monkeypatch.setattr(
+        runtime_server,
+        "verify_google_desktop_id_token",
+        reject_desktop,
+    )
+    caplog.set_level(logging.WARNING, logger=runtime_server.__name__)
+    denied = runtime.dispatch(
+        RuntimeRequest(
+            method="POST",
+            target="/auth/desktop/canonicalize",
+            headers={"Content-Type": "application/json"},
+            body=json.dumps(
+                {"provider_id": "google", "id_token": token}
+            ).encode(),
+        ),
+        now=_NOW,
+    )
+    assert denied.status is HTTPStatus.UNAUTHORIZED
+    assert denied.body == b'{"error":"authentication denied"}'
+    assert caplog.messages == ["app_auth_failure stage=desktop_id_token_rejected"]
+    assert token not in caplog.text
+    assert token.encode() not in denied.body
 
 
 def test_logout_page_requires_authenticated_session_and_uses_safe_same_origin_script(
