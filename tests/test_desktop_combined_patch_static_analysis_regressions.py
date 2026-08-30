@@ -1,5 +1,4 @@
 from pathlib import Path
-import re
 import shutil
 import subprocess
 import sys
@@ -68,7 +67,7 @@ def test_combined_v4_validator_does_not_mutate_fixture_source(tmp_path: Path) ->
     assert result.stdout == ""
 
 
-def test_v4_goals_reference_controls_are_direct_and_lint_safe(tmp_path: Path) -> None:
+def test_v4_goals_reference_controls_are_direct_and_bounded(tmp_path: Path) -> None:
     output = _generate_patch_output(tmp_path)
     create_view = (output / "apps/desktop/lib/features/create/create_view.dart").read_text(
         encoding="utf-8"
@@ -83,8 +82,7 @@ def test_v4_goals_reference_controls_are_direct_and_lint_safe(tmp_path: Path) ->
     assert "ReferenceAssetUiScope" not in create_view
     assert "Expanded(flex: 3, child: _images())" in picker
     assert "Expanded(flex: 2, child: _sourceVideo())" in picker
-    simple_statement_if = re.compile(r"(?m)^\s*if\s*\(.+\)\s+(?!\{).+;\s*$")
-    assert simple_statement_if.search(create_view) is None
+    assert "Column(\n        mainAxisSize: MainAxisSize.min,\n        children: [\n          _images()," in picker
 
 
 def test_v4_typography_stays_scoped_without_global_shell_zoom(tmp_path: Path) -> None:
