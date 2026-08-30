@@ -399,3 +399,27 @@ def test_linking_requires_recent_authenticated_session(tmp_path: Path) -> None:
     )
     assert stale.status is HTTPStatus.UNAUTHORIZED
     assert stale.body == b'{"error":"authentication denied"}'
+
+def test_github_standard_error_uri_callback_is_not_rejected_as_unexpected_query(
+    tmp_path: Path,
+) -> None:
+    runtime = _runtime(tmp_path / "identity.db", github=_GitHubOAuth())
+
+    response = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target=(
+                "/auth/github/callback?"
+                "error=redirect_uri_mismatch&"
+                "error_description=callback+mismatch&"
+                "error_uri=https%3A%2F%2Fdocs.github.com%2Foauth&"
+                "state=github-signin-state"
+            ),
+            headers={},
+        ),
+        now=_NOW,
+    )
+
+    assert response.status is HTTPStatus.UNAUTHORIZED
+    assert response.body == b'{"error":"authentication denied"}'
+
