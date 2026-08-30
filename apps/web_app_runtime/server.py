@@ -73,6 +73,7 @@ from services.google_web_oauth import (
     GoogleWebOAuthTokenExchangeError,
     IdentityChallengeGoogleWebOAuthReplayStore,
 )
+from services.identity import Principal
 from services.li_founder_operator import (
     LiAccessError,
     LiFounderOperator,
@@ -1001,7 +1002,9 @@ class AppRuntime:
     def _li_operator(self) -> LiFounderOperator | None:
         return self.li
 
-    def _li_principal(self, request: RuntimeRequest, now: datetime) -> tuple[LiFounderOperator, object]:
+    def _li_principal(
+        self, request: RuntimeRequest, now: datetime
+    ) -> tuple[LiFounderOperator, Principal]:
         li = self._li_operator()
         if li is None:
             raise LiAccessError("Li access denied")
