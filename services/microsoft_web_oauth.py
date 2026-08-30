@@ -25,7 +25,6 @@ from services.central_identity import IdentityProvider, VerifiedExternalIdentity
 from services.email_auth import EmailChallenge, EmailChallengeStore
 
 _FLOW_LIFETIME = timedelta(minutes=5)
-_MAX_ID_TOKEN_LIFETIME = timedelta(days=1)
 _STATE_PREFIX = "msa_"
 _REPLAY_SENTINEL = "microsoft-web-oauth@internal.invalid"
 _AUTHORIZATION_ENDPOINT = "https://login.microsoftonline.com/common/oauth2/v2.0/authorize"
@@ -372,25 +371,27 @@ class _MicrosoftIDTokenVerifier:
                 "Microsoft tenant/issuer binding failed"
             )
         _validate_signing_key_issuer(client, str(kid), tenant_id, issuer)
-        issued_at = _claim_time(claims, "iat")
-        expires_at = _claim_time(claims, "exp")
-        current = self._now
-        if issued_at > current + timedelta(minutes=5):
-            raise MicrosoftWebOAuthIDTokenError(
-                "Microsoft ID token issued-at claim is in the future"
-            )
-        if expires_at <= current:
-            raise MicrosoftWebOAuthIDTokenError("Microsoft ID token is expired")
-        if expires_at - issued_at > _MAX_ID_TOKEN_LIFETIME:
-            raise MicrosoftWebOAuthIDTokenError(
-                "Microsoft ID token lifetime exceeds policy"
-            )
+        _validate_temporal_claims(claims, self._now)
         return VerifiedExternalIdentity(
             provider=IdentityProvider.MICROSOFT,
             subject=object_id,
             issuer=issuer,
         )
 
+
+
+def _validate_temporal_claims(
+    claims: Mapping[str, Any],
+    current: datetime,
+) -> None:
+    issued_at = _claim_time(claims, "iat")
+    expires_at = _claim_time(claims, "exp")
+    if issued_at > current + timedelta(minutes=5):
+        raise MicrosoftWebOAuthIDTokenError(
+            "Microsoft ID token issued-at claim is in the future"
+        )
+    if expires_at <= current:
+        raise MicrosoftWebOAuthIDTokenError("Microsoft ID token is expired")
 
 def _validate_signing_key_issuer(
     client: jwt.PyJWKClient,
