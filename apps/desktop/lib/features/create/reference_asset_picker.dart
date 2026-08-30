@@ -145,7 +145,7 @@ class ReferenceAssetPicker extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth >= 700) {
+        if (constraints.maxWidth >= 640) {
           return Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
