@@ -400,6 +400,7 @@ def test_linking_requires_recent_authenticated_session(tmp_path: Path) -> None:
     assert stale.status is HTTPStatus.UNAUTHORIZED
     assert stale.body == b'{"error":"authentication denied"}'
 
+
 def test_github_standard_error_uri_callback_is_not_rejected_as_unexpected_query(
     tmp_path: Path,
 ) -> None:
@@ -422,3 +423,48 @@ def test_github_standard_error_uri_callback_is_not_rejected_as_unexpected_query(
 
     assert response.status is HTTPStatus.UNAUTHORIZED
     assert response.body == b'{"error":"authentication denied"}'
+
+def test_github_callback_ignores_unrecognized_response_parameters(
+    tmp_path: Path,
+) -> None:
+    runtime = _runtime(tmp_path / "identity.db", github=_GitHubOAuth())
+
+    response = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target=(
+                "/auth/github/callback?"
+                "state=github-signin-state&"
+                "code=github-code&"
+                "scope=read%3Auser+user%3Aemail&"
+                "provider_extension=present"
+            ),
+            headers={},
+        ),
+        now=_NOW,
+    )
+
+    assert response.status is HTTPStatus.SEE_OTHER
+
+
+def test_github_callback_rejects_duplicate_reserved_parameters(
+    tmp_path: Path,
+) -> None:
+    runtime = _runtime(tmp_path / "identity.db", github=_GitHubOAuth())
+
+    response = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target=(
+                "/auth/github/callback?"
+                "state=github-signin-state&"
+                "state=attacker-state&"
+                "code=github-code"
+            ),
+            headers={},
+        ),
+        now=_NOW,
+    )
+
+    assert response.status is HTTPStatus.BAD_REQUEST
+    assert response.body == b'{"error":"invalid callback parameters"}'

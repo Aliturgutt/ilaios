@@ -582,11 +582,16 @@ class AppRuntime:
         query: str,
         now: datetime,
     ) -> RuntimeResponse:
-        parsed = parse_qs(query, keep_blank_values=True, strict_parsing=True)
-        allowed = {"state", "code", "error", "error_description", "error_uri"}
-        if not set(parsed).issubset(allowed):
+        try:
+            parsed = parse_qs(query, keep_blank_values=True, strict_parsing=True)
+        except ValueError:
             return self._json_error(
-                HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+                HTTPStatus.BAD_REQUEST, "invalid callback parameters"
+            )
+        reserved = {"state", "code", "error", "error_description", "error_uri"}
+        if any(key in parsed and len(parsed[key]) != 1 for key in reserved):
+            return self._json_error(
+                HTTPStatus.BAD_REQUEST, "invalid callback parameters"
             )
         if self._one(parsed, "error") is not None:
             if provider == "microsoft":
