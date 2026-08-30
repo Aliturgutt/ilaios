@@ -44,6 +44,9 @@ from services.google_web_oauth import (
     GoogleWebOAuthError,
     GoogleWebOAuthIssuerAudienceError,
     GoogleWebOAuthIDTokenVerificationError,
+    GoogleWebOAuthExpiredTokenError,
+    GoogleWebOAuthIssuedAtFutureError,
+    GoogleWebOAuthLifetimeExceededError,
     GoogleWebOAuthJwksResolutionError,
     GoogleWebOAuthJWTDecodeError,
     GoogleWebOAuthMalformedClaimsError,
@@ -80,6 +83,9 @@ _AUTH_FAILURE_STAGES: Final = frozenset(
         "issuer_or_audience_rejected",
         "nonce_rejected",
         "temporal_claims_rejected",
+        "issued_at_future_rejected",
+        "expired_token_rejected",
+        "token_lifetime_exceeded",
         "malformed_claims_rejected",
         "canonical_identity_rejected",
         "session_issue_rejected",
@@ -255,6 +261,12 @@ class AppRuntime:
             return self._authentication_denied("issuer_or_audience_rejected")
         except GoogleWebOAuthNonceError:
             return self._authentication_denied("nonce_rejected")
+        except GoogleWebOAuthIssuedAtFutureError:
+            return self._authentication_denied("issued_at_future_rejected")
+        except GoogleWebOAuthExpiredTokenError:
+            return self._authentication_denied("expired_token_rejected")
+        except GoogleWebOAuthLifetimeExceededError:
+            return self._authentication_denied("token_lifetime_exceeded")
         except GoogleWebOAuthTemporalClaimsError:
             return self._authentication_denied("temporal_claims_rejected")
         except GoogleWebOAuthMalformedClaimsError:
