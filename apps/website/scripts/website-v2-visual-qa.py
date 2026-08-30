@@ -193,6 +193,17 @@ def main() -> int:
                     h1 = page.locator("main#main-content h1")
                     overflow = float(page.evaluate("document.documentElement.scrollWidth - window.innerWidth"))
                     offenders = overflow_elements(page) if overflow > 1 else []
+                    broken_images = page.locator("img").evaluate_all(
+                        """els => els
+                          .filter((el) => {
+                            const s = getComputedStyle(el);
+                            const r = el.getBoundingClientRect();
+                            return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0 &&
+                              (!el.complete || el.naturalWidth === 0 || el.naturalHeight === 0);
+                          })
+                          .map((el) => ({src: el.currentSrc || el.src, alt: el.alt || ''}))
+                          .slice(0, 20)"""
+                    )
                     record: dict[str, object] = {
                         "locale": locale,
                         "route": path,
@@ -205,6 +216,7 @@ def main() -> int:
                         "overflow_elements": offenders,
                         "console_errors": console_errors,
                         "page_errors": page_errors,
+                        "broken_images": broken_images,
                     }
 
                     try:
@@ -218,6 +230,15 @@ def main() -> int:
                             raise RuntimeError(f"console errors: {console_errors[:3]}")
                         if page_errors:
                             raise RuntimeError(f"page errors: {page_errors[:3]}")
+                        if broken_images:
+                            raise RuntimeError(f"broken images: {broken_images[:3]}")
+                        if route_name == "home":
+                            authoritative = page.locator('[data-visual-role="homepage-v2-authoritative"]')
+                            legacy = page.locator('.v2-recovery-home')
+                            if authoritative.count() != 1 or not authoritative.is_visible():
+                                raise RuntimeError("authoritative homepage V2 marker missing")
+                            if legacy.count() != 0:
+                                raise RuntimeError("legacy WebsiteV2HomeRecovery is still rendered")
 
                         record["h1_font_px"] = page.evaluate(
                             "el => parseFloat(getComputedStyle(el).fontSize)", h1.element_handle()
