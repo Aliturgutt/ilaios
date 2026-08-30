@@ -483,6 +483,12 @@ class DesktopOIDCService(_BaseDesktopOIDCService):
                     maximum_session=_SESSION_LIFETIME,
                 ),
             ).authenticate(encoded_token, current)
+            principal = self._canonicalize_principal(
+                provider.provider_id,
+                encoded_token,
+                principal,
+                current,
+            )
             verified_expiry = verifier.verified_expires_at
             if not isinstance(verified_expiry, datetime):
                 raise DesktopIdentityError(
