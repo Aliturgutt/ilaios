@@ -29,6 +29,14 @@ Future<void> _pumpEvidenceFrame(WidgetTester tester) async {
   expect(tester.takeException(), isNull);
 }
 
+void _navigateWithoutPointerGesture(WidgetTester tester, String navigationKey) {
+  final finder = find.byKey(ValueKey(navigationKey));
+  expect(finder, findsOneWidget);
+  final nav = tester.widget<InkWell>(finder);
+  expect(nav.onTap, isNotNull);
+  nav.onTap!();
+}
+
 Future<void> captureV4ScreenshotEvidence(
   WidgetTester tester, {
   required Size viewport,
@@ -70,7 +78,7 @@ Future<void> captureV4ScreenshotEvidence(
   final files = <Map<String, Object>>[];
   for (final page in v4EvidencePages) {
     if (page.$2 != null) {
-      await tester.tap(find.byKey(ValueKey(page.$2!)));
+      _navigateWithoutPointerGesture(tester, page.$2!);
       await _pumpEvidenceFrame(tester);
     }
 
