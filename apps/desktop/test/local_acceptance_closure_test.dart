@@ -132,8 +132,9 @@ void main() {
 
     expect(find.byKey(const Key('command-center-home')), findsOneWidget);
     expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
+    // The V4 disconnected Home removes the KPI strip entirely. Shell/runtime
+    // connectivity labels may still truthfully say Offline and are not KPIs.
     expect(find.byKey(const Key('command-center-metrics')), findsNothing);
-    expect(find.text('Offline'), findsNothing);
     expect(find.text('Start work'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
