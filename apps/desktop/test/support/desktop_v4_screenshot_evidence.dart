@@ -20,6 +20,15 @@ const v4EvidencePages = <(String, String?)>[
   ('settings', 'nav-settings'),
 ];
 
+Future<void> _pumpEvidenceFrame(WidgetTester tester) async {
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 16));
+  await tester.pump(const Duration(milliseconds: 100));
+  await tester.pump(const Duration(milliseconds: 250));
+  await tester.pump(const Duration(milliseconds: 500));
+  expect(tester.takeException(), isNull);
+}
+
 Future<void> captureV4ScreenshotEvidence(
   WidgetTester tester, {
   required Size viewport,
@@ -56,15 +65,13 @@ Future<void> captureV4ScreenshotEvidence(
       child: IlaiosDesktopApp(themeMode: themeMode),
     ),
   );
-  await tester.pumpAndSettle();
-  expect(tester.takeException(), isNull);
+  await _pumpEvidenceFrame(tester);
 
   final files = <Map<String, Object>>[];
   for (final page in v4EvidencePages) {
     if (page.$2 != null) {
       await tester.tap(find.byKey(ValueKey(page.$2!)));
-      await tester.pumpAndSettle();
-      expect(tester.takeException(), isNull);
+      await _pumpEvidenceFrame(tester);
     }
 
     final boundary = captureKey.currentContext!.findRenderObject()!
