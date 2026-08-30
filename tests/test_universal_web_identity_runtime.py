@@ -557,4 +557,3 @@ def test_microsoft_id_token_lifetime_failure_logs_specific_safe_reason(
         "app_auth_failure stage=microsoft_id_token_rejected "
         "reason=lifetime_exceeded"
     ]
-
