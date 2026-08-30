@@ -104,9 +104,8 @@ class ReferenceAssetPickerController extends core.ReferenceAssetPickerController
 }
 
 /// Shared private-input surface. In the compact Goals composer, image
-/// references and the separately governed source-video picker share a row when
-/// enough width is available. This preserves both capabilities while avoiding
-/// unnecessary vertical growth on short Desktop viewports.
+/// references and the separately governed source-video picker stay in one
+/// bounded row so short supported Desktop viewports do not grow vertically.
 class ReferenceAssetPicker extends StatelessWidget {
   const ReferenceAssetPicker({
     required this.controller,
@@ -143,27 +142,13 @@ class ReferenceAssetPicker extends StatelessWidget {
       );
     }
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth >= 640) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(child: _images()),
-              const SizedBox(width: 8),
-              Expanded(child: _sourceVideo()),
-            ],
-          );
-        }
-        return Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _images(),
-            const SizedBox(height: 6),
-            _sourceVideo(),
-          ],
-        );
-      },
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: _images()),
+        const SizedBox(width: 8),
+        Expanded(child: _sourceVideo()),
+      ],
     );
   }
 }
