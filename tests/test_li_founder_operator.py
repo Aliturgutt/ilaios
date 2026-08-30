@@ -87,6 +87,22 @@ def test_li_configuration_is_optional_but_partial_configuration_fails_closed(
         )
 
 
+
+
+def test_li_memory_database_must_not_share_canonical_identity_file(
+    tmp_path: Path,
+) -> None:
+    identity = _identity_database(tmp_path / "identity.db")
+    with pytest.raises(LiConfigurationError):
+        LiFounderOperator(
+            config=LiFounderConfig(
+                user_id=_FOUNDER_USER,
+                tenant_id=_FOUNDER_TENANT,
+                database_path=identity,
+            ),
+            identity_database=identity,
+        )
+
 def test_only_exact_canonical_founder_owner_can_access_li(tmp_path: Path) -> None:
     operator = _operator(tmp_path)
     operator.authorize(_principal())
@@ -169,6 +185,7 @@ def test_snapshot_reads_live_canonical_membership_and_release_state(
     assert snapshot["memory_count"] == 1
     system = snapshot["system"]
     assert isinstance(system, dict)
+    assert system["scope"] == "app_runtime_identity"
     assert system["service"] == "app.ilaios.com"
     assert system["tenant_status"] == "ACTIVE"
     assert system["membership_status"] == "ACTIVE"
