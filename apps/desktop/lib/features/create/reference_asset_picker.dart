@@ -104,8 +104,9 @@ class ReferenceAssetPickerController extends core.ReferenceAssetPickerController
 }
 
 /// Shared private-input surface. In the compact Goals composer, image
-/// references and the separately governed source-video picker stay in one
-/// bounded row so short supported Desktop viewports do not grow vertically.
+/// references get more horizontal room than the single source-video control.
+/// This keeps helper copy from wrapping into a tall column at 1366x768 while
+/// preserving both governed attachment paths in the same V4 composer row.
 class ReferenceAssetPicker extends StatelessWidget {
   const ReferenceAssetPicker({
     required this.controller,
@@ -146,9 +147,9 @@ class ReferenceAssetPicker extends StatelessWidget {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(child: _images()),
+        Expanded(flex: 3, child: _images()),
         const SizedBox(width: 8),
-        Expanded(child: _sourceVideo()),
+        Expanded(flex: 2, child: _sourceVideo()),
       ],
     );
   }
