@@ -13,7 +13,9 @@ PATCH_INPUTS = (
     "apps/desktop/lib/features/deliveries/deliveries_view.dart",
     "apps/desktop/lib/app/desktop_app.dart",
     "apps/desktop/lib/features/create/create_view.dart",
+    "apps/desktop/lib/features/create/reference_asset_picker.dart",
     "apps/desktop/lib/features/create/reference_asset_picker_core.dart",
+    "apps/desktop/lib/features/create/source_video_picker.dart",
     "apps/desktop/lib/identity/identity_client.dart",
 )
 
@@ -54,43 +56,38 @@ def _generate_patch_output(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def test_generated_desktop_app_does_not_shadow_reference_count_helper(
-    tmp_path: Path,
-) -> None:
+def test_combined_v4_validator_does_not_mutate_fixture_source(tmp_path: Path) -> None:
     output = _generate_patch_output(tmp_path)
-    desktop_app = (output / "apps/desktop/lib/app/desktop_app.dart").read_text(
-        encoding="utf-8"
+    result = subprocess.run(
+        ["git", "status", "--porcelain", "--", "apps/desktop"],
+        cwd=output,
+        check=True,
+        capture_output=True,
+        text=True,
     )
-
-    assert "final referenceTargetCount = referenceFactoryCount(objective);" in desktop_app
-    assert "hasReferences && referenceTargetCount == 0" in desktop_app
-    assert "hasReferences && referenceTargetCount != 1" in desktop_app
-    assert "final referenceFactoryCount = referenceFactoryCount(objective);" not in desktop_app
+    assert result.stdout == ""
 
 
-def test_generated_reference_attach_callbacks_use_lint_safe_blocks(
-    tmp_path: Path,
-) -> None:
+def test_v4_goals_reference_controls_are_direct_and_lint_safe(tmp_path: Path) -> None:
     output = _generate_patch_output(tmp_path)
     create_view = (output / "apps/desktop/lib/features/create/create_view.dart").read_text(
         encoding="utf-8"
     )
+    picker = (
+        output / "apps/desktop/lib/features/create/reference_asset_picker.dart"
+    ).read_text(encoding="utf-8")
 
-    assert "if (scope.target != target) {\n                  scope.onTargetChanged(target);" in create_view
-    assert "if (!scope.open) {\n                  scope.onToggle();" in create_view
-    assert "if (scope.target != target) scope.onTargetChanged(target);" not in create_view
-    assert "if (!scope.open) scope.onToggle();" not in create_view
-    assert "if (scope == null) {\n      return const SizedBox.shrink();\n    }" in create_view
-    assert "if (scope == null) return const SizedBox.shrink();" not in create_view
-    simple_statement_if = re.compile(
-        r"(?m)^\s*if\s*\(.+\)\s+(?!\{).+;\s*$"
-    )
+    assert "key: const Key('reference-goals-page')" in create_view
+    assert "key: const Key('goals-composer')" in create_view
+    assert "ReferenceAssetPicker(" in create_view
+    assert "ReferenceAssetUiScope" not in create_view
+    assert "Expanded(flex: 3, child: _images())" in picker
+    assert "Expanded(flex: 2, child: _sourceVideo())" in picker
+    simple_statement_if = re.compile(r"(?m)^\s*if\s*\(.+\)\s+(?!\{).+;\s*$")
     assert simple_statement_if.search(create_view) is None
 
 
-def test_generated_typography_is_scoped_without_global_shell_zoom(
-    tmp_path: Path,
-) -> None:
+def test_v4_typography_stays_scoped_without_global_shell_zoom(tmp_path: Path) -> None:
     output = _generate_patch_output(tmp_path)
     shell = (
         output
@@ -102,4 +99,5 @@ def test_generated_typography_is_scoped_without_global_shell_zoom(
 
     assert "final desktopTextScale = math.max(1.10, systemTextScale);" not in shell
     assert "TextScaler.linear(desktopTextScale)" not in shell
-    assert "fontSize: 25.5" in deliveries
+    assert "textScaler: const TextScaler.linear(.95)" in shell
+    assert "key: const Key('reference-outputs-page')" in deliveries
