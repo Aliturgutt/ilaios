@@ -13,6 +13,7 @@ import logging
 import os
 import secrets
 import sqlite3
+from collections import deque
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -20,6 +21,7 @@ from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from threading import Lock
 from typing import Final
 from urllib.parse import parse_qs, urlsplit
 
@@ -70,6 +72,12 @@ _DEFAULT_HOST: Final = "0.0.0.0"
 _DEFAULT_PORT: Final = 8080
 _DEFAULT_SESSION_SECONDS: Final = 3600
 _MAX_SESSION_SECONDS: Final = 86_400
+_RATE_LIMITS: Final = {
+    "/auth/google/start": (120, 60),
+    "/auth/google/callback": (240, 60),
+    "/auth/logout": (120, 60),
+    "/auth/session": (600, 60),
+}
 _ALLOWED_CALLBACK_QUERY_KEYS: Final = frozenset(
     {"state", "code", "scope", "authuser", "prompt", "hd", "iss"}
 )
@@ -149,6 +157,47 @@ class RuntimeRequest:
     method: str
     target: str
     headers: Mapping[str, str]
+    source: str = "unknown"
+
+
+class AppRateLimiter:
+    """Small process-local fixed-window limiter for public auth endpoints."""
+
+    def __init__(
+        self,
+        rules: Mapping[str, tuple[int, int]] = _RATE_LIMITS,
+    ) -> None:
+        self._rules = dict(rules)
+        self._events: dict[tuple[str, str], deque[datetime]] = {}
+        self._lock = Lock()
+
+    def check(
+        self,
+        *,
+        source: str,
+        path: str,
+        now: datetime,
+    ) -> int | None:
+        rule = self._rules.get(path)
+        if rule is None:
+            return None
+        limit, window_seconds = rule
+        if limit < 1 or window_seconds < 1:
+            raise ValueError("rate limit rule is invalid")
+        normalized_source = source.strip() or "unknown"
+        cutoff = now - timedelta(seconds=window_seconds)
+        key = (normalized_source, path)
+        with self._lock:
+            events = self._events.setdefault(key, deque())
+            while events and events[0] <= cutoff:
+                events.popleft()
+            if len(events) >= limit:
+                retry_after = int(
+                    max(1.0, (events[0] + timedelta(seconds=window_seconds) - now).total_seconds())
+                )
+                return retry_after
+            events.append(now)
+        return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,11 +217,13 @@ class AppRuntime:
         oauth: GoogleWebOAuthService,
         sessions: CanonicalBrowserSessionAuthority,
         browser: WebIdentitySessionBoundary,
+        rate_limiter: AppRateLimiter | None = None,
     ) -> None:
         self.environment = environment
         self.oauth = oauth
         self.sessions = sessions
         self.browser = browser
+        self.rate_limiter = rate_limiter or AppRateLimiter()
 
     @classmethod
     def from_environment(cls, env: Mapping[str, str]) -> AppRuntime:
@@ -212,6 +263,18 @@ class AppRuntime:
         split = urlsplit(request.target)
         method = request.method.strip().upper()
         path = split.path
+
+        retry_after = self.rate_limiter.check(
+            source=request.source,
+            path=path,
+            now=current,
+        )
+        if retry_after is not None:
+            return self._json_error(
+                HTTPStatus.TOO_MANY_REQUESTS,
+                "rate limit exceeded",
+                extra_headers=(("Retry-After", str(retry_after)),),
+            )
 
         try:
             if path == "/health/ready":
@@ -516,7 +579,12 @@ class AppHTTPRequestHandler(BaseHTTPRequestHandler):
         headers = {key: value for key, value in self.headers.items()}
         try:
             response = self.server.runtime.dispatch(
-                RuntimeRequest(method=method, target=self.path, headers=headers)
+                RuntimeRequest(
+                    method=method,
+                    target=self.path,
+                    headers=headers,
+                    source=str(self.client_address[0]),
+                )
             )
         except Exception:
             response = AppRuntime._json_error(
