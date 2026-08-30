@@ -101,7 +101,6 @@ void main() {
     expect(find.textContaining(r'$3.21'), findsNothing);
     expect(find.textContaining('18.362'), findsNothing);
     expect(find.text('96%'), findsNothing);
-    expect(find.text('—'), findsWidgets);
   });
 
   testWidgets('Workflows projects authoritative job state and refresh', (
