@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 import "./locale.css";
+import "./mobile-redteam.css";
+import "./canonical-detail.css";
 import "./brand-palette.css";
 import "./system-motion-signature.css";
 import "./site-v2-finalization.css";
