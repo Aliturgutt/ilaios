@@ -3,6 +3,8 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+
+import pytest
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from http.cookies import SimpleCookie
@@ -488,14 +490,14 @@ class _RejectingMicrosoftOAuth(_MicrosoftOAuth):
 
 def test_microsoft_id_token_failure_logs_only_safe_reason(
     tmp_path: Path,
-    caplog: object,
+    caplog: pytest.LogCaptureFixture,
 ) -> None:
     runtime = _runtime(
         tmp_path / "identity.db",
         microsoft=_RejectingMicrosoftOAuth(),
     )
     logger = logging.getLogger("apps.web_app_runtime.server")
-    with caplog.at_level(logging.WARNING, logger=logger.name):  # type: ignore[attr-defined]
+    with caplog.at_level(logging.WARNING, logger=logger.name):
         response = runtime.dispatch(
             RuntimeRequest(
                 method="GET",
@@ -507,11 +509,10 @@ def test_microsoft_id_token_failure_logs_only_safe_reason(
 
     assert response.status is HTTPStatus.UNAUTHORIZED
     assert response.body == b'{"error":"authentication denied"}'
-    messages = [record.getMessage() for record in caplog.records]  # type: ignore[attr-defined]
+    messages = [record.getMessage() for record in caplog.records]
     assert messages == [
         "app_auth_failure stage=microsoft_id_token_rejected "
         "reason=signing_key_issuer_binding"
     ]
     assert "state-one" not in messages[0]
     assert "code-one-value" not in messages[0]
-
