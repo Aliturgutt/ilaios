@@ -18,8 +18,8 @@ function Read-PngDimensions([string]$Path) {
   for ($i = 0; $i -lt 8; $i++) {
     if ($bytes[$i] -ne $signature[$i]) { Fail "Invalid PNG signature: $Path" }
   }
-  $width = ($bytes[16] -shl 24) -bor ($bytes[17] -shl 16) -bor ($bytes[18] -shl 8) -bor $bytes[19]
-  $height = ($bytes[20] -shl 24) -bor ($bytes[21] -shl 16) -bor ($bytes[22] -shl 8) -bor $bytes[23]
+  $width = ([uint32]$bytes[16] -shl 24) -bor ([uint32]$bytes[17] -shl 16) -bor ([uint32]$bytes[18] -shl 8) -bor [uint32]$bytes[19]
+  $height = ([uint32]$bytes[20] -shl 24) -bor ([uint32]$bytes[21] -shl 16) -bor ([uint32]$bytes[22] -shl 8) -bor [uint32]$bytes[23]
   return @($width, $height)
 }
 
