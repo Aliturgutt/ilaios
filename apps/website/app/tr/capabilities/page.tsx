@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
 import CapabilitiesPage from "../../CapabilitiesPage";
-import SuppliedVisual from "../../SuppliedVisual";
 export const metadata: Metadata = { title: "Yetenekler", description: "Kanonik ILAIOS platform yeteneklerini bitmiş ürün üreten alanlardan ayrı olarak inceleyin.", alternates: { canonical: "/tr/capabilities", languages: { tr: "/tr/capabilities", en: "/capabilities", "x-default": "/capabilities" } } };
-export default function Page() { return <><CapabilitiesPage locale="tr" /><section className="section surface-section"><div className="shell"><SuppliedVisual light="/website-v2/capabilities-light.avif" dark="/website-v2/capabilities-dark.avif" alt="ILAIOS iş yeteneği ailelerinin paylaşılan yönetilen yetenekleri ve üretim factory'lerini kullandığı önizleme haritası." caption="Önizleme / geliştiriliyor: iş yeteneği aileleri tek yönetilen platform temelini paylaşır; factory'ler otonom departmanlar değil uzmanlaşmış üretim yollarıdır." /></div></section></>; }
+export default function Page() { return <CapabilitiesPage locale="tr" />; }

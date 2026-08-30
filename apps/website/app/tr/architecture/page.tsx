@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
 import ArchitecturePage from "../../ArchitecturePage";
-import SuppliedVisual from "../../SuppliedVisual";
 export const metadata: Metadata = { title: "Mimari", description: "ILAIOS kontrol katmanı mimarisini, yetki akışını, yönlendirmeyi, doğrulamayı ve kanıt yolunu inceleyin.", alternates: { canonical: "/tr/architecture", languages: { tr: "/tr/architecture", en: "/architecture", "x-default": "/architecture" } } };
-export default function Page() { return <><ArchitecturePage locale="tr" /><section className="section surface-section"><div className="shell"><SuppliedVisual light="/website-v2/architecture-light.avif" dark="/website-v2/architecture-dark.avif" alt="İş niyetinden Kurumsal Çalışma Katmanı, tek yönetilen Core, paylaşılan yetenekler, uzmanlaşmış factory'ler ve doğrulama üzerinden kanıta dayalı sonuca ilerleyen kanonik ILAIOS mimarisi." caption="Kanonik mimari: Kurumsal Çalışma Katmanı iş akışlarını tek yönetilen yürütme yetkisinin üzerinde birleştirir; ikinci Core, orchestrator veya router değildir." /></div></section></>; }
+export default function Page() { return <ArchitecturePage locale="tr" />; }

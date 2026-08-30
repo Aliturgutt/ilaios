@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
 import CapabilitiesPage from "../CapabilitiesPage";
-import SuppliedVisual from "../SuppliedVisual";
 export const metadata: Metadata = { title: "Capabilities", description: "Explore canonical ILAIOS platform capabilities separately from finished-product factories.", alternates: { canonical: "/capabilities", languages: { en: "/capabilities", tr: "/tr/capabilities", "x-default": "/capabilities" } } };
-export default function Page() { return <><CapabilitiesPage locale="en" /><section className="section surface-section"><div className="shell"><SuppliedVisual light="/website-v2/capabilities-light.avif" dark="/website-v2/capabilities-dark.avif" alt="Preview map of ILAIOS business capability families using shared governed capabilities and production factories." caption="Preview / in development: business capability families share one governed platform foundation; factories remain specialized production paths rather than autonomous departments." /></div></section></>; }
+export default function Page() { return <CapabilitiesPage locale="en" />; }

@@ -95,6 +95,17 @@ def check_route(page: Page, path: str, viewport: dict[str, int], findings: list[
     sections = all_section_metrics(page)
     footer = computed(page, "footer") if page.locator("footer").count() else None
     accent_ratio = visible_accent_ratio(page)
+    broken_images = page.locator("img").evaluate_all(
+        """els => els
+          .filter((el) => {
+            const s = getComputedStyle(el);
+            const r = el.getBoundingClientRect();
+            return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0 &&
+              (!el.complete || el.naturalWidth === 0 || el.naturalHeight === 0);
+          })
+          .map((el) => ({src: el.currentSrc || el.src, alt: el.alt || ''}))
+          .slice(0, 20)"""
+    )
 
     if h1:
         h1_size = px(str(h1["fontSize"]))
@@ -113,19 +124,40 @@ def check_route(page: Page, path: str, viewport: dict[str, int], findings: list[
         findings.append(f"{label}: desktop footer too tall ({footer['height']:.0f}px)")
     if accent_ratio > 0.12:
         findings.append(f"{label}: cyan/accent text usage too high ({accent_ratio:.1%})")
+    if broken_images:
+        findings.append(f"{label}: broken rendered images {broken_images[:3]}")
 
     if path in {"/about", "/tr/about", "/contact", "/tr/contact"} and viewport["width"] >= 900:
         first_two = page.locator("main section").evaluate_all("els => els.slice(0,2).map(el => el.getBoundingClientRect().bottom)")
         if first_two and first_two[0] > 520:
             findings.append(f"{label}: opening section consumes too much of the first viewport ({first_two[0]:.0f}px)")
 
-    evidence.append({"path": path, "viewport": viewport, "h1": h1, "sections": sections, "footer": footer, "accentRatio": accent_ratio})
+    evidence.append({"path": path, "viewport": viewport, "h1": h1, "sections": sections, "footer": footer, "accentRatio": accent_ratio, "brokenImages": broken_images})
 
 
 def check_home_composition(page: Page, findings: list[str]) -> None:
     page.set_viewport_size(DESKTOP)
     page.goto(BASE_URL, wait_until="domcontentloaded", timeout=30_000)
     page.wait_for_timeout(250)
+
+    authoritative = page.locator('[data-visual-role="homepage-v2-authoritative"]')
+    legacy = page.locator('.v2-recovery-home')
+    if authoritative.count() != 1 or not authoritative.is_visible():
+        findings.append("desktop home: authoritative canonical homepage marker is missing")
+    if legacy.count() != 0:
+        findings.append("desktop home: legacy WebsiteV2HomeRecovery is still rendered")
+
+    gradients = page.locator(".homepage-v2 *").evaluate_all(
+        """els => els
+          .filter((el) => {
+            const s = getComputedStyle(el);
+            return (s.backgroundImage || '').includes('gradient(');
+          })
+          .map((el) => ({tag: el.tagName.toLowerCase(), cls: typeof el.className === 'string' ? el.className.slice(0, 100) : ''}))
+          .slice(0, 20)"""
+    ) if page.locator(".homepage-v2").count() else []
+    if gradients:
+        findings.append(f"desktop home: decorative gradients remain {gradients[:3]}")
 
     demo = page.locator('[data-visual-role="interactive-product-demo"]')
     if demo.count() != 1 or not demo.is_visible():

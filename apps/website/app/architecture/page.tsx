@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
 import ArchitecturePage from "../ArchitecturePage";
-import SuppliedVisual from "../SuppliedVisual";
 export const metadata: Metadata = { title: "Architecture", description: "Understand the ILAIOS control-plane architecture, authority flow, routing, validation and evidence path.", alternates: { canonical: "/architecture", languages: { en: "/architecture", tr: "/tr/architecture", "x-default": "/architecture" } } };
-export default function Page() { return <><ArchitecturePage locale="en" /><section className="section surface-section"><div className="shell"><SuppliedVisual light="/website-v2/architecture-light.avif" dark="/website-v2/architecture-dark.avif" alt="Canonical ILAIOS architecture from business intent through the Business Operating Layer, one governed Core, shared capabilities, specialized factories and validation to an evidence-backed outcome." caption="Canonical architecture: the Business Operating Layer composes business workflows above one governed execution authority; it is not a second Core, orchestrator or router." /></div></section></>; }
+export default function Page() { return <ArchitecturePage locale="en" />; }
