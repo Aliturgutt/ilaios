@@ -395,6 +395,71 @@ def test_returning_google_subject_keeps_same_user_and_tenant(tmp_path: Path) -> 
     assert first.body == second.body
 
 
+
+def test_logout_page_requires_authenticated_session_and_uses_safe_same_origin_script(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "identity.db"
+    runtime, _oauth = _runtime(database)
+
+    denied = runtime.dispatch(
+        RuntimeRequest(method="GET", target="/auth/logout", headers={}),
+        now=_NOW,
+    )
+    assert denied.status is HTTPStatus.FORBIDDEN
+
+    cookies, _, _ = _callback(runtime)
+    page = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/logout",
+            headers={"Cookie": _cookie_header(cookies)},
+        ),
+        now=_NOW,
+    )
+    assert page.status is HTTPStatus.OK
+    headers = dict(page.headers)
+    assert headers["Content-Type"] == "text/html; charset=utf-8"
+    assert headers["Cache-Control"] == "no-store"
+    csp = headers["Content-Security-Policy"]
+    assert "script-src 'self'" in csp
+    assert "connect-src 'self'" in csp
+    assert "frame-ancestors 'none'" in csp
+    assert b"/auth/logout.js" in page.body
+    assert cookies["__Host-ilaios_csrf"].encode() not in page.body
+    assert cookies["__Host-ilaios_auth"].encode() not in page.body
+
+    script = runtime.dispatch(
+        RuntimeRequest(method="GET", target="/auth/logout.js", headers={}),
+        now=_NOW,
+    )
+    assert script.status is HTTPStatus.OK
+    assert dict(script.headers)["Content-Type"] == "text/javascript; charset=utf-8"
+    assert b"X-CSRF-Token" in script.body
+    assert b"credentials:'same-origin'" in script.body
+    assert b"window.location.replace('/auth/session')" in script.body
+    assert cookies["__Host-ilaios_csrf"].encode() not in script.body
+    assert cookies["__Host-ilaios_auth"].encode() not in script.body
+
+
+def test_logout_get_does_not_revoke_session(tmp_path: Path) -> None:
+    database = tmp_path / "identity.db"
+    runtime, _oauth = _runtime(database)
+    cookies, credential, session_id = _callback(runtime)
+
+    page = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/logout",
+            headers={"Cookie": _cookie_header(cookies)},
+        ),
+        now=_NOW,
+    )
+    assert page.status is HTTPStatus.OK
+    principal = runtime.sessions.verify(session_id, credential, _NOW)
+    assert principal.principal_id
+
+
 def test_logout_requires_origin_csrf_revokes_and_clears_all_cookies(
     tmp_path: Path,
 ) -> None:
@@ -615,11 +680,11 @@ def test_unknown_route_and_unsupported_methods_are_bounded(tmp_path: Path) -> No
     assert unknown.status is HTTPStatus.NOT_FOUND
 
     wrong_method = runtime.dispatch(
-        RuntimeRequest(method="GET", target="/auth/logout", headers={}),
+        RuntimeRequest(method="PUT", target="/auth/logout", headers={}),
         now=_NOW,
     )
     assert wrong_method.status is HTTPStatus.METHOD_NOT_ALLOWED
-    assert dict(wrong_method.headers)["Allow"] == "POST"
+    assert dict(wrong_method.headers)["Allow"] == "GET, POST"
 
 
 

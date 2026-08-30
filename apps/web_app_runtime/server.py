@@ -294,13 +294,23 @@ class AppRuntime:
                     return self._method_not_allowed("GET")
                 return self._google_callback(split.query, current)
             if path == "/auth/logout":
-                if method != "POST":
-                    return self._method_not_allowed("POST")
                 if split.query:
                     return self._json_error(
                         HTTPStatus.BAD_REQUEST, "unexpected query parameters"
                     )
-                return self._logout(request, current)
+                if method == "GET":
+                    return self._logout_page(request, current)
+                if method == "POST":
+                    return self._logout(request, current)
+                return self._method_not_allowed("GET, POST")
+            if path == "/auth/logout.js":
+                if method != "GET":
+                    return self._method_not_allowed("GET")
+                if split.query:
+                    return self._json_error(
+                        HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+                    )
+                return self._logout_script()
             if path == "/auth/session":
                 if method != "GET":
                     return self._method_not_allowed("GET")
@@ -436,6 +446,67 @@ class AppRuntime:
             headers=(
                 ("Location", "/"),
                 *(("Set-Cookie", value) for value in cookie_headers),
+                ("Cache-Control", "no-store"),
+            ),
+        )
+
+    def _logout_page(self, request: RuntimeRequest, now: datetime) -> RuntimeResponse:
+        credentials = self.browser.credentials(self._web_request(request))
+        self.sessions.verify(
+            credentials.session_id,
+            credentials.encoded_token,
+            now,
+        )
+        body = (
+            b"<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+            b"<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+            b"<title>ILAIOS sign out</title></head><body>"
+            b"<main><h1>Sign out of ILAIOS</h1>"
+            b"<button id=\"logout\" type=\"button\">Sign out</button>"
+            b"<p id=\"status\" role=\"status\" aria-live=\"polite\"></p></main>"
+            b"<script src=\"/auth/logout.js\" defer></script></body></html>"
+        )
+        return RuntimeResponse(
+            status=HTTPStatus.OK,
+            body=body,
+            headers=(
+                ("Content-Type", "text/html; charset=utf-8"),
+                ("Cache-Control", "no-store"),
+                (
+                    "Content-Security-Policy",
+                    "default-src 'none'; script-src 'self'; connect-src 'self'; "
+                    "style-src 'none'; img-src 'none'; base-uri 'none'; "
+                    "frame-ancestors 'none'; form-action 'self'",
+                ),
+            ),
+        )
+
+    @staticmethod
+    def _logout_script() -> RuntimeResponse:
+        body = (
+            b"(function(){\"use strict\";"
+            b"const button=document.getElementById('logout');"
+            b"const status=document.getElementById('status');"
+            b"function csrf(){const prefix='__Host-ilaios_csrf=';"
+            b"for(const part of document.cookie.split(';')){const value=part.trim();"
+            b"if(value.startsWith(prefix)){return decodeURIComponent(value.slice(prefix.length));}}"
+            b"return '';}"
+            b"button.addEventListener('click',async function(){button.disabled=true;"
+            b"status.textContent='Signing out...';"
+            b"const token=csrf();if(!token){status.textContent='Unable to sign out safely.';"
+            b"button.disabled=false;return;}"
+            b"try{const response=await fetch('/auth/logout',{method:'POST',"
+            b"credentials:'same-origin',cache:'no-store',"
+            b"headers:{'X-CSRF-Token':token}});"
+            b"if(response.status===204){window.location.replace('/auth/session');return;}"
+            b"status.textContent='Sign out failed.';}catch(_error){"
+            b"status.textContent='Sign out failed.';}button.disabled=false;});})();"
+        )
+        return RuntimeResponse(
+            status=HTTPStatus.OK,
+            body=body,
+            headers=(
+                ("Content-Type", "text/javascript; charset=utf-8"),
                 ("Cache-Control", "no-store"),
             ),
         )
@@ -592,16 +663,21 @@ class AppHTTPRequestHandler(BaseHTTPRequestHandler):
             )
         self.send_response(response.status)
         emitted_content_type = False
+        emitted_csp = False
         for key, value in response.headers:
             self.send_header(key, value)
-            if key.casefold() == "content-type":
+            header_name = key.casefold()
+            if header_name == "content-type":
                 emitted_content_type = True
+            if header_name == "content-security-policy":
+                emitted_csp = True
         if response.body and not emitted_content_type:
             self.send_header("Content-Type", "application/octet-stream")
         self.send_header("Content-Length", str(len(response.body)))
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Referrer-Policy", "no-referrer")
-        self.send_header("Content-Security-Policy", "default-src 'none'")
+        if not emitted_csp:
+            self.send_header("Content-Security-Policy", "default-src 'none'")
         self.end_headers()
         if response.body:
             self.wfile.write(response.body)
