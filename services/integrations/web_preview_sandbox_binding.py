@@ -2,13 +2,14 @@
 
 This module is an evidence binding layer only. It does not create a preview runtime,
 perform deployment, own credentials, or grant publish authority. It prevents a
-trusted sandbox observation from being reused across another preview URL or
-artifact lineage. Source/execution/tenant binding remains enforced by the incumbent
-sandbox observer/evidence contracts.
+trusted sandbox observation or isolation attestation from being reused across
+another preview URL or artifact lineage. Source/execution/tenant binding remains
+enforced by the incumbent sandbox observer/evidence contracts.
 """
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from urllib.parse import urlsplit
 
 from services.integrations.web_delivery import WebDeploymentError, WebDeploymentReceipt
@@ -25,6 +26,27 @@ from services.web_app_preview_sandbox_observer import (
 from services.web_app_sandbox_evidence import GeneratedPreviewSandboxObservation
 
 _COMMIT_SHA_RE = re.compile(r"^[0-9a-f]{40}$")
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_ISOLATION_ATTESTATION_CONTRACT = "web.preview-isolation-attestation.v1"
+
+
+@dataclass(frozen=True, slots=True)
+class PreviewIsolationAttestation:
+    """Trusted runtime-boundary facts bound to one immutable preview deployment.
+
+    The attestation deliberately carries no authority. Its purpose is to prevent
+    otherwise-valid isolation facts from being replayed across another deployment,
+    source commit, artifact, provider, or preview origin before the HTTP observation
+    is produced.
+    """
+
+    contract: str
+    provider: str
+    deployment_id: str
+    source_commit_sha: str
+    artifact_sha256: str
+    preview_origin: str
+    facts: PreviewIsolationBoundaryFacts
 
 
 def probe_and_bind_preview_sandbox_to_receipt(
@@ -34,19 +56,17 @@ def probe_and_bind_preview_sandbox_to_receipt(
     tenant_id: str,
     source_sha256: str,
     privileged_session_origin: str,
-    isolation: PreviewIsolationBoundaryFacts,
+    isolation_attestation: PreviewIsolationAttestation,
     policy: ExecutionPolicy,
     transport: PreviewHttpTransport | None = None,
     timeout_seconds: int = 15,
 ) -> GeneratedPreviewSandboxObservation:
-    """Probe the exact receipt URL, then bind the observation to that same receipt.
-
-    The caller cannot substitute a different preview URL or artifact digest. Both are
-    derived from the canonical deployment receipt before the trusted probe runs.
-    This wires the incumbent live HTTPS observation producer into the existing
-    receipt/evidence lineage without granting deploy or publish authority.
-    """
+    """Probe the exact receipt URL using exact-lineage runtime isolation facts."""
     _validate_preview_receipt(receipt)
+    isolation = bind_isolation_attestation_to_receipt(
+        receipt=receipt,
+        attestation=isolation_attestation,
+    )
     runtime = probe_preview_runtime_boundary(
         preview_url=receipt.live_url,
         execution_id=execution_id,
@@ -59,6 +79,33 @@ def probe_and_bind_preview_sandbox_to_receipt(
         timeout_seconds=timeout_seconds,
     )
     return bind_preview_sandbox_to_receipt(receipt=receipt, runtime=runtime, policy=policy)
+
+
+def bind_isolation_attestation_to_receipt(
+    *,
+    receipt: WebDeploymentReceipt,
+    attestation: PreviewIsolationAttestation,
+) -> PreviewIsolationBoundaryFacts:
+    """Accept trusted isolation facts only for the exact canonical preview receipt."""
+    _validate_preview_receipt(receipt)
+    if attestation.contract != _ISOLATION_ATTESTATION_CONTRACT:
+        raise WebDeploymentError("preview isolation attestation contract is not canonical")
+    if attestation.provider != receipt.provider:
+        raise WebDeploymentError("preview isolation provider does not match deployment receipt")
+    if attestation.deployment_id != receipt.deployment_id:
+        raise WebDeploymentError("preview isolation deployment does not match deployment receipt")
+    if _COMMIT_SHA_RE.fullmatch(attestation.source_commit_sha) is None:
+        raise WebDeploymentError("preview isolation source commit SHA is malformed")
+    if attestation.source_commit_sha != receipt.source_commit_sha:
+        raise WebDeploymentError("preview isolation source commit does not match deployment receipt")
+    artifact_sha = attestation.artifact_sha256.casefold()
+    if _SHA256_RE.fullmatch(artifact_sha) is None:
+        raise WebDeploymentError("preview isolation artifact digest is malformed")
+    if artifact_sha != receipt.artifact_sha256.casefold():
+        raise WebDeploymentError("preview isolation artifact does not match deployment receipt")
+    if _origin(attestation.preview_origin) != _origin(receipt.live_url):
+        raise WebDeploymentError("preview isolation origin does not match deployment receipt")
+    return attestation.facts
 
 
 def bind_preview_sandbox_to_receipt(
@@ -90,6 +137,9 @@ def _validate_preview_receipt(receipt: WebDeploymentReceipt) -> None:
         raise WebDeploymentError("preview receipt identity is incomplete")
     if _COMMIT_SHA_RE.fullmatch(receipt.source_commit_sha) is None:
         raise WebDeploymentError("preview receipt source commit SHA is malformed")
+    artifact_sha = receipt.artifact_sha256.casefold()
+    if _SHA256_RE.fullmatch(artifact_sha) is None:
+        raise WebDeploymentError("preview receipt artifact digest is malformed")
     if receipt.health not in {"HEALTHY_PUBLIC_PREVIEW", "HEALTHY_SANDBOX_PREVIEW"}:
         raise WebDeploymentError("preview receipt health is not accepted for sandbox evidence")
 
@@ -111,6 +161,8 @@ def _origin(value: str) -> str:
 
 
 __all__ = [
+    "PreviewIsolationAttestation",
+    "bind_isolation_attestation_to_receipt",
     "bind_preview_sandbox_to_receipt",
     "probe_and_bind_preview_sandbox_to_receipt",
 ]
