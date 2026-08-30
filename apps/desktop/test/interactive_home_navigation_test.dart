@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('command-center quick actions navigate to real Desktop destinations', (
+  testWidgets('V4 Home exposes only real bounded navigation actions', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -13,8 +13,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('home-templates')), findsOneWidget);
-    expect(find.byKey(const Key('home-assign-agent')), findsOneWidget);
-    expect(find.byKey(const Key('home-factory-web')), findsOneWidget);
+    expect(find.byKey(const Key('home-last-session')), findsOneWidget);
+    expect(find.byKey(const Key('home-new-work')), findsOneWidget);
+    expect(find.byKey(const Key('home-assign-agent')), findsNothing);
+    expect(find.byKey(const Key('home-factory-web')), findsNothing);
 
     await tester.tap(find.byKey(const Key('home-templates')));
     await tester.pumpAndSettle();
@@ -27,23 +29,12 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('nav-home')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('home-assign-agent')));
+    await tester.tap(find.byKey(const Key('home-last-session')));
     await tester.pumpAndSettle();
-    final agentsPage = find.byKey(const Key('reference-agents-page'));
-    expect(agentsPage, findsOneWidget);
-    expect(
-      find.descendant(of: agentsPage, matching: find.text('Agents')),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.byKey(const ValueKey('nav-home')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('home-factory-web')));
-    await tester.pumpAndSettle();
-    expect(find.text('What do you want ILAIOS to build?'), findsOneWidget);
+    expect(find.byKey(const Key('reference-workflows-page')), findsOneWidget);
   });
 
-  testWidgets('empty command center remains truth-preserving', (
+  testWidgets('empty V4 Home remains truth-preserving', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -52,11 +43,13 @@ void main() {
     await tester.pumpWidget(const IlaiosDesktopApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('Main Control Center'), findsOneWidget);
-    expect(find.text('—'), findsWidgets);
+    expect(find.text('Main Control Center'), findsNothing);
+    expect(find.text('Start work'), findsOneWidget);
+    expect(find.byKey(const Key('command-center-metrics')), findsNothing);
     expect(find.textContaining(r'$3.21'), findsNothing);
     expect(find.textContaining('18.362'), findsNothing);
     expect(find.text('96%'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('theme control switches the application to light mode', (

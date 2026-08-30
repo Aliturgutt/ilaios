@@ -1307,8 +1307,6 @@ class _ActivityPanel extends StatelessWidget {
                   style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700),
                 ),
                 const Spacer(),
-                Text(_tr(context, 'Tümü', 'All'), style: const TextStyle(fontSize: 7)),
-                const Icon(Icons.keyboard_arrow_down_rounded, size: 12),
               ],
             ),
             const SizedBox(height: 7),

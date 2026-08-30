@@ -27,6 +27,68 @@ class ReferenceCostsView extends StatelessWidget {
     final model = _CostModel.fromSnapshot(snapshot);
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
+    if (!model.hasAnyTelemetry) {
+      return Container(
+        key: const Key('reference-costs-page'),
+        color: Theme.of(context).scaffoldBackgroundColor,
+        padding: const EdgeInsets.fromLTRB(18, 13, 18, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _Header(model: model),
+            const SizedBox(height: 18),
+            Expanded(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 520),
+                  child: Container(
+                    padding: const EdgeInsets.all(22),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerLow,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.account_balance_wallet_outlined,
+                          size: 30,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          _copy(
+                            context,
+                            'Cost data is not available yet',
+                            'Maliyet verisi henüz mevcut değil',
+                          ),
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          _copy(
+                            context,
+                            'Costs appear here when authoritative provider or execution telemetry is available.',
+                            'Yetkili sağlayıcı veya yürütme maliyet telemetrisi mevcut olduğunda burada gösterilir.',
+                          ),
+                          textAlign: TextAlign.center,
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       key: const Key('reference-costs-page'),
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -182,11 +244,13 @@ class _Header extends StatelessWidget {
               ],
             ),
           ),
-          _ToolbarButton(
-            icon: Icons.date_range_outlined,
-            label: model.periodLabel ?? _copy(context, 'Period unavailable', 'Dönem kullanılamıyor'),
-          ),
-          const SizedBox(width: 8),
+          if (model.periodLabel != null) ...[
+            _ToolbarButton(
+              icon: Icons.date_range_outlined,
+              label: model.periodLabel!,
+            ),
+            const SizedBox(width: 8),
+          ],
           _ToolbarButton(
             icon: Icons.ios_share_outlined,
             label: _copy(context, 'Export', 'Dışa Aktar'),

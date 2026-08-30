@@ -10,6 +10,7 @@ import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
 import '../../identity/identity_client.dart';
 import '../create/create_view.dart';
+import '../create/reference_asset_picker.dart';
 import '../deliveries/deliveries_view.dart';
 import '../navigation/desktop_section.dart';
 import '../operations/live_workspace_view.dart';
@@ -35,6 +36,7 @@ class ReferenceDesktopShellV10 extends StatefulWidget {
     this.userSession,
     this.identityStatus = 'Account sign-in is not configured',
     this.themeMode = ThemeMode.dark,
+    this.referenceAssets,
     this.onThemeModeChanged,
     this.onSignIn,
     this.onLogout,
@@ -54,6 +56,7 @@ class ReferenceDesktopShellV10 extends StatefulWidget {
   final DesktopUserSession? userSession;
   final String identityStatus;
   final ThemeMode themeMode;
+  final ReferenceAssetPickerController? referenceAssets;
   final ValueChanged<ThemeMode>? onThemeModeChanged;
   final Future<void> Function(String providerId)? onSignIn;
   final Future<void> Function()? onLogout;
@@ -112,6 +115,7 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
                                 userSession: widget.userSession,
                                 themeMode: widget.themeMode,
                                 onThemeModeChanged: widget.onThemeModeChanged,
+                                onLogout: widget.onLogout,
                                 onNavigate: _select,
                               ),
                               Expanded(child: _buildSection()),
@@ -176,6 +180,7 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
             identityStatus: widget.identityStatus,
             onSignIn: widget.onSignIn,
             onLogout: widget.onLogout,
+            referenceAssets: widget.referenceAssets,
             onSubmit: widget.onPromptSubmit,
           ),
         DesktopSection.workflows => ControlCenterView(
@@ -296,11 +301,7 @@ class _Sidebar extends StatelessWidget {
                 ],
               ),
             ),
-            _TenantSummary(
-              projection: projection,
-              snapshot: snapshot,
-              userSession: userSession,
-            ),
+
           ],
         ),
       ),
@@ -322,13 +323,13 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
         color: selected
-            ? IlaiosTheme.enterpriseCyan.withValues(alpha: .12)
+            ? IlaiosTheme.enterpriseCyan.withValues(alpha: .06)
             : Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(5),
           side: BorderSide(
             color: selected
-                ? IlaiosTheme.enterpriseCyan.withValues(alpha: .56)
+                ? IlaiosTheme.enterpriseCyan.withValues(alpha: .28)
                 : Colors.transparent,
           ),
         ),
@@ -358,9 +359,7 @@ class _NavItem extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 12.4,
                         fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                        color: selected
-                            ? IlaiosTheme.enterpriseCyan
-                            : Theme.of(context).colorScheme.onSurface,
+                        color: Theme.of(context).colorScheme.onSurface,
                       ),
                     ),
                   ),
@@ -372,85 +371,6 @@ class _NavItem extends StatelessWidget {
       );
 }
 
-class _TenantSummary extends StatelessWidget {
-  const _TenantSummary({
-    required this.projection,
-    required this.snapshot,
-    required this.userSession,
-  });
-
-  final ControlPlaneProjection projection;
-  final OperationalSnapshot snapshot;
-  final DesktopUserSession? userSession;
-
-  @override
-  Widget build(BuildContext context) {
-    final region = _runtimeText(snapshot, const ['region', 'runtime_region', 'location']);
-    final plan = _runtimeText(
-      snapshot,
-      const ['plan', 'subscription_plan', 'tier', 'license_tier'],
-    );
-    return Container(
-      padding: const EdgeInsets.fromLTRB(11, 10, 11, 10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(_isTr(context) ? 'Klasör' : 'Folder', style: const TextStyle(fontSize: 9.4)),
-          const SizedBox(height: 4),
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  userSession?.tenantId ?? context.tr('shell.unavailable'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600),
-                ),
-              ),
-              Icon(
-                Icons.circle,
-                size: 6,
-                color: userSession == null
-                    ? Theme.of(context).colorScheme.outline
-                    : IlaiosTheme.success,
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(_isTr(context) ? 'Plan' : 'Plan', style: const TextStyle(fontSize: 9.4)),
-          const SizedBox(height: 3),
-          Text(
-            plan ?? context.tr('shell.unavailable'),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 10.4, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 10),
-          Text(_isTr(context) ? 'Bölge' : 'Region', style: const TextStyle(fontSize: 9.4)),
-          const SizedBox(height: 3),
-          Text(
-            region ?? context.tr('shell.unavailable'),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 10.4, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            projection.schemaVersion == null ? '—' : 'v${projection.schemaVersion}',
-            style: const TextStyle(fontSize: 9.4),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.projection,
@@ -458,6 +378,7 @@ class _TopBar extends StatelessWidget {
     required this.userSession,
     required this.themeMode,
     required this.onThemeModeChanged,
+    required this.onLogout,
     required this.onNavigate,
   });
 
@@ -466,6 +387,7 @@ class _TopBar extends StatelessWidget {
   final DesktopUserSession? userSession;
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode>? onThemeModeChanged;
+  final Future<void> Function()? onLogout;
   final ValueChanged<DesktopSection> onNavigate;
 
   @override
@@ -515,7 +437,7 @@ class _TopBar extends StatelessWidget {
                                         style: const TextStyle(fontSize: 10.2, fontWeight: FontWeight.w600),
                                       ),
                                     ),
-                                    const Icon(Icons.keyboard_arrow_down_rounded, size: 16),
+                                    const Icon(Icons.chevron_right_rounded, size: 16),
                                   ],
                                 ),
                               ),
@@ -545,7 +467,7 @@ class _TopBar extends StatelessWidget {
             ),
             const Spacer(),
             SizedBox(
-              width: 260,
+              width: 180,
               height: 32,
               child: OutlinedButton.icon(
                 onPressed: () => onNavigate(DesktopSection.goals),
@@ -587,54 +509,9 @@ class _TopBar extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            Container(
-              height: 38,
-              padding: const EdgeInsets.only(left: 10),
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-                ),
-              ),
-              child: Row(
-                children: [
-                  CircleAvatar(
-                    radius: 14,
-                    backgroundColor: IlaiosTheme.enterpriseCyan.withValues(alpha: .12),
-                    child: const Icon(
-                      Icons.person_outline_rounded,
-                      size: 17,
-                      color: IlaiosTheme.enterpriseCyan,
-                    ),
-                  ),
-                  const SizedBox(width: 7),
-                  SizedBox(
-                    width: 132,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          userSession?.displayIdentity ??
-                              userSession?.principalId ??
-                              context.tr('shell.identityUnavailable'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 9.3, fontWeight: FontWeight.w700),
-                        ),
-                        Text(
-                          userSession == null
-                              ? context.tr('shell.signedOut')
-                              : context.tr('shell.authenticated'),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 8),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const Icon(Icons.keyboard_arrow_down_rounded, size: 15),
-                ],
-              ),
+            _AccountControl(
+              userSession: userSession,
+              onLogout: onLogout,
             ),
           ],
         ),
@@ -658,6 +535,98 @@ class _TopBar extends StatelessWidget {
   }
 }
 
+class _AccountControl extends StatelessWidget {
+  const _AccountControl({
+    required this.userSession,
+    required this.onLogout,
+  });
+
+  final DesktopUserSession? userSession;
+  final Future<void> Function()? onLogout;
+
+  @override
+  Widget build(BuildContext context) {
+    final identity = userSession?.displayIdentity ??
+        userSession?.principalId ??
+        context.tr('shell.identityUnavailable');
+    final content = Container(
+      height: 38,
+      padding: const EdgeInsets.only(left: 10),
+      decoration: BoxDecoration(
+        border: Border(
+          left: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: Icon(
+              Icons.person_outline_rounded,
+              size: 17,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(width: 7),
+          SizedBox(
+            width: 132,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  identity,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 9.3, fontWeight: FontWeight.w700),
+                ),
+                Text(
+                  userSession == null
+                      ? context.tr('shell.signedOut')
+                      : context.tr('shell.authenticated'),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 8),
+                ),
+              ],
+            ),
+          ),
+          if (userSession != null && onLogout != null)
+            const Icon(Icons.keyboard_arrow_down_rounded, size: 15),
+        ],
+      ),
+    );
+
+    if (userSession == null || onLogout == null) return content;
+    return PopupMenuButton<String>(
+      tooltip: _isTr(context) ? 'Hesap' : 'Account',
+      onSelected: (value) {
+        if (value == 'signout') onLogout?.call();
+      },
+      itemBuilder: (context) => [
+        PopupMenuItem<String>(
+          enabled: false,
+          value: 'identity',
+          child: Text(identity, overflow: TextOverflow.ellipsis),
+        ),
+        PopupMenuItem<String>(
+          value: 'signout',
+          child: Row(
+            children: [
+              const Icon(Icons.logout_rounded, size: 17),
+              const SizedBox(width: 8),
+              Text(_isTr(context) ? 'Çıkış yap' : 'Sign out'),
+            ],
+          ),
+        ),
+      ],
+      child: content,
+    );
+  }
+}
+
 class _BottomStatusBar extends StatelessWidget {
   const _BottomStatusBar({required this.projection, required this.snapshot});
 
@@ -666,21 +635,9 @@ class _BottomStatusBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final leases = snapshot.schedulerState.containsKey('leases')
-        ? _mapList(snapshot.schedulerState['leases']).length.toString()
-        : '—';
-    final queues = _authoritativeCount(
-      snapshot.schedulerState,
-      const ['queue_count', 'queues'],
-    );
-    final eventsPerMinute = _runtimeText(
-      snapshot,
-      const ['events_per_minute', 'event_rate'],
-    );
-
     return Container(
       key: const Key('reference-bottom-status-v2'),
-      height: 44,
+      height: 34,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerLowest,
@@ -695,15 +652,6 @@ class _BottomStatusBar extends StatelessWidget {
                 : context.tr('shell.offline'),
             live: projection.connected,
           ),
-          _divider(context),
-          _FlatStatus(label: context.tr('shell.workers'), value: leases),
-          _divider(context),
-          _FlatStatus(label: context.tr('shell.queues'), value: queues ?? '—'),
-          _divider(context),
-          _FlatStatus(
-            label: context.tr('shell.eventsPerMinute'),
-            value: eventsPerMinute ?? '—',
-          ),
           const Spacer(),
           Text(
             '© 2026 ILAIOS. ${_isTr(context) ? 'Tüm hakları saklıdır.' : 'All rights reserved.'}',
@@ -712,34 +660,12 @@ class _BottomStatusBar extends StatelessWidget {
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          const Spacer(),
-          Text(context.tr('shell.realTime'), style: const TextStyle(fontSize: 8.7)),
-          const SizedBox(width: 7),
-          Icon(
-            Icons.circle,
-            size: 6,
-            color: projection.connected
-                ? IlaiosTheme.success
-                : Theme.of(context).colorScheme.outline,
-          ),
-          const SizedBox(width: 6),
-          Text(
-            projection.connected
-                ? context.tr('shell.connected')
-                : context.tr('shell.offline'),
-            style: const TextStyle(fontSize: 8.9, fontWeight: FontWeight.w600),
-          ),
+
         ],
       ),
     );
   }
 
-  Widget _divider(BuildContext context) => Container(
-        width: 1,
-        height: 22,
-        margin: const EdgeInsets.symmetric(horizontal: 12),
-        color: Theme.of(context).colorScheme.outlineVariant,
-      );
 }
 
 class _FlatStatus extends StatelessWidget {
@@ -778,29 +704,6 @@ String? _projectLabel(OperationalSnapshot snapshot) {
   );
 }
 
-String? _runtimeText(OperationalSnapshot snapshot, List<String> keys) {
-  final sources = <Map<String, Object?>>[
-    if (snapshot.liveEvents.isNotEmpty) snapshot.liveEvents.last,
-    snapshot.schedulerState,
-    snapshot.governanceState,
-  ];
-  for (final source in sources) {
-    final value = _text(source, keys);
-    if (value != null) return value;
-  }
-  return null;
-}
-
-String? _authoritativeCount(Map<String, Object?> source, List<String> keys) {
-  for (final key in keys) {
-    final value = source[key];
-    if (value is num) return '$value';
-    if (value is List<Object?>) return '${value.length}';
-    if (value is String && value.trim().isNotEmpty) return value.trim();
-  }
-  return null;
-}
-
 String? _text(Map<String, Object?>? source, List<String> keys) {
   if (source == null) return null;
   for (final key in keys) {
@@ -809,9 +712,4 @@ String? _text(Map<String, Object?>? source, List<String> keys) {
     if (value is num || value is bool) return '$value';
   }
   return null;
-}
-
-List<Map<String, Object?>> _mapList(Object? value) {
-  if (value is! List<Object?>) return const <Map<String, Object?>>[];
-  return value.whereType<Map<String, Object?>>().toList(growable: false);
 }

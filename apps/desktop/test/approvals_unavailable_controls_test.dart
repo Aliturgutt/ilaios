@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('Approvals toolbar no-op controls fail closed', (tester) async {
+  testWidgets('V4 Approvals removes unsupported toolbar no-op controls', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1648, 928));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -12,25 +12,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-approvals')));
     await tester.pumpAndSettle();
 
-    for (final label in <String>['Export', 'Policy Rules']) {
-      final textFinder = find.text(label);
-      expect(textFinder, findsOneWidget);
-
-      final inkFinder = find.ancestor(
-        of: textFinder,
-        matching: find.byType(InkWell),
-      );
-      expect(inkFinder, findsOneWidget);
-      expect(tester.widget<InkWell>(inkFinder).onTap, isNull);
-
-      final opacityFinder = find.ancestor(
-        of: textFinder,
-        matching: find.byType(Opacity),
-      );
-      expect(opacityFinder, findsOneWidget);
-      expect(tester.widget<Opacity>(opacityFinder).opacity, .45);
-    }
-
+    expect(find.byKey(const Key('reference-approvals-page')), findsOneWidget);
+    expect(find.text('Export'), findsNothing);
+    expect(find.text('Policy Rules'), findsNothing);
+    expect(find.byKey(const Key('approvals-table')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 }

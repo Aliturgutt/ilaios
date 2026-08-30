@@ -72,26 +72,11 @@ const _snapshot = OperationalSnapshot(
   governanceState: <String, Object?>{
     'work': _requests,
     'admissions': <Object?>[
-      <String, Object?>{
-        'request_id': 'req-deploy-001',
-        'human_approval_required': true,
-      },
-      <String, Object?>{
-        'request_id': 'req-content-002',
-        'human_approval_required': true,
-      },
-      <String, Object?>{
-        'request_id': 'req-budget-003',
-        'human_approval_required': true,
-      },
-      <String, Object?>{
-        'request_id': 'req-api-004',
-        'human_approval_required': true,
-      },
-      <String, Object?>{
-        'request_id': 'req-data-005',
-        'human_approval_required': true,
-      },
+      <String, Object?>{'request_id': 'req-deploy-001', 'human_approval_required': true},
+      <String, Object?>{'request_id': 'req-content-002', 'human_approval_required': true},
+      <String, Object?>{'request_id': 'req-budget-003', 'human_approval_required': true},
+      <String, Object?>{'request_id': 'req-api-004', 'human_approval_required': true},
+      <String, Object?>{'request_id': 'req-data-005', 'human_approval_required': true},
     ],
     'violations': <Object?>[
       <String, Object?>{
@@ -113,13 +98,18 @@ const _snapshot = OperationalSnapshot(
   liveEvents: <Map<String, Object?>>[],
 );
 
-void main() {
-  Future<void> openApprovals(WidgetTester tester) async {
-    await tester.tap(find.byKey(const ValueKey('nav-approvals')));
-    await tester.pumpAndSettle();
-  }
+Future<void> _openApprovals(WidgetTester tester) async {
+  await tester.tap(find.byKey(const ValueKey('nav-approvals')));
+  await tester.pumpAndSettle();
+}
 
-  testWidgets('Approvals keeps approved dark reference hierarchy', (
+Future<void> _selectDeployRequest(WidgetTester tester) async {
+  await tester.tap(find.text('Production Deployment Onayı').first);
+  await tester.pumpAndSettle();
+}
+
+void main() {
+  testWidgets('Approvals keeps the V4 dark hierarchy and reveals details on selection', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1648, 928));
@@ -133,27 +123,24 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await openApprovals(tester);
+    await _openApprovals(tester);
 
     final page = find.byKey(const Key('reference-approvals-page'));
     expect(page, findsOneWidget);
     expect(find.byKey(const Key('approvals-header')), findsOneWidget);
-    expect(find.byKey(const Key('approvals-kpis')), findsOneWidget);
     expect(find.byKey(const Key('approvals-tabs')), findsOneWidget);
     expect(find.byKey(const Key('approvals-filters')), findsOneWidget);
     expect(find.byKey(const Key('approvals-table')), findsOneWidget);
-    expect(find.byKey(const Key('approvals-selected-request')), findsOneWidget);
-    expect(find.byKey(const Key('approvals-distribution')), findsOneWidget);
-    expect(
-      find.descendant(of: page, matching: find.text('Approvals')),
-      findsOneWidget,
-    );
+    expect(find.byKey(const Key('approvals-selected-request')), findsNothing);
     expect(find.text('Production Deployment Onayı'), findsWidgets);
-    expect(find.text('5'), findsWidgets);
+
+    await _selectDeployRequest(tester);
+    expect(find.byKey(const Key('approvals-right-rail')), findsOneWidget);
+    expect(find.byKey(const Key('approvals-selected-request')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Approvals renders approved Turkish light surface', (
+  testWidgets('Approvals renders the V4 Turkish light surface', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1648, 928));
@@ -169,17 +156,16 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await openApprovals(tester);
+    await _openApprovals(tester);
 
     expect(find.text('Onaylar'), findsWidgets);
-    expect(find.text('Toplam Talep'), findsOneWidget);
-    expect(find.text('Bekleyen'), findsWidgets);
-    expect(find.text('Yüksek Risk'), findsWidgets);
+    expect(find.textContaining('Bekleyen (2)'), findsOneWidget);
+    expect(find.textContaining('Yüksek Risk (2)'), findsOneWidget);
+    expect(find.byKey(const Key('approvals-selected-request')), findsNothing);
+
+    await _selectDeployRequest(tester);
     expect(find.text('Seçili Talep'), findsOneWidget);
-    expect(find.text('Son Kararlar'), findsOneWidget);
-    expect(find.text('Bekleyen Kritik Talepler'), findsOneWidget);
-    expect(find.text('Politika İhlal Uyarıları'), findsOneWidget);
-    expect(find.text('Talep Dağılımı'), findsOneWidget);
+    expect(find.byKey(const Key('approvals-selected-request')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -203,7 +189,8 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await openApprovals(tester);
+    await _openApprovals(tester);
+    await _selectDeployRequest(tester);
 
     await tester.tap(find.byKey(const ValueKey('approve-req-deploy-001')));
     await tester.pumpAndSettle();
@@ -223,7 +210,7 @@ void main() {
       const IlaiosDesktopApp(locale: IlaiosLocale.turkish),
     );
     await tester.pumpAndSettle();
-    await openApprovals(tester);
+    await _openApprovals(tester);
 
     expect(find.byKey(const Key('reference-approvals-page')), findsOneWidget);
     expect(find.text('156'), findsNothing);
@@ -231,7 +218,8 @@ void main() {
     expect(find.text('96'), findsNothing);
     expect(find.text('22'), findsNothing);
     expect(find.text('2s 34dk'), findsNothing);
-    expect(find.text('—'), findsWidgets);
+    expect(find.text('Yönetişim verisi kullanılamıyor.'), findsOneWidget);
+    expect(find.byKey(const Key('approvals-selected-request')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
@@ -248,7 +236,7 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await openApprovals(tester);
+    await _openApprovals(tester);
 
     expect(find.byKey(const Key('reference-approvals-page')), findsOneWidget);
     expect(find.byKey(const Key('approvals-table')), findsOneWidget);

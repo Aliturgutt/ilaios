@@ -5,12 +5,14 @@ import 'package:ilaios_desktop/control_plane/evidence_record.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
 import 'package:ilaios_desktop/main.dart';
 
+const _agentId = 'ilaios.agent.engineering.runtime-qa.v1';
+
 const _snapshot = OperationalSnapshot(
   runtimeRoutes: <Map<String, Object?>>[],
   schedulerState: <String, Object?>{
     'agents': <Object?>[
       <String, Object?>{
-        'agent_id': 'ilaios.agent.engineering.runtime-qa.v1',
+        'agent_id': _agentId,
         'status': 'active',
         'current_task': 'Desktop acceptance',
         'task_stage': 'E2E',
@@ -41,7 +43,7 @@ const _snapshot = OperationalSnapshot(
     'pending_reviews': <Object?>[
       <String, Object?>{
         'id': 'review-1',
-        'agent_id': 'ilaios.agent.engineering.runtime-qa.v1',
+        'agent_id': _agentId,
         'title': 'Memory threshold review',
         'severity': 'high',
       },
@@ -50,7 +52,7 @@ const _snapshot = OperationalSnapshot(
   evidenceRecords: <EvidenceRecord>[],
   liveEvents: <Map<String, Object?>>[
     <String, Object?>{
-      'agent_id': 'ilaios.agent.engineering.runtime-qa.v1',
+      'agent_id': _agentId,
       'event_type': 'agent.started',
       'timestamp': '14:22',
     },
@@ -61,7 +63,7 @@ const _snapshot = OperationalSnapshot(
     'authority_drift_count': 0,
     'agents': <Object?>[
       <String, Object?>{
-        'agent_id': 'ilaios.agent.engineering.runtime-qa.v1',
+        'agent_id': _agentId,
         'alias': 'Argus',
         'role': 'runtime quality assurance',
         'team': 'engineering',
@@ -76,8 +78,13 @@ const _snapshot = OperationalSnapshot(
   },
 );
 
+Future<void> _selectAgent(WidgetTester tester) async {
+  await tester.tap(find.byKey(const ValueKey('agent-row-$_agentId')));
+  await tester.pumpAndSettle();
+}
+
 void main() {
-  testWidgets('Agents keeps the approved dark reference hierarchy', (
+  testWidgets('Agents keeps the V4 dark hierarchy and reveals details contextually', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1648, 928));
@@ -95,14 +102,16 @@ void main() {
     expect(find.descendant(of: page, matching: find.text('Agents')), findsOneWidget);
     expect(find.byKey(const Key('agents-metrics')), findsOneWidget);
     expect(find.byKey(const Key('agents-table-panel')), findsWidgets);
-    expect(find.byKey(const Key('selected-agent-panel')), findsWidgets);
+    expect(find.byKey(const Key('selected-agent-panel')), findsNothing);
     expect(find.byKey(const Key('agents-bottom-panels')), findsOneWidget);
     expect(find.text('Argus'), findsWidgets);
-    expect(find.text('99.1%'), findsWidgets);
+
+    await _selectAgent(tester);
+    expect(find.byKey(const Key('selected-agent-panel')), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Agents renders the approved Turkish light surface', (
+  testWidgets('Agents renders the V4 Turkish light surface', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1648, 928));
@@ -122,10 +131,12 @@ void main() {
     final page = find.byKey(const Key('reference-agents-page'));
     expect(page, findsOneWidget);
     expect(find.descendant(of: page, matching: find.text('Ajanlar')), findsOneWidget);
-    expect(find.descendant(of: page, matching: find.text('Toplam Ajan')), findsWidgets);
-    expect(find.text('Seçili Ajan'), findsOneWidget);
+    expect(find.descendant(of: page, matching: find.text('Toplam')), findsWidgets);
+    expect(find.byKey(const Key('selected-agent-panel')), findsNothing);
+
+    await _selectAgent(tester);
+    expect(find.byKey(const Key('selected-agent-panel')), findsWidgets);
     expect(find.text('Bekleyen Atamalar'), findsOneWidget);
-    expect(find.text('Ajan Rolleri'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

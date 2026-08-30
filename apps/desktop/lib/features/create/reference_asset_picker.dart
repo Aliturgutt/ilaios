@@ -103,8 +103,10 @@ class ReferenceAssetPickerController extends core.ReferenceAssetPickerController
   }
 }
 
-/// Shared private-input dock. Reference images retain their existing behavior;
-/// source video is a separate single-MP4 boundary below them.
+/// Shared private-input surface. In the compact Goals composer, image
+/// references and the separately governed source-video picker share a row when
+/// enough width is available. This preserves both capabilities while avoiding
+/// unnecessary vertical growth on short Desktop viewports.
 class ReferenceAssetPicker extends StatelessWidget {
   const ReferenceAssetPicker({
     required this.controller,
@@ -117,22 +119,53 @@ class ReferenceAssetPicker extends StatelessWidget {
   final bool enabled;
   final bool compact;
 
+  Widget _images() => core.ReferenceAssetPicker(
+        controller: controller,
+        enabled: enabled,
+        compact: compact,
+      );
+
+  Widget _sourceVideo() => SourceVideoPicker(
+        controller: controller.sourceVideo,
+        enabled: enabled,
+      );
+
   @override
-  Widget build(BuildContext context) => Column(
+  Widget build(BuildContext context) {
+    if (!compact) {
+      return Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          core.ReferenceAssetPicker(
-            controller: controller,
-            enabled: enabled,
-            compact: compact,
-          ),
+          _images(),
           const SizedBox(height: 8),
-          SourceVideoPicker(
-            controller: controller.sourceVideo,
-            enabled: enabled,
-          ),
+          _sourceVideo(),
         ],
       );
+    }
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth >= 700) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(child: _images()),
+              const SizedBox(width: 8),
+              Expanded(child: _sourceVideo()),
+            ],
+          );
+        }
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _images(),
+            const SizedBox(height: 6),
+            _sourceVideo(),
+          ],
+        );
+      },
+    );
+  }
 }
 
 String _extension(String path) {

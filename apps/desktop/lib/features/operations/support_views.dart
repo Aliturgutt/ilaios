@@ -34,9 +34,29 @@ class _CostsViewState extends State<CostsView> {
   @override
   Widget build(BuildContext context) {
     final tr = Localizations.localeOf(context).languageCode == 'tr';
-    return Stack(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Positioned.fill(
+        SizedBox(
+          height: 42,
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: TextButton.icon(
+              key: const Key('costs-stats-toggle'),
+              onPressed: () => setState(() => _showStats = !_showStats),
+              icon: Icon(
+                _showStats ? Icons.paid_outlined : Icons.query_stats_outlined,
+                size: 17,
+              ),
+              label: Text(
+                _showStats
+                    ? (tr ? 'Maliyetlere dön' : 'Back to Costs')
+                    : (tr ? 'Kullanım ve İstatistikler' : 'Usage & Stats'),
+              ),
+            ),
+          ),
+        ),
+        Expanded(
           child: _showStats
               ? UsageStatsView(
                   snapshot: widget.snapshot,
@@ -46,29 +66,6 @@ class _CostsViewState extends State<CostsView> {
                   snapshot: widget.snapshot,
                   status: widget.status,
                 ),
-        ),
-        Positioned(
-          right: 22,
-          bottom: 18,
-          child: Semantics(
-            button: true,
-            label: _showStats
-                ? (tr ? 'Maliyetler ekranına dön' : 'Return to Costs')
-                : (tr ? 'Kullanım ve istatistikleri aç' : 'Open Usage & Stats'),
-            child: FilledButton.tonalIcon(
-              key: const Key('costs-stats-toggle'),
-              onPressed: () => setState(() => _showStats = !_showStats),
-              icon: Icon(
-                _showStats ? Icons.paid_outlined : Icons.query_stats_outlined,
-                size: 18,
-              ),
-              label: Text(
-                _showStats
-                    ? (tr ? 'Maliyetler' : 'Costs')
-                    : (tr ? 'Kullanım ve İstatistikler' : 'Usage & Stats'),
-              ),
-            ),
-          ),
         ),
       ],
     );

@@ -107,7 +107,7 @@ void main() {
     );
   });
 
-  testWidgets('workflow more menus expose bounded real actions', (
+  testWidgets('V4 workflow actions stay bounded and do not fabricate creation authority', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -119,14 +119,12 @@ void main() {
     await tester.tap(find.byKey(const Key('workflows-more-menu')));
     await tester.pumpAndSettle();
     expect(find.text('Refresh'), findsWidgets);
-    expect(find.text('New Workflow'), findsWidgets);
-    await tester.tap(find.text('New Workflow').last);
-    await tester.pumpAndSettle();
-    expect(destination, DesktopSection.goals);
+    expect(find.text('New Workflow'), findsNothing);
 
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('workflow-row-menu-workflow-7')));
     await tester.pumpAndSettle();
-    expect(find.text('Open Details'), findsWidgets);
     expect(find.text('View Approvals'), findsWidgets);
     expect(find.text('Live Workspace'), findsWidgets);
     await tester.tap(find.text('View Approvals').last);

@@ -113,13 +113,12 @@ class _ApprovalsViewState extends State<ApprovalsView> {
 
   Map<String, Object?>? get _selected {
     final visible = _visibleRequests;
-    if (visible.isEmpty) return null;
-    if (_selectedRequestId case final selectedId?) {
-      for (final item in visible) {
-        if (_requestId(item) == selectedId) return item;
-      }
+    final selectedId = _selectedRequestId;
+    if (visible.isEmpty || selectedId == null) return null;
+    for (final item in visible) {
+      if (_requestId(item) == selectedId) return item;
     }
-    return visible.first;
+    return null;
   }
 
   Future<void> _decide(GovernanceDecision decision) async {
@@ -196,11 +195,12 @@ class _ApprovalsViewState extends State<ApprovalsView> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          _MetricStrip(counts: counts),
-                          const SizedBox(height: 8),
                           _TabsAndActions(
                             counts: counts,
                             activeTab: _activeTab,
+                            hasFilters: _activeTab != 'all' ||
+                                _riskFilter != 'all' ||
+                                _searchController.text.trim().isNotEmpty,
                             onTabChanged: (value) =>
                                 setState(() => _activeTab = value),
                             onClear: _clearFilters,
@@ -224,29 +224,29 @@ class _ApprovalsViewState extends State<ApprovalsView> {
                               }),
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            height: 146,
-                            child: _BottomCards(
-                              requests: requests,
-                              violations: violations,
-                              available: available,
+                          if (requests.isNotEmpty || violations.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            SizedBox(
+                              height: 146,
+                              child: _BottomCards(
+                                requests: requests,
+                                violations: violations,
+                                available: available,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),
-                    if (showRightRail) ...[
+                    if (showRightRail && selected != null) ...[
                       const SizedBox(width: 14),
                       SizedBox(
                         width: 410,
                         child: _RightRail(
                           request: selected,
                           snapshot: widget.snapshot,
-                          decisionAllowed:
-                              selected != null && _decisionAllowed(selected),
-                          busy: selected != null &&
-                              _busyRequestId == _requestId(selected),
+                          decisionAllowed: _decisionAllowed(selected),
+                          busy: _busyRequestId == _requestId(selected),
                           message: _message,
                           onApprove: () => _decide(GovernanceDecision.approved),
                           onDeny: () => _decide(GovernanceDecision.denied),
@@ -348,138 +348,18 @@ class _PageHeader extends StatelessWidget {
       );
 }
 
-class _MetricStrip extends StatelessWidget {
-  const _MetricStrip({required this.counts});
-
-  final _Counts counts;
-
-  @override
-  Widget build(BuildContext context) {
-    final metrics = <({IconData icon, Color color, String label, String value})>[
-      (
-        icon: Icons.grid_view_rounded,
-        color: IlaiosTheme.coreBlue,
-        label: _copy(context, 'Toplam Talep', 'Total Requests'),
-        value: counts.display(counts.total),
-      ),
-      (
-        icon: Icons.hourglass_bottom_rounded,
-        color: IlaiosTheme.warning,
-        label: _copy(context, 'Bekleyen', 'Pending'),
-        value: counts.display(counts.pending),
-      ),
-      (
-        icon: Icons.check_circle_outline_rounded,
-        color: IlaiosTheme.success,
-        label: _copy(context, 'Onaylanan', 'Approved'),
-        value: counts.display(counts.approved),
-      ),
-      (
-        icon: Icons.cancel_outlined,
-        color: IlaiosTheme.danger,
-        label: _copy(context, 'Reddedilen', 'Denied'),
-        value: counts.display(counts.denied),
-      ),
-      (
-        icon: Icons.shield_outlined,
-        color: IlaiosTheme.danger,
-        label: _copy(context, 'Yüksek Risk', 'High Risk'),
-        value: counts.display(counts.highRisk),
-      ),
-      (
-        icon: Icons.schedule_outlined,
-        color: IlaiosTheme.coreBlue,
-        label: _copy(context, 'Ort. Bekleme Süresi', 'Avg. Wait'),
-        value: '—',
-      ),
-    ];
-    return SizedBox(
-      key: const Key('approvals-kpis'),
-      height: 72,
-      child: Row(
-        children: [
-          for (var index = 0; index < metrics.length; index++) ...[
-            if (index > 0) const SizedBox(width: 7),
-            Expanded(child: _MetricCard(metric: metrics[index])),
-          ],
-        ],
-      ),
-    );
-  }
-}
-
-class _MetricCard extends StatelessWidget {
-  const _MetricCard({required this.metric});
-
-  final ({IconData icon, Color color, String label, String value}) metric;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: _cardDecoration(context, radius: 7),
-        child: Row(
-          children: [
-            Container(
-              width: 34,
-              height: 34,
-              decoration: BoxDecoration(
-                color: metric.color.withValues(alpha: .10),
-                borderRadius: BorderRadius.circular(7),
-              ),
-              child: Icon(metric.icon, color: metric.color, size: 21),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    metric.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context)
-                        .textTheme
-                        .labelSmall
-                        ?.copyWith(fontSize: 8.1),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    metric.value,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w700,
-                      height: 1,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _copy(context, 'Yetkili durum verisi', 'Authoritative state'),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 7.1,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-}
-
 class _TabsAndActions extends StatelessWidget {
   const _TabsAndActions({
     required this.counts,
     required this.activeTab,
+    required this.hasFilters,
     required this.onTabChanged,
     required this.onClear,
   });
 
   final _Counts counts;
   final String activeTab;
+  final bool hasFilters;
   final ValueChanged<String> onTabChanged;
   final VoidCallback onClear;
 
@@ -537,23 +417,15 @@ class _TabsAndActions extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          _TinyAction(
-            icon: Icons.filter_alt_off_outlined,
-            label: _copy(context, 'Filtreleri Temizle', 'Clear Filters'),
-            onTap: onClear,
-            prominent: false,
-          ),
-          const SizedBox(width: 6),
-          _TinyAction(
-            icon: Icons.ios_share_outlined,
-            label: _copy(context, 'Dışa Aktar', 'Export'),
-          ),
-          const SizedBox(width: 6),
-          _TinyAction(
-            icon: Icons.shield_outlined,
-            label: _copy(context, 'Politika Kuralları', 'Policy Rules'),
-          ),
+          if (hasFilters) ...[
+            const SizedBox(width: 8),
+            _TinyAction(
+              icon: Icons.filter_alt_off_outlined,
+              label: _copy(context, 'Filtreleri Temizle', 'Clear Filters'),
+              onTap: onClear,
+              prominent: false,
+            ),
+          ],
         ],
       ),
     );
@@ -993,10 +865,6 @@ class _RequestRow extends StatelessWidget {
                     color: _statusColor(status),
                   ),
                 ),
-              ),
-              const SizedBox(
-                width: 18,
-                child: Icon(Icons.more_vert, size: 13),
               ),
             ],
           ),
@@ -1555,18 +1423,6 @@ class _ReviewNotes extends StatelessWidget {
                   style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700),
                 ),
                 const Spacer(),
-                OutlinedButton.icon(
-                  onPressed: null,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(0, 25),
-                    padding: const EdgeInsets.symmetric(horizontal: 7),
-                  ),
-                  icon: const Icon(Icons.add, size: 11),
-                  label: Text(
-                    _copy(context, 'Not Ekle', 'Add Note'),
-                    style: const TextStyle(fontSize: 7),
-                  ),
-                ),
               ],
             ),
             const SizedBox(height: 4),

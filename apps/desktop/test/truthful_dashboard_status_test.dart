@@ -27,7 +27,8 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Main Control Center'), findsOneWidget);
+    expect(find.byKey(const Key('command-center-home')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
     expect(find.text('Connected'), findsWidgets);
     expect(find.text('—'), findsWidgets);
     expect(find.textContaining(r'$3.21'), findsNothing);
@@ -128,16 +129,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+    expect(find.byKey(const Key('command-center-home')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-metrics')), findsOneWidget);
     expect(find.text('2.75'), findsOneWidget);
     expect(find.text('approval-1'), findsOneWidget);
     expect(find.text('approval-2'), findsOneWidget);
     expect(find.text('approval-3'), findsOneWidget);
     expect(find.text('verified_delivery'), findsWidgets);
-    expect(find.text('job-authoritative-001'), findsWidgets);
-    expect(find.text('00:02:15'), findsOneWidget);
-    expect(find.textContaining('worker_progress'), findsWidgets);
     expect(find.text('2'), findsWidgets);
     expect(find.text('1'), findsWidgets);
+
+    // V4 summarizes runtime activity instead of exposing raw live-event fields.
+    expect(find.text('job-authoritative-001'), findsNothing);
+    expect(find.text('00:02:15'), findsNothing);
 
     // Demo reference telemetry is never promoted into runtime truth.
     expect(find.textContaining(r'$3.21'), findsNothing);

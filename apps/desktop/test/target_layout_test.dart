@@ -4,7 +4,7 @@ import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('command center remains the same design family at all desktop widths', (
+  testWidgets('V4 Home remains the same design family at all desktop widths', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -26,16 +26,18 @@ void main() {
         tester.takeException(),
         isNull,
         reason:
-            'Desktop target layout overflowed or threw at ${size.width}x${size.height}',
+            'Desktop V4 layout overflowed or threw at ${size.width}x${size.height}',
       );
       expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
       expect(find.byKey(const Key('command-center-home')), findsOneWidget);
-      expect(find.text('Main Control Center'), findsOneWidget);
+      expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
+      expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
+      expect(find.text('Main Control Center'), findsNothing);
+      expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
       expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
       expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
 
-      final shouldScaleCompactViewport =
-          size.width <= 1320 || size.height < 720;
+      final shouldScaleCompactViewport = size.width <= 1320 || size.height < 720;
       expect(
         find.byKey(const Key('reference-scaled-viewport-v9')),
         shouldScaleCompactViewport ? findsOneWidget : findsNothing,
@@ -46,7 +48,7 @@ void main() {
     }
   });
 
-  testWidgets('premium target composition keeps command center and operational rail', (
+  testWidgets('V4 Home keeps prompt, focus and attention surfaces without a permanent detail rail', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -55,15 +57,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Main Control Center'), findsOneWidget);
+    expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
     expect(find.byKey(const Key('command-center-focus')), findsOneWidget);
     expect(find.byKey(const Key('command-center-attention')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-artifacts')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-completed')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-quick-actions')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-session')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-activities')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-alerts')), findsOneWidget);
+    expect(find.byKey(const Key('home-new-work')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-session')), findsNothing);
+    expect(find.byKey(const Key('command-center-quick-actions')), findsNothing);
   });
 
   testWidgets('shell renders the canonical horizontal dark brand master', (
@@ -79,7 +78,7 @@ void main() {
     expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
   });
 
-  testWidgets('target dashboard keeps command center under 125 and 150 percent text scaling', (
+  testWidgets('V4 Home remains overflow-free under 125 and 150 percent text scaling', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -96,15 +95,15 @@ void main() {
       expect(
         tester.takeException(),
         isNull,
-        reason: 'Desktop target layout failed at ${scale}x text scaling',
+        reason: 'Desktop V4 layout failed at ${scale}x text scaling',
       );
       expect(find.byKey(const Key('command-center-home')), findsOneWidget);
-      expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
+      expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
       expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
     }
   });
 
-  testWidgets('Turkish Home never falls back to the old workflow dashboard when resized', (
+  testWidgets('Turkish V4 Home never falls back to the old workflow dashboard when resized', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -126,10 +125,11 @@ void main() {
       expect(
         tester.takeException(),
         isNull,
-        reason: 'Turkish Desktop layout failed at ${size.width}x${size.height}',
+        reason: 'Turkish Desktop V4 layout failed at ${size.width}x${size.height}',
       );
-      expect(find.text('Ana Kontrol Merkezi'), findsOneWidget);
+      expect(find.text('İş başlat'), findsOneWidget);
       expect(find.byKey(const Key('command-center-home')), findsOneWidget);
+      expect(find.text('Ana Kontrol Merkezi'), findsNothing);
       expect(find.text('Aktif İş Akışı'), findsNothing);
       expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
     }

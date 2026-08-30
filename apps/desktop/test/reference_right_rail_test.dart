@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('command-center right rail remains fully visible at reference size', (
+  testWidgets('V4 Home removes the permanent right rail at reference size', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1536, 1024));
@@ -13,13 +13,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    final session = find.byKey(const Key('command-center-session'));
-    final activities = find.byKey(const Key('command-center-activities'));
-    final alerts = find.byKey(const Key('command-center-alerts'));
-    expect(session, findsOneWidget);
-    expect(activities, findsOneWidget);
-    expect(alerts, findsOneWidget);
-    expect(tester.getTopLeft(session).dy, greaterThanOrEqualTo(70));
-    expect(tester.getBottomRight(alerts).dy, lessThan(978));
+    expect(find.byKey(const Key('command-center-session')), findsNothing);
+    expect(find.byKey(const Key('command-center-activities')), findsNothing);
+    expect(find.byKey(const Key('command-center-alerts')), findsNothing);
+
+    final hero = find.byKey(const Key('command-center-hero'));
+    final attention = find.byKey(const Key('command-center-attention'));
+    final completed = find.byKey(const Key('command-center-completed'));
+    final status = find.byKey(const Key('reference-bottom-status-v2'));
+    expect(hero, findsOneWidget);
+    expect(attention, findsOneWidget);
+    expect(completed, findsOneWidget);
+    expect(status, findsOneWidget);
+    expect(tester.getTopLeft(hero).dy, greaterThanOrEqualTo(60));
+    expect(tester.getBottomRight(completed).dy, lessThanOrEqualTo(tester.getTopLeft(status).dy + 1));
   });
 }

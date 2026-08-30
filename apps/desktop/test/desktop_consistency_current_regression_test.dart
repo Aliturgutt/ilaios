@@ -110,7 +110,7 @@ void main() {
     );
     expect(
       find.descendant(of: metrics, matching: find.text('0')),
-      findsNWidgets(2),
+      findsOneWidget,
     );
   });
 }

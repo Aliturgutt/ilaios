@@ -42,13 +42,12 @@ class _ReferenceEvidenceViewState extends State<ReferenceEvidenceView> {
 
   EvidenceRecord? get _selected {
     final records = _records;
-    if (records.isEmpty) return null;
     final sequence = _selectedSequence;
-    if (sequence == null) return records.first;
+    if (records.isEmpty || sequence == null) return null;
     for (final record in records) {
       if (record.sequence == sequence) return record;
     }
-    return records.first;
+    return null;
   }
 
   List<EvidenceRecord> get _visibleRecords {
@@ -154,14 +153,17 @@ class _ReferenceEvidenceViewState extends State<ReferenceEvidenceView> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _Header(total: records.length, status: widget.status),
-          const SizedBox(height: 8),
-          _MetricStrip(
-            total: records.length,
-            chainIssues: chainIssues,
-          ),
+          if (records.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            _MetricStrip(
+              total: records.length,
+              chainIssues: chainIssues,
+            ),
+          ],
           const SizedBox(height: 8),
           _EvidenceTabs(
             activeTab: _activeTab,
+            hasFilters: _activeTab != 'all',
             onChanged: (value) => setState(() => _activeTab = value),
             onClear: _clearFilters,
             onExport: selected != null && widget.onSaveArtifact != null
@@ -189,54 +191,11 @@ class _ReferenceEvidenceViewState extends State<ReferenceEvidenceView> {
                               onSelected: _select,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            height: 164,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: _InfoCard(
-                                    title: _copy(
-                                      context,
-                                      'Recent Verifications',
-                                      'Son Doğrulamalar',
-                                    ),
-                                    child: _RecentVerifications(records: records),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _InfoCard(
-                                    title: _copy(
-                                      context,
-                                      'Evidence Alerts',
-                                      'Kanıt Uyarıları',
-                                    ),
-                                    child: _EvidenceAlerts(
-                                      records: records,
-                                      status: widget.status,
-                                      chainIssues: chainIssues,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _InfoCard(
-                                    title: _copy(
-                                      context,
-                                      'Evidence Distribution',
-                                      'Kanıt Dağılımı',
-                                    ),
-                                    child: _Distribution(records: records),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
+
                         ],
                       ),
                     ),
-                    if (showRightRail) ...[
+                    if (showRightRail && selected != null) ...[
                       const SizedBox(width: 12),
                       SizedBox(
                         width: 390,
@@ -499,6 +458,7 @@ class _MetricCard extends StatelessWidget {
 class _EvidenceTabs extends StatelessWidget {
   const _EvidenceTabs({
     required this.activeTab,
+    required this.hasFilters,
     required this.onChanged,
     required this.onClear,
     required this.onExport,
@@ -506,6 +466,7 @@ class _EvidenceTabs extends StatelessWidget {
   });
 
   final String activeTab;
+  final bool hasFilters;
   final ValueChanged<String> onChanged;
   final VoidCallback onClear;
   final VoidCallback? onExport;
@@ -570,12 +531,14 @@ class _EvidenceTabs extends StatelessWidget {
               ],
             ),
           ),
-          _ToolbarButton(
-            icon: Icons.filter_alt_off_outlined,
-            label: _copy(context, 'Clear Filters', 'Filtreleri Temizle'),
-            onPressed: onClear,
-          ),
-          const SizedBox(width: 7),
+          if (hasFilters) ...[
+            _ToolbarButton(
+              icon: Icons.filter_alt_off_outlined,
+              label: _copy(context, 'Clear Filters', 'Filtreleri Temizle'),
+              onPressed: onClear,
+            ),
+            const SizedBox(width: 7),
+          ],
           _ToolbarButton(
             icon: exporting ? Icons.hourglass_top_rounded : Icons.download_outlined,
             label: _copy(context, 'Export', 'Dışa Aktar'),
@@ -647,8 +610,7 @@ class _EvidenceTable extends StatelessWidget {
                         final record = records[index];
                         return _EvidenceTableRow(
                           record: record,
-                          selected: record.sequence == selectedSequence ||
-                              (selectedSequence == null && index == 0),
+                          selected: record.sequence == selectedSequence,
                           onTap: () => onSelected(record),
                         );
                       },
@@ -794,11 +756,26 @@ class _EvidenceTableRow extends StatelessWidget {
               ),
               Expanded(
                 flex: 20,
-                child: Text(
-                  _short(record.executionId, 18),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 8.2),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _short(record.executionId, 18),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 8.2),
+                    ),
+                    Text(
+                      _short(record.artifactDigest, 18),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 7.1,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               Expanded(
@@ -830,10 +807,6 @@ class _EvidenceTableRow extends StatelessWidget {
                   '#${record.sequence}',
                   style: const TextStyle(fontSize: 8.1),
                 ),
-              ),
-              SizedBox(
-                width: 26,
-                child: Icon(Icons.more_vert, size: 15, color: Theme.of(context).colorScheme.onSurfaceVariant),
               ),
             ],
           ),
@@ -1375,247 +1348,6 @@ class _InfoCard extends StatelessWidget {
       );
 }
 
-class _RecentVerifications extends StatelessWidget {
-  const _RecentVerifications({required this.records});
-  final List<EvidenceRecord> records;
-
-  @override
-  Widget build(BuildContext context) {
-    if (records.isEmpty) return const _Unavailable(icon: Icons.verified_outlined);
-    return Column(
-      children: [
-        for (final record in records.take(5))
-          Expanded(
-            child: Row(
-              children: [
-                const Icon(Icons.check_circle_outline_rounded, size: 13, color: IlaiosTheme.success),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    record.action,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 7.8, fontWeight: FontWeight.w600),
-                  ),
-                ),
-                const SizedBox(width: 6),
-                Text(
-                  '#${record.sequence}',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 7),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _EvidenceAlerts extends StatelessWidget {
-  const _EvidenceAlerts({
-    required this.records,
-    required this.status,
-    required this.chainIssues,
-  });
-
-  final List<EvidenceRecord> records;
-  final String status;
-  final int chainIssues;
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = <({IconData icon, Color color, String text})>[];
-    if (!_statusConnected(status)) {
-      rows.add((
-        icon: Icons.warning_amber_rounded,
-        color: IlaiosTheme.warning,
-        text: _copy(context, 'Authoritative evidence feed is unavailable', 'Yetkili kanıt akışı kullanılamıyor'),
-      ));
-    }
-    if (records.isEmpty) {
-      rows.add((
-        icon: Icons.info_outline_rounded,
-        color: IlaiosTheme.coreBlue,
-        text: _copy(context, 'No verified evidence has been returned yet', 'Henüz doğrulanmış kanıt döndürülmedi'),
-      ));
-    }
-    if (chainIssues > 0) {
-      rows.add((
-        icon: Icons.error_outline_rounded,
-        color: IlaiosTheme.danger,
-        text: _copy(context, '$chainIssues chain linkage issue(s) detected locally', '$chainIssues zincir bağlantı sorunu yerel olarak tespit edildi'),
-      ));
-    }
-    if (rows.isEmpty) {
-      rows.add((
-        icon: Icons.verified_user_outlined,
-        color: IlaiosTheme.success,
-        text: _copy(context, 'No local evidence alerts', 'Yerel kanıt uyarısı yok'),
-      ));
-    }
-    return Column(
-      children: [
-        for (final row in rows.take(4))
-          Expanded(
-            child: Row(
-              children: [
-                Icon(row.icon, size: 13, color: row.color),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    row.text,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 7.6, fontWeight: FontWeight.w600),
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _Distribution extends StatelessWidget {
-  const _Distribution({required this.records});
-  final List<EvidenceRecord> records;
-
-  @override
-  Widget build(BuildContext context) {
-    final counts = _categoryCounts(records);
-    final total = records.length;
-    final entries = <({String code, Color color})>[
-      (code: 'test', color: IlaiosTheme.coreBlue),
-      (code: 'security', color: const Color(0xFF8B5CF6)),
-      (code: 'deployment', color: IlaiosTheme.enterpriseCyan),
-      (code: 'policy', color: IlaiosTheme.success),
-      (code: 'other', color: Colors.grey),
-    ];
-    return Row(
-      children: [
-        SizedBox(
-          width: 92,
-          height: 92,
-          child: CustomPaint(
-            painter: _DonutPainter(
-              values: [for (final entry in entries) counts[entry.code] ?? 0],
-              colors: [for (final entry in entries) entry.color],
-              trackColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-            ),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    '$total',
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                  ),
-                  Text(
-                    _copy(context, 'Total', 'Toplam'),
-                    style: const TextStyle(fontSize: 7),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              for (final entry in entries)
-                Expanded(
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 7,
-                        height: 7,
-                        decoration: BoxDecoration(shape: BoxShape.circle, color: entry.color),
-                      ),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          _categoryLabel(context, entry.code),
-                          style: const TextStyle(fontSize: 7.3),
-                        ),
-                      ),
-                      Text(
-                        '${counts[entry.code] ?? 0}',
-                        style: const TextStyle(fontSize: 7.3, fontWeight: FontWeight.w700),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _DonutPainter extends CustomPainter {
-  const _DonutPainter({
-    required this.values,
-    required this.colors,
-    required this.trackColor,
-  });
-
-  final List<int> values;
-  final List<Color> colors;
-  final Color trackColor;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    final total = values.fold<int>(0, (sum, value) => sum + value);
-    final paint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 11
-      ..strokeCap = StrokeCap.butt;
-    paint.color = trackColor;
-    canvas.drawArc(
-      Rect.fromCenter(
-        center: rect.center,
-        width: size.width - 12,
-        height: size.height - 12,
-      ),
-      -math.pi / 2,
-      math.pi * 2,
-      false,
-      paint,
-    );
-    if (total <= 0) return;
-    var start = -math.pi / 2;
-    for (var i = 0; i < values.length; i++) {
-      final value = values[i];
-      if (value <= 0) continue;
-      final sweep = math.pi * 2 * value / total;
-      paint.color = colors[i];
-      canvas.drawArc(
-        Rect.fromCenter(
-          center: rect.center,
-          width: size.width - 12,
-          height: size.height - 12,
-        ),
-        start,
-        sweep,
-        false,
-        paint,
-      );
-      start += sweep;
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _DonutPainter oldDelegate) =>
-      oldDelegate.values != values ||
-      oldDelegate.colors != colors ||
-      oldDelegate.trackColor != trackColor;
-}
-
 class _AuditTrail extends StatelessWidget {
   const _AuditTrail({required this.records});
   final List<EvidenceRecord> records;
@@ -1800,21 +1532,6 @@ String _categoryCode(EvidenceRecord record) {
     return 'policy';
   }
   return 'other';
-}
-
-Map<String, int> _categoryCounts(List<EvidenceRecord> records) {
-  final counts = <String, int>{
-    'test': 0,
-    'security': 0,
-    'deployment': 0,
-    'policy': 0,
-    'other': 0,
-  };
-  for (final record in records) {
-    final code = _categoryCode(record);
-    counts[code] = (counts[code] ?? 0) + 1;
-  }
-  return counts;
 }
 
 String _categoryLabel(BuildContext context, String code) => switch (code) {

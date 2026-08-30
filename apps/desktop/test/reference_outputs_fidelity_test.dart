@@ -45,7 +45,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('Outputs keeps approved dark reference hierarchy', (
+  testWidgets('Outputs keeps the V4 dark hierarchy without legacy analytics', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1648, 928));
@@ -66,16 +66,16 @@ void main() {
     expect(find.byKey(const Key('outputs-tabs')), findsOneWidget);
     expect(find.byKey(const Key('outputs-filters')), findsOneWidget);
     expect(find.byKey(const Key('outputs-table')), findsOneWidget);
-    expect(find.byKey(const Key('outputs-distribution')), findsOneWidget);
-    expect(find.byKey(const Key('outputs-activity')), findsOneWidget);
-    expect(find.byKey(const Key('outputs-storage')), findsOneWidget);
+    expect(find.byKey(const Key('outputs-distribution')), findsNothing);
+    expect(find.byKey(const Key('outputs-activity')), findsNothing);
+    expect(find.byKey(const Key('outputs-storage')), findsNothing);
     expect(find.text('Outputs'), findsOneWidget);
     expect(find.text('Web'), findsWidgets);
     expect(find.text('Video'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Outputs renders approved Turkish light surface', (
+  testWidgets('Outputs renders the V4 Turkish light surface', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1648, 928));
@@ -95,10 +95,9 @@ void main() {
     expect(find.byKey(const Key('reference-outputs-page')), findsOneWidget);
     expect(find.text('Çıktılar'), findsWidgets);
     expect(find.text('Toplam Çıktı'), findsOneWidget);
-    expect(find.text('Tamamlanan'), findsWidgets);
-    expect(find.text('Çıktı Dağılımı'), findsOneWidget);
-    expect(find.text('Son Çıktı Aktivitesi'), findsOneWidget);
-    expect(find.text('Depolama Kullanımı'), findsOneWidget);
+    expect(find.text('Çıktı Dağılımı'), findsNothing);
+    expect(find.text('Son Çıktı Aktivitesi'), findsNothing);
+    expect(find.text('Depolama Kullanımı'), findsNothing);
     expect(find.text('2'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
@@ -116,11 +115,12 @@ void main() {
     await openOutputs(tester);
 
     expect(find.byKey(const Key('reference-outputs-page')), findsOneWidget);
+    expect(find.byKey(const Key('outputs-kpis')), findsNothing);
     expect(find.text('248'), findsNothing);
     expect(find.text('186'), findsNothing);
     expect(find.text('128.4 GB'), findsNothing);
     expect(find.text('92'), findsNothing);
-    expect(find.text('—'), findsWidgets);
+    expect(find.byKey(const Key('outputs-distribution')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
