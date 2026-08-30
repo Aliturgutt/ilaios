@@ -36,6 +36,16 @@ from services.central_identity import (
 )
 from services.control_plane.migrations import migrate_database
 from services.email_auth import SQLiteEmailChallengeStore
+from services.github_web_oauth import (
+    GitHubWebOAuthCompletion,
+    GitHubWebOAuthCredentials,
+    GitHubWebOAuthError,
+    GitHubWebOAuthIdentityError,
+    GitHubWebOAuthService,
+    GitHubWebOAuthStateError,
+    GitHubWebOAuthTokenExchangeError,
+    IdentityChallengeGitHubWebOAuthReplayStore,
+)
 from services.google_oidc import (
     GoogleDesktopIdentityVerificationError,
     GoogleOIDCEnvironment,
@@ -63,6 +73,16 @@ from services.google_web_oauth import (
     GoogleWebOAuthTokenExchangeError,
     IdentityChallengeGoogleWebOAuthReplayStore,
 )
+from services.microsoft_web_oauth import (
+    IdentityChallengeMicrosoftWebOAuthReplayStore,
+    MicrosoftWebOAuthCompletion,
+    MicrosoftWebOAuthCredentials,
+    MicrosoftWebOAuthError,
+    MicrosoftWebOAuthIDTokenError,
+    MicrosoftWebOAuthService,
+    MicrosoftWebOAuthStateError,
+    MicrosoftWebOAuthTokenExchangeError,
+)
 from services.sqlite_central_identity import SQLiteCentralIdentityStore
 from services.web_identity_session_http import (
     WebIdentitySessionBoundary,
@@ -72,14 +92,24 @@ from services.web_identity_session_http import (
 
 _ORIGIN: Final = "https://app.ilaios.com"
 _CALLBACK: Final = "https://app.ilaios.com/auth/google/callback"
+_MICROSOFT_CALLBACK: Final = "https://app.ilaios.com/auth/microsoft/callback"
+_GITHUB_CALLBACK: Final = "https://app.ilaios.com/auth/github/callback"
+_RECENT_AUTH_WINDOW: Final = timedelta(minutes=10)
 _DEFAULT_HOST: Final = "0.0.0.0"
 _DEFAULT_PORT: Final = 8080
 _DEFAULT_SESSION_SECONDS: Final = 3600
 _MAX_SESSION_SECONDS: Final = 86_400
 _MAX_REQUEST_BODY_BYTES: Final = 16_384
 _RATE_LIMITS: Final = {
+    "/auth/providers": (600, 60),
     "/auth/google/start": (120, 60),
     "/auth/google/callback": (240, 60),
+    "/auth/microsoft/start": (120, 60),
+    "/auth/microsoft/callback": (240, 60),
+    "/auth/github/start": (120, 60),
+    "/auth/github/callback": (240, 60),
+    "/auth/link/microsoft/start": (60, 60),
+    "/auth/link/github/start": (60, 60),
     "/auth/logout": (120, 60),
     "/auth/session": (600, 60),
     "/auth/desktop/canonicalize": (120, 60),
@@ -104,6 +134,14 @@ _AUTH_FAILURE_STAGES: Final = frozenset(
         "canonical_identity_rejected",
         "session_issue_rejected",
         "desktop_id_token_rejected",
+        "microsoft_oauth_state_rejected",
+        "microsoft_token_exchange_rejected",
+        "microsoft_id_token_rejected",
+        "microsoft_oauth_rejected",
+        "github_oauth_state_rejected",
+        "github_token_exchange_rejected",
+        "github_identity_rejected",
+        "github_oauth_rejected",
     }
 )
 _LOGGER = logging.getLogger(__name__)
@@ -226,10 +264,14 @@ class AppRuntime:
         sessions: CanonicalBrowserSessionAuthority,
         browser: WebIdentitySessionBoundary,
         desktop_client_id: str,
+        microsoft_oauth: MicrosoftWebOAuthService | None = None,
+        github_oauth: GitHubWebOAuthService | None = None,
         rate_limiter: AppRateLimiter | None = None,
     ) -> None:
         self.environment = environment
         self.oauth = oauth
+        self.microsoft_oauth = microsoft_oauth
+        self.github_oauth = github_oauth
         self.sessions = sessions
         self.browser = browser
         self.desktop_client_id = desktop_client_id.strip()
@@ -245,13 +287,36 @@ class AppRuntime:
         credentials = GoogleWebOAuthCredentials.from_environment(env)
 
         migrate_database(runtime_environment.identity_database)
-        replay = IdentityChallengeGoogleWebOAuthReplayStore(
-            SQLiteEmailChallengeStore(runtime_environment.identity_database)
+        challenge_store = SQLiteEmailChallengeStore(
+            runtime_environment.identity_database
         )
+        replay = IdentityChallengeGoogleWebOAuthReplayStore(challenge_store)
         oauth = GoogleWebOAuthService(
             oidc=oidc,
             credentials=credentials,
             replay_store=replay,
+        )
+        microsoft_credentials = MicrosoftWebOAuthCredentials.from_environment_optional(env)
+        microsoft_oauth = (
+            None
+            if microsoft_credentials is None
+            else MicrosoftWebOAuthService(
+                credentials=microsoft_credentials,
+                replay_store=IdentityChallengeMicrosoftWebOAuthReplayStore(
+                    challenge_store
+                ),
+            )
+        )
+        github_credentials = GitHubWebOAuthCredentials.from_environment_optional(env)
+        github_oauth = (
+            None
+            if github_credentials is None
+            else GitHubWebOAuthService(
+                credentials=github_credentials,
+                replay_store=IdentityChallengeGitHubWebOAuthReplayStore(
+                    challenge_store
+                ),
+            )
         )
         sessions = CanonicalBrowserSessionAuthority(
             runtime_environment.identity_database,
@@ -264,6 +329,8 @@ class AppRuntime:
             sessions=sessions,
             browser=browser,
             desktop_client_id=oidc.desktop_client_id,
+            microsoft_oauth=microsoft_oauth,
+            github_oauth=github_oauth,
         )
 
     def dispatch(
@@ -294,6 +361,14 @@ class AppRuntime:
                 if method != "GET":
                     return self._method_not_allowed("GET")
                 return self._ready()
+            if path == "/auth/providers":
+                if method != "GET":
+                    return self._method_not_allowed("GET")
+                if split.query:
+                    return self._json_error(
+                        HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+                    )
+                return self._providers()
             if path == "/auth/google/start":
                 if method != "GET":
                     return self._method_not_allowed("GET")
@@ -306,6 +381,52 @@ class AppRuntime:
                 if method != "GET":
                     return self._method_not_allowed("GET")
                 return self._google_callback(split.query, current)
+            if path == "/auth/microsoft/start":
+                if method != "GET":
+                    return self._method_not_allowed("GET")
+                if split.query:
+                    return self._json_error(
+                        HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+                    )
+                return self._provider_start("microsoft", current, purpose="signin")
+            if path == "/auth/link/microsoft/start":
+                if method != "GET":
+                    return self._method_not_allowed("GET")
+                if split.query:
+                    return self._json_error(
+                        HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+                    )
+                self._recent_authenticated_account(request, current)
+                return self._provider_start("microsoft", current, purpose="link")
+            if path == "/auth/microsoft/callback":
+                if method != "GET":
+                    return self._method_not_allowed("GET")
+                return self._provider_callback(
+                    "microsoft", request, split.query, current
+                )
+            if path == "/auth/github/start":
+                if method != "GET":
+                    return self._method_not_allowed("GET")
+                if split.query:
+                    return self._json_error(
+                        HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+                    )
+                return self._provider_start("github", current, purpose="signin")
+            if path == "/auth/link/github/start":
+                if method != "GET":
+                    return self._method_not_allowed("GET")
+                if split.query:
+                    return self._json_error(
+                        HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+                    )
+                self._recent_authenticated_account(request, current)
+                return self._provider_start("github", current, purpose="link")
+            if path == "/auth/github/callback":
+                if method != "GET":
+                    return self._method_not_allowed("GET")
+                return self._provider_callback(
+                    "github", request, split.query, current
+                )
             if path == "/auth/logout":
                 if split.query:
                     return self._json_error(
@@ -345,6 +466,22 @@ class AppRuntime:
             return self._json_error(HTTPStatus.FORBIDDEN, "request denied")
         except GoogleDesktopIdentityVerificationError:
             return self._authentication_denied("desktop_id_token_rejected")
+        except MicrosoftWebOAuthStateError:
+            return self._authentication_denied("microsoft_oauth_state_rejected")
+        except MicrosoftWebOAuthTokenExchangeError:
+            return self._authentication_denied("microsoft_token_exchange_rejected")
+        except MicrosoftWebOAuthIDTokenError:
+            return self._authentication_denied("microsoft_id_token_rejected")
+        except MicrosoftWebOAuthError:
+            return self._authentication_denied("microsoft_oauth_rejected")
+        except GitHubWebOAuthStateError:
+            return self._authentication_denied("github_oauth_state_rejected")
+        except GitHubWebOAuthTokenExchangeError:
+            return self._authentication_denied("github_token_exchange_rejected")
+        except GitHubWebOAuthIdentityError:
+            return self._authentication_denied("github_identity_rejected")
+        except GitHubWebOAuthError:
+            return self._authentication_denied("github_oauth_rejected")
         except GoogleWebOAuthStateError:
             return self._authentication_denied("oauth_state_rejected")
         except GoogleWebOAuthTokenExchangeError:
@@ -393,6 +530,182 @@ class AppRuntime:
                 HTTPStatus.SERVICE_UNAVAILABLE, "service unavailable"
             )
         return self._json(HTTPStatus.OK, {"status": "ready"})
+
+    def _providers(self) -> RuntimeResponse:
+        providers = ["google"]
+        if self.microsoft_oauth is not None:
+            providers.append("microsoft")
+        if self.github_oauth is not None:
+            providers.append("github")
+        return self._json(HTTPStatus.OK, {"providers": providers})
+
+    def _provider_start(
+        self,
+        provider: str,
+        now: datetime,
+        *,
+        purpose: str,
+    ) -> RuntimeResponse:
+        service: MicrosoftWebOAuthService | GitHubWebOAuthService | None
+        if provider == "microsoft":
+            service = self.microsoft_oauth
+            callback = _MICROSOFT_CALLBACK
+            expected_host = "login.microsoftonline.com"
+        elif provider == "github":
+            service = self.github_oauth
+            callback = _GITHUB_CALLBACK
+            expected_host = "github.com"
+        else:
+            raise ValueError("unsupported Web identity provider")
+        if service is None:
+            return self._json_error(HTTPStatus.NOT_FOUND, "provider unavailable")
+        started = service.start(
+            redirect_uri=callback,
+            now=now,
+            purpose=purpose,
+        )
+        parsed = urlsplit(started.authorization_url)
+        if parsed.scheme != "https" or parsed.hostname != expected_host:
+            return self._json_error(HTTPStatus.SERVICE_UNAVAILABLE, "service unavailable")
+        return RuntimeResponse(
+            status=HTTPStatus.FOUND,
+            headers=(
+                ("Location", started.authorization_url),
+                ("Cache-Control", "no-store"),
+            ),
+        )
+
+    def _provider_callback(
+        self,
+        provider: str,
+        request: RuntimeRequest,
+        query: str,
+        now: datetime,
+    ) -> RuntimeResponse:
+        parsed = parse_qs(query, keep_blank_values=True, strict_parsing=True)
+        allowed = {"state", "code", "error", "error_description"}
+        if not set(parsed).issubset(allowed):
+            return self._json_error(
+                HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+            )
+        if self._one(parsed, "error") is not None:
+            if provider == "microsoft":
+                raise MicrosoftWebOAuthError("Microsoft authorization was denied")
+            raise GitHubWebOAuthError("GitHub authorization was denied")
+        state = self._one(parsed, "state")
+        code = self._one(parsed, "code")
+        if state is None or code is None:
+            return self._json_error(
+                HTTPStatus.BAD_REQUEST, "state and code are required"
+            )
+        completed: MicrosoftWebOAuthCompletion | GitHubWebOAuthCompletion
+        if provider == "microsoft":
+            if self.microsoft_oauth is None:
+                return self._json_error(HTTPStatus.NOT_FOUND, "provider unavailable")
+            completed = self.microsoft_oauth.complete(
+                state=state,
+                code=code,
+                redirect_uri=_MICROSOFT_CALLBACK,
+                now=now,
+            )
+        elif provider == "github":
+            if self.github_oauth is None:
+                return self._json_error(HTTPStatus.NOT_FOUND, "provider unavailable")
+            completed = self.github_oauth.complete(
+                state=state,
+                code=code,
+                redirect_uri=_GITHUB_CALLBACK,
+                now=now,
+            )
+        else:
+            raise ValueError("unsupported Web identity provider")
+
+        with sqlite3.connect(self.environment.identity_database) as connection:
+            connection.execute("PRAGMA foreign_keys = ON")
+            store = SQLiteCentralIdentityStore(connection)
+            identity = CentralIdentityService(store)
+            if completed.purpose == "link":
+                account = self._recent_authenticated_account(request, now)
+                identity.link_identity(
+                    authenticated_user_id=account.user_id,
+                    authenticated_tenant_id=account.tenant_id,
+                    identity=completed.identity,
+                    recent_authentication_verified=True,
+                )
+                return RuntimeResponse(
+                    status=HTTPStatus.SEE_OTHER,
+                    headers=(("Location", "/"), ("Cache-Control", "no-store")),
+                )
+            if completed.purpose != "signin":
+                raise CentralIdentityError("identity flow purpose is invalid")
+            account = identity.sign_in(completed.identity)
+        return self._issue_browser_session(account, now)
+
+    def _recent_authenticated_account(
+        self,
+        request: RuntimeRequest,
+        now: datetime,
+    ) -> CanonicalAccount:
+        credentials = self.browser.credentials(self._web_request(request))
+        principal = self.sessions.verify(
+            credentials.session_id,
+            credentials.encoded_token,
+            now,
+        )
+        with sqlite3.connect(self.environment.identity_database) as connection:
+            row = connection.execute(
+                "SELECT created_at FROM identity_sessions WHERE session_id = ?",
+                (credentials.session_id,),
+            ).fetchone()
+        if row is None:
+            raise CanonicalBrowserSessionError("recent authentication is unavailable")
+        try:
+            created_at = datetime.fromisoformat(str(row[0]))
+        except ValueError as error:
+            raise CanonicalBrowserSessionError(
+                "recent authentication is unavailable"
+            ) from error
+        if created_at.tzinfo is None or created_at.utcoffset() is None:
+            raise CanonicalBrowserSessionError(
+                "recent authentication is unavailable"
+            )
+        age = now - created_at.astimezone(UTC)
+        if age < timedelta(0) or age > _RECENT_AUTH_WINDOW:
+            raise CentralIdentityError("recent authentication is required")
+        return CanonicalAccount(
+            user_id=principal.principal_id,
+            tenant_id=principal.tenant_id,
+            enabled=True,
+        )
+
+    def _issue_browser_session(
+        self,
+        account: CanonicalAccount,
+        now: datetime,
+    ) -> RuntimeResponse:
+        if not account.enabled:
+            raise CentralIdentityError("canonical account is disabled")
+        issued = self.sessions.issue(
+            account,
+            now,
+            self.environment.session_lifetime,
+        )
+        csrf_token = secrets.token_urlsafe(32)
+        max_age = int(self.environment.session_lifetime.total_seconds())
+        cookie_headers = self.browser.issue_cookie_headers(
+            encoded_token=issued.credential,
+            session_id=issued.session_id,
+            csrf_token=csrf_token,
+            max_age_seconds=max_age,
+        )
+        return RuntimeResponse(
+            status=HTTPStatus.SEE_OTHER,
+            headers=(
+                ("Location", "/"),
+                *(("Set-Cookie", value) for value in cookie_headers),
+                ("Cache-Control", "no-store"),
+            ),
+        )
 
     def _google_start(self, now: datetime) -> RuntimeResponse:
         started = self.oauth.start(redirect_uri=_CALLBACK, now=now)
@@ -446,31 +759,13 @@ class AppRuntime:
             or account.tenant_id != sign_in.tenant_id
         ):
             raise CentralIdentityError("canonical account is unavailable")
-
-        issued = self.sessions.issue(
+        return self._issue_browser_session(
             CanonicalAccount(
                 user_id=account.user_id,
                 tenant_id=account.tenant_id,
                 enabled=account.enabled,
             ),
             now,
-            self.environment.session_lifetime,
-        )
-        csrf_token = secrets.token_urlsafe(32)
-        max_age = int(self.environment.session_lifetime.total_seconds())
-        cookie_headers = self.browser.issue_cookie_headers(
-            encoded_token=issued.credential,
-            session_id=issued.session_id,
-            csrf_token=csrf_token,
-            max_age_seconds=max_age,
-        )
-        return RuntimeResponse(
-            status=HTTPStatus.SEE_OTHER,
-            headers=(
-                ("Location", "/"),
-                *(("Set-Cookie", value) for value in cookie_headers),
-                ("Cache-Control", "no-store"),
-            ),
         )
 
     def _logout_page(self, request: RuntimeRequest, now: datetime) -> RuntimeResponse:
