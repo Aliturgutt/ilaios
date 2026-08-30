@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import logging
 import sqlite3
+
+import pytest
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from http.cookies import SimpleCookie
@@ -24,6 +27,7 @@ from services.github_web_oauth import (
 from services.google_web_oauth import GoogleWebOAuthService, GoogleWebOAuthStart
 from services.microsoft_web_oauth import (
     MicrosoftWebOAuthCompletion,
+    MicrosoftWebOAuthIDTokenError,
     MicrosoftWebOAuthService,
     MicrosoftWebOAuthStart,
 )
@@ -468,3 +472,47 @@ def test_github_callback_rejects_duplicate_reserved_parameters(
 
     assert response.status is HTTPStatus.BAD_REQUEST
     assert response.body == b'{"error":"invalid callback parameters"}'
+
+
+class _RejectingMicrosoftOAuth(_MicrosoftOAuth):
+    def complete(
+        self,
+        *,
+        state: str,
+        code: str,
+        redirect_uri: str,
+        now: datetime,
+    ) -> MicrosoftWebOAuthCompletion:
+        raise MicrosoftWebOAuthIDTokenError(
+            "Microsoft signing-key issuer binding failed"
+        )
+
+
+def test_microsoft_id_token_failure_logs_only_safe_reason(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    runtime = _runtime(
+        tmp_path / "identity.db",
+        microsoft=_RejectingMicrosoftOAuth(),
+    )
+    logger = logging.getLogger("apps.web_app_runtime.server")
+    with caplog.at_level(logging.WARNING, logger=logger.name):
+        response = runtime.dispatch(
+            RuntimeRequest(
+                method="GET",
+                target="/auth/microsoft/callback?state=state-one&code=code-one-value",
+                headers={},
+            ),
+            now=_NOW,
+        )
+
+    assert response.status is HTTPStatus.UNAUTHORIZED
+    assert response.body == b'{"error":"authentication denied"}'
+    messages = [record.getMessage() for record in caplog.records]
+    assert messages == [
+        "app_auth_failure stage=microsoft_id_token_rejected "
+        "reason=signing_key_issuer_binding"
+    ]
+    assert "state-one" not in messages[0]
+    assert "code-one-value" not in messages[0]
