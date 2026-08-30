@@ -127,6 +127,7 @@ class ReferenceAssetPicker extends StatelessWidget {
   Widget _sourceVideo() => SourceVideoPicker(
         controller: controller.sourceVideo,
         enabled: enabled,
+        compact: compact,
       );
 
   @override
