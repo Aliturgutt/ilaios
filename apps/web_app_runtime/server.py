@@ -42,9 +42,15 @@ from services.google_web_canonical_identity import (
 from services.google_web_oauth import (
     GoogleWebOAuthCredentials,
     GoogleWebOAuthError,
+    GoogleWebOAuthIssuerAudienceError,
     GoogleWebOAuthIDTokenVerificationError,
+    GoogleWebOAuthJwksResolutionError,
+    GoogleWebOAuthJWTDecodeError,
+    GoogleWebOAuthMalformedClaimsError,
+    GoogleWebOAuthNonceError,
     GoogleWebOAuthService,
     GoogleWebOAuthStateError,
+    GoogleWebOAuthTemporalClaimsError,
     GoogleWebOAuthTokenExchangeError,
     IdentityChallengeGoogleWebOAuthReplayStore,
 )
@@ -69,6 +75,12 @@ _AUTH_FAILURE_STAGES: Final = frozenset(
         "oauth_state_rejected",
         "token_exchange_rejected",
         "id_token_verification_rejected",
+        "jwks_fetch_or_key_resolution_failed",
+        "jwt_signature_or_decode_failed",
+        "issuer_or_audience_rejected",
+        "nonce_rejected",
+        "temporal_claims_rejected",
+        "malformed_claims_rejected",
         "canonical_identity_rejected",
         "session_issue_rejected",
     }
@@ -235,6 +247,18 @@ class AppRuntime:
             return self._authentication_denied("oauth_state_rejected")
         except GoogleWebOAuthTokenExchangeError:
             return self._authentication_denied("token_exchange_rejected")
+        except GoogleWebOAuthJwksResolutionError:
+            return self._authentication_denied("jwks_fetch_or_key_resolution_failed")
+        except GoogleWebOAuthJWTDecodeError:
+            return self._authentication_denied("jwt_signature_or_decode_failed")
+        except GoogleWebOAuthIssuerAudienceError:
+            return self._authentication_denied("issuer_or_audience_rejected")
+        except GoogleWebOAuthNonceError:
+            return self._authentication_denied("nonce_rejected")
+        except GoogleWebOAuthTemporalClaimsError:
+            return self._authentication_denied("temporal_claims_rejected")
+        except GoogleWebOAuthMalformedClaimsError:
+            return self._authentication_denied("malformed_claims_rejected")
         except GoogleWebOAuthIDTokenVerificationError:
             return self._authentication_denied("id_token_verification_rejected")
         except GoogleWebOAuthError:

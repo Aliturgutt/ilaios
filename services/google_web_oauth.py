@@ -56,6 +56,30 @@ class GoogleWebOAuthIDTokenVerificationError(GoogleWebOAuthError):
     """The returned Google ID token cannot be verified under policy."""
 
 
+class GoogleWebOAuthJwksResolutionError(GoogleWebOAuthIDTokenVerificationError):
+    """Google JWKS retrieval or signing-key resolution failed."""
+
+
+class GoogleWebOAuthJWTDecodeError(GoogleWebOAuthIDTokenVerificationError):
+    """Google ID token signature or cryptographic decoding failed."""
+
+
+class GoogleWebOAuthIssuerAudienceError(GoogleWebOAuthIDTokenVerificationError):
+    """Google ID token issuer or audience failed validation."""
+
+
+class GoogleWebOAuthNonceError(GoogleWebOAuthIDTokenVerificationError):
+    """Google ID token nonce failed validation."""
+
+
+class GoogleWebOAuthTemporalClaimsError(GoogleWebOAuthIDTokenVerificationError):
+    """Google ID token temporal claims failed validation."""
+
+
+class GoogleWebOAuthMalformedClaimsError(GoogleWebOAuthIDTokenVerificationError):
+    """Google ID token claims were malformed or incomplete."""
+
+
 @dataclass(frozen=True, slots=True)
 class GoogleWebOAuthCredentials:
     """Server-only Google Web OAuth credentials and state-derivation secret."""
@@ -305,6 +329,8 @@ class GoogleWebOAuthService:
                 now=current,
             )
             return verified_google_identity(claims)
+        except GoogleWebOAuthIDTokenVerificationError:
+            raise
         except Exception as error:
             raise GoogleWebOAuthIDTokenVerificationError(
                 "Google ID token verification failed"
@@ -317,13 +343,15 @@ class _GoogleIDTokenVerifier(OIDCTokenVerifier):
         self._expected_nonce = expected_nonce
 
     def verify(self, encoded_token: str) -> VerifiedOIDCClaims:
-        try:
-            import jwt
+        import jwt
 
+        try:
             header = jwt.get_unverified_header(encoded_token)
             algorithm = header.get("alg")
             if not isinstance(algorithm, str) or algorithm not in _ALLOWED_ALGORITHMS:
-                raise GoogleWebOAuthError("Google ID token algorithm is not allowed")
+                raise GoogleWebOAuthMalformedClaimsError(
+                    "Google ID token algorithm is not allowed"
+                )
             key = jwt.PyJWKClient(GOOGLE_JWKS_URI).get_signing_key_from_jwt(encoded_token)
             claims = jwt.decode(
                 encoded_token,
@@ -335,19 +363,40 @@ class _GoogleIDTokenVerifier(OIDCTokenVerifier):
                     "require": ["exp", "iat", "iss", "aud", "sub", "nonce"]
                 },
             )
-        except GoogleWebOAuthError:
+        except jwt.PyJWKClientError as error:
+            raise GoogleWebOAuthJwksResolutionError(
+                "Google JWKS signing key resolution failed"
+            ) from error
+        except (jwt.InvalidIssuerError, jwt.InvalidAudienceError) as error:
+            raise GoogleWebOAuthIssuerAudienceError(
+                "Google ID token issuer or audience rejected"
+            ) from error
+        except (jwt.ExpiredSignatureError, jwt.ImmatureSignatureError) as error:
+            raise GoogleWebOAuthTemporalClaimsError(
+                "Google ID token temporal claims rejected"
+            ) from error
+        except jwt.InvalidTokenError as error:
+            raise GoogleWebOAuthJWTDecodeError(
+                "Google ID token signature or decoding failed"
+            ) from error
+        except GoogleWebOAuthIDTokenVerificationError:
             raise
         except Exception as error:
-            raise GoogleWebOAuthError(
-                "Google ID token cryptographic verification failed"
+            raise GoogleWebOAuthMalformedClaimsError(
+                "Google ID token claims are malformed"
             ) from error
         if claims.get("nonce") != self._expected_nonce:
-            raise GoogleWebOAuthError("Google OIDC nonce validation failed")
+            raise GoogleWebOAuthNonceError("Google OIDC nonce validation failed")
 
-        subject = _claim_text(claims, "sub")
-        issuer = _claim_text(claims, "iss")
-        issued_at = _claim_time(claims, "iat")
-        expires_at = _claim_time(claims, "exp")
+        try:
+            subject = _claim_text(claims, "sub")
+            issuer = _claim_text(claims, "iss")
+            issued_at = _claim_time(claims, "iat")
+            expires_at = _claim_time(claims, "exp")
+        except GoogleWebOAuthError as error:
+            raise GoogleWebOAuthMalformedClaimsError(
+                "Google ID token claims are malformed"
+            ) from error
         attributes: set[tuple[str, str]] = set()
         email = claims.get("email")
         if isinstance(email, str) and claims.get("email_verified") is True:

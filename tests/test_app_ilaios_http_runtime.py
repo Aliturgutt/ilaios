@@ -27,10 +27,16 @@ from services.central_identity import IdentityProvider, VerifiedExternalIdentity
 from services.control_plane.migrations import migrate_database
 from services.google_web_oauth import (
     GoogleWebOAuthIDTokenVerificationError,
+    GoogleWebOAuthIssuerAudienceError,
+    GoogleWebOAuthJwksResolutionError,
+    GoogleWebOAuthJWTDecodeError,
+    GoogleWebOAuthMalformedClaimsError,
+    GoogleWebOAuthNonceError,
     GoogleWebOAuthService,
     GoogleWebOAuthStart,
     GoogleWebOAuthStateError,
     GoogleWebOAuthTokenExchangeError,
+    GoogleWebOAuthTemporalClaimsError,
 )
 from services.google_web_canonical_identity import GoogleWebCanonicalIdentityError
 from services.web_identity_session_http import WebIdentitySessionBoundary
@@ -204,6 +210,12 @@ def test_callback_accepts_google_issuer_parameter(tmp_path: Path) -> None:
             GoogleWebOAuthIDTokenVerificationError("token-should-never-be-logged"),
             "id_token_verification_rejected",
         ),
+        (GoogleWebOAuthJwksResolutionError("token"), "jwks_fetch_or_key_resolution_failed"),
+        (GoogleWebOAuthJWTDecodeError("token"), "jwt_signature_or_decode_failed"),
+        (GoogleWebOAuthIssuerAudienceError("token"), "issuer_or_audience_rejected"),
+        (GoogleWebOAuthNonceError("token"), "nonce_rejected"),
+        (GoogleWebOAuthTemporalClaimsError("token"), "temporal_claims_rejected"),
+        (GoogleWebOAuthMalformedClaimsError("token"), "malformed_claims_rejected"),
     ),
 )
 def test_oauth_failure_logs_only_safe_stage_and_returns_generic_denial(
