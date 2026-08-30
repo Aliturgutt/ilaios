@@ -968,6 +968,20 @@ def _tasks(payload: dict[str, Any]) -> tuple[ProposedTask, ...]:
     return tuple(tasks)
 
 
+def _write_ready_file_atomically(path: Path, ready: dict[str, object]) -> None:
+    """Publish readiness only after a complete JSON document is durable."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        with temporary.open("w", encoding="utf-8") as handle:
+            json.dump(ready, handle, sort_keys=True)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Start the loopback service using explicit configuration."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -1066,14 +1080,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         knowledge_runtime,
     )
     host, port = server.server_address[:2]
-    ready = {
+    ready: dict[str, object] = {
         "host": host,
         "port": port,
         "schema_version": current_schema_version(arguments.database),
         "knowledge_enabled": knowledge_runtime is not None,
     }
-    arguments.ready_file.parent.mkdir(parents=True, exist_ok=True)
-    arguments.ready_file.write_text(json.dumps(ready, sort_keys=True), encoding="utf-8")
+    _write_ready_file_atomically(arguments.ready_file, ready)
     print(json.dumps({"event": "ready", **ready}, sort_keys=True), flush=True)
     try:
         server.serve_forever()
