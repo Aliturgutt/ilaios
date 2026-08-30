@@ -99,6 +99,10 @@ class LiFounderOperator:
         self.config = config
         self.identity_database = identity_database
         self._runtime_environment = dict(runtime_environment or {})
+        if self.config.database_path.resolve() == self.identity_database.resolve():
+            raise LiConfigurationError(
+                "Li memory database must be separate from canonical identity"
+            )
         self.config.database_path.parent.mkdir(parents=True, exist_ok=True)
         self._initialize_memory_database()
 
@@ -265,6 +269,7 @@ class LiFounderOperator:
                 "role": "OWNER",
             },
             "system": {
+                "scope": "app_runtime_identity",
                 "service": "app.ilaios.com",
                 "identity_database": "ready",
                 "tenant_status": tenant_status,
