@@ -5,7 +5,6 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
-import services.microsoft_web_oauth as microsoft_module
 from services.central_identity import IdentityProvider, VerifiedExternalIdentity
 from services.github_web_oauth import (
     GitHubWebOAuthCredentials,
@@ -252,5 +251,44 @@ def test_github_web_oauth_uses_pkce_and_verified_immutable_user_id() -> None:
             now=_NOW + timedelta(seconds=2),
         )
 
-def test_microsoft_id_token_lifetime_policy_matches_supported_day() -> None:
-    assert microsoft_module._MAX_ID_TOKEN_LIFETIME == timedelta(days=1)
+
+def test_microsoft_temporal_claims_accept_valid_expiry_without_custom_lifetime_cap() -> None:
+    claims = {
+        "iat": (_NOW - timedelta(days=2)).timestamp(),
+        "exp": (_NOW + timedelta(hours=1)).timestamp(),
+    }
+
+    from services.microsoft_web_oauth import _validate_temporal_claims
+
+    _validate_temporal_claims(claims, _NOW)
+
+
+def test_microsoft_temporal_claims_reject_expired_token() -> None:
+    claims = {
+        "iat": (_NOW - timedelta(hours=2)).timestamp(),
+        "exp": (_NOW - timedelta(seconds=1)).timestamp(),
+    }
+
+    from services.microsoft_web_oauth import (
+        MicrosoftWebOAuthIDTokenError,
+        _validate_temporal_claims,
+    )
+
+    with pytest.raises(MicrosoftWebOAuthIDTokenError, match="expired"):
+        _validate_temporal_claims(claims, _NOW)
+
+
+def test_microsoft_temporal_claims_reject_future_issued_at() -> None:
+    claims = {
+        "iat": (_NOW + timedelta(minutes=6)).timestamp(),
+        "exp": (_NOW + timedelta(hours=1)).timestamp(),
+    }
+
+    from services.microsoft_web_oauth import (
+        MicrosoftWebOAuthIDTokenError,
+        _validate_temporal_claims,
+    )
+
+    with pytest.raises(MicrosoftWebOAuthIDTokenError, match="future"):
+        _validate_temporal_claims(claims, _NOW)
+
