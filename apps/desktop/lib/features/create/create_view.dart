@@ -160,11 +160,7 @@ class _CreateViewState extends State<CreateView> {
 
   Future<void> _submit() async {
     final callback = widget.onSubmit;
-    if (callback == null ||
-        _submitting ||
-        !widget.projection.connected) {
-      return;
-    }
+    if (callback == null || _submitting || !widget.projection.connected) return;
     final rawObjective = _controller.text.trim();
     if (rawObjective.isEmpty) {
       setState(() {
@@ -340,8 +336,7 @@ class _GoalsHeader extends StatelessWidget {
   final BusinessCapabilityFamily? selectedBusinessCapability;
   final ReferenceAssetPickerController? referenceAssets;
   final String Function(_FactoryPreset preset) presetLabel;
-  final String Function(BusinessCapabilityFamily family)
-      businessCapabilityLabel;
+  final String Function(BusinessCapabilityFamily family) businessCapabilityLabel;
   final ValueChanged<_FactoryPreset> onPresetChanged;
   final ValueChanged<BusinessCapabilityFamily?> onBusinessCapabilityChanged;
   final VoidCallback onSubmit;
@@ -352,9 +347,7 @@ class _GoalsHeader extends StatelessWidget {
     padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
     decoration: BoxDecoration(
       color: Theme.of(context).colorScheme.surfaceContainerLow,
-      border: Border.all(
-        color: Theme.of(context).colorScheme.outlineVariant,
-      ),
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
       borderRadius: BorderRadius.circular(8),
     ),
     child: Row(
@@ -501,9 +494,7 @@ class _BusinessCapabilitySelector extends StatelessWidget {
         PopupMenuItem<BusinessCapabilityFamily?>(
           key: const Key('business-context-none'),
           value: null,
-          child: Text(
-            _copy(context, 'No business context', 'İş bağlamı yok'),
-          ),
+          child: Text(_copy(context, 'No business context', 'İş bağlamı yok')),
         ),
         for (final family in BusinessCapabilityFamily.values)
           PopupMenuItem<BusinessCapabilityFamily?>(
@@ -518,9 +509,7 @@ class _BusinessCapabilitySelector extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 8),
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(5),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -534,10 +523,7 @@ class _BusinessCapabilitySelector extends StatelessWidget {
                     : selected!.contextCode,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 8.4,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: const TextStyle(fontSize: 8.4, fontWeight: FontWeight.w600),
               ),
             ),
             const SizedBox(width: 2),
@@ -643,8 +629,7 @@ class _FactoryRouteChip extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 6.5,
-                  fontWeight:
-                      selected ? FontWeight.w700 : FontWeight.w500,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
                   color: selected
                       ? IlaiosTheme.coreBlue
                       : Theme.of(context).colorScheme.onSurfaceVariant,
@@ -666,24 +651,13 @@ class _MetricStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final metrics = <
-        ({
-          IconData icon,
-          Color color,
-          String label,
-          String value,
-          String note,
-        })>[
+    final metrics = <({IconData icon, Color color, String label, String value, String note})>[
       (
         icon: Icons.track_changes_outlined,
         color: IlaiosTheme.coreBlue,
         label: _copy(context, 'Total Goals', 'Toplam Hedef'),
         value: goalCount?.toString() ?? '—',
-        note: _copy(
-          context,
-          'Authoritative projection',
-          'Yetkili projeksiyon',
-        ),
+        note: _copy(context, 'Authoritative projection', 'Yetkili projeksiyon'),
       ),
       (
         icon: Icons.trending_up_rounded,
@@ -740,13 +714,7 @@ class _MetricStrip extends StatelessWidget {
 class _MetricCard extends StatelessWidget {
   const _MetricCard({required this.metric});
 
-  final ({
-    IconData icon,
-    Color color,
-    String label,
-    String value,
-    String note,
-  }) metric;
+  final ({IconData icon, Color color, String label, String value, String note}) metric;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -773,20 +741,14 @@ class _MetricCard extends StatelessWidget {
                 metric.label,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: Theme.of(
-                  context,
-                ).textTheme.labelSmall?.copyWith(fontSize: 8.1),
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 8.1),
               ),
               const SizedBox(height: 1),
               Text(
                 metric.value,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 17,
-                  fontWeight: FontWeight.w700,
-                  height: 1,
-                ),
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, height: 1),
               ),
               const SizedBox(height: 3),
               Text(
@@ -837,9 +799,7 @@ class _GoalTabs extends StatelessWidget {
                 decoration: BoxDecoration(
                   border: Border(
                     bottom: BorderSide(
-                      color: activeTab == tab.id
-                          ? IlaiosTheme.coreBlue
-                          : Colors.transparent,
+                      color: activeTab == tab.id ? IlaiosTheme.coreBlue : Colors.transparent,
                       width: 2,
                     ),
                   ),
@@ -848,9 +808,7 @@ class _GoalTabs extends StatelessWidget {
                   tab.label,
                   style: TextStyle(
                     fontSize: 9.8,
-                    fontWeight: activeTab == tab.id
-                        ? FontWeight.w700
-                        : FontWeight.w500,
+                    fontWeight: activeTab == tab.id ? FontWeight.w700 : FontWeight.w500,
                     color: activeTab == tab.id
                         ? IlaiosTheme.coreBlue
                         : Theme.of(context).colorScheme.onSurfaceVariant,
@@ -880,129 +838,127 @@ class _GoalsTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final showSubmission = submission != null && activeTab != 'archive';
+    final header = Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      child: Row(
+        children: [
+          Expanded(flex: 31, child: _TableHeader(_copy(context, 'Goal', 'Hedef'))),
+          Expanded(flex: 17, child: _TableHeader(_copy(context, 'Owner', 'Sahip'))),
+          Expanded(
+            flex: 22,
+            child: _TableHeader(_copy(context, 'Progress', 'İlerleme')),
+          ),
+          Expanded(flex: 12, child: _TableHeader(_copy(context, 'Status', 'Durum'))),
+          Expanded(
+            flex: 12,
+            child: _TableHeader(_copy(context, 'Target', 'Hedef Tarihi')),
+          ),
+          Expanded(
+            flex: 10,
+            child: _TableHeader(_copy(context, 'Priority', 'Öncelik')),
+          ),
+          const SizedBox(width: 22),
+        ],
+      ),
+    );
+    final body = showSubmission
+        ? _GoalRow(
+            submission: submission!,
+            objective: objective ?? submission!.goalId,
+            owner: owner,
+          )
+        : Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.track_changes_outlined,
+                  size: 34,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _copy(
+                    context,
+                    'Detailed goal records are not exposed by the current authoritative projection.',
+                    'Ayrıntılı hedef kayıtları mevcut yetkili projeksiyon tarafından sunulmuyor.',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          );
+    final footer = Container(
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              showSubmission
+                  ? _copy(
+                      context,
+                      'Showing 1 authoritative goal.',
+                      '1 yetkili hedef gösteriliyor.',
+                    )
+                  : _copy(
+                      context,
+                      'No detailed goal rows available.',
+                      'Ayrıntılı hedef satırı bulunmuyor.',
+                    ),
+              style: TextStyle(
+                fontSize: 8.7,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          const _PageBox(label: '1', selected: true),
+          const SizedBox(width: 7),
+          _PageBox(label: _copy(context, '10 / page', '10 / sayfa')),
+        ],
+      ),
+    );
+
     return Container(
       key: const Key('goals-table'),
       decoration: _cardDecoration(context, radius: 7),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          Container(
-            height: 34,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
-            child: Row(
-              children: [
-                Expanded(
-                  flex: 31,
-                  child: _TableHeader(_copy(context, 'Goal', 'Hedef')),
-                ),
-                Expanded(
-                  flex: 17,
-                  child: _TableHeader(_copy(context, 'Owner', 'Sahip')),
-                ),
-                Expanded(
-                  flex: 22,
-                  child: _TableHeader(
-                    _copy(context, 'Progress', 'İlerleme'),
-                  ),
-                ),
-                Expanded(
-                  flex: 12,
-                  child: _TableHeader(_copy(context, 'Status', 'Durum')),
-                ),
-                Expanded(
-                  flex: 12,
-                  child: _TableHeader(
-                    _copy(context, 'Target', 'Hedef Tarihi'),
-                  ),
-                ),
-                Expanded(
-                  flex: 10,
-                  child: _TableHeader(
-                    _copy(context, 'Priority', 'Öncelik'),
-                  ),
-                ),
-                const SizedBox(width: 22),
-              ],
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxHeight < 72) {
+            return SingleChildScrollView(
               primary: false,
-              child: showSubmission
-                  ? _GoalRow(
-                      submission: submission!,
-                      objective: objective ?? submission!.goalId,
-                      owner: owner,
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.all(22),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.track_changes_outlined,
-                            size: 34,
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _copy(
-                              context,
-                              'Detailed goal records are not exposed by the current authoritative projection.',
-                              'Ayrıntılı hedef kayıtları mevcut yetkili projeksiyon tarafından sunulmuyor.',
-                            ),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-            ),
-          ),
-          Container(
-            height: 38,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(
-                  color: Theme.of(context).colorScheme.outlineVariant,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [header, body, footer],
+              ),
+            );
+          }
+          return Column(
+            children: [
+              header,
+              Expanded(
+                child: SingleChildScrollView(
+                  primary: false,
+                  child: body,
                 ),
               ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    showSubmission
-                        ? _copy(
-                            context,
-                            'Showing 1 authoritative goal.',
-                            '1 yetkili hedef gösteriliyor.',
-                          )
-                        : _copy(
-                            context,
-                            'No detailed goal rows available.',
-                            'Ayrıntılı hedef satırı bulunmuyor.',
-                          ),
-                    style: TextStyle(
-                      fontSize: 8.7,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ),
-                const _PageBox(label: '1', selected: true),
-                const SizedBox(width: 7),
-                _PageBox(label: _copy(context, '10 / page', '10 / sayfa')),
-              ],
-            ),
-          ),
-        ],
+              footer,
+            ],
+          );
+        },
       ),
     );
   }
@@ -1037,12 +993,8 @@ class _GoalRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = submission.state.toUpperCase();
-    final completed =
-        state == 'COMPLETED' ||
-        state == 'SUCCEEDED' ||
-        state == 'FINISHED';
-    final active =
-        state == 'RUNNING' ||
+    final completed = state == 'COMPLETED' || state == 'SUCCEEDED' || state == 'FINISHED';
+    final active = state == 'RUNNING' ||
         state == 'PENDING' ||
         state == 'QUEUED' ||
         state == 'ADMITTED';
@@ -1050,8 +1002,8 @@ class _GoalRow extends StatelessWidget {
     final statusColor = completed
         ? IlaiosTheme.success
         : active
-        ? IlaiosTheme.coreBlue
-        : Theme.of(context).colorScheme.outline;
+            ? IlaiosTheme.coreBlue
+            : Theme.of(context).colorScheme.outline;
 
     return Container(
       height: 56,
@@ -1059,9 +1011,7 @@ class _GoalRow extends StatelessWidget {
       decoration: BoxDecoration(
         color: IlaiosTheme.coreBlue.withValues(alpha: .045),
         border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
+          bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
         ),
       ),
       child: Row(
@@ -1093,10 +1043,7 @@ class _GoalRow extends StatelessWidget {
                         objective,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                          fontSize: 10.2,
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: const TextStyle(fontSize: 10.2, fontWeight: FontWeight.w600),
                       ),
                       const SizedBox(height: 2),
                       Text(
@@ -1105,9 +1052,7 @@ class _GoalRow extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 8.2,
-                          color: Theme.of(
-                            context,
-                          ).colorScheme.onSurfaceVariant,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -1142,9 +1087,7 @@ class _GoalRow extends StatelessWidget {
                           value: progress,
                           minHeight: 4,
                           borderRadius: BorderRadius.circular(4),
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.surfaceContainerHighest,
+                          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
                         ),
                       ),
                       const SizedBox(width: 8),
@@ -1159,14 +1102,8 @@ class _GoalRow extends StatelessWidget {
               child: _Pill(label: submission.state, color: statusColor),
             ),
           ),
-          const Expanded(
-            flex: 12,
-            child: Text('—', style: TextStyle(fontSize: 9.2)),
-          ),
-          const Expanded(
-            flex: 10,
-            child: Text('—', style: TextStyle(fontSize: 9.2)),
-          ),
+          const Expanded(flex: 12, child: Text('—', style: TextStyle(fontSize: 9.2))),
+          const Expanded(flex: 10, child: Text('—', style: TextStyle(fontSize: 9.2))),
         ],
       ),
     );
@@ -1198,10 +1135,7 @@ class _SelectedGoal extends StatelessWidget {
               children: [
                 Text(
                   _copy(context, 'Selected Goal', 'Seçili Hedef'),
-                  style: const TextStyle(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w700,
-                  ),
+                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700),
                 ),
                 const SizedBox(height: 12),
                 Row(
@@ -1228,10 +1162,7 @@ class _SelectedGoal extends StatelessWidget {
                             objective ?? submission!.goalId,
                             maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w700,
-                            ),
+                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
                           ),
                           const SizedBox(height: 3),
                           Text(
@@ -1240,35 +1171,21 @@ class _SelectedGoal extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               fontSize: 8.5,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.onSurfaceVariant,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    _Pill(
-                      label: submission!.state,
-                      color: IlaiosTheme.success,
-                    ),
+                    _Pill(label: submission!.state, color: IlaiosTheme.success),
                   ],
                 ),
                 const SizedBox(height: 12),
-                Divider(
-                  height: 1,
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                ),
+                Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
                 const SizedBox(height: 10),
-                _DetailRow(
-                  label: _copy(context, 'Owner', 'Sahip'),
-                  value: owner,
-                ),
+                _DetailRow(label: _copy(context, 'Owner', 'Sahip'), value: owner),
                 const SizedBox(height: 7),
-                _DetailRow(
-                  label: _copy(context, 'Job', 'İş'),
-                  value: submission!.jobId,
-                ),
+                _DetailRow(label: _copy(context, 'Job', 'İş'), value: submission!.jobId),
                 const SizedBox(height: 10),
                 Text(
                   _copy(
@@ -1310,10 +1227,7 @@ class _DetailRow extends StatelessWidget {
           value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: const TextStyle(
-            fontSize: 9.1,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 9.1, fontWeight: FontWeight.w600),
         ),
       ),
     ],
@@ -1380,42 +1294,27 @@ class _SubmissionStatus extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
       decoration: BoxDecoration(
         color: IlaiosTheme.success.withValues(alpha: .08),
-        border: Border.all(
-          color: IlaiosTheme.success.withValues(alpha: .24),
-        ),
+        border: Border.all(color: IlaiosTheme.success.withValues(alpha: .24)),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Row(
         children: [
-          const Icon(
-            Icons.verified_user_outlined,
-            size: 16,
-            color: IlaiosTheme.success,
-          ),
+          const Icon(Icons.verified_user_outlined, size: 16, color: IlaiosTheme.success),
           const SizedBox(width: 8),
           Text(
             'Goal: ${value.goalId}',
-            style: const TextStyle(
-              fontSize: 8.8,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 8.8, fontWeight: FontWeight.w600),
           ),
           const SizedBox(width: 14),
           Text(
             'Job: ${value.jobId}',
-            style: const TextStyle(
-              fontSize: 8.8,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 8.8, fontWeight: FontWeight.w600),
           ),
           const SizedBox(width: 14),
           Text(
             lifecycleLabel,
             key: const Key('authoritative-lifecycle-state'),
-            style: const TextStyle(
-              fontSize: 8.8,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 8.8, fontWeight: FontWeight.w600),
           ),
           const SizedBox(width: 14),
           Expanded(
@@ -1439,10 +1338,7 @@ class _SubmissionStatus extends StatelessWidget {
   }
 }
 
-String _lifecycleLabel(
-  BuildContext context,
-  GovernedLifecycleState state,
-) => switch (state) {
+String _lifecycleLabel(BuildContext context, GovernedLifecycleState state) => switch (state) {
   GovernedLifecycleState.pendingApproval => _copy(
     context,
     'Lifecycle: Pending approval',
@@ -1501,11 +1397,7 @@ class _Pill extends StatelessWidget {
       label,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        fontSize: 7.8,
-        fontWeight: FontWeight.w700,
-        color: color,
-      ),
+      style: TextStyle(fontSize: 7.8, fontWeight: FontWeight.w700, color: color),
     ),
   );
 }
@@ -1522,14 +1414,10 @@ class _PageBox extends StatelessWidget {
     alignment: Alignment.center,
     padding: const EdgeInsets.symmetric(horizontal: 8),
     decoration: BoxDecoration(
-      color: selected
-          ? IlaiosTheme.coreBlue.withValues(alpha: .10)
-          : Colors.transparent,
+      color: selected ? IlaiosTheme.coreBlue.withValues(alpha: .10) : Colors.transparent,
       borderRadius: BorderRadius.circular(4),
       border: Border.all(
-        color: selected
-            ? IlaiosTheme.coreBlue
-            : Theme.of(context).colorScheme.outlineVariant,
+        color: selected ? IlaiosTheme.coreBlue : Theme.of(context).colorScheme.outlineVariant,
       ),
     ),
     child: Text(
@@ -1539,26 +1427,20 @@ class _PageBox extends StatelessWidget {
   );
 }
 
-BoxDecoration _cardDecoration(BuildContext context, {double radius = 8}) =>
-    BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(radius),
-      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-    );
+BoxDecoration _cardDecoration(BuildContext context, {double radius = 8}) => BoxDecoration(
+  color: Theme.of(context).colorScheme.surfaceContainerLowest,
+  borderRadius: BorderRadius.circular(radius),
+  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+);
 
 String? _displayEvent(BuildContext context, String? raw) {
   final value = raw?.trim();
-  if (value == null || value.isEmpty) {
-    return null;
-  }
-  if (value != 'job.updated') {
-    return value;
-  }
+  if (value == null || value.isEmpty) return null;
+  if (value != 'job.updated') return value;
   return _copy(context, 'Job update', 'İş güncellemesi');
 }
 
 bool _isTr(BuildContext context) =>
     IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
 
-String _copy(BuildContext context, String en, String tr) =>
-    _isTr(context) ? tr : en;
+String _copy(BuildContext context, String en, String tr) => _isTr(context) ? tr : en;
