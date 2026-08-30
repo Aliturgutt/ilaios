@@ -1,6 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import ThemedDiagram from "./ThemedDiagram";
+import ProductExperience from "./ProductExperience";
 
 type Locale = "en" | "tr";
 type FactoryStatus = "preview" | "development";
@@ -134,7 +134,10 @@ export default function UseILAIOSPage({ locale }: { locale: Locale }) {
 
     <section className="section"><div className="shell">
       <div className="section-heading"><div><div className="eyebrow">{c.demoEyebrow}</div><h2>{c.demoTitle}</h2></div><p>{c.demoCaption}</p></div>
-      <figure className="workflow-concept"><Image src="/visuals/ilaios-concept.avif" alt={locale === "tr" ? "ILAIOS ürün arayüzünde prompt, plan, yürütme, doğrulama ve teslim adımlarını gösteren statik konsept" : "Static ILAIOS product interface concept showing prompt, plan, execution, validation and delivery steps"} width={800} height={310} sizes="(max-width: 760px) 100vw, 1005px" /><figcaption>{c.demoCaption}</figcaption></figure>
+      <div className="workflow-concept product-flow-live">
+        <ProductExperience locale={locale} />
+        <p className="workflow-concept-note">{c.demoCaption}</p>
+      </div>
     </div></section>
 
     <section className="section surface-section"><div className="shell split-copy"><div><div className="eyebrow">{c.boundaryEyebrow}</div><h2>{c.boundaryTitle}</h2></div><div><p className="lead small">{c.boundaryText}</p></div></div></section>
