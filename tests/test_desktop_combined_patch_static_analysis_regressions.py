@@ -7,6 +7,7 @@ import sys
 ROOT = Path(__file__).resolve().parents[1]
 PATCH_SCRIPT = ROOT / "tools" / "desktop" / "apply_combined_typography_reference_patch.py"
 NORMALIZER = ROOT / "tools" / "desktop" / "normalize_combined_typography.py"
+EVIDENCE_COLLECTOR = ROOT / "tools" / "desktop" / "collect_v4_screenshot_evidence.ps1"
 PATCH_INPUTS = (
     "apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart",
     "apps/desktop/lib/features/deliveries/deliveries_view.dart",
@@ -99,3 +100,11 @@ def test_v4_typography_stays_scoped_without_global_shell_zoom(tmp_path: Path) ->
     assert "TextScaler.linear(desktopTextScale)" not in shell
     assert "textScaler: const TextScaler.linear(.95)" in shell
     assert "key: const Key('reference-outputs-page')" in deliveries
+
+
+def test_v4_png_dimension_decoder_widens_bytes_before_big_endian_shift() -> None:
+    collector = EVIDENCE_COLLECTOR.read_text(encoding="utf-8")
+    assert "([uint32]$bytes[16] -shl 24)" in collector
+    assert "([uint32]$bytes[18] -shl 8)" in collector
+    assert "([uint32]$bytes[20] -shl 24)" in collector
+    assert "([uint32]$bytes[22] -shl 8)" in collector
