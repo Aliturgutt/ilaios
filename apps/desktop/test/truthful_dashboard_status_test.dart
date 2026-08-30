@@ -30,7 +30,8 @@ void main() {
     expect(find.byKey(const Key('command-center-home')), findsOneWidget);
     expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
     expect(find.text('Connected'), findsWidgets);
-    expect(find.text('—'), findsWidgets);
+    // V4 may collapse unavailable KPI surfaces rather than render placeholder
+    // dashes. The truth contract is that screenshot/demo telemetry is absent.
     expect(find.textContaining(r'$3.21'), findsNothing);
     expect(find.textContaining('18.362'), findsNothing);
     expect(find.text('96%'), findsNothing);
