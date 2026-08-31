@@ -8,6 +8,7 @@ receipt after the required documentary/reels proof dimensions are present.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from hashlib import sha256
 from pathlib import Path
 
 
@@ -82,6 +83,12 @@ class GoldenDeliveryReceipt:
             raise GoldenDeliveryEvidenceError(
                 "final_mp4_path must reference a non-empty finished artifact"
             )
+        try:
+            digest = sha256(artifact.read_bytes()).hexdigest()
+        except OSError as exc:
+            raise GoldenDeliveryEvidenceError("final MP4 artifact is unreadable") from exc
+        if digest != self.final_mp4_sha256:
+            raise GoldenDeliveryEvidenceError("final MP4 checksum does not match artifact bytes")
 
 
 def _require_non_blank(name: str, value: str) -> None:
