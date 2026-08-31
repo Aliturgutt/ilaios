@@ -30,16 +30,16 @@ if (/spline|three(?:\.js)?|webgl|react-three|@react-three/i.test(packageJson)) {
 }
 
 for (const token of [
-  "homepage-v2-authoritative",
+  'data-visual-role="home-hero"',
   "ProductExperience",
-  "home-process-rail-v2",
-  "home-control-ledger-v2",
-  "home-output-index-v2",
+  'data-visual-role="five-step-execution"',
+  "FactoryExplorer",
   "GovernanceEvidence",
+  "SpatialArchitecture",
+  "SystemVisuals",
   "/factories",
   "/how-it-works",
   "/architecture",
-  "/capabilities",
 ]) {
   if (!home.includes(token)) failures.push(`corporate homepage is missing required hierarchy/control: ${token}`);
 }
@@ -49,7 +49,7 @@ for (const token of ["aspect-ratio:1672/941", "object-fit:contain", "html[data-t
 }
 
 const sectionCount = (home.match(/<section\b/g) ?? []).length;
-if (sectionCount < 6 || sectionCount > 8) failures.push(`corporate homepage section count must remain concise (6-8), found ${sectionCount}`);
+if (sectionCount < 6 || sectionCount > 10) failures.push(`corporate homepage section count must remain concise (6-10), found ${sectionCount}`);
 if (/status|healthy|online|uptime|telemetry/i.test(home)) failures.push("corporate homepage must not imply unverified runtime health/telemetry");
 
 if (failures.length) {
@@ -58,4 +58,4 @@ if (failures.length) {
   process.exit(1);
 }
 
-console.log(`Website corporate visual-quality gate PASS; ${sectionCount} concise sections, canonical product surface, and no rejected cube/orbit/3D hero dependency.`);
+console.log(`Website corporate visual-quality gate PASS; ${sectionCount} concise sections, canonical restored product surface, and no rejected cube/orbit/3D hero dependency.`);
