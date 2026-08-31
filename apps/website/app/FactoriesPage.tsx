@@ -1,4 +1,5 @@
 import Link from "next/link";
+import CanonicalSystemDetail from "./CanonicalSystemDetail";
 import FactoryExplorer from "./FactoryExplorer";
 import ThemedDiagram from "./ThemedDiagram";
 
@@ -13,13 +14,15 @@ const copy = {
     visualTitle: "ILAIOS coordinates the work needed for the outcome.",
     visualLead: "A request can use one or more production areas while the user stays focused on the result rather than provider, model or tool configuration.",
     visualCaption: "Illustrative production map showing one goal resolving across specialized outcome paths.",
-    combineEyebrow: "Combined outcomes",
+    combineEyebrow: "Cross-factory composition",
     combineTitle: "A single launch can require more than one kind of work.",
     combineLead: "For example, a product launch may require research, a website, software changes and media. ILAIOS is designed to coordinate the relevant work under the same control model.",
     combine: [["Research", "Understand the market and source material."], ["Website", "Create the customer-facing product surface."], ["Software / App", "Implement the bounded product work that is needed."], ["Video", "Create supporting media from approved material."], ["Verify", "Apply the checks that belong to each deliverable."]],
     sharedEyebrow: "Shared project context",
     sharedTitle: "Production areas can use the same authorized project knowledge.",
     sharedLead: "That keeps context consistent across deliverables without turning project knowledge into another product surface or a separate authority.",
+    assuranceTitle: "Shared knowledge remains governed context, not another production authority.",
+    assuranceLead: "The technical assurance view below keeps authorization and provenance boundaries explicit without putting infrastructure jargon in the primary marketing flow.",
     closeTitle: "Choose the outcome you want to explore.",
     closePrimary: "See all capabilities",
     closeSecondary: "How ILAIOS works",
@@ -32,13 +35,15 @@ const copy = {
     visualTitle: "ILAIOS sonuç için gereken işi koordine eder.",
     visualLead: "Bir istek bir veya birden fazla üretim alanını kullanabilir; kullanıcı sağlayıcı, model veya araç ayarı yerine sonuca odaklanır.",
     visualCaption: "Tek bir hedefin uzmanlaşmış sonuç yollarına ayrılmasını gösteren açıklayıcı üretim haritası.",
-    combineEyebrow: "Birleşik sonuçlar",
+    combineEyebrow: "Üretim alanları arası bileşim",
     combineTitle: "Tek bir lansman birden fazla iş türü gerektirebilir.",
     combineLead: "Örneğin bir ürün lansmanı araştırma, web sitesi, yazılım değişiklikleri ve medya gerektirebilir. ILAIOS ilgili işi aynı kontrol modeli altında koordine etmek üzere tasarlanmıştır.",
     combine: [["Araştırma", "Pazarı ve kaynak materyali anla."], ["Web sitesi", "Müşteriye açık ürün yüzeyini oluştur."], ["Yazılım / Uygulama", "Gereken sınırları belirli ürün işini uygula."], ["Video", "Onaylı materyalden destekleyici medya üret."], ["Doğrula", "Her teslimata ait kontrolleri uygula."]],
     sharedEyebrow: "Paylaşılan proje bağlamı",
     sharedTitle: "Üretim alanları aynı yetkili proje bilgisinden yararlanabilir.",
     sharedLead: "Bu, proje bilgisini ayrı bir ürün yüzeyine veya ikinci bir otoriteye dönüştürmeden teslimatlar arasındaki bağlamı tutarlı tutar.",
+    assuranceTitle: "Paylaşılan bilgi, yeni bir üretim yetkisi değil yönetilen bağlam olarak kalır.",
+    assuranceLead: "Aşağıdaki teknik güvence görünümü, ana pazarlama akışını altyapı jargonuyla doldurmadan yetki ve kaynak kökeni sınırlarını açık tutar.",
     closeTitle: "Keşfetmek istediğin sonucu seç.",
     closePrimary: "Tüm yetenekleri gör",
     closeSecondary: "ILAIOS nasıl çalışır?",
@@ -54,6 +59,7 @@ export default function FactoriesPage({ locale }: { locale: Locale }) {
     <section className="section"><div className="shell"><FactoryExplorer locale={locale} /></div></section>
     <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.combineEyebrow}</div><h2>{c.combineTitle}</h2></div><p>{c.combineLead}</p></div><div className="runtime-line">{c.combine.map(([title, detail], index) => <div key={title}><span>{String(index + 1).padStart(2, "0")}</span><strong>{title}</strong><small>{detail}</small></div>)}</div></div></section>
     <section className="section"><div className="shell architecture-story"><div className="architecture-story-copy"><div className="eyebrow">{c.sharedEyebrow}</div><h2>{c.sharedTitle}</h2><p>{c.sharedLead}</p></div></div></section>
-    <section className="section compact-section surface-section"><div className="shell compact-cta"><div><h2>{c.closeTitle}</h2></div><div className="actions"><Link className="button" href={`${base}/capabilities`}>{c.closePrimary}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.closeSecondary}</Link></div></div></section>
+    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><h2>{c.assuranceTitle}</h2></div><p>{c.assuranceLead}</p></div><CanonicalSystemDetail locale={locale} variant="knowledge" /></div></section>
+    <section className="section compact-section"><div className="shell compact-cta"><div><h2>{c.closeTitle}</h2></div><div className="actions"><Link className="button" href={`${base}/capabilities`}>{c.closePrimary}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.closeSecondary}</Link></div></div></section>
   </>;
 }
