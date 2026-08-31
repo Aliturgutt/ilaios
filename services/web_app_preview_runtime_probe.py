@@ -119,10 +119,10 @@ def probe_preview_runtime_boundary(
     # Validate before invoking even an injected transport. The transport may be the
     # incumbent governed egress adapter, but the observer must never authorize an
     # obviously local/private target on its behalf.
-    _validate_public_https_target(preview_url)
+    _validate_public_https_target(preview_url, resolve_dns=True)
     client = transport or UrllibPreviewHttpTransport()
     result = client.get(preview_url, timeout_seconds=timeout_seconds)
-    _validate_public_https_target(result.final_url)
+    _validate_public_https_target(result.final_url, resolve_dns=True)
     csp = _header(result.response_headers, "content-security-policy")
     return PreviewRuntimeBoundaryObservation(
         execution_id=execution_id,

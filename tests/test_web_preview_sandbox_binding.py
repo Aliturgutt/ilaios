@@ -25,7 +25,7 @@ from services.web_app_preview_sandbox_observer import (
 SOURCE_SHA256 = "a" * 64
 ARTIFACT_SHA256 = "b" * 64
 COMMIT_SHA = "c" * 40
-PREVIEW_ORIGIN = "https://preview-123.example.net"
+PREVIEW_ORIGIN = "https://93.184.216.34"
 
 
 class _Transport:
@@ -191,7 +191,7 @@ def test_probe_rejects_non_preview_receipt_before_network() -> None:
 def test_probe_rejects_cross_origin_redirect_after_exact_receipt_probe() -> None:
     transport = _Transport(
         PreviewHttpProbeResult(
-            final_url="https://evil.example.net",
+            final_url="https://8.8.8.8",
             response_headers={"Content-Security-Policy": "default-src 'none'"},
         )
     )
