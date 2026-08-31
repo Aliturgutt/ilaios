@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import socket
+from typing import Any
 
 import pytest
 
@@ -50,7 +51,12 @@ def _policy() -> ExecutionPolicy:
     return ExecutionPolicy(allowed_roots=frozenset({"generated-web"}), timeout_seconds=120)
 
 
-def test_probe_emits_observer_accepted_runtime_facts() -> None:
+def _public_dns(host: str, port: int, **kwargs: Any) -> list[tuple[Any, ...]]:
+    return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("93.184.216.34", port))]
+
+
+def test_probe_emits_observer_accepted_runtime_facts(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(preview_probe, "getaddrinfo", _public_dns)
     transport = _Transport(
         PreviewHttpProbeResult(
             final_url="https://preview.example.com",
@@ -78,7 +84,10 @@ def test_probe_emits_observer_accepted_runtime_facts() -> None:
     assert evidence.privileged_token_access is False
 
 
-def test_probe_missing_csp_fails_closed_in_canonical_observer() -> None:
+def test_probe_missing_csp_fails_closed_in_canonical_observer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(preview_probe, "getaddrinfo", _public_dns)
     runtime = probe_preview_runtime_boundary(
         preview_url="https://preview.example.com",
         execution_id="exec-1",
@@ -95,7 +104,10 @@ def test_probe_missing_csp_fails_closed_in_canonical_observer() -> None:
         observe_generated_preview_sandbox(runtime=runtime, policy=_policy())
 
 
-def test_probe_cross_origin_redirect_fails_closed_in_canonical_observer() -> None:
+def test_probe_cross_origin_redirect_fails_closed_in_canonical_observer(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(preview_probe, "getaddrinfo", _public_dns)
     runtime = probe_preview_runtime_boundary(
         preview_url="https://preview.example.com",
         execution_id="exec-1",
@@ -164,7 +176,10 @@ def test_probe_rejects_loopback_ipv6_target_before_transport() -> None:
     _assert_probe_rejects_non_public_target("https://[::1]")
 
 
-def test_probe_rejects_private_final_target_from_injected_transport() -> None:
+def test_probe_rejects_private_final_target_from_injected_transport(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(preview_probe, "getaddrinfo", _public_dns)
     transport = _Transport(
         PreviewHttpProbeResult(
             final_url="https://169.254.169.254/latest/meta-data",
