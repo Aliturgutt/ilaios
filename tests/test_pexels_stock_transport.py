@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from src.video_automation.pexels_stock_transport import PexelsStockHttpTransport
-from src.video_automation.stock_source_adapters import StockProvider, StockSourceError
+from src.video_automation.stock_source_adapters import (
+    StockProvider,
+    StockSearchResult,
+    StockSourceError,
+)
 
 
-def _search(transport: PexelsStockHttpTransport):
+def _search(transport: PexelsStockHttpTransport) -> StockSearchResult:
     return transport.search(
         provider=StockProvider.PEXELS,
         tenant_id="tenant-1",
@@ -17,7 +23,7 @@ def _search(transport: PexelsStockHttpTransport):
 
 
 def test_pexels_transport_binds_license_provenance_and_rate_limit() -> None:
-    def fetch_json(url: str, api_key: str):
+    def fetch_json(url: str, api_key: str) -> tuple[dict[str, Any], dict[str, str]]:
         assert url.startswith("https://api.pexels.com/v1/search?")
         assert api_key == "test-key"
         return (
@@ -52,7 +58,7 @@ def test_pexels_transport_binds_license_provenance_and_rate_limit() -> None:
 
 
 def test_pexels_transport_drops_candidate_without_required_provenance() -> None:
-    def fetch_json(_url: str, _api_key: str):
+    def fetch_json(_url: str, _api_key: str) -> tuple[dict[str, Any], dict[str, str]]:
         return ({"photos": [{"id": 42, "url": "https://www.pexels.com/photo/42/", "src": {"original": "https://images.pexels.com/42.jpeg"}}]}, {})
 
     result = _search(PexelsStockHttpTransport("test-key", fetch_json=fetch_json))
@@ -60,7 +66,7 @@ def test_pexels_transport_drops_candidate_without_required_provenance() -> None:
 
 
 def test_pexels_transport_fails_closed_on_zero_rate_limit_without_reset() -> None:
-    def fetch_json(_url: str, _api_key: str):
+    def fetch_json(_url: str, _api_key: str) -> tuple[dict[str, Any], dict[str, str]]:
         return ({"photos": []}, {"x-ratelimit-remaining": "0"})
 
     with pytest.raises(StockSourceError, match="rate-limit reset"):
