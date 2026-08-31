@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import socket
 from dataclasses import replace
 
 import pytest
 
+import services.web_app_preview_runtime_probe as preview_probe
 from services.integrations.web_delivery import WebDeploymentError, WebDeploymentReceipt
 from services.integrations.web_preview_sandbox_binding import (
     PreviewIsolationAttestation,
@@ -26,6 +28,17 @@ SOURCE_SHA256 = "a" * 64
 ARTIFACT_SHA256 = "b" * 64
 COMMIT_SHA = "c" * 40
 PREVIEW_ORIGIN = "https://preview-123.example.net"
+
+
+@pytest.fixture(autouse=True)
+def _stable_public_preview_dns(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        preview_probe,
+        "getaddrinfo",
+        lambda host, port, **kwargs: [
+            (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("93.184.216.34", port))
+        ],
+    )
 
 
 class _Transport:
