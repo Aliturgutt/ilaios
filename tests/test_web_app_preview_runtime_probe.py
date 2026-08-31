@@ -1,7 +1,10 @@
 from __future__ import annotations
 
+import socket
+
 import pytest
 
+import services.web_app_preview_runtime_probe as preview_probe
 from services.software_factory import ExecutionPolicy, SoftwareFactoryError
 from services.web_app_preview_runtime_probe import (
     PreviewHttpProbeResult,
@@ -185,3 +188,28 @@ def test_probe_rejects_private_final_target_from_injected_transport() -> None:
 def test_default_transport_rejects_unbounded_timeout_before_network() -> None:
     with pytest.raises(SoftwareFactoryError, match="timeout"):
         UrllibPreviewHttpTransport().get("https://preview.example.com", timeout_seconds=61)
+
+
+def test_default_transport_rejects_hostname_resolving_to_private_ip(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        preview_probe,
+        "getaddrinfo",
+        lambda *args, **kwargs: [
+            (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("10.0.0.7", 443))
+        ],
+    )
+    with pytest.raises(SoftwareFactoryError, match="DNS resolves to a non-public address"):
+        UrllibPreviewHttpTransport().get("https://preview.example.com", timeout_seconds=5)
+
+
+def test_default_transport_rejects_mixed_public_private_dns_answers(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(
+        preview_probe,
+        "getaddrinfo",
+        lambda *args, **kwargs: [
+            (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("93.184.216.34", 443)),
+            (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("169.254.169.254", 443)),
+        ],
+    )
+    with pytest.raises(SoftwareFactoryError, match="DNS resolves to a non-public address"):
+        UrllibPreviewHttpTransport().get("https://preview.example.com", timeout_seconds=5)
