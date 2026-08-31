@@ -82,30 +82,61 @@ def visible_accent_ratio(page: Page) -> float:
     )
 
 
-def check_route(page: Page, path: str, viewport: dict[str, int], findings: list[str], evidence: list[dict[str, Any]]) -> None:
-    page.set_viewport_size(viewport)
-    response = page.goto(f"{BASE_URL}{path}", wait_until="domcontentloaded", timeout=30_000)
-    page.wait_for_timeout(250)
-    label = f"{path} {viewport['width']}x{viewport['height']}"
-    if response is None or response.status >= 400:
-        findings.append(f"{label}: navigation failed")
-        return
+def settle_images(page: Page) -> None:
+    page.locator("img").evaluate_all(
+        """async els => {
+          for (const el of els) {
+            const s = getComputedStyle(el);
+            const r = el.getBoundingClientRect();
+            if (s.display === 'none' || s.visibility === 'hidden' || r.width <= 0 || r.height <= 0) continue;
+            el.scrollIntoView({block: 'center', inline: 'nearest'});
+            if (!el.complete) {
+              await Promise.race([
+                new Promise(resolve => {
+                  const done = () => resolve();
+                  el.addEventListener('load', done, {once: true});
+                  el.addEventListener('error', done, {once: true});
+                }),
+                new Promise(resolve => setTimeout(resolve, 2500)),
+              ]);
+            }
+            if (typeof el.decode === 'function' && el.complete && el.naturalWidth > 0) {
+              try { await el.decode(); } catch {}
+            }
+          }
+          window.scrollTo(0, 0);
+        }"""
+    )
 
-    h1 = computed(page, "main h1") if page.locator("main h1").count() else None
-    sections = all_section_metrics(page)
-    footer = computed(page, "footer") if page.locator("footer").count() else None
-    accent_ratio = visible_accent_ratio(page)
-    broken_images = page.locator("img").evaluate_all(
+
+def broken_images(page: Page) -> list[dict[str, str]]:
+    settle_images(page)
+    return page.locator("img").evaluate_all(
         """els => els
           .filter((el) => {
             const s = getComputedStyle(el);
             const r = el.getBoundingClientRect();
             return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0 &&
-              (!el.complete || el.naturalWidth === 0 || el.naturalHeight === 0);
+              el.complete && (el.naturalWidth === 0 || el.naturalHeight === 0);
           })
           .map((el) => ({src: el.currentSrc || el.src, alt: el.alt || ''}))
           .slice(0, 20)"""
     )
+
+
+def check_route(page: Page, path: str, viewport: dict[str, int], findings: list[str], evidence: list[dict[str, Any]]) -> None:
+    page.set_viewport_size(viewport)
+    response = page.goto(f"{BASE_URL}{path}", wait_until="networkidle", timeout=30_000)
+    label = f"{path} {viewport['width']}x{viewport['height']}"
+    if response is None or response.status >= 400:
+        findings.append(f"{label}: navigation failed")
+        return
+
+    rendered_broken_images = broken_images(page)
+    h1 = computed(page, "main h1") if page.locator("main h1").count() else None
+    sections = all_section_metrics(page)
+    footer = computed(page, "footer") if page.locator("footer").count() else None
+    accent_ratio = visible_accent_ratio(page)
 
     if h1:
         h1_size = px(str(h1["fontSize"]))
@@ -124,30 +155,29 @@ def check_route(page: Page, path: str, viewport: dict[str, int], findings: list[
         findings.append(f"{label}: desktop footer too tall ({footer['height']:.0f}px)")
     if accent_ratio > 0.12:
         findings.append(f"{label}: cyan/accent text usage too high ({accent_ratio:.1%})")
-    if broken_images:
-        findings.append(f"{label}: broken rendered images {broken_images[:3]}")
+    if rendered_broken_images:
+        findings.append(f"{label}: broken rendered images {rendered_broken_images[:3]}")
 
     if path in {"/about", "/tr/about", "/contact", "/tr/contact"} and viewport["width"] >= 900:
         first_two = page.locator("main section").evaluate_all("els => els.slice(0,2).map(el => el.getBoundingClientRect().bottom)")
         if first_two and first_two[0] > 520:
             findings.append(f"{label}: opening section consumes too much of the first viewport ({first_two[0]:.0f}px)")
 
-    evidence.append({"path": path, "viewport": viewport, "h1": h1, "sections": sections, "footer": footer, "accentRatio": accent_ratio, "brokenImages": broken_images})
+    evidence.append({"path": path, "viewport": viewport, "h1": h1, "sections": sections, "footer": footer, "accentRatio": accent_ratio, "brokenImages": rendered_broken_images})
 
 
 def check_home_composition(page: Page, findings: list[str]) -> None:
     page.set_viewport_size(DESKTOP)
-    page.goto(BASE_URL, wait_until="domcontentloaded", timeout=30_000)
-    page.wait_for_timeout(250)
+    page.goto(BASE_URL, wait_until="networkidle", timeout=30_000)
 
-    authoritative = page.locator('[data-visual-role="homepage-v2-authoritative"]')
+    authoritative = page.locator('section.home-hero[data-visual-role="home-hero"]')
     legacy = page.locator('.v2-recovery-home')
     if authoritative.count() != 1 or not authoritative.is_visible():
-        findings.append("desktop home: authoritative canonical homepage marker is missing")
+        findings.append("desktop home: restored canonical home hero is missing")
     if legacy.count() != 0:
         findings.append("desktop home: legacy WebsiteV2HomeRecovery is still rendered")
 
-    gradients = page.locator(".homepage-v2 *").evaluate_all(
+    gradients = page.locator("main#main-content *").evaluate_all(
         """els => els
           .filter((el) => {
             const s = getComputedStyle(el);
@@ -155,7 +185,7 @@ def check_home_composition(page: Page, findings: list[str]) -> None:
           })
           .map((el) => ({tag: el.tagName.toLowerCase(), cls: typeof el.className === 'string' ? el.className.slice(0, 100) : ''}))
           .slice(0, 20)"""
-    ) if page.locator(".homepage-v2").count() else []
+    )
     if gradients:
         findings.append(f"desktop home: decorative gradients remain {gradients[:3]}")
 
@@ -174,8 +204,7 @@ def check_home_composition(page: Page, findings: list[str]) -> None:
         findings.append("desktop home: five execution nodes are not aligned on one horizontal rail")
 
     page.set_viewport_size(MOBILE)
-    page.goto(BASE_URL, wait_until="domcontentloaded", timeout=30_000)
-    page.wait_for_timeout(200)
+    page.goto(BASE_URL, wait_until="networkidle", timeout=30_000)
     steps = page.locator('[data-visual-role="five-step-execution"] article')
     ys = [(steps.nth(i).bounding_box() or {"y": -1})["y"] for i in range(steps.count())]
     if len(ys) == 5 and not all(ys[i] < ys[i + 1] for i in range(4)):
@@ -184,8 +213,7 @@ def check_home_composition(page: Page, findings: list[str]) -> None:
 
 def check_interactions(page: Page, findings: list[str]) -> None:
     page.set_viewport_size(DESKTOP)
-    page.goto(BASE_URL, wait_until="domcontentloaded", timeout=30_000)
-    page.wait_for_timeout(200)
+    page.goto(BASE_URL, wait_until="networkidle", timeout=30_000)
 
     tabs = page.locator('.product-mode-tabs button')
     if tabs.count() < 4:
@@ -205,8 +233,7 @@ def check_interactions(page: Page, findings: list[str]) -> None:
         if active.count() != 1:
             findings.append("home interaction: workflow progression has no unique active state")
 
-    page.goto(f"{BASE_URL}/factories", wait_until="domcontentloaded", timeout=30_000)
-    page.wait_for_timeout(200)
+    page.goto(f"{BASE_URL}/factories", wait_until="networkidle", timeout=30_000)
     factory_tabs = page.locator('.factory-index button')
     if factory_tabs.count() < 9:
         findings.append("factory interaction: canonical factory explorer is incomplete")
@@ -218,8 +245,7 @@ def check_interactions(page: Page, findings: list[str]) -> None:
         if first == second:
             findings.append("factory interaction: hover did not update result preview")
 
-    page.goto(f"{BASE_URL}/architecture", wait_until="domcontentloaded", timeout=30_000)
-    page.wait_for_timeout(200)
+    page.goto(f"{BASE_URL}/architecture", wait_until="networkidle", timeout=30_000)
     spatial = page.locator('[data-visual-role="architecture-spatial-map"] .spatial-stage')
     if spatial.count() != 1:
         findings.append("architecture interaction: spatial architecture map missing")
@@ -246,8 +272,8 @@ def main() -> int:
 
         for path, name in [("/", "visual-home"), ("/factories", "visual-factories"), ("/architecture", "visual-architecture"), ("/about", "visual-about"), ("/contact", "visual-contact")]:
             page.set_viewport_size(DESKTOP)
-            page.goto(f"{BASE_URL}{path}", wait_until="domcontentloaded", timeout=30_000)
-            page.wait_for_timeout(200)
+            page.goto(f"{BASE_URL}{path}", wait_until="networkidle", timeout=30_000)
+            settle_images(page)
             page.screenshot(path=str(ARTIFACT_DIR / f"{name}-1440x900.png"), full_page=True)
 
         context.close()
