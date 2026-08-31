@@ -110,6 +110,14 @@ void main() {
     }
   });
 
+  test('popup labels stay readable while using bounded desktop spacing', () {
+    for (final theme in <ThemeData>[IlaiosTheme.dark, IlaiosTheme.light]) {
+      final popupStyle = theme.popupMenuTheme.textStyle!;
+      expect(popupStyle.fontSize, greaterThanOrEqualTo(13.5));
+      expect(popupStyle.letterSpacing, lessThanOrEqualTo(-1.2));
+    }
+  });
+
   test('light mode readable text colors meet WCAG AA on primary surfaces', () {
     expect(
       _contrastRatio(IlaiosTheme.lightText, IlaiosTheme.lightSurface),
