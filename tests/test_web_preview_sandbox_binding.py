@@ -232,9 +232,18 @@ def test_rejects_cross_deployment_isolation_attestation_before_network() -> None
 
 def test_rejects_cross_lineage_isolation_attestations() -> None:
     cases = (
-        (replace(_attestation(), provider="other.provider"), "isolation provider does not match"),
-        (replace(_attestation(), source_commit_sha="d" * 40), "isolation source commit does not match"),
-        (replace(_attestation(), artifact_sha256="d" * 64), "isolation artifact does not match"),
+        (
+            replace(_attestation(), provider="other.provider"),
+            "isolation provider does not match",
+        ),
+        (
+            replace(_attestation(), source_commit_sha="d" * 40),
+            "isolation source commit does not match",
+        ),
+        (
+            replace(_attestation(), artifact_sha256="d" * 64),
+            "isolation artifact does not match",
+        ),
         (
             replace(_attestation(), preview_origin="https://other-preview.example.net"),
             "isolation origin does not match",
