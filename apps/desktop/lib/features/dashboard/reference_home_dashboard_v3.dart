@@ -514,7 +514,7 @@ class _FocusPanel extends StatelessWidget {
           : ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 6),
               itemCount: items.length,
-              separatorBuilder: (_, __) => Divider(
+              separatorBuilder: (_, _) => Divider(
                 height: 1,
                 color: Theme.of(context).colorScheme.outlineVariant,
               ),
@@ -631,7 +631,7 @@ class _AttentionPanel extends StatelessWidget {
           : ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 6),
               itemCount: items.length,
-              separatorBuilder: (_, __) => Divider(
+              separatorBuilder: (_, _) => Divider(
                 height: 1,
                 color: Theme.of(context).colorScheme.outlineVariant,
               ),
@@ -723,7 +723,7 @@ class _OutputsPanel extends StatelessWidget {
           : ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 6),
               itemCount: records.length,
-              separatorBuilder: (_, __) => Divider(
+              separatorBuilder: (_, _) => Divider(
                 height: 1,
                 color: Theme.of(context).colorScheme.outlineVariant,
               ),
@@ -804,7 +804,7 @@ class _CompletedPanel extends StatelessWidget {
           : ListView.separated(
               padding: const EdgeInsets.symmetric(vertical: 6),
               itemCount: records.length,
-              separatorBuilder: (_, __) => Divider(
+              separatorBuilder: (_, _) => Divider(
                 height: 1,
                 color: Theme.of(context).colorScheme.outlineVariant,
               ),
