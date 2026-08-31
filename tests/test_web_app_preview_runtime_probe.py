@@ -15,7 +15,7 @@ from services.web_app_preview_runtime_probe import (
 from services.web_app_preview_sandbox_observer import observe_generated_preview_sandbox
 
 
-@pytest.fixture(autouse=True)  # type: ignore[misc]
+@pytest.fixture(autouse=True)  # type: ignore[untyped-decorator]
 def _stable_public_preview_dns(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep injected-transport unit tests deterministic and network-free."""
     monkeypatch.setattr(
