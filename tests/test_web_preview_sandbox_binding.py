@@ -30,7 +30,7 @@ COMMIT_SHA = "c" * 40
 PREVIEW_ORIGIN = "https://preview-123.example.net"
 
 
-@pytest.fixture(autouse=True)  # type: ignore[misc]
+@pytest.fixture(autouse=True)  # type: ignore[untyped-decorator]
 def _stable_public_preview_dns(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(
         preview_probe,
