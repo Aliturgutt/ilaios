@@ -76,12 +76,11 @@ requireText(layout, "canonical-detail.css", "canonical documentation visual laye
 requireText(homeEntry, "HomePage", "English canonical homepage entrypoint");
 requireText(homeEntryTr, "HomePage", "Turkish canonical homepage entrypoint");
 if (homeEntry.includes("WebsiteV2HomeRecovery") || homeEntryTr.includes("WebsiteV2HomeRecovery")) failures.push("homepage entrypoint: legacy WebsiteV2HomeRecovery still active");
-requireText(home, 'data-visual-role="home-hero"', "restored authoritative homepage identity");
+requireText(home, "homepage-v2-authoritative", "authoritative homepage identity");
 requireText(home, "ProductExperience", "homepage product visibility");
-requireText(home, 'data-visual-role="five-step-execution"', "five-step execution composition");
-requireText(home, "FactoryExplorer", "homepage factory exploration");
-requireText(home, "SystemVisuals", "homepage governed system explanation");
-requireText(home, "SpatialArchitecture", "homepage architecture explanation");
+requireText(home, "home-process-rail-v2", "five-step execution composition");
+requireText(home, "home-output-index-v2", "restrained production index");
+requireText(home, "home-control-ledger-v2", "governed control composition");
 requireText(home, "GovernanceEvidence", "homepage evidence credibility");
 requireText(product, "Planning", "interactive product state progression");
 requireText(product, "Building", "interactive product state progression");
