@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
-from src.video_automation.stock_source_adapters import StockProvider, StockSourceError
+from src.video_automation.stock_source_adapters import (
+    StockProvider,
+    StockSearchResult,
+    StockSourceError,
+)
 from src.video_automation.unsplash_stock_transport import UnsplashStockHttpTransport
 
 
-def _search(transport: UnsplashStockHttpTransport):
+def _search(transport: UnsplashStockHttpTransport) -> StockSearchResult:
     return transport.search(
         provider=StockProvider.UNSPLASH,
         tenant_id="tenant-1",
@@ -17,7 +23,7 @@ def _search(transport: UnsplashStockHttpTransport):
 
 
 def test_unsplash_transport_binds_attribution_provenance_and_rate_limit() -> None:
-    def fetch_json(url: str, access_key: str):
+    def fetch_json(url: str, access_key: str) -> tuple[dict[str, Any], dict[str, str]]:
         assert url.startswith("https://api.unsplash.com/search/photos?")
         assert access_key == "test-key"
         return (
@@ -52,7 +58,7 @@ def test_unsplash_transport_binds_attribution_provenance_and_rate_limit() -> Non
 
 
 def test_unsplash_transport_drops_candidate_without_creator() -> None:
-    def fetch_json(_url: str, _access_key: str):
+    def fetch_json(_url: str, _access_key: str) -> tuple[dict[str, Any], dict[str, str]]:
         return ({"results": [{"id": "abc", "links": {"html": "https://unsplash.com/photos/abc"}, "urls": {"full": "https://images.unsplash.com/abc"}, "user": {}}]}, {})
 
     result = _search(UnsplashStockHttpTransport("test-key", fetch_json=fetch_json))
@@ -60,7 +66,7 @@ def test_unsplash_transport_drops_candidate_without_creator() -> None:
 
 
 def test_unsplash_transport_fails_closed_on_zero_rate_limit_without_reset() -> None:
-    def fetch_json(_url: str, _access_key: str):
+    def fetch_json(_url: str, _access_key: str) -> tuple[dict[str, Any], dict[str, str]]:
         return ({"results": []}, {"x-ratelimit-remaining": "0"})
 
     with pytest.raises(StockSourceError, match="rate-limit reset"):
