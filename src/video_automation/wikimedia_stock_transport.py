@@ -7,7 +7,7 @@ import json
 import re
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -67,7 +67,10 @@ class WikimediaStockHttpTransport:
             "iiextmetadatafilter": "Artist|LicenseShortName|LicenseUrl|UsageTerms",
         }
         payload = self._fetch_json(f"{_API_URL}?{urlencode(params)}")
-        pages = payload.get("query", {}).get("pages", [])
+        query_payload = payload.get("query")
+        if not isinstance(query_payload, dict):
+            raise StockSourceError("Wikimedia response query must be an object")
+        pages = query_payload.get("pages", [])
         if not isinstance(pages, list):
             raise StockSourceError("Wikimedia response pages must be a list")
 
@@ -175,9 +178,9 @@ def _fetch_json(url: str) -> dict[str, Any]:
     request = Request(url, headers={"User-Agent": _USER_AGENT, "Accept": "application/json"})
     try:
         with urlopen(request, timeout=15) as response:  # noqa: S310 - fixed HTTPS host
-            payload = json.load(response)
+            raw_payload: object = json.load(response)
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
         raise StockSourceError("Wikimedia HTTP request failed closed") from exc
-    if not isinstance(payload, dict):
+    if not isinstance(raw_payload, dict):
         raise StockSourceError("Wikimedia response must be a JSON object")
-    return payload
+    return cast(dict[str, Any], raw_payload)
