@@ -914,8 +914,9 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+        child: SingleChildScrollView(
+          primary: false,
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -924,13 +925,13 @@ class _EmptyState extends StatelessWidget {
                 size: 24,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-              const SizedBox(height: 9),
+              const SizedBox(height: 5),
               Text(
                 title,
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 3),
               Text(
                 detail,
                 textAlign: TextAlign.center,
