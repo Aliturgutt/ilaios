@@ -136,11 +136,10 @@ def test_remotion_executor_fails_closed_without_runtime(tmp_path: Path) -> None:
         ).execute(request)
 
 
-@pytest.mark.skipif(
-    os.getenv("ILAIOS_RUN_REMOTION_E2E") != "1",
-    reason="real Remotion E2E is enabled only by the dedicated CI gate",
-)
 def test_real_remotion_executor_renders_changing_pixels_and_audio(tmp_path: Path) -> None:
+    if os.getenv("ILAIOS_RUN_REMOTION_E2E") != "1":
+        pytest.skip("real Remotion E2E is enabled only by the dedicated CI gate")
+
     composition = _composition(tmp_path)
     runner = SubprocessCommandRunner()
     media_engine = FfmpegMediaEngine(runner=runner, timeout_seconds=120)
