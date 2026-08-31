@@ -84,11 +84,6 @@ class UrllibPreviewHttpTransport:
             },
         )
         try:
-            # Never inherit host HTTP(S)_PROXY configuration or proxy credentials.
-            # Governed egress gateways must be supplied explicitly by the incumbent
-            # runtime through another PreviewHttpTransport implementation. Redirects
-            # are denied before follow so an untrusted preview cannot turn this
-            # trusted observer into an SSRF primitive against an internal target.
             opener = build_opener(ProxyHandler({}), _RejectPreviewRedirects())
             with opener.open(request, timeout=timeout_seconds) as response:
                 headers = {str(key): str(value) for key, value in response.headers.items()}
@@ -116,13 +111,10 @@ def probe_preview_runtime_boundary(
     """Emit trusted runtime observation from a real credential-free HTTP probe."""
     if not preview_url.strip():
         raise SoftwareFactoryError("generated preview URL is missing")
-    # Validate before invoking even an injected transport. The transport may be the
-    # incumbent governed egress adapter, but the observer must never authorize an
-    # obviously local/private target on its behalf.
-    _validate_public_https_target(preview_url)
+    _validate_public_https_target(preview_url, resolve_dns=True)
     client = transport or UrllibPreviewHttpTransport()
     result = client.get(preview_url, timeout_seconds=timeout_seconds)
-    _validate_public_https_target(result.final_url)
+    _validate_public_https_target(result.final_url, resolve_dns=True)
     csp = _header(result.response_headers, "content-security-policy")
     return PreviewRuntimeBoundaryObservation(
         execution_id=execution_id,
