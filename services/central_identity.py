@@ -10,7 +10,8 @@ Security properties:
 - verified email is display/recovery metadata, never an automatic merge key;
 - account linking/unlinking requires an already authenticated canonical user/tenant;
 - sensitive linking/unlinking requires recent-authentication proof from the caller;
-- identities already linked to another user fail closed;
+- identities already linked to an established account fail closed;
+- explicit recent-auth link flows may consolidate only isolated bootstrap accounts;
 - removing the final usable sign-in method fails closed;
 - supported provider types are explicit and provider-neutral at the core.
 """
@@ -119,6 +120,10 @@ class CentralIdentityStore(Protocol):
         self, account: CanonicalAccount, identity: VerifiedExternalIdentity
     ) -> IdentityLink: ...
 
+    def transfer_isolated_link(
+        self, account: CanonicalAccount, identity: VerifiedExternalIdentity
+    ) -> IdentityLink: ...
+
     def remove_link(
         self, account: CanonicalAccount, identity: VerifiedExternalIdentity
     ) -> IdentityLink: ...
@@ -164,11 +169,9 @@ class CentralIdentityService:
         verified = identity.normalized()
         existing = self._store.find_link(verified)
         if existing is not None:
-            if existing.user_id != account.user_id or existing.tenant_id != account.tenant_id:
-                raise CentralIdentityError(
-                    "external identity is already linked to another account"
-                )
-            return existing
+            if existing.user_id == account.user_id and existing.tenant_id == account.tenant_id:
+                return existing
+            return self._store.transfer_isolated_link(account, verified)
         return self._store.add_link(account, verified)
 
     def unlink_identity(
@@ -264,6 +267,45 @@ class InMemoryCentralIdentityStore:
         link = _link_for(account, verified)
         self._links[key] = link
         return link
+
+    def transfer_isolated_link(
+        self, account: CanonicalAccount, identity: VerifiedExternalIdentity
+    ) -> IdentityLink:
+        verified = identity.normalized()
+        key = verified.key()
+        existing = self._links.get(key)
+        if existing is None:
+            raise CentralIdentityError("external identity is not linked")
+        if existing.user_id == account.user_id and existing.tenant_id == account.tenant_id:
+            return existing
+        stored = self._accounts.get(account.user_id)
+        if stored != account:
+            raise CentralIdentityError("canonical account changed during linking")
+        source = self._accounts.get(existing.user_id)
+        if (
+            source is None
+            or not source.enabled
+            or source.tenant_id != existing.tenant_id
+        ):
+            raise CentralIdentityError(
+                "external identity is already linked to another account"
+            )
+        source_links = [
+            link
+            for link in self._links.values()
+            if link.user_id == source.user_id and link.tenant_id == source.tenant_id
+        ]
+        if len(source_links) != 1:
+            raise CentralIdentityError(
+                "external identity is already linked to another account"
+            )
+        self._links[key] = _link_for(account, verified)
+        self._accounts[source.user_id] = CanonicalAccount(
+            user_id=source.user_id,
+            tenant_id=source.tenant_id,
+            enabled=False,
+        )
+        return self._links[key]
 
     def remove_link(
         self, account: CanonicalAccount, identity: VerifiedExternalIdentity
