@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
@@ -191,9 +191,9 @@ def _fetch_json(url: str) -> dict[str, Any]:
         with urlopen(
             request, timeout=15
         ) as response:  # noqa: S310 - fixed HTTPS hosts
-            payload = json.load(response)
+            raw_payload: object = json.load(response)
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
         raise StockSourceError("Internet Archive HTTP request failed closed") from exc
-    if not isinstance(payload, dict):
+    if not isinstance(raw_payload, dict):
         raise StockSourceError("Internet Archive response must be a JSON object")
-    return payload
+    return cast(dict[str, Any], raw_payload)
