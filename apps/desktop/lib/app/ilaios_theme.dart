@@ -180,7 +180,7 @@ abstract final class IlaiosTheme {
           fontSize: 13.5,
           height: 1.25,
           fontWeight: FontWeight.w400,
-          letterSpacing: -1.25,
+          letterSpacing: -1.75,
         ),
       ),
       switchTheme: SwitchThemeData(
