@@ -174,6 +174,14 @@ abstract final class IlaiosTheme {
           overlayColor: WidgetStatePropertyAll(cyanWash),
         ),
       ),
+      popupMenuTheme: PopupMenuThemeData(
+        textStyle: TextStyle(
+          color: foreground,
+          fontSize: 13.5,
+          height: 1.25,
+          fontWeight: FontWeight.w500,
+        ),
+      ),
       switchTheme: SwitchThemeData(
         thumbColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.selected) ? white : foreground,
