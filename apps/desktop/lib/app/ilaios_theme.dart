@@ -179,7 +179,8 @@ abstract final class IlaiosTheme {
           color: foreground,
           fontSize: 13.5,
           height: 1.25,
-          fontWeight: FontWeight.w500,
+          fontWeight: FontWeight.w400,
+          letterSpacing: -.35,
         ),
       ),
       switchTheme: SwitchThemeData(
