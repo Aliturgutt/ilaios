@@ -9,13 +9,11 @@ import '../../control_plane/projection.dart';
 import '../../identity/identity_client.dart';
 import '../navigation/desktop_section.dart';
 
-/// Reference Home implementation for the user-approved command-center design.
+/// Final-polish Home surface.
 ///
-/// The surface is intentionally a fixed Desktop composition: the root never
-/// scrolls vertically. Long runtime collections scroll only inside their own
-/// panels. All telemetry is projected from authoritative Desktop inputs; the
-/// reference screenshots are layout/theme references only and their demo values
-/// are never copied into runtime state.
+/// The composition keeps one governed prompt as the primary interaction and
+/// derives every supporting state from authoritative Desktop inputs. It does
+/// not fabricate activity, cost, completion, approval, agent, or output data.
 class ReferenceHomeDashboardV3 extends StatefulWidget {
   const ReferenceHomeDashboardV3({
     required this.projection,
@@ -58,6 +56,7 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
       return;
     }
     if (_submitting) return;
+
     setState(() => _submitting = true);
     try {
       final submission = await widget.onPromptSubmit!(objective);
@@ -67,8 +66,8 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
           content: Text(
             _t(
               context,
-              'Work accepted: ${submission.jobId} · ${submission.state}',
-              'İş kabul edildi: ${submission.jobId} · ${submission.state}',
+              'Work accepted · ${submission.state}',
+              'İş kabul edildi · ${submission.state}',
             ),
           ),
         ),
@@ -79,8 +78,11 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            _t(context, 'Work could not be started: $error',
-                'İş başlatılamadı: $error'),
+            _t(
+              context,
+              'Work could not be started: $error',
+              'İş başlatılamadı: $error',
+            ),
           ),
         ),
       );
@@ -91,7 +93,7 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
 
   @override
   Widget build(BuildContext context) {
-    final model = _CommandCenterModel(
+    final model = _HomeModel(
       projection: widget.projection,
       snapshot: widget.snapshot,
       status: widget.status,
@@ -100,48 +102,36 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final contentHeight =
-            (constraints.maxHeight - 20).clamp(620.0, 1200.0).toDouble();
-        final heroHeight = contentHeight * .27;
-        final metricsHeight = contentHeight * .10;
-        final middleHeight = contentHeight * .28;
+        final compact = constraints.maxWidth < 1060;
+        final outerPadding = compact ? 14.0 : 20.0;
+        final gap = compact ? 12.0 : 16.0;
 
         return Padding(
-          padding: const EdgeInsets.fromLTRB(10, 10, 10, 14),
+          padding: EdgeInsets.fromLTRB(outerPadding, 16, outerPadding, 18),
           child: Column(
             key: const Key('command-center-home'),
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              SizedBox(
-                height: heroHeight,
-                child: _CommandHero(
-                  controller: _promptController,
-                  submitting: _submitting,
-                  model: model,
-                  onStartWork: _startWork,
-                  onNavigate: widget.onNavigate,
-                ),
+              _CommandHero(
+                controller: _promptController,
+                submitting: _submitting,
+                model: model,
+                onStartWork: _startWork,
+                onNavigate: widget.onNavigate,
               ),
-              if (model.runningWorkCount != null ||
-                  model.pendingApprovalCount != null ||
-                  model.totalCost != null) ...[
-                const SizedBox(height: 8),
-                SizedBox(
-                  height: metricsHeight,
-                  child: _MetricsRow(model: model),
-                ),
-              ],
-              const SizedBox(height: 8),
-              SizedBox(
-                height: middleHeight,
-                child: _MiddleRow(model: model, onNavigate: widget.onNavigate),
-              ),
-              const SizedBox(height: 8),
+              SizedBox(height: gap),
               Expanded(
-                child: _BottomRow(
-                  model: model,
-                  onNavigate: widget.onNavigate,
-                ),
+                child: compact
+                    ? _CompactSupportLayout(
+                        model: model,
+                        onNavigate: widget.onNavigate,
+                        gap: gap,
+                      )
+                    : _WideSupportLayout(
+                        model: model,
+                        onNavigate: widget.onNavigate,
+                        gap: gap,
+                      ),
               ),
             ],
           ),
@@ -151,8 +141,8 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
   }
 }
 
-class _CommandCenterModel {
-  const _CommandCenterModel({
+class _HomeModel {
+  const _HomeModel({
     required this.projection,
     required this.snapshot,
     required this.status,
@@ -167,40 +157,22 @@ class _CommandCenterModel {
   Map<String, Object?>? get latestEvent =>
       snapshot.liveEvents.isEmpty ? null : snapshot.liveEvents.last;
 
-  List<Map<String, Object?>> get leases =>
-      _mapList(snapshot.schedulerState['leases']);
   List<Map<String, Object?>> get work =>
       _mapList(snapshot.governanceState['work']);
+
   List<Map<String, Object?>> get admissions =>
       _mapList(snapshot.governanceState['admissions']);
 
-  String? get projectLabel => _text(
-        latestEvent,
-        const ['project_name', 'project', 'workspace', 'goal', 'objective'],
-      );
-
-  int? get runningWorkCount {
-    if (snapshot.governanceState.containsKey('work')) {
-      return work.where((item) {
-        final state = _normalize(_text(item, const ['status', 'state']) ?? '');
-        return state.isNotEmpty &&
-            !const {'completed', 'complete', 'succeeded', 'success', 'failed', 'denied', 'cancelled'}
-                .contains(state);
-      }).length;
-    }
-    if (projection.connected) return projection.jobCount;
-    return null;
+  List<Map<String, Object?>> get focusItems {
+    if (work.isNotEmpty) return work.reversed.take(3).toList(growable: false);
+    return snapshot.liveEvents.reversed.take(3).toList(growable: false);
   }
-
-  int? get activeAgentCount =>
-      snapshot.schedulerState.containsKey('leases') ? leases.length : null;
 
   int? get pendingApprovalCount {
     if (!snapshot.governanceState.containsKey('work') &&
         !snapshot.governanceState.containsKey('admissions')) {
       return null;
     }
-    final hasAdmissions = snapshot.governanceState.containsKey('admissions');
     final required = <String>{};
     for (final item in admissions) {
       if (item['human_approval_required'] != true) continue;
@@ -208,10 +180,10 @@ class _CommandCenterModel {
       if (id is String && id.isNotEmpty) required.add(id);
     }
     return work.where((item) {
-      final id = item['request_id'];
       final state = _normalize(_text(item, const ['status', 'state']) ?? '');
       if (state != 'pending') return false;
-      if (!hasAdmissions) return true;
+      if (admissions.isEmpty) return true;
+      final id = item['request_id'];
       return id is String && required.contains(id);
     }).length;
   }
@@ -221,79 +193,30 @@ class _CommandCenterModel {
         return state == 'denied' || state == 'failed';
       }).length;
 
-  String? get totalCost => _firstValue(
-        [snapshot.governanceState, snapshot.schedulerState],
-        const [
-          'today_cost_usd',
-          'daily_cost_usd',
-          'total_cost_usd',
-          'cost_usd',
-          'spent_minor',
-        ],
-      );
-
-  double? get totalCostNumber => _firstNumber(
-        [snapshot.governanceState, snapshot.schedulerState],
-        const ['today_cost_usd', 'daily_cost_usd', 'total_cost_usd', 'cost_usd'],
-      );
-
-  double? get budgetNumber => _firstNumber(
-        [snapshot.governanceState, snapshot.schedulerState],
-        const ['budget_usd', 'daily_budget_usd', 'hard_cap_usd'],
-      );
-
-  double? get healthPercent {
-    final raw = _firstNumber(
-      [
-        latestEvent ?? const <String, Object?>{},
-        snapshot.schedulerState,
-        snapshot.governanceState,
-      ],
-      const ['system_health_percent', 'health_percent', 'health_score'],
-    );
-    if (raw == null) return null;
-    final value = raw <= 1 ? raw * 100 : raw;
-    if (value < 0 || value > 100) return null;
-    return value;
-  }
-
-  List<Map<String, Object?>> get focusItems {
-    if (work.isNotEmpty) return work.reversed.take(4).toList(growable: false);
-    return snapshot.liveEvents.reversed.take(4).toList(growable: false);
-  }
-
   List<_AttentionData> get attentionItems {
     final items = <_AttentionData>[];
     final pending = pendingApprovalCount;
     if (pending != null && pending > 0) {
       items.add(
         _AttentionData(
-          severity: _AttentionSeverity.critical,
-          title: '$pending approval${pending == 1 ? '' : 's'} waiting',
+          title: pending == 1
+              ? '1 approval is waiting'
+              : '$pending approvals are waiting',
           subtitle: 'Human approval is required before governed execution can continue.',
           destination: DesktopSection.approvals,
+          severity: _AttentionSeverity.warning,
         ),
       );
     }
     if (deniedCount > 0) {
       items.add(
         _AttentionData(
-          severity: _AttentionSeverity.warning,
-          title: '$deniedCount denied or failed work item${deniedCount == 1 ? '' : 's'}',
-          subtitle: 'Review the latest governed execution records.',
+          title: deniedCount == 1
+              ? '1 work item needs review'
+              : '$deniedCount work items need review',
+          subtitle: 'A governed work item was denied or failed.',
           destination: DesktopSection.workflows,
-        ),
-      );
-    }
-    final cost = totalCostNumber;
-    final budget = budgetNumber;
-    if (cost != null && budget != null && budget > 0 && cost / budget >= .8) {
-      items.add(
-        _AttentionData(
           severity: _AttentionSeverity.warning,
-          title: 'Budget threshold reached',
-          subtitle: '${(cost / budget * 100).round()}% of the authoritative budget is consumed.',
-          destination: DesktopSection.costs,
         ),
       );
     }
@@ -308,42 +231,24 @@ class _CommandCenterModel {
       }
       items.add(
         _AttentionData(
-          severity: _AttentionSeverity.critical,
-          title: _text(event, const ['message', 'event_type', 'type']) ?? 'Runtime issue',
-          subtitle: _text(event, const ['detail', 'reason']) ?? 'Authoritative runtime event requires review.',
+          title: _humanEventTitle(event),
+          subtitle: _text(event, const ['detail', 'reason']) ??
+              'An authoritative runtime event needs review.',
           destination: DesktopSection.workflows,
+          severity: _AttentionSeverity.critical,
         ),
       );
       break;
     }
-    return items.take(4).toList(growable: false);
+    return items.take(3).toList(growable: false);
   }
 
-  List<EvidenceRecord> get artifacts =>
+  List<EvidenceRecord> get outputs =>
       snapshot.evidenceRecords.reversed.take(3).toList(growable: false);
 
-  List<EvidenceRecord> get recentCompletions =>
-      snapshot.evidenceRecords.reversed.take(3).toList(growable: false);
-
-  List<Map<String, Object?>> get recentActivities =>
-      snapshot.liveEvents.reversed.take(5).toList(growable: false);
-
-  String get sessionId =>
-      userSession?.sessionId ??
-      _text(latestEvent, const ['session_id', 'execution_id', 'job_id']) ??
+  String get owner => userSession?.displayIdentity ??
+      userSession?.principalId ??
       '—';
-
-  String get elapsed =>
-      _text(latestEvent, const ['elapsed', 'elapsed_time', 'duration']) ?? '—';
-
-  String get owner =>
-      userSession?.displayIdentity ?? userSession?.principalId ?? '—';
-
-  String get role =>
-      _text(latestEvent, const ['role', 'user_role', 'principal_role']) ?? '—';
-
-  String get lastSaved =>
-      _text(latestEvent, const ['updated_at', 'timestamp', 'saved_at']) ?? '—';
 }
 
 class _CommandHero extends StatelessWidget {
@@ -357,73 +262,102 @@ class _CommandHero extends StatelessWidget {
 
   final TextEditingController controller;
   final bool submitting;
-  final _CommandCenterModel model;
+  final _HomeModel model;
   final Future<void> Function() onStartWork;
   final ValueChanged<DesktopSection> onNavigate;
 
   @override
   Widget build(BuildContext context) => Container(
         key: const Key('command-center-hero'),
-        padding: const EdgeInsets.fromLTRB(18, 16, 18, 14),
-        decoration: _panel(context, elevated: true),
+        padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
+        decoration: _surface(context, emphasized: true),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              _t(context, 'Start work', 'İş başlat'),
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _t(context, 'Start work', 'İş başlat'),
+                        style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                              fontSize: 30,
+                              height: 1.1,
+                              fontWeight: FontWeight.w700,
+                            ),
+                      ),
+                      const SizedBox(height: 7),
+                      Text(
+                        _t(
+                          context,
+                          'Describe the finished result. ILAIOS will route the work through the existing governed execution system.',
+                          'Bitmiş sonucu tarif et. ILAIOS işi mevcut yönetişimli yürütme sistemi üzerinden yönlendirsin.',
+                        ),
+                        style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                              fontSize: 15,
+                              height: 1.4,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                      ),
+                    ],
                   ),
+                ),
+                const SizedBox(width: 18),
+                _RuntimePill(model: model),
+              ],
             ),
-            const SizedBox(height: 4),
-            Text(
-              _t(
-                context,
-                'Describe the finished result. ILAIOS will route governed execution through the existing system.',
-                'Bitmiş sonucu tarif et. ILAIOS mevcut yönetişimli yürütme zinciri üzerinden ilerlesin.',
-              ),
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 10),
-            Expanded(
-              child: TextField(
-                key: const Key('home-command-prompt'),
-                controller: controller,
-                minLines: 3,
-                maxLines: 6,
-                textInputAction: TextInputAction.newline,
-                decoration: InputDecoration(
-                  hintText: _t(
-                    context,
-                    'Website, video, software or research — describe the result and constraints…',
-                    'Web sitesi, video, yazılım veya araştırma — sonucu ve kısıtları yaz…',
-                  ),
+            const SizedBox(height: 16),
+            TextField(
+              key: const Key('home-command-prompt'),
+              controller: controller,
+              minLines: 2,
+              maxLines: 4,
+              style: const TextStyle(fontSize: 15, height: 1.35),
+              textInputAction: TextInputAction.newline,
+              decoration: InputDecoration(
+                hintText: _t(
+                  context,
+                  'Website, video, software or research — describe the result and constraints…',
+                  'Web sitesi, video, yazılım veya araştırma — sonucu ve kısıtları yaz…',
                 ),
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
               children: [
-                TextButton.icon(
-                  key: const Key('home-templates'),
-                  onPressed: () => onNavigate(DesktopSection.workflows),
-                  icon: const Icon(Icons.library_books_outlined, size: 16),
-                  label: Text(_t(context, 'Templates', 'Şablonlar')),
+                Text(
+                  _t(
+                    context,
+                    'Routing is automatic. Factory selection stays secondary.',
+                    'Yönlendirme otomatik. Factory seçimi ikincil kalır.',
+                  ),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                 ),
-                const SizedBox(width: 6),
-                TextButton.icon(
-                  key: const Key('home-last-session'),
-                  onPressed: () => onNavigate(DesktopSection.workflows),
-                  icon: const Icon(Icons.history_rounded, size: 16),
-                  label: Text(_t(context, 'Recent work', 'Son işler')),
+                const SizedBox(width: 8),
+                TextButton(
+                  onPressed: () => onNavigate(DesktopSection.goals),
+                  child: Text(
+                    _t(context, 'Advanced', 'Gelişmiş'),
+                    style: const TextStyle(fontSize: 13.5),
+                  ),
                 ),
                 const Spacer(),
                 FilledButton.icon(
                   key: const Key('home-new-work'),
                   onPressed: submitting ? null : onStartWork,
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 17),
-                  label: Text(_t(context, 'Start', 'Başlat')),
+                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                  label: Text(
+                    submitting
+                        ? _t(context, 'Starting…', 'Başlatılıyor…')
+                        : _t(context, 'Start', 'Başlat'),
+                    style: const TextStyle(fontSize: 14),
+                  ),
                 ),
               ],
             ),
@@ -432,100 +366,131 @@ class _CommandHero extends StatelessWidget {
       );
 }
 
-class _MetricsRow extends StatelessWidget {
-  const _MetricsRow({required this.model});
-
-  final _CommandCenterModel model;
+class _RuntimePill extends StatelessWidget {
+  const _RuntimePill({required this.model});
+  final _HomeModel model;
 
   @override
-  Widget build(BuildContext context) {
-    final items = <({IconData icon, String label, String value, Color color})>[];
-    final running = model.runningWorkCount;
-    if (running != null) {
-      items.add((
-        icon: Icons.play_circle_outline_rounded,
-        label: _t(context, 'Ongoing', 'Devam eden'),
-        value: '$running',
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
-      ));
-    }
-    final approvals = model.pendingApprovalCount;
-    if (approvals != null) {
-      items.add((
-        icon: Icons.shield_outlined,
-        label: _t(context, 'Needs Attention', 'Müdahale gereken'),
-        value: '$approvals',
-        color: approvals > 0 ? IlaiosTheme.warning : Theme.of(context).colorScheme.onSurfaceVariant,
-      ));
-    }
-    final cost = model.totalCost;
-    if (cost != null) {
-      items.add((
-        icon: Icons.account_balance_wallet_outlined,
-        label: _t(context, 'Current cost', 'Mevcut maliyet'),
-        value: cost,
-        color: Theme.of(context).colorScheme.onSurfaceVariant,
-      ));
-    }
-
-    return Container(
-      key: const Key('command-center-metrics'),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-      decoration: _panel(context),
-      child: Row(
-        children: [
-          for (var index = 0; index < items.length; index++) ...[
-            if (index > 0)
-              Container(
-                width: 1,
-                height: 28,
-                margin: const EdgeInsets.symmetric(horizontal: 18),
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
-            Icon(items[index].icon, size: 16, color: items[index].color),
-            const SizedBox(width: 7),
-            Text(
-              items[index].label,
-              style: Theme.of(context).textTheme.bodySmall,
+  Widget build(BuildContext context) => Container(
+        constraints: const BoxConstraints(maxWidth: 250),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.circle,
+              size: 8,
+              color: model.projection.connected
+                  ? IlaiosTheme.success
+                  : Theme.of(context).colorScheme.outline,
             ),
-            const SizedBox(width: 7),
-            Text(
-              items[index].value,
-              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                model.status,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
             ),
           ],
-        ],
-      ),
-    );
-  }
+        ),
+      );
 }
 
-class _MiddleRow extends StatelessWidget {
-  const _MiddleRow({required this.model, required this.onNavigate});
+class _WideSupportLayout extends StatelessWidget {
+  const _WideSupportLayout({
+    required this.model,
+    required this.onNavigate,
+    required this.gap,
+  });
 
-  final _CommandCenterModel model;
+  final _HomeModel model;
   final ValueChanged<DesktopSection> onNavigate;
+  final double gap;
 
   @override
-  Widget build(BuildContext context) => Row(
+  Widget build(BuildContext context) => Column(
         children: [
           Expanded(
-            flex: 45,
-            child: _FocusWorkPanel(model: model, onNavigate: onNavigate),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _FocusPanel(model: model, onNavigate: onNavigate),
+                ),
+                SizedBox(width: gap),
+                Expanded(
+                  child: _AttentionPanel(model: model, onNavigate: onNavigate),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(height: gap),
           Expanded(
-            flex: 55,
-            child: _AttentionPanel(model: model, onNavigate: onNavigate),
+            child: Row(
+              children: [
+                Expanded(
+                  child: _OutputsPanel(model: model, onNavigate: onNavigate),
+                ),
+                SizedBox(width: gap),
+                Expanded(
+                  child: _CompletedPanel(model: model, onNavigate: onNavigate),
+                ),
+              ],
+            ),
           ),
         ],
       );
 }
 
-class _FocusWorkPanel extends StatelessWidget {
-  const _FocusWorkPanel({required this.model, required this.onNavigate});
+class _CompactSupportLayout extends StatelessWidget {
+  const _CompactSupportLayout({
+    required this.model,
+    required this.onNavigate,
+    required this.gap,
+  });
 
-  final _CommandCenterModel model;
+  final _HomeModel model;
+  final ValueChanged<DesktopSection> onNavigate;
+  final double gap;
+
+  @override
+  Widget build(BuildContext context) => SingleChildScrollView(
+        primary: false,
+        child: Column(
+          children: [
+            SizedBox(
+              height: 190,
+              child: _FocusPanel(model: model, onNavigate: onNavigate),
+            ),
+            SizedBox(height: gap),
+            SizedBox(
+              height: 190,
+              child: _AttentionPanel(model: model, onNavigate: onNavigate),
+            ),
+            SizedBox(height: gap),
+            SizedBox(
+              height: 190,
+              child: _OutputsPanel(model: model, onNavigate: onNavigate),
+            ),
+            SizedBox(height: gap),
+            SizedBox(
+              height: 190,
+              child: _CompletedPanel(model: model, onNavigate: onNavigate),
+            ),
+          ],
+        ),
+      );
+}
+
+class _FocusPanel extends StatelessWidget {
+  const _FocusPanel({required this.model, required this.onNavigate});
+  final _HomeModel model;
   final ValueChanged<DesktopSection> onNavigate;
 
   @override
@@ -534,111 +499,89 @@ class _FocusWorkPanel extends StatelessWidget {
     return _SectionPanel(
       key: const Key('command-center-focus'),
       title: _t(context, 'FOCUS WORK', 'ODAK İŞLER'),
-      actionLabel: _t(context, 'All', 'Tümü'),
+      actionLabel: _t(context, 'All work', 'Tüm işler'),
       onAction: () => onNavigate(DesktopSection.workflows),
       child: items.isEmpty
           ? _EmptyState(
               icon: Icons.track_changes_rounded,
-              label: _t(context, 'No authoritative focus work is available.',
-                  'Doğrulanmış odak işi bulunmuyor.'),
+              title: _t(context, 'Nothing is running yet', 'Henüz çalışan iş yok'),
+              detail: _t(
+                context,
+                'Start from the prompt above. Work will appear here only when authoritative runtime state exists.',
+                'Yukarıdaki prompttan başlat. İşler yalnızca doğrulanmış runtime durumu oluştuğunda burada görünür.',
+              ),
             )
-          : Column(
-              children: [
-                for (var index = 0; index < items.length; index++) ...[
-                  Expanded(child: _FocusWorkRow(item: items[index])),
-                  if (index < items.length - 1)
-                    Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
-                ],
-              ],
+          : ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              itemCount: items.length,
+              separatorBuilder: (_, __) => Divider(
+                height: 1,
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+              itemBuilder: (context, index) => _WorkRow(item: items[index]),
             ),
     );
   }
 }
 
-class _FocusWorkRow extends StatelessWidget {
-  const _FocusWorkRow({required this.item});
+class _WorkRow extends StatelessWidget {
+  const _WorkRow({required this.item});
   final Map<String, Object?> item;
 
   @override
   Widget build(BuildContext context) {
-    final title = _text(
-          item,
-          const ['project_name', 'title', 'objective', 'goal', 'request_id', 'job_id'],
-        ) ??
-        '—';
-    final subtitle = _text(item, const ['description', 'message', 'task']) ?? '—';
-    final state = _text(item, const ['status', 'state', 'phase']) ?? '—';
-    final phase = _text(item, const ['phase', 'stage']) ?? '—';
-    final rawProgress = _number(item, const ['progress', 'progress_percent']);
-    final progress = rawProgress == null
-        ? null
-        : ((rawProgress <= 1 ? rawProgress : rawProgress / 100).clamp(0.0, 1.0));
+    final title = _humanWorkTitle(item);
+    final state = _humanState(_text(item, const ['status', 'state', 'phase']) ?? '');
+    final detail = _text(item, const ['description', 'message', 'task', 'phase', 'stage']);
+    final id = _text(item, const ['request_id', 'job_id', 'execution_id']);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
-          Container(
-            width: 27,
-            height: 27,
-            decoration: BoxDecoration(
-              color: IlaiosTheme.enterpriseCyan.withValues(alpha: .10),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: const Icon(Icons.language_rounded, size: 15, color: IlaiosTheme.enterpriseCyan),
-          ),
-          const SizedBox(width: 7),
+          const Icon(Icons.work_outline_rounded, size: 20, color: IlaiosTheme.enterpriseCyan),
+          const SizedBox(width: 12),
           Expanded(
-            flex: 5,
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 9.7, fontWeight: FontWeight.w700)),
-                Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 9.0)),
-              ],
-            ),
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            flex: 4,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(state, maxLines: 1, overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 8.8)),
-                    ),
-                    Text(phase, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 8.2)),
-                  ],
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
                 ),
-                const SizedBox(height: 3),
-                if (progress == null)
-                  Container(
-                    key: const Key('focus-progress-unavailable-track'),
-                    height: 3,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                      borderRadius: BorderRadius.circular(4),
-                    ),
-                  )
-                else
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 3,
-                      backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                if (detail != null) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    detail,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
+                ],
               ],
             ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(state, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+              if (id != null) ...[
+                const SizedBox(height: 3),
+                Text(
+                  'ID ${_short(id, 12)}',
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ],
           ),
         ],
       ),
@@ -646,26 +589,25 @@ class _FocusWorkRow extends StatelessWidget {
   }
 }
 
-enum _AttentionSeverity { critical, warning, info }
+enum _AttentionSeverity { critical, warning }
 
 class _AttentionData {
   const _AttentionData({
-    required this.severity,
     required this.title,
     required this.subtitle,
     required this.destination,
+    required this.severity,
   });
 
-  final _AttentionSeverity severity;
   final String title;
   final String subtitle;
   final DesktopSection destination;
+  final _AttentionSeverity severity;
 }
 
 class _AttentionPanel extends StatelessWidget {
   const _AttentionPanel({required this.model, required this.onNavigate});
-
-  final _CommandCenterModel model;
+  final _HomeModel model;
   final ValueChanged<DesktopSection> onNavigate;
 
   @override
@@ -674,27 +616,29 @@ class _AttentionPanel extends StatelessWidget {
     return _SectionPanel(
       key: const Key('command-center-attention'),
       title: _t(context, 'NEEDS ATTENTION', 'DİKKAT GEREKTİRENLER'),
-      actionLabel: _t(context, 'All', 'Tümü'),
+      actionLabel: _t(context, 'Approvals', 'Onaylar'),
       onAction: () => onNavigate(DesktopSection.approvals),
       child: items.isEmpty
           ? _EmptyState(
-              icon: Icons.check_circle_outline_rounded,
-              label: _t(context, 'No verified attention item is active.',
-                  'Doğrulanmış aktif uyarı bulunmuyor.'),
+              icon: Icons.verified_outlined,
+              title: _t(context, 'No action is required', 'İşlem gerekmiyor'),
+              detail: _t(
+                context,
+                'ILAIOS will show only authoritative approvals, failures, or runtime issues here.',
+                'ILAIOS burada yalnızca doğrulanmış onay, hata veya runtime sorunlarını gösterir.',
+              ),
             )
-          : Column(
-              children: [
-                for (var index = 0; index < items.length; index++) ...[
-                  Expanded(
-                    child: _AttentionRow(
-                      data: items[index],
-                      onTap: () => onNavigate(items[index].destination),
-                    ),
-                  ),
-                  if (index < items.length - 1)
-                    Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
-                ],
-              ],
+          : ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              itemCount: items.length,
+              separatorBuilder: (_, __) => Divider(
+                height: 1,
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+              itemBuilder: (context, index) => _AttentionRow(
+                data: items[index],
+                onTap: () => onNavigate(items[index].destination),
+              ),
             ),
     );
   }
@@ -702,49 +646,49 @@ class _AttentionPanel extends StatelessWidget {
 
 class _AttentionRow extends StatelessWidget {
   const _AttentionRow({required this.data, required this.onTap});
-
   final _AttentionData data;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (data.severity) {
-      _AttentionSeverity.critical => IlaiosTheme.danger,
-      _AttentionSeverity.warning => IlaiosTheme.warning,
-      _AttentionSeverity.info => IlaiosTheme.coreBlue,
-    };
+    final color = data.severity == _AttentionSeverity.critical
+        ? IlaiosTheme.danger
+        : IlaiosTheme.warning;
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           child: Row(
             children: [
-              Container(
-                width: 26,
-                height: 26,
-                decoration: BoxDecoration(
-                  border: Border.all(color: color),
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: Icon(Icons.priority_high_rounded, size: 14, color: color),
-              ),
-              const SizedBox(width: 7),
+              Icon(Icons.error_outline_rounded, size: 20, color: color),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(data.title, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 9.7, fontWeight: FontWeight.w700)),
-                    Text(data.subtitle, maxLines: 1, overflow: TextOverflow.ellipsis,
-                        style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 9.0)),
+                    Text(
+                      data.title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      data.subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                   ],
                 ),
               ),
-              const SizedBox(width: 6),
-              const Icon(Icons.chevron_right_rounded, size: 15),
+              const SizedBox(width: 8),
+              const Icon(Icons.chevron_right_rounded, size: 18),
             ],
           ),
         ),
@@ -753,92 +697,82 @@ class _AttentionRow extends StatelessWidget {
   }
 }
 
-class _BottomRow extends StatelessWidget {
-  const _BottomRow({required this.model, required this.onNavigate});
-
-  final _CommandCenterModel model;
-  final ValueChanged<DesktopSection> onNavigate;
-
-  @override
-  Widget build(BuildContext context) => Row(
-        children: [
-          Expanded(
-            flex: 55,
-            child: _ArtifactsPanel(model: model, onNavigate: onNavigate),
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            flex: 45,
-            child: _CompletedPanel(model: model, onNavigate: onNavigate),
-          ),
-        ],
-      );
-}
-
-class _ArtifactsPanel extends StatelessWidget {
-  const _ArtifactsPanel({required this.model, required this.onNavigate});
-
-  final _CommandCenterModel model;
+class _OutputsPanel extends StatelessWidget {
+  const _OutputsPanel({required this.model, required this.onNavigate});
+  final _HomeModel model;
   final ValueChanged<DesktopSection> onNavigate;
 
   @override
   Widget build(BuildContext context) {
-    final records = model.artifacts;
+    final records = model.outputs;
     return _SectionPanel(
       key: const Key('command-center-artifacts'),
       title: _t(context, 'LATEST OUTPUTS', 'SON ÇIKTILAR'),
-      actionLabel: _t(context, 'All', 'Tümü'),
+      actionLabel: _t(context, 'Outputs', 'Çıktılar'),
       onAction: () => onNavigate(DesktopSection.artifacts),
       child: records.isEmpty
           ? _EmptyState(
               icon: Icons.inventory_2_outlined,
-              label: _t(context, 'No verified output is available.',
-                  'Doğrulanmış çıktı bulunmuyor.'),
+              title: _t(context, 'No output yet', 'Henüz çıktı yok'),
+              detail: _t(
+                context,
+                'Verified files and finished products appear here after governed execution produces evidence.',
+                'Doğrulanmış dosyalar ve bitmiş ürünler, yönetişimli yürütme evidence ürettiğinde burada görünür.',
+              ),
             )
-          : Row(
-              children: [
-                for (var index = 0; index < records.length; index++) ...[
-                  Expanded(child: _ArtifactTile(record: records[index])),
-                  if (index < records.length - 1) const SizedBox(width: 5),
-                ],
-              ],
+          : ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              itemCount: records.length,
+              separatorBuilder: (_, __) => Divider(
+                height: 1,
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+              itemBuilder: (context, index) => _OutputRow(record: records[index]),
             ),
     );
   }
 }
 
-class _ArtifactTile extends StatelessWidget {
-  const _ArtifactTile({required this.record});
+class _OutputRow extends StatelessWidget {
+  const _OutputRow({required this.record});
   final EvidenceRecord record;
 
   @override
-  Widget build(BuildContext context) => Container(
-        margin: const EdgeInsets.fromLTRB(5, 3, 0, 5),
-        padding: const EdgeInsets.all(7),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(6),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.center,
+  Widget build(BuildContext context) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        child: Row(
           children: [
-            Row(
-              children: [
-                const Icon(Icons.description_outlined, size: 16, color: IlaiosTheme.enterpriseCyan),
-                const SizedBox(width: 5),
-                Expanded(
-                  child: Text(record.action, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 9.2, fontWeight: FontWeight.w700)),
-                ),
-              ],
+            const Icon(Icons.description_outlined, size: 20, color: IlaiosTheme.enterpriseCyan),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _humanAction(record.action),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    'Verified output',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 4),
-            Text(record.executionId, maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 8.4)),
-            Text(_short(record.artifactDigest), maxLines: 1, overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 8.4)),
+            const SizedBox(width: 12),
+            Text(
+              'ID ${_short(record.executionId, 12)}',
+              style: TextStyle(
+                fontSize: 12.5,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
           ],
         ),
       );
@@ -846,32 +780,35 @@ class _ArtifactTile extends StatelessWidget {
 
 class _CompletedPanel extends StatelessWidget {
   const _CompletedPanel({required this.model, required this.onNavigate});
-
-  final _CommandCenterModel model;
+  final _HomeModel model;
   final ValueChanged<DesktopSection> onNavigate;
 
   @override
   Widget build(BuildContext context) {
-    final records = model.recentCompletions;
+    final records = model.outputs;
     return _SectionPanel(
       key: const Key('command-center-completed'),
       title: _t(context, 'RECENTLY COMPLETED', 'SON TAMAMLANANLAR'),
-      actionLabel: _t(context, 'All', 'Tümü'),
+      actionLabel: _t(context, 'Evidence', 'Evidence'),
       onAction: () => onNavigate(DesktopSection.evidence),
       child: records.isEmpty
           ? _EmptyState(
               icon: Icons.task_alt_rounded,
-              label: _t(context, 'No verified completion is available.',
-                  'Doğrulanmış tamamlanma kaydı bulunmuyor.'),
+              title: _t(context, 'No verified completion yet', 'Henüz doğrulanmış tamamlanma yok'),
+              detail: _t(
+                context,
+                'Completed work appears here only when the evidence chain contains a real record.',
+                'Tamamlanan işler yalnızca evidence zincirinde gerçek kayıt bulunduğunda burada görünür.',
+              ),
             )
-          : Column(
-              children: [
-                for (var index = 0; index < records.length; index++) ...[
-                  Expanded(child: _CompletionRow(record: records[index])),
-                  if (index < records.length - 1)
-                    Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
-                ],
-              ],
+          : ListView.separated(
+              padding: const EdgeInsets.symmetric(vertical: 6),
+              itemCount: records.length,
+              separatorBuilder: (_, __) => Divider(
+                height: 1,
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
+              itemBuilder: (context, index) => _CompletionRow(record: records[index]),
             ),
     );
   }
@@ -883,21 +820,25 @@ class _CompletionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
           children: [
-            const Icon(Icons.check_circle_outline_rounded, size: 17, color: IlaiosTheme.success),
-            const SizedBox(width: 6),
+            const Icon(Icons.check_circle_outline_rounded, size: 20, color: IlaiosTheme.success),
+            const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(record.action, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 9.4, fontWeight: FontWeight.w700)),
-                  Text(record.executionId, maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 8.4)),
-                ],
+              child: Text(
+                _humanAction(record.action),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              'ID ${_short(record.executionId, 12)}',
+              style: TextStyle(
+                fontSize: 12.5,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
           ],
@@ -921,40 +862,36 @@ class _SectionPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        decoration: _panel(context),
+        decoration: _surface(context),
         clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(
-              height: 30,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(title,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w800)),
-                    ),
-                    if (actionLabel != null)
-                      TextButton(
-                        onPressed: onAction,
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(horizontal: 5),
-                          visualDensity: VisualDensity.compact,
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(actionLabel!, style: const TextStyle(fontSize: 9.1)),
-                            const Icon(Icons.chevron_right_rounded, size: 12),
-                          ],
-                        ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 13, 10, 11),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        letterSpacing: .1,
+                        fontWeight: FontWeight.w700,
                       ),
-                  ],
-                ),
+                    ),
+                  ),
+                  if (actionLabel != null)
+                    TextButton(
+                      onPressed: onAction,
+                      child: Text(
+                        actionLabel!,
+                        style: const TextStyle(fontSize: 13.5),
+                      ),
+                    ),
+                ],
               ),
             ),
             Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
@@ -965,43 +902,65 @@ class _SectionPanel extends StatelessWidget {
 }
 
 class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.icon, required this.label});
+  const _EmptyState({
+    required this.icon,
+    required this.title,
+    required this.detail,
+  });
+
   final IconData icon;
-  final String label;
+  final String title;
+  final String detail;
 
   @override
   Widget build(BuildContext context) => Center(
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 10),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(icon, size: 20, color: Theme.of(context).colorScheme.outline),
+              Icon(
+                icon,
+                size: 24,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(height: 9),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              ),
               const SizedBox(height: 5),
-              Text(label,
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 9.5)),
+              Text(
+                detail,
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 13,
+                  height: 1.35,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
             ],
           ),
         ),
       );
 }
 
-BoxDecoration _panel(BuildContext context, {bool elevated = false}) {
+BoxDecoration _surface(BuildContext context, {bool emphasized = false}) {
   final dark = Theme.of(context).brightness == Brightness.dark;
   return BoxDecoration(
     color: Theme.of(context).colorScheme.surfaceContainerLow,
-    borderRadius: BorderRadius.circular(9),
+    borderRadius: BorderRadius.circular(emphasized ? 12 : 10),
     border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-    boxShadow: dark || !elevated
+    boxShadow: !emphasized || dark
         ? const []
         : const [
             BoxShadow(
-              color: Color(0x0A0B0F14),
-              blurRadius: 10,
-              offset: Offset(0, 3),
+              color: Color(0x080B0F14),
+              blurRadius: 12,
+              offset: Offset(0, 4),
             ),
           ],
   );
@@ -1025,45 +984,45 @@ String? _text(Map<String, Object?>? source, List<String> keys) {
   return null;
 }
 
-double? _number(Map<String, Object?>? source, List<String> keys) {
-  if (source == null) return null;
-  for (final key in keys) {
-    final value = source[key];
-    if (value is num) return value.toDouble();
-    if (value is String) {
-      final parsed = double.tryParse(value.trim());
-      if (parsed != null) return parsed;
-    }
-  }
-  return null;
-}
-
 List<Map<String, Object?>> _mapList(Object? value) {
   if (value is! List<Object?>) return const <Map<String, Object?>>[];
   return value.whereType<Map<String, Object?>>().toList(growable: false);
 }
 
-String? _firstValue(
-  List<Map<String, Object?>> sources,
-  List<String> keys,
-) {
-  for (final source in sources) {
-    final value = _text(source, keys);
-    if (value != null) return value;
-  }
-  return null;
+String _humanWorkTitle(Map<String, Object?> item) {
+  return _text(
+        item,
+        const ['project_name', 'title', 'objective', 'goal', 'task', 'description'],
+      ) ??
+      'Work item';
 }
 
-double? _firstNumber(
-  List<Map<String, Object?>> sources,
-  List<String> keys,
-) {
-  for (final source in sources) {
-    final value = _number(source, keys);
-    if (value != null) return value;
-  }
-  return null;
+String _humanEventTitle(Map<String, Object?> event) {
+  final message = _text(event, const ['message', 'title', 'event_type', 'type']);
+  if (message == null) return 'Runtime issue';
+  return _humanAction(message);
 }
 
-String _short(String value) =>
-    value.length <= 20 ? value : '${value.substring(0, 20)}…';
+String _humanAction(String value) {
+  final cleaned = value
+      .replaceAll(RegExp(r'[_\-.]+'), ' ')
+      .replaceAll(RegExp(r'\s+'), ' ')
+      .trim();
+  if (cleaned.isEmpty) return 'Verified output';
+  return cleaned[0].toUpperCase() + cleaned.substring(1);
+}
+
+String _humanState(String value) {
+  final normalized = _normalize(value);
+  if (normalized.isEmpty) return 'Status unavailable';
+  return switch (normalized) {
+    'in progress' || 'running' || 'active' => 'In progress',
+    'pending' || 'queued' => 'Waiting',
+    'completed' || 'complete' || 'succeeded' || 'success' => 'Completed',
+    'failed' || 'denied' => 'Needs review',
+    _ => _humanAction(value),
+  };
+}
+
+String _short(String value, int maxLength) =>
+    value.length <= maxLength ? value : '${value.substring(0, maxLength)}…';
