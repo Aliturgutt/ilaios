@@ -9,7 +9,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('Goals keeps the approved desktop hierarchy without screenshot telemetry',
+  testWidgets('Goals keeps the V4 desktop hierarchy without screenshot telemetry',
       (WidgetTester tester) async {
     await tester.binding.setSurfaceSize(const Size(1648, 928));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -30,18 +30,19 @@ void main() {
     await openGoals(tester);
 
     expect(find.byKey(const Key('reference-goals-page')), findsOneWidget);
+    expect(find.byKey(const Key('goals-composer')), findsOneWidget);
     expect(find.byKey(const Key('goals-kpis')), findsOneWidget);
     expect(find.byKey(const Key('goals-tabs')), findsOneWidget);
     expect(find.byKey(const Key('goals-table')), findsOneWidget);
-    expect(find.byKey(const Key('goals-selected')), findsOneWidget);
-    expect(find.byKey(const Key('goals-distribution')), findsOneWidget);
+    expect(find.byKey(const Key('goals-selected')), findsNothing);
+    expect(find.byKey(const Key('goals-distribution')), findsNothing);
     expect(find.text('12'), findsWidgets);
     expect(find.text('68%'), findsNothing);
     expect(find.text('Website Launch'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Goals renders the approved Turkish light surface',
+  testWidgets('Goals renders the V4 Turkish light surface',
       (WidgetTester tester) async {
     await tester.binding.setSurfaceSize(const Size(1648, 928));
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -56,15 +57,12 @@ void main() {
     await openGoals(tester);
 
     expect(find.text('Hedefler'), findsWidgets);
-    expect(find.text('Toplam Hedef'), findsOneWidget);
-    expect(find.text('Yolda'), findsOneWidget);
-    expect(find.text('Riskte'), findsOneWidget);
-    expect(find.text('Tamamlanan'), findsOneWidget);
-    expect(find.text('Ortalama İlerleme'), findsOneWidget);
-    expect(find.text('Son Güncelleme'), findsOneWidget);
+    expect(find.byKey(const Key('goals-composer')), findsOneWidget);
+    expect(find.byKey(const Key('goals-kpis')), findsNothing);
     expect(find.byKey(const Key('business-capability-selector')), findsOneWidget);
-    expect(find.text('Dışa Aktar'), findsOneWidget);
-    expect(find.text('Yeni Hedef'), findsOneWidget);
+    expect(find.byKey(const Key('video-reference-assets')), findsOneWidget);
+    expect(find.text('Dışa Aktar'), findsNothing);
+    expect(find.text('Yeni Hedef'), findsNothing);
     expect(tester.takeException(), isNull);
   });
 

@@ -3,10 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
-import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
-import 'package:ilaios_desktop/features/dashboard/reference_home_dashboard_v3.dart';
 import 'package:ilaios_desktop/identity/identity_client.dart';
 import 'package:ilaios_desktop/main.dart';
 
@@ -124,35 +121,21 @@ void main() {
     expect(tester.widget<OutlinedButton>(action).onPressed, isNull);
   });
 
-  testWidgets('Home Offline metric stays within bounded KPI typography', (
+  testWidgets('V4 disconnected Home does not fabricate an Offline KPI', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(
-      IlaiosLocaleScope(
-        locale: IlaiosLocale.english,
-        onChanged: (_) {},
-        child: MaterialApp(
-          home: Scaffold(
-            body: ReferenceHomeDashboardV3(
-              projection: const ControlPlaneProjection.unavailable(),
-              snapshot: const OperationalSnapshot.unavailable(),
-              status: 'Operational APIs not connected',
-              onNavigate: (_) {},
-            ),
-          ),
-        ),
-      ),
-    );
-    await tester.pump();
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.pumpAndSettle();
 
-    final offline = find.text('Offline');
-    expect(offline, findsOneWidget);
-    final text = tester.widget<Text>(offline);
-    expect(text.style?.fontSize, isNotNull);
-    expect(text.style!.fontSize!, lessThanOrEqualTo(17));
+    expect(find.byKey(const Key('command-center-home')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
+    // The V4 disconnected Home removes the KPI strip entirely. Shell/runtime
+    // connectivity labels may still truthfully say Offline and are not KPIs.
+    expect(find.byKey(const Key('command-center-metrics')), findsNothing);
+    expect(find.text('Start work'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

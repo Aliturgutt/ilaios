@@ -30,7 +30,7 @@ void main() {
     expect(tester.getBottomRight(bottomBar).dy, lessThanOrEqualTo(1024));
   });
 
-  testWidgets('command-center controls are real interactive controls', (
+  testWidgets('V4 Home controls are real bounded interactive controls', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1536, 1024));
@@ -42,13 +42,14 @@ void main() {
     expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
     expect(find.byKey(const Key('home-new-work')), findsOneWidget);
     expect(find.byKey(const Key('home-templates')), findsOneWidget);
-    expect(find.byKey(const Key('home-assign-agent')), findsOneWidget);
-    expect(find.byKey(const Key('home-factory-video')), findsOneWidget);
+    expect(find.byKey(const Key('home-last-session')), findsOneWidget);
+    expect(find.byKey(const Key('home-assign-agent')), findsNothing);
+    expect(find.byKey(const Key('home-factory-video')), findsNothing);
 
-    await tester.tap(find.byKey(const Key('home-factory-video')));
+    await tester.tap(find.byKey(const Key('home-templates')));
     await tester.pumpAndSettle();
+    expect(find.byKey(const Key('reference-workflows-page')), findsOneWidget);
     expect(tester.takeException(), isNull);
-    expect(find.text('What do you want ILAIOS to build?'), findsOneWidget);
   });
 
   testWidgets('Home prompt is submitted through the authenticated execution callback', (

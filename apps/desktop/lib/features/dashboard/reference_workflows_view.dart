@@ -35,7 +35,7 @@ class _ReferenceWorkflowsViewState extends State<ReferenceWorkflowsView> {
 
   final TextEditingController _searchController = TextEditingController();
   int _tab = 0;
-  int _selected = 0;
+  int _selected = -1;
   int _page = 0;
   String _query = '';
   String _type = _allFilter;
@@ -51,7 +51,7 @@ class _ReferenceWorkflowsViewState extends State<ReferenceWorkflowsView> {
 
   void _resetPosition() {
     _page = 0;
-    _selected = 0;
+    _selected = -1;
   }
 
   void _clearFilters() {
@@ -84,7 +84,7 @@ class _ReferenceWorkflowsViewState extends State<ReferenceWorkflowsView> {
     final pageRows = start >= filtered.length
         ? const <_WorkflowRecord>[]
         : filtered.sublist(start, end);
-    final selected = pageRows.isEmpty
+    final selected = pageRows.isEmpty || _selected < 0
         ? null
         : pageRows[_selected.clamp(0, pageRows.length - 1)];
     final approvals = _approvalItems(widget.snapshot);
@@ -163,16 +163,15 @@ class _ReferenceWorkflowsViewState extends State<ReferenceWorkflowsView> {
                             ? null
                             : () => setState(() {
                                   _page = effectivePage - 1;
-                                  _selected = 0;
+                                  _selected = -1;
                                 }),
                         onNext: effectivePage >= pageCount - 1
                             ? null
                             : () => setState(() {
                                   _page = effectivePage + 1;
-                                  _selected = 0;
+                                  _selected = -1;
                                 }),
                         onClear: _clearFilters,
-                        onCreate: () => widget.onNavigate(DesktopSection.goals),
                         onRefresh: widget.onRefreshRequested,
                         onApprovals: () =>
                             widget.onNavigate(DesktopSection.approvals),
@@ -180,29 +179,36 @@ class _ReferenceWorkflowsViewState extends State<ReferenceWorkflowsView> {
                             widget.onNavigate(DesktopSection.liveWorkspace),
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 145,
-                      child: _BottomPanels(
-                        snapshot: widget.snapshot,
-                        approvals: approvals,
-                        templates: templates,
+                    if (widget.snapshot.liveEvents.isNotEmpty ||
+                        widget.snapshot.evidenceRecords.isNotEmpty ||
+                        approvals.isNotEmpty ||
+                        templates.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 145,
+                        child: _BottomPanels(
+                          snapshot: widget.snapshot,
+                          approvals: approvals,
+                          templates: templates,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: rightWidth,
-                child: _SelectedWorkflowPanel(
+              if (selected != null) ...[
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: rightWidth,
+                  child: _SelectedWorkflowPanel(
                   workflow: selected,
                   approvals: approvals,
                   connected: widget.projection.connected,
                   onRefresh: widget.onRefreshRequested,
-                  onNavigate: widget.onNavigate,
+                    onNavigate: widget.onNavigate,
+                  ),
                 ),
-              ),
+              ],
             ],
           );
         },
@@ -325,113 +331,91 @@ class _MetricsRow extends StatelessWidget {
       'late_count',
     ]);
 
+    final summary = <(IconData, String, String, Color)>[
+      (
+        Icons.account_tree_outlined,
+        _tr(context, 'Toplam', 'Total'),
+        projection.jobCount?.toString() ?? '—',
+        Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      (
+        Icons.play_arrow_rounded,
+        _tr(context, 'Aktif', 'Active'),
+        activeCount?.toString() ?? '—',
+        Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      (
+        Icons.hourglass_bottom_rounded,
+        _tr(context, 'Onay Bekleyen', 'Awaiting Approval'),
+        approvals.length.toString(),
+        approvals.isEmpty
+            ? Theme.of(context).colorScheme.onSurfaceVariant
+            : IlaiosTheme.warning,
+      ),
+      (
+        Icons.schedule_rounded,
+        _tr(context, 'Geciken', 'Overdue'),
+        overdue?.toString() ?? '—',
+        overdue != null && overdue > 0
+            ? IlaiosTheme.danger
+            : Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      (
+        Icons.check_circle_outline_rounded,
+        _tr(context, 'Tamamlanan', 'Completed'),
+        completedCount?.toString() ?? '—',
+        completedCount != null && completedCount > 0
+            ? IlaiosTheme.success
+            : Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+    ];
+
     return SizedBox(
       key: const Key('workflows-metrics'),
-      height: 76,
-      child: Row(
-        children: [
-          _Metric(
-            icon: Icons.account_tree_outlined,
-            accent: IlaiosTheme.enterpriseCyan,
-            title: _tr(context, 'Toplam İş Akışı', 'Total Workflows'),
-            value: projection.jobCount?.toString() ?? '—',
-          ),
-          const SizedBox(width: 7),
-          _Metric(
-            icon: Icons.play_arrow_rounded,
-            accent: IlaiosTheme.coreBlue,
-            title: _tr(context, 'Aktif', 'Active'),
-            value: activeCount?.toString() ?? '—',
-          ),
-          const SizedBox(width: 7),
-          _Metric(
-            icon: Icons.hourglass_bottom_rounded,
-            accent: IlaiosTheme.warning,
-            title: _tr(context, 'Onay Bekleyen', 'Awaiting Approval'),
-            value: approvals.isEmpty ? '0' : approvals.length.toString(),
-          ),
-          const SizedBox(width: 7),
-          _Metric(
-            icon: Icons.schedule_rounded,
-            accent: IlaiosTheme.danger,
-            title: _tr(context, 'Geciken', 'Overdue'),
-            value: overdue?.toString() ?? '—',
-          ),
-          const SizedBox(width: 7),
-          _Metric(
-            icon: Icons.check_circle_outline_rounded,
-            accent: IlaiosTheme.success,
-            title: _tr(context, 'Tamamlanan', 'Completed'),
-            value: completedCount?.toString() ?? '—',
-          ),
-        ],
+      height: 50,
+      child: _Card(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        child: Row(
+          children: [
+            for (var index = 0; index < summary.length; index++) ...[
+              if (index > 0)
+                Container(
+                  width: 1,
+                  height: 24,
+                  margin: const EdgeInsets.symmetric(horizontal: 12),
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              Icon(summary[index].$1, size: 14, color: summary[index].$4),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  summary[index].$2,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 8.2,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 5),
+              Text(
+                summary[index].$3,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _Metric extends StatelessWidget {
-  const _Metric({
-    required this.icon,
-    required this.accent,
-    required this.title,
-    required this.value,
-  });
-
-  final IconData icon;
-  final Color accent;
-  final String title;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) => Expanded(
-        child: _Card(
-          padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 9),
-          child: Row(
-            children: [
-              Container(
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: .10),
-                  borderRadius: BorderRadius.circular(9),
-                ),
-                child: Icon(icon, size: 23, color: accent),
-              ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 8.2,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      value,
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
-}
-
-enum _WorkflowMenuAction { refresh, create }
-enum _WorkflowRowAction { details, approvals, workspace }
+enum _WorkflowMenuAction { refresh }
+enum _WorkflowRowAction { approvals, workspace }
 
 class _WorkflowTablePanel extends StatelessWidget {
   const _WorkflowTablePanel({
@@ -461,7 +445,6 @@ class _WorkflowTablePanel extends StatelessWidget {
     required this.onPrevious,
     required this.onNext,
     required this.onClear,
-    required this.onCreate,
     required this.onRefresh,
     required this.onApprovals,
     required this.onWorkspace,
@@ -493,7 +476,6 @@ class _WorkflowTablePanel extends StatelessWidget {
   final VoidCallback? onPrevious;
   final VoidCallback? onNext;
   final VoidCallback onClear;
-  final VoidCallback onCreate;
   final VoidCallback? onRefresh;
   final VoidCallback onApprovals;
   final VoidCallback onWorkspace;
@@ -531,23 +513,7 @@ class _WorkflowTablePanel extends StatelessWidget {
                     onTap: () => onTab(entry.$1),
                   ),
                 const Spacer(),
-                SizedBox(
-                  height: 28,
-                  child: FilledButton.icon(
-                    key: const Key('new-workflow-button'),
-                    onPressed: onCreate,
-                    icon: const Icon(Icons.add, size: 15),
-                    label: Text(_tr(context, 'Yeni İş Akışı', 'New Workflow')),
-                    style: FilledButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      textStyle: const TextStyle(
-                        fontSize: 9.4,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 7),
+
                 PopupMenuButton<_WorkflowMenuAction>(
                   key: const Key('workflows-more-menu'),
                   tooltip: _tr(context, 'Diğer', 'More'),
@@ -555,8 +521,6 @@ class _WorkflowTablePanel extends StatelessWidget {
                     switch (action) {
                       case _WorkflowMenuAction.refresh:
                         onRefresh?.call();
-                      case _WorkflowMenuAction.create:
-                        onCreate();
                     }
                   },
                   itemBuilder: (context) => [
@@ -565,10 +529,7 @@ class _WorkflowTablePanel extends StatelessWidget {
                       enabled: connected && onRefresh != null,
                       child: Text(_tr(context, 'Yenile', 'Refresh')),
                     ),
-                    PopupMenuItem(
-                      value: _WorkflowMenuAction.create,
-                      child: Text(_tr(context, 'Yeni İş Akışı', 'New Workflow')),
-                    ),
+
                   ],
                   icon: const Icon(Icons.more_vert, size: 16),
                 ),
@@ -576,11 +537,16 @@ class _WorkflowTablePanel extends StatelessWidget {
               ],
             ),
           ),
-          Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
-          SizedBox(
-            height: 56,
-            child: _StageDistribution(workflows: allWorkflows),
-          ),
+          if (allWorkflows.isNotEmpty) ...[
+            Divider(
+              height: 1,
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+            SizedBox(
+              height: 56,
+              child: _StageDistribution(workflows: allWorkflows),
+            ),
+          ],
           Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
           SizedBox(
             height: 39,
@@ -675,8 +641,6 @@ class _WorkflowTablePanel extends StatelessWidget {
                             record: workflows[index],
                             selected: selected?.id == workflows[index].id,
                             onTap: () => onSelect(index),
-                            onDetails: () =>
-                                _showWorkflowDetail(context, workflows[index]),
                             onApprovals: onApprovals,
                             onWorkspace: onWorkspace,
                           ),
@@ -998,7 +962,6 @@ class _WorkflowRow extends StatelessWidget {
     required this.record,
     required this.selected,
     required this.onTap,
-    required this.onDetails,
     required this.onApprovals,
     required this.onWorkspace,
   });
@@ -1006,7 +969,6 @@ class _WorkflowRow extends StatelessWidget {
   final _WorkflowRecord record;
   final bool selected;
   final VoidCallback onTap;
-  final VoidCallback onDetails;
   final VoidCallback onApprovals;
   final VoidCallback onWorkspace;
 
@@ -1154,8 +1116,6 @@ class _WorkflowRow extends StatelessWidget {
                   tooltip: _tr(context, 'İş akışı eylemleri', 'Workflow actions'),
                   onSelected: (action) {
                     switch (action) {
-                      case _WorkflowRowAction.details:
-                        onDetails();
                       case _WorkflowRowAction.approvals:
                         onApprovals();
                       case _WorkflowRowAction.workspace:
@@ -1163,10 +1123,6 @@ class _WorkflowRow extends StatelessWidget {
                     }
                   },
                   itemBuilder: (context) => [
-                    PopupMenuItem(
-                      value: _WorkflowRowAction.details,
-                      child: Text(_tr(context, 'Detayı Aç', 'Open Details')),
-                    ),
                     PopupMenuItem(
                       value: _WorkflowRowAction.approvals,
                       child: Text(_tr(context, 'Onayları Gör', 'View Approvals')),
@@ -1616,7 +1572,7 @@ class _SelectedContent extends StatelessWidget {
         item,
         const ['job_id', 'workflow_id', 'execution_id'],
       );
-      return id == null || id == workflow.id;
+      return id != null && id == workflow.id;
     }).take(2).toList(growable: false);
 
     return Column(

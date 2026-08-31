@@ -1,4 +1,4 @@
-# Agent closure exact-master co-certification trigger; no package behavior change.
+# Agent closure exact-head co-certification trigger; no source mutation.
 [CmdletBinding()]
 param(
   [Parameter(Mandatory = $true)][string]$SourceSha,
@@ -22,71 +22,43 @@ function Run-Native([string]$Label, [scriptblock]$Command) {
 
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $desktopRoot = Join-Path $repoRoot 'apps\desktop'
-$patcher = Join-Path $PSScriptRoot 'apply_combined_typography_reference_patch.py'
+$validator = Join-Path $PSScriptRoot 'apply_combined_typography_reference_patch.py'
 
-if (-not (Test-Path $patcher -PathType Leaf)) { Fail "Patch helper missing: $patcher" }
+if (-not (Test-Path $validator -PathType Leaf)) {
+  Fail "V4 contract helper missing: $validator"
+}
 
-Run-Native 'Apply fail-closed combined patch' { python $patcher $repoRoot }
+$actualSha = (git -C $repoRoot rev-parse HEAD).Trim()
+if ($actualSha -ne $SourceSha) {
+  Fail "Exact-head mismatch. expected=$SourceSha actual=$actualSha"
+}
+
+Run-Native 'Verify fail-closed Desktop V4 combined contract' {
+  python $validator $repoRoot
+}
+
+$dirtyBefore = @(git -C $repoRoot status --porcelain)
+if ($dirtyBefore.Count -gt 0) {
+  Fail "V4 contract validation mutated source: $($dirtyBefore -join ', ')"
+}
+
+$iconPath = Join-Path $desktopRoot 'windows\runner\resources\app_icon.ico'
+$brandScratch = Join-Path $desktopRoot 'brand'
+$iconBackup = Join-Path $env:RUNNER_TEMP "ilaios-combined-app-icon-$RunId.ico"
+if (-not (Test-Path $iconPath -PathType Leaf)) {
+  Fail "Tracked Windows icon missing before build: $iconPath"
+}
+if (Test-Path $brandScratch) {
+  Fail "Unexpected Desktop brand staging directory before build: $brandScratch"
+}
+Copy-Item $iconPath $iconBackup -Force
+$iconHashBefore = (Get-FileHash $iconPath -Algorithm SHA256).Hash.ToLowerInvariant()
 
 Push-Location $desktopRoot
 try {
   Run-Native 'Resolve locked dependencies' { flutter pub get --enforce-lockfile }
-  Run-Native 'Format patched Dart' {
-    dart format `
-      lib/features/dashboard/reference_desktop_shell_v10.dart `
-      lib/features/deliveries/deliveries_view.dart `
-      lib/app/desktop_app.dart `
-      lib/features/create/create_view.dart `
-      lib/features/create/reference_asset_picker_core.dart `
-      lib/identity/identity_client.dart `
-      lib/reference_assets/reference_factory_target.dart `
-      lib/reference_assets/reference_asset_ui_scope.dart `
-      test/desktop_combined_typography_reference_ux_test.dart
-  }
-}
-finally {
-  Pop-Location
-}
-
-Run-Native 'Git diff whitespace check' { git -C $repoRoot diff --check }
-
-$expected = @(
-  'apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart',
-  'apps/desktop/lib/features/deliveries/deliveries_view.dart',
-  'apps/desktop/lib/app/desktop_app.dart',
-  'apps/desktop/lib/features/create/create_view.dart',
-  'apps/desktop/lib/features/create/reference_asset_picker_core.dart',
-  'apps/desktop/lib/identity/identity_client.dart',
-  'apps/desktop/lib/reference_assets/reference_factory_target.dart',
-  'apps/desktop/lib/reference_assets/reference_asset_ui_scope.dart',
-  'apps/desktop/test/desktop_combined_typography_reference_ux_test.dart'
-)
-$changed = @(git -C $repoRoot diff --name-only)
-$unexpected = @($changed | Where-Object { $_ -notin $expected })
-if ($unexpected.Count -gt 0) {
-  Fail "Unexpected patched files: $($unexpected -join ', ')"
-}
-foreach ($path in $expected) {
-  if ($path -notin $changed) { Fail "Expected patched file missing: $path" }
-}
-
-# The formatter can re-indent unchanged layout. Compare ignoring whitespace so
-# only semantic geometry changes are rejected.
-$v10Semantic = @(git -C $repoRoot diff -w --ignore-blank-lines -- apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart)
-$forbidden = @($v10Semantic | Where-Object {
-  $_ -match '^[+-](?![+-]).*(\bwidth\s*:|\bheight\s*:|EdgeInsets|SizedBox\(|\bpadding\s*:|\bmargin\s*:)'
-})
-if ($forbidden.Count -gt 0) {
-  Fail "Protected shell geometry changed semantically:`n$($forbidden -join "`n")"
-}
-
-$patchEvidence = Join-Path $repoRoot 'desktop-combined-ci.patch'
-git -C $repoRoot diff --binary | Out-File -Encoding utf8 $patchEvidence
-
-Push-Location $desktopRoot
-try {
   Run-Native 'Flutter analyze' { flutter analyze }
-  Run-Native 'Required 1366x768 / 1440x900 / 1920x1080 viewport tests' {
+  Run-Native 'Required 1366x768 / 1440x900 / 1920x1080 V4 viewport tests' {
     flutter test test/desktop_combined_typography_reference_ux_test.dart
   }
   Run-Native 'Full Desktop tests' { flutter test }
@@ -95,7 +67,25 @@ try {
 }
 finally {
   Pop-Location
+  if (Test-Path $iconBackup -PathType Leaf) {
+    Copy-Item $iconBackup $iconPath -Force
+    Remove-Item $iconBackup -Force -ErrorAction SilentlyContinue
+  }
+  if (Test-Path $brandScratch) {
+    Remove-Item $brandScratch -Recurse -Force
+  }
 }
+
+$iconHashAfter = (Get-FileHash $iconPath -Algorithm SHA256).Hash.ToLowerInvariant()
+if ($iconHashAfter -ne $iconHashBefore) {
+  Fail "Combined verification failed to restore the tracked Windows icon exactly. before=$iconHashBefore after=$iconHashAfter"
+}
+
+$dirtyAfter = @(git -C $repoRoot status --porcelain)
+if ($dirtyAfter.Count -gt 0) {
+  Fail "Combined verification left source mutations: $($dirtyAfter -join ', ')"
+}
+Write-Host 'ILAIOS_DESKTOP_COMBINED_SOURCE_CLEAN=PASS'
 
 $release = Join-Path $desktopRoot 'build\windows\x64\runner\Release'
 $exe = Join-Path $release 'ilaios_desktop.exe'
@@ -105,8 +95,12 @@ if (-not (Test-Path $sidecar -PathType Leaf)) { Fail "Sidecar missing: $sidecar"
 if ((Get-Item $exe).Length -le 0) { Fail 'Release executable is empty' }
 if ((Get-Item $sidecar).Length -le 0) { Fail 'Sidecar is empty' }
 $version = (Get-Item $exe).VersionInfo
-if ($version.ProductName -ne 'ILAIOS Desktop') { Fail "Unexpected ProductName: $($version.ProductName)" }
-if ($version.CompanyName -ne 'ILAIOS') { Fail "Unexpected CompanyName: $($version.CompanyName)" }
+if ($version.ProductName -ne 'ILAIOS Desktop') {
+  Fail "Unexpected ProductName: $($version.ProductName)"
+}
+if ($version.CompanyName -ne 'ILAIOS') {
+  Fail "Unexpected CompanyName: $($version.CompanyName)"
+}
 Write-Host 'ILAIOS_DESKTOP_COMBINED_WINDOWS_BUILD=PASS'
 
 $artifactParent = Join-Path $repoRoot 'artifacts'
@@ -208,6 +202,7 @@ $manifest = [ordered]@{
   run_id = $RunId
   flutter = '3.44.9 / 6b182d2c7585eba26d4edce0f97630effd256c33'
   viewport_tests = @('1366x768','1440x900','1920x1080')
+  v4_source_mutations = 0
   static_analysis = 'PASS'
   full_flutter_tests = 'PASS'
   windows_release_build = 'PASS'
@@ -216,7 +211,9 @@ $manifest = [ordered]@{
 }
 $manifest | ConvertTo-Json -Depth 5 |
   Set-Content -Encoding UTF8 (Join-Path $artifactRoot 'CI_EVIDENCE.json')
-Copy-Item $patchEvidence (Join-Path $artifactRoot 'desktop-combined-ci.patch')
+Set-Content -Encoding UTF8 `
+  -Path (Join-Path $artifactRoot 'desktop-combined-ci.patch') `
+  -Value 'Desktop V4 is canonical source; Combined Final applied no ephemeral source patch.'
 
 $hashes = Get-ChildItem $runtime -File -Recurse | Sort-Object FullName | ForEach-Object {
   $relative = $_.FullName.Substring($runtime.Length + 1)

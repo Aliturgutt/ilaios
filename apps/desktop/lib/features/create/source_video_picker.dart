@@ -31,11 +31,13 @@ class SourceVideoPicker extends StatefulWidget {
   const SourceVideoPicker({
     required this.controller,
     required this.enabled,
+    this.compact = false,
     super.key,
   });
 
   final SourceVideoPickerController controller;
   final bool enabled;
+  final bool compact;
 
   @override
   State<SourceVideoPicker> createState() => _SourceVideoPickerState();
@@ -209,104 +211,212 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
   Widget build(BuildContext context) {
     final source = widget.controller.source;
     final theme = Theme.of(context);
+    final explanation = _text(
+      'Optional. Attach one authenticated MP4 when you want Video Factory to revise or localize an existing video. Server-side ffprobe remains authoritative.',
+      'İsteğe bağlı. Video Factory ile mevcut videoyu düzenlemek veya yerelleştirmek için bir doğrulanmış MP4 ekleyin. Sunucu tarafındaki ffprobe nihai doğrulamadır.',
+    );
+    final localDetail = _text(
+      'The file remains local until submission; only its authenticated src-* ID is placed in the execution intent.',
+      'Dosya gönderime kadar yerelde kalır; yürütme isteğine yalnızca doğrulanmış src-* kimliği eklenir.',
+    );
+
     return Container(
       key: const Key('source-video-picker'),
       width: 430,
-      padding: const EdgeInsets.all(10),
+      padding: EdgeInsets.all(widget.compact ? 7 : 10),
       decoration: BoxDecoration(
         color: theme.colorScheme.surfaceContainerHigh,
         borderRadius: BorderRadius.circular(10),
         border: Border.all(color: theme.colorScheme.outlineVariant),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.video_file_outlined, size: 17),
-              const SizedBox(width: 7),
-              Expanded(
-                child: Text(
-                  _text('Source Video', 'Kaynak Video'),
-                  style: theme.textTheme.labelMedium?.copyWith(
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-              if (source != null)
-                IconButton(
-                  key: const Key('source-video-remove'),
-                  tooltip: _text('Remove source video', 'Kaynak videoyu kaldır'),
-                  onPressed: widget.enabled ? widget.controller.clear : null,
-                  icon: const Icon(Icons.close_rounded, size: 17),
-                ),
-            ],
-          ),
-          const SizedBox(height: 4),
-          if (source == null) ...[
-            Text(
-              _text(
-                'Optional. Attach one authenticated MP4 when you want Video Factory to revise or localize an existing video. Server-side ffprobe remains authoritative.',
-                'İsteğe bağlı. Video Factory ile mevcut videoyu düzenlemek veya yerelleştirmek için bir doğrulanmış MP4 ekleyin. Sunucu tarafındaki ffprobe nihai doğrulamadır.',
-              ),
-              style: theme.textTheme.bodySmall?.copyWith(fontSize: 9.5),
-            ),
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: OutlinedButton.icon(
-                key: const Key('source-video-add'),
-                onPressed: widget.enabled && !_reading ? _pick : null,
-                icon: _reading
-                    ? const SizedBox(
-                        width: 13,
-                        height: 13,
-                        child: CircularProgressIndicator(strokeWidth: 2),
+      child: widget.compact
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.video_file_outlined, size: 16),
+                    const SizedBox(width: 6),
+                    Expanded(
+                      child: Text(
+                        _text('Source Video', 'Kaynak Video'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (source == null)
+                      SizedBox(
+                        height: 30,
+                        child: OutlinedButton.icon(
+                          key: const Key('source-video-add'),
+                          onPressed: widget.enabled && !_reading ? _pick : null,
+                          icon: _reading
+                              ? const SizedBox(
+                                  width: 12,
+                                  height: 12,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.upload_file_outlined, size: 14),
+                          label: Text(
+                            _reading
+                                ? _text('Reading…', 'Okunuyor…')
+                                : _text('Choose MP4', 'MP4 Seç'),
+                            style: const TextStyle(fontSize: 9),
+                          ),
+                        ),
                       )
-                    : const Icon(Icons.upload_file_outlined, size: 16),
-                label: Text(
-                  _reading
-                      ? _text('Reading…', 'Okunuyor…')
-                      : _text('Choose MP4', 'MP4 Seç'),
+                    else
+                      IconButton(
+                        key: const Key('source-video-remove'),
+                        tooltip: _text(
+                          'Remove source video',
+                          'Kaynak videoyu kaldır',
+                        ),
+                        onPressed: widget.enabled ? widget.controller.clear : null,
+                        visualDensity: VisualDensity.compact,
+                        icon: const Icon(Icons.close_rounded, size: 16),
+                      ),
+                  ],
                 ),
-              ),
+                const SizedBox(height: 3),
+                if (source == null)
+                  Tooltip(
+                    message: explanation,
+                    child: Text(
+                      _text(
+                        'Optional authenticated MP4 · ffprobe verified',
+                        'İsteğe bağlı doğrulanmış MP4 · ffprobe denetimli',
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 8.8),
+                    ),
+                  )
+                else ...[
+                  Text(
+                    source.filename,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Tooltip(
+                    message: localDetail,
+                    child: Text(
+                      '${_formatBytes(source.sizeBytes)} • SHA-256 ${source.sha256Hex.substring(0, 12)}…',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 8.5),
+                    ),
+                  ),
+                ],
+                if (_error != null) ...[
+                  const SizedBox(height: 3),
+                  Text(
+                    _error!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                      fontSize: 8.5,
+                    ),
+                  ),
+                ],
+              ],
+            )
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.video_file_outlined, size: 17),
+                    const SizedBox(width: 7),
+                    Expanded(
+                      child: Text(
+                        _text('Source Video', 'Kaynak Video'),
+                        style: theme.textTheme.labelMedium?.copyWith(
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    if (source != null)
+                      IconButton(
+                        key: const Key('source-video-remove'),
+                        tooltip: _text(
+                          'Remove source video',
+                          'Kaynak videoyu kaldır',
+                        ),
+                        onPressed: widget.enabled ? widget.controller.clear : null,
+                        icon: const Icon(Icons.close_rounded, size: 17),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                if (source == null) ...[
+                  Text(
+                    explanation,
+                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 9.5),
+                  ),
+                  const SizedBox(height: 8),
+                  Align(
+                    alignment: Alignment.centerLeft,
+                    child: OutlinedButton.icon(
+                      key: const Key('source-video-add'),
+                      onPressed: widget.enabled && !_reading ? _pick : null,
+                      icon: _reading
+                          ? const SizedBox(
+                              width: 13,
+                              height: 13,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.upload_file_outlined, size: 16),
+                      label: Text(
+                        _reading
+                            ? _text('Reading…', 'Okunuyor…')
+                            : _text('Choose MP4', 'MP4 Seç'),
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  Text(
+                    source.filename,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    '${_formatBytes(source.sizeBytes)} • SHA-256 ${source.sha256Hex.substring(0, 12)}…',
+                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 9),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    localDetail,
+                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 9),
+                  ),
+                ],
+                if (_error != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    _error!,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.error,
+                      fontSize: 9,
+                    ),
+                  ),
+                ],
+              ],
             ),
-          ] else ...[
-            Text(
-              source.filename,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            const SizedBox(height: 3),
-            Text(
-              '${_formatBytes(source.sizeBytes)} • SHA-256 ${source.sha256Hex.substring(0, 12)}…',
-              style: theme.textTheme.bodySmall?.copyWith(fontSize: 9),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              _text(
-                'The file remains local until submission; only its authenticated src-* ID is placed in the execution intent.',
-                'Dosya gönderime kadar yerelde kalır; yürütme isteğine yalnızca doğrulanmış src-* kimliği eklenir.',
-              ),
-              style: theme.textTheme.bodySmall?.copyWith(fontSize: 9),
-            ),
-          ],
-          if (_error != null) ...[
-            const SizedBox(height: 6),
-            Text(
-              _error!,
-              style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.error,
-                fontSize: 9,
-              ),
-            ),
-          ],
-        ],
-      ),
     );
   }
 }

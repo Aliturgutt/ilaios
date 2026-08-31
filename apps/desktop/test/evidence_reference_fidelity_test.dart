@@ -56,7 +56,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('evidence reference surface renders authoritative records in dark mode', (
+  testWidgets('evidence V4 surface renders authoritative records and contextual detail in dark mode', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -65,14 +65,18 @@ void main() {
     expect(find.byKey(const Key('reference-evidence-page')), findsOneWidget);
     expect(find.byKey(const Key('evidence-kpis')), findsOneWidget);
     expect(find.byKey(const Key('evidence-table')), findsOneWidget);
-    expect(find.byKey(const Key('selected-evidence-panel')), findsOneWidget);
+    expect(find.byKey(const Key('selected-evidence-panel')), findsNothing);
     expect(find.text('Kanıtlar'), findsOneWidget);
-    expect(find.text('Release artifact verified'), findsWidgets);
+    expect(find.text('Release artifact verified'), findsOneWidget);
     expect(find.text('312'), findsNothing);
+
+    await tester.tap(find.byKey(const ValueKey('evidence-row-2')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('selected-evidence-panel')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('evidence reference surface remains valid in light mode', (
+  testWidgets('evidence V4 surface remains valid in light mode', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -81,6 +85,7 @@ void main() {
     expect(find.text('Evidence'), findsOneWidget);
     expect(find.byKey(const Key('evidence-tabs')), findsOneWidget);
     expect(find.byKey(const ValueKey('evidence-row-2')), findsOneWidget);
+    expect(find.byKey(const Key('selected-evidence-panel')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

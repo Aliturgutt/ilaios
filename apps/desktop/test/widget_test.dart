@@ -94,14 +94,13 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const IlaiosDesktopApp());
     await tester.pumpAndSettle();
-    expect(find.text('Main Control Center'), findsOneWidget);
+    expect(find.byKey(const Key('command-center-home')), findsOneWidget);
     expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-metrics')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-session')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-metrics')), findsNothing);
+    expect(find.byKey(const Key('command-center-session')), findsNothing);
     expect(find.textContaining(r'$3.21'), findsNothing);
     expect(find.textContaining('18.362'), findsNothing);
     expect(find.text('96%'), findsNothing);
-    expect(find.text('—'), findsWidgets);
   });
 
   testWidgets('Workflows projects authoritative job state and refresh', (
@@ -323,9 +322,18 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('nav-approvals')));
     await tester.pumpAndSettle();
     expect(find.textContaining('vault://must-never-render'), findsNothing);
+    final request = find.descendant(
+      of: find.byKey(const Key('approvals-table')),
+      matching: find.text('request-7'),
+    );
+    expect(request, findsOneWidget);
+    await tester.tap(request);
+    await tester.pumpAndSettle();
     final approve = find.byKey(const ValueKey('approve-request-7'));
+    expect(approve, findsOneWidget);
     await tester.ensureVisible(approve);
     await tester.tap(approve);
+    await tester.pumpAndSettle();
     expect(decidedRequest, 'request-7');
     expect(decidedValue, GovernanceDecision.approved);
   });

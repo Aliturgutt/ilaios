@@ -89,33 +89,64 @@ void main() {
     expect(find.text('English'), findsWidgets);
   });
 
-  testWidgets('Workflows keeps the approved reference hierarchy', (
+  testWidgets('Workflows keeps the V4 reference hierarchy with contextual detail', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(const IlaiosDesktopApp());
+    const snapshot = OperationalSnapshot(
+      runtimeRoutes: <Map<String, Object?>>[],
+      schedulerState: <String, Object?>{},
+      grantsState: <String, Object?>{},
+      governanceState: <String, Object?>{},
+      evidenceRecords: <EvidenceRecord>[],
+      liveEvents: <Map<String, Object?>>[
+        <String, Object?>{
+          'workflow_id': 'wf-v4-1',
+          'workflow_name': 'V4 Workflow',
+          'description': 'Authoritative workflow record',
+          'workflow_type': 'Web',
+          'phase': 'Execution',
+          'progress': .4,
+          'owner': 'operator',
+          'priority': 'High',
+        },
+      ],
+    );
+
+    await tester.pumpWidget(
+      const IlaiosDesktopApp(
+        operationalSnapshot: snapshot,
+        projection: ControlPlaneProjection(
+          connected: true,
+          status: 'Connected',
+          goalCount: 0,
+          jobCount: 1,
+          lastEvent: null,
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const ValueKey('nav-workflows')));
     await tester.pumpAndSettle();
 
     final workflowsPage = find.byKey(const Key('reference-workflows-page'));
     expect(workflowsPage, findsOneWidget);
-    for (final key in <Key>[
-      const Key('workflows-metrics'),
-      const Key('workflows-table-panel'),
-      const Key('selected-workflow-panel'),
-      const Key('workflows-bottom-panels'),
-    ]) {
-      expect(find.byKey(key), findsWidgets, reason: 'missing $key');
-    }
+    expect(find.byKey(const Key('workflows-metrics')), findsOneWidget);
+    expect(find.byKey(const Key('workflows-table-panel')), findsWidgets);
+    expect(find.byKey(const Key('selected-workflow-panel')), findsNothing);
+    expect(find.byKey(const Key('workflows-bottom-panels')), findsOneWidget);
     expect(
       find.descendant(of: workflowsPage, matching: find.text('Workflows')),
       findsOneWidget,
     );
-    expect(find.text('Total Workflows'), findsOneWidget);
-    expect(find.text('Stage Distribution (All Workflows)'), findsOneWidget);
+    expect(find.byKey(const ValueKey('workflow-row-wf-v4-1')), findsOneWidget);
+    expect(find.text('V4 Workflow'), findsWidgets);
+
+    await tester.tap(find.byKey(const ValueKey('workflow-row-wf-v4-1')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('selected-workflow-panel')), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 

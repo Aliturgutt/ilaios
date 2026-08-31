@@ -7,6 +7,7 @@ import '../../control_plane/client.dart';
 import '../../control_plane/projection.dart';
 import '../../identity/identity_client.dart';
 import 'governed_lifecycle_projection.dart';
+import 'reference_asset_picker.dart';
 
 /// Reference-faithful Goals surface.
 ///
@@ -23,6 +24,7 @@ class CreateView extends StatefulWidget {
     this.identityStatus = 'Account sign-in is not configured',
     this.onSignIn,
     this.onLogout,
+    this.referenceAssets,
     this.onSubmit,
     super.key,
   });
@@ -34,6 +36,7 @@ class CreateView extends StatefulWidget {
   final String identityStatus;
   final Future<void> Function(String providerId)? onSignIn;
   final Future<void> Function()? onLogout;
+  final ReferenceAssetPickerController? referenceAssets;
   final Future<PromptSubmission> Function(String objective)? onSubmit;
 
   @override
@@ -57,7 +60,8 @@ class _CreateViewState extends State<CreateView> {
     super.didUpdateWidget(oldWidget);
     final sessionChanged =
         oldWidget.userSession?.sessionId != widget.userSession?.sessionId;
-    if (sessionChanged || (!widget.projection.connected && oldWidget.projection.connected)) {
+    if (sessionChanged ||
+        (!widget.projection.connected && oldWidget.projection.connected)) {
       _submission = null;
       _submittedObjective = null;
       _error = null;
@@ -91,13 +95,17 @@ class _CreateViewState extends State<CreateView> {
   String _routePrefix(BuildContext context, _FactoryPreset preset) {
     final tr = _isTr(context);
     return switch (preset) {
-      _FactoryPreset.web => tr ? 'Web sitesi oluşturma görevi:' : 'Website build task:',
-      _FactoryPreset.video => tr ? 'Video oluşturma görevi:' : 'Video creation task:',
-      _FactoryPreset.software => tr ? 'Yazılım oluşturma görevi:' : 'Software build task:',
+      _FactoryPreset.web =>
+        tr ? 'Web sitesi oluşturma görevi:' : 'Website build task:',
+      _FactoryPreset.video =>
+        tr ? 'Video oluşturma görevi:' : 'Video creation task:',
+      _FactoryPreset.software =>
+        tr ? 'Yazılım oluşturma görevi:' : 'Software build task:',
     };
   }
 
-  String _presetLabel(BuildContext context, _FactoryPreset preset) => switch (preset) {
+  String _presetLabel(BuildContext context, _FactoryPreset preset) =>
+      switch (preset) {
         _FactoryPreset.web => 'Web Factory',
         _FactoryPreset.video => 'Video Factory',
         _FactoryPreset.software => 'Software Factory',
@@ -107,19 +115,19 @@ class _CreateViewState extends State<CreateView> {
     BuildContext context,
     BusinessCapabilityFamily family,
   ) => switch (family) {
-        BusinessCapabilityFamily.executiveEnterpriseIntelligence =>
-          _copy(context, 'Executive', 'Yönetim'),
-        BusinessCapabilityFamily.operations =>
-          _copy(context, 'Operations', 'Operasyon'),
-        BusinessCapabilityFamily.financeCostIntelligence =>
-          _copy(context, 'Finance', 'Finans'),
-        BusinessCapabilityFamily.growthMarketing =>
-          _copy(context, 'Growth', 'Büyüme'),
-        BusinessCapabilityFamily.commerceSales =>
-          _copy(context, 'Commerce', 'Ticaret'),
-        BusinessCapabilityFamily.researchData =>
-          _copy(context, 'Research', 'Araştırma'),
-      };
+    BusinessCapabilityFamily.executiveEnterpriseIntelligence =>
+      _copy(context, 'Executive', 'Yönetim'),
+    BusinessCapabilityFamily.operations =>
+      _copy(context, 'Operations', 'Operasyon'),
+    BusinessCapabilityFamily.financeCostIntelligence =>
+      _copy(context, 'Finance', 'Finans'),
+    BusinessCapabilityFamily.growthMarketing =>
+      _copy(context, 'Growth', 'Büyüme'),
+    BusinessCapabilityFamily.commerceSales =>
+      _copy(context, 'Commerce', 'Ticaret'),
+    BusinessCapabilityFamily.researchData =>
+      _copy(context, 'Research', 'Araştırma'),
+  };
 
   void _selectPreset(_FactoryPreset preset) {
     final current = _controller.text.trim();
@@ -226,6 +234,7 @@ class _CreateViewState extends State<CreateView> {
             submitting: _submitting,
             selectedPreset: _selectedPreset,
             selectedBusinessCapability: _selectedBusinessCapability,
+            referenceAssets: widget.referenceAssets,
             presetLabel: (preset) => _presetLabel(context, preset),
             businessCapabilityLabel: (family) =>
                 _businessCapabilityLabel(context, family),
@@ -233,11 +242,13 @@ class _CreateViewState extends State<CreateView> {
             onBusinessCapabilityChanged: _selectBusinessCapability,
             onSubmit: _submit,
           ),
-          const SizedBox(height: 8),
-          _MetricStrip(
-            goalCount: goalCount,
-            lastEvent: widget.projection.lastEvent,
-          ),
+          if (goalCount != null && goalCount > 0) ...[
+            const SizedBox(height: 8),
+            _MetricStrip(
+              goalCount: goalCount,
+              lastEvent: widget.projection.lastEvent,
+            ),
+          ],
           const SizedBox(height: 8),
           _GoalTabs(
             activeTab: _activeTab,
@@ -263,48 +274,10 @@ class _CreateViewState extends State<CreateView> {
                               activeTab: _activeTab,
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          SizedBox(
-                            height: 152,
-                            child: Row(
-                              children: [
-                                Expanded(
-                                  child: _InfoCard(
-                                    title: _copy(context, 'Recent Updates', 'Son Güncellemeler'),
-                                    trailing: _copy(context, 'All ›', 'Tümü ›'),
-                                    child: _RecentUpdates(
-                                      lastEvent: widget.projection.lastEvent,
-                                      submission: _submission,
-                                      objective: _submittedObjective,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _InfoCard(
-                                    title: _copy(context, 'Critical Blockers', 'Kritik Engeller'),
-                                    trailing: _copy(context, 'All ›', 'Tümü ›'),
-                                    child: const _UnavailablePanel(
-                                      icon: Icons.warning_amber_rounded,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: _InfoCard(
-                                    key: const Key('goals-distribution'),
-                                    title: _copy(context, 'Goal Distribution', 'Hedef Dağılımı'),
-                                    trailing: _copy(context, 'All ›', 'Tümü ›'),
-                                    child: _Distribution(goalCount: goalCount),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
                         ],
                       ),
                     ),
-                    if (showRightRail) ...[
+                    if (showRightRail && _submission != null) ...[
                       const SizedBox(width: 12),
                       SizedBox(
                         width: 390,
@@ -316,17 +289,6 @@ class _CreateViewState extends State<CreateView> {
                                 submission: _submission,
                                 objective: _submittedObjective,
                                 owner: owner,
-                              ),
-                            ),
-                            const SizedBox(height: 8),
-                            SizedBox(
-                              height: 164,
-                              child: _InfoCard(
-                                title: _copy(context, 'Upcoming Deliveries', 'Yaklaşan Teslimler'),
-                                trailing: _copy(context, 'All ›', 'Tümü ›'),
-                                child: const _UnavailablePanel(
-                                  icon: Icons.calendar_month_outlined,
-                                ),
                               ),
                             ),
                           ],
@@ -359,6 +321,7 @@ class _GoalsHeader extends StatelessWidget {
     required this.submitting,
     required this.selectedPreset,
     required this.selectedBusinessCapability,
+    required this.referenceAssets,
     required this.presetLabel,
     required this.businessCapabilityLabel,
     required this.onPresetChanged,
@@ -371,6 +334,7 @@ class _GoalsHeader extends StatelessWidget {
   final bool submitting;
   final _FactoryPreset? selectedPreset;
   final BusinessCapabilityFamily? selectedBusinessCapability;
+  final ReferenceAssetPickerController? referenceAssets;
   final String Function(_FactoryPreset preset) presetLabel;
   final String Function(BusinessCapabilityFamily family) businessCapabilityLabel;
   final ValueChanged<_FactoryPreset> onPresetChanged;
@@ -378,85 +342,108 @@ class _GoalsHeader extends StatelessWidget {
   final VoidCallback onSubmit;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-        height: 72,
-        child: Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    _copy(context, 'Goals', 'Hedefler'),
-                    style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          fontSize: 22,
-                          fontWeight: FontWeight.w700,
-                        ),
+  Widget build(BuildContext context) => Container(
+    key: const Key('goals-composer'),
+    padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+    decoration: BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      borderRadius: BorderRadius.circular(8),
+    ),
+    child: Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 205,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _copy(context, 'Goals', 'Hedefler'),
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                _copy(
+                  context,
+                  'Create and manage governed goals from one prompt.',
+                  'Tek bir komutla yönetişimli hedef oluşturun ve yönetin.',
+                ),
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                _copy(
+                  context,
+                  'What do you want ILAIOS to build?',
+                  'ILAIOS’un ne oluşturmasını istiyorsun?',
+                ),
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
+              const SizedBox(height: 6),
+              TextField(
+                key: const Key('one-prompt-input'),
+                controller: controller,
+                enabled: enabled,
+                minLines: 3,
+                maxLines: 5,
+                textInputAction: TextInputAction.newline,
+                decoration: InputDecoration(
+                  hintText: _copy(
+                    context,
+                    'Describe the result, constraints and acceptance criteria…',
+                    'İstediğin sonucu, kısıtları ve kabul kriterlerini yaz…',
                   ),
-                  const SizedBox(height: 2),
-                  Text(
-                    _copy(
-                      context,
-                      'Track strategic goals, OKRs and progress.',
-                      'Stratejik hedefleri, OKR’leri ve ilerleme durumlarını izleyin.',
-                    ),
-                    style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 10.2),
+                  alignLabelWithHint: true,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: [
+                  _FactoryRouteStrip(
+                    selected: selectedPreset,
+                    presetLabel: presetLabel,
+                    onChanged: onPresetChanged,
+                  ),
+                  _BusinessCapabilitySelector(
+                    selected: selectedBusinessCapability,
+                    labelFor: businessCapabilityLabel,
+                    onChanged: onBusinessCapabilityChanged,
                   ),
                 ],
               ),
-            ),
-            SizedBox(
-              width: 288,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    context.tr('goals.title'),
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 8.2),
-                  ),
-                  const SizedBox(height: 3),
-                  SizedBox(
-                    height: 32,
-                    child: TextField(
-                      key: const Key('one-prompt-input'),
-                      controller: controller,
-                      enabled: enabled,
-                      onSubmitted: enabled && !submitting ? (_) => onSubmit() : null,
-                      decoration: InputDecoration(
-                        isDense: true,
-                        hintText: _copy(context, 'Describe a new goal…', 'Yeni hedefi tanımlayın…'),
-                        prefixIcon: const Icon(Icons.track_changes_outlined, size: 16),
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                      ),
-                      style: const TextStyle(fontSize: 10.5),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            _FactoryRouteStrip(
-              selected: selectedPreset,
-              presetLabel: presetLabel,
-              onChanged: onPresetChanged,
-            ),
-            const SizedBox(width: 8),
-            _BusinessCapabilitySelector(
-              selected: selectedBusinessCapability,
-              labelFor: businessCapabilityLabel,
-              onChanged: onBusinessCapabilityChanged,
-            ),
-            const SizedBox(width: 6),
-            _HeaderButton(
-              icon: Icons.download_outlined,
-              label: _copy(context, 'Export', 'Dışa Aktar'),
-              onPressed: () {},
-            ),
-            const SizedBox(width: 6),
-            SizedBox(
-              height: 34,
+              if (referenceAssets != null) ...[
+                const SizedBox(height: 8),
+                ReferenceAssetPicker(
+                  controller: referenceAssets!,
+                  enabled: enabled,
+                  compact: true,
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(width: 12),
+        SizedBox(
+          width: 138,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: SizedBox(
+              width: double.infinity,
+              height: 38,
               child: FilledButton.icon(
                 key: const Key('one-prompt-submit'),
                 onPressed: enabled && !submitting ? onSubmit : null,
@@ -466,21 +453,19 @@ class _GoalsHeader extends StatelessWidget {
                         height: 13,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
-                    : const Icon(Icons.add_rounded, size: 18),
+                    : const Icon(Icons.arrow_forward_rounded, size: 18),
                 label: Text(
                   submitting
                       ? context.tr('goals.submitting')
-                      : _copy(context, 'New Goal', 'Yeni Hedef'),
-                ),
-                style: FilledButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 13),
-                  textStyle: const TextStyle(fontSize: 10.2, fontWeight: FontWeight.w600),
+                      : _copy(context, 'Start', 'Başlat'),
                 ),
               ),
             ),
-          ],
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _BusinessCapabilitySelector extends StatelessWidget {
@@ -496,58 +481,58 @@ class _BusinessCapabilitySelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 34,
-        child: PopupMenuButton<BusinessCapabilityFamily?>(
-          key: const Key('business-capability-selector'),
-          tooltip: _copy(
-            context,
-            'Optional business context; does not select execution authority',
-            'İsteğe bağlı iş bağlamı; yürütme yetkisi seçmez',
-          ),
-          onSelected: onChanged,
-          itemBuilder: (context) => <PopupMenuEntry<BusinessCapabilityFamily?>>[
-            PopupMenuItem<BusinessCapabilityFamily?>(
-              key: const Key('business-context-none'),
-              value: null,
-              child: Text(_copy(context, 'No business context', 'İş bağlamı yok')),
-            ),
-            for (final family in BusinessCapabilityFamily.values)
-              PopupMenuItem<BusinessCapabilityFamily?>(
-                key: ValueKey('business-context-${family.contextCode}'),
-                value: family,
-                child: Text('${family.contextCode} · ${labelFor(family)}'),
-              ),
-          ],
-          child: Container(
-            constraints: const BoxConstraints(minWidth: 76, maxWidth: 92),
-            height: 34,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(5),
-              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.business_center_outlined, size: 14),
-                const SizedBox(width: 4),
-                Flexible(
-                  child: Text(
-                    selected == null
-                        ? _copy(context, 'Context', 'Bağlam')
-                        : selected!.contextCode,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 8.4, fontWeight: FontWeight.w600),
-                  ),
-                ),
-                const SizedBox(width: 2),
-                const Icon(Icons.arrow_drop_down, size: 14),
-              ],
-            ),
-          ),
+    height: 34,
+    child: PopupMenuButton<BusinessCapabilityFamily?>(
+      key: const Key('business-capability-selector'),
+      tooltip: _copy(
+        context,
+        'Optional business context; does not select execution authority',
+        'İsteğe bağlı iş bağlamı; yürütme yetkisi seçmez',
+      ),
+      onSelected: onChanged,
+      itemBuilder: (context) => <PopupMenuEntry<BusinessCapabilityFamily?>>[
+        PopupMenuItem<BusinessCapabilityFamily?>(
+          key: const Key('business-context-none'),
+          value: null,
+          child: Text(_copy(context, 'No business context', 'İş bağlamı yok')),
         ),
-      );
+        for (final family in BusinessCapabilityFamily.values)
+          PopupMenuItem<BusinessCapabilityFamily?>(
+            key: ValueKey('business-context-${family.contextCode}'),
+            value: family,
+            child: Text('${family.contextCode} · ${labelFor(family)}'),
+          ),
+      ],
+      child: Container(
+        constraints: const BoxConstraints(minWidth: 76, maxWidth: 92),
+        height: 34,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(5),
+          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.business_center_outlined, size: 14),
+            const SizedBox(width: 4),
+            Flexible(
+              child: Text(
+                selected == null
+                    ? _copy(context, 'Context', 'Bağlam')
+                    : selected!.contextCode,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 8.4, fontWeight: FontWeight.w600),
+              ),
+            ),
+            const SizedBox(width: 2),
+            const Icon(Icons.arrow_drop_down, size: 14),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 class _FactoryRouteStrip extends StatelessWidget {
@@ -563,19 +548,19 @@ class _FactoryRouteStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (final preset in _FactoryPreset.values) ...[
-            if (preset.index > 0) const SizedBox(width: 4),
-            _FactoryRouteChip(
-              preset: preset,
-              selected: selected == preset,
-              label: presetLabel(preset),
-              onTap: () => onChanged(preset),
-            ),
-          ],
-        ],
-      );
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      for (final preset in _FactoryPreset.values) ...[
+        if (preset.index > 0) const SizedBox(width: 4),
+        _FactoryRouteChip(
+          preset: preset,
+          selected: selected == preset,
+          label: presetLabel(preset),
+          onTap: () => onChanged(preset),
+        ),
+      ],
+    ],
+  );
 }
 
 class _FactoryRouteChip extends StatelessWidget {
@@ -592,96 +577,70 @@ class _FactoryRouteChip extends StatelessWidget {
   final VoidCallback onTap;
 
   String get _keyName => switch (preset) {
-        _FactoryPreset.web => 'factory-preset-web',
-        _FactoryPreset.video => 'factory-preset-video',
-        _FactoryPreset.software => 'factory-preset-software',
-      };
+    _FactoryPreset.web => 'factory-preset-web',
+    _FactoryPreset.video => 'factory-preset-video',
+    _FactoryPreset.software => 'factory-preset-software',
+  };
 
   IconData get _icon => switch (preset) {
-        _FactoryPreset.web => Icons.language_outlined,
-        _FactoryPreset.video => Icons.smart_display_outlined,
-        _FactoryPreset.software => Icons.code_rounded,
-      };
+    _FactoryPreset.web => Icons.language_outlined,
+    _FactoryPreset.video => Icons.smart_display_outlined,
+    _FactoryPreset.software => Icons.code_rounded,
+  };
 
   @override
   Widget build(BuildContext context) => Material(
-        key: ValueKey(_keyName),
+    key: ValueKey(_keyName),
+    color: selected
+        ? IlaiosTheme.coreBlue.withValues(alpha: .10)
+        : Theme.of(context).colorScheme.surfaceContainerLowest,
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(5),
+      side: BorderSide(
         color: selected
-            ? IlaiosTheme.coreBlue.withValues(alpha: .10)
-            : Theme.of(context).colorScheme.surfaceContainerLowest,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(5),
-          side: BorderSide(
-            color: selected
-                ? IlaiosTheme.coreBlue.withValues(alpha: .65)
-                : Theme.of(context).colorScheme.outlineVariant,
-          ),
-        ),
-        clipBehavior: Clip.antiAlias,
-        child: InkWell(
-          onTap: onTap,
-          child: Container(
-            key: selected ? const Key('selected-factory-route') : null,
-            height: 32,
-            constraints: const BoxConstraints(minWidth: 43, maxWidth: 52),
-            padding: const EdgeInsets.symmetric(horizontal: 5),
-            child: Tooltip(
-              message: label,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    _icon,
-                    size: 14,
-                    color: selected
-                        ? IlaiosTheme.coreBlue
-                        : Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 6.5,
-                      fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                      color: selected
-                          ? IlaiosTheme.coreBlue
-                          : Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
+            ? IlaiosTheme.coreBlue.withValues(alpha: .65)
+            : Theme.of(context).colorScheme.outlineVariant,
+      ),
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: InkWell(
+      onTap: onTap,
+      child: Container(
+        key: selected ? const Key('selected-factory-route') : null,
+        height: 32,
+        constraints: const BoxConstraints(minWidth: 43, maxWidth: 52),
+        padding: const EdgeInsets.symmetric(horizontal: 5),
+        child: Tooltip(
+          message: label,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                _icon,
+                size: 14,
+                color: selected
+                    ? IlaiosTheme.coreBlue
+                    : Theme.of(context).colorScheme.onSurfaceVariant,
               ),
-            ),
+              const SizedBox(height: 1),
+              Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 6.5,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                  color: selected
+                      ? IlaiosTheme.coreBlue
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
           ),
         ),
-      );
-}
-
-class _HeaderButton extends StatelessWidget {
-  const _HeaderButton({
-    required this.icon,
-    required this.label,
-    required this.onPressed,
-  });
-
-  final IconData icon;
-  final String label;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) => SizedBox(
-        height: 34,
-        child: OutlinedButton.icon(
-          onPressed: onPressed,
-          icon: Icon(icon, size: 15),
-          label: Text(label),
-          style: OutlinedButton.styleFrom(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            textStyle: const TextStyle(fontSize: 9.7, fontWeight: FontWeight.w600),
-          ),
-        ),
-      );
+      ),
+    ),
+  );
 }
 
 class _MetricStrip extends StatelessWidget {
@@ -759,54 +718,54 @@ class _MetricCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: _cardDecoration(context, radius: 7),
-        child: Row(
-          children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: metric.color.withValues(alpha: .11),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Icon(metric.icon, color: metric.color, size: 21),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    metric.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 8.1),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    metric.value,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, height: 1),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    metric.note,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 7.2,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+    decoration: _cardDecoration(context, radius: 7),
+    child: Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: metric.color.withValues(alpha: .11),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Icon(metric.icon, color: metric.color, size: 21),
         ),
-      );
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                metric.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.labelSmall?.copyWith(fontSize: 8.1),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                metric.value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, height: 1),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                metric.note,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 7.2,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 class _GoalTabs extends StatelessWidget {
@@ -879,94 +838,127 @@ class _GoalsTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final showSubmission = submission != null && activeTab != 'archive';
+    final header = Container(
+      height: 34,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      child: Row(
+        children: [
+          Expanded(flex: 31, child: _TableHeader(_copy(context, 'Goal', 'Hedef'))),
+          Expanded(flex: 17, child: _TableHeader(_copy(context, 'Owner', 'Sahip'))),
+          Expanded(
+            flex: 22,
+            child: _TableHeader(_copy(context, 'Progress', 'İlerleme')),
+          ),
+          Expanded(flex: 12, child: _TableHeader(_copy(context, 'Status', 'Durum'))),
+          Expanded(
+            flex: 12,
+            child: _TableHeader(_copy(context, 'Target', 'Hedef Tarihi')),
+          ),
+          Expanded(
+            flex: 10,
+            child: _TableHeader(_copy(context, 'Priority', 'Öncelik')),
+          ),
+          const SizedBox(width: 22),
+        ],
+      ),
+    );
+    final body = showSubmission
+        ? _GoalRow(
+            submission: submission!,
+            objective: objective ?? submission!.goalId,
+            owner: owner,
+          )
+        : Padding(
+            padding: const EdgeInsets.all(22),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.track_changes_outlined,
+                  size: 34,
+                  color: Theme.of(context).colorScheme.outline,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _copy(
+                    context,
+                    'Detailed goal records are not exposed by the current authoritative projection.',
+                    'Ayrıntılı hedef kayıtları mevcut yetkili projeksiyon tarafından sunulmuyor.',
+                  ),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+            ),
+          );
+    final footer = Container(
+      height: 38,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        border: Border(
+          top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              showSubmission
+                  ? _copy(
+                      context,
+                      'Showing 1 authoritative goal.',
+                      '1 yetkili hedef gösteriliyor.',
+                    )
+                  : _copy(
+                      context,
+                      'No detailed goal rows available.',
+                      'Ayrıntılı hedef satırı bulunmuyor.',
+                    ),
+              style: TextStyle(
+                fontSize: 8.7,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+          const _PageBox(label: '1', selected: true),
+          const SizedBox(width: 7),
+          _PageBox(label: _copy(context, '10 / page', '10 / sayfa')),
+        ],
+      ),
+    );
+
     return Container(
       key: const Key('goals-table'),
       decoration: _cardDecoration(context, radius: 7),
       clipBehavior: Clip.antiAlias,
-      child: Column(
-        children: [
-          Container(
-            height: 34,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            color: Theme.of(context).colorScheme.surfaceContainerLow,
-            child: Row(
-              children: [
-                Expanded(flex: 31, child: _TableHeader(_copy(context, 'Goal', 'Hedef'))),
-                Expanded(flex: 17, child: _TableHeader(_copy(context, 'Owner', 'Sahip'))),
-                Expanded(flex: 22, child: _TableHeader(_copy(context, 'Progress', 'İlerleme'))),
-                Expanded(flex: 12, child: _TableHeader(_copy(context, 'Status', 'Durum'))),
-                Expanded(flex: 12, child: _TableHeader(_copy(context, 'Target', 'Hedef Tarihi'))),
-                Expanded(flex: 10, child: _TableHeader(_copy(context, 'Priority', 'Öncelik'))),
-                const SizedBox(width: 22),
-              ],
-            ),
-          ),
-          if (showSubmission)
-            _GoalRow(
-              submission: submission!,
-              objective: objective ?? submission!.goalId,
-              owner: owner,
-            ),
-          Expanded(
-            child: showSubmission
-                ? const SizedBox.expand()
-                : Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(22),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.track_changes_outlined,
-                            size: 34,
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            _copy(
-                              context,
-                              'Detailed goal records are not exposed by the current authoritative projection.',
-                              'Ayrıntılı hedef kayıtları mevcut yetkili projeksiyon tarafından sunulmuyor.',
-                            ),
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 10,
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-          ),
-          Container(
-            height: 38,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: BoxDecoration(
-              border: Border(
-                top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxHeight < 72) {
+            return SingleChildScrollView(
+              primary: false,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [header, body, footer],
               ),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    showSubmission
-                        ? _copy(context, 'Showing 1 authoritative goal.', '1 yetkili hedef gösteriliyor.')
-                        : _copy(context, 'No detailed goal rows available.', 'Ayrıntılı hedef satırı bulunmuyor.'),
-                    style: TextStyle(
-                      fontSize: 8.7,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
+            );
+          }
+          return Column(
+            children: [
+              header,
+              Expanded(
+                child: SingleChildScrollView(
+                  primary: false,
+                  child: body,
                 ),
-                const _PageBox(label: '1', selected: true),
-                const SizedBox(width: 7),
-                _PageBox(label: _copy(context, '10 / page', '10 / sayfa')),
-              ],
-            ),
-          ),
-        ],
+              ),
+              footer,
+            ],
+          );
+        },
       ),
     );
   }
@@ -978,13 +970,13 @@ class _TableHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Text(
-        label,
-        style: TextStyle(
-          fontSize: 8.5,
-          fontWeight: FontWeight.w600,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-      );
+    label,
+    style: TextStyle(
+      fontSize: 8.5,
+      fontWeight: FontWeight.w600,
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+    ),
+  );
 }
 
 class _GoalRow extends StatelessWidget {
@@ -1002,8 +994,11 @@ class _GoalRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = submission.state.toUpperCase();
     final completed = state == 'COMPLETED' || state == 'SUCCEEDED' || state == 'FINISHED';
-    final active = state == 'RUNNING' || state == 'PENDING' || state == 'QUEUED' || state == 'ADMITTED';
-    final progress = completed ? 1.0 : 0.0;
+    final active = state == 'RUNNING' ||
+        state == 'PENDING' ||
+        state == 'QUEUED' ||
+        state == 'ADMITTED';
+    final double? progress = completed ? 1.0 : null;
     final statusColor = completed
         ? IlaiosTheme.success
         : active
@@ -1068,24 +1063,37 @@ class _GoalRow extends StatelessWidget {
           ),
           Expanded(
             flex: 17,
-            child: Text(owner, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 9.4)),
+            child: Text(
+              owner,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(fontSize: 9.4),
+            ),
           ),
           Expanded(
             flex: 22,
-            child: Row(
-              children: [
-                Expanded(
-                  child: LinearProgressIndicator(
-                    value: progress,
-                    minHeight: 4,
-                    borderRadius: BorderRadius.circular(4),
-                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: progress == null
+                ? Text(
+                    _copy(context, 'Hesaplanmadı', 'Not calculated'),
+                    style: TextStyle(
+                      fontSize: 8.5,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: LinearProgressIndicator(
+                          value: progress,
+                          minHeight: 4,
+                          borderRadius: BorderRadius.circular(4),
+                          backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      const Text('100%', style: TextStyle(fontSize: 9)),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 8),
-                Text(completed ? '100%' : '0%', style: const TextStyle(fontSize: 9)),
-              ],
-            ),
           ),
           Expanded(
             flex: 12,
@@ -1096,7 +1104,6 @@ class _GoalRow extends StatelessWidget {
           ),
           const Expanded(flex: 12, child: Text('—', style: TextStyle(fontSize: 9.2))),
           const Expanded(flex: 10, child: Text('—', style: TextStyle(fontSize: 9.2))),
-          const SizedBox(width: 22, child: Icon(Icons.more_vert, size: 16)),
         ],
       ),
     );
@@ -1116,103 +1123,85 @@ class _SelectedGoal extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        key: const Key('goals-selected'),
-        decoration: _cardDecoration(context, radius: 7),
-        padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
-        child: submission == null
-            ? const _UnavailablePanel(icon: Icons.track_changes_outlined)
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    _copy(context, 'Selected Goal', 'Seçili Hedef'),
-                    style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Container(
-                        width: 42,
-                        height: 42,
-                        decoration: BoxDecoration(
-                          color: IlaiosTheme.coreBlue.withValues(alpha: .10),
-                          borderRadius: BorderRadius.circular(22),
-                        ),
-                        child: const Icon(
-                          Icons.track_changes_outlined,
-                          color: IlaiosTheme.coreBlue,
-                          size: 23,
-                        ),
+    key: const Key('goals-selected'),
+    decoration: _cardDecoration(context, radius: 7),
+    padding: const EdgeInsets.fromLTRB(13, 12, 13, 12),
+    child: submission == null
+        ? const _UnavailablePanel(icon: Icons.track_changes_outlined)
+        : SingleChildScrollView(
+            primary: false,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  _copy(context, 'Selected Goal', 'Seçili Hedef'),
+                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: IlaiosTheme.coreBlue.withValues(alpha: .10),
+                        borderRadius: BorderRadius.circular(22),
                       ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              objective ?? submission!.goalId,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
-                            ),
-                            const SizedBox(height: 3),
-                            Text(
-                              'ID: ${submission!.goalId}',
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 8.5,
-                                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                          ],
-                        ),
+                      child: const Icon(
+                        Icons.track_changes_outlined,
+                        color: IlaiosTheme.coreBlue,
+                        size: 23,
                       ),
-                      _Pill(label: submission!.state, color: IlaiosTheme.success),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
-                  const SizedBox(height: 10),
-                  _DetailRow(label: _copy(context, 'Owner', 'Sahip'), value: owner),
-                  const SizedBox(height: 7),
-                  _DetailRow(label: _copy(context, 'Job', 'İş'), value: submission!.jobId),
-                  const SizedBox(height: 7),
-                  _DetailRow(label: _copy(context, 'Progress', 'İlerleme'), value: '—'),
-                  const SizedBox(height: 10),
-                  Text(
-                    _copy(context, 'OKR Summary', 'OKR Özeti'),
-                    style: const TextStyle(fontSize: 9.4, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 5),
-                  Text(
-                    _copy(
-                      context,
-                      'Detailed OKR results are not exposed by the current authoritative projection.',
-                      'Ayrıntılı OKR sonuçları mevcut yetkili projeksiyon tarafından sunulmuyor.',
                     ),
-                    style: TextStyle(
-                      fontSize: 8.8,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            objective ?? submission!.goalId,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            'ID: ${submission!.goalId}',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 8.5,
+                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
+                    _Pill(label: submission!.state, color: IlaiosTheme.success),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+                const SizedBox(height: 10),
+                _DetailRow(label: _copy(context, 'Owner', 'Sahip'), value: owner),
+                const SizedBox(height: 7),
+                _DetailRow(label: _copy(context, 'Job', 'İş'), value: submission!.jobId),
+                const SizedBox(height: 10),
+                Text(
+                  _copy(
+                    context,
+                    'Ek ayrıntılar mevcut olduğunda burada görünür.',
+                    'Additional details appear here when available.',
                   ),
-                  const Spacer(),
-                  Container(
-                    height: 36,
-                    alignment: Alignment.center,
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerLow,
-                      borderRadius: BorderRadius.circular(5),
-                      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-                    ),
-                    child: Text(
-                      _copy(context, 'Authoritative details only', 'Yalnızca yetkili ayrıntılar'),
-                      style: const TextStyle(fontSize: 9.2, fontWeight: FontWeight.w600),
-                    ),
+                  style: TextStyle(
+                    fontSize: 8.8,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
-                ],
-              ),
-      );
+                ),
+              ],
+            ),
+          ),
+  );
 }
 
 class _DetailRow extends StatelessWidget {
@@ -1222,195 +1211,27 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Row(
-        children: [
-          SizedBox(
-            width: 78,
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 8.6,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
+    children: [
+      SizedBox(
+        width: 78,
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 8.6,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
-          Expanded(
-            child: Text(
-              value,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(fontSize: 9.1, fontWeight: FontWeight.w600),
-            ),
-          ),
-        ],
-      );
-}
-
-class _InfoCard extends StatelessWidget {
-  const _InfoCard({
-    required this.title,
-    required this.trailing,
-    required this.child,
-    super.key,
-  });
-
-  final String title;
-  final String trailing;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        decoration: _cardDecoration(context, radius: 7),
-        padding: const EdgeInsets.fromLTRB(11, 9, 11, 9),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    title,
-                    style: const TextStyle(fontSize: 10.2, fontWeight: FontWeight.w700),
-                  ),
-                ),
-                Text(
-                  trailing,
-                  style: const TextStyle(
-                    fontSize: 8.3,
-                    color: IlaiosTheme.coreBlue,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 7),
-            Expanded(child: child),
-          ],
         ),
-      );
-}
-
-class _RecentUpdates extends StatelessWidget {
-  const _RecentUpdates({
-    required this.lastEvent,
-    required this.submission,
-    required this.objective,
-  });
-
-  final String? lastEvent;
-  final PromptSubmission? submission;
-  final String? objective;
-
-  @override
-  Widget build(BuildContext context) {
-    final rows = <({IconData icon, String title, String detail})>[];
-    if (submission != null) {
-      rows.add((
-        icon: Icons.track_changes_outlined,
-        title: objective ?? submission!.goalId,
-        detail: '${submission!.goalId} · ${submission!.state}',
-      ));
-    }
-    if (lastEvent?.trim().isNotEmpty == true) {
-      rows.add((
-        icon: Icons.bolt_outlined,
-        title: _displayEvent(context, lastEvent) ?? '—',
-        detail: _copy(context, 'Authoritative event projection', 'Yetkili olay projeksiyonu'),
-      ));
-    }
-    if (rows.isEmpty) return const _UnavailablePanel(icon: Icons.update_outlined);
-    return Column(
-      children: [
-        for (final row in rows.take(3))
-          Expanded(
-            child: Row(
-              children: [
-                Icon(row.icon, size: 15, color: IlaiosTheme.coreBlue),
-                const SizedBox(width: 7),
-                Expanded(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        row.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontSize: 8.9, fontWeight: FontWeight.w600),
-                      ),
-                      Text(
-                        row.detail,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 7.6,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _Distribution extends StatelessWidget {
-  const _Distribution({required this.goalCount});
-  final int? goalCount;
-
-  @override
-  Widget build(BuildContext context) => Row(
-        children: [
-          SizedBox(
-            width: 86,
-            height: 86,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 78,
-                  height: 78,
-                  child: CircularProgressIndicator(
-                    value: goalCount == null ? 0 : 1,
-                    strokeWidth: 10,
-                    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                    color: goalCount == null
-                        ? Theme.of(context).colorScheme.outline
-                        : IlaiosTheme.coreBlue,
-                  ),
-                ),
-                Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      goalCount?.toString() ?? '—',
-                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
-                    ),
-                    Text(_copy(context, 'Total', 'Toplam'), style: const TextStyle(fontSize: 7.5)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 9),
-          Expanded(
-            child: Text(
-              _copy(
-                context,
-                'Category distribution is not exposed by the authoritative projection.',
-                'Kategori dağılımı yetkili projeksiyon tarafından sunulmuyor.',
-              ),
-              style: TextStyle(
-                fontSize: 8.2,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ),
-        ],
-      );
+      ),
+      Expanded(
+        child: Text(
+          value,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 9.1, fontWeight: FontWeight.w600),
+        ),
+      ),
+    ],
+  );
 }
 
 class _UnavailablePanel extends StatelessWidget {
@@ -1419,22 +1240,26 @@ class _UnavailablePanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 22, color: Theme.of(context).colorScheme.outline),
-            const SizedBox(height: 5),
-            Text(
-              _copy(context, 'Authoritative detail unavailable', 'Yetkili ayrıntı kullanılamıyor'),
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 8.1,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 22, color: Theme.of(context).colorScheme.outline),
+        const SizedBox(height: 5),
+        Text(
+          _copy(
+            context,
+            'Authoritative detail unavailable',
+            'Yetkili ayrıntı kullanılamıyor',
+          ),
+          textAlign: TextAlign.center,
+          style: TextStyle(
+            fontSize: 8.1,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
-      );
+      ],
+    ),
+  );
 }
 
 class _SubmissionStatus extends StatelessWidget {
@@ -1476,9 +1301,15 @@ class _SubmissionStatus extends StatelessWidget {
         children: [
           const Icon(Icons.verified_user_outlined, size: 16, color: IlaiosTheme.success),
           const SizedBox(width: 8),
-          Text('Goal: ${value.goalId}', style: const TextStyle(fontSize: 8.8, fontWeight: FontWeight.w600)),
+          Text(
+            'Goal: ${value.goalId}',
+            style: const TextStyle(fontSize: 8.8, fontWeight: FontWeight.w600),
+          ),
           const SizedBox(width: 14),
-          Text('Job: ${value.jobId}', style: const TextStyle(fontSize: 8.8, fontWeight: FontWeight.w600)),
+          Text(
+            'Job: ${value.jobId}',
+            style: const TextStyle(fontSize: 8.8, fontWeight: FontWeight.w600),
+          ),
           const SizedBox(width: 14),
           Text(
             lifecycleLabel,
@@ -1507,27 +1338,48 @@ class _SubmissionStatus extends StatelessWidget {
   }
 }
 
-String _lifecycleLabel(
-  BuildContext context,
-  GovernedLifecycleState state,
-) => switch (state) {
-      GovernedLifecycleState.pendingApproval =>
-        _copy(context, 'Lifecycle: Pending approval', 'Yaşam döngüsü: Onay bekliyor'),
-      GovernedLifecycleState.admitted =>
-        _copy(context, 'Lifecycle: Admitted', 'Yaşam döngüsü: Kabul edildi'),
-      GovernedLifecycleState.executing =>
-        _copy(context, 'Lifecycle: Executing', 'Yaşam döngüsü: Yürütülüyor'),
-      GovernedLifecycleState.accepted =>
-        _copy(context, 'Lifecycle: Accepted', 'Yaşam döngüsü: Doğrulandı'),
-      GovernedLifecycleState.blocked =>
-        _copy(context, 'Lifecycle: Blocked', 'Yaşam döngüsü: Engellendi'),
-      GovernedLifecycleState.denied =>
-        _copy(context, 'Lifecycle: Denied', 'Yaşam döngüsü: Reddedildi'),
-      GovernedLifecycleState.failed =>
-        _copy(context, 'Lifecycle: Failed', 'Yaşam döngüsü: Başarısız'),
-      GovernedLifecycleState.unavailable =>
-        _copy(context, 'Lifecycle: Unavailable', 'Yaşam döngüsü: Kullanılamıyor'),
-    };
+String _lifecycleLabel(BuildContext context, GovernedLifecycleState state) => switch (state) {
+  GovernedLifecycleState.pendingApproval => _copy(
+    context,
+    'Lifecycle: Pending approval',
+    'Yaşam döngüsü: Onay bekliyor',
+  ),
+  GovernedLifecycleState.admitted => _copy(
+    context,
+    'Lifecycle: Admitted',
+    'Yaşam döngüsü: Kabul edildi',
+  ),
+  GovernedLifecycleState.executing => _copy(
+    context,
+    'Lifecycle: Executing',
+    'Yaşam döngüsü: Yürütülüyor',
+  ),
+  GovernedLifecycleState.accepted => _copy(
+    context,
+    'Lifecycle: Accepted',
+    'Yaşam döngüsü: Doğrulandı',
+  ),
+  GovernedLifecycleState.blocked => _copy(
+    context,
+    'Lifecycle: Blocked',
+    'Yaşam döngüsü: Engellendi',
+  ),
+  GovernedLifecycleState.denied => _copy(
+    context,
+    'Lifecycle: Denied',
+    'Yaşam döngüsü: Reddedildi',
+  ),
+  GovernedLifecycleState.failed => _copy(
+    context,
+    'Lifecycle: Failed',
+    'Yaşam döngüsü: Başarısız',
+  ),
+  GovernedLifecycleState.unavailable => _copy(
+    context,
+    'Lifecycle: Unavailable',
+    'Yaşam döngüsü: Kullanılamıyor',
+  ),
+};
 
 class _Pill extends StatelessWidget {
   const _Pill({required this.label, required this.color});
@@ -1536,22 +1388,18 @@ class _Pill extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-        decoration: BoxDecoration(
-          color: color.withValues(alpha: .12),
-          borderRadius: BorderRadius.circular(5),
-        ),
-        child: Text(
-          label,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: 7.8,
-            fontWeight: FontWeight.w700,
-            color: color,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: .12),
+      borderRadius: BorderRadius.circular(5),
+    ),
+    child: Text(
+      label,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(fontSize: 7.8, fontWeight: FontWeight.w700, color: color),
+    ),
+  );
 }
 
 class _PageBox extends StatelessWidget {
@@ -1561,40 +1409,34 @@ class _PageBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Container(
-        constraints: const BoxConstraints(minWidth: 27),
-        height: 26,
-        alignment: Alignment.center,
-        padding: const EdgeInsets.symmetric(horizontal: 8),
-        decoration: BoxDecoration(
-          color: selected ? IlaiosTheme.coreBlue.withValues(alpha: .10) : Colors.transparent,
-          borderRadius: BorderRadius.circular(4),
-          border: Border.all(
-            color: selected
-                ? IlaiosTheme.coreBlue
-                : Theme.of(context).colorScheme.outlineVariant,
-          ),
-        ),
-        child: Text(
-          label,
-          style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600),
-        ),
-      );
+    constraints: const BoxConstraints(minWidth: 27),
+    height: 26,
+    alignment: Alignment.center,
+    padding: const EdgeInsets.symmetric(horizontal: 8),
+    decoration: BoxDecoration(
+      color: selected ? IlaiosTheme.coreBlue.withValues(alpha: .10) : Colors.transparent,
+      borderRadius: BorderRadius.circular(4),
+      border: Border.all(
+        color: selected ? IlaiosTheme.coreBlue : Theme.of(context).colorScheme.outlineVariant,
+      ),
+    ),
+    child: Text(
+      label,
+      style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600),
+    ),
+  );
 }
 
 BoxDecoration _cardDecoration(BuildContext context, {double radius = 8}) => BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerLowest,
-      borderRadius: BorderRadius.circular(radius),
-      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-    );
+  color: Theme.of(context).colorScheme.surfaceContainerLowest,
+  borderRadius: BorderRadius.circular(radius),
+  border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+);
 
 String? _displayEvent(BuildContext context, String? raw) {
   final value = raw?.trim();
-  if (value == null || value.isEmpty) {
-    return null;
-  }
-  if (value != 'job.updated') {
-    return value;
-  }
+  if (value == null || value.isEmpty) return null;
+  if (value != 'job.updated') return value;
   return _copy(context, 'Job update', 'İş güncellemesi');
 }
 

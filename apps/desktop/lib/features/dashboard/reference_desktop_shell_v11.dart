@@ -9,6 +9,7 @@ import '../../control_plane/projection.dart';
 import '../../identity/desktop_identity_action_scope.dart';
 import '../../identity/identity_client.dart';
 import '../create/governed_lifecycle_projection.dart';
+import '../create/reference_asset_picker.dart';
 import '../deliveries/delivery_identity_scope.dart';
 import 'agent_provisioning_scope.dart';
 import 'home_runtime_binding.dart';
@@ -32,6 +33,7 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
     this.userSession,
     this.identityStatus = 'Account sign-in is not configured',
     this.themeMode = ThemeMode.dark,
+    this.referenceAssets,
     this.onThemeModeChanged,
     this.onSignIn,
     this.onLogout,
@@ -51,6 +53,7 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
   final DesktopUserSession? userSession;
   final String identityStatus;
   final ThemeMode themeMode;
+  final ReferenceAssetPickerController? referenceAssets;
   final ValueChanged<ThemeMode>? onThemeModeChanged;
   final Future<void> Function(String providerId)? onSignIn;
   final Future<void> Function()? onLogout;
@@ -80,6 +83,7 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
                 userSession: userSession,
                 identityStatus: identityStatus,
                 themeMode: themeMode,
+                referenceAssets: referenceAssets,
                 onThemeModeChanged: onThemeModeChanged,
                 onSignIn: onSignIn,
                 onLogout: onLogout,

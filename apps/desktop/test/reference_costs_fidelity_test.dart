@@ -7,7 +7,7 @@ import 'package:ilaios_desktop/features/operations/reference_costs_view_v2.dart'
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('Costs keeps approved dark reference hierarchy', (
+  testWidgets('Costs V4 collapses analytics when authoritative telemetry is unavailable', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -19,13 +19,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('reference-costs-page')), findsOneWidget);
-    expect(find.byKey(const Key('costs-summary-strip')), findsOneWidget);
-    expect(find.byKey(const Key('costs-trend-panel')), findsOneWidget);
-    expect(find.byKey(const Key('costs-distribution-panel')), findsOneWidget);
-    expect(find.byKey(const Key('costs-resources-panel')), findsOneWidget);
-    expect(find.byKey(const Key('costs-alerts-panel')), findsOneWidget);
-    expect(find.byKey(const Key('costs-recommendations-panel')), findsOneWidget);
-    expect(find.byKey(const Key('costs-reports-panel')), findsOneWidget);
+    expect(find.byKey(const Key('costs-summary-strip')), findsNothing);
+    expect(find.byKey(const Key('costs-trend-panel')), findsNothing);
+    expect(find.byKey(const Key('costs-distribution-panel')), findsNothing);
+    expect(find.byKey(const Key('costs-resources-panel')), findsNothing);
+    expect(find.byKey(const Key('costs-alerts-panel')), findsNothing);
+    expect(find.byKey(const Key('costs-recommendations-panel')), findsNothing);
+    expect(find.byKey(const Key('costs-reports-panel')), findsNothing);
+    expect(find.text('Cost data is not available yet'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -56,7 +57,8 @@ void main() {
     expect(find.textContaining(r'$12,842.45'), findsNothing);
     expect(find.textContaining(r'$13,210.00'), findsNothing);
     expect(find.textContaining(r'$20,000'), findsNothing);
-    expect(find.textContaining('Yetkili maliyet telemetrisi kullanılamıyor'), findsOneWidget);
+    expect(find.text('Maliyet verisi henüz mevcut değil'), findsOneWidget);
+    expect(find.textContaining('Yetkili sağlayıcı veya yürütme maliyet telemetrisi'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -124,6 +126,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const Key('costs-summary-strip')), findsOneWidget);
     expect(find.text(r'$4,321.25'), findsWidgets);
     expect(find.text(r'$4,700.00'), findsOneWidget);
     expect(find.text('Compute'), findsWidgets);

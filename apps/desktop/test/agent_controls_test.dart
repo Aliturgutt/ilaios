@@ -152,19 +152,24 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Agents More has bounded actions and assignment stays disabled', (
+  testWidgets('V4 Agents keeps provisioning explicit and More limited to real toolbar actions', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await openAgents(tester, onProvision: (_) async {});
 
+    expect(find.byKey(const Key('new-agent-button')), findsOneWidget);
     await tester.tap(find.byKey(const Key('agents-more-menu')));
     await tester.pumpAndSettle();
     expect(find.text('Refresh'), findsWidgets);
-    expect(find.text('Provision Canonical Agent'), findsOneWidget);
+    expect(find.text('Provision Canonical Agent'), findsNothing);
     await tester.tapAt(const Offset(20, 20));
     await tester.pumpAndSettle();
 
+    await tester.tap(
+      find.byKey(const ValueKey('agent-row-ilaios.agent.core.orchestrator.v1')),
+    );
+    await tester.pumpAndSettle();
     expect(find.text('Assign Task'), findsOneWidget);
     final assign = tester.widget<OutlinedButton>(
       find.ancestor(

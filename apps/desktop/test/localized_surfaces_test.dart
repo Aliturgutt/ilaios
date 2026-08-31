@@ -23,7 +23,8 @@ void main() {
       expect(tester.takeException(), isNull);
     }
 
-    expect(find.text('Ana Kontrol Merkezi'), findsOneWidget);
+    expect(find.text('İş başlat'), findsOneWidget);
+    expect(find.text('Ana Kontrol Merkezi'), findsNothing);
 
     await open('goals');
     expect(find.text('ILAIOS’un ne oluşturmasını istiyorsun?'), findsOneWidget);

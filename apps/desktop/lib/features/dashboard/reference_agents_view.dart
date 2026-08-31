@@ -37,7 +37,7 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
 
   final TextEditingController _searchController = TextEditingController();
   int _tab = 0;
-  int _selected = 0;
+  int _selected = -1;
   int _page = 0;
   String _query = '';
   String _role = _all;
@@ -53,7 +53,7 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
 
   void _resetPosition() {
     _page = 0;
-    _selected = 0;
+    _selected = -1;
   }
 
   void _clearFilters() {
@@ -201,7 +201,7 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
     final pageAgents = start >= filtered.length
         ? const <_AgentRecord>[]
         : filtered.sublist(start, end);
-    final selected = pageAgents.isEmpty
+    final selected = pageAgents.isEmpty || _selected < 0
         ? null
         : pageAgents[_selected.clamp(0, pageAgents.length - 1)];
     final assignments = _pendingAssignments(widget.snapshot);
@@ -277,42 +277,47 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
                             ? null
                             : () => setState(() {
                                   _page = effectivePage - 1;
-                                  _selected = 0;
+                                  _selected = -1;
                                 }),
                         onNext: effectivePage >= pageCount - 1
                             ? null
                             : () => setState(() {
                                   _page = effectivePage + 1;
-                                  _selected = 0;
+                                  _selected = -1;
                                 }),
                         onProvision: _provisionCanonicalAgent,
                         onRefresh: widget.onRefreshRequested,
                       ),
                     ),
-                    const SizedBox(height: 8),
-                    SizedBox(
-                      height: 145,
-                      child: _BottomPanels(
-                        snapshot: widget.snapshot,
-                        agents: allAgents,
-                        assignments: assignments,
+                    if (widget.snapshot.liveEvents.isNotEmpty ||
+                        assignments.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        height: 145,
+                        child: _BottomPanels(
+                          snapshot: widget.snapshot,
+                          agents: allAgents,
+                          assignments: assignments,
+                        ),
                       ),
-                    ),
+                    ],
                   ],
                 ),
               ),
-              const SizedBox(width: 10),
-              SizedBox(
-                width: rightWidth,
-                child: _SelectedPanel(
+              if (selected != null) ...[
+                const SizedBox(width: 10),
+                SizedBox(
+                  width: rightWidth,
+                  child: _SelectedPanel(
                   agent: selected,
                   reviews: reviews,
                   connected: widget.projection.connected,
                   onRefresh: widget.onRefreshRequested,
-                  onWorkspace: () =>
-                      widget.onNavigate(DesktopSection.liveWorkspace),
+                    onWorkspace: () =>
+                        widget.onNavigate(DesktopSection.liveWorkspace),
+                  ),
                 ),
-              ),
+              ],
             ],
           );
         },
@@ -372,6 +377,7 @@ class _Header extends StatelessWidget {
 
 class _Metrics extends StatelessWidget {
   const _Metrics({required this.snapshot, required this.agents});
+
   final OperationalSnapshot snapshot;
   final List<_AgentRecord> agents;
 
@@ -382,61 +388,79 @@ class _Metrics extends StatelessWidget {
     final active = agents.where((item) => item.state == _AgentState.active).length;
     final busy = agents.where((item) => item.state == _AgentState.busy).length;
     final idle = agents.where((item) => item.state == _AgentState.idle).length;
-    final success = _average(agents.map((e) => e.successRate).whereType<double>());
-    final latency = _average(agents.map((e) => e.responseSeconds).whereType<double>());
-    final cards = <(IconData, Color, String, String)>[
-      (Icons.groups_2_outlined, IlaiosTheme.enterpriseCyan, _tr(context, 'Toplam Ajan', 'Total Agents'), total?.toString() ?? '—'),
-      (Icons.circle, IlaiosTheme.success, _tr(context, 'Aktif Ajan', 'Active Agents'), agents.isEmpty ? '—' : '$active'),
-      (Icons.hexagon_outlined, IlaiosTheme.warning, _tr(context, 'Meşgul', 'Busy'), agents.isEmpty ? '—' : '$busy'),
-      (Icons.person_outline_rounded, IlaiosTheme.coreBlue, _tr(context, 'Boşta', 'Idle'), agents.isEmpty ? '—' : '$idle'),
-      (Icons.auto_awesome_outlined, IlaiosTheme.violet, _tr(context, 'Ortalama Başarı', 'Average Success'), success == null ? '—' : '${(success * 100).toStringAsFixed(1)}%'),
-      (Icons.schedule_rounded, IlaiosTheme.enterpriseCyan, _tr(context, 'Ortalama Yanıt Süresi', 'Average Response Time'), latency == null ? '—' : '${latency.toStringAsFixed(2)} sn'),
+
+    final summary = <(IconData, String, String, Color)>[
+      (
+        Icons.groups_2_outlined,
+        _tr(context, 'Toplam', 'Total'),
+        total?.toString() ?? '—',
+        Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      (
+        Icons.circle,
+        _tr(context, 'Aktif', 'Active'),
+        agents.isEmpty ? '—' : '$active',
+        active > 0
+            ? IlaiosTheme.success
+            : Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      (
+        Icons.hexagon_outlined,
+        _tr(context, 'Meşgul', 'Busy'),
+        agents.isEmpty ? '—' : '$busy',
+        busy > 0
+            ? IlaiosTheme.warning
+            : Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+      (
+        Icons.person_outline_rounded,
+        _tr(context, 'Boşta', 'Idle'),
+        agents.isEmpty ? '—' : '$idle',
+        Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
     ];
+
     return SizedBox(
       key: const Key('agents-metrics'),
-      height: 76,
-      child: Row(
-        children: [
-          for (var index = 0; index < cards.length; index++) ...[
-            Expanded(
-              child: _Panel(
-                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 34,
-                      height: 34,
-                      decoration: BoxDecoration(
-                        color: cards[index].$2.withValues(alpha: .10),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(cards[index].$1, size: 20, color: cards[index].$2),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(cards[index].$3, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 7.6, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                          const SizedBox(height: 2),
-                          Text(cards[index].$4, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16.5, fontWeight: FontWeight.w600)),
-                        ],
-                      ),
-                    ),
-                  ],
+      height: 50,
+      child: _Panel(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+        child: Row(
+          children: [
+            for (var index = 0; index < summary.length; index++) ...[
+              if (index > 0)
+                Container(
+                  width: 1,
+                  height: 24,
+                  margin: const EdgeInsets.symmetric(horizontal: 15),
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+              Icon(summary[index].$1, size: 14, color: summary[index].$4),
+              const SizedBox(width: 5),
+              Text(
+                summary[index].$2,
+                style: TextStyle(
+                  fontSize: 8.2,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
-            ),
-            if (index < cards.length - 1) const SizedBox(width: 7),
+              const SizedBox(width: 5),
+              Text(
+                summary[index].$3,
+                style: const TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
 }
 
-enum _ToolbarAction { refresh, provision }
+enum _ToolbarAction { refresh }
 
 class _TablePanel extends StatelessWidget {
   const _TablePanel({
@@ -543,8 +567,6 @@ class _TablePanel extends StatelessWidget {
                     switch (action) {
                       case _ToolbarAction.refresh:
                         onRefresh?.call();
-                      case _ToolbarAction.provision:
-                        onProvision();
                     }
                   },
                   itemBuilder: (_) => [
@@ -552,11 +574,6 @@ class _TablePanel extends StatelessWidget {
                       value: _ToolbarAction.refresh,
                       enabled: onRefresh != null,
                       child: Text(_tr(context, 'Yenile', 'Refresh')),
-                    ),
-                    PopupMenuItem(
-                      value: _ToolbarAction.provision,
-                      enabled: canProvision && !provisioning,
-                      child: Text(_tr(context, 'Canonical Ajan Provision Et', 'Provision Canonical Agent')),
                     ),
                   ],
                   icon: const Icon(Icons.more_vert, size: 16),
@@ -700,7 +717,6 @@ class _AgentHeader extends StatelessWidget {
               Expanded(flex: 14, child: Text(_tr(context, 'Kapasite', 'Capacity'), style: const TextStyle(fontSize: 7.5, fontWeight: FontWeight.w600))),
               Expanded(flex: 13, child: Text(_tr(context, 'Başarı Oranı', 'Success Rate'), style: const TextStyle(fontSize: 7.5, fontWeight: FontWeight.w600))),
               Expanded(flex: 13, child: Text(_tr(context, 'Son Etkinlik', 'Last Activity'), style: const TextStyle(fontSize: 7.5, fontWeight: FontWeight.w600))),
-              const SizedBox(width: 22),
             ],
           ),
         ),
@@ -737,14 +753,13 @@ class _AgentRow extends StatelessWidget {
                   const SizedBox(width: 7),
                   Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
                     Text(record.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 8.3, fontWeight: FontWeight.w600)),
-                    Text(record.id, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 6.8, color: Theme.of(context).colorScheme.onSurfaceVariant)),
                   ])),
                 ],
               ),
             ),
             Expanded(flex: 17, child: Text(record.role, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 7.7))),
             Expanded(flex: 12, child: Row(children: [Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)), const SizedBox(width: 5), Expanded(child: Text(_stateLabel(context, record.state), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 7.4, color: color)))])),
-            Expanded(flex: 20, child: Text(record.currentTask, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 7.5))),
+            Expanded(flex: 20, child: Text(record.currentTask.isEmpty ? _tr(context, 'Görev yok', 'No task') : record.currentTask, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 7.5))),
             Expanded(
               flex: 14,
               child: _Progress(
@@ -754,7 +769,6 @@ class _AgentRow extends StatelessWidget {
             ),
             Expanded(flex: 13, child: Text(record.successRate == null ? '—' : '${(record.successRate! * 100).toStringAsFixed(1)}%', style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w600))),
             Expanded(flex: 13, child: Text(record.lastActivity, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 7.2))),
-            SizedBox(width: 22, child: IconButton(onPressed: () => _showAgentDetail(context, record), padding: EdgeInsets.zero, icon: const Icon(Icons.more_vert, size: 14))),
           ],
         ),
       ),
@@ -799,7 +813,7 @@ class _SelectedPanel extends StatelessWidget {
                   _Info(label: _tr(context, 'Takım', 'Team'), value: agent!.team),
                   _Info(label: _tr(context, 'Readiness', 'Readiness'), value: agent!.readiness),
                   _Info(label: _tr(context, 'Provision', 'Provisioned'), value: agent!.registered ? _tr(context, 'Evet', 'Yes') : _tr(context, 'Hayır', 'No')),
-                  _Info(label: _tr(context, 'Mevcut Görev', 'Current Task'), value: agent!.currentTask),
+                  _Info(label: _tr(context, 'Mevcut Görev', 'Current Task'), value: agent!.currentTask.isEmpty ? _tr(context, 'Görev yok', 'No task') : agent!.currentTask),
                   _Info(label: _tr(context, 'Sistem Sağlığı', 'System Health'), value: agent!.health),
                   const SizedBox(height: 9),
                   Text(_tr(context, 'Yetkinlikler', 'Capabilities'), style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600)),
@@ -1126,7 +1140,7 @@ List<_AgentRecord> _agentRecords(OperationalSnapshot snapshot) {
       role: _text(item, const ['role', 'agent_role', 'worker_role', 'specialty', 'type']) ?? '—',
       team: _text(item, const ['team']) ?? '—',
       state: _agentState(rawState),
-      currentTask: _text(item, const ['current_task', 'task', 'workflow_name', 'job_id', 'execution_id']) ?? '—',
+      currentTask: _text(item, const ['current_task', 'task', 'workflow_name']) ?? '',
       capacity: _ratio(item, const ['capacity', 'utilization', 'load', 'capacity_used', 'usage_percent']),
       successRate: _ratio(item, const ['success_rate', 'success_ratio', 'success_percent', 'quality_score']),
       responseSeconds: _responseSeconds(item),
@@ -1168,7 +1182,7 @@ List<Map<String, Object?>> _pendingReviews(OperationalSnapshot snapshot, String?
   if (id == null) return values;
   return values.where((item) {
     final owner = _text(item, const ['agent_id', 'worker_id', 'assignee', 'subject_id']);
-    return owner == null || owner == id;
+    return owner != null && owner == id;
   }).toList(growable: false);
 }
 
@@ -1234,12 +1248,6 @@ double? _responseSeconds(Map<String, Object?> source) {
   if (seconds != null) return seconds;
   final ms = _number(source['response_ms']) ?? _number(source['latency_ms']);
   return ms == null ? null : ms / 1000;
-}
-
-double? _average(Iterable<double> values) {
-  final list = values.toList(growable: false);
-  if (list.isEmpty) return null;
-  return list.reduce((a, b) => a + b) / list.length;
 }
 
 _AgentState _agentState(String raw) {

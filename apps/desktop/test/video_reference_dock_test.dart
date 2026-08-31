@@ -44,56 +44,59 @@ IlaiosDesktopApp _app({
       ),
     );
 
+Future<void> _openGoals(WidgetTester tester) async {
+  await tester.tap(find.byKey(const ValueKey('nav-goals')));
+  await tester.pumpAndSettle();
+}
+
 void main() {
-  testWidgets('authenticated Desktop exposes the shared Web Video reference dock', (
+  testWidgets('V4 removes the global dock and exposes the governed picker inside Goals', (
     tester,
   ) async {
     _desktopViewport(tester);
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
-    final toggle = find.byKey(const Key('reference-asset-dock-toggle'));
-    expect(toggle, findsOneWidget);
-    expect(find.text('Reference images'), findsOneWidget);
+    expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
     expect(find.byKey(const Key('video-reference-assets')), findsNothing);
 
-    await tester.tap(toggle);
-    await tester.pumpAndSettle();
+    await _openGoals(tester);
 
+    expect(find.byKey(const Key('reference-goals-page')), findsOneWidget);
+    expect(find.byKey(const Key('goals-composer')), findsOneWidget);
     expect(find.byKey(const Key('video-reference-assets')), findsOneWidget);
     expect(find.byKey(const Key('video-reference-add')), findsOneWidget);
     expect(find.textContaining('20'), findsWidgets);
     expect(find.textContaining('never published as public URLs'), findsOneWidget);
     expect(find.textContaining('free vision provider'), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Turkish locale localizes shared reference dock and privacy disclosure', (
+  testWidgets('Turkish locale localizes the Goals-integrated reference picker', (
     tester,
   ) async {
     _desktopViewport(tester);
     await tester.pumpWidget(_app(locale: IlaiosLocale.turkish));
     await tester.pumpAndSettle();
+    await _openGoals(tester);
 
-    final toggle = find.byKey(const Key('reference-asset-dock-toggle'));
-    expect(find.text('Referans görseller'), findsOneWidget);
-    await tester.tap(toggle);
-    await tester.pumpAndSettle();
-
+    expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
+    expect(find.byKey(const Key('video-reference-assets')), findsOneWidget);
     expect(find.textContaining('herkese açık URL'), findsOneWidget);
     expect(find.textContaining('ücretsiz görsel sağlayıcısına'), findsOneWidget);
     expect(find.text('Görsel ekle'), findsOneWidget);
   });
 
-  testWidgets('shared reference dock remains disabled without an authenticated session', (
+  testWidgets('V4 keeps reference assets scoped to Goals even without a session', (
     tester,
   ) async {
     _desktopViewport(tester);
     await tester.pumpWidget(_app(session: null));
     await tester.pumpAndSettle();
 
-    final button = tester.widget<FilledButton>(
-      find.byKey(const Key('reference-asset-dock-toggle')),
-    );
-    expect(button.onPressed, isNull);
+    expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
+    await _openGoals(tester);
+    expect(find.byKey(const Key('video-reference-assets')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 }

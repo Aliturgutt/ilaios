@@ -70,7 +70,6 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
       ReferenceAssetPickerController();
   Timer? _operationalRefreshTimer;
   AppLifecycleState _lifecycleState = AppLifecycleState.resumed;
-  bool _referenceDockOpen = false;
 
   @override
   void initState() {
@@ -96,7 +95,6 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
     }
     if (oldWidget.userSession != null && widget.userSession == null) {
       _referenceAssets.clear();
-      _referenceDockOpen = false;
     }
   }
 
@@ -206,14 +204,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
   Widget build(BuildContext context) {
     final effectiveTheme =
         widget.onThemeModeChanged == null ? _localThemeMode : widget.themeMode;
-    final darkDesktopTheme = IlaiosTheme.dark.copyWith(
-      colorScheme: IlaiosTheme.dark.colorScheme.copyWith(
-        // The approved dark horizontal JPG has the canonical Carbon backdrop.
-        // Keep shell/sidebar surfaces on the same Carbon tone so the untouched
-        // brand master renders seamlessly instead of as a visible black box.
-        surfaceContainerLow: IlaiosTheme.carbon,
-      ),
-    );
+    final darkDesktopTheme = IlaiosTheme.dark;
     return MaterialApp(
       title: 'ILAIOS Desktop',
       debugShowCheckedModeBanner: false,
@@ -224,126 +215,30 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
         locale: widget.locale,
         onChanged: (value) => widget.onLocaleChanged?.call(value),
         child: Builder(
-          builder: (context) => Stack(
-            children: [
-              Positioned.fill(
-                child: ReferenceDesktopShellV11(
-                  projection: widget.projection,
-                  operationalSnapshot: widget.operationalSnapshot,
-                  operationalStatus: widget.operationalStatus,
-                  approverId: widget.approverId,
-                  identityProviders: widget.identityProviders,
-                  userSession: widget.userSession,
-                  identityStatus: widget.identityStatus,
-                  themeMode: effectiveTheme,
-                  onThemeModeChanged: _changeTheme,
-                  onSignIn: widget.onSignIn,
-                  onLogout: widget.onLogout,
-                  onPromptSubmit:
-                      widget.onPromptSubmit == null ? null : _submitPrompt,
-                  onSaveArtifact: widget.onSaveArtifact,
-                  onRefreshRequested: widget.onRefreshRequested,
-                  onProvisionAgent: widget.onProvisionAgent,
-                  onGovernanceDecision: widget.onGovernanceDecision,
-                ),
-              ),
-              Positioned(
-                right: 18,
-                bottom: 34,
-                child: _ReferenceAssetDock(
-                  controller: _referenceAssets,
-                  open: _referenceDockOpen,
-                  enabled: widget.userSession != null &&
-                      widget.projection.connected &&
-                      widget.onPromptSubmit != null,
-                  onToggle: () =>
-                      setState(() => _referenceDockOpen = !_referenceDockOpen),
-                ),
-              ),
-            ],
+          builder: (context) => ReferenceDesktopShellV11(
+            projection: widget.projection,
+            operationalSnapshot: widget.operationalSnapshot,
+            operationalStatus: widget.operationalStatus,
+            approverId: widget.approverId,
+            identityProviders: widget.identityProviders,
+            userSession: widget.userSession,
+            identityStatus: widget.identityStatus,
+            themeMode: effectiveTheme,
+            referenceAssets: _referenceAssets,
+            onThemeModeChanged: _changeTheme,
+            onSignIn: widget.onSignIn,
+            onLogout: widget.onLogout,
+            onPromptSubmit:
+                widget.onPromptSubmit == null ? null : _submitPrompt,
+            onSaveArtifact: widget.onSaveArtifact,
+            onRefreshRequested: widget.onRefreshRequested,
+            onProvisionAgent: widget.onProvisionAgent,
+            onGovernanceDecision: widget.onGovernanceDecision,
           ),
         ),
       ),
     );
   }
-}
-
-class _ReferenceAssetDock extends StatelessWidget {
-  const _ReferenceAssetDock({
-    required this.controller,
-    required this.open,
-    required this.enabled,
-    required this.onToggle,
-  });
-
-  final ReferenceAssetPickerController controller;
-  final bool open;
-  final bool enabled;
-  final VoidCallback onToggle;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final label = context.tr('referenceAssets.dock');
-    return Material(
-      type: MaterialType.transparency,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (open) ...[
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 780),
-              child: Material(
-                elevation: 10,
-                borderRadius: BorderRadius.circular(12),
-                clipBehavior: Clip.antiAlias,
-                child: Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: ReferenceAssetPicker(
-                    controller: controller,
-                    enabled: enabled,
-                    compact: true,
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 8),
-          ],
-          ListenableBuilder(
-            listenable: Listenable.merge(<Listenable>[
-              controller,
-              controller.sourceVideo,
-            ]),
-            builder: (context, _) => Tooltip(
-              message: label,
-              child: FilledButton.icon(
-                key: const Key('reference-asset-dock-toggle'),
-                onPressed: enabled || open ? onToggle : null,
-                icon: const Icon(Icons.collections_outlined, size: 17),
-                label: Text(
-                  _dockLabel(label, controller),
-                  style: theme.textTheme.labelMedium,
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-String _dockLabel(
-  String label,
-  ReferenceAssetPickerController controller,
-) {
-  final references = controller.assets.length;
-  final hasSource = controller.sourceVideo.source != null;
-  if (references == 0 && !hasSource) return label;
-  final referenceSuffix = references == 0 ? '' : ' ($references/20)';
-  final sourceSuffix = hasSource ? ' • MP4' : '';
-  return '$label$referenceSuffix$sourceSuffix';
 }
 
 bool _isVideoFactoryObjective(String objective) {

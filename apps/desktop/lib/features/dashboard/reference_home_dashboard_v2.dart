@@ -9,7 +9,6 @@ import '../../presentation/desktop_runtime_status.dart';
 import '../navigation/desktop_section.dart';
 import 'home_runtime_binding.dart';
 import 'reference_home_dashboard_v3.dart';
-import 'reference_home_motion_surface.dart';
 import 'reference_home_truth_sanitizer.dart';
 
 /// Compatibility entry point kept for the established Desktop shell.
@@ -47,16 +46,14 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
       connected: projection.connected,
       turkish: locale == IlaiosLocale.turkish,
     );
-    return ReferenceHomeMotionSurface(
-      child: ReferenceHomeDashboardV3(
-        projection: projection,
-        snapshot: sanitizeReferenceHomeSnapshot(snapshot),
-        status: presentedStatus.label,
-        userSession: userSession ?? binding?.userSession,
-        onNavigate: onNavigate,
-        onPromptSubmit: onPromptSubmit ?? binding?.onPromptSubmit,
-        onRefreshRequested: onRefreshRequested,
-      ),
+    return ReferenceHomeDashboardV3(
+      projection: projection,
+      snapshot: sanitizeReferenceHomeSnapshot(snapshot),
+      status: presentedStatus.label,
+      userSession: userSession ?? binding?.userSession,
+      onNavigate: onNavigate,
+      onPromptSubmit: onPromptSubmit ?? binding?.onPromptSubmit,
+      onRefreshRequested: onRefreshRequested,
     );
   }
 
