@@ -1,6 +1,7 @@
 import Link from "next/link";
 import SpatialArchitecture from "./SpatialArchitecture";
 import SystemVisuals from "./SystemVisuals";
+import CanonicalSystemDetail from "./CanonicalSystemDetail";
 
 type Locale = "en" | "tr";
 
@@ -18,6 +19,9 @@ const copy = {
     runtimeTitle: "One controlled path connects the request to the finished outcome.",
     runtime: [["Goal", "Describe the outcome"], ["Control", "Resolve permissions"], ["Plan", "Bound the work"], ["Produce", "Execute the work"], ["Verify", "Check acceptance"], ["Deliver", "Return result + evidence"]],
     details: [["Control plane", "How authority stays centralized", "/platform/control-plane"], ["Execution", "How admitted work is performed", "/platform/execution"], ["Evidence", "How results remain reviewable", "/platform/evidence"]],
+    assuranceEyebrow: "Technical assurance",
+    assuranceTitle: "Identity, authorized context and governed knowledge remain explicit below the product flow.",
+    assuranceLead: "These technical views keep request identity, authorization and source provenance inspectable without making infrastructure the primary marketing story.",
     technical: "Need the technical model?",
     architecture: "Explore architecture",
     use: "Explore what ILAIOS can produce",
@@ -36,6 +40,9 @@ const copy = {
     runtimeTitle: "Tek kontrollü yol talebi bitmiş sonuca bağlar.",
     runtime: [["Hedef", "Sonucu tarif et"], ["Kontrol", "İzinleri çöz"], ["Plan", "İşi sınırlandır"], ["Üret", "İşi yürüt"], ["Doğrula", "Kabulü kontrol et"], ["Teslim", "Sonuç + kanıtı sun"]],
     details: [["Kontrol katmanı", "Yetkinin nasıl merkezde kaldığı", "/tr/platform/control-plane"], ["Yürütme", "Kabul edilmiş işin nasıl yapıldığı", "/tr/platform/execution"], ["Kanıt", "Sonuçların nasıl incelenebilir kaldığı", "/tr/platform/evidence"]],
+    assuranceEyebrow: "Teknik güvence",
+    assuranceTitle: "Kimlik, yetkili bağlam ve yönetilen bilgi ürün akışının altında açıkça korunur.",
+    assuranceLead: "Bu teknik görünümler talep kimliğini, yetkilendirmeyi ve kaynak kökenini ana pazarlama anlatısına dönüştürmeden incelenebilir tutar.",
     technical: "Teknik modeli mi arıyorsun?",
     architecture: "Mimariyi incele",
     use: "ILAIOS'un neler üretebildiğini keşfet",
@@ -51,6 +58,7 @@ export default function PlatformPage({ locale }: { locale: Locale }) {
     <section className="section"><div className="shell platform-map-layout"><div className="platform-plane-list"><div className="eyebrow">{c.mapEyebrow}</div><h2>{c.mapTitle}</h2>{c.planes.map(([title, text], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{text}</p></div></article>)}</div><SpatialArchitecture locale={locale} /></div></section>
     <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{locale === "tr" ? "Kontrol farkı" : "The control difference"}</div><h2>{c.separationTitle}</h2></div><p>{c.separationLead}</p></div><SystemVisuals locale={locale} variant="planes" /></div></section>
     <section className="section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">{c.runtimeEyebrow}</div><h2>{c.runtimeTitle}</h2></div></div><div className="runtime-line">{c.runtime.map(([title, detail], index) => <div key={title}><span>{String(index + 1).padStart(2, "0")}</span><strong>{title}</strong><small>{detail}</small></div>)}</div></div></section>
+    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.assuranceEyebrow}</div><h2>{c.assuranceTitle}</h2></div><p>{c.assuranceLead}</p></div><CanonicalSystemDetail locale={locale} variant="journey" /><CanonicalSystemDetail locale={locale} variant="knowledge" /></div></section>
     <section className="section"><div className="shell detail-directory">{c.details.map(([title, text, href]) => <Link href={href} key={href}><span>{title}</span><strong>{text}</strong><i>→</i></Link>)}</div></section>
     <section className="section compact-section"><div className="shell compact-cta"><div><div className="eyebrow">{c.technical}</div><h2>{c.separationTitle}</h2></div><div className="actions"><Link className="button secondary" href={`${base}/architecture`}>{c.architecture}</Link></div></div></section>
     <section className="section compact-section"><div className="shell status-note"><span>{locale === "tr" ? "Güncel durum" : "Current reality"}</span><p>{c.current}</p></div></section>
