@@ -68,7 +68,7 @@ export default function HomePage({ locale }: { locale: Locale }) {
   const base = locale === "tr" ? "/tr" : "";
   return <>
     <section className="home-hero shell" data-visual-role="home-hero">
-      <div className="home-hero-copy"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p><div className="actions"><Link className="button" href={`${base}/use-ilaios`}>{c.primary}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.secondary}</Link></div></div>
+      <div className="home-hero-copy" data-visual-role="homepage-v2-authoritative"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p><div className="actions"><Link className="button" href={`${base}/use-ilaios`}>{c.primary}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.secondary}</Link></div></div>
       <ProductExperience locale={locale} />
     </section>
     <div className="proof-strip"><div className="shell proof-strip-grid">{c.proof.map(([title, text]) => <div key={title}><strong>{title}</strong><span>{text}</span></div>)}</div></div>
