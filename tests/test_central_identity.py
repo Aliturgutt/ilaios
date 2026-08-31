@@ -178,3 +178,45 @@ def test_enterprise_oidc_same_subject_from_different_issuers_is_distinct() -> No
     assert first.user_id != second.user_id
     assert first.tenant_id != second.tenant_id
     assert repeated == first
+
+
+def test_explicit_link_consolidates_isolated_provider_bootstrap_account() -> None:
+    service = CentralIdentityService(InMemoryCentralIdentityStore())
+    google = _identity(IdentityProvider.GOOGLE, "google-main")
+    github = _identity(IdentityProvider.GITHUB, "github-bootstrap")
+    target = service.sign_in(google)
+    source = service.sign_in(github)
+    assert source != target
+
+    linked = service.link_identity(
+        authenticated_user_id=target.user_id,
+        authenticated_tenant_id=target.tenant_id,
+        identity=github,
+        recent_authentication_verified=True,
+    )
+
+    assert linked.user_id == target.user_id
+    assert linked.tenant_id == target.tenant_id
+    assert service.sign_in(github) == target
+    with pytest.raises(CentralIdentityError, match="account is unavailable"):
+        service.linked_identities(source.user_id)
+
+
+def test_explicit_link_does_not_consolidate_established_source_account() -> None:
+    service = CentralIdentityService(InMemoryCentralIdentityStore())
+    target = service.sign_in(_identity(IdentityProvider.GOOGLE, "google-main"))
+    source = service.sign_in(_identity(IdentityProvider.GITHUB, "github-source"))
+    _link(
+        service,
+        user_id=source.user_id,
+        tenant_id=source.tenant_id,
+        identity=_identity(IdentityProvider.APPLE, "apple-source"),
+    )
+
+    with pytest.raises(CentralIdentityError, match="already linked to another account"):
+        _link(
+            service,
+            user_id=target.user_id,
+            tenant_id=target.tenant_id,
+            identity=_identity(IdentityProvider.GITHUB, "github-source"),
+        )
