@@ -10,8 +10,6 @@ from playwright.sync_api import Page, sync_playwright
 BASE_URL = os.environ.get("ILAIOS_V2_BASE_URL", "http://127.0.0.1:3100").rstrip("/")
 ARTIFACT_DIR = Path(os.environ.get("ILAIOS_V2_VISUAL_ARTIFACT_DIR", "artifacts/website-v2-visual-qa"))
 
-# Every public EN route has a /tr counterpart. API, robots, sitemap and _not-found
-# are intentionally excluded because this harness certifies user-facing pages.
 ROUTES = (
     ("home", ""),
     ("about", "/about"),
@@ -56,26 +54,10 @@ ROUTES = (
     ("updates", "/updates"),
 )
 
-# Keep artifact size bounded while still preserving visual evidence for the
-# primary product, governance and company surfaces. Every route is still tested.
 SCREENSHOT_ROUTE_NAMES = {
-    "home",
-    "platform",
-    "factories",
-    "capabilities",
-    "security",
-    "solutions",
-    "enterprise",
-    "individuals",
-    "how-it-works",
-    "use-ilaios",
-    "core",
-    "trust",
-    "architecture",
-    "docs",
-    "resources",
-    "about",
-    "contact",
+    "home", "platform", "factories", "capabilities", "security", "solutions",
+    "enterprise", "individuals", "how-it-works", "use-ilaios", "core", "trust",
+    "architecture", "docs", "resources", "about", "contact",
 }
 
 VIEWPORTS = (
@@ -103,15 +85,12 @@ def normalized_internal_href(href: str) -> str | None:
     path = parsed.path or "/"
     if not path.startswith("/"):
         return None
-    if parsed.query:
-        path = f"{path}?{parsed.query}"
-    return path
+    return f"{path}?{parsed.query}" if parsed.query else path
 
 
 def overflow_elements(page: Page) -> list[dict[str, object]]:
     return page.evaluate(
-        """
-        () => Array.from(document.querySelectorAll('body *'))
+        """() => Array.from(document.querySelectorAll('body *'))
           .map((el) => {
             const r = el.getBoundingClientRect();
             return {
@@ -123,8 +102,49 @@ def overflow_elements(page: Page) -> list[dict[str, object]]:
             };
           })
           .filter((x) => x.width > 0 && (x.left < -1 || x.right > window.innerWidth + 1))
-          .slice(0, 20)
-        """
+          .slice(0, 20)"""
+    )
+
+
+def settle_images(page: Page) -> None:
+    page.locator("img").evaluate_all(
+        """async els => {
+          for (const el of els) {
+            const s = getComputedStyle(el);
+            const r = el.getBoundingClientRect();
+            if (s.display === 'none' || s.visibility === 'hidden' || r.width <= 0 || r.height <= 0) continue;
+            el.scrollIntoView({block: 'center', inline: 'nearest'});
+            if (!el.complete) {
+              await Promise.race([
+                new Promise(resolve => {
+                  const done = () => resolve();
+                  el.addEventListener('load', done, {once: true});
+                  el.addEventListener('error', done, {once: true});
+                }),
+                new Promise(resolve => setTimeout(resolve, 2500)),
+              ]);
+            }
+            if (typeof el.decode === 'function' && el.complete && el.naturalWidth > 0) {
+              try { await el.decode(); } catch {}
+            }
+          }
+          window.scrollTo(0, 0);
+        }"""
+    )
+
+
+def get_broken_images(page: Page) -> list[dict[str, str]]:
+    settle_images(page)
+    return page.locator("img").evaluate_all(
+        """els => els
+          .filter((el) => {
+            const s = getComputedStyle(el);
+            const r = el.getBoundingClientRect();
+            return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0 &&
+              el.complete && (el.naturalWidth === 0 || el.naturalHeight === 0);
+          })
+          .map((el) => ({src: el.currentSrc || el.src, alt: el.alt || ''}))
+          .slice(0, 20)"""
     )
 
 
@@ -159,6 +179,40 @@ def inspect_navigation(page: Page, viewport_name: str) -> dict[str, object]:
     return result
 
 
+def contrast_ratio(page: Page) -> float:
+    return float(
+        page.evaluate(
+            """() => {
+              const parse = (value) => {
+                const m = value.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([0-9.]+))?/);
+                return m ? [Number(m[1]), Number(m[2]), Number(m[3]), m[4] === undefined ? 1 : Number(m[4])] : null;
+              };
+              const lum = (rgb) => {
+                const c = rgb.slice(0, 3).map(v => {
+                  const s = v / 255;
+                  return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
+                });
+                return 0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2];
+              };
+              const h1 = document.querySelector('main#main-content h1');
+              if (!h1) return 0;
+              const fg = parse(getComputedStyle(h1).color);
+              let node = h1;
+              let bg = null;
+              while (node && !bg) {
+                const parsed = parse(getComputedStyle(node).backgroundColor);
+                if (parsed && parsed[3] > 0.01) bg = parsed;
+                node = node.parentElement;
+              }
+              if (!bg) bg = parse(getComputedStyle(document.body).backgroundColor) || parse(getComputedStyle(document.documentElement).backgroundColor);
+              if (!fg || !bg) return 0;
+              const l1 = lum(fg), l2 = lum(bg);
+              return (Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05);
+            }"""
+        )
+    )
+
+
 def main() -> int:
     ARTIFACT_DIR.mkdir(parents=True, exist_ok=True)
     screenshots = ARTIFACT_DIR / "screenshots"
@@ -180,43 +234,21 @@ def main() -> int:
                     page.set_viewport_size({"width": width, "height": height})
                     console_errors: list[str] = []
                     page_errors: list[str] = []
-                    page.on(
-                        "console",
-                        lambda message, errors=console_errors: errors.append(message.text)
-                        if message.type == "error"
-                        else None,
-                    )
+                    page.on("console", lambda message, errors=console_errors: errors.append(message.text) if message.type == "error" else None)
                     page.on("pageerror", lambda error, errors=page_errors: errors.append(str(error)))
 
                     response = page.goto(f"{BASE_URL}{path}", wait_until="networkidle", timeout=45_000)
                     status = response.status if response is not None else 0
                     h1 = page.locator("main#main-content h1")
+                    broken_images = get_broken_images(page)
                     overflow = float(page.evaluate("document.documentElement.scrollWidth - window.innerWidth"))
                     offenders = overflow_elements(page) if overflow > 1 else []
-                    broken_images = page.locator("img").evaluate_all(
-                        """els => els
-                          .filter((el) => {
-                            const s = getComputedStyle(el);
-                            const r = el.getBoundingClientRect();
-                            return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0 &&
-                              (!el.complete || el.naturalWidth === 0 || el.naturalHeight === 0);
-                          })
-                          .map((el) => ({src: el.currentSrc || el.src, alt: el.alt || ''}))
-                          .slice(0, 20)"""
-                    )
                     record: dict[str, object] = {
-                        "locale": locale,
-                        "route": path,
-                        "route_name": route_name,
-                        "viewport": viewport_name,
-                        "width": width,
-                        "height": height,
-                        "status": status,
-                        "horizontal_overflow_px": overflow,
-                        "overflow_elements": offenders,
-                        "console_errors": console_errors,
-                        "page_errors": page_errors,
-                        "broken_images": broken_images,
+                        "locale": locale, "route": path, "route_name": route_name,
+                        "viewport": viewport_name, "width": width, "height": height,
+                        "status": status, "horizontal_overflow_px": overflow,
+                        "overflow_elements": offenders, "console_errors": console_errors,
+                        "page_errors": page_errors, "broken_images": broken_images,
                     }
 
                     try:
@@ -233,23 +265,25 @@ def main() -> int:
                         if broken_images:
                             raise RuntimeError(f"broken images: {broken_images[:3]}")
                         if route_name == "home":
-                            authoritative = page.locator('[data-visual-role="homepage-v2-authoritative"]')
+                            authoritative = page.locator('section.home-hero[data-visual-role="home-hero"]')
                             legacy = page.locator('.v2-recovery-home')
+                            demo = page.locator('[data-visual-role="interactive-product-demo"]')
+                            steps = page.locator('[data-visual-role="five-step-execution"] article')
                             if authoritative.count() != 1 or not authoritative.is_visible():
-                                raise RuntimeError("authoritative homepage V2 marker missing")
+                                raise RuntimeError("restored canonical home hero missing")
                             if legacy.count() != 0:
                                 raise RuntimeError("legacy WebsiteV2HomeRecovery is still rendered")
+                            if demo.count() != 1 or not demo.is_visible():
+                                raise RuntimeError("interactive product demo missing")
+                            if steps.count() != 5:
+                                raise RuntimeError(f"expected five execution nodes, found {steps.count()}")
 
-                        record["h1_font_px"] = page.evaluate(
-                            "el => parseFloat(getComputedStyle(el).fontSize)", h1.element_handle()
-                        )
+                        record["h1_font_px"] = page.evaluate("el => parseFloat(getComputedStyle(el).fontSize)", h1.element_handle())
                         record["h1_box"] = h1.bounding_box()
                         record.update(inspect_navigation(page, viewport_name))
 
                         if viewport_name == "desktop":
-                            hrefs = page.locator("a[href]").evaluate_all(
-                                "els => els.map((el) => el.getAttribute('href')).filter(Boolean)"
-                            )
+                            hrefs = page.locator("a[href]").evaluate_all("els => els.map((el) => el.getAttribute('href')).filter(Boolean)")
                             for href in hrefs:
                                 normalized = normalized_internal_href(str(href))
                                 if normalized is not None:
@@ -260,7 +294,7 @@ def main() -> int:
                             page.screenshot(path=str(screenshots / file_name), full_page=True)
                             record["screenshot"] = f"screenshots/{file_name}"
                         record["result"] = "PASS"
-                    except Exception as exc:  # noqa: BLE001 - aggregate all rendered route failures.
+                    except Exception as exc:  # noqa: BLE001
                         record["result"] = "FAIL"
                         record["failure"] = str(exc)
                         failures.append(f"{locale} {path} {viewport_name}: {exc}")
@@ -278,102 +312,46 @@ def main() -> int:
             if not ok:
                 failures.append(f"internal link {target}: HTTP {status}")
 
-        # Explicitly certify both Light and Dark homepage themes. The default
-        # browser color scheme is not evidence for the alternate theme.
         for theme in ("light", "dark"):
             for locale in ("en", "tr"):
                 for viewport_name, width, height in (("desktop", 1440, 1000), ("mobile", 390, 844)):
                     path = localized_path(locale, "")
                     page = context.new_page()
                     page.set_viewport_size({"width": width, "height": height})
-                    page.add_init_script(
-                        f"localStorage.setItem('ilaios-theme', '{theme}')"
-                    )
+                    page.add_init_script(f"localStorage.setItem('ilaios-theme', '{theme}')")
                     try:
-                        response = page.goto(
-                            f"{BASE_URL}{path}", wait_until="networkidle", timeout=45_000
-                        )
+                        response = page.goto(f"{BASE_URL}{path}", wait_until="networkidle", timeout=45_000)
                         if response is None or response.status >= 400:
                             raise RuntimeError(f"HTTP {response.status if response else 0}")
+                        settle_images(page)
                         actual_theme = page.evaluate("document.documentElement.dataset.theme")
                         if actual_theme != theme:
-                            raise RuntimeError(
-                                f"theme bootstrap mismatch: expected {theme}, got {actual_theme}"
-                            )
-                        contrast = float(
-                            page.evaluate(
-                                """() => {
-                                  const parse = (value) => {
-                                    const m = value.match(/rgba?\\((\\d+),\\s*(\\d+),\\s*(\\d+)/);
-                                    return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
-                                  };
-                                  const lum = (rgb) => {
-                                    const c = rgb.map(v => {
-                                      const s = v / 255;
-                                      return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
-                                    });
-                                    return 0.2126*c[0] + 0.7152*c[1] + 0.0722*c[2];
-                                  };
-                                  const h1 = document.querySelector('.homepage-v2 h1');
-                                  const host = document.querySelector('.homepage-v2');
-                                  if (!h1 || !host) return 0;
-                                  const fg = parse(getComputedStyle(h1).color);
-                                  const bg = parse(getComputedStyle(host).backgroundColor) ||
-                                             parse(getComputedStyle(document.body).backgroundColor);
-                                  if (!fg || !bg) return 0;
-                                  const l1 = lum(fg), l2 = lum(bg);
-                                  return (Math.max(l1,l2)+0.05)/(Math.min(l1,l2)+0.05);
-                                }"""
-                            )
-                        )
+                            raise RuntimeError(f"theme bootstrap mismatch: expected {theme}, got {actual_theme}")
+                        contrast = contrast_ratio(page)
                         if contrast < 4.5:
-                            raise RuntimeError(
-                                f"{theme} homepage H1 contrast too low: {contrast:.2f}"
-                            )
-                        gradients = page.locator(".homepage-v2 *").evaluate_all(
+                            raise RuntimeError(f"{theme} homepage H1 contrast too low: {contrast:.2f}")
+                        gradients = page.locator("main#main-content *").evaluate_all(
                             """els => els.filter((el) =>
                               (getComputedStyle(el).backgroundImage || '').includes('gradient(')
                             ).length"""
                         )
                         if gradients:
-                            raise RuntimeError(
-                                f"{theme} homepage contains {gradients} decorative gradients"
-                            )
-                        file_name = (
-                            f"theme__{theme}__{locale}__home__{viewport_name}-{width}x{height}.png"
-                        )
+                            raise RuntimeError(f"{theme} homepage contains {gradients} decorative gradients")
+                        file_name = f"theme__{theme}__{locale}__home__{viewport_name}-{width}x{height}.png"
                         page.screenshot(path=str(screenshots / file_name), full_page=True)
-                        records.append(
-                            {
-                                "locale": locale,
-                                "route": path,
-                                "route_name": "home-theme",
-                                "viewport": viewport_name,
-                                "width": width,
-                                "height": height,
-                                "theme": theme,
-                                "h1_contrast": contrast,
-                                "screenshot": f"screenshots/{file_name}",
-                                "result": "PASS",
-                            }
-                        )
+                        records.append({
+                            "locale": locale, "route": path, "route_name": "home-theme",
+                            "viewport": viewport_name, "width": width, "height": height,
+                            "theme": theme, "h1_contrast": contrast,
+                            "screenshot": f"screenshots/{file_name}", "result": "PASS",
+                        })
                     except Exception as exc:  # noqa: BLE001
-                        failures.append(
-                            f"{locale} {path} {theme} {viewport_name}: {exc}"
-                        )
-                        records.append(
-                            {
-                                "locale": locale,
-                                "route": path,
-                                "route_name": "home-theme",
-                                "viewport": viewport_name,
-                                "width": width,
-                                "height": height,
-                                "theme": theme,
-                                "result": "FAIL",
-                                "failure": str(exc),
-                            }
-                        )
+                        failures.append(f"{locale} {path} {theme} {viewport_name}: {exc}")
+                        records.append({
+                            "locale": locale, "route": path, "route_name": "home-theme",
+                            "viewport": viewport_name, "width": width, "height": height,
+                            "theme": theme, "result": "FAIL", "failure": str(exc),
+                        })
                     finally:
                         page.close()
 
@@ -381,7 +359,7 @@ def main() -> int:
         browser.close()
 
     report = {
-        "schema": "ilaios.website-v2.visual-qa.v3",
+        "schema": "ilaios.website-v2.visual-qa.v4-restored-baseline",
         "base_url": BASE_URL,
         "public_route_pairs": len(ROUTES),
         "localized_routes": len(ROUTES) * 2,
@@ -394,26 +372,8 @@ def main() -> int:
         "status": "FAIL" if failures else "PASS",
         "records": records,
     }
-    (ARTIFACT_DIR / "visual-qa.json").write_text(
-        json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    print(
-        json.dumps(
-            {
-                k: report[k]
-                for k in (
-                    "status",
-                    "public_route_pairs",
-                    "localized_routes",
-                    "checks",
-                    "internal_link_targets",
-                    "screenshots_expected",
-                    "failures",
-                )
-            },
-            indent=2,
-        )
-    )
+    (ARTIFACT_DIR / "visual-qa.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(json.dumps({k: report[k] for k in ("status", "public_route_pairs", "localized_routes", "checks", "internal_link_targets", "screenshots_expected", "failures")}, indent=2))
     return 1 if failures else 0
 
 
