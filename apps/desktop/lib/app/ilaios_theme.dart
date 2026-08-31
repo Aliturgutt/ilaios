@@ -16,7 +16,7 @@ abstract final class IlaiosTheme {
   static const Color surfaceRaised = graphite;
   static const Color surfaceSoft = charcoal;
   static const Color border = graphite;
-  static const Color borderStrong = Color(0xCC146BFF);
+  static const Color borderStrong = Color(0xCC00C2D1);
   static const Color primary = enterpriseCyan;
   static const Color cyan = enterpriseCyan;
   static const Color cyanSoft = Color(0xB300C2D1);
@@ -88,7 +88,7 @@ abstract final class IlaiosTheme {
       fontFamily: 'Segoe UI',
       dividerColor: outlineColor,
       focusColor: cyanWash,
-      hoverColor: blueWash,
+      hoverColor: cyanWash,
       highlightColor: violetWash,
       splashColor: enterpriseCyan.withValues(alpha: .12),
       splashFactory: InkSparkle.splashFactory,
@@ -122,7 +122,7 @@ abstract final class IlaiosTheme {
           borderRadius: BorderRadius.circular(9),
           borderSide: const BorderSide(color: focusRing, width: 1.5),
         ),
-        hoverColor: blueWash,
+        hoverColor: cyanWash,
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: ButtonStyle(
@@ -135,13 +135,9 @@ abstract final class IlaiosTheme {
           }),
           backgroundColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.disabled)) return raisedColor;
-            if (states.contains(WidgetState.hovered) ||
-                states.contains(WidgetState.focused)) {
-              return coreBlue;
-            }
             return enterpriseCyan;
           }),
-          overlayColor: const WidgetStatePropertyAll(violetWash),
+          overlayColor: const WidgetStatePropertyAll(cyanWash),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
           ),
@@ -154,18 +150,16 @@ abstract final class IlaiosTheme {
           ),
           foregroundColor: WidgetStateProperty.resolveWith((states) {
             if (states.contains(WidgetState.disabled)) return mutedColor;
-            return coreBlue;
+            return enterpriseCyan;
           }),
           side: WidgetStateProperty.resolveWith(
             (states) => BorderSide(
               color: states.contains(WidgetState.disabled)
                   ? outlineColor
-                  : states.contains(WidgetState.hovered)
-                      ? enterpriseCyan
-                      : coreBlue.withValues(alpha: .72),
+                  : enterpriseCyan.withValues(alpha: .72),
             ),
           ),
-          overlayColor: const WidgetStatePropertyAll(blueWash),
+          overlayColor: const WidgetStatePropertyAll(cyanWash),
           shape: WidgetStatePropertyAll(
             RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
           ),
@@ -176,8 +170,8 @@ abstract final class IlaiosTheme {
           textStyle: WidgetStatePropertyAll(
             TextStyle(fontSize: 14, height: 1.2, fontWeight: FontWeight.w600),
           ),
-          foregroundColor: WidgetStatePropertyAll(coreBlue),
-          overlayColor: WidgetStatePropertyAll(blueWash),
+          foregroundColor: WidgetStatePropertyAll(enterpriseCyan),
+          overlayColor: WidgetStatePropertyAll(cyanWash),
         ),
       ),
       switchTheme: SwitchThemeData(
@@ -185,7 +179,7 @@ abstract final class IlaiosTheme {
           (states) => states.contains(WidgetState.selected) ? white : foreground,
         ),
         trackColor: WidgetStateProperty.resolveWith(
-          (states) => states.contains(WidgetState.selected) ? coreBlue : raisedColor,
+          (states) => states.contains(WidgetState.selected) ? enterpriseCyan : raisedColor,
         ),
       ),
       checkboxTheme: CheckboxThemeData(
@@ -283,7 +277,7 @@ abstract final class IlaiosTheme {
           color: isDark ? raisedColor : lightText,
           borderRadius: BorderRadius.circular(7),
           border: Border.all(
-            color: isDark ? borderStrong : coreBlue.withValues(alpha: .45),
+            color: enterpriseCyan.withValues(alpha: .45),
           ),
         ),
         textStyle: const TextStyle(
