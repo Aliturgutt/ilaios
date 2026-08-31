@@ -26,7 +26,7 @@ void main() {
     );
     expect(
       outlined.foregroundColor!.resolve(<WidgetState>{}),
-      IlaiosTheme.coreBlue,
+      IlaiosTheme.enterpriseCyan,
     );
 
     expect(
@@ -64,6 +64,30 @@ void main() {
       filled.backgroundColor!.resolve({WidgetState.disabled}),
       IlaiosTheme.lightSurfaceRaised,
     );
+  });
+
+  test('canonical cyan owns primary interactive emphasis', () {
+    for (final theme in <ThemeData>[IlaiosTheme.dark, IlaiosTheme.light]) {
+      final outlined = theme.outlinedButtonTheme.style!;
+      final filled = theme.filledButtonTheme.style!;
+      final text = theme.textButtonTheme.style!;
+      final selectedSwitch = theme.switchTheme.trackColor!.resolve({WidgetState.selected});
+
+      expect(theme.colorScheme.primary, IlaiosTheme.enterpriseCyan);
+      expect(
+        outlined.foregroundColor!.resolve(<WidgetState>{}),
+        IlaiosTheme.enterpriseCyan,
+      );
+      expect(
+        filled.backgroundColor!.resolve(<WidgetState>{}),
+        IlaiosTheme.enterpriseCyan,
+      );
+      expect(
+        text.foregroundColor!.resolve(<WidgetState>{}),
+        IlaiosTheme.enterpriseCyan,
+      );
+      expect(selectedSwitch, IlaiosTheme.enterpriseCyan);
+    }
   });
 
   test('desktop typography keeps normal user text above the micro-text floor', () {
