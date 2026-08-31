@@ -141,3 +141,103 @@ def test_last_sign_in_method_cannot_be_removed_after_restart(tmp_path: Path) -> 
             )
     finally:
         restarted_connection.close()
+
+
+def test_explicit_link_consolidates_isolated_provider_account_atomically(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "control-plane.db"
+    migrate_database(database)
+    service, connection = _service(database)
+    try:
+        google = _identity(IdentityProvider.GOOGLE, "google-main")
+        github = _identity(IdentityProvider.GITHUB, "github-bootstrap")
+        target = service.sign_in(google)
+        source = service.sign_in(github)
+        connection.execute(
+            """
+            INSERT INTO identity_sessions
+                (session_id, user_id, tenant_id, credential_hash,
+                 created_at, expires_at, revoked_at)
+            VALUES (?, ?, ?, ?, ?, ?, NULL)
+            """,
+            (
+                "ses_bootstrap",
+                source.user_id,
+                source.tenant_id,
+                "0" * 64,
+                "2026-08-31T00:00:00+00:00",
+                "2026-09-01T00:00:00+00:00",
+            ),
+        )
+        connection.commit()
+
+        linked = service.link_identity(
+            authenticated_user_id=target.user_id,
+            authenticated_tenant_id=target.tenant_id,
+            identity=github,
+            recent_authentication_verified=True,
+        )
+
+        assert linked.user_id == target.user_id
+        assert linked.tenant_id == target.tenant_id
+        assert service.sign_in(github) == target
+        source_user = connection.execute(
+            "SELECT enabled FROM identity_users WHERE user_id = ?",
+            (source.user_id,),
+        ).fetchone()
+        source_membership = connection.execute(
+            "SELECT status, is_primary FROM identity_memberships "
+            "WHERE tenant_id = ? AND user_id = ?",
+            (source.tenant_id, source.user_id),
+        ).fetchone()
+        source_tenant = connection.execute(
+            "SELECT status FROM identity_tenants WHERE tenant_id = ?",
+            (source.tenant_id,),
+        ).fetchone()
+        source_session = connection.execute(
+            "SELECT revoked_at FROM identity_sessions WHERE session_id = ?",
+            ("ses_bootstrap",),
+        ).fetchone()
+        assert source_user == (0,)
+        assert source_membership == ("REVOKED", 0)
+        assert source_tenant == ("SUSPENDED",)
+        assert source_session is not None and source_session[0] is not None
+    finally:
+        connection.close()
+
+
+def test_explicit_link_refuses_source_account_with_entitlement(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "control-plane.db"
+    migrate_database(database)
+    service, connection = _service(database)
+    try:
+        target = service.sign_in(_identity(IdentityProvider.GOOGLE, "google-main"))
+        github = _identity(IdentityProvider.GITHUB, "github-established")
+        source = service.sign_in(github)
+        connection.execute(
+            """
+            INSERT INTO identity_entitlements
+                (tenant_id, entitlement_key, state, limit_value, updated_at)
+            VALUES (?, 'plan.test', 'ACTIVE', NULL, ?)
+            """,
+            (source.tenant_id, "2026-08-31T00:00:00+00:00"),
+        )
+        connection.commit()
+
+        with pytest.raises(
+            CentralIdentityError,
+            match="already linked to another account",
+        ):
+            service.link_identity(
+                authenticated_user_id=target.user_id,
+                authenticated_tenant_id=target.tenant_id,
+                identity=github,
+                recent_authentication_verified=True,
+            )
+
+        assert service.sign_in(github) == source
+    finally:
+        connection.close()
