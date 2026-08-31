@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from ipaddress import ip_address
+from socket import AF_INET, AF_INET6, SOCK_STREAM, getaddrinfo
 from typing import Any, Mapping, Protocol
 from urllib.parse import urlsplit
 from urllib.request import HTTPRedirectHandler, ProxyHandler, Request, build_opener
@@ -71,7 +72,7 @@ class UrllibPreviewHttpTransport:
     def get(self, url: str, *, timeout_seconds: int) -> PreviewHttpProbeResult:
         if timeout_seconds < 1 or timeout_seconds > 60:
             raise SoftwareFactoryError("preview probe timeout is invalid")
-        _validate_public_https_target(url)
+        _validate_public_https_target(url, resolve_dns=True)
         request = Request(
             url,
             method="GET",
@@ -92,7 +93,7 @@ class UrllibPreviewHttpTransport:
             with opener.open(request, timeout=timeout_seconds) as response:
                 headers = {str(key): str(value) for key, value in response.headers.items()}
                 final_url = response.geturl()
-                _validate_public_https_target(final_url)
+                _validate_public_https_target(final_url, resolve_dns=True)
                 return PreviewHttpProbeResult(final_url=final_url, response_headers=headers)
         except SoftwareFactoryError:
             raise
@@ -155,7 +156,7 @@ def probe_preview_runtime_boundary(
     )
 
 
-def _validate_public_https_target(value: str) -> None:
+def _validate_public_https_target(value: str, *, resolve_dns: bool = False) -> None:
     raw = value.strip()
     try:
         parsed = urlsplit(raw)
@@ -175,9 +176,35 @@ def _validate_public_https_target(value: str) -> None:
     try:
         address = ip_address(host)
     except ValueError:
+        if resolve_dns:
+            _require_public_dns_resolution(host, 443 if port is None else port)
         return
     if not address.is_global:
         raise SoftwareFactoryError("generated preview target IP must be globally routable")
+
+
+def _require_public_dns_resolution(host: str, port: int) -> None:
+    """Fail closed when a preview hostname resolves to any non-public address."""
+    try:
+        answers = getaddrinfo(host, port, family=0, type=SOCK_STREAM)
+    except OSError as error:
+        raise SoftwareFactoryError("generated preview target DNS resolution failed closed") from error
+    addresses: set[str] = set()
+    for family, _socktype, _proto, _canonname, sockaddr in answers:
+        if family not in (AF_INET, AF_INET6) or not sockaddr:
+            continue
+        addresses.add(str(sockaddr[0]))
+    if not addresses:
+        raise SoftwareFactoryError("generated preview target DNS resolution is empty")
+    for raw_address in addresses:
+        try:
+            address = ip_address(raw_address)
+        except ValueError as error:
+            raise SoftwareFactoryError("generated preview target DNS answer is invalid") from error
+        if not address.is_global:
+            raise SoftwareFactoryError(
+                "generated preview target DNS resolves to a non-public address"
+            )
 
 
 def _header(headers: Mapping[str, str], name: str) -> str:
