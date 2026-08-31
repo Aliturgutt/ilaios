@@ -181,6 +181,116 @@ class SQLiteCentralIdentityStore:
             issuer=verified.issuer,
         )
 
+    def transfer_isolated_link(
+        self, account: CanonicalAccount, identity: VerifiedExternalIdentity
+    ) -> IdentityLink:
+        verified = identity.normalized()
+        provider, issuer_namespace, subject = verified.key()
+        current = self.get_account(account.user_id)
+        if current != account or not account.enabled:
+            raise CentralIdentityError("canonical account changed during linking")
+        now = _sqlite_now()
+        with self._connect() as connection:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT provider, provider_subject, user_id, tenant_id, verified_email, "
+                "issuer_namespace FROM identity_accounts WHERE provider = ? "
+                "AND issuer_namespace = ? AND provider_subject = ?",
+                (provider.value, issuer_namespace, subject),
+            ).fetchone()
+            if row is None:
+                raise CentralIdentityError("external identity is not linked")
+            existing = _link_from_row(row)
+            if existing.user_id == account.user_id and existing.tenant_id == account.tenant_id:
+                return existing
+
+            source = self.get_account(existing.user_id)
+            if (
+                source is None
+                or not source.enabled
+                or source.tenant_id != existing.tenant_id
+            ):
+                raise CentralIdentityError(
+                    "external identity is already linked to another account"
+                )
+
+            source_link_count_row = connection.execute(
+                "SELECT COUNT(*) FROM identity_accounts "
+                "WHERE user_id = ? AND tenant_id = ?",
+                (source.user_id, source.tenant_id),
+            ).fetchone()
+            source_memberships = connection.execute(
+                "SELECT tenant_id, role, status, is_primary "
+                "FROM identity_memberships WHERE user_id = ?",
+                (source.user_id,),
+            ).fetchall()
+            tenant_member_count_row = connection.execute(
+                "SELECT COUNT(*) FROM identity_memberships WHERE tenant_id = ?",
+                (source.tenant_id,),
+            ).fetchone()
+            entitlement_count_row = connection.execute(
+                "SELECT COUNT(*) FROM identity_entitlements WHERE tenant_id = ?",
+                (source.tenant_id,),
+            ).fetchone()
+
+            if (
+                source_link_count_row is None
+                or int(source_link_count_row[0]) != 1
+                or source_memberships
+                != [(source.tenant_id, "OWNER", "ACTIVE", 1)]
+                or tenant_member_count_row is None
+                or int(tenant_member_count_row[0]) != 1
+                or entitlement_count_row is None
+                or int(entitlement_count_row[0]) != 0
+            ):
+                raise CentralIdentityError(
+                    "external identity is already linked to another account"
+                )
+
+            connection.execute(
+                "UPDATE identity_sessions "
+                "SET revoked_at = COALESCE(revoked_at, ?) "
+                "WHERE user_id = ? AND tenant_id = ?",
+                (now, source.user_id, source.tenant_id),
+            )
+            cursor = connection.execute(
+                "UPDATE identity_accounts SET user_id = ?, tenant_id = ?, updated_at = ? "
+                "WHERE provider = ? AND issuer_namespace = ? AND provider_subject = ? "
+                "AND user_id = ? AND tenant_id = ?",
+                (
+                    account.user_id,
+                    account.tenant_id,
+                    now,
+                    provider.value,
+                    issuer_namespace,
+                    subject,
+                    source.user_id,
+                    source.tenant_id,
+                ),
+            )
+            if cursor.rowcount != 1:
+                raise CentralIdentityError("external identity changed during linking")
+            connection.execute(
+                "UPDATE identity_memberships "
+                "SET status = 'REVOKED', is_primary = 0, updated_at = ? "
+                "WHERE tenant_id = ? AND user_id = ?",
+                (now, source.tenant_id, source.user_id),
+            )
+            connection.execute(
+                "UPDATE identity_users SET enabled = 0, updated_at = ? WHERE user_id = ?",
+                (now, source.user_id),
+            )
+            connection.execute(
+                "UPDATE identity_tenants SET status = 'SUSPENDED', updated_at = ? "
+                "WHERE tenant_id = ?",
+                (now, source.tenant_id),
+            )
+
+        linked = self.find_link(verified)
+        if linked is None:
+            raise CentralIdentityError("external identity consolidation failed")
+        return linked
+
     def remove_link(
         self, account: CanonicalAccount, identity: VerifiedExternalIdentity
     ) -> IdentityLink:
