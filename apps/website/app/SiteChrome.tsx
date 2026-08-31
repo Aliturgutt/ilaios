@@ -86,12 +86,12 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
       </div>
     </header>
     <main id="main-content" lang={lang} tabIndex={-1}>{children}</main>
-    <footer className="site-footer" lang={lang}>
-      <div className="shell footer-main">
+    <footer className="site-footer" lang={lang} style={{ paddingTop: "24px", paddingBottom: "24px" }}>
+      <div className="shell footer-main" style={{ paddingTop: 0, paddingBottom: "20px", gap: "28px" }}>
         <div className="footer-brand"><strong>ILAIOS</strong><p>{isTr ? "Kontrollü ve doğrulanabilir dijital sonuçlar için yönetilen yapay zekâ işletim sistemi." : "A governed AI operating system for controlled, verifiable finished digital outcomes."}</p><a href="mailto:contact@ilaios.com">contact@ilaios.com</a><div className="footer-social"><a href="https://www.linkedin.com/company/ilaios/" target="_blank" rel="noreferrer">LinkedIn</a><a href="https://x.com/ilaios" target="_blank" rel="noreferrer">X · @ilaios</a></div></div>
         <div className="footer-nav-grid">{footerGroups.map(group => <div key={group.heading}><strong>{group.heading}</strong>{group.links.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}</div>)}</div>
       </div>
-      <div className="shell footer-row"><span>© 2026 ILAIOS</span><span>{isTr ? "Kontrollü yürütme · doğrulanmış sonuç" : "Governed execution · verified outcome"}</span><Link href={switchHref}>{isTr ? "English" : "Türkçe"}</Link></div>
+      <div className="shell footer-row" style={{ paddingTop: "14px", paddingBottom: 0 }}><span>© 2026 ILAIOS</span><span>{isTr ? "Kontrollü yürütme · doğrulanmış sonuç" : "Governed execution · verified outcome"}</span><Link href={switchHref}>{isTr ? "English" : "Türkçe"}</Link></div>
     </footer>
   </>;
 }
