@@ -145,7 +145,11 @@ def _creator(metadata: dict[str, Any]) -> str | None:
     if isinstance(value, str) and value.strip():
         return value.strip()
     if isinstance(value, list):
-        creators = [part.strip() for part in value if isinstance(part, str) and part.strip()]
+        creators = [
+            part.strip()
+            for part in value
+            if isinstance(part, str) and part.strip()
+        ]
         if creators:
             return ", ".join(creators)
     return None
@@ -153,7 +157,11 @@ def _creator(metadata: dict[str, Any]) -> str | None:
 
 def _requires_attribution(license_name: str, license_url: str) -> bool:
     normalized = f"{license_name} {license_url}".casefold().replace("-", " ")
-    return "public domain" not in normalized and "/publicdomain/" not in normalized and "cc0" not in normalized
+    return (
+        "public domain" not in normalized
+        and "/publicdomain/" not in normalized
+        and "cc0" not in normalized
+    )
 
 
 def _select_file(files: list[Any]) -> tuple[str, str] | None:
@@ -167,8 +175,7 @@ def _select_file(files: list[Any]) -> tuple[str, str] | None:
             if not isinstance(entry, dict):
                 continue
             name = entry.get("name")
-            source = entry.get("source")
-            if source not in {None, "original"}:
+            if entry.get("source") != "original":
                 continue
             if isinstance(name, str) and name.casefold().endswith(suffixes):
                 return name, media_type
@@ -176,9 +183,14 @@ def _select_file(files: list[Any]) -> tuple[str, str] | None:
 
 
 def _fetch_json(url: str) -> dict[str, Any]:
-    request = Request(url, headers={"User-Agent": _USER_AGENT, "Accept": "application/json"})
+    request = Request(
+        url,
+        headers={"User-Agent": _USER_AGENT, "Accept": "application/json"},
+    )
     try:
-        with urlopen(request, timeout=15) as response:  # noqa: S310 - fixed HTTPS hosts
+        with urlopen(
+            request, timeout=15
+        ) as response:  # noqa: S310 - fixed HTTPS hosts
             payload = json.load(response)
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
         raise StockSourceError("Internet Archive HTTP request failed closed") from exc
