@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import os
 import subprocess
 from pathlib import Path
 
@@ -217,3 +218,39 @@ def test_boundary_kills_host_output_flood_before_control_plane_memory_growth(
 
     with pytest.raises(SoftwareFactoryError, match="output exceeds bounded capture limit"):
         boundary._docker_run(("run",), timeout_seconds=5)
+
+
+@pytest.mark.skipif(
+    os.environ.get("ILAIOS_RUN_DOCKER_SANDBOX_E2E") != "1",
+    reason="real Docker sandbox evidence is CI-only",
+)
+def test_boundary_executes_hostile_code_in_real_docker_isolation(tmp_path: Path) -> None:
+    workspace = tmp_path / "workspace"
+    workspace.mkdir()
+    sibling_secret = tmp_path / "host-secret.txt"
+    sibling_secret.write_text("must-not-be-visible\n", encoding="utf-8")
+    os.environ["ILAIOS_SANDBOX_SENTINEL"] = "must-not-enter-container"
+    boundary = DockerSecureCommandBoundary(
+        runtime_image="alpine:3.20",
+        memory_limit="128m",
+        cpu_limit="0.5",
+        pids_limit=32,
+    )
+
+    command = RuntimeCommand(
+        "test",
+        (
+            "sh",
+            "-ec",
+            "test -z \"${ILAIOS_SANDBOX_SENTINEL:-}\"; "
+            "test ! -e /var/run/docker.sock; "
+            "test ! -e /host-secret.txt; "
+            "test ! -e /sys/class/net/eth0; "
+            "! touch /usr/ilaios-hostile-write-probe",
+        ),
+        ".",
+    )
+    result = boundary.execute(workspace, command, _policy())
+
+    assert result.passed is True
+    assert result.exit_code == 0
