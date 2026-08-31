@@ -1,12 +1,18 @@
 from __future__ import annotations
 
+from typing import Any
+
 import pytest
 
 from src.video_automation.pixabay_stock_transport import PixabayStockHttpTransport
-from src.video_automation.stock_source_adapters import StockProvider, StockSourceError
+from src.video_automation.stock_source_adapters import (
+    StockProvider,
+    StockSearchResult,
+    StockSourceError,
+)
 
 
-def _search(transport: PixabayStockHttpTransport):
+def _search(transport: PixabayStockHttpTransport) -> StockSearchResult:
     return transport.search(
         provider=StockProvider.PIXABAY,
         tenant_id="tenant-1",
@@ -17,7 +23,7 @@ def _search(transport: PixabayStockHttpTransport):
 
 
 def test_pixabay_transport_binds_license_provenance_and_rate_limit() -> None:
-    def fetch_json(url: str):
+    def fetch_json(url: str) -> tuple[dict[str, Any], dict[str, str]]:
         assert url.startswith("https://pixabay.com/api/?")
         assert "key=test-key" in url
         return (
@@ -50,7 +56,7 @@ def test_pixabay_transport_binds_license_provenance_and_rate_limit() -> None:
 
 
 def test_pixabay_transport_drops_candidate_without_creator() -> None:
-    def fetch_json(_url: str):
+    def fetch_json(_url: str) -> tuple[dict[str, Any], dict[str, str]]:
         return ({"hits": [{"id": 7, "pageURL": "https://pixabay.com/photos/7/", "largeImageURL": "https://cdn.pixabay.com/7.jpg"}]}, {})
 
     result = _search(PixabayStockHttpTransport("test-key", fetch_json=fetch_json))
@@ -58,7 +64,7 @@ def test_pixabay_transport_drops_candidate_without_creator() -> None:
 
 
 def test_pixabay_transport_fails_closed_on_zero_rate_limit_without_reset() -> None:
-    def fetch_json(_url: str):
+    def fetch_json(_url: str) -> tuple[dict[str, Any], dict[str, str]]:
         return ({"hits": []}, {"x-ratelimit-remaining": "0"})
 
     with pytest.raises(StockSourceError, match="rate-limit reset"):
