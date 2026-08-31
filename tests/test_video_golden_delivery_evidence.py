@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from hashlib import sha256
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -20,7 +21,7 @@ _REQUIRED_QA = frozenset({"technical", "visual", "audio", "brand"})
 def _receipt(tmp_path: Path, **overrides: object) -> GoldenDeliveryReceipt:
     artifact = tmp_path / "final.mp4"
     artifact.write_bytes(b"real-finished-artifact-evidence")
-    values: dict[str, object] = {
+    values: dict[str, Any] = {
         "job_id": "job-golden-documentary",
         "final_mp4_path": str(artifact),
         "final_mp4_sha256": sha256(artifact.read_bytes()).hexdigest(),
@@ -36,7 +37,7 @@ def _receipt(tmp_path: Path, **overrides: object) -> GoldenDeliveryReceipt:
         "qa_domains_passed": _REQUIRED_QA,
     }
     values.update(overrides)
-    return GoldenDeliveryReceipt(**values)  # type: ignore[arg-type]
+    return GoldenDeliveryReceipt(**values)
 
 
 def test_golden_delivery_receipt_accepts_complete_evidence(tmp_path: Path) -> None:
