@@ -10,7 +10,8 @@ def test_canonical_homepage_keeps_production_density_bounds() -> None:
     source = HOME.read_text(encoding="utf-8")
 
     assert 'data-visual-role="homepage-v2-authoritative"' in source
-    assert 'style={{ paddingTop: "48px", paddingBottom: "48px" }}' in source
+    assert 'style={{ paddingTop: "32px", paddingBottom: "32px" }}' in source
+    assert 'style={{ paddingTop: "48px", paddingBottom: "48px" }}' not in source
     assert 'fontSize: "clamp(2.2rem, 3.35vw, 3rem)"' in source
 
 
