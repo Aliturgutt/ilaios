@@ -30,7 +30,13 @@ def test_signin_surface_uses_existing_production_auth_routes_only() -> None:
     assert "/auth/link/" not in component
 
 
-def test_signin_routes_are_not_indexed_while_auth_closure_is_in_progress() -> None:
-    for route in (EN_ROUTE, TR_ROUTE):
-        source = route.read_text(encoding="utf-8")
-        assert "robots: { index: false, follow: false }" in source
+def test_signin_routes_keep_canonical_bilingual_metadata() -> None:
+    en = EN_ROUTE.read_text(encoding="utf-8")
+    tr = TR_ROUTE.read_text(encoding="utf-8")
+
+    assert 'canonical: "/sign-in"' in en
+    assert 'canonical: "/tr/sign-in"' in tr
+    for source in (en, tr):
+        assert 'en: "/sign-in"' in source
+        assert 'tr: "/tr/sign-in"' in source
+        assert "noindex" not in source.casefold()
