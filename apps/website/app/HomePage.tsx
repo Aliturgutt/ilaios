@@ -32,6 +32,7 @@ const copy = {
     closeEyebrow: "Start with the outcome",
     closeTitle: "What do you want ILAIOS to finish?",
     closePrimary: "Explore production outcomes",
+    closeSecondary: "See capabilities",
   },
   tr: {
     eyebrow: "Hedeften bitmiş sonuca",
@@ -60,6 +61,7 @@ const copy = {
     closeEyebrow: "Sonuçla başla",
     closeTitle: "ILAIOS'un neyi bitirmesini istiyorsun?",
     closePrimary: "Üretim sonuçlarını keşfet",
+    closeSecondary: "Yetenekleri gör",
   },
 } as const;
 
@@ -71,10 +73,10 @@ export default function HomePage({ locale }: { locale: Locale }) {
       <div className="home-hero-copy" data-visual-role="homepage-v2-authoritative"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p><div className="actions"><Link className="button" href={`${base}/use-ilaios`}>{c.primary}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.secondary}</Link></div></div>
       <ProductExperience locale={locale} />
     </section>
-    <div className="proof-strip"><div className="shell proof-strip-grid">{c.proof.map(([title, text]) => <div key={title}><strong>{title}</strong><span>{text}</span></div>)}</div></div>
+    <section className="proof-strip"><div className="shell proof-strip-grid">{c.proof.map(([title, text]) => <div key={title}><strong>{title}</strong><span>{text}</span></div>)}</div></section>
     <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.outcomesEyebrow}</div><h2>{c.outcomesTitle}</h2></div><p>{c.outcomesLead}</p></div><div className="outcome-showcase home-output-index-v2">{c.outcomes.map(([title,text,href], index) => <Link className="outcome-row" href={href} key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><h3>{title}</h3><p>{text}</p></div><strong aria-hidden="true">→</strong></Link>)}</div></div></section>
     <section className="section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">{c.processEyebrow}</div><h2>{c.processTitle}</h2></div></div><div className="process-rail home-process-rail-v2" data-visual-role="five-step-execution">{c.process.map(([n, title, text]) => <article key={n}><span>{n}</span><strong>{title}</strong><p>{text}</p></article>)}</div></div></section>
     <section className="section surface-section home-control-ledger-v2"><div className="shell evidence-story"><div className="evidence-story-copy"><div className="eyebrow">{c.controlEyebrow}</div><h2>{c.controlTitle}</h2><p>{c.controlLead}</p><Link className="text-link" href={`${base}/architecture`}>{c.architecture} →</Link></div><GovernanceEvidence locale={locale} /></div></section>
-    <div className="section compact-section"><div className="shell compact-cta"><div><div className="eyebrow">{c.closeEyebrow}</div><h2>{c.closeTitle}</h2></div><div className="actions"><Link className="button" href={`${base}/factories`}>{c.closePrimary}</Link></div></div></div>
+    <section className="section compact-section"><div className="shell compact-cta"><div><div className="eyebrow">{c.closeEyebrow}</div><h2>{c.closeTitle}</h2></div><div className="actions"><Link className="button" href={`${base}/factories`}>{c.closePrimary}</Link><Link className="button secondary" href={`${base}/capabilities`}>{c.closeSecondary}</Link></div></div></section>
   </>;
 }
