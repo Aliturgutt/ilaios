@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../app/ilaios_locale.dart';
@@ -23,9 +21,10 @@ import 'reference_home_dashboard_v2.dart';
 /// Reference-faithful Desktop shell for the approved Home dark/light designs.
 ///
 /// The shell never routes back to the legacy Home when the Windows window is
-/// restored or made smaller. Compact desktop windows scale the same visual
-/// family uniformly. Runtime values remain authority-derived; the reference
-/// screenshots provide layout/theme guidance only.
+/// restored or made smaller. Compact desktop windows preserve native text
+/// scaling and layout dimensions instead of shrinking the entire UI surface.
+/// Runtime values remain authority-derived; the reference screenshots provide
+/// layout/theme guidance only.
 class ReferenceDesktopShellV10 extends StatefulWidget {
   const ReferenceDesktopShellV10({
     required this.projection,
@@ -81,86 +80,60 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
 
   @override
   Widget build(BuildContext context) {
-    final media = MediaQuery.of(context);
-
-    Widget canvas(double width, double height) => MediaQuery(
-          data: media.copyWith(textScaler: const TextScaler.linear(.95)),
-          child: SizedBox(
-            width: width,
-            height: height,
-            child: Scaffold(
-              body: Column(
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        _Sidebar(
-                          selected: _section,
-                          projection: widget.projection,
-                          snapshot: widget.operationalSnapshot,
-                          userSession: widget.userSession,
-                          onSelected: _select,
+    Widget canvas(double width, double height) => SizedBox(
+          width: width,
+          height: height,
+          child: Scaffold(
+            body: Column(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      _Sidebar(
+                        selected: _section,
+                        projection: widget.projection,
+                        snapshot: widget.operationalSnapshot,
+                        userSession: widget.userSession,
+                        onSelected: _select,
+                      ),
+                      VerticalDivider(
+                        width: 1,
+                        thickness: 1,
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
+                      Expanded(
+                        child: Column(
+                          children: [
+                            _TopBar(
+                              projection: widget.projection,
+                              snapshot: widget.operationalSnapshot,
+                              userSession: widget.userSession,
+                              themeMode: widget.themeMode,
+                              onThemeModeChanged: widget.onThemeModeChanged,
+                              onLogout: widget.onLogout,
+                              onNavigate: _select,
+                            ),
+                            Expanded(child: _buildSection()),
+                          ],
                         ),
-                        VerticalDivider(
-                          width: 1,
-                          thickness: 1,
-                          color: Theme.of(context).colorScheme.outlineVariant,
-                        ),
-                        Expanded(
-                          child: Column(
-                            children: [
-                              _TopBar(
-                                projection: widget.projection,
-                                snapshot: widget.operationalSnapshot,
-                                userSession: widget.userSession,
-                                themeMode: widget.themeMode,
-                                onThemeModeChanged: widget.onThemeModeChanged,
-                                onLogout: widget.onLogout,
-                                onNavigate: _select,
-                              ),
-                              Expanded(child: _buildSection()),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-                  _BottomStatusBar(
-                    projection: widget.projection,
-                    snapshot: widget.operationalSnapshot,
-                  ),
-                ],
-              ),
+                ),
+                _BottomStatusBar(
+                  projection: widget.projection,
+                  snapshot: widget.operationalSnapshot,
+                ),
+              ],
             ),
           ),
         );
 
     return LayoutBuilder(
-      builder: (context, constraints) {
-        const minDesignWidth = 1180.0;
-        const minDesignHeight = 720.0;
-        final compact =
-            constraints.maxWidth < minDesignWidth || constraints.maxHeight < minDesignHeight;
-        if (!compact) {
-          return canvas(constraints.maxWidth, constraints.maxHeight);
-        }
-
-        final ratioMatchedWidth = constraints.maxHeight > 0
-            ? constraints.maxWidth * minDesignHeight / constraints.maxHeight
-            : minDesignWidth;
-        final designWidth = math.max(minDesignWidth, ratioMatchedWidth);
-
-        return ClipRect(
-          key: const Key('reference-scaled-viewport-v9'),
-          child: SizedBox.expand(
-            child: FittedBox(
-              fit: BoxFit.contain,
-              alignment: Alignment.topLeft,
-              child: canvas(designWidth, minDesignHeight),
-            ),
-          ),
-        );
-      },
+      builder: (context, constraints) => SizedBox.expand(
+        key: const Key('reference-responsive-viewport-v10'),
+        child: canvas(constraints.maxWidth, constraints.maxHeight),
+      ),
     );
   }
 
@@ -169,6 +142,8 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
             projection: widget.projection,
             snapshot: widget.operationalSnapshot,
             status: widget.operationalStatus,
+            userSession: widget.userSession,
+            onPromptSubmit: widget.onPromptSubmit,
             onNavigate: _select,
             onRefreshRequested: widget.onRefreshRequested,
           ),
@@ -301,7 +276,6 @@ class _Sidebar extends StatelessWidget {
                 ],
               ),
             ),
-
           ],
         ),
       ),
@@ -338,7 +312,7 @@ class _NavItem extends StatelessWidget {
           key: ValueKey('nav-${section.name}'),
           onTap: onTap,
           child: SizedBox(
-            height: 42,
+            height: 44,
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 10),
               child: Row(
@@ -357,7 +331,7 @@ class _NavItem extends StatelessWidget {
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        fontSize: 12.4,
+                        fontSize: 14,
                         fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                         color: Theme.of(context).colorScheme.onSurface,
                       ),
@@ -393,8 +367,8 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         key: const Key('reference-desktop-topbar-v5'),
-        height: 60,
-        padding: const EdgeInsets.symmetric(horizontal: 22),
+        height: 72,
+        padding: const EdgeInsets.symmetric(horizontal: 18),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerLow,
           border: Border(
@@ -409,8 +383,8 @@ class _TopBar extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(context.tr('shell.project'), style: const TextStyle(fontSize: 8.5)),
-                  const SizedBox(height: 3),
+                  Text(context.tr('shell.project'), style: const TextStyle(fontSize: 12.5)),
+                  const SizedBox(height: 4),
                   Row(
                     children: [
                       Expanded(
@@ -424,7 +398,7 @@ class _TopBar extends StatelessWidget {
                           child: InkWell(
                             onTap: () => onNavigate(DesktopSection.goals),
                             child: SizedBox(
-                              height: 31,
+                              height: 36,
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 10),
                                 child: Row(
@@ -434,7 +408,7 @@ class _TopBar extends StatelessWidget {
                                         _projectLabel(snapshot) ?? context.tr('shell.unavailable'),
                                         maxLines: 1,
                                         overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 10.2, fontWeight: FontWeight.w600),
+                                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
                                       ),
                                     ),
                                     const Icon(Icons.chevron_right_rounded, size: 16),
@@ -458,7 +432,7 @@ class _TopBar extends StatelessWidget {
                         projection.connected
                             ? context.tr('shell.connected')
                             : context.tr('shell.offline'),
-                        style: const TextStyle(fontSize: 8.4),
+                        style: const TextStyle(fontSize: 12.5),
                       ),
                     ],
                   ),
@@ -468,13 +442,13 @@ class _TopBar extends StatelessWidget {
             const Spacer(),
             SizedBox(
               width: 180,
-              height: 32,
+              height: 38,
               child: OutlinedButton.icon(
                 onPressed: () => onNavigate(DesktopSection.goals),
                 icon: const Icon(Icons.search_rounded, size: 17),
                 label: Align(
                   alignment: Alignment.centerLeft,
-                  child: Text(context.tr('shell.search'), style: const TextStyle(fontSize: 9.4)),
+                  child: Text(context.tr('shell.search'), style: const TextStyle(fontSize: 13.5)),
                 ),
               ),
             ),
@@ -550,7 +524,7 @@ class _AccountControl extends StatelessWidget {
         userSession?.principalId ??
         context.tr('shell.identityUnavailable');
     final content = Container(
-      height: 38,
+      height: 42,
       padding: const EdgeInsets.only(left: 10),
       decoration: BoxDecoration(
         border: Border(
@@ -571,7 +545,7 @@ class _AccountControl extends StatelessWidget {
           ),
           const SizedBox(width: 7),
           SizedBox(
-            width: 132,
+            width: 150,
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -580,7 +554,7 @@ class _AccountControl extends StatelessWidget {
                   identity,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 9.3, fontWeight: FontWeight.w700),
+                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
                 ),
                 Text(
                   userSession == null
@@ -588,7 +562,7 @@ class _AccountControl extends StatelessWidget {
                       : context.tr('shell.authenticated'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 8),
+                  style: const TextStyle(fontSize: 12.5),
                 ),
               ],
             ),
@@ -637,7 +611,7 @@ class _BottomStatusBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: const Key('reference-bottom-status-v2'),
-      height: 34,
+      height: 40,
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerLowest,
@@ -656,16 +630,14 @@ class _BottomStatusBar extends StatelessWidget {
           Text(
             '© 2026 ILAIOS. ${_isTr(context) ? 'Tüm hakları saklıdır.' : 'All rights reserved.'}',
             style: TextStyle(
-              fontSize: 8.4,
+              fontSize: 12.5,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-
         ],
       ),
     );
   }
-
 }
 
 class _FlatStatus extends StatelessWidget {
@@ -679,7 +651,7 @@ class _FlatStatus extends StatelessWidget {
   Widget build(BuildContext context) => Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: const TextStyle(fontSize: 8.4)),
+          Text(label, style: const TextStyle(fontSize: 12.5)),
           const SizedBox(width: 8),
           if (live) ...[
             const Icon(Icons.circle, size: 6, color: IlaiosTheme.success),
@@ -687,7 +659,7 @@ class _FlatStatus extends StatelessWidget {
           ],
           Text(
             value,
-            style: const TextStyle(fontSize: 8.8, fontWeight: FontWeight.w600),
+            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
           ),
         ],
       );
