@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from urllib.error import HTTPError, URLError
 from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
@@ -174,9 +174,9 @@ def _fetch_json(url: str) -> dict[str, Any]:
     request = Request(url, headers={"User-Agent": _USER_AGENT, "Accept": "application/json"})
     try:
         with urlopen(request, timeout=15) as response:  # noqa: S310 - fixed HTTPS host
-            payload = json.load(response)
+            raw_payload: object = json.load(response)
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
         raise StockSourceError("NASA HTTP request failed closed") from exc
-    if not isinstance(payload, dict):
+    if not isinstance(raw_payload, dict):
         raise StockSourceError("NASA response must be a JSON object")
-    return payload
+    return cast(dict[str, Any], raw_payload)
