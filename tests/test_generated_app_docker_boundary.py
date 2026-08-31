@@ -220,11 +220,10 @@ def test_boundary_kills_host_output_flood_before_control_plane_memory_growth(
         boundary._docker_run(("run",), timeout_seconds=5)
 
 
-@pytest.mark.skipif(
-    os.environ.get("ILAIOS_RUN_DOCKER_SANDBOX_E2E") != "1",
-    reason="real Docker sandbox evidence is CI-only",
-)
 def test_boundary_executes_hostile_code_in_real_docker_isolation(tmp_path: Path) -> None:
+    if os.environ.get("ILAIOS_RUN_DOCKER_SANDBOX_E2E") != "1":
+        pytest.skip("real Docker sandbox evidence is CI-only")
+
     workspace = tmp_path / "workspace"
     workspace.mkdir()
     sibling_secret = tmp_path / "host-secret.txt"
