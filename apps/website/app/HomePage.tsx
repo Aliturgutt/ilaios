@@ -100,10 +100,10 @@ export default function HomePage({ locale }: { locale: Locale }) {
   const base = locale === "tr" ? "/tr" : "";
 
   return <div className="homepage-v2" data-visual-role="homepage-v2-authoritative">
-    <section className="home-hero-v2 shell" data-visual-role="home-hero">
+    <section className="home-hero-v2 shell" data-visual-role="home-hero" style={{ paddingTop: "48px", paddingBottom: "48px" }}>
       <div className="home-hero-v2-copy">
         <div className="eyebrow">{c.eyebrow}</div>
-        <h1>{c.title}</h1>
+        <h1 style={{ fontSize: "clamp(2.2rem, 3.35vw, 3rem)", lineHeight: 1 }}>{c.title}</h1>
         <p className="lead">{c.lead}</p>
         <div className="actions">
           <Link className="button" href={`${base}/factories`}>{c.primary}</Link>
