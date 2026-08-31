@@ -15,6 +15,18 @@ from services.web_app_preview_runtime_probe import (
 from services.web_app_preview_sandbox_observer import observe_generated_preview_sandbox
 
 
+@pytest.fixture(autouse=True)  # type: ignore[misc]
+def _stable_public_preview_dns(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep injected-transport unit tests deterministic and network-free."""
+    monkeypatch.setattr(
+        preview_probe,
+        "getaddrinfo",
+        lambda host, port, **kwargs: [
+            (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("93.184.216.34", port))
+        ],
+    )
+
+
 class _Transport:
     def __init__(self, result: PreviewHttpProbeResult) -> None:
         self.result = result
@@ -172,6 +184,64 @@ def test_probe_rejects_private_final_target_from_injected_transport() -> None:
         )
     )
     with pytest.raises(SoftwareFactoryError, match="globally routable"):
+        probe_preview_runtime_boundary(
+            preview_url="https://preview.example.com",
+            execution_id="exec-1",
+            tenant_id="tenant-a",
+            source_sha256="a" * 64,
+            artifact_sha256="b" * 64,
+            privileged_session_origin="https://app.ilaios.com",
+            isolation=_isolation(),
+            transport=transport,
+        )
+    assert transport.calls == [("https://preview.example.com", 15)]
+
+
+def test_injected_transport_rejects_hostname_resolving_private_before_call(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        preview_probe,
+        "getaddrinfo",
+        lambda *args, **kwargs: [
+            (socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("10.0.0.7", 443))
+        ],
+    )
+    transport = _Transport(
+        PreviewHttpProbeResult(
+            final_url="https://preview.example.com",
+            response_headers={"Content-Security-Policy": "default-src 'none'"},
+        )
+    )
+    with pytest.raises(SoftwareFactoryError, match="DNS resolves to a non-public address"):
+        probe_preview_runtime_boundary(
+            preview_url="https://preview.example.com",
+            execution_id="exec-1",
+            tenant_id="tenant-a",
+            source_sha256="a" * 64,
+            artifact_sha256="b" * 64,
+            privileged_session_origin="https://app.ilaios.com",
+            isolation=_isolation(),
+            transport=transport,
+        )
+    assert transport.calls == []
+
+
+def test_injected_transport_rejects_private_dns_final_target(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _resolve(host: str, port: int, **kwargs: object) -> list[tuple[object, ...]]:
+        address = "169.254.169.254" if host == "rebound.example.com" else "93.184.216.34"
+        return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", (address, port))]
+
+    monkeypatch.setattr(preview_probe, "getaddrinfo", _resolve)
+    transport = _Transport(
+        PreviewHttpProbeResult(
+            final_url="https://rebound.example.com",
+            response_headers={"Content-Security-Policy": "default-src 'none'"},
+        )
+    )
+    with pytest.raises(SoftwareFactoryError, match="DNS resolves to a non-public address"):
         probe_preview_runtime_boundary(
             preview_url="https://preview.example.com",
             execution_id="exec-1",
