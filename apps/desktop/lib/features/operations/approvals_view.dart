@@ -581,7 +581,7 @@ class _RequestTable extends StatelessWidget {
                     )
                   : ListView.separated(
                       itemCount: requests.length,
-                      separatorBuilder: (_, __) => Divider(
+                      separatorBuilder: (_, _) => Divider(
                         height: 1,
                         color: Theme.of(context)
                             .colorScheme
