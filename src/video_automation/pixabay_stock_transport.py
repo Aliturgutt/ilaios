@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, cast
 from urllib.error import HTTPError, URLError
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
@@ -155,10 +155,11 @@ def _fetch_json(url: str) -> tuple[dict[str, Any], dict[str, str]]:
     request = Request(url, headers={"User-Agent": _USER_AGENT, "Accept": "application/json"})
     try:
         with urlopen(request, timeout=15) as response:  # noqa: S310 - fixed HTTPS host
-            payload = json.load(response)
+            raw_payload: object = json.load(response)
             headers = {key.casefold(): value for key, value in response.headers.items()}
     except (HTTPError, URLError, TimeoutError, json.JSONDecodeError) as exc:
         raise StockSourceError("Pixabay HTTP request failed closed") from exc
-    if not isinstance(payload, dict):
+    if not isinstance(raw_payload, dict):
         raise StockSourceError("Pixabay response must be a JSON object")
+    payload = cast(dict[str, Any], raw_payload)
     return payload, headers
