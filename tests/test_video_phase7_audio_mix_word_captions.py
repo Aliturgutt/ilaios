@@ -7,10 +7,10 @@ from pathlib import Path
 
 import pytest
 
-from video_automation.audio_mix import AudioMixError, mix_processed_audio
-from video_automation.audio_processing import AudioProcessingManifest
-from video_automation.models import MediaAsset, MediaType
-from video_automation.word_synced_captions import (
+from src.video_automation.audio_mix import AudioMixError, mix_processed_audio
+from src.video_automation.audio_processing import AudioProcessingManifest
+from src.video_automation.models import MediaAsset, MediaType
+from src.video_automation.word_synced_captions import (
     WordSyncedCaptionError,
     WordTiming,
     export_word_synced_captions,
