@@ -1,0 +1,48 @@
+name: Video Remotion Render E2E
+
+on:
+  pull_request:
+    paths:
+      - "src/video_automation/remotion_render_executor.py"
+      - "tools/video_remotion_runtime/**"
+      - "tests/test_video_remotion_render_executor.py"
+      - ".github/workflows/video-remotion-render-e2e.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pixel-render-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install Python test dependencies
+        run: python -m pip install --disable-pip-version-check pytest requests python-dotenv
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install pinned Remotion runtime
+        working-directory: tools/video_remotion_runtime
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run unit regression
+        run: python -m pytest -q tests/test_video_remotion_render_executor.py -k "not real_remotion"
+
+      - name: Run real pixel-level Remotion E2E
+        env:
+          ILAIOS_RUN_REMOTION_E2E: "1"
+        run: python -m pytest -q tests/test_video_remotion_render_executor.py -k "real_remotion"
