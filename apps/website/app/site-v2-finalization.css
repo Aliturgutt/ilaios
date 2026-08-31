@@ -237,6 +237,48 @@ html[data-theme="light"] .diagram-sprite-light { display: block; }
 }
 .factory-availability-banner p { margin: 0; color: var(--muted); }
 
+/* Production certification uses a stricter density budget than the restored
+   pre-V2 surface. Keep the restored structure, but bound only the affected
+   non-home public surfaces to the certified spacing budget. */
+@media (min-width: 901px) {
+  main:has(> .compact-page-hero) .section,
+  main:has(> .audience-hero) .section,
+  main:has(> .about-intro) .section,
+  main:has(> .contact-intro) .section {
+    padding-top: 48px !important;
+    padding-bottom: 48px !important;
+  }
+
+  .audience-hero {
+    padding-top: 48px !important;
+    padding-bottom: 48px !important;
+  }
+}
+
+@media (max-width: 900px) {
+  main:has(> .compact-page-hero) .section,
+  main:has(> .audience-hero) .section,
+  main:has(> .about-intro) .section,
+  main:has(> .contact-intro) .section {
+    padding-top: 32px !important;
+    padding-bottom: 32px !important;
+  }
+
+  .audience-hero {
+    padding-top: 32px !important;
+    padding-bottom: 32px !important;
+  }
+}
+
+/* De-emphasize repeated ordinal markers on the only surfaces that exceeded the
+   production accent-text budget; semantic hierarchy and interactive accents
+   remain unchanged. */
+.audience-outcome-list > article > span,
+.audience-process > article > span,
+.contact-directory > article > span {
+  color: var(--muted) !important;
+}
+
 @media (max-width: 980px) {
   .use-factory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
