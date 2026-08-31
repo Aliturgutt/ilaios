@@ -20,6 +20,7 @@ import SiteChrome from "./SiteChrome";
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ilaios.com";
 const organizationId = `${siteUrl}/#organization`;
 const websiteId = `${siteUrl}/#website`;
+const softwareId = `${siteUrl}/#software`;
 const founderId = `${siteUrl}/about#founder`;
 const productDescription = "ILAIOS is a Governed AI Operating System with native finished-product factories for controlled, verifiable digital work.";
 
@@ -39,9 +40,10 @@ export const metadata: Metadata = {
 const structuredData = {
   "@context": "https://schema.org",
   "@graph": [
-    { "@type": "Organization", "@id": organizationId, name: "ILAIOS", url: siteUrl, logo: { "@type": "ImageObject", url: `${siteUrl}/brand/logo-horizontal-dark.jpg` }, description: productDescription, founder: { "@id": founderId }, sameAs: ["https://www.linkedin.com/company/ilaios/", "https://x.com/ilaios"] },
+    { "@type": "Organization", "@id": organizationId, name: "ILAIOS", url: siteUrl, logo: { "@type": "ImageObject", url: `${siteUrl}/brand/logo-horizontal-dark.jpg` }, description: productDescription, founder: { "@id": founderId }, subjectOf: { "@id": websiteId }, sameAs: ["https://www.linkedin.com/company/ilaios/", "https://x.com/ilaios", "https://www.crunchbase.com/organization/ilaios"] },
     { "@type": "Person", "@id": founderId, name: "Ali Turgut", url: `${siteUrl}/about#founder`, jobTitle: "Founder", worksFor: { "@id": organizationId }, sameAs: ["https://www.linkedin.com/in/ali-turgut-ilaios/", "https://github.com/Aliturgutt"] },
-    { "@type": "WebSite", "@id": websiteId, url: siteUrl, name: "ILAIOS", publisher: { "@id": organizationId }, inLanguage: ["en", "tr"] },
+    { "@type": "WebSite", "@id": websiteId, url: siteUrl, name: "ILAIOS", publisher: { "@id": organizationId }, about: { "@id": softwareId }, inLanguage: ["en", "tr"] },
+    { "@type": ["SoftwareApplication", "Product"], "@id": softwareId, name: "ILAIOS", url: siteUrl, description: productDescription, applicationCategory: "BusinessApplication", manufacturer: { "@id": organizationId }, publisher: { "@id": organizationId }, mainEntityOfPage: { "@id": websiteId } },
   ],
 };
 
