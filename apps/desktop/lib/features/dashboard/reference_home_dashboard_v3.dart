@@ -111,6 +111,7 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
 
         if (compact) {
           return SingleChildScrollView(
+            key: const Key('command-center-short-viewport-scroll'),
             primary: false,
             padding: EdgeInsets.fromLTRB(outerPadding, 14, outerPadding, 18),
             child: Column(
