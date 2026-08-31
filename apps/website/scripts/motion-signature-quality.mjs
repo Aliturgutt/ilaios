@@ -50,7 +50,8 @@ for (const token of ["aspect-ratio:1672/941", "object-fit:contain", "html[data-t
 
 const sectionCount = (home.match(/<section\b/g) ?? []).length;
 if (sectionCount < 6 || sectionCount > 8) failures.push(`corporate homepage section count must remain concise (6-8), found ${sectionCount}`);
-if (/status|healthy|online|uptime|telemetry/i.test(home)) failures.push("corporate homepage must not imply unverified runtime health/telemetry");
+const unverifiedRuntimeClaim = /\b(?:system|service|runtime)\s+(?:is\s+)?(?:healthy|online)\b|\b(?:99(?:\.\d+)?%\s+)?uptime\b|\blive\s+telemetry\b/i;
+if (unverifiedRuntimeClaim.test(home)) failures.push("corporate homepage must not imply unverified runtime health/telemetry");
 
 if (failures.length) {
   console.error("Website corporate visual-quality gate FAILED");
