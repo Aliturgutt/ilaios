@@ -114,7 +114,7 @@ void main() {
     for (final theme in <ThemeData>[IlaiosTheme.dark, IlaiosTheme.light]) {
       final popupStyle = theme.popupMenuTheme.textStyle!;
       expect(popupStyle.fontSize, greaterThanOrEqualTo(13.5));
-      expect(popupStyle.letterSpacing, lessThanOrEqualTo(-1.2));
+      expect(popupStyle.letterSpacing, inInclusiveRange(-1.9, -1.7));
     }
   });
 
