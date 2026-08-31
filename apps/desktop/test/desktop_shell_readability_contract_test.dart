@@ -13,6 +13,12 @@ File _repoFile(String relativePath) {
   throw StateError('Could not locate $relativePath from ${Directory.current.path}');
 }
 
+List<double> _fontSizes(String source) =>
+    RegExp(r'fontSize:\s*([0-9]+(?:\.[0-9]+)?)')
+        .allMatches(source)
+        .map((match) => double.parse(match.group(1)!))
+        .toList(growable: false);
+
 void main() {
   test('desktop shell never shrinks the whole UI or forces text below system scale', () {
     final v10 = _repoFile(
@@ -33,10 +39,7 @@ void main() {
     final source = _repoFile(
       'lib/features/dashboard/reference_desktop_shell_v10.dart',
     ).readAsStringSync();
-    final sizes = RegExp(r'fontSize:\s*([0-9]+(?:\.[0-9]+)?)')
-        .allMatches(source)
-        .map((match) => double.parse(match.group(1)!))
-        .toList(growable: false);
+    final sizes = _fontSizes(source);
 
     expect(sizes, isNotEmpty);
     expect(
@@ -53,5 +56,25 @@ void main() {
 
     expect(source, contains('userSession: widget.userSession'));
     expect(source, contains('onPromptSubmit: widget.onPromptSubmit'));
+  });
+
+  test('Home rejects micro-text and keeps raw identifiers secondary', () {
+    final source = _repoFile(
+      'lib/features/dashboard/reference_home_dashboard_v3.dart',
+    ).readAsStringSync();
+    final sizes = _fontSizes(source);
+
+    expect(sizes, isNotEmpty);
+    expect(
+      sizes.where((size) => size < 12.5),
+      isEmpty,
+      reason: 'Home must not reintroduce micro-text to preserve information density.',
+    );
+    expect(source, isNot(contains('IlaiosTheme.coreBlue')));
+    expect(
+      source,
+      contains("const ['project_name', 'title', 'objective', 'goal', 'task', 'description']"),
+    );
+    expect(source, contains("'ID \${_short(record.executionId, 12)}'"));
   });
 }
