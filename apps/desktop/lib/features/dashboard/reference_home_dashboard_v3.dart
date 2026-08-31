@@ -102,10 +102,11 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // The shell leaves roughly 880 px at the 1320 reference width and
-        // roughly 980 px at the standard 1536 width. Keep 1536 in the native
-        // one-viewport composition while letting compact clients scroll.
-        final compact = constraints.maxWidth < 940;
+        // Preserve native typography. Compact width or short desktop height
+        // scrolls instead of compressing panels into unreadable/overflowing
+        // geometry. Standard and wide desktop sizes keep the one-viewport
+        // composition.
+        final compact = constraints.maxWidth < 940 || constraints.maxHeight < 640;
         final outerPadding = compact ? 14.0 : 20.0;
         final gap = compact ? 12.0 : 16.0;
 
@@ -645,13 +646,16 @@ class _AttentionPanel extends StatelessWidget {
               itemBuilder: (context, index) {
                 final data = items[index];
                 final color = data.critical ? IlaiosTheme.danger : IlaiosTheme.warning;
-                return ListTile(
-                  dense: true,
-                  leading: Icon(Icons.error_outline_rounded, color: color),
-                  title: Text(data.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                  subtitle: Text(data.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
-                  trailing: const Icon(Icons.chevron_right_rounded),
-                  onTap: () => onNavigate(data.destination),
+                return Material(
+                  color: Colors.transparent,
+                  child: ListTile(
+                    dense: true,
+                    leading: Icon(Icons.error_outline_rounded, color: color),
+                    title: Text(data.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
+                    subtitle: Text(data.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
+                    trailing: const Icon(Icons.chevron_right_rounded),
+                    onTap: () => onNavigate(data.destination),
+                  ),
                 );
               },
             ),
