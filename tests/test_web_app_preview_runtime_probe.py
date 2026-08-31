@@ -15,10 +15,6 @@ from services.web_app_preview_runtime_probe import (
 from services.web_app_preview_sandbox_observer import observe_generated_preview_sandbox
 
 
-PUBLIC_PREVIEW = "https://93.184.216.34"
-PUBLIC_OTHER = "https://8.8.8.8"
-
-
 class _Transport:
     def __init__(self, result: PreviewHttpProbeResult) -> None:
         self.result = result
@@ -57,14 +53,14 @@ def _policy() -> ExecutionPolicy:
 def test_probe_emits_observer_accepted_runtime_facts() -> None:
     transport = _Transport(
         PreviewHttpProbeResult(
-            final_url=PUBLIC_PREVIEW,
+            final_url="https://preview.example.com",
             response_headers={
                 "Content-Security-Policy": "default-src 'none'; script-src 'self'; object-src 'none'; base-uri 'none'"
             },
         )
     )
     runtime = probe_preview_runtime_boundary(
-        preview_url=PUBLIC_PREVIEW,
+        preview_url="https://preview.example.com",
         execution_id="exec-1",
         tenant_id="tenant-a",
         source_sha256="a" * 64,
@@ -75,8 +71,8 @@ def test_probe_emits_observer_accepted_runtime_facts() -> None:
         timeout_seconds=11,
     )
     evidence = observe_generated_preview_sandbox(runtime=runtime, policy=_policy())
-    assert transport.calls == [(PUBLIC_PREVIEW, 11)]
-    assert evidence.generated_runtime_origin == PUBLIC_PREVIEW
+    assert transport.calls == [("https://preview.example.com", 11)]
+    assert evidence.generated_runtime_origin == "https://preview.example.com"
     assert evidence.csp.startswith("default-src")
     assert evidence.privileged_cookie_access is False
     assert evidence.privileged_token_access is False
@@ -84,14 +80,16 @@ def test_probe_emits_observer_accepted_runtime_facts() -> None:
 
 def test_probe_missing_csp_fails_closed_in_canonical_observer() -> None:
     runtime = probe_preview_runtime_boundary(
-        preview_url=PUBLIC_PREVIEW,
+        preview_url="https://preview.example.com",
         execution_id="exec-1",
         tenant_id="tenant-a",
         source_sha256="a" * 64,
         artifact_sha256="b" * 64,
         privileged_session_origin="https://app.ilaios.com",
         isolation=_isolation(),
-        transport=_Transport(PreviewHttpProbeResult(final_url=PUBLIC_PREVIEW, response_headers={})),
+        transport=_Transport(
+            PreviewHttpProbeResult(final_url="https://preview.example.com", response_headers={})
+        ),
     )
     with pytest.raises(SoftwareFactoryError, match="CSP"):
         observe_generated_preview_sandbox(runtime=runtime, policy=_policy())
@@ -99,7 +97,7 @@ def test_probe_missing_csp_fails_closed_in_canonical_observer() -> None:
 
 def test_probe_cross_origin_redirect_fails_closed_in_canonical_observer() -> None:
     runtime = probe_preview_runtime_boundary(
-        preview_url=PUBLIC_PREVIEW,
+        preview_url="https://preview.example.com",
         execution_id="exec-1",
         tenant_id="tenant-a",
         source_sha256="a" * 64,
@@ -108,7 +106,7 @@ def test_probe_cross_origin_redirect_fails_closed_in_canonical_observer() -> Non
         isolation=_isolation(),
         transport=_Transport(
             PreviewHttpProbeResult(
-                final_url=PUBLIC_OTHER,
+                final_url="https://evil.example.com",
                 response_headers={"Content-Security-Policy": "default-src 'none'"},
             )
         ),
@@ -120,7 +118,7 @@ def test_probe_cross_origin_redirect_fails_closed_in_canonical_observer() -> Non
 def _assert_probe_rejects_non_public_target(preview_url: str) -> None:
     transport = _Transport(
         PreviewHttpProbeResult(
-            final_url=PUBLIC_PREVIEW,
+            final_url="https://preview.example.com",
             response_headers={"Content-Security-Policy": "default-src 'none'"},
         )
     )
@@ -175,7 +173,7 @@ def test_probe_rejects_private_final_target_from_injected_transport() -> None:
     )
     with pytest.raises(SoftwareFactoryError, match="globally routable"):
         probe_preview_runtime_boundary(
-            preview_url=PUBLIC_PREVIEW,
+            preview_url="https://preview.example.com",
             execution_id="exec-1",
             tenant_id="tenant-a",
             source_sha256="a" * 64,
@@ -184,7 +182,7 @@ def test_probe_rejects_private_final_target_from_injected_transport() -> None:
             isolation=_isolation(),
             transport=transport,
         )
-    assert transport.calls == [(PUBLIC_PREVIEW, 15)]
+    assert transport.calls == [("https://preview.example.com", 15)]
 
 
 def test_default_transport_rejects_unbounded_timeout_before_network() -> None:
