@@ -1,5 +1,6 @@
+import Image from "next/image";
 import Link from "next/link";
-import ProductExperience from "./ProductExperience";
+import ThemedDiagram from "./ThemedDiagram";
 
 type Locale = "en" | "tr";
 type FactoryStatus = "preview" | "development";
@@ -115,39 +116,25 @@ export default function UseILAIOSPage({ locale }: { locale: Locale }) {
 
     <section className="section surface-section"><div className="shell">
       <div className="section-heading"><div><div className="eyebrow">{c.createEyebrow}</div><h2>{c.createTitle}</h2></div><p>{c.truth}</p></div>
-      <div className="use-factory-index">{c.factoryData.map((factory, index) => <Link className="use-factory-row" key={factory.href} href={factory.href}>
-        <span className="use-factory-number">{String(index + 1).padStart(2, "0")}</span>
-        <div><strong>{factory.name}</strong><small>{factory.description}</small></div>
-        <span className={`availability-chip is-${factory.status}`}>{factory.statusLabel}</span>
-        <p>{factory.example}</p>
-        <i aria-hidden="true">→</i>
-      </Link>)}</div>
+      <div className="use-factory-grid">{c.factoryData.map(factory => <article className="use-factory-card" key={factory.href}>
+        <div className="use-factory-card-head"><span className={`availability-chip is-${factory.status}`}>{factory.statusLabel}</span><small>{c.availability}</small></div>
+        <h3>{factory.name}</h3><p>{factory.description}</p><blockquote>{factory.example}</blockquote><Link className="text-link" href={factory.href}>{locale === "tr" ? "Ayrıntıyı aç" : "Open details"} →</Link>
+      </article>)}</div>
     </div></section>
 
     <section className="section"><div className="shell">
       <div className="section-heading"><div><div className="eyebrow">{c.inputEyebrow}</div><h2>{c.inputTitle}</h2></div><p>{c.inputCaption}</p></div>
-      <div className="use-input-map" role="list" aria-label={c.inputEyebrow}>
-        {[
-          [locale === "tr" ? "Hedef" : "Outcome", locale === "tr" ? "Bitmiş sonucu normal dille tarif et." : "Describe the finished result in normal language."],
-          [locale === "tr" ? "Bağlam" : "Context", locale === "tr" ? "Gerekiyorsa mevcut ürün, doküman veya gereksinimleri ekle." : "Add the existing product, documents or requirements when useful."],
-          [locale === "tr" ? "Marka / referans" : "Brand / references", locale === "tr" ? "Görsel varlıklar ve örnekler tasarım yönünü sınırlar." : "Visual assets and examples constrain the design direction."],
-          [locale === "tr" ? "Kısıtlar" : "Constraints", locale === "tr" ? "Platform, bütçe, güvenlik veya teslim sınırlarını belirt." : "State platform, budget, security or delivery boundaries."],
-          [locale === "tr" ? "Kabul ölçütü" : "Acceptance", locale === "tr" ? "Sonucun ne zaman gerçekten tamam sayılacağını tanımla." : "Define what must be true before the result is accepted."],
-        ].map(([title, text], index) => <div role="listitem" key={title}><span>{String(index + 1).padStart(2, "0")}</span><strong>{title}</strong><p>{text}</p></div>)}
-      </div>
+      <ThemedDiagram light="/visuals/intake-light.avif" dark="/visuals/intake-dark.avif" alt={locale === "tr" ? "ILAIOS için sağlanabilecek girdileri gösteren ürün intake diyagramı" : "ILAIOS product intake diagram showing the kinds of inputs a user can provide"} aspect="portrait" />
     </div></section>
 
     <section className="section surface-section"><div className="shell">
       <div className="section-heading"><div><div className="eyebrow">{locale === "tr" ? "Kullanım akışı" : "Usage flow"}</div><h2>{c.howTitle}</h2></div><p>{c.howLead}</p></div>
-      <div className="use-step-ledger">{c.steps.map(([n, title, text]) => <article key={n}><span>{n}</span><strong>{title}</strong><p>{text}</p></article>)}</div>
+      <div className="use-step-grid">{c.steps.map(([n, title, text]) => <article key={n}><span>{n}</span><strong>{title}</strong><p>{text}</p></article>)}</div>
     </div></section>
 
     <section className="section"><div className="shell">
       <div className="section-heading"><div><div className="eyebrow">{c.demoEyebrow}</div><h2>{c.demoTitle}</h2></div><p>{c.demoCaption}</p></div>
-      <div className="workflow-concept product-flow-live">
-        <ProductExperience locale={locale} />
-        <p className="workflow-concept-note">{c.demoCaption}</p>
-      </div>
+      <figure className="workflow-concept"><Image src="/visuals/ilaios-concept.avif" alt={locale === "tr" ? "ILAIOS ürün arayüzünde prompt, plan, yürütme, doğrulama ve teslim adımlarını gösteren statik konsept" : "Static ILAIOS product interface concept showing prompt, plan, execution, validation and delivery steps"} width={800} height={310} sizes="(max-width: 760px) 100vw, 1005px" /><figcaption>{c.demoCaption}</figcaption></figure>
     </div></section>
 
     <section className="section surface-section"><div className="shell split-copy"><div><div className="eyebrow">{c.boundaryEyebrow}</div><h2>{c.boundaryTitle}</h2></div><div><p className="lead small">{c.boundaryText}</p></div></div></section>
