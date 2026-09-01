@@ -1,3 +1,4 @@
+import Image from "next/image";
 import styles from "./SignInPage.module.css";
 
 type Locale = "en" | "tr";
@@ -44,6 +45,28 @@ export default function SignInPage({ locale }: { locale: Locale }) {
     <section className={styles.page} aria-labelledby="signin-title">
       <div className={styles.frame}>
         <div className={styles.copy}>
+          <div className={styles.brandLockup} aria-label="ILAIOS">
+            <Image
+              className={`${styles.brandLogo} ${styles.brandLogoLight}`}
+              src="/brand/logo-horizontal-light.jpg"
+              alt=""
+              width={2400}
+              height={800}
+              sizes="190px"
+              priority
+              unoptimized
+            />
+            <Image
+              className={`${styles.brandLogo} ${styles.brandLogoDark}`}
+              src="/brand/logo-horizontal-dark.jpg"
+              alt=""
+              width={2400}
+              height={800}
+              sizes="190px"
+              priority
+              unoptimized
+            />
+          </div>
           <div className="eyebrow">{c.eyebrow}</div>
           <h1 id="signin-title" className={styles.title}>{c.title}</h1>
           <p className={styles.lead}>{c.lead}</p>
