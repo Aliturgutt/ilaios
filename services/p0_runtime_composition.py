@@ -97,9 +97,9 @@ def compose_p0_runtime(
     if (
         len(core_security) != 12
         or len(engineering) != 10
-        or len(security_methodology) != 5
+        or len(security_methodology) != 6
         or len(skill_engineering) != 5
-        or len(all_skill_ids) != 32
+        or len(all_skill_ids) != 33
     ):
         raise P0RuntimeCompositionError(
             "P0 plus verifier/security/skill-engineering coverage drifted"

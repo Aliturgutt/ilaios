@@ -47,7 +47,7 @@ def test_p0_composes_exact_targets_plus_verifier_dependency_on_same_runtime(
     )
     assert composition.target_agent_count == 21
     assert composition.provisioned_identity_count == 22
-    assert composition.skill_count == 32
+    assert composition.skill_count == 33
     assert composition.skill_engineering_skill_count == 5
     assert composition.security_provider_count == 5
     assert composition.verifier_provider_count == 1
@@ -70,7 +70,7 @@ def test_p0_composes_exact_targets_plus_verifier_dependency_on_same_runtime(
             "FROM runtime_providers ORDER BY provider_id"
         ).fetchall()
     assert agent_count == 22
-    assert skill_count == 32
+    assert skill_count == 33
     assert {
         skill_id: json.loads(authorities_json)
         for skill_id, authorities_json in skill_engineering_rows
@@ -108,7 +108,7 @@ def test_p0_composition_is_restart_idempotent(tmp_path: Path) -> None:
             connection.execute(
                 "SELECT COUNT(*) FROM runtime_skills"
             ).fetchone()[0]
-            == 32
+            == 33
         )
         assert (
             connection.execute(
