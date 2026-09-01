@@ -519,13 +519,13 @@ class _CompactSupportLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
         children: [
-          SizedBox(height: MediaQuery.textScalerOf(context).scale(190), child: _FocusPanel(model: model, onNavigate: onNavigate)),
+          SizedBox(height: MediaQuery.textScalerOf(context).scale(210), child: _FocusPanel(model: model, onNavigate: onNavigate)),
           SizedBox(height: gap),
-          SizedBox(height: MediaQuery.textScalerOf(context).scale(190), child: _AttentionPanel(model: model, onNavigate: onNavigate)),
+          SizedBox(height: MediaQuery.textScalerOf(context).scale(210), child: _AttentionPanel(model: model, onNavigate: onNavigate)),
           SizedBox(height: gap),
-          SizedBox(height: MediaQuery.textScalerOf(context).scale(190), child: _OutputsPanel(model: model, onNavigate: onNavigate)),
+          SizedBox(height: MediaQuery.textScalerOf(context).scale(210), child: _OutputsPanel(model: model, onNavigate: onNavigate)),
           SizedBox(height: gap),
-          SizedBox(height: MediaQuery.textScalerOf(context).scale(190), child: _CompletedPanel(model: model, onNavigate: onNavigate)),
+          SizedBox(height: MediaQuery.textScalerOf(context).scale(210), child: _CompletedPanel(model: model, onNavigate: onNavigate)),
         ],
       );
 }
