@@ -1,0 +1,218 @@
+name: Video Native Reference Production Certification
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: video-native-reference-production-certification-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  native-reference-provider-proof:
+    name: Real native photo-reference managed provider production proof
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[video-native-reference-live-cert]') }}
+    runs-on: ubuntu-latest
+    environment: Production
+    timeout-minutes: 45
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      ILAIOS_VIDEO_PROVIDER_MODE: managed-bounded
+      ILAIOS_VIDEO_MANAGED_MODEL_ID: bytedance/seedance-2.0-fast
+      ILAIOS_VIDEO_MANAGED_MAX_TOTAL_USD: "1.00"
+      ILAIOS_VIDEO_QA_MODEL_ID: openrouter/free
+      ILAIOS_VIDEO_E2E_RESOLUTION: 480p
+      ILAIOS_REFERENCE_RELAY_UPLOAD_URL: ${{ secrets.ILAIOS_REFERENCE_RELAY_UPLOAD_URL }}
+      ILAIOS_REFERENCE_RELAY_UPLOAD_TOKEN: ${{ secrets.ILAIOS_REFERENCE_RELAY_UPLOAD_TOKEN }}
+      VIDEO_DESKTOP_NATIVE_REFERENCE_PROOF_DIR: artifacts/video-desktop-native-reference-proof
+
+    steps:
+      - name: Checkout exact source revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Install native-reference video runtime dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v ffmpeg >/dev/null 2>&1 && command -v ffprobe >/dev/null 2>&1; then
+            ffmpeg -version | head -1
+            ffprobe -version | head -1
+            exit 0
+          fi
+          export DEBIAN_FRONTEND=noninteractive
+          sudo timeout 180 apt-get \
+            -o Acquire::Retries=3 \
+            -o Acquire::ForceIPv4=true \
+            -o Acquire::http::Timeout=15 \
+            -o Acquire::https::Timeout=15 \
+            update
+          sudo timeout 600 apt-get \
+            -o Acquire::Retries=3 \
+            -o Acquire::ForceIPv4=true \
+            -o Acquire::http::Timeout=15 \
+            -o Acquire::https::Timeout=15 \
+            install --yes --no-install-recommends ffmpeg
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+
+      - name: Verify native live proof safety boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$OPENROUTER_API_KEY"
+          test "$ILAIOS_VIDEO_PROVIDER_MODE" = managed-bounded
+          test "$ILAIOS_VIDEO_MANAGED_MAX_TOTAL_USD" = "1.00"
+          test "$ILAIOS_VIDEO_MANAGED_MODEL_ID" = bytedance/seedance-2.0-fast
+          test -n "$ILAIOS_REFERENCE_RELAY_UPLOAD_URL"
+          test -n "$ILAIOS_REFERENCE_RELAY_UPLOAD_TOKEN"
+          case "$ILAIOS_REFERENCE_RELAY_UPLOAD_URL" in
+            https://*) ;;
+            *) echo 'native reference relay must be HTTPS' >&2; exit 1 ;;
+          esac
+
+      - name: Run real native-reference finished-product E2E
+        shell: bash
+        run: |
+          set -euo pipefail
+          python apps/desktop/e2e/provider_video_native_reference_semantic_diagnostic_e2e.py
+
+      - name: Publish native-reference proof summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "## Video Factory — Native Photo Reference Production Certification" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f "$VIDEO_DESKTOP_NATIVE_REFERENCE_PROOF_DIR/receipt.json" ]]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, os
+          from pathlib import Path
+          receipt=json.loads((Path(os.environ['VIDEO_DESKTOP_NATIVE_REFERENCE_PROOF_DIR'])/'receipt.json').read_text())
+          for key in (
+              'status','revision_sha','execution_status','provider_model','provider_cost_microusd',
+              'provider_native_reference_url_used','native_reference_mode','native_reference_count',
+              'native_reference_relay_released','reference_consistency_passed',
+              'reference_consistency_product_score','reference_consistency_logo_score',
+              'logo_asset_lock_applied','logo_asset_lock_source_sha256',
+              'logo_asset_lock_repaired_artifact_sha256','artifact_sha256','artifact_bytes',
+          ):
+              print(f"- {key}: `{receipt.get(key)}`")
+          PY
+          elif [[ -f "$VIDEO_DESKTOP_NATIVE_REFERENCE_PROOF_DIR/failure.json" ]]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json, os
+          from pathlib import Path
+          failure=json.loads((Path(os.environ['VIDEO_DESKTOP_NATIVE_REFERENCE_PROOF_DIR'])/'failure.json').read_text())
+          semantic=failure.get('semantic_review') or {}
+          print('- Status: `FAIL`')
+          print(f"- Revision: `{failure.get('revision_sha')}`")
+          print(f"- Error type: `{failure.get('error_type')}`")
+          print(f"- Error: `{failure.get('error')}`")
+          if semantic:
+              print(f"- Final semantic score: `{semantic.get('score')}`")
+              print(f"- Final semantic threshold: `{semantic.get('threshold')}`")
+              print(f"- Repair target: `{semantic.get('repair_target')}`")
+              print(f"- Reviewer: `{semantic.get('reviewer_id')}`")
+              print(f"- Review ID: `{semantic.get('review_id')}`")
+          PY
+          else
+            echo '- Status: `NO_ACCEPTED_RECEIPT`' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload immutable native-reference proof
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-native-reference-video-proof-${{ github.sha }}-${{ github.run_id }}
+          path: artifacts/video-desktop-native-reference-proof
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publish sanitized native-reference exact-SHA status
+        if: ${{ always() }}
+        shell: bash
+        env:
+          NATIVE_REFERENCE_JOB_STATUS: ${{ job.status }}
+          NATIVE_REFERENCE_STATUS_TOKEN: ${{ github.token }}
+          NATIVE_REFERENCE_STATUS_TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os, urllib.request
+          from pathlib import Path
+
+          def sha(value):
+              return isinstance(value,str) and len(value)==64 and all(c in '0123456789abcdef' for c in value)
+
+          accepted=False
+          path=Path(os.environ['VIDEO_DESKTOP_NATIVE_REFERENCE_PROOF_DIR'])/'receipt.json'
+          if os.environ.get('NATIVE_REFERENCE_JOB_STATUS')=='success' and path.is_file():
+              try:
+                  receipt=json.loads(path.read_text())
+                  cost=receipt.get('provider_cost_microusd')
+                  lock=receipt.get('logo_asset_lock_applied')
+                  logo_direct=receipt.get('reference_consistency_logo_score')
+                  threshold=receipt.get('reference_consistency_threshold')
+                  logo_ok=(
+                      lock is True
+                      and sha(receipt.get('logo_asset_lock_source_sha256'))
+                      and receipt.get('logo_asset_lock_source_sha256')==receipt.get('logo_reference_sha256')
+                      and receipt.get('logo_asset_lock_repaired_artifact_sha256')==receipt.get('artifact_sha256')
+                      and sha(receipt.get('logo_asset_lock_evidence_digest'))
+                      and sha(receipt.get('logo_asset_lock_provenance_hash'))
+                  ) or (
+                      lock is False
+                      and isinstance(logo_direct,(int,float))
+                      and isinstance(threshold,(int,float))
+                      and float(logo_direct)>=float(threshold)
+                  )
+                  accepted=(
+                      receipt.get('schema')=='ilaios.desktop.native-reference-provider-video-e2e.v1'
+                      and receipt.get('status')=='PASS'
+                      and receipt.get('revision_sha')==os.environ['GITHUB_SHA']
+                      and receipt.get('execution_status')=='ACCEPTED'
+                      and receipt.get('provider_cost_mode')=='managed-bounded'
+                      and receipt.get('provider_cost_proven') is True
+                      and isinstance(cost,int) and not isinstance(cost,bool) and 0<=cost<=1_000_000
+                      and receipt.get('provider_native_reference_url_used') is True
+                      and receipt.get('native_reference_mode')=='input-references'
+                      and receipt.get('native_reference_count')==2
+                      and receipt.get('native_reference_relay_released') is True
+                      and receipt.get('reference_consistency_passed') is True
+                      and logo_ok
+                      and sha(receipt.get('product_reference_sha256'))
+                      and sha(receipt.get('logo_reference_sha256'))
+                      and sha(receipt.get('artifact_sha256'))
+                      and isinstance(receipt.get('artifact_bytes'),int) and receipt.get('artifact_bytes',0)>100_000
+                      and receipt.get('width')==1920 and receipt.get('height')==1080
+                      and receipt.get('video_codec')=='h264' and receipt.get('audio_codec')=='aac'
+                      and isinstance(receipt.get('duration_seconds'),(int,float))
+                      and 7.0<=float(receipt.get('duration_seconds'))<=9.0
+                  )
+              except (OSError,ValueError,TypeError):
+                  accepted=False
+          state='success' if accepted else 'failure'
+          description='Native reference live E2E accepted: exact-SHA PASS' if accepted else 'Native reference live E2E failed closed'
+          body=json.dumps({'state':state,'target_url':os.environ['NATIVE_REFERENCE_STATUS_TARGET_URL'],'description':description,'context':'ILAIOS Video Native Reference Live Certification'},separators=(',',':')).encode()
+          request=urllib.request.Request(
+              f"{os.environ['GITHUB_API_URL']}/repos/{os.environ['GITHUB_REPOSITORY']}/statuses/{os.environ['GITHUB_SHA']}",
+              data=body, method='POST', headers={
+                  'Accept':'application/vnd.github+json',
+                  'Authorization':f"Bearer {os.environ['NATIVE_REFERENCE_STATUS_TOKEN']}",
+                  'Content-Type':'application/json',
+                  'X-GitHub-Api-Version':'2022-11-28',
+              },
+          )
+          with urllib.request.urlopen(request,timeout=20) as response:
+              if response.status not in {200,201}:
+                  raise RuntimeError(f'commit status publish failed: HTTP {response.status}')
+          print(f'VIDEO_NATIVE_REFERENCE_COMMIT_STATUS={state}')
+          PY

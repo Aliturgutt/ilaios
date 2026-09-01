@@ -1,0 +1,4 @@
+package_id: PLATFORM.P07.RECOVERY.v1
+commit_identity: the atomic commit containing this evidence bundle
+post_push_requirement: HEAD equals origin/master on clean master
+verification: controller finalization output and remote commit identity

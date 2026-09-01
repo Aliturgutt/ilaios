@@ -1,0 +1,82 @@
+name: AWS R01 image scan
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    env:
+      REPOSITORY: ilaios-r01-canary
+      DIGEST: sha256:838d17fc73947582666699d7eecdee0c771a8d7b964607164ec756c851d05a0f
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          role-to-assume: arn:aws:iam::101180464425:role/ILAIOS-GitHub-Deploy-Role
+          aws-region: eu-central-1
+      - name: Verify immutable image and scan
+        run: |
+          set -euo pipefail
+          ACCOUNT="$(aws sts get-caller-identity --query Account --output text)"
+          test "$ACCOUNT" = "101180464425"
+          FOUND="$(aws ecr describe-images --repository-name "$REPOSITORY" --image-ids imageDigest="$DIGEST" --region eu-central-1 --query 'imageDetails[0].imageDigest' --output text)"
+          test "$FOUND" = "$DIGEST"
+
+          aws ecr describe-repositories \
+            --repository-names "$REPOSITORY" \
+            --region eu-central-1 \
+            --query 'repositories[0].{scanOnPush:imageScanningConfiguration.scanOnPush,mutability:imageTagMutability,encryption:encryptionConfiguration.encryptionType}'
+
+          set +e
+          START_OUTPUT="$(aws ecr start-image-scan --repository-name "$REPOSITORY" --image-id imageDigest="$DIGEST" --region eu-central-1 2>&1)"
+          START_RC=$?
+          set -e
+          if [ "$START_RC" -ne 0 ]; then
+            echo "ECR_START_SCAN_RESULT=$START_OUTPUT"
+            if ! grep -q 'LimitExceededException' <<<"$START_OUTPUT"; then
+              exit "$START_RC"
+            fi
+          fi
+
+          for i in $(seq 1 60); do
+            set +e
+            SCAN_OUTPUT="$(aws ecr describe-image-scan-findings \
+              --repository-name "$REPOSITORY" \
+              --image-id imageDigest="$DIGEST" \
+              --region eu-central-1 \
+              --query '{status:imageScanStatus.status,description:imageScanStatus.description,severity:imageScanFindings.findingSeverityCounts,completedAt:imageScanFindings.imageScanCompletedAt}' \
+              --output json 2>&1)"
+            SCAN_RC=$?
+            set -e
+
+            if [ "$SCAN_RC" -ne 0 ]; then
+              echo "ECR_SCAN_QUERY_RESULT=$SCAN_OUTPUT"
+              if grep -q 'ScanNotFoundException' <<<"$SCAN_OUTPUT"; then
+                sleep 10
+                continue
+              fi
+              exit "$SCAN_RC"
+            fi
+
+            echo "$SCAN_OUTPUT"
+            STATUS="$(python -c 'import json,sys; print(json.load(sys.stdin).get("status") or "")' <<<"$SCAN_OUTPUT")"
+            case "$STATUS" in
+              COMPLETE)
+                exit 0
+                ;;
+              FAILED|UNSUPPORTED_IMAGE)
+                exit 1
+                ;;
+            esac
+            sleep 10
+          done
+          echo 'ECR scan did not complete within 10 minutes.'
+          exit 1

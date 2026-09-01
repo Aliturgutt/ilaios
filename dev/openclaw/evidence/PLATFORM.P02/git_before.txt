@@ -1,0 +1,4 @@
+branch: master
+head: a8717a5
+origin_master: a8717a5
+worktree: clean

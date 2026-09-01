@@ -1,0 +1,32 @@
+PLATFORM.P05.RECOVERY.v1 quality evidence
+
+ruff check .
+All checks passed!
+exit_code=0
+
+mypy --strict src tests
+Success: no issues found in 158 source files
+exit_code=0
+
+Targeted strict typing additionally covered production service modules because the
+declared repository mypy gate names only src and tests:
+mypy --strict services/control_plane/api.py services/control_plane/migrations.py services/control_plane/server.py tests/test_control_plane_service.py
+Success: no issues found in 4 source files
+exit_code=0
+
+pre-commit run --all-files
+fix end of files.........................................................Passed
+trim trailing whitespace.................................................Passed
+check yaml...............................................................Passed
+ruff.....................................................................Passed
+mypy.....................................................................Passed
+exit_code=0
+
+The initial pre-commit invocation attempted to append an EOF newline to the
+immutable execution plan. That mutation was inspected, restored exactly from
+HEAD, and prevented by excluding MASTER_OPENCLAW.md and execution_plan.yaml
+from the mutating EOF hook only. Ruff, mypy, YAML validation, whitespace, tests,
+and every other hook remain unchanged.
+
+git diff --check
+exit_code=0

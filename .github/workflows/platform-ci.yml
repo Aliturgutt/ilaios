@@ -1,0 +1,150 @@
+name: Platform CI
+
+on:
+  workflow_call:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: platform-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Establish local CI branch identity at exact source SHA
+        shell: bash
+        env:
+          EXACT_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+          git switch -c ci-validation
+          test "$(git rev-parse HEAD)" = "$EXACT_SOURCE_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: .github/requirements/platform-ci.txt
+
+      - name: Install system validation dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -f /etc/apt/apt-mirrors.txt ]]; then
+            printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' \
+              | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          fi
+          sudo timeout 180s apt-get \
+            -o Acquire::Retries=3 \
+            -o Acquire::http::Timeout=15 \
+            -o Acquire::https::Timeout=15 \
+            update
+          sudo timeout 600s env DEBIAN_FRONTEND=noninteractive apt-get \
+            -o Acquire::Retries=3 \
+            -o Acquire::http::Timeout=15 \
+            -o Acquire::https::Timeout=15 \
+            install -y ffmpeg
+          ffmpeg -version | head -n 1
+          ffprobe -version | head -n 1
+          sudo sysctl -w kernel.unprivileged_userns_clone=1 || true
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+
+      - name: Install locked Python validation dependencies
+        run: |
+          python -m pip install --disable-pip-version-check -r .github/requirements/platform-ci.txt
+          python -m pip check
+
+      - name: Pre-commit end-of-file
+        shell: bash
+        run: |
+          mapfile -d '' files < <(git ls-files -z -- \
+            src services packages tests docs/governance docs/migration \
+            pyproject.toml .pre-commit-config.yaml .github/requirements \
+            .github/workflows/platform-ci.yml .github/workflows/required-ci-gate.yml \
+            .github/workflows/website-ci.yml)
+          if ((${#files[@]})); then
+            pre-commit run end-of-file-fixer --files "${files[@]}"
+          fi
+
+      - name: Pre-commit trailing whitespace
+        shell: bash
+        run: |
+          mapfile -d '' files < <(git ls-files -z -- \
+            src services packages tests docs/governance docs/migration \
+            pyproject.toml .pre-commit-config.yaml .github/requirements \
+            .github/workflows/platform-ci.yml .github/workflows/required-ci-gate.yml \
+            .github/workflows/website-ci.yml)
+          if ((${#files[@]})); then
+            pre-commit run trailing-whitespace --files "${files[@]}"
+          fi
+
+      - name: Pre-commit YAML
+        shell: bash
+        run: |
+          mapfile -d '' files < <(git ls-files -z -- \
+            src services packages tests docs/governance docs/migration \
+            pyproject.toml .pre-commit-config.yaml .github/requirements \
+            .github/workflows/platform-ci.yml .github/workflows/required-ci-gate.yml \
+            .github/workflows/website-ci.yml)
+          if ((${#files[@]})); then
+            pre-commit run check-yaml --files "${files[@]}"
+          fi
+
+      - name: Pre-commit Ruff
+        shell: bash
+        run: |
+          mapfile -d '' files < <(git ls-files -z -- \
+            src services packages tests docs/governance docs/migration \
+            pyproject.toml .pre-commit-config.yaml .github/requirements \
+            .github/workflows/platform-ci.yml .github/workflows/required-ci-gate.yml \
+            .github/workflows/website-ci.yml)
+          if ((${#files[@]})); then
+            pre-commit run ruff --files "${files[@]}"
+          fi
+
+      - name: Pre-commit Mypy
+        shell: bash
+        run: |
+          mapfile -d '' files < <(git ls-files -z -- \
+            src services packages tests docs/governance docs/migration \
+            pyproject.toml .pre-commit-config.yaml .github/requirements \
+            .github/workflows/platform-ci.yml .github/workflows/required-ci-gate.yml \
+            .github/workflows/website-ci.yml)
+          if ((${#files[@]})); then
+            pre-commit run mypy --files "${files[@]}"
+          fi
+
+      - name: Pytest
+        run: python -m pytest -q
+
+      - name: Ruff
+        run: python -m ruff check .
+
+      - name: Mypy strict
+        run: python -m mypy --strict services src tests
+
+      - name: Verify pre-commit checks did not mutate source
+        shell: bash
+        run: git diff --exit-code
+
+      - name: Diff hygiene
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check

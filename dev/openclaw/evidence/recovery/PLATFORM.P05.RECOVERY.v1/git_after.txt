@@ -1,0 +1,7 @@
+package_id: PLATFORM.P05.RECOVERY.v1
+commit_identity: the atomic commit containing this evidence bundle
+required_post_push_command_1: git -C /home/openclaw/ilaios-workspace/ilaios rev-parse HEAD
+required_post_push_command_2: git -C /home/openclaw/ilaios-workspace/ilaios rev-parse origin/master
+required_post_push_command_3: git -C /home/openclaw/ilaios-workspace/ilaios status --porcelain=v1 --branch
+required_invariant: HEAD equals origin/master and worktree is clean on master
+verification_location: controller finalization output and remote commit identity

@@ -1,0 +1,17 @@
+RELEASE.R02 deployment post-state
+branch=master
+deployment_workflow_head=203cde1ea3379cbfedb13bdf0ccbe4073325ca77
+deployment_workflow_run_id=31456250653
+deployment_workflow_conclusion=success
+release_state=LIMITED_DEPLOYED_HEALTHY
+task_definition=arn:aws:ecs:eu-central-1:101180464425:task-definition/ilaios-r01-canary:6
+desired_running_pending=2/2/0
+healthy_targets=2
+network_allowlist=176.217.181.22/32 only
+network_exposure_broadened=false
+state_artifact_id=9088211868
+deployment_evidence_artifact_id=9088212071
+live_probe_run_id=31456471072
+live_probe_result=PASS
+evidence_closure_parent=3fca3324c8b31758b096e62c3ae82f229b4193e7
+repository_write_mode=GitHub connector direct-to-master; each evidence file persisted as an immutable commit

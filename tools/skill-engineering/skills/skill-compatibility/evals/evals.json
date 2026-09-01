@@ -1,0 +1,9 @@
+{
+  "cases": [
+    {"id":"compatibility-golden","kind":"GOLDEN","assertions":["backward-compatible contract with unchanged runtime authority is compatible","decision is bound to exact baseline and candidate evidence"]},
+    {"id":"compatibility-negative","kind":"NEGATIVE","assertions":["removed required output without migration evidence blocks"]},
+    {"id":"compatibility-adversarial","kind":"ADVERSARIAL","assertions":["package request cannot silently widen runtime permission or provider authority","maturity wording cannot disguise a breaking evidence-semantic change"]},
+    {"id":"compatibility-malformed","kind":"MALFORMED","assertions":["invalid contract digest or missing baseline identity blocks"]},
+    {"id":"compatibility-regression","kind":"REGRESSION","assertions":["previously supported downstream consumer cannot disappear from impact analysis"]}
+  ]
+}

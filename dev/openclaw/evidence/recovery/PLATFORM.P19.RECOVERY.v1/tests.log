@@ -1,0 +1,5 @@
+targeted: 5 passed in 21.28s
+isolated_runtime: 2 passed in 20.35s
+full: 946 passed in 49.74s
+runtime_coverage: real production composition subprocess, liveness/readiness HTTP, schema readiness, real goal persistence, SQLite online backup, verified empty-target restore, restored-process retrieval, provider-neutral profile, OCI digest graph, extracted root filesystem, packaged Python execution in user/mount namespace chroot
+negative_runtime_proof: unauthenticated control paths remain protected; readiness derives database schema and evidence-chain verification rather than caller booleans

@@ -1,0 +1,4 @@
+branch: master
+head: 39502a4
+origin_master: 39502a4
+worktree: clean

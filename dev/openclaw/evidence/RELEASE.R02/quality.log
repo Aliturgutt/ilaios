@@ -1,0 +1,22 @@
+RELEASE.R02.v1 quality evidence
+canonical_dependency_order=PASS (R01 -> R02)
+explicit_human_promotion_approval=PASS
+fail_closed_readiness_precheck=PASS
+machine_defined_limited_scope=PASS (desired_count=2; retained single /32; retained tenant)
+no_public_exposure_expansion=PASS
+shared_infrastructure_mutation_guard=PASS
+plan_allowed_resources_only=PASS
+plan_summary=1_add_2_change_1_destroy(task_definition_replacement_only)
+application_image_immutable=PASS
+image_security_scan=PASS (CRITICAL=0 HIGH=0)
+managed_image_signing=PASS
+tls=PASS
+secrets_reference=PASS
+health_gate=PASS
+rollout_state=COMPLETED
+rollback_reference=PASS (task_definition:5 desired_count:1)
+state_persistence=PASS
+append_only_deployment_artifact=PASS
+canonical_authorities_modified=false
+R03_promoted=false
+result=PASS

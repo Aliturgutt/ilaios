@@ -1,0 +1,98 @@
+{
+  "artifact_version": "ILAIOS_OPERATIONAL_DRILLS_V1",
+  "created_at": "2026-08-09T15:16:00.353024+00:00",
+  "drills": {
+    "chaos-outage": {
+      "measurements": {
+        "crash_observed": true,
+        "durable_goal_recovered": true,
+        "recovery_ms": 250.48,
+        "restart_ready_status": 200
+      },
+      "passed": true
+    },
+    "compromise-revocation": {
+      "measurements": {
+        "allowed_before_revoke_status": 200,
+        "denied_after_kill_status": 400,
+        "denied_after_revoke_status": 400,
+        "durable_grant_ids": [
+          "revoke-grant",
+          "kill-grant"
+        ]
+      },
+      "passed": true
+    },
+    "dr-restore": {
+      "measurements": {
+        "archive_sha256": "0bd87b2005569246814656a2a68c3f11ac60852c43d2299e355460798be49546",
+        "archive_size_bytes": 5451,
+        "manifest_file_count": 4,
+        "recovery_ms": 362.901,
+        "restored_goal_equal": true
+      },
+      "passed": true
+    },
+    "load": {
+      "measurements": {
+        "concurrency": 16,
+        "duration_ms": 1110.001,
+        "p95_latency_ms": 1003.27,
+        "request_count": 80,
+        "success_count": 80,
+        "throughput_requests_per_second": 72.072
+      },
+      "passed": true
+    },
+    "rollback": {
+      "measurements": {
+        "backup_created": true,
+        "schema_before": 7,
+        "schema_reapplied": 7,
+        "schema_rolled_back": 6
+      },
+      "passed": true
+    },
+    "security-red-team": {
+      "measurements": {
+        "attempt_count": 4,
+        "blocked_count": 4,
+        "responses": [
+          {
+            "attack": "missing-token",
+            "status": 401
+          },
+          {
+            "attack": "invalid-token",
+            "status": 401
+          },
+          {
+            "attack": "oversized-body",
+            "status": 400
+          },
+          {
+            "attack": "direct-runtime-execution",
+            "status": 403
+          }
+        ]
+      },
+      "passed": true
+    },
+    "supply-chain": {
+      "measurements": {
+        "blob_count": 3,
+        "index_sha256": "0f69fa8466244f3184a4ea33a3d8571d70b9a9092bba73314e4c45b051dc8d15",
+        "manifest_sha256": "6faede627d5eb1c0eaab6baea27b46624210a9d31dc3ee3e4328c4779d670921",
+        "tamper_detected": true,
+        "tampered_manifest_sha256": "547e1c4504d263649c74b7e31ac94a1bcbc93381737c63d76b70a2e7bc3ef17e",
+        "verified_blob_count": 3
+      },
+      "passed": true
+    }
+  },
+  "release_state": "NOT_DEPLOYED",
+  "runtime": {
+    "composition_command": "python -m services.deployment.runtime",
+    "provider": "local-provider-neutral"
+  }
+}

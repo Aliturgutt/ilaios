@@ -1,0 +1,37 @@
+{
+  "candidate_id": "ilaios.embedding.multilingual-e5-small.qint8.v1",
+  "status": "CANDIDATE_NOT_CERTIFIED",
+  "upstream_repository": "intfloat/multilingual-e5-small",
+  "upstream_revision": "095f0e876da34e2059887fa44e42d52e7909bfe7",
+  "license": "MIT",
+  "declared_language_count": 94,
+  "embedding_dimensions": 384,
+  "max_sequence_length": 512,
+  "query_prefix": "query: ",
+  "passage_prefix": "passage: ",
+  "artifacts": [
+    {
+      "path": "onnx/model_qint8_avx512_vnni.onnx",
+      "sha256": "dd476dd0c2514e9b9be83aeb3853fac0763e0bdf4a71645407587d77c48a2d88",
+      "size_bytes": 118346824
+    },
+    {
+      "path": "tokenizer.json",
+      "sha256": "0b44a9d7b51c3c62626640cda0e2c2f70fdacdc25bbbd68038369d14ebdf4c39"
+    }
+  ],
+  "certification_runtime": {
+    "python": "3.12",
+    "onnxruntime": "1.27.0",
+    "tokenizers": "0.23.1",
+    "numpy": "2.5.1"
+  },
+  "thresholds": {
+    "target_memory_limit_mib": 1024,
+    "max_peak_rss_mib": 768,
+    "max_p95_query_latency_ms": 2000,
+    "required_top1_cases": 6,
+    "required_embedding_dimensions": 384
+  },
+  "production_authority": false
+}

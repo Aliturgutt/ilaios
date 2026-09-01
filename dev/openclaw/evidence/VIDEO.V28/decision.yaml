@@ -1,0 +1,12 @@
+milestone_id: VIDEO.V28
+package_id: VIDEO.V28.v1
+legacy_traceability: M28
+status: PASS
+dependency_evidence: dev/openclaw/evidence/VIDEO.V27/decision.yaml
+repository_evidence:
+  production_code: src/video_automation/cost_control.py
+  tests: tests/test_video_automation_cost_control.py
+  history: 9eec30d
+validations: {targeted_video_tests: PASS, full_regression: PASS, ruff: PASS, mypy_strict: PASS, pre_commit: PASS, git_diff_check: PASS}
+forbidden_paths_modified: false
+code_repair_required: false

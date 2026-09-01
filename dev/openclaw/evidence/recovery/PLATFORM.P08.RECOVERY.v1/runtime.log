@@ -1,0 +1,15 @@
+boundary=OS subprocess restart + authenticated loopback TCP HTTP + SQLite
+sequences=[1,2,3]
+versions=[1,2,3]
+reordered_client_delivery=PASS
+gap_detection=PASS
+replay_after_reconnect=PASS
+snapshot_recovery_sequence=3
+wrong_bearer_status=401
+persisted_sensitive_value=[REDACTED]
+raw_secret_present=false
+runtime_state_sha256=99b1232b6dc1deed5f1e375c71b2896e8751dec07a89e0dc6048aba21d20c44e
+executed_sqlite_sha256=7157867795504064f2ec82dfb02e3f7870c4ad82c4da527289aace8d44f47357
+durable_measured_state=dev/openclaw/evidence/recovery/PLATFORM.P08.RECOVERY.v1/runtime_artifact.json
+durable_measured_state_file_sha256=d5efc5c762758008e2fc9d0bff1c4be7aec819d7c7f27eddedec26cea756528a
+release_state=NOT_DEPLOYED

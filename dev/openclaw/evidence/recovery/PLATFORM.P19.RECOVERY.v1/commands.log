@@ -1,0 +1,11 @@
+PLATFORM.P19.RECOVERY.v1 commands
+controller/plan reread and P18 dependency PASS: PASS
+git pre-state: clean master at 0e8914312debf08b3d400341e3fd1ff39d2848a5 equals origin/master
+preserved active-package diff review: PASS; all paths belong to P19 deployable-runtime scope
+unshare --user --map-root-user --mount true: PASS
+python -m pytest -q tests/test_deployable_runtime.py tests/test_cloud_boundaries.py tests/test_control_plane_service.py::test_versioned_migration_and_recoverable_rollback: 5 passed
+python -m pytest -q: 946 passed
+ruff check .; mypy --strict src tests; pre-commit run --all-files; git diff --check: PASS
+python -m pytest -q -vv tests/test_deployable_runtime.py --basetemp=/tmp/ilaios-p19-runtime-evidence-final: 2 passed
+OCI runtime isolation: /usr/bin/unshare --user --map-root-user --mount /usr/sbin/chroot: PASS
+external deployment, credentials, paid providers, and spend: NOT PERFORMED

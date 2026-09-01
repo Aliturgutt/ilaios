@@ -1,0 +1,29 @@
+milestone_id: PLATFORM.P07
+package_id: PLATFORM.P07.RECOVERY.v1
+status: PASS
+dependency_evidence: dev/openclaw/evidence/recovery/PLATFORM.P06.RECOVERY.v1/decision.yaml
+scope_evidence:
+  versioned_runtime_schema: services/control_plane/migrations.py#version-3
+  authenticated_runtime_transport: services/control_plane/server.py
+  accepted_store_semantics: services/control_plane/workflows.py
+  real_boundary_test: tests/test_control_plane_service.py
+  measured_state: dev/openclaw/evidence/recovery/PLATFORM.P07.RECOVERY.v1/runtime_artifact.json
+proof:
+  checkpoint_and_crash_restart: PASS
+  retry_and_timeout: PASS
+  duplicate_delivery_idempotency_after_restart: PASS
+  compensation_outbox_persistence: PASS
+  inbox_outbox_reconciliation: PASS
+  mocks_replacing_internal_e2e: false
+validations:
+  dependency_gate: PASS
+  targeted_runtime_tests: PASS
+  full_pytest: PASS
+  ruff: PASS
+  mypy_strict: PASS
+  pre_commit: PASS
+  git_diff_check: PASS
+release_state: NOT_DEPLOYED
+canonical_authorities_unchanged: true
+commit_identity: SELF
+next_package: PLATFORM.P08.RECOVERY.v1

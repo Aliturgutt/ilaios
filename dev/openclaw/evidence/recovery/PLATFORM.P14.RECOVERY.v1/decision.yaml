@@ -1,0 +1,28 @@
+milestone_id: PLATFORM.P14
+package_id: PLATFORM.P14.RECOVERY.v1
+status: PASS
+dependency_evidence: dev/openclaw/evidence/recovery/PLATFORM.P13.RECOVERY.v1/decision.yaml
+scope_evidence:
+  real_local_video_runtime: services/integrations/video_runtime.py
+  authenticated_service_boundary: services/control_plane/server.py
+  durable_finops_reuse: services/governance/runtime.py
+  real_restart_e2e: tests/test_control_plane_service.py
+  actual_delivery_bytes: dev/openclaw/evidence/recovery/PLATFORM.P14.RECOVERY.v1/runtime_artifact.json
+proof:
+  canonical_video_stages: PASS
+  durable_grant: PASS
+  real_media_bytes: PASS
+  independent_ffprobe_qa: PASS
+  server_derived_cost_and_reconciliation: PASS
+  measured_latency: PASS
+  tamper_evident_provenance: PASS
+  restart_verified_delivery: PASS
+  caller_supplied_cost_used: false
+  caller_supplied_publish_evidence_used: false
+  mock_internal_video_path: false
+  paid_provider_calls: false
+validations: {dependency_gate: PASS, targeted_runtime_tests: PASS, independent_real_media_e2e: PASS, full_pytest: PASS, ruff: PASS, mypy_strict: PASS, pre_commit: PASS, git_diff_check: PASS}
+release_state: NOT_DEPLOYED
+canonical_authorities_unchanged: true
+commit_identity: SELF
+next_package: PLATFORM.P15.RECOVERY.v1

@@ -1,0 +1,117 @@
+schema_version: "1.0"
+authority: "Human Architecture Decision Package 2026-08-09"
+release_promotions_prohibited:
+  - RELEASE.R01
+  - RELEASE.R02
+  - RELEASE.R03
+packages:
+  - id: DOCS.C01
+    title: Canonical Governance and Evolution Architecture
+    status: PASS
+    dependencies: []
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/DOCS.C01.md
+  - id: AUDIT.C02
+    title: Requirement-Specific Matrix and Package Register
+    status: PASS
+    dependencies: [DOCS.C01]
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/AUDIT.C02.md
+  - id: GOV.I01
+    title: AI Model Provider Token and Cost Governance
+    status: PASS
+    dependencies: [AUDIT.C02]
+    scope:
+      - model and provider registries
+      - allow and deny policy
+      - deterministic routing and fallback
+      - token context rate concurrency API GPU and runtime limits
+      - scoped daily and monthly budgets
+      - retry-cost ceilings and circuit breakers
+      - usage attribution and FinOps evidence
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/GOV.I01.md
+  - id: IAM.I02
+    title: Standards-Based Identity and Tenant Authorization Contracts
+    status: PASS
+    dependencies: [AUDIT.C02]
+    scope:
+      - OIDC and OAuth-compatible identity boundary contracts
+      - human and service identity separation
+      - tenant-scoped RBAC and ABAC
+      - short-lived sessions revocation recovery and break-glass records
+      - privileged and high-risk approval separation
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/IAM.I02.md
+  - id: CRYPTO.I03
+    title: Provider-Neutral Secrets and Cryptographic Lifecycle
+    status: PASS
+    dependencies: [IAM.I02]
+    scope:
+      - managed KMS and HSM-compatible interfaces
+      - envelope encryption metadata
+      - secret and credential lifecycle
+      - rotation revocation cryptoperiod destruction and tenant scope
+      - crypto-agility and customer-managed-key extension contracts
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/CRYPTO.I03.md
+  - id: DATA.I04
+    title: Tenant Privacy Residency Retention and Legal Hold
+    status: PASS
+    dependencies: [IAM.I02, CRYPTO.I03]
+    scope:
+      - authoritative tenant context enforcement
+      - regional residency policy
+      - retention deletion legal hold export and DLP workflows
+      - modular regulatory profiles without certification claims
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/DATA.I04.md
+  - id: OPS.I05
+    title: Reliability Incident Backup Restore and DR Framework
+    status: PASS
+    dependencies: [AUDIT.C02]
+    scope:
+      - SLI SLO and error-budget contracts
+      - health readiness alert incident and runbook models
+      - backup verification restore and disaster-recovery exercise evidence
+      - configurable SLO RPO and RTO targets
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/OPS.I05.md
+  - id: OBS.I06
+    title: Technology-Neutral Observability and Infrastructure Contracts
+    status: PASS
+    dependencies: [OPS.I05]
+    scope:
+      - OCI workload relational object queue network and ingress interfaces
+      - structured logs metrics traces and correlation IDs
+      - capacity health security and cost signals
+      - separation of telemetry authorization audit and evidence
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/OBS.I06.md
+  - id: AGENT.I07
+    title: Governed Agent Identity Permission Firewall and AI Security
+    status: PASS
+    dependencies: [GOV.I01, IAM.I02, DATA.I04]
+    scope:
+      - complete stable agent manifests
+      - allowed callers targets escalation verifier version and status
+      - prompt-injection and exfiltration defense
+      - permission firewall grants scanning verification evidence and incident escalation
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/AGENT.I07.md
+  - id: ORG.I08
+    title: Governance Records RACI Risk Exception and Lifecycle Controls
+    status: PASS
+    dependencies: [IAM.I02, OPS.I05]
+    scope:
+      - ownership and RACI records
+      - risk treatment change and approval governance
+      - exception waiver periodic review deprecation and retirement
+      - audit and compliance claim boundaries
+    evidence: evidence/migration/ILATEN_TO_ILAIOS/ORG.I08.md
+  - id: EXT.E01
+    title: Provider Selection and Production Infrastructure
+    status: BLOCKED_EXTERNAL
+    dependencies: [CRYPTO.I03, OBS.I06]
+    reason: Requires real vendor selection contracts accounts credentials regions domains and infrastructure ownership.
+  - id: EXT.E02
+    title: Organizational Appointments and Independent Assurance
+    status: BLOCKED_EXTERNAL
+    dependencies: [ORG.I08]
+    reason: Requires named accountable humans independent reviewers auditors assessors legal authority and on-call ownership.
+  - id: EXT.E03
+    title: Production Exercises Certification and Promotion
+    status: BLOCKED_EXTERNAL
+    dependencies: [EXT.E01, EXT.E02]
+    reason: Requires deployed production infrastructure contractual targets independent exercises and explicit human RELEASE.R01-R03 decisions outside this workflow.

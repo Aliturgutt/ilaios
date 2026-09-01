@@ -1,0 +1,20 @@
+RELEASE.R03 deployment post-state
+branch=master
+production_workflow_head=a743a253e4bf1455c1dbadcf18129c7186414cce
+production_workflow_run_id=31457550463
+production_workflow_conclusion=success
+release_state=PRODUCTION_DEPLOYED_HEALTHY
+task_definition=arn:aws:ecs:eu-central-1:101180464425:task-definition/ilaios-r01-canary:7
+desired_running_pending=2/2/0
+healthy_targets=2
+network_allowlist=176.217.181.22/32 only
+network_exposure_broadened=false
+state_artifact_id=9088659252
+state_artifact_digest=sha256:26960e78bbdb5bbb62d16d46f96d30a69a5caf6f934e8fa5f3aef96c6218d6a1
+deployment_evidence_artifact_id=9088659429
+deployment_evidence_artifact_digest=sha256:d0acfd438d2c326e1161a73822fdee7c6ab3b0a91a410623c3a3fde8b1cf5641
+live_probe_run_id=31457689656
+live_probe_result=PASS
+rollback_task_definition=arn:aws:ecs:eu-central-1:101180464425:task-definition/ilaios-r01-canary:6
+rollback_desired_count=2
+rollback_executed=false

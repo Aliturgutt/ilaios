@@ -1,0 +1,8 @@
+include: ../../../analysis_options.yaml
+
+analyzer:
+  errors:
+    # Flutter 3.44 keeps DropdownButtonFormField.value functional while
+    # migrating callers to initialValue. This compatibility scope is limited
+    # to the operational surface and does not relax any other analyzer rule.
+    deprecated_member_use: ignore

@@ -1,0 +1,21 @@
+milestone_id: VIDEO.V01
+package_id: VIDEO.V01.v1
+legacy_traceability: M01
+status: PASS
+dependency_evidence:
+  PRE.S00: /home/openclaw/.openclaw/evidence/HermesEnterpriseOS/PRE.S00/decision.yaml
+repository_evidence:
+  production_code: src/video_automation/models.py
+  tests: tests/test_video_automation_models.py
+  history:
+    - "d30f443 feat(video): implement video domain models"
+    - "0639c17 feat(video): implement video domain models"
+validations:
+  targeted_video_tests: PASS
+  full_regression: PASS
+  ruff: PASS
+  mypy_strict: PASS
+  pre_commit: PASS
+  git_diff_check: PASS
+forbidden_paths_modified: false
+code_repair_required: false

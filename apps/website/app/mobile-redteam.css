@@ -1,0 +1,230 @@
+/* ILAIOS website mobile/red-team correction layer.
+   This file is intentionally imported last. It fixes rendered density,
+   mobile overlap, flow collapse and system-diagram presentation without
+   creating a second design system. */
+
+:root{
+  --rt-section-y:34px;
+  --rt-section-y-mobile:24px;
+  --rt-gap:18px;
+  --rt-gap-mobile:14px;
+}
+
+/* Global density: ordinary content must not read like repeated hero screens. */
+h1{font-size:clamp(1.85rem,2.4vw,2.55rem);line-height:1.06;max-width:760px}
+h2{font-size:clamp(1.2rem,1.5vw,1.6rem);line-height:1.16;max-width:760px}
+.lead{font-size:clamp(.94rem,1vw,1.02rem);line-height:1.56;max-width:64ch}
+.section{padding:var(--rt-section-y) 0}
+.compact-section{padding:24px 0}
+.page-hero,.compact-page-hero{padding:30px 0 23px;max-width:860px}
+
+/* The five-stage public execution story is always one balanced rail on desktop. */
+.process-rail{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:0!important;border-top:1px solid var(--line-strong);border-bottom:1px solid var(--line)}
+.process-rail>article{min-width:0!important;min-height:0!important;padding:14px 14px 15px!important;border-right:1px solid var(--line)!important;background:transparent!important}
+.process-rail>article:last-child{border-right:0!important}
+.process-rail>article>span{display:inline-flex;width:28px;height:28px;align-items:center;justify-content:center;margin:0 0 14px;border:1px solid #43505a;border-radius:4px;color:#aeb8be;font-size:.62rem;font-weight:700}
+.process-rail>article>strong{display:block;margin-bottom:6px;font-size:.94rem;line-height:1.25}
+.process-rail>article>p{margin:0;font-size:.8rem;line-height:1.48}
+.process-rail>article:hover{background:#0f161c!important}
+
+/* Product demo remains visible but compact. */
+.home-hero{grid-template-columns:minmax(260px,.7fr) minmax(520px,1.3fr);gap:34px;padding:34px 0 28px}
+.home-hero-copy h1{max-width:500px}
+.product-experience{min-width:0}
+.product-experience-grid{min-height:0}
+.goal-composer textarea{min-height:96px}
+
+/* Canonical visual diagrams. */
+.system-visuals{display:grid;gap:16px}
+.system-visuals.is-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+.system-visual{min-width:0;padding:16px;border:1px solid var(--line);border-radius:4px;background:#0d1318}
+.system-visual header{display:flex;align-items:flex-start;justify-content:space-between;gap:14px;margin-bottom:14px}
+.system-visual header>div{min-width:0}
+.system-visual header h3{margin:4px 0 0;font-size:1rem}
+.system-visual header p{margin:5px 0 0;font-size:.78rem;line-height:1.45;max-width:58ch}
+.system-visual .visual-badge{flex:0 0 auto;color:#aeb8be;font-size:.58rem;letter-spacing:.09em;text-transform:uppercase}
+.node-flow{display:flex;align-items:stretch;gap:0;overflow-x:auto;padding-bottom:2px;scrollbar-width:thin}
+.node-flow .node{position:relative;flex:1 0 112px;min-width:0;padding:12px 11px;border-top:1px solid #3d4952;border-bottom:1px solid #3d4952;border-right:1px solid var(--line);background:#0b1015}
+.node-flow .node:first-child{border-left:1px solid #3d4952}
+.node-flow .node strong{display:block;font-size:.79rem;line-height:1.25}
+.node-flow .node small{display:block;margin-top:5px;color:var(--muted);font-size:.68rem;line-height:1.35}
+.node-flow .node i{position:absolute;right:-6px;top:50%;z-index:2;width:11px;height:11px;margin-top:-5px;border-top:1px solid #69747c;border-right:1px solid #69747c;transform:rotate(45deg);background:#0b1015}
+.node-flow .node:last-child i{display:none}
+.node-flow .node.is-authority{background:#101920;border-color:#596771}
+.node-flow .node.is-evidence{background:#11171c}
+
+.plane-visual{display:grid;grid-template-columns:.8fr 1.2fr;gap:10px}
+.plane-column{display:grid;gap:8px;min-width:0}
+.plane-column>strong{font-size:.72rem;letter-spacing:.08em;text-transform:uppercase;color:#c7cdd1}
+.plane-box{padding:11px 12px;border:1px solid var(--line);border-radius:3px;background:#0a1014}
+.plane-box.is-authority{border-color:#56636c;background:#111920}
+.plane-box b{display:block;font-size:.8rem}
+.plane-box span{display:block;margin-top:4px;color:var(--muted);font-size:.69rem;line-height:1.4}
+.plane-arrow{display:flex;align-items:center;justify-content:center;color:#808c95;font-size:.75rem}
+
+.lifecycle-flow{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));border-top:1px solid #46525b;border-bottom:1px solid #344049}
+.lifecycle-flow>div{min-width:0;padding:11px 9px;border-right:1px solid var(--line)}
+.lifecycle-flow>div:last-child{border-right:0}
+.lifecycle-flow span{display:block;color:#8f9ba3;font-size:.58rem}
+.lifecycle-flow strong{display:block;margin-top:6px;font-size:.76rem;line-height:1.3}
+
+.trust-visual{display:grid;grid-template-columns:1fr 34px 1.1fr 34px 1fr;align-items:stretch}
+.trust-visual>div{min-width:0;padding:12px;border:1px solid var(--line);border-radius:3px;background:#0b1116}
+.trust-visual>div.is-core{background:#111920;border-color:#596670}
+.trust-visual>div strong{display:block;font-size:.8rem}
+.trust-visual>div small{display:block;margin-top:5px;color:var(--muted);font-size:.68rem;line-height:1.4}
+.trust-visual>i{display:flex;align-items:center;justify-content:center;color:#7f8b93;font-style:normal}
+
+/* Prevent long Turkish strings and mixed technical terms from forcing columns wider. */
+:where(.shell,.section,.card,.detail-link-card,.process-rail>article,.factory-explorer,.factory-index,.factory-detail,.platform-map-layout,.architecture-primary,.security-boundary-layout,.about-editorial-grid,.contact-directory,.system-visual,.system-visual *){min-width:0}
+:where(h1,h2,h3,p,strong,small,a,span){overflow-wrap:break-word;word-break:normal}
+
+/* More compact editorial areas. */
+.about-intro,.contact-intro{padding:30px 0 22px!important;display:grid!important;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr)!important;gap:34px!important;align-items:end!important}
+.about-intro>.lead,.contact-intro>.lead{margin:0!important;max-width:58ch!important;justify-self:end}
+.founder-row{padding-block:0!important}
+.contact-directory article{min-height:0!important;padding-block:13px!important}
+.factory-truth-note,.status-note{padding-block:0!important}
+
+/* Tablet: preserve density without allowing the desktop grid to collapse awkwardly. */
+@media (max-width:1020px){
+  .home-hero{grid-template-columns:1fr;gap:24px}
+  .home-hero-copy{max-width:680px}
+  .system-visuals.is-grid{grid-template-columns:1fr}
+  .process-rail>article{padding-inline:10px!important}
+  .process-rail>article>strong{font-size:.88rem}
+  .process-rail>article>p{font-size:.76rem}
+}
+
+/* P0 MOBILE HOTFIX: all public compositions are true one-column flow.
+   No absolute/floating overlap, no negative-translation tricks, no fixed-width columns. */
+@media (max-width:760px){
+  :root{--header-h:62px}
+  html,body{max-width:100%;overflow-x:hidden}
+  body{font-size:15px;line-height:1.6}
+  main{overflow:visible}
+  .shell{width:min(100% - 28px,var(--max))}
+
+  h1{font-size:clamp(1.9rem,8vw,2.35rem)!important;line-height:1.04!important;letter-spacing:-.032em!important;max-width:none!important;margin-bottom:12px!important}
+  h2{font-size:clamp(1.45rem,6.1vw,1.88rem)!important;line-height:1.11!important;letter-spacing:-.024em!important;max-width:none!important}
+  h3{font-size:1.22rem!important;line-height:1.2!important}
+  p,.lead{font-size:1rem!important;line-height:1.6!important;max-width:none!important}
+  .eyebrow,.micro-label,.panel-kicker{font-size:.61rem!important;line-height:1.35!important;letter-spacing:.105em!important;margin-bottom:7px!important}
+
+  .section{padding:var(--rt-section-y-mobile) 0!important}
+  .compact-section{padding:20px 0!important}
+  .page-hero,.compact-page-hero,.about-intro,.contact-intro{display:block!important;padding:24px 0 20px!important;margin:0 auto!important;max-width:none!important}
+  .about-intro>.lead,.contact-intro>.lead{margin-top:11px!important;justify-self:auto!important}
+
+  /* Any legacy overlap-producing positioning is neutralized in mobile content regions. */
+  :where(main section) :where(.eyebrow,h1,h2,h3,p,.lead,.micro-label,.panel-kicker){position:static!important;inset:auto!important;transform:none!important;translate:none!important;float:none!important}
+  :where(main section) :where(.section-heading,.split-copy,.compact-heading-row,.factory-explorer-heading,.product-experience-head,.architecture-story-copy){margin-left:0!important;margin-right:0!important}
+
+  .section-heading,.split-copy,.compact-heading-row,.home-hero,.product-experience-head,.product-experience-grid,.architecture-story,.evidence-story,.factory-explorer-heading,.factory-explorer-layout,.platform-map-layout,.security-boundary-layout,.architecture-primary,.about-editorial-grid,.founder-row,.compact-cta,.knowledge-band,.runtime-map,.trust-boundary,.evidence-grid,.callout,.plane-grid{display:grid!important;grid-template-columns:1fr!important;gap:var(--rt-gap-mobile)!important;align-items:start!important}
+
+  .home-hero{padding:25px 0 22px!important}
+  .home-hero-copy{max-width:none!important}
+  .home-hero-copy .actions{margin-top:15px}
+  .actions{gap:8px;margin-top:14px}
+  .button{min-height:40px;padding:8px 12px}
+
+  /* Product demo: stack composer and rendered state, never overlay. */
+  .product-experience{width:100%;padding-top:12px!important}
+  .product-experience-head{margin-bottom:11px!important}
+  .product-experience-head h2{font-size:1.35rem!important}
+  .product-experience-head p{font-size:.87rem!important;line-height:1.5!important;margin:0!important}
+  .product-mode-tabs{width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+  .product-mode-tabs button{flex:0 0 auto;padding:9px 10px}
+  .product-experience-grid{min-height:0!important}
+  .goal-composer{padding:12px 0 14px!important;border-right:0!important;border-bottom:1px solid var(--line)!important}
+  .goal-composer textarea{min-height:96px!important;resize:vertical}
+  .composer-actions{align-items:flex-start;flex-wrap:wrap}
+  .execution-preview{padding:14px 0 0!important}
+  .execution-rail{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .execution-rail>div{min-height:50px!important}
+
+  /* Required 01→05 vertical timeline. */
+  .process-rail{display:grid!important;grid-template-columns:1fr!important;border-left:1px solid #3b4650!important;border-top:0!important;border-bottom:0!important;margin-left:13px}
+  .process-rail>article{position:relative!important;width:auto!important;min-width:0!important;padding:9px 0 16px 28px!important;border:0!important;border-bottom:1px solid var(--line)!important;background:transparent!important}
+  .process-rail>article:last-child{border-bottom:0!important}
+  .process-rail>article>span{position:absolute!important;left:-14px!important;top:8px!important;width:28px!important;height:28px!important;margin:0!important;background:var(--bg)!important}
+  .process-rail>article>strong{font-size:1rem!important;margin:0 0 4px!important}
+  .process-rail>article>p{font-size:.91rem!important;line-height:1.5!important;margin:0!important}
+
+  /* All legacy multi-column public lists collapse to true one-column flow. */
+  .grid,.grid.two-up,.detail-link-grid,.journey-grid,.flow-grid,.security-chain,.security-process,.runtime-line,.detail-directory,.principle-directory,.boundary-ledger,.contact-directory{grid-template-columns:1fr!important}
+  .grid .card,.grid.two-up .card,.detail-link-card,.journey-card,.flow-card,.security-chain article,.security-process article,.detail-directory>a,.principle-directory article,.boundary-ledger article,.contact-directory article{border-right:0!important;padding-left:0!important;padding-right:0!important;min-height:0!important;height:auto!important}
+
+  .detail-link-card{grid-template-columns:50px minmax(0,1fr)!important;grid-template-areas:"tag title" "tag body" "tag arrow"!important;gap:4px 10px!important}
+  .detail-link-card strong{justify-self:start!important;margin-top:5px}
+
+  /* Factory explorer: accordion-like vertical index + full-width detail. */
+  .factory-explorer-heading{margin-bottom:14px!important}
+  .factory-explorer-heading p{margin:0!important;font-size:.92rem!important}
+  .factory-explorer-layout{width:100%}
+  .factory-index{display:grid!important;grid-template-columns:1fr!important;gap:0!important;border-top:1px solid var(--line)!important}
+  .factory-index button{display:grid!important;grid-template-columns:34px minmax(0,1fr)!important;grid-template-areas:"num title" "num meta"!important;width:100%!important;min-width:0!important;height:auto!important;min-height:0!important;padding:11px 0!important;border:0!important;border-bottom:1px solid var(--line)!important;text-align:left!important}
+  .factory-index button>span{grid-area:num!important}
+  .factory-index button>strong{grid-area:title!important;font-size:.98rem!important}
+  .factory-index button>small{grid-area:meta!important;font-size:.78rem!important;line-height:1.4!important;white-space:normal!important}
+  .factory-detail{width:100%!important;min-width:0!important;padding:14px 0 0!important;border:0!important}
+  .factory-detail-top{display:grid!important;grid-template-columns:1fr!important;gap:8px!important}
+  .factory-detail-top .text-link{justify-self:start}
+  .factory-pipeline ol{display:grid!important;grid-template-columns:1fr!important}
+  .factory-pipeline li{min-width:0!important}
+
+  /* Existing architecture/spatial visuals flatten rather than shrink into unreadable columns. */
+  .spatial-map{width:100%;overflow:hidden}
+  .spatial-stage{transform:none!important;display:grid!important;grid-template-columns:1fr!important;gap:0!important;min-height:0!important;height:auto!important;perspective:none!important}
+  .spatial-node{position:relative!important;inset:auto!important;transform:none!important;width:auto!important;min-width:0!important;height:auto!important;min-height:0!important;margin:0!important;padding:11px 12px 11px 42px!important;border:0!important;border-bottom:1px solid var(--line)!important;background:#0c1217!important}
+  .spatial-node>span{position:absolute!important;left:11px!important;top:12px!important}
+  .spatial-node i{display:none!important}
+
+  /* New canonical visuals get readable mobile alternatives. */
+  .system-visuals.is-grid{grid-template-columns:1fr!important}
+  .system-visual{padding:13px!important}
+  .system-visual header{display:block!important;margin-bottom:11px!important}
+  .system-visual header .visual-badge{display:block;margin-top:8px}
+  .node-flow{display:grid!important;grid-template-columns:1fr!important;overflow:visible!important;border-left:1px solid #3d4952;margin-left:12px}
+  .node-flow .node{flex:none!important;padding:10px 10px 10px 27px!important;border:0!important;border-bottom:1px solid var(--line)!important;background:#0b1015!important}
+  .node-flow .node:first-child{border-left:0!important}
+  .node-flow .node i{display:block!important;position:absolute!important;left:-6px!important;right:auto!important;top:18px!important;width:11px!important;height:11px!important;background:#0b1015!important;transform:rotate(45deg)!important;border-left:1px solid #69747c!important;border-bottom:1px solid #69747c!important;border-top:0!important;border-right:0!important}
+  .node-flow .node:last-child i{display:none!important}
+  .plane-visual{grid-template-columns:1fr!important;gap:8px!important}
+  .plane-arrow{min-height:20px;transform:rotate(90deg)}
+  .lifecycle-flow{grid-template-columns:1fr!important;border-left:1px solid #3d4952;border-top:0!important;border-bottom:0!important}
+  .lifecycle-flow>div{padding:9px 0 10px 18px!important;border-right:0!important;border-bottom:1px solid var(--line)!important}
+  .trust-visual{grid-template-columns:1fr!important;gap:7px!important}
+  .trust-visual>i{min-height:20px;transform:rotate(90deg)}
+
+  /* Contact / About are compact directories, not empty poster pages. */
+  .contact-directory article{display:grid!important;grid-template-columns:30px minmax(0,1fr)!important;grid-template-areas:"num body" "num mail"!important;gap:5px 9px!important;padding:11px 0!important}
+  .contact-directory article>span{grid-area:num!important}
+  .contact-directory article>div{grid-area:body!important}
+  .contact-directory article>a{grid-area:mail!important;justify-self:start!important;font-size:.9rem!important;overflow-wrap:anywhere}
+  .founder-row p{margin:0!important}
+  .about-principles article{grid-template-columns:30px 1fr!important}
+
+  /* Footer/nav never create horizontal pressure. */
+  .footer-nav-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:18px 14px!important}
+  .site-footer{overflow:hidden}
+  .nav{gap:12px!important}
+  .brand{width:142px!important;max-width:48vw!important}
+  .menu-toggle{display:inline-flex!important;align-items:center!important;white-space:nowrap}
+
+  /* Content density protection. */
+  .card,.detail-link-card,.journey-card,.flow-card,.plane-card,.boundary-client,.boundary-core,.stack-layer{height:auto!important;min-height:0!important}
+  .section>*:first-child{margin-top:0!important}
+}
+
+@media (max-width:430px){
+  .shell{width:calc(100% - 24px)}
+  h1{font-size:clamp(1.78rem,8.4vw,2.15rem)!important}
+  h2{font-size:clamp(1.34rem,6.2vw,1.72rem)!important}
+  .brand{width:128px!important}
+  .footer-nav-grid{grid-template-columns:1fr 1fr!important}
+}
+
+@media (prefers-reduced-motion:reduce){
+  .system-visual *, .process-rail>article, .factory-index button{transition:none!important;animation:none!important}
+}

@@ -1,0 +1,71 @@
+schema_version: "1.0"
+package_id: EXT.E01
+state: PREPARED_AWAITING_APPROVALS
+deployment_performed: false
+repository:
+  url: https://github.com/Aliturgutt/ilaios
+  default_branch: master
+architecture_decisions:
+  required:
+    - id: deployment_profile
+      choices: [shared, dedicated, private]
+      value: shared
+    - id: cloud_provider
+      value: aws
+    - id: primary_region
+      value: eu-central-1
+    - id: secondary_region
+      value: not_required_for_canary
+    - id: workload_platform
+      choices: [managed_kubernetes, managed_container_runtime, virtual_machines]
+      value: managed_container_runtime
+    - id: infrastructure_as_code
+      recommended_open_source_option: opentofu
+      value: opentofu
+    - id: gitops_controller
+      choices: [argocd, flux, none]
+      value: none
+capabilities:
+  required:
+    - private_network
+    - oci_workload_runtime
+    - persistent_runtime_filesystem_for_proven_sqlite_adapters
+    - ingress_load_balancer
+    - external_managed_dns
+    - managed_tls
+    - secrets_manager
+    - container_registry
+    - centralized_logs_metrics_health
+    - backup_and_restore
+  ownership_and_provider_mapping: infra/aws/r01-canary/README.md
+runtime_evidence:
+  authoritative_revalidation: dev/openclaw/evidence/recovery/RELEASE.R00.REVALIDATION.v1/decision.yaml
+  deployable_oci_identity: PASS
+  packaged_runtime_execution: PASS
+  liveness_readiness: PASS
+  migrations_rollback_reapply: PASS
+  feature_flags_default_off: PASS
+  default_allowlist_empty: PASS
+preparation:
+  infrastructure_as_code: infra/aws/r01-canary
+  oidc_workflow: .github/workflows/aws-r01-oidc-proof.yml
+  external_spend_approval: REQUIRED_EXTERNAL_SPEND_APPROVAL
+  explicit_promotion_approval: EXPLICIT_HUMAN_RELEASE_PROMOTION
+human_inputs:
+  required:
+    - explicit external-spend approval
+    - explicit RELEASE.R01 promotion approval
+    - approved non-empty Canary source allowlist
+    - named infrastructure security operations and release owners
+    - approved Canary health gates and observation window
+    - applicable jurisdiction data residency and compliance profile
+    - approved Canary tenant identifier
+guardrails:
+  no_secrets_in_git: true
+  no_personal_production_accounts: true
+  least_privilege_workload_identity: true
+  encryption_in_transit_required: true
+  encryption_at_rest_required: true
+  tenant_and_region_boundaries_required: true
+  immutable_artifact_reference_required: true
+  release_state: NOT_DEPLOYED

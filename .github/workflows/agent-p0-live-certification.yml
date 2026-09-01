@@ -1,0 +1,374 @@
+name: Agent P0 Live Certification
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'services/agent_*.py'
+      - 'services/p0_*.py'
+      - 'services/openrouter_agent_catalog.py'
+      - 'services/independent_verifier_execution.py'
+      - 'services/runtime/**'
+      - 'services/security_factory.py'
+      - 'services/skill_engineering_*.py'
+      - 'tools/software-factory/skills/**'
+      - 'tools/skill-engineering/skills/**'
+      - 'tests/test_skill_engineering_*.py'
+      - '.github/workflows/agent-p0-live-certification.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: agent-p0-live-certification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  p0-live-certification:
+    name: 21-agent plus Skill Engineering real provider evidence
+    runs-on: ubuntu-latest
+    environment: Production
+    timeout-minutes: 30
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      AGENT_P0_PROOF_DIR: artifacts/agent-p0-live-proof
+      SKILL_ENGINEERING_PROOF_DIR: artifacts/skill-engineering-live-proof
+
+    steps:
+      - name: Checkout exact trusted source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: .github/requirements/platform-ci.txt
+
+      - name: Install locked validation dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -r .github/requirements/platform-ci.txt
+          python -m pip check
+
+      - name: Verify live-certification secret boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$OPENROUTER_API_KEY"
+          test "$GITHUB_REF" = "refs/heads/master" || test "$GITHUB_EVENT_NAME" = "workflow_dispatch"
+          echo 'OPENROUTER_API_KEY_PRESENT=TRUE'
+          echo 'Credential material is not printed or persisted.'
+
+      - name: Run focused P0 and Skill Engineering regression gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pytest -q \
+            tests/test_p0_runtime_composition.py \
+            tests/test_p0_live_certification_bounds.py \
+            tests/test_openrouter_agent_catalog.py \
+            tests/test_ai_provider_structured_output.py \
+            tests/test_agent_readiness_integration.py \
+            tests/test_agent_readiness_store_integration.py \
+            tests/test_runtime_external_adapter_integration.py \
+            tests/test_skill_engineering_runtime.py \
+            tests/test_skill_engineering_completion.py \
+            tests/test_skill_engineering_provider_capabilities.py \
+            tests/test_skill_engineering_live_certification.py
+
+      - name: Run 21-agent real provider/tool certification
+        id: p0_certification
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m services.p0_live_certification
+
+      - name: Run five-skill real provider certification
+        id: skill_engineering_certification
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m services.skill_engineering_live_certification
+
+      - name: Verify accepted P0 receipt
+        if: steps.p0_certification.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          def is_sha256(value: object) -> bool:
+              return (
+                  isinstance(value, str)
+                  and len(value) == 64
+                  and all(character in '0123456789abcdef' for character in value)
+              )
+
+          receipt_path = Path(os.environ['AGENT_P0_PROOF_DIR']) / 'p0-live-receipt.json'
+          receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+          assert receipt['status'] == 'VERIFIED'
+          assert receipt['revision_sha'] == os.environ['GITHUB_SHA']
+          assert receipt['target_agent_count'] == 21
+          assert receipt['verified_agent_count'] == 21
+          assert receipt['zero_cost_openrouter_only'] is True
+          assert receipt['matrix_summary'] == {
+              'registered': 26,
+              'executable': 0,
+              'verified': 21,
+          }
+          assert is_sha256(receipt['runtime_database_sha256'])
+          assert is_sha256(receipt['readiness_database_sha256'])
+          assert len(receipt['agents']) == 21
+          for agent in receipt['agents']:
+              assert agent['readiness'] == 'verified'
+              cost = agent.get('actual_cost_usd')
+              assert cost in (None, '0')
+          print('P0_LIVE_RECEIPT=PASS verified=21/21')
+          PY
+
+      - name: Verify accepted Skill Engineering receipt
+        if: steps.skill_engineering_certification.outcome == 'success'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          receipt_path = Path(os.environ['SKILL_ENGINEERING_PROOF_DIR']) / 'skill-engineering-live-receipt.json'
+          receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+          assert receipt['status'] == 'VERIFIED'
+          assert receipt['revision_sha'] == os.environ['GITHUB_SHA']
+          assert receipt['target_skill_count'] == 5
+          assert receipt['verified_skill_count'] == 5
+          assert receipt['zero_cost_only'] is True
+          assert receipt['zero_cost_openrouter_only'] is True
+          assert receipt['provider_ids'] == ['openrouter']
+          assert len(receipt['skills']) == 5
+          for skill in receipt['skills']:
+              assert skill['provider_id'] == 'openrouter'
+              assert skill['actual_cost_usd'] == '0'
+              assert isinstance(skill['producer_evidence_sha256'], str) and len(skill['producer_evidence_sha256']) == 64
+              assert isinstance(skill['verifier_evidence_sha256'], str) and len(skill['verifier_evidence_sha256']) == 64
+          print('SKILL_ENGINEERING_LIVE_RECEIPT=PASS verified=5/5')
+          PY
+
+      - name: Publish certification summary
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo '## ILAIOS P0 Agent Live Certification' >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f "$AGENT_P0_PROOF_DIR/p0-live-receipt.json" ]]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          receipt = json.loads(
+              (Path(os.environ['AGENT_P0_PROOF_DIR']) / 'p0-live-receipt.json').read_text(encoding='utf-8')
+          )
+          print(f"- Status: `{receipt.get('status')}`")
+          print(f"- Revision: `{receipt.get('revision_sha')}`")
+          print(f"- Verified agents: `{receipt.get('verified_agent_count')}/{receipt.get('target_agent_count')}`")
+          print(f"- Matrix: `{receipt.get('matrix_summary')}`")
+          print(f"- Runtime DB SHA-256: `{receipt.get('runtime_database_sha256')}`")
+          print(f"- Readiness DB SHA-256: `{receipt.get('readiness_database_sha256')}`")
+          print('- OpenRouter automatic paid fallback: `FALSE`')
+          print('- Credential material persisted: `FALSE`')
+          PY
+          else
+            echo '- Status: `NO_ACCEPTED_RECEIPT`' >> "$GITHUB_STEP_SUMMARY"
+          fi
+          echo '' >> "$GITHUB_STEP_SUMMARY"
+          echo '## ILAIOS Skill Engineering Live Provider Certification' >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f "$SKILL_ENGINEERING_PROOF_DIR/skill-engineering-live-receipt.json" ]]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+          receipt = json.loads(
+              (Path(os.environ['SKILL_ENGINEERING_PROOF_DIR']) / 'skill-engineering-live-receipt.json').read_text(encoding='utf-8')
+          )
+          print(f"- Status: `{receipt.get('status')}`")
+          print(f"- Revision: `{receipt.get('revision_sha')}`")
+          print(f"- Verified skills: `{receipt.get('verified_skill_count')}/{receipt.get('target_skill_count')}`")
+          print(f"- Providers: `{receipt.get('provider_ids')}`")
+          print('- Automatic provider cost: `0 USD`')
+          PY
+          else
+            echo '- Status: `NO_ACCEPTED_RECEIPT`' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload immutable live evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: agent-and-skill-engineering-live-proof-${{ github.sha }}-${{ github.run_id }}
+          path: |
+            artifacts/agent-p0-live-proof
+            artifacts/skill-engineering-live-proof
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publish sanitized P0 commit status
+        if: always()
+        shell: bash
+        env:
+          P0_STEP_OUTCOME: ${{ steps.p0_certification.outcome }}
+          P0_STATUS_TOKEN: ${{ github.token }}
+          P0_STATUS_TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          def is_sha256(value: object) -> bool:
+              return (
+                  isinstance(value, str)
+                  and len(value) == 64
+                  and all(character in '0123456789abcdef' for character in value)
+              )
+
+          accepted = False
+          receipt_path = Path(os.environ['AGENT_P0_PROOF_DIR']) / 'p0-live-receipt.json'
+          if os.environ.get('P0_STEP_OUTCOME') == 'success' and receipt_path.is_file():
+              try:
+                  receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+                  agents = receipt.get('agents')
+                  accepted = (
+                      receipt.get('status') == 'VERIFIED'
+                      and receipt.get('revision_sha') == os.environ['GITHUB_SHA']
+                      and receipt.get('target_agent_count') == 21
+                      and receipt.get('verified_agent_count') == 21
+                      and receipt.get('zero_cost_openrouter_only') is True
+                      and receipt.get('matrix_summary') == {
+                          'registered': 26,
+                          'executable': 0,
+                          'verified': 21,
+                      }
+                      and is_sha256(receipt.get('runtime_database_sha256'))
+                      and is_sha256(receipt.get('readiness_database_sha256'))
+                      and isinstance(agents, list)
+                      and len(agents) == 21
+                      and all(
+                          isinstance(agent, dict)
+                          and agent.get('readiness') == 'verified'
+                          and agent.get('actual_cost_usd') in (None, '0')
+                          for agent in agents
+                      )
+                  )
+              except (OSError, ValueError, TypeError):
+                  accepted = False
+
+          state = 'success' if accepted else 'failure'
+          description = (
+              'P0 live receipt accepted: 21/21 VERIFIED'
+              if accepted
+              else 'P0 live certification failed closed'
+          )
+          document = json.dumps(
+              {
+                  'state': state,
+                  'target_url': os.environ['P0_STATUS_TARGET_URL'],
+                  'description': description,
+                  'context': 'ILAIOS Agent P0 Live Certification',
+              },
+              separators=(',', ':'),
+          ).encode('utf-8')
+          request = urllib.request.Request(
+              f"{os.environ['GITHUB_API_URL']}/repos/{os.environ['GITHUB_REPOSITORY']}/statuses/{os.environ['GITHUB_SHA']}",
+              data=document,
+              method='POST',
+              headers={
+                  'Accept': 'application/vnd.github+json',
+                  'Authorization': f"Bearer {os.environ['P0_STATUS_TOKEN']}",
+                  'Content-Type': 'application/json',
+                  'X-GitHub-Api-Version': '2022-11-28',
+              },
+          )
+          with urllib.request.urlopen(request, timeout=20) as response:
+              if response.status not in {200, 201}:
+                  raise RuntimeError(f'commit status publish failed: HTTP {response.status}')
+          print(f'P0_COMMIT_STATUS={state}')
+          PY
+
+      - name: Publish sanitized Skill Engineering commit status
+        if: always()
+        shell: bash
+        env:
+          CERT_STEP_OUTCOME: ${{ steps.skill_engineering_certification.outcome }}
+          STATUS_TOKEN: ${{ github.token }}
+          STATUS_TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          accepted = False
+          receipt_path = Path(os.environ['SKILL_ENGINEERING_PROOF_DIR']) / 'skill-engineering-live-receipt.json'
+          if os.environ.get('CERT_STEP_OUTCOME') == 'success' and receipt_path.is_file():
+              try:
+                  receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+                  accepted = (
+                      receipt.get('status') == 'VERIFIED'
+                      and receipt.get('revision_sha') == os.environ['GITHUB_SHA']
+                      and receipt.get('target_skill_count') == 5
+                      and receipt.get('verified_skill_count') == 5
+                      and receipt.get('zero_cost_openrouter_only') is True
+                      and receipt.get('provider_ids') == ['openrouter']
+                  )
+              except (OSError, ValueError, TypeError):
+                  accepted = False
+          state = 'success' if accepted else 'failure'
+          document = json.dumps(
+              {
+                  'state': state,
+                  'target_url': os.environ['STATUS_TARGET_URL'],
+                  'description': 'Skill Engineering 5/5 live provider receipt accepted' if accepted else 'Skill Engineering live provider certification failed closed',
+                  'context': 'ilaios/skill-engineering-live-provider',
+              },
+              separators=(',', ':'),
+          ).encode('utf-8')
+          request = urllib.request.Request(
+              f"{os.environ['GITHUB_API_URL']}/repos/{os.environ['GITHUB_REPOSITORY']}/statuses/{os.environ['GITHUB_SHA']}",
+              data=document,
+              method='POST',
+              headers={
+                  'Accept': 'application/vnd.github+json',
+                  'Authorization': f"Bearer {os.environ['STATUS_TOKEN']}",
+                  'Content-Type': 'application/json',
+                  'X-GitHub-Api-Version': '2022-11-28',
+              },
+          )
+          with urllib.request.urlopen(request, timeout=20) as response:
+              if response.status not in {200, 201}:
+                  raise RuntimeError(f'commit status publish failed: HTTP {response.status}')
+          print(f'SKILL_ENGINEERING_COMMIT_STATUS={state}')
+          PY
+
+      - name: Preserve P0 failure in workflow conclusion
+        if: steps.p0_certification.outcome != 'success'
+        shell: bash
+        run: |
+          echo 'P0 live certification remains failed closed; Skill Engineering evidence is reported independently.'
+          exit 1

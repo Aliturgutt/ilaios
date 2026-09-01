@@ -1,0 +1,14 @@
+milestone_id: PLATFORM.P10
+package_id: PLATFORM.P10.v1
+status: PASS
+dependency_evidence: dev/openclaw/evidence/PLATFORM.P09/decision.yaml
+scope_evidence:
+  scheduler: services/runtime/scheduler.py
+  worker_profiles_and_quotas: true
+  leases_and_heartbeats: true
+  monotonic_fencing: true
+  deterministic_scheduling: true
+  safe_rescheduling: true
+  stale_side_effect_blocked: true
+validations: {targeted_tests: PASS, full_regression: PASS, ruff: PASS, mypy_strict: PASS, pre_commit: PASS, git_diff_check: PASS}
+canonical_authorities_unchanged: true

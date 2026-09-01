@@ -1,0 +1,27 @@
+milestone_id: PLATFORM.P19
+package_id: PLATFORM.P19.RECOVERY.v1
+status: PASS
+dependency_evidence: dev/openclaw/evidence/recovery/PLATFORM.P18.RECOVERY.v1/decision.yaml
+scope_evidence:
+  composition_root: services/deployment/runtime.py
+  readiness: services/control_plane/server.py
+  backup_restore: services/deployment/backup.py
+  oci_image_layout: services/deployment/oci.py
+  provider_neutral_profile: infra/deployment/runtime-profile.yaml
+  real_runtime: dev/openclaw/evidence/recovery/PLATFORM.P19.RECOVERY.v1/runtime_artifact.json
+proof:
+  production_process_command: PASS
+  liveness_and_readiness_http: PASS
+  explicit_migrations_and_rollback: PASS
+  provider_neutral_adapters: PASS
+  configuration_secret_references: PASS
+  resource_capacity_baseline: PASS
+  immutable_oci_identity: PASS
+  extracted_oci_runtime_execution: PASS
+  backup_restore_restart: PASS
+  external_deployment_performed: false
+validations: {dependency_gate: PASS, targeted_runtime_tests: PASS, full_pytest: PASS, ruff: PASS, mypy_strict: PASS, pre_commit: PASS, git_diff_check: PASS}
+release_state: NOT_DEPLOYED
+canonical_authorities_unchanged: true
+commit_identity: SELF
+next_package: PLATFORM.P20.RECOVERY.v1

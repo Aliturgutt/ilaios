@@ -1,0 +1,331 @@
+/* Visual red-team fixes scoped to the pages reported on 2026-08-15.
+   Keep all other public routes on the existing approved visual system. */
+
+/* Architecture: desktop canonical chains must fit the content width without
+   exposing implementation-oriented horizontal scrollbars. */
+@media (min-width: 901px) {
+  main:has(.architecture-primary) .canonical-dual {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  main:has(.architecture-primary) .canonical-linear {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(108px, 1fr));
+    overflow: visible;
+    overscroll-behavior-x: auto;
+    scrollbar-width: auto;
+  }
+
+  main:has(.architecture-primary) .canonical-linear > div {
+    min-width: 0;
+    flex: none;
+  }
+
+  main:has(.architecture-primary) .canonical-linear > div > i {
+    display: none;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 1100px) {
+  main:has(.architecture-primary) .canonical-linear {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+/* Core: preserve the eight-step operating model as a readable 4x2 ledger on
+   desktop and avoid cramped fixed-width nodes. */
+.core-diagram {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  width: 100%;
+}
+
+.core-diagram .core-node {
+  min-width: 0;
+}
+
+.core-diagram .core-node strong,
+.core-diagram .core-node small {
+  overflow-wrap: anywhere;
+}
+
+@media (min-width: 761px) and (max-width: 980px) {
+  .core-diagram {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .core-node:not(:nth-child(2n)) {
+    border-right: 1px solid var(--line);
+  }
+}
+
+/* About: tighten the editorial split so the heading and company statement
+   read as one composition instead of two distant islands. */
+@media (min-width: 901px) {
+  .about-intro {
+    grid-template-columns: minmax(0, 1.08fr) minmax(360px, .92fr);
+    gap: 36px;
+    padding: 42px 0 30px;
+  }
+
+  .about-intro h1 {
+    max-width: 720px;
+  }
+
+  .about-intro .lead {
+    max-width: 520px;
+    justify-self: end;
+  }
+
+  .about-editorial-grid {
+    grid-template-columns: minmax(0, .88fr) minmax(0, 1.12fr);
+    gap: 40px;
+  }
+}
+
+/* Legal: use the same compact page rhythm as the rest of the site. */
+.legal-copy {
+  max-width: 900px;
+  padding: 48px 0 64px;
+}
+
+.legal-copy h1 {
+  max-width: 760px;
+  margin: 12px 0 22px;
+  font-size: clamp(2.5rem, 4.6vw, 4rem);
+  line-height: 1;
+}
+
+.legal-copy > p:first-of-type {
+  max-width: 72ch;
+  margin-bottom: 34px;
+  font-size: 1rem;
+  line-height: 1.62;
+}
+
+.legal-copy h2 {
+  margin-top: 38px;
+  margin-bottom: 10px;
+  font-size: clamp(1.25rem, 1.8vw, 1.6rem);
+}
+
+.legal-copy p {
+  max-width: 78ch;
+}
+
+/* Solutions: the operating model has exactly four stages. Do not reserve a
+   fifth empty grid column. */
+.flow-grid:has(> :nth-child(4):last-child) {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.flow-grid:has(> :nth-child(4):last-child) > .flow-card {
+  min-width: 0;
+}
+
+@media (max-width: 980px) and (min-width: 761px) {
+  .flow-grid:has(> :nth-child(4):last-child) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Contact: keep the hero and directory visually connected and use the full
+   content width without leaving a large unused right-hand field. */
+@media (min-width: 901px) {
+  .contact-intro {
+    grid-template-columns: minmax(0, 1.08fr) minmax(360px, .92fr);
+    gap: 36px;
+    padding: 42px 0 30px;
+  }
+
+  .contact-intro h1 {
+    max-width: 680px;
+    margin-bottom: 0;
+  }
+
+  .contact-intro .lead {
+    max-width: 520px;
+    justify-self: end;
+  }
+
+  .contact-directory article {
+    grid-template-columns: 38px minmax(190px, .8fr) minmax(240px, 1fr);
+    gap: 18px;
+  }
+
+  .contact-directory article > a {
+    justify-self: end;
+    min-width: 240px;
+    text-align: left;
+  }
+}
+
+@media (min-width: 761px) and (max-width: 900px) {
+  .contact-directory article {
+    grid-template-columns: 34px minmax(0, 1fr) minmax(220px, auto);
+    gap: 12px;
+  }
+}
+
+/* Homepage governed-execution and governance sections: use the available
+   width, remove the large dead field, and make explanatory controls clearly
+   interactive without turning the page into a card wall. */
+.spatial-node {
+  appearance: none;
+  width: 100%;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.spatial-node:hover,
+.spatial-node:focus-visible,
+.spatial-node.is-active {
+  background: var(--surface);
+  border-color: var(--accent);
+}
+
+.spatial-map-detail,
+.governance-evidence-detail {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 24px;
+  margin-top: 16px;
+  padding: 20px 22px;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+}
+
+.spatial-map-detail h3 {
+  margin: 6px 0 8px;
+}
+
+.spatial-map-detail p,
+.governance-evidence-detail p {
+  max-width: 78ch;
+  margin: 0 0 12px;
+  color: var(--text-soft);
+}
+
+.spatial-map-detail > .text-link,
+.governance-evidence-detail > .text-link {
+  align-self: start;
+  min-width: 36px;
+  min-height: 36px;
+  font-size: 1.35rem;
+}
+
+.evidence-story-interactive {
+  align-items: start;
+}
+
+.evidence-story-copy {
+  max-width: 470px;
+}
+
+.governance-evidence {
+  min-width: 0;
+}
+
+.governance-evidence-hint {
+  max-width: 62ch;
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+.evidence-ledger-interactive {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border-top: 1px solid var(--line);
+  border-left: 1px solid var(--line);
+}
+
+.evidence-control {
+  appearance: none;
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 14px;
+  min-height: 132px;
+  padding: 18px;
+  border: 0;
+  border-right: 1px solid var(--line);
+  border-bottom: 1px solid var(--line);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.evidence-control > span {
+  color: var(--muted);
+  font-size: .75rem;
+}
+
+.evidence-control strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.evidence-control p {
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.evidence-control:hover,
+.evidence-control:focus-visible,
+.evidence-control.is-active {
+  background: var(--surface);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+@media (min-width: 901px) {
+  .architecture-story {
+    grid-template-columns: minmax(300px, .72fr) minmax(0, 1.28fr);
+    gap: 40px;
+    align-items: start;
+  }
+
+  .evidence-story-interactive {
+    grid-template-columns: minmax(300px, .7fr) minmax(0, 1.3fr);
+    gap: 40px;
+  }
+}
+
+@media (max-width: 900px) {
+  .evidence-ledger-interactive {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .legal-copy {
+    padding: 32px 0 48px;
+  }
+
+  .legal-copy h1 {
+    margin-top: 10px;
+    font-size: clamp(2.15rem, 10vw, 3rem);
+  }
+
+  .flow-grid:has(> :nth-child(4):last-child),
+  .core-diagram {
+    grid-template-columns: 1fr;
+  }
+
+  .contact-directory article > a {
+    overflow-wrap: anywhere;
+  }
+
+  .spatial-map-detail,
+  .governance-evidence-detail {
+    grid-template-columns: 1fr;
+  }
+
+  .evidence-control {
+    min-height: 0;
+  }
+}

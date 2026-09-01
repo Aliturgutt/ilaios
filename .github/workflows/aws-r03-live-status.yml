@@ -1,0 +1,30 @@
+name: AWS R03 live status
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/aws-r03-live-status.yml'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  status:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          role-to-assume: arn:aws:iam::101180464425:role/ILAIOS-GitHub-Deploy-Role
+          aws-region: eu-central-1
+      - name: Report R03 live state read-only
+        run: |
+          set -euo pipefail
+          SERVICE_JSON="$(aws ecs describe-services --region eu-central-1 --cluster ilaios-r01-canary --services ilaios-r01-canary --output json)"
+          printf '%s' "$SERVICE_JSON" | jq '{status:.services[0].status,desired:.services[0].desiredCount,running:.services[0].runningCount,pending:.services[0].pendingCount,taskDefinition:.services[0].taskDefinition,deployments:[.services[0].deployments[]|{status,rolloutState,desiredCount,runningCount,pendingCount,taskDefinition}],events:.services[0].events[0:8]}'
+          TASKDEF="$(printf '%s' "$SERVICE_JSON" | jq -r '.services[0].taskDefinition')"
+          aws ecs describe-task-definition --region eu-central-1 --task-definition "$TASKDEF" --query 'taskDefinition.containerDefinitions[?name==`runtime`].environment[?name==`ILAIOS_RELEASE_STATE`].[name,value]' --output json
+          TG_ARN="$(aws elbv2 describe-target-groups --region eu-central-1 --names ilaios-r01-canary --query 'TargetGroups[0].TargetGroupArn' --output text)"
+          aws elbv2 describe-target-health --region eu-central-1 --target-group-arn "$TG_ARN" --query 'TargetHealthDescriptions[].{target:Target.Id,port:Target.Port,state:TargetHealth.State,reason:TargetHealth.Reason}' --output json

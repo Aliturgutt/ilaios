@@ -1,0 +1,4 @@
+ruff check . -> All checks passed
+mypy --strict src tests -> Success: no issues found in 143 source files
+pre-commit run --all-files -> all hooks Passed
+git diff --check -> PASS

@@ -1,0 +1,17 @@
+# Default repository owner
+* @Aliturgutt
+
+# Active canonical documentation authorities
+/README.md @Aliturgutt
+/docs/DOCUMENTATION_INDEX.md @Aliturgutt
+/docs/canonical/** @Aliturgutt
+/docs/governance/** @Aliturgutt
+/docs/security/** @Aliturgutt
+/docs/operations/** @Aliturgutt
+/docs/adr/** @Aliturgutt
+
+# Release-sensitive boundaries
+/dev/openclaw/MASTER_OPENCLAW.md @Aliturgutt
+/dev/openclaw/execution_plan.yaml @Aliturgutt
+/.github/workflows/** @Aliturgutt
+/infra/** @Aliturgutt

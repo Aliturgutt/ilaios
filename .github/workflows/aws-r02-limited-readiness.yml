@@ -1,0 +1,149 @@
+name: AWS R02 guarded LIMITED readiness
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [master]
+    paths:
+      - '.github/r02-limited-promotion-approval.json'
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: release-r02-limited-readiness
+  cancel-in-progress: false
+
+jobs:
+  readiness:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: eu-central-1
+      AWS_ACCOUNT_ID: '101180464425'
+      R01_CLUSTER: ilaios-r01-canary
+      R01_SERVICE: ilaios-r01-canary
+      R01_TARGET_GROUP: ilaios-r01-canary
+      R01_ECR_REPOSITORY: ilaios-r01-canary
+      R01_SIGNING_PROFILE: ILAIOS_R01_ECR
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Validate explicit R02 human promotion approval
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('.github/r02-limited-promotion-approval.json')
+          if not path.is_file():
+              raise SystemExit('Missing explicit R02 approval file.')
+          data = json.loads(path.read_text(encoding='utf-8'))
+          if data.get('approval') != 'RELEASE.R02 LIMITED PROMOTION APPROVED':
+              raise SystemExit('Explicit RELEASE.R02 LIMITED promotion approval missing.')
+          if data.get('package_id') != 'RELEASE.R02.v1':
+              raise SystemExit('Approval is not bound to RELEASE.R02.v1.')
+          print('R02_HUMAN_PROMOTION_APPROVAL_PASS')
+          PY
+
+      - name: Verify canonical R01 dependency evidence
+        run: |
+          set -euo pipefail
+          EVIDENCE='dev/openclaw/evidence/RELEASE.R01/decision.yaml'
+          test -f "$EVIDENCE"
+          grep -Fxq 'milestone_id: RELEASE.R01' "$EVIDENCE"
+          grep -Fxq 'package_id: RELEASE.R01.v1' "$EVIDENCE"
+          grep -Fxq 'status: PASS' "$EVIDENCE"
+          grep -Fxq 'readiness: COMPLETE' "$EVIDENCE"
+          grep -Fxq 'release_state: CANARY_DEPLOYED_HEALTHY' "$EVIDENCE"
+          grep -Fxq 'deployment_performed: true' "$EVIDENCE"
+          grep -Fxq 'target_health: healthy' "$EVIDENCE"
+          echo 'R01_DEPENDENCY_EVIDENCE_PASS'
+
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          role-to-assume: arn:aws:iam::101180464425:role/ILAIOS-GitHub-Deploy-Role
+          aws-region: eu-central-1
+
+      - name: Verify live R01 AWS baseline before any R02 mutation
+        id: baseline
+        run: |
+          set -euo pipefail
+          test "$(aws sts get-caller-identity --query Account --output text)" = "$AWS_ACCOUNT_ID"
+
+          read -r STATUS DESIRED RUNNING PENDING TASKDEF < <(
+            aws ecs describe-services \
+              --region "$AWS_REGION" \
+              --cluster "$R01_CLUSTER" \
+              --services "$R01_SERVICE" \
+              --query 'services[0].[status,to_string(desiredCount),to_string(runningCount),to_string(pendingCount),taskDefinition]' \
+              --output text
+          )
+          test "$STATUS" = 'ACTIVE'
+          test "$DESIRED" = "$RUNNING"
+          test "$PENDING" = '0'
+          test "$RUNNING" -ge 1
+
+          TG_ARN="$(aws elbv2 describe-target-groups --region "$AWS_REGION" --names "$R01_TARGET_GROUP" --query 'TargetGroups[0].TargetGroupArn' --output text)"
+          HEALTHY_COUNT="$(aws elbv2 describe-target-health --region "$AWS_REGION" --target-group-arn "$TG_ARN" --query 'length(TargetHealthDescriptions[?TargetHealth.State==`healthy`])' --output text)"
+          TOTAL_COUNT="$(aws elbv2 describe-target-health --region "$AWS_REGION" --target-group-arn "$TG_ARN" --query 'length(TargetHealthDescriptions)' --output text)"
+          test "$TOTAL_COUNT" -ge 1
+          test "$HEALTHY_COUNT" = "$TOTAL_COUNT"
+
+          IMAGE_DIGEST="$(awk '/^immutable_image_digest:/ {print $2}' dev/openclaw/evidence/RELEASE.R01/decision.yaml)"
+          test -n "$IMAGE_DIGEST"
+          test "$(aws ecr describe-images --region "$AWS_REGION" --repository-name "$R01_ECR_REPOSITORY" --image-ids imageDigest="$IMAGE_DIGEST" --query 'imageDetails[0].imageDigest' --output text)" = "$IMAGE_DIGEST"
+
+          read -r SCAN_STATUS CRITICAL HIGH < <(
+            aws ecr describe-image-scan-findings \
+              --region "$AWS_REGION" \
+              --repository-name "$R01_ECR_REPOSITORY" \
+              --image-id imageDigest="$IMAGE_DIGEST" \
+              --query '[imageScanStatus.status,to_string(imageScanFindings.findingSeverityCounts.CRITICAL || `0`),to_string(imageScanFindings.findingSeverityCounts.HIGH || `0`)]' \
+              --output text
+          )
+          test "$SCAN_STATUS" = 'COMPLETE'
+          test "$CRITICAL" = '0'
+          test "$HIGH" = '0'
+
+          PROFILE_ARN="$(aws signer get-signing-profile --region "$AWS_REGION" --profile-name "$R01_SIGNING_PROFILE" --query 'arn' --output text)"
+          SIGN_STATUS="$(aws ecr describe-image-signing-status --region "$AWS_REGION" --repository-name "$R01_ECR_REPOSITORY" --image-id imageDigest="$IMAGE_DIGEST" --query "signingStatuses[?signingProfileArn=='${PROFILE_ARN}'].status | [0]" --output text)"
+          test "$SIGN_STATUS" = 'COMPLETE'
+
+          {
+            echo "### RELEASE.R02 pre-promotion baseline"
+            echo "- R01 service: $STATUS"
+            echo "- ECS desired/running/pending: $DESIRED/$RUNNING/$PENDING"
+            echo "- Target health: $HEALTHY_COUNT/$TOTAL_COUNT healthy"
+            echo "- Task definition: $TASKDEF"
+            echo "- Image digest: $IMAGE_DIGEST"
+            echo "- ECR scan: $SCAN_STATUS; CRITICAL=$CRITICAL; HIGH=$HIGH"
+            echo "- ECR managed signing: $SIGN_STATUS"
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo 'R02_LIVE_BASELINE_PASS'
+
+      - name: Fail closed unless LIMITED exposure is machine-defined
+        run: |
+          set -euo pipefail
+          MATCHES="$(grep -RInE '(enable_limited|limited_(traffic|percent|percentage|tenant|tenants|cidr|cidrs|exposure|desired_count)|release_state[^A-Za-z0-9_]+LIMITED)' infra 2>/dev/null || true)"
+          if [ -z "$MATCHES" ]; then
+            {
+              echo ''
+              echo '### R02 BLOCKED — fail closed'
+              echo 'R01 is healthy and the R02 human promotion approval is valid, but the repository has no machine-defined LIMITED exposure mechanism under infra/**.'
+              echo 'No traffic percentage, tenant/allowlist expansion, task-count expansion, or public exposure was invented. No AWS mutation was performed.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo 'R02_BLOCKED_MISSING_MACHINE_DEFINED_LIMITED_EXPOSURE'
+            exit 1
+          fi
+          printf '%s\n' "$MATCHES"
+          echo 'R02_MACHINE_DEFINED_LIMITED_EXPOSURE_FOUND'
+
+      - name: Promotion remains intentionally unapplied in readiness gate
+        run: |
+          echo 'R02_READINESS_PASS_PROMOTION_NOT_YET_APPLIED'
+          echo 'This gate is read-only by design; a separate guarded apply must consume the exact machine-defined LIMITED exposure.' >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,12 @@
+RELEASE.R03 deployment pre-state
+branch=master
+dependency_release=RELEASE.R02
+dependency_state=LIMITED_DEPLOYED_HEALTHY
+prior_task_definition=arn:aws:ecs:eu-central-1:101180464425:task-definition/ilaios-r01-canary:6
+prior_desired_count=2
+prior_running_count=2
+prior_pending_count=0
+immutable_image_digest=sha256:0b540cee1e9b7a8f6bf6573eb3a0b15b5e5dd374b693c2738f78c0670121428f
+network_allowlist=176.217.181.22/32 only
+production_workflow_head=a743a253e4bf1455c1dbadcf18129c7186414cce
+production_workflow_run_id=31457550463

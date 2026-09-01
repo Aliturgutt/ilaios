@@ -1,0 +1,4 @@
+ruff check .: PASS
+mypy --strict src tests: PASS, 129 source files
+pre-commit run --all-files: PASS
+git diff --check: PASS

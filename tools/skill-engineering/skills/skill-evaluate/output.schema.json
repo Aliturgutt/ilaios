@@ -1,0 +1,14 @@
+{
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "status": {"type": "string", "enum": ["EVALUATED", "BLOCKED"]},
+    "candidate_digest": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
+    "pass_rate": {"type": "number", "minimum": 0, "maximum": 1},
+    "assertions_passed": {"type": "integer", "minimum": 0},
+    "assertions_total": {"type": "integer", "minimum": 0},
+    "evidence_ids": {"type": "array", "items": {"type": "string"}},
+    "unresolved_blockers": {"type": "array", "items": {"type": "string"}}
+  },
+  "required": ["status", "candidate_digest", "pass_rate", "assertions_passed", "assertions_total", "evidence_ids", "unresolved_blockers"]
+}

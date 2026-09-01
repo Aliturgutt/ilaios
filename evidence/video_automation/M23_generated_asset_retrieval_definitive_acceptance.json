@@ -1,0 +1,64 @@
+{
+    "schema_version":  "1.0",
+    "evidence_type":  "definitive_acceptance",
+    "project":  "HermesEnterpriseOS",
+    "subsystem":  "video_automation",
+    "module_id":  "M23",
+    "module_name":  "Generated Asset Retrieval",
+    "acceptance_status":  "accepted",
+    "accepted_branch":  "master",
+    "accepted_head":  "39b7937b3b767468c67c2fdb5fc98b6586adbb42",
+    "historical_implementation_commit":  "fd800804abe5c3f8d46da1ced38341a766196ccf",
+    "historical_implementation_message":  "feat: implement generated asset retrieval",
+    "canonical_implementation":  {
+                                     "path":  "src/video_automation/generated_asset_retrieval.py",
+                                     "git_blob_sha":  "a059f062812e3d3d226449291404669bfadcc039",
+                                     "sha256":  "b2d605cc022b6ed19be2e38f684306409eb53bc0c7bf28a97089671dc6a261e0"
+                                 },
+    "canonical_tests":  {
+                            "path":  "tests/test_video_automation_generated_asset_retrieval.py",
+                            "git_blob_sha":  "4e3e6d8b7e31ab3a3c0bd1f84f53a13c50971f67",
+                            "sha256":  "6f6f68b6fbdcea36a7c058f263f096f4f03585bbd2aa1501702db4afc179d361"
+                        },
+    "validated_capabilities":  [
+                                   "provider_specific_retriever_adapter_boundary",
+                                   "standard_library_https_transport",
+                                   "https_only_generated_asset_urls",
+                                   "deterministic_local_file_naming",
+                                   "atomic_part_file_replacement",
+                                   "sha256_content_evidence",
+                                   "immutable_retrieval_manifest",
+                                   "dispatch_plan_identity_validation",
+                                   "episode_identity_validation",
+                                   "source_asset_identity_validation",
+                                   "conflicting_existing_content_rejection",
+                                   "content_type_extension_mapping",
+                                   "fail_closed_validation"
+                               ],
+    "excluded_responsibilities":  [
+                                      "provider_selection",
+                                      "generation_job_polling",
+                                      "generation_outcome_inference",
+                                      "media_codec_probing",
+                                      "media_technical_validation",
+                                      "media_repair",
+                                      "retry_orchestration"
+                                  ],
+    "validation_commands":  [
+                                "python -m py_compile src/video_automation/generated_asset_retrieval.py tests/test_video_automation_generated_asset_retrieval.py",
+                                "python -m pytest -q tests/test_video_automation_generated_asset_retrieval.py",
+                                "python -m pytest -q tests/test_video_automation_generation_dispatch_planning.py tests/test_video_automation_generation_result_ingestion.py tests/test_video_automation_generated_asset_retrieval.py tests/test_video_automation_media_technical_validation.py",
+                                "python -m ruff check src/video_automation/generated_asset_retrieval.py tests/test_video_automation_generated_asset_retrieval.py",
+                                "python -m mypy --strict src/video_automation/generated_asset_retrieval.py tests/test_video_automation_generated_asset_retrieval.py",
+                                "python -m pytest -q",
+                                "python -m ruff check .",
+                                "python -m mypy --strict src",
+                                "pre-commit run --all-files"
+                            ],
+    "repository_mutation":  {
+                                "production_code_changed":  false,
+                                "test_code_changed":  false,
+                                "evidence_file_added":  true
+                            },
+    "next_module":  "M24_MEDIA_TECHNICAL_VALIDATION"
+}

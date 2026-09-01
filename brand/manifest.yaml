@@ -1,0 +1,87 @@
+schema_version: "1.0"
+brand: ILAIOS
+status: CANONICAL
+authority: brand/manifest.yaml
+canonical_symbol_master: brand/assets/03-ilaios-symbol-dark.jpg
+
+assets:
+  - id: BRAND.COLOR_SYSTEM
+    file: brand/assets/01-ilaios-brand-color-system.png
+    role: brand_color_system
+    dimensions: 1920x1280
+    canonical: true
+  - id: BRAND.PRIMARY_HORIZONTAL_DARK
+    file: brand/assets/02-ilaios-primary-horizontal-dark.jpg
+    role: primary_horizontal_dark
+    dimensions: 2400x800
+    canonical: true
+  - id: BRAND.SYMBOL_DARK
+    file: brand/assets/03-ilaios-symbol-dark.jpg
+    role: canonical_symbol_master
+    dimensions: 1024x1024
+    canonical: true
+    derivation_policy: scale_only_no_crop_no_recolor_no_redraw
+  - id: BRAND.SYMBOL_LIGHT
+    file: brand/assets/04-ilaios-symbol-light.jpg
+    role: symbol_light
+    dimensions: 1024x1024
+    canonical: true
+  - id: BRAND.APP_ICON
+    file: brand/assets/05-ilaios-app-icon.jpg
+    role: app_icon_master
+    dimensions: 1024x1024
+    canonical: true
+    derivation_policy: scale_only_no_crop_no_recolor_no_redraw
+  - id: BRAND.FAVICON_MASTER
+    file: brand/assets/06-ilaios-favicon-master.jpg
+    role: favicon_master
+    dimensions: 1024x1024
+    canonical: true
+  - id: BRAND.LINKEDIN_COMPANY_LOGO
+    file: brand/assets/07-ilaios-linkedin-company-logo.jpg
+    role: linkedin_company_logo
+    dimensions: 400x400
+    canonical: true
+  - id: BRAND.LINKEDIN_COMPANY_COVER
+    file: brand/assets/08-ilaios-linkedin-company-cover.jpg
+    role: linkedin_company_cover
+    dimensions: 4200x700
+    canonical: true
+  - id: BRAND.LINKEDIN_PERSONAL_COVER
+    file: brand/assets/09-ilaios-linkedin-personal-cover.jpg
+    role: linkedin_personal_cover
+    dimensions: 1584x396
+    canonical: true
+  - id: BRAND.GITHUB_SOCIAL_PREVIEW
+    file: brand/assets/10-ilaios-github-social-preview.jpg
+    role: github_social_preview
+    dimensions: 1280x640
+    canonical: true
+  - id: BRAND.WEBSITE_HERO
+    file: brand/assets/11-ilaios-website-hero.jpg
+    role: website_hero
+    dimensions: 1920x1080
+    canonical: true
+  - id: BRAND.OFFICIAL_BRAND_BOARD
+    file: brand/assets/12-ilaios-official-brand-board.jpg
+    role: official_brand_board
+    dimensions: 1920x1280
+    canonical: true
+  - id: BRAND.PRIMARY_HORIZONTAL_LIGHT
+    file: brand/assets/13-ilaios-primary-horizontal-light.jpg
+    role: primary_horizontal_light
+    dimensions: 2400x800
+    canonical: true
+
+source_archive:
+  expected_path: brand/source/ilaios-full-logo.zip
+  contains_html_pdf_raster_exports: true
+  canonical_authority: false
+
+runtime_derivatives:
+  - file: apps/desktop/windows/runner/resources/app_icon.ico
+    role: windows_app_icon
+    canonical: false
+    source: brand/assets/05-ilaios-app-icon.jpg
+    derivation_policy: scale_only_no_crop_no_recolor_no_redraw
+    generation: apps/desktop/tool/generate_windows_icon.ps1

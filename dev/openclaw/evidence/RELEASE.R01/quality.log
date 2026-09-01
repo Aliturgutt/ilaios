@@ -1,0 +1,8 @@
+ruff check .: PASS
+mypy --strict src tests: PASS (160 source files)
+pre-commit run --all-files: PASS
+git diff --check: PASS
+OpenTofu validate: PASS
+YAML parse: PASS
+allowed paths only: PASS
+canonical authorities unchanged: PASS

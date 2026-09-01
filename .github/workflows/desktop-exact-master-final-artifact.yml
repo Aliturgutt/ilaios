@@ -1,0 +1,158 @@
+name: Desktop Exact Master Final Artifact
+
+# Desktop Home motion post-merge exact-master recertification trigger; no package behavior change.
+# Final Agent closure exact-master recertification trigger; no package behavior change.
+# Agent closure exact-master co-certification retrigger for final Desktop package proof.
+# Co-certify Desktop package and evidence-visible Operations/Meta receipt on one exact master revision.
+# Unified Web + Operations/Meta + Desktop exact-master closure co-certification trigger.
+# Final current-master Desktop artifact recertification trigger; no package behavior change.
+# Final same-SHA Desktop artifact recertification trigger; no package behavior change.
+# Exact-current d2d9eb32 Desktop artifact recertification trigger; no package behavior change.
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/desktop-exact-master-final-artifact.yml'
+      - 'tools/desktop/verify_and_package_combined.ps1'
+      - 'tools/desktop/apply_combined_typography_reference_patch.py'
+      - 'tools/desktop/fix_combined_analyzer.py'
+      - 'tools/desktop/normalize_combined_typography.py'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+  statuses: write
+
+concurrency:
+  group: desktop-exact-master-final-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows-exact-master-package:
+    if: github.ref == 'refs/heads/master'
+    runs-on: windows-latest
+    timeout-minutes: 55
+
+    steps:
+      - name: Checkout exact master source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Install pinned Flutter SDK
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $flutter = Join-Path $env:RUNNER_TEMP 'flutter'
+          git init $flutter
+          git -C $flutter remote add origin https://github.com/flutter/flutter.git
+          git -C $flutter fetch --depth 1 origin refs/tags/3.44.9:refs/tags/3.44.9
+          git -C $flutter checkout --detach 3.44.9
+          $resolved = (git -C $flutter rev-parse HEAD).Trim()
+          if ($resolved -ne '6b182d2c7585eba26d4edce0f97630effd256c33') {
+            throw "Flutter 3.44.9 resolved to unexpected revision: $resolved"
+          }
+          (Join-Path $flutter 'bin') | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify and package exact-master Desktop runtime
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./tools/desktop/verify_and_package_combined.ps1 -SourceSha '${{ github.sha }}' -RunId '${{ github.run_id }}'
+
+      - name: Upload exact-master Desktop ZIP and SHA256
+        id: upload_final_artifact
+        if: success()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-exact-master-final-${{ github.sha }}-${{ github.run_id }}
+          path: |
+            artifacts/ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip
+            artifacts/ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip.sha256
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Publish exact-master Desktop artifact run status
+        if: success()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $body = @{
+            state = 'success'
+            context = 'ilaios/desktop-exact-master-final-artifact'
+            description = "run $env:RUN_ID artifact uploaded for $($env:CURRENT_SHA.Substring(0, 12))"
+            target_url = "https://github.com/$env:REPOSITORY/actions/runs/$env:RUN_ID"
+          } | ConvertTo-Json -Compress
+          Invoke-RestMethod -Method Post -Uri "https://api.github.com/repos/$env:REPOSITORY/statuses/$env:CURRENT_SHA" -Headers $headers -Body $body -ContentType 'application/json' | Out-Null
+
+      - name: Publish Desktop package checkpoint to issue 539
+        if: always()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+          ARTIFACT_ID: ${{ steps.upload_final_artifact.outputs.artifact-id }}
+          ARTIFACT_NAME: desktop-exact-master-final-${{ github.sha }}-${{ github.run_id }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $runUrl = "https://github.com/$env:REPOSITORY/actions/runs/$env:RUN_ID"
+          $lines = @(
+            'Desktop exact-master package workflow checkpoint',
+            '',
+            "- source SHA: ``$env:CURRENT_SHA``",
+            "- workflow run: ``$env:RUN_ID`` ($runUrl)",
+            "- job status: ``$env:JOB_STATUS``"
+          )
+          if ($env:JOB_STATUS -eq 'success') {
+            $zips = @(Get-ChildItem -Path artifacts -Filter 'ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip' -File)
+            $shaFiles = @(Get-ChildItem -Path artifacts -Filter 'ILAIOS_DESKTOP_COMBINED_CI_VERIFIED_*.zip.sha256' -File)
+            if ($zips.Count -ne 1 -or $shaFiles.Count -ne 1) {
+              throw "Expected exactly one final ZIP and one SHA256 file; found ZIP=$($zips.Count) SHA=$($shaFiles.Count)"
+            }
+            if (-not $env:ARTIFACT_ID) {
+              throw 'Successful upload did not expose an artifact ID.'
+            }
+            $declared = (Get-Content $shaFiles[0].FullName -Raw).Trim()
+            $match = [regex]::Match($declared, '(?i)\b[0-9a-f]{64}\b')
+            if (-not $match.Success) {
+              throw 'SHA256 sidecar does not contain a 64-character hexadecimal digest.'
+            }
+            $expected = $match.Value.ToLowerInvariant()
+            $actual = (Get-FileHash -Algorithm SHA256 $zips[0].FullName).Hash.ToLowerInvariant()
+            if ($actual -ne $expected) {
+              throw "Final ZIP digest mismatch. Expected=$expected Actual=$actual"
+            }
+            $lines += @(
+              "- artifact ID: ``$env:ARTIFACT_ID``",
+              "- artifact name: ``$env:ARTIFACT_NAME``",
+              "- ZIP: ``$($zips[0].Name)``",
+              "- ZIP SHA256: ``$actual``",
+              '- repository package evidence: VERIFIED; local Windows install/runtime smoke remains a human acceptance step'
+            )
+          }
+          else {
+            $lines += '- artifact: not accepted; inspect the exact workflow run before any retry'
+          }
+          $payload = @{ body = ($lines -join "`n") } | ConvertTo-Json -Compress
+          Invoke-RestMethod -Method Post -Uri "https://api.github.com/repos/$env:REPOSITORY/issues/539/comments" -Headers $headers -Body $payload -ContentType 'application/json' | Out-Null

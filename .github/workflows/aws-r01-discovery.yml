@@ -1,0 +1,38 @@
+name: AWS R01 discovery
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - '.github/workflows/aws-r01-discovery.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  discover:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          role-to-assume: arn:aws:iam::101180464425:role/ILAIOS-GitHub-Deploy-Role
+          aws-region: eu-central-1
+      - name: Read-only R01 discovery
+        run: |
+          set -euo pipefail
+          echo '=== CALLER ==='
+          aws sts get-caller-identity
+          echo '=== ACM ==='
+          aws acm list-certificates --region eu-central-1 --certificate-statuses ISSUED || true
+          echo '=== SECRETS ==='
+          aws secretsmanager list-secrets --region eu-central-1 --query 'SecretList[].{Name:Name,ARN:ARN}' || true
+          echo '=== ECR REPOSITORIES ==='
+          aws ecr describe-repositories --region eu-central-1 --query 'repositories[].{Name:repositoryName,URI:repositoryUri}' || true
+          echo '=== ECR IMAGES ==='
+          aws ecr describe-images --region eu-central-1 --repository-name ilaios-r01-canary --query 'imageDetails[].{Digest:imageDigest,Tags:imageTags,Pushed:imagePushedAt}' || true

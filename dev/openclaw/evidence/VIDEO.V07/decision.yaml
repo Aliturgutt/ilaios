@@ -1,0 +1,12 @@
+milestone_id: VIDEO.V07
+package_id: VIDEO.V07.v1
+legacy_traceability: M07
+status: PASS
+dependency_evidence: dev/openclaw/evidence/VIDEO.V06/decision.yaml
+repository_evidence:
+  production_code: src/video_automation/script_generation.py
+  tests: tests/test_video_automation_script_generation.py
+  history: 380909d
+validations: {targeted_video_tests: PASS, full_regression: PASS, ruff: PASS, mypy_strict: PASS, pre_commit: PASS, git_diff_check: PASS}
+forbidden_paths_modified: false
+code_repair_required: false

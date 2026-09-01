@@ -1,0 +1,12 @@
+milestone_id: PLATFORM.P17
+package_id: PLATFORM.P17.v1
+status: PASS
+dependency_evidence: dev/openclaw/evidence/PLATFORM.P16/decision.yaml
+scope_evidence:
+  golden_workflow: services/integrations/web_factory.py
+  execution_grant_required: true
+  deterministic_official_site_artifact: true
+  canonical_page_acceptance: true
+  machine_readable_acceptance: true
+validations: {targeted_tests: PASS, full_regression: PASS, ruff: PASS, mypy_strict: PASS, pre_commit: PASS, git_diff_check: PASS}
+canonical_authorities_unchanged: true

@@ -1,0 +1,200 @@
+/* ILAIOS Website V2 — Explore, architecture and technical-reading surfaces. */
+
+/* Editorial card groups used by Solutions, Trust and Documentation. */
+.grid.two-up {
+  gap: 14px !important;
+  border-top: 0 !important;
+}
+.grid.two-up > .card {
+  min-height: 168px !important;
+  padding: 22px !important;
+  border: 1px solid var(--v2-line) !important;
+  border-radius: var(--v2-radius) !important;
+  background: #0C131B !important;
+}
+.grid.two-up > .card:nth-child(n) {
+  padding-left: 22px !important;
+  padding-right: 22px !important;
+  border-right: 1px solid var(--v2-line) !important;
+}
+.grid.two-up > .card:hover { background: var(--v2-panel-3) !important; border-color: var(--v2-line-strong) !important; }
+.grid.two-up > .card h3 { font-size: 1.05rem !important; margin-bottom: 9px !important; }
+.grid.two-up > .card p { margin-bottom: 0; line-height: 1.55; }
+.grid.two-up > .card ul { margin: 16px 0 0; padding-left: 18px; color: var(--v2-soft); }
+.grid.two-up > .card li { margin: 7px 0; color: var(--v2-muted); }
+
+/* Three-column trust posture stays lighter than a dashboard card wall. */
+.grid:not(.two-up) > .card {
+  padding: 22px !important;
+  border: 1px solid var(--v2-line) !important;
+  border-radius: var(--v2-radius) !important;
+  background: #0C131B !important;
+}
+.grid:not(.two-up) > .card:hover { background: var(--v2-panel-3) !important; }
+
+/* Resources become editorial article tiles. */
+.grid:has(> .detail-link-card) {
+  gap: 14px !important;
+  border-top: 0 !important;
+}
+.grid:has(> .detail-link-card) > .detail-link-card {
+  min-height: 250px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  padding: 24px !important;
+  border: 1px solid var(--v2-line) !important;
+  border-radius: var(--v2-radius) !important;
+  background: #0C131B !important;
+}
+.grid:has(> .detail-link-card) > .detail-link-card:nth-child(n) { padding-left: 24px !important; padding-right: 24px !important; }
+.grid:has(> .detail-link-card) > .detail-link-card:hover {
+  background: var(--v2-panel-3) !important;
+  border-color: rgba(0,194,209,.5) !important;
+}
+.grid:has(> .detail-link-card) > .detail-link-card > span {
+  margin: 0 0 34px !important;
+  color: var(--v2-cyan) !important;
+}
+.grid:has(> .detail-link-card) > .detail-link-card h2 {
+  margin-bottom: 12px !important;
+  font-size: clamp(1.45rem, 2vw, 1.9rem) !important;
+}
+.grid:has(> .detail-link-card) > .detail-link-card p { margin-bottom: 24px !important; }
+.grid:has(> .detail-link-card) > .detail-link-card strong {
+  margin-top: auto;
+  color: var(--v2-cyan) !important;
+  font-size: .82rem;
+}
+
+/* How It Works: four user-facing steps should read as a single product journey. */
+.journey-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 0 !important;
+  border-top: 1px solid var(--v2-line-strong) !important;
+  border-bottom: 1px solid var(--v2-line) !important;
+}
+.journey-grid > .journey-card {
+  min-height: 178px !important;
+  padding: 22px 20px !important;
+  border: 0 !important;
+  border-right: 1px solid var(--v2-line) !important;
+  background: transparent !important;
+}
+.journey-grid > .journey-card:last-child { border-right: 0 !important; }
+.journey-grid > .journey-card > span {
+  display: block !important;
+  margin-bottom: 30px !important;
+  color: var(--v2-cyan) !important;
+  font-size: .67rem !important;
+}
+.journey-grid > .journey-card h3 { font-size: 1rem !important; margin-bottom: 8px !important; }
+.journey-grid > .journey-card p { margin: 0; line-height: 1.52; }
+
+.verification-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  border-top: 1px solid var(--v2-line-strong) !important;
+  border-left: 1px solid var(--v2-line) !important;
+}
+.verification-list > div {
+  min-height: 58px !important;
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 10px !important;
+  padding: 12px 14px !important;
+  border: 0 !important;
+  border-right: 1px solid var(--v2-line) !important;
+  border-bottom: 1px solid var(--v2-line) !important;
+}
+.verification-list span { color: var(--v2-cyan) !important; font-size: .64rem !important; }
+
+/* Architecture: make the flow a deliberate editorial/system split. */
+.architecture-primary {
+  display: grid !important;
+  grid-template-columns: minmax(330px, .72fr) minmax(0, 1.28fr) !important;
+  gap: clamp(44px, 5vw, 76px) !important;
+  align-items: start !important;
+}
+.architecture-primary > div:first-child > h2 { max-width: 560px; margin-bottom: 24px !important; }
+.architecture-layer-list { border-top: 1px solid var(--v2-line-strong) !important; }
+.architecture-layer-list article {
+  display: grid !important;
+  grid-template-columns: 34px minmax(150px, .42fr) minmax(0, 1fr) !important;
+  gap: 14px !important;
+  align-items: start !important;
+  padding: 14px 0 !important;
+  border-bottom: 1px solid var(--v2-line) !important;
+}
+.architecture-layer-list article > span { color: var(--v2-cyan) !important; font-size: .64rem; }
+.architecture-layer-list article > strong { font-size: .92rem; }
+.architecture-layer-list article > p { margin: 0; font-size: .84rem; line-height: 1.48; }
+
+.boundary-ledger {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  border-top: 1px solid var(--v2-line-strong) !important;
+  border-bottom: 1px solid var(--v2-line) !important;
+}
+.boundary-ledger article {
+  min-height: 128px !important;
+  padding: 20px 18px !important;
+  border-right: 1px solid var(--v2-line) !important;
+}
+.boundary-ledger article:last-child { border-right: 0 !important; }
+.boundary-ledger article > span { display: block; margin-bottom: 26px; color: var(--v2-cyan) !important; font-size: .64rem; }
+.boundary-ledger article > strong { display: block; margin-bottom: 6px; }
+.boundary-ledger article > p { margin: 0; font-size: .85rem; line-height: 1.48; }
+
+/* Core / deep-dive ledger. */
+.core-diagram {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 1px !important;
+  border: 1px solid var(--v2-line-strong) !important;
+  background: var(--v2-line) !important;
+}
+.core-diagram .core-node {
+  min-height: 184px !important;
+  padding: 22px !important;
+  border: 0 !important;
+  background: #0C131B !important;
+}
+.core-diagram .core-node:hover { background: var(--v2-panel-3) !important; }
+.core-diagram .core-node span { color: var(--v2-cyan) !important; }
+.core-diagram .core-node strong { margin-top: 24px !important; font-size: 1rem !important; }
+.core-diagram .core-node small { line-height: 1.5; }
+
+/* Keep technical callouts composed and calm. */
+.callout {
+  min-height: 150px;
+  grid-template-columns: minmax(0, 1.2fr) minmax(260px, .8fr) !important;
+  gap: 46px !important;
+  align-items: center !important;
+  padding: 28px 0 28px 24px !important;
+  border: 0 !important;
+  border-left: 3px solid var(--v2-cyan) !important;
+  background: transparent !important;
+}
+.callout h2 { max-width: 720px; }
+.callout .actions { justify-content: flex-start; }
+
+@media (max-width: 1000px) {
+  .architecture-primary { grid-template-columns: 1fr !important; gap: 34px !important; }
+  .core-diagram { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .boundary-ledger { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .callout { grid-template-columns: 1fr !important; gap: 20px !important; }
+}
+
+@media (max-width: 760px) {
+  .grid.two-up, .grid:not(.two-up), .grid:has(> .detail-link-card), .journey-grid,
+  .verification-list, .boundary-ledger, .core-diagram { grid-template-columns: 1fr !important; }
+  .grid.two-up > .card, .grid:not(.two-up) > .card,
+  .grid:has(> .detail-link-card) > .detail-link-card { min-height: 0 !important; }
+  .journey-grid > .journey-card { min-height: 0 !important; border-right: 0 !important; border-bottom: 1px solid var(--v2-line) !important; }
+  .architecture-layer-list article { grid-template-columns: 30px minmax(0, 1fr) !important; }
+  .architecture-layer-list article > p { grid-column: 2; }
+  .boundary-ledger article { min-height: 0 !important; border-right: 0 !important; border-bottom: 1px solid var(--v2-line) !important; }
+  .core-diagram .core-node { min-height: 0 !important; }
+  .callout { padding-left: 18px !important; }
+}

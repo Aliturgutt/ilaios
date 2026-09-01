@@ -1,0 +1,1 @@
+export default function Head(){return <><link rel="alternate" hrefLang="en" href="https://ilaios.com/"/><link rel="alternate" hrefLang="tr" href="https://ilaios.com/tr"/><link rel="alternate" hrefLang="x-default" href="https://ilaios.com/"/></>}

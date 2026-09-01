@@ -1,0 +1,4 @@
+branch: master
+head: 8c0aa6cfb902f342ffbc4448a2b0eb7ba8dcfb7e
+origin_master: 8c0aa6cfb902f342ffbc4448a2b0eb7ba8dcfb7e
+worktree: clean

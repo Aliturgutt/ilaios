@@ -1,0 +1,45 @@
+{
+  "schema_version": "ilaios.execution-controller.v1",
+  "task_id": "commercial-identity-closure",
+  "task_source": {
+    "type": "repo_ledger",
+    "reference": "docs/identity/COMMERCIAL_IDENTITY_CLOSURE_WORKFLOW.md"
+  },
+  "status": "BLOCKED",
+  "current_phase": "Google production Web OAuth external verification",
+  "master_sha": "1a9f82026b66e1e60c3f9f4beb3daadfdf8306ca",
+  "base_sha": "1a9f82026b66e1e60c3f9f4beb3daadfdf8306ca",
+  "head_sha": "1a9f82026b66e1e60c3f9f4beb3daadfdf8306ca",
+  "branch": null,
+  "pr": null,
+  "ci": {
+    "run_id": 33205147604,
+    "conclusion": "success",
+    "exact_sha": "1a9f82026b66e1e60c3f9f4beb3daadfdf8306ca"
+  },
+  "next_action": "Complete authorized Google production project/consent/domain/client configuration and secret provisioning, then execute real Google browser Authorization Code + PKCE callback/token exchange and bind the immutable provider subject to the incumbent canonical User/Tenant/Membership/Role/Session/Entitlement flow. Require cross-client same User/Tenant plus logout/revoke/relogin production evidence. No repository merge token is retained while waiting for this external boundary.",
+  "blocker": {
+    "type": "HUMAN",
+    "detail": "Repository-owned Google Web OAuth boundary is merged and exact-master CI is green, but Google Console production configuration, production credentials, real provider callback/token exchange and browser/session E2E are not evidenced.",
+    "human_action": "Use authorized Google Cloud ownership to verify/configure production consent, domains, exact redirect URI and production Web OAuth client credentials; then provide or run the real production browser/provider E2E without exposing secrets."
+  },
+  "repair": {
+    "retry_count": 1,
+    "last_failure_fingerprint": "execution-controller rejected non-canonical BLOCKED_EXTERNAL status and HUMAN_EXTERNAL blocker type",
+    "last_root_cause": "Reconciliation used semantic labels outside the controller schema instead of canonical BLOCKED + HUMAN values."
+  },
+  "lock": {
+    "owner": null,
+    "scope": [],
+    "acquired_at": null,
+    "expires_at": null
+  },
+  "evidence": [
+    "PR#1102 merged as 1a9f82026b66e1e60c3f9f4beb3daadfdf8306ca",
+    "exact-master ilaios/software-factory-exact-master success via run 33205147409",
+    "exact-master ilaios/required-ci-exact-master success via run 33205147604",
+    "Vercel commit status success on exact master 1a9f82026b66e1e60c3f9f4beb3daadfdf8306ca; deployment status alone is not Google OAuth/browser production verification",
+    "PR#1102 repository boundary includes Authorization Code + PKCE/state/nonce, exact redirect allowlisting, server-side token exchange, Google JWT issuer/audience/signature/expiry/nonce validation, immutable sub projection and restart-safe replay denial via incumbent Identity challenge ledger"
+  ],
+  "updated_at": "2026-08-28T20:14:30Z"
+}

@@ -1,0 +1,2 @@
+python -m pytest -q: PASS (949 passed in 93.22s)
+Required RELEASE.R01 dependency evidence reused; RELEASE.R00 tests not repeated.

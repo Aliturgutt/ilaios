@@ -1,0 +1,98 @@
+name: Desktop Local Runtime Diagnostics
+# Unified Web + Operations/Meta + Desktop exact-master closure co-certification trigger.
+# Final same-SHA Desktop runtime recertification trigger; no behavior change.
+# Exact-current d2d9eb32 Desktop runtime recertification trigger; no behavior change.
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/desktop-local-runtime-diagnostics.yml'
+      - 'apps/desktop/sidecar/**'
+      - 'apps/desktop/tool/build_control_plane_sidecar.ps1'
+      - 'apps/desktop/tool/smoke_control_plane_sidecar.ps1'
+      - 'apps/desktop/lib/control_plane/local_runtime.dart'
+      - 'apps/desktop/e2e/control_plane_e2e_test.dart'
+      - 'apps/desktop/packaging/identity/**'
+      - 'services/desktop_oidc*.py'
+      - 'services/source_media_desktop.py'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'apps/desktop/sidecar/**'
+      - 'apps/desktop/tool/build_control_plane_sidecar.ps1'
+      - 'apps/desktop/tool/smoke_control_plane_sidecar.ps1'
+      - 'apps/desktop/lib/control_plane/local_runtime.dart'
+      - 'apps/desktop/e2e/control_plane_e2e_test.dart'
+      - 'apps/desktop/packaging/identity/**'
+      - 'services/desktop_oidc*.py'
+      - 'services/source_media_desktop.py'
+      - '.github/workflows/desktop-local-runtime-diagnostics.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  packaged-sidecar-runtime:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    steps:
+      - name: Checkout exact source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+          cache: 'pip'
+
+      - name: Build packaged control-plane sidecar
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $out = Join-Path $env:RUNNER_TEMP 'ilaios-sidecar-runtime'
+          ./apps/desktop/tool/build_control_plane_sidecar.ps1 -OutputDirectory $out
+          "ILAIOS_SIDECAR_PATH=$(Join-Path $out 'ilaios_control_plane.exe')" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+
+      - name: Prove cold start, identity readiness, graceful shutdown and restart
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./apps/desktop/tool/smoke_control_plane_sidecar.ps1 -SidecarPath $env:ILAIOS_SIDECAR_PATH -TimeoutSeconds 60
+
+      - name: Publish exact-master packaged runtime diagnostic status
+        if: always() && github.ref == 'refs/heads/master'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $state = if ($env:JOB_STATUS -eq 'success') { 'success' } else { 'failure' }
+          $description = if ($state -eq 'success') {
+            "run $env:RUN_ID packaged sidecar cold-start/restart PASS"
+          } else {
+            "run $env:RUN_ID packaged sidecar diagnostic failed"
+          }
+          $body = @{
+            state = $state
+            context = 'ilaios/desktop-local-runtime-diagnostics'
+            description = $description
+            target_url = "https://github.com/$env:REPOSITORY/actions/runs/$env:RUN_ID"
+          } | ConvertTo-Json -Compress
+          Invoke-RestMethod -Method Post -Uri "https://api.github.com/repos/$env:REPOSITORY/statuses/$env:CURRENT_SHA" -Headers $headers -Body $body -ContentType 'application/json' | Out-Null

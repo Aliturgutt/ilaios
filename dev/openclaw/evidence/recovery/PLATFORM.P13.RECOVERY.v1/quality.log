@@ -1,0 +1,14 @@
+ruff check .: PASS
+mypy --strict src tests: PASS (158 source files)
+pre-commit run --all-files: PASS
+  fix end of files: PASS
+  trim trailing whitespace: PASS
+  check yaml: PASS
+  ruff: PASS
+  mypy: PASS
+git diff --check: PASS
+forbidden_paths_modified: false
+canonical_authorities_modified: false
+real_credentials_stored: false
+paid_provider_calls: false
+release_state: NOT_DEPLOYED

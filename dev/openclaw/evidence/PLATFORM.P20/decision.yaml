@@ -1,0 +1,17 @@
+milestone_id: PLATFORM.P20
+package_id: PLATFORM.P20.v1
+status: PASS
+dependency_evidence: dev/openclaw/evidence/PLATFORM.P19/decision.yaml
+scope_evidence:
+  drill_evaluator: services/readiness.py
+  security_red_team: PASS
+  chaos_outage: PASS
+  dr_restore: PASS
+  load: PASS
+  compromise_revocation: PASS
+  supply_chain: PASS
+  rollback: PASS
+  evidence_backed_eligibility: true
+  release_state: NOT_DEPLOYED
+validations: {targeted_tests: PASS, full_regression: PASS, ruff: PASS, mypy_strict: PASS, pre_commit: PASS, git_diff_check: PASS}
+canonical_authorities_unchanged: true

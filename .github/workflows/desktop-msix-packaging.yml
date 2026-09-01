@@ -1,0 +1,205 @@
+name: ILAIOS Desktop MSIX Packaging
+# Unified Web + Operations/Meta + Desktop exact-master closure co-certification trigger.
+# Final same-SHA MSIX recertification trigger; no package behavior change.
+# Exact-current d2d9eb32 MSIX recertification trigger; no package behavior change.
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'apps/desktop/**'
+      - 'brand/assets/02-ilaios-primary-horizontal-dark.jpg'
+      - 'brand/assets/03-ilaios-symbol-dark.jpg'
+      - 'brand/assets/05-ilaios-app-icon.jpg'
+      - 'brand/assets/13-ilaios-primary-horizontal-light.jpg'
+      - '.github/workflows/desktop-msix-packaging.yml'
+      - '.github/workflows/desktop-store-release-candidate.yml'
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'apps/desktop/**'
+      - 'brand/assets/02-ilaios-primary-horizontal-dark.jpg'
+      - 'brand/assets/03-ilaios-symbol-dark.jpg'
+      - 'brand/assets/05-ilaios-app-icon.jpg'
+      - 'brand/assets/13-ilaios-primary-horizontal-light.jpg'
+      - '.github/workflows/desktop-msix-packaging.yml'
+      - '.github/workflows/desktop-store-release-candidate.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: desktop-msix-packaging-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package-msix:
+    runs-on: windows-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Install pinned Flutter SDK
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: '3.44.9'
+          channel: stable
+          cache: true
+
+      - name: Enable Windows desktop
+        run: flutter config --enable-windows-desktop
+
+      - name: Resolve dependencies
+        working-directory: apps/desktop
+        run: flutter pub get --enforce-lockfile
+
+      - name: Analyze
+        working-directory: apps/desktop
+        run: flutter analyze
+
+      - name: Test
+        working-directory: apps/desktop
+        run: flutter test
+
+      - name: Build Windows release
+        working-directory: apps/desktop
+        run: flutter build windows --release
+
+      - name: Verify runtime brand assets
+        working-directory: apps/desktop
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $release = 'build\windows\x64\runner\Release'
+          $required = @(
+            'brand\assets\02-ilaios-primary-horizontal-dark.jpg',
+            'brand\assets\03-ilaios-symbol-dark.jpg',
+            'brand\assets\05-ilaios-app-icon.jpg',
+            'brand\assets\13-ilaios-primary-horizontal-light.jpg'
+          )
+          foreach ($relative in $required) {
+            $path = Join-Path $release $relative
+            if (-not (Test-Path $path)) { throw "Runtime brand asset missing: $relative" }
+          }
+          Write-Host 'ILAIOS_DESKTOP_RUNTIME_BRAND_ASSETS=PASS'
+
+      - name: Build bundled control plane
+        working-directory: apps/desktop
+        shell: pwsh
+        run: ./tool/build_control_plane_sidecar.ps1
+
+      - name: Build unsigned MSIX
+        working-directory: apps/desktop
+        shell: pwsh
+        run: ./tool/build_msix.ps1
+
+      - name: Inspect package
+        working-directory: apps/desktop
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $msix = Get-ChildItem build\msix\*.msix | Select-Object -First 1
+          if ($null -eq $msix) { throw 'MSIX artifact not found.' }
+          $makeAppx = Get-ChildItem 'C:\Program Files (x86)\Windows Kits\10\bin\*\x64\makeappx.exe' |
+            Sort-Object FullName -Descending | Select-Object -First 1
+          if ($null -eq $makeAppx) { throw 'MakeAppx.exe not found.' }
+          $unpack = Join-Path $env:RUNNER_TEMP 'ilaios-msix-unpacked'
+          Remove-Item $unpack -Recurse -Force -ErrorAction SilentlyContinue
+          & $makeAppx.FullName unpack /p $msix.FullName /d $unpack /o
+          if ($LASTEXITCODE -ne 0) { throw 'MSIX unpack validation failed.' }
+          if (-not (Test-Path (Join-Path $unpack 'ilaios_desktop.exe'))) { throw 'Packaged executable missing.' }
+          if (-not (Test-Path (Join-Path $unpack 'ilaios_control_plane.exe'))) { throw 'Packaged control-plane sidecar missing.' }
+          if (-not (Test-Path (Join-Path $unpack 'AppxManifest.xml'))) { throw 'Packaged manifest missing.' }
+          if (-not (Test-Path (Join-Path $unpack 'brand\assets\02-ilaios-primary-horizontal-dark.jpg'))) { throw 'Packaged ILAIOS dark horizontal brand asset missing.' }
+          if (-not (Test-Path (Join-Path $unpack 'brand\assets\03-ilaios-symbol-dark.jpg'))) { throw 'Packaged ILAIOS canonical symbol missing.' }
+          if (-not (Test-Path (Join-Path $unpack 'brand\assets\05-ilaios-app-icon.jpg'))) { throw 'Packaged ILAIOS app icon asset missing.' }
+          if (-not (Test-Path (Join-Path $unpack 'brand\assets\13-ilaios-primary-horizontal-light.jpg'))) { throw 'Packaged ILAIOS light horizontal brand asset missing.' }
+          Write-Host 'ILAIOS_DESKTOP_MSIX_INSPECTION=PASS'
+
+      - name: Validate Store MSIX packaging contract
+        working-directory: apps/desktop
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $storePath = Join-Path $env:RUNNER_TEMP 'ILAIOS-Desktop-store-contract.msix'
+          ./tool/build_store_msix.ps1 `
+            -IdentityName 'ILAIOS.Desktop.StoreValidation' `
+            -Publisher 'CN=ILAIOS-STORE-VALIDATION' `
+            -Version '0.1.0.1' `
+            -OutputPath $storePath
+          if (-not (Test-Path $storePath)) { throw 'Store contract MSIX was not produced.' }
+          $evidencePath = Join-Path $env:RUNNER_TEMP 'store-release-evidence.json'
+          if (-not (Test-Path $evidencePath)) { throw 'Store contract release evidence was not produced.' }
+          $evidence = Get-Content $evidencePath -Raw | ConvertFrom-Json
+          if ($evidence.identity_name -ne 'ILAIOS.Desktop.StoreValidation') { throw 'Store contract identity evidence mismatch.' }
+          if ($evidence.publisher -ne 'CN=ILAIOS-STORE-VALIDATION') { throw 'Store contract publisher evidence mismatch.' }
+          if ($evidence.version -ne '0.1.0.1') { throw 'Store contract version evidence mismatch.' }
+          if ($evidence.signed_before_submission -ne $false) { throw 'Store contract must remain unsigned before Store submission.' }
+          if ($evidence.signing_authority -ne 'Microsoft Store after certification') { throw 'Store signing authority evidence mismatch.' }
+          Write-Host 'ILAIOS_DESKTOP_STORE_CONTRACT=PASS'
+
+      - name: Verify Store path rejects CI placeholders
+        working-directory: apps/desktop
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $rejected = $false
+          try {
+            ./tool/build_store_msix.ps1 `
+              -IdentityName 'ILAIOS.Desktop.CI' `
+              -Publisher 'CN=ILAIOS-CI-UNSIGNED' `
+              -Version '0.1.0.1' `
+              -OutputPath (Join-Path $env:RUNNER_TEMP 'must-not-exist.msix')
+          } catch {
+            $rejected = $true
+            Write-Host "Expected Store placeholder rejection: $($_.Exception.Message)"
+          }
+          if (-not $rejected) { throw 'Store packaging accepted CI placeholder identity values.' }
+          Write-Host 'ILAIOS_DESKTOP_STORE_PLACEHOLDER_REJECTION=PASS'
+
+      - name: Upload unsigned CI package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: ilaios-desktop-msix-unsigned-ci
+          path: apps/desktop/build/msix/*.msix
+          if-no-files-found: error
+          retention-days: 7
+
+      - name: Publish exact-master MSIX packaging status
+        if: always() && github.ref == 'refs/heads/master'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $headers = @{
+            Authorization = "Bearer $env:GH_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+          $state = if ($env:JOB_STATUS -eq 'success') { 'success' } else { 'failure' }
+          $description = if ($state -eq 'success') {
+            "run $env:RUN_ID unsigned MSIX inspection PASS"
+          } else {
+            "run $env:RUN_ID MSIX packaging failed"
+          }
+          $body = @{
+            state = $state
+            context = 'ilaios/desktop-msix-packaging'
+            description = $description
+            target_url = "https://github.com/$env:REPOSITORY/actions/runs/$env:RUN_ID"
+          } | ConvertTo-Json -Compress
+          Invoke-RestMethod -Method Post -Uri "https://api.github.com/repos/$env:REPOSITORY/statuses/$env:CURRENT_SHA" -Headers $headers -Body $body -ContentType 'application/json' | Out-Null

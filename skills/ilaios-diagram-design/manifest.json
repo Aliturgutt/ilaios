@@ -1,0 +1,38 @@
+{
+  "skill_id": "ilaios.skill.diagram-design",
+  "name": "ilaios-diagram-design",
+  "version": "0.1.0",
+  "maturity": "IMPLEMENTED",
+  "owner": "ILAIOS",
+  "runtime": {
+    "python_module": "services.runtime.diagram_design_adapter",
+    "cli_module": "src.ilaios_diagram_design.cli",
+    "adapter_kind": "ilaios-diagram-design-v1",
+    "agent_id": "ilaios.agent.web.asset.v1",
+    "capability": "web.asset",
+    "provider_id": "ilaios.provider.local.diagram-design.v1",
+    "network_required": false,
+    "shell_required": false,
+    "external_runtime_dependencies": []
+  },
+  "permissions": {
+    "read": ["caller-provided-spec"],
+    "write": ["caller-declared-output", "caller-declared-evidence"],
+    "network": false,
+    "shell": false,
+    "secrets": false
+  },
+  "inputs": ["application/json"],
+  "outputs": ["image/svg+xml", "text/html", "application/json+evidence"],
+  "diagram_kinds": [
+    "architecture",
+    "flowchart",
+    "sequence",
+    "state-machine",
+    "data-flow",
+    "dependency",
+    "trust-boundary",
+    "capability-map"
+  ],
+  "promotion_note": "TESTED/VERIFIED/PRODUCTION require repository CI/runtime/deployment evidence."
+}

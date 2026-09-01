@@ -1,0 +1,50 @@
+/* Final compatibility layer for legacy route components. New page compositions live in adaptive-native.css. */
+.process-ledger,.verification-list{border-top:1px solid var(--line-strong)}
+.process-ledger>article{display:grid;grid-template-columns:42px 1fr;gap:12px;padding:11px 0;border-bottom:1px solid var(--line)}
+.process-ledger>article>span,.verification-list span{color:#909ca4;font-size:.59rem;letter-spacing:.09em}
+.process-ledger h2{font-size:1rem;line-height:1.2;margin:0 0 4px}
+.process-ledger p{color:var(--muted);margin:0;max-width:68ch;font-size:.82rem}
+.verification-list{margin-top:14px}
+.verification-list>div{display:grid;grid-template-columns:38px 1fr;gap:11px;padding:9px 0;border-bottom:1px solid var(--line)}
+
+/* Explicitly neutralize historical generator-style decoration. */
+.brand{padding:0;background:transparent;border:0;box-shadow:none}
+.hero-refresh h1{margin:10px 0 15px}
+.hero-refresh .hero-visual:hover{transform:none;border-color:#46515b}
+.journey-card::after{display:none!important;content:none!important}
+.linked-card:hover{transform:none;border-color:var(--line-strong)}
+.quick-links a{padding:3px 0;border:0;border-bottom:1px solid transparent;border-radius:0;background:transparent}
+.quick-links a:hover{background:transparent;border-bottom-color:#697681}
+.detail-nav-link,.pathway-card,.destination-card,.core-node,.explorer-tabs button,.explorer-panel{background-image:none;box-shadow:none}
+.detail-nav-link,.pathway-card,.destination-card,.core-node{min-height:0;border-radius:3px;background:transparent;border-color:var(--line);padding:14px 0}
+.detail-nav-link{padding:12px 14px;background:#0f151b}
+.detail-nav-link:hover,.pathway-card:hover,.destination-card:hover,.core-node:hover{transform:none;border-color:var(--line-strong);background:#10161c}
+.detail-nav-link span,.pathway-card>span,.destination-card span,.panel-kicker,.core-node span{color:#aeb7be}
+.pathway-card h3,.destination-card h3{margin:10px 0 5px;font-size:1rem}
+.pathway-card p,.destination-card p{margin-bottom:9px}
+.pathway-card strong,.destination-card>strong{color:#d8dee2}
+.core-diagram{gap:0;border-top:1px solid var(--line-strong)}
+.core-node{padding:14px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.core-node span{min-width:0;height:auto;padding:0;border:0;background:transparent;border-radius:0;font-size:.61rem}
+.core-node strong{margin-top:12px;font-size:1rem}
+.core-node small{margin-top:5px;color:var(--muted)}
+.core-node:not(:nth-child(4n))::before{color:#68747d}
+
+.interactive-section{background:transparent}
+.interactive-explorer{gap:8px;margin-top:17px}
+.explorer-tabs{gap:4px}
+.explorer-tabs button{border-radius:3px;padding:9px 11px;background:#0f151b;border-color:var(--line);color:#b5bec5}
+.explorer-tabs button span{color:#89959e}
+.explorer-tabs button:hover,.explorer-tabs button.is-active{color:var(--text);border-color:#5a6670;background:#141b22}
+.explorer-panel{min-height:0;border-radius:3px;border-color:#3c4650;background:#0f151b;padding:17px;gap:17px}
+.explorer-panel h3{font-size:1.25rem;margin:8px 0 6px}
+.explorer-panel ul{margin-top:12px}
+.explorer-panel li{padding:6px 0}
+.explorer-panel li::before{color:#9ba6ae}
+.evidence-row b{color:#d7dde1}
+.evidence-row:hover{background:#10161c}
+
+.footer-contact-primary a,.footer-brand>a{color:#d7dde1}
+.footer-social a{min-height:0;box-shadow:none}
+
+@media(max-width:760px){.process-ledger>article{grid-template-columns:32px 1fr;padding:9px 0}.verification-list>div{grid-template-columns:32px 1fr;padding:8px 0}.detail-nav-link,.pathway-card,.destination-card{padding:12px 0}.core-diagram{grid-template-columns:1fr}.core-node{padding:12px 0;border-right:0}.explorer-panel{padding:14px}}

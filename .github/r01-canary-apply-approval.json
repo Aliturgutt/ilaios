@@ -1,0 +1,7 @@
+{
+  "approval": "RELEASE.R01 CANARY APPLY APPROVED",
+  "external_spend_approval": true,
+  "canary_ipv4_cidr": "176.217.181.22/32",
+  "canary_tenant_id": "ilaios-r01-canary",
+  "retry_nonce": "2026-08-11-zero-downtime-reconcile"
+}

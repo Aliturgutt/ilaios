@@ -1,0 +1,32 @@
+milestone_id: RELEASE.R01
+package_id: RELEASE.R01.v1
+status: PASS
+readiness: COMPLETE
+release_state: CANARY_DEPLOYED_HEALTHY
+deployment_performed: true
+dependency_evidence: dev/openclaw/evidence/recovery/RELEASE.R00.REVALIDATION.v1/decision.yaml
+remaining_approvals: []
+minimum_deployment_set: [ECR, ECS_FARGATE_ONE_TASK, VPC_TWO_SUBNETS, ALLOWLISTED_TLS_ALB, ENCRYPTED_EFS, CLOUDWATCH, SCOPED_IAM_ROLES, REFERENCED_SECRETS_MANAGER_SECRET, VALIDATED_ACM_CERTIFICATE]
+aws_account: "101180464425"
+aws_region: eu-central-1
+canary_ipv4_cidr: 176.217.181.22/32
+canary_tenant_id: ilaios-r01-canary
+immutable_image_digest: sha256:4534f8af614aa4fd890785e19f27e2ede7ce59435def93069884156261b86931
+canary_hostname: canary.ilaios.com
+canary_target: ilaios-r01-canary-882623857.eu-central-1.elb.amazonaws.com
+ecs_service_status: ACTIVE
+ecs_desired_count: 1
+ecs_running_count: 1
+ecs_pending_count: 0
+ecs_task_definition: arn:aws:ecs:eu-central-1:101180464425:task-definition/ilaios-r01-canary:4
+target_health: healthy
+tls_certificate_status: ISSUED
+oidc_status: PASS
+static_aws_credentials_created: false
+rollback: prior immutable ECS task-definition ARN plus ECS deployment circuit breaker
+workflow_run: https://github.com/Aliturgutt/ilaios/actions/runs/31441253937
+state_artifact_id: 9083136103
+state_artifact_digest: sha256:913bff1f66c00f6f0330a5bf6142ea8f657ef6978c036d8b21b80b1ea2fd6283
+deployment_evidence: dev/openclaw/evidence/RELEASE.R01/canary-deployment-evidence-2026-08-11.md
+canonical_authorities_unchanged: true
+next_release_promoted: false

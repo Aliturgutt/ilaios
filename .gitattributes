@@ -1,0 +1,13 @@
+* text=auto eol=lf
+
+# The locked canonical source intentionally uses Markdown hard breaks (two
+# trailing spaces). Preserve those bytes and do not report them as whitespace
+# errors for the authoritative publication paths.
+README.md whitespace=-blank-at-eol
+docs/canonical/*.md whitespace=-blank-at-eol
+docs/governance/GOVERNANCE.md whitespace=-blank-at-eol
+docs/governance/ENGINEERING_STANDARDS.md whitespace=-blank-at-eol
+docs/governance/MILESTONES.md whitespace=-blank-at-eol
+docs/security/THREAT_MODEL.md whitespace=-blank-at-eol
+docs/operations/*.md whitespace=-blank-at-eol
+docs/adr/*.md whitespace=-blank-at-eol

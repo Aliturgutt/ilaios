@@ -1,0 +1,251 @@
+name: Video Reference Production Certification
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: read
+  statuses: write
+
+concurrency:
+  group: video-reference-production-certification-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  reference-provider-proof:
+    name: Real reference-aware managed provider production proof
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[video-reference-live-cert]') }}
+    runs-on: ubuntu-latest
+    environment: Production
+    timeout-minutes: 25
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+      ILAIOS_VIDEO_MANAGED_MODEL_ID: bytedance/seedance-2.0-fast
+      ILAIOS_VIDEO_REFERENCE_MAX_TOTAL_USD: "1.00"
+      ILAIOS_VIDEO_QA_MODEL_ID: openrouter/free
+      ILAIOS_VIDEO_E2E_RESOLUTION: 480p
+      VIDEO_DESKTOP_REFERENCE_PROVIDER_PROOF_DIR: artifacts/video-desktop-reference-provider-proof
+
+    steps:
+      - name: Checkout exact source revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Install reference-video runtime dependency
+        shell: bash
+        run: |
+          set -euo pipefail
+          if command -v ffmpeg >/dev/null 2>&1 && command -v ffprobe >/dev/null 2>&1; then
+            ffmpeg -version | head -1
+            ffprobe -version | head -1
+            exit 0
+          fi
+          export DEBIAN_FRONTEND=noninteractive
+          sudo timeout 180 apt-get \
+            -o Acquire::Retries=3 \
+            -o Acquire::ForceIPv4=true \
+            -o Acquire::http::Timeout=15 \
+            -o Acquire::https::Timeout=15 \
+            update
+          sudo timeout 600 apt-get \
+            -o Acquire::Retries=3 \
+            -o Acquire::ForceIPv4=true \
+            -o Acquire::http::Timeout=15 \
+            -o Acquire::https::Timeout=15 \
+            install --yes --no-install-recommends ffmpeg
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+
+      - name: Verify live proof safety boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python --version
+          ffmpeg -version | head -1
+          ffprobe -version | head -1
+          test -n "$OPENROUTER_API_KEY"
+          test "$ILAIOS_VIDEO_REFERENCE_MAX_TOTAL_USD" = "1.00"
+          case "$ILAIOS_VIDEO_MANAGED_MODEL_ID" in
+            *:free) echo "reference managed certification requires an explicit non-free managed model" >&2; exit 1 ;;
+            "") echo "reference managed certification model is empty" >&2; exit 1 ;;
+            *) ;;
+          esac
+
+      - name: Run real managed provider-backed reference-image finished-product E2E
+        shell: bash
+        run: |
+          set -euo pipefail
+          python apps/desktop/e2e/provider_video_reference_finished_product_e2e.py
+
+      - name: Publish reference-provider proof summary
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "## Video Factory — Live Reference Managed Provider Certification" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f "$VIDEO_DESKTOP_REFERENCE_PROVIDER_PROOF_DIR/receipt.json" ]]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          proof_dir = Path(os.environ["VIDEO_DESKTOP_REFERENCE_PROVIDER_PROOF_DIR"])
+          receipt = json.loads((proof_dir / "receipt.json").read_text(encoding="utf-8"))
+          print(f"- Status: `{receipt.get('status')}`")
+          print(f"- Revision: `{receipt.get('revision_sha')}`")
+          print(f"- Execution: `{receipt.get('execution_status')}`")
+          print(f"- Provider model: `{receipt.get('provider_model')}`")
+          print(f"- Provider cost mode: `{receipt.get('provider_cost_mode')}`")
+          print(f"- Provider actual cost USD: `{receipt.get('provider_cost_usd')}`")
+          print(f"- Authorized hard cap USD: `{receipt.get('provider_cost_hard_cap_usd')}`")
+          print(f"- QA model: `{receipt.get('qa_model')}`")
+          print(f"- Reference count: `{receipt.get('reference_asset_count')}`")
+          print(f"- Reference SHA-256: `{receipt.get('reference_asset_sha256')}`")
+          print(f"- Analyzer: `{receipt.get('reference_analyzer_id')}`")
+          print(f"- Frozen brief SHA-256: `{receipt.get('reference_visual_brief_sha256')}`")
+          print(f"- Conditioning mode: `{receipt.get('reference_conditioning_mode')}`")
+          print(f"- Raw reference released: `{receipt.get('raw_reference_blob_released')}`")
+          print(f"- Binding retained: `{receipt.get('reference_binding_retained')}`")
+          print(f"- Native provider reference URL used: `{receipt.get('provider_native_reference_url_used')}`")
+          print(f"- Semantic score/threshold: `{receipt.get('semantic_score')}` / `{receipt.get('semantic_threshold')}`")
+          print(f"- Generated shots: `{receipt.get('generated_shot_count')}`")
+          print(f"- Duration: `{receipt.get('duration_seconds')}` seconds")
+          print(f"- Video/audio: `{receipt.get('video_codec')}` / `{receipt.get('audio_codec')}`")
+          print(f"- Artifact SHA-256: `{receipt.get('artifact_sha256')}`")
+          print(f"- Artifact bytes: `{receipt.get('artifact_bytes')}`")
+          print("- Automatic paid fallback: `FALSE`; this proof explicitly selected managed-bounded mode under the existing $1 authorization.")
+          print("- This certifies ILAIOS private multimodal visual-brief conditioning, not provider-native public-URL reference mode.")
+          PY
+          elif [[ -f "$VIDEO_DESKTOP_REFERENCE_PROVIDER_PROOF_DIR/failure.json" ]]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          import os
+          from pathlib import Path
+
+          proof_dir = Path(os.environ["VIDEO_DESKTOP_REFERENCE_PROVIDER_PROOF_DIR"])
+          failure = json.loads((proof_dir / "failure.json").read_text(encoding="utf-8"))
+          print("- Status: `FAIL`")
+          print(f"- Revision: `{failure.get('revision_sha')}`")
+          print(f"- Cost mode: `{failure.get('provider_cost_mode')}`")
+          print(f"- Hard cap USD: `{failure.get('provider_cost_hard_cap_usd')}`")
+          print(f"- Error type: `{failure.get('error_type')}`")
+          print(f"- Error: `{failure.get('error')}`")
+          PY
+          else
+            printf '%s\n' '- Status: NO_ACCEPTED_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload immutable live reference-provider proof
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-reference-provider-video-proof-${{ github.sha }}-${{ github.run_id }}
+          path: artifacts/video-desktop-reference-provider-proof
+          if-no-files-found: warn
+          retention-days: 30
+
+      - name: Publish sanitized live-reference commit status
+        if: ${{ always() }}
+        shell: bash
+        env:
+          VIDEO_REFERENCE_JOB_STATUS: ${{ job.status }}
+          VIDEO_REFERENCE_STATUS_TOKEN: ${{ github.token }}
+          VIDEO_REFERENCE_STATUS_TARGET_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          import os
+          import urllib.request
+          from pathlib import Path
+
+          def is_sha256(value: object) -> bool:
+              return (
+                  isinstance(value, str)
+                  and len(value) == 64
+                  and all(character in '0123456789abcdef' for character in value)
+              )
+
+          accepted = False
+          receipt_path = Path(os.environ['VIDEO_DESKTOP_REFERENCE_PROVIDER_PROOF_DIR']) / 'receipt.json'
+          if os.environ.get('VIDEO_REFERENCE_JOB_STATUS') == 'success' and receipt_path.is_file():
+              try:
+                  receipt = json.loads(receipt_path.read_text(encoding='utf-8'))
+                  semantic_score = receipt.get('semantic_score')
+                  semantic_threshold = receipt.get('semantic_threshold')
+                  provider_cost_microusd = receipt.get('provider_cost_microusd')
+                  accepted = (
+                      receipt.get('schema') == 'ilaios.desktop.reference-provider-video-e2e.v2'
+                      and receipt.get('status') == 'PASS'
+                      and receipt.get('revision_sha') == os.environ['GITHUB_SHA']
+                      and receipt.get('execution_status') == 'ACCEPTED'
+                      and receipt.get('provider_cost_mode') == 'managed-bounded'
+                      and receipt.get('provider_cost_proven') is True
+                      and isinstance(provider_cost_microusd, int)
+                      and not isinstance(provider_cost_microusd, bool)
+                      and 0 <= provider_cost_microusd <= 1_000_000
+                      and receipt.get('provider_cost_hard_cap_usd') == '1.00'
+                      and receipt.get('provider_cost_hard_cap_microusd') == 1_000_000
+                      and receipt.get('reference_asset_count') == 1
+                      and is_sha256(receipt.get('reference_asset_sha256'))
+                      and receipt.get('reference_binding_retained') is True
+                      and isinstance(receipt.get('reference_analyzer_id'), str)
+                      and receipt.get('reference_analyzer_id', '').startswith('openrouter-reference-analysis:')
+                      and is_sha256(receipt.get('reference_visual_brief_sha256'))
+                      and receipt.get('reference_conditioning_mode') == 'private-multimodal-brief'
+                      and receipt.get('provider_native_reference_url_used') is False
+                      and receipt.get('raw_reference_blob_released') is True
+                      and is_sha256(receipt.get('artifact_sha256'))
+                      and isinstance(receipt.get('artifact_bytes'), int)
+                      and receipt.get('artifact_bytes', 0) > 100_000
+                      and isinstance(receipt.get('duration_seconds'), (int, float))
+                      and 7.0 <= float(receipt.get('duration_seconds')) <= 9.0
+                      and receipt.get('width') == 1920
+                      and receipt.get('height') == 1080
+                      and receipt.get('video_codec') == 'h264'
+                      and receipt.get('audio_codec') == 'aac'
+                      and isinstance(semantic_score, (int, float))
+                      and isinstance(semantic_threshold, (int, float))
+                      and float(semantic_score) >= float(semantic_threshold)
+                      and receipt.get('generated_shot_count') == 1
+                      and receipt.get('generation_mode') == 'managed-provider-reference-conditioned-video'
+                  )
+              except (OSError, ValueError, TypeError):
+                  accepted = False
+
+          state = 'success' if accepted else 'failure'
+          description = (
+              'Reference live E2E accepted: exact-SHA managed PASS'
+              if accepted
+              else 'Reference live E2E failed closed'
+          )
+          document = json.dumps(
+              {
+                  'state': state,
+                  'target_url': os.environ['VIDEO_REFERENCE_STATUS_TARGET_URL'],
+                  'description': description,
+                  'context': 'ILAIOS Video Reference Live Certification',
+              },
+              separators=(',', ':'),
+          ).encode('utf-8')
+          request = urllib.request.Request(
+              f"{os.environ['GITHUB_API_URL']}/repos/{os.environ['GITHUB_REPOSITORY']}/statuses/{os.environ['GITHUB_SHA']}",
+              data=document,
+              method='POST',
+              headers={
+                  'Accept': 'application/vnd.github+json',
+                  'Authorization': f"Bearer {os.environ['VIDEO_REFERENCE_STATUS_TOKEN']}",
+                  'Content-Type': 'application/json',
+                  'X-GitHub-Api-Version': '2022-11-28',
+              },
+          )
+          with urllib.request.urlopen(request, timeout=20) as response:
+              if response.status not in {200, 201}:
+                  raise RuntimeError(f'commit status publish failed: HTTP {response.status}')
+          print(f'VIDEO_REFERENCE_COMMIT_STATUS={state}')
+          PY

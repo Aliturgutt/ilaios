@@ -1,0 +1,32 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: f71fa2c1f9cf5cb705f73dffe4b21f7c61470ba9  # v4.4.0
+    hooks:
+      - id: end-of-file-fixer
+        exclude: ^dev/openclaw/(MASTER_OPENCLAW\.md|execution_plan\.yaml)$
+      - id: trailing-whitespace
+        exclude: ^docs/governance/(GOVERNANCE|ENGINEERING_STANDARDS|MILESTONES)\.md$
+      - id: check-yaml
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: 7bcc70ca475b87e0fdee2511300c74b25babe0b3  # v0.1.9
+    hooks:
+      - id: ruff
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: 8cd2d4056637e242709fe09f15a36f0b4b682bda  # v1.8.0
+    hooks:
+      - id: mypy
+        additional_dependencies:
+          - types-PyYAML==6.0.12.20260724
+          - types-requests==2.33.0.20260712
+  - repo: local
+    hooks:
+      - id: ilaios-secret-scan
+        name: ILAIOS SF-19 secret scan
+        entry: python -m services.software_factory_secret_scanning --repository-root . --staged
+        language: system
+        pass_filenames: false
+      - id: ilaios-db-migration-safety
+        name: ILAIOS SF-20 DB migration safety
+        entry: python -m services.software_factory_db_migration_admission --repository-root . --staged
+        language: system
+        pass_filenames: false

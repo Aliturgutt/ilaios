@@ -1,0 +1,4 @@
+branch: master
+head: 1771f8fc9baf1e2c0d51c14e4b88a6b0c133ba43
+origin_master: 1771f8fc9baf1e2c0d51c14e4b88a6b0c133ba43
+worktree: clean

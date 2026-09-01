@@ -1,0 +1,7 @@
+package_id: PLATFORM.P14.RECOVERY.v1
+branch: master
+head: 1060cd273ee7416a517ae33c699b534687240f47
+origin_master: 1060cd273ee7416a517ae33c699b534687240f47
+worktree_clean: true
+dependency: dev/openclaw/evidence/recovery/PLATFORM.P13.RECOVERY.v1/decision.yaml
+dependency_status: PASS

@@ -1,0 +1,72 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:ilaios:code-intelligence:request:v1",
+  "title": "ILAIOS Code Intelligence Request",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["operation", "base_sha"],
+  "properties": {
+    "operation": {
+      "type": "string",
+      "enum": [
+        "ci-repository-index",
+        "ci-symbol-search",
+        "ci-call-graph",
+        "ci-dependency-analysis",
+        "ci-impact-analysis",
+        "ci-architecture-map",
+        "ci-route-analysis",
+        "ci-dead-code-candidates",
+        "ci-coverage-check"
+      ]
+    },
+    "base_sha": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{40}$"
+    },
+    "query": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512
+    },
+    "path": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 4096
+    },
+    "symbol": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "route": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "changed_files": {
+      "type": "array",
+      "maxItems": 1000,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "minLength": 1,
+        "maxLength": 4096
+      }
+    },
+    "direction": {
+      "type": "string",
+      "enum": ["callers", "callees", "forward", "reverse"]
+    },
+    "max_depth": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 8
+    },
+    "limit": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 100
+    }
+  }
+}

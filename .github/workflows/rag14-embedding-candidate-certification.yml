@@ -1,0 +1,117 @@
+name: RAG14 Embedding Candidate Certification
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/requirements/rag14-embedding-certification.txt'
+      - '.github/workflows/rag14-embedding-candidate-certification.yml'
+      - 'infra/rag/multilingual-e5-small-qint8.candidate.json'
+      - 'services/rag14_embedding_benchmark.py'
+      - 'services/rag14_embedding_certification.py'
+      - 'tests/test_rag14_embedding_certification.py'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: rag14-embedding-candidate-certification-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  certify-candidate:
+    name: Pinned multilingual embedding target-runtime certification
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    env:
+      BASE_IMAGE: python:3.12.13-slim-bookworm
+      EXACT_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$EXACT_SOURCE_SHA"
+
+      - name: Resolve glibc target base image
+        id: base
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker pull --platform linux/amd64 "$BASE_IMAGE"
+          RESOLVED="$(docker image inspect "$BASE_IMAGE" --format '{{index .RepoDigests 0}}')"
+          [[ "$RESOLVED" == *@sha256:* ]]
+          echo "resolved=$RESOLVED" >> "$GITHUB_OUTPUT"
+          echo "RAG14_TARGET_BASE_IMAGE=$RESOLVED"
+
+      - name: Run pinned model integrity, memory, latency and multilingual retrieval benchmark in target container
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/rag14-embedding-candidate .cache/rag14-embedding-candidate
+          docker run --rm \
+            --platform linux/amd64 \
+            --user "$(id -u):$(id -g)" \
+            -e HOME=/tmp \
+            -e PYTHONDONTWRITEBYTECODE=1 \
+            -e PYTHONPATH=/workspace \
+            -v "$PWD:/workspace" \
+            -w /workspace \
+            "$BASE_IMAGE" \
+            sh -lc '
+              set -eu
+              python -m pip install --disable-pip-version-check --target /tmp/rag14-python \
+                -r .github/requirements/rag14-embedding-certification.txt
+              PYTHONPATH="/tmp/rag14-python:/workspace" python -m pip check
+              PYTHONPATH="/tmp/rag14-python:/workspace" python -m services.rag14_embedding_benchmark \
+                --manifest infra/rag/multilingual-e5-small-qint8.candidate.json \
+                --work-dir .cache/rag14-embedding-candidate \
+                --output artifacts/rag14-embedding-candidate/benchmark.json
+            '
+
+      - name: Verify measured target evidence exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s artifacts/rag14-embedding-candidate/benchmark.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report = json.loads(Path('artifacts/rag14-embedding-candidate/benchmark.json').read_text())
+          if report.get('embedding_dimensions') != 384:
+              raise SystemExit('unexpected embedding dimensions')
+          if report.get('production_authority') is not False:
+              raise SystemExit('candidate evidence must not grant production authority')
+          print('RAG14_TARGET_RUNTIME_CANDIDATE_PASS')
+          PY
+
+      - name: Publish measured evidence summary
+        if: always()
+        shell: bash
+        env:
+          RESOLVED_BASE: ${{ steps.base.outputs.resolved }}
+        run: |
+          {
+            echo "# RAG.14 Embedding Candidate Target-Runtime Certification"
+            echo
+            echo "Exact source SHA: \`${EXACT_SOURCE_SHA}\`"
+            echo "Resolved target base: \`${RESOLVED_BASE}\`"
+            echo
+            if [[ -f artifacts/rag14-embedding-candidate/benchmark.json ]]; then
+              echo '```json'
+              cat artifacts/rag14-embedding-candidate/benchmark.json
+              echo '```'
+            else
+              echo "Measured benchmark evidence was not produced; candidate remains **NOT CERTIFIED**."
+            fi
+            echo
+            echo "> Passing this glibc target-container benchmark certifies only a pinned candidate and container compatibility. It never grants RAG.14 production promotion or proves AWS Fargate CPU-instruction compatibility."
+          } >> "$GITHUB_STEP_SUMMARY"

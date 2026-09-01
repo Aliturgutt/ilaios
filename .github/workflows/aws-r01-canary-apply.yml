@@ -1,0 +1,320 @@
+name: AWS R01 guarded RAG.14 canary apply
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact verified master source SHA whose immutable R01 image will be deployed
+        required: true
+        type: string
+      confirm_external_spend:
+        description: Explicitly approve bounded RAG.14 canary AWS spend for this run
+        required: true
+        default: false
+        type: boolean
+      max_canary_usd:
+        description: Hard maximum estimated RAG.14 canary resource spend in USD
+        required: true
+        default: '1.00'
+        type: string
+
+permissions:
+  contents: read
+  actions: read
+  id-token: write
+
+concurrency:
+  group: release-r01-canary-state
+  cancel-in-progress: false
+
+jobs:
+  apply:
+    runs-on: ubuntu-latest
+    env:
+      TF_IN_AUTOMATION: 'true'
+      TF_INPUT: 'false'
+      TF_VAR_aws_region: eu-central-1
+      TF_VAR_certificate_arn: arn:aws:acm:eu-central-1:101180464425:certificate/95994b5b-ff08-4af2-913d-9952e95f8aa1
+      TF_VAR_control_plane_secret_arn: arn:aws:secretsmanager:eu-central-1:101180464425:secret:ilaios/r01/canary/control-plane-token-BgIO2G
+      GH_TOKEN: ${{ github.token }}
+      RAG14_EVIDENCE_ROOT: rag14-evidence
+      RAG14_MAX_CANARY_USD: ${{ inputs.max_canary_usd }}
+    steps:
+      - name: Checkout exact requested source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: ${{ inputs.source_sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact governed source
+        env:
+          REQUESTED_SOURCE_SHA: ${{ inputs.source_sha }}
+          CONFIRM_EXTERNAL_SPEND: ${{ inputs.confirm_external_spend }}
+        run: |
+          set -euo pipefail
+          test "$CONFIRM_EXTERNAL_SPEND" = "true"
+          SOURCE_SHA="$REQUESTED_SOURCE_SHA"
+          [[ "$SOURCE_SHA" =~ ^[0-9a-f]{40}$ ]]
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          git fetch --no-tags origin master
+          git merge-base --is-ancestor "$SOURCE_SHA" origin/master
+          REQUIRED_CI="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${SOURCE_SHA}&event=push&status=completed&per_page=100" --jq '[.workflow_runs[] | select(.name == "Required CI Gate" and .conclusion == "success")][0].conclusion // empty')"
+          test "$REQUIRED_CI" = "success"
+          {
+            echo "RAG14_SOURCE_SHA=$SOURCE_SHA"
+            echo "RAG14_CANARY_STARTED_AT_MS=$(($(date +%s) * 1000))"
+            echo "RAG14_EXTERNAL_SPEND_APPROVED=true"
+          } >> "$GITHUB_ENV"
+
+      - name: Configure bounded AWS identity
+        uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a
+        with:
+          role-to-assume: arn:aws:iam::101180464425:role/ILAIOS-GitHub-Deploy-Role
+          aws-region: eu-central-1
+
+      - name: Resolve immutable release and fresh /32 approval
+        run: |
+          set -euo pipefail
+          test "$(aws sts get-caller-identity --query Account --output text)" = "101180464425"
+          IMAGE_DIGEST="$(aws ecr describe-images --repository-name ilaios-r01-canary --image-ids imageTag="r01-${RAG14_SOURCE_SHA}" --region eu-central-1 --query 'imageDetails[0].imageDigest' --output text)"
+          [[ "$IMAGE_DIGEST" =~ ^sha256:[0-9a-f]{64}$ ]]
+          RUNNER_IP="$(curl --fail --silent --show-error https://checkip.amazonaws.com | tr -d '[:space:]')"
+          python - "$RUNNER_IP" "$RAG14_SOURCE_SHA" "$IMAGE_DIGEST" <<'PY'
+          import ipaddress
+          import json
+          import os
+          import sys
+          from pathlib import Path
+          from services.rag14_canary_approval import load_and_validate_canary_approval
+          from services.rag14_embedding_provider import PRODUCTION_EMBEDDING_MODE
+
+          address = ipaddress.ip_address(sys.argv[1])
+          if address.version != 4:
+              raise SystemExit("RAG.14 canary requires one IPv4 /32")
+          source_sha, image_digest = sys.argv[2], sys.argv[3]
+          payload = {
+              "approval": "RAG.14 CANARY EVIDENCE APPROVED",
+              "external_spend_approval": True,
+              "runtime_source_sha": source_sha,
+              "image_digest": image_digest,
+              "canary_ipv4_cidr": f"{address}/32",
+              "canary_tenant_id": "rag14-canary-tenant",
+              "canary_project_id": "rag14-canary-project",
+              "knowledge_principal_id": "service-rag-canary",
+              "classifications": ["PUBLIC", "INTERNAL"],
+              "purposes": ["build", "research"],
+              "residencies": ["eu"],
+              "embedding_mode": PRODUCTION_EMBEDDING_MODE,
+          }
+          path = Path("rag14-evidence/fresh-canary-approval.json")
+          path.parent.mkdir(parents=True, exist_ok=True)
+          path.write_text(json.dumps(payload, sort_keys=True, indent=2) + "\n", encoding="utf-8")
+          approval = load_and_validate_canary_approval(path, expected_runtime_source_sha=source_sha, expected_image_digest=image_digest)
+          with open(os.environ["GITHUB_ENV"], "a", encoding="utf-8") as env:
+              env.write(f"RAG14_IMAGE_DIGEST={image_digest}\n")
+              env.write(f"RAG14_APPROVAL_EVIDENCE_SHA256={approval.evidence_sha256}\n")
+              for key, value in approval.terraform_environment().items():
+                  env.write(f"{key}={value}\n")
+          PY
+
+      - name: Verify signed/scanned immutable image
+        run: |
+          set -euo pipefail
+          read -r SCAN_STATUS CRITICAL HIGH < <(aws ecr describe-image-scan-findings --repository-name ilaios-r01-canary --image-id imageDigest="$RAG14_IMAGE_DIGEST" --region eu-central-1 --query '[imageScanStatus.status, to_string(imageScanFindings.findingSeverityCounts.CRITICAL || `0`), to_string(imageScanFindings.findingSeverityCounts.HIGH || `0`)]' --output text)
+          test "$SCAN_STATUS" = COMPLETE
+          test "$CRITICAL" = 0
+          test "$HIGH" = 0
+          PROFILE_ARN="$(aws signer get-signing-profile --profile-name ILAIOS_R01_ECR --region eu-central-1 --query arn --output text)"
+          SIGNING_STATUS="$(aws ecr describe-image-signing-status --repository-name ilaios-r01-canary --image-id imageDigest="$RAG14_IMAGE_DIGEST" --region eu-central-1 --query "signingStatuses[?signingProfileArn=='${PROFILE_ARN}'].status | [0]" --output text)"
+          test "$SIGNING_STATUS" = COMPLETE
+          aws secretsmanager describe-secret --secret-id "$TF_VAR_control_plane_secret_arn" --region eu-central-1 >/dev/null
+
+      - name: Set up OpenTofu
+        uses: opentofu/setup-opentofu@9d84900f3238fab8cd84ce47d658d25dd008be2f
+        with:
+          tofu_version: 1.10.6
+
+      - name: Locate serialized R01 state
+        id: prior
+        run: |
+          set -euo pipefail
+          RUN_ID="$(gh api "/repos/${GITHUB_REPOSITORY}/actions/artifacts?name=r01-tofu-state&per_page=100" --jq '[.artifacts[] | select(.expired == false)][0].workflow_run.id // empty')"
+          if [ -z "$RUN_ID" ]; then
+            echo 'BLOCKED: serialized R01 state is unavailable; refusing blind infrastructure adoption.'
+            exit 1
+          fi
+          echo "run_id=$RUN_ID" >> "$GITHUB_OUTPUT"
+
+      - name: Restore exact R01 state
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
+        with:
+          name: r01-tofu-state
+          path: infra/aws/r01-canary
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.prior.outputs.run_id }}
+
+      - name: Capture previous verified task candidate
+        run: |
+          set -euo pipefail
+          PREVIOUS="$(aws ecs describe-services --cluster ilaios-r01-canary --services ilaios-r01-canary --region eu-central-1 --query 'services[0].taskDefinition' --output text 2>/dev/null || true)"
+          if [ -n "$PREVIOUS" ] && [ "$PREVIOUS" != "None" ]; then
+            echo "RAG14_PREVIOUS_TASK_DEFINITION=$PREVIOUS" >> "$GITHUB_ENV"
+            echo "RAG14_PREVIOUS_TASK_DEFINITION=$PREVIOUS"
+          else
+            echo 'BLOCKED: no previous task definition exists for the required rollback exercise.'
+            exit 1
+          fi
+
+      - name: Plan and apply exact RAG.14 canary
+        working-directory: infra/aws/r01-canary
+        run: |
+          set -euo pipefail
+          tofu init -backend=false -input=false
+          tofu validate
+          tofu fmt -check -recursive
+          tofu plan -input=false -out=r01.tfplan
+          tofu show -no-color r01.tfplan > ../../../rag14-evidence/r01-plan.txt
+          tofu apply -input=false -auto-approve r01.tfplan
+          CANARY_DNS="$(tofu output -raw canary_dns_target)"
+          test -n "$CANARY_DNS"
+          echo "RAG14_CANARY_DNS=$CANARY_DNS" >> "$GITHUB_ENV"
+
+      - name: Require stable healthy canary
+        run: |
+          set -euo pipefail
+          aws ecs wait services-stable --cluster ilaios-r01-canary --services ilaios-r01-canary --region eu-central-1
+          TG_ARN="$(aws elbv2 describe-target-groups --names ilaios-r01-canary --region eu-central-1 --query 'TargetGroups[0].TargetGroupArn' --output text)"
+          for _ in $(seq 1 36); do
+            STATE="$(aws elbv2 describe-target-health --target-group-arn "$TG_ARN" --region eu-central-1 --query 'TargetHealthDescriptions[0].TargetHealth.State' --output text 2>/dev/null || true)"
+            if [ "$STATE" = "healthy" ]; then exit 0; fi
+            sleep 5
+          done
+          echo 'RAG.14 target did not become healthy.'
+          aws logs tail '/ilaios/r01/canary/runtime' --region eu-central-1 --since 30m --format short || true
+          exit 1
+
+      - name: Collect live RAG.14 embedding security and lifecycle evidence
+        run: |
+          set -euo pipefail
+          python -m services.rag14_canary_evidence
+
+      - name: Prove cross-tenant state binding on Fargate
+        run: |
+          set -euo pipefail
+          TASK_DEFINITION="$(aws ecs describe-services --cluster ilaios-r01-canary --services ilaios-r01-canary --region eu-central-1 --query 'services[0].taskDefinition' --output text)"
+          aws ecs describe-services --cluster ilaios-r01-canary --services ilaios-r01-canary --region eu-central-1 --query 'services[0].networkConfiguration.awsvpcConfiguration' --output json > /tmp/rag14-cross-tenant-network.json
+          python - "$TASK_DEFINITION" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          network = json.loads(Path("/tmp/rag14-cross-tenant-network.json").read_text(encoding="utf-8"))
+          request = {
+              "cluster": "ilaios-r01-canary",
+              "taskDefinition": sys.argv[1],
+              "launchType": "FARGATE",
+              "count": 1,
+              "startedBy": "rag14-cross-tenant-probe",
+              "networkConfiguration": {"awsvpcConfiguration": network},
+              "overrides": {
+                  "containerOverrides": [
+                      {
+                          "name": "runtime",
+                          "environment": [
+                              {
+                                  "name": "ILAIOS_KNOWLEDGE_TENANT_ID",
+                                  "value": "rag14-canary-tenant-b",
+                              }
+                          ],
+                      }
+                  ]
+              },
+          }
+          Path("/tmp/rag14-cross-tenant-run-task.json").write_text(
+              json.dumps(request), encoding="utf-8"
+          )
+          PY
+          TASK_ARN="$(aws ecs run-task --cli-input-json file:///tmp/rag14-cross-tenant-run-task.json --region eu-central-1 --query 'tasks[0].taskArn' --output text)"
+          test -n "$TASK_ARN"
+          test "$TASK_ARN" != "None"
+          aws ecs wait tasks-stopped --cluster ilaios-r01-canary --tasks "$TASK_ARN" --region eu-central-1
+          EXIT_CODE="$(aws ecs describe-tasks --cluster ilaios-r01-canary --tasks "$TASK_ARN" --region eu-central-1 --query 'tasks[0].containers[0].exitCode' --output text)"
+          if [ "$EXIT_CODE" = "0" ]; then
+            echo 'Cross-tenant Fargate probe unexpectedly started with tenant B against tenant A state.'
+            exit 1
+          fi
+          TASK_ID="${TASK_ARN##*/}"
+          STREAM="runtime/runtime/${TASK_ID}"
+          PROOF=''
+          for _ in $(seq 1 30); do
+            PROOF="$(aws logs get-log-events --log-group-name '/ilaios/r01/canary/runtime' --log-stream-name "$STREAM" --start-from-head --region eu-central-1 --query 'events[].message' --output text 2>/dev/null || true)"
+            if printf '%s' "$PROOF" | grep -Fq 'scope binding mismatch'; then
+              break
+            fi
+            sleep 3
+          done
+          if ! printf '%s' "$PROOF" | grep -Fq 'scope binding mismatch'; then
+            echo 'Cross-tenant task failed, but the fail-closed scope-binding reason was not proven.'
+            exit 1
+          fi
+          python - "$TASK_ARN" "$EXIT_CODE" <<'PY'
+          import json
+          import sys
+          from pathlib import Path
+
+          Path("rag14-evidence/cross-tenant-fargate.json").write_text(
+              json.dumps(
+                  {
+                      "status": "PASS",
+                      "task_arn": sys.argv[1],
+                      "exit_code": int(sys.argv[2]),
+                      "attempted_tenant_id": "rag14-canary-tenant-b",
+                      "expected_bound_tenant_id": "rag14-canary-tenant",
+                      "scope_binding_rejected": True,
+                      "production_authority": False,
+                  },
+                  sort_keys=True,
+                  indent=2,
+              ) + "\n",
+              encoding="utf-8",
+          )
+          PY
+
+      - name: Collect live RAG.14 recovery observability FinOps and rollback evidence
+        run: |
+          set -euo pipefail
+          python -m services.rag14_operational_evidence
+
+      - name: Collect live RAG.14 observed-cost FinOps evidence
+        run: |
+          set -euo pipefail
+          python -m services.rag14_finops_evidence
+
+      - name: Simulate failed RAG.14 deployment and prove rollback
+        run: |
+          set -euo pipefail
+          python -m services.rag14_rollback_probe
+
+      - name: Assemble fail-closed RAG.14 promotion package
+        run: |
+          set -euo pipefail
+          python -m services.rag14_final_evidence
+
+      - name: Preserve RAG.14 canary evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: rag14-canary-evidence-${{ inputs.source_sha }}
+          path: rag14-evidence
+          if-no-files-found: warn
+          retention-days: 90
+
+      - name: Preserve serialized R01 OpenTofu state
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: r01-tofu-state
+          path: infra/aws/r01-canary/terraform.tfstate
+          if-no-files-found: warn
+          retention-days: 90

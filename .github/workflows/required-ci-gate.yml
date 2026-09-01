@@ -1,0 +1,372 @@
+name: Required CI Gate
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: required-ci-v4-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: true
+
+jobs:
+  classify:
+    name: Classify changes
+    runs-on: ubuntu-latest
+    outputs:
+      platform: ${{ steps.changes.outputs.platform }}
+      website: ${{ steps.changes.outputs.website }}
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Classify changed paths and enforce diff hygiene
+        id: changes
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          base="$PR_BASE_SHA"
+          head="$PR_HEAD_SHA"
+          if [[ -z "$base" || -z "$head" ]]; then
+            head="$(git rev-parse HEAD)"
+            base="$(git rev-parse HEAD^)"
+          fi
+
+          git diff --check "$base" "$head"
+          mapfile -t files < <(git diff --name-only "$base" "$head")
+
+          platform=false
+          website=false
+
+          for file in "${files[@]}"; do
+            case "$file" in
+              src/*|services/*|packages/*|tests/*|apps/desktop/*|brand/assets/05-ilaios-app-icon.jpg|docs/governance/*|docs/migration/*|pyproject.toml|.pre-commit-config.yaml|.github/requirements/platform-ci.txt|.github/workflows/*.yml)
+                platform=true
+                ;;
+            esac
+
+            case "$file" in
+              apps/website/*|tools/design-intelligence/*|services/design_quality.py|services/integrations/web_factory.py|tests/test_design_quality.py|tests/test_web_factory.py|.github/requirements/website-ci.txt|.github/workflows/website-ci.yml|.github/workflows/required-ci-gate.yml|.github/workflows/website-production-certification.yml)
+                website=true
+                ;;
+            esac
+          done
+
+          echo "platform=$platform" >> "$GITHUB_OUTPUT"
+          echo "website=$website" >> "$GITHUB_OUTPUT"
+          printf 'platform=%s website=%s\n' "$platform" "$website"
+
+  supply-chain:
+    name: CI supply-chain hardening
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Enforce immutable CI bootstrap policies
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m services.software_factory_ci_supply_chain --repository-root .
+          python -m services.desktop_ci_supply_chain --repository-root .
+          python -m services.github_workflow_security_audit --repository-root .
+
+  secret-scan:
+    name: Secret scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Scan reviewed changeset for secrets
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          base="$PR_BASE_SHA"
+          head="$PR_HEAD_SHA"
+          if [[ -z "$base" || -z "$head" ]]; then
+            head="$(git rev-parse HEAD)"
+            base="$(git rev-parse HEAD^)"
+          fi
+
+          python -m services.software_factory_secret_scanning \
+            --repository-root . \
+            --base-sha "$base" \
+            --head-sha "$head"
+
+  db-migration-safety:
+    name: DB migration safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Enforce governed DB migration safety
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          base="$PR_BASE_SHA"
+          head="$PR_HEAD_SHA"
+          if [[ -z "$base" || -z "$head" ]]; then
+            head="$(git rev-parse HEAD)"
+            base="$(git rev-parse HEAD^)"
+          fi
+
+          python -m services.software_factory_db_migration_admission \
+            --repository-root . \
+            --base-sha "$base" \
+            --head-sha "$head"
+
+  api-contract-safety:
+    name: API contract safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Enforce governed API contract safety
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+
+          base="$PR_BASE_SHA"
+          head="$PR_HEAD_SHA"
+          if [[ -z "$base" || -z "$head" ]]; then
+            head="$(git rev-parse HEAD)"
+            base="$(git rev-parse HEAD^)"
+          fi
+
+          python -m services.software_factory_api_contract_safety \
+            --repository-root . \
+            --base-sha "$base" \
+            --head-sha "$head"
+
+  operational-safety:
+    name: SF-22-28 operational safety
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Audit canonical operational safety foundations
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          base="$PR_BASE_SHA"
+          head="$PR_HEAD_SHA"
+          if [[ -z "$base" || -z "$head" ]]; then
+            head="$(git rev-parse HEAD)"
+            base="$(git rev-parse HEAD^)"
+          fi
+          python -m services.software_factory_operational_safety \
+            --repository-root . \
+            --base-sha "$base" \
+            --head-sha "$head"
+
+  assurance:
+    name: SF-29-31 assurance
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Audit skills, red-team controls and canonical documentation
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          base="$PR_BASE_SHA"
+          head="$PR_HEAD_SHA"
+          if [[ -z "$base" || -z "$head" ]]; then
+            head="$(git rev-parse HEAD)"
+            base="$(git rev-parse HEAD^)"
+          fi
+          python -m services.software_factory_assurance \
+            --repository-root . \
+            --base-sha "$base" \
+            --head-sha "$head"
+
+  final-closure-structure:
+    name: Final closure structural audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Audit final closure prerequisites
+        shell: bash
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          set -euo pipefail
+          base="$PR_BASE_SHA"
+          head="$PR_HEAD_SHA"
+          if [[ -z "$base" || -z "$head" ]]; then
+            head="$(git rev-parse HEAD)"
+            base="$(git rev-parse HEAD^)"
+          fi
+          python -m services.software_factory_final_reconciliation \
+            --repository-root . \
+            --base-sha "$base" \
+            --head-sha "$head"
+
+  platform:
+    name: Platform validation
+    needs: classify
+    if: needs.classify.outputs.platform == 'true'
+    uses: ./.github/workflows/platform-ci.yml
+
+  website:
+    name: Website validation
+    needs: classify
+    if: needs.classify.outputs.website == 'true'
+    uses: ./.github/workflows/website-ci.yml
+
+  malware:
+    name: Repository malware scan
+    uses: ./.github/workflows/malware-scan.yml
+
+  required-ci-gate:
+    name: Required CI Gate
+    if: always()
+    needs: [classify, supply-chain, secret-scan, db-migration-safety, api-contract-safety, operational-safety, assurance, final-closure-structure, malware, platform, website]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enforce relevant validation results
+        shell: bash
+        env:
+          CLASSIFY_RESULT: ${{ needs.classify.result }}
+          SUPPLY_CHAIN_RESULT: ${{ needs.supply-chain.result }}
+          SECRET_SCAN_RESULT: ${{ needs.secret-scan.result }}
+          DB_MIGRATION_SAFETY_RESULT: ${{ needs.db-migration-safety.result }}
+          API_CONTRACT_SAFETY_RESULT: ${{ needs.api-contract-safety.result }}
+          OPERATIONAL_SAFETY_RESULT: ${{ needs.operational-safety.result }}
+          ASSURANCE_RESULT: ${{ needs.assurance.result }}
+          FINAL_CLOSURE_STRUCTURE_RESULT: ${{ needs.final-closure-structure.result }}
+          MALWARE_RESULT: ${{ needs.malware.result }}
+          PLATFORM_REQUIRED: ${{ needs.classify.outputs.platform }}
+          PLATFORM_RESULT: ${{ needs.platform.result }}
+          WEBSITE_REQUIRED: ${{ needs.classify.outputs.website }}
+          WEBSITE_RESULT: ${{ needs.website.result }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$CLASSIFY_RESULT" != "success" ]]; then
+            echo "Change classification failed: $CLASSIFY_RESULT"
+            exit 1
+          fi
+
+          if [[ "$SUPPLY_CHAIN_RESULT" != "success" ]]; then
+            echo "CI supply-chain hardening failed: $SUPPLY_CHAIN_RESULT"
+            exit 1
+          fi
+
+          if [[ "$SECRET_SCAN_RESULT" != "success" ]]; then
+            echo "Secret scanning failed: $SECRET_SCAN_RESULT"
+            exit 1
+          fi
+
+          if [[ "$DB_MIGRATION_SAFETY_RESULT" != "success" ]]; then
+            echo "DB migration safety failed: $DB_MIGRATION_SAFETY_RESULT"
+            exit 1
+          fi
+
+          if [[ "$API_CONTRACT_SAFETY_RESULT" != "success" ]]; then
+            echo "API contract safety failed: $API_CONTRACT_SAFETY_RESULT"
+            exit 1
+          fi
+
+          if [[ "$OPERATIONAL_SAFETY_RESULT" != "success" ]]; then
+            echo "SF-22-28 operational safety failed: $OPERATIONAL_SAFETY_RESULT"
+            exit 1
+          fi
+
+          if [[ "$ASSURANCE_RESULT" != "success" ]]; then
+            echo "SF-29-31 assurance failed: $ASSURANCE_RESULT"
+            exit 1
+          fi
+
+          if [[ "$FINAL_CLOSURE_STRUCTURE_RESULT" != "success" ]]; then
+            echo "Final closure structural audit failed: $FINAL_CLOSURE_STRUCTURE_RESULT"
+            exit 1
+          fi
+
+          if [[ "$MALWARE_RESULT" != "success" ]]; then
+            echo "Repository malware scan failed: $MALWARE_RESULT"
+            exit 1
+          fi
+
+          if [[ "$PLATFORM_REQUIRED" == "true" && "$PLATFORM_RESULT" != "success" ]]; then
+            echo "Platform validation required but result was: $PLATFORM_RESULT"
+            exit 1
+          fi
+
+          if [[ "$WEBSITE_REQUIRED" == "true" && "$WEBSITE_RESULT" != "success" ]]; then
+            echo "Website validation required but result was: $WEBSITE_RESULT"
+            exit 1
+          fi
+
+          echo "Required CI Gate PASS"
