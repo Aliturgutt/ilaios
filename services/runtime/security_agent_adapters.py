@@ -7,6 +7,11 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from typing import Any
 
+from services.security_auth_authorization_analysis import (
+    AuthAuthorizationCaseKind,
+    AuthAuthorizationObservation,
+    analyze_auth_authorization_observations,
+)
 from services.security_factory import (
     SecurityFactory,
     SecurityFactoryError,
@@ -21,6 +26,7 @@ from services.security_methodology_analysis import (
 )
 from services.security_methodology_skills import (
     AGENTIC_ACTION_AUDIT_SKILL_ID,
+    AUTH_AUTHORIZATION_TESTING_SKILL_ID,
     DIFFERENTIAL_REVIEW_SKILL_ID,
     SECURITY_REVIEW_SKILL_ID,
     SUPPLY_CHAIN_AUDIT_SKILL_ID,
@@ -143,12 +149,17 @@ class SecurityAgentRuntimeAdapters:
         return _report_json(_filter_report(report, {"infrastructure"}))
 
     def _web_api(self, payload: dict[str, Any]) -> dict[str, Any]:
-        if (
-            _skill_id(payload, default=_PRIMARY_WEB_API_SKILL)
-            != _PRIMARY_WEB_API_SKILL
-        ):
-            raise SecurityAgentAdapterError("WebAPISec skill is not authorized")
+        skill_id = _skill_id(payload, default=_PRIMARY_WEB_API_SKILL)
         scope = _scope(payload)
+        if skill_id == AUTH_AUTHORIZATION_TESTING_SKILL_ID:
+            return _report_json(
+                analyze_auth_authorization_observations(
+                    scope.scope_id,
+                    _auth_authorization_observations(payload),
+                )
+            )
+        if skill_id != _PRIMARY_WEB_API_SKILL:
+            raise SecurityAgentAdapterError("WebAPISec skill is not authorized")
         target_url = _text(payload, "target_url")
         status_code = payload.get("status_code")
         headers = payload.get("headers")
@@ -224,6 +235,42 @@ def _skill_id(payload: dict[str, Any], *, default: str) -> str:
     if not isinstance(skill_id, str) or not skill_id or skill_id != skill_id.strip():
         raise SecurityAgentAdapterError("runtime skill identity is invalid")
     return skill_id
+
+
+def _auth_authorization_observations(
+    payload: dict[str, Any],
+) -> tuple[AuthAuthorizationObservation, ...]:
+    raw_observations = payload.get("observations")
+    if not isinstance(raw_observations, list) or not raw_observations:
+        raise SecurityAgentAdapterError("observations must be a non-empty list")
+    observations: list[AuthAuthorizationObservation] = []
+    try:
+        for raw in raw_observations:
+            if not isinstance(raw, dict):
+                raise ValueError("observation must be an object")
+            case_id = raw.get("case_id")
+            kind = raw.get("kind")
+            status_code = raw.get("status_code")
+            location = raw.get("location", "runtime-observation")
+            if not isinstance(case_id, str) or not isinstance(kind, str):
+                raise ValueError("observation identity is invalid")
+            if not isinstance(status_code, int) or isinstance(status_code, bool):
+                raise ValueError("observation status_code is invalid")
+            if not isinstance(location, str):
+                raise ValueError("observation location is invalid")
+            observations.append(
+                AuthAuthorizationObservation(
+                    case_id=case_id,
+                    kind=AuthAuthorizationCaseKind(kind),
+                    status_code=status_code,
+                    location=location,
+                )
+            )
+        return tuple(observations)
+    except (TypeError, ValueError) as exc:
+        raise SecurityAgentAdapterError(
+            "auth/authorization observations failed closed"
+        ) from exc
 
 
 def _sha(payload: dict[str, Any], field: str) -> str:
