@@ -15,6 +15,7 @@ import pytest
 
 import apps.web_app_runtime.server as runtime_server
 from apps.web_app_runtime.server import (
+    AppHTTPServer,
     AppRateLimiter,
     AppRuntime,
     AppRuntimeConfigurationError,
@@ -968,3 +969,65 @@ def test_environment_uses_platform_port_when_app_port_is_absent(tmp_path: Path) 
 
     assert environment.host == "0.0.0.0"
     assert environment.port == 10000
+
+
+
+def test_rate_limiter_prunes_expired_source_buckets_and_stays_bounded() -> None:
+    limiter = AppRateLimiter({"/auth/google/start": (2, 60)}, max_buckets=3)
+
+    for index in range(3):
+        assert (
+            limiter.check(
+                source=f"203.0.113.{index}",
+                path="/auth/google/start",
+                now=_NOW,
+            )
+            is None
+        )
+    assert limiter.bucket_count == 3
+
+    assert (
+        limiter.check(
+            source="198.51.100.9",
+            path="/auth/google/start",
+            now=_NOW,
+        )
+        == 60
+    )
+    assert limiter.bucket_count == 3
+
+    recovered = _NOW + timedelta(seconds=61)
+    assert (
+        limiter.check(
+            source="198.51.100.9",
+            path="/auth/google/start",
+            now=recovered,
+        )
+        is None
+    )
+    assert limiter.bucket_count == 1
+
+
+def test_rate_limiter_rejects_unbounded_bucket_configuration() -> None:
+    with pytest.raises(ValueError, match="bucket bound"):
+        AppRateLimiter({"/auth/google/start": (2, 60)}, max_buckets=0)
+
+
+def test_app_http_server_has_bounded_concurrency(tmp_path: Path) -> None:
+    runtime, _oauth = _runtime(tmp_path / "identity.db")
+    server = AppHTTPServer(
+        ("127.0.0.1", 0),
+        runtime,
+        max_concurrent_requests=2,
+    )
+    try:
+        assert server.max_concurrent_requests == 2
+    finally:
+        server.server_close()
+
+    with pytest.raises(ValueError, match="concurrent request bound"):
+        AppHTTPServer(
+            ("127.0.0.1", 0),
+            runtime,
+            max_concurrent_requests=0,
+        )
