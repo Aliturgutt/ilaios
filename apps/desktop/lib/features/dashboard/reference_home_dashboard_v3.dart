@@ -106,7 +106,9 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
         // scrolls instead of compressing panels into unreadable/overflowing
         // geometry. Standard and wide desktop sizes keep the one-viewport
         // composition.
-        final compact = constraints.maxWidth < 940 || constraints.maxHeight < 720;
+        final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
+        final compact = constraints.maxWidth < 940 ||
+            constraints.maxHeight < 720 || textScale > 1.0;
         final outerPadding = compact ? 14.0 : 20.0;
         final gap = compact ? 12.0 : 16.0;
 
@@ -517,13 +519,13 @@ class _CompactSupportLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Column(
         children: [
-          SizedBox(height: 190, child: _FocusPanel(model: model, onNavigate: onNavigate)),
+          SizedBox(height: MediaQuery.textScalerOf(context).scale(190), child: _FocusPanel(model: model, onNavigate: onNavigate)),
           SizedBox(height: gap),
-          SizedBox(height: 190, child: _AttentionPanel(model: model, onNavigate: onNavigate)),
+          SizedBox(height: MediaQuery.textScalerOf(context).scale(190), child: _AttentionPanel(model: model, onNavigate: onNavigate)),
           SizedBox(height: gap),
-          SizedBox(height: 190, child: _OutputsPanel(model: model, onNavigate: onNavigate)),
+          SizedBox(height: MediaQuery.textScalerOf(context).scale(190), child: _OutputsPanel(model: model, onNavigate: onNavigate)),
           SizedBox(height: gap),
-          SizedBox(height: 190, child: _CompletedPanel(model: model, onNavigate: onNavigate)),
+          SizedBox(height: MediaQuery.textScalerOf(context).scale(190), child: _CompletedPanel(model: model, onNavigate: onNavigate)),
         ],
       );
 }
