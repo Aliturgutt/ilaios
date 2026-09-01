@@ -13,6 +13,7 @@ from src.video_automation.openrouter_perceptual_reviewer import (
     OpenRouterPerceptualReviewError,
     OpenRouterReviewResponse,
 )
+from src.video_automation.perceptual_review import PerceptualReviewSubmission
 from src.video_automation.video_skills import QaDomain
 
 
@@ -57,7 +58,7 @@ def _payload(score: float, repair_target: str = "") -> dict[str, object]:
 def _review(
     monkeypatch: pytest.MonkeyPatch,
     transport: _QueuedTransport,
-):
+) -> PerceptualReviewSubmission:
     monkeypatch.setattr(
         brand_module,
         "_sample_frames",
@@ -91,7 +92,10 @@ def test_brand_reviewer_binds_exact_artifact_and_domain(
     assert submission.threshold == pytest.approx(0.90)
     assert submission.reviewer_id == "openrouter-brand-review:openrouter/free"
     assert len(submission.evidence_references) == 2
-    assert all(reference.startswith("brand-frame-sha256:") for reference in submission.evidence_references)
+    assert all(
+        reference.startswith("brand-frame-sha256:")
+        for reference in submission.evidence_references
+    )
     assert "artifact=" + "a" * 64 in submission.provenance_reference
     response_format = transport.requests[0]["response_format"]
     assert isinstance(response_format, Mapping)
