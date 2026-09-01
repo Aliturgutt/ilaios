@@ -116,10 +116,13 @@ class _WorkspaceHeader extends StatelessWidget {
   final _SessionProjection session;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
+  Widget build(BuildContext context) => ConstrainedBox(
         key: const Key('live-workspace-header'),
-        height: 38,
-        child: Row(
+        constraints: const BoxConstraints(minHeight: 38),
+        child: Wrap(
+          spacing: 10,
+          runSpacing: 8,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
               _tr(context, 'Canlı Çalışma Alanı', 'Live Workspace'),
@@ -129,39 +132,32 @@ class _WorkspaceHeader extends StatelessWidget {
                 height: 1,
               ),
             ),
-            const SizedBox(width: 10),
             _Pill(
               text: session.connected
                   ? _tr(context, 'AKTİF OTURUM', 'ACTIVE SESSION')
                   : _tr(context, 'BAĞLANTI YOK', 'OFFLINE'),
               color: session.connected ? IlaiosTheme.success : IlaiosTheme.warning,
             ),
-            const SizedBox(width: 18),
             _MetaInline(
               label: _tr(context, 'Başlangıç', 'Started'),
               value: session.startedAt ?? '—',
             ),
-            const SizedBox(width: 18),
             _MetaInline(
               label: _tr(context, 'Proje', 'Project'),
               value: session.project ?? '—',
             ),
-            const Spacer(),
             _HeaderAction(
               icon: Icons.fullscreen_rounded,
               label: _tr(context, 'Tam Ekran', 'Full Screen'),
             ),
-            const SizedBox(width: 5),
             _HeaderAction(
               icon: Icons.handshake_outlined,
               label: _tr(context, 'Paylaş', 'Share'),
             ),
-            const SizedBox(width: 5),
             _HeaderAction(
               icon: Icons.save_outlined,
               label: _tr(context, 'Kaydet', 'Save'),
             ),
-            const SizedBox(width: 5),
             SizedBox(
               width: 32,
               height: 28,
