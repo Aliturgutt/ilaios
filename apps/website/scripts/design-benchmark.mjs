@@ -50,6 +50,9 @@ function requireText(source, text, label) {
 function forbid(pattern, label) {
   if (pattern.test(css)) failures.push(`anti-generic gate: ${label}`);
 }
+function forbidIn(source, pattern, label) {
+  if (pattern.test(source)) failures.push(`${label}: forbidden internal detail returned`);
+}
 function clampMax(selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const match = css.match(new RegExp(`${escaped}\\{[^}]*font-size\\s*:\\s*clamp\\([^,]+,[^,]+,\\s*([0-9.]+)rem`, "i"));
@@ -111,11 +114,28 @@ requireText(architecture, "variant=\"knowledge\"", "architecture knowledge detai
 requireText(architecture, "variant=\"recovery\"", "architecture recovery detail");
 requireText(factoriesPage, "Cross-factory composition", "cross-factory bounded composition");
 requireText(factoriesPage, "variant=\"knowledge\"", "factories shared knowledge plane");
-requireText(how, "variant=\"journey\"", "English full request chain");
-requireText(how, "variant=\"runtime\"", "English execution runtime chain");
-requireText(how, "variant=\"recovery\"", "English recovery chain");
-requireText(how, "variant=\"cost\"", "English FinOps chain");
-requireText(howTr, "variant=\"journey\"", "Turkish full request chain");
+
+for (const text of [
+  "Describe what you want finished",
+  "ILAIOS organizes the work",
+  "The work is produced",
+  "ILAIOS verifies and delivers",
+  "Goal → governed work → production → verification → delivery.",
+  "What verified means",
+  'href="/use-ilaios"',
+]) requireText(how, text, "English public How It Works flow");
+for (const text of [
+  "Bitmesini istediğin sonucu tarif et",
+  "ILAIOS işi düzenler",
+  "İş üretilir",
+  "ILAIOS doğrular ve teslim eder",
+  "Hedef → yönetilen iş → üretim → doğrulama → teslim.",
+  "Doğrulanmış ne demek?",
+  'href="/tr/use-ilaios"',
+]) requireText(howTr, text, "Turkish public How It Works flow");
+forbidIn(how, /ExecutionGrant|RoutingDecision|worker lease|fencing token|admission lease/i, "English How It Works boundary");
+forbidIn(howTr, /ExecutionGrant|RoutingDecision|worker lease|fencing token|admission lease/i, "Turkish How It Works boundary");
+
 requireText(webFactory, "variant=\"web\"", "English full Web Factory lifecycle");
 requireText(webFactoryTr, "variant=\"web\"", "Turkish full Web Factory lifecycle");
 requireText(audience, "audience-${audience}", "audience-specific rendered composition class");
@@ -153,5 +173,6 @@ console.log("ILAIOS design benchmark gate PASS");
 console.log(`Benchmarks: ${competitors.join(", ")}`);
 for (const question of benchmarkQuestions) console.log(`- ${question}`);
 console.log("Canonical documentation coverage includes request contracts, admission/routing, knowledge, recovery, FinOps, maturity and the full Web Factory lifecycle.");
+console.log("Public How It Works coverage remains outcome-first while technical authority detail stays in canonical documentation surfaces.");
 console.log("P0 mobile overlap/density invariants are present in the final override layers.");
 console.log("Manual live-site visual approval remains REQUIRED before the website may be called FINAL.");
