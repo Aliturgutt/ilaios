@@ -27,10 +27,11 @@ void main() {
 
     expect(find.text('Ana Kontrol Merkezi'), findsNothing);
     expect(find.text('İş başlat'), findsOneWidget);
-    expect(find.text('Şablonlar'), findsOneWidget);
-    expect(find.text('Son işler'), findsOneWidget);
+    expect(find.text('Gelişmiş'), findsOneWidget);
+    expect(find.text('Şablonlar'), findsNothing);
+    expect(find.text('Son işler'), findsNothing);
     expect(find.byKey(const Key('home-new-work')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-metrics')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-metrics')), findsNothing);
     expect(find.text('ODAK İŞLER'), findsOneWidget);
     expect(find.text('DİKKAT GEREKTİRENLER'), findsOneWidget);
     expect(find.text('SON ÇIKTILAR'), findsOneWidget);

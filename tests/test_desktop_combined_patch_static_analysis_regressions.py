@@ -98,7 +98,7 @@ def test_v4_typography_stays_scoped_without_global_shell_zoom(tmp_path: Path) ->
 
     assert "final desktopTextScale = math.max(1.10, systemTextScale);" not in shell
     assert "TextScaler.linear(desktopTextScale)" not in shell
-    assert "textScaler: const TextScaler.linear(.95)" in shell
+    assert "TextScaler.linear(.95)" not in shell
     assert "key: const Key('reference-outputs-page')" in deliveries
 
 

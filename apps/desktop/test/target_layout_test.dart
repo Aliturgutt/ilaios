@@ -36,14 +36,18 @@ void main() {
       expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
       expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
       expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
+      expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
+      expect(find.byKey(const Key('reference-responsive-viewport-v11')), findsOneWidget);
+      expect(find.byKey(const Key('reference-responsive-viewport-v10')), findsOneWidget);
 
-      final shouldScaleCompactViewport = size.width <= 1320 || size.height < 720;
+      final shouldScrollCompactViewport =
+          size.width < 940 || size.height < 760;
       expect(
-        find.byKey(const Key('reference-scaled-viewport-v9')),
-        shouldScaleCompactViewport ? findsOneWidget : findsNothing,
-        reason: shouldScaleCompactViewport
-            ? 'Compact Desktop viewport should use the bounded safety fit'
-            : 'Normal/DPI-compressed Desktop viewport must remain native 1:1',
+        find.byKey(const Key('command-center-short-viewport-scroll')),
+        shouldScrollCompactViewport ? findsOneWidget : findsNothing,
+        reason: shouldScrollCompactViewport
+            ? 'Compact Desktop viewport must scroll without shrinking typography'
+            : 'Standard Desktop viewport should retain the one-viewport composition',
       );
     }
   });
@@ -85,6 +89,8 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1920, 1080));
 
     for (final scale in <double>[1.25, 1.5]) {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
       await tester.pumpWidget(
         MediaQuery(
           data: MediaQueryData(textScaler: TextScaler.linear(scale)),
@@ -100,6 +106,12 @@ void main() {
       expect(find.byKey(const Key('command-center-home')), findsOneWidget);
       expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
       expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
+      expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
+      expect(
+        find.byKey(const Key('command-center-short-viewport-scroll')),
+        findsWidgets,
+        reason: 'Windows text scaling must preserve readable typography by scrolling, not shrinking',
+      );
     }
   });
 
@@ -132,6 +144,7 @@ void main() {
       expect(find.text('Ana Kontrol Merkezi'), findsNothing);
       expect(find.text('Aktif İş Akışı'), findsNothing);
       expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
+      expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
     }
   });
 }

@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../../control_plane/client.dart';
@@ -17,12 +15,9 @@ import 'reference_desktop_shell_v10.dart';
 
 /// Final resize guard for the approved Desktop design.
 ///
-/// Normal Windows client areas, including DPI-compressed viewports such as
-/// 1382x733, render V10 at native 1:1 size so typography is not artificially
-/// reduced. Smaller desktop windows use the bounded 1280x900 safety canvas
-/// needed to preserve the complete approved composition without RenderFlex
-/// overflow. The child V10 shell therefore never sees compact constraints when
-/// this outer safety fit is active, avoiding double scaling.
+/// All supported Windows client areas preserve native Flutter typography and
+/// the caller's text scaling. Each presentation surface owns its scrolling so
+/// navigation and the status bar remain within the actual client area.
 class ReferenceDesktopShellV11 extends StatelessWidget {
   const ReferenceDesktopShellV11({
     required this.projection,
@@ -105,37 +100,10 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
     } else {
       GovernedLifecycleProjectionStore.replace(operationalSnapshot);
     }
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const compactWidthThreshold = 1320.0;
-        const compactHeightThreshold = 720.0;
-        const designWidthFloor = 1280.0;
-        const designHeight = 900.0;
 
-        final compact = constraints.maxWidth <= compactWidthThreshold ||
-            constraints.maxHeight < compactHeightThreshold;
-        if (!compact) return _shell();
-
-        final ratioMatchedWidth = constraints.maxHeight > 0
-            ? constraints.maxWidth * designHeight / constraints.maxHeight
-            : designWidthFloor;
-        final designWidth = math.max(designWidthFloor, ratioMatchedWidth);
-
-        return ClipRect(
-          key: const Key('reference-scaled-viewport-v9'),
-          child: SizedBox.expand(
-            child: FittedBox(
-              fit: BoxFit.contain,
-              alignment: Alignment.topLeft,
-              child: SizedBox(
-                width: designWidth,
-                height: designHeight,
-                child: _shell(),
-              ),
-            ),
-          ),
-        );
-      },
+    return SizedBox.expand(
+      key: const Key('reference-responsive-viewport-v11'),
+      child: _shell(),
     );
   }
 }

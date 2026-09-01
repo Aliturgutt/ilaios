@@ -141,7 +141,8 @@ void main() {
 
     expect(find.byKey(const Key('reference-outputs-page')), findsOneWidget);
     expect(find.byKey(const Key('outputs-table')), findsOneWidget);
-    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsOneWidget);
+    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
+    expect(find.byKey(const Key('reference-responsive-viewport-v11')), findsOneWidget);
     expect(find.text('Çıktılar'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
