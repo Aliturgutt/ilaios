@@ -1,1 +1,0 @@
-Locale-specific PWA metadata will be added when the installable client/web-app scope is finalized. This file records the intentional deferral.

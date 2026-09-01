@@ -1,1 +1,0 @@
-{"type":"object","required":["intent","changed_paths","risk_flags"],"properties":{"intent":{"type":"string","minLength":1},"changed_paths":{"type":"array","items":{"type":"string"}},"risk_flags":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}

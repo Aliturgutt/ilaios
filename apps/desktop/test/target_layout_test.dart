@@ -89,6 +89,8 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1920, 1080));
 
     for (final scale in <double>[1.25, 1.5]) {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump();
       await tester.pumpWidget(
         MediaQuery(
           data: MediaQueryData(textScaler: TextScaler.linear(scale)),

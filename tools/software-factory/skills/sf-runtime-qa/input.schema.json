@@ -1,1 +1,0 @@
-{"type":"object","required":["intent","critical_workflows"],"properties":{"intent":{"type":"string","minLength":1},"critical_workflows":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}

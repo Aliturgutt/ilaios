@@ -1,8 +1,0 @@
-PLATFORM.P13.v1
-dependency PLATFORM.P12 durable PASS: PASS
-python -m pytest -q tests/test_security_finance_gates.py: PASS, 3 passed
-python -m pytest -q: PASS, 872 passed
-ruff check .: PASS
-mypy --strict src tests: PASS, 141 source files
-pre-commit run --all-files: PASS
-git diff --check: PASS

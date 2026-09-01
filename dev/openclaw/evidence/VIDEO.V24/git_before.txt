@@ -1,4 +1,0 @@
-branch: master
-head: 971c904eebae6606a6900f03e138a2a32639ed00
-origin_master: 971c904eebae6606a6900f03e138a2a32639ed00
-worktree: clean

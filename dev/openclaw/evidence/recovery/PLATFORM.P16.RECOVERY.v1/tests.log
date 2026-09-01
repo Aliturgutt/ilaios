@@ -1,7 +1,0 @@
-targeted_result: 3 passed in 2.37s
-isolated_runtime_result: 1 passed in 1.53s
-full_result: 943 passed in 27.94s
-coverage: runnable HTML/JS, shared goal/job/event schemas, direct authoritative equality, control restart reconnect, wrong-token denial, no browser/local database authority
-browser_equivalent_boundary: real HTTP HTML/JavaScript and subprocess proxy
-in_process_only: false
-local_authoritative_store: false

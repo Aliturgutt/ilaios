@@ -1,8 +1,0 @@
-PLATFORM.P17.RECOVERY.v1 commands
-controller/plan reread and P16 dependency PASS: PASS
-git pre-state: clean master at d6e847f427b3f610d7ae83f065db4011db0edf0e equals origin/master
-python -m pytest -q tests/test_web_factory.py: 3 passed
-python -m pytest -q -vv tests/test_web_factory.py::test_golden_official_site_writes_addressable_verified_bundle --basetemp=/tmp/ilaios-p17-runtime-evidence: 1 passed
-real bundle file listing, SHA-256, and acceptance extraction: PASS
-python -m pytest -q: 944 passed
-ruff check .; mypy --strict src tests; pre-commit run --all-files; git diff --check: PASS

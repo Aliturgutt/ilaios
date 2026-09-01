@@ -1,1 +1,0 @@
-{"type":"object","required":["intent","failure_evidence"],"properties":{"intent":{"type":"string","minLength":1},"failure_evidence":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}

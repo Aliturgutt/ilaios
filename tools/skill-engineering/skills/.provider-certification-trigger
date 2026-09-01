@@ -1,4 +1,0 @@
-ILAIOS Skill Engineering provider certification trigger
-version=1
-purpose=force exact-master OpenRouter llama.cpp vLLM recertification after CI evidence-concurrency repair
-authority=none

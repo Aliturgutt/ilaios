@@ -1,1 +1,0 @@
-import Link from "next/link"; export default function NotFound(){return <section className="shell page-hero"><div className="eyebrow">404</div><h1>Sayfa bulunamadı.</h1><p className="lead">Aradığınız Türkçe sayfa mevcut değil.</p><div className="actions"><Link className="button" href="/tr">Türkçe ana sayfaya dön</Link></div></section>}

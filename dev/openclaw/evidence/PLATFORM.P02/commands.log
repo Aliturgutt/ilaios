@@ -1,8 +1,0 @@
-PLATFORM.P02.v1
-dependency PLATFORM.P01 durable PASS: PASS
-python -m pytest -q tests/test_architecture_boundaries.py: PASS, 2 passed
-python -m pytest -q: PASS, 837 passed
-ruff check .: PASS
-mypy --strict src tests: PASS, 131 source files
-pre-commit run --all-files: PASS
-git diff --check: PASS

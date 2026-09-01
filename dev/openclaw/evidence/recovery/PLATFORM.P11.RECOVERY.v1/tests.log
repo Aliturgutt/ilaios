@@ -1,8 +1,0 @@
-Targeted policy/scheduler/service tests: 17 passed in 7.31s
-Independent restart E2E: 1 passed in 0.93s
-Full repository regression: 936 passed in 15.99s
-
-Actual scheduler side effects require a current fencing lease and a durable,
-scoped, unexpired, non-revoked grant for a non-stopped subject. Only one
-allowed effect reached the ledger; budget exhaustion, revocation, and kill
-state all failed closed across process restart.

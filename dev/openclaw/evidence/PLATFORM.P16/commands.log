@@ -1,8 +1,0 @@
-PLATFORM.P16.v1
-dependency PLATFORM.P15 durable PASS: PASS
-python -m pytest -q tests/test_web_control_center.py: PASS (2 passed)
-python -m pytest -q: PASS (878 passed)
-ruff check .: PASS
-mypy --strict src tests: PASS
-pre-commit run --all-files: PASS
-git diff --check: PASS

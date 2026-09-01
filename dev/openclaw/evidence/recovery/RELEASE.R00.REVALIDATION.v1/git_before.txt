@@ -1,7 +1,0 @@
-package_id: RELEASE.R00.REVALIDATION.v1
-branch: master
-head: c70a4fb0c86def2232add88d391cde359c10a38c
-origin_master: c70a4fb0c86def2232add88d391cde359c10a38c
-worktree_clean: true
-dependency: dev/openclaw/evidence/recovery/PLATFORM.P20.RECOVERY.v1/decision.yaml
-dependency_status: PASS

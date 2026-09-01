@@ -1,3 +1,0 @@
-branch: master
-HEAD/origin: ac00440e28e539d46bec6d02948b9189de58332c
-worktree: clean

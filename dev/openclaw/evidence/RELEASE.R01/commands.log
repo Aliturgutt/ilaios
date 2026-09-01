@@ -1,8 +1,0 @@
-No AWS resource creation, OpenTofu apply, DNS change, credential creation, or release promotion performed.
-OIDC proof: .github/workflows/aws-r01-oidc-proof.yml (triggered by first push; artifact release-r01-aws-oidc-SELF)
-OpenTofu fmt/init -backend=false/validate: PASS
-YAML parse: PASS
-No-cost preparation only; external-spend apply blocked.
-git push origin master: BLOCKED
-exact failure: GitHub refused PAT workflow update because the configured token lacks workflow scope.
-AWS OIDC proof: NOT_RUN because the workflow commit could not be pushed.

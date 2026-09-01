@@ -1,9 +1,0 @@
-{
-  "cases": [
-    {"id":"lint-golden","kind":"GOLDEN","assertions":["complete canonical package passes deterministic hygiene checks","report remains bound to exact candidate digest"]},
-    {"id":"lint-negative","kind":"NEGATIVE","assertions":["missing required package file blocks before semantic validation"]},
-    {"id":"lint-adversarial","kind":"ADVERSARIAL","assertions":["manifest language attempting to own protected Core authority blocks","requested convenience cannot waive deny-set"]},
-    {"id":"lint-malformed","kind":"MALFORMED","assertions":["invalid digest or malformed schema document blocks"]},
-    {"id":"lint-regression","kind":"REGRESSION","assertions":["previously required eval kind or deny-set entry cannot disappear silently"]}
-  ]
-}

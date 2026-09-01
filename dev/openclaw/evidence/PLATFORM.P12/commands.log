@@ -1,8 +1,0 @@
-PLATFORM.P12.v1
-dependency PLATFORM.P11 durable PASS: PASS
-python -m pytest -q tests/test_evidence_store.py: PASS, 3 passed
-python -m pytest -q: PASS, 869 passed
-ruff check .: PASS
-mypy --strict src tests: PASS, 140 source files
-pre-commit run --all-files: PASS
-git diff --check: PASS

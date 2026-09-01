@@ -1,5 +1,0 @@
-commit_identity: SELF
-local_commit: aed8fda (amended commit identity becomes SELF)
-head_equals_origin_master: false
-push: BLOCKED_GITHUB_PAT_WORKFLOW_SCOPE
-worktree_clean: REQUIRED_AFTER_SUCCESSFUL_PUSH

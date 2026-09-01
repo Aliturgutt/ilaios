@@ -1,4 +1,0 @@
-ruff: PASS
-mypy strict: PASS (148 source files)
-pre-commit: PASS
-git diff --check: PASS

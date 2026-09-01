@@ -1,4 +1,0 @@
-VIDEO.V17.v1 required commands: all PASS
-python -m pytest -q tests/test_video_automation_*.py: PASS
-python -m pytest -q: PASS
-ruff check ., mypy --strict src tests, pre-commit run --all-files, git diff --check: PASS

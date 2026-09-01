@@ -1,4 +1,0 @@
-VIDEO.V02.v1 required commands: all PASS
-targeted pytest: 640 passed
-full pytest: 804 passed
-ruff, strict mypy, pre-commit, git diff --check: PASS

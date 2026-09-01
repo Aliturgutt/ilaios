@@ -1,8 +1,0 @@
-VIDEO.V01.v1 validation commands
-git status --porcelain=v1 --branch && git rev-parse HEAD && git rev-parse origin/master: PASS
-python -m pytest -q tests/test_video_automation_*.py: PASS
-python -m pytest -q: PASS
-ruff check .: PASS
-mypy --strict src tests: PASS
-pre-commit run --all-files: PASS
-git diff --check: PASS

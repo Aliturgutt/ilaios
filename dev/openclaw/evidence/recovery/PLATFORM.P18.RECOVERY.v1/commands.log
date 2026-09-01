@@ -1,9 +1,0 @@
-PLATFORM.P18.RECOVERY.v1 commands
-controller/plan reread and P17 dependency PASS: PASS
-git pre-state: clean master at 0c91c30a6ea34909e11f5335b435748ceb623c87 equals origin/master
-unshare --user --map-root-user --mount true: PASS
-python -m pytest -q tests/test_software_factory.py: 2 passed
-python -m pytest -q -vv tests/test_software_factory.py::test_factory_emits_real_tested_content_addressed_review_proposal --basetemp=/tmp/ilaios-p18-runtime-evidence: 1 passed
-proposal patch/log/approval/workspace/production byte extraction: PASS
-python -m pytest -q: 944 passed
-ruff check .; mypy --strict src tests; pre-commit run --all-files; git diff --check: PASS

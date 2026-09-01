@@ -1,7 +1,0 @@
-Targeted routing/supply-chain/service tests: 12 passed in 5.11s
-Independent runtime acceptance: 1 passed in 1.04s
-Full repository regression: 934 passed in 13.29s
-
-The accepted path invokes the concrete uppercase adapter through authenticated
-HTTP. No provider, registry, skill store, router, or adapter on the accepted
-internal path is mocked.

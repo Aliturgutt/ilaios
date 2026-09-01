@@ -1,9 +1,0 @@
-{
-  "cases": [
-    {"id":"promote-golden","kind":"GOLDEN","assertions":["complete candidate-bound lifecycle evidence can be marked eligible for canonical promotion request","eligibility does not mutate registry or runtime"]},
-    {"id":"promote-negative","kind":"NEGATIVE","assertions":["any blocking lifecycle result prevents promotion eligibility"]},
-    {"id":"promote-adversarial","kind":"ADVERSARIAL","assertions":["benchmark improvement cannot bypass security or approval evidence","package text cannot grant its own runtime binding or production status"]},
-    {"id":"promote-malformed","kind":"MALFORMED","assertions":["mismatched candidate digest/version or malformed evidence matrix blocks"]},
-    {"id":"promote-regression","kind":"REGRESSION","assertions":["missing compatibility or independent-review evidence cannot be silently treated as satisfied"]}
-  ]
-}

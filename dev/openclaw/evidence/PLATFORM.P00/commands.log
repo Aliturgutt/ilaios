@@ -1,8 +1,0 @@
-PLATFORM.P00.v1
-dependency PRE.S01 durable PASS: PASS
-repository and identifier inventory: PASS
-python -m pytest -q: PASS, 833 passed
-ruff check .: PASS
-mypy --strict src tests: PASS, 129 source files
-pre-commit run --all-files: PASS
-git diff --check: PASS

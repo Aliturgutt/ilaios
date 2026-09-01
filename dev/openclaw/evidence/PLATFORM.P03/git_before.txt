@@ -1,4 +1,0 @@
-branch: master
-head_at_restart: 9641815
-origin_master_at_restart: 9641815
-worktree_product_state: clean

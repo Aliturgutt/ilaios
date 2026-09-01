@@ -1,5 +1,0 @@
-targeted: 3 passed in 0.25s
-isolated_real_bundle: 1 passed in 0.20s
-full: 944 passed in 28.50s
-coverage: real HTML/CSS files, addressable bundle, required pages, ILAIOS brand, complete navigation, page content, byte hashes, stable rebuild, tamper rejection, acceptance.json
-hash_only_acceptance: false

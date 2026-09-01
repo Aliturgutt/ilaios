@@ -1,7 +1,0 @@
-Targeted scheduler and service boundary: 13 passed in 5.99s
-Concurrent runtime acceptance: 1 passed in 0.91s
-Full repository regression: 935 passed in 14.80s
-
-Two simultaneous HTTP scheduling requests for one task produced exactly one
-lease. Quota denial, expiry, monotonic rescheduling, stale-fence denial, a real
-fenced side-effect write, and restart persistence all passed without mocks.

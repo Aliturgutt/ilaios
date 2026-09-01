@@ -1,4 +1,0 @@
-interface:
-  display_name: "App Design Quality"
-  short_description: "Evaluate native app interaction and polish"
-  default_prompt: "Use $app-design-quality to evaluate a native app build with structured evidence."

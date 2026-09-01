@@ -1,1 +1,0 @@
-{"type":"object","required":["intent","artifact_references"],"properties":{"intent":{"type":"string","minLength":1},"artifact_references":{"type":"array","items":{"type":"string"}}},"additionalProperties":false}

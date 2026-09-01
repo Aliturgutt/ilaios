@@ -1,2 +1,0 @@
-branch: master
-Final HEAD/origin synchronization and clean-worktree state verified after evidence push.

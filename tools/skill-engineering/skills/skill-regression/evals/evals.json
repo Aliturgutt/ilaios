@@ -1,9 +1,0 @@
-{
-  "cases": [
-    {"id":"regression-golden","kind":"GOLDEN","assertions":["compatible baseline/candidate evidence yields per-dimension deltas","decision remains evidence-bound"]},
-    {"id":"regression-negative","kind":"NEGATIVE","assertions":["missing or incompatible baseline evidence blocks"]},
-    {"id":"regression-adversarial","kind":"ADVERSARIAL","assertions":["security/governance regression blocks despite aggregate quality gain","cost/speed cannot waive protected-boundary regression"]},
-    {"id":"regression-malformed","kind":"MALFORMED","assertions":["invalid candidate digest or empty evidence blocks"]},
-    {"id":"regression-regression","kind":"REGRESSION","assertions":["missing telemetry is never silently treated as zero regression"]}
-  ]
-}

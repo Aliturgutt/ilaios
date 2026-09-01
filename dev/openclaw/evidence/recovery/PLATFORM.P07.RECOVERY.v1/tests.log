@@ -1,7 +1,0 @@
-Targeted unit/integration/restart/duplicate/negative tests: 11 passed in 3.57s
-Independent real-boundary acceptance: 1 passed in 1.03s
-Full repository regression: 931 passed in 11.39s
-
-The accepted path uses three OS service processes and actual HTTP requests. It
-does not mock the workflow store, transport, database, retries, or delivery
-state.

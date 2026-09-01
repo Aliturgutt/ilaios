@@ -1,9 +1,0 @@
-{
-  "cases": [
-    {"id":"security-scan-golden","kind":"GOLDEN","assertions":["current candidate-bound Assurance evidence with no blocking findings passes","no new security authority is created"]},
-    {"id":"security-scan-negative","kind":"NEGATIVE","assertions":["missing required security-review evidence blocks"]},
-    {"id":"security-scan-adversarial","kind":"ADVERSARIAL","assertions":["benchmark gain cannot waive governance or tenant escape finding","self-issued exception evidence is rejected"]},
-    {"id":"security-scan-malformed","kind":"MALFORMED","assertions":["mismatched candidate digest or malformed evidence identity blocks"]},
-    {"id":"security-scan-regression","kind":"REGRESSION","assertions":["a newly applicable supply-chain or threat-model control cannot be silently omitted"]}
-  ]
-}

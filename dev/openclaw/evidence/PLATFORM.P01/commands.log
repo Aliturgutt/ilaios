@@ -1,9 +1,0 @@
-PLATFORM.P01.v1
-dependency PLATFORM.P00 durable PASS: PASS
-identity inventory and migration: PASS
-python -m pytest -q tests/test_identity_migration.py: PASS, 2 passed
-python -m pytest -q: PASS, 835 passed
-ruff check .: PASS
-mypy --strict src tests: PASS, 130 source files
-pre-commit run --all-files: PASS
-git diff --check: PASS

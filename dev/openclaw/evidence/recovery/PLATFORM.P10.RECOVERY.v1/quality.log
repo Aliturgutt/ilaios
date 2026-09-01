@@ -1,6 +1,0 @@
-ruff check .: PASS
-mypy --strict src tests: PASS (158 source files)
-targeted strict mypy for changed scheduler/service/tests: PASS
-pre-commit run --all-files: PASS
-git diff --check: PASS
-forbidden and canonical authority diff: empty

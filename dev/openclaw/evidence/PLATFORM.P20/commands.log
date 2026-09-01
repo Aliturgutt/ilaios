@@ -1,5 +1,0 @@
-PLATFORM.P20.v1
-dependency PLATFORM.P19 durable PASS: PASS
-targeted pytest: PASS (2 passed)
-full pytest: PASS (886 passed)
-ruff, mypy strict, pre-commit, git diff --check: PASS

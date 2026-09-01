@@ -1,8 +1,0 @@
-PLATFORM.P14.v1
-dependency PLATFORM.P13 durable PASS: PASS
-python -m pytest -q tests/test_video_platform_adapter.py: PASS, 2 passed
-python -m pytest -q: PASS, 874 passed
-ruff check .: PASS
-mypy --strict src tests: PASS, 142 source files
-pre-commit run --all-files: PASS
-git diff --check: PASS
