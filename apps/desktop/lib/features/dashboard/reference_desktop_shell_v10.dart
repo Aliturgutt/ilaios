@@ -658,7 +658,7 @@ class _BottomStatusBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: const Key('reference-bottom-status-v2'),
-      height: 40,
+      constraints: const BoxConstraints(minHeight: 40),
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerLowest,
