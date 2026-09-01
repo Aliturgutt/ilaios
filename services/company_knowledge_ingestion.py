@@ -15,6 +15,9 @@ import zipfile
 from dataclasses import dataclass
 from typing import Protocol
 
+from pypdf import PdfReader
+from pypdf.errors import FileNotDecryptedError, PdfReadError
+
 from services.knowledge_rag import KnowledgeRAG, KnowledgeSource
 from services.knowledge_runtime import DurableKnowledgeRuntime
 
@@ -46,6 +49,41 @@ class PlainTextExtractor:
             return content.decode("utf-8")
         except UnicodeDecodeError as exc:
             raise CompanyKnowledgeIngestionError("text source must be UTF-8") from exc
+
+
+class PdfTextExtractor:
+    mime_types = frozenset({"application/pdf"})
+    _MAX_PAGES = 1000
+    _MAX_EXTRACTED_CHARS = 5_000_000
+
+    def extract(self, *, filename: str, content: bytes) -> str:
+        del filename
+        if not content.startswith(b"%PDF-"):
+            raise CompanyKnowledgeIngestionError("invalid PDF signature")
+        try:
+            reader = PdfReader(io.BytesIO(content), strict=False)
+            if reader.is_encrypted:
+                raise CompanyKnowledgeIngestionError("encrypted PDF is not ingestible")
+            if len(reader.pages) > self._MAX_PAGES:
+                raise CompanyKnowledgeIngestionError("PDF page count exceeds bounded limit")
+            pages: list[str] = []
+            extracted_chars = 0
+            for page_number, page in enumerate(reader.pages, start=1):
+                page_text = page.extract_text() or ""
+                if not page_text.strip():
+                    continue
+                rendered = f"[page {page_number}]\n{page_text}"
+                extracted_chars += len(rendered)
+                if extracted_chars > self._MAX_EXTRACTED_CHARS:
+                    raise CompanyKnowledgeIngestionError(
+                        "PDF extracted text exceeds bounded limit"
+                    )
+                pages.append(rendered)
+        except CompanyKnowledgeIngestionError:
+            raise
+        except (PdfReadError, FileNotDecryptedError, OSError, ValueError) as exc:
+            raise CompanyKnowledgeIngestionError("invalid PDF document") from exc
+        return _normalize("\n".join(pages))
 
 
 class DocxTextExtractor:
@@ -89,7 +127,11 @@ class CompanyDocumentExtractor:
     def __init__(
         self, *, extractors: tuple[DocumentTextExtractor, ...] | None = None
     ) -> None:
-        selected = extractors or (PlainTextExtractor(), DocxTextExtractor())
+        selected = extractors or (
+            PlainTextExtractor(),
+            PdfTextExtractor(),
+            DocxTextExtractor(),
+        )
         self._extractors = {
             mime_type: extractor
             for extractor in selected
