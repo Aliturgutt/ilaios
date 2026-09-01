@@ -16,6 +16,8 @@ def test_signin_surface_is_scoped_and_bilingual() -> None:
 
     component = COMPONENT.read_text(encoding="utf-8")
     assert "SignInPage.module.css" in component
+    assert "/brand/logo-horizontal-light.jpg" in component
+    assert "/brand/logo-horizontal-dark.jpg" in component
     assert "Continue with Google" in component
     assert "Microsoft ile devam et" in component
 
