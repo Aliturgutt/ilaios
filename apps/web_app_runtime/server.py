@@ -21,7 +21,7 @@ from http import HTTPStatus
 from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from threading import Lock
+from threading import BoundedSemaphore, Lock
 from typing import Final
 from urllib.parse import parse_qs, urlsplit
 
@@ -106,6 +106,8 @@ _DEFAULT_PORT: Final = 8080
 _DEFAULT_SESSION_SECONDS: Final = 3600
 _MAX_SESSION_SECONDS: Final = 86_400
 _MAX_REQUEST_BODY_BYTES: Final = 16_384
+_MAX_RATE_LIMIT_BUCKETS: Final = 4_096
+_MAX_CONCURRENT_REQUESTS: Final = 32
 _RATE_LIMITS: Final = {
     "/auth/providers": (600, 60),
     "/auth/google/start": (120, 60),
@@ -239,15 +241,41 @@ class RuntimeRequest:
 
 
 class AppRateLimiter:
-    """Small process-local fixed-window limiter for public auth endpoints."""
+    """Bounded process-local fixed-window limiter for public auth endpoints."""
 
     def __init__(
         self,
         rules: Mapping[str, tuple[int, int]] = _RATE_LIMITS,
+        *,
+        max_buckets: int = _MAX_RATE_LIMIT_BUCKETS,
     ) -> None:
         self._rules = dict(rules)
+        if max_buckets < 1:
+            raise ValueError("rate limit bucket bound is invalid")
+        self._max_buckets = max_buckets
         self._events: dict[tuple[str, str], deque[datetime]] = {}
         self._lock = Lock()
+
+    @property
+    def bucket_count(self) -> int:
+        with self._lock:
+            return len(self._events)
+
+    def _prune_locked(self, now: datetime) -> None:
+        stale: list[tuple[str, str]] = []
+        for key, events in self._events.items():
+            rule = self._rules.get(key[1])
+            if rule is None:
+                stale.append(key)
+                continue
+            _limit, window_seconds = rule
+            cutoff = now - timedelta(seconds=window_seconds)
+            while events and events[0] <= cutoff:
+                events.popleft()
+            if not events:
+                stale.append(key)
+        for key in stale:
+            self._events.pop(key, None)
 
     def check(
         self,
@@ -266,7 +294,13 @@ class AppRateLimiter:
         cutoff = now - timedelta(seconds=window_seconds)
         key = (normalized_source, path)
         with self._lock:
-            events = self._events.setdefault(key, deque())
+            self._prune_locked(now)
+            events = self._events.get(key)
+            if events is None:
+                if len(self._events) >= self._max_buckets:
+                    return window_seconds
+                events = deque()
+                self._events[key] = events
             while events and events[0] <= cutoff:
                 events.popleft()
             if len(events) >= limit:
@@ -1230,9 +1264,33 @@ class AppRuntime:
 class AppHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
 
-    def __init__(self, address: tuple[str, int], runtime: AppRuntime) -> None:
+    def __init__(
+        self,
+        address: tuple[str, int],
+        runtime: AppRuntime,
+        *,
+        max_concurrent_requests: int = _MAX_CONCURRENT_REQUESTS,
+    ) -> None:
+        if max_concurrent_requests < 1:
+            raise ValueError("concurrent request bound is invalid")
+        self._request_slots = BoundedSemaphore(max_concurrent_requests)
+        self.max_concurrent_requests = max_concurrent_requests
         super().__init__(address, AppHTTPRequestHandler)
         self.runtime = runtime
+
+    def process_request(self, request: object, client_address: object) -> None:
+        self._request_slots.acquire()
+        try:
+            super().process_request(request, client_address)  # type: ignore[arg-type]
+        except Exception:
+            self._request_slots.release()
+            raise
+
+    def process_request_thread(self, request: object, client_address: object) -> None:
+        try:
+            super().process_request_thread(request, client_address)  # type: ignore[arg-type]
+        finally:
+            self._request_slots.release()
 
 
 class AppHTTPRequestHandler(BaseHTTPRequestHandler):
