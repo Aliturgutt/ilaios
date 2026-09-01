@@ -270,13 +270,11 @@ class _CreateViewState extends State<CreateView> {
               ],
             ),
           ),
-          SliverLayoutBuilder(
-            builder: (context, constraints) => SliverToBoxAdapter(
-              child: SizedBox(
-                height: constraints.remainingPaintExtent.clamp(
-                  240.0,
-                  double.infinity,
-                ),
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: (MediaQuery.sizeOf(context).height * 0.55)
+                  .clamp(360.0, 640.0)
+                  .toDouble(),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
                     final showRightRail = constraints.maxWidth >= 1080;
@@ -322,7 +320,6 @@ class _CreateViewState extends State<CreateView> {
                 ),
               ),
             ),
-          ),
         ],
       ),
     );
