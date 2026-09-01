@@ -145,7 +145,7 @@ p, small, .muted { color: var(--v2-muted); }
   padding: var(--v2-section) 0 !important;
   border-top-color: var(--v2-line) !important;
 }
-.compact-section { padding: clamp(46px, 4.5vw, 64px) 0 !important; }
+.compact-section { padding: clamp(28px, 3.5vw, 52px) 0 !important; }
 .surface-section, .architecture-section, .evidence-section {
   background: var(--v2-panel-2) !important;
 }
