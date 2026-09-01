@@ -1,42 +1,32 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import CanonicalSystemDetail from "../../CanonicalSystemDetail";
-import ThemedDiagram from "../../ThemedDiagram";
 
 export const metadata: Metadata = {
   title: "ILAIOS Nasıl Çalışır",
-  description: "ILAIOS'un tek hedefi kimlik, bounded planning, policy, capability resolution, execution, bağımsız validation, evidence ve recovery ile nasıl kontrollü işe dönüştürdüğünü görün.",
+  description: "ILAIOS'un sonuç tarifinden yönetilen yürütme, doğrulama ve teslime uzanan public ürün akışını görün.",
   alternates: { canonical: "/tr/how-it-works", languages: { en: "/how-it-works", tr: "/tr/how-it-works", "x-default": "/how-it-works" } },
 };
 
-const simple = [
-  ["01", "Bitmiş sonucu tarif et", "Kullanıcı internal model, agent veya provider seçmek yerine neyin tamamlanması gerektiğini söyler."],
-  ["02", "ILAIOS yürütme sözleşmesini kurar", "Kimlik, tenant/proje bağlamı, gereksinimler, kabul ölçütleri ve yetkili bağlam sınırlandırılmış hedefi tanımlar."],
-  ["03", "Yönetilen iş yürütülür", "Admission, gerektiğinde onay, capability resolution ve sınırlandırılmış execution kabul edilmiş görevleri uygun üretim yolunda ilerletir."],
-  ["04", "Bağımsız kontroller finali belirler", "Validation, evidence, bounded repair ve final evaluation sonucun kabul edilip edilmeyeceğini veya güvenli şekilde duracağını belirler."],
+const steps = [
+  ["01", "Bitmesini istediğin sonucu tarif et", "Sonuç, referanslar ve kısıtlarla başla. Dahili model, ajan veya sağlayıcı zincirini seçmek zorunda değilsin."],
+  ["02", "ILAIOS işi düzenler", "Sistem talebi sınırlandırılmış işe dönüştürür ve bu iş için gereken izin, politika ve onayları uygular."],
+  ["03", "İş üretilir", "Uygulanabilir yetenekler web, yazılım, medya, araştırma veya bunların birleşiminde kabul edilmiş işi yürütür."],
+  ["04", "ILAIOS doğrular ve teslim eder", "Gerekli kontroller sonucun kabul edilip edilmeyeceğini belirler. Geçerse bitmiş sonuç ve ilgili kanıt teslim edilir; çözülemeyen iş anlatımla başarıya dönüştürülmez."],
 ] as const;
 
-const verified = ["Fonksiyonel kontroller", "Browser QA", "Güvenlik kontrolleri", "Erişilebilirlik", "Performans", "SEO", "Visual QA", "Exact artifact identity", "Evidence / provenance", "İstenmişse deployment validation"] as const;
+const verified = [
+  ["Çalışıyor", "Gerekli işlev veya sonuç gerçekten mevcut."],
+  ["Uygun", "Sonuç belirtilen kabul ölçütlerine göre kontrol edildi."],
+  ["Güvenli", "Uygulanabilir politika, güvenlik ve izin kontrolleri korunuyor."],
+  ["İzlenebilir", "Kabul edilen sonuç, teslim edilen işi incelemek için gereken kanıtı koruyor."],
+] as const;
 
 export default function Page() {
   return <>
-    <section className="shell page-hero"><div className="eyebrow">ILAIOS Nasıl Çalışır</div><h1>Yüzeyde basit. Altta kontrollü.</h1><p className="lead">Kanonik deneyim; giriş ve tek doğal dil hedefinden, kullanıcıya internal model/provider/tool stack'ini işlettirmeden kabul edilmiş sonuca ilerler.</p><div className="actions"><Link className="button" href="/tr/use-ilaios">ILAIOS nasıl kullanılır?</Link><Link className="button secondary" href="/tr/factories">Factory'leri incele</Link></div></section>
-
-    <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">Kullanıcı akışı</div><h2>Sonuç → yönetilen yürütme → bağımsız kabul → bitmiş iş.</h2></div><p className="muted">Bu kanonik ürün yönüdür. Güncel kullanılabilirlik; implementation, test, CI, runtime ve deployment kanıtıyla ayrıca ispatlanır.</p></div><div className="journey-grid">{simple.map(([n,t,x]) => <article className="journey-card" key={n}><span>{n}</span><h3>{t}</h3><p>{x}</p></article>)}</div></div></section>
-
-    <section className="section surface-section factory-visual-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">Public workflow</div><h2>Tek hedef. Yönetilen yürütme. Doğrulanmış sonuç.</h2></div><p>Public diyagram kullanıcının bilmesi gereken akışı gösterir; dahili provider/model routing ürün sınırının arkasında kalır.</p></div><ThemedDiagram light="/visuals/general-flow-light.avif" dark="/visuals/general-flow-dark.avif" alt="ILAIOS public çalışma akışı: giriş ve hedeften anlama, planlama, çözümleme, yönetim, yürütme, doğrulama ve teslime" caption="Public ürün akışı. Credential, provider fallback, worker ID ve implementation ayrıntıları bilinçli olarak dışarı açılmaz." priority /></div></section>
-
-    <section className="section"><div className="shell"><CanonicalSystemDetail locale="tr" variant="journey" /></div></section>
-
-    <section className="section surface-section factory-visual-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">Governance & approval</div><h2>Yetenek, yetki değildir.</h2></div><p>Bir factory, skill veya yürütme kaynağı yalnız kimlik, tenant kapsamı, policy, risk, bütçe ve gerekli onayların kabul ettiği yetki içinde hareket edebilir.</p></div><ThemedDiagram light="/visuals/governance-light.avif" dark="/visuals/governance-dark.avif" alt="ILAIOS governance ve approval diyagramı: istek, policy kontrolleri, gerektiğinde onay, scoped execution ve incelenebilir evidence" caption="Public governance modeli: açık kapsam, policy first, gerektiğinde approval ve incelenebilir yürütme." /></div></section>
-
-    <section className="section"><div className="shell"><CanonicalSystemDetail locale="tr" variant="runtime" /></div></section>
-    <section className="section surface-section"><div className="shell"><CanonicalSystemDetail locale="tr" variant="recovery" /></div></section>
-
-    <section className="section factory-visual-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">Verification, evidence & repair</div><h2>Sonuç yalnız gerekli kontroller geçtiğinde kabul edilir.</h2></div><p>Evidence korunur, repair sınırlandırılmış kalır ve çözülemeyen iş anlatımla başarılı sayılmak yerine durur veya escalation'a gider.</p></div><ThemedDiagram light="/visuals/verification-light.avif" dark="/visuals/verification-dark.avif" alt="ILAIOS verification, evidence ve bounded repair diyagramı: sonucun gelişinden validation, evidence capture, repair ve accept veya stop kararına" caption="Doğrulama dekorasyon değil gate'tir: gerekli kriterler üretilmiş sonucun kabul edilip edilemeyeceğini belirler." /></div></section>
-
-    <section className="section"><div className="shell"><CanonicalSystemDetail locale="tr" variant="cost" /></div></section>
-    <section className="section"><div className="shell split-copy"><div><div className="eyebrow">Verified ne demek?</div><h2>“Doğrulanmış bitmiş ürün” slogan değil, acceptance modelidir.</h2></div><div><p className="lead small">Final evaluation, gerekli alan ölçütlerini tamamlanmış artifact veya işlem sonucuna uygular. Mümkün olduğunda üreten worker/model kendi final sonucunun tek doğrulayıcısı olmaz.</p><div className="verification-list">{verified.map((item,i)=><div key={item}><span>{String(i+1).padStart(2,"0")}</span><strong>{item}</strong></div>)}</div></div></div></section>
-    <section className="section"><div className="shell callout"><div><div className="eyebrow">Prompt gösterisi değil, kontrollü sistem</div><h2>Execution ancak gerekli kontroller ve evidence geçtiğinde kabul edilir.</h2><p className="muted">Policy/security reddi policy bypass edilerek onarılamaz. Repair; deneme, maliyet ve süre sınırları içindedir; çözülemeyen iş durur veya yükseltilir.</p></div><div className="actions"><Link className="button" href="/tr/core">ILAIOS Core'u incele</Link><Link className="button secondary" href="/tr/architecture">Mimari</Link></div></div></section>
+    <section className="shell page-hero compact-page-hero"><div className="eyebrow">ILAIOS Nasıl Çalışır</div><h1>Ne istediğini söyle. ILAIOS işi doğrulanmış sonuca kadar yönetir.</h1><p className="lead">Public deneyim bilinçli olarak sadedir: bitmiş sonucu tarif et, ILAIOS işi yönetsin ve yürütsün, sonucu da yalnız gerekli kontroller geçtikten sonra teslim alsın.</p><div className="actions"><Link className="button" href="/tr/use-ilaios">ILAIOS'u kullan</Link></div></section>
+    <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">Dört adım</div><h2>Tek sonuçtan bitmiş işe.</h2></div><p>Kullanıcının sağlayıcı, worker ID veya dahili routing kararı vermesi gerekmez.</p></div><div className="journey-grid">{steps.map(([n,t,x]) => <article className="journey-card" key={n}><span>{n}</span><h3>{t}</h3><p>{x}</p></article>)}</div></div></section>
+    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">Ürün akışı</div><h2>Hedef → yönetilen iş → üretim → doğrulama → teslim.</h2></div><p>Bu, kullanıcıya dönük ürün yoludur. Dahili sağlayıcı ve yürütme ayrıntıları ürün sınırının arkasında kalır.</p></div><div className="runtime-line">{steps.map(([n,t]) => <div key={n}><span>{n}</span><strong>{t}</strong></div>)}</div></div></section>
+    <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">Doğrulanmış ne demek?</div><h2>Doğrulama pratik bir soruyu yanıtlar: bu sonuç kabul edilmeye hazır mı?</h2></div><p>Kontroller üretilen işe göre değişir. Gerekli kabul kontrolleri yalnız işi bitmiş saymak için atlanamaz.</p></div><div className="journey-grid">{verified.map(([title,text],i)=><article className="journey-card" key={title}><span>{String(i+1).padStart(2,"0")}</span><h3>{title}</h3><p>{text}</p></article>)}</div></div></section>
+    <section className="section compact-section"><div className="shell callout"><div><div className="eyebrow">Teknik modeli mi arıyorsun?</div><h2>Public akış sade kalır; mimari incelenebilir olmaya devam eder.</h2><p className="muted">Architecture, Core ve Security; ana ürün yolunu dahili ayrıntılarla doldurmadan kontrol ve kanıt modelini açıklar.</p></div><div className="actions"><Link className="button secondary" href="/tr/architecture">Mimari</Link><Link className="button secondary" href="/tr/core">Core</Link></div></div></section>
   </>;
 }

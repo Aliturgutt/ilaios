@@ -1,56 +1,45 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 type Locale = "en" | "tr";
 type ModeKey = "web" | "video" | "software" | "app";
-
-type Mode = {
-  key: ModeKey;
-  label: string;
-  prompt: string;
-  result: string;
-  artifact: string;
-  evidence: readonly string[];
-  href: string;
-};
+type Mode = { key: ModeKey; label: string; prompt: string; result: string; checks: readonly string[]; href: string };
 
 const copy = {
   en: {
-    label: "Product experience",
-    title: "One goal in. A governed workflow out.",
-    note: "Interactive canonical workflow preview — no external side effects or live provider calls are performed here.",
-    inputLabel: "Describe the outcome",
-    run: "Preview workflow",
-    rerun: "Run again",
-    stages: ["Planning", "Building", "Validating", "Finished preview"],
-    preview: "Canonical preview",
-    evidence: "Illustrative acceptance checks",
-    open: "Open factory",
+    label: "Interactive canonical workflow preview",
+    title: "One request can become finished work.",
+    note: "Illustrative interactive preview with no external side effects. It does not execute providers or create production work.",
+    request: "Example request",
+    delivery: "What the finished path includes",
+    checks: "Typical checks",
+    open: "Explore this outcome",
+    stages: ["Planning", "Building", "Validating", "Finished"],
+    stageNotes: ["The goal is scoped into permitted work and dependencies.", "The selected production path carries out the bounded work.", "Applicable checks evaluate the current result.", "Accepted work is ready to return with reviewable evidence."],
     modes: [
-      { key: "web", label: "Website", prompt: "Create a product website with EN/TR pages, responsive QA and deployment evidence when release is authorized.", result: "Target website outcome", artifact: "site + QA + release evidence", evidence: ["Responsive checks", "Accessibility & SEO", "Release attribution"], href: "/factories/web" },
-      { key: "video", label: "Video", prompt: "Create a product launch video from research through render and validation.", result: "Target media outcome", artifact: "script + assets + validation evidence", evidence: ["Source provenance", "Render validation", "Delivery manifest"], href: "/factories/video" },
-      { key: "software", label: "Software", prompt: "Implement a bounded repository change with tests, review gates and evidence.", result: "Target software outcome", artifact: "code + tests + review evidence", evidence: ["Repository context", "Deterministic tests", "Change evidence"], href: "/factories/software" },
-      { key: "app", label: "Application", prompt: "Prepare a governed application outcome with explicit build, test and release boundaries.", result: "Target application outcome", artifact: "application work + build/test evidence", evidence: ["Protected scope", "Build/test checks", "Release boundary"], href: "/factories/app" },
+      { key: "web", label: "Website", prompt: "Create a premium website for my furniture business.", result: "Responsive site, EN/TR-ready structure and release evidence when publishing is authorized.", checks: ["Browser QA", "Accessibility and SEO", "Broken-asset and release checks"], href: "/factories/web" },
+      { key: "video", label: "Video", prompt: "Create a launch video from my brief and references.", result: "A rendered media deliverable with reference-aware production and delivery evidence.", checks: ["Reference consistency", "Render validation", "Delivery checks"], href: "/factories/video" },
+      { key: "software", label: "Software", prompt: "Implement this bounded change in my repository.", result: "Reviewed code, focused tests and evidence for the exact change.", checks: ["Repository scope", "Automated tests", "Change evidence"], href: "/factories/software" },
+      { key: "app", label: "Application", prompt: "Prepare this application outcome inside explicit release boundaries.", result: "Application work with build and test evidence before any release step.", checks: ["Protected scope", "Build and test", "Release boundary"], href: "/factories/app" },
     ] as readonly Mode[],
   },
   tr: {
-    label: "Ürün deneyimi",
-    title: "Tek hedef girer. Yönetilen iş akışı çıkar.",
-    note: "Etkileşimli kanonik iş akışı önizlemesi — burada dış sistem etkisi veya canlı provider çağrısı yapılmaz.",
-    inputLabel: "Bitmesini istediğiniz sonucu tarif edin",
-    run: "İş akışını önizle",
-    rerun: "Yeniden çalıştır",
-    stages: ["Planlama", "Üretim", "Doğrulama", "Tamamlanan önizleme"],
-    preview: "Kanonik önizleme",
-    evidence: "Açıklayıcı kabul kontrolleri",
-    open: "Üretim alanını aç",
+    label: "Etkileşimli kanonik iş akışı önizlemesi",
+    title: "Tek bir istek bitmiş işe dönüşebilir.",
+    note: "Dış sistemlerde hiçbir yan etki oluşturmayan açıklayıcı ve etkileşimli bir önizlemedir. Sağlayıcı çalıştırmaz veya production işi oluşturmaz.",
+    request: "Örnek istek",
+    delivery: "Bitmiş yolun içerdiği sonuç",
+    checks: "Tipik kontroller",
+    open: "Bu sonucu keşfet",
+    stages: ["Planlama", "Üretim", "Doğrulama", "Tamamlandı"],
+    stageNotes: ["Hedef, izin verilen iş ve bağımlılıklar halinde sınırlandırılır.", "Seçilen üretim yolu sınırlandırılmış işi yürütür.", "Geçerli kontroller mevcut sonucu değerlendirir.", "Kabul edilen iş incelenebilir kanıtla teslim edilmeye hazırdır."],
     modes: [
-      { key: "web", label: "Web sitesi", prompt: "EN/TR sayfaları, responsive QA ve release yetkilendirildiğinde deployment evidence olan bir ürün sitesi oluştur.", result: "Hedef web sitesi sonucu", artifact: "site + QA + yayın kanıtı", evidence: ["Responsive kontroller", "Erişilebilirlik ve SEO", "Yayın eşleştirmesi"], href: "/tr/factories/web" },
-      { key: "video", label: "Video", prompt: "Araştırmadan render ve doğrulamaya kadar ürün lansman videosu oluştur.", result: "Hedef medya sonucu", artifact: "senaryo + varlıklar + doğrulama kanıtı", evidence: ["Kaynak kökeni", "Render doğrulaması", "Teslim manifestosu"], href: "/tr/factories/video" },
-      { key: "software", label: "Yazılım", prompt: "Testler, inceleme kapıları ve kanıtla sınırlandırılmış bir kod deposu değişikliği uygula.", result: "Hedef yazılım sonucu", artifact: "kod + testler + inceleme kanıtı", evidence: ["Kod deposu bağlamı", "Deterministik testler", "Değişiklik kanıtı"], href: "/tr/factories/software" },
-      { key: "app", label: "Uygulama", prompt: "Açık build, test ve release sınırları olan yönetilen bir uygulama sonucu hazırla.", result: "Hedef uygulama sonucu", artifact: "uygulama işi + derleme/test kanıtı", evidence: ["Korunan kapsam", "Derleme/test kontrolleri", "Release sınırı"], href: "/tr/factories/app" },
+      { key: "web", label: "Web sitesi", prompt: "Mobilya şirketim için premium bir web sitesi oluştur.", result: "Responsive site, EN/TR'ye hazır yapı ve yayın yetkilendirildiğinde yayın kanıtı.", checks: ["Tarayıcı QA", "Erişilebilirlik ve SEO", "Kırık varlık ve yayın kontrolleri"], href: "/tr/factories/web" },
+      { key: "video", label: "Video", prompt: "Brief ve referanslarımdan lansman videosu oluştur.", result: "Referansları dikkate alan üretim ve teslim kanıtıyla render edilmiş medya çıktısı.", checks: ["Referans tutarlılığı", "Render doğrulaması", "Teslim kontrolleri"], href: "/tr/factories/video" },
+      { key: "software", label: "Yazılım", prompt: "Kod depomda sınırları belirli bu değişikliği uygula.", result: "Tam değişikliğe ait incelenmiş kod, odaklı testler ve kanıt.", checks: ["Kod deposu kapsamı", "Otomatik testler", "Değişiklik kanıtı"], href: "/tr/factories/software" },
+      { key: "app", label: "Uygulama", prompt: "Bu uygulama sonucunu açık yayın sınırları içinde hazırla.", result: "Herhangi bir yayın adımından önce derleme ve test kanıtı bulunan uygulama çalışması.", checks: ["Korunan kapsam", "Derleme ve test", "Yayın sınırı"], href: "/tr/factories/app" },
     ] as readonly Mode[],
   },
 } as const;
@@ -58,86 +47,23 @@ const copy = {
 export default function ProductExperience({ locale }: { locale: Locale }) {
   const c = copy[locale];
   const [modeIndex, setModeIndex] = useState(0);
-  const [phase, setPhase] = useState(0);
-  const [running, setRunning] = useState(false);
-  const [goal, setGoal] = useState(c.modes[0].prompt);
+  const [stageIndex, setStageIndex] = useState(0);
   const tabRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const mode = c.modes[modeIndex];
-
-  useEffect(() => {
-    if (!running) return;
-    const timer = window.setTimeout(() => {
-      if (phase >= c.stages.length - 1) setRunning(false);
-      else setPhase(value => value + 1);
-    }, 620);
-    return () => window.clearTimeout(timer);
-  }, [running, phase, c.stages.length]);
-
-  const selectMode = (index: number) => {
-    setModeIndex(index);
-    setGoal(c.modes[index].prompt);
-    setPhase(0);
-    setRunning(false);
-  };
-
-  const moveTab = (next: number) => {
-    const index = (next + c.modes.length) % c.modes.length;
-    selectMode(index);
-    tabRefs.current[index]?.focus();
-  };
-
-  const runPreview = () => {
-    setPhase(0);
-    setRunning(true);
-  };
+  const moveTab = (next: number) => { const index = (next + c.modes.length) % c.modes.length; setModeIndex(index); setStageIndex(0); tabRefs.current[index]?.focus(); };
 
   return <div className="product-experience" data-visual-role="interactive-product-demo">
-    <div className="product-experience-head">
-      <div><span className="micro-label">{c.label}</span><h2>{c.title}</h2></div>
-      <p>{c.note}</p>
+    <div className="product-experience-head"><div><span className="micro-label">{c.label}</span><h2>{c.title}</h2></div><p>{c.note}</p></div>
+    <div className="product-mode-tabs" role="tablist" aria-label={locale === "tr" ? "Sonuç türü" : "Outcome type"}>
+      {c.modes.map((item, index) => <button key={item.key} ref={element => { tabRefs.current[index] = element; }} type="button" role="tab" aria-selected={modeIndex === index} tabIndex={modeIndex === index ? 0 : -1} className={modeIndex === index ? "is-active" : ""} onClick={() => { setModeIndex(index); setStageIndex(0); }} onKeyDown={event => { if (event.key === "ArrowRight") { event.preventDefault(); moveTab(modeIndex + 1); } if (event.key === "ArrowLeft") { event.preventDefault(); moveTab(modeIndex - 1); } if (event.key === "Home") { event.preventDefault(); moveTab(0); } if (event.key === "End") { event.preventDefault(); moveTab(c.modes.length - 1); } }}>{item.label}</button>)}
     </div>
-
-    <div className="product-mode-tabs" role="tablist" aria-label={locale === "tr" ? "Ürün sonucu türü" : "Product outcome type"}>
-      {c.modes.map((item, index) => <button
-        key={item.key}
-        ref={element => { tabRefs.current[index] = element; }}
-        type="button"
-        role="tab"
-        aria-selected={modeIndex === index}
-        tabIndex={modeIndex === index ? 0 : -1}
-        className={modeIndex === index ? "is-active" : ""}
-        onClick={() => selectMode(index)}
-        onKeyDown={event => {
-          if (event.key === "ArrowRight") { event.preventDefault(); moveTab(modeIndex + 1); }
-          if (event.key === "ArrowLeft") { event.preventDefault(); moveTab(modeIndex - 1); }
-          if (event.key === "Home") { event.preventDefault(); moveTab(0); }
-          if (event.key === "End") { event.preventDefault(); moveTab(c.modes.length - 1); }
-        }}
-      >{item.label}</button>)}
+    <div className="product-experience-grid" role="tabpanel">
+      <div className="goal-composer"><span className="micro-label">{c.request}</span><blockquote>{mode.prompt}</blockquote><Link className="text-link" href={mode.href}>{c.open} →</Link></div>
+      <div className="execution-preview"><div className="result-preview"><span>{c.delivery}</span><strong>{mode.result}</strong></div><div className="evidence-preview"><span>{c.checks}</span><ul>{mode.checks.map(item => <li key={item}>{item}</li>)}</ul></div></div>
     </div>
-
-    <div className="product-experience-grid">
-      <div className="goal-composer">
-        <label htmlFor={`goal-${locale}`}>{c.inputLabel}</label>
-        <textarea id={`goal-${locale}`} value={goal} onChange={event => setGoal(event.target.value)} rows={4} />
-        <div className="composer-actions">
-          <button className="button" type="button" onClick={runPreview} disabled={running}>{phase === c.stages.length - 1 ? c.rerun : c.run}</button>
-          <Link className="text-link" href={mode.href}>{c.open} →</Link>
-        </div>
-      </div>
-
-      <div className="execution-preview" aria-live="polite">
-        <div className="execution-status-line"><span>{c.preview}</span><strong>{c.stages[phase]}</strong></div>
-        <div className="execution-rail" aria-label={locale === "tr" ? "İş akışı durumu" : "Workflow status"}>
-          {c.stages.map((stage, index) => <div key={stage} className={`${index < phase ? "is-complete" : ""} ${index === phase ? "is-active" : ""}`}><span>{String(index + 1).padStart(2, "0")}</span><small>{stage}</small></div>)}
-        </div>
-        <div className="result-preview">
-          <span>{mode.result}</span>
-          <strong>{mode.artifact}</strong>
-          <div className="result-lines" aria-hidden="true"><i /><i /><i /></div>
-        </div>
-        <div className="evidence-preview"><span>{c.evidence}</span><ul>{mode.evidence.map(item => <li key={item}>{item}</li>)}</ul></div>
-      </div>
+    <div className="product-stage-control" aria-label={locale === "tr" ? "Önizleme aşaması" : "Preview stage"}>
+      <div className="product-stage-tabs">{c.stages.map((stage, index) => <button key={stage} type="button" aria-pressed={stageIndex === index} className={stageIndex === index ? "is-active" : ""} onClick={() => setStageIndex(index)}>{stage}</button>)}</div>
+      <p aria-live="polite">{c.stageNotes[stageIndex]}</p>
     </div>
   </div>;
 }

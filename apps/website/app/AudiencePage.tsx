@@ -7,45 +7,49 @@ const copy = {
   en: {
     enterprise: {
       eyebrow: "For enterprises",
-      title: "Govern intelligent work without turning model output into operational authority.",
-      lead: "ILAIOS is designed for organizations that need repeatable production and automation with explicit identity, policy, validation, evidence and bounded recovery.",
-      focusLabel: "Enterprise control",
-      focusTitle: "Governance surrounds execution instead of living inside prompt instructions.",
-      outcomes: [["Operational fragmentation", "Bring recurring research and production work into an explicit job, policy and evidence model."], ["Unbounded AI usage", "Keep model output separate from permission, approval and acceptance."], ["Production overhead", "Use separate Web, Software, App and Video/Media workflows instead of one generic generation surface."], ["Knowledge fragmentation", "Connect authorized context and project memory without making memory an authority source."], ["Audit gaps", "Associate material changes with provenance, validation and recovery history."], ["Failure ambiguity", "Bound retry and repair; stop or escalate when acceptance cannot be established."]],
-      operating: [["01", "Admit work", "Identity, tenant, project context and risk define the operating boundary."], ["02", "Route capabilities", "Factories and services receive only the scope required for the job."], ["03", "Validate independently", "Required checks and approvals decide whether outputs advance."], ["04", "Retain evidence", "Material events and acceptance context remain reviewable."]],
-      cta: "Explore enterprise architecture",
+      title: "Turn complex work into controlled, reviewable outcomes.",
+      lead: "ILAIOS is designed for teams that want one place to request work, coordinate production and keep important actions inside explicit organizational controls.",
+      focusLabel: "What teams can move forward",
+      focusTitle: "Start with the business outcome. Keep governance around the work.",
+      outcomes: [["Launch a web experience", "Move from requirements and content through implementation, QA and delivery preparation without operating a separate tool chain."], ["Ship software work", "Structure engineering work around repository context, tests, review and acceptance instead of treating generated code as finished."], ["Produce media", "Coordinate research, script, assets, audio, render and validation as one managed production flow."], ["Research a decision", "Keep sources, claims, uncertainty and review context connected so teams can inspect how an answer was formed."], ["Automate recurring work", "Turn repeatable operational tasks into bounded workflows with visible state and clear handoffs."], ["Review what happened", "Keep material actions and acceptance context inspectable instead of losing them across disconnected tools."]],
+      operating: [["01", "Describe the result", "The team states what needs to be finished and the relevant organizational context."], ["02", "Set the boundaries", "Identity, permissions and required approvals determine what the work may use or change."], ["03", "Produce and verify", "The appropriate capabilities perform the admitted work and acceptance checks decide what advances."], ["04", "Deliver with context", "The result is returned with the state and evidence needed for review and follow-up."]],
+      primary: "Explore production areas",
+      secondary: "See the architecture",
     },
     individuals: {
       eyebrow: "For individuals",
-      title: "Describe the outcome without becoming the operator of an internal AI stack.",
-      lead: "ILAIOS is designed to move personal goals through governed research, web, software, media and operations workflows while keeping state, boundaries and acceptance visible.",
+      title: "Ask for the finished result, not a stack of tools to operate.",
+      lead: "ILAIOS is designed to help an individual move from an idea or task toward a reviewable result across research, web, software, media and personal workflows.",
       focusLabel: "Outcome first",
-      focusTitle: "Less tool choreography. More reviewable progress toward the result.",
-      outcomes: [["Research", "Structure sources, claims and uncertainty instead of relying on an opaque one-shot answer."], ["Website work", "Move through requirements, design, implementation and QA toward a verified finished site."], ["Software work", "Keep engineering changes bounded by repository context, tests and review gates."], ["Application work", "Keep current review-only App Factory boundaries explicit while the broader outcome remains canonical direction."], ["Media production", "Coordinate research, script, assets, render and validation through a governed workflow."], ["Personal operations", "Prepare reviewable plans without silently widening authority."]],
-      operating: [["01", "State the goal", "Describe what should be finished instead of selecting internal models."], ["02", "Bound context", "Identity, project context and permissions define what may participate."], ["03", "Execute and validate", "Capabilities work inside scope; required checks decide acceptance."], ["04", "Review the result", "Outcome, state and evidence stay visible instead of disappearing into narration."]],
-      cta: "Explore how ILAIOS works",
+      focusTitle: "Spend less time coordinating tools and more time deciding what should be finished.",
+      outcomes: [["Research", "Turn a question into structured research with sources, claims and uncertainty that you can review."], ["Website", "Move from a goal and references through structure, design, implementation and QA toward a finished site."], ["Software", "Keep changes connected to repository context, tests and review before treating the work as complete."], ["Application", "Plan and structure application work while broader production capability continues to mature."], ["Video and media", "Coordinate script, assets, audio, render and validation through one production flow."], ["Personal operations", "Prepare and manage repeatable work without silently expanding what the system is allowed to do."]],
+      operating: [["01", "Say what you want", "Describe the result instead of choosing internal models, agents or providers."], ["02", "Add the useful context", "References, project context and permissions define what can participate in the work."], ["03", "Let the work run", "The relevant capabilities perform the task inside the allowed boundaries."], ["04", "Review the result", "The outcome and its verification remain visible so you can decide what happens next."]],
+      primary: "See what ILAIOS can produce",
+      secondary: "See how it works",
     },
   },
   tr: {
     enterprise: {
       eyebrow: "Kurumlar için",
-      title: "Model çıktısını operasyonel yetkiye dönüştürmeden akıllı işleri yönetin.",
-      lead: "ILAIOS; tekrarlanabilir üretim ve otomasyon için kimlik, politika, doğrulama, kanıt ve sınırlandırılmış kurtarmayı açık tutacak şekilde tasarlanır.",
-      focusLabel: "Kurumsal kontrol",
-      focusTitle: "Yönetim, prompt talimatlarının içinde değil yürütmenin çevresindedir.",
-      outcomes: [["Operasyon parçalanması", "Tekrarlanan araştırma ve üretim işlerini açık iş, politika ve kanıt modeline bağlayın."], ["Sınırsız AI kullanımı", "Model çıktısını izin, onay ve kabulden ayrı tutun."], ["Üretim yükü", "Tek genel üretim ekranı yerine Web, Yazılım, Uygulama ve Video/Medya iş akışlarını ayrı tutun."], ["Bilgi parçalanması", "Yetkili bağlamı ve proje hafızasını hafızayı yetki kaynağı yapmadan bağlayın."], ["Denetim boşlukları", "Önemli değişiklikleri kaynak kökeni, doğrulama ve kurtarma geçmişiyle ilişkilendirin."], ["Hata belirsizliği", "Yeniden deneme ve düzeltmeyi sınırlandırın; kabul kurulamıyorsa durdurun veya yükseltin."]],
-      operating: [["01", "İşi kabul et", "Kimlik, tenant, proje bağlamı ve risk çalışma sınırını belirler."], ["02", "Yetenekleri yönlendir", "Üretim alanları ve servisler yalnız iş için gereken kapsamı alır."], ["03", "Bağımsız doğrula", "Gerekli kontroller ve onaylar çıktının ilerleyip ilerleyemeyeceğini belirler."], ["04", "Kanıtı koru", "Önemli olaylar ve kabul bağlamı incelenebilir kalır."]],
-      cta: "Kurumsal mimariyi incele",
+      title: "Karmaşık işleri kontrollü ve incelenebilir sonuçlara dönüştürün.",
+      lead: "ILAIOS; ekiplerin işi tek yerden talep etmesi, üretimi koordine etmesi ve önemli işlemleri açık kurumsal kontroller içinde tutması için tasarlanır.",
+      focusLabel: "Ekiplerin ilerletebileceği işler",
+      focusTitle: "İş sonucuyla başlayın. Yönetişimi işin çevresinde tutun.",
+      outcomes: [["Bir web deneyimi yayınlayın", "Gereksinim ve içerikten geliştirme, QA ve teslim hazırlığına ayrı bir araç zincirinin operatörü olmadan ilerleyin."], ["Yazılım işi teslim edin", "Üretilen kodu bitmiş saymak yerine repository bağlamı, test, inceleme ve kabul etrafında mühendislik işini yapılandırın."], ["Medya üretin", "Araştırma, senaryo, varlıklar, ses, render ve doğrulamayı tek yönetilen üretim akışında koordine edin."], ["Bir kararı araştırın", "Kaynak, iddia, belirsizlik ve inceleme bağlamını bağlı tutarak sonucun nasıl oluştuğunu ekipçe görebilin."], ["Tekrarlanan işleri otomatikleştirin", "Operasyonel işleri görünür durum ve açık devir noktaları olan sınırlandırılmış akışlara dönüştürün."], ["Ne olduğunu inceleyin", "Önemli işlemleri ve kabul bağlamını birbirinden kopuk araçlarda kaybetmek yerine incelenebilir tutun."]],
+      operating: [["01", "Sonucu tarif edin", "Ekip neyin bitmesi gerektiğini ve gerekli kurumsal bağlamı belirtir."], ["02", "Sınırları belirleyin", "Kimlik, izinler ve gerekli onaylar işin neyi kullanabileceğini veya değiştirebileceğini belirler."], ["03", "Üretin ve doğrulayın", "Uygun yetenekler kabul edilmiş işi yapar; kabul kontrolleri neyin ilerleyeceğini belirler."], ["04", "Bağlamıyla teslim alın", "Sonuç, inceleme ve takip için gereken durum ve kanıtla birlikte sunulur."]],
+      primary: "Üretim alanlarını keşfet",
+      secondary: "Mimariyi incele",
     },
     individuals: {
       eyebrow: "Bireysel kullanıcılar için",
-      title: "İç AI yığınının operatörü olmadan sonucu tarif edin.",
-      lead: "ILAIOS; kişisel hedefleri yönetilen araştırma, web, yazılım, medya ve operasyon iş akışlarına taşırken durum, sınırlar ve kabulü görünür tutmak için tasarlanır.",
+      title: "Araç yığınını değil, bitmiş sonucu isteyin.",
+      lead: "ILAIOS; bir fikri veya işi araştırma, web, yazılım, medya ve kişisel iş akışları boyunca incelenebilir bir sonuca taşımaya yardımcı olmak için tasarlanır.",
       focusLabel: "Önce sonuç",
-      focusTitle: "Daha az araç koordinasyonu. Sonuca doğru daha incelenebilir ilerleme.",
-      outcomes: [["Araştırma", "Tek seferlik opak yanıt yerine kaynakları, iddiaları ve belirsizliği yapılandırın."], ["Web sitesi", "Gereksinim, tasarım, geliştirme ve QA üzerinden doğrulanmış bitmiş siteye ilerleyin."], ["Yazılım", "Mühendislik değişikliklerini repository bağlamı, testler ve inceleme kapılarıyla sınırlandırın."], ["Uygulama", "Daha geniş uygulama sonucu kanonik yön olarak kalırken mevcut inceleme odaklı App Factory sınırlarını açık tutun."], ["Medya üretimi", "Araştırma, senaryo, varlık, render ve doğrulamayı yönetilen iş akışıyla koordine edin."], ["Kişisel operasyon", "Yetkiyi sessizce genişletmeden incelenebilir planlar hazırlayın."]],
-      operating: [["01", "Hedefi söyle", "İç model seçmek yerine neyin bitmesini istediğinizi tarif edin."], ["02", "Bağlamı sınırla", "Kimlik, proje bağlamı ve izinler neyin kullanılabileceğini belirler."], ["03", "Yürüt ve doğrula", "Yetenekler kapsam içinde çalışır; gerekli kontroller kabulü belirler."], ["04", "Sonucu incele", "Sonuç, durum ve kanıt model anlatımının içinde kaybolmadan görünür kalır."]],
-      cta: "ILAIOS nasıl çalışır?",
+      focusTitle: "Araçları koordine etmeye daha az, neyin bitmesi gerektiğine daha fazla zaman ayırın.",
+      outcomes: [["Araştırma", "Bir soruyu kaynakları, iddiaları ve belirsizliği görülebilen yapılandırılmış araştırmaya dönüştürün."], ["Web sitesi", "Hedef ve referanslardan yapı, tasarım, geliştirme ve QA üzerinden bitmiş siteye ilerleyin."], ["Yazılım", "İşi tamamlanmış saymadan önce değişiklikleri repository bağlamı, testler ve incelemeyle bağlı tutun."], ["Uygulama", "Daha geniş production yeteneği gelişmeye devam ederken uygulama işini planlayın ve yapılandırın."], ["Video ve medya", "Senaryo, varlıklar, ses, render ve doğrulamayı tek üretim akışında koordine edin."], ["Kişisel operasyon", "Sistemin yetkisini sessizce genişletmeden tekrarlanan işleri hazırlayın ve yönetin."]],
+      operating: [["01", "Ne istediğinizi söyleyin", "İç model, ajan veya sağlayıcı seçmek yerine sonucu tarif edin."], ["02", "Gerekli bağlamı ekleyin", "Referanslar, proje bağlamı ve izinler işe nelerin katılabileceğini belirler."], ["03", "İşi yürütün", "Uygun yetenekler görevi izin verilen sınırlar içinde yapar."], ["04", "Sonucu inceleyin", "Sonuç ve doğrulama görünür kalır; sonraki adıma siz karar verirsiniz."]],
+      primary: "ILAIOS neler üretebilir?",
+      secondary: "Nasıl çalışır?",
     },
   },
 } as const;
@@ -53,11 +57,10 @@ const copy = {
 export default function AudiencePage({ locale, audience }: { locale: Locale; audience: Audience }) {
   const c = copy[locale][audience];
   const base = locale === "tr" ? "/tr" : "";
-  const detailHref = audience === "enterprise" ? `${base}/architecture` : `${base}/how-it-works`;
+  const secondaryHref = audience === "enterprise" ? `${base}/architecture` : `${base}/how-it-works`;
   return <>
-    <section className={`shell audience-hero audience-${audience}`}><div><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1></div><div><p className="lead">{c.lead}</p><div className="actions"><Link className="button" href={`${base}/factories`}>{locale === "tr" ? "Üretim alanları" : "Factories"}</Link><Link className="button secondary" href={detailHref}>{c.cta}</Link></div></div></section>
+    <section className={`shell audience-hero audience-${audience}`}><div><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1></div><div><p className="lead">{c.lead}</p><div className="actions"><Link className="button" href={`${base}/factories`}>{c.primary}</Link><Link className="button secondary" href={secondaryHref}>{c.secondary}</Link></div></div></section>
     <section className="section"><div className="shell audience-focus"><div><span className="micro-label">{c.focusLabel}</span><h2>{c.focusTitle}</h2></div><div className="audience-outcome-list">{c.outcomes.map(([title, text], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{text}</p></div></article>)}</div></div></section>
-    <section className="section surface-section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">{locale === "tr" ? "Çalışma modeli" : "Operating model"}</div><h2>{locale === "tr" ? "Basit istek, açık kontroller." : "Simple request, explicit controls."}</h2></div></div><div className="audience-process">{c.operating.map(([n, title, text]) => <article key={n}><span>{n}</span><strong>{title}</strong><p>{text}</p></article>)}</div></div></section>
-    <section className="section compact-section"><div className="shell status-note"><span>{locale === "tr" ? "Ürün gerçeği" : "Product truth"}</span><p>{locale === "tr" ? "Kanonik ürün yönü ile güncel uygulama, doğrulama, deployment ve genel kullanıma açıklık durumu ayrı tutulur." : "Canonical product direction remains distinct from current implementation, verification, deployment and general availability."}</p></div></section>
+    <section className="section surface-section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">{locale === "tr" ? "Nasıl ilerler?" : "How it moves"}</div><h2>{locale === "tr" ? "Basit talep. Kontrollü çalışma. İncelenebilir sonuç." : "Simple request. Controlled work. Reviewable result."}</h2></div></div><div className="audience-process">{c.operating.map(([n, title, text]) => <article key={n}><span>{n}</span><strong>{title}</strong><p>{text}</p></article>)}</div></div></section>
   </>;
 }
