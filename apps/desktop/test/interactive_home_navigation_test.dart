@@ -52,7 +52,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('theme control switches the application to light mode', (
+  testWidgets('theme control switches the light-default application to dark mode', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -62,13 +62,13 @@ void main() {
     await tester.pumpAndSettle();
 
     BuildContext scaffoldContext = tester.element(find.byType(Scaffold).first);
-    expect(Theme.of(scaffoldContext).brightness, Brightness.dark);
+    expect(Theme.of(scaffoldContext).brightness, Brightness.light);
 
     await tester.tap(find.byKey(const Key('theme-toggle')));
     await tester.pumpAndSettle();
 
     scaffoldContext = tester.element(find.byType(Scaffold).first);
-    expect(Theme.of(scaffoldContext).brightness, Brightness.light);
+    expect(Theme.of(scaffoldContext).brightness, Brightness.dark);
     expect(find.byKey(const Key('command-center-home')), findsOneWidget);
   });
 
