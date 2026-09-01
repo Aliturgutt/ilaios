@@ -53,7 +53,7 @@ def test_security_methodology_registry_contains_exact_first_party_packages() -> 
         if path.is_dir() and not path.name.startswith(".")
     }
     assert discovered == expected
-    assert len(expected) == 5
+    assert len(expected) == 6
     for skill_id in expected:
         definition = definition_for(skill_id)
         assert definition is not None
