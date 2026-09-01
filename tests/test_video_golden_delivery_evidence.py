@@ -127,22 +127,17 @@ def test_golden_delivery_receipt_requires_cleanliness_scan_pass(tmp_path: Path) 
         _receipt(tmp_path, watermark_scan_passed=False)
 
 
-@pytest.mark.parametrize(
-    ("field", "expected"),
-    (
-        ("stock_watermark_detected", "stock watermark"),
-        ("provider_overlay_detected", "provider/platform overlay"),
-        ("ai_provider_logo_detected", "AI/provider logo"),
-        ("unexpected_branding_overlay_detected", "unexpected branding overlay"),
-    ),
-)
 def test_golden_delivery_receipt_rejects_forbidden_visible_overlays(
     tmp_path: Path,
-    field: str,
-    expected: str,
 ) -> None:
-    with pytest.raises(GoldenDeliveryEvidenceError, match=expected):
-        _receipt(tmp_path, **{field: True})
+    with pytest.raises(GoldenDeliveryEvidenceError, match="stock watermark"):
+        _receipt(tmp_path, stock_watermark_detected=True)
+    with pytest.raises(GoldenDeliveryEvidenceError, match="provider/platform overlay"):
+        _receipt(tmp_path, provider_overlay_detected=True)
+    with pytest.raises(GoldenDeliveryEvidenceError, match="AI/provider logo"):
+        _receipt(tmp_path, ai_provider_logo_detected=True)
+    with pytest.raises(GoldenDeliveryEvidenceError, match="unexpected branding overlay"):
+        _receipt(tmp_path, unexpected_branding_overlay_detected=True)
 
 
 def test_golden_delivery_receipt_rejects_cross_artifact_watermark_evidence(
