@@ -367,7 +367,7 @@ class _TopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Container(
         key: const Key('reference-desktop-topbar-v5'),
-        height: 72,
+        constraints: const BoxConstraints(minHeight: 72),
         padding: const EdgeInsets.symmetric(horizontal: 18),
         decoration: BoxDecoration(
           color: Theme.of(context).colorScheme.surfaceContainerLow,
