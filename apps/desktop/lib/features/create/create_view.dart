@@ -270,14 +270,11 @@ class _CreateViewState extends State<CreateView> {
               ],
             ),
           ),
-          SliverLayoutBuilder(
-            builder: (context, constraints) => SliverToBoxAdapter(
-              child: SizedBox(
-                height: constraints.remainingPaintExtent.clamp(
-                  240.0,
-                  double.infinity,
-                ),
-                child: LayoutBuilder(
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(minHeight: 240),
+              child: LayoutBuilder(
                   builder: (context, constraints) {
                     final showRightRail = constraints.maxWidth >= 1080;
                     return Row(
@@ -319,7 +316,6 @@ class _CreateViewState extends State<CreateView> {
                       ],
                     );
                   },
-                ),
               ),
             ),
           ),
