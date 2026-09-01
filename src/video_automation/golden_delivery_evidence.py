@@ -40,6 +40,13 @@ class GoldenDeliveryReceipt:
     ducked_music_frames: int
     word_synced_captions_present: bool
     qa_domains_passed: frozenset[str]
+    watermark_scan_passed: bool
+    watermark_scan_artifact_sha256: str
+    watermark_scan_evidence_ref: str
+    stock_watermark_detected: bool
+    provider_overlay_detected: bool
+    ai_provider_logo_detected: bool
+    unexpected_branding_overlay_detected: bool
 
     def __post_init__(self) -> None:
         _require_non_blank("job_id", self.job_id)
@@ -78,6 +85,35 @@ class GoldenDeliveryReceipt:
                 + ", ".join(sorted(missing_qa))
             )
 
+        _require_sha256(
+            "watermark_scan_artifact_sha256",
+            self.watermark_scan_artifact_sha256,
+        )
+        _require_non_blank("watermark_scan_evidence_ref", self.watermark_scan_evidence_ref)
+        if self.watermark_scan_artifact_sha256 != self.final_mp4_sha256:
+            raise GoldenDeliveryEvidenceError(
+                "watermark scan evidence does not match final MP4 artifact"
+            )
+        if not self.watermark_scan_passed:
+            raise GoldenDeliveryEvidenceError(
+                "final MP4 watermark/provider-overlay scan did not pass"
+            )
+
+        cleanliness_failures = []
+        if self.stock_watermark_detected:
+            cleanliness_failures.append("stock watermark")
+        if self.provider_overlay_detected:
+            cleanliness_failures.append("provider/platform overlay")
+        if self.ai_provider_logo_detected:
+            cleanliness_failures.append("AI/provider logo")
+        if self.unexpected_branding_overlay_detected:
+            cleanliness_failures.append("unexpected branding overlay")
+        if cleanliness_failures:
+            raise GoldenDeliveryEvidenceError(
+                "final MP4 contains forbidden visible overlay: "
+                + ", ".join(cleanliness_failures)
+            )
+
         artifact = Path(self.final_mp4_path)
         if not artifact.is_file() or artifact.stat().st_size <= 0:
             raise GoldenDeliveryEvidenceError(
@@ -108,4 +144,4 @@ def _require_sha256(name: str, value: str) -> None:
     try:
         int(value, 16)
     except ValueError as exc:
-        raise GoldenDeliveryEvidenceError(f"{name} must be hexadecimal") from exc
+        raise GoldenDeliveryEvidenceError(f"{name} must be hexadecimal")
