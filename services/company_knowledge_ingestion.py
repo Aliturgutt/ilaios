@@ -1,9 +1,9 @@
 """Governed company-document ingestion adapters for the canonical Knowledge/RAG plane.
 
 This module is deliberately not a second memory authority. It validates and extracts
-supported document bytes, then delegates durable knowledge semantics to the existing
-``KnowledgeRAG`` capability. Binary storage remains owned by the existing governed
-files/object-storage boundary.
+supported document bytes, then delegates memory semantics to the existing Knowledge/RAG
+service or its canonical durable runtime. Binary storage remains owned by the existing
+governed files/object-storage boundary.
 """
 
 from __future__ import annotations
@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from services.knowledge_rag import KnowledgeRAG, KnowledgeSource
+from services.knowledge_runtime import DurableKnowledgeRuntime
 
 
 class CompanyKnowledgeIngestionError(ValueError):
@@ -70,17 +71,56 @@ class DocxTextExtractor:
             if "word/document.xml" not in names:
                 raise CompanyKnowledgeIngestionError("DOCX is missing word/document.xml")
             xml = archive.read("word/document.xml")
-        text = xml.decode("utf-8", errors="strict")
+        try:
+            text = xml.decode("utf-8", errors="strict")
+        except UnicodeDecodeError as exc:
+            raise CompanyKnowledgeIngestionError("DOCX document.xml must be UTF-8") from exc
         text = re.sub(r"</w:p\s*>", "\n", text)
         text = re.sub(r"<w:tab\s*/>", "\t", text)
         text = re.sub(r"<[^>]+>", "", text)
         return _normalize(text)
 
 
-class CompanyKnowledgeIngestor:
-    """Format adapter boundary that delegates memory semantics to ``KnowledgeRAG``."""
+class CompanyDocumentExtractor:
+    """Bounded format adapter set shared by transient and durable Knowledge ingestion."""
 
     _MAX_BYTES = 25 * 1024 * 1024
+
+    def __init__(
+        self, *, extractors: tuple[DocumentTextExtractor, ...] | None = None
+    ) -> None:
+        selected = extractors or (PlainTextExtractor(), DocxTextExtractor())
+        self._extractors = {
+            mime_type: extractor
+            for extractor in selected
+            for mime_type in extractor.mime_types
+        }
+
+    def extract(
+        self, *, filename: str, mime_type: str, content: bytes
+    ) -> ExtractedCompanyDocument:
+        if not filename or "/" in filename or "\\" in filename or "\x00" in filename:
+            raise CompanyKnowledgeIngestionError("unsafe filename")
+        if not content:
+            raise CompanyKnowledgeIngestionError("empty document")
+        if len(content) > self._MAX_BYTES:
+            raise CompanyKnowledgeIngestionError("document exceeds bounded size")
+        extractor = self._extractors.get(mime_type)
+        if extractor is None:
+            raise CompanyKnowledgeIngestionError("unsupported company-document MIME type")
+        text = _normalize(extractor.extract(filename=filename, content=content))
+        if not text:
+            raise CompanyKnowledgeIngestionError("document produced no ingestible text")
+        return ExtractedCompanyDocument(
+            filename=filename,
+            mime_type=mime_type,
+            text=text,
+            content_sha256=hashlib.sha256(content).hexdigest(),
+        )
+
+
+class CompanyKnowledgeIngestor:
+    """Verification adapter that delegates source semantics to canonical ``KnowledgeRAG``."""
 
     def __init__(
         self,
@@ -89,12 +129,7 @@ class CompanyKnowledgeIngestor:
         extractors: tuple[DocumentTextExtractor, ...] | None = None,
     ) -> None:
         self._knowledge = knowledge
-        selected = extractors or (PlainTextExtractor(), DocxTextExtractor())
-        self._extractors = {
-            mime_type: extractor
-            for extractor in selected
-            for mime_type in extractor.mime_types
-        }
+        self._documents = CompanyDocumentExtractor(extractors=extractors)
 
     def ingest(
         self,
@@ -127,23 +162,54 @@ class CompanyKnowledgeIngestor:
     def extract(
         self, *, filename: str, mime_type: str, content: bytes
     ) -> ExtractedCompanyDocument:
-        if not filename or "/" in filename or "\\" in filename or "\x00" in filename:
-            raise CompanyKnowledgeIngestionError("unsafe filename")
-        if not content:
-            raise CompanyKnowledgeIngestionError("empty document")
-        if len(content) > self._MAX_BYTES:
-            raise CompanyKnowledgeIngestionError("document exceeds bounded size")
-        extractor = self._extractors.get(mime_type)
-        if extractor is None:
-            raise CompanyKnowledgeIngestionError("unsupported company-document MIME type")
-        text = _normalize(extractor.extract(filename=filename, content=content))
-        if not text:
-            raise CompanyKnowledgeIngestionError("document produced no ingestible text")
-        return ExtractedCompanyDocument(
-            filename=filename,
-            mime_type=mime_type,
-            text=text,
-            content_sha256=hashlib.sha256(content).hexdigest(),
+        return self._documents.extract(
+            filename=filename, mime_type=mime_type, content=content
+        )
+
+
+class DurableCompanyKnowledgeIngestor:
+    """Company-document adapter for the existing durable governed Knowledge runtime."""
+
+    def __init__(
+        self,
+        runtime: DurableKnowledgeRuntime,
+        *,
+        extractors: tuple[DocumentTextExtractor, ...] | None = None,
+    ) -> None:
+        self._runtime = runtime
+        self._documents = CompanyDocumentExtractor(extractors=extractors)
+
+    def ingest(
+        self,
+        source_id: str,
+        *,
+        filename: str,
+        mime_type: str,
+        content: bytes,
+        locator: str,
+        trusted: bool,
+        classifications: frozenset[str],
+        purposes: frozenset[str],
+        residency: str,
+    ) -> dict[str, object]:
+        extracted = self._documents.extract(
+            filename=filename, mime_type=mime_type, content=content
+        )
+        return self._runtime.ingest_source(
+            source_id=source_id,
+            locator=locator,
+            content=extracted.text,
+            trusted=trusted,
+            classifications=classifications,
+            purposes=purposes,
+            residency=residency,
+        )
+
+    def extract(
+        self, *, filename: str, mime_type: str, content: bytes
+    ) -> ExtractedCompanyDocument:
+        return self._documents.extract(
+            filename=filename, mime_type=mime_type, content=content
         )
 
 
