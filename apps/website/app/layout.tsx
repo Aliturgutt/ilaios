@@ -2,11 +2,18 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 import "./locale.css";
+import "./final.css";
+import "./ux-refresh.css";
+import "./professional-final.css";
+import "./website-final.css";
+import "./adaptive-native.css";
+import "./adaptive-structures.css";
 import "./mobile-redteam.css";
 import "./canonical-detail.css";
+import "./visual-redteam-fixes.css";
 import "./brand-palette.css";
+import "./live-density-fixes.css";
 import "./final-interaction-redteam.css";
-import "./system-motion-signature.css";
 import "./site-v2-finalization.css";
 import SiteChrome from "./SiteChrome";
 
@@ -33,54 +40,14 @@ export const metadata: Metadata = {
 const structuredData = {
   "@context": "https://schema.org",
   "@graph": [
-    {
-      "@type": "Organization",
-      "@id": organizationId,
-      name: "ILAIOS",
-      url: siteUrl,
-      logo: { "@type": "ImageObject", url: `${siteUrl}/brand/logo-horizontal-dark.jpg` },
-      description: productDescription,
-      founder: { "@id": founderId },
-      subjectOf: { "@id": websiteId },
-      sameAs: [
-        "https://www.linkedin.com/company/ilaios/",
-        "https://x.com/ilaios",
-        "https://www.crunchbase.com/organization/ilaios",
-      ],
-    },
-    {
-      "@type": "Person",
-      "@id": founderId,
-      name: "Ali Turgut",
-      url: `${siteUrl}/about#founder`,
-      jobTitle: "Founder",
-      worksFor: { "@id": organizationId },
-      sameAs: ["https://www.linkedin.com/in/ali-turgut-ilaios/", "https://github.com/Aliturgutt"],
-    },
-    {
-      "@type": "WebSite",
-      "@id": websiteId,
-      url: siteUrl,
-      name: "ILAIOS",
-      publisher: { "@id": organizationId },
-      about: { "@id": softwareId },
-      inLanguage: ["en", "tr"],
-    },
-    {
-      "@type": ["SoftwareApplication", "Product"],
-      "@id": softwareId,
-      name: "ILAIOS",
-      url: siteUrl,
-      description: productDescription,
-      applicationCategory: "BusinessApplication",
-      manufacturer: { "@id": organizationId },
-      publisher: { "@id": organizationId },
-      mainEntityOfPage: { "@id": websiteId },
-    },
+    { "@type": "Organization", "@id": organizationId, name: "ILAIOS", url: siteUrl, logo: { "@type": "ImageObject", url: `${siteUrl}/brand/logo-horizontal-dark.jpg` }, description: productDescription, founder: { "@id": founderId }, subjectOf: { "@id": websiteId }, sameAs: ["https://www.linkedin.com/company/ilaios/", "https://x.com/ilaios", "https://www.crunchbase.com/organization/ilaios"] },
+    { "@type": "Person", "@id": founderId, name: "Ali Turgut", url: `${siteUrl}/about#founder`, jobTitle: "Founder", worksFor: { "@id": organizationId }, sameAs: ["https://www.linkedin.com/in/ali-turgut-ilaios/", "https://github.com/Aliturgutt"] },
+    { "@type": "WebSite", "@id": websiteId, url: siteUrl, name: "ILAIOS", publisher: { "@id": organizationId }, about: { "@id": softwareId }, inLanguage: ["en", "tr"] },
+    { "@type": ["SoftwareApplication", "Product"], "@id": softwareId, name: "ILAIOS", url: siteUrl, description: productDescription, applicationCategory: "BusinessApplication", manufacturer: { "@id": organizationId }, publisher: { "@id": organizationId }, mainEntityOfPage: { "@id": websiteId } },
   ],
 };
 
-const themeBootstrap = `(() => { try { const key = "ilaios-theme"; const stored = localStorage.getItem(key); const theme = stored === "light" || stored === "dark" ? stored : (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"); document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; } catch { document.documentElement.dataset.theme = "dark"; } })();`;
+const themeBootstrap = `(() => { try { const key = "ilaios-theme"; const stored = localStorage.getItem(key); const theme = stored === "light" || stored === "dark" ? stored : "light"; document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; } catch { document.documentElement.dataset.theme = "light"; document.documentElement.style.colorScheme = "light"; } })();`;
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const locale = (await headers()).get("x-ilaios-locale") === "tr" ? "tr" : "en";

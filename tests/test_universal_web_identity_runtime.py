@@ -346,6 +346,147 @@ def test_github_link_flow_binds_to_existing_google_user_and_tenant(
     assert rows[0][2] == google_session["tenant_id"]
 
 
+
+def test_github_link_flow_consolidates_existing_isolated_account_into_google(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "identity.db"
+    github = _GitHubOAuth()
+    runtime = _runtime(database, github=github)
+    google_cookies, google_session = _google_login(runtime)
+
+    github_signin = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/github/callback?state=signin-state&code=signin-code",
+            headers={},
+        ),
+        now=_NOW + timedelta(seconds=5),
+    )
+    assert github_signin.status is HTTPStatus.SEE_OTHER
+    github_cookies = _cookie_values(github_signin.headers)
+    github_before = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/session",
+            headers={"Cookie": _cookie_header(github_cookies)},
+        ),
+        now=_NOW + timedelta(seconds=5),
+    )
+    assert json.loads(github_before.body) != google_session
+
+    start = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/link/github/start",
+            headers={"Cookie": _cookie_header(google_cookies)},
+        ),
+        now=_NOW + timedelta(minutes=1),
+    )
+    assert start.status is HTTPStatus.FOUND
+    assert github.purpose == "link"
+
+    linked = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/github/callback?state=link-state&code=link-code",
+            headers={"Cookie": _cookie_header(google_cookies)},
+        ),
+        now=_NOW + timedelta(minutes=1, seconds=5),
+    )
+    assert linked.status is HTTPStatus.SEE_OTHER
+
+    github.purpose = "signin"
+    github_after = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/github/callback?state=signin-again&code=signin-again",
+            headers={},
+        ),
+        now=_NOW + timedelta(minutes=2),
+    )
+    assert github_after.status is HTTPStatus.SEE_OTHER
+    github_after_session = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/session",
+            headers={"Cookie": _cookie_header(_cookie_values(github_after.headers))},
+        ),
+        now=_NOW + timedelta(minutes=2),
+    )
+    assert json.loads(github_after_session.body) == google_session
+
+
+def test_microsoft_link_flow_consolidates_existing_isolated_account_into_google(
+    tmp_path: Path,
+) -> None:
+    database = tmp_path / "identity.db"
+    microsoft = _MicrosoftOAuth()
+    runtime = _runtime(database, microsoft=microsoft)
+    google_cookies, google_session = _google_login(runtime)
+
+    microsoft_signin = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/microsoft/callback?state=signin-state&code=signin-code",
+            headers={},
+        ),
+        now=_NOW + timedelta(seconds=5),
+    )
+    assert microsoft_signin.status is HTTPStatus.SEE_OTHER
+    microsoft_cookies = _cookie_values(microsoft_signin.headers)
+    microsoft_before = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/session",
+            headers={"Cookie": _cookie_header(microsoft_cookies)},
+        ),
+        now=_NOW + timedelta(seconds=5),
+    )
+    assert json.loads(microsoft_before.body) != google_session
+
+    start = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/link/microsoft/start",
+            headers={"Cookie": _cookie_header(google_cookies)},
+        ),
+        now=_NOW + timedelta(minutes=1),
+    )
+    assert start.status is HTTPStatus.FOUND
+    assert microsoft.purpose == "link"
+
+    linked = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/microsoft/callback?state=link-state&code=link-code",
+            headers={"Cookie": _cookie_header(google_cookies)},
+        ),
+        now=_NOW + timedelta(minutes=1, seconds=5),
+    )
+    assert linked.status is HTTPStatus.SEE_OTHER
+
+    microsoft.purpose = "signin"
+    microsoft_after = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/microsoft/callback?state=signin-again&code=signin-again",
+            headers={},
+        ),
+        now=_NOW + timedelta(minutes=2),
+    )
+    assert microsoft_after.status is HTTPStatus.SEE_OTHER
+    microsoft_after_session = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/session",
+            headers={"Cookie": _cookie_header(_cookie_values(microsoft_after.headers))},
+        ),
+        now=_NOW + timedelta(minutes=2),
+    )
+    assert json.loads(microsoft_after_session.body) == google_session
+
+
 def test_same_email_never_auto_merges_unlinked_provider_identity(
     tmp_path: Path,
 ) -> None:

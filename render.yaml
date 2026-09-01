@@ -37,3 +37,12 @@ services:
         sync: false
       - key: ILAIOS_GOOGLE_WEB_OAUTH_STATE_SECRET
         generateValue: true
+      # Existing Blueprint: set all three Li values together in Render Dashboard.
+      # ILAIOS_LI_DATABASE_PATH must use the attached persistent disk, e.g.
+      # /var/data/ilaios_li.db. Partial Li configuration fails closed.
+      - key: ILAIOS_LI_DATABASE_PATH
+        sync: false
+      - key: ILAIOS_LI_FOUNDER_USER_ID
+        sync: false
+      - key: ILAIOS_LI_FOUNDER_TENANT_ID
+        sync: false

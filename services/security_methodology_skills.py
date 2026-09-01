@@ -25,6 +25,7 @@ DIFFERENTIAL_REVIEW_SKILL_ID = "ilaios-differential-review"
 AGENTIC_ACTION_AUDIT_SKILL_ID = "ilaios-agentic-action-audit"
 THREAT_MODEL_SKILL_ID = "ilaios-threat-model"
 SUPPLY_CHAIN_AUDIT_SKILL_ID = "ilaios-supply-chain-audit"
+AUTH_AUTHORIZATION_TESTING_SKILL_ID = "auth-authorization-testing"
 
 SECURITY_METHODOLOGY_SKILLS: tuple[SecurityMethodologySkill, ...] = (
     SecurityMethodologySkill(
@@ -51,6 +52,11 @@ SECURITY_METHODOLOGY_SKILLS: tuple[SecurityMethodologySkill, ...] = (
         SUPPLY_CHAIN_AUDIT_SKILL_ID,
         "ilaios.agent.security.supply-chain.v1",
         "security.dependency",
+    ),
+    SecurityMethodologySkill(
+        AUTH_AUTHORIZATION_TESTING_SKILL_ID,
+        "ilaios.agent.security.web-api.v1",
+        "security.web-api",
     ),
 )
 
