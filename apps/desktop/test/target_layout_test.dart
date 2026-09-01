@@ -105,6 +105,11 @@ void main() {
       expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
       expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
       expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
+      expect(
+        find.byKey(const Key('command-center-short-viewport-scroll')),
+        findsOneWidget,
+        reason: 'Windows text scaling must preserve readable typography by scrolling, not shrinking',
+      );
     }
   });
 
