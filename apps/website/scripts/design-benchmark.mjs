@@ -26,6 +26,13 @@ const architecture = await readFile(path.join(app, "ArchitecturePage.tsx"), "utf
 const audience = await readFile(path.join(app, "AudiencePage.tsx"), "utf8");
 const contact = await readFile(path.join(app, "ContactPage.tsx"), "utf8");
 const about = await readFile(path.join(app, "AboutPage.tsx"), "utf8");
+const useIlaios = await readFile(path.join(app, "UseILAIOSPage.tsx"), "utf8");
+const resources = await readFile(path.join(app, "resources", "page.tsx"), "utf8");
+const resourcesTr = await readFile(path.join(app, "tr", "resources", "page.tsx"), "utf8");
+const privacy = await readFile(path.join(app, "privacy", "page.tsx"), "utf8");
+const privacyTr = await readFile(path.join(app, "tr", "privacy", "page.tsx"), "utf8");
+const core = await readFile(path.join(app, "core", "page.tsx"), "utf8");
+const coreTr = await readFile(path.join(app, "tr", "core", "page.tsx"), "utf8");
 const chrome = await readFile(path.join(app, "SiteChrome.tsx"), "utf8");
 const layout = await readFile(path.join(app, "layout.tsx"), "utf8");
 const how = await readFile(path.join(app, "how-it-works", "page.tsx"), "utf8");
@@ -49,6 +56,9 @@ function requireText(source, text, label) {
 }
 function forbid(pattern, label) {
   if (pattern.test(css)) failures.push(`anti-generic gate: ${label}`);
+}
+function forbidIn(source, pattern, label) {
+  if (pattern.test(source)) failures.push(`${label}: forbidden internal detail returned`);
 }
 function clampMax(selector) {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -104,23 +114,67 @@ requireText(capabilities, "capability-matrix", "distinct Capabilities compositio
 requireText(capabilities, "variant=\"maturity\"", "capability maturity truth");
 requireText(capabilities, "variant=\"cost\"", "capability FinOps routing truth");
 requireText(security, "trust-gate", "distinct Security composition");
-requireText(security, "variant=\"runtime\"", "security admission/routing visual");
+requireText(security, "Missing required authority, validation or evidence stops sensitive work.", "English Security fail-closed boundary");
+requireText(security, "Gerekli yetki, doğrulama veya kanıt eksikse hassas iş ilerlemez.", "Turkish Security fail-closed boundary");
+requireText(security, "contact@ilaios.com", "verified Security reporting route");
+forbidIn(security, /CanonicalSystemDetail|variant=\"runtime\"|ExecutionGrant|RoutingDecision|worker lease|fencing/i, "public Security technical-density boundary");
+
 requireText(architecture, "architecture-primary", "distinct Architecture composition");
-requireText(architecture, "variant=\"runtime\"", "architecture admission/routing detail");
-requireText(architecture, "variant=\"knowledge\"", "architecture knowledge detail");
-requireText(architecture, "variant=\"recovery\"", "architecture recovery detail");
+requireText(architecture, "One control authority. Multiple governed ways to get work done.", "outcome-readable Architecture hierarchy");
+requireText(architecture, "SystemVisuals", "Architecture governed execution visual");
+requireText(architecture, "Technical depth", "Architecture progressive technical disclosure");
+forbidIn(architecture, /CanonicalSystemDetail|ExecutionGrant|RoutingDecision|worker lease|fencing token|Knowledge \/ RAG|Checkpoint \/ Resume \/ Repair/i, "Architecture public-density boundary");
+
 requireText(factoriesPage, "Cross-factory composition", "cross-factory bounded composition");
 requireText(factoriesPage, "variant=\"knowledge\"", "factories shared knowledge plane");
-requireText(how, "variant=\"journey\"", "English full request chain");
-requireText(how, "variant=\"runtime\"", "English execution runtime chain");
-requireText(how, "variant=\"recovery\"", "English recovery chain");
-requireText(how, "variant=\"cost\"", "English FinOps chain");
-requireText(howTr, "variant=\"journey\"", "Turkish full request chain");
+
+for (const text of [
+  "Describe what you want finished",
+  "ILAIOS organizes the work",
+  "The work is produced",
+  "ILAIOS verifies and delivers",
+  "Goal → governed work → production → verification → delivery.",
+  "What verified means",
+  'href="/use-ilaios"',
+]) requireText(how, text, "English public How It Works flow");
+for (const text of [
+  "Bitmesini istediğin sonucu tarif et",
+  "ILAIOS işi düzenler",
+  "İş üretilir",
+  "ILAIOS doğrular ve teslim eder",
+  "Hedef → yönetilen iş → üretim → doğrulama → teslim.",
+  "Doğrulanmış ne demek?",
+  'href="/tr/use-ilaios"',
+]) requireText(howTr, text, "Turkish public How It Works flow");
+forbidIn(how, /ExecutionGrant|RoutingDecision|worker lease|fencing token|admission lease/i, "English How It Works boundary");
+forbidIn(howTr, /ExecutionGrant|RoutingDecision|worker lease|fencing token|admission lease/i, "Turkish How It Works boundary");
+
 requireText(webFactory, "variant=\"web\"", "English full Web Factory lifecycle");
 requireText(webFactoryTr, "variant=\"web\"", "Turkish full Web Factory lifecycle");
 requireText(audience, "audience-${audience}", "audience-specific rendered composition class");
-requireText(audience, "Enterprise control", "Enterprise governance composition");
+requireText(audience, "What teams can move forward", "Enterprise outcome composition");
 requireText(audience, "Outcome first", "Individuals outcome composition");
+forbidIn(audience, /operational authority|execution spine|canonical product direction|deployment and general availability/i, "audience public technical-density boundary");
+
+requireText(useIlaios, "Describe the finished result. ILAIOS manages the path to it.", "Use ILAIOS outcome-first hero");
+requireText(useIlaios, "Different outcomes, one governed product boundary.", "Use ILAIOS outcome grouping");
+forbidIn(useIlaios, /ilaios-concept\.avif|Product-flow concept|Static illustrative workflow|ThemedDiagram|next\/image/i, "Use ILAIOS fake-or-static product-screen boundary");
+
+requireText(resources, "Resources explains the thinking; Docs carries the technical reference.", "English Resources/Docs separation");
+requireText(resourcesTr, "Resources yaklaşımı açıklar; Docs teknik referansı taşır.", "Turkish Resources/Docs separation");
+requireText(resources, "detail-directory", "Resources compact editorial directory");
+requireText(resourcesTr, "detail-directory", "Turkish Resources compact editorial directory");
+
+requireText(privacy, "This notice describes the public ILAIOS marketing website.", "English Privacy marketing/product boundary");
+requireText(privacyTr, "Bu bildirim kamuya açık ILAIOS pazarlama sitesini açıklar.", "Turkish Privacy marketing/product boundary");
+requireText(privacy, "contact@ilaios.com", "English Privacy verified public contact");
+requireText(privacyTr, "contact@ilaios.com", "Turkish Privacy verified public contact");
+
+requireText(core, "One control authority around every governed execution.", "English Core authority hierarchy");
+requireText(coreTr, "Her yönetilen yürütmenin çevresinde tek kontrol otoritesi.", "Turkish Core authority hierarchy");
+forbidIn(core, /ProductDeepDive|RoutingDecision|ExecutionGrant|worker lease|fencing/i, "English Core technical-density boundary");
+forbidIn(coreTr, /ProductDeepDive|RoutingDecision|ExecutionGrant|worker lease|fencing/i, "Turkish Core technical-density boundary");
+
 requireText(contact, "contact-directory", "compact Contact directory");
 requireText(about, "about-editorial-grid", "compact About editorial composition");
 requireText(chrome, "footer-nav-grid", "dense footer information architecture");
@@ -152,6 +206,7 @@ if (failures.length) {
 console.log("ILAIOS design benchmark gate PASS");
 console.log(`Benchmarks: ${competitors.join(", ")}`);
 for (const question of benchmarkQuestions) console.log(`- ${question}`);
-console.log("Canonical documentation coverage includes request contracts, admission/routing, knowledge, recovery, FinOps, maturity and the full Web Factory lifecycle.");
-console.log("P0 mobile overlap/density invariants are present in the final override layers.");
+console.log("Technical reference components retain request contracts, admission/routing, knowledge, recovery, FinOps, maturity and full Web Factory lifecycle coverage.");
+console.log("Public marketing surfaces stay outcome-first while detailed authority internals remain in Architecture/Docs/Core only at the appropriate abstraction level.");
+console.log("P0 mobile overlap/density invariants are present in the final correction layers.");
 console.log("Manual live-site visual approval remains REQUIRED before the website may be called FINAL.");

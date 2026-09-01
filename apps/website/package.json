@@ -12,7 +12,8 @@
     "test:design": "node scripts/design-benchmark.mjs",
     "test:redteam": "node scripts/public-ux-redteam.mjs",
     "test:motion": "node scripts/motion-signature-quality.mjs",
-    "test:quality": "npm run test:site && npm run test:design && npm run test:redteam && npm run test:motion"
+    "test:docs": "node scripts/docs-hub-quality.mjs",
+    "test:quality": "npm run test:site && npm run test:design && npm run test:redteam && npm run test:motion && npm run test:docs"
   },
   "dependencies": {
     "next": "16.2.11",
