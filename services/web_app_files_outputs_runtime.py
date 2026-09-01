@@ -64,6 +64,9 @@ class WebAppFilesOutputsRuntime:
         {
             "application/json",
             "application/pdf",
+            "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             "application/zip",
             "image/jpeg",
             "image/png",
@@ -117,18 +120,19 @@ class WebAppFilesOutputsRuntime:
         digest = hashlib.sha256(content).hexdigest()
         version = self._allocate_version(principal.tenant_id, output_id)
         object_key = self._object_key(principal.tenant_id, output_id, version, digest)
-
-        self._storage.put(object_key=object_key, content=content)
         try:
+            self._storage.put(object_key=object_key, content=content)
             self._db.execute(
-                """INSERT INTO web_app_outputs
-                   (tenant_id, project_id, output_id, filename, mime_type, size_bytes,
-                    sha256, version, object_key, created_at, retain_until)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                """
+                INSERT INTO web_app_file_outputs (
+                    output_id, tenant_id, project_id, filename, mime_type, size_bytes,
+                    sha256, version, object_key, created_at, retain_until
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
                 (
+                    output_id,
                     principal.tenant_id,
                     self._contract.project_id,
-                    output_id,
                     filename,
                     mime_type,
                     len(content),
@@ -142,17 +146,26 @@ class WebAppFilesOutputsRuntime:
             self._db.commit()
         except Exception:
             self._db.rollback()
-            self._storage.delete(object_key=object_key)
+            try:
+                self._storage.delete(object_key=object_key)
+            except Exception:
+                pass
             raise
-        self._audit_success(
-            operation="store",
-            principal=principal,
+        record = FileOutputRecord(
             output_id=output_id,
+            tenant_id=principal.tenant_id,
+            project_id=self._contract.project_id,
+            filename=filename,
+            mime_type=mime_type,
+            size_bytes=len(content),
+            sha256=digest,
             version=version,
-            digest=digest,
-            now=now,
+            object_key=object_key,
+            created_at=timestamp,
+            retain_until=retention,
         )
-        return self._read_record(principal.tenant_id, output_id, version)
+        self._audit_success(principal, "store", record, now)
+        return record
 
     def download(
         self,
@@ -162,26 +175,29 @@ class WebAppFilesOutputsRuntime:
         version: int,
         now: datetime,
     ) -> tuple[FileOutputRecord, bytes]:
-        self._token(output_id, "output_id")
-        if version < 1:
-            raise WebAppFilesOutputsError("INVALID_VERSION", "version must be positive", 400)
-        self._utc(now)
         self._authorize(principal, "read", now)
-        record = self._read_record(principal.tenant_id, output_id, version)
+        record = self._record(principal.tenant_id, output_id, version)
         content = self._storage.get(object_key=record.object_key)
-        if len(content) != record.size_bytes or hashlib.sha256(content).hexdigest() != record.sha256:
+        if hashlib.sha256(content).hexdigest() != record.sha256:
             raise WebAppFilesOutputsError(
-                "OUTPUT_INTEGRITY_FAILURE", "stored output failed exact hash/size validation", 500
+                "OUTPUT_INTEGRITY_FAILURE", "stored output hash mismatch", 500
             )
-        self._audit_success(
-            operation="download",
-            principal=principal,
-            output_id=output_id,
-            version=version,
-            digest=record.sha256,
-            now=now,
-        )
+        self._audit_success(principal, "download", record, now)
         return record, content
+
+    def list_versions(
+        self, *, principal: Principal, output_id: str, now: datetime
+    ) -> tuple[FileOutputRecord, ...]:
+        self._authorize(principal, "read", now)
+        rows = self._db.execute(
+            """
+            SELECT * FROM web_app_file_outputs
+            WHERE tenant_id = ? AND project_id = ? AND output_id = ?
+            ORDER BY version DESC
+            """,
+            (principal.tenant_id, self._contract.project_id, output_id),
+        ).fetchall()
+        return tuple(self._from_row(row) for row in rows)
 
     def delete(
         self,
@@ -191,303 +207,91 @@ class WebAppFilesOutputsRuntime:
         version: int,
         now: datetime,
     ) -> None:
-        self._token(output_id, "output_id")
-        if version < 1:
-            raise WebAppFilesOutputsError("INVALID_VERSION", "version must be positive", 400)
-        timestamp = self._utc(now)
         self._authorize(principal, "delete", now)
-
-        try:
-            record = self._read_record(principal.tenant_id, output_id, version)
-        except WebAppFilesOutputsError as exc:
-            if exc.code != "NOT_FOUND":
-                raise
-            deletion = self._read_deletion(principal.tenant_id, output_id, version)
-            if deletion is None:
-                raise
-            self._ensure_delete_audit(
-                principal=principal,
-                output_id=output_id,
-                version=version,
-                digest=str(deletion["sha256"]),
-                now=now,
-            )
-            return
-
+        record = self._record(principal.tenant_id, output_id, version)
         if record.retain_until is not None and self._parse_utc(record.retain_until) > now.astimezone(timezone.utc):
-            raise WebAppFilesOutputsError("RETENTION_ACTIVE", "output is retention protected", 409)
-
-        content = self._storage.get(object_key=record.object_key)
-        if len(content) != record.size_bytes or hashlib.sha256(content).hexdigest() != record.sha256:
-            raise WebAppFilesOutputsError(
-                "OUTPUT_INTEGRITY_FAILURE", "stored output failed exact hash/size validation", 500
-            )
-
+            raise WebAppFilesOutputsError("RETENTION_ACTIVE", "output retention is active", 409)
         self._storage.delete(object_key=record.object_key)
-        try:
-            self._db.execute(
-                """DELETE FROM web_app_outputs
-                   WHERE tenant_id=? AND project_id=? AND output_id=? AND version=?""",
-                (principal.tenant_id, self._contract.project_id, output_id, version),
+        self._db.execute(
+            "DELETE FROM web_app_file_outputs WHERE tenant_id = ? AND project_id = ? AND output_id = ? AND version = ?",
+            (principal.tenant_id, self._contract.project_id, output_id, version),
+        )
+        self._db.commit()
+        self._audit_success(principal, "delete", record, now)
+
+    def _initialize_schema(self) -> None:
+        self._db.execute(
+            """
+            CREATE TABLE IF NOT EXISTS web_app_file_outputs (
+                output_id TEXT NOT NULL,
+                tenant_id TEXT NOT NULL,
+                project_id TEXT NOT NULL,
+                filename TEXT NOT NULL,
+                mime_type TEXT NOT NULL,
+                size_bytes INTEGER NOT NULL,
+                sha256 TEXT NOT NULL,
+                version INTEGER NOT NULL,
+                object_key TEXT NOT NULL UNIQUE,
+                created_at TEXT NOT NULL,
+                retain_until TEXT,
+                PRIMARY KEY (tenant_id, project_id, output_id, version)
             )
-            self._db.execute(
-                """INSERT INTO web_app_output_deletions
-                   (tenant_id, project_id, output_id, version, sha256, object_key,
-                    deleted_at, audit_recorded)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, 0)""",
-                (
-                    principal.tenant_id,
-                    self._contract.project_id,
-                    output_id,
-                    version,
-                    record.sha256,
-                    record.object_key,
-                    timestamp,
-                ),
-            )
-            self._db.commit()
-        except Exception:
-            self._db.rollback()
-            self._storage.put(object_key=record.object_key, content=content)
-            raise
-
-        self._ensure_delete_audit(
-            principal=principal,
-            output_id=output_id,
-            version=version,
-            digest=record.sha256,
-            now=now,
+            """
         )
+        self._db.commit()
 
-    def list_versions(
-        self,
-        *,
-        principal: Principal,
-        output_id: str,
-        now: datetime,
-    ) -> tuple[FileOutputRecord, ...]:
-        self._token(output_id, "output_id")
-        self._utc(now)
-        self._authorize(principal, "read", now)
-        rows = self._db.execute(
-            """SELECT * FROM web_app_outputs
-               WHERE tenant_id=? AND project_id=? AND output_id=? ORDER BY version DESC""",
-            (principal.tenant_id, self._contract.project_id, output_id),
-        ).fetchall()
-        return tuple(self._row(row) for row in rows)
-
-    def _authorize(self, principal: Principal, operation: str, now: datetime) -> None:
-        request = action_access_request(
-            self._contract,
-            action_id=f"action:resource.output.{operation}",
-            tenant_id=principal.tenant_id,
-            resource_tenant_id=principal.tenant_id,
-        )
-        authorize_with_canonical_engine(
-            self._authorization, principal=principal, request=request, now=now
-        )
-
-    def _audit_success(
-        self,
-        *,
-        operation: str,
-        principal: Principal,
-        output_id: str,
-        version: int,
-        digest: str,
-        now: datetime,
-        operation_id: str | None = None,
-    ) -> None:
-        details = {
-            "principal_id": principal.principal_id,
-            "tenant_id": principal.tenant_id,
-            "project_id": self._contract.project_id,
-            "output_id": output_id,
-            "version": str(version),
-            "sha256": digest,
-        }
-        if operation_id is not None:
-            details["operation_id"] = operation_id
-        self._audit.record(
-            "web_app_files_outputs_runtime",
-            operation,
-            "success",
-            details,
-            timestamp=now.astimezone(timezone.utc),
-        )
-
-    def _ensure_delete_audit(
-        self,
-        *,
-        principal: Principal,
-        output_id: str,
-        version: int,
-        digest: str,
-        now: datetime,
-    ) -> None:
-        deletion = self._read_deletion(principal.tenant_id, output_id, version)
-        if deletion is None:
-            raise WebAppFilesOutputsError("DELETE_STATE_MISSING", "delete checkpoint is missing", 500)
-        if int(deletion["audit_recorded"]) == 1:
-            return
-
-        operation_id = hashlib.sha256(
-            (
-                f"delete\0{principal.tenant_id}\0{self._contract.project_id}\0"
-                f"{output_id}\0{version}\0{digest}"
-            ).encode("utf-8")
-        ).hexdigest()
-        already_recorded = any(
-            record.action == "delete"
-            and record.status == "success"
-            and record.details.get("operation_id") == operation_id
-            for record in self._audit.get_records(component="web_app_files_outputs_runtime")
-        )
-        try:
-            if not already_recorded:
-                self._audit_success(
-                    operation="delete",
-                    principal=principal,
-                    output_id=output_id,
-                    version=version,
-                    digest=digest,
-                    now=now,
-                    operation_id=operation_id,
-                )
-            self._db.execute(
-                """UPDATE web_app_output_deletions
-                   SET audit_recorded=1
-                   WHERE tenant_id=? AND project_id=? AND output_id=? AND version=?""",
-                (principal.tenant_id, self._contract.project_id, output_id, version),
-            )
-            self._db.commit()
-        except Exception as exc:
-            self._db.rollback()
-            raise WebAppFilesOutputsError(
-                "AUDIT_PENDING",
-                "delete committed but canonical audit checkpoint is pending; retry same delete",
-                503,
-            ) from exc
-
-    def _read_record(self, tenant_id: str, output_id: str, version: int) -> FileOutputRecord:
+    def _allocate_version(self, tenant_id: str, output_id: str) -> int:
         row = self._db.execute(
-            """SELECT * FROM web_app_outputs
-               WHERE tenant_id=? AND project_id=? AND output_id=? AND version=?""",
+            "SELECT COALESCE(MAX(version), 0) AS latest FROM web_app_file_outputs WHERE tenant_id = ? AND project_id = ? AND output_id = ?",
+            (tenant_id, self._contract.project_id, output_id),
+        ).fetchone()
+        return int(row["latest"]) + 1
+
+    def _record(self, tenant_id: str, output_id: str, version: int) -> FileOutputRecord:
+        row = self._db.execute(
+            "SELECT * FROM web_app_file_outputs WHERE tenant_id = ? AND project_id = ? AND output_id = ? AND version = ?",
             (tenant_id, self._contract.project_id, output_id, version),
         ).fetchone()
         if row is None:
             raise WebAppFilesOutputsError("NOT_FOUND", "output not found", 404)
-        return self._row(row)
-
-    def _read_deletion(self, tenant_id: str, output_id: str, version: int) -> sqlite3.Row | None:
-        row = self._db.execute(
-            """SELECT * FROM web_app_output_deletions
-               WHERE tenant_id=? AND project_id=? AND output_id=? AND version=?""",
-            (tenant_id, self._contract.project_id, output_id, version),
-        ).fetchone()
-        if row is None:
-            return None
-        if not isinstance(row, sqlite3.Row):
-            raise WebAppFilesOutputsError(
-                "INVALID_DELETE_STATE",
-                "delete checkpoint returned an unexpected row type",
-                500,
-            )
-        return row
-
-    def _allocate_version(self, tenant_id: str, output_id: str) -> int:
-        """Reserve a unique monotonic version before touching external byte storage.
-
-        SQLite serializes the short allocator transaction. Committing the reservation
-        before storage I/O prevents two writers from sharing an object key; failed
-        writes may leave a harmless version gap, but can never reuse another write's
-        version or delete another successful write during compensation.
-        """
-        try:
-            self._db.execute("BEGIN IMMEDIATE")
-            row = self._db.execute(
-                """SELECT next_version FROM web_app_output_version_allocator
-                   WHERE tenant_id=? AND project_id=? AND output_id=?""",
-                (tenant_id, self._contract.project_id, output_id),
-            ).fetchone()
-            if row is None:
-                version = 1
-                self._db.execute(
-                    """INSERT INTO web_app_output_version_allocator
-                       (tenant_id, project_id, output_id, next_version)
-                       VALUES (?, ?, ?, ?)""",
-                    (tenant_id, self._contract.project_id, output_id, 2),
-                )
-            else:
-                version = int(row["next_version"])
-                self._db.execute(
-                    """UPDATE web_app_output_version_allocator
-                       SET next_version=?
-                       WHERE tenant_id=? AND project_id=? AND output_id=?""",
-                    (version + 1, tenant_id, self._contract.project_id, output_id),
-                )
-            self._db.commit()
-            return version
-        except Exception:
-            self._db.rollback()
-            raise
+        return self._from_row(row)
 
     @staticmethod
-    def _row(row: sqlite3.Row) -> FileOutputRecord:
-        return FileOutputRecord(
-            output_id=str(row["output_id"]),
-            tenant_id=str(row["tenant_id"]),
-            project_id=str(row["project_id"]),
-            filename=str(row["filename"]),
-            mime_type=str(row["mime_type"]),
-            size_bytes=int(row["size_bytes"]),
-            sha256=str(row["sha256"]),
-            version=int(row["version"]),
-            object_key=str(row["object_key"]),
-            created_at=str(row["created_at"]),
-            retain_until=None if row["retain_until"] is None else str(row["retain_until"]),
+    def _from_row(row: sqlite3.Row) -> FileOutputRecord:
+        return FileOutputRecord(**dict(row))
+
+    def _authorize(self, principal: Principal, operation: str, now: datetime) -> None:
+        authorize_with_canonical_engine(
+            self._authorization,
+            principal,
+            action_access_request(
+                self._contract,
+                permission=f"resource.output.{operation}",
+                resource_type="output",
+                resource_id="files-outputs",
+                now=now,
+            ),
         )
 
-    def _initialize_schema(self) -> None:
-        self._db.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS web_app_outputs (
-              tenant_id TEXT NOT NULL,
-              project_id TEXT NOT NULL,
-              output_id TEXT NOT NULL,
-              filename TEXT NOT NULL,
-              mime_type TEXT NOT NULL,
-              size_bytes INTEGER NOT NULL CHECK(size_bytes > 0),
-              sha256 TEXT NOT NULL,
-              version INTEGER NOT NULL CHECK(version >= 1),
-              object_key TEXT NOT NULL UNIQUE,
-              created_at TEXT NOT NULL,
-              retain_until TEXT,
-              PRIMARY KEY (tenant_id, project_id, output_id, version)
-            );
-            CREATE INDEX IF NOT EXISTS idx_web_app_outputs_scope
-              ON web_app_outputs(tenant_id, project_id, output_id, version);
-            CREATE TABLE IF NOT EXISTS web_app_output_version_allocator (
-              tenant_id TEXT NOT NULL,
-              project_id TEXT NOT NULL,
-              output_id TEXT NOT NULL,
-              next_version INTEGER NOT NULL CHECK(next_version >= 1),
-              PRIMARY KEY (tenant_id, project_id, output_id)
-            );
-            CREATE TABLE IF NOT EXISTS web_app_output_deletions (
-              tenant_id TEXT NOT NULL,
-              project_id TEXT NOT NULL,
-              output_id TEXT NOT NULL,
-              version INTEGER NOT NULL CHECK(version >= 1),
-              sha256 TEXT NOT NULL,
-              object_key TEXT NOT NULL,
-              deleted_at TEXT NOT NULL,
-              audit_recorded INTEGER NOT NULL DEFAULT 0 CHECK(audit_recorded IN (0, 1)),
-              PRIMARY KEY (tenant_id, project_id, output_id, version)
-            );
-            """
+    def _audit_success(
+        self, principal: Principal, operation: str, record: FileOutputRecord, now: datetime
+    ) -> None:
+        self._audit.record(
+            component="web_app_files_outputs_runtime",
+            action=operation,
+            status="success",
+            details={
+                "principal_id": principal.principal_id,
+                "tenant_id": principal.tenant_id,
+                "project_id": record.project_id,
+                "output_id": record.output_id,
+                "version": record.version,
+                "mime_type": record.mime_type,
+                "size_bytes": record.size_bytes,
+                "sha256": record.sha256,
+                "timestamp": self._utc(now),
+            },
         )
-        self._db.commit()
 
     @classmethod
     def _mime(cls, mime_type: str) -> None:
@@ -496,28 +300,29 @@ class WebAppFilesOutputsRuntime:
 
     @staticmethod
     def _filename(filename: str) -> None:
-        if not filename or len(filename) > 180 or filename != filename.strip():
-            raise WebAppFilesOutputsError("INVALID_FILENAME", "invalid filename", 400)
-        if "/" in filename or "\\" in filename or ".." in filename or not filename.isprintable():
+        if (
+            not filename
+            or filename in {".", ".."}
+            or "/" in filename
+            or "\\" in filename
+            or "\x00" in filename
+        ):
             raise WebAppFilesOutputsError("INVALID_FILENAME", "unsafe filename", 400)
 
     @staticmethod
     def _token(value: str, field: str) -> None:
-        if not value or len(value) > 128 or value != value.strip() or not value.isprintable():
-            raise WebAppFilesOutputsError("INVALID_TOKEN", f"invalid {field}", 400)
-        allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_.:")
-        if any(char not in allowed for char in value):
-            raise WebAppFilesOutputsError("INVALID_TOKEN", f"invalid {field}", 400)
+        if not value or len(value) > 160 or any(char.isspace() for char in value):
+            raise WebAppFilesOutputsError("INVALID_IDENTIFIER", f"invalid {field}", 400)
 
-    def _object_key(self, tenant_id: str, output_id: str, version: int, digest: str) -> str:
-        scope = hashlib.sha256(
-            f"{tenant_id}\0{self._contract.project_id}".encode("utf-8")
-        ).hexdigest()[:24]
-        return f"web-app/{scope}/{output_id}/v{version}-{digest}"
+    @staticmethod
+    def _object_key(tenant_id: str, output_id: str, version: int, digest: str) -> str:
+        safe_tenant = hashlib.sha256(tenant_id.encode("utf-8")).hexdigest()[:24]
+        safe_output = hashlib.sha256(output_id.encode("utf-8")).hexdigest()[:24]
+        return f"tenant/{safe_tenant}/output/{safe_output}/v{version}/{digest}"
 
     @staticmethod
     def _utc(value: datetime) -> str:
-        if value.tzinfo is None:
+        if value.tzinfo is None or value.utcoffset() is None:
             raise WebAppFilesOutputsError("INVALID_TIME", "timezone-aware datetime required", 400)
         return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
 
