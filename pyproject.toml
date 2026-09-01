@@ -4,6 +4,7 @@ dynamic = ["version"]
 dependencies = [
     "requests",
     "python-dotenv",
+    "pypdf",
 ]
 
 [tool.mypy]
