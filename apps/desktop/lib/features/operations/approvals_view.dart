@@ -223,7 +223,34 @@ class _ApprovalsViewState extends State<ApprovalsView> {
                   },
                 );
 
-                if (!showDetail) return table;
+                final detail = _RightRail(
+                  request: selected,
+                  snapshot: widget.snapshot,
+                  decisionAllowed: selected != null && _decisionAllowed(selected),
+                  busy: selected != null && _busyRequestId == _requestId(selected),
+                  message: _message,
+                  onApprove: () => _decide(GovernanceDecision.approved),
+                  onDeny: () => _decide(GovernanceDecision.denied),
+                );
+                if (!showDetail) {
+                  if (selected == null) return table;
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: TextButton.icon(
+                          key: const Key('approvals-back-to-queue'),
+                          autofocus: true,
+                          onPressed: () => setState(() => _selectedRequestId = null),
+                          icon: const Icon(Icons.arrow_back),
+                          label: Text(_copy(context, 'Karar Kuyruğu', 'Decision Queue')),
+                        ),
+                      ),
+                      Expanded(child: detail),
+                    ],
+                  );
+                }
 
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -232,17 +259,7 @@ class _ApprovalsViewState extends State<ApprovalsView> {
                     const SizedBox(width: 16),
                     SizedBox(
                       width: 390,
-                      child: _RightRail(
-                        request: selected,
-                        snapshot: widget.snapshot,
-                        decisionAllowed:
-                            selected != null && _decisionAllowed(selected),
-                        busy: selected != null &&
-                            _busyRequestId == _requestId(selected),
-                        message: _message,
-                        onApprove: () => _decide(GovernanceDecision.approved),
-                        onDeny: () => _decide(GovernanceDecision.denied),
-                      ),
+                      child: detail,
                     ),
                   ],
                 );
@@ -785,14 +802,17 @@ class _RightRail extends StatelessWidget {
         key: const Key('approvals-right-rail'),
         decoration: _cardDecoration(context),
         padding: const EdgeInsets.all(16),
-        child: _SelectedRequestCard(
-          request: request,
-          snapshot: snapshot,
-          decisionAllowed: decisionAllowed,
-          busy: busy,
-          message: message,
-          onApprove: onApprove,
-          onDeny: onDeny,
+        child: SingleChildScrollView(
+          primary: false,
+          child: _SelectedRequestCard(
+            request: request,
+            snapshot: snapshot,
+            decisionAllowed: decisionAllowed,
+            busy: busy,
+            message: message,
+            onApprove: onApprove,
+            onDeny: onDeny,
+          ),
         ),
       );
 }
@@ -854,6 +874,7 @@ class _SelectedRequestCard extends StatelessWidget {
 
     return Column(
       key: const Key('approvals-selected-request'),
+      mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
@@ -936,7 +957,7 @@ class _SelectedRequestCard extends StatelessWidget {
                 ],
               ),
             ),
-        const Spacer(),
+        const SizedBox(height: 20),
         if (message case final text?) ...[
           Container(
             padding: const EdgeInsets.all(10),

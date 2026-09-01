@@ -324,7 +324,7 @@ void main() {
     expect(find.textContaining('vault://must-never-render'), findsNothing);
     final request = find.descendant(
       of: find.byKey(const Key('approvals-table')),
-      matching: find.text('request-7'),
+      matching: find.text('Request request-'),
     );
     expect(request, findsOneWidget);
     await tester.tap(request);
@@ -336,6 +336,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(decidedRequest, 'request-7');
     expect(decidedValue, GovernanceDecision.approved);
+    expect(find.text('Technical ID: request-7'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('approvals-back-to-queue')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('approvals-table')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('medium admitted work is never rendered as pending approval', (
@@ -388,7 +393,7 @@ void main() {
     ));
     await tester.tap(find.byKey(const ValueKey('nav-approvals')));
     await tester.pumpAndSettle();
-    expect(find.text('No matching approval request.'), findsOneWidget);
+    expect(find.text('There are no matching approval requests right now.'), findsOneWidget);
     expect(find.byKey(const ValueKey('approve-exec-medium')), findsNothing);
     expect(find.byKey(const ValueKey('deny-exec-medium')), findsNothing);
   });
