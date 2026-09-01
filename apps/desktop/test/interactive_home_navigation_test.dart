@@ -12,13 +12,15 @@ void main() {
     await tester.pumpWidget(const IlaiosDesktopApp());
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('home-templates')), findsOneWidget);
-    expect(find.byKey(const Key('home-last-session')), findsOneWidget);
     expect(find.byKey(const Key('home-new-work')), findsOneWidget);
+    expect(find.text('Advanced'), findsOneWidget);
+    expect(find.text('All work'), findsOneWidget);
+    expect(find.byKey(const Key('home-templates')), findsNothing);
+    expect(find.byKey(const Key('home-last-session')), findsNothing);
     expect(find.byKey(const Key('home-assign-agent')), findsNothing);
     expect(find.byKey(const Key('home-factory-web')), findsNothing);
 
-    await tester.tap(find.byKey(const Key('home-templates')));
+    await tester.tap(find.text('All work'));
     await tester.pumpAndSettle();
     final workflowsPage = find.byKey(const Key('reference-workflows-page'));
     expect(workflowsPage, findsOneWidget);
@@ -29,9 +31,9 @@ void main() {
 
     await tester.tap(find.byKey(const ValueKey('nav-home')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('home-last-session')));
+    await tester.tap(find.text('Advanced'));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('reference-workflows-page')), findsOneWidget);
+    expect(find.byKey(const Key('reference-goals-page')), findsOneWidget);
   });
 
   testWidgets('empty V4 Home remains truth-preserving', (

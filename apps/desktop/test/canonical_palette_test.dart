@@ -36,7 +36,7 @@ void main() {
 
     final theme = IlaiosTheme.dark;
     expect(theme.focusColor, IlaiosTheme.cyanWash);
-    expect(theme.hoverColor, IlaiosTheme.blueWash);
+    expect(theme.hoverColor, IlaiosTheme.cyanWash);
     expect(theme.highlightColor, IlaiosTheme.violetWash);
     expect(theme.progressIndicatorTheme.color, IlaiosTheme.enterpriseCyan);
   });

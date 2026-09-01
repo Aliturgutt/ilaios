@@ -30,8 +30,9 @@ void main() {
     expect(find.byKey(const Key('command-center-home')), findsOneWidget);
     expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
     expect(find.text('Connected'), findsWidgets);
-    // V4 may collapse unavailable KPI surfaces rather than render placeholder
-    // dashes. The truth contract is that screenshot/demo telemetry is absent.
+    // Final Polish deliberately removes the old KPI wall. Missing authority
+    // stays absent rather than being represented by screenshot/demo values.
+    expect(find.byKey(const Key('command-center-metrics')), findsNothing);
     expect(find.textContaining(r'$3.21'), findsNothing);
     expect(find.textContaining('18.362'), findsNothing);
     expect(find.text('96%'), findsNothing);
@@ -131,16 +132,14 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byKey(const Key('command-center-home')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-metrics')), findsOneWidget);
-    expect(find.text('2.75'), findsOneWidget);
-    expect(find.text('approval-1'), findsOneWidget);
-    expect(find.text('approval-2'), findsOneWidget);
-    expect(find.text('approval-3'), findsOneWidget);
-    expect(find.text('verified_delivery'), findsWidgets);
-    expect(find.text('2'), findsWidgets);
-    expect(find.text('1'), findsWidgets);
+    expect(find.byKey(const Key('command-center-attention')), findsOneWidget);
 
-    // V4 summarizes runtime activity instead of exposing raw live-event fields.
+    // Final Polish keeps authority-derived state but removes the old KPI wall
+    // and downgrades raw execution/request identifiers to technical detail.
+    expect(find.byKey(const Key('command-center-metrics')), findsNothing);
+    expect(find.text('approval-1'), findsNothing);
+    expect(find.text('approval-2'), findsNothing);
+    expect(find.text('approval-3'), findsNothing);
     expect(find.text('job-authoritative-001'), findsNothing);
     expect(find.text('00:02:15'), findsNothing);
 
