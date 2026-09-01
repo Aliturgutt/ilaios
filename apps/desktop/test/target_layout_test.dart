@@ -35,7 +35,7 @@ void main() {
       expect(find.text('Main Control Center'), findsNothing);
       expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
       expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
-      expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
+      expect(find.byKey(const Key('reference-brand-horizontal-light')), findsOneWidget);
 
       final shouldScaleCompactViewport = size.width <= 1320 || size.height < 720;
       expect(
@@ -65,7 +65,7 @@ void main() {
     expect(find.byKey(const Key('command-center-quick-actions')), findsNothing);
   });
 
-  testWidgets('shell renders the canonical horizontal dark brand master', (
+  testWidgets('shell renders the canonical horizontal light brand master by default', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -75,7 +75,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
-    expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
+    expect(find.byKey(const Key('reference-brand-horizontal-light')), findsOneWidget);
   });
 
   testWidgets('V4 Home remains overflow-free under 125 and 150 percent text scaling', (
@@ -99,7 +99,7 @@ void main() {
       );
       expect(find.byKey(const Key('command-center-home')), findsOneWidget);
       expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
-      expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
+      expect(find.byKey(const Key('reference-brand-horizontal-light')), findsOneWidget);
     }
   });
 
@@ -131,7 +131,7 @@ void main() {
       expect(find.byKey(const Key('command-center-home')), findsOneWidget);
       expect(find.text('Ana Kontrol Merkezi'), findsNothing);
       expect(find.text('Aktif İş Akışı'), findsNothing);
-      expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
+      expect(find.byKey(const Key('reference-brand-horizontal-light')), findsOneWidget);
     }
   });
 }
