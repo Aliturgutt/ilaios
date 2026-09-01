@@ -1105,6 +1105,7 @@ class _OutputRow extends StatelessWidget {
                       key: ValueKey('delete-local-artifact-${record.sequence}'),
                       tooltip: _copy(context, 'Çıktı işlemleri', 'Output actions'),
                       padding: EdgeInsets.zero,
+                      constraints: const BoxConstraints(minWidth: 320, maxWidth: 360),
                       enabled: actionsEnabled,
                       iconSize: 15,
                       icon: const Icon(Icons.more_vert),

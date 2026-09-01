@@ -96,21 +96,19 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final metrics = find.byKey(const Key('command-center-metrics'));
-    expect(metrics, findsOneWidget);
+    final attention = find.byKey(const Key('command-center-attention'));
+    expect(attention, findsOneWidget);
     expect(
-      find.descendant(of: metrics, matching: find.text('Needs Attention')),
-      findsOneWidget,
-    );
-    // Authoritative empty admissions means zero governed approvals while the
-    // pending work item remains visible as one ongoing work item.
-    expect(
-      find.descendant(of: metrics, matching: find.text('1')),
+      find.descendant(of: attention, matching: find.text('No action is required')),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: metrics, matching: find.text('0')),
-      findsOneWidget,
+      find.descendant(of: attention, matching: find.textContaining('approval is waiting')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: attention, matching: find.textContaining('approvals are waiting')),
+      findsNothing,
     );
   });
 }

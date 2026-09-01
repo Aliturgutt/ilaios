@@ -225,89 +225,101 @@ class _CreateViewState extends State<CreateView> {
       key: const Key('reference-goals-page'),
       color: Theme.of(context).scaffoldBackgroundColor,
       padding: const EdgeInsets.fromLTRB(18, 10, 18, 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _GoalsHeader(
-            controller: _controller,
-            enabled: connected && widget.onSubmit != null,
-            submitting: _submitting,
-            selectedPreset: _selectedPreset,
-            selectedBusinessCapability: _selectedBusinessCapability,
-            referenceAssets: widget.referenceAssets,
-            presetLabel: (preset) => _presetLabel(context, preset),
-            businessCapabilityLabel: (family) =>
-                _businessCapabilityLabel(context, family),
-            onPresetChanged: _selectPreset,
-            onBusinessCapabilityChanged: _selectBusinessCapability,
-            onSubmit: _submit,
-          ),
-          if (goalCount != null && goalCount > 0) ...[
-            const SizedBox(height: 8),
-            _MetricStrip(
-              goalCount: goalCount,
-              lastEvent: widget.projection.lastEvent,
+      child: CustomScrollView(
+        key: const Key('goals-content-scroll'),
+        slivers: [
+          SliverToBoxAdapter(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _GoalsHeader(
+                  controller: _controller,
+                  enabled: connected && widget.onSubmit != null,
+                  submitting: _submitting,
+                  selectedPreset: _selectedPreset,
+                  selectedBusinessCapability: _selectedBusinessCapability,
+                  referenceAssets: widget.referenceAssets,
+                  presetLabel: (preset) => _presetLabel(context, preset),
+                  businessCapabilityLabel: (family) =>
+                      _businessCapabilityLabel(context, family),
+                  onPresetChanged: _selectPreset,
+                  onBusinessCapabilityChanged: _selectBusinessCapability,
+                  onSubmit: _submit,
+                ),
+                if (goalCount != null && goalCount > 0) ...[
+                  const SizedBox(height: 8),
+                  _MetricStrip(
+                    goalCount: goalCount,
+                    lastEvent: widget.projection.lastEvent,
+                  ),
+                ],
+                const SizedBox(height: 8),
+                _GoalTabs(
+                  activeTab: _activeTab,
+                  onChanged: (value) => setState(() => _activeTab = value),
+                ),
+                const SizedBox(height: 6),
+                if (_submission != null || _error != null) ...[
+                  const SizedBox(height: 6),
+                  _SubmissionStatus(
+                    submission: _submission,
+                    error: _error,
+                    lifecycle: lifecycle,
+                  ),
+                ],
+              ],
             ),
-          ],
-          const SizedBox(height: 8),
-          _GoalTabs(
-            activeTab: _activeTab,
-            onChanged: (value) => setState(() => _activeTab = value),
           ),
-          const SizedBox(height: 6),
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final showRightRail = constraints.maxWidth >= 1080;
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Expanded(
-                            child: _GoalsTable(
-                              submission: _submission,
-                              objective: _submittedObjective,
-                              owner: owner,
-                              activeTab: _activeTab,
+          SliverToBoxAdapter(
+            child: SizedBox(
+              height: (MediaQuery.sizeOf(context).height * 0.55)
+                  .clamp(360.0, 640.0)
+                  .toDouble(),
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final showRightRail = constraints.maxWidth >= 1080;
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Expanded(
+                                child: _GoalsTable(
+                                  submission: _submission,
+                                  objective: _submittedObjective,
+                                  owner: owner,
+                                  activeTab: _activeTab,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (showRightRail && _submission != null) ...[
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: 390,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                Expanded(
+                                  child: _SelectedGoal(
+                                    submission: _submission,
+                                    objective: _submittedObjective,
+                                    owner: owner,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                    if (showRightRail && _submission != null) ...[
-                      const SizedBox(width: 12),
-                      SizedBox(
-                        width: 390,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: _SelectedGoal(
-                                submission: _submission,
-                                objective: _submittedObjective,
-                                owner: owner,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ],
-                );
-              },
+                      ],
+                    );
+                  },
+                ),
+              ),
             ),
-          ),
-          if (_submission != null || _error != null) ...[
-            const SizedBox(height: 6),
-            _SubmissionStatus(
-              submission: _submission,
-              error: _error,
-              lifecycle: lifecycle,
-            ),
-          ],
         ],
       ),
     );
