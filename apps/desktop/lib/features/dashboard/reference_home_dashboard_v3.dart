@@ -106,7 +106,7 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
         // scrolls instead of compressing panels into unreadable/overflowing
         // geometry. Standard and wide desktop sizes keep the one-viewport
         // composition.
-        final compact = constraints.maxWidth < 940 || constraints.maxHeight < 640;
+        final compact = constraints.maxWidth < 940 || constraints.maxHeight < 720;
         final outerPadding = compact ? 14.0 : 20.0;
         final gap = compact ? 12.0 : 16.0;
 
@@ -195,6 +195,7 @@ class _HomeModel {
         !snapshot.governanceState.containsKey('admissions')) {
       return null;
     }
+    final hasAdmissions = snapshot.governanceState.containsKey('admissions');
     final required = <String>{};
     for (final item in admissions) {
       if (item['human_approval_required'] != true) continue;
@@ -204,7 +205,7 @@ class _HomeModel {
     return work.where((item) {
       final state = _normalize(_text(item, const ['status', 'state']) ?? '');
       if (state != 'pending') return false;
-      if (admissions.isEmpty) return true;
+      if (!hasAdmissions) return true;
       final id = item['request_id'];
       return id is String && required.contains(id);
     }).length;
