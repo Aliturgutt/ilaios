@@ -410,6 +410,17 @@ class ControlPlaneClient {
       );
     }
     if (response.statusCode != expectedStatus) {
+      try {
+        final decoded = jsonDecode(response.body);
+        if (decoded is Map<String, dynamic>) {
+          final serverError = decoded['error'];
+          if (serverError is String && serverError.trim().isNotEmpty) {
+            throw ControlPlaneClientException(serverError);
+          }
+        }
+      } on FormatException {
+        // Fall through to the stable generic error below.
+      }
       throw ControlPlaneClientException('Control plane $label failed');
     }
     return _decodeObject(response, label);

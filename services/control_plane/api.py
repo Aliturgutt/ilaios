@@ -21,6 +21,7 @@ from services.control_plane.proposals import (
     RiskClass,
     propose_execution,
 )
+from services.prompt_intent_compiler import compile_prompt
 from src.video_automation.job_state_machine import JobStateMachine
 from src.video_automation.models import JobState
 
@@ -87,11 +88,19 @@ class ControlPlane:
         self._authenticate(token)
         if not objective or objective != objective.strip():
             raise ControlPlaneError("objective must be non-blank and trimmed")
+        try:
+            compilation = compile_prompt(objective)
+        except ValueError as error:
+            raise ControlPlaneError(str(error)) from error
+        if compilation.needs_clarification:
+            question = compilation.clarification_questions[0]
+            raise ControlPlaneError(f"clarification required: {question}")
+        canonical_objective = compilation.canonical_objective
         with self._connect() as connection:
             sequence = connection.execute("SELECT COUNT(*) + 1 FROM goals").fetchone()[0]
             record = GoalRecord(
                 goal_id=f"goal-{sequence:08d}",
-                objective=objective,
+                objective=canonical_objective,
                 created_at=datetime.now(timezone.utc),
             )
             connection.execute(
@@ -102,7 +111,7 @@ class ControlPlane:
                 connection,
                 "goal.created",
                 record.goal_id,
-                {"objective": objective},
+                {"objective": canonical_objective},
                 record.created_at,
             )
         return record
