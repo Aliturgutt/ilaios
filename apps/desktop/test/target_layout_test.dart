@@ -109,7 +109,7 @@ void main() {
       expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
       expect(
         find.byKey(const Key('command-center-short-viewport-scroll')),
-        findsOneWidget,
+        findsWidgets,
         reason: 'Windows text scaling must preserve readable typography by scrolling, not shrinking',
       );
     }

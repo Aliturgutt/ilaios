@@ -85,7 +85,7 @@ void main() {
       scrollable: find.descendant(
         of: find.byKey(const Key('goals-content-scroll')),
         matching: find.byType(Scrollable),
-      ),
+      ).first,
     );
     expect(table, findsOneWidget);
     await tester.ensureVisible(table);
