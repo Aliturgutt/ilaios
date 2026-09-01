@@ -164,7 +164,7 @@ void main() {
     expect(find.byKey(const Key('approvals-selected-request')), findsNothing);
 
     await _selectDeployRequest(tester);
-    expect(find.text('Seçili Talep'), findsOneWidget);
+    expect(find.text('Talep Ayrıntıları'), findsOneWidget);
     expect(find.byKey(const Key('approvals-selected-request')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -192,6 +192,7 @@ void main() {
     await _openApprovals(tester);
     await _selectDeployRequest(tester);
 
+    await tester.ensureVisible(find.byKey(const ValueKey('approve-req-deploy-001')));
     await tester.tap(find.byKey(const ValueKey('approve-req-deploy-001')));
     await tester.pumpAndSettle();
 
@@ -218,7 +219,7 @@ void main() {
     expect(find.text('96'), findsNothing);
     expect(find.text('22'), findsNothing);
     expect(find.text('2s 34dk'), findsNothing);
-    expect(find.text('Yönetişim verisi kullanılamıyor.'), findsOneWidget);
+    expect(find.text('Yönetişim verisi şu anda kullanılamıyor.'), findsOneWidget);
     expect(find.byKey(const Key('approvals-selected-request')), findsNothing);
     expect(tester.takeException(), isNull);
   });
@@ -240,7 +241,8 @@ void main() {
 
     expect(find.byKey(const Key('reference-approvals-page')), findsOneWidget);
     expect(find.byKey(const Key('approvals-table')), findsOneWidget);
-    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsOneWidget);
+    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
+    expect(find.byKey(const Key('reference-responsive-viewport-v11')), findsOneWidget);
     expect(find.text('Onaylar'), findsWidgets);
     expect(tester.takeException(), isNull);
   });

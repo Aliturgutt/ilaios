@@ -45,7 +45,7 @@ void main() {
     expect(find.textContaining(r'$3.21'), findsNothing);
   });
 
-  testWidgets('compact 1320x720 keeps the V4 Home in a bounded viewport', (
+  testWidgets('compact 1320x720 preserves native typography and scrolls content', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1320, 720));
@@ -55,7 +55,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsOneWidget);
+    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
+    expect(find.byKey(const Key('reference-responsive-viewport-v11')), findsOneWidget);
+    expect(find.byKey(const Key('reference-responsive-viewport-v10')), findsOneWidget);
+    expect(find.byKey(const Key('command-center-short-viewport-scroll')), findsOneWidget);
     expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
     expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
     expect(find.byKey(const Key('command-center-focus')), findsOneWidget);
@@ -65,11 +68,9 @@ void main() {
     expect(find.byKey(const Key('command-center-alerts')), findsNothing);
     expect(find.byKey(const Key('reference-bottom-status-v2')), findsOneWidget);
 
-    final artifacts = tester.getRect(find.byKey(const Key('command-center-artifacts')));
-    final completed = tester.getRect(find.byKey(const Key('command-center-completed')));
+    final startWork = tester.widget<Text>(find.text('Start work'));
+    expect(startWork.style?.fontSize, greaterThanOrEqualTo(18));
     final bottomStatus = tester.getRect(find.byKey(const Key('reference-bottom-status-v2')));
-    expect(artifacts.bottom, lessThanOrEqualTo(bottomStatus.top + 1));
-    expect(completed.bottom, lessThanOrEqualTo(bottomStatus.top + 1));
     expect(bottomStatus.bottom, lessThanOrEqualTo(720.01));
   });
 
@@ -84,6 +85,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
+    expect(find.byKey(const Key('reference-responsive-viewport-v11')), findsOneWidget);
     expect(find.byKey(const Key('command-center-home')), findsOneWidget);
     expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
     expect(find.byKey(const Key('reference-bottom-status-v2')), findsOneWidget);

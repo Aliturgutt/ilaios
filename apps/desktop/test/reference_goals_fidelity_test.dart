@@ -76,7 +76,10 @@ void main() {
     await openGoals(tester);
 
     expect(find.byKey(const Key('reference-goals-page')), findsOneWidget);
-    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsOneWidget);
+    expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
+    expect(find.byKey(const Key('goals-content-scroll')), findsOneWidget);
+    await tester.ensureVisible(find.byKey(const Key('goals-table')));
+    await tester.pumpAndSettle();
     expect(find.byKey(const Key('goals-table')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
