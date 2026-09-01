@@ -375,119 +375,152 @@ class _TopBar extends StatelessWidget {
             bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
           ),
         ),
-        child: Row(
-          children: [
-            SizedBox(
-              width: 230,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(context.tr('shell.project'), style: const TextStyle(fontSize: 12.5)),
-                  const SizedBox(height: 4),
-                  Row(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final compact = constraints.maxWidth < 760;
+            final showSearch = constraints.maxWidth >= 930;
+            final projectWidth = compact ? 190.0 : 230.0;
+
+            return Row(
+              children: [
+                SizedBox(
+                  width: projectWidth,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: Material(
-                          color: Theme.of(context).colorScheme.surfaceContainerLowest,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(5),
-                            side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-                          ),
-                          clipBehavior: Clip.antiAlias,
-                          child: InkWell(
-                            onTap: () => onNavigate(DesktopSection.goals),
-                            child: SizedBox(
-                              height: 36,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 10),
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Text(
-                                        _projectLabel(snapshot) ?? context.tr('shell.unavailable'),
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
-                                      ),
+                      Text(
+                        context.tr('shell.project'),
+                        style: const TextStyle(fontSize: 12.5),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Material(
+                              color: Theme.of(context).colorScheme.surfaceContainerLowest,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(5),
+                                side: BorderSide(
+                                  color: Theme.of(context).colorScheme.outlineVariant,
+                                ),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: InkWell(
+                                onTap: () => onNavigate(DesktopSection.goals),
+                                child: SizedBox(
+                                  height: 36,
+                                  child: Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            _projectLabel(snapshot) ??
+                                                context.tr('shell.unavailable'),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 13.5,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                        const Icon(
+                                          Icons.chevron_right_rounded,
+                                          size: 16,
+                                        ),
+                                      ],
                                     ),
-                                    const Icon(Icons.chevron_right_rounded, size: 16),
-                                  ],
+                                  ),
                                 ),
                               ),
                             ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 9),
-                      Icon(
-                        Icons.circle,
-                        size: 6,
-                        color: projection.connected
-                            ? IlaiosTheme.success
-                            : Theme.of(context).colorScheme.outline,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        projection.connected
-                            ? context.tr('shell.connected')
-                            : context.tr('shell.offline'),
-                        style: const TextStyle(fontSize: 12.5),
+                          const SizedBox(width: 9),
+                          Icon(
+                            Icons.circle,
+                            size: 6,
+                            color: projection.connected
+                                ? IlaiosTheme.success
+                                : Theme.of(context).colorScheme.outline,
+                          ),
+                          const SizedBox(width: 4),
+                          if (!compact)
+                            Text(
+                              projection.connected
+                                  ? context.tr('shell.connected')
+                                  : context.tr('shell.offline'),
+                              style: const TextStyle(fontSize: 12.5),
+                            ),
+                        ],
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-            const Spacer(),
-            SizedBox(
-              width: 180,
-              height: 38,
-              child: OutlinedButton.icon(
-                onPressed: () => onNavigate(DesktopSection.goals),
-                icon: const Icon(Icons.search_rounded, size: 17),
-                label: Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(context.tr('shell.search'), style: const TextStyle(fontSize: 13.5)),
                 ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            IconButton(
-              tooltip: context.tr('shell.notifications'),
-              onPressed: () => _showNotice(context),
-              visualDensity: VisualDensity.compact,
-              icon: const Icon(Icons.notifications_none_rounded, size: 18),
-            ),
-            PopupMenuButton<IlaiosLocale>(
-              tooltip: context.tr('shell.language'),
-              icon: const Icon(Icons.language_rounded, size: 18),
-              onSelected: (locale) => IlaiosLocaleScope.of(context).onChanged(locale),
-              itemBuilder: (context) => [
-                for (final locale in IlaiosLocale.values)
-                  PopupMenuItem(value: locale, child: Text(locale.displayName)),
+                const Spacer(),
+                if (showSearch) ...[
+                  SizedBox(
+                    width: 180,
+                    height: 38,
+                    child: OutlinedButton.icon(
+                      onPressed: () => onNavigate(DesktopSection.goals),
+                      icon: const Icon(Icons.search_rounded, size: 17),
+                      label: Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          context.tr('shell.search'),
+                          style: const TextStyle(fontSize: 13.5),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                ],
+                IconButton(
+                  tooltip: context.tr('shell.notifications'),
+                  onPressed: () => _showNotice(context),
+                  visualDensity: VisualDensity.compact,
+                  icon: const Icon(Icons.notifications_none_rounded, size: 18),
+                ),
+                PopupMenuButton<IlaiosLocale>(
+                  tooltip: context.tr('shell.language'),
+                  icon: const Icon(Icons.language_rounded, size: 18),
+                  onSelected: (locale) =>
+                      IlaiosLocaleScope.of(context).onChanged(locale),
+                  itemBuilder: (context) => [
+                    for (final locale in IlaiosLocale.values)
+                      PopupMenuItem(
+                        value: locale,
+                        child: Text(locale.displayName),
+                      ),
+                  ],
+                ),
+                IconButton(
+                  key: const Key('theme-toggle'),
+                  tooltip: context.tr('shell.darkTheme'),
+                  visualDensity: VisualDensity.compact,
+                  onPressed: () => onThemeModeChanged?.call(
+                    themeMode == ThemeMode.dark
+                        ? ThemeMode.light
+                        : ThemeMode.dark,
+                  ),
+                  icon: Icon(
+                    themeMode == ThemeMode.dark
+                        ? Icons.light_mode_outlined
+                        : Icons.dark_mode_outlined,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                _AccountControl(
+                  userSession: userSession,
+                  onLogout: onLogout,
+                  compact: compact,
+                ),
               ],
-            ),
-            IconButton(
-              key: const Key('theme-toggle'),
-              tooltip: context.tr('shell.darkTheme'),
-              visualDensity: VisualDensity.compact,
-              onPressed: () => onThemeModeChanged?.call(
-                themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark,
-              ),
-              icon: Icon(
-                themeMode == ThemeMode.dark
-                    ? Icons.light_mode_outlined
-                    : Icons.dark_mode_outlined,
-                size: 18,
-              ),
-            ),
-            const SizedBox(width: 8),
-            _AccountControl(
-              userSession: userSession,
-              onLogout: onLogout,
-            ),
-          ],
+            );
+          },
         ),
       );
 
@@ -502,7 +535,10 @@ class _TopBar extends StatelessWidget {
               : 'No authoritative notification records are available. ILAIOS does not fabricate notifications.',
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
         ],
       ),
     );
@@ -513,10 +549,12 @@ class _AccountControl extends StatelessWidget {
   const _AccountControl({
     required this.userSession,
     required this.onLogout,
+    this.compact = false,
   });
 
   final DesktopUserSession? userSession;
   final Future<void> Function()? onLogout;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -543,37 +581,46 @@ class _AccountControl extends StatelessWidget {
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(width: 7),
-          SizedBox(
-            width: 150,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  identity,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
-                ),
-                Text(
-                  userSession == null
-                      ? context.tr('shell.signedOut')
-                      : context.tr('shell.authenticated'),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 12.5),
-                ),
-              ],
+          if (!compact) ...[
+            const SizedBox(width: 7),
+            SizedBox(
+              width: 150,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    identity,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  Text(
+                    userSession == null
+                        ? context.tr('shell.signedOut')
+                        : context.tr('shell.authenticated'),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 12.5),
+                  ),
+                ],
+              ),
             ),
-          ),
+          ],
           if (userSession != null && onLogout != null)
             const Icon(Icons.keyboard_arrow_down_rounded, size: 15),
         ],
       ),
     );
 
-    if (userSession == null || onLogout == null) return content;
+    final labeledContent = compact
+        ? Tooltip(message: identity, child: content)
+        : content;
+
+    if (userSession == null || onLogout == null) return labeledContent;
     return PopupMenuButton<String>(
       tooltip: _isTr(context) ? 'Hesap' : 'Account',
       onSelected: (value) {
@@ -596,7 +643,7 @@ class _AccountControl extends StatelessWidget {
           ),
         ),
       ],
-      child: content,
+      child: labeledContent,
     );
   }
 }
@@ -615,7 +662,9 @@ class _BottomStatusBar extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerLowest,
-        border: Border(top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant)),
+        border: Border(
+          top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        ),
       ),
       child: Row(
         children: [
@@ -641,7 +690,11 @@ class _BottomStatusBar extends StatelessWidget {
 }
 
 class _FlatStatus extends StatelessWidget {
-  const _FlatStatus({required this.label, required this.value, this.live = false});
+  const _FlatStatus({
+    required this.label,
+    required this.value,
+    this.live = false,
+  });
 
   final String label;
   final String value;
