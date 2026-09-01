@@ -16,9 +16,8 @@ import 'reference_desktop_shell_v10.dart';
 /// Final resize guard for the approved Desktop design.
 ///
 /// All supported Windows client areas preserve native Flutter typography and
-/// the caller's text scaling. Compact layouts are handled by the presentation
-/// surfaces themselves; this outer shell must never shrink the complete UI
-/// through a FittedBox because that can turn readable text back into micro-text.
+/// the caller's text scaling. Short viewports get a vertical safety canvas so
+/// presentation surfaces can scroll instead of shrinking readable text.
 class ReferenceDesktopShellV11 extends StatelessWidget {
   const ReferenceDesktopShellV11({
     required this.projection,
@@ -102,9 +101,30 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
       GovernedLifecycleProjectionStore.replace(operationalSnapshot);
     }
 
-    return SizedBox.expand(
-      key: const Key('reference-responsive-viewport-v11'),
-      child: _shell(),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final shortViewport = constraints.maxHeight < 820;
+        if (!shortViewport) {
+          return SizedBox.expand(
+            key: const Key('reference-responsive-viewport-v11'),
+            child: _shell(),
+          );
+        }
+
+        final safetyHeight = constraints.maxHeight < 740 ? 1380.0 : 900.0;
+        return SizedBox.expand(
+          key: const Key('reference-responsive-viewport-v11'),
+          child: SingleChildScrollView(
+            key: const Key('reference-short-viewport-scroll-v11'),
+            primary: false,
+            child: SizedBox(
+              width: constraints.maxWidth,
+              height: safetyHeight,
+              child: _shell(),
+            ),
+          ),
+        );
+      },
     );
   }
 }
