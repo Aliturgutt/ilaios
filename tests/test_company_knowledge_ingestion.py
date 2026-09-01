@@ -2,14 +2,21 @@ from __future__ import annotations
 
 import io
 import zipfile
+from pathlib import Path
 
 import pytest
 
 from services.company_knowledge_ingestion import (
     CompanyKnowledgeIngestionError,
     CompanyKnowledgeIngestor,
+    DurableCompanyKnowledgeIngestor,
 )
 from services.knowledge_rag import KnowledgeRAG, PrincipalScope, RetrievalRequest
+from services.knowledge_runtime import (
+    DurableKnowledgeRuntime,
+    KnowledgeRuntimeConfig,
+    KnowledgeRuntimePolicy,
+)
 
 
 def _docx(text: str) -> bytes:
@@ -33,6 +40,23 @@ def _scope(tenant_id: str = "tenant-a") -> PrincipalScope:
         allowed_classifications=frozenset({"internal"}),
         allowed_purposes=frozenset({"company-context"}),
         allowed_residencies=frozenset({"tr"}),
+    )
+
+
+def _durable_runtime(tmp_path: Path) -> DurableKnowledgeRuntime:
+    return DurableKnowledgeRuntime(
+        KnowledgeRuntimeConfig(
+            metadata_database=tmp_path / "knowledge.sqlite3",
+            vector_database=tmp_path / "knowledge-vectors.sqlite3",
+            policy=KnowledgeRuntimePolicy(
+                principal_id="service-company-knowledge",
+                tenant_id="tenant-a",
+                project_id="project-a",
+                allowed_classifications=frozenset({"internal"}),
+                allowed_purposes=frozenset({"company-context"}),
+                allowed_residencies=frozenset({"tr"}),
+            ),
+        )
     )
 
 
@@ -64,6 +88,56 @@ def test_docx_ingests_into_existing_knowledge_and_is_retrievable() -> None:
     assert result.units
     assert result.units[0].source_id == "catalog-v1"
     assert "modular office desks" in result.units[0].text
+
+
+def test_docx_company_knowledge_survives_runtime_restart(tmp_path: Path) -> None:
+    runtime = _durable_runtime(tmp_path)
+    source = DurableCompanyKnowledgeIngestor(runtime).ingest(
+        "catalog-durable",
+        filename="catalog.docx",
+        mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        content=_docx("Acme Mobility builds electric cargo bicycles for logistics teams"),
+        locator="file://catalog.docx",
+        trusted=False,
+        classifications=frozenset({"internal"}),
+        purposes=frozenset({"company-context"}),
+        residency="tr",
+    )
+    assert source["source_id"] == "catalog-durable"
+    assert source["tenant_id"] == "tenant-a"
+
+    before = runtime.retrieve(
+        retrieval_id="before-restart",
+        query="electric cargo bicycles logistics",
+        purpose="company-context",
+        top_k=5,
+        candidate_limit=10,
+        max_context_chars=2000,
+    )
+    before_units = before["units"]
+    assert isinstance(before_units, list)
+    assert [unit["source_id"] for unit in before_units] == ["catalog-durable"]
+
+    restarted = _durable_runtime(tmp_path)
+    state = restarted.state()
+    assert state["event_count"] == 1
+    vector_index = state["vector_index"]
+    assert isinstance(vector_index, dict)
+    assert vector_index["row_count"] == 1
+
+    after = restarted.retrieve(
+        retrieval_id="after-restart",
+        query="logistics cargo bicycle company",
+        purpose="company-context",
+        top_k=5,
+        candidate_limit=10,
+        max_context_chars=2000,
+    )
+    after_units = after["units"]
+    assert isinstance(after_units, list)
+    assert [unit["source_id"] for unit in after_units] == ["catalog-durable"]
+    assert "electric cargo bicycles" in str(after_units[0]["text"])
+    assert restarted.verify()["event_chain"] == "verified"
 
 
 def test_cross_tenant_retrieval_does_not_leak_ingested_document() -> None:
