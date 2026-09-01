@@ -1,76 +1,67 @@
 import Link from "next/link";
-import FactoryExplorer from "./FactoryExplorer";
 import GovernanceEvidence from "./GovernanceEvidence";
 import ProductExperience from "./ProductExperience";
-import SpatialArchitecture from "./SpatialArchitecture";
-import SystemVisuals from "./SystemVisuals";
 
 type Locale = "en" | "tr";
 
 const copy = {
   en: {
-    eyebrow: "Governed Digital Operating Platform",
-    title: "Turn business goals into coordinated, evidence-backed outcomes.",
-    lead: "ILAIOS brings research, intelligence, operations and digital production under one governed execution model. A goal can resolve across shared capabilities and specialized factories without moving authority into models or providers.",
-    primary: "See what you can create",
+    eyebrow: "From goal to finished result",
+    title: "Describe what you need. ILAIOS manages the work to a verified result.",
+    lead: "Start with one clear outcome. ILAIOS coordinates the work, applies the controls that matter, checks the result and keeps the evidence with the delivery.",
+    primary: "See what ILAIOS can create",
     secondary: "How it works",
-    proof: [["One governed authority", "Policy, approvals and evidence stay shared."], ["Business + production", "Intelligence and operations can compose specialized factories."], ["Evidence built in", "Acceptance is verified, not narrated."]],
-    operatingEyebrow: "Enterprise operating layer",
-    operatingTitle: "More than digital production: a governed layer for coordinated business work.",
-    operatingLead: "This is the product direction, not a second Core or a claim that every business workflow is production-ready today. Business functions compose the same governed capabilities and production factories.",
-    operating: [["Executive intelligence", "Strategy, KPI, performance and risk analysis with evidence-backed recommendations."], ["Operations", "Task and process coordination, execution monitoring, exception handling and approval-gated actions."], ["Finance & cost intelligence", "Cost visibility, budget awareness, resource efficiency and FinOps-informed decisions — not autonomous banking or accounting."], ["Growth & marketing", "Market intelligence, campaign planning, content workflows and measurement-oriented growth work."], ["Commerce & sales", "Proposal, offer and revenue-operation workflows with controlled integrations and approval-gated external actions."], ["Research & data", "Source-grounded research, competitive intelligence and provenance-aware analysis."]],
-    operatingNote: "Canonical direction · In development",
-    processEyebrow: "Execution protocol",
-    processTitle: "A simple request at the surface. Explicit control underneath.",
-    process: [["01", "Goal", "Authenticated intent enters the system."], ["02", "Plan", "Context, policy and dependencies define the path."], ["03", "Execute", "Bounded capabilities perform admitted work."], ["04", "Validate", "Tests and acceptance criteria evaluate the result."], ["05", "Deliver", "Accepted work is surfaced with reviewable evidence."]],
-    goalEyebrow: "Cross-functional outcome",
-    goalTitle: "One business goal can coordinate multiple capabilities and factories.",
-    goalLead: "A user should not have to operate each factory as a separate product. The target model resolves the goal into the work that is needed while one governance and evidence spine remains authoritative.",
-    goalFlow: ["Business goal", "Research", "Market intelligence", "Strategy", "Budget / risk", "Web + Software / App", "Video / content", "Growth + commerce", "Measurement", "Evidence"],
-    visualEyebrow: "How the system works",
-    visualTitle: "The operating model is visible as a governed system, not hidden inside model output.",
-    visualLead: "These product explanations keep authority, bounded factories, replaceable execution resources and evidence-linked acceptance visible without making users operate the internal provider stack.",
-    archEyebrow: "Public system language",
-    archTitle: "Business workflows sit above — never beside — the canonical execution authority.",
-    archText: "The Enterprise Operating Layer is a product and workflow composition layer, not a second orchestrator, router, Policy Engine or runtime. Goal → bounded planning → governed execution → validation → evidence → accepted result remains the authoritative spine.",
-    evidenceEyebrow: "Why governance matters",
-    evidenceTitle: "Generated is not the same as finished.",
-    ctaEyebrow: "Provider independent",
-    ctaTitle: "Models, tools and providers can change. The ILAIOS product boundary does not.",
-    architecture: "Architecture",
-    factories: "All factories",
+    proof: [["One goal", "Start with the outcome, not a stack of tools."], ["Managed execution", "Work stays inside explicit permissions and controls."], ["Checked delivery", "Results are reviewed against the checks that apply before delivery."]],
+    outcomesEyebrow: "What you can create",
+    outcomesTitle: "One product. Different finished outcomes.",
+    outcomesLead: "Choose the result you need. ILAIOS can combine research and production work without making you operate every underlying tool separately.",
+    outcomes: [
+      ["Website", "From a business goal to a responsive website with browser, accessibility and release checks.", "/factories/web"],
+      ["Video", "From a brief and references to a finished media deliverable with render and quality checks.", "/factories/video"],
+      ["Software", "From a bounded repository task to reviewed code, tests and change evidence.", "/factories/software"],
+      ["Application", "From an application goal to build and test work inside explicit release boundaries.", "/factories/app"],
+      ["Research", "From a question to source-grounded analysis with reviewable supporting evidence.", "/factories/research-data"],
+    ],
+    processEyebrow: "How it works",
+    processTitle: "A clear path from goal to finished work.",
+    process: [["01", "Goal", "Tell ILAIOS the result you want."], ["02", "Manage", "ILAIOS scopes the permitted work and dependencies."], ["03", "Produce", "The required production work is carried out inside those boundaries."], ["04", "Verify", "Applicable checks evaluate the result."], ["05", "Deliver", "Accepted work is returned with reviewable evidence."]],
+    controlEyebrow: "Built-in control",
+    controlTitle: "Powerful execution should still have clear boundaries.",
+    controlLead: "Identity, permissions, approvals and evidence remain part of the ILAIOS control model. Technical details live in Architecture and Documentation; the product experience stays outcome-first.",
+    architecture: "Explore the architecture",
+    closeEyebrow: "Start with the outcome",
+    closeTitle: "What do you want ILAIOS to finish?",
+    closePrimary: "Explore production outcomes",
+    closeSecondary: "See capabilities",
   },
   tr: {
-    eyebrow: "Yönetilen Dijital Çalışma Platformu",
-    title: "İş hedeflerini koordineli ve kanıta dayalı sonuçlara dönüştürün.",
-    lead: "ILAIOS; araştırma, kurumsal zekâ, operasyon ve dijital üretimi tek yönetilen yürütme modeli altında birleştirir. Bir hedef, yetkiyi modellere veya sağlayıcılara taşımadan paylaşılan yeteneklere ve uzmanlaşmış üretim alanlarına çözümlenebilir.",
-    primary: "Neler oluşturabileceğini gör",
+    eyebrow: "Hedeften bitmiş sonuca",
+    title: "Ne istediğini anlat. ILAIOS işi yönetip doğrulanmış sonuca taşısın.",
+    lead: "Tek bir sonuçla başla. ILAIOS gereken işi koordine eder, gerekli kontrolleri uygular, sonucu doğrular ve kanıtı teslimatla birlikte tutar.",
+    primary: "ILAIOS neler üretebilir?",
     secondary: "Nasıl çalışır?",
-    proof: [["Tek yönetilen yetki", "Politika, onay ve kanıt paylaşılır."], ["İş + üretim", "Zekâ ve operasyon uzmanlaşmış üretim alanlarını birleştirebilir."], ["Kanıt işin parçası", "Kabul anlatılmaz; doğrulanır."]],
-    operatingEyebrow: "Kurumsal çalışma katmanı",
-    operatingTitle: "Dijital üretimin ötesinde: koordineli iş süreçleri için yönetilen bir çalışma katmanı.",
-    operatingLead: "Bu bir ürün yönüdür; ikinci bir Core değildir ve tüm iş akışlarının bugün production-ready olduğu iddiasını taşımaz. İş fonksiyonları aynı yönetilen yetenekleri ve üretim alanlarını bir araya getirir.",
-    operating: [["Yönetici zekâsı", "Strateji, KPI, performans ve risk analizi ile kanıta dayalı öneriler."], ["Operasyonlar", "Görev ve süreç koordinasyonu, yürütme izleme, istisna yönetimi ve onay kapılı işlemler."], ["Finans ve maliyet zekâsı", "Maliyet görünürlüğü, bütçe farkındalığı, kaynak verimliliği ve FinOps odaklı kararlar — otonom bankacılık veya muhasebe değil."], ["Büyüme ve pazarlama", "Pazar zekâsı, kampanya planlama, içerik akışları ve ölçüm odaklı büyüme çalışmaları."], ["Ticaret ve satış", "Kontrollü entegrasyonlar ve onay kapılı dış işlemlerle teklif, öneri ve gelir operasyonu akışları."], ["Araştırma ve veri", "Kaynak temelli araştırma, rekabet zekâsı ve provenance-aware analiz."]],
-    operatingNote: "Kanonik yön · Geliştiriliyor",
-    processEyebrow: "Yürütme protokolü",
-    processTitle: "Yüzeyde basit istek. Altında açık kontrol.",
-    process: [["01", "Hedef", "Kimliği doğrulanmış niyet sisteme girer."], ["02", "Plan", "Bağlam, politika ve bağımlılıklar yolu belirler."], ["03", "Yürüt", "Sınırlandırılmış yetenekler kabul edilen işi yapar."], ["04", "Doğrula", "Testler ve kabul ölçütleri sonucu değerlendirir."], ["05", "Teslim et", "Kabul edilen iş incelenebilir kanıtla sunulur."]],
-    goalEyebrow: "Fonksiyonlar arası sonuç",
-    goalTitle: "Tek bir iş hedefi birden fazla yetenek ve üretim alanını koordine edebilir.",
-    goalLead: "Kullanıcı her üretim alanını ayrı bir ürün gibi işletmek zorunda kalmamalı. Hedef model, ihtiyacı gereken işlere çözümlerken tek yönetişim ve kanıt omurgası yetkili kalır.",
-    goalFlow: ["İş hedefi", "Araştırma", "Pazar zekâsı", "Strateji", "Bütçe / risk", "Web + Yazılım / Uygulama", "Video / içerik", "Büyüme + ticaret", "Ölçüm", "Kanıt"],
-    visualEyebrow: "Sistem nasıl çalışır?",
-    visualTitle: "Çalışma modeli, model çıktısının içinde saklanmak yerine yönetilen bir sistem olarak görünür.",
-    visualLead: "Bu ürün anlatımları yetkiyi, sınırlandırılmış factory'leri, değiştirilebilir yürütme kaynaklarını ve kanıta bağlı kabulü görünür tutar; kullanıcıya dahili provider stack'ini işlettirmez.",
-    archEyebrow: "Public sistem dili",
-    archTitle: "İş akışları kanonik yürütme yetkisinin üzerinde yer alır; yanında ikinci bir otorite oluşturmaz.",
-    archText: "Kurumsal Çalışma Katmanı bir ürün ve workflow composition katmanıdır; ikinci orchestrator, router, Policy Engine veya runtime değildir. Hedef → sınırlandırılmış planlama → yönetilen yürütme → doğrulama → kanıt → kabul edilmiş sonuç yetkili omurga olarak kalır.",
-    evidenceEyebrow: "Yönetim neden önemli?",
-    evidenceTitle: "Üretilmiş olmak, bitmiş olmak değildir.",
-    ctaEyebrow: "Sağlayıcı bağımsızlığı",
-    ctaTitle: "Modeller, araçlar ve sağlayıcılar değişebilir. ILAIOS ürün sınırı değişmez.",
-    architecture: "Mimari",
-    factories: "Tüm üretim alanları",
+    proof: [["Tek hedef", "Araçları değil, istediğin sonucu tarif et."], ["Yönetilen yürütme", "İş açık izinler ve kontroller içinde kalır."], ["Kontrollü teslim", "Sonuç, teslimden önce geçerli kontrollerle değerlendirilir."]],
+    outcomesEyebrow: "Neler üretebilirsin?",
+    outcomesTitle: "Tek ürün. Farklı bitmiş sonuçlar.",
+    outcomesLead: "İhtiyacın olan sonucu seç. ILAIOS, her aracı ayrı ayrı işletmeni gerektirmeden araştırma ve üretim işlerini bir araya getirebilir.",
+    outcomes: [
+      ["Web sitesi", "Bir iş hedefinden responsive web sitesine; tarayıcı, erişilebilirlik ve yayın kontrolleriyle.", "/tr/factories/web"],
+      ["Video", "Bir brief ve referanslardan bitmiş medya çıktısına; render ve kalite kontrolleriyle.", "/tr/factories/video"],
+      ["Yazılım", "Sınırları belirli bir kod deposu görevinden incelenmiş kod, test ve değişiklik kanıtına.", "/tr/factories/software"],
+      ["Uygulama", "Bir uygulama hedefinden açık derleme, test ve yayın sınırları içindeki çalışmaya.", "/tr/factories/app"],
+      ["Araştırma", "Bir sorudan kaynak temelli analize ve incelenebilir destekleyici kanıta.", "/tr/factories/research-data"],
+    ],
+    processEyebrow: "Nasıl çalışır?",
+    processTitle: "Hedeften bitmiş işe uzanan açık bir yol.",
+    process: [["01", "Hedef", "İstediğin sonucu ILAIOS'a anlat."], ["02", "Yönet", "ILAIOS izin verilen işi ve bağımlılıkları sınırlar."], ["03", "Üret", "Gerekli üretim işi bu sınırlar içinde yürütülür."], ["04", "Doğrula", "Geçerli kontroller sonucu değerlendirir."], ["05", "Teslim et", "Kabul edilen iş incelenebilir kanıtla sunulur."]],
+    controlEyebrow: "Yerleşik kontrol",
+    controlTitle: "Güçlü yürütmenin sınırları da açık olmalı.",
+    controlLead: "Kimlik, izinler, onaylar ve kanıt ILAIOS kontrol modelinin parçası olarak kalır. Teknik ayrıntılar Mimari ve Dokümantasyon'da bulunur; ürün deneyimi sonuç odaklı kalır.",
+    architecture: "Mimariyi incele",
+    closeEyebrow: "Sonuçla başla",
+    closeTitle: "ILAIOS'un neyi bitirmesini istiyorsun?",
+    closePrimary: "Üretim sonuçlarını keşfet",
+    closeSecondary: "Yetenekleri gör",
   },
 } as const;
 
@@ -78,15 +69,14 @@ export default function HomePage({ locale }: { locale: Locale }) {
   const c = copy[locale];
   const base = locale === "tr" ? "/tr" : "";
   return <>
-    <section className="homepage-v2 home-hero shell" data-visual-role="home-hero"><div className="home-hero-copy" data-visual-role="homepage-v2-authoritative" data-capabilities-href={`${base}/capabilities`}><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p><div className="actions"><Link className="button" href={`${base}/use-ilaios`}>{c.primary}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.secondary}</Link></div></div><ProductExperience locale={locale} /></section>
-    <div className="proof-strip"><div className="shell proof-strip-grid">{c.proof.map(([title, text]) => <div key={title}><strong>{title}</strong><span>{text}</span></div>)}</div></div>
-    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.operatingEyebrow}</div><h2>{c.operatingTitle}</h2></div><p>{c.operatingLead}</p></div><div className="grid two-up">{c.operating.map(([title,text]) => <article className="card" key={title}><h3>{title}</h3><p>{text}</p></article>)}</div><p className="muted">{c.operatingNote}</p></div></section>
+    <section className="homepage-v2 home-hero shell" data-visual-role="home-hero">
+      <div className="home-hero-copy" data-visual-role="homepage-v2-authoritative"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p><div className="actions"><Link className="button" href={`${base}/use-ilaios`}>{c.primary}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.secondary}</Link></div></div>
+      <ProductExperience locale={locale} />
+    </section>
+    <section className="proof-strip"><div className="shell proof-strip-grid">{c.proof.map(([title, text]) => <div key={title}><strong>{title}</strong><span>{text}</span></div>)}</div></section>
+    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.outcomesEyebrow}</div><h2>{c.outcomesTitle}</h2></div><p>{c.outcomesLead}</p></div><div className="outcome-showcase home-output-index-v2">{c.outcomes.map(([title,text,href], index) => <Link className="outcome-row" href={href} key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><h3>{title}</h3><p>{text}</p></div><strong aria-hidden="true">→</strong></Link>)}</div></div></section>
     <section className="section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">{c.processEyebrow}</div><h2>{c.processTitle}</h2></div></div><div className="process-rail home-process-rail-v2" data-visual-role="five-step-execution">{c.process.map(([n, title, text]) => <article key={n}><span>{n}</span><strong>{title}</strong><p>{text}</p></article>)}</div></div></section>
-    <section className="section surface-section"><div className="shell"><FactoryExplorer locale={locale} /></div></section>
-    <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.goalEyebrow}</div><h2>{c.goalTitle}</h2></div><p>{c.goalLead}</p></div><div className="runtime-line home-output-index-v2">{c.goalFlow.map((step,index) => <div key={step}><span>{String(index + 1).padStart(2, "0")}</span><strong>{step}</strong></div>)}</div><p className="muted">{c.operatingNote}</p></div></section>
-    <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.visualEyebrow}</div><h2>{c.visualTitle}</h2></div><p>{c.visualLead}</p></div><SystemVisuals locale={locale} /></div></section>
-    <section className="section surface-section"><div className="shell architecture-story"><div className="architecture-story-copy"><div className="eyebrow">{c.archEyebrow}</div><h2>{c.archTitle}</h2><p>{c.archText}</p><Link className="text-link" href={`${base}/architecture`}>{c.architecture} →</Link></div><SpatialArchitecture locale={locale} compact /></div></section>
-    <section className="section evidence-section home-control-ledger-v2"><div className="shell evidence-story evidence-story-interactive"><div className="evidence-story-copy"><div className="eyebrow">{c.evidenceEyebrow}</div><h2>{c.evidenceTitle}</h2></div><GovernanceEvidence locale={locale} /></div></section>
-    <div className="section compact-section"><div className="shell compact-cta"><div><div className="eyebrow">{c.ctaEyebrow}</div><h2>{c.ctaTitle}</h2></div><div className="actions"><Link className="button" href={`${base}/architecture`}>{c.architecture}</Link><Link className="button secondary" href={`${base}/factories`}>{c.factories}</Link></div></div></div>
+    <section className="section surface-section home-control-ledger-v2"><div className="shell evidence-story"><div className="evidence-story-copy"><div className="eyebrow">{c.controlEyebrow}</div><h2>{c.controlTitle}</h2><p>{c.controlLead}</p><Link className="text-link" href={`${base}/architecture`}>{c.architecture} →</Link></div><GovernanceEvidence locale={locale} /></div></section>
+    <section className="section compact-section"><div className="shell compact-cta"><div><div className="eyebrow">{c.closeEyebrow}</div><h2>{c.closeTitle}</h2></div><div className="actions"><Link className="button" href={`${base}/factories`}>{c.closePrimary}</Link><Link className="button secondary" href={`${base}/capabilities`}>{c.closeSecondary}</Link></div></div></section>
   </>;
 }
