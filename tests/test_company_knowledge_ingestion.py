@@ -32,6 +32,42 @@ def _docx(text: str) -> bytes:
     return output.getvalue()
 
 
+def _pdf(text: str) -> bytes:
+    escaped = text.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
+    stream = f"BT /F1 12 Tf 72 720 Td ({escaped}) Tj ET".encode("ascii")
+    objects = (
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        (
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] "
+            b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"
+        ),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        b"<< /Length " + str(len(stream)).encode("ascii") + b" >>\nstream\n"
+        + stream
+        + b"\nendstream",
+    )
+    output = bytearray(b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n")
+    offsets = [0]
+    for index, body in enumerate(objects, start=1):
+        offsets.append(len(output))
+        output.extend(f"{index} 0 obj\n".encode("ascii"))
+        output.extend(body)
+        output.extend(b"\nendobj\n")
+    xref_offset = len(output)
+    output.extend(f"xref\n0 {len(objects) + 1}\n".encode("ascii"))
+    output.extend(b"0000000000 65535 f \n")
+    for offset in offsets[1:]:
+        output.extend(f"{offset:010d} 00000 n \n".encode("ascii"))
+    output.extend(
+        (
+            f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\n"
+            f"startxref\n{xref_offset}\n%%EOF\n"
+        ).encode("ascii")
+    )
+    return bytes(output)
+
+
 def _scope(tenant_id: str = "tenant-a") -> PrincipalScope:
     return PrincipalScope(
         principal_id="user-a",
@@ -58,6 +94,35 @@ def _durable_runtime(tmp_path: Path) -> DurableKnowledgeRuntime:
             ),
         )
     )
+
+
+def test_pdf_ingests_into_existing_knowledge_with_page_provenance() -> None:
+    knowledge = KnowledgeRAG(chunk_size_words=20, chunk_overlap_words=2)
+    source = CompanyKnowledgeIngestor(knowledge).ingest(
+        "profile-pdf",
+        tenant_id="tenant-a",
+        project_id="project-a",
+        filename="profile.pdf",
+        mime_type="application/pdf",
+        content=_pdf("Northwind manufactures industrial heat pumps in Bursa"),
+        locator="file://profile.pdf",
+        classifications=frozenset({"internal"}),
+        purposes=frozenset({"company-context"}),
+        residency="tr",
+    )
+    result = knowledge.retrieve(
+        RetrievalRequest(
+            retrieval_id="retrieve-pdf",
+            scope=_scope(),
+            query="industrial heat pumps Bursa",
+            purpose="company-context",
+        )
+    )
+    assert source.source_id == "profile-pdf"
+    assert result.units
+    assert result.units[0].source_id == "profile-pdf"
+    assert "[page 1]" in result.units[0].text
+    assert "industrial heat pumps" in result.units[0].text
 
 
 def test_docx_ingests_into_existing_knowledge_and_is_retrievable() -> None:
@@ -166,8 +231,14 @@ def test_cross_tenant_retrieval_does_not_leak_ingested_document() -> None:
     assert result.units == ()
 
 
-def test_invalid_docx_and_unsupported_mime_fail_closed() -> None:
+def test_invalid_documents_and_unsupported_mime_fail_closed() -> None:
     ingestor = CompanyKnowledgeIngestor(KnowledgeRAG())
+    with pytest.raises(CompanyKnowledgeIngestionError, match="invalid PDF signature"):
+        ingestor.extract(
+            filename="bad.pdf",
+            mime_type="application/pdf",
+            content=b"not-a-pdf",
+        )
     with pytest.raises(CompanyKnowledgeIngestionError, match="invalid DOCX"):
         ingestor.extract(
             filename="bad.docx",
