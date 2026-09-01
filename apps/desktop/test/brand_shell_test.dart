@@ -12,13 +12,13 @@ void main() {
   const darkLogo = 'assets/brand/02-ilaios-primary-horizontal-dark.jpg';
   const lightLogo = 'assets/brand/13-ilaios-primary-horizontal-light.jpg';
 
-  testWidgets('dark Desktop loads the canonical dark horizontal brand master', (
+  testWidgets('default Desktop loads the canonical light horizontal brand master', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1536, 1024));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    final bytes = await rootBundle.load(darkLogo);
+    final bytes = await rootBundle.load(lightLogo);
     expect(bytes.lengthInBytes, greaterThan(0));
 
     await tester.pumpWidget(const IlaiosDesktopApp());
@@ -26,10 +26,10 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
-    expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
+    expect(find.byKey(const Key('reference-brand-horizontal-light')), findsOneWidget);
     expect(find.byKey(const Key('reference-brand-load-error')), findsNothing);
-    expect(_asset(darkLogo), findsOneWidget);
-    expect(_asset(lightLogo), findsNothing);
+    expect(_asset(lightLogo), findsOneWidget);
+    expect(_asset(darkLogo), findsNothing);
   });
 
   testWidgets('light Desktop loads the canonical light horizontal brand master', (
