@@ -41,12 +41,14 @@ void main() {
 
     expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
     expect(find.byKey(const Key('home-new-work')), findsOneWidget);
-    expect(find.byKey(const Key('home-templates')), findsOneWidget);
-    expect(find.byKey(const Key('home-last-session')), findsOneWidget);
+    expect(find.text('Advanced'), findsOneWidget);
+    expect(find.text('All work'), findsOneWidget);
+    expect(find.byKey(const Key('home-templates')), findsNothing);
+    expect(find.byKey(const Key('home-last-session')), findsNothing);
     expect(find.byKey(const Key('home-assign-agent')), findsNothing);
     expect(find.byKey(const Key('home-factory-video')), findsNothing);
 
-    await tester.tap(find.byKey(const Key('home-templates')));
+    await tester.tap(find.text('All work'));
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('reference-workflows-page')), findsOneWidget);
     expect(tester.takeException(), isNull);
