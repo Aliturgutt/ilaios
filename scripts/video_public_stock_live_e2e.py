@@ -68,8 +68,8 @@ def main() -> int:
             provider=provider,
             tenant_id="video-live-e2e",
             job_id="internet-archive-stock-live-e2e",
-            query="licenseurl:*",
-            max_results=5,
+            query="mediatype:movies AND licenseurl:*",
+            max_results=20,
         )
         if not archive.candidates:
             raise ValueError("no governed candidate returned")
