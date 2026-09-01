@@ -562,7 +562,7 @@ class _AccountControl extends StatelessWidget {
         userSession?.principalId ??
         context.tr('shell.identityUnavailable');
     final content = Container(
-      height: 42,
+      constraints: const BoxConstraints(minHeight: 42),
       padding: const EdgeInsets.only(left: 10),
       decoration: BoxDecoration(
         border: Border(
