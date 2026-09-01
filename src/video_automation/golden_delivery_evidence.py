@@ -144,4 +144,4 @@ def _require_sha256(name: str, value: str) -> None:
     try:
         int(value, 16)
     except ValueError as exc:
-        raise GoldenDeliveryEvidenceError(f"{name} must be hexadecimal")
+        raise GoldenDeliveryEvidenceError(f"{name} must be hexadecimal") from exc
