@@ -8,54 +8,59 @@ type Locale = "en" | "tr";
 const copy = {
   en: {
     eyebrow: "Platform",
-    title: "A control-oriented platform for intelligent work.",
-    lead: "ILAIOS keeps experience, authority, execution and evidence as separate responsibilities connected by durable contracts.",
-    mapEyebrow: "System map",
-    mapTitle: "Clients request. The control plane governs. Bounded capabilities execute.",
-    planes: [["Experience", "Web, Desktop, Mobile, API, CLI and enterprise surfaces expose goals, approvals, state and delivery."], ["Control", "Identity, tenant context, policy, permissions, orchestration and authoritative state transitions."], ["Execution", "Deterministic services, tools and bounded intelligent capabilities perform admitted work."], ["Evidence", "Validation, provenance, audit context and recovery history keep consequential outcomes inspectable."]],
-    separationTitle: "Control authority and execution resources remain deliberately separated.",
-    separationLead: "The platform can change a model, provider or tool without moving policy truth, tenant authority or evidence ownership out of the control plane.",
-    contractTitle: "Identity and authorized context are upstream contracts, not optional metadata.",
-    contractText: "A request resolves principal, tenant and project context before bounded planning, capability resolution and execution admission. Downstream work cannot assume a contract that was never produced.",
-    knowledgeTitle: "Knowledge is a governed cross-factory plane.",
-    knowledgeText: "Authorized sources retain provenance; retrieval is filtered by principal, tenant, project and purpose before synthesis. Semantic relevance never overrides authorization.",
-    runtimeEyebrow: "Runtime",
-    runtimeTitle: "A request crosses explicit boundaries before it becomes an accepted result.",
-    runtime: [["Goal", "Intent enters"], ["Authorize", "Policy evaluated"], ["Route", "Capability selected"], ["Execute", "Work performed"], ["Verify", "Criteria checked"], ["Deliver", "Evidence surfaced"]],
-    details: [["Control plane", "Authority and durable state", "/platform/control-plane"], ["Execution", "Bounded deterministic and intelligent work", "/platform/execution"], ["Evidence", "Validation and provenance", "/platform/evidence"]],
+    title: "Describe the outcome. ILAIOS governs the work from request to verified delivery.",
+    lead: "One product boundary connects the goal, the work required to produce it, the controls that govern execution and the evidence used to accept the result.",
+    mapEyebrow: "How the platform works",
+    mapTitle: "The experience stays simple even when the work spans multiple capabilities.",
+    planes: [["Request", "Start with the result you need rather than choosing and operating a chain of AI tools."], ["Govern", "Identity, permissions, policy and approvals define what the execution is allowed to do."], ["Produce", "The applicable bounded capabilities perform the admitted work across web, software, media or research."], ["Verify", "Acceptance checks and evidence determine whether the result is ready to deliver."]],
+    separationTitle: "Execution can change without moving control authority.",
+    separationLead: "Models, providers and tools are execution resources. Policy truth, tenant authority and evidence ownership remain under the platform control boundary.",
+    runtimeEyebrow: "From goal to result",
+    runtimeTitle: "One controlled path connects the request to the finished outcome.",
+    runtime: [["Goal", "Describe the outcome"], ["Control", "Resolve permissions"], ["Plan", "Bound the work"], ["Produce", "Execute the work"], ["Verify", "Check acceptance"], ["Deliver", "Return result + evidence"]],
+    details: [["Control plane", "How authority stays centralized", "/platform/control-plane"], ["Execution", "How admitted work is performed", "/platform/execution"], ["Evidence", "How results remain reviewable", "/platform/evidence"]],
+    assuranceEyebrow: "Technical assurance",
+    assuranceTitle: "Identity, authorized context and governed knowledge remain explicit below the product flow.",
+    assuranceLead: "These technical views keep request identity, authorization and source provenance inspectable without making infrastructure the primary marketing story.",
+    technical: "Need the technical model?",
+    architecture: "Explore architecture",
+    use: "Explore what ILAIOS can produce",
     current: "ILAIOS remains under active development. Architecture direction is not a claim that every canonical capability is generally available today.",
   },
   tr: {
     eyebrow: "Platform",
-    title: "Akıllı işler için kontrol odaklı bir platform.",
-    lead: "ILAIOS; deneyim, yetki, yürütme ve kanıt sorumluluklarını dayanıklı sözleşmelerle bağlı fakat ayrı tutar.",
-    mapEyebrow: "Sistem haritası",
-    mapTitle: "İstemciler talep eder. Kontrol katmanı yönetir. Sınırlandırılmış yetenekler yürütür.",
-    planes: [["Deneyim", "Web, Masaüstü, Mobil, API, CLI ve kurumsal yüzeyler hedef, onay, durum ve teslimi gösterir."], ["Kontrol", "Kimlik, tenant bağlamı, politika, izinler, orkestrasyon ve yetkili durum geçişleri."], ["Yürütme", "Deterministik servisler, araçlar ve sınırlandırılmış akıllı yetenekler kabul edilmiş işi yapar."], ["Kanıt", "Doğrulama, kaynak kökeni, denetim bağlamı ve kurtarma geçmişi önemli sonuçları incelenebilir tutar."]],
-    separationTitle: "Kontrol yetkisi ile yürütme kaynakları bilinçli olarak ayrı tutulur.",
-    separationLead: "Model, sağlayıcı veya araç değişse bile politika gerçeği, tenant yetkisi ve kanıt sahipliği kontrol katmanından çıkmaz.",
-    contractTitle: "Kimlik ve yetkili bağlam, opsiyonel metadata değil upstream sözleşmelerdir.",
-    contractText: "İstek; bounded planning, capability resolution ve execution admission öncesinde principal, tenant ve proje bağlamını çözer. Downstream iş üretilmemiş bir sözleşmeyi varsayamaz.",
-    knowledgeTitle: "Knowledge, factory'ler arası yönetilen bir düzlemdir.",
-    knowledgeText: "Yetkili kaynaklar provenance bilgisini korur; synthesis öncesinde retrieval principal, tenant, proje ve amaç üzerinden filtrelenir. Semantik benzerlik authorization'ı geçersiz kılamaz.",
-    runtimeEyebrow: "Çalışma yolu",
-    runtimeTitle: "Bir istek, kabul edilmiş sonuca dönüşmeden önce açık sınırları geçer.",
-    runtime: [["Hedef", "Niyet girer"], ["Yetkilendir", "Politika değerlendirilir"], ["Yönlendir", "Yetenek seçilir"], ["Yürüt", "İş yapılır"], ["Doğrula", "Ölçütler kontrol edilir"], ["Teslim et", "Kanıt sunulur"]],
-    details: [["Kontrol katmanı", "Yetki ve dayanıklı durum", "/tr/platform/control-plane"], ["Yürütme", "Sınırlandırılmış deterministik ve akıllı çalışma", "/tr/platform/execution"], ["Kanıt", "Doğrulama ve kaynak kökeni", "/tr/platform/evidence"]],
+    title: "Sonucu tarif et. ILAIOS işi talepten doğrulanmış teslime kadar yönetir.",
+    lead: "Tek ürün sınırı; hedefi, sonucu üretmek için gereken işi, yürütmeyi yöneten kontrolleri ve sonucu kabul etmek için kullanılan kanıtı birbirine bağlar.",
+    mapEyebrow: "Platform nasıl çalışır?",
+    mapTitle: "İş birden fazla yeteneğe yayılsa bile kullanıcı deneyimi sade kalır.",
+    planes: [["Talep", "Bir yapay zekâ araç zinciri seçip işletmek yerine ihtiyacın olan sonucu tarif ederek başla."], ["Yönet", "Kimlik, izinler, politika ve onaylar yürütmenin ne yapabileceğini belirler."], ["Üret", "Uygulanabilir sınırlandırılmış yetenekler web, yazılım, medya veya araştırma alanında kabul edilmiş işi yürütür."], ["Doğrula", "Kabul kontrolleri ve kanıt, sonucun teslime hazır olup olmadığını belirler."]],
+    separationTitle: "Yürütme kaynakları değişebilir; kontrol otoritesi değişmez.",
+    separationLead: "Modeller, sağlayıcılar ve araçlar yürütme kaynaklarıdır. Politika gerçeği, tenant yetkisi ve kanıt sahipliği platformun kontrol sınırında kalır.",
+    runtimeEyebrow: "Hedeften sonuca",
+    runtimeTitle: "Tek kontrollü yol talebi bitmiş sonuca bağlar.",
+    runtime: [["Hedef", "Sonucu tarif et"], ["Kontrol", "İzinleri çöz"], ["Plan", "İşi sınırlandır"], ["Üret", "İşi yürüt"], ["Doğrula", "Kabulü kontrol et"], ["Teslim", "Sonuç + kanıtı sun"]],
+    details: [["Kontrol katmanı", "Yetkinin nasıl merkezde kaldığı", "/tr/platform/control-plane"], ["Yürütme", "Kabul edilmiş işin nasıl yapıldığı", "/tr/platform/execution"], ["Kanıt", "Sonuçların nasıl incelenebilir kaldığı", "/tr/platform/evidence"]],
+    assuranceEyebrow: "Teknik güvence",
+    assuranceTitle: "Kimlik, yetkili bağlam ve yönetilen bilgi ürün akışının altında açıkça korunur.",
+    assuranceLead: "Bu teknik görünümler talep kimliğini, yetkilendirmeyi ve kaynak kökenini ana pazarlama anlatısına dönüştürmeden incelenebilir tutar.",
+    technical: "Teknik modeli mi arıyorsun?",
+    architecture: "Mimariyi incele",
+    use: "ILAIOS'un neler üretebildiğini keşfet",
     current: "ILAIOS aktif geliştirme aşamasındadır. Mimari yön, her kanonik yeteneğin bugün genel kullanıma açık olduğu anlamına gelmez.",
   },
 } as const;
 
 export default function PlatformPage({ locale }: { locale: Locale }) {
   const c = copy[locale];
+  const base = locale === "tr" ? "/tr" : "";
   return <>
-    <section className="shell page-hero compact-page-hero"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p></section>
+    <section className="shell page-hero compact-page-hero"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p><div className="actions"><Link className="button" href={`${base}/use-ilaios`}>{c.use}</Link></div></section>
     <section className="section"><div className="shell platform-map-layout"><div className="platform-plane-list"><div className="eyebrow">{c.mapEyebrow}</div><h2>{c.mapTitle}</h2>{c.planes.map(([title, text], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{text}</p></div></article>)}</div><SpatialArchitecture locale={locale} /></div></section>
-    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{locale === "tr" ? "Yetki ayrımı" : "Authority separation"}</div><h2>{c.separationTitle}</h2></div><p>{c.separationLead}</p></div><SystemVisuals locale={locale} variant="planes" /></div></section>
-    <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{locale === "tr" ? "Upstream sözleşmeler" : "Upstream contracts"}</div><h2>{c.contractTitle}</h2></div><p>{c.contractText}</p></div><CanonicalSystemDetail locale={locale} variant="journey" /></div></section>
-    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">Knowledge / RAG</div><h2>{c.knowledgeTitle}</h2></div><p>{c.knowledgeText}</p></div><CanonicalSystemDetail locale={locale} variant="knowledge" /></div></section>
+    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{locale === "tr" ? "Kontrol farkı" : "The control difference"}</div><h2>{c.separationTitle}</h2></div><p>{c.separationLead}</p></div><SystemVisuals locale={locale} variant="planes" /></div></section>
     <section className="section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">{c.runtimeEyebrow}</div><h2>{c.runtimeTitle}</h2></div></div><div className="runtime-line">{c.runtime.map(([title, detail], index) => <div key={title}><span>{String(index + 1).padStart(2, "0")}</span><strong>{title}</strong><small>{detail}</small></div>)}</div></div></section>
+    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.assuranceEyebrow}</div><h2>{c.assuranceTitle}</h2></div><p>{c.assuranceLead}</p></div><CanonicalSystemDetail locale={locale} variant="journey" /><CanonicalSystemDetail locale={locale} variant="knowledge" /></div></section>
     <section className="section"><div className="shell detail-directory">{c.details.map(([title, text, href]) => <Link href={href} key={href}><span>{title}</span><strong>{text}</strong><i>→</i></Link>)}</div></section>
+    <section className="section compact-section"><div className="shell compact-cta"><div><div className="eyebrow">{c.technical}</div><h2>{c.separationTitle}</h2></div><div className="actions"><Link className="button secondary" href={`${base}/architecture`}>{c.architecture}</Link></div></div></section>
     <section className="section compact-section"><div className="shell status-note"><span>{locale === "tr" ? "Güncel durum" : "Current reality"}</span><p>{c.current}</p></div></section>
   </>;
 }
