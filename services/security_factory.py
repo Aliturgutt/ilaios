@@ -8,6 +8,7 @@ network activity.
 
 from __future__ import annotations
 
+import ast
 import re
 from dataclasses import dataclass
 from enum import IntEnum
@@ -289,7 +290,9 @@ class SecurityFactory:
     def _scan_text(
         self, location: str, text: str, suffix: str
     ) -> list[SecurityFinding]:
-        findings: list[SecurityFinding] = []
+        findings: list[SecurityFinding] = (
+            _python_taint_findings(location, text) if suffix == ".py" else []
+        )
         lines = text.splitlines()
         for line_number, line in enumerate(lines, start=1):
             for finding_id, pattern, severity, message, remediation in _SAST_RULES:
@@ -338,6 +341,84 @@ class SecurityFactory:
         if location.endswith("pyproject.toml"):
             findings.extend(self._scan_pyproject_dependencies(location, lines))
         return findings
+
+    @staticmethod
+    def _scan_requirement_lines(location: str, lines: list[str]) -> list[SecurityFinding]:
+        return _requirement_findings(location, lines)
+
+    @staticmethod
+    def _scan_pyproject_dependencies(location: str, lines: list[str]) -> list[SecurityFinding]:
+        return _pyproject_dependency_findings(location, lines)
+
+
+_TAINT_SOURCE_CALLS = frozenset({"input", "request.args.get", "request.form.get", "request.json.get"})
+_TAINT_SINK_CALLS = frozenset({"open", "subprocess.run", "subprocess.call", "subprocess.Popen", "requests.get", "requests.post", "urllib.request.urlopen"})
+
+
+def _python_taint_findings(location: str, text: str) -> list[SecurityFinding]:
+    """Detect direct local untrusted-input flows to sensitive Python sinks."""
+    try:
+        tree = ast.parse(text)
+    except SyntaxError:
+        return []
+
+    tainted: set[str] = set()
+    findings: list[SecurityFinding] = []
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Assign) and _is_taint_source(node.value, tainted):
+            tainted.update(target.id for target in node.targets if isinstance(target, ast.Name))
+        if isinstance(node, ast.Call) and _call_name(node.func) in _TAINT_SINK_CALLS:
+            if any(_is_taint_source(argument, tainted) for argument in node.args):
+                sink = _call_name(node.func) or "sensitive sink"
+                findings.append(SecurityFinding(
+                    "SAST-TAINT-UNTRUSTED-TO-SINK", "sast", Severity.HIGH,
+                    location, node.lineno,
+                    f"untrusted input reaches sensitive sink: {sink}",
+                    "validate and constrain untrusted input before the sensitive operation",
+                ))
+    return findings
+
+
+def _is_taint_source(node: ast.AST, tainted: set[str]) -> bool:
+    return (
+        isinstance(node, ast.Name) and node.id in tainted
+    ) or (
+        isinstance(node, ast.Call) and _call_name(node.func) in _TAINT_SOURCE_CALLS
+    )
+
+
+def _call_name(node: ast.AST) -> str | None:
+    if isinstance(node, ast.Name):
+        return node.id
+    if isinstance(node, ast.Attribute):
+        parent = _call_name(node.value)
+        return f"{parent}.{node.attr}" if parent else node.attr
+    return None
+
+
+def _requirement_findings(location: str, lines: list[str]) -> list[SecurityFinding]:
+    findings: list[SecurityFinding] = []
+    for line_number, raw in enumerate(lines, start=1):
+        value = raw.strip()
+        if value and not value.startswith(("#", "-r", "--")) and "==" not in value and " @ " not in value:
+            findings.append(SecurityFinding("SUPPLY-UNPINNED-DEPENDENCY", "supply-chain", Severity.MEDIUM, location, line_number, f"dependency is not exactly pinned: {value}", "pin an exact reviewed version or immutable artifact reference"))
+    return findings
+
+
+def _pyproject_dependency_findings(location: str, lines: list[str]) -> list[SecurityFinding]:
+    findings: list[SecurityFinding] = []
+    in_dependencies = False
+    for line_number, raw in enumerate(lines, start=1):
+        value = raw.strip()
+        if value.startswith("dependencies") and "[" in value:
+            in_dependencies = True
+        elif in_dependencies and value.startswith("]"):
+            in_dependencies = False
+        elif in_dependencies and value.startswith(("\"", "'")):
+            dependency = value.strip(",").strip("\"'")
+            if dependency and "==" not in dependency and " @ " not in dependency:
+                findings.append(SecurityFinding("SUPPLY-UNPINNED-DEPENDENCY", "supply-chain", Severity.MEDIUM, location, line_number, f"dependency is not exactly pinned: {dependency}", "pin an exact reviewed version or immutable artifact reference"))
+    return findings
 
     @staticmethod
     def _scan_requirement_lines(
