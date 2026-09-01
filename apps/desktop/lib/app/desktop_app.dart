@@ -25,7 +25,7 @@ class IlaiosDesktopApp extends StatefulWidget {
     this.userSession,
     this.identityStatus = 'Account sign-in is not configured',
     this.locale = IlaiosLocale.english,
-    this.themeMode = ThemeMode.dark,
+    this.themeMode = ThemeMode.light,
     this.onLocaleChanged,
     this.onThemeModeChanged,
     this.onSignIn,
