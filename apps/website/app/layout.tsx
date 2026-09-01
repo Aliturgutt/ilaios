@@ -47,7 +47,7 @@ const structuredData = {
   ],
 };
 
-const themeBootstrap = `(() => { try { const key = "ilaios-theme"; const stored = localStorage.getItem(key); const theme = stored === "light" || stored === "dark" ? stored : (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"); document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; } catch { document.documentElement.dataset.theme = "dark"; } })();`;
+const themeBootstrap = `(() => { try { const key = "ilaios-theme"; const stored = localStorage.getItem(key); const theme = stored === "light" || stored === "dark" ? stored : "light"; document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; } catch { document.documentElement.dataset.theme = "light"; document.documentElement.style.colorScheme = "light"; } })();`;
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const locale = (await headers()).get("x-ilaios-locale") === "tr" ? "tr" : "en";
