@@ -25,6 +25,34 @@
   padding: clamp(28px, 5vw, 56px);
 }
 
+.brandLockup {
+  width: min(190px, 48vw);
+  margin-bottom: 28px;
+}
+
+.brandLogo {
+  width: 100%;
+  height: auto;
+  display: block;
+  border-radius: 0;
+}
+
+.brandLogoLight {
+  display: none;
+}
+
+.brandLogoDark {
+  display: block;
+}
+
+:global(html[data-theme="light"]) .brandLogoLight {
+  display: block;
+}
+
+:global(html[data-theme="light"]) .brandLogoDark {
+  display: none;
+}
+
 .title {
   margin: 14px 0 18px;
   max-width: 620px;
