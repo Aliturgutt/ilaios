@@ -89,7 +89,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('missing work progress renders an unavailable track, never fake zero', (
+  testWidgets('missing work progress stays unavailable without exposing raw request identity', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
@@ -128,12 +128,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('work-without-authoritative-progress'), findsOneWidget);
-    expect(find.byKey(const Key('focus-progress-unavailable-track')), findsOneWidget);
+    expect(find.text('Work item'), findsOneWidget);
+    expect(find.text('work-without-authoritative-progress'), findsNothing);
     expect(find.byType(LinearProgressIndicator), findsNothing);
   });
 
-  testWidgets('malformed Home telemetry fails closed instead of fabricating metrics', (
+  testWidgets('malformed Home telemetry fails closed without raw identifiers or fake metrics', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
@@ -186,13 +186,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('invalid-negative-progress'), findsOneWidget);
-    expect(find.text('invalid-overflow-progress'), findsOneWidget);
-    expect(find.text('invalid-nan-progress'), findsOneWidget);
-    expect(
-      find.byKey(const Key('focus-progress-unavailable-track')),
-      findsNWidgets(3),
-    );
+    expect(find.text('Work item'), findsNWidgets(3));
+    expect(find.text('invalid-negative-progress'), findsNothing);
+    expect(find.text('invalid-overflow-progress'), findsNothing);
+    expect(find.text('invalid-nan-progress'), findsNothing);
     expect(find.byType(LinearProgressIndicator), findsNothing);
     expect(find.text('Connected'), findsWidgets);
     expect(find.textContaining('NaN'), findsNothing);

@@ -188,22 +188,33 @@ def check_interactions(page: Page, findings: list[str]) -> None:
     page.wait_for_timeout(200)
 
     tabs = page.locator('.product-mode-tabs button')
+    scenario = page.locator('.goal-composer blockquote')
     if tabs.count() < 4:
         findings.append("home interaction: Web/Video/Software/App product mode tabs are missing")
+    elif scenario.count() != 1:
+        findings.append("home interaction: canonical product scenario is missing")
     else:
-        before = page.locator('.goal-composer textarea').input_value()
+        before = scenario.inner_text()
         tabs.nth(1).click()
-        after = page.locator('.goal-composer textarea').input_value()
+        page.wait_for_timeout(100)
+        after = scenario.inner_text()
         if before == after:
             findings.append("home interaction: changing product mode did not change the product scenario")
 
-    run = page.locator('.goal-composer button')
-    if run.count():
-        run.click()
-        page.wait_for_timeout(750)
-        active = page.locator('.execution-rail .is-active')
-        if active.count() != 1:
-            findings.append("home interaction: workflow progression has no unique active state")
+    stage_tabs = page.locator('.product-stage-tabs button')
+    stage_note = page.locator('.product-stage-control p')
+    if stage_tabs.count() != 4 or stage_note.count() != 1:
+        findings.append("home interaction: canonical four-stage preview control is incomplete")
+    else:
+        before_note = stage_note.inner_text()
+        stage_tabs.nth(1).click()
+        page.wait_for_timeout(100)
+        after_note = stage_note.inner_text()
+        pressed = page.locator('.product-stage-tabs button[aria-pressed="true"]')
+        if pressed.count() != 1 or not stage_tabs.nth(1).is_enabled() or stage_tabs.nth(1).get_attribute("aria-pressed") != "true":
+            findings.append("home interaction: stage selection has no unique active state")
+        if before_note == after_note:
+            findings.append("home interaction: changing preview stage did not change the stage explanation")
 
     page.goto(f"{BASE_URL}/factories", wait_until="domcontentloaded", timeout=30_000)
     page.wait_for_timeout(200)
