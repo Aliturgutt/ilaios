@@ -43,7 +43,7 @@ jobs:
           tests/test_wikimedia_stock_transport.py
 
       - name: Run real public-provider E2E
-        run: python scripts/video_public_stock_live_e2e.py
+        run: python -m scripts.video_public_stock_live_e2e
 
       - name: Upload provider receipt
         if: always()
