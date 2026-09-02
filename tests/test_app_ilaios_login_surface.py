@@ -66,7 +66,8 @@ def test_root_is_light_first_login_with_optional_dark_mode(tmp_path: Path) -> No
     assert "frame-ancestors 'none'" in csp
     document = response.body.decode("utf-8")
     assert '<html lang="en" data-theme="light">' in document
-    assert "Sign in to continue" in document
+    assert "Sign in to ILAIOS" in document
+    assert "Choose an account to continue." in document
     assert 'href="/auth/google/start"' in document
     assert 'href="/auth/microsoft/start"' in document
     assert 'href="/auth/github/start"' in document
