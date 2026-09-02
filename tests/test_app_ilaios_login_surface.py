@@ -70,7 +70,8 @@ def test_root_is_light_first_login_with_optional_dark_mode(tmp_path: Path) -> No
     assert 'href="/auth/google/start"' in document
     assert 'href="/auth/microsoft/start"' in document
     assert 'href="/auth/github/start"' in document
-    assert 'id="theme-toggle"' in document
+    assert 'id="theme-light"' in document
+    assert 'id="theme-dark"' in document
     assert '<script src="/login/app.js" defer></script>' in document
     assert "<style" not in document
 
