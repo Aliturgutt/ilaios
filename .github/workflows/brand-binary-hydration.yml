@@ -5,8 +5,7 @@ on:
     branches:
       - brand/canonical-neutral-palette-20260902
     paths:
-      - '.brand-hydration/*.b64'
-      - '.brand-hydration/*.b64.part*'
+      - '.brand-hydration/READY'
   workflow_dispatch:
 
 permissions:
@@ -14,7 +13,7 @@ permissions:
 
 concurrency:
   group: canonical-brand-binary-hydration
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   hydrate:
@@ -41,7 +40,10 @@ jobs:
 
           root = Path.cwd()
           staging = root / '.brand-hydration'
+          ready = staging / 'READY'
           expected_file = staging / 'expected.sha256'
+          if not ready.is_file():
+              raise SystemExit('missing .brand-hydration/READY sentinel')
           if not expected_file.is_file():
               raise SystemExit('missing .brand-hydration/expected.sha256')
 
@@ -107,6 +109,7 @@ jobs:
               for payload in ordered:
                   payload.unlink()
               print(f'HYDRATED {filename} sha256={wanted} bytes={len(data)} parts={len(ordered)}')
+          ready.unlink()
           PY
 
       - name: Commit only verified canonical binary replacements
