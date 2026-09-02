@@ -15,7 +15,7 @@ This file is the single visual-token authority for `ilaios-diagram-design`. The 
 | Muted | `#808080` | `#B3B3B3` | Secondary information/ordinary edges |
 | Accent | `#2A2A2A` | `#E6E6E6` | Monochrome focal signal |
 | Border | `#B3B3B3` | `#2A2A2A` | Structural rule |
-| Danger | `#B42318` | `#F97066` | Explicitly forbidden/failed path |
+| Danger | `#2A2A2A` | `#E6E6E6` | Explicitly forbidden/failed path, distinguished by semantics/geometry rather than a non-canonical color |
 
 The canonical ILAIOS brand board is the authority: UI and supporting system visuals are monochrome by design. ILAIOS Cyan `#00C2D1` and ILAIOS Blue `#146BFF` are reserved for the official logo/symbol identity and must not be used as diagram accents.
 
@@ -70,7 +70,8 @@ Do not emit:
 - remote image/icon references;
 - JavaScript;
 - `foreignObject`;
-- ILAIOS logo cyan/blue as diagram or UI accents.
+- ILAIOS logo cyan/blue as diagram or UI accents;
+- non-canonical semantic colors outside the approved neutral palette.
 
 ## Focality
 
