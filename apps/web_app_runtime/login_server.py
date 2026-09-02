@@ -10,6 +10,7 @@ import os
 from collections.abc import Mapping, Sequence
 from datetime import datetime
 from http import HTTPStatus
+from pathlib import Path
 from urllib.parse import urlsplit
 
 from apps.web_app_runtime.server import (
@@ -20,55 +21,80 @@ from apps.web_app_runtime.server import (
     RuntimeResponse,
 )
 
+_REPO_ROOT = Path(__file__).resolve().parents[2]
+_BRAND_DIR = _REPO_ROOT / "brand" / "assets"
+_BRAND_LIGHT = (_BRAND_DIR / "13-ilaios-primary-horizontal-light.jpg").read_bytes()
+_BRAND_DARK = (_BRAND_DIR / "02-ilaios-primary-horizontal-dark.jpg").read_bytes()
+
 _LOGIN_HTML = """<!doctype html>
 <html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="light dark">
-  <meta name="theme-color" content="#f7f7f5">
+  <meta name="theme-color" content="#f8faff">
   <title>Sign in | ILAIOS</title>
   <link rel="stylesheet" href="/login/styles.css">
 </head>
 <body>
+  <div class="ambient ambient-left" aria-hidden="true"></div>
+  <div class="ambient ambient-right" aria-hidden="true"></div>
+  <div class="orbit orbit-one" aria-hidden="true"></div>
+  <div class="orbit orbit-two" aria-hidden="true"></div>
+  <div class="orbit orbit-three" aria-hidden="true"></div>
+
   <main class="shell">
     <header class="topbar">
       <a class="brand" href="/" aria-label="ILAIOS home">
-        <span class="brand-mark" aria-hidden="true">I</span>
-        <span>ILAIOS</span>
+        <img class="brand-image brand-image-light" src="/login/brand-light.jpg" alt="ILAIOS">
+        <img class="brand-image brand-image-dark" src="/login/brand-dark.jpg" alt="ILAIOS">
       </a>
-      <button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false" aria-label="Switch to dark mode">
-        <span class="theme-icon" aria-hidden="true">◐</span>
-        <span id="theme-label">Dark</span>
-      </button>
+
+      <div class="theme-switch" role="group" aria-label="Theme">
+        <button class="theme-option is-active" id="theme-light" type="button" aria-pressed="true">
+          <span aria-hidden="true">☼</span><span>Light</span>
+        </button>
+        <span class="theme-divider" aria-hidden="true"></span>
+        <button class="theme-option" id="theme-dark" type="button" aria-pressed="false">
+          <span aria-hidden="true">◐</span><span>Dark</span>
+        </button>
+      </div>
     </header>
 
     <section class="login-card" aria-labelledby="login-title">
-      <div class="eyebrow">ILAIOS account</div>
+      <div class="card-brand" aria-hidden="true">
+        <img class="brand-image brand-image-light" src="/login/brand-light.jpg" alt="">
+        <img class="brand-image brand-image-dark" src="/login/brand-dark.jpg" alt="">
+      </div>
+
       <h1 id="login-title">Sign in to continue</h1>
       <p class="intro">Use your existing account to access ILAIOS.</p>
 
       <div class="providers" id="providers" aria-live="polite">
         <a class="provider provider-primary" data-provider="google" href="/auth/google/start">
-          <span class="provider-badge" aria-hidden="true">G</span>
+          <span class="provider-mark google-mark" aria-hidden="true">G</span>
           <span>Continue with Google</span>
+          <span class="provider-arrow" aria-hidden="true">›</span>
         </a>
         <a class="provider" data-provider="microsoft" href="/auth/microsoft/start">
-          <span class="provider-badge microsoft-badge" aria-hidden="true">M</span>
+          <span class="provider-mark microsoft-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
           <span>Continue with Microsoft</span>
+          <span class="provider-arrow" aria-hidden="true">›</span>
         </a>
         <a class="provider" data-provider="github" href="/auth/github/start">
-          <span class="provider-badge github-badge" aria-hidden="true">GH</span>
+          <span class="provider-mark github-mark" aria-hidden="true">GH</span>
           <span>Continue with GitHub</span>
+          <span class="provider-arrow" aria-hidden="true">›</span>
         </a>
       </div>
-
-      <p class="notice">Account linking will be completed after the Desktop experience is finalized.</p>
-      <p class="legal">By continuing, you acknowledge the ILAIOS authentication flow and security controls.</p>
     </section>
 
-    <footer>Secure sign-in · app.ilaios.com</footer>
+    <footer class="trust-footer">
+      <div class="trust-line"><span class="trust-shield" aria-hidden="true">◇</span> Secure <span>•</span> Private <span>•</span> Built for Trust</div>
+      <p>By continuing, you acknowledge the ILAIOS authentication flow and security controls.</p>
+    </footer>
   </main>
+
   <script src="/login/app.js" defer></script>
 </body>
 </html>
@@ -76,232 +102,222 @@ _LOGIN_HTML = """<!doctype html>
 
 _LOGIN_CSS = b""":root {
   color-scheme: light;
-  --bg: #f7f7f5;
-  --surface: #ffffff;
-  --surface-subtle: #f1f1ef;
-  --text: #171717;
-  --muted: #6c6c68;
-  --line: #deded9;
-  --line-strong: #c9c9c2;
-  --button: #191919;
-  --button-text: #ffffff;
-  --focus: #5b66f6;
-  --shadow: 0 22px 70px rgba(20, 20, 18, 0.08);
+  --bg: #f8faff;
+  --surface: rgba(255,255,255,.90);
+  --surface-solid: #ffffff;
+  --text: #0b0f17;
+  --muted: #657084;
+  --line: #dce2eb;
+  --line-strong: #cbd3df;
+  --primary: #0d1118;
+  --primary-text: #ffffff;
+  --accent: #1672ff;
+  --orbital: rgba(99,130,255,.18);
+  --glow-a: rgba(36,125,255,.25);
+  --glow-b: rgba(126,99,255,.16);
+  --shadow: 0 28px 90px rgba(38,53,80,.10);
 }
 
 html[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #111210;
-  --surface: #181917;
-  --surface-subtle: #20211f;
-  --text: #f5f5f1;
-  --muted: #a6a69f;
-  --line: #30312d;
-  --line-strong: #44453f;
-  --button: #f5f5f1;
-  --button-text: #161714;
-  --focus: #8f98ff;
-  --shadow: 0 22px 70px rgba(0, 0, 0, 0.28);
+  --bg: #0c0f15;
+  --surface: rgba(18,22,30,.92);
+  --surface-solid: #151922;
+  --text: #f7f9fc;
+  --muted: #a6afbe;
+  --line: #2a313e;
+  --line-strong: #3a4454;
+  --primary: #f7f9fc;
+  --primary-text: #10131a;
+  --accent: #6da5ff;
+  --orbital: rgba(108,139,255,.18);
+  --glow-a: rgba(32,103,255,.18);
+  --glow-b: rgba(106,76,255,.14);
+  --shadow: 0 28px 90px rgba(0,0,0,.36);
 }
 
 * { box-sizing: border-box; }
-
 html, body { min-height: 100%; }
-
 body {
   margin: 0;
+  overflow-x: hidden;
   background: var(--bg);
   color: var(--text);
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   -webkit-font-smoothing: antialiased;
 }
-
-a { color: inherit; }
-
 button, a { font: inherit; }
 
+.ambient {
+  position: fixed;
+  width: 520px;
+  height: 520px;
+  border-radius: 50%;
+  filter: blur(68px);
+  pointer-events: none;
+  z-index: 0;
+}
+.ambient-left { left: -250px; bottom: -290px; background: var(--glow-a); }
+.ambient-right { right: -220px; top: 170px; background: var(--glow-b); }
+
+.orbit {
+  position: fixed;
+  left: 50%;
+  top: 52%;
+  border: 1px solid var(--orbital);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) rotate(-7deg);
+  pointer-events: none;
+  z-index: 0;
+}
+.orbit::before,
+.orbit::after {
+  content: "";
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(104,132,255,.55);
+}
+.orbit::before { left: 13%; top: 9%; }
+.orbit::after { right: 8%; bottom: 18%; }
+.orbit-one { width: 1060px; height: 430px; }
+.orbit-two { width: 900px; height: 340px; transform: translate(-50%, -50%) rotate(9deg); }
+.orbit-three { width: 710px; height: 250px; transform: translate(-50%, -50%) rotate(-14deg); }
+
 .shell {
-  width: min(1160px, calc(100% - 40px));
+  position: relative;
+  z-index: 1;
+  width: min(1440px, calc(100% - 64px));
   min-height: 100vh;
   margin: 0 auto;
   display: grid;
-  grid-template-rows: auto 1fr auto;
+  grid-template-rows: 108px 1fr auto;
 }
 
 .topbar {
-  height: 88px;
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
+.brand { display: block; width: 278px; height: 70px; text-decoration: none; overflow: hidden; }
+.brand-image { width: 100%; height: 100%; object-fit: contain; object-position: left center; }
+.brand-image-dark { display: none; }
+html[data-theme="dark"] .brand-image-light { display: none; }
+html[data-theme="dark"] .brand-image-dark { display: block; }
 
-.brand {
+.theme-switch {
+  min-height: 54px;
   display: inline-flex;
-  gap: 11px;
   align-items: center;
-  text-decoration: none;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-
-.brand-mark {
-  width: 30px;
-  height: 30px;
-  border-radius: 9px;
-  display: grid;
-  place-items: center;
-  background: var(--text);
-  color: var(--bg);
-  font-size: 14px;
-  font-weight: 800;
-}
-
-.theme-toggle {
+  padding: 5px 7px;
+  border-radius: 28px;
   border: 1px solid var(--line);
   background: var(--surface);
-  color: var(--text);
-  min-height: 40px;
-  padding: 0 14px;
-  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(28,41,65,.07);
+  backdrop-filter: blur(18px);
+}
+.theme-option {
+  min-height: 42px;
+  padding: 0 17px;
+  border: 0;
+  border-radius: 22px;
+  background: transparent;
+  color: var(--muted);
   display: inline-flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
+  font-weight: 650;
 }
-
-.theme-toggle:hover { border-color: var(--line-strong); }
-
-.theme-toggle:focus-visible,
-.provider:focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--focus) 42%, transparent);
-  outline-offset: 3px;
-}
+.theme-option.is-active { color: var(--accent); background: var(--surface-solid); box-shadow: 0 2px 10px rgba(20,31,50,.06); }
+.theme-divider { width: 1px; height: 26px; background: var(--line); }
 
 .login-card {
   align-self: center;
   justify-self: center;
-  width: min(100%, 430px);
-  padding: 42px;
+  width: min(100%, 630px);
+  padding: 72px 64px 62px;
   border: 1px solid var(--line);
-  border-radius: 24px;
+  border-radius: 28px;
   background: var(--surface);
   box-shadow: var(--shadow);
+  backdrop-filter: blur(24px);
+  text-align: center;
 }
-
-.eyebrow {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 650;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
+.card-brand { width: 300px; height: 82px; margin: 0 auto 42px; overflow: hidden; }
+.card-brand .brand-image { object-position: center; }
 
 h1 {
-  margin: 12px 0 9px;
-  font-size: clamp(30px, 5vw, 38px);
+  margin: 0;
+  font-size: clamp(38px, 4vw, 52px);
   line-height: 1.08;
   letter-spacing: -0.045em;
 }
-
 .intro {
-  margin: 0 0 28px;
+  margin: 17px 0 40px;
   color: var(--muted);
-  font-size: 15px;
+  font-size: 18px;
   line-height: 1.55;
 }
-
-.providers { display: grid; gap: 11px; }
-
+.providers { display: grid; gap: 14px; }
 .provider {
-  min-height: 52px;
+  min-height: 68px;
   border: 1px solid var(--line);
-  border-radius: 14px;
+  border-radius: 16px;
   display: grid;
-  grid-template-columns: 30px 1fr 30px;
+  grid-template-columns: 42px 1fr 30px;
   align-items: center;
-  padding: 0 13px;
+  gap: 12px;
+  padding: 0 22px;
   text-decoration: none;
-  background: var(--surface);
+  text-align: left;
+  background: var(--surface-solid);
+  color: var(--text);
+  font-size: 18px;
   font-weight: 650;
-  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
 }
+.provider:hover { transform: translateY(-1px); border-color: var(--line-strong); box-shadow: 0 8px 24px rgba(28,42,68,.07); }
+.provider-primary { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
+.provider-primary:hover { border-color: var(--primary); }
+.provider-mark { width: 34px; height: 34px; display: grid; place-items: center; font-weight: 800; }
+.google-mark { font-size: 25px; color: #4285f4; }
+.github-mark { width: 34px; height: 34px; border-radius: 50%; background: currentColor; color: var(--surface-solid); font-size: 9px; }
+.provider-primary .google-mark { background: transparent; }
+.microsoft-mark { grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; padding: 5px; }
+.microsoft-mark i:nth-child(1) { background: #f25022; }
+.microsoft-mark i:nth-child(2) { background: #7fba00; }
+.microsoft-mark i:nth-child(3) { background: #00a4ef; }
+.microsoft-mark i:nth-child(4) { background: #ffb900; }
+.microsoft-mark i { width: 11px; height: 11px; display: block; }
+.provider-arrow { justify-self: end; font-size: 34px; font-weight: 300; line-height: 1; }
+.provider[aria-disabled="true"] { opacity: .42; pointer-events: none; }
 
-.provider::after {
-  content: "\2192";
+.theme-option:focus-visible,
+.provider:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 38%, transparent); outline-offset: 3px; }
+
+.trust-footer {
+  padding: 32px 16px 42px;
+  text-align: center;
   color: var(--muted);
-  justify-self: end;
 }
+.trust-line { color: var(--text); font-weight: 600; display: flex; justify-content: center; gap: 9px; align-items: center; }
+.trust-shield { color: var(--accent); font-size: 20px; }
+.trust-footer p { max-width: 520px; margin: 12px auto 0; line-height: 1.55; }
 
-.provider:hover {
-  transform: translateY(-1px);
-  border-color: var(--line-strong);
-  background: var(--surface-subtle);
-}
-
-.provider-primary {
-  background: var(--button);
-  color: var(--button-text);
-  border-color: var(--button);
-}
-
-.provider-primary:hover {
-  background: var(--button);
-  border-color: var(--button);
-}
-
-.provider-primary::after { color: currentColor; opacity: 0.72; }
-
-.provider-badge {
-  width: 26px;
-  height: 26px;
-  display: grid;
-  place-items: center;
-  border-radius: 8px;
-  border: 1px solid currentColor;
-  font-size: 12px;
-  font-weight: 800;
-}
-
-.microsoft-badge { font-size: 11px; }
-.github-badge { font-size: 9px; }
-
-.provider[aria-disabled="true"] {
-  opacity: 0.45;
-  pointer-events: none;
-}
-
-.notice {
-  margin: 22px 0 0;
-  padding: 13px 14px;
-  border-radius: 12px;
-  background: var(--surface-subtle);
-  color: var(--muted);
-  font-size: 12.5px;
-  line-height: 1.48;
-}
-
-.legal {
-  margin: 16px 3px 0;
-  color: var(--muted);
-  font-size: 11.5px;
-  line-height: 1.5;
-}
-
-footer {
-  min-height: 76px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-@media (max-width: 560px) {
-  .shell { width: min(100% - 24px, 1160px); }
-  .topbar { height: 72px; }
-  .login-card { padding: 30px 22px; border-radius: 20px; }
-  .theme-toggle { padding: 0 11px; }
-  #theme-label { display: none; }
+@media (max-width: 760px) {
+  .shell { width: min(100% - 24px, 1440px); grid-template-rows: 84px 1fr auto; }
+  .brand { width: 170px; height: 52px; }
+  .theme-switch { min-height: 44px; }
+  .theme-option { min-height: 34px; padding: 0 11px; }
+  .theme-option span:last-child { display: none; }
+  .login-card { padding: 48px 24px 42px; border-radius: 22px; }
+  .card-brand { width: 240px; height: 66px; margin-bottom: 32px; }
+  h1 { font-size: 36px; }
+  .intro { font-size: 16px; margin-bottom: 30px; }
+  .provider { min-height: 62px; font-size: 16px; padding: 0 16px; }
+  .orbit { opacity: .55; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -311,13 +327,14 @@ footer {
 
 _LOGIN_JS = b"""(function(){\"use strict\";
 const root=document.documentElement;
-const toggle=document.getElementById('theme-toggle');
-const label=document.getElementById('theme-label');
+const lightButton=document.getElementById('theme-light');
+const darkButton=document.getElementById('theme-dark');
 function storedTheme(){try{return localStorage.getItem('ilaios-theme');}catch(_error){return null;}}
 function storeTheme(value){try{localStorage.setItem('ilaios-theme',value);}catch(_error){return;}}
-function apply(theme){const value=theme==='dark'?'dark':'light';root.dataset.theme=value;const dark=value==='dark';toggle.setAttribute('aria-pressed',String(dark));toggle.setAttribute('aria-label',dark?'Switch to light mode':'Switch to dark mode');label.textContent=dark?'Light':'Dark';const meta=document.querySelector('meta[name=theme-color]');if(meta){meta.setAttribute('content',dark?'#111210':'#f7f7f5');}}
+function apply(theme){const value=theme==='dark'?'dark':'light';root.dataset.theme=value;const dark=value==='dark';lightButton.classList.toggle('is-active',!dark);darkButton.classList.toggle('is-active',dark);lightButton.setAttribute('aria-pressed',String(!dark));darkButton.setAttribute('aria-pressed',String(dark));const meta=document.querySelector('meta[name=theme-color]');if(meta){meta.setAttribute('content',dark?'#0c0f15':'#f8faff');}}
 apply(storedTheme()==='dark'?'dark':'light');
-toggle.addEventListener('click',function(){const next=root.dataset.theme==='dark'?'light':'dark';apply(next);storeTheme(next);});
+lightButton.addEventListener('click',function(){apply('light');storeTheme('light');});
+darkButton.addEventListener('click',function(){apply('dark');storeTheme('dark');});
 fetch('/auth/providers',{credentials:'same-origin',cache:'no-store'}).then(function(response){if(!response.ok){return null;}return response.json();}).then(function(payload){if(!payload||!Array.isArray(payload.providers)){return;}const available=new Set(payload.providers);for(const link of document.querySelectorAll('[data-provider]')){const provider=link.getAttribute('data-provider');if(!available.has(provider)){link.setAttribute('aria-disabled','true');link.setAttribute('tabindex','-1');link.removeAttribute('href');}}}).catch(function(){return;});
 })();
 """
@@ -346,7 +363,7 @@ class LoginAppRuntime(AppRuntime):
                 "text/html; charset=utf-8",
                 csp=(
                     "default-src 'none'; script-src 'self'; style-src 'self'; "
-                    "connect-src 'self'; img-src 'none'; base-uri 'none'; "
+                    "connect-src 'self'; img-src 'self'; base-uri 'none'; "
                     "frame-ancestors 'none'; form-action 'self'"
                 ),
             )
@@ -365,9 +382,15 @@ class LoginAppRuntime(AppRuntime):
                 return self._json_error(
                     HTTPStatus.BAD_REQUEST, "unexpected query parameters"
                 )
-            return self._asset_response(
-                _LOGIN_JS, "text/javascript; charset=utf-8"
-            )
+            return self._asset_response(_LOGIN_JS, "text/javascript; charset=utf-8")
+        if split.path == "/login/brand-light.jpg":
+            if method != "GET":
+                return self._method_not_allowed("GET")
+            return self._asset_response(_BRAND_LIGHT, "image/jpeg")
+        if split.path == "/login/brand-dark.jpg":
+            if method != "GET":
+                return self._method_not_allowed("GET")
+            return self._asset_response(_BRAND_DARK, "image/jpeg")
         return super().dispatch(request, now=now)
 
     @staticmethod
