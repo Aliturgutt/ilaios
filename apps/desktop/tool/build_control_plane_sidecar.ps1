@@ -86,7 +86,8 @@ python -m pip install --disable-pip-version-check `
   'requests==2.34.2' `
   'python-dotenv==1.2.2' `
   'PyJWT[crypto]==2.13.0' `
-  'cryptography==49.0.0'
+  'cryptography==49.0.0' `
+  'pypdf==6.16.2'
 if ($LASTEXITCODE -ne 0) { throw 'Desktop sidecar build dependencies failed to install.' }
 
 $work = Join-Path $desktopRoot 'build\sidecar\work'
@@ -106,7 +107,7 @@ $sourceHeadFile = Join-Path $metadata 'source-head.txt'
 $env:PYTHONPATH = $repoRoot
 Push-Location $repoRoot
 try {
-  python -c "import services.desktop_oidc_microsoft; import services.desktop_oidc_windows; import services.integrations.web_factory; import services.p0_runtime_composition; import services.web_agent_execution; import services.web_agent_runtime; import services.web_agent_skill_catalog; import services.browser_runtime_composition; import services.runtime.ai_provider_adapter; import services.runtime.security_agent_adapters; import services.security_methodology_analysis; import services.security_methodology_skills; import services.skill_engineering_catalog; import services.skill_engineering_runtime"
+  python -c "import services.desktop_oidc_microsoft; import services.desktop_oidc_windows; import services.company_knowledge_ingestion; import services.company_knowledge_desktop; import services.integrations.web_factory; import services.p0_runtime_composition; import services.web_agent_execution; import services.web_agent_runtime; import services.web_agent_skill_catalog; import services.browser_runtime_composition; import services.runtime.ai_provider_adapter; import services.runtime.security_agent_adapters; import services.security_methodology_analysis; import services.security_methodology_skills; import services.skill_engineering_catalog; import services.skill_engineering_runtime"
   if ($LASTEXITCODE -ne 0) {
     throw 'Desktop sidecar source import smoke failed for required identity/integration/agent modules.'
   }
