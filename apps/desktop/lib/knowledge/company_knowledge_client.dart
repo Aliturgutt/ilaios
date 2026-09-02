@@ -32,12 +32,10 @@ class CompanyKnowledgeUploadResult {
 
 class CompanyKnowledgeClient {
   CompanyKnowledgeClient({
-    required Uri baseUri,
-    required String transportToken,
+    required this._baseUri,
+    required this._transportToken,
     ControlPlaneTransport? transport,
-  })  : _baseUri = baseUri,
-        _transportToken = transportToken,
-        _transport = transport ?? const IoControlPlaneTransport();
+  }) : _transport = transport ?? const IoControlPlaneTransport();
 
   final Uri _baseUri;
   final String _transportToken;
