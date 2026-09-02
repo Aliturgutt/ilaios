@@ -18,6 +18,7 @@ from services.identity import Principal
 
 
 _CANONICAL_IDENTITY_ENDPOINT = "https://app.ilaios.com/auth/desktop/canonicalize"
+_LI_FOUNDER_ATTRIBUTE = ("ilaios_li_founder", "true")
 
 
 class DesktopOIDCService(_MicrosoftDesktopOIDCService):
@@ -96,21 +97,28 @@ class DesktopOIDCService(_MicrosoftDesktopOIDCService):
             )
         user_id = payload.get("user_id")
         tenant_id = payload.get("tenant_id")
+        li_founder = payload.get("li_founder", False)
         if (
             not isinstance(user_id, str)
             or not user_id.startswith("usr_")
             or not isinstance(tenant_id, str)
             or not tenant_id.startswith("tnt_")
+            or not isinstance(li_founder, bool)
         ):
             raise DesktopIdentityError(
                 "Desktop canonical identity response is malformed"
             )
+        attributes = set(principal.attributes)
+        if li_founder:
+            attributes.add(_LI_FOUNDER_ATTRIBUTE)
+        else:
+            attributes.discard(_LI_FOUNDER_ATTRIBUTE)
         return Principal(
             principal_id=user_id,
             tenant_id=tenant_id,
             kind=principal.kind,
             roles=principal.roles,
-            attributes=principal.attributes,
+            attributes=frozenset(attributes),
             authentication_methods=principal.authentication_methods,
         )
 

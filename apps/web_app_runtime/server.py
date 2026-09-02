@@ -29,6 +29,7 @@ from services.canonical_browser_session import (
     CanonicalBrowserSessionAuthority,
     CanonicalBrowserSessionError,
 )
+from services.canonical_identity_principal import CanonicalIdentityPrincipalResolver
 from services.central_identity import (
     CanonicalAccount,
     CentralIdentityError,
@@ -1008,11 +1009,23 @@ class AppRuntime:
             ).sign_in(verified)
         if not account.enabled:
             raise CentralIdentityError("canonical account is disabled")
+        principal = CanonicalIdentityPrincipalResolver(
+            self.environment.identity_database
+        ).resolve(account)
+        li_founder = False
+        if self.li is not None:
+            try:
+                self.li.authorize(principal)
+            except LiAccessError:
+                li_founder = False
+            else:
+                li_founder = True
         return self._json(
             HTTPStatus.OK,
             {
                 "user_id": account.user_id,
                 "tenant_id": account.tenant_id,
+                "li_founder": li_founder,
             },
         )
 

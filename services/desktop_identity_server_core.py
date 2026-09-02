@@ -136,6 +136,23 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                 state = _single_query(parse_qs(parsed.query), "state")
                 self._send_json(HTTPStatus.OK, _status_json(identity.status(state)))
                 return
+            if parsed.path == "/v1/li/state":
+                session = self._authenticated_session()
+                identity = self._require_identity()
+                if not identity.is_li_founder_session(session.session_id):
+                    self._send_error(HTTPStatus.FORBIDDEN, "request denied")
+                    return
+                self._send_json(
+                    HTTPStatus.OK,
+                    {
+                        "name": "Li",
+                        "founder_operator": True,
+                        "user_id": session.principal_id,
+                        "tenant_id": session.tenant_id,
+                        "source": "canonical_desktop_session",
+                    },
+                )
+                return
             if parsed.path == "/v1/execution/status":
                 session = self._authenticated_session()
                 request_id = _single_query(parse_qs(parsed.query), "request_id")
@@ -562,7 +579,7 @@ def _server_endpoint(address: tuple[str | bytes, int]) -> tuple[str, int]:
     return host, port
 
 
-def _status_json(status: DesktopAuthStatus) -> dict[str, str | None]:
+def _status_json(status: DesktopAuthStatus) -> dict[str, str | bool | None]:
     return {
         "state": status.state,
         "status": status.status,
@@ -571,6 +588,7 @@ def _status_json(status: DesktopAuthStatus) -> dict[str, str | None]:
         "principal_id": status.principal_id,
         "tenant_id": status.tenant_id,
         "display_identity": status.display_identity,
+        "li_founder": status.li_founder,
     }
 
 

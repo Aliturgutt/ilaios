@@ -91,7 +91,7 @@ def test_google_desktop_token_verifier_binds_google_subject_and_desktop_audience
 class _CanonicalResponse:
     status_code = 200
 
-    def json(self) -> dict[str, str]:
+    def json(self) -> dict[str, object]:
         return {
             "user_id": "usr_canonical123",
             "tenant_id": "tnt_canonical123",
@@ -105,6 +105,36 @@ class _CanonicalHTTP:
     def post(self, url: str, **kwargs: object) -> _CanonicalResponse:
         self.calls.append({"url": url, **kwargs})
         return _CanonicalResponse()
+
+
+class _FounderCanonicalResponse(_CanonicalResponse):
+    def json(self) -> dict[str, object]:
+        return {
+            "user_id": "usr_canonical123",
+            "tenant_id": "tnt_canonical123",
+            "li_founder": True,
+        }
+
+
+class _MalformedFounderCanonicalResponse(_CanonicalResponse):
+    def json(self) -> dict[str, object]:
+        return {
+            "user_id": "usr_canonical123",
+            "tenant_id": "tnt_canonical123",
+            "li_founder": "true",
+        }
+
+
+class _FounderCanonicalHTTP(_CanonicalHTTP):
+    def post(self, url: str, **kwargs: object) -> _FounderCanonicalResponse:
+        self.calls.append({"url": url, **kwargs})
+        return _FounderCanonicalResponse()
+
+
+class _MalformedFounderCanonicalHTTP(_CanonicalHTTP):
+    def post(self, url: str, **kwargs: object) -> _MalformedFounderCanonicalResponse:
+        self.calls.append({"url": url, **kwargs})
+        return _MalformedFounderCanonicalResponse()
 
 
 def _google_provider() -> OIDCProviderConfig:
@@ -171,6 +201,57 @@ def test_windows_desktop_fails_closed_for_noncanonical_provider() -> None:
     with pytest.raises(DesktopIdentityError):
         service._canonicalize_principal(
             "microsoft",
+            "signed.desktop.token",
+            local,
+            _NOW,
+        )
+
+
+def test_windows_desktop_binds_only_server_issued_li_founder_entitlement() -> None:
+    service = DesktopOIDCService(
+        (_google_provider(),),
+        canonical_request_session=cast(requests.Session, _FounderCanonicalHTTP()),
+    )
+    local = Principal(
+        principal_id="raw-google-subject",
+        tenant_id="desktop-derived-tenant",
+        kind=IdentityKind.HUMAN,
+        roles=frozenset({"user"}),
+        attributes=frozenset({("verified_email", "owner@example.com")}),
+        authentication_methods=frozenset(),
+    )
+
+    resolved = service._canonicalize_principal(
+        "google",
+        "signed.desktop.token",
+        local,
+        _NOW,
+    )
+
+    assert ("ilaios_li_founder", "true") in resolved.attributes
+    assert ("verified_email", "owner@example.com") in resolved.attributes
+
+
+def test_windows_desktop_rejects_malformed_li_founder_entitlement() -> None:
+    service = DesktopOIDCService(
+        (_google_provider(),),
+        canonical_request_session=cast(
+            requests.Session,
+            _MalformedFounderCanonicalHTTP(),
+        ),
+    )
+    local = Principal(
+        principal_id="raw-google-subject",
+        tenant_id="desktop-derived-tenant",
+        kind=IdentityKind.HUMAN,
+        roles=frozenset({"user"}),
+        attributes=frozenset(),
+        authentication_methods=frozenset(),
+    )
+
+    with pytest.raises(DesktopIdentityError, match="malformed"):
+        service._canonicalize_principal(
+            "google",
             "signed.desktop.token",
             local,
             _NOW,

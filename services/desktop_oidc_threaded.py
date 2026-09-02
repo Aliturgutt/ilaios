@@ -508,6 +508,7 @@ class DesktopOIDCService(_BaseDesktopOIDCService):
                 lifetime,
             )
             self._session_tenants[session.session_id] = session.tenant_id
+            self._bind_session_entitlements(session.session_id, principal)
             rotated = payload.get("refresh_token")
             if isinstance(rotated, str) and rotated.strip():
                 store.save(provider.provider_id, rotated)
@@ -519,6 +520,7 @@ class DesktopOIDCService(_BaseDesktopOIDCService):
                 principal_id=session.principal_id,
                 tenant_id=session.tenant_id,
                 display_identity=_verified_email(principal),
+                li_founder=self._session_li_founder.get(session.session_id, False),
             )
 
     def _remember_completion_error(self, state: str, message: str) -> None:

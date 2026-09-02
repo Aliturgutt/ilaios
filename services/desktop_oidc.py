@@ -74,6 +74,7 @@ class DesktopAuthStatus:
     principal_id: str | None = None
     tenant_id: str | None = None
     display_identity: str | None = None
+    li_founder: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +105,7 @@ class DesktopOIDCService:
         self._flows: dict[str, _AuthFlow] = {}
         self._results: dict[str, DesktopAuthStatus] = {}
         self._session_tenants: dict[str, str] = {}
+        self._session_li_founder: dict[str, bool] = {}
         self._session_registry = SessionRegistry(_SESSION_LIFETIME)
         self._http = request_session or requests.Session()
         self._verifier_factory = verifier_factory or (
@@ -316,6 +318,7 @@ class DesktopOIDCService:
             lifetime,
         )
         self._session_tenants[session.session_id] = session.tenant_id
+        self._bind_session_entitlements(session.session_id, principal)
         result = DesktopAuthStatus(
             state=state,
             status="authenticated",
@@ -324,6 +327,7 @@ class DesktopOIDCService:
             principal_id=session.principal_id,
             tenant_id=session.tenant_id,
             display_identity=_verified_email(principal),
+            li_founder=self._session_li_founder.get(session.session_id, False),
         )
         self._results[state] = result
         return result
@@ -387,9 +391,27 @@ class DesktopOIDCService:
                 "Desktop session is invalid or expired"
             ) from error
 
+    def is_li_founder_session(
+        self,
+        session_id: str,
+        now: datetime | None = None,
+    ) -> bool:
+        self.validate_session(session_id, now)
+        return self._session_li_founder.get(session_id, False)
+
+    def _bind_session_entitlements(
+        self,
+        session_id: str,
+        principal: Principal,
+    ) -> None:
+        self._session_li_founder[session_id] = (
+            ("ilaios_li_founder", "true") in principal.attributes
+        )
+
     def logout(self, session_id: str) -> None:
         self._session_registry.revoke_session(session_id)
         self._session_tenants.pop(session_id, None)
+        self._session_li_founder.pop(session_id, None)
         stale_states = [
             state
             for state, result in self._results.items()

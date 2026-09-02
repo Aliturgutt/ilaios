@@ -427,6 +427,15 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     }
   }
 
+  Future<DesktopLiState> _fetchLiState() async {
+    final identityClient = _identityClient;
+    final session = _userSession;
+    if (identityClient == null || session == null || !session.liFounder) {
+      throw const IdentityClientException('Li access denied');
+    }
+    return identityClient.fetchLiState(session);
+  }
+
   @override
   Widget build(BuildContext context) {
     final promptEnabled = _client != null &&
@@ -452,6 +461,7 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       onLogout: _userSession == null ? null : _logout,
       onPromptSubmit: promptEnabled ? _submitPrompt : null,
       onSaveArtifact: _client == null ? null : _saveArtifact,
+      onFetchLiState: _userSession?.liFounder == true ? _fetchLiState : null,
       onRefreshRequested: _client == null ? null : _refresh,
       onProvisionAgent: agentProvisionEnabled ? _provisionAgent : null,
       onGovernanceDecision: governanceEnabled ? _decideGovernance : null,

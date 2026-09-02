@@ -10,6 +10,7 @@ import '../../identity/identity_client.dart';
 import '../create/create_view.dart';
 import '../create/reference_asset_picker.dart';
 import '../deliveries/deliveries_view.dart';
+import '../li/li_view.dart';
 import '../navigation/desktop_section.dart';
 import '../operations/live_workspace_view.dart';
 import '../operations/operational_views.dart';
@@ -41,6 +42,7 @@ class ReferenceDesktopShellV10 extends StatefulWidget {
     this.onLogout,
     this.onPromptSubmit,
     this.onSaveArtifact,
+    this.onFetchLiState,
     this.onRefreshRequested,
     this.onProvisionAgent,
     this.onGovernanceDecision,
@@ -61,6 +63,7 @@ class ReferenceDesktopShellV10 extends StatefulWidget {
   final Future<void> Function()? onLogout;
   final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
   final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
+  final Future<DesktopLiState> Function()? onFetchLiState;
   final VoidCallback? onRefreshRequested;
   final Future<void> Function(String agentId)? onProvisionAgent;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
@@ -73,9 +76,28 @@ class ReferenceDesktopShellV10 extends StatefulWidget {
 
 class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
   DesktopSection _section = DesktopSection.home;
+  bool _liSelected = false;
+
+  @override
+  void didUpdateWidget(covariant ReferenceDesktopShellV10 oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (_liSelected && widget.userSession?.liFounder != true) {
+      _liSelected = false;
+      _section = DesktopSection.home;
+    }
+  }
 
   void _select(DesktopSection section) {
-    if (_section != section) setState(() => _section = section);
+    if (_section != section || _liSelected) {
+      setState(() {
+        _section = section;
+        _liSelected = false;
+      });
+    }
+  }
+
+  void _selectLi() {
+    if (!_liSelected) setState(() => _liSelected = true);
   }
 
   @override
@@ -91,10 +113,12 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
                     children: [
                       _Sidebar(
                         selected: _section,
+                        liSelected: _liSelected,
                         projection: widget.projection,
                         snapshot: widget.operationalSnapshot,
                         userSession: widget.userSession,
                         onSelected: _select,
+                        onLiSelected: _selectLi,
                       ),
                       VerticalDivider(
                         width: 1,
@@ -137,7 +161,14 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
     );
   }
 
-  Widget _buildSection() => switch (_section) {
+  Widget _buildSection() {
+    if (_liSelected) {
+      return LiView(
+        userSession: widget.userSession,
+        onFetchState: widget.onFetchLiState,
+      );
+    }
+    return switch (_section) {
         DesktopSection.home => ReferenceHomeDashboardV2(
             projection: widget.projection,
             snapshot: widget.operationalSnapshot,
@@ -202,25 +233,30 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
             providers: widget.identityProviders,
           ),
       };
+  }
 }
 
 class _Sidebar extends StatelessWidget {
   const _Sidebar({
     required this.selected,
+    required this.liSelected,
     required this.projection,
     required this.snapshot,
     required this.userSession,
     required this.onSelected,
+    required this.onLiSelected,
   });
 
   static const _darkLogo = 'assets/brand/02-ilaios-primary-horizontal-dark.jpg';
   static const _lightLogo = 'assets/brand/13-ilaios-primary-horizontal-light.jpg';
 
   final DesktopSection selected;
+  final bool liSelected;
   final ControlPlaneProjection projection;
   final OperationalSnapshot snapshot;
   final DesktopUserSession? userSession;
   final ValueChanged<DesktopSection> onSelected;
+  final VoidCallback onLiSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -269,8 +305,16 @@ class _Sidebar extends StatelessWidget {
                       padding: const EdgeInsets.only(bottom: 4),
                       child: _NavItem(
                         section: section,
-                        selected: selected == section,
+                        selected: !liSelected && selected == section,
                         onTap: () => onSelected(section),
+                      ),
+                    ),
+                  if (userSession?.liFounder == true)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 4),
+                      child: _LiNavItem(
+                        selected: liSelected,
+                        onTap: onLiSelected,
                       ),
                     ),
                 ],
@@ -328,6 +372,63 @@ class _NavItem extends StatelessWidget {
                   Expanded(
                     child: Text(
                       section.localizedLabel(context),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+                        color: Theme.of(context).colorScheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+}
+
+class _LiNavItem extends StatelessWidget {
+  const _LiNavItem({required this.selected, required this.onTap});
+
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+        color: selected
+            ? IlaiosTheme.enterpriseCyan.withValues(alpha: .06)
+            : Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(5),
+          side: BorderSide(
+            color: selected
+                ? IlaiosTheme.enterpriseCyan.withValues(alpha: .28)
+                : Colors.transparent,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          key: const ValueKey('nav-li'),
+          onTap: onTap,
+          child: SizedBox(
+            height: 44,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 10),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.auto_awesome_outlined,
+                    size: 18,
+                    color: selected
+                        ? IlaiosTheme.enterpriseCyan
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 11),
+                  Expanded(
+                    child: Text(
+                      context.tr('nav.li'),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
