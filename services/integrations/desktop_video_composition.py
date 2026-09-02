@@ -20,17 +20,19 @@ from services.reference_assets import ReferenceAssetStore
 from services.reference_relay import HttpReferenceRelayClient, ReferenceRelay
 from services.runtime import DurableGrantPolicy
 from services.source_media import SourceMediaStore
+from src.video_automation.openrouter_audio_perceptual_reviewer import (
+    OpenRouterAudioPerceptualReviewer,
+)
+from src.video_automation.openrouter_brand_perceptual_reviewer import (
+    OpenRouterBrandPerceptualReviewer,
+)
 from src.video_automation.openrouter_video_provider import SEEDANCE_FREE_MODEL_ID
 
-from .native_reference_receipt_runtime import (
-    ReceiptBoundNativeReferenceManagedDesktopVideoRuntime,
-)
 from .provider_video_runtime import ObjectiveResolver, UnavailableProviderVideoRuntime
-from .reference_aware_managed_provider_video_runtime import (
-    ManagedReferenceAwareProviderBackedDesktopVideoRuntime,
-)
-from .reference_aware_provider_video_runtime import (
-    ReferenceAwareProviderBackedDesktopVideoRuntime,
+from .three_domain_video_runtime import (
+    ThreeDomainManagedReferenceAwareProviderBackedDesktopVideoRuntime,
+    ThreeDomainReceiptBoundNativeReferenceManagedDesktopVideoRuntime,
+    ThreeDomainReferenceAwareProviderBackedDesktopVideoRuntime,
 )
 from .video_runtime import DeterministicLocalVideoRuntime, VideoRuntimeError
 
@@ -38,6 +40,7 @@ _VERIFIED_FREE = "verified-free"
 _MANAGED_BOUNDED = "managed-bounded"
 _MAX_MANAGED_DESKTOP_BUDGET_USD = Decimal("1.00")
 _DEFAULT_MANAGED_MODEL_ID = "bytedance/seedance-2.0-fast"
+_DEFAULT_FREE_QA_MODEL_ID = "openrouter/free"
 
 
 @dataclass(frozen=True, slots=True)
@@ -86,10 +89,15 @@ def compose_desktop_video_runtime(
             False,
         )
 
-    qa_model_id = os.environ.get("ILAIOS_VIDEO_QA_MODEL_ID", "openrouter/free").strip()
+    qa_model_id = os.environ.get("ILAIOS_VIDEO_QA_MODEL_ID", _DEFAULT_FREE_QA_MODEL_ID).strip()
+    audio_qa_model_id = _free_perceptual_model("ILAIOS_VIDEO_AUDIO_QA_MODEL_ID")
+    brand_qa_model_id = _free_perceptual_model("ILAIOS_VIDEO_BRAND_QA_MODEL_ID")
+    audio_reviewer = OpenRouterAudioPerceptualReviewer(api_key, audio_qa_model_id)
+    brand_reviewer = OpenRouterBrandPerceptualReviewer(api_key, brand_qa_model_id)
+
     if mode == _VERIFIED_FREE:
         model_id = os.environ.get("ILAIOS_VIDEO_MODEL_ID", SEEDANCE_FREE_MODEL_ID).strip()
-        runtime = ReferenceAwareProviderBackedDesktopVideoRuntime(
+        runtime = ThreeDomainReferenceAwareProviderBackedDesktopVideoRuntime(
             root,
             grants,
             governance,
@@ -101,10 +109,14 @@ def compose_desktop_video_runtime(
             reference_assets=reference_assets,
             source_media=source_media,
         )
+        runtime.configure_final_perceptual_reviewers(
+            audio_reviewer=audio_reviewer,
+            brand_reviewer=brand_reviewer,
+        )
         return DesktopVideoComposition(
             runtime,
             True,
-            ReferenceAwareProviderBackedDesktopVideoRuntime.PROVIDER_ID,
+            ThreeDomainReferenceAwareProviderBackedDesktopVideoRuntime.PROVIDER_ID,
             mode,
             None,
             False,
@@ -116,24 +128,27 @@ def compose_desktop_video_runtime(
         _DEFAULT_MANAGED_MODEL_ID,
     ).strip()
     if reference_relay is None:
-        managed_runtime: DeterministicLocalVideoRuntime = (
-            ManagedReferenceAwareProviderBackedDesktopVideoRuntime(
-                root,
-                grants,
-                governance,
-                evidence,
-                objective_resolver=objective_resolver,
-                api_key=api_key,
-                product_identity_database=product_identity_database,
-                max_total_cost_usd=budget,
-                model_id=managed_model_id,
-                qa_model_id=qa_model_id,
-                reference_assets=reference_assets,
-                source_media=source_media,
-            )
+        managed_runtime_impl = ThreeDomainManagedReferenceAwareProviderBackedDesktopVideoRuntime(
+            root,
+            grants,
+            governance,
+            evidence,
+            objective_resolver=objective_resolver,
+            api_key=api_key,
+            product_identity_database=product_identity_database,
+            max_total_cost_usd=budget,
+            model_id=managed_model_id,
+            qa_model_id=qa_model_id,
+            reference_assets=reference_assets,
+            source_media=source_media,
         )
+        managed_runtime_impl.configure_final_perceptual_reviewers(
+            audio_reviewer=audio_reviewer,
+            brand_reviewer=brand_reviewer,
+        )
+        managed_runtime: DeterministicLocalVideoRuntime = managed_runtime_impl
     else:
-        managed_runtime = ReceiptBoundNativeReferenceManagedDesktopVideoRuntime(
+        native_runtime = ThreeDomainReceiptBoundNativeReferenceManagedDesktopVideoRuntime(
             root,
             grants,
             governance,
@@ -148,14 +163,30 @@ def compose_desktop_video_runtime(
             source_media=source_media,
             reference_relay=reference_relay,
         )
+        native_runtime.configure_final_perceptual_reviewers(
+            audio_reviewer=audio_reviewer,
+            brand_reviewer=brand_reviewer,
+        )
+        managed_runtime = native_runtime
     return DesktopVideoComposition(
         managed_runtime,
         True,
-        ManagedReferenceAwareProviderBackedDesktopVideoRuntime.PROVIDER_ID,
+        ThreeDomainManagedReferenceAwareProviderBackedDesktopVideoRuntime.PROVIDER_ID,
         mode,
         str(budget),
         reference_relay is not None,
     )
+
+
+def _free_perceptual_model(env_name: str) -> str:
+    model_id = os.environ.get(env_name, _DEFAULT_FREE_QA_MODEL_ID).strip()
+    if not model_id:
+        raise VideoRuntimeError(f"{env_name} must not be blank")
+    if model_id != _DEFAULT_FREE_QA_MODEL_ID and not model_id.endswith(":free"):
+        raise VideoRuntimeError(
+            f"{env_name} must select an explicit free reviewer model"
+        )
+    return model_id
 
 
 def _managed_budget() -> Decimal:
