@@ -8,7 +8,7 @@ services:
     plan: 0.5c-512mb
     branch: master
     buildCommand: pip install --disable-pip-version-check -r apps/web_app_runtime/requirements.txt
-    startCommand: python -m apps.web_app_runtime.server
+    startCommand: python -m apps.web_app_runtime.login_server
     healthCheckPath: /health/ready
     autoDeployTrigger: checksPass
     numInstances: 1
