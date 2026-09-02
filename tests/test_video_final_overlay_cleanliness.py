@@ -9,6 +9,7 @@ import pytest
 
 import src.video_automation.final_overlay_cleanliness as overlay_module
 from src.video_automation.final_overlay_cleanliness import (
+    FinalOverlayCleanlinessEvidence,
     OpenRouterFinalOverlayCleanlinessReviewer,
 )
 from src.video_automation.openrouter_perceptual_reviewer import (
@@ -60,7 +61,7 @@ def _review(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     transport: _QueuedTransport,
-):
+) -> FinalOverlayCleanlinessEvidence:
     video = tmp_path / "final.mp4"
     video.write_bytes(b"exact-final-video-bytes")
     digest = sha256(video.read_bytes()).hexdigest()
