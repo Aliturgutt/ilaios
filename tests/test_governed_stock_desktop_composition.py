@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from services.integrations.desktop_video_composition import (
     _governed_stock_selector_from_environment,
     _official_brand_logo,
@@ -9,7 +11,9 @@ from services.integrations.desktop_video_composition import (
 from src.video_automation.stock_source_adapters import StockProvider
 
 
-def test_default_free_stock_selector_has_public_no_secret_sources(monkeypatch) -> None:
+def test_default_free_stock_selector_has_public_no_secret_sources(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.delenv("ILAIOS_PEXELS_API_KEY", raising=False)
     monkeypatch.delenv("ILAIOS_PIXABAY_API_KEY", raising=False)
     monkeypatch.delenv("ILAIOS_UNSPLASH_ACCESS_KEY", raising=False)
@@ -25,7 +29,9 @@ def test_default_free_stock_selector_has_public_no_secret_sources(monkeypatch) -
     assert StockProvider.UNSPLASH not in adapters
 
 
-def test_credentialed_stock_sources_are_only_added_when_configured(monkeypatch) -> None:
+def test_credentialed_stock_sources_are_only_added_when_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.setenv("ILAIOS_PEXELS_API_KEY", "pexels-key")
     monkeypatch.setenv("ILAIOS_PIXABAY_API_KEY", "pixabay-key")
     monkeypatch.setenv("ILAIOS_UNSPLASH_ACCESS_KEY", "unsplash-key")
@@ -48,7 +54,7 @@ def test_verified_free_composition_does_not_reference_seedance_free_alias() -> N
 
     assert "SEEDANCE_FREE_MODEL_ID" not in source
     assert "ILAIOS_VIDEO_MODEL_ID" not in source
-    assert 'GovernedStockDesktopVideoRuntime(' in source
+    assert "GovernedStockDesktopVideoRuntime(" in source
     assert '_DEFAULT_MANAGED_MODEL_ID = "bytedance/seedance-2.0-fast"' in source
     assert 'managed_model_id.endswith(":free")' in source
 
