@@ -128,26 +128,25 @@ def compose_desktop_video_runtime(
         _DEFAULT_MANAGED_MODEL_ID,
     ).strip()
     if reference_relay is None:
-        managed_runtime: DeterministicLocalVideoRuntime = (
-            ThreeDomainManagedReferenceAwareProviderBackedDesktopVideoRuntime(
-                root,
-                grants,
-                governance,
-                evidence,
-                objective_resolver=objective_resolver,
-                api_key=api_key,
-                product_identity_database=product_identity_database,
-                max_total_cost_usd=budget,
-                model_id=managed_model_id,
-                qa_model_id=qa_model_id,
-                reference_assets=reference_assets,
-                source_media=source_media,
-            )
+        managed_runtime_impl = ThreeDomainManagedReferenceAwareProviderBackedDesktopVideoRuntime(
+            root,
+            grants,
+            governance,
+            evidence,
+            objective_resolver=objective_resolver,
+            api_key=api_key,
+            product_identity_database=product_identity_database,
+            max_total_cost_usd=budget,
+            model_id=managed_model_id,
+            qa_model_id=qa_model_id,
+            reference_assets=reference_assets,
+            source_media=source_media,
         )
-        managed_runtime.configure_final_perceptual_reviewers(
+        managed_runtime_impl.configure_final_perceptual_reviewers(
             audio_reviewer=audio_reviewer,
             brand_reviewer=brand_reviewer,
         )
+        managed_runtime: DeterministicLocalVideoRuntime = managed_runtime_impl
     else:
         native_runtime = ThreeDomainReceiptBoundNativeReferenceManagedDesktopVideoRuntime(
             root,
