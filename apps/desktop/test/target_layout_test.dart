@@ -42,7 +42,7 @@ void main() {
       expect(find.byKey(const Key('reference-responsive-viewport-v10')), findsOneWidget);
 
       final shouldScrollCompactViewport =
-          size.width < 940 || size.height <= 768;
+          size.width < 940 || size.height < 1040;
       expect(
         find.byKey(const Key('command-center-short-viewport-scroll')),
         shouldScrollCompactViewport ? findsOneWidget : findsNothing,
