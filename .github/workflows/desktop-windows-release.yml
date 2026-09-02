@@ -16,8 +16,6 @@ on:
       - 'services/software_factory_runtime.py'
       - 'services/software_factory_secret_scanning.py'
       - 'src/video_automation/**'
-      - 'brand/assets/02-ilaios-primary-horizontal-dark.jpg'
-      - 'brand/assets/03-ilaios-symbol-dark.jpg'
       - 'brand/assets/05-ilaios-app-icon.jpg'
       - 'brand/assets/13-ilaios-primary-horizontal-light.jpg'
       - '.github/workflows/desktop-windows-release.yml'
@@ -36,8 +34,6 @@ on:
       - 'services/software_factory_runtime.py'
       - 'services/software_factory_secret_scanning.py'
       - 'src/video_automation/**'
-      - 'brand/assets/02-ilaios-primary-horizontal-dark.jpg'
-      - 'brand/assets/03-ilaios-symbol-dark.jpg'
       - 'brand/assets/05-ilaios-app-icon.jpg'
       - 'brand/assets/13-ilaios-primary-horizontal-light.jpg'
       - '.github/workflows/desktop-windows-release.yml'
@@ -127,8 +123,6 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $release = Join-Path (Get-Location) 'build\windows\x64\runner\Release'
           $required = @(
-            'brand\assets\02-ilaios-primary-horizontal-dark.jpg',
-            'brand\assets\03-ilaios-symbol-dark.jpg',
             'brand\assets\05-ilaios-app-icon.jpg',
             'brand\assets\13-ilaios-primary-horizontal-light.jpg'
           )
