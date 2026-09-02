@@ -87,7 +87,7 @@ _LOGIN_HTML = """<!doctype html>
 
     <footer class="trust-footer">
       <div class="trust-line"><span aria-hidden="true">◇</span> Secure <span>•</span> Private <span>•</span> Built for Trust</div>
-      <p>By continuing, you acknowledge the ILAOS authentication flow and security controls.</p>
+      <p>By continuing, you acknowledge the ILAIOS authentication flow and security controls.</p>
     </footer>
   </main>
   <script src="/login/app.js" defer></script>
