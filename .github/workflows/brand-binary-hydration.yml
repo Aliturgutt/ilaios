@@ -5,7 +5,7 @@ on:
     branches:
       - brand/canonical-neutral-palette-20260902
     paths:
-      - '.brand-hydration/**'
+      - '.brand-hydration/*.b64'
   workflow_dispatch:
 
 permissions:
