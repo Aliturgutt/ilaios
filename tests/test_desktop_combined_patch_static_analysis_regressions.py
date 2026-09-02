@@ -81,6 +81,12 @@ def test_v4_goals_reference_controls_are_direct_and_bounded(tmp_path: Path) -> N
     assert "key: const Key('goals-composer')" in create_view
     assert "ReferenceAssetPicker(" in create_view
     assert "ReferenceAssetUiScope" not in create_view
+    assert "key: const Key('compact-reference-asset-row')" in picker
+    assert "key: const Key('compact-reference-asset-stack')" in picker
+    assert "constraints.maxWidth < 1080" in picker
+    assert "Expanded(child: _companyKnowledge())" in picker
+    assert "Expanded(child: _images())" in picker
+    assert "Expanded(child: _sourceVideo())" in picker
     assert "Expanded(flex: 3, child: _images())" in picker
     assert "Expanded(flex: 2, child: _sourceVideo())" in picker
     assert "Column(\n        mainAxisSize: MainAxisSize.min,\n        children: [\n          _images()," in picker

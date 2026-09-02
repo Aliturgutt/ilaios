@@ -16,10 +16,10 @@ import 'reference_home_truth_sanitizer.dart';
 /// The actual Home implementation lives in [ReferenceHomeDashboardV3]. Wide
 /// Desktop windows with a short logical content height (for example 1280x800
 /// after the shell bars are removed) preserve native typography size and allow
-/// vertical scrolling of the verified 744px Home safety canvas instead of
-/// shrinking the entire surface. Windows text scaling uses the same strategy:
-/// the safety canvas grows with the system scale and remains vertically
-/// scrollable rather than compressing or shrinking readable text.
+/// vertical scrolling of the verified Home safety canvas instead of shrinking
+/// the entire surface. Windows text scaling uses the same strategy: the safety
+/// canvas grows with the system scale and remains vertically scrollable rather
+/// than compressing or shrinking readable text.
 class ReferenceHomeDashboardV2 extends StatelessWidget {
   const ReferenceHomeDashboardV2({
     required this.projection,
@@ -62,11 +62,15 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
-          const baseSafetyHeight = 744.0;
+          const baseSafetyHeight = 769.0;
+          const shortViewportSafetyHeight = 860.0;
           final textScale = MediaQuery.textScalerOf(context).scale(1);
-          final scaledSafetyHeight = baseSafetyHeight * textScale.clamp(1.0, 1.5);
           final needsReadableScroll = constraints.maxWidth >= 1000 &&
               (constraints.maxHeight < baseSafetyHeight || textScale > 1.0);
+          final safetyHeight = constraints.maxHeight < baseSafetyHeight
+              ? shortViewportSafetyHeight
+              : baseSafetyHeight;
+          final scaledSafetyHeight = safetyHeight * textScale.clamp(1.0, 1.5);
 
           if (needsReadableScroll) {
             return SingleChildScrollView(
