@@ -14,12 +14,11 @@ import 'reference_home_truth_sanitizer.dart';
 /// Compatibility entry point kept for the established Desktop shell.
 ///
 /// The actual Home implementation lives in [ReferenceHomeDashboardV3]. Wide
-/// Desktop windows with a short logical content height (for example 1280x800
-/// after the shell bars are removed) preserve native typography size and allow
-/// vertical scrolling of the verified Home safety canvas instead of shrinking
-/// the entire surface. Windows text scaling uses the same strategy: the safety
-/// canvas grows with the system scale and remains vertically scrollable rather
-/// than compressing or shrinking readable text.
+/// Desktop windows with a short logical content height preserve native
+/// typography size and allow vertical scrolling of the verified Home safety
+/// canvas instead of shrinking the entire surface. Windows text scaling uses
+/// the same strategy: the safety canvas grows with the system scale and remains
+/// vertically scrollable rather than compressing or shrinking readable text.
 class ReferenceHomeDashboardV2 extends StatelessWidget {
   const ReferenceHomeDashboardV2({
     required this.projection,
@@ -62,8 +61,12 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
-          const baseSafetyHeight = 769.0;
-          const shortViewportSafetyHeight = 960.0;
+          // The inline governed attachment row increases the Home hero height.
+          // Keep the approved wide 2x2 support composition and native text
+          // sizes; shorter desktop client areas scroll a sufficiently tall
+          // safety canvas instead of starving support panels.
+          const baseSafetyHeight = 1000.0;
+          const shortViewportSafetyHeight = 1040.0;
           final textScale = MediaQuery.textScalerOf(context).scale(1);
           final needsReadableScroll = constraints.maxWidth >= 1000 &&
               (constraints.maxHeight < baseSafetyHeight || textScale > 1.0);
