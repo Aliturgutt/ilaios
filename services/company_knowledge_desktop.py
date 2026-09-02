@@ -3,9 +3,8 @@
 This module extends the existing Desktop identity/source-media HTTP boundary; it does
 not create another identity, execution, or memory authority. Uploaded document bytes
 are validated and extracted by ``company_knowledge_ingestion`` and persisted through
-the canonical ``DurableKnowledgeRuntime``. Raw source-byte retention is intentionally
-not claimed here; that remains the responsibility of the canonical governed Files /
-object-storage integration.
+the canonical ``DurableKnowledgeRuntime``. Raw source bytes are retained through the
+governed source-file persistence boundary with tenant/project/source/version lineage.
 """
 
 from __future__ import annotations
@@ -28,6 +27,7 @@ from services.company_knowledge_ingestion import (
 )
 from services.desktop_oidc import DesktopIdentityError, DesktopOIDCService
 from services.execution_coordinator import ExecutionCoordinator, ExecutionCoordinatorError
+from services.governed_source_files import GovernedSourceFileError, GovernedSourceFileStore
 from services.knowledge_rag import KnowledgeRAGError
 from services.knowledge_runtime import (
     DurableKnowledgeRuntime,
@@ -64,14 +64,20 @@ class TenantCompanyKnowledgeRegistry:
     The registry owns no semantic memory state. Each runtime retains the existing
     immutable server-side tenant/project binding and integrity-chained event log.
     The company project namespace is server-owned so callers cannot select another
-    project boundary through the upload API.
+    project boundary through the upload API. Raw bytes use the same server-owned
+    tenant/project/source/version identifiers and never become prompt instructions.
     """
 
     def __init__(self, root: Path) -> None:
         self._root = root
         self._lock = threading.RLock()
         self._runtimes: dict[str, DurableKnowledgeRuntime] = {}
+        self._source_files = GovernedSourceFileStore(root / "source-files")
         root.mkdir(parents=True, exist_ok=True)
+
+    @property
+    def source_files(self) -> GovernedSourceFileStore:
+        return self._source_files
 
     def runtime_for(self, tenant_id: str) -> DurableKnowledgeRuntime:
         if not tenant_id or tenant_id != tenant_id.strip():
@@ -119,34 +125,49 @@ class TenantCompanyKnowledgeRegistry:
             raise CompanyKnowledgeIngestionError(
                 "company document sha256 does not match uploaded bytes"
             )
-        runtime = self.runtime_for(tenant_id)
-        source_id = _source_id(filename)
-        # The locator identifies the durable logical source, not one specific byte
-        # version. Per-version content integrity remains in canonical Knowledge
-        # version/unit hashes until governed raw source-file retention is wired.
-        locator = f"desktop-company-upload://source/{source_id}/{filename}"
-        ingestor = DurableCompanyKnowledgeIngestor(runtime)
-        try:
-            return ingestor.ingest(
-                source_id,
+
+        # Serialize the logical source update so semantic version and raw-byte version
+        # cannot race within this server process.
+        with self._lock:
+            runtime = self.runtime_for(tenant_id)
+            source_id = _source_id(filename)
+            locator = f"governed-company-source://{source_id}/{filename}"
+            ingestor = DurableCompanyKnowledgeIngestor(runtime)
+            try:
+                source = ingestor.ingest(
+                    source_id,
+                    filename=filename,
+                    mime_type=mime_type,
+                    content=content,
+                    locator=locator,
+                    trusted=False,
+                    classifications=_COMPANY_CLASSIFICATIONS,
+                    purposes=_COMPANY_PURPOSES,
+                    residency="global",
+                )
+            except KnowledgeRAGError as error:
+                if str(error) != "source_id already exists":
+                    raise
+                extracted = ingestor.extract(
+                    filename=filename,
+                    mime_type=mime_type,
+                    content=content,
+                )
+                source = runtime.update_source(source_id=source_id, content=extracted.text)
+
+            latest_version = source.get("latest_version")
+            if not isinstance(latest_version, int) or latest_version < 1:
+                raise KnowledgeRuntimeError("Knowledge source returned an invalid latest_version")
+            self._source_files.store(
+                tenant_id=tenant_id,
+                project_id=_COMPANY_PROJECT_ID,
+                source_id=source_id,
+                version=latest_version,
                 filename=filename,
                 mime_type=mime_type,
                 content=content,
-                locator=locator,
-                trusted=False,
-                classifications=_COMPANY_CLASSIFICATIONS,
-                purposes=_COMPANY_PURPOSES,
-                residency="global",
             )
-        except KnowledgeRAGError as error:
-            if str(error) != "source_id already exists":
-                raise
-            extracted = ingestor.extract(
-                filename=filename,
-                mime_type=mime_type,
-                content=content,
-            )
-            return runtime.update_source(source_id=source_id, content=extracted.text)
+            return source
 
 
 class CompanyKnowledgeDesktopIdentityHTTPServer(SourceMediaDesktopIdentityHTTPServer):
@@ -195,6 +216,7 @@ class CompanyKnowledgeDesktopIdentityRequestHandler(
             self._send_error(HTTPStatus.CONFLICT, str(error))
         except (
             CompanyKnowledgeIngestionError,
+            GovernedSourceFileError,
             KnowledgeRAGError,
             KnowledgeRuntimeError,
             ValueError,
@@ -239,6 +261,7 @@ class CompanyKnowledgeDesktopIdentityRequestHandler(
                 "mime_type": mime_type,
                 "sha256": digest,
                 "knowledge_scope": "company",
+                "raw_source_retained": True,
             },
         )
 
