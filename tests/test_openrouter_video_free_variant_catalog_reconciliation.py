@@ -5,6 +5,7 @@ from collections.abc import Mapping
 from src.video_automation.free_provider_production_certification import (
     build_free_certification_request,
 )
+from src.video_automation.models import ProviderRequest
 from src.video_automation.openrouter_video_provider import (
     SEEDANCE_FREE_MODEL_ID,
     OpenRouterByteResponse,
@@ -79,7 +80,7 @@ class _VariantCatalogTransport(OpenRouterTransport):
         raise AssertionError("content retrieval is not part of submission preflight")
 
 
-def _request():
+def _request() -> ProviderRequest:
     return build_free_certification_request(
         model_id=SEEDANCE_FREE_MODEL_ID,
         run_id="variant-catalog",
