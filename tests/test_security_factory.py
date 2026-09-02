@@ -74,6 +74,26 @@ def test_pyproject_dependency_scan_detects_unpinned_dependency(tmp_path: Path) -
     assert "requests" in supply[0].message
 
 
+def test_repository_scan_detects_untrusted_input_to_sensitive_sink(tmp_path: Path) -> None:
+    (tmp_path / "tainted.py").write_text(
+        "import subprocess\ncommand = input()\nsubprocess.run(command)\n",
+        encoding="utf-8",
+    )
+    report = SecurityFactory().scan_repository(_scope(tmp_path))
+    findings = [item for item in report.findings if item.finding_id == "SAST-TAINT-UNTRUSTED-TO-SINK"]
+    assert len(findings) == 1
+    assert findings[0].line == 3
+
+
+def test_repository_scan_does_not_flag_constrained_sink_input(tmp_path: Path) -> None:
+    (tmp_path / "safe.py").write_text(
+        "import subprocess\ncommand = 'status'\nsubprocess.run(command)\n",
+        encoding="utf-8",
+    )
+    report = SecurityFactory().scan_repository(_scope(tmp_path))
+    assert "SAST-TAINT-UNTRUSTED-TO-SINK" not in {item.finding_id for item in report.findings}
+
+
 def test_dast_observation_is_local_only_and_non_destructive(tmp_path: Path) -> None:
     factory = SecurityFactory()
     scope = _scope(tmp_path)
