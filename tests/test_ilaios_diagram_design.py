@@ -51,7 +51,9 @@ def test_render_is_deterministic_and_emits_evidence() -> None:
     assert len(first.spec_sha256) == 64
     assert len(first.artifact_sha256) == 64
     assert "standalone-svg" in first.checks
-    assert "#00C2D1" in first.svg
+    assert "#2A2A2A" in first.svg
+    assert "#00C2D1" not in first.svg
+    assert "#146BFF" not in first.svg
     assert 'role="img"' in first.svg
 
 
