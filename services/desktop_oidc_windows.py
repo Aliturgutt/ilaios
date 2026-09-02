@@ -18,6 +18,10 @@ from services.identity import Principal
 
 
 _CANONICAL_IDENTITY_ENDPOINT = "https://app.ilaios.com/auth/desktop/canonicalize"
+_LI_MEMORY_LIST_ENDPOINT = "https://app.ilaios.com/api/desktop/li/memories/list"
+_LI_MEMORY_REMEMBER_ENDPOINT = (
+    "https://app.ilaios.com/api/desktop/li/memories/remember"
+)
 _LI_FOUNDER_ATTRIBUTE = ("ilaios_li_founder", "true")
 
 
@@ -122,6 +126,90 @@ class DesktopOIDCService(_MicrosoftDesktopOIDCService):
             authentication_methods=principal.authentication_methods,
         )
 
+    def list_li_memories(
+        self,
+        session_id: str,
+        now: datetime | None = None,
+    ) -> tuple[dict[str, object], ...]:
+        if not self.is_li_founder_session(session_id, now):
+            raise DesktopIdentityError("Desktop Li access denied")
+        provider_id, encoded_token = self._session_identity_credential(
+            session_id,
+            now,
+        )
+        payload = self._li_request(
+            _LI_MEMORY_LIST_ENDPOINT,
+            {
+                "provider_id": provider_id,
+                "id_token": encoded_token,
+            },
+            expected_status=200,
+        )
+        memories = payload.get("memories")
+        if not isinstance(memories, list):
+            raise DesktopIdentityError("Desktop Li memory response is malformed")
+        return tuple(_validated_memory(item) for item in memories)
+
+    def remember_li_memory(
+        self,
+        session_id: str,
+        *,
+        kind: str,
+        content: str,
+        now: datetime | None = None,
+    ) -> dict[str, object]:
+        if not self.is_li_founder_session(session_id, now):
+            raise DesktopIdentityError("Desktop Li access denied")
+        provider_id, encoded_token = self._session_identity_credential(
+            session_id,
+            now,
+        )
+        payload = self._li_request(
+            _LI_MEMORY_REMEMBER_ENDPOINT,
+            {
+                "provider_id": provider_id,
+                "id_token": encoded_token,
+                "kind": kind,
+                "content": content,
+            },
+            expected_status=201,
+        )
+        return _validated_memory(payload)
+
+    def _li_request(
+        self,
+        endpoint: str,
+        document: dict[str, object],
+        *,
+        expected_status: int,
+    ) -> dict[str, object]:
+        try:
+            response = self._canonical_http.post(
+                endpoint,
+                json=document,
+                headers={"Accept": "application/json"},
+                timeout=10,
+            )
+        except requests.RequestException as error:
+            raise DesktopIdentityError(
+                "Desktop Li memory service is unavailable"
+            ) from error
+        try:
+            payload = response.json()
+        except ValueError as error:
+            raise DesktopIdentityError(
+                "Desktop Li memory response is malformed"
+            ) from error
+        if response.status_code in {401, 403}:
+            raise DesktopIdentityError("Desktop Li memory access was denied")
+        if response.status_code == 400:
+            raise DesktopIdentityError("Desktop Li memory request was rejected")
+        if response.status_code != expected_status or not isinstance(payload, dict):
+            raise DesktopIdentityError(
+                "Desktop Li memory service returned an invalid response"
+            )
+        return payload
+
     def start(
         self,
         provider_id: str,
@@ -131,6 +219,43 @@ class DesktopOIDCService(_MicrosoftDesktopOIDCService):
         if provider_id == "microsoft":
             redirect_uri = _microsoft_system_browser_redirect(redirect_uri)
         return super().start(provider_id, redirect_uri, now=now)
+
+
+def _validated_memory(value: object) -> dict[str, object]:
+    if not isinstance(value, dict):
+        raise DesktopIdentityError("Desktop Li memory response is malformed")
+    memory_id = value.get("memory_id")
+    kind = value.get("kind")
+    content = value.get("content")
+    source = value.get("source")
+    confidence = value.get("confidence")
+    sensitivity = value.get("sensitivity")
+    created_at = value.get("created_at")
+    if (
+        not isinstance(memory_id, str)
+        or not memory_id.startswith("li_mem_")
+        or kind not in {"working", "episodic", "semantic"}
+        or not isinstance(content, str)
+        or not content
+        or not isinstance(source, str)
+        or not source
+        or isinstance(confidence, bool)
+        or not isinstance(confidence, (int, float))
+        or not 0.0 <= float(confidence) <= 1.0
+        or sensitivity not in {"internal", "private"}
+        or not isinstance(created_at, str)
+        or not created_at
+    ):
+        raise DesktopIdentityError("Desktop Li memory response is malformed")
+    return {
+        "memory_id": memory_id,
+        "kind": kind,
+        "content": content,
+        "source": source,
+        "confidence": float(confidence),
+        "sensitivity": sensitivity,
+        "created_at": created_at,
+    }
 
 
 def _microsoft_system_browser_redirect(value: str) -> str:

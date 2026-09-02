@@ -7,6 +7,8 @@ from http.cookies import SimpleCookie
 from pathlib import Path
 from typing import cast
 
+import apps.web_app_runtime.server as runtime_server
+import pytest
 from apps.web_app_runtime.server import (
     AppRuntime,
     AppRuntimeEnvironment,
@@ -318,3 +320,101 @@ def test_li_routes_fail_closed_when_feature_is_not_configured(tmp_path: Path) ->
         now=_NOW,
     )
     assert response.status is HTTPStatus.FORBIDDEN
+
+
+def test_desktop_li_memory_api_reauthenticates_and_denies_customer_owner(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    runtime, oauth = _runtime(tmp_path / "identity.db")
+    _cookies, founder_session = _login(runtime)
+    _enable_li(
+        runtime,
+        li_database=tmp_path / "li.db",
+        session=founder_session,
+    )
+
+    def founder_token(
+        _encoded_token: str,
+        *,
+        client_id: str,
+        now: datetime,
+    ) -> VerifiedExternalIdentity:
+        assert client_id == "desktop-client-id"
+        assert now == _NOW
+        return VerifiedExternalIdentity(
+            provider=IdentityProvider.GOOGLE,
+            subject=oauth.subject,
+            email=f"{oauth.subject}@example.com",
+            email_verified=True,
+        )
+
+    monkeypatch.setattr(
+        runtime_server,
+        "verify_google_desktop_id_token",
+        founder_token,
+    )
+    stored = runtime.dispatch(
+        RuntimeRequest(
+            method="POST",
+            target="/api/desktop/li/memories/remember",
+            headers={"Content-Type": "application/json"},
+            body=json.dumps(
+                {
+                    "provider_id": "google",
+                    "id_token": "founder-token",
+                    "kind": "semantic",
+                    "content": "Desktop founder memory",
+                }
+            ).encode(),
+        ),
+        now=_NOW,
+    )
+    assert stored.status is HTTPStatus.CREATED
+    stored_payload = json.loads(stored.body)
+    assert stored_payload["content"] == "Desktop founder memory"
+    assert stored_payload["source"] == "desktop"
+
+    listed = runtime.dispatch(
+        RuntimeRequest(
+            method="POST",
+            target="/api/desktop/li/memories/list",
+            headers={"Content-Type": "application/json"},
+            body=b'{"provider_id":"google","id_token":"founder-token"}',
+        ),
+        now=_NOW,
+    )
+    assert listed.status is HTTPStatus.OK
+    assert json.loads(listed.body)["memories"][0]["content"] == "Desktop founder memory"
+
+    def customer_token(
+        _encoded_token: str,
+        *,
+        client_id: str,
+        now: datetime,
+    ) -> VerifiedExternalIdentity:
+        assert client_id == "desktop-client-id"
+        assert now == _NOW
+        return VerifiedExternalIdentity(
+            provider=IdentityProvider.GOOGLE,
+            subject="customer-desktop-subject",
+            email="customer-desktop@example.com",
+            email_verified=True,
+        )
+
+    monkeypatch.setattr(
+        runtime_server,
+        "verify_google_desktop_id_token",
+        customer_token,
+    )
+    denied = runtime.dispatch(
+        RuntimeRequest(
+            method="POST",
+            target="/api/desktop/li/memories/list",
+            headers={"Content-Type": "application/json"},
+            body=b'{"provider_id":"google","id_token":"customer-token"}',
+        ),
+        now=_NOW,
+    )
+    assert denied.status is HTTPStatus.FORBIDDEN
+    assert b"Desktop founder memory" not in denied.body

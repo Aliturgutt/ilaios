@@ -106,6 +106,7 @@ class DesktopOIDCService:
         self._results: dict[str, DesktopAuthStatus] = {}
         self._session_tenants: dict[str, str] = {}
         self._session_li_founder: dict[str, bool] = {}
+        self._session_identity_credentials: dict[str, tuple[str, str]] = {}
         self._session_registry = SessionRegistry(_SESSION_LIFETIME)
         self._http = request_session or requests.Session()
         self._verifier_factory = verifier_factory or (
@@ -319,6 +320,11 @@ class DesktopOIDCService:
         )
         self._session_tenants[session.session_id] = session.tenant_id
         self._bind_session_entitlements(session.session_id, principal)
+        self._bind_session_identity_credential(
+            session.session_id,
+            provider.provider_id,
+            encoded_token,
+        )
         result = DesktopAuthStatus(
             state=state,
             status="authenticated",
@@ -387,6 +393,8 @@ class DesktopOIDCService:
             return self._session_registry.validate(session_id, tenant_id, current)
         except PermissionError as error:
             self._session_tenants.pop(session_id, None)
+            self._session_li_founder.pop(session_id, None)
+            self._session_identity_credentials.pop(session_id, None)
             raise DesktopIdentityError(
                 "Desktop session is invalid or expired"
             ) from error
@@ -408,10 +416,56 @@ class DesktopOIDCService:
             ("ilaios_li_founder", "true") in principal.attributes
         )
 
+    def _bind_session_identity_credential(
+        self,
+        session_id: str,
+        provider_id: str,
+        encoded_token: str,
+    ) -> None:
+        normalized_provider = provider_id.strip()
+        normalized_token = encoded_token.strip()
+        if not normalized_provider or not normalized_token:
+            raise DesktopIdentityError("Desktop identity credential is invalid")
+        self._session_identity_credentials[session_id] = (
+            normalized_provider,
+            normalized_token,
+        )
+
+    def _session_identity_credential(
+        self,
+        session_id: str,
+        now: datetime | None = None,
+    ) -> tuple[str, str]:
+        self.validate_session(session_id, now)
+        credential = self._session_identity_credentials.get(session_id)
+        if credential is None:
+            raise DesktopIdentityError(
+                "Desktop identity credential is unavailable"
+            )
+        return credential
+
+    def list_li_memories(
+        self,
+        session_id: str,
+        now: datetime | None = None,
+    ) -> tuple[dict[str, object], ...]:
+        raise DesktopIdentityError("Desktop Li memory transport is unavailable")
+
+    def remember_li_memory(
+        self,
+        session_id: str,
+        *,
+        kind: str,
+        content: str,
+        now: datetime | None = None,
+    ) -> dict[str, object]:
+        raise DesktopIdentityError("Desktop Li memory transport is unavailable")
+
     def logout(self, session_id: str) -> None:
         self._session_registry.revoke_session(session_id)
         self._session_tenants.pop(session_id, None)
         self._session_li_founder.pop(session_id, None)
+        self._session_identity_credentials.pop(session_id, None)
         stale_states = [
             state
             for state, result in self._results.items()
