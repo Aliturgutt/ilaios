@@ -40,8 +40,8 @@ forbid(finalLayer, /rgba\(0\s*,\s*194\s*,\s*209/i, "final loaded website layer c
 
 requireText(finalLayer, "--accent: #2A2A2A;", "light neutral accent");
 requireText(finalLayer, "--accent-2: #2F2F2F;", "light neutral secondary accent");
-requireText(finalLayer, "--v2-cyan: #E6E6E6;", "final V2 cyan neutral lock");
-requireText(finalLayer, "--v2-blue: #E6E6E6;", "final V2 blue neutral lock");
+requireText(finalLayer, "--v2-cyan: #E6E6E6 !important;", "final V2 cyan neutral lock");
+requireText(finalLayer, "--v2-blue: #B3B3B3 !important;", "final V2 blue neutral lock");
 
 if (failures.length) {
   console.error(failures.join("\n"));
