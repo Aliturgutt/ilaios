@@ -23,7 +23,13 @@ def _docx(text: str) -> bytes:
     return output.getvalue()
 
 
-def _ingest(registry: TenantCompanyKnowledgeRegistry, *, tenant_id: str, filename: str, text: str):
+def _ingest(
+    registry: TenantCompanyKnowledgeRegistry,
+    *,
+    tenant_id: str,
+    filename: str,
+    text: str,
+) -> tuple[dict[str, object], bytes]:
     content = _docx(text)
     source = registry.ingest(
         tenant_id=tenant_id,
