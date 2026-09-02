@@ -1,42 +1,54 @@
 /* Canonical ILAIOS brand color system.
-   Source authority: 01-ilaios-brand-color-system.html.
-   Recommended distribution: 60% foundation, 30% content, 10% accent.
-   Cyan leads identity, Core Blue is functional/action state, Violet is selective.
-   This layer changes color hierarchy only; layout, copy and route behavior stay unchanged. */
+   Source authority: brand/assets/01-ilaios-brand-color-system.png.
+   UI is monochrome by design. ILAIOS Cyan and ILAIOS Blue are reserved for
+   official logo/icon identity only and must not be used for controls, links,
+   selected states, borders or other UI accents. No gradient UI. */
 
 :root {
-  --brand-carbon: #0B0F14;
-  --brand-charcoal: #111827;
-  --brand-graphite: #1F2937;
+  --brand-carbon: #0A0A0A;
+  --brand-charcoal: #141414;
+  --brand-graphite: #1E1E1E;
+  --brand-stone: #2A2A2A;
   --brand-white: #FFFFFF;
 
-  --brand-cyan: #00C2D1;
-  --brand-blue: #146BFF;
-  --brand-violet: #5C58FE;
+  --brand-text-secondary: #E6E6E6;
+  --brand-text-tertiary: #B3B3B3;
+  --brand-disabled: #808080;
+  --brand-hover: #242424;
+  --brand-active: #2F2F2F;
 
-  --brand-text-soft: #AFC0D2;
-  --brand-muted: #8FA2B8;
-  --brand-muted-deep: #64758A;
-  --brand-line: #2B3748;
-  --brand-line-strong: #344154;
-  --brand-panel-dark: #080D13;
-  --brand-panel-deep: #0A1018;
+  /* Reserved identity colors: logo/icon assets only. */
+  --brand-logo-cyan: #00C2D1;
+  --brand-logo-blue: #146BFF;
 
-  --brand-cyan-soft: rgba(0, 194, 209, .10);
-  --brand-cyan-line: rgba(0, 194, 209, .42);
-  --brand-blue-soft: rgba(20, 107, 255, .10);
-  --brand-blue-line: rgba(20, 107, 255, .42);
-  --brand-violet-soft: rgba(92, 88, 254, .08);
+  /* Compatibility aliases intentionally resolve to neutral UI values so
+     legacy selectors cannot reintroduce reserved identity colors. */
+  --brand-cyan: var(--brand-text-secondary);
+  --brand-blue: var(--brand-text-secondary);
+  --brand-violet: var(--brand-text-secondary);
+  --brand-cyan-soft: var(--brand-hover);
+  --brand-cyan-line: var(--brand-stone);
+  --brand-blue-soft: var(--brand-hover);
+  --brand-blue-line: var(--brand-stone);
+  --brand-violet-soft: var(--brand-hover);
+
+  --brand-text-soft: var(--brand-text-secondary);
+  --brand-muted: var(--brand-text-tertiary);
+  --brand-muted-deep: var(--brand-disabled);
+  --brand-line: var(--brand-stone);
+  --brand-line-strong: var(--brand-stone);
+  --brand-panel-dark: var(--brand-charcoal);
+  --brand-panel-deep: var(--brand-graphite);
 
   --bg: var(--brand-carbon);
   --surface: var(--brand-charcoal);
   --surface-2: var(--brand-graphite);
   --text: var(--brand-white);
-  --text-soft: var(--brand-text-soft);
-  --muted: var(--brand-muted);
-  --line: var(--brand-line);
-  --line-strong: var(--brand-line-strong);
-  --accent: var(--brand-cyan);
+  --text-soft: var(--brand-text-secondary);
+  --muted: var(--brand-text-tertiary);
+  --line: var(--brand-stone);
+  --line-strong: var(--brand-stone);
+  --accent: var(--brand-text-secondary);
 }
 
 body {
@@ -47,31 +59,38 @@ body {
 .site-header,
 .site-footer {
   background: var(--brand-carbon);
-  border-color: var(--brand-line);
+  border-color: var(--brand-stone);
 }
 
 .surface-section,
 .architecture-section,
-.evidence-section {
-  background: var(--brand-charcoal);
-}
-
+.evidence-section,
 .canonical-detail-panel,
 .explorer-panel,
 .detail-nav-link,
 .product-experience,
 .boundary-core,
-.authority-layer {
-  background-color: var(--brand-charcoal);
-  border-color: var(--brand-line);
+.authority-layer,
+.card,
+.detail-link-card,
+.journey-card,
+.flow-card,
+.plane-card,
+.security-chain article,
+.core-node,
+.contact-directory article {
+  background: var(--brand-charcoal);
+  background-image: none;
+  border-color: var(--brand-stone);
 }
 
 .canonical-linear > div,
 .goal-composer textarea,
 .explore-menu-panel,
 .nav-panel {
-  background-color: var(--brand-panel-dark);
-  border-color: var(--brand-line);
+  background: var(--brand-carbon);
+  background-image: none;
+  border-color: var(--brand-stone);
 }
 
 .eyebrow,
@@ -85,15 +104,12 @@ body {
 .canonical-linear > div > span,
 .canonical-dual > div > span,
 .process-ledger > article > span,
-.verification-list span {
-  color: var(--brand-cyan);
-}
-
+.verification-list span,
 .status-chip,
 .runtime-steps span,
 .core-node span,
 .execution-status-line strong {
-  color: var(--brand-blue);
+  color: var(--brand-text-secondary);
 }
 
 .nav-primary a[aria-current="page"],
@@ -101,45 +117,57 @@ body {
 .explore-menu summary.is-active,
 .product-mode-tabs button.is-active {
   color: var(--brand-white);
-  border-color: var(--brand-cyan);
+  background: var(--brand-active);
+  border-color: var(--brand-stone);
 }
 
 .language-switch strong {
-  background: var(--brand-cyan-soft);
+  background: var(--brand-active);
   color: var(--brand-white);
-  box-shadow: inset 0 0 0 1px var(--brand-cyan-line);
+  box-shadow: inset 0 0 0 1px var(--brand-stone);
 }
 
 .button {
-  background: var(--brand-cyan);
-  border-color: var(--brand-cyan);
+  background: var(--brand-text-secondary);
+  border-color: var(--brand-text-secondary);
   color: var(--brand-carbon);
 }
 
 .button:hover {
-  background: #16CEDC;
-  border-color: #16CEDC;
-  color: var(--brand-carbon);
+  background: var(--brand-hover);
+  border-color: var(--brand-stone);
+  color: var(--brand-white);
+}
+
+.button:active {
+  background: var(--brand-active);
+  border-color: var(--brand-stone);
+  color: var(--brand-white);
 }
 
 .button.secondary {
   background: transparent;
-  border-color: var(--brand-line-strong);
+  border-color: var(--brand-stone);
   color: var(--brand-white);
 }
 
-.button.secondary:hover {
-  background: var(--brand-graphite);
-  border-color: var(--brand-blue-line);
+.button.secondary:hover,
+.detail-link-card:hover,
+.core-node:hover,
+.pathway-card:hover,
+.destination-card:hover {
+  background: var(--brand-hover);
+  background-image: none;
+  border-color: var(--brand-stone);
   color: var(--brand-white);
 }
 
 :where(a,button,input,textarea,summary):focus-visible {
-  outline-color: var(--brand-blue);
+  outline-color: var(--brand-text-secondary);
 }
 
 ::selection {
-  background: var(--brand-cyan);
+  background: var(--brand-text-secondary);
   color: var(--brand-carbon);
 }
 
@@ -157,59 +185,28 @@ body {
 .architecture-layer-list,
 .about-principles,
 .contact-directory {
-  border-color: var(--brand-line);
+  border-color: var(--brand-stone);
 }
 
-.card,
-.detail-link-card,
-.journey-card,
-.flow-card,
-.plane-card,
-.security-chain article,
-.core-node,
-.contact-directory article {
-  border-color: var(--brand-line);
-}
-
-.detail-link-card:hover,
-.core-node:hover,
-.pathway-card:hover,
-.destination-card:hover {
-  background: var(--brand-charcoal);
-  border-color: var(--brand-cyan-line);
-}
-
-.authority-layer,
-.boundary-core {
-  background: var(--brand-charcoal);
-  border-color: var(--brand-cyan-line);
-}
-
-.execution-rail .is-active {
-  background: var(--brand-blue-soft);
-}
-
-.execution-rail .is-active span {
-  color: var(--brand-blue);
-}
-
+.execution-rail .is-active,
 .execution-rail .is-complete {
-  background: var(--brand-cyan-soft);
+  background: var(--brand-active);
 }
 
+.execution-rail .is-active span,
 .execution-rail .is-complete span {
-  color: var(--brand-cyan);
+  color: var(--brand-text-secondary);
 }
 
 [data-visual-role="capability-maturity-model"] .canonical-linear > div:last-child,
 [data-visual-role="finops-routing-flow"] .canonical-linear > div:last-child {
-  background: var(--brand-panel-deep);
-  border-bottom-color: rgba(92, 88, 254, .38);
+  background: var(--brand-graphite);
+  border-bottom-color: var(--brand-stone);
 }
 
 [data-visual-role="capability-maturity-model"] .canonical-linear > div:last-child > span,
 [data-visual-role="finops-routing-flow"] .canonical-linear > div:last-child > span {
-  color: var(--brand-violet);
+  color: var(--brand-text-secondary);
 }
 
 h1,
@@ -222,17 +219,17 @@ strong {
 p,
 small,
 .muted {
-  color: var(--brand-muted);
+  color: var(--brand-text-tertiary);
 }
 
 .lead {
-  color: var(--brand-text-soft);
+  color: var(--brand-text-secondary);
 }
 
 .footer-row,
 .section-note,
 .meta {
-  color: var(--brand-muted-deep);
+  color: var(--brand-disabled);
 }
 
 @media (prefers-reduced-motion: reduce) {
