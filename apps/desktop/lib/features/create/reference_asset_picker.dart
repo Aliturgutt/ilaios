@@ -198,7 +198,10 @@ class ReferenceAssetPicker extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 1080) return _safeCompactStack();
+        // The approved Home prompt keeps file/image/video controls on one row
+        // throughout the supported wide Desktop layout. Stack only when the
+        // actual picker width is too narrow for that three-control composition.
+        if (constraints.maxWidth < 840) return _safeCompactStack();
 
         return Row(
           key: const Key('compact-reference-asset-row'),
