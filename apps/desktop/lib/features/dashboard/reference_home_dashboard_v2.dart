@@ -64,9 +64,11 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
           // The inline governed attachment row increases the Home hero height.
           // Keep the approved wide 2x2 support composition and native text
           // sizes; shorter desktop client areas scroll a sufficiently tall
-          // safety canvas instead of starving support panels.
+          // safety canvas instead of starving support panels. The 1420px short
+          // canvas is derived from the exact-head 1366x768 overflow evidence:
+          // both support rows needed about 146px more vertical room than 1240.
           const baseSafetyHeight = 1000.0;
-          const shortViewportSafetyHeight = 1240.0;
+          const shortViewportSafetyHeight = 1420.0;
           final textScale = MediaQuery.textScalerOf(context).scale(1);
           final needsReadableScroll = constraints.maxWidth >= 1000 &&
               (constraints.maxHeight < baseSafetyHeight || textScale > 1.0);
