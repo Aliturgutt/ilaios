@@ -7,7 +7,7 @@ Goal: complete every deterministic Desktop task that does not require Microsoft 
 ## A. Premium product shell and canonical branding
 
 - [x] Merge the premium target control-center UI into `master`.
-- [x] Bind Desktop theme tokens to the canonical ILAIOS palette: Carbon `#0B0F14`, Charcoal `#111827`, Graphite `#1F2937`, White `#FFFFFF`, Enterprise Cyan `#00C2D1`, Core Blue `#146BFF`, Violet `#5C58FE`.
+- [x] Bind Desktop UI tokens to the canonical ILAIOS neutral palette: Carbon `#0A0A0A`, Charcoal `#141414`, Graphite `#1E1E1E`, Stone `#2A2A2A`, White `#FFFFFF`, Text Secondary `#E6E6E6`, Text Tertiary `#B3B3B3`, Disabled `#808080`, Hover `#242424`, Active `#2F2F2F`. ILAIOS Cyan `#00C2D1` and ILAIOS Blue `#146BFF` are reserved for official logo/icon identity only and are not UI accents.
 - [x] Use the canonical ILAIOS symbol/app-icon sources for the Flutter shell, Windows executable icon, and MSIX asset derivation without redrawing/recoloring.
 - [ ] Re-run exact-head responsive/text-scaling layout gates after final pre-Store changes.
 
