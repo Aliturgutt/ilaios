@@ -1,53 +1,53 @@
 /* Website V2 finalization: theme, public product-guide and supplied educational visuals. */
 :root {
-  --v2-surface: rgba(12, 20, 29, .74);
-  --v2-surface-strong: #111923;
-  --v2-card-border: #2b3947;
-  --v2-copy: #c9d4dc;
-  --v2-soft: #91a1af;
+  --v2-surface: rgba(20, 20, 20, .74);
+  --v2-surface-strong: #141414;
+  --v2-card-border: #2A2A2A;
+  --v2-copy: #E6E6E6;
+  --v2-soft: #B3B3B3;
 }
 
 html[data-theme="light"] {
   color-scheme: light;
-  --bg: #f7f9fb;
-  --panel: #ffffff;
-  --text: #111827;
-  --muted: #596574;
-  --line: #d6dde5;
-  --accent: #009fbd;
-  --accent-2: #1769d2;
+  --bg: #FFFFFF;
+  --panel: #FFFFFF;
+  --text: #0A0A0A;
+  --muted: #808080;
+  --line: #B3B3B3;
+  --accent: #2A2A2A;
+  --accent-2: #2F2F2F;
   --v2-surface: rgba(255, 255, 255, .92);
-  --v2-surface-strong: #ffffff;
-  --v2-card-border: #d7dee6;
-  --v2-copy: #364152;
-  --v2-soft: #657283;
+  --v2-surface-strong: #FFFFFF;
+  --v2-card-border: #B3B3B3;
+  --v2-copy: #2A2A2A;
+  --v2-soft: #808080;
 }
 
 html[data-theme="light"] body {
-  background: #f7f9fb;
+  background: #FFFFFF;
   color: var(--text);
 }
 
 html[data-theme="light"] .site-header {
-  background: rgba(10, 15, 21, .96);
+  background: rgba(10, 10, 10, .96);
   border-bottom-color: rgba(255, 255, 255, .10);
-  color: #f7f9fb;
+  color: #FFFFFF;
 }
 html[data-theme="light"] .site-header a,
 html[data-theme="light"] .site-header button,
-html[data-theme="light"] .site-header summary { color: #f7f9fb; }
-html[data-theme="light"] .site-header .explore-menu-panel { background: #111923; border-color: #2b3947; }
+html[data-theme="light"] .site-header summary { color: #FFFFFF; }
+html[data-theme="light"] .site-header .explore-menu-panel { background: #141414; border-color: #2A2A2A; }
 
 html[data-theme="light"] .section,
 html[data-theme="light"] .site-footer,
 html[data-theme="light"] .proof-strip {
-  border-color: rgba(17, 24, 39, .10);
+  border-color: rgba(10, 10, 10, .10);
 }
 
 html[data-theme="light"] .surface-section,
 html[data-theme="light"] .evidence-section,
 html[data-theme="light"] .architecture-section {
-  background: #ffffff;
+  background: #FFFFFF;
 }
 
 html[data-theme="light"] .lead,
@@ -72,7 +72,7 @@ html[data-theme="light"] .evidence-control,
 html[data-theme="light"] .system-visual,
 html[data-theme="light"] .journey-card,
 html[data-theme="light"] .factory-truth-note {
-  background: #ffffff;
+  background: #FFFFFF;
   border-color: var(--v2-card-border);
   box-shadow: none;
 }
@@ -87,13 +87,13 @@ html[data-theme="light"] .site-footer {
 }
 
 html[data-theme="light"] .button {
-  background: #111827;
-  color: #ffffff;
+  background: #0A0A0A;
+  color: #FFFFFF;
 }
 
 html[data-theme="light"] .button.secondary {
   background: transparent;
-  color: #111827;
+  color: #0A0A0A;
 }
 
 html[data-theme="light"] .muted,
