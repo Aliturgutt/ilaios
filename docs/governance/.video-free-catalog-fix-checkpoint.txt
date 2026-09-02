@@ -1,3 +1,0 @@
-Temporary bounded checkpoint for the free-video catalog reconciliation branch.
-Root cause: OpenRouter /videos/models currently exposes the base video model while the exact :free variant is resolved through the model API. The adapter must prove both base video capability and exact zero-priced free variant before provider POST.
-Delete this checkpoint before merge if no longer needed.
