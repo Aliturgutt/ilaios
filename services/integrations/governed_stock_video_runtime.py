@@ -24,11 +24,15 @@ from src.video_automation.governed_stock_composition import (
 )
 from src.video_automation.governed_stock_media_fetch import fetch_selected_stock_media
 from src.video_automation.governed_stock_selection import GovernedStockSelector
+from src.video_automation.workflow_orchestrator import (
+    VideoWorkflowOrchestrator,
+    WorkflowRunResult,
+)
 
 from .desktop_video_runtime import (
     ObjectiveResolver,
     _DesktopFinishedProductExecution,
-    _as_bool,
+    _validate_runtime_identity,
     _visual_filters,
     _windows_font,
 )
@@ -64,6 +68,9 @@ class GovernedStockDesktopVideoRuntime(DeterministicLocalVideoRuntime):
         grant_id: str,
         now: datetime,
     ) -> dict[str, object]:
+        _validate_runtime_identity("request_id", request_id)
+        _validate_runtime_identity("job_id", job_id)
+        _validate_runtime_identity("grant_id", grant_id)
         amount = self._governance.authorize_billable(request_id)
         started = time.monotonic()
         try:
@@ -171,9 +178,7 @@ class _GovernedStockFinishedProductExecution(_DesktopFinishedProductExecution):
             raise VideoRuntimeError("governed stock evidence is unavailable")
         return self._stock_evidence
 
-    def run_workflow(self):
-        from src.video_automation.workflow_orchestrator import VideoWorkflowOrchestrator
-
+    def run_workflow(self) -> WorkflowRunResult:
         return VideoWorkflowOrchestrator().run(self._job_id, self.steps())
 
     def _acquire_assets(self) -> dict[str, object]:
