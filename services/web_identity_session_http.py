@@ -108,9 +108,8 @@ class WebIdentitySessionBoundary:
         session_id = _opaque(
             request.cookies.get(_SESSION_COOKIE, ""), "session cookie"
         )
-        csrf_cookie = _opaque(request.cookies.get(_CSRF_COOKIE, ""), "csrf cookie")
-
         if method in _MUTATING_METHODS:
+            csrf_cookie = _opaque(request.cookies.get(_CSRF_COOKIE, ""), "csrf cookie")
             origin = _header(request.headers, "Origin")
             if origin is None or _production_origin(origin) not in self._production_origins:
                 raise WebIdentitySessionError("request origin is not allowlisted")

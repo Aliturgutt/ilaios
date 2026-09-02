@@ -135,6 +135,35 @@ def test_safe_read_uses_host_only_cookies_without_requiring_csrf() -> None:
     assert credentials.session_id == _SESSION
 
 
+def test_cross_site_oauth_callback_safe_read_allows_strict_csrf_cookie_to_be_absent() -> None:
+    credentials = _boundary().credentials(
+        WebIdentitySessionRequest(
+            method="GET",
+            headers={},
+            cookies={
+                "__Host-ilaios_auth": _AUTH,
+                "__Host-ilaios_session": _SESSION,
+            },
+        )
+    )
+    assert credentials.encoded_token == _AUTH
+    assert credentials.session_id == _SESSION
+
+
+def test_mutating_request_still_requires_strict_csrf_cookie() -> None:
+    with pytest.raises(WebIdentitySessionError, match="csrf cookie"):
+        _boundary().credentials(
+            WebIdentitySessionRequest(
+                method="POST",
+                headers={"Origin": _ORIGIN, "X-CSRF-Token": _CSRF},
+                cookies={
+                    "__Host-ilaios_auth": _AUTH,
+                    "__Host-ilaios_session": _SESSION,
+                },
+            )
+        )
+
+
 def test_authentication_and_session_binding_stay_canonical() -> None:
     verifier = _Verifier()
     authentication = AuthenticationBoundary(
