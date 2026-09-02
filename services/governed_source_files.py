@@ -1,6 +1,6 @@
 """Governed raw source-file persistence boundary.
 
-This module stores immutable source bytes outside Knowledge semantics.  It owns no
+This module stores immutable source bytes outside Knowledge semantics. It owns no
 identity, tenant selection, Policy, Approval, Tool Gateway, or Evidence authority.
 Callers must supply server-authoritative tenant/project/source scope.
 """
@@ -12,6 +12,7 @@ import os
 import sqlite3
 import tempfile
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 
 
@@ -31,13 +32,14 @@ class SourceFileRecord:
     sha256: str
     object_key: str
     state: str
+    retain_until: str | None
 
 
 class GovernedSourceFileStore:
     """Tenant/project-scoped immutable source bytes with version tombstones.
 
     Bytes are content-addressed on the local governed runtime filesystem. Metadata is
-    SQLite-backed so restart does not lose source/version lineage.  This is a concrete
+    SQLite-backed so restart does not lose source/version lineage. This is a concrete
     local runtime adapter, not a claim of cloud object-storage deployment.
     """
 
@@ -63,6 +65,7 @@ class GovernedSourceFileStore:
               sha256 TEXT NOT NULL,
               object_key TEXT NOT NULL,
               state TEXT NOT NULL CHECK(state IN ('active','revoked','deleted')),
+              retain_until TEXT,
               PRIMARY KEY (tenant_id, project_id, source_id, version)
             );
             """
@@ -79,6 +82,7 @@ class GovernedSourceFileStore:
         filename: str,
         mime_type: str,
         content: bytes,
+        retain_until: datetime | None = None,
     ) -> SourceFileRecord:
         self._scope(tenant_id, "tenant_id")
         self._scope(project_id, "project_id")
@@ -92,6 +96,12 @@ class GovernedSourceFileStore:
             raise GovernedSourceFileError("source file is empty")
         if len(content) > self._MAX_BYTES:
             raise GovernedSourceFileError("source file exceeds bounded size")
+        retention = None
+        if retain_until is not None:
+            normalized = retain_until.astimezone(timezone.utc)
+            if normalized <= datetime.now(timezone.utc):
+                raise GovernedSourceFileError("retention must be in the future")
+            retention = normalized.isoformat()
 
         digest = hashlib.sha256(content).hexdigest()
         object_key = f"sha256/{digest[:2]}/{digest}"
@@ -101,8 +111,8 @@ class GovernedSourceFileStore:
             self._db.execute(
                 """INSERT INTO governed_source_files
                    (tenant_id, project_id, source_id, version, filename, mime_type,
-                    size_bytes, sha256, object_key, state)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')""",
+                    size_bytes, sha256, object_key, state, retain_until)
+                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?)""",
                 (
                     tenant_id,
                     project_id,
@@ -113,6 +123,7 @@ class GovernedSourceFileStore:
                     len(content),
                     digest,
                     object_key,
+                    retention,
                 ),
             )
             self._db.commit()
@@ -125,9 +136,16 @@ class GovernedSourceFileStore:
                 version=version,
                 include_inactive=True,
             )
-            if existing.sha256 == digest and existing.filename == filename and existing.mime_type == mime_type:
+            if (
+                existing.sha256 == digest
+                and existing.filename == filename
+                and existing.mime_type == mime_type
+                and existing.retain_until == retention
+            ):
                 return existing
-            raise GovernedSourceFileError("source version already exists with different bytes") from exc
+            raise GovernedSourceFileError(
+                "source version already exists with different bytes or policy"
+            ) from exc
         return self.get(
             tenant_id=tenant_id,
             project_id=project_id,
@@ -170,7 +188,10 @@ class GovernedSourceFileStore:
             source_id=source_id,
             version=version,
         )
-        content = self._path(record.object_key).read_bytes()
+        try:
+            content = self._path(record.object_key).read_bytes()
+        except OSError as exc:
+            raise GovernedSourceFileError("source file bytes are unavailable") from exc
         if len(content) != record.size_bytes or hashlib.sha256(content).hexdigest() != record.sha256:
             raise GovernedSourceFileError("source file integrity verification failed")
         return content
@@ -186,6 +207,10 @@ class GovernedSourceFileStore:
             version=version,
             include_inactive=True,
         )
+        if record.retain_until is not None:
+            retain_until = datetime.fromisoformat(record.retain_until)
+            if retain_until > datetime.now(timezone.utc):
+                raise GovernedSourceFileError("source file retention is active")
         self._set_state(tenant_id, project_id, source_id, version, "deleted")
         remaining = self._db.execute(
             "SELECT COUNT(*) AS count FROM governed_source_files WHERE sha256=? AND state!='deleted'",
@@ -196,8 +221,12 @@ class GovernedSourceFileStore:
                 self._path(record.object_key).unlink()
             except FileNotFoundError:
                 pass
+            except OSError as exc:
+                raise GovernedSourceFileError("source file delete failed") from exc
 
-    def list_versions(self, *, tenant_id: str, project_id: str, source_id: str) -> tuple[SourceFileRecord, ...]:
+    def list_versions(
+        self, *, tenant_id: str, project_id: str, source_id: str
+    ) -> tuple[SourceFileRecord, ...]:
         rows = self._db.execute(
             """SELECT * FROM governed_source_files
                WHERE tenant_id=? AND project_id=? AND source_id=? ORDER BY version DESC""",
@@ -205,7 +234,14 @@ class GovernedSourceFileStore:
         ).fetchall()
         return tuple(self._row(row) for row in rows)
 
-    def _set_state(self, tenant_id: str, project_id: str, source_id: str, version: int, state: str) -> None:
+    def _set_state(
+        self,
+        tenant_id: str,
+        project_id: str,
+        source_id: str,
+        version: int,
+        state: str,
+    ) -> None:
         self.get(
             tenant_id=tenant_id,
             project_id=project_id,
@@ -222,9 +258,14 @@ class GovernedSourceFileStore:
 
     def _put_immutable(self, path: Path, content: bytes, digest: str) -> None:
         if path.exists():
-            existing = path.read_bytes()
+            try:
+                existing = path.read_bytes()
+            except OSError as exc:
+                raise GovernedSourceFileError("existing source object is unreadable") from exc
             if hashlib.sha256(existing).hexdigest() != digest:
-                raise GovernedSourceFileError("existing content-addressed object failed integrity")
+                raise GovernedSourceFileError(
+                    "existing content-addressed object failed integrity"
+                )
             return
         path.parent.mkdir(parents=True, exist_ok=True)
         fd, temporary = tempfile.mkstemp(prefix=".source-", dir=path.parent)
@@ -234,6 +275,8 @@ class GovernedSourceFileStore:
                 handle.flush()
                 os.fsync(handle.fileno())
             os.replace(temporary, path)
+        except OSError as exc:
+            raise GovernedSourceFileError("source file persistence failed") from exc
         finally:
             try:
                 os.unlink(temporary)
@@ -249,12 +292,26 @@ class GovernedSourceFileStore:
 
     @staticmethod
     def _scope(value: str, name: str) -> None:
-        if not value or value != value.strip() or len(value) > 200 or "/" in value or "\\" in value or "\x00" in value:
+        if (
+            not value
+            or value != value.strip()
+            or len(value) > 200
+            or "/" in value
+            or "\\" in value
+            or "\x00" in value
+        ):
             raise GovernedSourceFileError(f"{name} is invalid")
 
     @staticmethod
     def _filename(filename: str) -> None:
-        if not filename or filename != filename.strip() or len(filename) > 180 or "/" in filename or "\\" in filename or "\x00" in filename:
+        if (
+            not filename
+            or filename != filename.strip()
+            or len(filename) > 180
+            or "/" in filename
+            or "\\" in filename
+            or "\x00" in filename
+        ):
             raise GovernedSourceFileError("filename is invalid")
 
     @staticmethod
@@ -270,6 +327,9 @@ class GovernedSourceFileStore:
             sha256=str(row["sha256"]),
             object_key=str(row["object_key"]),
             state=str(row["state"]),
+            retain_until=(
+                None if row["retain_until"] is None else str(row["retain_until"])
+            ),
         )
 
 
