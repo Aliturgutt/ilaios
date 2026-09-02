@@ -176,19 +176,15 @@ class ReferenceAssetPicker extends StatelessWidget {
       );
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
+    return Row(
+      key: const Key('compact-reference-asset-row'),
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(flex: 3, child: _images()),
-            const SizedBox(width: 8),
-            Expanded(flex: 2, child: _sourceVideo()),
-          ],
-        ),
-        const SizedBox(height: 6),
-        _companyKnowledge(),
+        Expanded(child: _companyKnowledge()),
+        const SizedBox(width: 8),
+        Expanded(child: _images()),
+        const SizedBox(width: 8),
+        Expanded(child: _sourceVideo()),
       ],
     );
   }
