@@ -46,6 +46,7 @@ from services.google_web_oauth import (
     GoogleWebOAuthTemporalClaimsError,
     GoogleWebOAuthTokenExchangeError,
 )
+from services.li_founder_operator import LiFounderConfig, LiFounderOperator
 from services.web_identity_session_http import WebIdentitySessionBoundary
 
 _NOW = datetime(2026, 8, 29, 14, 0, tzinfo=UTC)
@@ -1031,3 +1032,105 @@ def test_app_http_server_has_bounded_concurrency(tmp_path: Path) -> None:
             runtime,
             max_concurrent_requests=0,
         )
+
+
+def test_desktop_canonicalization_projects_li_only_for_exact_founder_account(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    database = tmp_path / "identity.db"
+    runtime, _oauth = _runtime(database)
+    founder_cookies, _, _ = _callback(runtime)
+    founder_session = runtime.dispatch(
+        RuntimeRequest(
+            method="GET",
+            target="/auth/session",
+            headers={"Cookie": _cookie_header(founder_cookies)},
+        ),
+        now=_NOW,
+    )
+    founder = json.loads(founder_session.body)
+    runtime.li = LiFounderOperator(
+        config=LiFounderConfig(
+            user_id=str(founder["user_id"]),
+            tenant_id=str(founder["tenant_id"]),
+            database_path=tmp_path / "li.db",
+        ),
+        identity_database=database,
+    )
+
+    def verify_founder(
+        _encoded_token: str,
+        *,
+        client_id: str,
+        now: datetime,
+    ) -> VerifiedExternalIdentity:
+        assert client_id == "desktop-client-id"
+        assert now == _NOW
+        return VerifiedExternalIdentity(
+            provider=IdentityProvider.GOOGLE,
+            subject="google-subject-123",
+            email="owner@example.com",
+            email_verified=True,
+        )
+
+    monkeypatch.setattr(
+        runtime_server,
+        "verify_google_desktop_id_token",
+        verify_founder,
+    )
+    founder_desktop = runtime.dispatch(
+        RuntimeRequest(
+            method="POST",
+            target="/auth/desktop/canonicalize",
+            headers={"Content-Type": "application/json"},
+            body=b'{"provider_id":"google","id_token":"founder-token"}',
+        ),
+        now=_NOW,
+    )
+    assert founder_desktop.status is HTTPStatus.OK
+    founder_payload = json.loads(founder_desktop.body)
+    assert founder_payload["user_id"] == founder["user_id"]
+    assert founder_payload["tenant_id"] == founder["tenant_id"]
+    assert founder_payload["li_founder"] is True
+
+    def verify_customer(
+        _encoded_token: str,
+        *,
+        client_id: str,
+        now: datetime,
+    ) -> VerifiedExternalIdentity:
+        assert client_id == "desktop-client-id"
+        assert now == _NOW
+        return VerifiedExternalIdentity(
+            provider=IdentityProvider.GOOGLE,
+            subject="customer-google-subject",
+            email="customer@example.com",
+            email_verified=True,
+        )
+
+    monkeypatch.setattr(
+        runtime_server,
+        "verify_google_desktop_id_token",
+        verify_customer,
+    )
+    customer_desktop = runtime.dispatch(
+        RuntimeRequest(
+            method="POST",
+            target="/auth/desktop/canonicalize",
+            headers={"Content-Type": "application/json"},
+            body=b'{"provider_id":"google","id_token":"customer-token"}',
+        ),
+        now=_NOW,
+    )
+    assert customer_desktop.status is HTTPStatus.OK
+    customer_payload = json.loads(customer_desktop.body)
+    assert customer_payload["user_id"] != founder_payload["user_id"]
+    assert customer_payload["tenant_id"] != founder_payload["tenant_id"]
+    assert customer_payload["li_founder"] is False
+    with sqlite3.connect(database) as connection:
+        role = connection.execute(
+            "SELECT role FROM identity_memberships WHERE user_id = ? AND tenant_id = ?",
+            (customer_payload["user_id"], customer_payload["tenant_id"]),
+        ).fetchone()
+    assert role == ("OWNER",)

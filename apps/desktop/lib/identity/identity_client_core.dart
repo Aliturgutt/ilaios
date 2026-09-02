@@ -35,6 +35,7 @@ class DesktopUserSession {
     required this.principalId,
     required this.tenantId,
     this.displayIdentity,
+    this.liFounder = false,
   });
 
   final String sessionId;
@@ -42,6 +43,23 @@ class DesktopUserSession {
   final String principalId;
   final String tenantId;
   final String? displayIdentity;
+  final bool liFounder;
+}
+
+class DesktopLiState {
+  const DesktopLiState({
+    required this.name,
+    required this.founderOperator,
+    required this.userId,
+    required this.tenantId,
+    required this.source,
+  });
+
+  final String name;
+  final bool founderOperator;
+  final String userId;
+  final String tenantId;
+  final String source;
 }
 
 class GovernedPromptSubmission extends PromptSubmission {
@@ -176,6 +194,7 @@ class IdentityClient {
     final principalId = payload['principal_id'];
     final tenantId = payload['tenant_id'];
     final displayIdentity = payload['display_identity'];
+    final liFounder = payload['li_founder'];
     if (sessionId is! String ||
         sessionId.isEmpty ||
         providerId is! String ||
@@ -184,7 +203,8 @@ class IdentityClient {
         principalId.isEmpty ||
         tenantId is! String ||
         tenantId.isEmpty ||
-        (displayIdentity != null && displayIdentity is! String)) {
+        (displayIdentity != null && displayIdentity is! String) ||
+        (liFounder != null && liFounder is! bool)) {
       throw const IdentityClientException('Authenticated session is malformed');
     }
     return DesktopUserSession(
@@ -193,6 +213,33 @@ class IdentityClient {
       principalId: principalId,
       tenantId: tenantId,
       displayIdentity: displayIdentity as String?,
+      liFounder: liFounder == true,
+    );
+  }
+
+  Future<DesktopLiState> fetchLiState(DesktopUserSession session) async {
+    final payload = await _sessionGet('/v1/li/state', 'Li state', session);
+    final name = payload['name'];
+    final founderOperator = payload['founder_operator'];
+    final userId = payload['user_id'];
+    final tenantId = payload['tenant_id'];
+    final source = payload['source'];
+    if (name != 'Li' ||
+        founderOperator is! bool ||
+        founderOperator != true ||
+        userId is! String ||
+        userId != session.principalId ||
+        tenantId is! String ||
+        tenantId != session.tenantId ||
+        source != 'canonical_desktop_session') {
+      throw const IdentityClientException('Desktop Li state response is malformed');
+    }
+    return DesktopLiState(
+      name: name as String,
+      founderOperator: founderOperator,
+      userId: userId,
+      tenantId: tenantId,
+      source: source as String,
     );
   }
 

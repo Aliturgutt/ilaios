@@ -4,6 +4,7 @@ import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/control_plane/evidence_record.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
 import 'package:ilaios_desktop/main.dart';
+import 'package:ilaios_desktop/identity/identity_client.dart';
 
 const _evidence = EvidenceRecord(
   sequence: 1,
@@ -152,6 +153,7 @@ void main() {
     expect(find.byKey(const ValueKey('nav-evidence')), findsOneWidget);
     expect(find.byKey(const ValueKey('nav-costs')), findsOneWidget);
     expect(find.byKey(const ValueKey('nav-settings')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-li')), findsNothing);
   });
 
   testWidgets('live workspace stays read-only when projections are unavailable', (
@@ -397,4 +399,82 @@ void main() {
     expect(find.byKey(const ValueKey('approve-exec-medium')), findsNothing);
     expect(find.byKey(const ValueKey('deny-exec-medium')), findsNothing);
   });
+
+
+  testWidgets('Li is hidden for a signed-in nonfounder session', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const IlaiosDesktopApp(
+        userSession: DesktopUserSession(
+          sessionId: 'customer-session',
+          providerId: 'google',
+          principalId: 'usr_customer',
+          tenantId: 'tnt_customer',
+          displayIdentity: 'customer@example.com',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const ValueKey('nav-settings')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-li')), findsNothing);
+  });
+
+  testWidgets('founder-only Li appears below Settings and revalidates state', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const session = DesktopUserSession(
+      sessionId: 'founder-session',
+      providerId: 'google',
+      principalId: 'usr_founder',
+      tenantId: 'tnt_founder',
+      displayIdentity: 'founder@example.com',
+      liFounder: true,
+    );
+    var stateRequests = 0;
+    await tester.pumpWidget(
+      IlaiosDesktopApp(
+        userSession: session,
+        onFetchLiState: () async {
+          stateRequests += 1;
+          return const DesktopLiState(
+            name: 'Li',
+            founderOperator: true,
+            userId: 'usr_founder',
+            tenantId: 'tnt_founder',
+            source: 'canonical_desktop_session',
+          );
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final settings = find.byKey(const ValueKey('nav-settings'));
+    final li = find.byKey(const ValueKey('nav-li'));
+    expect(settings, findsOneWidget);
+    expect(li, findsOneWidget);
+    expect(
+      tester.getTopLeft(li).dy,
+      greaterThan(tester.getTopLeft(settings).dy),
+    );
+
+    await tester.tap(li);
+    await tester.pumpAndSettle();
+
+    expect(stateRequests, 1);
+    expect(find.byKey(const Key('li-founder-view')), findsOneWidget);
+    expect(find.text('Founder Operator'), findsOneWidget);
+    expect(
+      find.text('Server-authoritative founder access verified.'),
+      findsOneWidget,
+    );
+  });
+
 }
