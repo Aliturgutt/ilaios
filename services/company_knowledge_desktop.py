@@ -110,9 +110,21 @@ class TenantCompanyKnowledgeRegistry:
     ) -> dict[str, object]:
         if mime_type not in _COMPANY_MIME_TYPES:
             raise CompanyKnowledgeIngestionError("unsupported company-document MIME type")
+        if len(content_sha256) != 64 or any(
+            character not in "0123456789abcdef" for character in content_sha256
+        ):
+            raise CompanyKnowledgeIngestionError("company document sha256 is invalid")
+        actual_sha256 = hashlib.sha256(content).hexdigest()
+        if not hmac.compare_digest(actual_sha256, content_sha256):
+            raise CompanyKnowledgeIngestionError(
+                "company document sha256 does not match uploaded bytes"
+            )
         runtime = self.runtime_for(tenant_id)
         source_id = _source_id(filename)
-        locator = f"desktop-company-upload://sha256/{content_sha256}/{filename}"
+        # The locator identifies the durable logical source, not one specific byte
+        # version. Per-version content integrity remains in canonical Knowledge
+        # version/unit hashes until governed raw source-file retention is wired.
+        locator = f"desktop-company-upload://source/{source_id}/{filename}"
         ingestor = DurableCompanyKnowledgeIngestor(runtime)
         try:
             return ingestor.ingest(
