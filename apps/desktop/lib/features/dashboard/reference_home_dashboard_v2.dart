@@ -63,11 +63,11 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
           // The inline governed attachment row increases the Home hero height.
-          // Preserve the established normal-viewport boundary: standard Desktop
-          // clients stay in the approved one-viewport composition, while only
-          // genuinely short content areas use the taller safety canvas. The
-          // short canvas remains sized from exact 1366x768 overflow evidence.
-          const baseSafetyHeight = 744.0;
+          // Mid-height Desktop clients use the existing scroll-safe canvas so
+          // the approved prompt + 2x2 support composition keeps native text
+          // sizing instead of compressing panel bodies. 1920x1080 remains in
+          // the one-viewport composition; shorter supported clients scroll.
+          const baseSafetyHeight = 1040.0;
           const shortViewportSafetyHeight = 1420.0;
           final textScale = MediaQuery.textScalerOf(context).scale(1);
           final needsReadableScroll = constraints.maxWidth >= 1000 &&
