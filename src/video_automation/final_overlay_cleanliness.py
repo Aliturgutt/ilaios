@@ -14,6 +14,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
+from typing import TypedDict
 
 from .openrouter_perceptual_reviewer import (
     OpenRouterPerceptualReviewError,
@@ -41,6 +42,14 @@ _REQUIRED_KEYS = frozenset(
         "detail",
     }
 )
+
+
+class _OverlayReviewResult(TypedDict):
+    stock_watermark_detected: bool
+    provider_overlay_detected: bool
+    ai_provider_logo_detected: bool
+    unexpected_branding_overlay_detected: bool
+    detail: str
 
 
 @dataclass(frozen=True, slots=True)
@@ -234,7 +243,7 @@ class OpenRouterFinalOverlayCleanlinessReviewer:
         )
 
 
-def _extract_overlay_review(payload: Mapping[str, object]) -> dict[str, object]:
+def _extract_overlay_review(payload: Mapping[str, object]) -> _OverlayReviewResult:
     choices = payload.get("choices")
     if not isinstance(choices, list) or not choices:
         raise OpenRouterPerceptualReviewError("overlay review response is missing choices")
@@ -257,20 +266,34 @@ def _extract_overlay_review(payload: Mapping[str, object]) -> dict[str, object]:
         raise OpenRouterPerceptualReviewError(
             "overlay review content has an invalid schema"
         )
-    for key in _REQUIRED_KEYS - {"detail"}:
-        if not isinstance(value.get(key), bool):
+    stock_watermark_detected = value.get("stock_watermark_detected")
+    provider_overlay_detected = value.get("provider_overlay_detected")
+    ai_provider_logo_detected = value.get("ai_provider_logo_detected")
+    unexpected_branding_overlay_detected = value.get(
+        "unexpected_branding_overlay_detected"
+    )
+    typed_values = {
+        "stock_watermark_detected": stock_watermark_detected,
+        "provider_overlay_detected": provider_overlay_detected,
+        "ai_provider_logo_detected": ai_provider_logo_detected,
+        "unexpected_branding_overlay_detected": unexpected_branding_overlay_detected,
+    }
+    for key, field_value in typed_values.items():
+        if not isinstance(field_value, bool):
             raise OpenRouterPerceptualReviewError(
                 f"overlay review field {key} must be boolean"
             )
     detail = value.get("detail")
     if not isinstance(detail, str) or not detail.strip():
         raise OpenRouterPerceptualReviewError("overlay review detail is invalid")
+    assert isinstance(stock_watermark_detected, bool)
+    assert isinstance(provider_overlay_detected, bool)
+    assert isinstance(ai_provider_logo_detected, bool)
+    assert isinstance(unexpected_branding_overlay_detected, bool)
     return {
-        "stock_watermark_detected": value["stock_watermark_detected"],
-        "provider_overlay_detected": value["provider_overlay_detected"],
-        "ai_provider_logo_detected": value["ai_provider_logo_detected"],
-        "unexpected_branding_overlay_detected": value[
-            "unexpected_branding_overlay_detected"
-        ],
+        "stock_watermark_detected": stock_watermark_detected,
+        "provider_overlay_detected": provider_overlay_detected,
+        "ai_provider_logo_detected": ai_provider_logo_detected,
+        "unexpected_branding_overlay_detected": unexpected_branding_overlay_detected,
         "detail": detail.strip(),
     }
