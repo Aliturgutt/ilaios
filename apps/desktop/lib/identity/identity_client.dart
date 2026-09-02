@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../business_context/business_capability_context.dart';
+import '../company_knowledge/company_knowledge_draft.dart';
 import '../control_plane/client.dart';
 import '../reference_assets/reference_asset_draft.dart';
 import '../source_media/source_media_draft.dart';
@@ -11,10 +12,9 @@ import 'identity_client_core.dart' as core;
 
 /// Backward-compatible IdentityClient that extends the existing authenticated
 /// session client with governed Web/Video reference assets, one private source-
-/// video input, and optional bounded business-capability metadata. Raw media
-/// bytes are uploaded separately; execution intent receives only immutable
-/// server-side asset identifiers plus the optional context code. The free-form
-/// objective remains unchanged.
+/// video input, persistent company Knowledge documents, and optional bounded
+/// business-capability metadata. Raw bytes are uploaded separately; document
+/// content is never appended to the free-form objective.
 class IdentityClient extends core.IdentityClient {
   factory IdentityClient({
     required Uri baseUri,
@@ -47,6 +47,8 @@ class IdentityClient extends core.IdentityClient {
   static const int _maxReferenceAssetBytes = 10 * 1024 * 1024;
   static const int _maxReferenceTotalBytes = 100 * 1024 * 1024;
   static const int _maxSourceMediaBytes = 128 * 1024 * 1024;
+  static const int _maxCompanyKnowledgeDocuments = 10;
+  static const int _maxCompanyKnowledgeDocumentBytes = 25 * 1024 * 1024;
 
   final Uri _assetBaseUri;
   final String _assetTransportToken;
@@ -70,6 +72,7 @@ class IdentityClient extends core.IdentityClient {
 
     final references = ReferenceAssetSubmissionBus.pending;
     final source = SourceMediaSubmissionBus.pending;
+    final companyDocuments = CompanyKnowledgeSubmissionBus.pending;
     if (references.isNotEmpty) {
       final factoryCount = _referenceFactoryCount(normalized);
       if (factoryCount == 0) {
@@ -95,10 +98,20 @@ class IdentityClient extends core.IdentityClient {
     }
     _validateReferenceAssets(references);
     if (source != null) _validateSourceMedia(source);
+    _validateCompanyKnowledgeDocuments(companyDocuments);
 
     final referenceAssetIds = <String>[];
     String? sourceAssetId;
     try {
+      for (final document in companyDocuments) {
+        await _uploadCompanyKnowledge(document, session);
+      }
+      if (companyDocuments.isNotEmpty) {
+        // Persistent company Knowledge is now server-side even if the following
+        // task intent fails. Clear the local staging bus to avoid accidental
+        // duplicate-version ingestion on a prompt retry.
+        CompanyKnowledgeSubmissionBus.clear();
+      }
       for (final reference in references) {
         referenceAssetIds.add(await _uploadReferenceAsset(reference, session));
       }
@@ -161,6 +174,35 @@ class IdentityClient extends core.IdentityClient {
         }
       }
       rethrow;
+    }
+  }
+
+  Future<void> _uploadCompanyKnowledge(
+    CompanyKnowledgeDraft document,
+    core.DesktopUserSession session,
+  ) async {
+    final payload = await _sessionPost(
+      '/v1/company-knowledge',
+      <String, Object?>{
+        'filename': document.filename,
+        'mime_type': document.mimeType,
+        'sha256': document.sha256Hex,
+        'content_base64': base64Encode(document.bytes),
+      },
+      'company Knowledge upload',
+      session,
+      expectedStatus: HttpStatus.created,
+    );
+    final sourceId = payload['source_id'];
+    final digest = payload['sha256'];
+    final scope = payload['knowledge_scope'];
+    if (sourceId is! String ||
+        !sourceId.startsWith('company-file-') ||
+        digest != document.sha256Hex ||
+        scope != 'company') {
+      throw const core.IdentityClientException(
+        'Company Knowledge upload response is malformed',
+      );
     }
   }
 
@@ -279,6 +321,51 @@ class IdentityClient extends core.IdentityClient {
       );
     }
     return payload;
+  }
+
+  static void _validateCompanyKnowledgeDocuments(
+    List<CompanyKnowledgeDraft> documents,
+  ) {
+    if (documents.length > _maxCompanyKnowledgeDocuments) {
+      throw const core.IdentityClientException(
+        'At most 10 company Knowledge documents can be staged at once',
+      );
+    }
+    final digests = <String>{};
+    for (final document in documents) {
+      if (document.filename.trim().isEmpty ||
+          document.filename.length > 180 ||
+          document.filename.contains('/') ||
+          document.filename.contains('\\')) {
+        throw const core.IdentityClientException(
+          'Company Knowledge filename is invalid',
+        );
+      }
+      if (!const <String>{
+        'application/pdf',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      }.contains(document.mimeType)) {
+        throw const core.IdentityClientException(
+          'Company Knowledge document type is unsupported',
+        );
+      }
+      if (document.sizeBytes <= 0 ||
+          document.sizeBytes > _maxCompanyKnowledgeDocumentBytes) {
+        throw const core.IdentityClientException(
+          'Company Knowledge document exceeds the 25 MiB limit',
+        );
+      }
+      if (!RegExp(r'^[0-9a-f]{64}$').hasMatch(document.sha256Hex)) {
+        throw const core.IdentityClientException(
+          'Company Knowledge document digest is invalid',
+        );
+      }
+      if (!digests.add(document.sha256Hex)) {
+        throw const core.IdentityClientException(
+          'Duplicate company Knowledge document content is not allowed',
+        );
+      }
+    }
   }
 
   static void _validateReferenceAssets(List<ReferenceAssetDraft> references) {

@@ -8,6 +8,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../../reference_assets/reference_asset_draft.dart';
+import 'company_knowledge_picker.dart';
 import 'reference_asset_picker_core.dart' as core;
 import 'source_video_picker.dart';
 
@@ -15,9 +16,9 @@ const MethodChannel _referenceDropChannel = MethodChannel(
   'ilaios/reference-assets-drop',
 );
 
-/// Existing picker controller plus Windows-native image drag/drop and one
-/// separately governed source-video draft. Source bytes never enter reference
-/// image state and therefore cannot masquerade as a visual reference.
+/// Existing picker controller plus Windows-native image drag/drop, one
+/// separately governed source-video draft, and persistent company Knowledge
+/// documents. Each path retains its existing server authority.
 class ReferenceAssetPickerController extends core.ReferenceAssetPickerController {
   ReferenceAssetPickerController() {
     if (Platform.isWindows) {
@@ -26,6 +27,8 @@ class ReferenceAssetPickerController extends core.ReferenceAssetPickerController
   }
 
   final SourceVideoPickerController sourceVideo = SourceVideoPickerController();
+  final CompanyKnowledgePickerController companyKnowledge =
+      CompanyKnowledgePickerController();
 
   Future<Object?> _handleNativeDrop(MethodCall call) async {
     if (call.method != 'droppedPaths') return null;
@@ -91,6 +94,7 @@ class ReferenceAssetPickerController extends core.ReferenceAssetPickerController
   void clear() {
     super.clear();
     sourceVideo.clear();
+    companyKnowledge.clear();
   }
 
   @override
@@ -99,14 +103,15 @@ class ReferenceAssetPickerController extends core.ReferenceAssetPickerController
       _referenceDropChannel.setMethodCallHandler(null);
     }
     sourceVideo.dispose();
+    companyKnowledge.dispose();
     super.dispose();
   }
 }
 
-/// Shared private-input surface. In the compact Goals composer, image
-/// references get more horizontal room than the single source-video control.
-/// This keeps helper copy from wrapping into a tall column at 1366x768 while
-/// preserving both governed attachment paths in the same V4 composer row.
+/// Shared private-input surface. Company documents are deliberately shown in
+/// the same prompt attachment surface, but are labeled persistent Knowledge
+/// because the current authenticated API does not provide a task-only document
+/// contract.
 class ReferenceAssetPicker extends StatelessWidget {
   const ReferenceAssetPicker({
     required this.controller,
@@ -131,6 +136,12 @@ class ReferenceAssetPicker extends StatelessWidget {
         compact: compact,
       );
 
+  Widget _companyKnowledge() => CompanyKnowledgePicker(
+        controller: controller.companyKnowledge,
+        enabled: enabled,
+        compact: compact,
+      );
+
   @override
   Widget build(BuildContext context) {
     if (!compact) {
@@ -140,16 +151,25 @@ class ReferenceAssetPicker extends StatelessWidget {
           _images(),
           const SizedBox(height: 8),
           _sourceVideo(),
+          const SizedBox(height: 8),
+          _companyKnowledge(),
         ],
       );
     }
 
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Expanded(flex: 3, child: _images()),
-        const SizedBox(width: 8),
-        Expanded(flex: 2, child: _sourceVideo()),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(flex: 3, child: _images()),
+            const SizedBox(width: 8),
+            Expanded(flex: 2, child: _sourceVideo()),
+          ],
+        ),
+        const SizedBox(height: 6),
+        _companyKnowledge(),
       ],
     );
   }
