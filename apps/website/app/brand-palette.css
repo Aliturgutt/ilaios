@@ -32,6 +32,21 @@
   --brand-blue-line: var(--brand-stone);
   --brand-violet-soft: var(--brand-hover);
 
+  /* Website V2 legacy variable bridge. This layer loads after website-v2.css,
+     so every legacy V2 accent reference resolves to the canonical neutral UI
+     system without a parallel palette or component rewrite. */
+  --v2-carbon: var(--brand-carbon);
+  --v2-panel: var(--brand-charcoal);
+  --v2-panel-2: var(--brand-charcoal);
+  --v2-panel-3: var(--brand-graphite);
+  --v2-line: var(--brand-stone);
+  --v2-line-strong: var(--brand-stone);
+  --v2-white: var(--brand-white);
+  --v2-soft: var(--brand-text-secondary);
+  --v2-muted: var(--brand-text-tertiary);
+  --v2-cyan: var(--brand-text-secondary);
+  --v2-blue: var(--brand-text-secondary);
+
   --brand-text-soft: var(--brand-text-secondary);
   --brand-muted: var(--brand-text-tertiary);
   --brand-muted-deep: var(--brand-disabled);
@@ -49,6 +64,14 @@
   --line: var(--brand-stone);
   --line-strong: var(--brand-stone);
   --accent: var(--brand-text-secondary);
+}
+
+/* Legacy motion signature variables were previously scoped to this component,
+   so neutralize them at equal specificity after that stylesheet loads. */
+.system-motion-signature {
+  --motion-cyan: var(--brand-text-secondary);
+  --motion-blue: var(--brand-text-secondary);
+  --motion-struct: var(--brand-text-tertiary);
 }
 
 body {
