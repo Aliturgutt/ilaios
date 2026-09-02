@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import cast
 
 import pytest
 
+import services.execution_coordinator as coordinator_module
 from services.control_plane import ControlPlane, ControlPlaneConfig
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
 from services.evidence import EvidenceStore
@@ -26,6 +28,19 @@ from services.knowledge_runtime import (
     KnowledgeRuntimePolicy,
 )
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
+
+
+@pytest.fixture(autouse=True)
+def _restore_global_adapter_descriptors() -> Iterator[None]:
+    registry = cast(
+        dict[str, object], getattr(coordinator_module, "_ADAPTER_DESCRIPTORS")
+    )
+    snapshot = dict(registry)
+    try:
+        yield
+    finally:
+        registry.clear()
+        registry.update(snapshot)
 
 
 def _knowledge(tmp_path: Path, tenant_id: str = "tenant/web") -> DurableKnowledgeRuntime:
