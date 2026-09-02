@@ -136,12 +136,14 @@ class ReferenceAssetPicker extends StatelessWidget {
     required this.controller,
     required this.enabled,
     this.compact = false,
+    this.homeInline = false,
     super.key,
   });
 
   final ReferenceAssetPickerController controller;
   final bool enabled;
   final bool compact;
+  final bool homeInline;
 
   Widget _images() => core.ReferenceAssetPicker(
         controller: controller,
@@ -161,6 +163,23 @@ class ReferenceAssetPicker extends StatelessWidget {
         compact: compact,
       );
 
+  Widget _safeCompactStack() => Column(
+        key: const Key('compact-reference-asset-stack'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: _images()),
+              const SizedBox(width: 8),
+              Expanded(flex: 2, child: _sourceVideo()),
+            ],
+          ),
+          const SizedBox(height: 6),
+          _companyKnowledge(),
+        ],
+      );
+
   @override
   Widget build(BuildContext context) {
     if (!compact) {
@@ -176,26 +195,11 @@ class ReferenceAssetPicker extends StatelessWidget {
       );
     }
 
+    if (!homeInline) return _safeCompactStack();
+
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 1080) {
-          return Column(
-            key: const Key('compact-reference-asset-stack'),
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 3, child: _images()),
-                  const SizedBox(width: 8),
-                  Expanded(flex: 2, child: _sourceVideo()),
-                ],
-              ),
-              const SizedBox(height: 6),
-              _companyKnowledge(),
-            ],
-          );
-        }
+        if (constraints.maxWidth < 1080) return _safeCompactStack();
 
         return Row(
           key: const Key('compact-reference-asset-row'),
