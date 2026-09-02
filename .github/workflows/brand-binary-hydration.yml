@@ -6,6 +6,7 @@ on:
       - brand/canonical-neutral-palette-20260902
     paths:
       - '.brand-hydration/*.b64'
+      - '.brand-hydration/*.b64.part*'
   workflow_dispatch:
 
 permissions:
@@ -34,6 +35,8 @@ jobs:
 
           import base64
           import hashlib
+          import re
+          from collections import defaultdict
           from pathlib import Path
 
           root = Path.cwd()
@@ -50,15 +53,41 @@ jobs:
               digest, filename = line.split(maxsplit=1)
               expected[filename] = digest.lower()
 
-          payloads = sorted(staging.glob('*.b64'))
-          if not payloads:
-              raise SystemExit('no .b64 payloads to hydrate')
+          groups: dict[str, list[Path]] = defaultdict(list)
+          for payload in staging.iterdir():
+              if payload.name.endswith('.b64'):
+                  groups[payload.name.removesuffix('.b64')].append(payload)
+                  continue
+              match = re.fullmatch(r'(.+)\.b64\.part(\d+)', payload.name)
+              if match:
+                  groups[match.group(1)].append(payload)
 
-          for payload in payloads:
-              filename = payload.name.removesuffix('.b64')
+          if not groups:
+              raise SystemExit('no base64 payloads to hydrate')
+
+          def part_key(path: Path) -> tuple[int, int]:
+              if path.name.endswith('.b64'):
+                  return (0, 0)
+              match = re.search(r'\.part(\d+)$', path.name)
+              if not match:
+                  raise SystemExit(f'invalid payload part name: {path.name}')
+              return (1, int(match.group(1)))
+
+          for filename, payloads in sorted(groups.items()):
               if filename not in expected:
                   raise SystemExit(f'no expected SHA-256 for {filename}')
-              encoded = ''.join(payload.read_text(encoding='ascii').split())
+              has_single = any(p.name.endswith('.b64') for p in payloads)
+              has_parts = any('.b64.part' in p.name for p in payloads)
+              if has_single and has_parts:
+                  raise SystemExit(f'ambiguous single+multipart payload for {filename}')
+              ordered = sorted(payloads, key=part_key)
+              if has_parts:
+                  numbers = [int(re.search(r'\.part(\d+)$', p.name).group(1)) for p in ordered]
+                  if numbers != list(range(1, len(numbers) + 1)):
+                      raise SystemExit(f'non-contiguous payload parts for {filename}: {numbers}')
+              encoded = ''.join(
+                  ''.join(payload.read_text(encoding='ascii').split()) for payload in ordered
+              )
               try:
                   data = base64.b64decode(encoded, validate=True)
               except Exception as exc:
@@ -75,8 +104,9 @@ jobs:
               verify = hashlib.sha256(target.read_bytes()).hexdigest()
               if verify != wanted:
                   raise SystemExit(f'post-write SHA-256 mismatch for {filename}')
-              payload.unlink()
-              print(f'HYDRATED {filename} sha256={wanted} bytes={len(data)}')
+              for payload in ordered:
+                  payload.unlink()
+              print(f'HYDRATED {filename} sha256={wanted} bytes={len(data)} parts={len(ordered)}')
           PY
 
       - name: Commit only verified canonical binary replacements
