@@ -64,9 +64,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python -m pytest -q tests/test_app_ilaios_login_surface.py
-          python - <<'PY'
+          python3 - <<'PY'
           from pathlib import Path
+
+          test = Path('tests/test_app_ilaios_login_surface.py').read_text(encoding='utf-8')
+          assert 'assert "Sign in to continue" in document' not in test
+          assert test.count('assert "Sign in to ILAIOS" in document') == 1
+
           for p in (
               Path('.github/workflows/desktop-windows-release.yml'),
               Path('.github/workflows/desktop-msix-packaging.yml'),
