@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Mapping, Sequence
+from datetime import datetime
 from http import HTTPStatus
 from urllib.parse import urlsplit
 
@@ -329,7 +330,7 @@ class LoginAppRuntime(AppRuntime):
         self,
         request: RuntimeRequest,
         *,
-        now=None,  # type: ignore[no-untyped-def]
+        now: datetime | None = None,
     ) -> RuntimeResponse:
         split = urlsplit(request.target)
         method = request.method.strip().upper()
