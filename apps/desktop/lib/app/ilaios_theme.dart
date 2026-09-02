@@ -125,7 +125,7 @@ abstract final class IlaiosTheme {
         style: ButtonStyle(
           textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 14, height: 1.2, fontWeight: FontWeight.w600)),
           foregroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.disabled)) return textDisabled;
+            if (states.contains(WidgetState.disabled)) return isDark ? textDisabled : lightMuted;
             return isDark ? carbon : white;
           }),
           backgroundColor: WidgetStateProperty.resolveWith((states) {
@@ -141,7 +141,7 @@ abstract final class IlaiosTheme {
         style: ButtonStyle(
           textStyle: const WidgetStatePropertyAll(TextStyle(fontSize: 14, height: 1.2, fontWeight: FontWeight.w600)),
           foregroundColor: WidgetStateProperty.resolveWith((states) {
-            if (states.contains(WidgetState.disabled)) return textDisabled;
+            if (states.contains(WidgetState.disabled)) return isDark ? textDisabled : lightMuted;
             return isDark ? textSecondary : coreBlue;
           }),
           side: WidgetStateProperty.resolveWith((states) => BorderSide(color: states.contains(WidgetState.disabled) ? outlineColor : (isDark ? stone : coreBlue))),
