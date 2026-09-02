@@ -3,9 +3,10 @@
 This module implements provider-neutral submit, poll, and generated-asset
 retrieval against OpenRouter's asynchronous video API. The production safety
 policy is intentionally fail-closed: an explicit ``:free`` model ID is only
-eligible after the dedicated OpenRouter video catalog independently proves that
-that exact model currently has explicit zero-valued pricing SKUs. Terminal
-provider cost is verified again after generation before any result can pass.
+eligible after authoritative OpenRouter model metadata proves the exact free
+variant is zero-priced and the dedicated video catalog proves its base model is
+currently video-capable. Terminal provider cost is verified again after
+generation before any result can pass.
 """
 
 from __future__ import annotations
@@ -301,7 +302,9 @@ class OpenRouterVideoGenerationProvider:
             "catalog_zero_cost_evidence_json": json.dumps(
                 dict(catalog_evidence), sort_keys=True, separators=(",", ":")
             ),
-            "catalog_zero_cost_evidence_source": "openrouter_videos_models",
+            "catalog_zero_cost_evidence_source": str(
+                catalog_evidence.get("source", "openrouter_videos_models")
+            ),
         }
         generation_id = response.payload.get("generation_id")
         if isinstance(generation_id, str) and generation_id.strip():
@@ -315,7 +318,7 @@ class OpenRouterVideoGenerationProvider:
         )
 
     def _catalog_zero_cost_evidence(self, model_id: str) -> Mapping[str, object]:
-        """Prove exact video-model zero pricing before any generation POST."""
+        """Prove free-variant pricing and current video capability before POST."""
 
         try:
             response = self._transport.get_json(
@@ -342,24 +345,116 @@ class OpenRouterVideoGenerationProvider:
             )
 
         exact_model: Mapping[str, object] | None = None
+        base_model: Mapping[str, object] | None = None
+        base_model_id = model_id[: -len(_FREE_SUFFIX)]
         for candidate in data:
             if not isinstance(candidate, Mapping):
                 continue
             candidate_id = candidate.get("id")
-            if isinstance(candidate_id, str) and candidate_id == model_id:
+            if not isinstance(candidate_id, str):
+                continue
+            if candidate_id == model_id:
                 exact_model = cast(Mapping[str, object], candidate)
                 break
-        if exact_model is None:
-            raise OpenRouterVideoProviderError(
-                "FREE_VIDEO_MODEL_UNAVAILABLE: exact requested model is absent from the "
-                f"authoritative /videos/models catalog: {model_id}"
+            if candidate_id == base_model_id:
+                base_model = cast(Mapping[str, object], candidate)
+
+        if exact_model is not None:
+            pricing = exact_model.get("pricing_skus")
+            if not isinstance(pricing, Mapping) or not pricing:
+                raise OpenRouterVideoProviderError(
+                    "FREE_VIDEO_PRICING_UNKNOWN: exact video model does not expose non-empty "
+                    "pricing_skus"
+                )
+            normalized_pricing: dict[str, object] = {}
+            for raw_name, raw_price in pricing.items():
+                sku_name = str(raw_name)
+                price = _decimal_cost(raw_price)
+                if price is None:
+                    raise OpenRouterVideoProviderError(
+                        "FREE_VIDEO_PRICING_UNKNOWN: video catalog pricing_skus contains a "
+                        f"non-numeric or invalid price for {sku_name}"
+                    )
+                normalized_pricing[sku_name] = _format_decimal(price)
+                if price != Decimal("0"):
+                    raise OpenRouterVideoProviderError(
+                        "FREE_VIDEO_PRICING_NONZERO: authoritative video catalog price for "
+                        f"{model_id} / {sku_name} is {_format_decimal(price)} USD"
+                    )
+            return MappingProxyType(
+                {
+                    "source": "openrouter_videos_models",
+                    "model_id": model_id,
+                    "catalog_zero_cost": True,
+                    "pricing_skus": normalized_pricing,
+                }
             )
 
-        pricing = exact_model.get("pricing_skus")
+        if base_model is None:
+            raise OpenRouterVideoProviderError(
+                "FREE_VIDEO_MODEL_UNAVAILABLE: neither the requested free variant nor its "
+                "base model is present in the authoritative /videos/models catalog: "
+                f"{model_id}"
+            )
+
+        variant_evidence = self._free_variant_zero_cost_evidence(model_id)
+        return MappingProxyType(
+            {
+                "source": "openrouter_model_variant+videos_models",
+                "model_id": model_id,
+                "video_catalog_model_id": base_model_id,
+                "catalog_zero_cost": True,
+                "variant_pricing": variant_evidence["pricing"],
+            }
+        )
+
+    def _free_variant_zero_cost_evidence(self, model_id: str) -> Mapping[str, object]:
+        """Prove the exact ``:free`` variant exists and is zero-priced."""
+
+        try:
+            author, slug = model_id.split("/", 1)
+        except ValueError as exc:
+            raise OpenRouterVideoProviderError(
+                "FREE_VIDEO_MODEL_UNAVAILABLE: free model id must contain author/slug"
+            ) from exc
+        url = (
+            f"{self._base_url}/model/{quote(author, safe='')}/"
+            f"{quote(slug, safe='')}"
+        )
+        try:
+            response = self._transport.get_json(
+                url,
+                headers=_auth_headers(self._api_key),
+                timeout_seconds=self._timeout_seconds,
+            )
+        except Exception as exc:  # noqa: BLE001
+            message = str(exc).strip() or exc.__class__.__name__
+            raise OpenRouterVideoProviderError(
+                "FREE_VIDEO_VARIANT_UNAVAILABLE: OpenRouter model-variant lookup failed: "
+                f"{message}"
+            ) from exc
+        if not 200 <= response.status_code < 300:
+            raise OpenRouterVideoProviderError(
+                "FREE_VIDEO_VARIANT_UNAVAILABLE: OpenRouter exact free-variant lookup "
+                f"returned HTTP {response.status_code}: {model_id}"
+            )
+        data = response.payload.get("data")
+        if not isinstance(data, Mapping):
+            raise OpenRouterVideoProviderError(
+                "FREE_VIDEO_VARIANT_UNAVAILABLE: exact free-variant lookup did not contain "
+                "a data object"
+            )
+        returned_id = data.get("id")
+        if returned_id != model_id:
+            raise OpenRouterVideoProviderError(
+                "FREE_VIDEO_VARIANT_UNAVAILABLE: model lookup did not resolve to the exact "
+                f"requested free variant: {model_id}"
+            )
+        pricing = data.get("pricing")
         if not isinstance(pricing, Mapping) or not pricing:
             raise OpenRouterVideoProviderError(
-                "FREE_VIDEO_PRICING_UNKNOWN: exact video model does not expose non-empty "
-                "pricing_skus"
+                "FREE_VIDEO_PRICING_UNKNOWN: exact free variant does not expose non-empty "
+                "pricing metadata"
             )
         normalized_pricing: dict[str, object] = {}
         for raw_name, raw_price in pricing.items():
@@ -367,22 +462,20 @@ class OpenRouterVideoGenerationProvider:
             price = _decimal_cost(raw_price)
             if price is None:
                 raise OpenRouterVideoProviderError(
-                    "FREE_VIDEO_PRICING_UNKNOWN: video catalog pricing_skus contains a "
+                    "FREE_VIDEO_PRICING_UNKNOWN: free-variant pricing contains a "
                     f"non-numeric or invalid price for {sku_name}"
                 )
             normalized_pricing[sku_name] = _format_decimal(price)
             if price != Decimal("0"):
                 raise OpenRouterVideoProviderError(
-                    "FREE_VIDEO_PRICING_NONZERO: authoritative video catalog price for "
+                    "FREE_VIDEO_PRICING_NONZERO: authoritative free-variant price for "
                     f"{model_id} / {sku_name} is {_format_decimal(price)} USD"
                 )
-
         return MappingProxyType(
             {
-                "source": "openrouter_videos_models",
+                "source": "openrouter_model_variant",
                 "model_id": model_id,
-                "catalog_zero_cost": True,
-                "pricing_skus": normalized_pricing,
+                "pricing": normalized_pricing,
             }
         )
 
