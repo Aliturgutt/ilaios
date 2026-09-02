@@ -136,14 +136,12 @@ class ReferenceAssetPicker extends StatelessWidget {
     required this.controller,
     required this.enabled,
     this.compact = false,
-    this.homeInline = false,
     super.key,
   });
 
   final ReferenceAssetPickerController controller;
   final bool enabled;
   final bool compact;
-  final bool homeInline;
 
   Widget _images() => core.ReferenceAssetPicker(
         controller: controller,
@@ -195,7 +193,8 @@ class ReferenceAssetPicker extends StatelessWidget {
       );
     }
 
-    if (!homeInline) return _safeCompactStack();
+    final inlineHome = key == const Key('home-prompt-attachments');
+    if (!inlineHome) return _safeCompactStack();
 
     return LayoutBuilder(
       builder: (context, constraints) {
