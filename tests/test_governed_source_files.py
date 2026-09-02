@@ -127,14 +127,22 @@ def test_revoke_and_delete_fail_closed_and_keep_tombstone(tmp_path: Path) -> Non
 
 def test_conflicting_same_version_is_rejected(tmp_path: Path) -> None:
     store = GovernedSourceFileStore(tmp_path / "source-files")
-    common = dict(
+    store.store(
         tenant_id="tenant-a",
         project_id="company-profile",
         source_id="company-file-profile",
         version=1,
         filename="profile.pdf",
         mime_type="application/pdf",
+        content=b"%PDF-1.7\nfirst",
     )
-    store.store(content=b"%PDF-1.7\nfirst", **common)
     with pytest.raises(GovernedSourceFileError, match="different bytes"):
-        store.store(content=b"%PDF-1.7\nsecond", **common)
+        store.store(
+            tenant_id="tenant-a",
+            project_id="company-profile",
+            source_id="company-file-profile",
+            version=1,
+            filename="profile.pdf",
+            mime_type="application/pdf",
+            content=b"%PDF-1.7\nsecond",
+        )
