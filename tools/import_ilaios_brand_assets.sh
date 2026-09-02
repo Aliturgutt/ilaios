@@ -1,21 +1,37 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Import only an explicitly approved, pre-extracted ILAIOS brand package.
-# This script is intentionally fail-closed: specification boards must never be
-# substituted for deployable logo masters, and imports must never push directly
-# to master.
+# Import only the explicitly approved final ILAIOS brand package.
+# This script is intentionally fail-closed:
+# - imports never run directly on master,
+# - 02/03 are preserved as reference boards, never runtime masters,
+# - 05 is the canonical Dark runtime owner,
+# - 13 is the canonical Light horizontal runtime owner,
+# - the original final ZIP is copied byte-for-byte rather than re-zipped,
+# - every staged binary must match the locked SHA-256 authority.
 
 SOURCE_DIR="${1:-}"
+SOURCE_ARCHIVE="${2:-}"
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 ASSET_DIR="$REPO_ROOT/brand/assets"
 SOURCE_ARCHIVE_DIR="$REPO_ROOT/brand/source"
+CHECKSUM_FILE="$REPO_ROOT/.brand-hydration/expected.sha256"
 CURRENT_BRANCH="$(git branch --show-current)"
 
 cd "$REPO_ROOT"
 
 if [[ -z "$SOURCE_DIR" || ! -d "$SOURCE_DIR" ]]; then
-  echo "ERROR: usage: $0 /path/to/pre-extracted-approved-brand-package" >&2
+  echo "ERROR: usage: $0 /path/to/pre-extracted-final-brand-package /path/to/original-final.zip" >&2
+  exit 2
+fi
+
+if [[ -z "$SOURCE_ARCHIVE" || ! -f "$SOURCE_ARCHIVE" ]]; then
+  echo "ERROR: original final ZIP is required as argument 2" >&2
+  exit 2
+fi
+
+if [[ ! -f "$CHECKSUM_FILE" ]]; then
+  echo "ERROR: checksum authority missing: $CHECKSUM_FILE" >&2
   exit 2
 fi
 
@@ -36,7 +52,7 @@ find_unique() {
   local pattern="$1"
   mapfile -t matches < <(find "$SOURCE_DIR" -type f -name "$pattern" -print | sort)
   if [[ "${#matches[@]}" -ne 1 ]]; then
-    echo "ERROR: expected exactly one deployable source matching '$pattern'; found ${#matches[@]}" >&2
+    echo "ERROR: expected exactly one approved source matching '$pattern'; found ${#matches[@]}" >&2
     printf '  %s\n' "${matches[@]:-}" >&2
     exit 5
   fi
@@ -51,35 +67,11 @@ copy_unique() {
   cp -f "$source" "$ASSET_DIR/$target_name"
 }
 
-# Dark runtime masters are deliberately stricter than the numbered package
-# boards. The final package's 02/03 JPG/PNG/PDF files are specification boards;
-# they are not valid runtime replacements. Require explicit deployable masters.
-DARK_HORIZONTAL_JPG="$(find_unique '02-ilaios-primary-horizontal-dark-runtime.jpg')"
-DARK_SYMBOL_JPG="$(find_unique '03-ilaios-symbol-dark-runtime.jpg')"
-DARK_SYMBOL_SVG="$(find_unique 'ilaios-symbol-dark.svg')"
-
-python3 - "$DARK_HORIZONTAL_JPG" "$DARK_SYMBOL_JPG" "$DARK_SYMBOL_SVG" <<'PY'
-from pathlib import Path
-import sys
-
-horizontal = Path(sys.argv[1])
-symbol_jpg = Path(sys.argv[2])
-symbol_svg = Path(sys.argv[3])
-
-for path in (horizontal, symbol_jpg, symbol_svg):
-    if path.stat().st_size <= 0:
-        raise SystemExit(f"ERROR: deployable master is empty: {path}")
-
-svg_head = symbol_svg.read_text(encoding="utf-8", errors="strict").lstrip()[:512].lower()
-if "<svg" not in svg_head:
-    raise SystemExit(f"ERROR: expected SVG primary master, got non-SVG content: {symbol_svg}")
-PY
-
-cp -f "$DARK_HORIZONTAL_JPG" "$ASSET_DIR/02-ilaios-primary-horizontal-dark.jpg"
-cp -f "$DARK_SYMBOL_JPG" "$ASSET_DIR/03-ilaios-symbol-dark.jpg"
-
-# Direct deployable/package assets. Existing canonical repo filenames are kept.
+# Final-package assets. 02/03 are specification/reference boards and are copied
+# only as reference assets. Runtime code must not depend on them.
 copy_unique '01-ilaios-brand-color-system.png' '01-ilaios-brand-color-system.png'
+copy_unique '02-ilaios-primary-horizontal-dark.jpg' '02-ilaios-primary-horizontal-dark.jpg'
+copy_unique '03-ilaios-symbol-dark.jpg' '03-ilaios-symbol-dark.jpg'
 copy_unique '04-ilaios-symbol-light*.jpg' '04-ilaios-symbol-light.jpg'
 copy_unique '05-ilaios-app-icon.jpg' '05-ilaios-app-icon.jpg'
 copy_unique '06-ilaios-favicon-master.jpg' '06-ilaios-favicon-master.jpg'
@@ -91,24 +83,21 @@ copy_unique '11-ilaios-website-hero.jpg' '11-ilaios-website-hero.jpg'
 copy_unique '12-ilaios-official-brand-board.jpg' '12-ilaios-official-brand-board.jpg'
 copy_unique '13-ilaios-primary-horizontal-light-v2*.jpg' '13-ilaios-primary-horizontal-light.jpg'
 
-python3 - "$SOURCE_DIR" "$SOURCE_ARCHIVE_DIR/ilaios-full-logo.zip" <<'PY'
-from pathlib import Path
-import sys
-import zipfile
+# Preserve the exact approved source archive bytes. Never recreate/recompress it.
+cp -f "$SOURCE_ARCHIVE" "$SOURCE_ARCHIVE_DIR/ilaios-full-logo.zip"
 
-source = Path(sys.argv[1]).resolve()
-target = Path(sys.argv[2]).resolve()
-with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-    for path in sorted(source.rglob("*")):
-        if path.is_file():
-            archive.write(path, path.relative_to(source.parent))
-PY
+python3 - "$ASSET_DIR" "$SOURCE_ARCHIVE_DIR/ilaios-full-logo.zip" "$CHECKSUM_FILE" <<'PY'
+from __future__ import annotations
 
-python3 - "$ASSET_DIR" <<'PY'
+from hashlib import sha256
 from pathlib import Path
 import sys
 
-expected = [
+asset_dir = Path(sys.argv[1])
+archive = Path(sys.argv[2])
+checksum_file = Path(sys.argv[3])
+
+expected_names = [
     "01-ilaios-brand-color-system.png",
     "02-ilaios-primary-horizontal-dark.jpg",
     "03-ilaios-symbol-dark.jpg",
@@ -123,15 +112,43 @@ expected = [
     "12-ilaios-official-brand-board.jpg",
     "13-ilaios-primary-horizontal-light.jpg",
 ]
-root = Path(sys.argv[1])
-missing = [name for name in expected if not (root / name).is_file()]
-empty = [name for name in expected if (root / name).is_file() and (root / name).stat().st_size == 0]
+
+locked: dict[str, str] = {}
+for raw in checksum_file.read_text(encoding="utf-8").splitlines():
+    line = raw.strip()
+    if not line or line.startswith("#"):
+        continue
+    digest, name = line.split(maxsplit=1)
+    locked[name] = digest.lower()
+
+required_locks = expected_names + ["ilaios-full-logo.zip"]
+missing_locks = [name for name in required_locks if name not in locked]
+if missing_locks:
+    raise SystemExit(f"ERROR: checksum authority incomplete: {missing_locks}")
+
+paths = {name: asset_dir / name for name in expected_names}
+paths["ilaios-full-logo.zip"] = archive
+
+missing = [name for name, path in paths.items() if not path.is_file()]
+empty = [name for name, path in paths.items() if path.is_file() and path.stat().st_size == 0]
 if missing or empty:
     raise SystemExit(f"ERROR: asset validation failed; missing={missing}; empty={empty}")
-print(f"validated {len(expected)} canonical raster assets")
-PY
 
-sha256sum "$ASSET_DIR"/* "$SOURCE_ARCHIVE_DIR/ilaios-full-logo.zip"
+mismatches: list[str] = []
+for name, path in paths.items():
+    actual = sha256(path.read_bytes()).hexdigest()
+    expected = locked[name]
+    if actual != expected:
+        mismatches.append(f"{name}: expected={expected} actual={actual}")
+
+if mismatches:
+    raise SystemExit("ERROR: final-package checksum mismatch:\n" + "\n".join(mismatches))
+
+print("ILAIOS_FINAL_BRAND_SHA256_VALIDATION=PASS")
+print("DARK_RUNTIME_OWNER=05-ilaios-app-icon.jpg")
+print("LIGHT_RUNTIME_OWNER=13-ilaios-primary-horizontal-light.jpg")
+print("REFERENCE_ONLY=02-ilaios-primary-horizontal-dark.jpg,03-ilaios-symbol-dark.jpg")
+PY
 
 git add brand/assets brand/source
 changed="$(git diff --cached --name-only)"
@@ -148,5 +165,8 @@ fi
 
 echo "STATUS: STAGED_FOR_REVIEW"
 echo "BRANCH: $CURRENT_BRANCH"
-echo "DARK_SYMBOL_PRIMARY_MASTER: $DARK_SYMBOL_SVG"
-echo "NOTE: no commit or push was performed; review byte hashes before committing"
+echo "DARK_RUNTIME_OWNER: brand/assets/05-ilaios-app-icon.jpg"
+echo "LIGHT_RUNTIME_OWNER: brand/assets/13-ilaios-primary-horizontal-light.jpg"
+echo "REFERENCE_ONLY: brand/assets/02-ilaios-primary-horizontal-dark.jpg, brand/assets/03-ilaios-symbol-dark.jpg"
+echo "SOURCE_ARCHIVE: brand/source/ilaios-full-logo.zip (byte-exact copy)"
+echo "NOTE: no commit or push was performed; review staged bytes before committing"
