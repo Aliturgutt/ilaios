@@ -66,7 +66,7 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
           // sizes; shorter desktop client areas scroll a sufficiently tall
           // safety canvas instead of starving support panels.
           const baseSafetyHeight = 1000.0;
-          const shortViewportSafetyHeight = 1040.0;
+          const shortViewportSafetyHeight = 1240.0;
           final textScale = MediaQuery.textScalerOf(context).scale(1);
           final needsReadableScroll = constraints.maxWidth >= 1000 &&
               (constraints.maxHeight < baseSafetyHeight || textScale > 1.0);
