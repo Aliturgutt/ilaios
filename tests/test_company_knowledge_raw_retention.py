@@ -50,14 +50,15 @@ def test_company_upload_retains_exact_raw_bytes_across_restart(tmp_path: Path) -
         filename="company-profile.docx",
         text="Acme Robotics manufactures warehouse robots",
     )
-    version = int(source["latest_version"])
+    latest_version = source["latest_version"]
+    assert isinstance(latest_version, int)
 
     restarted = TenantCompanyKnowledgeRegistry(root)
     retained = restarted.source_files.read_bytes(
         tenant_id="tenant-a",
         project_id="company-profile",
         source_id=str(source["source_id"]),
-        version=version,
+        version=latest_version,
     )
     assert retained == content
     assert hashlib.sha256(retained).hexdigest() == hashlib.sha256(content).hexdigest()
