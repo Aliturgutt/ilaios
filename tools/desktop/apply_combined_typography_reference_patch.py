@@ -74,7 +74,7 @@ if present(picker):
         picker,
         "key: const Key('compact-reference-asset-row')",
         "key: const Key('compact-reference-asset-stack')",
-        "constraints.maxWidth < 1080",
+        "constraints.maxWidth < 840",
         "Expanded(child: _companyKnowledge())",
         "Expanded(child: _images())",
         "Expanded(child: _sourceVideo())",
