@@ -291,3 +291,82 @@ html[data-theme="light"] .diagram-sprite-light { display: block; }
   .themed-diagram,
   .workflow-concept { border-radius: 14px; }
 }
+
+/* Canonical final palette lock. Legacy variable names remain only for backwards
+   compatibility; their rendered values are neutral. Logo cyan/blue are never
+   introduced through this UI layer. */
+:root {
+  --v2-carbon: #0A0A0A !important;
+  --v2-panel: #141414 !important;
+  --v2-panel-2: #141414 !important;
+  --v2-panel-3: #1E1E1E !important;
+  --v2-line: #2A2A2A !important;
+  --v2-line-strong: #2A2A2A !important;
+  --v2-white: #FFFFFF !important;
+  --v2-soft: #E6E6E6 !important;
+  --v2-muted: #B3B3B3 !important;
+  --v2-cyan: #E6E6E6 !important;
+  --v2-blue: #B3B3B3 !important;
+}
+
+html:not([data-theme="light"]) .nav-primary a,
+html:not([data-theme="light"]) .nav-utility > a,
+html:not([data-theme="light"]) .explore-menu summary,
+html:not([data-theme="light"]) .explore-menu-panel a {
+  color: #B3B3B3 !important;
+}
+
+html:not([data-theme="light"]) .language-switch strong,
+html:not([data-theme="light"]) .explore-menu-panel,
+html:not([data-theme="light"]) .factory-index button,
+html:not([data-theme="light"]) .factory-detail,
+html:not([data-theme="light"]) .system-visual,
+html:not([data-theme="light"]) .spatial-map-detail,
+html:not([data-theme="light"]) .governance-evidence-detail,
+html:not([data-theme="light"]) .system-inline-detail,
+html:not([data-theme="light"]) .canonical-linear > div,
+html:not([data-theme="light"]) .canonical-dual > div,
+html:not([data-theme="light"]) .output-card {
+  background: #141414 !important;
+  border-color: #2A2A2A !important;
+  box-shadow: none !important;
+}
+
+html:not([data-theme="light"]) .goal-composer textarea {
+  background: #0A0A0A !important;
+  border-color: #2A2A2A !important;
+  color: #FFFFFF !important;
+}
+
+html:not([data-theme="light"]) .button {
+  background: #E6E6E6 !important;
+  border-color: #E6E6E6 !important;
+  color: #0A0A0A !important;
+}
+html:not([data-theme="light"]) .button:hover {
+  background: #FFFFFF !important;
+  border-color: #FFFFFF !important;
+}
+html:not([data-theme="light"]) .button.secondary {
+  background: transparent !important;
+  border-color: #2A2A2A !important;
+  color: #FFFFFF !important;
+}
+html:not([data-theme="light"]) .button.secondary:hover {
+  background: #1E1E1E !important;
+  border-color: #2A2A2A !important;
+}
+
+html:not([data-theme="light"]) .factory-index button.is-active,
+html:not([data-theme="light"]) .system-visual-control.is-active,
+html:not([data-theme="light"]) .evidence-control:hover,
+html:not([data-theme="light"]) .evidence-control:focus-visible,
+html:not([data-theme="light"]) .evidence-control.is-active {
+  background: #1E1E1E !important;
+  border-color: #2A2A2A !important;
+  box-shadow: inset 3px 0 0 #B3B3B3 !important;
+}
+
+html:not([data-theme="light"]) .language-switch strong {
+  box-shadow: inset 0 0 0 1px #2A2A2A !important;
+}
