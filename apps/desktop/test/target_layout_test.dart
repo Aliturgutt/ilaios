@@ -52,6 +52,28 @@ void main() {
     }
   });
 
+  testWidgets('V4 Home places the existing governed attachment surface directly below the prompt', (
+    WidgetTester tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.binding.setSurfaceSize(const Size(1600, 900));
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    final prompt = find.byKey(const Key('home-command-prompt'));
+    final attachments = find.byKey(const Key('home-prompt-attachments'));
+    expect(prompt, findsOneWidget);
+    expect(attachments, findsOneWidget);
+    expect(find.byKey(const Key('company-knowledge-picker')), findsOneWidget);
+    expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
+    expect(
+      tester.getTopLeft(attachments).dy,
+      greaterThan(tester.getBottomLeft(prompt).dy),
+      reason: 'Approved Home design keeps file/image/video inputs immediately below the prompt.',
+    );
+  });
+
   testWidgets('V4 Home keeps prompt, focus and attention surfaces without a permanent detail rail', (
     WidgetTester tester,
   ) async {
