@@ -439,6 +439,19 @@ void main() {
       liFounder: true,
     );
     var stateRequests = 0;
+    var memoryReads = 0;
+    var memoryWrites = 0;
+    final memories = <DesktopLiMemory>[
+      DesktopLiMemory(
+        memoryId: 'li_mem_existing',
+        kind: 'semantic',
+        content: 'Existing founder memory',
+        source: 'desktop',
+        confidence: 1,
+        sensitivity: 'private',
+        createdAt: DateTime.utc(2026, 9, 2, 12),
+      ),
+    ];
     await tester.pumpWidget(
       IlaiosDesktopApp(
         userSession: session,
@@ -451,6 +464,24 @@ void main() {
             tenantId: 'tnt_founder',
             source: 'canonical_desktop_session',
           );
+        },
+        onFetchLiMemories: () async {
+          memoryReads += 1;
+          return List<DesktopLiMemory>.unmodifiable(memories);
+        },
+        onRememberLiMemory: (kind, content) async {
+          memoryWrites += 1;
+          final memory = DesktopLiMemory(
+            memoryId: 'li_mem_new',
+            kind: kind,
+            content: content,
+            source: 'desktop',
+            confidence: 1,
+            sensitivity: 'private',
+            createdAt: DateTime.utc(2026, 9, 2, 12, 1),
+          );
+          memories.insert(0, memory);
+          return memory;
         },
       ),
     );
@@ -475,6 +506,20 @@ void main() {
       find.text('Server-authoritative founder access verified.'),
       findsOneWidget,
     );
+    expect(memoryReads, 1);
+    expect(find.text('Existing founder memory'), findsOneWidget);
+
+    await tester.enterText(
+      find.byKey(const Key('li-memory-content')),
+      'New founder memory',
+    );
+    await tester.tap(find.byKey(const Key('li-memory-save')));
+    await tester.pumpAndSettle();
+
+    expect(memoryWrites, 1);
+    expect(memoryReads, 2);
+    expect(find.text('New founder memory'), findsOneWidget);
+    expect(find.text('Saved.'), findsOneWidget);
   });
 
 }

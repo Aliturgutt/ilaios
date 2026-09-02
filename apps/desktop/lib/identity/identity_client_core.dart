@@ -62,6 +62,26 @@ class DesktopLiState {
   final String source;
 }
 
+class DesktopLiMemory {
+  const DesktopLiMemory({
+    required this.memoryId,
+    required this.kind,
+    required this.content,
+    required this.source,
+    required this.confidence,
+    required this.sensitivity,
+    required this.createdAt,
+  });
+
+  final String memoryId;
+  final String kind;
+  final String content;
+  final String source;
+  final double confidence;
+  final String sensitivity;
+  final DateTime createdAt;
+}
+
 class GovernedPromptSubmission extends PromptSubmission {
   const GovernedPromptSubmission({
     required super.goalId,
@@ -241,6 +261,52 @@ class IdentityClient {
       tenantId: tenantId,
       source: source as String,
     );
+  }
+
+  Future<List<DesktopLiMemory>> fetchLiMemories(
+    DesktopUserSession session,
+  ) async {
+    final payload = await _sessionGet(
+      '/v1/li/memories',
+      'Li memories',
+      session,
+    );
+    final raw = payload['memories'];
+    if (raw is! List<Object?>) {
+      throw const IdentityClientException('Desktop Li memories response is malformed');
+    }
+    return List<DesktopLiMemory>.unmodifiable(
+      raw.map(_parseLiMemory),
+    );
+  }
+
+  Future<DesktopLiMemory> rememberLiMemory(
+    DesktopUserSession session, {
+    required String kind,
+    required String content,
+  }) async {
+    final normalizedKind = kind.trim();
+    final normalizedContent = content.trim();
+    if (!const <String>{'working', 'episodic', 'semantic'}
+        .contains(normalizedKind)) {
+      throw const IdentityClientException('Li memory kind is invalid');
+    }
+    if (normalizedContent.isEmpty ||
+        normalizedContent != content ||
+        normalizedContent.length > 8000) {
+      throw const IdentityClientException('Li memory content is invalid');
+    }
+    final payload = await _sessionPost(
+      '/v1/li/memories',
+      <String, Object?>{
+        'kind': normalizedKind,
+        'content': normalizedContent,
+      },
+      'Li memory',
+      session,
+      expectedStatus: HttpStatus.created,
+    );
+    return _parseLiMemory(payload);
   }
 
   Future<GovernedPromptSubmission> submitPrompt(
@@ -529,6 +595,46 @@ class IdentityClient {
       );
     }
     return payload;
+  }
+
+  static DesktopLiMemory _parseLiMemory(Object? value) {
+    if (value is! Map<String, dynamic>) {
+      throw const IdentityClientException('Desktop Li memory response is malformed');
+    }
+    final memoryId = value['memory_id'];
+    final kind = value['kind'];
+    final content = value['content'];
+    final source = value['source'];
+    final confidence = value['confidence'];
+    final sensitivity = value['sensitivity'];
+    final createdAtRaw = value['created_at'];
+    final createdAt =
+        createdAtRaw is String ? DateTime.tryParse(createdAtRaw)?.toUtc() : null;
+    if (memoryId is! String ||
+        !memoryId.startsWith('li_mem_') ||
+        kind is! String ||
+        !const <String>{'working', 'episodic', 'semantic'}.contains(kind) ||
+        content is! String ||
+        content.isEmpty ||
+        source is! String ||
+        source.isEmpty ||
+        confidence is! num ||
+        confidence < 0 ||
+        confidence > 1 ||
+        sensitivity is! String ||
+        !const <String>{'internal', 'private'}.contains(sensitivity) ||
+        createdAt == null) {
+      throw const IdentityClientException('Desktop Li memory response is malformed');
+    }
+    return DesktopLiMemory(
+      memoryId: memoryId,
+      kind: kind,
+      content: content,
+      source: source,
+      confidence: confidence.toDouble(),
+      sensitivity: sensitivity,
+      createdAt: createdAt,
+    );
   }
 
   static void _validateReferenceAssets(List<ReferenceAssetDraft> references) {

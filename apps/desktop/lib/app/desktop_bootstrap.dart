@@ -436,6 +436,31 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
     return identityClient.fetchLiState(session);
   }
 
+  Future<List<DesktopLiMemory>> _fetchLiMemories() async {
+    final identityClient = _identityClient;
+    final session = _userSession;
+    if (identityClient == null || session == null || !session.liFounder) {
+      throw const IdentityClientException('Li access denied');
+    }
+    return identityClient.fetchLiMemories(session);
+  }
+
+  Future<DesktopLiMemory> _rememberLiMemory(
+    String kind,
+    String content,
+  ) async {
+    final identityClient = _identityClient;
+    final session = _userSession;
+    if (identityClient == null || session == null || !session.liFounder) {
+      throw const IdentityClientException('Li access denied');
+    }
+    return identityClient.rememberLiMemory(
+      session,
+      kind: kind,
+      content: content,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final promptEnabled = _client != null &&
@@ -462,6 +487,10 @@ class _DesktopBootstrapState extends State<DesktopBootstrap> {
       onPromptSubmit: promptEnabled ? _submitPrompt : null,
       onSaveArtifact: _client == null ? null : _saveArtifact,
       onFetchLiState: _userSession?.liFounder == true ? _fetchLiState : null,
+      onFetchLiMemories:
+          _userSession?.liFounder == true ? _fetchLiMemories : null,
+      onRememberLiMemory:
+          _userSession?.liFounder == true ? _rememberLiMemory : null,
       onRefreshRequested: _client == null ? null : _refresh,
       onProvisionAgent: agentProvisionEnabled ? _provisionAgent : null,
       onGovernanceDecision: governanceEnabled ? _decideGovernance : null,

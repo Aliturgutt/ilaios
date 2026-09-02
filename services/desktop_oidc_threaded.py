@@ -509,6 +509,11 @@ class DesktopOIDCService(_BaseDesktopOIDCService):
             )
             self._session_tenants[session.session_id] = session.tenant_id
             self._bind_session_entitlements(session.session_id, principal)
+            self._bind_session_identity_credential(
+                session.session_id,
+                provider.provider_id,
+                encoded_token,
+            )
             rotated = payload.get("refresh_token")
             if isinstance(rotated, str) and rotated.strip():
                 store.save(provider.provider_id, rotated)

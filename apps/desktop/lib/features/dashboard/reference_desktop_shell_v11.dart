@@ -35,6 +35,8 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
     this.onPromptSubmit,
     this.onSaveArtifact,
     this.onFetchLiState,
+    this.onFetchLiMemories,
+    this.onRememberLiMemory,
     this.onRefreshRequested,
     this.onProvisionAgent,
     this.onGovernanceDecision,
@@ -56,6 +58,9 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
   final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
   final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
   final Future<DesktopLiState> Function()? onFetchLiState;
+  final Future<List<DesktopLiMemory>> Function()? onFetchLiMemories;
+  final Future<DesktopLiMemory> Function(String kind, String content)?
+      onRememberLiMemory;
   final VoidCallback? onRefreshRequested;
   final Future<void> Function(String agentId)? onProvisionAgent;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
@@ -87,6 +92,8 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
                 onPromptSubmit: onPromptSubmit,
                 onSaveArtifact: onSaveArtifact,
                 onFetchLiState: onFetchLiState,
+                onFetchLiMemories: onFetchLiMemories,
+                onRememberLiMemory: onRememberLiMemory,
                 onRefreshRequested: onRefreshRequested,
                 onProvisionAgent: onProvisionAgent,
                 onGovernanceDecision: onGovernanceDecision,

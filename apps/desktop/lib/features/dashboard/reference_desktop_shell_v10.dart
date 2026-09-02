@@ -43,6 +43,8 @@ class ReferenceDesktopShellV10 extends StatefulWidget {
     this.onPromptSubmit,
     this.onSaveArtifact,
     this.onFetchLiState,
+    this.onFetchLiMemories,
+    this.onRememberLiMemory,
     this.onRefreshRequested,
     this.onProvisionAgent,
     this.onGovernanceDecision,
@@ -64,6 +66,9 @@ class ReferenceDesktopShellV10 extends StatefulWidget {
   final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
   final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
   final Future<DesktopLiState> Function()? onFetchLiState;
+  final Future<List<DesktopLiMemory>> Function()? onFetchLiMemories;
+  final Future<DesktopLiMemory> Function(String kind, String content)?
+      onRememberLiMemory;
   final VoidCallback? onRefreshRequested;
   final Future<void> Function(String agentId)? onProvisionAgent;
   final Future<void> Function(String requestId, GovernanceDecision decision)?
@@ -166,6 +171,8 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
       return LiView(
         userSession: widget.userSession,
         onFetchState: widget.onFetchLiState,
+        onFetchMemories: widget.onFetchLiMemories,
+        onRemember: widget.onRememberLiMemory,
       );
     }
     return switch (_section) {

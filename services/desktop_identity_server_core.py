@@ -153,6 +153,15 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                     },
                 )
                 return
+            if parsed.path == "/v1/li/memories":
+                session = self._authenticated_session()
+                identity = self._require_identity()
+                if not identity.is_li_founder_session(session.session_id):
+                    self._send_error(HTTPStatus.FORBIDDEN, "request denied")
+                    return
+                memories = identity.list_li_memories(session.session_id)
+                self._send_json(HTTPStatus.OK, {"memories": memories})
+                return
             if parsed.path == "/v1/execution/status":
                 session = self._authenticated_session()
                 request_id = _single_query(parse_qs(parsed.query), "request_id")
@@ -210,6 +219,23 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                 identity = self._require_identity()
                 identity.logout(_required_string(body, "session_id"))
                 self._send_json(HTTPStatus.OK, {"logged_out": True})
+                return
+            if path == "/v1/li/memories":
+                session = self._authenticated_session()
+                identity = self._require_identity()
+                if not identity.is_li_founder_session(session.session_id):
+                    self._send_error(HTTPStatus.FORBIDDEN, "request denied")
+                    return
+                kind = _required_string(body, "kind")
+                content = _required_string(body, "content")
+                if set(body) != {"kind", "content"}:
+                    raise ValueError("Li memory request contains unexpected fields")
+                record = identity.remember_li_memory(
+                    session.session_id,
+                    kind=kind,
+                    content=content,
+                )
+                self._send_json(HTTPStatus.CREATED, record)
                 return
             if path == "/v1/reference-assets":
                 self._upload_reference_asset(body)
