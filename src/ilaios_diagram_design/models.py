@@ -57,7 +57,7 @@ ILAIOS_LIGHT = DiagramTheme(
     muted="#808080",
     accent="#2A2A2A",
     border="#B3B3B3",
-    danger="#B42318",
+    danger="#2A2A2A",
 )
 
 ILAIOS_DARK = DiagramTheme(
@@ -68,7 +68,7 @@ ILAIOS_DARK = DiagramTheme(
     muted="#B3B3B3",
     accent="#E6E6E6",
     border="#2A2A2A",
-    danger="#F97066",
+    danger="#E6E6E6",
 )
 
 
