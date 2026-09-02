@@ -72,6 +72,13 @@ forbid(
 if present(picker):
     require(
         picker,
+        "key: const Key('compact-reference-asset-row')",
+        "Expanded(child: _companyKnowledge())",
+        "Expanded(child: _images())",
+        "Expanded(child: _sourceVideo())",
+    )
+    forbid(
+        picker,
         "Expanded(flex: 3, child: _images())",
         "Expanded(flex: 2, child: _sourceVideo())",
     )
@@ -83,6 +90,7 @@ if present(home):
         "key: const Key('command-center-hero')",
         "key: const Key('command-center-focus')",
         "key: const Key('command-center-attention')",
+        "key: const Key('home-prompt-attachments')",
     )
     forbid(
         home,
