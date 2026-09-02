@@ -1,0 +1,79 @@
+name: Brand Master Sync
+
+on:
+  push:
+    branches:
+      - brand/canonical-neutral-palette-20260902
+    paths:
+      - '.github/workflows/brand-master-sync.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: brand-master-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout brand branch
+        uses: actions/checkout@v4
+        with:
+          ref: brand/canonical-neutral-palette-20260902
+          fetch-depth: 0
+
+      - name: Merge current master without losing brand runtime policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin master
+
+          if git merge-base --is-ancestor origin/master HEAD; then
+            echo 'Branch already contains current master.'
+            exit 0
+          fi
+
+          set +e
+          git merge --no-ff --no-commit origin/master
+          merge_rc=$?
+          set -e
+
+          if [ "$merge_rc" -ne 0 ]; then
+            mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
+            if [ "${#conflicts[@]}" -ne 1 ] || [ "${conflicts[0]}" != 'apps/web_app_runtime/login_server.py' ]; then
+              printf 'Unexpected merge conflicts:\n%s\n' "${conflicts[*]}" >&2
+              git merge --abort || true
+              exit 20
+            fi
+            git checkout --theirs -- apps/web_app_runtime/login_server.py
+          fi
+
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('apps/web_app_runtime/login_server.py')
+          text = p.read_text(encoding='utf-8')
+          old = '_BRAND_DARK = (_BRAND_DIR / "02-ilaios-primary-horizontal-dark.jpg").read_bytes()'
+          new = '_BRAND_DARK = (_BRAND_DIR / "05-ilaios-app-icon.jpg").read_bytes()'
+          if old in text:
+              text = text.replace(old, new)
+          if new not in text:
+              raise SystemExit('canonical Dark runtime owner 05 not present after merge resolution')
+          if '_BRAND_LIGHT = (_BRAND_DIR / "13-ilaios-primary-horizontal-light.jpg").read_bytes()' not in text:
+              raise SystemExit('canonical Light runtime owner 13 not present after merge resolution')
+          p.write_text(text, encoding='utf-8')
+          PY
+
+          git add apps/web_app_runtime/login_server.py
+          if git diff --name-only --diff-filter=U | grep -q .; then
+            echo 'Unresolved merge conflicts remain.' >&2
+            exit 21
+          fi
+          git diff --cached --check
+          git commit -m 'merge(master): preserve canonical brand runtime owners'
+          git push origin HEAD:brand/canonical-neutral-palette-20260902
