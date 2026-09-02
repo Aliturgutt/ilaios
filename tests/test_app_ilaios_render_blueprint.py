@@ -20,7 +20,7 @@ def test_app_ilaios_render_blueprint_is_bounded_and_persistent() -> None:
     assert service["region"] == "frankfurt"
     assert service["plan"] == "0.5c-512mb"
     assert service["branch"] == "master"
-    assert service["startCommand"] == "python -m apps.web_app_runtime.server"
+    assert service["startCommand"] == "python -m apps.web_app_runtime.login_server"
     assert service["healthCheckPath"] == "/health/ready"
     assert service["autoDeployTrigger"] == "checksPass"
     assert service["numInstances"] == 1
