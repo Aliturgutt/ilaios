@@ -108,6 +108,25 @@ class ReferenceAssetPickerController extends core.ReferenceAssetPickerController
   }
 }
 
+/// Read-only presentation scope for the single existing attachment controller.
+/// This does not own upload, identity, session, routing, or governance authority.
+class ReferenceAssetPickerScope extends InheritedWidget {
+  const ReferenceAssetPickerScope({
+    required this.controller,
+    required super.child,
+    super.key,
+  });
+
+  final ReferenceAssetPickerController? controller;
+
+  static ReferenceAssetPickerController? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ReferenceAssetPickerScope>()?.controller;
+
+  @override
+  bool updateShouldNotify(ReferenceAssetPickerScope oldWidget) =>
+      controller != oldWidget.controller;
+}
+
 /// Shared private-input surface. Company documents are deliberately shown in
 /// the same prompt attachment surface, but are labeled persistent Knowledge
 /// because the current authenticated API does not provide a task-only document
