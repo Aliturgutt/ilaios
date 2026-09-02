@@ -115,25 +115,31 @@ _LOGIN_CSS = b""":root {
   --orbital: rgba(99,130,255,.18);
   --glow-a: rgba(36,125,255,.25);
   --glow-b: rgba(126,99,255,.16);
+  --hover: #f3f6fb;
+  --active: #e9eef6;
+  --disabled: #9aa4b3;
   --shadow: 0 28px 90px rgba(38,53,80,.10);
 }
 
 html[data-theme="dark"] {
   color-scheme: dark;
-  --bg: #0c0f15;
-  --surface: rgba(18,22,30,.92);
-  --surface-solid: #151922;
-  --text: #f7f9fc;
-  --muted: #a6afbe;
-  --line: #2a313e;
-  --line-strong: #3a4454;
-  --primary: #f7f9fc;
-  --primary-text: #10131a;
-  --accent: #6da5ff;
-  --orbital: rgba(108,139,255,.18);
-  --glow-a: rgba(32,103,255,.18);
-  --glow-b: rgba(106,76,255,.14);
-  --shadow: 0 28px 90px rgba(0,0,0,.36);
+  --bg: #0A0A0A;
+  --surface: rgba(20,20,20,.96);
+  --surface-solid: #1E1E1E;
+  --text: #FFFFFF;
+  --muted: #B3B3B3;
+  --line: #2A2A2A;
+  --line-strong: #2F2F2F;
+  --primary: #FFFFFF;
+  --primary-text: #0A0A0A;
+  --accent: #FFFFFF;
+  --orbital: rgba(42,42,42,.90);
+  --glow-a: rgba(0,0,0,0);
+  --glow-b: rgba(0,0,0,0);
+  --hover: #242424;
+  --active: #2F2F2F;
+  --disabled: #808080;
+  --shadow: 0 28px 90px rgba(0,0,0,.48);
 }
 
 * { box-sizing: border-box; }
@@ -184,6 +190,10 @@ button, a { font: inherit; }
 .orbit-one { width: 1060px; height: 430px; }
 .orbit-two { width: 900px; height: 340px; transform: translate(-50%, -50%) rotate(9deg); }
 .orbit-three { width: 710px; height: 250px; transform: translate(-50%, -50%) rotate(-14deg); }
+
+html[data-theme="dark"] .ambient { opacity: 0; }
+html[data-theme="dark"] .orbit::before,
+html[data-theme="dark"] .orbit::after { background: #2F2F2F; }
 
 .shell {
   position: relative;
@@ -276,11 +286,13 @@ h1 {
   color: var(--text);
   font-size: 18px;
   font-weight: 650;
-  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease;
+  transition: transform 120ms ease, border-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
 }
 .provider:hover { transform: translateY(-1px); border-color: var(--line-strong); box-shadow: 0 8px 24px rgba(28,42,68,.07); }
 .provider-primary { background: var(--primary); color: var(--primary-text); border-color: var(--primary); }
 .provider-primary:hover { border-color: var(--primary); }
+html[data-theme="dark"] .provider:not(.provider-primary):hover { background: var(--hover); }
+html[data-theme="dark"] .provider-primary:hover { background: #E6E6E6; }
 .provider-mark { width: 34px; height: 34px; display: grid; place-items: center; font-weight: 800; }
 .google-mark { font-size: 25px; color: #4285f4; }
 .github-mark { width: 34px; height: 34px; border-radius: 50%; background: currentColor; color: var(--surface-solid); font-size: 9px; }
@@ -331,7 +343,7 @@ const lightButton=document.getElementById('theme-light');
 const darkButton=document.getElementById('theme-dark');
 function storedTheme(){try{return localStorage.getItem('ilaios-theme');}catch(_error){return null;}}
 function storeTheme(value){try{localStorage.setItem('ilaios-theme',value);}catch(_error){return;}}
-function apply(theme){const value=theme==='dark'?'dark':'light';root.dataset.theme=value;const dark=value==='dark';lightButton.classList.toggle('is-active',!dark);darkButton.classList.toggle('is-active',dark);lightButton.setAttribute('aria-pressed',String(!dark));darkButton.setAttribute('aria-pressed',String(dark));const meta=document.querySelector('meta[name=theme-color]');if(meta){meta.setAttribute('content',dark?'#0c0f15':'#f8faff');}}
+function apply(theme){const value=theme==='dark'?'dark':'light';root.dataset.theme=value;const dark=value==='dark';lightButton.classList.toggle('is-active',!dark);darkButton.classList.toggle('is-active',dark);lightButton.setAttribute('aria-pressed',String(!dark));darkButton.setAttribute('aria-pressed',String(dark));const meta=document.querySelector('meta[name=theme-color]');if(meta){meta.setAttribute('content',dark?'#0A0A0A':'#f8faff');}}
 apply(storedTheme()==='dark'?'dark':'light');
 lightButton.addEventListener('click',function(){apply('light');storeTheme('light');});
 darkButton.addEventListener('click',function(){apply('dark');storeTheme('dark');});
