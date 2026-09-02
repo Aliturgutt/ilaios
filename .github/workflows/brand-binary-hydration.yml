@@ -1,0 +1,101 @@
+name: Canonical Brand Binary Hydration
+
+on:
+  push:
+    branches:
+      - brand/canonical-neutral-palette-20260902
+    paths:
+      - '.brand-hydration/**'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: canonical-brand-binary-hydration
+  cancel-in-progress: false
+
+jobs:
+  hydrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v4
+        with:
+          ref: brand/canonical-neutral-palette-20260902
+          fetch-depth: 0
+
+      - name: Decode and verify final-ZIP brand assets
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from __future__ import annotations
+
+          import base64
+          import hashlib
+          from pathlib import Path
+
+          root = Path.cwd()
+          staging = root / '.brand-hydration'
+          expected_file = staging / 'expected.sha256'
+          if not expected_file.is_file():
+              raise SystemExit('missing .brand-hydration/expected.sha256')
+
+          expected: dict[str, str] = {}
+          for raw in expected_file.read_text(encoding='utf-8').splitlines():
+              line = raw.strip()
+              if not line or line.startswith('#'):
+                  continue
+              digest, filename = line.split(maxsplit=1)
+              expected[filename] = digest.lower()
+
+          payloads = sorted(staging.glob('*.b64'))
+          if not payloads:
+              raise SystemExit('no .b64 payloads to hydrate')
+
+          for payload in payloads:
+              filename = payload.name.removesuffix('.b64')
+              if filename not in expected:
+                  raise SystemExit(f'no expected SHA-256 for {filename}')
+              encoded = ''.join(payload.read_text(encoding='ascii').split())
+              try:
+                  data = base64.b64decode(encoded, validate=True)
+              except Exception as exc:
+                  raise SystemExit(f'invalid base64 payload for {filename}: {exc}') from exc
+              actual = hashlib.sha256(data).hexdigest()
+              wanted = expected[filename]
+              if actual != wanted:
+                  raise SystemExit(
+                      f'SHA-256 mismatch for {filename}: expected={wanted} actual={actual}'
+                  )
+              target = root / 'brand' / 'assets' / filename
+              target.parent.mkdir(parents=True, exist_ok=True)
+              target.write_bytes(data)
+              verify = hashlib.sha256(target.read_bytes()).hexdigest()
+              if verify != wanted:
+                  raise SystemExit(f'post-write SHA-256 mismatch for {filename}')
+              payload.unlink()
+              print(f'HYDRATED {filename} sha256={wanted} bytes={len(data)}')
+          PY
+
+      - name: Commit only verified canonical binary replacements
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add brand/assets .brand-hydration
+          git diff --cached --check
+          if git diff --cached --quiet; then
+            echo 'No hydrated asset changes to commit.'
+            exit 0
+          fi
+          changed="$(git diff --cached --name-only)"
+          if echo "$changed" | grep -Ev '^(brand/assets/|\.brand-hydration/)' >/dev/null; then
+            echo 'ERROR: hydration escaped allowed paths' >&2
+            echo "$changed" >&2
+            exit 20
+          fi
+          git commit -m 'chore(brand): hydrate verified final ZIP assets'
+          git push origin HEAD:brand/canonical-neutral-palette-20260902
