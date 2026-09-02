@@ -358,7 +358,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         identity_server.shutdown()
 
     def _force_exit_if_desktop_cleanup_stalls() -> None:
-        if not desktop_exit_cleanup_complete.wait(timeout=5):
+        if not desktop_exit_cleanup_complete.wait(timeout=3):
             _terminate_frozen_sidecar_parent()
             os._exit(0)
 
@@ -453,7 +453,20 @@ def _terminate_frozen_sidecar_parent() -> None:
         current_image = os.path.normcase(os.path.abspath(sys.executable))
         if parent_image != current_image:
             return
-        kernel32.TerminateProcess(handle, 0)
+        if not kernel32.TerminateProcess(handle, 0):
+            return
+        # TerminateProcess is asynchronous. Confirm the matching PyInstaller
+        # parent is actually signaled before the Python child exits; otherwise
+        # the bootloader parent can remain observable beyond the bounded
+        # Desktop owner-loss window on hosted Windows runners.
+        wait_object_0 = 0x00000000
+        parent_exit_timeout_ms = 2000
+        wait_result = kernel32.WaitForSingleObject(
+            ctypes.c_void_p(handle),
+            parent_exit_timeout_ms,
+        )
+        if wait_result != wait_object_0:
+            return
     finally:
         kernel32.CloseHandle(ctypes.c_void_p(handle))
 
