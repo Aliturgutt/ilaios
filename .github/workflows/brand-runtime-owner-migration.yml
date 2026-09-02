@@ -1,0 +1,163 @@
+name: Canonical Brand Runtime Owner Migration
+
+on:
+  push:
+    branches:
+      - brand/canonical-neutral-palette-20260902
+    paths:
+      - '.brand-runtime-migration/READY'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: canonical-brand-runtime-owner-migration
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch head
+        uses: actions/checkout@v4
+        with:
+          ref: brand/canonical-neutral-palette-20260902
+          fetch-depth: 0
+
+      - name: Migrate runtime ownership to clean canonical assets
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          root = Path.cwd()
+          ready = root / '.brand-runtime-migration' / 'READY'
+          if not ready.is_file():
+              raise SystemExit('missing READY sentinel')
+
+          def replace(path: str, old: str, new: str, expected: int = 1) -> None:
+              file = root / path
+              text = file.read_text(encoding='utf-8')
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f'{path}: expected {expected} matches for {old!r}, found {count}')
+              file.write_text(text.replace(old, new), encoding='utf-8')
+              print(f'UPDATED {path}: {count} replacement(s)')
+
+          # Dark runtime identity: clean canonical 05 symbol/app icon.
+          for path in [
+              'apps/web_app_runtime/login_server.py',
+              'apps/desktop/lib/features/dashboard/desktop_shell.dart',
+              'apps/desktop/lib/features/dashboard/reference_desktop_shell.dart',
+              'apps/desktop/lib/features/dashboard/reference_desktop_shell_v2.dart',
+          ]:
+              replace(path, '02-ilaios-primary-horizontal-dark.jpg', '05-ilaios-app-icon.jpg')
+
+          for path in [
+              'apps/desktop/e2e/video_finished_product_artifact_e2e.py',
+              'apps/desktop/e2e/video_finished_product_e2e.py',
+              'apps/desktop/tool/build_control_plane_sidecar.ps1',
+              'apps/desktop/sidecar/ilaios_control_plane_sidecar.py',
+              'apps/desktop/lib/features/dashboard/reference_desktop_shell_v5.dart',
+          ]:
+              replace(path, '03-ilaios-symbol-dark.jpg', '05-ilaios-app-icon.jpg')
+
+          # Reference shells used local duplicate copies; point directly to canonical owners.
+          for path in [
+              'apps/desktop/lib/features/dashboard/reference_desktop_shell_v9.dart',
+              'apps/desktop/lib/features/dashboard/reference_desktop_shell_v10.dart',
+              'apps/desktop/test/brand_shell_test.dart',
+          ]:
+              replace(path, 'assets/brand/02-ilaios-primary-horizontal-dark.jpg', '../../brand/assets/05-ilaios-app-icon.jpg')
+              replace(path, 'assets/brand/13-ilaios-primary-horizontal-light.jpg', '../../brand/assets/13-ilaios-primary-horizontal-light.jpg')
+
+          # Desktop bundle contains canonical owners only; no local duplicate 02/13 and no runtime 03 board.
+          replace(
+              'apps/desktop/pubspec.yaml',
+              '    - assets/brand/02-ilaios-primary-horizontal-dark.jpg\n'
+              '    - assets/brand/13-ilaios-primary-horizontal-light.jpg\n'
+              '    - ../../brand/assets/03-ilaios-symbol-dark.jpg\n'
+              '    - ../../brand/assets/05-ilaios-app-icon.jpg\n',
+              '    - ../../brand/assets/05-ilaios-app-icon.jpg\n'
+              '    - ../../brand/assets/13-ilaios-primary-horizontal-light.jpg\n',
+          )
+          replace(
+              'apps/desktop/windows/CMakeLists.txt',
+              '  "${ILAIOS_BRAND_ASSET_DIR}/02-ilaios-primary-horizontal-dark.jpg"\n'
+              '  "${ILAIOS_BRAND_ASSET_DIR}/03-ilaios-symbol-dark.jpg"\n'
+              '  "${ILAIOS_BRAND_ASSET_DIR}/05-ilaios-app-icon.jpg"\n'
+              '  "${ILAIOS_BRAND_ASSET_DIR}/13-ilaios-primary-horizontal-light.jpg"\n',
+              '  "${ILAIOS_BRAND_ASSET_DIR}/05-ilaios-app-icon.jpg"\n'
+              '  "${ILAIOS_BRAND_ASSET_DIR}/13-ilaios-primary-horizontal-light.jpg"\n',
+          )
+
+          replace(
+              'brand/README.md',
+              'The approved dark symbol master is `03-ilaios-symbol-dark.jpg`. It is the canonical symbol source for future brand derivations unless `manifest.yaml` explicitly supersedes it.',
+              'The approved dark runtime symbol master is `05-ilaios-app-icon.jpg`. `02-ilaios-primary-horizontal-dark.jpg` and `03-ilaios-symbol-dark.jpg` are superseded as runtime owners and are retained only until their final-package reference-board bytes are hydrated.',
+          )
+          replace(
+              'apps/desktop/README.md',
+              'The premium Desktop shell uses the canonical repository symbol `brand/assets/03-ilaios-symbol-dark.jpg`. Windows executable/MSIX icon derivation uses the canonical app-icon master `brand/assets/05-ilaios-app-icon.jpg`.',
+              'The premium Desktop shell and Windows executable/MSIX icon derivation use the clean canonical dark symbol/app-icon owner `brand/assets/05-ilaios-app-icon.jpg`. Light horizontal branding uses `brand/assets/13-ilaios-primary-horizontal-light.jpg`.',
+          )
+
+          # Manifest describes current repo truth while final reference-board binary hydration remains pending.
+          replace('brand/manifest.yaml', 'canonical_symbol_master: brand/assets/03-ilaios-symbol-dark.jpg', 'canonical_symbol_master: brand/assets/05-ilaios-app-icon.jpg')
+          replace(
+              'brand/manifest.yaml',
+              '    role: primary_horizontal_dark\n    dimensions: 2400x800\n    canonical: true',
+              '    role: superseded_primary_horizontal_dark_pending_reference_board_hydration\n    dimensions: 2400x800\n    canonical: false',
+          )
+          replace(
+              'brand/manifest.yaml',
+              '    role: canonical_symbol_master\n    dimensions: 1024x1024\n    canonical: true',
+              '    role: superseded_symbol_dark_pending_reference_board_hydration\n    dimensions: 1024x1024\n    canonical: false',
+          )
+
+          # Remove obsolete Desktop-local raster duplicates only after references are redirected.
+          for rel in [
+              'apps/desktop/assets/brand/02-ilaios-primary-horizontal-dark.jpg',
+              'apps/desktop/assets/brand/13-ilaios-primary-horizontal-light.jpg',
+          ]:
+              path = root / rel
+              if not path.is_file():
+                  raise SystemExit(f'missing expected duplicate before cleanup: {rel}')
+              path.unlink()
+              print(f'REMOVED duplicate {rel}')
+
+          # Production/runtime code must no longer consume 02/03.
+          offenders = []
+          for base in [root / 'apps' / 'desktop', root / 'apps' / 'web_app_runtime']:
+              for path in base.rglob('*'):
+                  if not path.is_file() or path.suffix.lower() not in {'.dart', '.py', '.ps1', '.yaml', '.txt', '.md'} and path.name != 'CMakeLists.txt':
+                      continue
+                  if '/test/' in path.as_posix() or path.name == 'README.md':
+                      continue
+                  text = path.read_text(encoding='utf-8', errors='ignore')
+                  if '02-ilaios-primary-horizontal-dark.jpg' in text or '03-ilaios-symbol-dark.jpg' in text:
+                      offenders.append(str(path.relative_to(root)))
+          if offenders:
+              raise SystemExit(f'active runtime still references superseded 02/03: {offenders}')
+
+          ready.unlink()
+          PY
+
+      - name: Commit bounded runtime ownership migration
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/desktop apps/web_app_runtime brand .brand-runtime-migration
+          git diff --cached --check
+          changed="$(git diff --cached --name-only)"
+          if echo "$changed" | grep -Ev '^(apps/desktop/|apps/web_app_runtime/login_server.py|brand/(README.md|manifest.yaml)|\.brand-runtime-migration/)' >/dev/null; then
+            echo 'ERROR: migration escaped bounded paths' >&2
+            echo "$changed" >&2
+            exit 20
+          fi
+          git commit -m 'fix(brand): route runtime to clean canonical assets'
+          git push origin HEAD:brand/canonical-neutral-palette-20260902
