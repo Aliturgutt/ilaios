@@ -15,6 +15,10 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from services.agent_readiness_store import AgentReadinessStore
+from services.company_knowledge_desktop import (
+    CompanyKnowledgeDesktopIdentityHTTPServer,
+    TenantCompanyKnowledgeRegistry,
+)
 from services.control_plane.api import ControlPlane, ControlPlaneConfig
 from services.control_plane.live_state import LiveStateTransport
 from services.control_plane.migrations import current_schema_version
@@ -54,7 +58,6 @@ from services.source_media import (
     MAX_SOURCE_MEDIA_DURATION_SECONDS,
     SourceMediaStore,
 )
-from services.source_media_desktop import SourceMediaDesktopIdentityHTTPServer
 from services.web_agent_execution import WEB_GOVERNED_AI_CAPABILITIES
 from services.web_agent_runtime import compose_web_agent_runtime
 
@@ -169,6 +172,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         root / "source-media.sqlite3",
         root / "source-media" / "blobs",
     )
+    company_knowledge = TenantCompanyKnowledgeRegistry(root / "company-knowledge")
     governance = GovernedRuntimeGateway(
         root / "governance.sqlite3",
         governed_runtime,
@@ -275,13 +279,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         control_server.server_close()
         raise SystemExit(f"Desktop identity configuration rejected: {error}") from error
 
-    identity_server = SourceMediaDesktopIdentityHTTPServer(
+    identity_server = CompanyKnowledgeDesktopIdentityHTTPServer(
         ("127.0.0.1", 0),
         bearer_token=token,
         identity=identity,
         coordinator=coordinator,
         reference_assets=reference_assets,
         source_media=source_media,
+        company_knowledge=company_knowledge,
     )
     identity_host, identity_port = identity_server.server_address[:2]
 
@@ -326,6 +331,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "video_source_media_configured": True,
         "video_source_media_max_bytes": MAX_SOURCE_MEDIA_BYTES,
         "video_source_media_max_duration_seconds": MAX_SOURCE_MEDIA_DURATION_SECONDS,
+        "company_knowledge_upload_configured": True,
         "web_finished_product_configured": True,
         "software_finished_product_configured": True,
         "execution_recovery_configured": True,
