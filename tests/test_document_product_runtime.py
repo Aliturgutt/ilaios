@@ -63,7 +63,7 @@ def test_creative_document_outputs_are_openable_persistent_and_scoped(tmp_path: 
 
 def test_artifact_versions_are_immutable(tmp_path: Path) -> None:
     outputs = GovernedArtifactOutputStore(tmp_path / "objects", tmp_path / "artifacts.sqlite")
-    common = dict(
+    outputs.put(
         artifact_id="artifact-a.pdf",
         version_id="v1",
         tenant_id="tenant-a",
@@ -71,7 +71,16 @@ def test_artifact_versions_are_immutable(tmp_path: Path) -> None:
         job_id="job-a",
         artifact_type="document.pdf",
         mime_type="application/pdf",
+        content=b"first",
     )
-    outputs.put(**common, content=b"first")
     with pytest.raises(ArtifactOutputError, match="immutable"):
-        outputs.put(**common, content=b"second")
+        outputs.put(
+            artifact_id="artifact-a.pdf",
+            version_id="v1",
+            tenant_id="tenant-a",
+            project_id="project-a",
+            job_id="job-a",
+            artifact_type="document.pdf",
+            mime_type="application/pdf",
+            content=b"second",
+        )
