@@ -295,6 +295,81 @@ void main() {
     );
   });
 
+  test('Li persistent memory read/write stays session scoped and strict', () async {
+    final transport = _FakeTransport(<String, ControlPlaneResponse>{
+      '/v1/li/memories': const ControlPlaneResponse(
+        statusCode: 200,
+        body:
+            '{"memories":[{"memory_id":"li_mem_1","kind":"semantic","content":"Founder memory","source":"desktop","confidence":1.0,"sensitivity":"private","created_at":"2026-09-02T12:00:00+00:00"}]}',
+      ),
+    });
+    final client = IdentityClient(
+      baseUri: Uri.parse('http://127.0.0.1:43123'),
+      transportToken: 'local-transport-token',
+      transport: transport,
+    );
+
+    final memories = await client.fetchLiMemories(_session);
+
+    expect(memories, hasLength(1));
+    expect(memories.single.content, 'Founder memory');
+    final request = transport.requests.single;
+    expect(request.method, 'GET');
+    expect(request.headers['X-ILAIOS-Session'], 'session-1');
+    expect(request.headers['Authorization'], 'Bearer local-transport-token');
+  });
+
+  test('Li persistent memory write validates response and request body', () async {
+    final transport = _FakeTransport(<String, ControlPlaneResponse>{
+      '/v1/li/memories': const ControlPlaneResponse(
+        statusCode: 201,
+        body:
+            '{"memory_id":"li_mem_2","kind":"working","content":"Remember this","source":"desktop","confidence":1.0,"sensitivity":"private","created_at":"2026-09-02T12:01:00+00:00"}',
+      ),
+    });
+    final client = IdentityClient(
+      baseUri: Uri.parse('http://127.0.0.1:43123'),
+      transportToken: 'local-transport-token',
+      transport: transport,
+    );
+
+    final memory = await client.rememberLiMemory(
+      _session,
+      kind: 'working',
+      content: 'Remember this',
+    );
+
+    expect(memory.memoryId, 'li_mem_2');
+    expect(memory.source, 'desktop');
+    final request = transport.requests.single;
+    expect(request.method, 'POST');
+    expect(request.headers['X-ILAIOS-Session'], 'session-1');
+    expect(
+      jsonDecode(request.body!),
+      <String, Object?>{'kind': 'working', 'content': 'Remember this'},
+    );
+  });
+
+  test('Li memory parser rejects malformed persistent-memory payloads', () async {
+    final transport = _FakeTransport(<String, ControlPlaneResponse>{
+      '/v1/li/memories': const ControlPlaneResponse(
+        statusCode: 200,
+        body:
+            '{"memories":[{"memory_id":"wrong","kind":"semantic","content":"x","source":"desktop","confidence":1.0,"sensitivity":"private","created_at":"2026-09-02T12:00:00+00:00"}]}',
+      ),
+    });
+    final client = IdentityClient(
+      baseUri: Uri.parse('http://127.0.0.1:43123'),
+      transportToken: 'local-transport-token',
+      transport: transport,
+    );
+
+    await expectLater(
+      client.fetchLiMemories(_session),
+      throwsA(isA<IdentityClientException>()),
+    );
+  });
+
   test('identity client rejects non-loopback broker endpoints', () {
     expect(
       () => IdentityClient(

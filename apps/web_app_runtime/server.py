@@ -22,7 +22,7 @@ from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from threading import BoundedSemaphore, Lock
-from typing import Final
+from typing import Final, cast
 from urllib.parse import parse_qs, urlsplit
 
 from services.canonical_browser_session import (
@@ -122,6 +122,8 @@ _RATE_LIMITS: Final = {
     "/auth/logout": (120, 60),
     "/auth/session": (600, 60),
     "/auth/desktop/canonicalize": (120, 60),
+    "/api/desktop/li/memories/list": (120, 60),
+    "/api/desktop/li/memories/remember": (120, 60),
     "/li": (300, 60),
     "/li/app.js": (300, 60),
     "/api/li/state": (300, 60),
@@ -535,6 +537,22 @@ class AppRuntime:
                         HTTPStatus.BAD_REQUEST, "unexpected query parameters"
                     )
                 return self._desktop_canonicalize(request, current)
+            if path == "/api/desktop/li/memories/list":
+                if method != "POST":
+                    return self._method_not_allowed("POST")
+                if split.query:
+                    return self._json_error(
+                        HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+                    )
+                return self._desktop_li_memories(request, current)
+            if path == "/api/desktop/li/memories/remember":
+                if method != "POST":
+                    return self._method_not_allowed("POST")
+                if split.query:
+                    return self._json_error(
+                        HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+                    )
+                return self._desktop_li_remember(request, current)
             if path == "/li":
                 if method != "GET":
                     return self._method_not_allowed("GET")
@@ -997,6 +1015,38 @@ class AppRuntime:
         if provider_id != "google" or not isinstance(encoded_token, str):
             return self._json_error(HTTPStatus.BAD_REQUEST, "request body is invalid")
 
+        account, principal = self._desktop_identity(
+            provider_id,
+            encoded_token,
+            now,
+        )
+        li_founder = False
+        if self.li is not None:
+            try:
+                self.li.authorize(principal)
+            except LiAccessError:
+                li_founder = False
+            else:
+                li_founder = True
+        return self._json(
+            HTTPStatus.OK,
+            {
+                "user_id": account.user_id,
+                "tenant_id": account.tenant_id,
+                "li_founder": li_founder,
+            },
+        )
+
+    def _desktop_identity(
+        self,
+        provider_id: str,
+        encoded_token: str,
+        now: datetime,
+    ) -> tuple[CanonicalAccount, Principal]:
+        if provider_id != "google" or not encoded_token:
+            raise GoogleDesktopIdentityVerificationError(
+                "desktop identity request is invalid"
+            )
         verified = verify_google_desktop_id_token(
             encoded_token,
             client_id=self.desktop_client_id,
@@ -1012,20 +1062,108 @@ class AppRuntime:
         principal = CanonicalIdentityPrincipalResolver(
             self.environment.identity_database
         ).resolve(account)
-        li_founder = False
-        if self.li is not None:
-            try:
-                self.li.authorize(principal)
-            except LiAccessError:
-                li_founder = False
-            else:
-                li_founder = True
+        return account, principal
+
+    def _desktop_li_principal(
+        self,
+        request: RuntimeRequest,
+        now: datetime,
+        *,
+        expected_keys: frozenset[str],
+    ) -> tuple[LiFounderOperator, Principal, dict[str, object]]:
+        li = self._li_operator()
+        if li is None:
+            raise LiAccessError("Li access denied")
+        content_type = request.headers.get("Content-Type", "")
+        if content_type.split(";", 1)[0].strip().casefold() != "application/json":
+            raise LiMemoryError("application/json is required")
+        if not request.body or len(request.body) > _MAX_REQUEST_BODY_BYTES:
+            raise LiMemoryError("request body is invalid")
+        try:
+            document = json.loads(request.body)
+        except (UnicodeDecodeError, json.JSONDecodeError) as error:
+            raise LiMemoryError("request body is invalid") from error
+        if not isinstance(document, dict) or set(document) != expected_keys:
+            raise LiMemoryError("request body is invalid")
+        typed_document = cast(dict[str, object], document)
+        provider_id = typed_document.get("provider_id")
+        encoded_token = typed_document.get("id_token")
+        if (
+            not isinstance(provider_id, str)
+            or provider_id != "google"
+            or not isinstance(encoded_token, str)
+        ):
+            raise LiMemoryError("request body is invalid")
+        _account, principal = self._desktop_identity(
+            provider_id,
+            encoded_token,
+            now,
+        )
+        li.authorize(principal)
+        return li, principal, typed_document
+
+    def _desktop_li_memories(
+        self,
+        request: RuntimeRequest,
+        now: datetime,
+    ) -> RuntimeResponse:
+        li, principal, _document = self._desktop_li_principal(
+            request,
+            now,
+            expected_keys=frozenset({"provider_id", "id_token"}),
+        )
+        memories = li.list_memories(principal)
         return self._json(
             HTTPStatus.OK,
             {
-                "user_id": account.user_id,
-                "tenant_id": account.tenant_id,
-                "li_founder": li_founder,
+                "memories": [
+                    {
+                        "memory_id": item.memory_id,
+                        "kind": item.kind,
+                        "content": item.content,
+                        "source": item.source,
+                        "confidence": item.confidence,
+                        "sensitivity": item.sensitivity,
+                        "created_at": item.created_at.isoformat(),
+                    }
+                    for item in memories
+                ]
+            },
+        )
+
+    def _desktop_li_remember(
+        self,
+        request: RuntimeRequest,
+        now: datetime,
+    ) -> RuntimeResponse:
+        li, principal, document = self._desktop_li_principal(
+            request,
+            now,
+            expected_keys=frozenset(
+                {"provider_id", "id_token", "kind", "content"}
+            ),
+        )
+        kind = document.get("kind")
+        content = document.get("content")
+        if not isinstance(kind, str) or not isinstance(content, str):
+            raise LiMemoryError("request body is invalid")
+        record = li.remember(
+            principal,
+            kind=kind,
+            content=content,
+            now=now,
+            source="desktop",
+        )
+        return self._json(
+            HTTPStatus.CREATED,
+            {
+                "memory_id": record.memory_id,
+                "kind": record.kind,
+                "content": record.content,
+                "source": record.source,
+                "confidence": record.confidence,
+                "sensitivity": record.sensitivity,
+                "created_at": record.created_at.isoformat(),
             },
         )
 
