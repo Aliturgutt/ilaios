@@ -145,7 +145,7 @@ def test_base_paid_model_does_not_satisfy_exact_free_alias() -> None:
     ).execute(_request())
 
     assert not result.success
-    assert result.error_code == "FREE_VIDEO_MODEL_UNAVAILABLE"
+    assert result.error_code == "FREE_VIDEO_VARIANT_UNAVAILABLE"
     assert transport.post_count == 0
     assert "test-secret" not in str(result)
 
