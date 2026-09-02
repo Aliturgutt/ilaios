@@ -62,7 +62,7 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
   @override
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
-          const baseSafetyHeight = 744.0;
+          const baseSafetyHeight = 769.0;
           const shortViewportSafetyHeight = 860.0;
           final textScale = MediaQuery.textScalerOf(context).scale(1);
           final needsReadableScroll = constraints.maxWidth >= 1000 &&
