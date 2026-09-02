@@ -19,7 +19,7 @@ from apps.web_app_runtime.server import (
     RuntimeResponse,
 )
 
-_LOGIN_HTML = b"""<!doctype html>
+_LOGIN_HTML = """<!doctype html>
 <html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
@@ -71,7 +71,7 @@ _LOGIN_HTML = b"""<!doctype html>
   <script src="/login/app.js" defer></script>
 </body>
 </html>
-"""
+""".encode("utf-8")
 
 _LOGIN_CSS = b""":root {
   color-scheme: light;
