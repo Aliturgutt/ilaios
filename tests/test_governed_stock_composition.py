@@ -79,7 +79,12 @@ def test_exact_final_artifact_evidence_preserves_stock_provenance(tmp_path: Path
     assert evidence["final_mp4_sha256"] == final_sha
     assert evidence["stock_provider"] == "wikimedia"
     assert evidence["stock_license_name"] == "CC BY 4.0"
-    assert evidence["stock_selection_attempts"][-1]["status"] == "selected"
+    attempts = evidence["stock_selection_attempts"]
+    assert isinstance(attempts, list)
+    assert attempts
+    last_attempt = attempts[-1]
+    assert isinstance(last_attempt, dict)
+    assert last_attempt["status"] == "selected"
 
 
 def test_ffmpeg_input_is_bounded_by_media_type(tmp_path: Path) -> None:
