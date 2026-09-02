@@ -14,11 +14,12 @@ import 'reference_home_truth_sanitizer.dart';
 /// Compatibility entry point kept for the established Desktop shell.
 ///
 /// The actual Home implementation lives in [ReferenceHomeDashboardV3]. Wide
-/// Desktop windows with a short logical content height preserve native
-/// typography size and allow vertical scrolling of the verified Home safety
-/// canvas instead of shrinking the entire surface. Windows text scaling uses
-/// the same strategy: the safety canvas grows with the system scale and remains
-/// vertically scrollable rather than compressing or shrinking readable text.
+/// Desktop windows with a short logical content height (for example 1280x800
+/// after the shell bars are removed) preserve native typography size and allow
+/// vertical scrolling of the verified Home safety canvas instead of shrinking
+/// the entire surface. Windows text scaling uses the same strategy: the safety
+/// canvas grows with the system scale and remains vertically scrollable rather
+/// than compressing or shrinking readable text.
 class ReferenceHomeDashboardV2 extends StatelessWidget {
   const ReferenceHomeDashboardV2({
     required this.projection,
@@ -62,12 +63,11 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
   Widget build(BuildContext context) => LayoutBuilder(
         builder: (context, constraints) {
           // The inline governed attachment row increases the Home hero height.
-          // Keep the approved wide 2x2 support composition and native text
-          // sizes; shorter desktop client areas scroll a sufficiently tall
-          // safety canvas instead of starving support panels. The 1420px short
-          // canvas is derived from the exact-head 1366x768 overflow evidence:
-          // both support rows needed about 146px more vertical room than 1240.
-          const baseSafetyHeight = 1000.0;
+          // Preserve the established normal-viewport boundary: standard Desktop
+          // clients stay in the approved one-viewport composition, while only
+          // genuinely short content areas use the taller safety canvas. The
+          // short canvas remains sized from exact 1366x768 overflow evidence.
+          const baseSafetyHeight = 744.0;
           const shortViewportSafetyHeight = 1420.0;
           final textScale = MediaQuery.textScalerOf(context).scale(1);
           final needsReadableScroll = constraints.maxWidth >= 1000 &&
