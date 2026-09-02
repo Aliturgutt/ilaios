@@ -55,8 +55,14 @@ jobs:
           ]:
               replace(path, '02-ilaios-primary-horizontal-dark.jpg', '05-ilaios-app-icon.jpg')
 
-          for path in [
+          # Artifact E2E intentionally references the canonical symbol twice.
+          replace(
               'apps/desktop/e2e/video_finished_product_artifact_e2e.py',
+              '03-ilaios-symbol-dark.jpg',
+              '05-ilaios-app-icon.jpg',
+              expected=2,
+          )
+          for path in [
               'apps/desktop/e2e/video_finished_product_e2e.py',
               'apps/desktop/tool/build_control_plane_sidecar.ps1',
               'apps/desktop/sidecar/ilaios_control_plane_sidecar.py',
