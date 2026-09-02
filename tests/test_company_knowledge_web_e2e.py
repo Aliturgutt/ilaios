@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import cast
@@ -30,17 +29,28 @@ from services.knowledge_runtime import (
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 
 
-@pytest.fixture(autouse=True)
-def _restore_global_adapter_descriptors() -> Iterator[None]:
+_adapter_descriptor_snapshot: dict[str, object] | None = None
+
+
+def setup_function(_function: object) -> None:
+    global _adapter_descriptor_snapshot
     registry = cast(
         dict[str, object], getattr(coordinator_module, "_ADAPTER_DESCRIPTORS")
     )
-    snapshot = dict(registry)
-    try:
-        yield
-    finally:
-        registry.clear()
-        registry.update(snapshot)
+    _adapter_descriptor_snapshot = dict(registry)
+
+
+def teardown_function(_function: object) -> None:
+    global _adapter_descriptor_snapshot
+    registry = cast(
+        dict[str, object], getattr(coordinator_module, "_ADAPTER_DESCRIPTORS")
+    )
+    snapshot = _adapter_descriptor_snapshot
+    if snapshot is None:
+        raise AssertionError("adapter descriptor snapshot was not initialized")
+    registry.clear()
+    registry.update(snapshot)
+    _adapter_descriptor_snapshot = None
 
 
 def _knowledge(tmp_path: Path, tenant_id: str = "tenant/web") -> DurableKnowledgeRuntime:
