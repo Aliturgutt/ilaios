@@ -76,9 +76,26 @@ forbid(/linear-gradient\s*\(/i, "linear decorative gradient returned");
 forbid(/text-shadow\s*:/i, "text glow/shadow returned");
 forbid(/filter\s*:\s*blur\s*\(/i, "blur decoration returned");
 forbid(/#00c2d1|#18c7d9|#2b6fff/i, "legacy neon/cyan-blue palette returned");
+const canonicalNeutralColors = new Set([
+  "#0a0a0a",
+  "#141414",
+  "#1e1e1e",
+  "#2a2a2a",
+  "#ffffff",
+  "#e6e6e6",
+  "#b3b3b3",
+  "#808080",
+  "#242424",
+  "#2f2f2f",
+]);
 for (const match of css.matchAll(/box-shadow\s*:\s*([^;}]+)/gi)) {
-  const value = match[1].trim().toLowerCase();
-  if (!["none", "initial", "inherit", "unset"].includes(value)) failures.push(`anti-generic gate: non-neutral box shadow returned (${match[1].trim()})`);
+  const rawValue = match[1].trim();
+  const value = rawValue.toLowerCase().replace(/\s*!important\s*$/i, "").trim();
+  if (["none", "initial", "inherit", "unset"].includes(value)) continue;
+  const colors = [...value.matchAll(/#[0-9a-f]{6}\b/gi)].map((color) => color[0].toLowerCase());
+  if (!colors.length || colors.some((color) => !canonicalNeutralColors.has(color))) {
+    failures.push(`anti-generic gate: non-neutral box shadow returned (${rawValue})`);
+  }
 }
 
 requireText(layout, "mobile-redteam.css", "mobile correction layer");
