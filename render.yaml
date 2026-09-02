@@ -1,5 +1,6 @@
 version: "1"
 
+# Deployment retry marker for app.ilaios.com login surface after the 2026-09-02 Render build/deploy incident.
 services:
   - type: web
     name: ilaios-web-app
