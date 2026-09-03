@@ -29,12 +29,13 @@ def test_creative_document_outputs_are_openable_persistent_and_scoped(tmp_path: 
     assert manifest["status"] == "ACCEPTED"
     artifacts = manifest["artifacts"]
     assert isinstance(artifacts, list)
-    assert len(artifacts) == 4
+    assert len(artifacts) == 5
     assert {str(item["artifact_type"]) for item in artifacts} == {
         "document.pdf",
         "document.docx",
         "document.xlsx",
         "document.csv",
+        "document.pptx",
     }
 
     restarted = GovernedArtifactOutputStore(tmp_path / "objects", tmp_path / "artifacts.sqlite")
@@ -91,9 +92,30 @@ def test_creative_document_outputs_are_openable_persistent_and_scoped(tmp_path: 
         ["Next action: validate retention."],
     ]
 
+    pptx = restarted.read(
+        artifact_id="artifact_board-report.pptx",
+        version_id="v1",
+        tenant_id="tenant-a",
+        project_id="project-a",
+    )
+    with zipfile.ZipFile(io.BytesIO(pptx)) as archive:
+        assert {
+            "[Content_Types].xml",
+            "_rels/.rels",
+            "ppt/presentation.xml",
+            "ppt/_rels/presentation.xml.rels",
+            "ppt/slides/slide1.xml",
+        } <= set(archive.namelist())
+        presentation = archive.read("ppt/presentation.xml")
+        slide = archive.read("ppt/slides/slide1.xml")
+        ET.fromstring(presentation)
+        ET.fromstring(slide)
+        assert b"Board Report" in slide
+        assert b"Revenue increased." in slide
+
     with pytest.raises(ArtifactOutputError, match="scope mismatch"):
         restarted.read(
-            artifact_id="artifact_board-report.xlsx",
+            artifact_id="artifact_board-report.pptx",
             version_id="v1",
             tenant_id="tenant-b",
             project_id="project-a",
