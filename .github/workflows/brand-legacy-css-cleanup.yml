@@ -1,9 +1,9 @@
 name: Brand Legacy CSS Cleanup
 
 on:
-  push:
+  pull_request:
     branches:
-      - brand/canonical-neutral-palette-20260902
+      - master
     paths:
       - .github/workflows/brand-legacy-css-cleanup.yml
 
@@ -12,6 +12,7 @@ permissions:
 
 jobs:
   cleanup:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'brand/canonical-neutral-palette-20260902'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout exact branch
@@ -77,9 +78,7 @@ jobs:
           grep -Fq -- '--v2-panel: #141414;' apps/website/app/website-v2.css
           grep -Fq -- '--v2-soft: #E6E6E6;' apps/website/app/website-v2.css
           grep -Fq -- '--v2-muted: #B3B3B3;' apps/website/app/website-v2.css
-
           git diff --check
-          git diff -- apps/website/app/website-v2.css
 
       - name: Commit bounded cleanup
         shell: bash
