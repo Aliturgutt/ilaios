@@ -130,6 +130,41 @@ def test_non_owner_cannot_close_tenant(tmp_path: Path) -> None:
         )
 
 
+def test_owner_cannot_close_a_different_tenant(tmp_path: Path) -> None:
+    database_path = tmp_path / "identity.db"
+    _seed(database_path)
+    service = TenantDeletionService(database_path)
+
+    with pytest.raises(CentralIdentityError, match="active tenant owner"):
+        service.delete_tenant(
+            actor_user_id="owner-a",
+            tenant_id="tenant-b",
+            recent_authentication_verified=True,
+            deletion_confirmation_verified=True,
+            occurred_at=NOW,
+        )
+
+    with sqlite3.connect(database_path) as connection:
+        assert connection.execute(
+            "SELECT status FROM identity_tenants WHERE tenant_id = 'tenant-b'"
+        ).fetchone() == ("ACTIVE",)
+        assert connection.execute(
+            "SELECT revoked_at FROM identity_sessions WHERE session_id = 'session-shared-b'"
+        ).fetchone() == (None,)
+        assert connection.execute(
+            "SELECT state FROM identity_entitlements WHERE tenant_id = 'tenant-b' AND entitlement_key = 'plan.pro'"
+        ).fetchone() == ("ACTIVE",)
+        payload_text = connection.execute(
+            "SELECT payload_json FROM events WHERE event_type = 'identity.tenant_delete' "
+            "ORDER BY sequence DESC LIMIT 1"
+        ).fetchone()[0]
+    payload = json.loads(payload_text)
+    assert payload["status"] == "DENIED"
+    assert payload["actor_user_id"] == "owner-a"
+    assert payload["tenant_id"] == "tenant-b"
+    assert payload["reason"] == "actor_not_owner"
+
+
 def test_recent_auth_and_explicit_confirmation_are_required(tmp_path: Path) -> None:
     database_path = tmp_path / "identity.db"
     _seed(database_path)
