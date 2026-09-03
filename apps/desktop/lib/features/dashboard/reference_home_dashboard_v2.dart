@@ -67,7 +67,7 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
           // width and height are constrained. Wider reference clients retain
           // the approved one-viewport composition; compact clients keep native
           // typography by using the existing bounded safety canvas.
-          const compactContentWidth = 1200.0;
+          const compactContentWidth = 1400.0;
           const compactContentHeight = 900.0;
           const shortViewportSafetyHeight = 1420.0;
           final textScale = MediaQuery.textScalerOf(context).scale(1);
