@@ -103,7 +103,7 @@ _LOGIN_CSS = b""":root {
 }
 html[data-theme="dark"] {
   color-scheme: dark;
-  --bg:#0A0A0A;
+  --bg:#0B0E13;
   --text:#FFFFFF;
   --muted:#B3B3B3;
   --line:#2A2A2A;
@@ -125,11 +125,11 @@ button,a{font:inherit}
 .auth{width:min(100%,384px);text-align:center}
 .brand-lockup{width:190px;height:64px;margin:0 auto 30px;overflow:hidden;background:#FFFFFF}
 .brand-image{display:block;width:100%;height:100%;object-fit:contain;object-position:center;background:#FFFFFF}
-.brand-image-dark{display:none;background:#0A0A0A;mix-blend-mode:lighten}
+.brand-image-dark{display:none;background:#0B0E13}
 html[data-theme="dark"] .brand-image-light{display:none}
 html[data-theme="dark"] .brand-image-dark{display:block}
-html[data-theme="dark"] .brand-lockup{background:#0A0A0A}
-h1{margin:0;font-size:28px;line-height:1.15;letter-spacing:-.025em;font-weight:650}
+html[data-theme="dark"] .brand-lockup{background:#0B0E13}
+h1{margin:0;font-family:"Segoe UI Variable Display","Segoe UI",Inter,ui-sans-serif,sans-serif;font-size:27px;line-height:1.2;letter-spacing:-.012em;font-weight:600}
 .intro{margin:10px 0 28px;color:var(--muted);font-size:14px;line-height:1.45}
 .providers{display:grid;gap:10px}
 .provider{height:48px;display:grid;grid-template-columns:24px 1fr 24px;align-items:center;padding:0 14px;border:1px solid var(--line);border-radius:8px;background:var(--button);color:var(--text);text-decoration:none;font-size:14px;font-weight:550;text-align:center;transition:background-color 120ms ease,border-color 120ms ease}
@@ -143,7 +143,7 @@ h1{margin:0;font-size:28px;line-height:1.15;letter-spacing:-.025em;font-weight:6
 .provider[aria-disabled="true"]{color:var(--disabled);pointer-events:none}
 .theme-button:focus-visible,.provider:focus-visible{outline:2px solid var(--text);outline-offset:2px}
 .notice{max-width:350px;margin:22px auto 0;color:var(--muted);font-size:11px;line-height:1.55}
-@media (max-width:560px){.shell{padding:72px 18px 32px}.theme-control{top:14px;right:14px}.auth{width:min(100%,360px)}.brand-lockup{width:172px;height:58px;margin-bottom:24px}h1{font-size:26px}.intro{margin-bottom:24px}.provider{height:48px}}
+@media (max-width:560px){.shell{padding:72px 18px 32px}.theme-control{top:14px;right:14px}.auth{width:min(100%,360px)}.brand-lockup{width:172px;height:58px;margin-bottom:24px}h1{font-size:25px}.intro{margin-bottom:24px}.provider{height:48px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
 """
 
@@ -151,7 +151,7 @@ _LOGIN_JS = b"""(function(){\"use strict\";
 const root=document.documentElement;const lightButton=document.getElementById('theme-light');const darkButton=document.getElementById('theme-dark');
 function storedTheme(){try{return localStorage.getItem('ilaios-theme');}catch(_error){return null;}}
 function storeTheme(value){try{localStorage.setItem('ilaios-theme',value);}catch(_error){return;}}
-function apply(theme){const value=theme==='dark'?'dark':'light';root.dataset.theme=value;const dark=value==='dark';lightButton.classList.toggle('is-active',!dark);darkButton.classList.toggle('is-active',dark);lightButton.setAttribute('aria-pressed',String(!dark));darkButton.setAttribute('aria-pressed',String(dark));const meta=document.querySelector('meta[name=theme-color]');if(meta){meta.setAttribute('content',dark?'#0A0A0A':'#FFFFFF');}}
+function apply(theme){const value=theme==='dark'?'dark':'light';root.dataset.theme=value;const dark=value==='dark';lightButton.classList.toggle('is-active',!dark);darkButton.classList.toggle('is-active',dark);lightButton.setAttribute('aria-pressed',String(!dark));darkButton.setAttribute('aria-pressed',String(dark));const meta=document.querySelector('meta[name=theme-color]');if(meta){meta.setAttribute('content',dark?'#0B0E13':'#FFFFFF');}}
 apply(storedTheme()==='dark'?'dark':'light');lightButton.addEventListener('click',function(){apply('light');storeTheme('light');});darkButton.addEventListener('click',function(){apply('dark');storeTheme('dark');});
 fetch('/auth/providers',{credentials:'same-origin',cache:'no-store'}).then(function(response){if(!response.ok){return null;}return response.json();}).then(function(payload){if(!payload||!Array.isArray(payload.providers)){return;}const available=new Set(payload.providers);for(const link of document.querySelectorAll('[data-provider]')){const provider=link.getAttribute('data-provider');if(!available.has(provider)){link.setAttribute('aria-disabled','true');link.setAttribute('tabindex','-1');link.removeAttribute('href');}}}).catch(function(){return;});
 })();
