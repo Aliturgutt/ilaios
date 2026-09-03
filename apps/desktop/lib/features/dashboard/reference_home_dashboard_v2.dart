@@ -72,7 +72,7 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
           const shortViewportSafetyHeight = 1420.0;
           final textScale = MediaQuery.textScalerOf(context).scale(1);
           final compactGeometry = constraints.maxWidth < compactContentWidth &&
-              constraints.maxHeight < compactContentHeight;
+              constraints.maxHeight <= compactContentHeight;
           final needsReadableScroll = compactGeometry || textScale > 1.0;
           final safetyHeight = compactGeometry
               ? shortViewportSafetyHeight
