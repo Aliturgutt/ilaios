@@ -24,7 +24,7 @@ from apps.web_app_runtime.server import (
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _BRAND_DIR = _REPO_ROOT / "brand" / "assets"
 _BRAND_LIGHT = (_BRAND_DIR / "13-ilaios-primary-horizontal-light.jpg").read_bytes()
-_BRAND_DARK = (_BRAND_DIR / "02-ilaios-primary-horizontal-dark.jpg").read_bytes()
+_BRAND_DARK = (_BRAND_DIR / "02-ilaios-primary-horizontal-dark-carbon.png").read_bytes()
 
 _LOGIN_HTML = """<!doctype html>
 <html lang="en" data-theme="light">
@@ -46,7 +46,7 @@ _LOGIN_HTML = """<!doctype html>
     <section class="auth" aria-labelledby="login-title">
       <div class="brand-lockup" aria-label="ILAIOS">
         <img class="brand-image brand-image-light" src="/login/brand-light.jpg" alt="ILAIOS">
-        <img class="brand-image brand-image-dark" src="/login/brand-dark.jpg" alt="ILAIOS">
+        <img class="brand-image brand-image-dark" src="/login/brand-dark.png" alt="ILAIOS">
       </div>
 
       <h1 id="login-title">Welcome back</h1>
@@ -199,10 +199,10 @@ class LoginAppRuntime(AppRuntime):
             if method != "GET":
                 return self._method_not_allowed("GET")
             return self._asset_response(_BRAND_LIGHT, "image/jpeg")
-        if split.path == "/login/brand-dark.jpg":
+        if split.path == "/login/brand-dark.png":
             if method != "GET":
                 return self._method_not_allowed("GET")
-            return self._asset_response(_BRAND_DARK, "image/jpeg")
+            return self._asset_response(_BRAND_DARK, "image/png")
         return super().dispatch(request, now=now)
 
     @staticmethod
