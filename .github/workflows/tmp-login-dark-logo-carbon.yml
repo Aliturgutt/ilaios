@@ -1,0 +1,60 @@
+name: Temporary Login Dark Logo Carbon Conversion
+
+on:
+  push:
+    branches:
+      - fix/login-dark-logo-carbon-canvas
+
+permissions:
+  contents: write
+
+jobs:
+  convert:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install Pillow
+        run: python -m pip install --disable-pip-version-check Pillow==11.3.0
+      - name: Normalize only exact legacy canvas pixels
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          from PIL import Image
+
+          source = Path('brand/assets/02-ilaios-primary-horizontal-dark.jpg')
+          target = Path('brand/assets/02-ilaios-primary-horizontal-dark-carbon.png')
+          legacy = (11, 14, 19)
+          carbon = (10, 10, 10)
+
+          image = Image.open(source).convert('RGB')
+          before = list(image.getdata())
+          after = [carbon if pixel == legacy else pixel for pixel in before]
+          changed = sum(a != b for a, b in zip(before, after, strict=True))
+          if changed != 1_755_569:
+              raise SystemExit(f'unexpected exact legacy canvas pixel count: {changed}')
+
+          image.putdata(after)
+          image.save(target, format='PNG', optimize=True)
+
+          check = Image.open(target).convert('RGB')
+          check_pixels = list(check.getdata())
+          if check.size != (2400, 800):
+              raise SystemExit(f'unexpected output size: {check.size}')
+          if check.getpixel((0, 0)) != carbon:
+              raise SystemExit(f'corner is not Carbon: {check.getpixel((0, 0))}')
+          for old, new in zip(before, check_pixels, strict=True):
+              if old != legacy and old != new:
+                  raise SystemExit('non-canvas pixel changed')
+          PY
+      - name: Commit normalized derivative to bounded branch
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add brand/assets/02-ilaios-primary-horizontal-dark-carbon.png
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix(login): normalize dark logo canvas to Carbon'
+          git push
