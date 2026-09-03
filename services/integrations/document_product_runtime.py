@@ -1,7 +1,8 @@
-"""Bounded Creative/Document finished-product runtime for PDF and DOCX outputs."""
+"""Bounded Creative/Document finished-product runtime for PDF, DOCX, XLSX, CSV, and PPTX outputs."""
 
 from __future__ import annotations
 
+import csv
 import io
 import re
 import zipfile
@@ -84,8 +85,132 @@ def build_docx(title: str, body: str) -> bytes:
     return buffer.getvalue()
 
 
+def _safe_csv_cell(value: str) -> str:
+    if value.startswith(("=", "+", "-", "@")):
+        return f"'{value}"
+    return value
+
+
+def build_csv(title: str, body: str) -> bytes:
+    buffer = io.StringIO(newline="")
+    writer = csv.writer(buffer, lineterminator="\n")
+    writer.writerow([_safe_csv_cell(title)])
+    for line in body.splitlines():
+        writer.writerow([_safe_csv_cell(line)])
+    return buffer.getvalue().encode("utf-8")
+
+
+def build_xlsx(title: str, body: str) -> bytes:
+    rows = [title, *body.splitlines()]
+    worksheet_rows = "".join(
+        f'<row r="{index}"><c r="A{index}" t="inlineStr"><is><t xml:space="preserve">{escape(text)}</t></is></c></row>'
+        for index, text in enumerate(rows, 1)
+    )
+    worksheet = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+        f"<sheetData>{worksheet_rows}</sheetData></worksheet>"
+    )
+    workbook = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">'
+        '<sheets><sheet name="Document" sheetId="1" r:id="rId1"/></sheets></workbook>'
+    )
+    workbook_relationships = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>'
+        '</Relationships>'
+    )
+    relationships = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>'
+        '</Relationships>'
+    )
+    content_types = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="xml" ContentType="application/xml"/>'
+        '<Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>'
+        '<Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>'
+        '</Types>'
+    )
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", content_types)
+        archive.writestr("_rels/.rels", relationships)
+        archive.writestr("xl/workbook.xml", workbook)
+        archive.writestr("xl/_rels/workbook.xml.rels", workbook_relationships)
+        archive.writestr("xl/worksheets/sheet1.xml", worksheet)
+    return buffer.getvalue()
+
+
+def build_pptx(title: str, body: str) -> bytes:
+    body_text = "\n".join(body.splitlines())
+    content_types = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">'
+        '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>'
+        '<Default Extension="xml" ContentType="application/xml"/>'
+        '<Override PartName="/ppt/presentation.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml"/>'
+        '<Override PartName="/ppt/slides/slide1.xml" ContentType="application/vnd.openxmlformats-officedocument.presentationml.slide+xml"/>'
+        '</Types>'
+    )
+    relationships = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="ppt/presentation.xml"/>'
+        '</Relationships>'
+    )
+    presentation = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<p:presentation xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" '
+        'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">'
+        '<p:sldIdLst><p:sldId id="256" r:id="rId1"/></p:sldIdLst>'
+        '<p:sldSz cx="12192000" cy="6858000" type="screen16x9"/>'
+        '<p:notesSz cx="6858000" cy="9144000"/>'
+        '</p:presentation>'
+    )
+    presentation_relationships = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">'
+        '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/slide" Target="slides/slide1.xml"/>'
+        '</Relationships>'
+    )
+    slide = (
+        '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
+        '<p:sld xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" '
+        'xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships" '
+        'xmlns:p="http://schemas.openxmlformats.org/presentationml/2006/main">'
+        '<p:cSld><p:spTree>'
+        '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>'
+        '<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/>'
+        '<a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>'
+        '<p:sp><p:nvSpPr><p:cNvPr id="2" name="Document content"/><p:cNvSpPr txBox="1"/><p:nvPr/></p:nvSpPr>'
+        '<p:spPr><a:xfrm><a:off x="685800" y="685800"/><a:ext cx="10820400" cy="5486400"/></a:xfrm>'
+        '<a:prstGeom prst="rect"><a:avLst/></a:prstGeom><a:noFill/></p:spPr>'
+        '<p:txBody><a:bodyPr wrap="square"/><a:lstStyle/>'
+        f'<a:p><a:r><a:rPr lang="en-US" sz="2800" b="1"/><a:t>{escape(title)}</a:t></a:r></a:p>'
+        f'<a:p><a:r><a:rPr lang="en-US" sz="1800"/><a:t>{escape(body_text)}</a:t></a:r></a:p>'
+        '</p:txBody></p:sp>'
+        '</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>'
+    )
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", content_types)
+        archive.writestr("_rels/.rels", relationships)
+        archive.writestr("ppt/presentation.xml", presentation)
+        archive.writestr("ppt/_rels/presentation.xml.rels", presentation_relationships)
+        archive.writestr("ppt/slides/slide1.xml", slide)
+    return buffer.getvalue()
+
+
 class DocumentProductRuntime:
-    """Render and persist one governed PDF+DOCX finished-product pair."""
+    """Render and persist one governed PDF+DOCX+XLSX+CSV+PPTX finished-product bundle."""
 
     def __init__(self, outputs: GovernedArtifactOutputStore) -> None:
         self._outputs = outputs
@@ -123,8 +248,44 @@ class DocumentProductRuntime:
             mime_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             content=build_docx(title, body),
         )
+        xlsx = self._outputs.put(
+            artifact_id=f"{artifact_id}.xlsx",
+            version_id=version_id,
+            tenant_id=tenant_id,
+            project_id=project_id,
+            job_id=job_id,
+            artifact_type="document.xlsx",
+            mime_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            content=build_xlsx(title, body),
+        )
+        csv_output = self._outputs.put(
+            artifact_id=f"{artifact_id}.csv",
+            version_id=version_id,
+            tenant_id=tenant_id,
+            project_id=project_id,
+            job_id=job_id,
+            artifact_type="document.csv",
+            mime_type="text/csv; charset=utf-8",
+            content=build_csv(title, body),
+        )
+        pptx = self._outputs.put(
+            artifact_id=f"{artifact_id}.pptx",
+            version_id=version_id,
+            tenant_id=tenant_id,
+            project_id=project_id,
+            job_id=job_id,
+            artifact_type="document.pptx",
+            mime_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            content=build_pptx(title, body),
+        )
         return {
             "capability_id": CAPABILITY_ID,
             "status": "ACCEPTED",
-            "artifacts": [asdict(pdf), asdict(docx)],
+            "artifacts": [
+                asdict(pdf),
+                asdict(docx),
+                asdict(xlsx),
+                asdict(csv_output),
+                asdict(pptx),
+            ],
         }

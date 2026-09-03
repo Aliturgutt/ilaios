@@ -11,8 +11,10 @@ from __future__ import annotations
 import hashlib
 import io
 import re
+import stat
 import zipfile
 from dataclasses import dataclass
+from pathlib import PurePosixPath
 from typing import Protocol
 
 from pypdf import PdfReader
@@ -119,6 +121,84 @@ class DocxTextExtractor:
         return _normalize(text)
 
 
+class ZipTextExtractor:
+    """Fail-closed extraction for bounded ZIP bundles containing UTF-8 text/CSV files."""
+
+    mime_types = frozenset({"application/zip"})
+    _MAX_ENTRIES = 512
+    _MAX_DEPTH = 8
+    _MAX_UNCOMPRESSED_BYTES = 128 * 1024 * 1024
+    _MAX_ENTRY_BYTES = 16 * 1024 * 1024
+    _MAX_COMPRESSION_RATIO = 100
+    _MAX_EXTRACTED_CHARS = 8_000_000
+    _ALLOWED_SUFFIXES = frozenset({".txt", ".csv"})
+
+    def extract(self, *, filename: str, content: bytes) -> str:
+        del filename
+        if not content.startswith((b"PK\x03\x04", b"PK\x05\x06", b"PK\x07\x08")):
+            raise CompanyKnowledgeIngestionError("invalid ZIP signature")
+        try:
+            archive = zipfile.ZipFile(io.BytesIO(content))
+        except (zipfile.BadZipFile, OSError) as exc:
+            raise CompanyKnowledgeIngestionError("invalid ZIP container") from exc
+
+        rendered: list[str] = []
+        extracted_chars = 0
+        with archive:
+            infos = archive.infolist()
+            if len(infos) > self._MAX_ENTRIES:
+                raise CompanyKnowledgeIngestionError("ZIP contains too many archive entries")
+            total_uncompressed = sum(item.file_size for item in infos)
+            if total_uncompressed > self._MAX_UNCOMPRESSED_BYTES:
+                raise CompanyKnowledgeIngestionError("ZIP expanded size exceeds bounded limit")
+
+            for item in infos:
+                if item.is_dir():
+                    continue
+                path = self._safe_path(item)
+                if item.flag_bits & 0x1:
+                    raise CompanyKnowledgeIngestionError("encrypted ZIP entries are not ingestible")
+                if item.file_size > self._MAX_ENTRY_BYTES:
+                    raise CompanyKnowledgeIngestionError("ZIP entry exceeds bounded size")
+                if item.file_size and item.compress_size == 0:
+                    raise CompanyKnowledgeIngestionError("ZIP entry has invalid compression metadata")
+                if item.compress_size and item.file_size / item.compress_size > self._MAX_COMPRESSION_RATIO:
+                    raise CompanyKnowledgeIngestionError("ZIP compression ratio exceeds bounded limit")
+                if path.suffix.lower() not in self._ALLOWED_SUFFIXES:
+                    raise CompanyKnowledgeIngestionError("ZIP contains unsupported entry type")
+                try:
+                    raw = archive.read(item)
+                    text = raw.decode("utf-8", errors="strict")
+                except (RuntimeError, OSError, zipfile.BadZipFile, UnicodeDecodeError) as exc:
+                    raise CompanyKnowledgeIngestionError("invalid ZIP entry content") from exc
+                normalized = _normalize(text)
+                if not normalized:
+                    continue
+                entry_text = f"[file {path.as_posix()}]\n{normalized}"
+                extracted_chars += len(entry_text)
+                if extracted_chars > self._MAX_EXTRACTED_CHARS:
+                    raise CompanyKnowledgeIngestionError("ZIP extracted text exceeds bounded limit")
+                rendered.append(entry_text)
+
+        if not rendered:
+            raise CompanyKnowledgeIngestionError("ZIP produced no ingestible text")
+        return _normalize("\n".join(rendered))
+
+    def _safe_path(self, item: zipfile.ZipInfo) -> PurePosixPath:
+        name = item.filename
+        if not name or "\\" in name or "\x00" in name:
+            raise CompanyKnowledgeIngestionError("unsafe ZIP entry path")
+        path = PurePosixPath(name)
+        if path.is_absolute() or any(part in {"", ".", ".."} for part in path.parts):
+            raise CompanyKnowledgeIngestionError("unsafe ZIP entry path")
+        if len(path.parts) > self._MAX_DEPTH:
+            raise CompanyKnowledgeIngestionError("ZIP entry path exceeds bounded depth")
+        unix_mode = (item.external_attr >> 16) & 0xFFFF
+        if unix_mode and stat.S_ISLNK(unix_mode):
+            raise CompanyKnowledgeIngestionError("ZIP symlink entries are not ingestible")
+        return path
+
+
 class CompanyDocumentExtractor:
     """Bounded format adapter set shared by transient and durable Knowledge ingestion."""
 
@@ -131,6 +211,7 @@ class CompanyDocumentExtractor:
             PlainTextExtractor(),
             PdfTextExtractor(),
             DocxTextExtractor(),
+            ZipTextExtractor(),
         )
         self._extractors = {
             mime_type: extractor
