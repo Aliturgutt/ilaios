@@ -257,15 +257,15 @@ def _html_source(plan: Web3DRuntimePlan, features_json: str) -> str:
 <meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">
 <title>ILAIOS Web 3D Runtime Proof</title>
 <style>
-html,body{{margin:0;min-height:100%;background:#0b0f14;color:#fff;font-family:system-ui,sans-serif}}
+html,body{{margin:0;min-height:100%;background:#0A0A0A;color:#FFFFFF;font-family:system-ui,sans-serif}}
 main{{min-height:180vh}}
 .hero{{position:sticky;top:0;height:100vh;overflow:hidden;display:grid;place-items:center}}
 canvas{{position:absolute;inset:0;width:100%;height:100%}}
 .copy{{position:relative;z-index:2;text-align:center;pointer-events:none}}
 .copy h1{{font-size:clamp(2rem,7vw,6rem);margin:0;letter-spacing:-.04em}}
-.copy p{{max-width:42rem;margin:1rem auto 0;color:#b8c2cc}}
-.fallback{{position:absolute;inset:0;display:none;place-items:center;background:#111827}}
-.fallback-card{{border:1px solid #334155;padding:2rem;border-radius:16px;max-width:34rem}}
+.copy p{{max-width:42rem;margin:1rem auto 0;color:#B3B3B3}}
+.fallback{{position:absolute;inset:0;display:none;place-items:center;background:#141414}}
+.fallback-card{{border:1px solid #2A2A2A;padding:2rem;border-radius:16px;max-width:34rem}}
 [data-fallback=\"on\"] .fallback{{display:grid}}
 [data-fallback=\"on\"] canvas{{display:none}}
 </style>
@@ -291,7 +291,7 @@ if(reduce.matches){{fallback();return;}}
 const gl=canvas.getContext('webgl2',{{alpha:false,antialias:true,powerPreference:'high-performance'}})||canvas.getContext('webgl',{{alpha:false,antialias:true,powerPreference:'high-performance'}});
 if(!gl){{fallback();return;}}
 const vs=`attribute vec3 p;uniform float t;uniform float s;uniform vec2 m;void main(){{float a=t*.00045+s*1.8+m.x*.35;float c=cos(a),q=sin(a);vec3 v=vec3(p.x*c-p.z*q,p.y+m.y*.12,p.x*q+p.z*c);float z=v.z+4.2;gl_Position=vec4(v.x/z*1.65,v.y/z*1.65,(z-2.0)/6.0,1.0);}}`;
-const fs=`precision mediump float;void main(){{gl_FragColor=vec4(.0,.76,.82,1.0);}}`;
+const fs=`precision mediump float;void main(){{gl_FragColor=vec4(.9019608,.9019608,.9019608,1.0);}}`;
 const shader=(type,src)=>{{const sh=gl.createShader(type);if(!sh)throw new Error('shader');gl.shaderSource(sh,src);gl.compileShader(sh);if(!gl.getShaderParameter(sh,gl.COMPILE_STATUS))throw new Error('shader-compile');return sh;}};
 let program;
 try{{program=gl.createProgram();if(!program)throw new Error('program');gl.attachShader(program,shader(gl.VERTEX_SHADER,vs));gl.attachShader(program,shader(gl.FRAGMENT_SHADER,fs));gl.linkProgram(program);if(!gl.getProgramParameter(program,gl.LINK_STATUS))throw new Error('program-link');}}catch(_error){{fallback();return;}}
@@ -306,7 +306,7 @@ let mx=0,my=0,last=0;
 const interactive=FEATURES.includes('pointer-interaction')||FEATURES.includes('product-rotation');
 if(interactive)window.addEventListener('pointermove',e=>{{mx=e.clientX/Math.max(1,innerWidth)*2-1;my=1-e.clientY/Math.max(1,innerHeight)*2;}},{{passive:true}});
 const resize=()=>{{const d=Math.min({max_dpr},window.devicePixelRatio||1);const w=Math.max(1,Math.floor(canvas.clientWidth*d)),h=Math.max(1,Math.floor(canvas.clientHeight*d));if(canvas.width!==w||canvas.height!==h){{canvas.width=w;canvas.height=h;gl.viewport(0,0,w,h);}}}};
-const frame=now=>{{if(reduce.matches){{fallback();return;}}resize();const minDelta=1000/{min_fps};if(now-last>=minDelta){{last=now;gl.clearColor(.043,.059,.078,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);const scroll=FEATURES.includes('scroll-camera')?window.scrollY/Math.max(1,document.documentElement.scrollHeight-innerHeight):0;gl.uniform1f(timeLoc,now);gl.uniform1f(scrollLoc,scroll);gl.uniform2f(mouseLoc,mx,my);gl.drawElements(gl.TRIANGLES,idx.length,gl.UNSIGNED_SHORT,0);}}requestAnimationFrame(frame);}};
+const frame=now=>{{if(reduce.matches){{fallback();return;}}resize();const minDelta=1000/{min_fps};if(now-last>=minDelta){{last=now;gl.clearColor(.0392157,.0392157,.0392157,1);gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);gl.enable(gl.DEPTH_TEST);const scroll=FEATURES.includes('scroll-camera')?window.scrollY/Math.max(1,document.documentElement.scrollHeight-innerHeight):0;gl.uniform1f(timeLoc,now);gl.uniform1f(scrollLoc,scroll);gl.uniform2f(mouseLoc,mx,my);gl.drawElements(gl.TRIANGLES,idx.length,gl.UNSIGNED_SHORT,0);}}requestAnimationFrame(frame);}};
 requestAnimationFrame(frame);
 }})();
 </script>

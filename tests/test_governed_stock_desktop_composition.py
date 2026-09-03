@@ -96,5 +96,5 @@ def test_video_provider_certification_uses_public_stock_for_verified_free() -> N
 
 def test_canonical_brand_logo_is_reused_without_recolor_or_replacement() -> None:
     logo = _official_brand_logo()
-    assert logo.name == "03-ilaios-symbol-dark.jpg"
+    assert logo.name == "05-ilaios-app-icon.jpg"
     assert logo.is_file()

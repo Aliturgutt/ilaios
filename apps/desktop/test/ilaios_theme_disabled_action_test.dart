@@ -22,11 +22,11 @@ void main() {
     );
     expect(
       outlined.side!.resolve({WidgetState.disabled})!.color,
-      IlaiosTheme.graphite,
+      IlaiosTheme.stone,
     );
     expect(
       outlined.foregroundColor!.resolve(<WidgetState>{}),
-      IlaiosTheme.enterpriseCyan,
+      IlaiosTheme.white,
     );
 
     expect(
@@ -39,7 +39,7 @@ void main() {
     );
     expect(
       filled.backgroundColor!.resolve(<WidgetState>{}),
-      IlaiosTheme.enterpriseCyan,
+      IlaiosTheme.textSecondary,
     );
   });
 
@@ -66,28 +66,45 @@ void main() {
     );
   });
 
-  test('canonical cyan owns primary interactive emphasis', () {
+  test('primary interactive emphasis stays monochrome and excludes logo colors', () {
     for (final theme in <ThemeData>[IlaiosTheme.dark, IlaiosTheme.light]) {
       final outlined = theme.outlinedButtonTheme.style!;
       final filled = theme.filledButtonTheme.style!;
       final text = theme.textButtonTheme.style!;
-      final selectedSwitch = theme.switchTheme.trackColor!.resolve({WidgetState.selected});
+      final selectedSwitch =
+          theme.switchTheme.trackColor!.resolve({WidgetState.selected});
 
-      expect(theme.colorScheme.primary, IlaiosTheme.enterpriseCyan);
-      expect(
+      final interactiveColors = <Color?>[
+        theme.colorScheme.primary,
         outlined.foregroundColor!.resolve(<WidgetState>{}),
-        IlaiosTheme.enterpriseCyan,
-      );
-      expect(
         filled.backgroundColor!.resolve(<WidgetState>{}),
-        IlaiosTheme.enterpriseCyan,
-      );
-      expect(
         text.foregroundColor!.resolve(<WidgetState>{}),
-        IlaiosTheme.enterpriseCyan,
-      );
-      expect(selectedSwitch, IlaiosTheme.enterpriseCyan);
+        selectedSwitch,
+      ];
+
+      for (final color in interactiveColors) {
+        expect(color, isNot(IlaiosTheme.logoCyan));
+        expect(color, isNot(IlaiosTheme.logoBlue));
+      }
     }
+
+    expect(IlaiosTheme.dark.colorScheme.primary, IlaiosTheme.textSecondary);
+    expect(IlaiosTheme.light.colorScheme.primary, IlaiosTheme.lightText);
+    expect(
+      IlaiosTheme.dark.outlinedButtonTheme.style!.foregroundColor!
+          .resolve(<WidgetState>{}),
+      IlaiosTheme.white,
+    );
+    expect(
+      IlaiosTheme.dark.filledButtonTheme.style!.backgroundColor!
+          .resolve(<WidgetState>{}),
+      IlaiosTheme.textSecondary,
+    );
+    expect(
+      IlaiosTheme.dark.switchTheme.trackColor!
+          .resolve({WidgetState.selected}),
+      IlaiosTheme.active,
+    );
   });
 
   test('desktop typography keeps normal user text above the micro-text floor', () {

@@ -20,8 +20,8 @@ _STYLESHEET_PATH = "assets/site.css"
 _HOME_MARKER = '<main id="main">'
 _EMBED_STYLE = b"""
 .ilaios-web3d{margin:0 0 clamp(2rem,6vw,6rem);display:grid;gap:1rem}
-.ilaios-web3d-frame{width:100%;min-height:min(72vh,760px);border:0;border-radius:18px;background:#0b0f14}
-.ilaios-web3d-fallback{margin:0;color:var(--muted,#475467)}
+.ilaios-web3d-frame{width:100%;min-height:min(72vh,760px);border:0;border-radius:18px;background:#0a0a0a}
+.ilaios-web3d-fallback{margin:0;color:var(--muted,#808080)}
 @media (max-width:720px){.ilaios-web3d-frame{min-height:58vh;border-radius:12px}}
 @media (prefers-reduced-motion:reduce){.ilaios-web3d-frame{min-height:42vh}}
 """

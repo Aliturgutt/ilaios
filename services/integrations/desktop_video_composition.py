@@ -220,7 +220,7 @@ def _governed_stock_selector_from_environment() -> GovernedStockSelector:
 
 def _official_brand_logo() -> Path:
     base = Path(__file__).resolve().parents[2]
-    logo = base / "brand" / "assets" / "03-ilaios-symbol-dark.jpg"
+    logo = base / "brand" / "assets" / "05-ilaios-app-icon.jpg"
     if not logo.is_file():
         raise VideoRuntimeError("official ILAIOS brand logo is unavailable")
     return logo

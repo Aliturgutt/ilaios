@@ -10,7 +10,7 @@ Set-StrictMode -Version Latest
 $desktopRoot = Split-Path -Parent $PSScriptRoot
 $repoRoot = Resolve-Path (Join-Path $desktopRoot '..\..')
 $entrypoint = Join-Path $desktopRoot 'sidecar\ilaios_control_plane_sidecar.py'
-$brandLogo = Join-Path $repoRoot 'brand\assets\03-ilaios-symbol-dark.jpg'
+$brandLogo = Join-Path $repoRoot 'brand\assets\05-ilaios-app-icon.jpg'
 $identityProviders = Join-Path $desktopRoot 'packaging\identity\oidc-providers.public.json'
 $softwareFactorySkills = Join-Path $repoRoot 'tools\software-factory\skills'
 $securityFactorySkills = Join-Path $repoRoot 'tools\security-factory\skills'

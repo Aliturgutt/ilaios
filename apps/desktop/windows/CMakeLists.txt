@@ -109,8 +109,6 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
 # render the correct light/dark brand lockups without redrawing or recoloring.
 set(ILAIOS_BRAND_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../brand/assets")
 set(ILAIOS_RUNTIME_BRAND_ASSETS
-  "${ILAIOS_BRAND_ASSET_DIR}/02-ilaios-primary-horizontal-dark.jpg"
-  "${ILAIOS_BRAND_ASSET_DIR}/03-ilaios-symbol-dark.jpg"
   "${ILAIOS_BRAND_ASSET_DIR}/05-ilaios-app-icon.jpg"
   "${ILAIOS_BRAND_ASSET_DIR}/13-ilaios-primary-horizontal-light.jpg"
 )
