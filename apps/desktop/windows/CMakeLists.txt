@@ -52,11 +52,9 @@ add_subdirectory(${FLUTTER_MANAGED_DIR})
 # Application build; see runner/CMakeLists.txt.
 add_subdirectory("runner")
 
-
 # Generated plugin build rules, which manage building the plugins and adding
 # them to the application.
 include(flutter/generated_plugins.cmake)
-
 
 # === Installation ===
 # Support files are copied into place next to the executable, so that it can
@@ -82,7 +80,7 @@ install(FILES "${FLUTTER_LIBRARY}" DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
   COMPONENT Runtime)
 
 if(PLUGIN_BUNDLED_LIBRARIES)
-  install(FILES "${PLUGIN_BUNDLED_LIBRARIES}"
+  install(FILES ${PLUGIN_BUNDLED_LIBRARIES}
     DESTINATION "${INSTALL_BUNDLE_LIB_DIR}"
     COMPONENT Runtime)
 endif()
@@ -103,12 +101,13 @@ install(DIRECTORY "${PROJECT_BUILD_DIR}/${FLUTTER_ASSET_DIR_NAME}"
   DESTINATION "${INSTALL_BUNDLE_DATA_DIR}" COMPONENT Runtime)
 
 # Flutter preserves the repo-relative keys for ILAIOS canonical brand assets
-# in AssetManifest.bin. On Windows those keys resolve from data/flutter_assets
-# back to a brand/assets directory next to the executable. Explicitly install
-# the untouched canonical masters there so portable builds and MSIX staging can
-# render the correct light/dark brand lockups without redrawing or recoloring.
+# in AssetManifest.bin. Explicitly install the locked brand authority set so
+# portable builds and MSIX staging can render the correct theme-aware assets
+# without redrawing, recoloring, cropping, or reconstructing brand artwork.
 set(ILAIOS_BRAND_ASSET_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../brand/assets")
 set(ILAIOS_RUNTIME_BRAND_ASSETS
+  "${ILAIOS_BRAND_ASSET_DIR}/02-ilaios-primary-horizontal-dark.jpg"
+  "${ILAIOS_BRAND_ASSET_DIR}/04-ilaios-symbol-light.jpg"
   "${ILAIOS_BRAND_ASSET_DIR}/05-ilaios-app-icon.jpg"
   "${ILAIOS_BRAND_ASSET_DIR}/13-ilaios-primary-horizontal-light.jpg"
 )
