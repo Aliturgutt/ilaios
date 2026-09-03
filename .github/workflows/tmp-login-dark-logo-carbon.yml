@@ -1,9 +1,9 @@
 name: Temporary Login Dark Logo Finalizer
 
 on:
-  pull_request:
+  push:
     branches:
-      - master
+      - fix/login-dark-logo-carbon-canvas
 
 permissions:
   contents: write
@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }}
+          ref: fix/login-dark-logo-carbon-canvas
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -53,4 +53,4 @@ jobs:
           git add apps/web_app_runtime/login_server.py tests/test_app_ilaios_dark_logo_asset.py
           git diff --cached --quiet && exit 0
           git commit -m 'fix(login): serve Carbon-compatible dark logo asset'
-          git push origin HEAD:${{ github.head_ref }}
+          git push origin HEAD:fix/login-dark-logo-carbon-canvas
