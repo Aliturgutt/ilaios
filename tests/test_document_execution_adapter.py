@@ -1,4 +1,4 @@
-"""Creative/Document coordinator E2E for governed PDF, DOCX, XLSX, and CSV outputs."""
+"""Creative/Document coordinator E2E for governed PDF, DOCX, XLSX, CSV, and PPTX outputs."""
 
 from __future__ import annotations
 
@@ -96,7 +96,7 @@ def test_document_outputs_flow_through_coordinator_and_remain_tenant_scoped(
     )
     assert prepared["execution_status"] == ExecutionState.ADMITTED.value
     assert prepared["capability_id"] == _DOCUMENT
-    assert prepared["adapter_id"] == "document.product-runtime.pdf-docx-xlsx-csv.v1"
+    assert prepared["adapter_id"] == "document.product-runtime.pdf-docx-xlsx-csv-pptx.v1"
 
     manifest = coordinator.resume(
         request_id,
@@ -107,18 +107,19 @@ def test_document_outputs_flow_through_coordinator_and_remain_tenant_scoped(
     )
     assert manifest["accepted"] is True
     assert manifest["final_disposition"] == "ACCEPT"
-    assert manifest["evidence_scope"] == "GOVERNED_PDF_DOCX_XLSX_CSV_FILES_OUTPUTS"
+    assert manifest["evidence_scope"] == "GOVERNED_PDF_DOCX_XLSX_CSV_PPTX_FILES_OUTPUTS"
     assert manifest["tenant_id"] == tenant_id
     assert manifest["project_id"] == f"execution/{request_id}"
     artifacts = manifest["artifacts"]
     assert isinstance(artifacts, list)
-    assert len(artifacts) == 4
+    assert len(artifacts) == 5
     by_type = {str(item["artifact_type"]): item for item in artifacts}
     assert set(by_type) == {
         "document.pdf",
         "document.docx",
         "document.xlsx",
         "document.csv",
+        "document.pptx",
     }
 
     pdf = outputs.read(
@@ -161,7 +162,17 @@ def test_document_outputs_flow_through_coordinator_and_remain_tenant_scoped(
     assert rows
     assert "company knowledge closure" in rows[-1][0]
 
-    for suffix in ("pdf", "docx", "xlsx", "csv"):
+    pptx = outputs.read(
+        artifact_id=f"{request_id}.pptx",
+        version_id="v1",
+        tenant_id=tenant_id,
+        project_id=f"execution/{request_id}",
+    )
+    with zipfile.ZipFile(io.BytesIO(pptx)) as archive:
+        slide_xml = archive.read("ppt/slides/slide1.xml")
+    assert b"company knowledge closure" in slide_xml
+
+    for suffix in ("pdf", "docx", "xlsx", "csv", "pptx"):
         with pytest.raises(ArtifactOutputError, match="artifact scope mismatch"):
             outputs.read(
                 artifact_id=f"{request_id}.{suffix}",
