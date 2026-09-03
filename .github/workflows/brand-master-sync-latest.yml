@@ -1,0 +1,55 @@
+name: Brand Master Sync Latest
+
+on:
+  push:
+    branches:
+      - brand/canonical-neutral-palette-20260902
+    paths:
+      - .github/workflows/brand-master-sync-latest.yml
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch
+        uses: actions/checkout@v4
+        with:
+          ref: brand/canonical-neutral-palette-20260902
+          fetch-depth: 0
+
+      - name: Merge current master fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin master
+
+          set +e
+          git merge --no-commit --no-ff origin/master
+          rc=$?
+          set -e
+
+          if [[ $rc -ne 0 ]]; then
+            mapfile -t conflicts < <(git diff --name-only --diff-filter=U)
+            printf 'Conflicts:\n%s\n' "${conflicts[*]:-}"
+            if [[ ${#conflicts[@]} -ne 1 || "${conflicts[0]}" != "tests/test_app_ilaios_login_surface.py" ]]; then
+              echo "Unexpected conflict set; refusing merge"
+              git merge --abort || true
+              exit 1
+            fi
+            git checkout --theirs -- tests/test_app_ilaios_login_surface.py
+            git add tests/test_app_ilaios_login_surface.py
+          fi
+
+          test -z "$(git diff --name-only --diff-filter=U)"
+          grep -Fq 'assert "Sign in to ILAIOS" in document' tests/test_app_ilaios_login_surface.py
+          grep -Fq 'assert "Choose an account to continue." in document' tests/test_app_ilaios_login_surface.py
+          grep -Fq '05-ilaios-app-icon.jpg' apps/web_app_runtime/login_server.py
+          grep -Fq '13-ilaios-primary-horizontal-light.jpg' apps/web_app_runtime/login_server.py
+
+          git commit -m "chore(brand): merge latest master into canonical brand migration"
+          git push origin HEAD:brand/canonical-neutral-palette-20260902
