@@ -66,37 +66,40 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
   final Future<void> Function(String requestId, GovernanceDecision decision)?
       onGovernanceDecision;
 
-  Widget _shell() => DesktopIdentityActionScope(
-        onSignIn: onSignIn,
-        onLogout: onLogout,
-        child: DeliveryIdentityScope(
-          session: userSession,
-          child: AgentProvisioningScope(
-            onProvisionAgent: onProvisionAgent,
-            child: HomeRuntimeBinding(
-              userSession: userSession,
-              onPromptSubmit: onPromptSubmit,
-              child: ReferenceDesktopShellV10(
-                projection: projection,
-                operationalSnapshot: operationalSnapshot,
-                operationalStatus: operationalStatus,
-                approverId: approverId,
-                identityProviders: identityProviders,
+  Widget _shell() => ReferenceAssetPickerScope(
+        controller: referenceAssets,
+        child: DesktopIdentityActionScope(
+          onSignIn: onSignIn,
+          onLogout: onLogout,
+          child: DeliveryIdentityScope(
+            session: userSession,
+            child: AgentProvisioningScope(
+              onProvisionAgent: onProvisionAgent,
+              child: HomeRuntimeBinding(
                 userSession: userSession,
-                identityStatus: identityStatus,
-                themeMode: themeMode,
-                referenceAssets: referenceAssets,
-                onThemeModeChanged: onThemeModeChanged,
-                onSignIn: onSignIn,
-                onLogout: onLogout,
                 onPromptSubmit: onPromptSubmit,
-                onSaveArtifact: onSaveArtifact,
-                onFetchLiState: onFetchLiState,
-                onFetchLiMemories: onFetchLiMemories,
-                onRememberLiMemory: onRememberLiMemory,
-                onRefreshRequested: onRefreshRequested,
-                onProvisionAgent: onProvisionAgent,
-                onGovernanceDecision: onGovernanceDecision,
+                child: ReferenceDesktopShellV10(
+                  projection: projection,
+                  operationalSnapshot: operationalSnapshot,
+                  operationalStatus: operationalStatus,
+                  approverId: approverId,
+                  identityProviders: identityProviders,
+                  userSession: userSession,
+                  identityStatus: identityStatus,
+                  themeMode: themeMode,
+                  referenceAssets: referenceAssets,
+                  onThemeModeChanged: onThemeModeChanged,
+                  onSignIn: onSignIn,
+                  onLogout: onLogout,
+                  onPromptSubmit: onPromptSubmit,
+                  onSaveArtifact: onSaveArtifact,
+                  onFetchLiState: onFetchLiState,
+                  onFetchLiMemories: onFetchLiMemories,
+                  onRememberLiMemory: onRememberLiMemory,
+                  onRefreshRequested: onRefreshRequested,
+                  onProvisionAgent: onProvisionAgent,
+                  onGovernanceDecision: onGovernanceDecision,
+                ),
               ),
             ),
           ),
