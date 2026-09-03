@@ -62,6 +62,23 @@ class DocumentExecutionAdapter:
         connection.row_factory = sqlite3.Row
         return connection
 
+    @staticmethod
+    def _decode_manifest(raw: object) -> dict[str, object]:
+        try:
+            decoded: object = json.loads(str(raw))
+        except (TypeError, ValueError) as error:
+            raise ExecutionCoordinatorError(
+                "document execution manifest is malformed"
+            ) from error
+        if not isinstance(decoded, dict):
+            raise ExecutionCoordinatorError("document execution manifest is malformed")
+        result: dict[str, object] = {}
+        for key, value in decoded.items():
+            if not isinstance(key, str):
+                raise ExecutionCoordinatorError("document execution manifest is malformed")
+            result[key] = value
+        return result
+
     def prepare(
         self,
         request_id: str,
@@ -170,7 +187,7 @@ class DocumentExecutionAdapter:
         if row is None:
             raise ExecutionCoordinatorError("document execution request not found")
         if str(row["status"]) == "accepted" and row["manifest_json"] is not None:
-            return json.loads(str(row["manifest_json"]))
+            return self._decode_manifest(row["manifest_json"])
         objective = str(row["objective"])
         title = objective.strip().splitlines()[0][:120]
         manifest = self._runtime.create(
@@ -211,7 +228,7 @@ class DocumentExecutionAdapter:
             ).fetchone()
         if row is None or row["manifest_json"] is None:
             raise ExecutionCoordinatorError("document execution is not accepted")
-        return json.loads(str(row["manifest_json"]))
+        return self._decode_manifest(row["manifest_json"])
 
     def state(self, request_id: str) -> dict[str, object]:
         with self._connect() as connection:
