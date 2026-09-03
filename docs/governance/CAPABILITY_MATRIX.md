@@ -2,7 +2,7 @@
 
 Historical evidence snapshot: 17 August 2026
 Observed implementation baseline for this snapshot: `1489183e6f5e19a50ba1d35f1c21955a63420f8d`
-Current truth-sync audit anchor: 3 September 2026, `master` HEAD `b93f20b36ac7c8d611e54023d38ffe78b22b14f4`
+Truth-sync audit anchor (3 September 2026): `master` HEAD `b93f20b36ac7c8d611e54023d38ffe78b22b14f4`
 
 > **Truth boundary:** The maturity rows below record the 17 August evidence snapshot. They MUST NOT be read as the current maturity state of 3 September 2026 unless the relevant claim is independently revalidated against current code, tests, exact-SHA CI, runtime, deployment, provider/E2E evidence, and durable evidence as applicable.
 
