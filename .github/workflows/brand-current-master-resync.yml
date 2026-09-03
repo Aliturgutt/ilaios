@@ -24,7 +24,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          EXPECTED_MASTER="790ec76da013dfdfd51caa563fdb340412cbc847"
+          EXPECTED_MASTER="9e52d64878587cd72b7badedd4ae3a32d12172e4"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin master
