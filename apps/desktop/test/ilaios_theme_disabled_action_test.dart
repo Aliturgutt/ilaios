@@ -18,20 +18,20 @@ void main() {
 
     expect(
       outlined.foregroundColor!.resolve({WidgetState.disabled}),
-      IlaiosTheme.muted,
+      IlaiosTheme.textDisabled,
     );
     expect(
       outlined.side!.resolve({WidgetState.disabled})!.color,
-      IlaiosTheme.graphite,
+      IlaiosTheme.stone,
     );
     expect(
       outlined.foregroundColor!.resolve(<WidgetState>{}),
-      IlaiosTheme.enterpriseCyan,
+      IlaiosTheme.textSecondary,
     );
 
     expect(
       filled.foregroundColor!.resolve({WidgetState.disabled}),
-      IlaiosTheme.muted,
+      IlaiosTheme.textDisabled,
     );
     expect(
       filled.backgroundColor!.resolve({WidgetState.disabled}),
@@ -39,7 +39,7 @@ void main() {
     );
     expect(
       filled.backgroundColor!.resolve(<WidgetState>{}),
-      IlaiosTheme.enterpriseCyan,
+      IlaiosTheme.white,
     );
   });
 
@@ -66,28 +66,61 @@ void main() {
     );
   });
 
-  test('canonical cyan owns primary interactive emphasis', () {
-    for (final theme in <ThemeData>[IlaiosTheme.dark, IlaiosTheme.light]) {
-      final outlined = theme.outlinedButtonTheme.style!;
-      final filled = theme.filledButtonTheme.style!;
-      final text = theme.textButtonTheme.style!;
-      final selectedSwitch = theme.switchTheme.trackColor!.resolve({WidgetState.selected});
+  test('dark interactive emphasis is neutral while light behavior stays unchanged', () {
+    final dark = IlaiosTheme.dark;
+    final darkOutlined = dark.outlinedButtonTheme.style!;
+    final darkFilled = dark.filledButtonTheme.style!;
+    final darkText = dark.textButtonTheme.style!;
+    final darkSelectedSwitch =
+        dark.switchTheme.trackColor!.resolve({WidgetState.selected});
 
-      expect(theme.colorScheme.primary, IlaiosTheme.enterpriseCyan);
-      expect(
-        outlined.foregroundColor!.resolve(<WidgetState>{}),
-        IlaiosTheme.enterpriseCyan,
-      );
-      expect(
-        filled.backgroundColor!.resolve(<WidgetState>{}),
-        IlaiosTheme.enterpriseCyan,
-      );
-      expect(
-        text.foregroundColor!.resolve(<WidgetState>{}),
-        IlaiosTheme.enterpriseCyan,
-      );
-      expect(selectedSwitch, IlaiosTheme.enterpriseCyan);
+    expect(dark.colorScheme.primary, IlaiosTheme.white);
+    expect(
+      darkOutlined.foregroundColor!.resolve(<WidgetState>{}),
+      IlaiosTheme.textSecondary,
+    );
+    expect(
+      darkFilled.backgroundColor!.resolve(<WidgetState>{}),
+      IlaiosTheme.white,
+    );
+    expect(
+      darkText.foregroundColor!.resolve(<WidgetState>{}),
+      IlaiosTheme.textSecondary,
+    );
+    expect(darkSelectedSwitch, IlaiosTheme.white);
+
+    for (final color in <Color>[
+      dark.colorScheme.primary,
+      darkOutlined.foregroundColor!.resolve(<WidgetState>{})!,
+      darkFilled.backgroundColor!.resolve(<WidgetState>{})!,
+      darkText.foregroundColor!.resolve(<WidgetState>{})!,
+      darkSelectedSwitch!,
+    ]) {
+      expect(color, isNot(IlaiosTheme.enterpriseCyan));
+      expect(color, isNot(IlaiosTheme.coreBlue));
     }
+
+    final light = IlaiosTheme.light;
+    final lightOutlined = light.outlinedButtonTheme.style!;
+    final lightFilled = light.filledButtonTheme.style!;
+    final lightTextButton = light.textButtonTheme.style!;
+    final lightSelectedSwitch =
+        light.switchTheme.trackColor!.resolve({WidgetState.selected});
+
+    expect(light.colorScheme.primary, IlaiosTheme.coreBlue);
+    expect(
+      lightOutlined.foregroundColor!.resolve(<WidgetState>{}),
+      IlaiosTheme.coreBlue,
+    );
+    expect(
+      lightFilled.backgroundColor!.resolve(<WidgetState>{}),
+      IlaiosTheme.coreBlue,
+    );
+    expect(
+      lightTextButton.foregroundColor!.resolve(<WidgetState>{}),
+      IlaiosTheme.coreBlue,
+    );
+    expect(lightSelectedSwitch, IlaiosTheme.coreBlue);
   });
 
   test('desktop typography keeps normal user text above the micro-text floor', () {

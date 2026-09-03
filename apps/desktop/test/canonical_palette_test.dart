@@ -3,41 +3,47 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_theme.dart';
 
 void main() {
-  test('desktop theme uses the canonical ILAIOS brand palette', () {
-    expect(IlaiosTheme.carbon, const Color(0xFF0B0F14));
-    expect(IlaiosTheme.charcoal, const Color(0xFF111827));
-    expect(IlaiosTheme.graphite, const Color(0xFF1F2937));
+  test('desktop dark theme uses the canonical neutral palette', () {
+    expect(IlaiosTheme.carbon, const Color(0xFF0A0A0A));
+    expect(IlaiosTheme.charcoal, const Color(0xFF141414));
+    expect(IlaiosTheme.graphite, const Color(0xFF1E1E1E));
+    expect(IlaiosTheme.stone, const Color(0xFF2A2A2A));
     expect(IlaiosTheme.white, const Color(0xFFFFFFFF));
-    expect(IlaiosTheme.enterpriseCyan, const Color(0xFF00C2D1));
-    expect(IlaiosTheme.coreBlue, const Color(0xFF146BFF));
-    expect(IlaiosTheme.violet, const Color(0xFF5C58FE));
+    expect(IlaiosTheme.textSecondary, const Color(0xFFE6E6E6));
+    expect(IlaiosTheme.textTertiary, const Color(0xFFB3B3B3));
+    expect(IlaiosTheme.textDisabled, const Color(0xFF808080));
+    expect(IlaiosTheme.surfaceHover, const Color(0xFF242424));
+    expect(IlaiosTheme.surfaceActive, const Color(0xFF2F2F2F));
 
     expect(IlaiosTheme.canvas, IlaiosTheme.carbon);
     expect(IlaiosTheme.sidebar, IlaiosTheme.charcoal);
     expect(IlaiosTheme.surface, IlaiosTheme.charcoal);
     expect(IlaiosTheme.surfaceRaised, IlaiosTheme.graphite);
-    expect(IlaiosTheme.primary, IlaiosTheme.enterpriseCyan);
-    expect(IlaiosTheme.blue, IlaiosTheme.coreBlue);
-    expect(IlaiosTheme.selectiveAccent, IlaiosTheme.violet);
-
-    final scheme = IlaiosTheme.dark.colorScheme;
-    expect(scheme.primary, IlaiosTheme.enterpriseCyan);
-    expect(scheme.secondary, IlaiosTheme.coreBlue);
-    expect(scheme.tertiary, IlaiosTheme.violet);
-    expect(scheme.surface, IlaiosTheme.charcoal);
-    expect(scheme.onSurface, IlaiosTheme.white);
-  });
-
-  test('desktop vitality tokens remain canonical translucent accents', () {
-    expect(IlaiosTheme.cyanWash, const Color(0x2E00C2D1));
-    expect(IlaiosTheme.blueWash, const Color(0x2B146BFF));
-    expect(IlaiosTheme.violetWash, const Color(0x265C58FE));
-    expect(IlaiosTheme.focusRing, const Color(0xE600C2D1));
+    expect(IlaiosTheme.borderStrong, IlaiosTheme.stone);
+    expect(IlaiosTheme.primary, IlaiosTheme.white);
 
     final theme = IlaiosTheme.dark;
-    expect(theme.focusColor, IlaiosTheme.cyanWash);
-    expect(theme.hoverColor, IlaiosTheme.cyanWash);
-    expect(theme.highlightColor, IlaiosTheme.violetWash);
-    expect(theme.progressIndicatorTheme.color, IlaiosTheme.enterpriseCyan);
+    final scheme = theme.colorScheme;
+    expect(scheme.primary, IlaiosTheme.white);
+    expect(scheme.secondary, IlaiosTheme.textSecondary);
+    expect(scheme.tertiary, IlaiosTheme.textTertiary);
+    expect(scheme.surface, IlaiosTheme.charcoal);
+    expect(scheme.onSurface, IlaiosTheme.white);
+    expect(theme.hoverColor, IlaiosTheme.surfaceHover);
+    expect(theme.highlightColor, IlaiosTheme.surfaceActive);
+    expect(theme.focusColor, IlaiosTheme.surfaceActive);
+    expect(theme.progressIndicatorTheme.color, IlaiosTheme.white);
+  });
+
+  test('ILAIOS cyan and blue remain reserved identity colors', () {
+    expect(IlaiosTheme.enterpriseCyan, const Color(0xFF00C2D1));
+    expect(IlaiosTheme.coreBlue, const Color(0xFF146BFF));
+
+    final theme = IlaiosTheme.dark;
+    expect(theme.colorScheme.primary, isNot(IlaiosTheme.enterpriseCyan));
+    expect(theme.colorScheme.secondary, isNot(IlaiosTheme.coreBlue));
+    expect(theme.focusColor, isNot(IlaiosTheme.enterpriseCyan));
+    expect(theme.hoverColor, isNot(IlaiosTheme.enterpriseCyan));
+    expect(theme.progressIndicatorTheme.color, isNot(IlaiosTheme.enterpriseCyan));
   });
 }
