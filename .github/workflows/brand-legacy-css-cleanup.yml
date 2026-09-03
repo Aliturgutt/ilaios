@@ -26,6 +26,7 @@ jobs:
         run: |
           set -euo pipefail
           python - <<'PY'
+          import re
           from pathlib import Path
 
           path = Path('apps/website/app/website-v2.css')
@@ -47,7 +48,6 @@ jobs:
               'var(--v2-blue)': 'var(--v2-white)',
               '#AAB9C8': '#B3B3B3',
               '#10252C': '#1E1E1E',
-              'rgba(0,194,209,.55)': 'rgba(255,255,255,.24)',
               '#0C131B': '#141414',
               '#B3C1CF': '#B3B3B3',
               '#18D0DD': '#E6E6E6',
@@ -58,6 +58,12 @@ jobs:
           }
           for old, new in replacements.items():
               text = text.replace(old, new)
+
+          text = re.sub(
+              r'rgba\(\s*0\s*,\s*194\s*,\s*209\s*,\s*([0-9]*\.?[0-9]+)\s*\)',
+              lambda match: f'rgba(255,255,255,{match.group(1)})',
+              text,
+          )
 
           forbidden = [
               '#00C2D1', '#146BFF', '#0B0F14', '#0F1620', '#111827',
