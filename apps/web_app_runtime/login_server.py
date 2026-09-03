@@ -103,7 +103,7 @@ _LOGIN_CSS = b""":root {
 }
 html[data-theme="dark"] {
   color-scheme: dark;
-  --bg:#0B0E13;
+  --bg:#0A0A0A;
   --text:#FFFFFF;
   --muted:#B3B3B3;
   --line:#2A2A2A;
@@ -125,10 +125,10 @@ button,a{font:inherit}
 .auth{width:min(100%,384px);text-align:center}
 .brand-lockup{width:190px;height:64px;margin:0 auto 30px;overflow:hidden;background:#FFFFFF}
 .brand-image{display:block;width:100%;height:100%;object-fit:contain;object-position:center;background:#FFFFFF}
-.brand-image-dark{display:none;background:#0B0E13}
+.brand-image-dark{display:none;background:#0A0A0A}
 html[data-theme="dark"] .brand-image-light{display:none}
 html[data-theme="dark"] .brand-image-dark{display:block}
-html[data-theme="dark"] .brand-lockup{background:#0B0E13}
+html[data-theme="dark"] .brand-lockup{background:#0A0A0A}
 h1{margin:0;font-family:"Segoe UI Variable Display","Segoe UI",Inter,ui-sans-serif,sans-serif;font-size:27px;line-height:1.2;letter-spacing:-.012em;font-weight:600}
 .intro{margin:10px 0 28px;color:var(--muted);font-size:14px;line-height:1.45}
 .providers{display:grid;gap:10px}
@@ -151,7 +151,7 @@ _LOGIN_JS = b"""(function(){\"use strict\";
 const root=document.documentElement;const lightButton=document.getElementById('theme-light');const darkButton=document.getElementById('theme-dark');
 function storedTheme(){try{return localStorage.getItem('ilaios-theme');}catch(_error){return null;}}
 function storeTheme(value){try{localStorage.setItem('ilaios-theme',value);}catch(_error){return;}}
-function apply(theme){const value=theme==='dark'?'dark':'light';root.dataset.theme=value;const dark=value==='dark';lightButton.classList.toggle('is-active',!dark);darkButton.classList.toggle('is-active',dark);lightButton.setAttribute('aria-pressed',String(!dark));darkButton.setAttribute('aria-pressed',String(dark));const meta=document.querySelector('meta[name=theme-color]');if(meta){meta.setAttribute('content',dark?'#0B0E13':'#FFFFFF');}}
+function apply(theme){const value=theme==='dark'?'dark':'light';root.dataset.theme=value;const dark=value==='dark';lightButton.classList.toggle('is-active',!dark);darkButton.classList.toggle('is-active',dark);lightButton.setAttribute('aria-pressed',String(!dark));darkButton.setAttribute('aria-pressed',String(dark));const meta=document.querySelector('meta[name=theme-color]');if(meta){meta.setAttribute('content',dark?'#0A0A0A':'#FFFFFF');}}
 apply(storedTheme()==='dark'?'dark':'light');lightButton.addEventListener('click',function(){apply('light');storeTheme('light');});darkButton.addEventListener('click',function(){apply('dark');storeTheme('dark');});
 fetch('/auth/providers',{credentials:'same-origin',cache:'no-store'}).then(function(response){if(!response.ok){return null;}return response.json();}).then(function(payload){if(!payload||!Array.isArray(payload.providers)){return;}const available=new Set(payload.providers);for(const link of document.querySelectorAll('[data-provider]')){const provider=link.getAttribute('data-provider');if(!available.has(provider)){link.setAttribute('aria-disabled','true');link.setAttribute('tabindex','-1');link.removeAttribute('href');}}}).catch(function(){return;});
 })();
