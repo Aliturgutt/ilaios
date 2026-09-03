@@ -208,7 +208,7 @@ class _Sidebar extends StatelessWidget {
   final DesktopUserSession? userSession;
   final ValueChanged<DesktopSection> onSelected;
 
-  static const _wordmark = '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
+  static const _wordmark = '../../brand/assets/05-ilaios-app-icon.jpg';
 
   @override
   Widget build(BuildContext context) => Semantics(

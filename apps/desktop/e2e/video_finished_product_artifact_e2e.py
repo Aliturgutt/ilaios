@@ -64,7 +64,7 @@ def main() -> int:
         raise RuntimeError("ILAIOS_VIDEO_E2E_SOURCE_SHA must be an exact lowercase Git SHA")
 
     repo_root = Path(__file__).resolve().parents[3]
-    logo = repo_root / "brand" / "assets" / "03-ilaios-symbol-dark.jpg"
+    logo = repo_root / "brand" / "assets" / "05-ilaios-app-icon.jpg"
     if not logo.is_file():
         raise RuntimeError("official ILAIOS brand logo is unavailable")
     logo_sha = _sha256(logo)
@@ -139,7 +139,7 @@ def main() -> int:
             "audio_codec": audio_stream.get("codec_name"),
         },
         "brand": {
-            "canonical_logo": "brand/assets/03-ilaios-symbol-dark.jpg",
+            "canonical_logo": "brand/assets/05-ilaios-app-icon.jpg",
             "sha256": logo_sha,
             "immutable_during_render": True,
         },

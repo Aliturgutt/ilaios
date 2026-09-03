@@ -2,24 +2,24 @@ schema_version: "1.0"
 brand: ILAIOS
 status: CANONICAL
 authority: brand/manifest.yaml
-canonical_symbol_master: brand/assets/03-ilaios-symbol-dark.jpg
+canonical_symbol_master: brand/assets/05-ilaios-app-icon.jpg
 
 assets:
   - id: BRAND.COLOR_SYSTEM
     file: brand/assets/01-ilaios-brand-color-system.png
     role: brand_color_system
-    dimensions: 1920x1280
+    dimensions: 1536x1024
     canonical: true
   - id: BRAND.PRIMARY_HORIZONTAL_DARK
     file: brand/assets/02-ilaios-primary-horizontal-dark.jpg
-    role: primary_horizontal_dark
-    dimensions: 2400x800
-    canonical: true
+    role: reference_board_primary_horizontal_dark
+    dimensions: 1536x1024
+    canonical: false
   - id: BRAND.SYMBOL_DARK
     file: brand/assets/03-ilaios-symbol-dark.jpg
-    role: canonical_symbol_master
-    dimensions: 1024x1024
-    canonical: true
+    role: reference_board_symbol_dark
+    dimensions: 1536x1024
+    canonical: false
     derivation_policy: scale_only_no_crop_no_recolor_no_redraw
   - id: BRAND.SYMBOL_LIGHT
     file: brand/assets/04-ilaios-symbol-light.jpg
@@ -45,7 +45,7 @@ assets:
   - id: BRAND.LINKEDIN_COMPANY_COVER
     file: brand/assets/08-ilaios-linkedin-company-cover.jpg
     role: linkedin_company_cover
-    dimensions: 4200x700
+    dimensions: 2048x341
     canonical: true
   - id: BRAND.LINKEDIN_PERSONAL_COVER
     file: brand/assets/09-ilaios-linkedin-personal-cover.jpg
@@ -70,7 +70,7 @@ assets:
   - id: BRAND.PRIMARY_HORIZONTAL_LIGHT
     file: brand/assets/13-ilaios-primary-horizontal-light.jpg
     role: primary_horizontal_light
-    dimensions: 2400x800
+    dimensions: 2048x682
     canonical: true
 
 source_archive:

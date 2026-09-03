@@ -233,7 +233,7 @@ class _BrandHeader extends StatelessWidget {
   const _BrandHeader();
 
   static const _wordmark =
-      '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
+      '../../brand/assets/05-ilaios-app-icon.jpg';
 
   @override
   Widget build(BuildContext context) => Semantics(

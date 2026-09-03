@@ -8,16 +8,16 @@ This file is the single visual-token authority for `ilaios-diagram-design`. The 
 
 | Role | Light | Dark | Meaning |
 |---|---:|---:|---|
-| Background | `#FFFFFF` | `#0B0F14` | Canvas |
-| Surface | `#FFFFFF` | `#111827` | Node surface |
-| Surface alt | `#F8FAFC` | `#161D28` | Focal/secondary surface |
-| Text | `#1F2937` | `#F8FAFC` | Primary information |
-| Muted | `#667085` | `#98A2B3` | Secondary information/ordinary edges |
-| Accent | `#00C2D1` | `#00C2D1` | Enterprise Cyan focal signal |
-| Border | `#D0D5DD` | `#344054` | Structural rule |
-| Danger | `#B42318` | `#F97066` | Explicitly forbidden/failed path |
+| Background | `#FFFFFF` | `#0A0A0A` | Canvas |
+| Surface | `#FFFFFF` | `#141414` | Node surface |
+| Surface alt | `#E6E6E6` | `#1E1E1E` | Focal/secondary surface |
+| Text | `#0A0A0A` | `#FFFFFF` | Primary information |
+| Muted | `#808080` | `#B3B3B3` | Secondary information/ordinary edges |
+| Accent | `#2A2A2A` | `#E6E6E6` | Monochrome focal signal |
+| Border | `#B3B3B3` | `#2A2A2A` | Structural rule |
+| Danger | `#2A2A2A` | `#E6E6E6` | Explicitly forbidden/failed path, distinguished by semantics/geometry rather than a non-canonical color |
 
-The public brand rule remains restrained: roughly 70% Graphite/neutral structure, 20% white/negative space, 10% cyan emphasis. Cyan is not a generic "active" fill.
+The canonical ILAIOS brand board is the authority: UI and supporting system visuals are monochrome by design. ILAIOS Cyan `#00C2D1` and ILAIOS Blue `#146BFF` are reserved for the official logo/symbol identity and must not be used as diagram accents.
 
 ## Geometry
 
@@ -69,19 +69,21 @@ Do not emit:
 - oversized pill controls;
 - remote image/icon references;
 - JavaScript;
-- `foreignObject`.
+- `foreignObject`;
+- ILAIOS logo cyan/blue as diagram or UI accents;
+- non-canonical semantic colors outside the approved neutral palette.
 
 ## Focality
 
 Maximum two focal nodes. Usually one is better.
 
 A focal node gets:
-- cyan stroke;
+- a neutral high-emphasis stroke;
 - restrained alternative surface;
-- cyan label.
+- high-emphasis neutral label.
 
 Everything else stays neutral.
 
 ## Dark mode
 
-Dark mode changes surfaces/text only. It does not increase effects, glow, saturation, or decoration. Enterprise Cyan remains the same accent token.
+Dark mode changes surfaces/text only. It does not increase effects, glow, saturation, or decoration. Logo identity colors remain reserved for the official logo/symbol assets only.

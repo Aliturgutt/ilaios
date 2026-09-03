@@ -27,7 +27,7 @@ def main() -> int:
         raise RuntimeError("Windows SAPI voice path requires powershell.exe")
 
     repo_root = Path(__file__).resolve().parents[3]
-    logo = repo_root / "brand" / "assets" / "03-ilaios-symbol-dark.jpg"
+    logo = repo_root / "brand" / "assets" / "05-ilaios-app-icon.jpg"
     if not logo.is_file():
         raise RuntimeError("official ILAIOS brand logo is unavailable")
     logo_hash_before = hashlib.sha256(logo.read_bytes()).hexdigest()

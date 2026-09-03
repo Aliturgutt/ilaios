@@ -144,13 +144,16 @@ Do not silently shrink labels until the diagram becomes technically unreadable.
 
 ## 6. Visual policy
 
-Use the canonical ILAIOS design language by default:
+Use the canonical ILAIOS neutral design language by default:
 
-- Graphite `#1F2937`
-- Charcoal `#111827`
-- Enterprise Cyan `#00C2D1`
+- Carbon `#0A0A0A`
+- Charcoal `#141414`
+- Graphite `#1E1E1E`
+- Stone `#2A2A2A`
 - White `#FFFFFF`
-- Carbon `#0B0F14`
+- Text Secondary `#E6E6E6`
+- Text Tertiary `#B3B3B3`
+- Disabled/low emphasis `#808080`
 - Flat vector
 - Geometric
 - 8px grid
@@ -158,7 +161,7 @@ Use the canonical ILAIOS design language by default:
 - No shadows
 - No 3D
 - No glass effects
-- Restrained cyan: focal path/node only, normally 1–2 elements
+- ILAIOS Cyan `#00C2D1` and ILAIOS Blue `#146BFF` are reserved for official logo/icon identity only; never use them as diagram/UI accents.
 
 Brand styling never changes semantic meaning or governance state.
 

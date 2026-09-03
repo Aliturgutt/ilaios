@@ -59,8 +59,8 @@ const Element = ({element}: {element: ManifestElement}) => {
   if (element.kind === "progress_indicator") {
     const progress = Math.min(1, frame / Math.max(1, element.duration_frames - 1));
     return (
-      <div style={{position: "absolute", left: 64, right: 64, bottom: 64, height: 10, background: "#1F2937"}}>
-        <div style={{height: "100%", width: `${progress * 100}%`, background: "#00C2D1"}} />
+      <div style={{position: "absolute", left: 64, right: 64, bottom: 64, height: 10, background: "#1E1E1E"}}>
+        <div style={{height: "100%", width: `${progress * 100}%`, background: "#E6E6E6"}} />
       </div>
     );
   }
@@ -75,8 +75,8 @@ const Element = ({element}: {element: ManifestElement}) => {
     return (
       <div style={{position: "absolute", left: 96, right: 96, bottom: 120}}>
         <div style={{...common, fontSize: 36, marginBottom: 18}}>{textFor(element)}</div>
-        <div style={{height: 48, background: "#1F2937"}}>
-          <div style={{height: "100%", width: `${progress}%`, background: "#00C2D1"}} />
+        <div style={{height: 48, background: "#1E1E1E"}}>
+          <div style={{height: "100%", width: `${progress}%`, background: "#E6E6E6"}} />
         </div>
       </div>
     );
@@ -96,7 +96,7 @@ const Element = ({element}: {element: ManifestElement}) => {
         fontWeight: 700,
         lineHeight: 1.08,
         padding: lower ? "18px 24px" : 0,
-        background: lower ? "#1F2937" : "transparent",
+        background: lower ? "#1E1E1E" : "transparent",
       }}
     >
       {textFor(element)}
@@ -109,8 +109,8 @@ const ILAIOSVideo = ({manifest}: VideoProps) => {
   const {durationInFrames} = useVideoConfig();
   const motion = (frame / Math.max(1, durationInFrames - 1)) * 100;
   return (
-    <AbsoluteFill style={{background: "#0B0F14", overflow: "hidden"}}>
-      <div style={{position: "absolute", top: 0, left: 0, height: 8, width: `${motion}%`, background: "#00C2D1"}} />
+    <AbsoluteFill style={{background: "#0A0A0A", overflow: "hidden"}}>
+      <div style={{position: "absolute", top: 0, left: 0, height: 8, width: `${motion}%`, background: "#E6E6E6"}} />
       {manifest.elements
         .slice()
         .sort((a, b) => a.layer - b.layer || a.start_frame - b.start_frame || a.element_id.localeCompare(b.element_id))

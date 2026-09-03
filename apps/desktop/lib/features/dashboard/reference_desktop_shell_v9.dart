@@ -156,9 +156,9 @@ class _ReferenceBrandOverlay extends StatelessWidget {
   const _ReferenceBrandOverlay();
 
   static const _darkAsset =
-      'assets/brand/02-ilaios-primary-horizontal-dark.jpg';
+      '../../brand/assets/05-ilaios-app-icon.jpg';
   static const _lightAsset =
-      'assets/brand/13-ilaios-primary-horizontal-light.jpg';
+      '../../brand/assets/13-ilaios-primary-horizontal-light.jpg';
 
   @override
   Widget build(BuildContext context) {

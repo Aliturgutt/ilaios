@@ -558,7 +558,7 @@ def _official_brand_logo() -> Path:
         base = Path(getattr(sys, "_MEIPASS"))
     else:
         base = Path(__file__).resolve().parents[3]
-    logo = base / "brand" / "assets" / "03-ilaios-symbol-dark.jpg"
+    logo = base / "brand" / "assets" / "05-ilaios-app-icon.jpg"
     if not logo.is_file():
         raise RuntimeError("official ILAIOS brand logo is missing from Desktop runtime")
     return logo

@@ -108,6 +108,26 @@ def test_native_webgl_artifact_is_deterministic_and_dependency_free() -> None:
     assert "eval(" not in first.source
 
 
+def test_native_webgl_artifact_uses_canonical_neutral_palette_only() -> None:
+    plan = compile_web_3d_runtime_plan("Build a website with a 3D WebGL hero.")
+    artifact = render_native_webgl_artifact(plan)
+    source = artifact.source.lower()
+
+    for canonical in ("#0a0a0a", "#141414", "#2a2a2a", "#b3b3b3", "#ffffff"):
+        assert canonical in source
+
+    for retired in (
+        "#0b0f14",
+        "#111827",
+        "#334155",
+        "#b8c2cc",
+        "#00c2d1",
+        "#146bff",
+        "vec4(.0,.76,.82,1.0)",
+    ):
+        assert retired not in source
+
+
 def test_turkish_explicit_3d_request_activates_optional_pack() -> None:
     plan = compile_web_3d_runtime_plan(
         "Koyu temalı bir web sitesi yap: 3D tanıtım alanı, scroll ile kamera hareketi, "

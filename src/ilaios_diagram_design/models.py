@@ -52,23 +52,23 @@ class DiagramTheme:
 ILAIOS_LIGHT = DiagramTheme(
     background="#FFFFFF",
     surface="#FFFFFF",
-    surface_alt="#F8FAFC",
-    text="#1F2937",
-    muted="#667085",
-    accent="#00C2D1",
-    border="#D0D5DD",
-    danger="#B42318",
+    surface_alt="#E6E6E6",
+    text="#0A0A0A",
+    muted="#808080",
+    accent="#2A2A2A",
+    border="#B3B3B3",
+    danger="#2A2A2A",
 )
 
 ILAIOS_DARK = DiagramTheme(
-    background="#0B0F14",
-    surface="#111827",
-    surface_alt="#161D28",
-    text="#F8FAFC",
-    muted="#98A2B3",
-    accent="#00C2D1",
-    border="#344054",
-    danger="#F97066",
+    background="#0A0A0A",
+    surface="#141414",
+    surface_alt="#1E1E1E",
+    text="#FFFFFF",
+    muted="#B3B3B3",
+    accent="#E6E6E6",
+    border="#2A2A2A",
+    danger="#E6E6E6",
 )
 
 

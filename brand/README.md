@@ -14,7 +14,7 @@ This directory is the canonical repository authority for approved ILAIOS brand a
 
 ## Canonical master
 
-The approved dark symbol master is `03-ilaios-symbol-dark.jpg`. It is the canonical symbol source for future brand derivations unless `manifest.yaml` explicitly supersedes it.
+The approved dark runtime symbol master is `05-ilaios-app-icon.jpg`. `02-ilaios-primary-horizontal-dark.jpg` and `03-ilaios-symbol-dark.jpg` are canonical final-package reference/specification boards only and are not runtime owners.
 
 ## Website
 
