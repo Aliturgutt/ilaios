@@ -148,11 +148,13 @@ void main() {
     expect(identityHost, isA<String>());
     expect(identityPort, isA<int>());
     expect(ready['account_sign_in_configured'], isTrue);
-    // This generic packaging gate deliberately strips provider credentials.
-    // Readiness must therefore fail closed instead of pretending cinematic
-    // generation is configured. Credentialed provider proof runs separately.
-    expect(ready['video_finished_product_configured'], isFalse);
-    expect(ready['video_provider'], 'unavailable');
+    // This generic packaging gate strips paid-provider credentials. The default
+    // verified-free Video route must still remain configured through governed
+    // public stock media, with no OpenRouter generation credential required.
+    expect(ready['video_finished_product_configured'], isTrue);
+    expect(ready['video_provider'], 'governed-public-stock');
+    expect(ready['video_provider_mode'], 'verified-free');
+    expect(ready['video_managed_budget_usd'], isNull);
     expect(ready['web_finished_product_configured'], isTrue);
     expect(ready['software_finished_product_configured'], isTrue);
     expect(ready['execution_recovery_configured'], isTrue);
