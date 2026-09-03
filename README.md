@@ -80,20 +80,21 @@ The user should not need to manually select a model, provider, worker, skill, or
 
 ## Product Direction
 
-ILAIOS is built as one governed platform with multiple native capability and factory families.
+ILAIOS is built as one governed platform with nine native factory families plus shared platform and intelligence capabilities.
 
-Current architectural families include:
+Current factory families include:
 
 - Web Factory
 - Video / Media Factory
 - Software Factory
 - App Factory
-- Research / Data
-- Knowledge / RAG
+- Research / Data Factory
 - Security Factory
-- Creative / Document
-- Commerce / Growth
-- Personal Operations
+- Creative / Document Factory
+- Commerce / Growth Factory
+- Personal Operations Factory
+
+Knowledge / RAG is **not a tenth factory**. It is the shared canonical `ilaios.capability.knowledge` intelligence/context capability used across governed workflows where authorized knowledge retrieval is required.
 
 A factory is a **bounded domain workflow / DAG**. It does not become a second runtime, second router, second policy engine, or second Core.
 
