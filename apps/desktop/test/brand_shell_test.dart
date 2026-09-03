@@ -12,7 +12,7 @@ void main() {
   const darkLogo = '../../brand/assets/05-ilaios-app-icon.jpg';
   const lightLogo = '../../brand/assets/13-ilaios-primary-horizontal-light.jpg';
 
-  testWidgets('dark Desktop loads the canonical dark horizontal brand master', (
+  testWidgets('dark Desktop loads the canonical dark runtime symbol master', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1536, 1024));

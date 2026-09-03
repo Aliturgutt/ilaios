@@ -108,6 +108,25 @@ class ReferenceAssetPickerController extends core.ReferenceAssetPickerController
   }
 }
 
+/// Read-only presentation scope for the single existing attachment controller.
+/// This does not own upload, identity, session, routing, or governance authority.
+class ReferenceAssetPickerScope extends InheritedWidget {
+  const ReferenceAssetPickerScope({
+    required this.controller,
+    required super.child,
+    super.key,
+  });
+
+  final ReferenceAssetPickerController? controller;
+
+  static ReferenceAssetPickerController? maybeOf(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<ReferenceAssetPickerScope>()?.controller;
+
+  @override
+  bool updateShouldNotify(ReferenceAssetPickerScope oldWidget) =>
+      controller != oldWidget.controller;
+}
+
 /// Shared private-input surface. Company documents are deliberately shown in
 /// the same prompt attachment surface, but are labeled persistent Knowledge
 /// because the current authenticated API does not provide a task-only document
@@ -142,6 +161,23 @@ class ReferenceAssetPicker extends StatelessWidget {
         compact: compact,
       );
 
+  Widget _safeCompactStack() => Column(
+        key: const Key('compact-reference-asset-stack'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: _images()),
+              const SizedBox(width: 8),
+              Expanded(flex: 2, child: _sourceVideo()),
+            ],
+          ),
+          const SizedBox(height: 6),
+          _companyKnowledge(),
+        ],
+      );
+
   @override
   Widget build(BuildContext context) {
     if (!compact) {
@@ -157,20 +193,24 @@ class ReferenceAssetPicker extends StatelessWidget {
       );
     }
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Row(
+    final inlineHome = key == const Key('home-prompt-attachments');
+    if (!inlineHome) return _safeCompactStack();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 840) return _safeCompactStack();
+        return Row(
+          key: const Key('compact-reference-asset-row'),
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Expanded(flex: 3, child: _images()),
+            Expanded(child: _companyKnowledge()),
             const SizedBox(width: 8),
-            Expanded(flex: 2, child: _sourceVideo()),
+            Expanded(child: _images()),
+            const SizedBox(width: 8),
+            Expanded(child: _sourceVideo()),
           ],
-        ),
-        const SizedBox(height: 6),
-        _companyKnowledge(),
-      ],
+        );
+      },
     );
   }
 }

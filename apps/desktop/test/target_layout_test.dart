@@ -69,7 +69,26 @@ void main() {
     expect(find.byKey(const Key('command-center-quick-actions')), findsNothing);
   });
 
-  testWidgets('shell renders the canonical horizontal dark brand master', (
+  testWidgets('V4 Home places the existing governed attachment surface below the prompt', (
+    WidgetTester tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.binding.setSurfaceSize(const Size(1600, 900));
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    final prompt = find.byKey(const Key('home-command-prompt'));
+    final attachments = find.byKey(const Key('home-prompt-attachments'));
+    expect(prompt, findsOneWidget);
+    expect(attachments, findsOneWidget);
+    expect(
+      tester.getTopLeft(attachments).dy,
+      greaterThan(tester.getBottomLeft(prompt).dy),
+    );
+  });
+
+  testWidgets('shell renders the canonical dark runtime symbol master', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
