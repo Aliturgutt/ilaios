@@ -25,6 +25,8 @@ jobs:
         run: |
           set -euo pipefail
           EXPECTED_MASTER="b93f20b36ac7c8d611e54023d38ffe78b22b14f4"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git fetch origin master
           ACTUAL_MASTER="$(git rev-parse origin/master)"
           test "$ACTUAL_MASTER" = "$EXPECTED_MASTER"
@@ -51,7 +53,5 @@ jobs:
           grep -F '05-ilaios-app-icon.jpg' services/integrations/desktop_video_composition.py
           grep -F 'VIDEO_PROVIDER_MODEL: bytedance/seedance-2.0-fast' .github/workflows/video-provider-production-certification.yml
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git commit -m "merge(master): resync final brand branch"
           git push origin HEAD:brand/canonical-neutral-palette-20260902
