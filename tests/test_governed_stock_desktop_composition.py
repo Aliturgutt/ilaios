@@ -59,6 +59,26 @@ def test_verified_free_composition_does_not_reference_seedance_free_alias() -> N
     assert 'managed_model_id.endswith(":free")' in source
 
 
+def test_video_provider_certification_uses_public_stock_for_verified_free() -> None:
+    workflow = (
+        Path(__file__).resolve().parents[1]
+        / ".github"
+        / "workflows"
+        / "video-provider-production-certification.yml"
+    ).read_text(encoding="utf-8")
+
+    assert "default: verified-free" in workflow
+    assert "          - verified-free" in workflow
+    assert "free-only" not in workflow
+    assert "VIDEO_FREE_PROVIDER_MODELS" not in workflow
+    assert "ILAIOS_VIDEO_MODEL_ID: bytedance/seedance" not in workflow
+    assert "bytedance/seedance-2.0-fast:free" not in workflow
+    assert "python -m scripts.video_public_stock_live_e2e" in workflow
+    assert "python -m src.video_automation.free_provider_production_certification" not in workflow
+    assert "VIDEO_PROVIDER_MODEL: bytedance/seedance-2.0-fast" in workflow
+    assert "ILAIOS_VIDEO_MANAGED_MODEL_ID: bytedance/seedance-2.0-fast" in workflow
+
+
 def test_canonical_brand_logo_is_reused_without_recolor_or_replacement() -> None:
     logo = _official_brand_logo()
     assert logo.name == "05-ilaios-app-icon.jpg"
