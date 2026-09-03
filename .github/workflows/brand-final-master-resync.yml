@@ -48,8 +48,8 @@ jobs:
           test -f services/integrations/document_product_runtime.py
           test -f tests/test_document_product_runtime.py
           test -f tests/test_security_factory_secret_detection.py
-          grep -Fq 'brand/assets/05-ilaios-app-icon.jpg' apps/web_app_runtime/login_server.py
-          grep -Fq 'brand/assets/13-ilaios-primary-horizontal-light.jpg' apps/web_app_runtime/login_server.py
+          grep -Fq '_BRAND_DARK = (_BRAND_DIR / "05-ilaios-app-icon.jpg").read_bytes()' apps/web_app_runtime/login_server.py
+          grep -Fq '_BRAND_LIGHT = (_BRAND_DIR / "13-ilaios-primary-horizontal-light.jpg").read_bytes()' apps/web_app_runtime/login_server.py
           grep -Fq '05-ilaios-app-icon.jpg' services/integrations/desktop_video_composition.py
           ! grep -Fq '03-ilaios-symbol-dark.jpg' services/integrations/desktop_video_composition.py
           git diff --check HEAD^ HEAD
