@@ -49,7 +49,7 @@ _LOGIN_HTML = """<!doctype html>
         <img class="brand-image brand-image-dark" src="/login/brand-dark.jpg" alt="ILAIOS">
       </div>
 
-      <h1 id="login-title">Sign in to ILAIOS</h1>
+      <h1 id="login-title">Welcome back</h1>
       <p class="intro">Choose an account to continue.</p>
 
       <div class="providers" id="providers" aria-live="polite">
@@ -125,7 +125,7 @@ button,a{font:inherit}
 .auth{width:min(100%,384px);text-align:center}
 .brand-lockup{width:190px;height:64px;margin:0 auto 30px;overflow:hidden;background:#FFFFFF}
 .brand-image{display:block;width:100%;height:100%;object-fit:contain;object-position:center;background:#FFFFFF}
-.brand-image-dark{display:none;background:#0A0A0A}
+.brand-image-dark{display:none;background:#0A0A0A;mix-blend-mode:lighten}
 html[data-theme="dark"] .brand-image-light{display:none}
 html[data-theme="dark"] .brand-image-dark{display:block}
 html[data-theme="dark"] .brand-lockup{background:#0A0A0A}
