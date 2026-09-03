@@ -61,5 +61,5 @@ def test_verified_free_composition_does_not_reference_seedance_free_alias() -> N
 
 def test_canonical_brand_logo_is_reused_without_recolor_or_replacement() -> None:
     logo = _official_brand_logo()
-    assert logo.name == "03-ilaios-symbol-dark.jpg"
+    assert logo.name == "05-ilaios-app-icon.jpg"
     assert logo.is_file()
