@@ -1,0 +1,57 @@
+name: Brand Final Master Resync 2
+
+on:
+  push:
+    branches:
+      - brand/canonical-neutral-palette-20260902
+    paths:
+      - .github/workflows/brand-final-master-resync-2.yml
+
+permissions:
+  contents: write
+
+jobs:
+  resync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v4
+        with:
+          ref: brand/canonical-neutral-palette-20260902
+          fetch-depth: 0
+
+      - name: Merge exact master fail-closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED_MASTER="b93f20b36ac7c8d611e54023d38ffe78b22b14f4"
+          git fetch origin master
+          ACTUAL_MASTER="$(git rev-parse origin/master)"
+          test "$ACTUAL_MASTER" = "$EXPECTED_MASTER"
+
+          set +e
+          git merge --no-commit --no-ff origin/master
+          MERGE_RC=$?
+          set -e
+
+          if [ "$MERGE_RC" -ne 0 ]; then
+            mapfile -t CONFLICTS < <(git diff --name-only --diff-filter=U)
+            if [ "${#CONFLICTS[@]}" -ne 1 ] || [ "${CONFLICTS[0]}" != "tests/test_governed_stock_desktop_composition.py" ]; then
+              printf 'Unexpected conflicts:\n%s\n' "${CONFLICTS[*]}"
+              exit 1
+            fi
+            git checkout --theirs tests/test_governed_stock_desktop_composition.py
+            sed -i 's/03-ilaios-symbol-dark\.jpg/05-ilaios-app-icon.jpg/g' tests/test_governed_stock_desktop_composition.py
+            git add tests/test_governed_stock_desktop_composition.py
+          fi
+
+          test -z "$(git diff --name-only --diff-filter=U)"
+          grep -F 'assert logo.name == "05-ilaios-app-icon.jpg"' tests/test_governed_stock_desktop_composition.py
+          ! grep -F 'assert logo.name == "03-ilaios-symbol-dark.jpg"' tests/test_governed_stock_desktop_composition.py
+          grep -F '05-ilaios-app-icon.jpg' services/integrations/desktop_video_composition.py
+          grep -F 'VIDEO_PROVIDER_MODEL: bytedance/seedance-2.0-fast' .github/workflows/video-provider-production-certification.yml
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "merge(master): resync final brand branch"
+          git push origin HEAD:brand/canonical-neutral-palette-20260902
