@@ -2,7 +2,7 @@
 
 **Document Type:** Canonical Governance Standard  
 **Format:** GitHub Markdown + ASCII governance diagrams  
-**Status:** Canonical Baseline v1.0 — Pending Repository Publication  
+**Status:** Canonical Baseline v1.0 — Published in Repository  
 **Canonical Repository Location:** `docs/governance/GOVERNANCE.md`  
 **Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
 **Product Authority:** `PRODUCT_REQUIREMENTS.md`  

@@ -3,7 +3,7 @@
 Historical status snapshot: 17 August 2026
 Baseline branch: `master`
 Observed implementation baseline for this snapshot: `1489183e6f5e19a50ba1d35f1c21955a63420f8d`
-Current truth-sync audit anchor: 3 September 2026, `master` HEAD `b93f20b36ac7c8d611e54023d38ffe78b22b14f4`
+Truth-sync audit anchor (3 September 2026): `master` HEAD `b93f20b36ac7c8d611e54023d38ffe78b22b14f4`
 
 > **Truth boundary:** The status narrative below records the 17 August repository snapshot and later evidence explicitly named inside it. It is not a complete 3 September CURRENT REALITY report. Any current maturity, CI, runtime, deployment, provider-E2E, Desktop, Website, RAG, or factory claim must be revalidated against the applicable live authoritative evidence before being treated as current.
 

@@ -78,7 +78,7 @@ def test_root_is_light_first_login_with_optional_dark_mode(tmp_path: Path) -> No
     assert "<style" not in document
 
 
-def test_dark_logo_blends_with_dark_page_background(tmp_path: Path) -> None:
+def test_dark_logo_blends_with_canonical_carbon_background(tmp_path: Path) -> None:
     runtime = _runtime(tmp_path / "identity.db")
 
     response = runtime.dispatch(
@@ -92,6 +92,7 @@ def test_dark_logo_blends_with_dark_page_background(tmp_path: Path) -> None:
     assert '--bg:#0A0A0A' in stylesheet
     assert '.brand-image-dark{display:none;background:#0A0A0A}' in stylesheet
     assert 'html[data-theme="dark"] .brand-lockup{background:#0A0A0A}' in stylesheet
+    assert '#0B0E13' not in stylesheet
     assert 'mix-blend-mode' not in stylesheet
 
 
@@ -127,6 +128,7 @@ def test_theme_script_defaults_to_light_and_persists_explicit_dark_choice(
     assert "storedTheme()==='dark'?'dark':'light'" in script
     assert "localStorage.setItem('ilaios-theme',value)" in script
     assert "dark?'#0A0A0A':'#FFFFFF'" in script
+    assert "#0B0E13" not in script
     assert "fetch('/auth/providers'" in script
 
 

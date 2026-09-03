@@ -2,7 +2,7 @@
 
 **Document Type:** Canonical System Architecture Diagram Set  
 **Format:** GitHub Markdown + Mermaid  
-**Status:** Canonical Baseline v1.0 — Pending Repository Publication  
+**Status:** Canonical Baseline v1.0 — Published in Repository  
 **Core Principle:** **SIGN IN → ONE PROMPT → VERIFIED FINISHED PRODUCT**  
 **Authority:** This is the first foundational ILAIOS canonical architecture document. It defines target architecture, authority boundaries, execution invariants and canonical system relationships.
 
