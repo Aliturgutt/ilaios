@@ -12,12 +12,12 @@ assets:
     canonical: true
   - id: BRAND.PRIMARY_HORIZONTAL_DARK
     file: brand/assets/02-ilaios-primary-horizontal-dark.jpg
-    role: superseded_primary_horizontal_dark_pending_reference_board_hydration
+    role: reference_board_primary_horizontal_dark
     dimensions: 1536x1024
     canonical: false
   - id: BRAND.SYMBOL_DARK
     file: brand/assets/03-ilaios-symbol-dark.jpg
-    role: superseded_symbol_dark_pending_reference_board_hydration
+    role: reference_board_symbol_dark
     dimensions: 1536x1024
     canonical: false
     derivation_policy: scale_only_no_crop_no_recolor_no_redraw
