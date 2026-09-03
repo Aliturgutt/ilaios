@@ -17,7 +17,7 @@ Canonical maturity remains:
 
 `VERIFIED` never means `PRODUCTION` unless real production/external evidence exists for that capability.
 
-## Repository truth recorded by this snapshot
+## Current repository truth
 
 - Commercial/product identity in the active repository is ILAIOS.
 - There is one canonical Core and one canonical Execution Coordinator. No `Core 2`, parallel coordinator, router, scheduler, policy engine, capability registry, or evidence authority has been introduced.
@@ -25,7 +25,7 @@ Canonical maturity remains:
 - Bounded finished-product execution exists for Web, Software, Windows-first App, and Video, but each capability keeps its own external/provider/public-production boundary.
 - Repository branch governance remains fail-closed around Required CI, PR review flow, evidence/provenance, and non-bypass safety controls.
 
-## Closure evidence recorded by this snapshot
+## Latest closure evidence
 
 ### Web Factory
 
@@ -65,7 +65,7 @@ Canonical maturity remains:
 - Explicit negated external-effect intent such as `do not publish` is handled as local-only intent without weakening positive publish/upload/deploy blocking.
 - Repeated equivalent requests under different goals no longer collide on one unscoped durable proposal identity.
 
-## Free-provider truth boundary recorded by this snapshot
+## Free-provider truth boundary
 
 The free-only rule is fail-closed.
 
@@ -77,7 +77,7 @@ The free-only rule is fail-closed.
 - Live zero-cost external Video provider availability is currently `NOT_VERIFIED`. If no exact zero-priced provider is available, ILAIOS must report the capability unavailable/fail-closed rather than fabricate a finished product.
 - The Desktop sidecar currently consumes provider credentials at the platform/runtime boundary. Repository evidence does not by itself prove a production deployment in which end users never supply third-party provider credentials; that deployment/secrets boundary remains separately evidence-gated.
 
-## Repository governance state recorded by this snapshot
+## Repository governance state
 
 - P0 issue #259 is closed after #267 merged with exact combined-head evidence.
 - Stale implementation PR #260 is closed as superseded.
@@ -87,7 +87,7 @@ The free-only rule is fail-closed.
 - `docs/governance/LICENSE_DECISION.md` remains proprietary-by-default/no-open-source-grant. No root OSI license, redistribution clearance, or commercial release right is invented.
 - No formal SemVer GitHub Release should be created until an exact release-ready SHA and licensing/redistribution/release gates are satisfied.
 
-## External/public deployment truth recorded by this snapshot
+## External/public deployment truth
 
 ### Website / Vercel
 
@@ -105,7 +105,7 @@ Repository-side RAG.14 machinery remains bounded. Knowledge / RAG is a shared ca
 
 Still evidence-gated: production tenant-isolation exercise, managed KMS/HSM and rotation operations, privacy/compliance evidence, SLO/alert operations, recurring backup/recovery drills, independent security/pentest where applicable, broader factory workloads, Android/iOS, billing/subscriptions/entitlements, formal SBOM/notices/attestation/release packaging, and legal/licensing launch clearance.
 
-## Dependency-ordered direction recorded by this snapshot
+## Current dependency-ordered direction
 
 1. Preserve the single Core, Coordinator, governance, evidence, and capability registry authorities.
 2. Preserve the merged Video P0 fail-closed behavior; do not replace it with a paid or unpriced fallback.
@@ -121,6 +121,6 @@ Still evidence-gated: production tenant-isolation exercise, managed KMS/HSM and 
 
 Repository automation must not autonomously create/rotate credentials, authorize paid spend, accept legal terms, change billing/plans, force public DNS/deployment state, submit Store releases, use production signing secrets, force-push protected history, weaken Required CI, or label mock/fixture/synthetic/local/preview evidence as external production proof.
 
-## Decision recorded by this snapshot
+## Current decision
 
 Repository-side closure was materially stronger at the recorded evidence point: the Desktop lineage was integrated, the Video placeholder false-acceptance P0 was closed on master, and Web/Software/App bounded paths were evidence-backed. This paragraph does not promote those claims to 3 September CURRENT REALITY without revalidation. No second Core, parallel Coordinator, invented milestone, paid-fallback shortcut, or evidence-free production promotion is authorized.
