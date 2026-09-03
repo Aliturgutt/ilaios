@@ -1,10 +1,8 @@
-"""Fail-closed Desktop Video provider composition.
+"""Fail-closed Desktop Video composition.
 
-Verified-free remains the default. Managed provider execution is available only
-through the explicit ``ILAIOS_VIDEO_PROVIDER_MODE=managed-bounded`` setting and a
-bounded budget value. There is no automatic free-to-paid fallback. Provider-native
-references additionally require a separately configured HTTPS relay and an
-independent reference-consistency acceptance layer.
+The default ``verified-free`` route uses governed public/stock media plus the
+local deterministic finished-product renderer. Seedance is reserved for the
+explicit ``managed-bounded`` route. There is no automatic free-to-paid fallback.
 """
 
 from __future__ import annotations
@@ -20,19 +18,36 @@ from services.reference_assets import ReferenceAssetStore
 from services.reference_relay import HttpReferenceRelayClient, ReferenceRelay
 from services.runtime import DurableGrantPolicy
 from services.source_media import SourceMediaStore
+from src.video_automation.governed_stock_selection import GovernedStockSelector
+from src.video_automation.internet_archive_stock_transport import (
+    InternetArchiveStockHttpTransport,
+)
+from src.video_automation.nasa_stock_transport import NasaStockHttpTransport
 from src.video_automation.openrouter_audio_perceptual_reviewer import (
     OpenRouterAudioPerceptualReviewer,
 )
 from src.video_automation.openrouter_brand_perceptual_reviewer import (
     OpenRouterBrandPerceptualReviewer,
 )
-from src.video_automation.openrouter_video_provider import SEEDANCE_FREE_MODEL_ID
+from src.video_automation.pexels_stock_transport import PexelsStockHttpTransport
+from src.video_automation.pixabay_stock_transport import PixabayStockHttpTransport
+from src.video_automation.stock_source_adapters import (
+    InternetArchiveStockSourceAdapter,
+    NasaStockSourceAdapter,
+    PexelsStockSourceAdapter,
+    PixabayStockSourceAdapter,
+    StockProvider,
+    UnsplashStockSourceAdapter,
+    WikimediaStockSourceAdapter,
+)
+from src.video_automation.unsplash_stock_transport import UnsplashStockHttpTransport
+from src.video_automation.wikimedia_stock_transport import WikimediaStockHttpTransport
 
+from .governed_stock_video_runtime import GovernedStockDesktopVideoRuntime
 from .provider_video_runtime import ObjectiveResolver, UnavailableProviderVideoRuntime
 from .three_domain_video_runtime import (
     ThreeDomainManagedReferenceAwareProviderBackedDesktopVideoRuntime,
     ThreeDomainReceiptBoundNativeReferenceManagedDesktopVideoRuntime,
-    ThreeDomainReferenceAwareProviderBackedDesktopVideoRuntime,
 )
 from .video_runtime import DeterministicLocalVideoRuntime, VideoRuntimeError
 
@@ -69,6 +84,26 @@ def compose_desktop_video_runtime(
     if mode not in {_VERIFIED_FREE, _MANAGED_BOUNDED}:
         raise VideoRuntimeError("unknown Desktop Video provider mode")
     reference_relay = _reference_relay_from_environment(mode)
+
+    if mode == _VERIFIED_FREE:
+        runtime = GovernedStockDesktopVideoRuntime(
+            root,
+            grants,
+            governance,
+            evidence,
+            objective_resolver=objective_resolver,
+            brand_logo=_official_brand_logo(),
+            stock_selector=_governed_stock_selector_from_environment(),
+        )
+        return DesktopVideoComposition(
+            runtime,
+            True,
+            GovernedStockDesktopVideoRuntime.PROVIDER_ID,
+            mode,
+            None,
+            False,
+        )
+
     if not api_key:
         unavailable = UnavailableProviderVideoRuntime(
             root,
@@ -76,7 +111,7 @@ def compose_desktop_video_runtime(
             governance,
             evidence,
             reason=(
-                "Provider-backed Video Factory is unavailable because "
+                "Managed provider Video Factory is unavailable because "
                 "OPENROUTER_API_KEY is not configured"
             ),
         )
@@ -95,38 +130,15 @@ def compose_desktop_video_runtime(
     audio_reviewer = OpenRouterAudioPerceptualReviewer(api_key, audio_qa_model_id)
     brand_reviewer = OpenRouterBrandPerceptualReviewer(api_key, brand_qa_model_id)
 
-    if mode == _VERIFIED_FREE:
-        model_id = os.environ.get("ILAIOS_VIDEO_MODEL_ID", SEEDANCE_FREE_MODEL_ID).strip()
-        runtime = ThreeDomainReferenceAwareProviderBackedDesktopVideoRuntime(
-            root,
-            grants,
-            governance,
-            evidence,
-            objective_resolver=objective_resolver,
-            api_key=api_key,
-            model_id=model_id,
-            qa_model_id=qa_model_id,
-            reference_assets=reference_assets,
-            source_media=source_media,
-        )
-        runtime.configure_final_perceptual_reviewers(
-            audio_reviewer=audio_reviewer,
-            brand_reviewer=brand_reviewer,
-        )
-        return DesktopVideoComposition(
-            runtime,
-            True,
-            ThreeDomainReferenceAwareProviderBackedDesktopVideoRuntime.PROVIDER_ID,
-            mode,
-            None,
-            False,
-        )
-
     budget = _managed_budget()
     managed_model_id = os.environ.get(
         "ILAIOS_VIDEO_MANAGED_MODEL_ID",
         _DEFAULT_MANAGED_MODEL_ID,
     ).strip()
+    if managed_model_id.endswith(":free"):
+        raise VideoRuntimeError(
+            "managed Desktop Video model must not use a :free Seedance alias"
+        )
     if reference_relay is None:
         managed_runtime_impl = ThreeDomainManagedReferenceAwareProviderBackedDesktopVideoRuntime(
             root,
@@ -176,6 +188,40 @@ def compose_desktop_video_runtime(
         str(budget),
         reference_relay is not None,
     )
+
+
+def _governed_stock_selector_from_environment() -> GovernedStockSelector:
+    adapters = {
+        StockProvider.WIKIMEDIA: WikimediaStockSourceAdapter(WikimediaStockHttpTransport()),
+        StockProvider.NASA: NasaStockSourceAdapter(NasaStockHttpTransport()),
+        StockProvider.INTERNET_ARCHIVE: InternetArchiveStockSourceAdapter(
+            InternetArchiveStockHttpTransport()
+        ),
+    }
+    pexels_key = os.environ.get("ILAIOS_PEXELS_API_KEY", "").strip()
+    if pexels_key:
+        adapters[StockProvider.PEXELS] = PexelsStockSourceAdapter(
+            PexelsStockHttpTransport(pexels_key)
+        )
+    pixabay_key = os.environ.get("ILAIOS_PIXABAY_API_KEY", "").strip()
+    if pixabay_key:
+        adapters[StockProvider.PIXABAY] = PixabayStockSourceAdapter(
+            PixabayStockHttpTransport(pixabay_key)
+        )
+    unsplash_key = os.environ.get("ILAIOS_UNSPLASH_ACCESS_KEY", "").strip()
+    if unsplash_key:
+        adapters[StockProvider.UNSPLASH] = UnsplashStockSourceAdapter(
+            UnsplashStockHttpTransport(unsplash_key)
+        )
+    return GovernedStockSelector(adapters)
+
+
+def _official_brand_logo() -> Path:
+    base = Path(__file__).resolve().parents[2]
+    logo = base / "brand" / "assets" / "03-ilaios-symbol-dark.jpg"
+    if not logo.is_file():
+        raise VideoRuntimeError("official ILAIOS brand logo is unavailable")
+    return logo
 
 
 def _free_perceptual_model(env_name: str) -> str:
