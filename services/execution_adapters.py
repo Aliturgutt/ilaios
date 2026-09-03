@@ -115,6 +115,26 @@ class WebExecutionAdapter:
             reason=reason,
         )
 
+    def preview(self, request_id: str, *, requester_id: str, tenant_id: str, now: datetime) -> dict[str, object]:
+        return self._runtime.preview(
+            request_id, requester_id=requester_id, tenant_id=tenant_id, now=now
+        )
+
+    def request_publish(self, request_id: str, *, requester_id: str, tenant_id: str, now: datetime) -> dict[str, object]:
+        return self._runtime.request_publish(
+            request_id, requester_id=requester_id, tenant_id=tenant_id, now=now
+        )
+
+    def publish(self, request_id: str, *, requester_id: str, tenant_id: str, now: datetime) -> dict[str, object]:
+        return self._runtime.publish(
+            request_id, requester_id=requester_id, tenant_id=tenant_id, now=now
+        )
+
+    def deployment_history(self, request_id: str, *, requester_id: str, tenant_id: str) -> list[dict[str, object]]:
+        return self._runtime.deployment_history(
+            request_id, requester_id=requester_id, tenant_id=tenant_id
+        )
+
 
 class SoftwareExecutionAdapter:
     """ExecutionAdapter over the bounded, locally proven Software runtime."""
