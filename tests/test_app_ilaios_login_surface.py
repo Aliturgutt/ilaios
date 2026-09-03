@@ -66,7 +66,8 @@ def test_root_is_light_first_login_with_optional_dark_mode(tmp_path: Path) -> No
     assert "frame-ancestors 'none'" in csp
     document = response.body.decode("utf-8")
     assert '<html lang="en" data-theme="light">' in document
-    assert "Sign in to ILAIOS" in document
+    assert "Welcome back" in document
+    assert "Sign in to ILAIOS" not in document
     assert "Choose an account to continue." in document
     assert 'href="/auth/google/start"' in document
     assert 'href="/auth/microsoft/start"' in document
@@ -75,6 +76,38 @@ def test_root_is_light_first_login_with_optional_dark_mode(tmp_path: Path) -> No
     assert 'id="theme-dark"' in document
     assert '<script src="/login/app.js" defer></script>' in document
     assert "<style" not in document
+
+
+def test_dark_logo_blends_with_dark_page_background(tmp_path: Path) -> None:
+    runtime = _runtime(tmp_path / "identity.db")
+
+    response = runtime.dispatch(
+        RuntimeRequest(method="GET", target="/login/styles.css", headers={}),
+        now=_NOW,
+    )
+
+    assert response.status is HTTPStatus.OK
+    assert dict(response.headers)["Content-Type"] == "text/css; charset=utf-8"
+    stylesheet = response.body.decode("utf-8")
+    assert '--bg:#0B0E13' in stylesheet
+    assert '.brand-image-dark{display:none;background:#0B0E13}' in stylesheet
+    assert 'html[data-theme="dark"] .brand-lockup{background:#0B0E13}' in stylesheet
+    assert 'mix-blend-mode' not in stylesheet
+
+
+def test_login_heading_uses_refined_corporate_typography(tmp_path: Path) -> None:
+    runtime = _runtime(tmp_path / "identity.db")
+
+    response = runtime.dispatch(
+        RuntimeRequest(method="GET", target="/login/styles.css", headers={}),
+        now=_NOW,
+    )
+
+    stylesheet = response.body.decode("utf-8")
+    assert 'font-family:"Segoe UI Variable Display","Segoe UI",Inter,ui-sans-serif,sans-serif' in stylesheet
+    assert 'font-size:27px' in stylesheet
+    assert 'letter-spacing:-.012em' in stylesheet
+    assert 'font-weight:600' in stylesheet
 
 
 def test_theme_script_defaults_to_light_and_persists_explicit_dark_choice(
@@ -93,6 +126,7 @@ def test_theme_script_defaults_to_light_and_persists_explicit_dark_choice(
     assert "ilaios-theme" in script
     assert "storedTheme()==='dark'?'dark':'light'" in script
     assert "localStorage.setItem('ilaios-theme',value)" in script
+    assert "dark?'#0B0E13':'#FFFFFF'" in script
     assert "fetch('/auth/providers'" in script
 
 
