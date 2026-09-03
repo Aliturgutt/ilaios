@@ -2,7 +2,7 @@
 
 **Document Type:** Canonical Implementation Specification  
 **Format:** GitHub Markdown  
-**Status:** Canonical Baseline v1.0 — Pending Repository Publication  
+**Status:** Canonical Baseline v1.0 — Published in Repository  
 **Architecture Authority:** `SYSTEM_ARCHITECTURE.md`  
 **Autonomous Execution View:** `AUTONOMOUS_NODE_ARCHITECTURE.md`  
 **Product Authority:** `PRODUCT_REQUIREMENTS.md`  
