@@ -12,15 +12,9 @@ assets:
     canonical: true
   - id: BRAND.PRIMARY_HORIZONTAL_DARK
     file: brand/assets/02-ilaios-primary-horizontal-dark.jpg
-    role: reference_board_primary_horizontal_dark
+    role: primary_horizontal_dark
     dimensions: 1536x1024
-    canonical: false
-  - id: BRAND.SYMBOL_DARK
-    file: brand/assets/03-ilaios-symbol-dark.jpg
-    role: reference_board_symbol_dark
-    dimensions: 1536x1024
-    canonical: false
-    derivation_policy: scale_only_no_crop_no_recolor_no_redraw
+    canonical: true
   - id: BRAND.SYMBOL_LIGHT
     file: brand/assets/04-ilaios-symbol-light.jpg
     role: symbol_light

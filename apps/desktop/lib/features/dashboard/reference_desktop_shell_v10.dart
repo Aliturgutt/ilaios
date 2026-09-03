@@ -254,7 +254,7 @@ class _Sidebar extends StatelessWidget {
     required this.onLiSelected,
   });
 
-  static const _darkLogo = '../../brand/assets/05-ilaios-app-icon.jpg';
+  static const _darkLogo = '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
   static const _lightLogo = '../../brand/assets/13-ilaios-primary-horizontal-light.jpg';
 
   final DesktopSection selected;

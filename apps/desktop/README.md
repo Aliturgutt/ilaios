@@ -80,7 +80,7 @@ See `docs/platform/desktop/MICROSOFT_OIDC_SETUP.md` for the exact Microsoft exte
 
 ## Canonical branding
 
-The premium Desktop shell and Windows executable/MSIX icon derivation use the clean canonical dark symbol/app-icon owner `brand/assets/05-ilaios-app-icon.jpg`. Light horizontal branding uses `brand/assets/13-ilaios-primary-horizontal-light.jpg`. The Windows `.ico` resource is generated during the Windows build by `tool/generate_windows_icon.ps1` using scale-only transforms; no crop, recolor, redraw, or geometry modification is permitted.
+Desktop horizontal branding uses `brand/assets/02-ilaios-primary-horizontal-dark.jpg` on Dark surfaces and `brand/assets/13-ilaios-primary-horizontal-light.jpg` on Light surfaces. Theme-aware symbol/app-icon presentation uses the `05` Dark and `04` Light pair where a symbol/icon is required. Windows executable/MSIX icon packaging remains separate: the Windows `.ico` resource is generated from `brand/assets/05-ilaios-app-icon.jpg` by `tool/generate_windows_icon.ps1` using scale-only transforms; no crop, recolor, redraw, or geometry modification is permitted.
 
 Desktop theme tokens use the canonical ILAIOS palette rather than feature-local colors. Semantic success/warning/error colors remain distinct from brand accents so system meaning is not conflated with branding.
 
