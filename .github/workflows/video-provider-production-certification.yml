@@ -6,13 +6,12 @@ on:
       proof_mode:
         description: Video provider certification path
         required: true
-        default: free-only
+        default: verified-free
         type: choice
         options:
+          - verified-free
           - managed-bounded
           - desktop-managed-bounded
-          - desktop-one-prompt
-          - free-only
       authorize_paid:
         description: Explicitly authorize one paid Video certification for this exact SHA
         required: true
@@ -35,8 +34,6 @@ jobs:
     timeout-minutes: 25
     env:
       OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-      VIDEO_FREE_PROVIDER_PROOF_DIR: artifacts/video-free-provider-proof
-      VIDEO_FREE_PROVIDER_MODELS: bytedance/seedance-2.0-fast:free,bytedance/seedance-2.0:free,bytedance/seedance-1-5-pro:free
       VIDEO_PROVIDER_PROOF_DIR: artifacts/video-provider-proof
       VIDEO_PROVIDER_MODEL: bytedance/seedance-2.0-fast
       VIDEO_PROVIDER_DURATION_SECONDS: "4"
@@ -44,13 +41,12 @@ jobs:
       VIDEO_PROVIDER_ASPECT_RATIO: "16:9"
       VIDEO_PROVIDER_MAX_UNIT_PRICE_USD: "0.15"
       VIDEO_PROVIDER_MAX_TOTAL_COST_USD: "1.00"
-      ILAIOS_VIDEO_MODEL_ID: bytedance/seedance-2.0-fast:free
       ILAIOS_VIDEO_MANAGED_MODEL_ID: bytedance/seedance-2.0-fast
       ILAIOS_VIDEO_MANAGED_E2E_MAX_TOTAL_USD: "1.00"
       ILAIOS_VIDEO_QA_MODEL_ID: openrouter/free
       ILAIOS_VIDEO_E2E_RESOLUTION: 480p
-      VIDEO_DESKTOP_PROVIDER_PROOF_DIR: artifacts/video-desktop-provider-proof
       VIDEO_DESKTOP_MANAGED_PROVIDER_PROOF_DIR: artifacts/video-desktop-managed-provider-proof
+      VIDEO_PUBLIC_STOCK_PROOF_DIR: artifacts/video-stock-public-live-e2e
 
     steps:
       - name: Checkout exact source revision
@@ -60,7 +56,7 @@ jobs:
           persist-credentials: false
 
       - name: Ensure Desktop video runtime dependency
-        if: ${{ inputs.proof_mode == 'desktop-one-prompt' || inputs.proof_mode == 'desktop-managed-bounded' }}
+        if: ${{ inputs.proof_mode == 'verified-free' || inputs.proof_mode == 'desktop-managed-bounded' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -96,19 +92,37 @@ jobs:
           ffmpeg -version | head -1
           ffprobe -version | head -1
 
-      - name: Verify Desktop free-route proof safety boundary
-        if: ${{ inputs.proof_mode == 'desktop-one-prompt' }}
+      - name: Verify governed public-stock free-route safety boundary
+        if: ${{ inputs.proof_mode == 'verified-free' }}
         shell: bash
         run: |
           set -euo pipefail
           python --version
           ffmpeg -version | head -1
           ffprobe -version | head -1
-          test -n "$OPENROUTER_API_KEY"
-          case "$ILAIOS_VIDEO_MODEL_ID" in
-            *:free) ;;
-            *) echo "desktop-one-prompt is the explicit verified-free proof; use desktop-managed-bounded for the authorized paid Desktop proof" >&2; exit 1 ;;
+          test -z "${ILAIOS_VIDEO_MODEL_ID:-}"
+          case "$VIDEO_PROVIDER_MODEL" in
+            *:free) echo "Seedance :free aliases are forbidden; verified-free is the governed public-stock pipeline" >&2; exit 1 ;;
+            *) ;;
           esac
+
+      - name: Run real public-stock provider E2E
+        if: ${{ inputs.proof_mode == 'verified-free' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m scripts.video_public_stock_live_e2e
+
+      - name: Verify governed stock final-composition contracts
+        if: ${{ inputs.proof_mode == 'verified-free' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pytest -q \
+            tests/test_governed_stock_selection.py \
+            tests/test_governed_stock_media_fetch.py \
+            tests/test_governed_stock_composition.py \
+            tests/test_governed_stock_desktop_composition.py
 
       - name: Verify Desktop managed-bounded proof safety boundary
         if: ${{ inputs.proof_mode == 'desktop-managed-bounded' }}
@@ -154,7 +168,9 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p artifacts/video-paid-spend-lock
-          printf '{"revision_sha":"%s","run_id":"%s","run_attempt":"%s","max_total_cost_usd":"1.00","retry_allowed":false}\n'             "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT"             > artifacts/video-paid-spend-lock/lock.json
+          printf '{"revision_sha":"%s","run_id":"%s","run_attempt":"%s","max_total_cost_usd":"1.00","retry_allowed":false}\n' \
+            "$GITHUB_SHA" "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" \
+            > artifacts/video-paid-spend-lock/lock.json
 
       - name: Persist immutable paid Video spend lock
         if: ${{ (inputs.proof_mode == 'managed-bounded' || inputs.proof_mode == 'desktop-managed-bounded') && inputs.authorize_paid }}
@@ -165,26 +181,12 @@ jobs:
           if-no-files-found: error
           retention-days: 90
 
-      - name: Run real provider-backed Desktop verified-free finished-product E2E
-        if: ${{ inputs.proof_mode == 'desktop-one-prompt' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          python apps/desktop/e2e/provider_video_finished_product_e2e.py
-
       - name: Run real provider-backed Desktop managed-bounded finished-product E2E
         if: ${{ inputs.proof_mode == 'desktop-managed-bounded' }}
         shell: bash
         run: |
           set -euo pipefail
           python apps/desktop/e2e/provider_video_managed_finished_product_e2e.py
-
-      - name: Run real free-only provider certification
-        if: ${{ inputs.proof_mode == 'free-only' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          python -m src.video_automation.free_provider_production_certification
 
       - name: Run bounded paid proof through canonical managed provider path
         if: ${{ inputs.proof_mode == 'managed-bounded' }}
@@ -193,35 +195,30 @@ jobs:
           set -euo pipefail
           python -m src.video_automation.provider_production_certification
 
-      - name: Publish Desktop verified-free provider proof summary
-        if: ${{ always() && inputs.proof_mode == 'desktop-one-prompt' }}
+      - name: Publish governed public-stock verified-free summary
+        if: ${{ always() && inputs.proof_mode == 'verified-free' }}
         shell: bash
         run: |
           set -euo pipefail
-          echo "## Desktop Provider-Backed Video Factory — Verified Free Route" >> "$GITHUB_STEP_SUMMARY"
-          if [[ -f "$VIDEO_DESKTOP_PROVIDER_PROOF_DIR/receipt.json" ]]; then
+          echo "## Video Factory — Governed Public-Stock Verified-Free Route" >> "$GITHUB_STEP_SUMMARY"
+          if [[ -f "$VIDEO_PUBLIC_STOCK_PROOF_DIR/receipt.json" ]]; then
             python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
           import json
           import os
           from pathlib import Path
 
-          proof_dir = Path(os.environ["VIDEO_DESKTOP_PROVIDER_PROOF_DIR"])
-          receipt = json.loads((proof_dir / "receipt.json").read_text(encoding="utf-8"))
+          receipt = json.loads(
+              (Path(os.environ["VIDEO_PUBLIC_STOCK_PROOF_DIR"]) / "receipt.json").read_text(encoding="utf-8")
+          )
           print(f"- Status: `{receipt.get('status')}`")
-          print(f"- Execution: `{receipt.get('execution_status')}`")
-          print(f"- Provider model: `{receipt.get('provider_model')}`")
-          print(f"- QA model: `{receipt.get('qa_model')}`")
-          print(f"- Semantic score/threshold: `{receipt.get('semantic_score')}` / `{receipt.get('semantic_threshold')}`")
-          print(f"- Generated shots: `{receipt.get('generated_shot_count')}`")
-          print(f"- Duration: `{receipt.get('duration_seconds')}` seconds")
-          print(f"- Video/audio: `{receipt.get('video_codec')}` / `{receipt.get('audio_codec')}`")
-          print(f"- Artifact SHA-256: `{receipt.get('artifact_sha256')}`")
-          print(f"- Artifact bytes: `{receipt.get('artifact_bytes')}`")
-          print(f"- Verified free-route cost zero: `{receipt.get('provider_cost_zero')}`")
-          print("- This zero-cost assertion applies only to the explicit verified-free route.")
+          print(f"- Provider: `{receipt.get('provider')}`")
+          print(f"- Asset ID: `{receipt.get('asset_id')}`")
+          print(f"- Source URL: `{receipt.get('source_url')}`")
+          print("- Paid AI video generation: `FALSE`")
+          print("- Seedance free alias used: `FALSE`")
           PY
           else
-            printf '%s\n' '- Status: NO_ACCEPTED_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
+            printf '%s\n' '- Status: NO_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Publish Desktop managed-bounded provider proof summary
@@ -245,49 +242,11 @@ jobs:
           print(f"- Provider cost mode: `{receipt.get('provider_cost_mode')}`")
           print(f"- Provider actual cost USD: `{receipt.get('provider_cost_usd')}`")
           print(f"- Authorized hard cap USD: `{receipt.get('provider_cost_hard_cap_usd')}`")
-          print(f"- QA model: `{receipt.get('qa_model')}`")
-          print(f"- Semantic score/threshold: `{receipt.get('semantic_score')}` / `{receipt.get('semantic_threshold')}`")
-          print(f"- Generated shots: `{receipt.get('generated_shot_count')}`")
-          print(f"- Duration: `{receipt.get('duration_seconds')}` seconds")
-          print(f"- Video/audio: `{receipt.get('video_codec')}` / `{receipt.get('audio_codec')}`")
           print(f"- Artifact SHA-256: `{receipt.get('artifact_sha256')}`")
-          print(f"- Artifact bytes: `{receipt.get('artifact_bytes')}`")
           print("- Automatic paid fallback: `FALSE`")
           PY
           else
             printf '%s\n' '- Status: NO_ACCEPTED_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
-          fi
-
-      - name: Publish free-provider proof summary
-        if: ${{ always() && inputs.proof_mode == 'free-only' }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          echo "## Video Free Provider Production Certification" >> "$GITHUB_STEP_SUMMARY"
-          if [[ -f "$VIDEO_FREE_PROVIDER_PROOF_DIR/free-provider-receipt.json" ]]; then
-            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
-          import json
-          import os
-          from pathlib import Path
-
-          proof_dir = Path(os.environ["VIDEO_FREE_PROVIDER_PROOF_DIR"])
-          receipt = json.loads(
-              (proof_dir / "free-provider-receipt.json").read_text(encoding="utf-8")
-          )
-          artifact = receipt.get("artifact") or {}
-          print(f"- Status: `{receipt.get('status')}`")
-          print(f"- Revision: `{receipt.get('revision_sha')}`")
-          print(f"- Model: `{receipt.get('selected_model', 'n/a')}`")
-          print(f"- External job: `{receipt.get('external_job_id', 'n/a')}`")
-          print(f"- Provider-reported cost USD: `{receipt.get('provider_reported_cost_usd', 'n/a')}`")
-          print(f"- Artifact SHA-256: `{artifact.get('sha256', 'n/a')}`")
-          print(f"- Artifact bytes: `{artifact.get('bytes', 'n/a')}`")
-          print("- Paid fallback allowed: `FALSE`")
-          print("- Only explicit `:free` model IDs may reach this provider POST boundary.")
-          print("- Credential material is never written to evidence or logs.")
-          PY
-          else
-            printf '%s\n' '- Status: NO_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
           fi
 
       - name: Publish managed paid-provider proof summary
@@ -303,40 +262,27 @@ jobs:
           from pathlib import Path
 
           proof_dir = Path(os.environ["VIDEO_PROVIDER_PROOF_DIR"])
-          receipt = json.loads(
-              (proof_dir / "provider-receipt.json").read_text(encoding="utf-8")
-          )
+          receipt = json.loads((proof_dir / "provider-receipt.json").read_text(encoding="utf-8"))
           artifact = receipt.get("artifact") or {}
-          quote = receipt.get("customer_quote") or {}
           reconciliation = receipt.get("commercial_reconciliation") or {}
           print(f"- Status: `{receipt.get('status')}`")
           print(f"- Cost mode: `{receipt.get('cost_mode')}`")
           print(f"- Revision: `{receipt.get('revision_sha')}`")
           print(f"- Provider/model: `{receipt.get('provider')}` / `{receipt.get('model')}`")
-          print(f"- Request: `{receipt.get('request_id', 'n/a')}`")
-          print(f"- Quote ID: `{quote.get('quote_id', 'n/a')}`")
-          print(f"- Authorized workflow cap (USD): `{(receipt.get('budget_guard') or {}).get('max_total_cost_usd', 'n/a')}`")
-          print(f"- Customer total before generation (microUSD): `{quote.get('gross_customer_price_microusd', 'n/a')}`")
-          print(f"- Locked provider ceiling (microUSD): `{quote.get('provider_cost_ceiling_microusd', 'n/a')}`")
           print(f"- Actual provider cost (microUSD): `{reconciliation.get('actual_provider_cost_microusd', 'n/a')}`")
-          print(f"- Actual margin / hard floor (bps): `{reconciliation.get('actual_margin_bps', 'n/a')}` / `{reconciliation.get('hard_min_margin_bps', 'n/a')}`")
-          print(f"- Commercial cost proven: `{receipt.get('commercial_cost_proven', False)}`")
-          print(f"- External job: `{receipt.get('external_job_id', 'n/a')}`")
           print(f"- Artifact SHA-256: `{artifact.get('sha256', 'n/a')}`")
-          print(f"- Artifact bytes: `{artifact.get('bytes', 'n/a')}`")
-          print("- Positive provider cost is valid when it remains inside the locked quote and margin floor.")
           print("- Credential material is never written to evidence or logs.")
           PY
           else
             printf '%s\n' '- Status: NO_RECEIPT' >> "$GITHUB_STEP_SUMMARY"
           fi
 
-      - name: Upload immutable Desktop provider finished-product proof
-        if: ${{ always() && inputs.proof_mode == 'desktop-one-prompt' }}
+      - name: Upload immutable governed public-stock proof evidence
+        if: ${{ always() && inputs.proof_mode == 'verified-free' }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: desktop-provider-video-proof-${{ github.sha }}-${{ github.run_id }}
-          path: artifacts/video-desktop-provider-proof
+          name: video-public-stock-verified-free-${{ github.sha }}-${{ github.run_id }}
+          path: artifacts/video-stock-public-live-e2e
           if-no-files-found: warn
           retention-days: 30
 
@@ -346,15 +292,6 @@ jobs:
         with:
           name: desktop-managed-provider-video-proof-${{ github.sha }}-${{ github.run_id }}
           path: artifacts/video-desktop-managed-provider-proof
-          if-no-files-found: warn
-          retention-days: 30
-
-      - name: Upload immutable free-provider proof evidence
-        if: ${{ always() && inputs.proof_mode == 'free-only' }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
-        with:
-          name: video-free-provider-proof-${{ github.sha }}-${{ github.run_id }}
-          path: artifacts/video-free-provider-proof
           if-no-files-found: warn
           retention-days: 30
 
