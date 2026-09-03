@@ -1,4 +1,4 @@
-"""Canonical ExecutionCoordinator adapter for governed PDF/DOCX document outputs."""
+"""Canonical ExecutionCoordinator adapter for governed PDF/DOCX/XLSX/CSV outputs."""
 
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ class DocumentExecutionAdapter:
     """Durable coordinator adapter over the bounded DocumentProductRuntime."""
 
     descriptor = AdapterDescriptor(
-        "document.product-runtime.pdf-docx.v1",
+        "document.product-runtime.pdf-docx-xlsx-csv.v1",
         CAPABILITY_ID,
         CapabilityMaturity.VERIFIED_FINISHED_PRODUCT_ADAPTER,
         worker_subject="worker-document",
@@ -106,7 +106,7 @@ class DocumentExecutionAdapter:
             token,
             goal.goal_id,
             acceptance_criteria=(
-                "PDF and DOCX outputs are persisted through governed Files/Outputs",
+                "PDF, DOCX, XLSX, and CSV outputs are persisted through governed Files/Outputs",
                 "Artifact metadata remains tenant and execution scoped",
                 "Execution evidence remains bound to the canonical coordinator request",
             ),
@@ -114,20 +114,23 @@ class DocumentExecutionAdapter:
             data_class=data_class,
             budget=budget,
             tasks=(
-                ProposedTask("document-render", "Render governed PDF and DOCX outputs"),
+                ProposedTask(
+                    "document-render",
+                    "Render governed PDF, DOCX, XLSX, and CSV outputs",
+                ),
             ),
         )
         admission = self._governance.submit(
             request_id,
             principal_id,
             "document-agent",
-            "document-finished-product-pdf-docx-v1",
+            "document-finished-product-pdf-docx-xlsx-csv-v1",
             "document",
             {
                 "goal_id": goal.goal_id,
                 "job_id": job.job_id,
                 "tenant_id": tenant_id,
-                "formats": ["pdf", "docx"],
+                "formats": ["pdf", "docx", "xlsx", "csv"],
             },
             (),
             risk=risk,
@@ -209,7 +212,7 @@ class DocumentExecutionAdapter:
             "project_id": f"execution/{request_id}",
             "job_id": str(row["job_id"]),
             "grant_id": grant_id,
-            "evidence_scope": "GOVERNED_PDF_DOCX_FILES_OUTPUTS",
+            "evidence_scope": "GOVERNED_PDF_DOCX_XLSX_CSV_FILES_OUTPUTS",
         }
         serialized = json.dumps(result, sort_keys=True, separators=(",", ":"))
         with self._connect() as connection:
