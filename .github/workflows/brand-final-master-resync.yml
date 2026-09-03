@@ -1,0 +1,61 @@
+name: Brand Final Master Resync
+
+on:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/brand-final-master-resync.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  resync:
+    if: github.event.pull_request.head.repo.full_name == github.repository && github.event.pull_request.head.ref == 'brand/canonical-neutral-palette-20260902'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact brand branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: brand/canonical-neutral-palette-20260902
+          fetch-depth: 0
+
+      - name: Fetch and validate current master delta
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin master
+          mapfile -t files < <(git diff --name-only HEAD...origin/master | sort)
+          expected=(
+            'services/artifact_outputs.py'
+            'services/integrations/document_product_runtime.py'
+            'tests/test_document_product_runtime.py'
+            'tests/test_security_factory_secret_detection.py'
+          )
+          printf '%s\n' "${files[@]}" > /tmp/actual.txt
+          printf '%s\n' "${expected[@]}" | sort > /tmp/expected.txt
+          diff -u /tmp/expected.txt /tmp/actual.txt
+
+      - name: Merge current master fail closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git merge --no-ff --no-edit origin/master
+          test -f services/artifact_outputs.py
+          test -f services/integrations/document_product_runtime.py
+          test -f tests/test_document_product_runtime.py
+          test -f tests/test_security_factory_secret_detection.py
+          grep -Fq 'brand/assets/05-ilaios-app-icon.jpg' apps/web_app_runtime/login_server.py
+          grep -Fq 'brand/assets/13-ilaios-primary-horizontal-light.jpg' apps/web_app_runtime/login_server.py
+          grep -Fq '05-ilaios-app-icon.jpg' services/integrations/desktop_video_composition.py
+          ! grep -Fq '03-ilaios-symbol-dark.jpg' services/integrations/desktop_video_composition.py
+          git diff --check HEAD^ HEAD
+
+      - name: Push resynced branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin HEAD:brand/canonical-neutral-palette-20260902
