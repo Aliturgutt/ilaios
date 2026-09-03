@@ -1,0 +1,62 @@
+name: Brand Current Master Resync
+
+on:
+  push:
+    branches:
+      - brand/canonical-neutral-palette-20260902
+    paths:
+      - .github/workflows/brand-current-master-resync.yml
+
+permissions:
+  contents: write
+
+jobs:
+  resync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact brand branch
+        uses: actions/checkout@v4
+        with:
+          ref: brand/canonical-neutral-palette-20260902
+          fetch-depth: 0
+
+      - name: Merge exact current master fail-closed
+        shell: bash
+        run: |
+          set -euo pipefail
+          EXPECTED_MASTER="790ec76da013dfdfd51caa563fdb340412cbc847"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin master
+          ACTUAL_MASTER="$(git rev-parse origin/master)"
+          test "$ACTUAL_MASTER" = "$EXPECTED_MASTER"
+
+          set +e
+          git merge --no-commit --no-ff origin/master
+          MERGE_RC=$?
+          set -e
+
+          if [ "$MERGE_RC" -ne 0 ]; then
+            mapfile -t CONFLICTS < <(git diff --name-only --diff-filter=U)
+            printf 'Conflicts: %s\n' "${CONFLICTS[*]}"
+            for path in "${CONFLICTS[@]}"; do
+              case "$path" in
+                apps/web_app_runtime/login_server.py|tests/test_app_ilaios_login_surface.py) ;;
+                *) echo "Unexpected conflict: $path"; exit 1 ;;
+              esac
+            done
+            git checkout --theirs apps/web_app_runtime/login_server.py tests/test_app_ilaios_login_surface.py
+            sed -i 's/02-ilaios-primary-horizontal-dark\.jpg/05-ilaios-app-icon.jpg/g' apps/web_app_runtime/login_server.py tests/test_app_ilaios_login_surface.py
+            git add apps/web_app_runtime/login_server.py tests/test_app_ilaios_login_surface.py
+          fi
+
+          test -z "$(git diff --name-only --diff-filter=U)"
+          grep -F '_BRAND_DARK = (_BRAND_DIR / "05-ilaios-app-icon.jpg").read_bytes()' apps/web_app_runtime/login_server.py
+          ! grep -F '02-ilaios-primary-horizontal-dark.jpg' apps/web_app_runtime/login_server.py
+          grep -F -- '--bg:#0A0A0A;' apps/web_app_runtime/login_server.py
+          grep -F "dark?'#0A0A0A':'#FFFFFF'" apps/web_app_runtime/login_server.py
+          grep -F '05-ilaios-app-icon.jpg' tests/test_app_ilaios_login_surface.py
+          ! grep -F '02-ilaios-primary-horizontal-dark.jpg' tests/test_app_ilaios_login_surface.py
+
+          git commit -m "merge(master): resync brand branch with current login Carbon fix"
+          git push origin HEAD:brand/canonical-neutral-palette-20260902
