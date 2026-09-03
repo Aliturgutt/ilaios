@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import subprocess
 from datetime import UTC, datetime, timedelta
 from http import HTTPStatus
 from pathlib import Path
@@ -17,7 +16,12 @@ _NOW = datetime(2026, 9, 2, 15, 0, tzinfo=UTC)
 _ORIGIN = "https://app.ilaios.com"
 _CALLBACK = "https://app.ilaios.com/auth/google/callback"
 _REPO_ROOT = Path(__file__).resolve().parents[1]
-_DARK_LOGO = _REPO_ROOT / "brand" / "assets" / "05-ilaios-app-icon.jpg"
+_DARK_HORIZONTAL_LOGO = (
+    _REPO_ROOT / "brand" / "assets" / "02-ilaios-primary-horizontal-dark.jpg"
+)
+_LIGHT_HORIZONTAL_LOGO = (
+    _REPO_ROOT / "brand" / "assets" / "13-ilaios-primary-horizontal-light.jpg"
+)
 
 
 class _OAuth:
@@ -99,28 +103,22 @@ def test_dark_logo_blends_with_canonical_carbon_background(tmp_path: Path) -> No
     assert 'mix-blend-mode' not in stylesheet
 
 
-def test_dark_logo_asset_canvas_decodes_to_canonical_carbon() -> None:
-    result = subprocess.run(
-        (
-            "ffmpeg",
-            "-v",
-            "error",
-            "-i",
-            str(_DARK_LOGO),
-            "-vf",
-            "crop=1:1:0:0,format=rgb24",
-            "-frames:v",
-            "1",
-            "-f",
-            "rawvideo",
-            "-",
-        ),
-        check=True,
-        capture_output=True,
+def test_login_brand_endpoints_use_horizontal_authority(tmp_path: Path) -> None:
+    runtime = _runtime(tmp_path / "identity.db")
+
+    dark = runtime.dispatch(
+        RuntimeRequest(method="GET", target="/login/brand-dark.jpg", headers={}),
+        now=_NOW,
+    )
+    light = runtime.dispatch(
+        RuntimeRequest(method="GET", target="/login/brand-light.jpg", headers={}),
+        now=_NOW,
     )
 
-    assert result.stderr == b""
-    assert result.stdout == bytes((10, 10, 10))
+    assert dark.status is HTTPStatus.OK
+    assert light.status is HTTPStatus.OK
+    assert dark.body == _DARK_HORIZONTAL_LOGO.read_bytes()
+    assert light.body == _LIGHT_HORIZONTAL_LOGO.read_bytes()
 
 
 def test_login_heading_uses_refined_corporate_typography(tmp_path: Path) -> None:
