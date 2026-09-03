@@ -1,8 +1,11 @@
 # ILAIOS — Repository Project Status
 
-Status snapshot: 17 August 2026
+Historical status snapshot: 17 August 2026
 Baseline branch: `master`
-Observed implementation baseline before this truth-only sync: `1489183e6f5e19a50ba1d35f1c21955a63420f8d`
+Observed implementation baseline for this snapshot: `1489183e6f5e19a50ba1d35f1c21955a63420f8d`
+Current truth-sync audit anchor: 3 September 2026, `master` HEAD `b93f20b36ac7c8d611e54023d38ffe78b22b14f4`
+
+> **Truth boundary:** The status narrative below records the 17 August repository snapshot and later evidence explicitly named inside it. It is not a complete 3 September CURRENT REALITY report. Any current maturity, CI, runtime, deployment, provider-E2E, Desktop, Website, RAG, or factory claim must be revalidated against the applicable live authoritative evidence before being treated as current.
 
 ## Authority rule
 
@@ -96,7 +99,7 @@ Repository-side Desktop build/package behavior is tested. External completion st
 
 ### Knowledge / RAG
 
-Repository-side RAG.14 machinery remains bounded. Live production promotion still requires explicit approved credentials/spend scope and real production embedding/index persistence, tenant/auth/DLP/leakage evidence, recovery/SLO evidence, and exact deploy/rollback proof.
+Repository-side RAG.14 machinery remains bounded. Knowledge / RAG is a shared canonical intelligence/context capability, not a factory. Live production promotion still requires explicit approved credentials/spend scope and real production embedding/index persistence, tenant/auth/DLP/leakage evidence, recovery/SLO evidence, and exact deploy/rollback proof.
 
 ### Other production breadth
 
@@ -120,4 +123,4 @@ Repository automation must not autonomously create/rotate credentials, authorize
 
 ## Current decision
 
-Repository-side closure is now materially stronger: the current Desktop lineage is integrated, the Video placeholder false-acceptance P0 is closed on master, and Web/Software/App bounded paths remain evidence-backed. The remaining work is primarily external/public proof and production breadth/hardening on the existing architecture. No second Core, parallel Coordinator, invented milestone, paid-fallback shortcut, or evidence-free production promotion is authorized.
+Repository-side closure was materially stronger at the recorded evidence point: the Desktop lineage was integrated, the Video placeholder false-acceptance P0 was closed on master, and Web/Software/App bounded paths were evidence-backed. This paragraph does not promote those claims to 3 September CURRENT REALITY without revalidation. No second Core, parallel Coordinator, invented milestone, paid-fallback shortcut, or evidence-free production promotion is authorized.

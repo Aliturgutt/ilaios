@@ -1,7 +1,10 @@
 # ILAIOS Capability Matrix
 
-Snapshot: 17 August 2026
-Observed implementation baseline before this truth sync: `1489183e6f5e19a50ba1d35f1c21955a63420f8d`
+Historical evidence snapshot: 17 August 2026
+Observed implementation baseline for this snapshot: `1489183e6f5e19a50ba1d35f1c21955a63420f8d`
+Current truth-sync audit anchor: 3 September 2026, `master` HEAD `b93f20b36ac7c8d611e54023d38ffe78b22b14f4`
+
+> **Truth boundary:** The maturity rows below record the 17 August evidence snapshot. They MUST NOT be read as the current maturity state of 3 September 2026 unless the relevant claim is independently revalidated against current code, tests, exact-SHA CI, runtime, deployment, provider/E2E evidence, and durable evidence as applicable.
 
 Canonical capability maturity:
 
@@ -29,7 +32,7 @@ Planning and external-gate annotations such as `PLANNED`, `EXTERNAL PROOF PENDIN
 | Software Factory | Registered bounded Windows product runtime, finalization/recovery, source provenance, repeated Windows evidence | VERIFIED bounded adapter | Broader workload/external repository/provider/commercial evidence |
 | App Factory Windows | #250 exact-head CI and real generated Flutter Windows build/package/smoke evidence | VERIFIED bounded Windows adapter | Broader Windows apps; Android/iOS and Store/signing separately gated |
 | Windows Desktop repository | Interactive shell lineage through #253 and later reference-shell/branding/DPI commits `32df7fc...`, `678b2bbc...`, `c643871e...`; current combined Video/desktop gates green before #267 merge | TESTED / PRE-MICROSOFT REPOSITORY READY | Microsoft App Registration/login acceptance, Partner Center identity, signing, certification, Store publication |
-| Knowledge / RAG | Merged bounded RAG implementation plus RAG.14 repository machinery | VERIFIED bounded reference implementation | Approved live production embeddings/index persistence, tenant/auth/DLP/leakage, SLO/recovery and exact deploy/rollback evidence |
+| Knowledge / RAG — shared intelligence/context capability, not a factory | Merged bounded RAG implementation plus RAG.14 repository machinery | VERIFIED bounded reference implementation | Approved live production embeddings/index persistence, tenant/auth/DLP/leakage, SLO/recovery and exact deploy/rollback evidence |
 | Knowledge Graph | Repository implementation and targeted integration tests | VERIFIED foundation | Durable production-like graph persistence/query evidence |
 | Project Manager | Repository implementation and targeted integration tests | VERIFIED foundation | Durable workspace/project lifecycle evidence |
 | Security Factory | Defensive bounded SAST/secret/supply-chain/infra/local-DAST tests | VERIFIED bounded defensive factory | Production-safe exercises and independent external pentest where applicable |
@@ -64,4 +67,4 @@ Credentials, OAuth/provider registration, billing/spend, production DNS/deployme
 
 ## Architecture invariant
 
-Current evidence revalidates one Core, one Execution Coordinator, one capability registry, and shared governance/evidence authorities. No second Core, router, scheduler, policy engine, Coordinator, or evidence-free maturity promotion is authorized.
+The 17 August snapshot evidenced one Core, one Execution Coordinator, one capability registry, and shared governance/evidence authorities. Current-state use of this invariant still requires current evidence; no second Core, router, scheduler, policy engine, Coordinator, or evidence-free maturity promotion is authorized.
