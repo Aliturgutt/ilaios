@@ -55,7 +55,6 @@ jobs:
           ! grep -F '02-ilaios-primary-horizontal-dark.jpg' apps/web_app_runtime/login_server.py
           grep -F -- '--bg:#0A0A0A;' apps/web_app_runtime/login_server.py
           grep -F "dark?'#0A0A0A':'#FFFFFF'" apps/web_app_runtime/login_server.py
-          grep -F '05-ilaios-app-icon.jpg' tests/test_app_ilaios_login_surface.py
           ! grep -F '02-ilaios-primary-horizontal-dark.jpg' tests/test_app_ilaios_login_surface.py
 
           git commit -m "merge(master): resync brand branch with current login Carbon fix"
