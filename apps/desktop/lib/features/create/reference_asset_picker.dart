@@ -198,7 +198,7 @@ class ReferenceAssetPicker extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        if (constraints.maxWidth < 840) return _safeCompactStack();
+        if (constraints.maxWidth < 1180) return _safeCompactStack();
         return Row(
           key: const Key('compact-reference-asset-row'),
           crossAxisAlignment: CrossAxisAlignment.start,
