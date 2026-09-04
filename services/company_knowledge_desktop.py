@@ -43,6 +43,7 @@ from services.source_media_desktop import (
 )
 
 _COMPANY_UPLOAD_MAX_BYTES = 25 * 1024 * 1024
+# Base64 expands by roughly 4/3. Keep a bounded JSON envelope margin.
 _COMPANY_UPLOAD_BODY_BYTES = ((_COMPANY_UPLOAD_MAX_BYTES + 2) // 3) * 4 + 1_048_576
 _COMPANY_PROJECT_ID = "company-profile"
 _COMPANY_SERVICE_PRINCIPAL_ID = "ilaios.service.company-knowledge.v1"
@@ -59,7 +60,14 @@ _COMPANY_MIME_TYPES = frozenset(
 
 
 class TenantCompanyKnowledgeRegistry:
-    """Routes authenticated tenant scope into canonical durable Knowledge runtimes."""
+    """Routes authenticated tenant scope into canonical durable Knowledge runtimes.
+
+    The registry owns no semantic memory state. Each runtime retains the existing
+    immutable server-side tenant/project binding and integrity-chained event log.
+    The company project namespace is server-owned so callers cannot select another
+    project boundary through the upload API. Raw bytes use the same server-owned
+    tenant/project/source/version identifiers and never become prompt instructions.
+    """
 
     def __init__(self, root: Path) -> None:
         self._root = root
@@ -118,6 +126,9 @@ class TenantCompanyKnowledgeRegistry:
             raise CompanyKnowledgeIngestionError(
                 "company document sha256 does not match uploaded bytes"
             )
+
+        # Serialize the logical source update so semantic version and raw-byte version
+        # cannot race within this server process.
         with self._lock:
             runtime = self.runtime_for(tenant_id)
             source_id = _source_id(filename)
@@ -144,6 +155,7 @@ class TenantCompanyKnowledgeRegistry:
                     content=content,
                 )
                 source = runtime.update_source(source_id=source_id, content=extracted.text)
+
             latest_version = source.get("latest_version")
             if not isinstance(latest_version, int) or latest_version < 1:
                 raise KnowledgeRuntimeError("Knowledge source returned an invalid latest_version")
@@ -160,6 +172,8 @@ class TenantCompanyKnowledgeRegistry:
 
 
 class CompanyKnowledgeDesktopIdentityHTTPServer(SourceMediaDesktopIdentityHTTPServer):
+    """Existing Desktop server plus bounded company-document Knowledge ingestion."""
+
     def __init__(
         self,
         server_address: tuple[str, int],
@@ -183,7 +197,9 @@ class CompanyKnowledgeDesktopIdentityHTTPServer(SourceMediaDesktopIdentityHTTPSe
         self.RequestHandlerClass = CompanyKnowledgeDesktopIdentityRequestHandler
 
 
-class CompanyKnowledgeDesktopIdentityRequestHandler(SourceMediaDesktopIdentityRequestHandler):
+class CompanyKnowledgeDesktopIdentityRequestHandler(
+    SourceMediaDesktopIdentityRequestHandler
+):
     server: CompanyKnowledgeDesktopIdentityHTTPServer
 
     def do_POST(self) -> None:
