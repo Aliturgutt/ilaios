@@ -42,8 +42,8 @@ def test_ilaios_brand_plan_covers_script_storyboard_and_captions() -> None:
 
 
 def test_official_logo_fixture_remains_immutable(tmp_path: Path) -> None:
-    logo = tmp_path / "03-ilaios-symbol-dark.jpg"
-    payload = b"official-ilaios-symbol-test-fixture"
+    logo = tmp_path / "05-ilaios-app-icon.jpg"
+    payload = b"official-ilaios-app-icon-test-fixture"
     logo.write_bytes(payload)
 
     digest_before = hashlib.sha256(logo.read_bytes()).hexdigest()

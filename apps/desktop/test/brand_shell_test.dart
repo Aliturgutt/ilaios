@@ -9,7 +9,7 @@ Finder _asset(String name) => find.byWidgetPredicate((widget) {
     });
 
 void main() {
-  const darkLogo = '../../brand/assets/05-ilaios-app-icon.jpg';
+  const darkLogo = '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
   const lightLogo = '../../brand/assets/13-ilaios-primary-horizontal-light.jpg';
 
   testWidgets('dark Desktop loads the canonical dark runtime symbol master', (

@@ -24,7 +24,7 @@ from apps.web_app_runtime.server import (
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _BRAND_DIR = _REPO_ROOT / "brand" / "assets"
 _BRAND_LIGHT = (_BRAND_DIR / "13-ilaios-primary-horizontal-light.jpg").read_bytes()
-_BRAND_DARK = (_BRAND_DIR / "05-ilaios-app-icon.jpg").read_bytes()
+_BRAND_DARK = (_BRAND_DIR / "02-ilaios-primary-horizontal-dark.jpg").read_bytes()
 
 _LOGIN_HTML = """<!doctype html>
 <html lang="en" data-theme="light">
@@ -123,8 +123,8 @@ button,a{font:inherit}
 .theme-button:hover{color:var(--text);background:var(--button-hover)}
 .theme-button.is-active{color:var(--text);background:var(--button-active)}
 .auth{width:min(100%,384px);text-align:center}
-.brand-lockup{width:190px;height:64px;margin:0 auto 30px;overflow:hidden;background:#FFFFFF}
-.brand-image{display:block;width:100%;height:100%;object-fit:contain;object-position:center;background:#FFFFFF}
+.brand-lockup{width:218.5px;height:73.6px;margin:0 auto 30px;overflow:hidden;background:var(--bg)}
+.brand-image{display:block;width:100%;height:100%;object-fit:contain;object-position:center;background:var(--bg)}
 .brand-image-dark{display:none;background:#0A0A0A}
 html[data-theme="dark"] .brand-image-light{display:none}
 html[data-theme="dark"] .brand-image-dark{display:block}
@@ -143,7 +143,7 @@ h1{margin:0;font-family:"Segoe UI Variable Display","Segoe UI",Inter,ui-sans-ser
 .provider[aria-disabled="true"]{color:var(--disabled);pointer-events:none}
 .theme-button:focus-visible,.provider:focus-visible{outline:2px solid var(--text);outline-offset:2px}
 .notice{max-width:350px;margin:22px auto 0;color:var(--muted);font-size:11px;line-height:1.55}
-@media (max-width:560px){.shell{padding:72px 18px 32px}.theme-control{top:14px;right:14px}.auth{width:min(100%,360px)}.brand-lockup{width:172px;height:58px;margin-bottom:24px}h1{font-size:25px}.intro{margin-bottom:24px}.provider{height:48px}}
+@media (max-width:560px){.shell{padding:72px 18px 32px}.theme-control{top:14px;right:14px}.auth{width:min(100%,360px)}.brand-lockup{width:197.8px;height:66.7px;margin-bottom:24px}h1{font-size:25px}.intro{margin-bottom:24px}.provider{height:48px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
 """
 

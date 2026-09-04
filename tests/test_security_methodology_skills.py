@@ -158,6 +158,31 @@ def test_supply_chain_audit_flags_mutable_action_and_latest_image(
     assert report.passed is True
 
 
+def test_supply_chain_audit_accepts_immutable_action_and_container_digest(
+    tmp_path: Path,
+) -> None:
+    workflow_root = tmp_path / ".github" / "workflows"
+    workflow_root.mkdir(parents=True)
+    (workflow_root / "ci.yml").write_text(
+        "jobs:\n  test:\n    steps:\n      - uses: actions/checkout@"
+        + ("a" * 40)
+        + "\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "Dockerfile").write_text(
+        "FROM python:3.13@sha256:" + ("b" * 64) + "\n",
+        encoding="utf-8",
+    )
+
+    report = SecurityMethodologyAnalyzer().supply_chain_audit(
+        _scope(tmp_path)
+    )
+    ids = {item.finding_id for item in report.findings}
+    assert "SUPPLY-GHA-MUTABLE-REF" not in ids
+    assert "SUPPLY-GHA-UNVERSIONED-ACTION" not in ids
+    assert "SUPPLY-DOCKER-LATEST" not in ids
+
+
 def test_threat_model_reports_evidence_gaps_without_calling_them_exploits(
     tmp_path: Path,
 ) -> None:
