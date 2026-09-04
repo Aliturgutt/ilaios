@@ -412,6 +412,7 @@ class SecurityFactory:
 
 _TAINT_SOURCE_CALLS = frozenset({"input", "request.args.get", "request.form.get", "request.json.get"})
 _TAINT_SINK_CALLS = frozenset({"open", "subprocess.run", "subprocess.call", "subprocess.Popen", "requests.get", "requests.post", "urllib.request.urlopen"})
+_TAINT_SINK_METHODS = frozenset({"execute", "executemany"})
 
 
 def _python_taint_findings(location: str, text: str) -> list[SecurityFinding]:
@@ -426,7 +427,7 @@ def _python_taint_findings(location: str, text: str) -> list[SecurityFinding]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign) and _is_taint_source(node.value, tainted):
             tainted.update(target.id for target in node.targets if isinstance(target, ast.Name))
-        if isinstance(node, ast.Call) and _call_name(node.func) in _TAINT_SINK_CALLS:
+        if isinstance(node, ast.Call) and _is_taint_sink(node.func):
             if any(_is_taint_source(argument, tainted) for argument in node.args):
                 sink = _call_name(node.func) or "sensitive sink"
                 findings.append(SecurityFinding(
@@ -444,6 +445,13 @@ def _is_taint_source(node: ast.AST, tainted: set[str]) -> bool:
     ) or (
         isinstance(node, ast.Call) and _call_name(node.func) in _TAINT_SOURCE_CALLS
     )
+
+
+def _is_taint_sink(node: ast.AST) -> bool:
+    call_name = _call_name(node)
+    if call_name in _TAINT_SINK_CALLS:
+        return True
+    return isinstance(node, ast.Attribute) and node.attr in _TAINT_SINK_METHODS
 
 
 def _call_name(node: ast.AST) -> str | None:
