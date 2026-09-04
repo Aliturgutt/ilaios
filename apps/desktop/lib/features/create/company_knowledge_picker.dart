@@ -92,13 +92,13 @@ class _CompanyKnowledgePickerState extends State<CompanyKnowledgePicker> {
         );
       }
       final dialogTitle = _text(
-        'Select company PDF or DOCX files',
-        'Şirket PDF veya DOCX dosyalarını seç',
+        'Select company PDF, DOCX, or ZIP files',
+        'Şirket PDF, DOCX veya ZIP dosyalarını seç',
       ).replaceAll("'", "''");
       final script = '''
 Add-Type -AssemblyName System.Windows.Forms
 \$dialog = New-Object System.Windows.Forms.OpenFileDialog
-\$dialog.Filter = 'Company documents (*.pdf;*.docx)|*.pdf;*.docx'
+\$dialog.Filter = 'Company documents (*.pdf;*.docx;*.zip)|*.pdf;*.docx;*.zip'
 \$dialog.Multiselect = \$true
 \$dialog.CheckFileExists = \$true
 \$dialog.CheckPathExists = \$true
@@ -188,13 +188,14 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
         'pdf' => 'application/pdf',
         'docx' =>
           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'zip' => 'application/zip',
         _ => null,
       };
       if (mimeType == null) {
         throw _CompanyKnowledgePickerError(
           _text(
-            '$filename must be PDF or DOCX.',
-            '$filename PDF veya DOCX olmalıdır.',
+            '$filename must be PDF, DOCX, or ZIP.',
+            '$filename PDF, DOCX veya ZIP olmalıdır.',
           ),
         );
       }
@@ -215,11 +216,11 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
           ),
         );
       }
-      if (extension == 'docx' && !_hasZipSignature(bytes)) {
+      if ((extension == 'docx' || extension == 'zip') && !_hasZipSignature(bytes)) {
         throw _CompanyKnowledgePickerError(
           _text(
-            '$filename does not contain a DOCX/ZIP signature.',
-            '$filename DOCX/ZIP imzası içermiyor.',
+            '$filename does not contain a ZIP signature.',
+            '$filename ZIP imzası içermiyor.',
           ),
         );
       }
@@ -243,8 +244,8 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     final documents = widget.controller.documents;
     final detail = documents.isEmpty
         ? _text(
-            'Persistent company Knowledge · PDF/DOCX · up to 10 files · 25 MiB each',
-            'Kalıcı şirket Bilgisi · PDF/DOCX · en fazla 10 dosya · dosya başına 25 MiB',
+            'Persistent company Knowledge · PDF/DOCX/ZIP · up to 10 files · 25 MiB each',
+            'Kalıcı şirket Bilgisi · PDF/DOCX/ZIP · en fazla 10 dosya · dosya başına 25 MiB',
           )
         : _text(
             '${documents.length} file(s) staged locally; upload occurs on Start and persists in authenticated company Knowledge.',
@@ -300,7 +301,7 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                   label: Text(
                     _reading
                         ? _text('Reading…', 'Okunuyor…')
-                        : _text('PDF / DOCX', 'PDF / DOCX'),
+                        : _text('PDF / DOCX / ZIP', 'PDF / DOCX / ZIP'),
                     style: const TextStyle(fontSize: 9),
                   ),
                 ),

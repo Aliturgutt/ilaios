@@ -54,6 +54,7 @@ _COMPANY_MIME_TYPES = frozenset(
     {
         "application/pdf",
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "application/zip",
     }
 )
 
