@@ -7,6 +7,7 @@ import '../../control_plane/evidence_record.dart';
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
 import '../../identity/identity_client.dart';
+import '../create/reference_asset_picker.dart';
 import '../navigation/desktop_section.dart';
 
 /// Final-polish Home surface.
@@ -99,6 +100,7 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
       status: widget.status,
       userSession: widget.userSession,
     );
+    final referenceAssets = ReferenceAssetPickerScope.maybeOf(context);
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -107,8 +109,8 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
         // geometry. Standard and wide desktop sizes keep the one-viewport
         // composition.
         final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
-        final compact = constraints.maxWidth < 940 ||
-            constraints.maxHeight < 720 || textScale > 1.0;
+        final compact = constraints.maxWidth < 1300 ||
+            constraints.maxHeight < 760 || textScale > 1.0;
         final outerPadding = compact ? 14.0 : 20.0;
         final gap = compact ? 12.0 : 16.0;
 
@@ -125,6 +127,7 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
                   controller: _promptController,
                   submitting: _submitting,
                   model: model,
+                  referenceAssets: referenceAssets,
                   onStartWork: _startWork,
                   onNavigate: widget.onNavigate,
                 ),
@@ -149,6 +152,7 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
                 controller: _promptController,
                 submitting: _submitting,
                 model: model,
+                referenceAssets: referenceAssets,
                 onStartWork: _startWork,
                 onNavigate: widget.onNavigate,
               ),
@@ -278,6 +282,7 @@ class _CommandHero extends StatelessWidget {
     required this.controller,
     required this.submitting,
     required this.model,
+    required this.referenceAssets,
     required this.onStartWork,
     required this.onNavigate,
   });
@@ -285,6 +290,7 @@ class _CommandHero extends StatelessWidget {
   final TextEditingController controller;
   final bool submitting;
   final _HomeModel model;
+  final ReferenceAssetPickerController? referenceAssets;
   final Future<void> Function() onStartWork;
   final ValueChanged<DesktopSection> onNavigate;
 
@@ -364,6 +370,15 @@ class _CommandHero extends StatelessWidget {
                 ),
               ),
             ),
+            if (referenceAssets != null) ...[
+              const SizedBox(height: 10),
+              ReferenceAssetPicker(
+                key: const Key('home-prompt-attachments'),
+                controller: referenceAssets!,
+                enabled: model.userSession != null && !submitting,
+                compact: true,
+              ),
+            ],
             const SizedBox(height: 12),
             LayoutBuilder(
               builder: (context, constraints) {
