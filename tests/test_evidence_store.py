@@ -39,3 +39,28 @@ def test_provenance_chain_tampering_is_detected(tmp_path: Path) -> None:
 
     with pytest.raises(EvidenceError, match="hash chain"):
         store.verify()
+
+
+def test_persisted_provenance_record_replay_is_rejected(tmp_path: Path) -> None:
+    store = EvidenceStore(tmp_path / "evidence")
+    artifact = store.put_artifact(b"original")
+    appended = store.append_provenance("execution-1", artifact, "created")
+
+    database = tmp_path / "evidence" / "provenance.sqlite3"
+    with sqlite3.connect(database) as connection:
+        row = connection.execute(
+            "SELECT execution_id, artifact_digest, action, occurred_at, "
+            "previous_hash, record_hash FROM provenance WHERE sequence = ?",
+            (appended.sequence,),
+        ).fetchone()
+        assert row is not None
+
+        with pytest.raises(sqlite3.IntegrityError):
+            connection.execute(
+                "INSERT INTO provenance "
+                "(execution_id, artifact_digest, action, occurred_at, previous_hash, record_hash) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                row,
+            )
+
+    assert store.verify() == (appended,)

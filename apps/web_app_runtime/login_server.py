@@ -24,7 +24,7 @@ from apps.web_app_runtime.server import (
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _BRAND_DIR = _REPO_ROOT / "brand" / "assets"
 _BRAND_LIGHT = (_BRAND_DIR / "13-ilaios-primary-horizontal-light.jpg").read_bytes()
-_BRAND_DARK = (_BRAND_DIR / "05-ilaios-app-icon.jpg").read_bytes()
+_BRAND_DARK = (_BRAND_DIR / "02-ilaios-primary-horizontal-dark.jpg").read_bytes()
 
 _LOGIN_HTML = """<!doctype html>
 <html lang="en" data-theme="light">

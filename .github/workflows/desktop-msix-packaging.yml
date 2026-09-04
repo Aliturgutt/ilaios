@@ -9,6 +9,8 @@ on:
       - master
     paths:
       - 'apps/desktop/**'
+      - 'brand/assets/02-ilaios-primary-horizontal-dark.jpg'
+      - 'brand/assets/04-ilaios-symbol-light.jpg'
       - 'brand/assets/05-ilaios-app-icon.jpg'
       - 'brand/assets/13-ilaios-primary-horizontal-light.jpg'
       - '.github/workflows/desktop-msix-packaging.yml'
@@ -18,6 +20,8 @@ on:
       - master
     paths:
       - 'apps/desktop/**'
+      - 'brand/assets/02-ilaios-primary-horizontal-dark.jpg'
+      - 'brand/assets/04-ilaios-symbol-light.jpg'
       - 'brand/assets/05-ilaios-app-icon.jpg'
       - 'brand/assets/13-ilaios-primary-horizontal-light.jpg'
       - '.github/workflows/desktop-msix-packaging.yml'
@@ -77,6 +81,8 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $release = 'build\windows\x64\runner\Release'
           $required = @(
+            'brand\assets\02-ilaios-primary-horizontal-dark.jpg',
+            'brand\assets\04-ilaios-symbol-light.jpg',
             'brand\assets\05-ilaios-app-icon.jpg',
             'brand\assets\13-ilaios-primary-horizontal-light.jpg'
           )
@@ -113,6 +119,8 @@ jobs:
           if (-not (Test-Path (Join-Path $unpack 'ilaios_desktop.exe'))) { throw 'Packaged executable missing.' }
           if (-not (Test-Path (Join-Path $unpack 'ilaios_control_plane.exe'))) { throw 'Packaged control-plane sidecar missing.' }
           if (-not (Test-Path (Join-Path $unpack 'AppxManifest.xml'))) { throw 'Packaged manifest missing.' }
+          if (-not (Test-Path (Join-Path $unpack 'brand\assets\02-ilaios-primary-horizontal-dark.jpg'))) { throw 'Packaged ILAIOS dark horizontal brand asset missing.' }
+          if (-not (Test-Path (Join-Path $unpack 'brand\assets\04-ilaios-symbol-light.jpg'))) { throw 'Packaged ILAIOS light symbol/app-icon asset missing.' }
           if (-not (Test-Path (Join-Path $unpack 'brand\assets\05-ilaios-app-icon.jpg'))) { throw 'Packaged ILAIOS app icon asset missing.' }
           if (-not (Test-Path (Join-Path $unpack 'brand\assets\13-ilaios-primary-horizontal-light.jpg'))) { throw 'Packaged ILAIOS light horizontal brand asset missing.' }
           Write-Host 'ILAIOS_DESKTOP_MSIX_INSPECTION=PASS'

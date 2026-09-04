@@ -4,9 +4,10 @@ set -euo pipefail
 # Import only the explicitly approved final ILAIOS brand package.
 # This script is intentionally fail-closed:
 # - imports never run directly on master,
-# - 02/03 are preserved as reference boards, never runtime masters,
-# - 05 is the canonical Dark runtime owner,
-# - 13 is the canonical Light horizontal runtime owner,
+# - 02 is the canonical Dark horizontal logo,
+# - 13 is the canonical Light horizontal logo,
+# - 05 is the canonical Dark app icon / dark symbol runtime owner,
+# - 04 is the canonical Light symbol/app-icon variant,
 # - the original final ZIP is copied byte-for-byte rather than re-zipped,
 # - every staged binary must match the locked SHA-256 authority.
 
@@ -67,11 +68,8 @@ copy_unique() {
   cp -f "$source" "$ASSET_DIR/$target_name"
 }
 
-# Final-package assets. 02/03 are specification/reference boards and are copied
-# only as reference assets. Runtime code must not depend on them.
 copy_unique '01-ilaios-brand-color-system.png' '01-ilaios-brand-color-system.png'
 copy_unique '02-ilaios-primary-horizontal-dark.jpg' '02-ilaios-primary-horizontal-dark.jpg'
-copy_unique '03-ilaios-symbol-dark.jpg' '03-ilaios-symbol-dark.jpg'
 copy_unique '04-ilaios-symbol-light*.jpg' '04-ilaios-symbol-light.jpg'
 copy_unique '05-ilaios-app-icon.jpg' '05-ilaios-app-icon.jpg'
 copy_unique '06-ilaios-favicon-master.jpg' '06-ilaios-favicon-master.jpg'
@@ -100,7 +98,6 @@ checksum_file = Path(sys.argv[3])
 expected_names = [
     "01-ilaios-brand-color-system.png",
     "02-ilaios-primary-horizontal-dark.jpg",
-    "03-ilaios-symbol-dark.jpg",
     "04-ilaios-symbol-light.jpg",
     "05-ilaios-app-icon.jpg",
     "06-ilaios-favicon-master.jpg",
@@ -145,9 +142,10 @@ if mismatches:
     raise SystemExit("ERROR: final-package checksum mismatch:\n" + "\n".join(mismatches))
 
 print("ILAIOS_FINAL_BRAND_SHA256_VALIDATION=PASS")
-print("DARK_RUNTIME_OWNER=05-ilaios-app-icon.jpg")
-print("LIGHT_RUNTIME_OWNER=13-ilaios-primary-horizontal-light.jpg")
-print("REFERENCE_ONLY=02-ilaios-primary-horizontal-dark.jpg,03-ilaios-symbol-dark.jpg")
+print("DARK_HORIZONTAL_OWNER=02-ilaios-primary-horizontal-dark.jpg")
+print("LIGHT_HORIZONTAL_OWNER=13-ilaios-primary-horizontal-light.jpg")
+print("DARK_APP_ICON_OWNER=05-ilaios-app-icon.jpg")
+print("LIGHT_SYMBOL_ICON_OWNER=04-ilaios-symbol-light.jpg")
 PY
 
 git add brand/assets brand/source
@@ -165,8 +163,9 @@ fi
 
 echo "STATUS: STAGED_FOR_REVIEW"
 echo "BRANCH: $CURRENT_BRANCH"
-echo "DARK_RUNTIME_OWNER: brand/assets/05-ilaios-app-icon.jpg"
-echo "LIGHT_RUNTIME_OWNER: brand/assets/13-ilaios-primary-horizontal-light.jpg"
-echo "REFERENCE_ONLY: brand/assets/02-ilaios-primary-horizontal-dark.jpg, brand/assets/03-ilaios-symbol-dark.jpg"
+echo "DARK_HORIZONTAL_OWNER: brand/assets/02-ilaios-primary-horizontal-dark.jpg"
+echo "LIGHT_HORIZONTAL_OWNER: brand/assets/13-ilaios-primary-horizontal-light.jpg"
+echo "DARK_APP_ICON_OWNER: brand/assets/05-ilaios-app-icon.jpg"
+echo "LIGHT_SYMBOL_ICON_OWNER: brand/assets/04-ilaios-symbol-light.jpg"
 echo "SOURCE_ARCHIVE: brand/source/ilaios-full-logo.zip (byte-exact copy)"
 echo "NOTE: no commit or push was performed; review staged bytes before committing"
