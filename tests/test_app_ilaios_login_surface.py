@@ -97,6 +97,7 @@ def test_dark_logo_blends_with_canonical_carbon_background(tmp_path: Path) -> No
     assert dict(response.headers)["Content-Type"] == "text/css; charset=utf-8"
     stylesheet = response.body.decode("utf-8")
     assert '--bg:#0A0A0A' in stylesheet
+    assert '.brand-lockup{width:218.5px;height:73.6px' in stylesheet
     assert '.brand-image-dark{display:none;background:#0A0A0A}' in stylesheet
     assert 'html[data-theme="dark"] .brand-lockup{background:#0A0A0A}' in stylesheet
     assert '#0B0E13' not in stylesheet
@@ -153,6 +154,10 @@ def test_theme_script_defaults_to_light_and_persists_explicit_dark_choice(
     assert "storedTheme()==='dark'?'dark':'light'" in script
     assert "localStorage.setItem('ilaios-theme',value)" in script
     assert "dark?'#0A0A0A':'#FFFFFF'" in script
+    assert "normalizeBrandBackground" in script
+    assert "red<=12&&green<=12&&blue<=16" in script
+    assert "red>=248&&green>=248&&blue>=248" in script
+    assert "pixels[offset]=dark?10:255" in script
     assert "#0B0E13" not in script
     assert "fetch('/auth/providers'" in script
 
