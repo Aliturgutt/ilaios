@@ -13,13 +13,10 @@ import 'reference_home_truth_sanitizer.dart';
 
 /// Compatibility entry point kept for the established Desktop shell.
 ///
-/// The actual Home implementation lives in [ReferenceHomeDashboardV3]. Wide
-/// Desktop windows with a short logical content height (for example 1280x800
-/// after the shell bars are removed) preserve native typography size and allow
-/// vertical scrolling of the verified 744px Home safety canvas instead of
-/// shrinking the entire surface. Windows text scaling uses the same strategy:
-/// the safety canvas grows with the system scale and remains vertically
-/// scrollable rather than compressing or shrinking readable text.
+/// The actual Home implementation lives in [ReferenceHomeDashboardV3], which
+/// owns compact/short-window and text-scale scrolling. This compatibility
+/// layer only preserves runtime/status sanitization and forwards the canonical
+/// governed Home bindings; it must not add a second scrolling authority.
 class ReferenceHomeDashboardV2 extends StatelessWidget {
   const ReferenceHomeDashboardV2({
     required this.projection,
@@ -60,27 +57,5 @@ class ReferenceHomeDashboardV2 extends StatelessWidget {
   }
 
   @override
-  Widget build(BuildContext context) => LayoutBuilder(
-        builder: (context, constraints) {
-          const baseSafetyHeight = 744.0;
-          final textScale = MediaQuery.textScalerOf(context).scale(1);
-          final scaledSafetyHeight = baseSafetyHeight * textScale.clamp(1.0, 1.5);
-          final needsReadableScroll = constraints.maxWidth >= 1000 &&
-              (constraints.maxHeight < baseSafetyHeight || textScale > 1.0);
-
-          if (needsReadableScroll) {
-            return SingleChildScrollView(
-              key: const Key('command-center-short-viewport-scroll'),
-              primary: false,
-              physics: const ClampingScrollPhysics(),
-              child: SizedBox(
-                width: constraints.maxWidth,
-                height: scaledSafetyHeight,
-                child: _home(context),
-              ),
-            );
-          }
-          return _home(context);
-        },
-      );
+  Widget build(BuildContext context) => _home(context);
 }
