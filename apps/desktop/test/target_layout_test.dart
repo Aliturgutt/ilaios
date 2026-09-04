@@ -12,6 +12,7 @@ void main() {
     for (final size in <Size>[
       const Size(1920, 1080),
       const Size(1600, 900),
+      const Size(1440, 900),
       const Size(1382, 733),
       const Size(1320, 720),
       const Size(1280, 720),
@@ -41,7 +42,7 @@ void main() {
       expect(find.byKey(const Key('reference-responsive-viewport-v10')), findsOneWidget);
 
       final shouldScrollCompactViewport =
-          size.width < 940 || size.height < 760;
+          size.width < 1300 || size.height < 760;
       expect(
         find.byKey(const Key('command-center-short-viewport-scroll')),
         shouldScrollCompactViewport ? findsOneWidget : findsNothing,

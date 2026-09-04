@@ -109,8 +109,8 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
         // geometry. Standard and wide desktop sizes keep the one-viewport
         // composition.
         final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
-        final compact = constraints.maxWidth < 940 ||
-            constraints.maxHeight < 720 || textScale > 1.0;
+        final compact = constraints.maxWidth < 1300 ||
+            constraints.maxHeight < 760 || textScale > 1.0;
         final outerPadding = compact ? 14.0 : 20.0;
         final gap = compact ? 12.0 : 16.0;
 
