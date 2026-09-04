@@ -95,6 +95,25 @@ class RetestResult:
         return not self.remaining and not self.introduced
 
 
+@dataclass(frozen=True, slots=True)
+class DependencyAdvisory:
+    """Trusted local advisory input for deterministic dependency matching."""
+
+    advisory_id: str
+    package: str
+    affected_versions: frozenset[str]
+    severity: Severity
+    remediation: str
+
+    def __post_init__(self) -> None:
+        if not self.advisory_id.strip() or not self.package.strip():
+            raise SecurityFactoryError("dependency advisory identity and package are required")
+        if not self.affected_versions or any(not item.strip() for item in self.affected_versions):
+            raise SecurityFactoryError("dependency advisory affected versions are required")
+        if not self.remediation.strip():
+            raise SecurityFactoryError("dependency advisory remediation is required")
+
+
 _TEXT_SUFFIXES = frozenset(
     {".py", ".toml", ".txt", ".yaml", ".yml", ".json", ".tf", ".ini", ".cfg"}
 )
@@ -264,6 +283,46 @@ class SecurityFactory:
                 )
             )
         return SecurityReport(scope.scope_id, tuple(findings))
+
+    @staticmethod
+    def analyze_dependency_advisories(
+        scope_id: str,
+        dependencies: Mapping[str, str],
+        advisories: tuple[DependencyAdvisory, ...],
+    ) -> SecurityReport:
+        """Match an exact dependency inventory against trusted local advisory data."""
+        if not scope_id.strip():
+            raise SecurityFactoryError("explicit security scope ID is required")
+        if not dependencies:
+            raise SecurityFactoryError("dependency inventory is required")
+        if not advisories:
+            raise SecurityFactoryError("trusted local dependency advisory data is required")
+
+        normalized: dict[str, str] = {}
+        for package, version in dependencies.items():
+            package_name = package.strip().casefold()
+            exact_version = version.strip()
+            if not package_name or not exact_version:
+                raise SecurityFactoryError("dependency inventory entries must be exact and non-empty")
+            normalized[package_name] = exact_version
+
+        findings: list[SecurityFinding] = []
+        for advisory in advisories:
+            installed = normalized.get(advisory.package.strip().casefold())
+            if installed is None or installed not in advisory.affected_versions:
+                continue
+            findings.append(
+                SecurityFinding(
+                    f"SUPPLY-{advisory.advisory_id.strip().upper()}",
+                    "supply-chain",
+                    advisory.severity,
+                    advisory.package.strip(),
+                    0,
+                    f"installed dependency {advisory.package}=={installed} matches {advisory.advisory_id}",
+                    advisory.remediation,
+                )
+            )
+        return SecurityReport(scope_id, tuple(findings))
 
     @staticmethod
     def retest(before: SecurityReport, after: SecurityReport) -> RetestResult:
