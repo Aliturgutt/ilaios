@@ -5,6 +5,15 @@ on:
   push:
     branches: [master]
   workflow_dispatch:
+    inputs:
+      security_lifecycle_gate:
+        description: "Security lifecycle scope; S2 requires full release-candidate validation."
+        required: true
+        default: S1
+        type: choice
+        options:
+          - S1
+          - S2
 
 permissions:
   contents: read
@@ -285,6 +294,16 @@ jobs:
     if: needs.classify.outputs.website == 'true'
     uses: ./.github/workflows/website-ci.yml
 
+  release-candidate-platform:
+    name: S2 release-candidate platform validation
+    if: github.event_name == 'workflow_dispatch' && inputs.security_lifecycle_gate == 'S2'
+    uses: ./.github/workflows/platform-ci.yml
+
+  release-candidate-website:
+    name: S2 release-candidate website validation
+    if: github.event_name == 'workflow_dispatch' && inputs.security_lifecycle_gate == 'S2'
+    uses: ./.github/workflows/website-ci.yml
+
   malware:
     name: Repository malware scan
     uses: ./.github/workflows/malware-scan.yml
@@ -292,7 +311,7 @@ jobs:
   required-ci-gate:
     name: Required CI Gate
     if: always()
-    needs: [classify, supply-chain, secret-scan, db-migration-safety, api-contract-safety, operational-safety, assurance, final-closure-structure, malware, platform, website]
+    needs: [classify, supply-chain, secret-scan, db-migration-safety, api-contract-safety, operational-safety, assurance, final-closure-structure, malware, platform, website, release-candidate-platform, release-candidate-website]
     runs-on: ubuntu-latest
     steps:
       - name: Enforce relevant validation results
@@ -311,6 +330,9 @@ jobs:
           PLATFORM_RESULT: ${{ needs.platform.result }}
           WEBSITE_REQUIRED: ${{ needs.classify.outputs.website }}
           WEBSITE_RESULT: ${{ needs.website.result }}
+          SECURITY_LIFECYCLE_GATE: ${{ inputs.security_lifecycle_gate || 'S1' }}
+          RELEASE_CANDIDATE_PLATFORM_RESULT: ${{ needs.release-candidate-platform.result }}
+          RELEASE_CANDIDATE_WEBSITE_RESULT: ${{ needs.release-candidate-website.result }}
         run: |
           set -euo pipefail
 
@@ -369,4 +391,14 @@ jobs:
             exit 1
           fi
 
-          echo "Required CI Gate PASS"
+          if [[ "$SECURITY_LIFECYCLE_GATE" == "S2" && "$RELEASE_CANDIDATE_PLATFORM_RESULT" != "success" ]]; then
+            echo "S2 release-candidate platform validation failed: $RELEASE_CANDIDATE_PLATFORM_RESULT"
+            exit 1
+          fi
+
+          if [[ "$SECURITY_LIFECYCLE_GATE" == "S2" && "$RELEASE_CANDIDATE_WEBSITE_RESULT" != "success" ]]; then
+            echo "S2 release-candidate website validation failed: $RELEASE_CANDIDATE_WEBSITE_RESULT"
+            exit 1
+          fi
+
+          echo "Required CI Gate PASS; security lifecycle scope=$SECURITY_LIFECYCLE_GATE"
