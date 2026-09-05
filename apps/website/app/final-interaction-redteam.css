@@ -32,15 +32,15 @@
 }
 
 .system-visual-control:focus-visible {
-  border-color: var(--brand-cyan) !important;
-  outline: 2px solid var(--brand-cyan-line) !important;
+  border-color: #2A2A2A !important;
+  outline: 2px solid #2A2A2A !important;
   outline-offset: 2px !important;
 }
 
 .system-visual-control.is-active {
-  background: var(--brand-charcoal) !important;
-  border-color: var(--brand-cyan) !important;
-  box-shadow: inset 0 -2px 0 var(--brand-cyan) !important;
+  background: #1E1E1E !important;
+  border-color: #2A2A2A !important;
+  box-shadow: inset 0 -2px 0 #B3B3B3 !important;
 }
 
 .node-flow .node.system-visual-control {
@@ -55,8 +55,8 @@
 .plane-box.system-visual-control:hover,
 .lifecycle-step.system-visual-control:hover,
 .trust-node.system-visual-control:hover {
-  background: var(--brand-charcoal) !important;
-  border-color: var(--brand-cyan-line) !important;
+  background: #1E1E1E !important;
+  border-color: #2A2A2A !important;
 }
 
 .plane-box.system-visual-control {
@@ -308,5 +308,107 @@
   .lifecycle-flow > .lifecycle-step,
   .lifecycle-flow > .lifecycle-step:nth-child(2n) {
     border-right: 0 !important;
+  }
+}
+
+/* Canonical light-theme completion. Earlier responsive layers contain legacy
+   hard-coded dark/navy surfaces; neutralize them here without creating a
+   parallel theme authority. */
+html[data-theme="light"] body,
+html[data-theme="light"] main,
+html[data-theme="light"] .section,
+html[data-theme="light"] .surface-section,
+html[data-theme="light"] .evidence-section,
+html[data-theme="light"] .architecture-section,
+html[data-theme="light"] .site-footer,
+html[data-theme="light"] .nav-panel,
+html[data-theme="light"] .explore-menu-panel,
+html[data-theme="light"] .card,
+html[data-theme="light"] .detail-link-card,
+html[data-theme="light"] .flow-card,
+html[data-theme="light"] .plane-card,
+html[data-theme="light"] .journey-card,
+html[data-theme="light"] .factory-availability-banner,
+html[data-theme="light"] .factory-detail,
+html[data-theme="light"] .factory-explorer,
+html[data-theme="light"] .system-visual,
+html[data-theme="light"] .system-inline-detail,
+html[data-theme="light"] .spatial-map-detail,
+html[data-theme="light"] .governance-evidence-detail,
+html[data-theme="light"] .canonical-linear > div,
+html[data-theme="light"] .canonical-dual > div,
+html[data-theme="light"] .output-card,
+html[data-theme="light"] .callout,
+html[data-theme="light"] .themed-diagram,
+html[data-theme="light"] .workflow-concept,
+html[data-theme="light"] .trust-node,
+html[data-theme="light"] .trust-node.is-core {
+  background: #FFFFFF !important;
+  color: #0A0A0A !important;
+  border-color: #B3B3B3 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] :where(.lead,.muted,.card p,.flow-card p,.plane-card p,.journey-card p,.factory-detail p,.factory-detail small,.system-visual p,.system-visual small,.system-inline-detail p,.site-footer p,.site-footer a,.trust-node small) {
+  color: #808080 !important;
+}
+
+html[data-theme="light"] :where(h1,h2,h3,strong,.eyebrow,.micro-label,.panel-kicker,.nav-primary a,.nav-utility a,.explore-menu summary,.explore-menu-panel a) {
+  color: #0A0A0A !important;
+}
+
+html[data-theme="light"] .system-visual-control:focus-visible {
+  border-color: #2A2A2A !important;
+  outline-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] .system-visual-control.is-active,
+html[data-theme="light"] .node-flow .node.system-visual-control:hover,
+html[data-theme="light"] .plane-box.system-visual-control:hover,
+html[data-theme="light"] .lifecycle-step.system-visual-control:hover,
+html[data-theme="light"] .trust-node.system-visual-control:hover,
+html[data-theme="light"] .nav-primary a:hover,
+html[data-theme="light"] .nav-utility a:hover,
+html[data-theme="light"] .nav-primary a[aria-current="page"],
+html[data-theme="light"] .nav-utility a[aria-current="page"] {
+  background: #E6E6E6 !important;
+  border-color: #B3B3B3 !important;
+  color: #0A0A0A !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] .diagram-sprite-frame {
+  background: #FFFFFF !important;
+}
+
+html[data-theme="light"] .diagram-sprite {
+  background-image: none !important;
+}
+
+@media (max-width: 940px) {
+  html[data-theme="light"] .site-header,
+  html[data-theme="light"] .nav-panel,
+  html[data-theme="light"] .explore-menu-panel {
+    background: #FFFFFF !important;
+    color: #0A0A0A !important;
+    border-color: #B3B3B3 !important;
+    box-shadow: none !important;
+  }
+
+  html[data-theme="light"] .nav-utility {
+    border-top-color: #B3B3B3 !important;
+  }
+
+  html[data-theme="light"] .menu-toggle {
+    background: #FFFFFF !important;
+    border-color: #2A2A2A !important;
+    color: #0A0A0A !important;
+  }
+
+  html[data-theme="light"] .menu-toggle span,
+  html[data-theme="light"] .menu-toggle i {
+    display: inline-block !important;
+    color: #0A0A0A !important;
+    border-color: #0A0A0A !important;
   }
 }
