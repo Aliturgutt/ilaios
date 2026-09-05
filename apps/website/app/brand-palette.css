@@ -17,6 +17,20 @@
   --brand-hover: #242424;
   --brand-active: #2F2F2F;
 
+  /* Shared Website V2 geometry/rhythm tokens. */
+  --ui-space-1: 8px;
+  --ui-space-2: 12px;
+  --ui-space-3: 16px;
+  --ui-space-4: 24px;
+  --ui-space-5: 32px;
+  --ui-space-6: 48px;
+  --ui-section-y: 72px;
+  --ui-card-pad: 24px;
+  --ui-control-h: 46px;
+  --ui-radius: 8px;
+  --ui-hero-max: 1080px;
+  --ui-copy-max: 68ch;
+
   /* Reserved identity colors: logo/icon assets only. */
   --brand-logo-cyan: #00C2D1;
   --brand-logo-blue: #146BFF;
@@ -374,6 +388,236 @@ html[data-theme="dark"] body .site-header .nav-utility {
     min-width: 0 !important;
     margin: 0 !important;
     box-sizing: border-box !important;
+  }
+}
+
+/* Professional Website V2 closure: shared rhythm, hierarchy, component geometry,
+   surface-aware contrast and deterministic interaction without redesigning routes. */
+html body :where(.page-hero,.compact-page-hero) {
+  width: min(100%, var(--ui-hero-max)) !important;
+  padding-top: var(--ui-section-y) !important;
+  padding-bottom: 64px !important;
+}
+
+html body .home-hero {
+  padding-top: var(--ui-section-y) !important;
+  padding-bottom: 64px !important;
+  gap: var(--ui-space-6) !important;
+}
+
+html body .section {
+  padding-top: var(--ui-section-y) !important;
+  padding-bottom: var(--ui-section-y) !important;
+}
+
+html body .compact-section {
+  padding-top: var(--ui-space-6) !important;
+  padding-bottom: var(--ui-space-6) !important;
+}
+
+html body :where(.section-heading,.compact-heading-row) {
+  gap: var(--ui-space-5) !important;
+  margin-bottom: var(--ui-space-5) !important;
+}
+
+html body h1 {
+  max-width: 920px !important;
+  margin-top: 14px !important;
+  margin-bottom: var(--ui-space-4) !important;
+  font-size: clamp(3rem, 4.45vw, 4.65rem) !important;
+  line-height: .98 !important;
+  letter-spacing: -.052em !important;
+  text-wrap: balance;
+}
+
+html body h2 {
+  margin-bottom: var(--ui-space-3) !important;
+  font-size: clamp(2rem, 2.8vw, 3rem) !important;
+  line-height: 1.07 !important;
+  letter-spacing: -.038em !important;
+  text-wrap: balance;
+}
+
+html body h3 {
+  font-size: clamp(1.08rem, 1.3vw, 1.28rem) !important;
+  line-height: 1.28 !important;
+  letter-spacing: -.02em !important;
+}
+
+html body :where(p,.lead,.muted) {
+  line-height: 1.62 !important;
+}
+
+html body .lead {
+  max-width: var(--ui-copy-max) !important;
+  font-size: clamp(1.05rem, 1.25vw, 1.22rem) !important;
+}
+
+html body :where(.eyebrow,.micro-label,.panel-kicker) {
+  font-size: .68rem !important;
+  font-weight: 800 !important;
+  line-height: 1.35 !important;
+  letter-spacing: .13em !important;
+}
+
+html body :where(.card,.detail-link-card,.flow-card,.plane-card,.journey-card,.output-card,.contact-directory article,.security-process article,.principle-directory article,.factory-detail,.canonical-detail-panel,.system-visual,.product-experience) {
+  border-radius: var(--ui-radius) !important;
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+html body :where(.card,.detail-link-card,.flow-card,.plane-card,.journey-card,.output-card,.contact-directory article,.security-process article,.principle-directory article) {
+  padding: var(--ui-card-pad) !important;
+}
+
+html body :where(.grid,.detail-link-grid,.journey-grid,.flow-grid,.plane-grid,.security-chain,.contact-directory,.system-visuals) {
+  gap: var(--ui-space-4) !important;
+}
+
+html body :where(.button,button,input,select,textarea) {
+  box-sizing: border-box !important;
+  border-radius: 6px !important;
+}
+
+html body :where(.button,button,input,select) {
+  min-height: var(--ui-control-h) !important;
+}
+
+html body textarea {
+  min-height: 120px !important;
+}
+
+html body :where(.button,.text-link,.detail-link-card,.core-node,.pathway-card,.destination-card,.nav-primary a,.nav-utility a,.explore-menu summary,.explore-menu-panel a) {
+  transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease !important;
+}
+
+html body :where(.button,.detail-link-card,.core-node,.pathway-card,.destination-card):hover,
+html body :where(.button,.detail-link-card,.core-node,.pathway-card,.destination-card):focus-visible,
+html body :where(.button,.detail-link-card,.core-node,.pathway-card,.destination-card):active {
+  transform: none !important;
+}
+
+html body :where(a,button,input,select,textarea,summary):focus-visible {
+  outline: 2px solid var(--brand-text-secondary) !important;
+  outline-offset: 2px !important;
+}
+
+html[data-theme="light"] body :where(.lead,.muted,.section-heading p,.compact-heading-row p,.card p,.detail-link-card p,.flow-card p,.plane-card p,.journey-card p,.contact-directory p,.site-footer p,.site-footer a) {
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+}
+
+html[data-theme="dark"] body :where(.card,.detail-link-card,.flow-card,.plane-card,.journey-card,.output-card,.factory-detail,.canonical-detail-panel,.system-visual,.product-experience) :where(h1,h2,h3,h4,strong,b) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html[data-theme="dark"] body :where(.card,.detail-link-card,.flow-card,.plane-card,.journey-card,.output-card,.factory-detail,.canonical-detail-panel,.system-visual,.product-experience) :where(p,small,span,li) {
+  color: #B3B3B3 !important;
+  -webkit-text-fill-color: #B3B3B3 !important;
+}
+
+html[data-theme="light"] body :where(.result-preview,.dark-surface,[data-surface="dark"]) :where(h1,h2,h3,h4,strong,b,p,small,span,li) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html body :where(.node-flow,.plane-visual,.lifecycle-flow,.trust-visual,.canonical-linear,.canonical-dual,.spatial-stage) {
+  box-shadow: none !important;
+  background-image: none !important;
+}
+
+html[data-theme="dark"] body :where(.node-flow,.plane-visual,.lifecycle-flow,.trust-visual,.canonical-linear,.canonical-dual,.spatial-stage) {
+  border-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] body :where(.node-flow,.plane-visual,.lifecycle-flow,.trust-visual,.canonical-linear,.canonical-dual,.spatial-stage) {
+  border-color: #B3B3B3 !important;
+}
+
+html body .explore-menu-panel {
+  max-width: calc(100vw - 32px) !important;
+  box-shadow: none !important;
+}
+
+html body .site-footer .footer-main {
+  display: grid !important;
+  grid-template-columns: minmax(280px, .8fr) minmax(0, 1.4fr) !important;
+  align-items: start !important;
+  gap: 56px !important;
+  padding-top: 56px !important;
+  padding-bottom: 40px !important;
+}
+
+html body .site-footer .footer-nav-grid {
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  align-items: start !important;
+  gap: 28px !important;
+}
+
+html body .site-footer .footer-nav-grid > div {
+  display: grid !important;
+  align-content: start !important;
+  gap: 9px !important;
+  min-width: 0 !important;
+}
+
+html body .site-footer .footer-brand p {
+  max-width: 390px !important;
+}
+
+html body .site-footer .footer-row {
+  display: grid !important;
+  grid-template-columns: 1fr auto auto !important;
+  align-items: center !important;
+  gap: var(--ui-space-4) !important;
+  padding-top: 20px !important;
+  padding-bottom: 20px !important;
+}
+
+html body :where(.nav-panel,.nav-primary,.nav-utility,.footer-main,.footer-nav-grid,.grid,.section-heading,.system-visuals) > * {
+  min-width: 0 !important;
+}
+
+html body :where(.card,.detail-link-card,.flow-card,.plane-card,.journey-card,.footer-brand,.footer-nav-grid,.system-visual,.canonical-detail-panel) :where(p,a,strong,span,small) {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 940px) {
+  html body :where(.page-hero,.compact-page-hero,.home-hero) {
+    padding-top: 56px !important;
+    padding-bottom: 48px !important;
+  }
+
+  html body .section {
+    padding-top: 56px !important;
+    padding-bottom: 56px !important;
+  }
+
+  html body .site-footer .footer-main {
+    grid-template-columns: 1fr !important;
+    gap: var(--ui-space-5) !important;
+  }
+
+  html body .site-footer .footer-nav-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: var(--ui-space-5) var(--ui-space-4) !important;
+  }
+
+  html body .site-footer .footer-row {
+    grid-template-columns: 1fr !important;
+    gap: var(--ui-space-2) !important;
+  }
+}
+
+@media (max-width: 600px) {
+  html body :where(.card,.detail-link-card,.flow-card,.plane-card,.journey-card,.output-card,.contact-directory article,.security-process article,.principle-directory article) {
+    padding: 18px !important;
+  }
+
+  html body .site-footer .footer-nav-grid {
+    grid-template-columns: 1fr !important;
   }
 }
 
