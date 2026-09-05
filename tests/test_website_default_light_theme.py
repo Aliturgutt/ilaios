@@ -8,16 +8,14 @@ CHROME = ROOT / "apps" / "website" / "app" / "SiteChrome.tsx"
 THEME = ROOT / "apps" / "website" / "app" / "site-v2-finalization.css"
 
 
-def test_website_fresh_load_is_light_and_toggle_is_session_local() -> None:
+def test_website_defaults_to_light_without_overriding_explicit_choice() -> None:
     layout = LAYOUT.read_text(encoding="utf-8")
     toggle = TOGGLE.read_text(encoding="utf-8")
 
+    assert 'const theme = stored === "light" || stored === "dark" ? stored : "light";' in layout
     assert 'document.documentElement.dataset.theme = "light"' in layout
     assert 'document.documentElement.style.colorScheme = "light"' in layout
-    assert "localStorage" not in layout
-    assert "localStorage" not in toggle
-    assert "document.documentElement.dataset.theme = next" in toggle
-    assert "document.documentElement.style.colorScheme = next" in toggle
+    assert 'localStorage.setItem(STORAGE_KEY, next)' in toggle
 
 
 def test_website_default_theme_does_not_follow_system_dark_mode() -> None:
