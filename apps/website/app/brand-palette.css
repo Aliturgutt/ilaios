@@ -66,8 +66,6 @@
   --accent: var(--brand-text-secondary);
 }
 
-/* Legacy motion signature variables were previously scoped to this component,
-   so neutralize them at equal specificity after that stylesheet loads. */
 .system-motion-signature {
   --motion-cyan: var(--brand-text-secondary);
   --motion-blue: var(--brand-text-secondary);
@@ -260,6 +258,16 @@ html[data-theme="light"] body .site-footer a:hover,
 html[data-theme="light"] body .site-footer a:focus-visible {
   color: var(--brand-carbon) !important;
   -webkit-text-fill-color: var(--brand-carbon) !important;
+}
+
+/* The canonical dark horizontal JPG has an opaque near-black field. Match the
+   whole dark website header to that field so the logo does not render as a
+   visible rectangular patch. This does not alter, crop, recolor or filter the asset. */
+html[data-theme="dark"] body .site-header,
+html[data-theme="dark"] body .site-header .brand,
+html[data-theme="dark"] body .site-header .brand-link,
+html[data-theme="dark"] body .site-header .header-inner {
+  background: #07080A !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
