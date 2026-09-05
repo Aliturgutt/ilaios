@@ -40,7 +40,7 @@ main .audience-outcome-list article > span,
 main .audience-process article > span,
 main .about-principles article > span,
 main .contact-directory article > span {
-  color: var(--brand-blue, #146BFF) !important;
+  color: var(--brand-text-secondary) !important;
 }
 
 @media (max-width: 899px) {
