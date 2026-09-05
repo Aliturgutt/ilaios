@@ -6,6 +6,8 @@ LAYOUT = ROOT / "apps" / "website" / "app" / "layout.tsx"
 TOGGLE = ROOT / "apps" / "website" / "app" / "ThemeToggle.tsx"
 CHROME = ROOT / "apps" / "website" / "app" / "SiteChrome.tsx"
 THEME = ROOT / "apps" / "website" / "app" / "site-v2-finalization.css"
+INTERACTION = ROOT / "apps" / "website" / "app" / "final-interaction-redteam.css"
+DIAGRAM = ROOT / "apps" / "website" / "app" / "ThemedDiagram.tsx"
 
 
 def test_website_defaults_to_light_without_overriding_explicit_choice() -> None:
@@ -41,3 +43,30 @@ def test_light_header_is_canonical_light_surface() -> None:
     assert "border-bottom-color: rgba(10, 10, 10, .10);" in theme
     assert 'html[data-theme="light"] .brand-logo-dark { display: none; }' in theme
     assert 'html[data-theme="light"] .brand-logo-light { display: block; }' in theme
+
+
+def test_mobile_light_theme_neutralizes_legacy_dark_surfaces() -> None:
+    interaction = INTERACTION.read_text(encoding="utf-8")
+
+    for selector in (
+        'html[data-theme="light"] body',
+        'html[data-theme="light"] .site-footer',
+        'html[data-theme="light"] .nav-panel',
+        'html[data-theme="light"] .card',
+        'html[data-theme="light"] .themed-diagram',
+    ):
+        assert selector in interaction
+
+    assert 'html[data-theme="light"] .menu-toggle {' in interaction
+    assert "background: #FFFFFF !important;" in interaction
+    assert "color: #0A0A0A !important;" in interaction
+
+
+def test_themed_diagram_renders_supplied_light_and_dark_assets() -> None:
+    diagram = DIAGRAM.read_text(encoding="utf-8")
+
+    assert "{ light, dark, alt" in diagram
+    assert 'src={dark}' in diagram
+    assert 'src={light}' in diagram
+    assert 'className="diagram-sprite diagram-sprite-dark"' in diagram
+    assert 'className="diagram-sprite diagram-sprite-light"' in diagram
