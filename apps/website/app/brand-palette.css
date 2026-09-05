@@ -270,6 +270,96 @@ html[data-theme="dark"] body .site-header .header-inner {
   background: #07080A !important;
 }
 
+/* Desktop web header geometry is one shared invariant across all routes/languages.
+   Active states must not change item dimensions or shift adjacent controls. */
+@media (min-width: 941px) {
+  .site-header .nav {
+    display: flex !important;
+    align-items: center !important;
+    min-height: var(--v2-header) !important;
+    gap: 28px !important;
+  }
+
+  .site-header .brand {
+    flex: 0 0 158px !important;
+    width: 158px !important;
+    margin: 0 !important;
+  }
+
+  .site-header .nav-panel {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-end !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    min-height: var(--v2-header) !important;
+    margin-left: auto !important;
+    gap: 0 !important;
+  }
+
+  .site-header .nav-primary,
+  .site-header .nav-utility {
+    display: flex !important;
+    align-items: center !important;
+    min-height: var(--v2-header) !important;
+    gap: 0 !important;
+  }
+
+  .site-header .nav-primary a,
+  .site-header .nav-utility > a,
+  .site-header .explore-menu summary {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 54px !important;
+    padding: 0 11px !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+    box-sizing: border-box !important;
+  }
+
+  .site-header .nav-utility {
+    padding-left: 8px !important;
+    margin-left: 8px !important;
+    border-left: 1px solid var(--brand-stone) !important;
+  }
+
+  .site-header .explore-menu,
+  .site-header .theme-toggle,
+  .site-header .language-switch {
+    flex: 0 0 auto !important;
+  }
+}
+
+/* Canonical architecture flow must remain grayscale. Legacy detail CSS contains
+   blue/navy literals, so override the rendered flow and connector chrome here. */
+html[data-theme="dark"] .canonical-detail-panel,
+html[data-theme="dark"] .canonical-linear > div,
+html[data-theme="dark"] .canonical-dual > div {
+  background: #141414 !important;
+  background-image: none !important;
+  border-color: #2A2A2A !important;
+}
+
+html[data-theme="dark"] .canonical-linear > div:first-child,
+html[data-theme="dark"] .canonical-linear > div:last-child,
+html[data-theme="dark"] .canonical-dual > div:first-child,
+html[data-theme="dark"] .canonical-dual > div:last-child {
+  border-color: #2A2A2A !important;
+}
+
+html[data-theme="dark"] .canonical-linear > div > span,
+html[data-theme="dark"] .canonical-dual > div > span {
+  color: #B3B3B3 !important;
+  -webkit-text-fill-color: #B3B3B3 !important;
+}
+
+html[data-theme="dark"] .canonical-linear > div > strong,
+html[data-theme="dark"] .canonical-dual > div > strong {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .button,
   .detail-link-card,
