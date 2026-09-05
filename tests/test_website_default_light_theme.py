@@ -62,11 +62,26 @@ def test_mobile_light_theme_neutralizes_legacy_dark_surfaces() -> None:
     assert "color: #0A0A0A !important;" in interaction
 
 
-def test_themed_diagram_renders_supplied_light_and_dark_assets() -> None:
+def test_final_light_theme_authority_loads_after_legacy_theme_layers() -> None:
+    layout = LAYOUT.read_text(encoding="utf-8")
+
+    assert layout.index('import "./site-v2-finalization.css";') < layout.index('import "./final-interaction-redteam.css";')
+
+
+def test_light_factory_explorer_keeps_normal_text_legible() -> None:
+    interaction = INTERACTION.read_text(encoding="utf-8")
+
+    assert 'html[data-theme="light"] .factory-index button' in interaction
+    assert 'html[data-theme="light"] .factory-detail p' in interaction
+    assert "color: #2A2A2A !important;" in interaction
+
+
+def test_themed_diagram_uses_the_existing_canonical_sprite_assets() -> None:
     diagram = DIAGRAM.read_text(encoding="utf-8")
 
-    assert "{ light, dark, alt" in diagram
-    assert 'src={dark}' in diagram
-    assert 'src={light}' in diagram
-    assert 'className="diagram-sprite diagram-sprite-dark"' in diagram
-    assert 'className="diagram-sprite diagram-sprite-light"' in diagram
+    assert 'background-image: url("/visuals/ilaios-diagrams.avif")' in THEME.read_text(encoding="utf-8")
+    assert "const WIDE_ROWS" in diagram
+    assert "src={dark}" not in diagram
+    assert "src={light}" not in diagram
+    assert "diagram-sprite-dark" in diagram
+    assert "diagram-sprite-light" in diagram

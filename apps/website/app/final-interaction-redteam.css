@@ -381,8 +381,28 @@ html[data-theme="light"] .diagram-sprite-frame {
   background: #FFFFFF !important;
 }
 
-html[data-theme="light"] .diagram-sprite {
-  background-image: none !important;
+html[data-theme="light"] .factory-index button,
+html[data-theme="light"] .factory-index button:hover,
+html[data-theme="light"] .factory-index button:focus-visible,
+html[data-theme="light"] .factory-index button.is-active {
+  background: #FFFFFF !important;
+  color: #0A0A0A !important;
+  border-color: #B3B3B3 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] .factory-index button:hover,
+html[data-theme="light"] .factory-index button:focus-visible,
+html[data-theme="light"] .factory-index button.is-active {
+  background: #E6E6E6 !important;
+}
+
+html[data-theme="light"] .factory-index button > span,
+html[data-theme="light"] .factory-index button > small,
+html[data-theme="light"] .factory-detail p,
+html[data-theme="light"] .factory-detail small,
+html[data-theme="light"] .factory-explorer-heading p {
+  color: #2A2A2A !important;
 }
 
 @media (max-width: 940px) {
