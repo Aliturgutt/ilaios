@@ -117,6 +117,9 @@ class DependencyAdvisory:
 _TEXT_SUFFIXES = frozenset(
     {".py", ".toml", ".txt", ".yaml", ".yml", ".json", ".tf", ".ini", ".cfg"}
 )
+_EXPLICIT_TEXT_FILENAMES = frozenset(
+    {"requirements.txt", "requirements-dev.txt", "Dockerfile"}
+)
 _SKIP_PARTS = frozenset({".git", "node_modules", ".venv", "venv", "build", "dist"})
 _MAX_FILE_BYTES = 1_048_576
 
@@ -192,6 +195,16 @@ _INFRA_RULES: tuple[tuple[str, re.Pattern[str], Severity, str, str], ...] = (
     ),
 )
 
+_CONTAINER_RULES: tuple[tuple[str, re.Pattern[str], Severity, str, str], ...] = (
+    (
+        "CONTAINER-ROOT-USER",
+        re.compile(r"^\s*USER\s+(?:root|0)(?::(?:root|0))?\s*(?:#.*)?$", re.IGNORECASE),
+        Severity.HIGH,
+        "container runtime explicitly selects the root user",
+        "run the final container stage as a dedicated non-root user",
+    ),
+)
+
 _REQUIRED_HTTP_HEADERS = MappingProxyType(
     {
         "content-security-policy": "define a restrictive Content-Security-Policy",
@@ -212,10 +225,7 @@ class SecurityFactory:
                 continue
             if path.stat().st_size > _MAX_FILE_BYTES:
                 continue
-            if path.suffix.casefold() not in _TEXT_SUFFIXES and path.name not in {
-                "requirements.txt",
-                "requirements-dev.txt",
-            }:
+            if path.suffix.casefold() not in _TEXT_SUFFIXES and path.name not in _EXPLICIT_TEXT_FILENAMES:
                 continue
             try:
                 text = path.read_text(encoding="utf-8")
@@ -387,6 +397,20 @@ class SecurityFactory:
                             SecurityFinding(
                                 finding_id,
                                 "infrastructure",
+                                severity,
+                                location,
+                                line_number,
+                                message,
+                                remediation,
+                            )
+                        )
+            if location.rsplit("/", 1)[-1] == "Dockerfile":
+                for finding_id, pattern, severity, message, remediation in _CONTAINER_RULES:
+                    if pattern.search(line):
+                        findings.append(
+                            SecurityFinding(
+                                finding_id,
+                                "container",
                                 severity,
                                 location,
                                 line_number,
