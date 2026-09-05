@@ -6,6 +6,11 @@ const root = path.resolve(process.cwd());
 const app = path.join(root, "app");
 const palette = await readFile(path.join(app, "brand-palette.css"), "utf8");
 const finalLayer = await readFile(path.join(app, "site-v2-finalization.css"), "utf8");
+const legacyUiLayers = await Promise.all([
+  "website-v2.css",
+  "website-v2-pages.css",
+  "website-v2-explore.css",
+].map(async (name) => [name, await readFile(path.join(app, name), "utf8")]));
 
 const failures = [];
 const requireText = (source, text, label) => {
@@ -37,6 +42,11 @@ requireText(palette, "--v2-blue: var(--brand-text-secondary);", "legacy V2 blue 
 
 forbid(finalLayer, /#00c2d1|#146bff|#009fbd|#1769d2|#0b0f14|#111827|#1f2937|#334155|#5c58fe/i, "final loaded website layer");
 forbid(finalLayer, /rgba\(0\s*,\s*194\s*,\s*209/i, "final loaded website layer cyan rgba");
+
+for (const [name, source] of legacyUiLayers) {
+  forbid(source, /#00c2d1|#146bff|#009fbd|#1769d2|#0b0f14|#111827|#1f2937|#334155|#5c58fe|#0c131b|#0f1721|#101b26|#090e14|#91a3b5/i, `${name} chromatic UI literals`);
+  forbid(source, /rgba\(0\s*,\s*194\s*,\s*209/i, `${name} cyan rgba`);
+}
 
 requireText(finalLayer, "--accent: #2A2A2A;", "light neutral accent");
 requireText(finalLayer, "--accent-2: #2F2F2F;", "light neutral secondary accent");
