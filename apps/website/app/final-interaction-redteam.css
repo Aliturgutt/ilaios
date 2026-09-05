@@ -512,3 +512,114 @@ html[data-theme="dark"] .site-footer a:focus-visible {
     border-color: #0A0A0A !important;
   }
 }
+
+/* Final surface-aware neutral authority. Loaded last; this is the only new rule block.
+   It neutralizes legacy cyan/blue/navy UI without touching canonical logo asset pixels. */
+html[data-theme="dark"] .site-header,
+html[data-theme="dark"] .site-header .brand-link,
+html[data-theme="dark"] .site-header .header-inner {
+  background: #0A0A0A !important;
+  border-color: #2A2A2A !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] :where(.nav-panel,.explore-menu-panel) {
+  background: #141414 !important;
+  border-color: #2A2A2A !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] :where(.nav-primary a,.nav-utility a,.explore-menu summary,.explore-menu-panel a) {
+  color: #E6E6E6 !important;
+  -webkit-text-fill-color: #E6E6E6 !important;
+}
+
+html[data-theme="dark"] :where(.nav-primary a:hover,.nav-utility a:hover,.nav-primary a[aria-current="page"],.nav-utility a[aria-current="page"],.explore-menu-panel a:hover,.explore-menu-panel a:focus-visible,.explore-menu-panel a[aria-current="page"]) {
+  background: #242424 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  border-color: #2A2A2A !important;
+}
+
+html[data-theme="dark"] :where(.card,.detail-link-card,.flow-card,.plane-card,.journey-card,.detail-directory > a,.runtime-line > div,.capability-matrix-row,.factory-link-cloud a,.security-process article,.principle-directory article,.trust-gate > div,.plane-box,.system-visual,.product-experience,.result-preview,.factory-detail,.factory-availability-banner,.canonical-detail-panel,.output-card,.workflow-concept,.trust-node,.trust-node.is-core,.core-node,.authority-layer,.boundary-core,.callout) {
+  background: #141414 !important;
+  background-image: none !important;
+  border-color: #2A2A2A !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] :where(.card,.detail-link-card,.flow-card,.plane-card,.journey-card,.detail-directory > a,.runtime-line > div,.capability-matrix-row,.factory-link-cloud a,.security-process article,.principle-directory article,.trust-gate > div,.plane-box,.system-visual,.product-experience,.result-preview,.factory-detail,.factory-availability-banner,.canonical-detail-panel,.output-card,.workflow-concept,.trust-node,.core-node,.authority-layer,.boundary-core,.callout) :where(h1,h2,h3,h4,strong,b) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html[data-theme="dark"] :where(.card,.detail-link-card,.flow-card,.plane-card,.journey-card,.detail-directory > a,.runtime-line > div,.capability-matrix-row,.factory-link-cloud a,.security-process article,.principle-directory article,.trust-gate > div,.plane-box,.system-visual,.product-experience,.result-preview,.factory-detail,.factory-availability-banner,.canonical-detail-panel,.output-card,.workflow-concept,.trust-node,.core-node,.authority-layer,.boundary-core,.callout) :where(p,small,span,li,i) {
+  color: #B3B3B3 !important;
+  -webkit-text-fill-color: #B3B3B3 !important;
+}
+
+html[data-theme="dark"] .product-experience :where(.micro-label,.text-link,.evidence-preview,.evidence-preview span,.evidence-preview li,.product-stage-control p,.product-stage-tabs button,.product-mode-tabs button) {
+  color: #B3B3B3 !important;
+  -webkit-text-fill-color: #B3B3B3 !important;
+}
+
+html[data-theme="dark"] .product-experience :where(.text-link:hover,.text-link:focus-visible,.product-mode-tabs button.is-active,.product-stage-tabs button.is-active) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html[data-theme="dark"] .product-mode-tabs button.is-active,
+html[data-theme="dark"] .product-stage-tabs button.is-active {
+  background: #2F2F2F !important;
+  border-color: #B3B3B3 !important;
+}
+
+html[data-theme="light"] :where(.detail-directory > a,.runtime-line > div,.capability-matrix-row,.factory-link-cloud a,.security-process article,.principle-directory article,.trust-gate > div,.plane-box,.system-visual-control,.spatial-stage) {
+  background: #FFFFFF !important;
+  background-image: none !important;
+  color: #0A0A0A !important;
+  border-color: #B3B3B3 !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] :where(.detail-directory > a,.runtime-line > div,.capability-matrix-row,.factory-link-cloud a,.security-process article,.principle-directory article,.trust-gate > div,.plane-box,.system-visual-control,.spatial-stage) :where(h1,h2,h3,h4,strong,b) {
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+}
+
+html[data-theme="light"] :where(.detail-directory > a,.runtime-line > div,.capability-matrix-row,.factory-link-cloud a,.security-process article,.principle-directory article,.trust-gate > div,.plane-box,.system-visual-control,.spatial-stage) :where(p,small,span,li,i) {
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] .result-preview,
+html[data-theme="light"] .result-preview * {
+  background-image: none !important;
+}
+
+html[data-theme="light"] .result-preview :where(span,strong,p,small,li) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html[data-theme="light"] .product-experience :where(.evidence-preview,.evidence-preview span,.evidence-preview li,.product-stage-control p,.product-stage-tabs button,.micro-label) {
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] :where(.lead,.section-heading > p,.compact-heading-row p,.audience-hero p,.about-intro p,.contact-intro p,.status-note p,.factory-truth-note p) {
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] :where(.text-link,.button.secondary,.security-detail-links a,.factory-link-cloud a,.detail-directory > a) {
+  color: #141414 !important;
+  -webkit-text-fill-color: #141414 !important;
+}
+
+html[data-theme="light"] :where(.text-link:hover,.text-link:focus-visible,.button.secondary:hover,.button.secondary:focus-visible,.security-detail-links a:hover,.security-detail-links a:focus-visible,.factory-link-cloud a:hover,.factory-link-cloud a:focus-visible,.detail-directory > a:hover,.detail-directory > a:focus-visible) {
+  background: #E6E6E6 !important;
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+  border-color: #2A2A2A !important;
+}
