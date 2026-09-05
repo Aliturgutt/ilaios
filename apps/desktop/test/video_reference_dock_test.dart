@@ -50,7 +50,7 @@ Future<void> _openGoals(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('V4 removes the global dock and exposes the governed picker inside Goals', (
+  testWidgets('V4 exposes the governed picker under Home prompt and inside Goals', (
     tester,
   ) async {
     _desktopViewport(tester);
@@ -58,7 +58,9 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
-    expect(find.byKey(const Key('video-reference-assets')), findsNothing);
+    expect(find.byKey(const Key('home-prompt-attachments')), findsOneWidget);
+    expect(find.byKey(const Key('video-reference-assets')), findsOneWidget);
+    expect(find.byKey(const Key('company-knowledge-picker')), findsOneWidget);
 
     await _openGoals(tester);
 
