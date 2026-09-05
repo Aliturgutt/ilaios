@@ -316,6 +316,7 @@
    parallel theme authority. */
 html[data-theme="light"] body,
 html[data-theme="light"] main,
+html[data-theme="light"] .site-header,
 html[data-theme="light"] .section,
 html[data-theme="light"] .surface-section,
 html[data-theme="light"] .evidence-section,
@@ -331,13 +332,22 @@ html[data-theme="light"] .journey-card,
 html[data-theme="light"] .factory-availability-banner,
 html[data-theme="light"] .factory-detail,
 html[data-theme="light"] .factory-explorer,
+html[data-theme="light"] .product-experience,
+html[data-theme="light"] .proof-strip,
+html[data-theme="light"] .canonical-detail-panel,
+html[data-theme="light"] .boundary-core,
+html[data-theme="light"] .authority-layer,
+html[data-theme="light"] .core-node,
+html[data-theme="light"] .contact-directory article,
 html[data-theme="light"] .system-visual,
 html[data-theme="light"] .system-inline-detail,
 html[data-theme="light"] .spatial-map-detail,
+html[data-theme="light"] .spatial-stage,
 html[data-theme="light"] .governance-evidence-detail,
 html[data-theme="light"] .canonical-linear > div,
 html[data-theme="light"] .canonical-dual > div,
 html[data-theme="light"] .output-card,
+html[data-theme="light"] .goal-composer textarea,
 html[data-theme="light"] .callout,
 html[data-theme="light"] .themed-diagram,
 html[data-theme="light"] .workflow-concept,
@@ -351,6 +361,18 @@ html[data-theme="light"] .trust-node.is-core {
 
 html[data-theme="light"] :where(.lead,.muted,.card p,.flow-card p,.plane-card p,.journey-card p,.factory-detail p,.factory-detail small,.system-visual p,.system-visual small,.system-inline-detail p,.site-footer p,.site-footer a,.trust-node small) {
   color: #808080 !important;
+}
+
+html[data-theme="light"] :where(.button.secondary,.text-link,.contact-directory article > a) {
+  color: #0A0A0A !important;
+  border-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] :where(.button.secondary:hover,.button.secondary:focus-visible,.text-link:hover,.text-link:focus-visible,.contact-directory article > a:hover,.contact-directory article > a:focus-visible) {
+  color: #0A0A0A !important;
+  background: #E6E6E6 !important;
+  border-color: #2A2A2A !important;
+  outline-color: #2A2A2A !important;
 }
 
 html[data-theme="light"] :where(h1,h2,h3,strong,.eyebrow,.micro-label,.panel-kicker,.nav-primary a,.nav-utility a,.explore-menu summary,.explore-menu-panel a) {

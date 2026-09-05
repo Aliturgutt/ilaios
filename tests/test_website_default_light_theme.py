@@ -50,9 +50,13 @@ def test_mobile_light_theme_neutralizes_legacy_dark_surfaces() -> None:
 
     for selector in (
         'html[data-theme="light"] body',
+        'html[data-theme="light"] .site-header',
         'html[data-theme="light"] .site-footer',
         'html[data-theme="light"] .nav-panel',
         'html[data-theme="light"] .card',
+        'html[data-theme="light"] .product-experience',
+        'html[data-theme="light"] .contact-directory article',
+        'html[data-theme="light"] .canonical-detail-panel',
         'html[data-theme="light"] .themed-diagram',
     ):
         assert selector in interaction
@@ -60,6 +64,13 @@ def test_mobile_light_theme_neutralizes_legacy_dark_surfaces() -> None:
     assert 'html[data-theme="light"] .menu-toggle {' in interaction
     assert "background: #FFFFFF !important;" in interaction
     assert "color: #0A0A0A !important;" in interaction
+
+
+def test_light_interactions_never_use_white_text_on_light_surfaces() -> None:
+    interaction = INTERACTION.read_text(encoding="utf-8")
+
+    assert 'html[data-theme="light"] :where(.button.secondary,.text-link,.contact-directory article > a)' in interaction
+    assert "border-color: #2A2A2A !important;" in interaction
 
 
 def test_final_light_theme_authority_loads_after_legacy_theme_layers() -> None:
