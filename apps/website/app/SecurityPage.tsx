@@ -23,7 +23,7 @@ const copy = {
     permissions: "Permissions",
     approvals: "Approvals",
     audit: "Audit",
-    report: "Report suspected vulnerabilities, service misuse, spam or fraud through the verified public route contact@ilaios.com. No separate security mailbox is presented until that public channel is verified.",
+    report: "Report suspected vulnerabilities through security@ilaios.com. Report service misuse, spam or fraud through abuse@ilaios.com.",
   },
   tr: {
     eyebrow: "Güvenlik",
@@ -44,7 +44,7 @@ const copy = {
     permissions: "İzinler",
     approvals: "Onaylar",
     audit: "Denetim",
-    report: "Şüpheli güvenlik açıkları, hizmet kötüye kullanımı, spam veya dolandırıcılık bildirimleri doğrulanmış kamu kanalı contact@ilaios.com üzerinden iletilir. Ayrı bir güvenlik adresi kamuya açık kullanım için doğrulanmadan gösterilmez.",
+    report: "Şüpheli güvenlik açıklarını security@ilaios.com adresine gönderin. Hizmet kötüye kullanımı, spam veya dolandırıcılık bildirimlerini abuse@ilaios.com adresine gönderin.",
   },
 } as const;
 
@@ -57,6 +57,6 @@ export default function SecurityPage({ locale }: { locale: Locale }) {
     <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{locale === "tr" ? "Talep → dış etki" : "Request → side effect"}</div><h2>{c.visualTitle}</h2></div><p>{c.visualLead}</p></div><SystemVisuals locale={locale} variant="trust" /></div></section>
     <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{locale === "tr" ? "Yürütme öncesi" : "Before execution"}</div><h2>{c.admissionTitle}</h2></div><p>{c.admissionLead}</p></div><div className="security-process">{c.path.map(([n, title, detail]) => <article key={n}><span>{n}</span><strong>{title}</strong><small>{detail}</small></article>)}</div></div></section>
     <section className="section surface-section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">{locale === "tr" ? "Güvenlik ilkeleri" : "Security principles"}</div><h2>{c.pathTitle}</h2></div></div><div className="principle-directory">{c.principles.map(([title, text], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><strong>{title}</strong><p>{text}</p></article>)}</div></div></section>
-    <section className="section compact-section"><div className="shell status-note"><span>{locale === "tr" ? "Sorumlu bildirim" : "Responsible reporting"}</span><p>{c.report}</p></div></section>
+    <section className="section compact-section"><div className="shell status-note"><span>{locale === "tr" ? "Sorumlu bildirim" : "Responsible reporting"}</span><p>{c.report}</p><p><a className="text-link" href="mailto:security@ilaios.com">security@ilaios.com</a> · <a className="text-link" href="mailto:abuse@ilaios.com">abuse@ilaios.com</a></p></div></section>
   </>;
 }

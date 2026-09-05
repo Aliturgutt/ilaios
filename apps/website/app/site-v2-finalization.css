@@ -29,19 +29,29 @@ html[data-theme="light"] body {
 }
 
 html[data-theme="light"] .site-header {
-  background: rgba(10, 10, 10, .96);
-  border-bottom-color: rgba(255, 255, 255, .10);
-  color: #FFFFFF;
+  background: #FFFFFF;
+  border-bottom-color: rgba(10, 10, 10, .10);
+  color: #0A0A0A;
 }
 html[data-theme="light"] .site-header a,
 html[data-theme="light"] .site-header button,
-html[data-theme="light"] .site-header summary { color: #FFFFFF; }
-html[data-theme="light"] .site-header .explore-menu-panel { background: #141414; border-color: #2A2A2A; }
+html[data-theme="light"] .site-header summary { color: #0A0A0A; }
+html[data-theme="light"] .site-header .explore-menu-panel { background: #FFFFFF; border-color: #B3B3B3; }
+
+.brand-logo-light { display: none; }
+.brand-logo-dark { display: block; }
+html[data-theme="light"] .brand-logo-dark { display: none; }
+html[data-theme="light"] .brand-logo-light { display: block; }
 
 html[data-theme="light"] .section,
 html[data-theme="light"] .site-footer,
 html[data-theme="light"] .proof-strip {
   border-color: rgba(10, 10, 10, .10);
+}
+
+html[data-theme="light"] .site-footer {
+  background: #FFFFFF;
+  color: #0A0A0A;
 }
 
 html[data-theme="light"] .surface-section,

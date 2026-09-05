@@ -117,6 +117,9 @@ class DependencyAdvisory:
 _TEXT_SUFFIXES = frozenset(
     {".py", ".toml", ".txt", ".yaml", ".yml", ".json", ".tf", ".ini", ".cfg"}
 )
+_EXPLICIT_TEXT_FILENAMES = frozenset(
+    {"requirements.txt", "requirements-dev.txt", "Dockerfile"}
+)
 _SKIP_PARTS = frozenset({".git", "node_modules", ".venv", "venv", "build", "dist"})
 _MAX_FILE_BYTES = 1_048_576
 
@@ -192,6 +195,16 @@ _INFRA_RULES: tuple[tuple[str, re.Pattern[str], Severity, str, str], ...] = (
     ),
 )
 
+_CONTAINER_RULES: tuple[tuple[str, re.Pattern[str], Severity, str, str], ...] = (
+    (
+        "CONTAINER-ROOT-USER",
+        re.compile(r"^\s*USER\s+(?:root|0)(?::(?:root|0))?\s*(?:#.*)?$", re.IGNORECASE),
+        Severity.HIGH,
+        "container runtime explicitly selects the root user",
+        "run the final container stage as a dedicated non-root user",
+    ),
+)
+
 _REQUIRED_HTTP_HEADERS = MappingProxyType(
     {
         "content-security-policy": "define a restrictive Content-Security-Policy",
@@ -212,10 +225,7 @@ class SecurityFactory:
                 continue
             if path.stat().st_size > _MAX_FILE_BYTES:
                 continue
-            if path.suffix.casefold() not in _TEXT_SUFFIXES and path.name not in {
-                "requirements.txt",
-                "requirements-dev.txt",
-            }:
+            if path.suffix.casefold() not in _TEXT_SUFFIXES and path.name not in _EXPLICIT_TEXT_FILENAMES:
                 continue
             try:
                 text = path.read_text(encoding="utf-8")
@@ -394,6 +404,20 @@ class SecurityFactory:
                                 remediation,
                             )
                         )
+            if location.rsplit("/", 1)[-1] == "Dockerfile":
+                for finding_id, pattern, severity, message, remediation in _CONTAINER_RULES:
+                    if pattern.search(line):
+                        findings.append(
+                            SecurityFinding(
+                                finding_id,
+                                "container",
+                                severity,
+                                location,
+                                line_number,
+                                message,
+                                remediation,
+                            )
+                        )
 
         if location.endswith(("requirements.txt", "requirements-dev.txt")):
             findings.extend(self._scan_requirement_lines(location, lines))
@@ -412,6 +436,7 @@ class SecurityFactory:
 
 _TAINT_SOURCE_CALLS = frozenset({"input", "request.args.get", "request.form.get", "request.json.get"})
 _TAINT_SINK_CALLS = frozenset({"open", "subprocess.run", "subprocess.call", "subprocess.Popen", "requests.get", "requests.post", "urllib.request.urlopen"})
+_TAINT_SINK_METHODS = frozenset({"execute", "executemany"})
 
 
 def _python_taint_findings(location: str, text: str) -> list[SecurityFinding]:
@@ -426,7 +451,7 @@ def _python_taint_findings(location: str, text: str) -> list[SecurityFinding]:
     for node in ast.walk(tree):
         if isinstance(node, ast.Assign) and _is_taint_source(node.value, tainted):
             tainted.update(target.id for target in node.targets if isinstance(target, ast.Name))
-        if isinstance(node, ast.Call) and _call_name(node.func) in _TAINT_SINK_CALLS:
+        if isinstance(node, ast.Call) and _is_taint_sink(node.func):
             if any(_is_taint_source(argument, tainted) for argument in node.args):
                 sink = _call_name(node.func) or "sensitive sink"
                 findings.append(SecurityFinding(
@@ -444,6 +469,13 @@ def _is_taint_source(node: ast.AST, tainted: set[str]) -> bool:
     ) or (
         isinstance(node, ast.Call) and _call_name(node.func) in _TAINT_SOURCE_CALLS
     )
+
+
+def _is_taint_sink(node: ast.AST) -> bool:
+    call_name = _call_name(node)
+    if call_name in _TAINT_SINK_CALLS:
+        return True
+    return isinstance(node, ast.Attribute) and node.attr in _TAINT_SINK_METHODS
 
 
 def _call_name(node: ast.AST) -> str | None:

@@ -4,6 +4,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 LAYOUT = ROOT / "apps" / "website" / "app" / "layout.tsx"
 TOGGLE = ROOT / "apps" / "website" / "app" / "ThemeToggle.tsx"
+CHROME = ROOT / "apps" / "website" / "app" / "SiteChrome.tsx"
+THEME = ROOT / "apps" / "website" / "app" / "site-v2-finalization.css"
 
 
 def test_website_defaults_to_light_without_overriding_explicit_choice() -> None:
@@ -20,3 +22,22 @@ def test_website_default_theme_does_not_follow_system_dark_mode() -> None:
     layout = LAYOUT.read_text(encoding="utf-8")
 
     assert "prefers-color-scheme" not in layout
+
+
+def test_shared_header_uses_canonical_theme_specific_horizontal_logos() -> None:
+    chrome = CHROME.read_text(encoding="utf-8")
+
+    assert 'className="brand-logo brand-logo-dark"' in chrome
+    assert 'src="/brand/logo-horizontal-dark.jpg"' in chrome
+    assert 'className="brand-logo brand-logo-light"' in chrome
+    assert 'src="/brand/logo-horizontal-light.jpg"' in chrome
+
+
+def test_light_header_is_canonical_light_surface() -> None:
+    theme = THEME.read_text(encoding="utf-8")
+
+    assert 'html[data-theme="light"] .site-header {' in theme
+    assert "background: #FFFFFF;" in theme
+    assert "border-bottom-color: rgba(10, 10, 10, .10);" in theme
+    assert 'html[data-theme="light"] .brand-logo-dark { display: none; }' in theme
+    assert 'html[data-theme="light"] .brand-logo-light { display: block; }' in theme

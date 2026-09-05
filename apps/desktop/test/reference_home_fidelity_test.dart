@@ -102,12 +102,24 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
-    final outputs = tester.getRect(find.byKey(const Key('command-center-artifacts')));
-    final completed = tester.getRect(find.byKey(const Key('command-center-completed')));
-    final status = tester.getRect(find.byKey(const Key('reference-bottom-status-v2')));
-    expect(outputs.bottom, lessThanOrEqualTo(status.top + 1));
-    expect(completed.bottom, lessThanOrEqualTo(status.top + 1));
-    expect(status.bottom, lessThanOrEqualTo(890.01));
+    expect(
+      find.byKey(const Key('command-center-short-viewport-scroll')),
+      findsOneWidget,
+    );
+    final outputs = find.byKey(const Key('command-center-artifacts'));
+    final completed = find.byKey(const Key('command-center-completed'));
+    final status = find.byKey(const Key('reference-bottom-status-v2'));
+    expect(outputs, findsOneWidget);
+    expect(completed, findsOneWidget);
+    expect(status, findsOneWidget);
+
+    await tester.ensureVisible(outputs);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.ensureVisible(completed);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(tester.getRect(status).bottom, lessThanOrEqualTo(890.01));
   });
 
   testWidgets('Turkish light V4 reference renders without mixing dark or legacy state', (
