@@ -42,11 +42,11 @@ void main() {
       expect(find.byKey(const Key('reference-responsive-viewport-v10')), findsOneWidget);
 
       // Home receives the content viewport after the fixed 222px sidebar and
-      // 1px divider, so its compact breakpoint must be asserted against that
-      // constraint rather than the outer Windows surface width.
+      // 1px divider. A 900px Windows surface also leaves Home below the 900px
+      // short-height threshold once the shell chrome is accounted for.
       final homeContentWidth = size.width - 223;
       final shouldScrollCompactViewport =
-          homeContentWidth < 1300 || size.height < 760;
+          homeContentWidth < 1300 || size.height <= 900;
       expect(
         find.byKey(const Key('command-center-short-viewport-scroll')),
         shouldScrollCompactViewport ? findsOneWidget : findsNothing,
