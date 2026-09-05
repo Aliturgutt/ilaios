@@ -58,7 +58,8 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
-    expect(find.byKey(const Key('video-reference-assets')), findsNothing);
+    expect(find.byKey(const Key('home-prompt-attachments')), findsOneWidget);
+    expect(find.byKey(const Key('video-reference-assets')), findsOneWidget);
 
     await _openGoals(tester);
 

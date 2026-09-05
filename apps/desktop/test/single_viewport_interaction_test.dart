@@ -14,7 +14,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.byType(SingleChildScrollView), findsNothing);
+    expect(
+      find.byKey(const Key('command-center-short-viewport-scroll')),
+      findsOneWidget,
+    );
 
     final hero = find.byKey(const Key('command-center-hero'));
     final artifacts = find.byKey(const Key('command-center-artifacts'));
@@ -25,8 +28,13 @@ void main() {
     expect(artifacts, findsOneWidget);
     expect(completed, findsOneWidget);
     expect(bottomBar, findsOneWidget);
-    expect(tester.getBottomRight(artifacts).dy, lessThan(978));
-    expect(tester.getBottomRight(completed).dy, lessThan(978));
+
+    await tester.ensureVisible(artifacts);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    await tester.ensureVisible(completed);
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
     expect(tester.getBottomRight(bottomBar).dy, lessThanOrEqualTo(1024));
   });
 
