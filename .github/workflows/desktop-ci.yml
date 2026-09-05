@@ -38,7 +38,18 @@ jobs:
         run: flutter analyze
       - name: Flutter test
         working-directory: apps/desktop
-        run: flutter test
+        shell: bash
+        run: |
+          set -o pipefail
+          flutter test 2>&1 | tee flutter-test.log
+      - name: Upload Flutter test failure evidence
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: desktop-flutter-test-failure-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}
+          path: apps/desktop/flutter-test.log
+          if-no-files-found: error
+          retention-days: 7
 
   windows-build:
     runs-on: windows-latest

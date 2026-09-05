@@ -21,11 +21,23 @@ void main() {
     final attention = find.byKey(const Key('command-center-attention'));
     final completed = find.byKey(const Key('command-center-completed'));
     final status = find.byKey(const Key('reference-bottom-status-v2'));
+    final scroll = find.byKey(const Key('command-center-short-viewport-scroll'));
     expect(hero, findsOneWidget);
     expect(attention, findsOneWidget);
     expect(completed, findsOneWidget);
     expect(status, findsOneWidget);
+    expect(scroll, findsOneWidget);
     expect(tester.getTopLeft(hero).dy, greaterThanOrEqualTo(60));
-    expect(tester.getBottomRight(completed).dy, lessThanOrEqualTo(tester.getTopLeft(status).dy + 1));
+
+    final statusTopBeforeScroll = tester.getTopLeft(status).dy;
+    await tester.drag(scroll, const Offset(0, -1600));
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(tester.getTopLeft(status).dy, statusTopBeforeScroll);
+    expect(
+      tester.getBottomRight(completed).dy,
+      lessThanOrEqualTo(tester.getTopLeft(status).dy + 1),
+    );
   });
 }
