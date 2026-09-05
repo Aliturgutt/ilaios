@@ -359,17 +359,28 @@ html[data-theme="light"] .trust-node.is-core {
   box-shadow: none !important;
 }
 
-html[data-theme="light"] :where(.lead,.muted,.card p,.flow-card p,.plane-card p,.journey-card p,.factory-detail p,.factory-detail small,.system-visual p,.system-visual small,.system-inline-detail p,.site-footer p,.site-footer a,.trust-node small) {
-  color: #808080 !important;
+html[data-theme="light"] :where(.lead,.muted,.card p,.flow-card p,.plane-card p,.journey-card p,.factory-detail p,.factory-detail small,.system-visual p,.system-visual small,.system-inline-detail p,.site-footer p,.site-footer a,.trust-node small,.product-experience p,.product-experience small,.product-stage-control p,.evidence-preview,.evidence-preview li,.proof-strip span,.contact-directory article p,.status-note p,.factory-truth-note p) {
+  color: #2A2A2A !important;
 }
 
 html[data-theme="light"] :where(.button.secondary,.text-link,.contact-directory article > a) {
   color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
   border-color: #2A2A2A !important;
+  opacity: 1 !important;
+}
+
+html[data-theme="light"] .button:not(.secondary) {
+  background: #0A0A0A !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  border-color: #0A0A0A !important;
+  opacity: 1 !important;
 }
 
 html[data-theme="light"] :where(.button.secondary:hover,.button.secondary:focus-visible,.text-link:hover,.text-link:focus-visible,.contact-directory article > a:hover,.contact-directory article > a:focus-visible) {
   color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
   background: #E6E6E6 !important;
   border-color: #2A2A2A !important;
   outline-color: #2A2A2A !important;
@@ -377,6 +388,29 @@ html[data-theme="light"] :where(.button.secondary:hover,.button.secondary:focus-
 
 html[data-theme="light"] :where(h1,h2,h3,strong,.eyebrow,.micro-label,.panel-kicker,.nav-primary a,.nav-utility a,.explore-menu summary,.explore-menu-panel a) {
   color: #0A0A0A !important;
+}
+
+html[data-theme="light"] .result-preview {
+  background: #141414 !important;
+  border-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] .result-preview :where(span,strong),
+html[data-theme="light"] .result-preview strong {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html[data-theme="light"] .product-mode-tabs button {
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] .product-mode-tabs button.is-active {
+  background: #0A0A0A !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  border-color: #0A0A0A !important;
 }
 
 html[data-theme="light"] .system-visual-control:focus-visible {
@@ -425,6 +459,30 @@ html[data-theme="light"] .factory-detail p,
 html[data-theme="light"] .factory-detail small,
 html[data-theme="light"] .factory-explorer-heading p {
   color: #2A2A2A !important;
+}
+
+/* Dark-theme public chrome must remain neutral grayscale; no legacy blue/cyan UI accents. */
+html[data-theme="dark"] .site-footer {
+  background: #0A0A0A !important;
+  color: #B3B3B3 !important;
+  border-color: #2A2A2A !important;
+}
+
+html[data-theme="dark"] .site-footer :where(a,p,span,small) {
+  color: #B3B3B3 !important;
+  -webkit-text-fill-color: #B3B3B3 !important;
+}
+
+html[data-theme="dark"] .site-footer :where(strong,h2,h3) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html[data-theme="dark"] .site-footer a:hover,
+html[data-theme="dark"] .site-footer a:focus-visible {
+  color: #E6E6E6 !important;
+  -webkit-text-fill-color: #E6E6E6 !important;
+  outline-color: #B3B3B3 !important;
 }
 
 @media (max-width: 940px) {
