@@ -2806,3 +2806,22 @@ VERIFY
 ```
 
 **ILAIOS governance exists to make the system evolvable without making authority ambiguous.**
+
+
+---
+
+# 180. Security Lifecycle Release Governance
+
+The existing Release Authority remains the only authority that may declare a release candidate or authorize governed deployment. The lifecycle creates no second release authority.
+
+```text
+S1 PASS for bounded closure
+        + explicit release-candidate declaration
+        -> S2 hardening PASS
+        -> S3 exact-SHA PASS
+        -> eligible for governed deployment review
+        -> S4 deployed-runtime PASS
+        -> production-verified claim permitted for that scope
+```
+
+A release candidate cannot advance when required S2/S3 evidence FAILs, remains UNVERIFIED, or is NOT_APPLICABLE without documented scope basis. Production-ready requires exact-release-SHA S3 evidence. Production-verified requires S4 evidence for the deployed identity. S5 is current-health evidence and cannot substitute for S3/S4. Exceptions follow existing time-bounded exception authority and may not weaken identity, tenant, policy, Tool Gateway, validation, audit, or evidence boundaries.
