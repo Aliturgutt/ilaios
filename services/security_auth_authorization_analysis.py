@@ -17,6 +17,7 @@ class AuthAuthorizationCaseKind(StrEnum):
     CROSS_TENANT = "cross_tenant"
     INSUFFICIENT_ROLE = "insufficient_role"
     AUTHORIZED = "authorized"
+    PENETRATION_SIMULATION = "penetration_simulation"
 
 
 @dataclass(frozen=True, slots=True)
@@ -55,6 +56,7 @@ def analyze_auth_authorization_observations(
 
         denied = observation.status_code in {401, 403}
         allowed = 200 <= observation.status_code < 400
+        rejected = 400 <= observation.status_code < 500
 
         if observation.kind is AuthAuthorizationCaseKind.UNAUTHENTICATED and not denied:
             findings.append(
@@ -94,6 +96,19 @@ def analyze_auth_authorization_observations(
                     Severity.MEDIUM,
                     "authorized request did not complete with an allowed status",
                     "verify identity, tenant membership, permission resolution, and route policy",
+                )
+            )
+        elif (
+            observation.kind is AuthAuthorizationCaseKind.PENETRATION_SIMULATION
+            and not rejected
+        ):
+            findings.append(
+                _finding(
+                    observation,
+                    "PENTEST-SIMULATION-NOT-REJECTED",
+                    Severity.HIGH,
+                    "governed local/test penetration-simulation observation was not rejected",
+                    "keep adversarial fixture cases inside the authorized harness and require a 4xx rejection before acceptance",
                 )
             )
 

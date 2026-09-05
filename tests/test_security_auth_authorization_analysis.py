@@ -33,6 +33,7 @@ def test_auth_authorization_happy_path_has_no_findings() -> None:
             _obs("tenant", AuthAuthorizationCaseKind.CROSS_TENANT, 403),
             _obs("role", AuthAuthorizationCaseKind.INSUFFICIENT_ROLE, 403),
             _obs("allowed", AuthAuthorizationCaseKind.AUTHORIZED, 200),
+            _obs("pentest", AuthAuthorizationCaseKind.PENETRATION_SIMULATION, 400),
         ),
     )
     assert report.findings == ()
@@ -47,6 +48,7 @@ def test_auth_authorization_detects_bypass_and_regression() -> None:
             _obs("tenant", AuthAuthorizationCaseKind.CROSS_TENANT, 200),
             _obs("role", AuthAuthorizationCaseKind.INSUFFICIENT_ROLE, 302),
             _obs("allowed", AuthAuthorizationCaseKind.AUTHORIZED, 403),
+            _obs("pentest", AuthAuthorizationCaseKind.PENETRATION_SIMULATION, 200),
         ),
     )
     ids = {item.finding_id for item in report.findings}
@@ -55,6 +57,7 @@ def test_auth_authorization_detects_bypass_and_regression() -> None:
         "AUTH-CROSS-TENANT-NOT-DENIED",
         "AUTH-INSUFFICIENT-ROLE-NOT-DENIED",
         "AUTH-AUTHORIZED-FLOW-FAILED",
+        "PENTEST-SIMULATION-NOT-REJECTED",
     }
     assert report.passed is False
     cross_tenant = next(
@@ -62,6 +65,11 @@ def test_auth_authorization_detects_bypass_and_regression() -> None:
         if item.finding_id == "AUTH-CROSS-TENANT-NOT-DENIED"
     )
     assert cross_tenant.severity.name == "CRITICAL"
+    pentest = next(
+        item for item in report.findings
+        if item.finding_id == "PENTEST-SIMULATION-NOT-REJECTED"
+    )
+    assert pentest.severity.name == "HIGH"
 
 
 def test_auth_authorization_rejects_invalid_or_duplicate_evidence() -> None:
@@ -90,6 +98,12 @@ def _runtime_payload(repository_root: Path) -> dict[str, object]:
                 "status_code": 403,
             },
             {"case_id": "allowed", "kind": "authorized", "status_code": 200},
+            {
+                "case_id": "pentest",
+                "kind": "penetration_simulation",
+                "status_code": 422,
+                "location": "localhost-fixture",
+            },
         ],
     }
 
@@ -102,6 +116,26 @@ def test_auth_authorization_skill_routes_through_existing_web_api_adapter(
     assert output["scope_id"] == "authz-runtime"
     assert output["passed"] is True
     assert output["finding_count"] == 0
+
+
+def test_governed_pentest_simulation_fails_closed_when_fixture_is_not_rejected(
+    tmp_path: Path,
+) -> None:
+    adapter = SecurityAgentRuntimeAdapters().runtime_adapters()[WEB_API_ADAPTER_KIND]
+    payload = _runtime_payload(tmp_path)
+    observations = payload["observations"]
+    assert isinstance(observations, list)
+    observations[-1] = {
+        "case_id": "pentest",
+        "kind": "penetration_simulation",
+        "status_code": 200,
+        "location": "localhost-fixture",
+    }
+    output = adapter(payload)
+    assert output["passed"] is False
+    assert output["blocking_finding_count"] == 1
+    assert output["findings"][0]["finding_id"] == "PENTEST-SIMULATION-NOT-REJECTED"
+    assert output["findings"][0]["location"] == "localhost-fixture"
 
 
 def test_auth_authorization_runtime_fails_closed_on_malformed_observation(
