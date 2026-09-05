@@ -133,7 +133,7 @@ requireText(capabilities, "variant=\"cost\"", "capability FinOps routing truth")
 requireText(security, "trust-gate", "distinct Security composition");
 requireText(security, "Missing required authority, validation or evidence stops sensitive work.", "English Security fail-closed boundary");
 requireText(security, "Gerekli yetki, doğrulama veya kanıt eksikse hassas iş ilerlemez.", "Turkish Security fail-closed boundary");
-requireText(security, "contact@ilaios.com", "verified Security reporting route");
+requireText(security, "security@ilaios.com", "verified Security reporting route");
 forbidIn(security, /CanonicalSystemDetail|variant=\"runtime\"|ExecutionGrant|RoutingDecision|worker lease|fencing/i, "public Security technical-density boundary");
 
 requireText(architecture, "architecture-primary", "distinct Architecture composition");
@@ -184,8 +184,8 @@ requireText(resourcesTr, "detail-directory", "Turkish Resources compact editoria
 
 requireText(privacy, "This notice describes the public ILAIOS marketing website.", "English Privacy marketing/product boundary");
 requireText(privacyTr, "Bu bildirim kamuya açık ILAIOS pazarlama sitesini açıklar.", "Turkish Privacy marketing/product boundary");
-requireText(privacy, "contact@ilaios.com", "English Privacy verified public contact");
-requireText(privacyTr, "contact@ilaios.com", "Turkish Privacy verified public contact");
+requireText(privacy, "privacy@ilaios.com", "English Privacy verified public contact");
+requireText(privacyTr, "privacy@ilaios.com", "Turkish Privacy verified public contact");
 
 requireText(core, "One control authority around every governed execution.", "English Core authority hierarchy");
 requireText(coreTr, "Her yönetilen yürütmenin çevresinde tek kontrol otoritesi.", "Turkish Core authority hierarchy");
