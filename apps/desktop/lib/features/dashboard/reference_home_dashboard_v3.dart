@@ -110,7 +110,7 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
         // composition.
         final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
         final compact = constraints.maxWidth < 1300 ||
-            constraints.maxHeight < 900 || textScale > 1.0;
+            constraints.maxHeight < 950 || textScale > 1.0;
         final outerPadding = compact ? 14.0 : 20.0;
         final gap = compact ? 12.0 : 16.0;
 
