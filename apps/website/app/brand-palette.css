@@ -255,6 +255,13 @@ small,
   color: var(--brand-disabled);
 }
 
+/* Light footer links must remain visible when hovered/focused on the white surface. */
+html[data-theme="light"] body .site-footer a:hover,
+html[data-theme="light"] body .site-footer a:focus-visible {
+  color: var(--brand-carbon) !important;
+  -webkit-text-fill-color: var(--brand-carbon) !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .button,
   .detail-link-card,
