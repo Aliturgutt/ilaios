@@ -7,6 +7,7 @@ TOGGLE = ROOT / "apps" / "website" / "app" / "ThemeToggle.tsx"
 CHROME = ROOT / "apps" / "website" / "app" / "SiteChrome.tsx"
 THEME = ROOT / "apps" / "website" / "app" / "site-v2-finalization.css"
 INTERACTION = ROOT / "apps" / "website" / "app" / "final-interaction-redteam.css"
+PALETTE = ROOT / "apps" / "website" / "app" / "brand-palette.css"
 DIAGRAM = ROOT / "apps" / "website" / "app" / "ThemedDiagram.tsx"
 
 
@@ -172,3 +173,43 @@ def test_final_render_authority_contains_no_cyan_or_blue_hex_values() -> None:
 
     assert "#00C2D1" not in interaction
     assert "#146BFF" not in interaction
+
+
+def test_light_footer_hover_and_focus_keep_dark_text_on_white() -> None:
+    palette = PALETTE.read_text(encoding="utf-8")
+
+    assert 'html[data-theme="light"] body .site-footer a:hover' in palette
+    assert 'html[data-theme="light"] body .site-footer a:focus-visible' in palette
+    assert "-webkit-text-fill-color: var(--brand-carbon) !important;" in palette
+
+
+def test_dark_header_matches_opaque_canonical_logo_field_without_asset_mutation() -> None:
+    palette = PALETTE.read_text(encoding="utf-8")
+
+    assert 'html[data-theme="dark"] body .site-header' in palette
+    assert 'html[data-theme="dark"] body .site-header .brand' in palette
+    assert "background: #07080A !important;" in palette
+
+
+def test_desktop_header_geometry_is_stable_across_routes_and_active_states() -> None:
+    palette = PALETTE.read_text(encoding="utf-8")
+
+    assert "@media (min-width: 941px)" in palette
+    assert ".site-header .nav" in palette
+    assert ".site-header .brand" in palette
+    assert ".site-header .nav-panel" in palette
+    assert ".site-header .nav-primary" in palette
+    assert ".site-header .nav-utility" in palette
+    assert "flex: 0 0 158px !important;" in palette
+    assert "min-height: 72px !important;" in palette
+
+
+def test_canonical_architecture_flow_is_neutral_grayscale() -> None:
+    palette = PALETTE.read_text(encoding="utf-8")
+
+    assert ".canonical-linear" in palette
+    assert ".canonical-linear > div" in palette
+    assert "background: #141414 !important;" in palette
+    assert "border-color: #2A2A2A !important;" in palette
+    assert ".canonical-linear > div > span" in palette
+    assert "color: #B3B3B3 !important;" in palette
