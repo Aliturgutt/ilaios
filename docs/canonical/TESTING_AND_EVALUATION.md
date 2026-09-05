@@ -5008,3 +5008,21 @@ runtime evidence
 ```
 
 **ILAIOS must be able to prove not only that it can succeed, but also that it fails safely when authority, isolation, evidence, or acceptance requirements are violated.**
+
+
+---
+
+# 303. Security Lifecycle Evidence Semantics
+
+Security lifecycle evidence uses only:
+
+```text
+PASS
+FAIL
+UNVERIFIED
+NOT_APPLICABLE (with explicit scope justification)
+```
+
+A workflow or test file existing, CI merely being requested, a deployment existing, documentation specifying a control, or an older PASS on another SHA never substitutes for PASS.
+
+For S1 through S3, evidence identifies repository, branch, exact source SHA, gate ID, scope, workflow/test identity, result, timestamp, and applicable artifact/digest. S4 additionally identifies deployment identity and safe runtime result. S5 identifies its observation time and never becomes retroactive release-time evidence. Missing execution, artifact, deployment identity, or runtime result is UNVERIFIED.
