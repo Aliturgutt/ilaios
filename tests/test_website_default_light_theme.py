@@ -188,6 +188,8 @@ def test_dark_header_matches_opaque_canonical_logo_field_without_asset_mutation(
 
     assert 'html[data-theme="dark"] body .site-header' in palette
     assert 'html[data-theme="dark"] body .site-header .brand' in palette
+    assert 'html[data-theme="dark"] body .site-header .nav-panel' in palette
+    assert 'html[data-theme="dark"] body .site-header .nav-utility' in palette
     assert "background: #07080A !important;" in palette
 
 
@@ -201,7 +203,11 @@ def test_desktop_header_geometry_is_stable_across_routes_and_active_states() -> 
     assert ".site-header .nav-primary" in palette
     assert ".site-header .nav-utility" in palette
     assert "flex: 0 0 158px !important;" in palette
-    assert "min-height: 72px !important;" in palette
+    assert "min-height: var(--v2-header) !important;" in palette
+    assert "@media (min-width: 1180px)" in palette
+    assert "flex: 0 0 808px !important;" in palette
+    assert "grid-template-columns: 88px 96px 112px 92px !important;" in palette
+    assert "grid-template-columns: 94px 88px 112px 88px !important;" in palette
 
 
 def test_canonical_architecture_flow_is_neutral_grayscale() -> None:
