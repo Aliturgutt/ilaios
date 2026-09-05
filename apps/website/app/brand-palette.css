@@ -260,18 +260,21 @@ html[data-theme="light"] body .site-footer a:focus-visible {
   -webkit-text-fill-color: var(--brand-carbon) !important;
 }
 
-/* The canonical dark horizontal JPG has an opaque near-black field. Match the
-   whole dark website header to that field so the logo does not render as a
-   visible rectangular patch. This does not alter, crop, recolor or filter the asset. */
+/* The canonical dark horizontal JPG has an opaque near-black field. Match every
+   non-interactive header surface to that field so the logo never appears as a
+   separate rectangle. The logo asset itself is not filtered, cropped or recolored. */
 html[data-theme="dark"] body .site-header,
+html[data-theme="dark"] body .site-header .nav,
 html[data-theme="dark"] body .site-header .brand,
-html[data-theme="dark"] body .site-header .brand-link,
-html[data-theme="dark"] body .site-header .header-inner {
+html[data-theme="dark"] body .site-header .nav-panel,
+html[data-theme="dark"] body .site-header .nav-primary,
+html[data-theme="dark"] body .site-header .nav-utility {
   background: #07080A !important;
+  background-image: none !important;
 }
 
 /* Desktop web header geometry is one shared invariant across all routes/languages.
-   Active states must not change item dimensions or shift adjacent controls. */
+   Active states and EN/TR label widths must not shift adjacent controls. */
 @media (min-width: 941px) {
   .site-header .nav {
     display: flex !important;
@@ -328,6 +331,49 @@ html[data-theme="dark"] body .site-header .header-inner {
   .site-header .theme-toggle,
   .site-header .language-switch {
     flex: 0 0 auto !important;
+  }
+}
+
+/* Wide desktop: fixed navigation tracks keep Platform/Factories/Capabilities/
+   Security and Explore/Contact/Theme/Language in the exact same positions on
+   every EN/TR route. Only labels change; geometry does not. */
+@media (min-width: 1180px) {
+  .site-header .nav-panel {
+    flex: 0 0 808px !important;
+    width: 808px !important;
+  }
+
+  .site-header .nav-primary {
+    display: grid !important;
+    grid-template-columns: 88px 96px 112px 92px !important;
+    width: 388px !important;
+    flex: 0 0 388px !important;
+  }
+
+  .site-header .nav-primary > a {
+    width: 100% !important;
+    padding-inline: 8px !important;
+    white-space: nowrap !important;
+  }
+
+  .site-header .nav-utility {
+    display: grid !important;
+    grid-template-columns: 94px 88px 112px 88px !important;
+    width: 398px !important;
+    flex: 0 0 398px !important;
+    padding-left: 8px !important;
+    margin-left: 14px !important;
+  }
+
+  .site-header .explore-menu,
+  .site-header .explore-menu summary,
+  .site-header .nav-utility > a,
+  .site-header .theme-toggle,
+  .site-header .language-switch {
+    width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    box-sizing: border-box !important;
   }
 }
 
