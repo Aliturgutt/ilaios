@@ -10,8 +10,6 @@ from playwright.sync_api import Page, sync_playwright
 BASE_URL = os.environ.get("ILAIOS_V2_BASE_URL", "http://127.0.0.1:3100").rstrip("/")
 ARTIFACT_DIR = Path(os.environ.get("ILAIOS_V2_VISUAL_ARTIFACT_DIR", "artifacts/website-v2-visual-qa"))
 
-# Every public EN route has a /tr counterpart. API, robots, sitemap and _not-found
-# are intentionally excluded because this harness certifies user-facing pages.
 ROUTES = (
     ("home", ""),
     ("about", "/about"),
@@ -56,44 +54,18 @@ ROUTES = (
     ("updates", "/updates"),
 )
 
-# Keep artifact size bounded while still preserving visual evidence for the
-# primary product, governance and company surfaces. Every route is still tested.
 SCREENSHOT_ROUTE_NAMES = {
-    "home",
-    "platform",
-    "factories",
-    "capabilities",
-    "security",
-    "solutions",
-    "enterprise",
-    "individuals",
-    "how-it-works",
-    "use-ilaios",
-    "core",
-    "trust",
-    "architecture",
-    "docs",
-    "resources",
-    "about",
-    "contact",
+    "home", "platform", "factories", "capabilities", "security", "solutions",
+    "enterprise", "individuals", "how-it-works", "use-ilaios", "core", "trust",
+    "architecture", "docs", "resources", "about", "contact",
 }
 
-VIEWPORTS = (
-    ("desktop", 1440, 1000),
-    ("tablet", 1024, 900),
-    ("mobile", 390, 844),
-)
-
-DARK_VIEWPORTS = (
-    ("desktop", 1440, 1000),
-    ("mobile", 390, 844),
-)
+VIEWPORTS = (("desktop", 1440, 1000), ("tablet", 1024, 900), ("mobile", 390, 844))
+DARK_VIEWPORTS = (("desktop", 1440, 1000), ("mobile", 390, 844))
 
 
 def localized_path(locale: str, route: str) -> str:
-    if locale == "en":
-        return route or "/"
-    return "/tr" + route if route else "/tr"
+    return (route or "/") if locale == "en" else ("/tr" + route if route else "/tr")
 
 
 def normalized_internal_href(href: str) -> str | None:
@@ -108,88 +80,43 @@ def normalized_internal_href(href: str) -> str | None:
     path = parsed.path or "/"
     if not path.startswith("/"):
         return None
-    if parsed.query:
-        path = f"{path}?{parsed.query}"
-    return path
+    return f"{path}?{parsed.query}" if parsed.query else path
 
 
 def overflow_elements(page: Page) -> list[dict[str, object]]:
     return page.evaluate(
-        """
-        () => Array.from(document.querySelectorAll('body *'))
-          .map((el) => {
-            const r = el.getBoundingClientRect();
-            return {
-              tag: el.tagName.toLowerCase(),
-              cls: typeof el.className === 'string' ? el.className.slice(0, 120) : '',
-              left: Math.round(r.left * 10) / 10,
-              right: Math.round(r.right * 10) / 10,
-              width: Math.round(r.width * 10) / 10,
-            };
-          })
-          .filter((x) => x.width > 0 && (x.left < -1 || x.right > window.innerWidth + 1))
-          .slice(0, 20)
-        """
+        """() => Array.from(document.querySelectorAll('body *')).map((el) => {
+          const r = el.getBoundingClientRect();
+          return {tag: el.tagName.toLowerCase(), cls: typeof el.className === 'string' ? el.className.slice(0,120) : '', left:r.left, right:r.right, width:r.width};
+        }).filter((x) => x.width > 0 && (x.left < -1 || x.right > innerWidth + 1)).slice(0,20)"""
     )
 
 
 def visible_chromatic_ui(page: Page) -> list[dict[str, object]]:
     return page.evaluate(
-        """
-        () => {
-          const parse = (value) => {
-            const m = String(value || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-            return m ? [Number(m[1]), Number(m[2]), Number(m[3])] : null;
-          };
-          const chromatic = (rgb) => {
-            if (!rgb) return false;
-            const [r,g,b] = rgb;
-            const max = Math.max(r,g,b), min = Math.min(r,g,b);
-            if (max - min < 20) return false;
-            return (b > r + 24 && b > g + 8) || (g > r + 28 && b > r + 28);
-          };
-          return Array.from(document.querySelectorAll('body *'))
-            .filter((el) => {
-              const rect = el.getBoundingClientRect();
-              const s = getComputedStyle(el);
-              return rect.width > 0 && rect.height > 0 && s.display !== 'none' && s.visibility !== 'hidden';
-            })
-            .map((el) => {
-              const s = getComputedStyle(el);
-              const values = [s.color, s.backgroundColor, s.borderTopColor, s.borderRightColor, s.borderBottomColor, s.borderLeftColor];
-              return {
-                tag: el.tagName.toLowerCase(),
-                cls: typeof el.className === 'string' ? el.className.slice(0, 120) : '',
-                values,
-                bad: values.some((value) => chromatic(parse(value))),
-              };
-            })
-            .filter((x) => x.bad)
-            .slice(0, 20);
-        }
-        """
+        """() => {
+          const parse = (v) => { const m = String(v || '').match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/); return m ? [Number(m[1]),Number(m[2]),Number(m[3])] : null; };
+          const bad = (rgb) => { if (!rgb) return false; const [r,g,b] = rgb; if (Math.max(r,g,b)-Math.min(r,g,b) < 20) return false; return (b > r+24 && b > g+8) || (g > r+28 && b > r+28); };
+          return Array.from(document.querySelectorAll('body *')).filter((el) => {
+            const r = el.getBoundingClientRect(), s = getComputedStyle(el); return r.width>0 && r.height>0 && s.display!=='none' && s.visibility!=='hidden';
+          }).map((el) => {
+            const s=getComputedStyle(el), values=[s.color,s.backgroundColor,s.borderTopColor,s.borderRightColor,s.borderBottomColor,s.borderLeftColor];
+            return {tag:el.tagName.toLowerCase(), cls:typeof el.className==='string'?el.className.slice(0,120):'', values, bad:values.some((v)=>bad(parse(v)))};
+          }).filter((x)=>x.bad).slice(0,20);
+        }"""
     )
 
 
 def header_geometry(page: Page) -> dict[str, object]:
     return page.evaluate(
-        """
-        () => {
-          const box = (el) => {
-            if (!el) return null;
-            const r = el.getBoundingClientRect();
-            return [Math.round(r.x), Math.round(r.y), Math.round(r.width), Math.round(r.height)];
-          };
-          return {
-            brand: box(document.querySelector('.site-header .brand')),
-            primary: Array.from(document.querySelectorAll('.site-header .nav-primary > a')).map(box),
-            explore: box(document.querySelector('.site-header .explore-menu summary')),
-            contact: box(document.querySelector('.site-header .nav-utility > a')),
-            theme: box(document.querySelector('.site-header .theme-toggle')),
-            language: box(document.querySelector('.site-header .language-switch')),
-          };
-        }
-        """
+        """() => { const box=(el)=>{if(!el)return null;const r=el.getBoundingClientRect();return [Math.round(r.x),Math.round(r.y),Math.round(r.width),Math.round(r.height)];}; return {
+          brand:box(document.querySelector('.site-header .brand')),
+          primary:Array.from(document.querySelectorAll('.site-header .nav-primary > a')).map(box),
+          explore:box(document.querySelector('.site-header .explore-menu summary')),
+          contact:box(document.querySelector('.site-header .nav-utility > a')),
+          theme:box(document.querySelector('.site-header .theme-toggle')),
+          language:box(document.querySelector('.site-header .language-switch')),
+        }; }"""
     )
 
 
@@ -206,19 +133,14 @@ def inspect_navigation(page: Page, viewport_name: str) -> dict[str, object]:
         menu_overflow = float(page.evaluate("document.documentElement.scrollWidth - window.innerWidth"))
         if menu_overflow > 1:
             raise RuntimeError(f"mobile navigation creates horizontal overflow {menu_overflow}px")
-        if not page.locator(".theme-toggle").is_visible():
-            raise RuntimeError("mobile theme control is not visible")
-        if not page.locator(".language-switch").is_visible():
-            raise RuntimeError("mobile language control is not visible")
+        if not page.locator(".theme-toggle").is_visible() or not page.locator(".language-switch").is_visible():
+            raise RuntimeError("mobile theme/language controls are not visible")
         page.keyboard.press("Escape")
         if panel.is_visible():
             raise RuntimeError("Escape did not close mobile navigation")
         if not toggle.evaluate("el => el === document.activeElement"):
-            raise RuntimeError("mobile menu close did not restore focus to the toggle")
-        result["mobile_menu_open"] = True
-        result["mobile_menu_escape_close"] = True
-        result["mobile_menu_focus_return"] = True
-        result["mobile_menu_overflow_px"] = menu_overflow
+            raise RuntimeError("mobile menu close did not restore focus")
+        result.update(mobile_menu_open=True, mobile_menu_escape_close=True, mobile_menu_focus_return=True, mobile_menu_overflow_px=menu_overflow)
     elif viewport_name == "desktop":
         summary = page.locator(".explore-menu summary")
         if summary.count() == 1 and summary.is_visible():
@@ -228,7 +150,7 @@ def inspect_navigation(page: Page, viewport_name: str) -> dict[str, object]:
                 raise RuntimeError("Explore menu did not open")
             box = panel.bounding_box()
             if box is not None and (box["x"] < -1 or box["x"] + box["width"] > 1441):
-                raise RuntimeError("Explore menu is clipped outside the desktop viewport")
+                raise RuntimeError("Explore menu is clipped outside desktop viewport")
             result["explore_menu_open"] = True
             summary.click()
     return result
@@ -256,17 +178,12 @@ def run_page_checks(
     height: int,
     theme: str,
     internal_links: set[str],
-    header_baselines: dict[tuple[str, str], dict[str, object]],
+    header_baselines: dict[str, dict[str, object]],
 ) -> dict[str, object]:
     console_errors: list[str] = []
     page_errors: list[str] = []
-    page.on(
-        "console",
-        lambda message, errors=console_errors: errors.append(message.text)
-        if message.type == "error"
-        else None,
-    )
-    page.on("pageerror", lambda error, errors=page_errors: errors.append(str(error)))
+    page.on("console", lambda message: console_errors.append(message.text) if message.type == "error" else None)
+    page.on("pageerror", lambda error: page_errors.append(str(error)))
 
     response = page.goto(f"{BASE_URL}{path}", wait_until="networkidle", timeout=45_000)
     status = response.status if response is not None else 0
@@ -276,15 +193,7 @@ def run_page_checks(
     offenders = overflow_elements(page) if overflow > 1 else []
     chromatic_ui = visible_chromatic_ui(page)
     broken_images = page.locator("img").evaluate_all(
-        """els => els
-          .filter((el) => {
-            const s = getComputedStyle(el);
-            const r = el.getBoundingClientRect();
-            return s.display !== 'none' && s.visibility !== 'hidden' && r.width > 0 && r.height > 0 &&
-              (!el.complete || el.naturalWidth === 0 || el.naturalHeight === 0);
-          })
-          .map((el) => ({src: el.currentSrc || el.src, alt: el.alt || ''}))
-          .slice(0, 20)"""
+        """els => els.filter((el) => { const s=getComputedStyle(el),r=el.getBoundingClientRect(); return s.display!=='none' && s.visibility!=='hidden' && r.width>0 && r.height>0 && (!el.complete || el.naturalWidth===0 || el.naturalHeight===0); }).map((el)=>({src:el.currentSrc||el.src,alt:el.alt||''})).slice(0,20)"""
     )
 
     if status >= 400 or status == 0:
@@ -305,31 +214,18 @@ def run_page_checks(
         raise RuntimeError(f"chromatic UI outside canonical assets: {chromatic_ui[:3]}")
 
     if route_name == "home":
-        authoritative = page.locator('[data-visual-role="homepage-v2-authoritative"]')
-        legacy = page.locator('.v2-recovery-home')
-        if authoritative.count() != 1 or not authoritative.is_visible():
+        if page.locator('[data-visual-role="homepage-v2-authoritative"]').count() != 1:
             raise RuntimeError("authoritative homepage V2 marker missing")
-        if legacy.count() != 0:
+        if page.locator('.v2-recovery-home').count() != 0:
             raise RuntimeError("legacy WebsiteV2HomeRecovery is still rendered")
 
     record: dict[str, object] = {
-        "locale": locale,
-        "route": path,
-        "route_name": route_name,
-        "viewport": viewport_name,
-        "width": width,
-        "height": height,
-        "theme": theme,
-        "status": status,
-        "horizontal_overflow_px": overflow,
-        "overflow_elements": offenders,
-        "console_errors": console_errors,
-        "page_errors": page_errors,
-        "broken_images": broken_images,
+        "locale": locale, "route": path, "route_name": route_name, "viewport": viewport_name,
+        "width": width, "height": height, "theme": theme, "status": status,
+        "horizontal_overflow_px": overflow, "overflow_elements": offenders,
+        "console_errors": console_errors, "page_errors": page_errors, "broken_images": broken_images,
         "chromatic_ui": chromatic_ui,
-        "h1_font_px": page.evaluate(
-            "el => parseFloat(getComputedStyle(el).fontSize)", h1.element_handle()
-        ),
+        "h1_font_px": page.evaluate("el => parseFloat(getComputedStyle(el).fontSize)", h1.element_handle()),
         "h1_box": h1.bounding_box(),
     }
     record.update(inspect_navigation(page, viewport_name))
@@ -337,21 +233,15 @@ def run_page_checks(
 
     if viewport_name == "desktop":
         geometry = header_geometry(page)
-        baseline_key = (theme, locale)
+        baseline_key = f"{theme}:{locale}"
         baseline = header_baselines.setdefault(baseline_key, geometry)
         if geometry != baseline:
-            raise RuntimeError(
-                f"desktop header geometry drift for {theme}/{locale}: expected {baseline}, got {geometry}"
-            )
+            raise RuntimeError(f"desktop header geometry drift for {baseline_key}: expected {baseline}, got {geometry}")
         record["header_geometry"] = geometry
-        hrefs = page.locator("a[href]").evaluate_all(
-            "els => els.map((el) => el.getAttribute('href')).filter(Boolean)"
-        )
-        for href in hrefs:
+        for href in page.locator("a[href]").evaluate_all("els => els.map((el)=>el.getAttribute('href')).filter(Boolean)"):
             normalized = normalized_internal_href(str(href))
             if normalized is not None:
                 internal_links.add(normalized)
-
     return record
 
 
@@ -363,60 +253,34 @@ def main() -> int:
     failures: list[str] = []
     internal_links: set[str] = set()
     internal_link_results: list[dict[str, object]] = []
-    header_baselines: dict[tuple[str, str], dict[str, object]] = {}
+    header_baselines: dict[str, dict[str, object]] = {}
 
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         context = browser.new_context(ignore_https_errors=False)
 
-        # Fresh/no-preference certification: every localized route must start Light.
         for locale in ("en", "tr"):
             for route_name, route in ROUTES:
                 for viewport_name, width, height in VIEWPORTS:
                     path = localized_path(locale, route)
                     page = context.new_page()
                     page.set_viewport_size({"width": width, "height": height})
+                    page.add_init_script("localStorage.removeItem('ilaios-theme')")
                     try:
-                        page.add_init_script("localStorage.removeItem('ilaios-theme')")
-                        record = run_page_checks(
-                            page,
-                            locale=locale,
-                            route_name=route_name,
-                            path=path,
-                            viewport_name=viewport_name,
-                            width=width,
-                            height=height,
-                            theme="light",
-                            internal_links=internal_links,
-                            header_baselines=header_baselines,
-                        )
+                        record = run_page_checks(page, locale=locale, route_name=route_name, path=path, viewport_name=viewport_name, width=width, height=height, theme="light", internal_links=internal_links, header_baselines=header_baselines)
                         if route_name in SCREENSHOT_ROUTE_NAMES and viewport_name in {"desktop", "mobile"}:
-                            file_name = f"light__{locale}__{route_name}__{viewport_name}-{width}x{height}.png"
-                            page.screenshot(path=str(screenshots / file_name), full_page=True)
-                            record["screenshot"] = f"screenshots/{file_name}"
+                            name = f"light__{locale}__{route_name}__{viewport_name}-{width}x{height}.png"
+                            page.screenshot(path=str(screenshots / name), full_page=True)
+                            record["screenshot"] = f"screenshots/{name}"
                         record["result"] = "PASS"
-                    except Exception as exc:  # noqa: BLE001 - aggregate all rendered route failures.
-                        record = {
-                            "locale": locale,
-                            "route": path,
-                            "route_name": route_name,
-                            "viewport": viewport_name,
-                            "width": width,
-                            "height": height,
-                            "theme": "light",
-                            "result": "FAIL",
-                            "failure": str(exc),
-                        }
+                    except Exception as exc:  # noqa: BLE001
+                        record = {"locale": locale, "route": path, "route_name": route_name, "viewport": viewport_name, "width": width, "height": height, "theme": "light", "result": "FAIL", "failure": str(exc)}
                         failures.append(f"light {locale} {path} {viewport_name}: {exc}")
-                        failure_name = f"FAIL__light__{locale}__{route_name}__{viewport_name}-{width}x{height}.png"
-                        page.screenshot(path=str(screenshots / failure_name), full_page=True)
+                        page.screenshot(path=str(screenshots / f"FAIL__light__{locale}__{route_name}__{viewport_name}-{width}x{height}.png"), full_page=True)
                     finally:
                         records.append(record)
                         page.close()
 
-        # Explicit Dark certification for all 82 localized public routes on web
-        # desktop and the required real mobile viewport. This is separate from
-        # default-Light evidence and proves persisted explicit preference.
         for locale in ("en", "tr"):
             for route_name, route in ROUTES:
                 for viewport_name, width, height in DARK_VIEWPORTS:
@@ -425,38 +289,16 @@ def main() -> int:
                     page.set_viewport_size({"width": width, "height": height})
                     page.add_init_script("localStorage.setItem('ilaios-theme', 'dark')")
                     try:
-                        record = run_page_checks(
-                            page,
-                            locale=locale,
-                            route_name=route_name,
-                            path=path,
-                            viewport_name=viewport_name,
-                            width=width,
-                            height=height,
-                            theme="dark",
-                            internal_links=internal_links,
-                            header_baselines=header_baselines,
-                        )
+                        record = run_page_checks(page, locale=locale, route_name=route_name, path=path, viewport_name=viewport_name, width=width, height=height, theme="dark", internal_links=internal_links, header_baselines=header_baselines)
                         if route_name in SCREENSHOT_ROUTE_NAMES:
-                            file_name = f"dark__{locale}__{route_name}__{viewport_name}-{width}x{height}.png"
-                            page.screenshot(path=str(screenshots / file_name), full_page=True)
-                            record["screenshot"] = f"screenshots/{file_name}"
+                            name = f"dark__{locale}__{route_name}__{viewport_name}-{width}x{height}.png"
+                            page.screenshot(path=str(screenshots / name), full_page=True)
+                            record["screenshot"] = f"screenshots/{name}"
                         record["result"] = "PASS"
                     except Exception as exc:  # noqa: BLE001
-                        record = {
-                            "locale": locale,
-                            "route": path,
-                            "route_name": route_name,
-                            "viewport": viewport_name,
-                            "width": width,
-                            "height": height,
-                            "theme": "dark",
-                            "result": "FAIL",
-                            "failure": str(exc),
-                        }
+                        record = {"locale": locale, "route": path, "route_name": route_name, "viewport": viewport_name, "width": width, "height": height, "theme": "dark", "result": "FAIL", "failure": str(exc)}
                         failures.append(f"dark {locale} {path} {viewport_name}: {exc}")
-                        failure_name = f"FAIL__dark__{locale}__{route_name}__{viewport_name}-{width}x{height}.png"
-                        page.screenshot(path=str(screenshots / failure_name), full_page=True)
+                        page.screenshot(path=str(screenshots / f"FAIL__dark__{locale}__{route_name}__{viewport_name}-{width}x{height}.png"), full_page=True)
                     finally:
                         records.append(record)
                         page.close()
@@ -487,25 +329,8 @@ def main() -> int:
         "status": "FAIL" if failures else "PASS",
         "records": records,
     }
-    (ARTIFACT_DIR / "visual-qa.json").write_text(
-        json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8"
-    )
-    print(
-        json.dumps(
-            {
-                k: report[k]
-                for k in (
-                    "status",
-                    "public_route_pairs",
-                    "localized_routes",
-                    "checks",
-                    "internal_link_targets",
-                    "failures",
-                )
-            },
-            indent=2,
-        )
-    )
+    (ARTIFACT_DIR / "visual-qa.json").write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    print(json.dumps({k: report[k] for k in ("status", "public_route_pairs", "localized_routes", "checks", "internal_link_targets", "failures")}, indent=2))
     return 1 if failures else 0
 
 
