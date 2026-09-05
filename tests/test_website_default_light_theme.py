@@ -71,6 +71,36 @@ def test_light_interactions_never_use_white_text_on_light_surfaces() -> None:
 
     assert 'html[data-theme="light"] :where(.button.secondary,.text-link,.contact-directory article > a)' in interaction
     assert "border-color: #2A2A2A !important;" in interaction
+    assert "-webkit-text-fill-color: #0A0A0A !important;" in interaction
+
+
+def test_light_normal_text_uses_high_contrast_neutral_gray() -> None:
+    interaction = INTERACTION.read_text(encoding="utf-8")
+
+    assert ".contact-directory article p" in interaction
+    assert ".status-note p" in interaction
+    assert ".product-stage-control p" in interaction
+    assert "color: #2A2A2A !important;" in interaction
+
+
+def test_light_primary_cta_and_dark_preview_text_are_visible() -> None:
+    interaction = INTERACTION.read_text(encoding="utf-8")
+
+    assert 'html[data-theme="light"] .button:not(.secondary)' in interaction
+    assert "background: #0A0A0A !important;" in interaction
+    assert "-webkit-text-fill-color: #FFFFFF !important;" in interaction
+    assert 'html[data-theme="light"] .result-preview {' in interaction
+    assert 'html[data-theme="light"] .result-preview :where(span,strong)' in interaction
+
+
+def test_dark_footer_has_no_blue_ui_text_authority() -> None:
+    interaction = INTERACTION.read_text(encoding="utf-8")
+
+    assert 'html[data-theme="dark"] .site-footer {' in interaction
+    assert 'html[data-theme="dark"] .site-footer :where(a,p,span,small)' in interaction
+    assert "color: #B3B3B3 !important;" in interaction
+    assert 'html[data-theme="dark"] .site-footer a:hover' in interaction
+    assert "color: #E6E6E6 !important;" in interaction
 
 
 def test_final_light_theme_authority_loads_after_legacy_theme_layers() -> None:
