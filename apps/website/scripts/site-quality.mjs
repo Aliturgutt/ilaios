@@ -5,20 +5,21 @@ import process from "node:process";
 const root = path.resolve(process.cwd());
 const app = path.join(root, "app");
 const forbiddenPublicMailboxes = [
+  "ali@ilaios.com",
+  "info@ilaios.com",
   "aws-root@ilaios.com",
   "operations@ilaios.com",
   "billing@ilaios.com",
   "cloud@ilaios.com",
   "postmaster@ilaios.com",
 ];
-const unverifiedFunctionalMailboxes = [
-  "info@ilaios.com",
+const requiredPublicMailboxes = [
+  "contact@ilaios.com",
   "support@ilaios.com",
   "privacy@ilaios.com",
   "security@ilaios.com",
   "abuse@ilaios.com",
 ];
-const requiredPublicMailboxes = ["contact@ilaios.com"];
 const requiredSocial = [
   "https://www.linkedin.com/company/ilaios/",
   "https://x.com/ilaios",
@@ -42,10 +43,7 @@ const source = fileTexts.map(({ file, text }) => `${file}\n${text}`).join("\n");
 const failures = [];
 
 for (const mailbox of forbiddenPublicMailboxes) {
-  if (source.includes(`mailto:${mailbox}`)) failures.push(`forbidden public mailbox exposed: ${mailbox}`);
-}
-for (const mailbox of unverifiedFunctionalMailboxes) {
-  if (source.includes(mailbox)) failures.push(`unverified functional mailbox published before verification: ${mailbox}`);
+  if (source.includes(mailbox)) failures.push(`forbidden public mailbox exposed: ${mailbox}`);
 }
 
 function mailboxIsLinked(mailbox) {
