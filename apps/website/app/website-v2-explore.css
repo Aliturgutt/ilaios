@@ -10,7 +10,7 @@
   padding: 22px !important;
   border: 1px solid var(--v2-line) !important;
   border-radius: var(--v2-radius) !important;
-  background: #0C131B !important;
+  background: #141414 !important;
 }
 .grid.two-up > .card:nth-child(n) {
   padding-left: 22px !important;
@@ -28,7 +28,7 @@
   padding: 22px !important;
   border: 1px solid var(--v2-line) !important;
   border-radius: var(--v2-radius) !important;
-  background: #0C131B !important;
+  background: #141414 !important;
 }
 .grid:not(.two-up) > .card:hover { background: var(--v2-panel-3) !important; }
 
@@ -44,16 +44,16 @@
   padding: 24px !important;
   border: 1px solid var(--v2-line) !important;
   border-radius: var(--v2-radius) !important;
-  background: #0C131B !important;
+  background: #141414 !important;
 }
 .grid:has(> .detail-link-card) > .detail-link-card:nth-child(n) { padding-left: 24px !important; padding-right: 24px !important; }
 .grid:has(> .detail-link-card) > .detail-link-card:hover {
   background: var(--v2-panel-3) !important;
-  border-color: rgba(0,194,209,.5) !important;
+  border-color: #2A2A2A !important;
 }
 .grid:has(> .detail-link-card) > .detail-link-card > span {
   margin: 0 0 34px !important;
-  color: var(--v2-cyan) !important;
+  color: var(--v2-soft) !important;
 }
 .grid:has(> .detail-link-card) > .detail-link-card h2 {
   margin-bottom: 12px !important;
@@ -62,7 +62,7 @@
 .grid:has(> .detail-link-card) > .detail-link-card p { margin-bottom: 24px !important; }
 .grid:has(> .detail-link-card) > .detail-link-card strong {
   margin-top: auto;
-  color: var(--v2-cyan) !important;
+  color: var(--v2-soft) !important;
   font-size: .82rem;
 }
 
@@ -85,7 +85,7 @@
 .journey-grid > .journey-card > span {
   display: block !important;
   margin-bottom: 30px !important;
-  color: var(--v2-cyan) !important;
+  color: var(--v2-soft) !important;
   font-size: .67rem !important;
 }
 .journey-grid > .journey-card h3 { font-size: 1rem !important; margin-bottom: 8px !important; }
@@ -108,7 +108,7 @@
   border-right: 1px solid var(--v2-line) !important;
   border-bottom: 1px solid var(--v2-line) !important;
 }
-.verification-list span { color: var(--v2-cyan) !important; font-size: .64rem !important; }
+.verification-list span { color: var(--v2-soft) !important; font-size: .64rem !important; }
 
 /* Architecture: make the flow a deliberate editorial/system split. */
 .architecture-primary {
@@ -127,7 +127,7 @@
   padding: 14px 0 !important;
   border-bottom: 1px solid var(--v2-line) !important;
 }
-.architecture-layer-list article > span { color: var(--v2-cyan) !important; font-size: .64rem; }
+.architecture-layer-list article > span { color: var(--v2-soft) !important; font-size: .64rem; }
 .architecture-layer-list article > strong { font-size: .92rem; }
 .architecture-layer-list article > p { margin: 0; font-size: .84rem; line-height: 1.48; }
 
@@ -143,7 +143,7 @@
   border-right: 1px solid var(--v2-line) !important;
 }
 .boundary-ledger article:last-child { border-right: 0 !important; }
-.boundary-ledger article > span { display: block; margin-bottom: 26px; color: var(--v2-cyan) !important; font-size: .64rem; }
+.boundary-ledger article > span { display: block; margin-bottom: 26px; color: var(--v2-soft) !important; font-size: .64rem; }
 .boundary-ledger article > strong { display: block; margin-bottom: 6px; }
 .boundary-ledger article > p { margin: 0; font-size: .85rem; line-height: 1.48; }
 
@@ -158,10 +158,10 @@
   min-height: 184px !important;
   padding: 22px !important;
   border: 0 !important;
-  background: #0C131B !important;
+  background: #141414 !important;
 }
 .core-diagram .core-node:hover { background: var(--v2-panel-3) !important; }
-.core-diagram .core-node span { color: var(--v2-cyan) !important; }
+.core-diagram .core-node span { color: var(--v2-soft) !important; }
 .core-diagram .core-node strong { margin-top: 24px !important; font-size: 1rem !important; }
 .core-diagram .core-node small { line-height: 1.5; }
 
@@ -173,7 +173,7 @@
   align-items: center !important;
   padding: 28px 0 28px 24px !important;
   border: 0 !important;
-  border-left: 3px solid var(--v2-cyan) !important;
+  border-left: 3px solid #B3B3B3 !important;
   background: transparent !important;
 }
 .callout h2 { max-width: 720px; }
