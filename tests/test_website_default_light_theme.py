@@ -7,7 +7,9 @@ TOGGLE = ROOT / "apps" / "website" / "app" / "ThemeToggle.tsx"
 CHROME = ROOT / "apps" / "website" / "app" / "SiteChrome.tsx"
 THEME = ROOT / "apps" / "website" / "app" / "site-v2-finalization.css"
 INTERACTION = ROOT / "apps" / "website" / "app" / "final-interaction-redteam.css"
+PALETTE = ROOT / "apps" / "website" / "app" / "brand-palette.css"
 DIAGRAM = ROOT / "apps" / "website" / "app" / "ThemedDiagram.tsx"
+VISUAL_QA = ROOT / "apps" / "website" / "scripts" / "website-v2-visual-qa.py"
 
 
 def test_website_defaults_to_light_without_overriding_explicit_choice() -> None:
@@ -128,13 +130,15 @@ def test_themed_diagram_uses_the_existing_canonical_sprite_assets() -> None:
     assert "diagram-sprite-light" in diagram
 
 
-def test_dark_header_and_navigation_use_one_neutral_surface() -> None:
-    interaction = INTERACTION.read_text(encoding="utf-8")
+def test_dark_header_matches_canonical_logo_field_without_asset_mutation() -> None:
+    palette = PALETTE.read_text(encoding="utf-8")
+    chrome = CHROME.read_text(encoding="utf-8")
 
-    assert 'html[data-theme="dark"] .site-header .brand-link' in interaction
-    assert "background: #0A0A0A !important;" in interaction
-    assert 'html[data-theme="dark"] :where(.nav-panel,.explore-menu-panel)' in interaction
-    assert "background: #141414 !important;" in interaction
+    assert 'className="site-header"' in chrome
+    assert 'className="brand"' in chrome
+    assert 'html[data-theme="dark"] body .site-header' in palette
+    assert 'html[data-theme="dark"] body .site-header .brand' in palette
+    assert "background: #07080A !important;" in palette
 
 
 def test_dark_surface_typography_is_explicitly_light_neutral() -> None:
@@ -172,3 +176,79 @@ def test_final_render_authority_contains_no_cyan_or_blue_hex_values() -> None:
 
     assert "#00C2D1" not in interaction
     assert "#146BFF" not in interaction
+
+
+def test_light_footer_hover_and_focus_keep_dark_text_on_white() -> None:
+    palette = PALETTE.read_text(encoding="utf-8")
+
+    assert 'html[data-theme="light"] body .site-footer a:hover' in palette
+    assert 'html[data-theme="light"] body .site-footer a:focus-visible' in palette
+    assert "-webkit-text-fill-color: var(--brand-carbon) !important;" in palette
+
+
+def test_mobile_header_keeps_navigation_and_uses_compact_right_anchored_panel() -> None:
+    chrome = CHROME.read_text(encoding="utf-8")
+    interaction = INTERACTION.read_text(encoding="utf-8")
+
+    assert 'className="site-header"' in chrome
+    assert 'className="menu-toggle"' in chrome
+    assert 'className={`nav-panel ${open ? "is-open" : ""}`}' in chrome
+    assert "ThemeToggle" in chrome
+    assert 'className="language-switch"' in chrome
+    assert 'className="explore-menu"' in chrome
+    assert "left: auto !important;" in interaction
+    assert "right: 16px !important;" in interaction
+    assert "width: min(320px, calc(100vw - 32px)) !important;" in interaction
+    assert ".site-header .nav-panel.is-open" in interaction
+    assert "grid-template-columns: 1fr !important;" in interaction
+
+
+def test_canonical_architecture_flow_is_neutral_grayscale() -> None:
+    palette = PALETTE.read_text(encoding="utf-8")
+
+    assert ".canonical-linear" in palette
+    assert ".canonical-linear > div" in palette
+    assert "background: #141414 !important;" in palette
+    assert "border-color: #2A2A2A !important;" in palette
+    assert ".canonical-linear > div > span" in palette
+    assert "color: #B3B3B3 !important;" in palette
+
+
+def test_professional_visual_system_uses_shared_rhythm_and_component_geometry() -> None:
+    palette = PALETTE.read_text(encoding="utf-8")
+
+    for token in (
+        "--ui-section-y: 72px;",
+        "--ui-card-pad: 24px;",
+        "--ui-control-h: 46px;",
+        "--ui-radius: 8px;",
+        "--ui-copy-max: 68ch;",
+    ):
+        assert token in palette
+    assert "html body :where(.page-hero,.compact-page-hero)" in palette
+    assert "html body :where(.card,.detail-link-card,.flow-card,.plane-card,.journey-card,.output-card" in palette
+    assert "html body .site-footer .footer-nav-grid" in palette
+    assert "grid-template-columns: repeat(5, minmax(0, 1fr)) !important;" in palette
+
+
+def test_interaction_polish_never_moves_components_on_hover_or_focus() -> None:
+    palette = PALETTE.read_text(encoding="utf-8")
+
+    assert "transition: background-color 120ms ease, color 120ms ease, border-color 120ms ease !important;" in palette
+    assert "transform: none !important;" in palette
+    assert "outline: 2px solid var(--brand-text-secondary) !important;" in palette
+
+
+def test_visual_qa_covers_all_localized_routes_in_light_and_dark_with_real_mobile() -> None:
+    qa = VISUAL_QA.read_text(encoding="utf-8")
+
+    assert 'DARK_VIEWPORTS = (("desktop", 1440, 1000), ("mobile", 390, 844))' in qa
+    assert 'page.add_init_script("localStorage.removeItem(\'ilaios-theme\')")' in qa
+    assert 'page.add_init_script("localStorage.setItem(\'ilaios-theme\', \'dark\')")' in qa
+    assert 'theme="light"' in qa
+    assert 'theme="dark"' in qa
+    assert "visible_chromatic_ui" in qa
+    assert "inspect_navigation" in qa
+    assert "mobile navigation panel is too wide" in qa
+    assert "header geometry drift" in qa
+    assert '"localized_routes":len(ROUTES)*2' in qa
