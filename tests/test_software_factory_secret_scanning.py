@@ -168,3 +168,20 @@ def test_repository_wires_secret_scan_into_required_ci_and_precommit() -> None:
     assert "software_factory_secret_scanning" in required
     assert "ilaios-secret-scan" in precommit
     assert "--staged" in precommit
+
+
+def test_history_scan_requires_an_exact_immutable_head(tmp_path: Path) -> None:
+    with pytest.raises(SecretScanningError, match="exact 40-hex"):
+        _scanner().scan_history(tmp_path, head_sha="master")
+
+
+def test_history_scope_is_explicit_and_never_grants_authority() -> None:
+    report = _scanner().scan_lines(
+        (ChangedLine("safe.py", 1, "value = 1"),),
+        scope="FULL_REPOSITORY_HISTORY",
+        head_sha="3" * 40,
+    )
+
+    assert report.passed is True
+    assert report.scope == "FULL_REPOSITORY_HISTORY"
+    assert report.deployment_authorized is False
