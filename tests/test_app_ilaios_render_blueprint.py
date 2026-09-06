@@ -36,6 +36,12 @@ def test_app_ilaios_render_blueprint_is_bounded_and_persistent() -> None:
     assert env["ILAIOS_IDENTITY_DATABASE_PATH"]["value"] == (
         "/var/data/ilaios_identity.db"
     )
+    assert env["ILAIOS_LI_DATABASE_PATH"]["value"] == "/var/data/ilaios_li.db"
+    for key in (
+        "ILAIOS_LI_FOUNDER_USER_ID",
+        "ILAIOS_LI_FOUNDER_TENANT_ID",
+    ):
+        assert env[key] == {"key": key, "sync": False}
     assert env["ILAIOS_APP_HTTP_HOST"]["value"] == "0.0.0.0"
     assert env["ILAIOS_WEB_SESSION_LIFETIME_SECONDS"]["value"] == "3600"
     assert env["ILAIOS_GOOGLE_PRODUCTION_WEB_REDIRECTS"]["value"] == (
