@@ -130,6 +130,18 @@ class ReferenceAssetPickerScope extends InheritedWidget {
 
 enum _AttachmentPane { documents, images, video }
 
+const _factoryFamilies = <(String, String, IconData)>[
+  ('Web Factory', 'Web Factory', Icons.language_outlined),
+  ('Video / Media Factory', 'Video / Medya Factory', Icons.movie_outlined),
+  ('Software Factory', 'Yazılım Factory', Icons.code_outlined),
+  ('App Factory', 'Uygulama Factory', Icons.apps_outlined),
+  ('Research / Data Factory', 'Araştırma / Veri Factory', Icons.query_stats_outlined),
+  ('Security Factory', 'Güvenlik Factory', Icons.shield_outlined),
+  ('Creative / Document Factory', 'Yaratıcı / Doküman Factory', Icons.description_outlined),
+  ('Commerce / Growth Factory', 'Ticaret / Büyüme Factory', Icons.trending_up_outlined),
+  ('Personal Operations Factory', 'Kişisel Operasyonlar Factory', Icons.person_outline_rounded),
+];
+
 /// Shared private-input surface. Company documents, reference images and source
 /// video keep their existing governed controllers; Home only changes how those
 /// controls are revealed. The three heavy pickers are collapsed by default and
@@ -218,13 +230,13 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
 
   String _documentSummary() {
     final count = widget.controller.companyKnowledge.documents.length;
-    if (count == 0) return _t('PDF / DOCX / ZIP', 'PDF / DOCX / ZIP');
+    if (count == 0) return 'PDF / DOCX / ZIP';
     return _t('$count document attached', '$count belge eklendi');
   }
 
   String _imageSummary() {
     final count = widget.controller.assets.length;
-    if (count == 0) return _t('JPEG / PNG / WebP', 'JPEG / PNG / WebP');
+    if (count == 0) return 'JPEG / PNG / WebP';
     return _t('$count / 20 images attached', '$count / 20 görsel eklendi');
   }
 
@@ -312,6 +324,67 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
     );
   }
 
+  Widget _factoryGrid() => Column(
+        key: const Key('home-canonical-factory-grid'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            _t('Factories', 'Factory Alanları'),
+            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 900 ? 3 : 2;
+              const spacing = 8.0;
+              final cardWidth =
+                  (constraints.maxWidth - spacing * (columns - 1)) / columns;
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: [
+                  for (var index = 0; index < _factoryFamilies.length; index++)
+                    SizedBox(
+                      width: cardWidth,
+                      child: Container(
+                        key: ValueKey('home-factory-${index + 1}'),
+                        constraints: const BoxConstraints(minHeight: 48),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceContainerLowest,
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(_factoryFamilies[index].$3, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _isTurkish
+                                    ? _factoryFamilies[index].$2
+                                    : _factoryFamilies[index].$1,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      );
+
   Widget _progressiveHome() => Column(
         key: const Key('home-progressive-attachments'),
         mainAxisSize: MainAxisSize.min,
@@ -347,6 +420,8 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
             const SizedBox(height: 8),
             _expandedPane(),
           ],
+          const SizedBox(height: 10),
+          _factoryGrid(),
         ],
       );
 
