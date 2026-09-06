@@ -36,6 +36,10 @@ _CRITERIA_VERSION = "1.0.0"
 _RETRYABLE_CAPABILITY_STATUS_CODES = frozenset({404, 503})
 _MAX_RATE_LIMIT_RETRY_AFTER_SECONDS = 60.0
 _REVIEW_KEYS = frozenset({"score", "detail", "repair_target"})
+_SHOT_SEGMENT_MARKER = "CURRENT SHOT-SPECIFIC SOURCE SEGMENT:"
+_SHOT_SEGMENT_END_MARKER = (
+    "Preserve character identity, wardrobe, props, environment, lighting, "
+)
 _CRITERIA_TEXT = (
     "Judge only whether the sampled frames are a faithful visual realization of the "
     "requested video objective. Reject generic motion-graphics, title cards, placeholder "
@@ -157,11 +161,12 @@ class OpenRouterPerceptualReviewer:
             )
         frames = _sample_frames(video_path, self._sample_count)
         frame_refs = tuple(f"frame-sha256:{sha256(frame).hexdigest()}" for frame in frames)
+        review_objective = _review_objective(objective)
         content: list[dict[str, object]] = [
             {
                 "type": "text",
                 "text": (
-                    f"{_CRITERIA_TEXT}\n\nUSER OBJECTIVE:\n{objective}\n\n"
+                    f"{_CRITERIA_TEXT}\n\nUSER OBJECTIVE:\n{review_objective}\n\n"
                     "Return a strict score from 0 to 1. A generic explainer, motion-graphics "
                     "template, or unrelated clip must score below the threshold. Return only "
                     "a JSON object with exactly these keys: score, detail, repair_target. "
@@ -270,6 +275,19 @@ class OpenRouterPerceptualReviewer:
             ),
             repair_target=None if passed else (repair_target.strip() or "regenerate-video"),
         )
+
+
+def _review_objective(objective: str) -> str:
+    """Scope canonical compiled clip prompts to the current shot for clip-level QA."""
+    marker_index = objective.find(_SHOT_SEGMENT_MARKER)
+    if marker_index < 0:
+        return objective
+    scoped = objective[marker_index + len(_SHOT_SEGMENT_MARKER) :]
+    end_index = scoped.find(_SHOT_SEGMENT_END_MARKER)
+    if end_index >= 0:
+        scoped = scoped[:end_index]
+    scoped = scoped.strip()
+    return scoped or objective
 
 
 def _sample_frames(path: Path, count: int) -> tuple[bytes, ...]:
