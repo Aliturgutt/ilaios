@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../app/ilaios_locale.dart';
+import '../../app/ilaios_theme.dart';
 import '../../control_plane/client.dart';
 import '../../control_plane/evidence_record.dart';
 import '../../control_plane/operational_snapshot.dart';
@@ -132,9 +133,11 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
                       _TopBar(
                         projection: widget.projection,
                         snapshot: widget.operationalSnapshot,
+                        identityProviders: widget.identityProviders,
                         userSession: widget.userSession,
                         themeMode: widget.themeMode,
                         onThemeModeChanged: widget.onThemeModeChanged,
+                        onSignIn: widget.onSignIn,
                         onLogout: widget.onLogout,
                         onNavigate: _select,
                       ),
@@ -266,13 +269,14 @@ class _Sidebar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final brandBackground = isDark ? IlaiosTheme.carbon : IlaiosTheme.white;
     return Semantics(
       container: true,
       label: context.tr('shell.primaryNavigation'),
       child: Container(
         key: const Key('reference-desktop-sidebar-v5'),
         width: 222,
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        color: brandBackground,
         padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -280,23 +284,22 @@ class _Sidebar extends StatelessWidget {
             Semantics(
               label: 'ILAIOS canonical brand lockup',
               image: true,
-              child: SizedBox(
+              child: Container(
                 key: const Key('reference-brand-lockup-v9'),
                 height: 76,
-                child: Align(
+                color: brandBackground,
+                alignment: Alignment.centerLeft,
+                child: Image.asset(
+                  isDark ? _darkLogo : _lightLogo,
+                  key: Key(isDark
+                      ? 'reference-brand-horizontal-dark'
+                      : 'reference-brand-horizontal-light'),
+                  width: isDark ? 68 : 184,
+                  height: isDark ? 68 : 50,
+                  fit: BoxFit.contain,
                   alignment: Alignment.centerLeft,
-                  child: Image.asset(
-                    isDark ? _darkLogo : _lightLogo,
-                    key: Key(isDark
-                        ? 'reference-brand-horizontal-dark'
-                        : 'reference-brand-horizontal-light'),
-                    width: isDark ? 64 : 184,
-                    height: isDark ? 64 : 50,
-                    fit: BoxFit.contain,
-                    alignment: Alignment.centerLeft,
-                    filterQuality: FilterQuality.high,
-                    gaplessPlayback: true,
-                  ),
+                  filterQuality: FilterQuality.high,
+                  gaplessPlayback: true,
                 ),
               ),
             ),
@@ -460,18 +463,22 @@ class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.projection,
     required this.snapshot,
+    required this.identityProviders,
     required this.userSession,
     required this.themeMode,
     required this.onThemeModeChanged,
+    required this.onSignIn,
     required this.onLogout,
     required this.onNavigate,
   });
 
   final ControlPlaneProjection projection;
   final OperationalSnapshot snapshot;
+  final List<IdentityProviderOption> identityProviders;
   final DesktopUserSession? userSession;
   final ThemeMode themeMode;
   final ValueChanged<ThemeMode>? onThemeModeChanged;
+  final Future<void> Function(String providerId)? onSignIn;
   final Future<void> Function()? onLogout;
   final ValueChanged<DesktopSection> onNavigate;
 
@@ -654,7 +661,9 @@ class _TopBar extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
                 _AccountControl(
+                  identityProviders: identityProviders,
                   userSession: userSession,
+                  onSignIn: onSignIn,
                   onLogout: onLogout,
                   compact: compact,
                 ),
@@ -687,21 +696,39 @@ class _TopBar extends StatelessWidget {
 
 class _AccountControl extends StatelessWidget {
   const _AccountControl({
+    required this.identityProviders,
     required this.userSession,
+    required this.onSignIn,
     required this.onLogout,
     this.compact = false,
   });
 
+  final List<IdentityProviderOption> identityProviders;
   final DesktopUserSession? userSession;
+  final Future<void> Function(String providerId)? onSignIn;
   final Future<void> Function()? onLogout;
   final bool compact;
 
+  IdentityProviderOption? get _googleProvider {
+    for (final provider in identityProviders) {
+      final id = provider.providerId.toLowerCase();
+      final name = provider.displayName.toLowerCase();
+      if (id.contains('google') || name.contains('google')) return provider;
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
+    final google = _googleProvider;
+    final signedOutLabel = google == null
+        ? context.tr('shell.identityUnavailable')
+        : (_isTr(context) ? 'Google ile giriş' : 'Sign in with Google');
     final identity = userSession?.displayIdentity ??
         userSession?.principalId ??
-        context.tr('shell.identityUnavailable');
+        signedOutLabel;
     final content = Container(
+      key: const Key('top-account-control'),
       constraints: const BoxConstraints(minHeight: 42),
       padding: const EdgeInsets.only(left: 10),
       decoration: BoxDecoration(
@@ -758,7 +785,20 @@ class _AccountControl extends StatelessWidget {
 
     final labeledContent = compact ? Tooltip(message: identity, child: content) : content;
 
-    if (userSession == null || onLogout == null) return labeledContent;
+    if (userSession == null) {
+      if (google == null || onSignIn == null) return labeledContent;
+      return Tooltip(
+        message: _isTr(context) ? 'Google ile giriş yap' : 'Sign in with Google',
+        child: InkWell(
+          key: const Key('top-account-google-sign-in'),
+          borderRadius: BorderRadius.circular(8),
+          onTap: () async => onSignIn!(google.providerId),
+          child: labeledContent,
+        ),
+      );
+    }
+
+    if (onLogout == null) return labeledContent;
     return PopupMenuButton<String>(
       tooltip: _isTr(context) ? 'Hesap' : 'Account',
       onSelected: (value) {
@@ -796,8 +836,8 @@ class _BottomStatusBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: const Key('reference-bottom-status-v2'),
-      constraints: const BoxConstraints(minHeight: 68),
-      padding: const EdgeInsets.fromLTRB(10, 9, 10, 8),
+      constraints: const BoxConstraints(minHeight: 56),
+      padding: const EdgeInsets.fromLTRB(10, 7, 10, 7),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerLowest,
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
@@ -814,7 +854,7 @@ class _BottomStatusBar extends StatelessWidget {
                 : context.tr('shell.offline'),
             live: projection.connected,
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             '© 2026 ILAIOS',
             style: TextStyle(
@@ -851,7 +891,7 @@ class _FlatStatus extends StatelessWidget {
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 3),
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
