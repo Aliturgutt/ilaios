@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 
 from services.capability_registry import CAPABILITIES
 from services.control_plane.api import ControlPlane
@@ -38,7 +38,6 @@ from services.runtime import (
     ExecutionGrant,
     SchedulingError,
 )
-
 from src.video_automation.models import JobState
 
 
@@ -1448,6 +1447,58 @@ class ExecutionCoordinator:
             result["steps"] = self._multi_step_statuses(request_id)
         return result
 
+    def preview_web(
+        self, request_id: str, *, principal_id: str, tenant_id: str, now: datetime
+    ) -> dict[str, object]:
+        adapter = self._web_delivery_adapter(
+            request_id, principal_id=principal_id, tenant_id=tenant_id
+        )
+        try:
+            return cast(dict[str, object], adapter.preview(
+                request_id, requester_id=principal_id, tenant_id=tenant_id, now=now
+            ))
+        except RuntimeError as error:
+            raise ExecutionCoordinatorError(str(error)) from error
+
+    def request_web_publish(
+        self, request_id: str, *, principal_id: str, tenant_id: str, now: datetime
+    ) -> dict[str, object]:
+        adapter = self._web_delivery_adapter(
+            request_id, principal_id=principal_id, tenant_id=tenant_id
+        )
+        try:
+            return cast(dict[str, object], adapter.request_publish(
+                request_id, requester_id=principal_id, tenant_id=tenant_id, now=now
+            ))
+        except RuntimeError as error:
+            raise ExecutionCoordinatorError(str(error)) from error
+
+    def publish_web(
+        self, request_id: str, *, principal_id: str, tenant_id: str, now: datetime
+    ) -> dict[str, object]:
+        adapter = self._web_delivery_adapter(
+            request_id, principal_id=principal_id, tenant_id=tenant_id
+        )
+        try:
+            return cast(dict[str, object], adapter.publish(
+                request_id, requester_id=principal_id, tenant_id=tenant_id, now=now
+            ))
+        except RuntimeError as error:
+            raise ExecutionCoordinatorError(str(error)) from error
+
+    def web_deployment_history(
+        self, request_id: str, *, principal_id: str, tenant_id: str
+    ) -> list[dict[str, object]]:
+        adapter = self._web_delivery_adapter(
+            request_id, principal_id=principal_id, tenant_id=tenant_id
+        )
+        try:
+            return cast(list[dict[str, object]], adapter.deployment_history(
+                request_id, requester_id=principal_id, tenant_id=tenant_id
+            ))
+        except RuntimeError as error:
+            raise ExecutionCoordinatorError(str(error)) from error
+
     def contains(self, request_id: str) -> bool:
         return self._existing_request(request_id) is not None
 
@@ -2577,6 +2628,25 @@ class ExecutionCoordinator:
         if row is None:
             raise ExecutionCoordinatorError("unknown execution request")
         return row
+
+    def _web_delivery_adapter(
+        self, request_id: str, *, principal_id: str, tenant_id: str
+    ) -> Any:
+        row = self._request_row(request_id)
+        self._require_owner(row, principal_id=principal_id, tenant_id=tenant_id)
+        if (
+            row["capability_id"] != _WEB
+            or row["adapter_id"] != "web.product-runtime.v1"
+            or row["status"] != ExecutionState.ACCEPTED.value
+        ):
+            raise ExecutionCoordinatorError("accepted Web execution is required for delivery")
+        adapter = self._adapters.get(_WEB)
+        if adapter is None or not all(
+            callable(getattr(adapter, name, None))
+            for name in ("preview", "request_publish", "publish", "deployment_history")
+        ):
+            raise ExecutionCoordinatorError("canonical Web delivery adapter is unavailable")
+        return adapter
 
     @staticmethod
     def _require_owner(
