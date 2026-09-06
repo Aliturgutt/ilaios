@@ -12,7 +12,7 @@ $desktopRoot = Split-Path -Parent $PSScriptRoot
 $repoRoot = Resolve-Path (Join-Path $desktopRoot '..\..')
 $releaseDir = Join-Path $desktopRoot 'build\windows\x64\runner\Release'
 $templatePath = Join-Path $desktopRoot 'packaging\msix\AppxManifest.template.xml'
-$brandMaster = Join-Path $repoRoot 'brand\assets\05-ilaios-app-icon.jpg'
+$brandMaster = Join-Path $repoRoot 'brand\assets\04-ilaios-symbol-light.jpg'
 $staging = Join-Path $desktopRoot 'build\msix\staging'
 $assetsDir = Join-Path $staging 'Assets'
 if ([string]::IsNullOrWhiteSpace($OutputPath)) {
@@ -24,7 +24,7 @@ if ($Version -notmatch '^\d+\.\d+\.\d+\.\d+$') { throw 'Version must be four num
 if (-not (Test-Path $releaseDir)) { throw "Windows release output not found: $releaseDir" }
 if (-not (Test-Path (Join-Path $releaseDir 'ilaios_desktop.exe'))) { throw 'ILAIOS Desktop executable is missing.' }
 if (-not (Test-Path $templatePath)) { throw "Manifest template not found: $templatePath" }
-if (-not (Test-Path $brandMaster)) { throw "Canonical app icon master not found: $brandMaster" }
+if (-not (Test-Path $brandMaster)) { throw "Canonical light app icon master not found: $brandMaster" }
 
 Remove-Item $staging -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $staging, $assetsDir | Out-Null
