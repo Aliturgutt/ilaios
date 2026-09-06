@@ -12,6 +12,7 @@ import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
+from typing import Protocol
 
 from services.evidence import EvidenceStore
 from services.governance import GovernedRuntimeGateway
@@ -39,6 +40,12 @@ from .desktop_video_runtime import (
 from .video_runtime import DeterministicLocalVideoRuntime, VideoRuntimeError
 
 
+class ProductIdentityResolver(Protocol):
+    """Resolve one durable product request to canonical tenant/principal identity."""
+
+    def resolve(self, request_id: str) -> tuple[str, str]: ...
+
+
 class GovernedStockDesktopVideoRuntime(DeterministicLocalVideoRuntime):
     """Produce one finished MP4 from governed stock plus the canonical local chain."""
 
@@ -54,11 +61,13 @@ class GovernedStockDesktopVideoRuntime(DeterministicLocalVideoRuntime):
         objective_resolver: ObjectiveResolver,
         brand_logo: Path,
         stock_selector: GovernedStockSelector,
+        identity_resolver: ProductIdentityResolver,
     ) -> None:
         super().__init__(root, grants, governance, evidence)
         self._objective_resolver = objective_resolver
         self._brand_logo = brand_logo
         self._stock_selector = stock_selector
+        self._identity_resolver = identity_resolver
 
     def execute(
         self,
@@ -84,10 +93,15 @@ class GovernedStockDesktopVideoRuntime(DeterministicLocalVideoRuntime):
             objective = self._objective_resolver(job_id).strip()
             if not objective:
                 raise VideoRuntimeError("governed stock video objective is unavailable")
+            tenant_id, requester_id = self._identity_resolver.resolve(request_id)
+            if not tenant_id or tenant_id != tenant_id.strip():
+                raise VideoRuntimeError("governed stock tenant identity is unavailable")
+            if not requester_id or requester_id != requester_id.strip():
+                raise VideoRuntimeError("governed stock principal identity is unavailable")
             run_root = self._root / request_id
             run_root.mkdir(parents=True, exist_ok=False)
             selection = self._stock_selector.select(
-                tenant_id=request_id,
+                tenant_id=tenant_id,
                 job_id=job_id,
                 query=_stock_query(objective),
                 media_types=frozenset({"video", "image"}),
@@ -124,6 +138,8 @@ class GovernedStockDesktopVideoRuntime(DeterministicLocalVideoRuntime):
             result: dict[str, object] = {
                 "request_id": request_id,
                 "job_id": job_id,
+                "tenant_id": tenant_id,
+                "requester_id": requester_id,
                 "final_stage": workflow.progress.stage.value,
                 "executed_stage_count": len(workflow.executed_stages),
                 "qa": execution.qa,
