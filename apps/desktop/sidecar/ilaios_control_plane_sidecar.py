@@ -37,6 +37,7 @@ from services.integrations import (
 from services.integrations.desktop_video_composition import compose_desktop_video_runtime
 from services.integrations.provider_video_runtime import UnavailableProviderVideoRuntime
 from services.integrations.video_runtime import VideoRuntimeError
+from services.integrations.web_vercel_delivery import VercelWebDeploymentAdapter
 from services.openrouter_agent_catalog import (
     OpenRouterAgentCatalogError,
     discover_free_openrouter_agent_configuration,
@@ -233,6 +234,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         grant_policy,
         governance,
         root / "web",
+        delivery_adapter=_configured_web_delivery_adapter(),
     )
     software_runtime = RecoverableSoftwareProductRuntime(
         root / "software-product-proof.sqlite3",
@@ -550,6 +552,29 @@ def _ensure_packaged_identity_configuration() -> None:
         document,
         sort_keys=True,
         separators=(",", ":"),
+    )
+
+
+def _configured_web_delivery_adapter() -> VercelWebDeploymentAdapter | None:
+    """Return the existing Vercel boundary only when its opaque env configuration is complete."""
+
+    required = {
+        "team_id": os.environ.get("ILAIOS_VERCEL_TEAM_ID", "").strip(),
+        "project_id": os.environ.get("ILAIOS_VERCEL_PROJECT_ID", "").strip(),
+        "project_name": os.environ.get("ILAIOS_VERCEL_PROJECT_NAME", "").strip(),
+        "production_alias": os.environ.get("ILAIOS_VERCEL_PRODUCTION_ALIAS", "").strip(),
+    }
+    token = os.environ.get("ILAIOS_VERCEL_TOKEN", "").strip()
+    if not any(required.values()) and not token:
+        return None
+    if not all(required.values()) or not token:
+        raise RuntimeError("ILAIOS Vercel Web delivery configuration is incomplete")
+    return VercelWebDeploymentAdapter(
+        team_id=required["team_id"],
+        project_id=required["project_id"],
+        project_name=required["project_name"],
+        production_alias=required["production_alias"],
+        credential_provider=lambda: os.environ.get("ILAIOS_VERCEL_TOKEN", ""),
     )
 
 

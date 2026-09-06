@@ -22,7 +22,7 @@ from services.control_plane import (
     ProposedTask,
     RiskClass,
 )
-from services.governance import GovernedRuntimeGateway
+from services.governance import GateError, GovernedRuntimeGateway
 from services.runtime import (
     BlastRadiusBudget,
     DurableGrantPolicy,
@@ -32,6 +32,7 @@ from services.runtime import (
 from src.video_automation.models import JobState
 
 from .product_runtime import ProductFinalizationPending
+from .web_delivery import WebDeploymentReceipt
 from .web_factory import (
     GovernedWebFactory,
     WebsiteAcceptance,
@@ -39,6 +40,7 @@ from .web_factory import (
     derive_website_spec,
 )
 from .web_project import materialize_next_project
+from .web_vercel_delivery import VercelWebDeploymentAdapter
 
 _VERIFIED_LOCAL_FEATURES = frozenset({"contact-form"})
 
@@ -63,12 +65,14 @@ class DurableWebProductRuntime:
         grants: DurableGrantPolicy,
         governance: GovernedRuntimeGateway,
         artifact_root: Path,
+        delivery_adapter: VercelWebDeploymentAdapter | None = None,
     ) -> None:
         self._database_path = database_path
         self._control_plane = control_plane
         self._grants = grants
         self._governance = governance
         self._artifact_root = artifact_root
+        self._delivery_adapter = delivery_adapter
         self._factory = GovernedWebFactory(GrantPolicy(), artifact_root)
         artifact_root.mkdir(parents=True, exist_ok=True)
         database_path.parent.mkdir(parents=True, exist_ok=True)
@@ -79,6 +83,20 @@ class DurableWebProductRuntime:
                 "job_id TEXT NOT NULL, proposal_id TEXT NOT NULL, "
                 "principal_id TEXT NOT NULL, tenant_id TEXT NOT NULL, "
                 "spec_json TEXT NOT NULL, status TEXT NOT NULL, manifest_json TEXT)"
+            )
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS web_product_deployments ("
+                "request_id TEXT NOT NULL, deployment_id TEXT NOT NULL, "
+                "operation TEXT NOT NULL, receipt_json TEXT NOT NULL, "
+                "recorded_at TEXT NOT NULL, "
+                "PRIMARY KEY (request_id, deployment_id, operation))"
+            )
+            connection.execute(
+                "CREATE TABLE IF NOT EXISTS web_product_publish_requests ("
+                "request_id TEXT NOT NULL, publish_request_id TEXT NOT NULL, "
+                "source_project_digest TEXT NOT NULL, status TEXT NOT NULL, "
+                "created_at TEXT NOT NULL, "
+                "PRIMARY KEY (request_id, publish_request_id))"
             )
             connection.execute(
                 "CREATE TABLE IF NOT EXISTS web_product_closure ("
@@ -493,6 +511,292 @@ class DurableWebProductRuntime:
             "reason": None if closure is None else str(closure["reason"]),
             "terminal_at": None if closure is None else str(closure["terminal_at"]),
         }
+
+    def preview(
+        self,
+        request_id: str,
+        *,
+        requester_id: str,
+        tenant_id: str,
+        now: datetime,
+    ) -> dict[str, object]:
+        """Create a governed immutable preview for one accepted Web artifact."""
+
+        adapter, manifest = self._delivery_ready(
+            request_id, requester_id=requester_id, tenant_id=tenant_id
+        )
+        receipt = adapter.preview(
+            Path(str(manifest["source_project_path"])),
+            source_commit_sha=self._bound_source_sha(manifest),
+            expected_artifact_sha256=str(manifest["source_project_digest"]),
+            preview_authorization_proven=True,
+            budget_proven=True,
+            now=now,
+        )
+        self._record_deployment(request_id, "preview", receipt, now)
+        return receipt.to_dict()
+
+    def publish(
+        self,
+        request_id: str,
+        *,
+        requester_id: str,
+        tenant_id: str,
+        now: datetime,
+    ) -> dict[str, object]:
+        """Promote an accepted artifact only after canonical admission is proven."""
+
+        adapter, manifest = self._delivery_ready(
+            request_id, requester_id=requester_id, tenant_id=tenant_id
+        )
+        publish_request_id = self._publish_request_id(
+            request_id, str(manifest["source_project_digest"])
+        )
+        admission = self._governance.admission_snapshot(publish_request_id)
+        if admission["admission_proven"] is not True:
+            raise WebProductRuntimeError("Web publish approval is not proven")
+        try:
+            self._governance.authorize_billable(publish_request_id)
+        except GateError as error:
+            raise WebProductRuntimeError("Web publish budget reservation is not proven") from error
+        latest = self._latest_receipt(request_id, operation="publish")
+        try:
+            receipt = adapter.deploy(
+                Path(str(manifest["source_project_path"])),
+                source_commit_sha=self._bound_source_sha(manifest),
+                expected_artifact_sha256=str(manifest["source_project_digest"]),
+                rollback_reference=None if latest is None else str(latest["deployment_id"]),
+                authorization_proven=True,
+                budget_proven=True,
+                now=now,
+            )
+        except Exception:
+            self._governance.reconcile_billable(
+                publish_request_id, actual_minor=0, status="failed"
+            )
+            self._set_publish_request_status(request_id, publish_request_id, "failed")
+            raise
+        self._record_deployment(request_id, "publish", receipt, now)
+        self._governance.reconcile_billable(
+            publish_request_id,
+            actual_minor=0,
+            status="executed",
+            result={"deployment_receipt": receipt.to_dict()},
+        )
+        self._set_publish_request_status(request_id, publish_request_id, "published")
+        return receipt.to_dict()
+
+    def request_publish(
+        self,
+        request_id: str,
+        *,
+        requester_id: str,
+        tenant_id: str,
+        now: datetime,
+    ) -> dict[str, object]:
+        """Create the canonical high-risk admission required for one publish."""
+
+        _, manifest = self._delivery_ready(
+            request_id, requester_id=requester_id, tenant_id=tenant_id
+        )
+        digest = str(manifest["source_project_digest"])
+        publish_request_id = self._publish_request_id(request_id, digest)
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT status FROM web_product_publish_requests "
+                "WHERE request_id=? AND publish_request_id=?",
+                (request_id, publish_request_id),
+            ).fetchone()
+        if row is None:
+            self._governance.submit(
+                publish_request_id,
+                requester_id,
+                "web-agent",
+                "web-factory-publish-v1",
+                "web.publish",
+                {
+                    "web_request_id": request_id,
+                    "tenant_id": tenant_id,
+                    "source_commit_sha": self._bound_source_sha(manifest),
+                    "source_project_digest": digest,
+                },
+                (),
+                risk="high",
+            )
+            with self._connect() as connection:
+                connection.execute(
+                    "INSERT INTO web_product_publish_requests VALUES (?, ?, ?, 'pending_approval', ?)",
+                    (request_id, publish_request_id, digest, now.isoformat()),
+                )
+        admission = self._governance.admission_snapshot(publish_request_id)
+        return {
+            "request_id": request_id,
+            "publish_request_id": publish_request_id,
+            "status": "approved" if admission["admission_proven"] is True else "pending_approval",
+            "human_approval_required": admission["human_approval_required"],
+        }
+
+    def decide_publish(
+        self,
+        request_id: str,
+        *,
+        requester_id: str,
+        tenant_id: str,
+        approver_id: str,
+        decision: str,
+    ) -> dict[str, object]:
+        """Apply an independent decision through the existing approval authority."""
+
+        _, manifest = self._delivery_ready(
+            request_id, requester_id=requester_id, tenant_id=tenant_id
+        )
+        publish_request_id = self._publish_request_id(
+            request_id, str(manifest["source_project_digest"])
+        )
+        try:
+            self._governance.decide(publish_request_id, approver_id, decision)
+        except GateError as error:
+            raise WebProductRuntimeError("Web publish decision was rejected") from error
+        status = "approved" if decision == "approved" else "denied"
+        self._set_publish_request_status(request_id, publish_request_id, status)
+        return {"request_id": request_id, "publish_request_id": publish_request_id, "status": status}
+
+    def rollback(
+        self,
+        request_id: str,
+        deployment_id: str,
+        *,
+        requester_id: str,
+        tenant_id: str,
+        now: datetime,
+    ) -> dict[str, object]:
+        """Restore one previously recorded, same-request production deployment."""
+
+        adapter, manifest = self._delivery_ready(
+            request_id, requester_id=requester_id, tenant_id=tenant_id
+        )
+        target = self._recorded_receipt(request_id, deployment_id)
+        current = self._latest_receipt(request_id, operation="publish")
+        receipt = adapter.rollback(
+            deployment_id,
+            source_commit_sha=str(target["source_commit_sha"]),
+            expected_artifact_sha256=str(target["artifact_sha256"]),
+            replaced_deployment_id=None if current is None else str(current["deployment_id"]),
+            authorization_proven=True,
+            budget_proven=True,
+            now=now,
+        )
+        if receipt.source_commit_sha != self._bound_source_sha(manifest):
+            raise WebProductRuntimeError("rollback provenance does not match accepted Web artifact")
+        self._record_deployment(request_id, "rollback", receipt, now)
+        return receipt.to_dict()
+
+    def deployment_history(
+        self,
+        request_id: str,
+        *,
+        requester_id: str,
+        tenant_id: str,
+    ) -> list[dict[str, object]]:
+        self._require_owner(request_id, requester_id=requester_id, tenant_id=tenant_id)
+        with self._connect() as connection:
+            rows = connection.execute(
+                "SELECT receipt_json FROM web_product_deployments WHERE request_id=? "
+                "ORDER BY rowid",
+                (request_id,),
+            ).fetchall()
+        return [cast(dict[str, object], json.loads(str(row["receipt_json"]))) for row in rows]
+
+    def _delivery_ready(
+        self, request_id: str, *, requester_id: str, tenant_id: str
+    ) -> tuple[VercelWebDeploymentAdapter, dict[str, object]]:
+        if self._delivery_adapter is None:
+            raise WebProductRuntimeError("canonical Vercel Web delivery is not configured")
+        self._require_owner(request_id, requester_id=requester_id, tenant_id=tenant_id)
+        manifest = self.get_manifest(request_id)
+        admission = self._governance.admission_snapshot(request_id)
+        if admission["admission_proven"] is not True:
+            raise WebProductRuntimeError("Web delivery admission or approval is not proven")
+        if not all(
+            (
+                manifest.get("accepted") is True,
+                manifest.get("identity_proven") is True,
+                manifest.get("source_commit_bound") is True,
+                bool(manifest.get("source_project_path")),
+                bool(manifest.get("source_project_digest")),
+            )
+        ):
+            raise WebProductRuntimeError("accepted Web artifact provenance is incomplete")
+        return self._delivery_adapter, manifest
+
+    def _require_owner(self, request_id: str, *, requester_id: str, tenant_id: str) -> None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT principal_id, tenant_id FROM web_product_requests WHERE request_id=?",
+                (request_id,),
+            ).fetchone()
+        if row is None:
+            raise WebProductRuntimeError("unknown web product request")
+        if row["principal_id"] != requester_id or row["tenant_id"] != tenant_id:
+            raise WebProductRuntimeError("cross-tenant Web delivery denied")
+
+    @staticmethod
+    def _bound_source_sha(manifest: dict[str, object]) -> str:
+        value = manifest.get("source_commit_sha")
+        if not isinstance(value, str) or len(value) != 40:
+            raise WebProductRuntimeError("accepted Web source commit is not bound")
+        return value
+
+    def _record_deployment(
+        self, request_id: str, operation: str, receipt: WebDeploymentReceipt, now: datetime
+    ) -> None:
+        if receipt.contract != "web.deployment-receipt.v1":
+            raise WebProductRuntimeError("Web deployment receipt contract is not canonical")
+        if operation == "preview" and receipt.public_production_proven:
+            raise WebProductRuntimeError("preview receipt cannot claim production")
+        if operation != "preview" and not receipt.public_production_proven:
+            raise WebProductRuntimeError("public Web delivery was not externally verified")
+        with self._connect() as connection:
+            connection.execute(
+                "INSERT OR REPLACE INTO web_product_deployments VALUES (?, ?, ?, ?, ?)",
+                (request_id, receipt.deployment_id, operation,
+                 json.dumps(receipt.to_dict(), sort_keys=True, separators=(",", ":")), now.isoformat()),
+            )
+
+    @staticmethod
+    def _publish_request_id(request_id: str, source_project_digest: str) -> str:
+        return f"{request_id}:web-publish:{source_project_digest[:16]}"
+
+    def _set_publish_request_status(
+        self, request_id: str, publish_request_id: str, status: str
+    ) -> None:
+        with self._connect() as connection:
+            changed = connection.execute(
+                "UPDATE web_product_publish_requests SET status=? "
+                "WHERE request_id=? AND publish_request_id=?",
+                (status, request_id, publish_request_id),
+            ).rowcount
+        if changed != 1:
+            raise WebProductRuntimeError("Web publish admission record is unavailable")
+
+    def _latest_receipt(self, request_id: str, *, operation: str) -> dict[str, object] | None:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT receipt_json FROM web_product_deployments WHERE request_id=? AND operation=? "
+                "ORDER BY recorded_at DESC LIMIT 1", (request_id, operation)
+            ).fetchone()
+        return None if row is None else cast(dict[str, object], json.loads(str(row["receipt_json"])))
+
+    def _recorded_receipt(self, request_id: str, deployment_id: str) -> dict[str, object]:
+        with self._connect() as connection:
+            row = connection.execute(
+                "SELECT receipt_json FROM web_product_deployments WHERE request_id=? AND deployment_id=? "
+                "AND operation IN ('publish', 'rollback') ORDER BY recorded_at DESC LIMIT 1",
+                (request_id, deployment_id),
+            ).fetchone()
+        if row is None:
+            raise WebProductRuntimeError("rollback deployment is not in this Web product history")
+        return cast(dict[str, object], json.loads(str(row["receipt_json"])))
 
     def interrupt(
         self,
