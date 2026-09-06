@@ -46,6 +46,7 @@ Future<void> _navigateWithoutPointerGesture(
     final item = find.text(secondaryLabel);
     expect(item, findsOneWidget);
     await tester.tap(item);
+    await tester.pumpAndSettle();
     return;
   }
 
