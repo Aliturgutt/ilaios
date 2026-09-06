@@ -3,8 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/app/ilaios_theme.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
+import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/features/operations/reference_costs_view_v2.dart';
 import 'package:ilaios_desktop/main.dart';
+
+import 'secondary_navigation_test_support.dart';
 
 void main() {
   testWidgets('Costs V4 collapses analytics when authoritative telemetry is unavailable', (
@@ -15,8 +18,7 @@ void main() {
 
     await tester.pumpWidget(const IlaiosDesktopApp());
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('nav-costs')));
-    await tester.pumpAndSettle();
+    await openSecondaryDesktopSection(tester, DesktopSection.costs);
 
     expect(find.byKey(const Key('reference-costs-page')), findsOneWidget);
     expect(find.byKey(const Key('costs-summary-strip')), findsNothing);
