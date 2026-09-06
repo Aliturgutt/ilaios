@@ -18,16 +18,28 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Ana Sayfa'), findsOneWidget);
-    expect(find.text('İş Akışları'), findsOneWidget);
-    expect(find.text('Ajanlar'), findsOneWidget);
-    expect(find.text('Çıktılar'), findsOneWidget);
-    expect(find.text('Onaylar'), findsOneWidget);
-    expect(find.text('Kanıtlar'), findsOneWidget);
-    expect(find.text('Ayarlar'), findsOneWidget);
-    expect(find.text('Hedefler'), findsNothing);
-    expect(find.text('Canlı Çalışma Alanı'), findsNothing);
-    expect(find.text('Maliyetler'), findsNothing);
+    final sidebar = find.byKey(const Key('reference-desktop-sidebar-v5'));
+    expect(sidebar, findsOneWidget);
+    for (final label in <String>[
+      'Ana Sayfa',
+      'İş Akışları',
+      'Ajanlar',
+      'Çıktılar',
+      'Onaylar',
+      'Kanıtlar',
+      'Ayarlar',
+    ]) {
+      expect(
+        find.descendant(of: sidebar, matching: find.text(label)),
+        findsOneWidget,
+      );
+    }
+    expect(find.descendant(of: sidebar, matching: find.text('Hedefler')), findsNothing);
+    expect(
+      find.descendant(of: sidebar, matching: find.text('Canlı Çalışma Alanı')),
+      findsNothing,
+    );
+    expect(find.descendant(of: sidebar, matching: find.text('Maliyetler')), findsNothing);
     expect(find.text('Proje'), findsOneWidget);
     expect(find.text('Çevrimdışı'), findsWidgets);
     expect(find.text('Home'), findsNothing);
