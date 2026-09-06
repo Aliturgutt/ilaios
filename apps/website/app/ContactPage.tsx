@@ -19,39 +19,41 @@ const copy = {
 
 const heroStyle = {
   display: "grid",
-  gridTemplateColumns: "minmax(0, 0.9fr) minmax(360px, 1.1fr)",
+  gridTemplateColumns: "minmax(0, 0.9fr) minmax(320px, 1.1fr)",
   alignItems: "center",
-  gap: "48px",
-  paddingTop: "44px",
-  paddingBottom: "36px",
+  gap: "36px",
+  paddingTop: "36px",
+  paddingBottom: "30px",
 } as const;
 
 const titleStyle = {
-  maxWidth: "620px",
-  marginTop: "12px",
+  maxWidth: "560px",
+  marginTop: "10px",
   marginBottom: 0,
-  fontSize: "clamp(2.35rem, 4vw, 3.7rem)",
-  lineHeight: 1.02,
-  letterSpacing: "-0.045em",
+  fontSize: "clamp(2rem, 3.2vw, 3rem)",
+  lineHeight: 1.04,
+  letterSpacing: "-0.04em",
 } as const;
 
 const leadWrapStyle = {
   justifySelf: "end",
-  width: "min(100%, 560px)",
+  width: "min(100%, 520px)",
 } as const;
 
 const leadStyle = {
   margin: 0,
-  maxWidth: "44ch",
+  maxWidth: "42ch",
+  fontSize: "clamp(1rem, 1.25vw, 1.2rem)",
+  lineHeight: 1.5,
 } as const;
 
 const primaryStyle = {
   display: "inline-flex",
-  marginTop: "18px",
+  marginTop: "16px",
   minHeight: "44px",
   alignItems: "center",
   justifyContent: "center",
-  padding: "0 20px",
+  padding: "0 18px",
   border: "1px solid #808080",
   borderRadius: "8px",
   background: "transparent",
@@ -67,6 +69,6 @@ export default function ContactPage({ locale }: { locale: Locale }) {
       <div><div className="eyebrow">{c.eyebrow}</div><h1 style={titleStyle}>{c.title}</h1></div>
       <div style={leadWrapStyle}><p className="lead" style={leadStyle}>{c.lead}</p><p><a className="button secondary" style={primaryStyle} href={`mailto:${c.primary}`}>{c.primary}</a></p></div>
     </section>
-    <section className="section compact-section" style={{paddingTop: "24px", paddingBottom: "32px"}}><div className="shell contact-directory" data-visual-role="contact-directory">{c.topics.map(([title, description, email], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{description}</p></div><a href={`mailto:${email}`}>{email}</a></article>)}</div></section>
+    <section className="section compact-section" style={{paddingTop: "20px", paddingBottom: "28px"}}><div className="shell contact-directory" data-visual-role="contact-directory">{c.topics.map(([title, description, email], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{description}</p></div><a href={`mailto:${email}`}>{email}</a></article>)}</div></section>
   </>;
 }
