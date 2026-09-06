@@ -245,4 +245,4 @@ def test_visual_qa_covers_all_localized_routes_in_light_and_dark_with_real_mobil
     assert "inspect_minimal_header" in qa
     assert "removed top-navigation controls are still rendered" in qa
     assert "minimal header geometry drift" in qa
-    assert '"localized_routes": len(ROUTES) * 2' in qa
+    assert '"localized_routes":len(ROUTES)*2' in qa
