@@ -1,3 +1,8 @@
+import 'package:flutter/material.dart';
+
+import '../../control_plane/client.dart';
+import '../../control_plane/evidence_record.dart';
+import '../../control_plane/operational_snapshot.dart';
 import 'approvals_view.dart';
 import 'evidence_view.dart';
 
@@ -9,14 +14,80 @@ export 'operational_views_legacy.dart' hide EvidenceView, GovernanceView;
 /// `GovernanceView`. Keep that public contract stable while rendering the
 /// approved dark/light Approvals design and preserving the authoritative
 /// governance decision callback.
-class GovernanceView extends ApprovalsView {
+class GovernanceView extends StatelessWidget {
   const GovernanceView({
-    required super.snapshot,
-    required super.status,
-    super.approverId,
-    super.onDecision,
+    required this.snapshot,
+    required this.status,
+    this.approverId,
+    this.onDecision,
     super.key,
   });
+
+  final OperationalSnapshot snapshot;
+  final String status;
+  final String? approverId;
+  final Future<void> Function(String requestId, GovernanceDecision decision)?
+      onDecision;
+
+  bool get _hasQueueItems {
+    final raw = snapshot.governanceState['work'];
+    return raw is List<Object?> && raw.isNotEmpty;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_hasQueueItems) {
+      return ApprovalsView(
+        snapshot: snapshot,
+        status: status,
+        approverId: approverId,
+        onDecision: onDecision,
+      );
+    }
+
+    return Container(
+      key: const Key('reference-approvals-page'),
+      color: Theme.of(context).scaffoldBackgroundColor,
+      padding: const EdgeInsets.fromLTRB(24, 18, 24, 18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            Localizations.localeOf(context).languageCode == 'tr'
+                ? 'Onaylar'
+                : 'Approvals',
+            style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w700,
+                  height: 1.15,
+                ),
+          ),
+          const SizedBox(height: 18),
+          Expanded(
+            child: Container(
+              key: const Key('approvals-table'),
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.surfaceContainerLowest,
+                border: Border.all(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                Localizations.localeOf(context).languageCode == 'tr'
+                    ? 'Karar kuyruğunda talep yok.'
+                    : 'No requests in the decision queue.',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Compatibility entry point for the canonical Evidence navigation item.
