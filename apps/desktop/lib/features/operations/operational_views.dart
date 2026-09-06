@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../control_plane/client.dart';
+import '../../control_plane/evidence_record.dart';
 import '../../control_plane/operational_snapshot.dart';
 import 'approvals_view.dart';
 import 'evidence_view.dart';
@@ -96,14 +97,137 @@ class GovernanceView extends StatelessWidget {
 
 /// Compatibility entry point for the canonical Evidence navigation item.
 ///
-/// The screenshot references define presentation only. Evidence records remain
-/// authority-derived from the operational snapshot, and unsupported fields are
-/// rendered as unavailable rather than synthesized.
-class EvidenceView extends ReferenceEvidenceView {
+/// Search and filtering are presentation-only operations over the local
+/// authoritative evidence projection. They never mutate Evidence records or
+/// create a second evidence taxonomy/authority.
+class EvidenceView extends StatefulWidget {
   const EvidenceView({
-    required super.snapshot,
-    required super.status,
-    super.onSaveArtifact,
+    required this.snapshot,
+    required this.status,
+    this.onSaveArtifact,
     super.key,
   });
+
+  final OperationalSnapshot snapshot;
+  final String status;
+  final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
+
+  @override
+  State<EvidenceView> createState() => _EvidenceViewState();
+}
+
+class _EvidenceViewState extends State<EvidenceView> {
+  static const _all = '__all__';
+
+  final TextEditingController _searchController = TextEditingController();
+  String _query = '';
+  String _action = _all;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = Localizations.localeOf(context).languageCode == 'tr';
+    final actions = widget.snapshot.evidenceRecords
+        .map((record) => record.action.trim())
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList(growable: false)
+      ..sort();
+    final effectiveAction = actions.contains(_action) ? _action : _all;
+    final query = _query.trim().toLowerCase();
+    final filtered = widget.snapshot.evidenceRecords.where((record) {
+      final actionMatches =
+          effectiveAction == _all || record.action == effectiveAction;
+      if (!actionMatches) return false;
+      if (query.isEmpty) return true;
+      return '${record.sequence} ${record.executionId} ${record.artifactDigest} '
+              '${record.action} ${record.previousHash} ${record.recordHash}'
+          .toLowerCase()
+          .contains(query);
+    }).toList(growable: false);
+
+    final filteredSnapshot = OperationalSnapshot(
+      runtimeRoutes: widget.snapshot.runtimeRoutes,
+      schedulerState: widget.snapshot.schedulerState,
+      grantsState: widget.snapshot.grantsState,
+      governanceState: widget.snapshot.governanceState,
+      evidenceRecords: filtered,
+      liveEvents: widget.snapshot.liveEvents,
+      agentState: widget.snapshot.agentState,
+    );
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+          child: Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 38,
+                  child: TextField(
+                    key: const Key('evidence-search'),
+                    controller: _searchController,
+                    onChanged: (value) => setState(() => _query = value),
+                    decoration: InputDecoration(
+                      isDense: true,
+                      prefixIcon: const Icon(Icons.search_rounded, size: 17),
+                      hintText: tr ? 'Kanıtlarda ara' : 'Search evidence',
+                      border: const OutlineInputBorder(),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                key: const Key('evidence-filter'),
+                width: 210,
+                height: 38,
+                child: DropdownButtonFormField<String>(
+                  initialValue: effectiveAction,
+                  isExpanded: true,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    prefixIcon: const Icon(Icons.filter_list_rounded, size: 17),
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                  ),
+                  items: [
+                    DropdownMenuItem<String>(
+                      value: _all,
+                      child: Text(tr ? 'Tüm kanıt türleri' : 'All evidence types'),
+                    ),
+                    for (final action in actions)
+                      DropdownMenuItem<String>(
+                        value: action,
+                        child: Text(
+                          action,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                  ],
+                  onChanged: (value) => setState(() => _action = value ?? _all),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 2),
+        Expanded(
+          child: ReferenceEvidenceView(
+            snapshot: filteredSnapshot,
+            status: widget.status,
+            onSaveArtifact: widget.onSaveArtifact,
+          ),
+        ),
+      ],
+    );
+  }
 }
