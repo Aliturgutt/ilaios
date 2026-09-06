@@ -111,47 +111,37 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
           width: width,
           height: height,
           child: Scaffold(
-            body: Column(
+            body: Row(
               children: [
+                _Sidebar(
+                  selected: _section,
+                  liSelected: _liSelected,
+                  projection: widget.projection,
+                  snapshot: widget.operationalSnapshot,
+                  userSession: widget.userSession,
+                  onSelected: _select,
+                  onLiSelected: _selectLi,
+                ),
+                VerticalDivider(
+                  width: 1,
+                  thickness: 1,
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
                 Expanded(
-                  child: Row(
+                  child: Column(
                     children: [
-                      _Sidebar(
-                        selected: _section,
-                        liSelected: _liSelected,
+                      _TopBar(
                         projection: widget.projection,
                         snapshot: widget.operationalSnapshot,
                         userSession: widget.userSession,
-                        onSelected: _select,
-                        onLiSelected: _selectLi,
+                        themeMode: widget.themeMode,
+                        onThemeModeChanged: widget.onThemeModeChanged,
+                        onLogout: widget.onLogout,
+                        onNavigate: _select,
                       ),
-                      VerticalDivider(
-                        width: 1,
-                        thickness: 1,
-                        color: Theme.of(context).colorScheme.outlineVariant,
-                      ),
-                      Expanded(
-                        child: Column(
-                          children: [
-                            _TopBar(
-                              projection: widget.projection,
-                              snapshot: widget.operationalSnapshot,
-                              userSession: widget.userSession,
-                              themeMode: widget.themeMode,
-                              onThemeModeChanged: widget.onThemeModeChanged,
-                              onLogout: widget.onLogout,
-                              onNavigate: _select,
-                            ),
-                            Expanded(child: _buildSection()),
-                          ],
-                        ),
-                      ),
+                      Expanded(child: _buildSection()),
                     ],
                   ),
-                ),
-                _BottomStatusBar(
-                  projection: widget.projection,
-                  snapshot: widget.operationalSnapshot,
                 ),
               ],
             ),
@@ -176,70 +166,70 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
       );
     }
     return switch (_section) {
-        DesktopSection.home => ReferenceHomeDashboardV2(
-            projection: widget.projection,
-            snapshot: widget.operationalSnapshot,
-            status: widget.operationalStatus,
-            userSession: widget.userSession,
-            onPromptSubmit: widget.onPromptSubmit,
-            onNavigate: _select,
-            onRefreshRequested: widget.onRefreshRequested,
-          ),
-        DesktopSection.goals => CreateView(
-            projection: widget.projection,
-            status: widget.operationalStatus,
-            identityProviders: widget.identityProviders,
-            userSession: widget.userSession,
-            identityStatus: widget.identityStatus,
-            onSignIn: widget.onSignIn,
-            onLogout: widget.onLogout,
-            referenceAssets: widget.referenceAssets,
-            onSubmit: widget.onPromptSubmit,
-          ),
-        DesktopSection.workflows => ControlCenterView(
-            projection: widget.projection,
-            operationalSnapshot: widget.operationalSnapshot,
-            operationalStatus: widget.operationalStatus,
-            onRefreshRequested: widget.onRefreshRequested,
-            onNavigate: _select,
-          ),
-        DesktopSection.agents => ReferenceAgentsView(
-            projection: widget.projection,
-            snapshot: widget.operationalSnapshot,
-            status: widget.operationalStatus,
-            onNavigate: _select,
-            onRefreshRequested: widget.onRefreshRequested,
-          ),
-        DesktopSection.liveWorkspace => LiveWorkspaceView(
-            snapshot: widget.operationalSnapshot,
-            status: widget.operationalStatus,
-          ),
-        DesktopSection.artifacts => DeliveriesView(
-            snapshot: widget.operationalSnapshot,
-            status: widget.operationalStatus,
-            onSaveArtifact: widget.onSaveArtifact,
-          ),
-        DesktopSection.approvals => GovernanceView(
-            snapshot: widget.operationalSnapshot,
-            status: widget.operationalStatus,
-            approverId: widget.approverId,
-            onDecision: widget.onGovernanceDecision,
-          ),
-        DesktopSection.evidence => EvidenceView(
-            snapshot: widget.operationalSnapshot,
-            status: widget.operationalStatus,
-          ),
-        DesktopSection.costs => CostsView(
-            snapshot: widget.operationalSnapshot,
-            status: widget.operationalStatus,
-          ),
-        DesktopSection.settings => SettingsView(
-            projection: widget.projection,
-            identityStatus: widget.identityStatus,
-            userSession: widget.userSession,
-            providers: widget.identityProviders,
-          ),
-      };
+      DesktopSection.home => ReferenceHomeDashboardV2(
+          projection: widget.projection,
+          snapshot: widget.operationalSnapshot,
+          status: widget.operationalStatus,
+          userSession: widget.userSession,
+          onPromptSubmit: widget.onPromptSubmit,
+          onNavigate: _select,
+          onRefreshRequested: widget.onRefreshRequested,
+        ),
+      DesktopSection.goals => CreateView(
+          projection: widget.projection,
+          status: widget.operationalStatus,
+          identityProviders: widget.identityProviders,
+          userSession: widget.userSession,
+          identityStatus: widget.identityStatus,
+          onSignIn: widget.onSignIn,
+          onLogout: widget.onLogout,
+          referenceAssets: widget.referenceAssets,
+          onSubmit: widget.onPromptSubmit,
+        ),
+      DesktopSection.workflows => ControlCenterView(
+          projection: widget.projection,
+          operationalSnapshot: widget.operationalSnapshot,
+          operationalStatus: widget.operationalStatus,
+          onRefreshRequested: widget.onRefreshRequested,
+          onNavigate: _select,
+        ),
+      DesktopSection.agents => ReferenceAgentsView(
+          projection: widget.projection,
+          snapshot: widget.operationalSnapshot,
+          status: widget.operationalStatus,
+          onNavigate: _select,
+          onRefreshRequested: widget.onRefreshRequested,
+        ),
+      DesktopSection.liveWorkspace => LiveWorkspaceView(
+          snapshot: widget.operationalSnapshot,
+          status: widget.operationalStatus,
+        ),
+      DesktopSection.artifacts => DeliveriesView(
+          snapshot: widget.operationalSnapshot,
+          status: widget.operationalStatus,
+          onSaveArtifact: widget.onSaveArtifact,
+        ),
+      DesktopSection.approvals => GovernanceView(
+          snapshot: widget.operationalSnapshot,
+          status: widget.operationalStatus,
+          approverId: widget.approverId,
+          onDecision: widget.onGovernanceDecision,
+        ),
+      DesktopSection.evidence => EvidenceView(
+          snapshot: widget.operationalSnapshot,
+          status: widget.operationalStatus,
+        ),
+      DesktopSection.costs => CostsView(
+          snapshot: widget.operationalSnapshot,
+          status: widget.operationalStatus,
+        ),
+      DesktopSection.settings => SettingsView(
+          projection: widget.projection,
+          identityStatus: widget.identityStatus,
+          userSession: widget.userSession,
+          providers: widget.identityProviders,
+        ),
+    };
   }
 }
 
@@ -256,6 +246,15 @@ class _Sidebar extends StatelessWidget {
 
   static const _darkLogo = '../../brand/assets/05-ilaios-app-icon.jpg';
   static const _lightLogo = '../../brand/assets/13-ilaios-primary-horizontal-light.jpg';
+  static const _primarySections = <DesktopSection>[
+    DesktopSection.home,
+    DesktopSection.workflows,
+    DesktopSection.agents,
+    DesktopSection.artifacts,
+    DesktopSection.approvals,
+    DesktopSection.evidence,
+    DesktopSection.settings,
+  ];
 
   final DesktopSection selected;
   final bool liSelected;
@@ -275,7 +274,7 @@ class _Sidebar extends StatelessWidget {
         key: const Key('reference-desktop-sidebar-v5'),
         width: 222,
         color: Theme.of(context).colorScheme.surfaceContainerLow,
-        padding: const EdgeInsets.fromLTRB(12, 8, 12, 10),
+        padding: const EdgeInsets.fromLTRB(12, 10, 12, 10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -284,30 +283,52 @@ class _Sidebar extends StatelessWidget {
               image: true,
               child: SizedBox(
                 key: const Key('reference-brand-lockup-v9'),
-                height: 62,
+                height: 76,
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: Image.asset(
-                    isDark ? _darkLogo : _lightLogo,
-                    key: Key(isDark
-                        ? 'reference-brand-horizontal-dark'
-                        : 'reference-brand-horizontal-light'),
-                    width: 184,
-                    height: 50,
-                    fit: BoxFit.contain,
-                    alignment: Alignment.centerLeft,
-                    filterQuality: FilterQuality.high,
-                    gaplessPlayback: true,
-                  ),
+                  child: isDark
+                      ? Row(
+                          children: [
+                            Image.asset(
+                              _darkLogo,
+                              key: const Key('reference-brand-horizontal-dark'),
+                              width: 48,
+                              height: 48,
+                              fit: BoxFit.contain,
+                              filterQuality: FilterQuality.high,
+                              gaplessPlayback: true,
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'ILAIOS',
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 1.8,
+                                color: Theme.of(context).colorScheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Image.asset(
+                          _lightLogo,
+                          key: const Key('reference-brand-horizontal-light'),
+                          width: 184,
+                          height: 50,
+                          fit: BoxFit.contain,
+                          alignment: Alignment.centerLeft,
+                          filterQuality: FilterQuality.high,
+                          gaplessPlayback: true,
+                        ),
                 ),
               ),
             ),
-            const SizedBox(height: 5),
+            const SizedBox(height: 8),
             Expanded(
               child: ListView(
                 padding: EdgeInsets.zero,
                 children: [
-                  for (final section in DesktopSection.values)
+                  for (final section in _primarySections)
                     Padding(
                       padding: const EdgeInsets.only(bottom: 4),
                       child: _NavItem(
@@ -326,6 +347,11 @@ class _Sidebar extends StatelessWidget {
                     ),
                 ],
               ),
+            ),
+            const SizedBox(height: 8),
+            _BottomStatusBar(
+              projection: projection,
+              snapshot: snapshot,
             ),
           ],
         ),
@@ -472,6 +498,12 @@ class _TopBar extends StatelessWidget {
   final Future<void> Function()? onLogout;
   final ValueChanged<DesktopSection> onNavigate;
 
+  static const _secondarySections = <DesktopSection>[
+    DesktopSection.goals,
+    DesktopSection.liveWorkspace,
+    DesktopSection.costs,
+  ];
+
   @override
   Widget build(BuildContext context) => Container(
         key: const Key('reference-desktop-topbar-v5'),
@@ -549,9 +581,7 @@ class _TopBar extends StatelessWidget {
                           Icon(
                             Icons.circle,
                             size: 6,
-                            color: projection.connected
-                                ? IlaiosTheme.success
-                                : Theme.of(context).colorScheme.outline,
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 4),
                           if (!compact)
@@ -585,6 +615,25 @@ class _TopBar extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                 ],
+                PopupMenuButton<DesktopSection>(
+                  key: const Key('reference-secondary-navigation'),
+                  tooltip: _isTr(context) ? 'Diğer bölümler' : 'More sections',
+                  onSelected: onNavigate,
+                  icon: const Icon(Icons.more_horiz_rounded, size: 20),
+                  itemBuilder: (context) => [
+                    for (final section in _secondarySections)
+                      PopupMenuItem<DesktopSection>(
+                        value: section,
+                        child: Row(
+                          children: [
+                            Icon(section.icon, size: 17),
+                            const SizedBox(width: 8),
+                            Text(section.localizedLabel(context)),
+                          ],
+                        ),
+                      ),
+                  ],
+                ),
                 IconButton(
                   tooltip: context.tr('shell.notifications'),
                   onPressed: () => _showNotice(context),
@@ -724,9 +773,7 @@ class _AccountControl extends StatelessWidget {
       ),
     );
 
-    final labeledContent = compact
-        ? Tooltip(message: identity, child: content)
-        : content;
+    final labeledContent = compact ? Tooltip(message: identity, child: content) : content;
 
     if (userSession == null || onLogout == null) return labeledContent;
     return PopupMenuButton<String>(
@@ -766,15 +813,16 @@ class _BottomStatusBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       key: const Key('reference-bottom-status-v2'),
-      constraints: const BoxConstraints(minHeight: 40),
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      constraints: const BoxConstraints(minHeight: 68),
+      padding: const EdgeInsets.fromLTRB(10, 9, 10, 8),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerLowest,
-        border: Border(
-          top: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
-        ),
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(6),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
         children: [
           _FlatStatus(
             label: context.tr('shell.systemHealth'),
@@ -783,11 +831,11 @@ class _BottomStatusBar extends StatelessWidget {
                 : context.tr('shell.offline'),
             live: projection.connected,
           ),
-          const Spacer(),
+          const SizedBox(height: 6),
           Text(
-            '© 2026 ILAIOS. ${_isTr(context) ? 'Tüm hakları saklıdır.' : 'All rights reserved.'}',
+            '© 2026 ILAIOS',
             style: TextStyle(
-              fontSize: 12.5,
+              fontSize: 10.5,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
@@ -809,18 +857,35 @@ class _FlatStatus extends StatelessWidget {
   final bool live;
 
   @override
-  Widget build(BuildContext context) => Row(
+  Widget build(BuildContext context) => Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12.5)),
-          const SizedBox(width: 8),
-          if (live) ...[
-            const Icon(Icons.circle, size: 6, color: IlaiosTheme.success),
-            const SizedBox(width: 5),
-          ],
           Text(
-            value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            label,
+            style: TextStyle(
+              fontSize: 11.5,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.circle,
+                size: 6,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Text(
+                  value,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
           ),
         ],
       );
