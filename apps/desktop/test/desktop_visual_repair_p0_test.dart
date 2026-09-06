@@ -93,7 +93,10 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
-      const IlaiosDesktopApp(themeMode: ThemeMode.dark),
+      const IlaiosDesktopApp(
+        key: ValueKey('brand-dark-app'),
+        themeMode: ThemeMode.dark,
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -104,7 +107,10 @@ void main() {
     expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
 
     await tester.pumpWidget(
-      const IlaiosDesktopApp(themeMode: ThemeMode.light),
+      const IlaiosDesktopApp(
+        key: ValueKey('brand-light-app'),
+        themeMode: ThemeMode.light,
+      ),
     );
     await tester.pumpAndSettle();
 
@@ -131,5 +137,6 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Control plane is unreachable'), findsNothing);
+    expect(find.text('Kontrol düzlemine ulaşılamıyor.'), findsWidgets);
   });
 }
