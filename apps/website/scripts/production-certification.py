@@ -121,6 +121,10 @@ def wait_for_exact_release() -> dict[str, Any]:
                     "x-vercel-id": headers.get("x-vercel-id"),
                     "server": headers.get("server"),
                     "cache-control": headers.get("cache-control"),
+                    "strict-transport-security": headers.get("strict-transport-security"),
+                    "x-content-type-options": headers.get("x-content-type-options"),
+                    "x-frame-options": headers.get("x-frame-options"),
+                    "referrer-policy": headers.get("referrer-policy"),
                 }
                 return payload
 
