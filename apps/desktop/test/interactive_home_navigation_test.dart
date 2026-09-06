@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
+
+import 'secondary_navigation_test_support.dart';
 
 void main() {
   testWidgets('V4 Home exposes only real bounded navigation actions', (
@@ -74,7 +77,7 @@ void main() {
     expect(find.byKey(const Key('command-center-home')), findsOneWidget);
   });
 
-  testWidgets('every primary Desktop destination renders in real light theme', (
+  testWidgets('every Desktop destination renders in real light theme', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -90,26 +93,40 @@ void main() {
       Brightness.light,
     );
 
-    for (final destination in <String>[
-      'home',
-      'goals',
-      'workflows',
-      'agents',
-      'liveWorkspace',
-      'artifacts',
-      'approvals',
-      'evidence',
-      'costs',
-      'settings',
+    for (final destination in <DesktopSection>[
+      DesktopSection.home,
+      DesktopSection.workflows,
+      DesktopSection.agents,
+      DesktopSection.artifacts,
+      DesktopSection.approvals,
+      DesktopSection.evidence,
+      DesktopSection.settings,
     ]) {
-      final navigation = find.byKey(ValueKey('nav-$destination'));
+      final navigation = find.byKey(ValueKey('nav-${destination.name}'));
       expect(navigation, findsOneWidget);
       await tester.tap(navigation);
       await tester.pumpAndSettle();
       expect(
         tester.takeException(),
         isNull,
-        reason: '$destination failed to render in light mode',
+        reason: '${destination.name} failed to render in light mode',
+      );
+      expect(
+        Theme.of(tester.element(find.byType(Scaffold).first)).brightness,
+        Brightness.light,
+      );
+    }
+
+    for (final destination in <DesktopSection>[
+      DesktopSection.goals,
+      DesktopSection.liveWorkspace,
+      DesktopSection.costs,
+    ]) {
+      await openSecondaryDesktopSection(tester, destination);
+      expect(
+        tester.takeException(),
+        isNull,
+        reason: '${destination.name} failed to render in light mode',
       );
       expect(
         Theme.of(tester.element(find.byType(Scaffold).first)).brightness,
