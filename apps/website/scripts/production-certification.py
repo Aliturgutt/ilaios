@@ -76,6 +76,7 @@ def http_get(url: str, *, timeout: int = 30) -> tuple[int, dict[str, str], bytes
 def validate_runtime_security_headers(headers: dict[str, str]) -> dict[str, str]:
     """Fail closed on the static website's required live response headers."""
     required = {
+        "content-security-policy": "default-src 'self'",
         "strict-transport-security": "max-age=31536000",
         "x-content-type-options": "nosniff",
         "x-frame-options": "sameorigin",
@@ -121,6 +122,7 @@ def wait_for_exact_release() -> dict[str, Any]:
                     "x-vercel-id": headers.get("x-vercel-id"),
                     "server": headers.get("server"),
                     "cache-control": headers.get("cache-control"),
+                    "content-security-policy": headers.get("content-security-policy"),
                     "strict-transport-security": headers.get("strict-transport-security"),
                     "x-content-type-options": headers.get("x-content-type-options"),
                     "x-frame-options": headers.get("x-frame-options"),
