@@ -615,17 +615,22 @@ class _TopBar extends StatelessWidget {
                   ),
                   const SizedBox(width: 12),
                 ],
-                Row(
+                PopupMenuButton<DesktopSection>(
                   key: const Key('reference-secondary-navigation'),
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
+                  tooltip: _isTr(context) ? 'Diğer bölümler' : 'More sections',
+                  onSelected: onNavigate,
+                  icon: const Icon(Icons.more_horiz_rounded, size: 20),
+                  itemBuilder: (context) => [
                     for (final section in _secondarySections)
-                      IconButton(
-                        key: ValueKey('nav-${section.name}'),
-                        tooltip: section.localizedLabel(context),
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () => onNavigate(section),
-                        icon: Icon(section.icon, size: 18),
+                      PopupMenuItem<DesktopSection>(
+                        value: section,
+                        child: Row(
+                          children: [
+                            Icon(section.icon, size: 17),
+                            const SizedBox(width: 8),
+                            Text(section.localizedLabel(context)),
+                          ],
+                        ),
                       ),
                   ],
                 ),
@@ -678,7 +683,7 @@ class _TopBar extends StatelessWidget {
 
   void _showNotice(BuildContext context) {
     showDialog<void>(
-      context,
+      context: context,
       builder: (context) => AlertDialog(
         title: Text(context.tr('shell.notifications')),
         content: Text(
