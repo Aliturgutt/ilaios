@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
+import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
+
+import 'secondary_navigation_test_support.dart';
 
 void main() {
   for (final size in <Size>[
@@ -31,8 +34,7 @@ void main() {
       final status = tester.getRect(find.byKey(const Key('reference-bottom-status-v2')));
       expect(status.bottom, lessThanOrEqualTo(size.height + .01));
 
-      await tester.tap(find.byKey(const ValueKey('nav-goals')));
-      await tester.pumpAndSettle();
+      await openSecondaryDesktopSection(tester, DesktopSection.goals);
       expect(find.byKey(const Key('reference-goals-page')), findsOneWidget);
       expect(find.byKey(const Key('goals-composer')), findsOneWidget);
       expect(find.byKey(const Key('video-reference-assets')), findsOneWidget);
