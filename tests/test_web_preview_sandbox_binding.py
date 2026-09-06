@@ -1,9 +1,12 @@
 from __future__ import annotations
 
+import socket
 from dataclasses import replace
+from typing import Any
 
 import pytest
 
+import services.web_app_preview_runtime_probe as preview_probe
 from services.integrations.web_delivery import WebDeploymentError, WebDeploymentReceipt
 from services.integrations.web_preview_sandbox_binding import (
     PreviewIsolationAttestation,
@@ -36,6 +39,10 @@ class _Transport:
     def get(self, url: str, *, timeout_seconds: int) -> PreviewHttpProbeResult:
         self.calls.append((url, timeout_seconds))
         return self.result
+
+
+def _public_dns(host: str, port: int, **kwargs: Any) -> list[tuple[Any, ...]]:
+    return [(socket.AF_INET, socket.SOCK_STREAM, socket.IPPROTO_TCP, "", ("93.184.216.34", port))]
 
 
 def _policy() -> ExecutionPolicy:
@@ -137,7 +144,10 @@ def test_binds_exact_preview_receipt_to_trusted_runtime_observation() -> None:
     assert evidence.separate_origin is True
 
 
-def test_probe_uses_exact_receipt_url_artifact_and_isolation_lineage() -> None:
+def test_probe_uses_exact_receipt_url_artifact_and_isolation_lineage(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(preview_probe, "getaddrinfo", _public_dns)
     transport = _Transport(
         PreviewHttpProbeResult(
             final_url=PREVIEW_ORIGIN,
@@ -188,7 +198,10 @@ def test_probe_rejects_non_preview_receipt_before_network() -> None:
     assert transport.calls == []
 
 
-def test_probe_rejects_cross_origin_redirect_after_exact_receipt_probe() -> None:
+def test_probe_rejects_cross_origin_redirect_after_exact_receipt_probe(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(preview_probe, "getaddrinfo", _public_dns)
     transport = _Transport(
         PreviewHttpProbeResult(
             final_url="https://evil.example.net",
