@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../control_plane/client.dart';
-import '../../control_plane/evidence_record.dart';
 import '../../control_plane/operational_snapshot.dart';
 import 'approvals_view.dart';
 import 'evidence_view.dart';
