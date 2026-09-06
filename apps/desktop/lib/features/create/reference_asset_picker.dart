@@ -17,9 +17,6 @@ const MethodChannel _referenceDropChannel = MethodChannel(
   'ilaios/reference-assets-drop',
 );
 
-/// Existing picker controller plus Windows-native image drag/drop, one
-/// separately governed source-video draft, and persistent company Knowledge
-/// documents. Each path retains its existing server authority.
 class ReferenceAssetPickerController extends core.ReferenceAssetPickerController {
   ReferenceAssetPickerController() {
     if (Platform.isWindows) {
@@ -109,8 +106,6 @@ class ReferenceAssetPickerController extends core.ReferenceAssetPickerController
   }
 }
 
-/// Read-only presentation scope for the single existing attachment controller.
-/// This does not own upload, identity, session, routing, or governance authority.
 class ReferenceAssetPickerScope extends InheritedWidget {
   const ReferenceAssetPickerScope({
     required this.controller,
@@ -142,10 +137,6 @@ const _factoryFamilies = <(String, String, IconData)>[
   ('Personal Operations Factory', 'Kişisel Operasyonlar Factory', Icons.person_outline_rounded),
 ];
 
-/// Shared private-input surface. Company documents, reference images and source
-/// video keep their existing governed controllers; Home only changes how those
-/// controls are revealed. The three heavy pickers are collapsed by default and
-/// only one may be expanded at a time.
 class ReferenceAssetPicker extends StatefulWidget {
   const ReferenceAssetPicker({
     required this.controller,
@@ -425,9 +416,6 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
         ],
       );
 
-  // Preserve the existing non-Home compact geometry because packaging and
-  // combined-contract verification depend on this exact governed picker shape.
-  // Home does not use this path; it uses progressive disclosure above.
   Widget _safeCompactStack() => Column(
         key: const Key('compact-reference-asset-stack'),
         mainAxisSize: MainAxisSize.min,
@@ -458,7 +446,7 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
 
   @override
   Widget build(BuildContext context) {
-    final inlineHome = key == const Key('home-prompt-attachments');
+    final inlineHome = widget.key == const Key('home-prompt-attachments');
     if (inlineHome) return _progressiveHome();
     if (widget.compact) return _safeCompactStack();
     return _legacyStack();
