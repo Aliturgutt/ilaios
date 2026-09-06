@@ -43,6 +43,14 @@ html[data-theme="light"] .site-header .explore-menu-panel { background: #FFFFFF;
 html[data-theme="light"] .brand-logo-dark { display: none; }
 html[data-theme="light"] .brand-logo-light { display: block; }
 
+/* Keep the theme-specific logo state stronger than the shared `.brand img`
+   sizing rule, which otherwise makes the hidden logo render beside the active
+   canonical asset in Dark theme. */
+.brand .brand-logo-light { display: none; }
+.brand .brand-logo-dark { display: block; }
+html[data-theme="light"] .brand .brand-logo-dark { display: none; }
+html[data-theme="light"] .brand .brand-logo-light { display: block; }
+
 html[data-theme="light"] .section,
 html[data-theme="light"] .site-footer,
 html[data-theme="light"] .proof-strip {

@@ -43,6 +43,10 @@ def test_light_header_is_canonical_light_surface() -> None:
     assert "border-bottom-color: rgba(10, 10, 10, .10);" in theme
     assert 'html[data-theme="light"] .brand-logo-dark { display: none; }' in theme
     assert 'html[data-theme="light"] .brand-logo-light { display: block; }' in theme
+    assert '.brand .brand-logo-light { display: none; }' in theme
+    assert '.brand .brand-logo-dark { display: block; }' in theme
+    assert 'html[data-theme="light"] .brand .brand-logo-dark { display: none; }' in theme
+    assert 'html[data-theme="light"] .brand .brand-logo-light { display: block; }' in theme
 
 
 def test_mobile_light_theme_neutralizes_legacy_dark_surfaces() -> None:
