@@ -33,6 +33,8 @@ class GovernanceView extends StatelessWidget {
     return raw is List<Object?> && raw.isNotEmpty;
   }
 
+  bool get _governanceUnavailable => snapshot.governanceState.isEmpty;
+
   @override
   Widget build(BuildContext context) {
     if (_hasQueueItems) {
@@ -44,6 +46,7 @@ class GovernanceView extends StatelessWidget {
       );
     }
 
+    final turkish = Localizations.localeOf(context).languageCode == 'tr';
     return Container(
       key: const Key('reference-approvals-page'),
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -52,9 +55,7 @@ class GovernanceView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            Localizations.localeOf(context).languageCode == 'tr'
-                ? 'Onaylar'
-                : 'Approvals',
+            turkish ? 'Onaylar' : 'Approvals',
             style: Theme.of(context).textTheme.headlineMedium?.copyWith(
                   fontSize: 28,
                   fontWeight: FontWeight.w700,
@@ -74,9 +75,13 @@ class GovernanceView extends StatelessWidget {
               ),
               alignment: Alignment.center,
               child: Text(
-                Localizations.localeOf(context).languageCode == 'tr'
-                    ? 'Karar kuyruğunda talep yok.'
-                    : 'No requests in the decision queue.',
+                _governanceUnavailable
+                    ? (turkish
+                        ? 'Yönetişim verisi şu anda kullanılamıyor.'
+                        : 'Governance data is currently unavailable.')
+                    : (turkish
+                        ? 'Karar kuyruğunda talep yok.'
+                        : 'No requests in the decision queue.'),
                 style: TextStyle(
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
