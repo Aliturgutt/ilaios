@@ -248,6 +248,32 @@ class SoftwareFactorySecretScanning:
             scope="STAGED_CHANGESET",
         )
 
+    def scan_history(
+        self,
+        repository_root: Path,
+        *,
+        head_sha: str,
+    ) -> SecretScanReport:
+        """Scan every reachable commit through one immutable revision.
+
+        The command output is consumed in-process and findings preserve only
+        fingerprints, never matched secret material. This detection gate grants
+        no acceptance, deployment, production, or mutation authority.
+        """
+        self._require_sha(head_sha, "head SHA")
+        diff = self._git_diff(
+            repository_root,
+            (
+                "log", "--full-history", "--reverse", "--format=", "--patch",
+                "--unified=0", "--no-color", "--no-ext-diff", head_sha, "--",
+            ),
+        )
+        return self.scan_lines(
+            self.parse_added_lines(diff),
+            scope="FULL_REPOSITORY_HISTORY",
+            head_sha=head_sha,
+        )
+
     @staticmethod
     def parse_added_lines(diff: str) -> tuple[ChangedLine, ...]:
         current_path: str | None = None
@@ -435,16 +461,25 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--base-sha")
     parser.add_argument("--head-sha")
     parser.add_argument("--staged", action="store_true")
+    parser.add_argument("--history", action="store_true")
     args = parser.parse_args(argv)
 
     scanner = SoftwareFactorySecretScanning()
     try:
         if args.staged:
-            if args.base_sha or args.head_sha:
+            if args.base_sha or args.head_sha or args.history:
                 raise SecretScanningError(
-                    "--staged cannot be combined with --base-sha/--head-sha"
+                    "--staged cannot be combined with --history/--base-sha/--head-sha"
                 )
             report = scanner.scan_staged(Path(args.repository_root))
+        elif args.history:
+            if args.base_sha or not args.head_sha:
+                raise SecretScanningError(
+                    "--history requires exact --head-sha and no --base-sha"
+                )
+            report = scanner.scan_history(
+                Path(args.repository_root), head_sha=args.head_sha
+            )
         else:
             if not args.base_sha or not args.head_sha:
                 raise SecretScanningError(
