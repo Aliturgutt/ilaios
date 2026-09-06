@@ -50,3 +50,34 @@ def test_s2_platform_validation_uses_a_distinct_concurrency_scope() -> None:
     assert normal_scope is not None
     assert s2_scope is not None
     assert normal_scope.group(1) != s2_scope.group(1)
+
+
+def test_s2_website_validation_uses_a_distinct_concurrency_scope() -> None:
+    website_workflow = (REPO_ROOT / ".github/workflows/website-ci.yml").read_text(
+        encoding="utf-8"
+    )
+    required_workflow = (REPO_ROOT / ".github/workflows/required-ci-gate.yml").read_text(
+        encoding="utf-8"
+    )
+
+    assert "concurrency_scope:" in website_workflow
+    assert "default: default" in website_workflow
+    assert "inputs.concurrency_scope || 'default'" in website_workflow
+    normal_job = re.search(
+        r"^  website:\n.*?(?=^  [a-z][a-z-]+:|\Z)",
+        required_workflow,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+    s2_job = re.search(
+        r"^  release-candidate-website:\n.*?(?=^  [a-z][a-z-]+:|\Z)",
+        required_workflow,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+
+    assert normal_job is not None
+    assert s2_job is not None
+    normal_scope = re.search(r"concurrency_scope: ([^\n]+)", normal_job.group(0))
+    s2_scope = re.search(r"concurrency_scope: ([^\n]+)", s2_job.group(0))
+    assert normal_scope is not None
+    assert s2_scope is not None
+    assert normal_scope.group(1) != s2_scope.group(1)
