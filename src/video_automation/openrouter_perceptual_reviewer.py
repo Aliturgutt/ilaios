@@ -215,7 +215,9 @@ class OpenRouterPerceptualReviewer:
             timeout_seconds=self._timeout_seconds,
         )
         review_route = "json-schema"
-        if response.status_code in _RETRYABLE_CAPABILITY_STATUS_CODES:
+        if response.status_code in _RETRYABLE_CAPABILITY_STATUS_CODES or (
+            200 <= response.status_code < 300 and not _has_review_choices(response.payload)
+        ):
             response = self._transport.post_json(
                 endpoint,
                 headers=headers,
@@ -223,6 +225,18 @@ class OpenRouterPerceptualReviewer:
                 timeout_seconds=self._timeout_seconds,
             )
             review_route = "prompt-json-fallback"
+        if (
+            review_route == "prompt-json-fallback"
+            and 200 <= response.status_code < 300
+            and not _has_review_choices(response.payload)
+        ):
+            response = self._transport.post_json(
+                f"{self._base_url}/chat/completions",
+                headers=headers,
+                body=base_body,
+                timeout_seconds=self._timeout_seconds,
+            )
+            review_route = "prompt-json-fallback-retry"
         if not 200 <= response.status_code < 300:
             raise OpenRouterPerceptualReviewError(
                 f"OpenRouter perceptual review failed with HTTP {response.status_code}"
@@ -270,6 +284,11 @@ class OpenRouterPerceptualReviewer:
             ),
             repair_target=None if passed else (repair_target.strip() or "regenerate-video"),
         )
+
+
+def _has_review_choices(payload: Mapping[str, object]) -> bool:
+    choices = payload.get("choices")
+    return isinstance(choices, list) and bool(choices)
 
 
 def _sample_frames(path: Path, count: int) -> tuple[bytes, ...]:
