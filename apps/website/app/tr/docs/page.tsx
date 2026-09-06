@@ -17,11 +17,18 @@ const docs = [
   ["Kurtarma", "Kamusal kurtarma runbook'ları yalnız ilgili ürün yüzeyi için sürüme özel prosedürler doğrulandığında yayınlanacaktır.", null],
 ] as const;
 
+const heroTitleStyle = {
+  fontSize: "clamp(2.15rem, 3.5vw, 3.45rem)",
+  lineHeight: 1.06,
+  letterSpacing: "-0.04em",
+  maxWidth: "19ch",
+} as const;
+
 export default function Page() {
   return <>
     <section className="shell page-hero compact-page-hero">
       <div className="eyebrow">Dokümanlar</div>
-      <h1>Ürün sitesini teknik kılavuza çevirmeden derin teknik katmana ulaşın.</h1>
+      <h1 style={heroTitleStyle}>Ürün sitesini teknik kılavuza çevirmeden derin teknik katmana ulaşın.</h1>
       <p className="lead">Bu merkezden kamusal teknik içeriğe doğrudan geçin. Ürün sayfaları sonucu anlatır; dokümantasyon bu sonucun arkasındaki kontrol, yürütme ve kanıt modelini açıklar.</p>
     </section>
     <section className="section">
@@ -30,7 +37,7 @@ export default function Page() {
           {docs.map(([title, text, href]) => href ? (
             <Link href={href} key={title}><span>{title}</span><strong>{text}</strong><i>→</i></Link>
           ) : (
-            <div className="status-note" key={title}><span>{title}</span><p>{text}</p></div>
+            <div className="status-note" key={title}><strong>{title}</strong><p>{text}</p></div>
           ))}
         </div>
       </div>
