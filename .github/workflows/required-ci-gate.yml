@@ -317,6 +317,8 @@ jobs:
     needs: classify
     if: needs.classify.outputs.platform == 'true'
     uses: ./.github/workflows/platform-ci.yml
+    with:
+      concurrency_scope: normal
 
   website:
     name: Website validation
@@ -328,6 +330,8 @@ jobs:
     name: S2 release-candidate platform validation
     if: github.event_name == 'workflow_dispatch' && inputs.security_lifecycle_gate == 'S2'
     uses: ./.github/workflows/platform-ci.yml
+    with:
+      concurrency_scope: s2-release-candidate
 
   release-candidate-website:
     name: S2 release-candidate website validation
