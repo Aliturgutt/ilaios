@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../app/ilaios_locale.dart';
-import '../../app/ilaios_theme.dart';
 import '../../control_plane/client.dart';
 import '../../control_plane/evidence_record.dart';
 import '../../control_plane/operational_snapshot.dart';
@@ -286,40 +285,18 @@ class _Sidebar extends StatelessWidget {
                 height: 76,
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: isDark
-                      ? Row(
-                          children: [
-                            Image.asset(
-                              _darkLogo,
-                              key: const Key('reference-brand-horizontal-dark'),
-                              width: 48,
-                              height: 48,
-                              fit: BoxFit.contain,
-                              filterQuality: FilterQuality.high,
-                              gaplessPlayback: true,
-                            ),
-                            const SizedBox(width: 12),
-                            Text(
-                              'ILAIOS',
-                              style: TextStyle(
-                                fontSize: 20,
-                                fontWeight: FontWeight.w700,
-                                letterSpacing: 1.8,
-                                color: Theme.of(context).colorScheme.onSurface,
-                              ),
-                            ),
-                          ],
-                        )
-                      : Image.asset(
-                          _lightLogo,
-                          key: const Key('reference-brand-horizontal-light'),
-                          width: 184,
-                          height: 50,
-                          fit: BoxFit.contain,
-                          alignment: Alignment.centerLeft,
-                          filterQuality: FilterQuality.high,
-                          gaplessPlayback: true,
-                        ),
+                  child: Image.asset(
+                    isDark ? _darkLogo : _lightLogo,
+                    key: Key(isDark
+                        ? 'reference-brand-horizontal-dark'
+                        : 'reference-brand-horizontal-light'),
+                    width: isDark ? 64 : 184,
+                    height: isDark ? 64 : 50,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.centerLeft,
+                    filterQuality: FilterQuality.high,
+                    gaplessPlayback: true,
+                  ),
                 ),
               ),
             ),
@@ -374,13 +351,13 @@ class _NavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
         color: selected
-            ? IlaiosTheme.enterpriseCyan.withValues(alpha: .06)
+            ? Theme.of(context).colorScheme.surfaceContainerHighest
             : Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(5),
           side: BorderSide(
             color: selected
-                ? IlaiosTheme.enterpriseCyan.withValues(alpha: .28)
+                ? Theme.of(context).colorScheme.outline
                 : Colors.transparent,
           ),
         ),
@@ -398,7 +375,7 @@ class _NavItem extends StatelessWidget {
                     section.icon,
                     size: 18,
                     color: selected
-                        ? IlaiosTheme.enterpriseCyan
+                        ? Theme.of(context).colorScheme.onSurface
                         : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 11),
@@ -431,13 +408,13 @@ class _LiNavItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
         color: selected
-            ? IlaiosTheme.enterpriseCyan.withValues(alpha: .06)
+            ? Theme.of(context).colorScheme.surfaceContainerHighest
             : Colors.transparent,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(5),
           side: BorderSide(
             color: selected
-                ? IlaiosTheme.enterpriseCyan.withValues(alpha: .28)
+                ? Theme.of(context).colorScheme.outline
                 : Colors.transparent,
           ),
         ),
@@ -455,7 +432,7 @@ class _LiNavItem extends StatelessWidget {
                     Icons.auto_awesome_outlined,
                     size: 18,
                     color: selected
-                        ? IlaiosTheme.enterpriseCyan
+                        ? Theme.of(context).colorScheme.onSurface
                         : Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 11),
