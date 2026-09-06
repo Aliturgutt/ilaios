@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
+import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
 
 import 'secondary_navigation_test_support.dart';
-import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 
 void main() {
   Future<void> pumpTurkish(WidgetTester tester, {OperationalSnapshot? snapshot}) async {
@@ -15,7 +15,7 @@ void main() {
       IlaiosDesktopApp(
         locale: IlaiosLocale.turkish,
         themeMode: ThemeMode.light,
-        operationalSnapshot: snapshot ?? OperationalSnapshot.empty(),
+        operationalSnapshot: snapshot ?? const OperationalSnapshot.unavailable(),
       ),
     );
     await tester.pumpAndSettle();
