@@ -32,6 +32,20 @@ void main() {
       expect(status.detail, raw);
     });
 
+    test('known unreachable control plane is localized in Turkish', () {
+      const raw = 'Control plane is unreachable';
+
+      final status = presentDesktopRuntimeStatus(
+        raw,
+        connected: false,
+        turkish: true,
+      );
+
+      expect(status.kind, DesktopRuntimeStatusKind.offline);
+      expect(status.label, 'Kontrol düzlemine ulaşılamıyor.');
+      expect(status.detail, raw);
+    });
+
     test('known healthy local runtime has a distinct connected status', () {
       final status = presentDesktopRuntimeStatus(
         'Bundled local control plane started',
