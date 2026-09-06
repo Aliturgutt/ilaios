@@ -605,7 +605,13 @@ class _TopBar extends StatelessWidget {
                           children: [
                             Icon(section.icon, size: 17),
                             const SizedBox(width: 8),
-                            Text(section.localizedLabel(context)),
+                            Flexible(
+                              child: Text(
+                                section.localizedLabel(context),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -812,7 +818,7 @@ class _BottomStatusBar extends StatelessWidget {
           Text(
             '© 2026 ILAIOS',
             style: TextStyle(
-              fontSize: 10.5,
+              fontSize: 12.5,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
@@ -841,7 +847,7 @@ class _FlatStatus extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              fontSize: 11.5,
+              fontSize: 12.5,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
