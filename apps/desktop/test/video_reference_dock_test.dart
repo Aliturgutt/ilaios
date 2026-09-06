@@ -51,7 +51,7 @@ Future<void> _openGoals(WidgetTester tester) =>
     openSecondaryDesktopSection(tester, DesktopSection.goals);
 
 void main() {
-  testWidgets('V4 removes the global dock and exposes the governed picker inside Goals', (
+  testWidgets('V4 keeps Home compact and exposes the governed picker inside Goals', (
     tester,
   ) async {
     _desktopViewport(tester);
@@ -60,6 +60,12 @@ void main() {
 
     expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
     expect(find.byKey(const Key('home-prompt-attachments')), findsOneWidget);
+    expect(find.byKey(const Key('home-add-video')), findsOneWidget);
+    expect(find.byKey(const Key('video-reference-assets')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('home-add-video')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('home-attachment-pane-video')), findsOneWidget);
     expect(find.byKey(const Key('video-reference-assets')), findsOneWidget);
 
     await _openGoals(tester);
