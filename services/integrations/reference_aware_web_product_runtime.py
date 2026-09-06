@@ -26,6 +26,7 @@ from services.runtime import DurableGrantPolicy
 from .web_factory import WebsiteSpec
 from .web_product_runtime import WebProductRuntimeError
 from .web_product_runtime_recovery import RecoverableWebProductRuntime as _BaseRecoverableWebProductRuntime
+from .web_vercel_delivery import VercelWebDeploymentAdapter
 
 _REFERENCE_USAGE = "asset-led-design-and-rendered-source"
 _REFERENCE_SCHEMA = "ilaios.web.reference-assets.v1"
@@ -45,8 +46,16 @@ class ReferenceAwareRecoverableWebProductRuntime(_BaseRecoverableWebProductRunti
         grants: DurableGrantPolicy,
         governance: GovernedRuntimeGateway,
         artifact_root: Path,
+        delivery_adapter: VercelWebDeploymentAdapter | None = None,
     ) -> None:
-        super().__init__(database_path, control_plane, grants, governance, artifact_root)
+        super().__init__(
+            database_path,
+            control_plane,
+            grants,
+            governance,
+            artifact_root,
+            delivery_adapter,
+        )
         data_root = artifact_root.parent
         self._reference_assets = ReferenceAssetAdmissionStore(
             data_root / "reference-assets.sqlite3",
