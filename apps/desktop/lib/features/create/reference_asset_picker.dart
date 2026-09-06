@@ -425,6 +425,26 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
         ],
       );
 
+  // Preserve the existing non-Home compact geometry because packaging and
+  // combined-contract verification depend on this exact governed picker shape.
+  // Home does not use this path; it uses progressive disclosure above.
+  Widget _safeCompactStack() => Column(
+        key: const Key('compact-reference-asset-stack'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(flex: 3, child: _images()),
+              const SizedBox(width: 8),
+              Expanded(flex: 2, child: _sourceVideo()),
+            ],
+          ),
+          const SizedBox(height: 6),
+          _companyKnowledge(),
+        ],
+      );
+
   Widget _legacyStack() => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -440,6 +460,7 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
   Widget build(BuildContext context) {
     final inlineHome = key == const Key('home-prompt-attachments');
     if (inlineHome) return _progressiveHome();
+    if (widget.compact) return _safeCompactStack();
     return _legacyStack();
   }
 }
