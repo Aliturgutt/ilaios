@@ -130,11 +130,12 @@ def test_themed_diagram_uses_the_existing_canonical_sprite_assets() -> None:
     assert "diagram-sprite-light" in diagram
 
 
-def test_dark_minimal_header_matches_canonical_logo_field_without_asset_mutation() -> None:
+def test_dark_header_matches_canonical_logo_field_without_asset_mutation() -> None:
     palette = PALETTE.read_text(encoding="utf-8")
     chrome = CHROME.read_text(encoding="utf-8")
 
-    assert 'className="site-header site-header-minimal"' in chrome
+    assert 'className="site-header"' in chrome
+    assert 'className="brand"' in chrome
     assert 'html[data-theme="dark"] body .site-header' in palette
     assert 'html[data-theme="dark"] body .site-header .brand' in palette
     assert "background: #07080A !important;" in palette
@@ -185,16 +186,21 @@ def test_light_footer_hover_and_focus_keep_dark_text_on_white() -> None:
     assert "-webkit-text-fill-color: var(--brand-carbon) !important;" in palette
 
 
-def test_minimal_header_removes_problematic_top_navigation_controls() -> None:
+def test_mobile_header_keeps_navigation_and_uses_compact_right_anchored_panel() -> None:
     chrome = CHROME.read_text(encoding="utf-8")
+    interaction = INTERACTION.read_text(encoding="utf-8")
 
-    assert 'className="site-header site-header-minimal"' in chrome
-    assert 'className="brand"' in chrome
-    assert 'className="nav-panel' not in chrome
-    assert 'className="menu-toggle"' not in chrome
-    assert "ThemeToggle" not in chrome
-    assert 'className="language-switch"' not in chrome
-    assert 'className="explore-menu"' not in chrome
+    assert 'className="site-header"' in chrome
+    assert 'className="menu-toggle"' in chrome
+    assert 'className={`nav-panel ${open ? "is-open" : ""}`}' in chrome
+    assert "ThemeToggle" in chrome
+    assert 'className="language-switch"' in chrome
+    assert 'className="explore-menu"' in chrome
+    assert "left: auto !important;" in interaction
+    assert "right: 16px !important;" in interaction
+    assert "width: min(320px, calc(100vw - 32px)) !important;" in interaction
+    assert ".site-header .nav-panel.is-open" in interaction
+    assert "grid-template-columns: 1fr !important;" in interaction
 
 
 def test_canonical_architecture_flow_is_neutral_grayscale() -> None:
@@ -242,7 +248,7 @@ def test_visual_qa_covers_all_localized_routes_in_light_and_dark_with_real_mobil
     assert 'theme="light"' in qa
     assert 'theme="dark"' in qa
     assert "visible_chromatic_ui" in qa
-    assert "inspect_minimal_header" in qa
-    assert "removed top-navigation controls are still rendered" in qa
-    assert "minimal header geometry drift" in qa
+    assert "inspect_navigation" in qa
+    assert "mobile navigation panel is too wide" in qa
+    assert "header geometry drift" in qa
     assert '"localized_routes":len(ROUTES)*2' in qa
