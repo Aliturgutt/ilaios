@@ -4,7 +4,10 @@ import 'package:ilaios_desktop/app/desktop_app.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/control_plane/projection.dart';
+import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/identity/identity_client.dart';
+
+import 'secondary_navigation_test_support.dart';
 
 const _connected = ControlPlaneProjection(
   connected: true,
@@ -44,10 +47,8 @@ IlaiosDesktopApp _app({
       ),
     );
 
-Future<void> _openGoals(WidgetTester tester) async {
-  await tester.tap(find.byKey(const ValueKey('nav-goals')));
-  await tester.pumpAndSettle();
-}
+Future<void> _openGoals(WidgetTester tester) =>
+    openSecondaryDesktopSection(tester, DesktopSection.goals);
 
 void main() {
   testWidgets('V4 removes the global dock and exposes the governed picker inside Goals', (
