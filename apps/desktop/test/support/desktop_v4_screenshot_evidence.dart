@@ -22,12 +22,33 @@ const v4EvidencePages = <(String, String?)>[
   ('settings', 'nav-settings'),
 ];
 
+const _secondaryNavigationLabels = <String, String>{
+  'nav-goals': 'Goals',
+  'nav-liveWorkspace': 'Live Workspace',
+  'nav-costs': 'Costs',
+};
+
 Future<void> _pumpEvidenceFrame(WidgetTester tester) async {
   await tester.pump();
   expect(tester.takeException(), isNull);
 }
 
-void _navigateWithoutPointerGesture(WidgetTester tester, String navigationKey) {
+Future<void> _navigateWithoutPointerGesture(
+  WidgetTester tester,
+  String navigationKey,
+) async {
+  final secondaryLabel = _secondaryNavigationLabels[navigationKey];
+  if (secondaryLabel != null) {
+    final menu = find.byKey(const Key('reference-secondary-navigation'));
+    expect(menu, findsOneWidget);
+    await tester.tap(menu);
+    await tester.pumpAndSettle();
+    final item = find.text(secondaryLabel);
+    expect(item, findsOneWidget);
+    await tester.tap(item);
+    return;
+  }
+
   final finder = find.byKey(ValueKey(navigationKey));
   expect(finder, findsOneWidget);
   final nav = tester.widget<InkWell>(finder);
@@ -106,7 +127,7 @@ Future<void> captureV4ScreenshotEvidence(
   final files = <Map<String, Object>>[];
   for (final page in v4EvidencePages) {
     if (page.$2 != null) {
-      _navigateWithoutPointerGesture(tester, page.$2!);
+      await _navigateWithoutPointerGesture(tester, page.$2!);
       await _pumpEvidenceFrame(tester);
     }
 
