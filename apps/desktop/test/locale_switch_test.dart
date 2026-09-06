@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
+import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
 
+import 'secondary_navigation_test_support.dart';
+
 void main() {
-  testWidgets('Turkish locale renders the primary Desktop shell in Turkish', (
+  testWidgets('Turkish locale renders the seven-primary Desktop shell in Turkish', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -16,11 +19,22 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Ana Sayfa'), findsOneWidget);
-    expect(find.text('Hedefler'), findsOneWidget);
     expect(find.text('İş Akışları'), findsOneWidget);
+    expect(find.text('Ajanlar'), findsOneWidget);
+    expect(find.text('Çıktılar'), findsOneWidget);
+    expect(find.text('Onaylar'), findsOneWidget);
+    expect(find.text('Kanıtlar'), findsOneWidget);
+    expect(find.text('Ayarlar'), findsOneWidget);
+    expect(find.text('Hedefler'), findsNothing);
+    expect(find.text('Canlı Çalışma Alanı'), findsNothing);
+    expect(find.text('Maliyetler'), findsNothing);
     expect(find.text('Proje'), findsOneWidget);
     expect(find.text('Çevrimdışı'), findsWidgets);
     expect(find.text('Home'), findsNothing);
+
+    await openSecondaryDesktopSection(tester, DesktopSection.goals);
+    expect(find.text('Hedefler'), findsWidgets);
+    expect(find.text('ILAIOS’un ne oluşturmasını istiyorsun?'), findsOneWidget);
   });
 
   testWidgets('world language control exposes English and Turkish', (
