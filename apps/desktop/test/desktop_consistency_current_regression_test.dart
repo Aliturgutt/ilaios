@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
+import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
+
+import 'secondary_navigation_test_support.dart';
 
 void main() {
   testWidgets('Goals presents job.updated as human-readable copy without changing projection', (
@@ -21,8 +24,7 @@ void main() {
     );
 
     await tester.pumpWidget(const IlaiosDesktopApp(projection: projection));
-    await tester.tap(find.byKey(const ValueKey('nav-goals')));
-    await tester.pumpAndSettle();
+    await openSecondaryDesktopSection(tester, DesktopSection.goals);
 
     final goals = find.byKey(const Key('reference-goals-page'));
     expect(goals, findsOneWidget);
@@ -41,8 +43,8 @@ void main() {
         locale: IlaiosLocale.turkish,
       ),
     );
-    await tester.tap(find.byKey(const ValueKey('nav-goals')));
     await tester.pumpAndSettle();
+    await openSecondaryDesktopSection(tester, DesktopSection.goals);
 
     final turkishGoals = find.byKey(const Key('reference-goals-page'));
     expect(

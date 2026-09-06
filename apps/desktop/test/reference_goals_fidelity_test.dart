@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
+import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
 
+import 'secondary_navigation_test_support.dart';
+
 void main() {
-  Future<void> openGoals(WidgetTester tester) async {
-    await tester.tap(find.byKey(const ValueKey('nav-goals')));
-    await tester.pumpAndSettle();
-  }
+  Future<void> openGoals(WidgetTester tester) =>
+      openSecondaryDesktopSection(tester, DesktopSection.goals);
 
   testWidgets('Goals keeps the V4 desktop hierarchy without screenshot telemetry',
       (WidgetTester tester) async {

@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
+import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
+
+import 'secondary_navigation_test_support.dart';
 
 void main() {
   Future<void> pumpDesktop(
@@ -30,10 +33,8 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  Future<void> openWorkspace(WidgetTester tester) async {
-    await tester.tap(find.byKey(const ValueKey('nav-liveWorkspace')));
-    await tester.pumpAndSettle();
-  }
+  Future<void> openWorkspace(WidgetTester tester) =>
+      openSecondaryDesktopSection(tester, DesktopSection.liveWorkspace);
 
   Future<void> expectUnavailableAction(
     WidgetTester tester,

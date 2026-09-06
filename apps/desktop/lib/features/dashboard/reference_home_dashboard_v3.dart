@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../app/ilaios_locale.dart';
-import '../../app/ilaios_theme.dart';
 import '../../control_plane/client.dart';
 import '../../control_plane/evidence_record.dart';
 import '../../control_plane/operational_snapshot.dart';
@@ -106,11 +105,12 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
       builder: (context, constraints) {
         // Preserve native typography. Compact width or short desktop height
         // scrolls instead of compressing panels into unreadable/overflowing
-        // geometry. Standard and wide desktop sizes keep the one-viewport
-        // composition.
+        // geometry. The 1536x1024 shell leaves about 952 px below the top bar,
+        // so keep that geometry on the scroll-safe path rather than forcing the
+        // support panels into a height that already proved to overflow.
         final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
         final compact = constraints.maxWidth < 1300 ||
-            constraints.maxHeight < 950 || textScale > 1.0;
+            constraints.maxHeight < 960 || textScale > 1.0;
         final outerPadding = compact ? 14.0 : 20.0;
         final gap = compact ? 12.0 : 16.0;
 
@@ -465,9 +465,7 @@ class _RuntimePill extends StatelessWidget {
             Icon(
               Icons.circle,
               size: 8,
-              color: model.projection.connected
-                  ? IlaiosTheme.success
-                  : Theme.of(context).colorScheme.outline,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             const SizedBox(width: 8),
             Flexible(
@@ -595,7 +593,11 @@ class _WorkRow extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       child: Row(
         children: [
-          const Icon(Icons.work_outline_rounded, size: 20, color: IlaiosTheme.enterpriseCyan),
+          Icon(
+            Icons.work_outline_rounded,
+            size: 20,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -610,15 +612,17 @@ class _WorkRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Text(state, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-              if (id != null) ...[
-                const SizedBox(height: 3),
-                Text('ID ${_short(id, 12)}', style: TextStyle(fontSize: 12.5, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+          Flexible(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(state, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
+                if (id != null) ...[
+                  const SizedBox(height: 3),
+                  Text('ID ${_short(id, 12)}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+                ],
               ],
-            ],
+            ),
           ),
         ],
       ),
@@ -663,12 +667,14 @@ class _AttentionPanel extends StatelessWidget {
               separatorBuilder: (_, _) => Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
               itemBuilder: (context, index) {
                 final data = items[index];
-                final color = data.critical ? IlaiosTheme.danger : IlaiosTheme.warning;
                 return Material(
                   color: Colors.transparent,
                   child: ListTile(
                     dense: true,
-                    leading: Icon(Icons.error_outline_rounded, color: color),
+                    leading: Icon(
+                      Icons.error_outline_rounded,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                     title: Text(data.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
                     subtitle: Text(data.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
                     trailing: const Icon(Icons.chevron_right_rounded),
@@ -723,13 +729,19 @@ class _OutputRow extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
         child: Row(
           children: [
-            const Icon(Icons.description_outlined, size: 20, color: IlaiosTheme.enterpriseCyan),
+            Icon(
+              Icons.description_outlined,
+              size: 20,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(width: 12),
             Expanded(
               child: Text(_humanAction(record.action), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
             ),
             const SizedBox(width: 12),
-            Text('ID ${_short(record.executionId, 12)}', style: TextStyle(fontSize: 12.5, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            Flexible(
+              child: Text('ID ${_short(record.executionId, 12)}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+            ),
           ],
         ),
       );
@@ -783,12 +795,20 @@ class _SectionPanel extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Padding(
-              padding: const EdgeInsets.fromLTRB(16, 13, 10, 11),
+              padding: const EdgeInsets.fromLTRB(16, 10, 10, 8),
               child: Row(
                 children: [
                   Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, letterSpacing: .1, fontWeight: FontWeight.w700))),
                   if (actionLabel != null)
-                    TextButton(onPressed: onAction, child: Text(actionLabel!, style: const TextStyle(fontSize: 13.5))),
+                    TextButton(
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        minimumSize: const Size(0, 32),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      ),
+                      onPressed: onAction,
+                      child: Text(actionLabel!, style: const TextStyle(fontSize: 13.5)),
+                    ),
                 ],
               ),
             ),
@@ -823,17 +843,12 @@ class _EmptyState extends StatelessWidget {
       );
 }
 
-BoxDecoration _surface(BuildContext context, {bool emphasized = false}) {
-  final dark = Theme.of(context).brightness == Brightness.dark;
-  return BoxDecoration(
-    color: Theme.of(context).colorScheme.surfaceContainerLow,
-    borderRadius: BorderRadius.circular(emphasized ? 12 : 10),
-    border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-    boxShadow: !emphasized || dark
-        ? const []
-        : const [BoxShadow(color: Color(0x080B0F14), blurRadius: 12, offset: Offset(0, 4))],
-  );
-}
+BoxDecoration _surface(BuildContext context, {bool emphasized = false}) =>
+    BoxDecoration(
+      color: Theme.of(context).colorScheme.surfaceContainerLow,
+      borderRadius: BorderRadius.circular(emphasized ? 12 : 10),
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+    );
 
 String _t(BuildContext context, String english, String turkish) =>
     context.ilaiosLocale.locale == IlaiosLocale.turkish ? turkish : english;

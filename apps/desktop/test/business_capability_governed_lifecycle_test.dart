@@ -7,8 +7,11 @@ import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/control_plane/evidence_record.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
 import 'package:ilaios_desktop/features/create/governed_lifecycle_projection.dart';
+import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/identity/identity_client.dart';
 import 'package:ilaios_desktop/main.dart';
+
+import 'secondary_navigation_test_support.dart';
 
 class _IntentTransport implements ControlPlaneTransport {
   String? body;
@@ -173,8 +176,8 @@ void main() {
         onPromptSubmit: submit,
       ),
     );
-    await tester.tap(find.byKey(const ValueKey('nav-goals')));
     await tester.pumpAndSettle();
+    await openSecondaryDesktopSection(tester, DesktopSection.goals);
 
     await tester.enterText(
       find.byKey(const Key('one-prompt-input')),
