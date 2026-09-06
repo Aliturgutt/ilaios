@@ -41,7 +41,7 @@ ROUTES = (
 SCREENSHOT_ROUTE_NAMES = {
     "home", "platform", "factories", "capabilities", "security", "solutions",
     "enterprise", "individuals", "how-it-works", "use-ilaios", "core", "trust",
-    "architecture", "docs", "resources", "about", "contact",
+    "architecture", "docs", "resources", "about", "contact", "privacy",
 }
 
 VIEWPORTS = (("desktop", 1440, 1000), ("tablet", 1024, 900), ("mobile", 390, 844))
@@ -92,13 +92,40 @@ def header_geometry(page: Page) -> dict[str, object]:
     )
 
 
-def inspect_minimal_header(page: Page) -> dict[str, object]:
+def inspect_navigation(page: Page, viewport_name: str, width: int) -> dict[str, object]:
     brand = page.locator(".site-header .brand")
+    nav = page.locator(".site-header .nav-panel")
+    toggle = page.locator(".site-header .menu-toggle")
     if brand.count() != 1 or not brand.is_visible():
-        raise RuntimeError("minimal header brand is missing or hidden")
-    if page.locator(".site-header .nav-panel,.site-header .menu-toggle,.site-header .theme-toggle,.site-header .language-switch").count() != 0:
-        raise RuntimeError("removed top-navigation controls are still rendered")
-    return {"minimal_header": True}
+        raise RuntimeError("header brand is missing or hidden")
+    if nav.count() != 1 or toggle.count() != 1:
+        raise RuntimeError("shared navigation controls are missing")
+
+    if viewport_name == "mobile":
+        if not toggle.is_visible():
+            raise RuntimeError("mobile menu toggle is hidden")
+        toggle.click()
+        if not nav.is_visible():
+            raise RuntimeError("mobile navigation panel did not open")
+        box = nav.bounding_box()
+        if box is None:
+            raise RuntimeError("mobile navigation panel has no geometry")
+        if box["width"] > 322:
+            raise RuntimeError(f"mobile navigation panel is too wide: {box['width']}px")
+        if box["x"] < width - box["width"] - 24:
+            raise RuntimeError(f"mobile navigation panel is not right anchored: x={box['x']} width={box['width']}")
+        if not page.locator(".site-header .theme-toggle").is_visible():
+            raise RuntimeError("mobile theme control is hidden")
+        if not page.locator(".site-header .language-switch").is_visible():
+            raise RuntimeError("mobile language control is hidden")
+        page.keyboard.press("Escape")
+        if nav.is_visible():
+            raise RuntimeError("mobile navigation panel did not close on Escape")
+        return {"mobile_navigation_width": box["width"], "mobile_navigation_x": box["x"]}
+
+    if not nav.is_visible():
+        raise RuntimeError("desktop navigation panel is hidden")
+    return {"desktop_navigation": True}
 
 
 def inspect_footer_hover(page: Page, theme: str) -> dict[str, object]:
@@ -178,7 +205,7 @@ def run_page_checks(
         "h1_font_px": page.evaluate("el => parseFloat(getComputedStyle(el).fontSize)", h1.element_handle()),
         "h1_box": h1.bounding_box(),
     }
-    record.update(inspect_minimal_header(page))
+    record.update(inspect_navigation(page, viewport_name, width))
     record.update(inspect_footer_hover(page, theme))
     if route_name == "contact": record.update(inspect_contact(page, locale, viewport_name))
 
@@ -187,7 +214,7 @@ def run_page_checks(
         baseline_key = f"{theme}:{locale}"
         baseline = header_baselines.setdefault(baseline_key, geometry)
         if geometry != baseline:
-            raise RuntimeError(f"minimal header geometry drift for {baseline_key}: expected {baseline}, got {geometry}")
+            raise RuntimeError(f"header geometry drift for {baseline_key}: expected {baseline}, got {geometry}")
         record["header_geometry"] = geometry
         for href in page.locator("a[href]").evaluate_all("els => els.map((el)=>el.getAttribute('href')).filter(Boolean)"):
             normalized = normalized_internal_href(str(href))
