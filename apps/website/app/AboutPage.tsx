@@ -37,13 +37,27 @@ const copy = {
   },
 } as const;
 
+const heroTitleStyle = {
+  fontSize: "clamp(2.25rem, 4.2vw, 4rem)",
+  lineHeight: 1.02,
+  letterSpacing: "-0.045em",
+  maxWidth: "15ch",
+} as const;
+
+const missionTitleStyle = {
+  fontSize: "clamp(1.75rem, 2.8vw, 2.8rem)",
+  lineHeight: 1.08,
+  letterSpacing: "-0.035em",
+  maxWidth: "18ch",
+} as const;
+
 export default function AboutPage({ locale }: { locale: Locale }) {
   const c = copy[locale];
   const base = locale === "tr" ? "/tr" : "";
   return <>
-    <section className="shell about-intro"><div><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1></div><p className="lead">{c.lead}</p></section>
+    <section className="shell about-intro"><div><div className="eyebrow">{c.eyebrow}</div><h1 style={heroTitleStyle}>{c.title}</h1></div><p className="lead">{c.lead}</p></section>
     <section className="section"><div className="shell about-editorial-grid">
-      <article className="about-mission"><span className="micro-label">{c.missionLabel}</span><h2>{c.mission}</h2></article>
+      <article className="about-mission"><span className="micro-label">{c.missionLabel}</span><h2 style={missionTitleStyle}>{c.mission}</h2></article>
       <div className="about-principles"><span className="micro-label">{c.principlesLabel}</span>{c.principles.map(([title, text], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{text}</p></div></article>)}</div>
     </div></section>
     <section className="section surface-section"><div className="shell founder-row" id="founder"><div><span className="micro-label">{c.founderLabel}</span><h2>{c.founder}</h2></div><p>{c.founderText}</p></div></section>
