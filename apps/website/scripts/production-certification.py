@@ -73,6 +73,28 @@ def http_get(url: str, *, timeout: int = 30) -> tuple[int, dict[str, str], bytes
         return response.status, {k.lower(): v for k, v in response.headers.items()}, response.read()
 
 
+def validate_runtime_security_headers(headers: dict[str, str]) -> dict[str, str]:
+    """Fail closed on the static website's required live response headers."""
+    required = {
+        "content-security-policy": "default-src 'self'",
+        "strict-transport-security": "max-age=31536000",
+        "x-content-type-options": "nosniff",
+        "x-frame-options": "sameorigin",
+        "referrer-policy": "strict-origin-when-cross-origin",
+    }
+    observed: dict[str, str] = {}
+    for name, expected in required.items():
+        value = headers.get(name, "").strip()
+        if not value:
+            raise RuntimeError(f"Missing required runtime security header: {name}")
+        if expected not in value.casefold():
+            raise RuntimeError(
+                f"Unexpected runtime security header {name}: {value!r}"
+            )
+        observed[name] = value
+    return observed
+
+
 def wait_for_exact_release() -> dict[str, Any]:
     if not EXPECTED_SHA:
         raise RuntimeError("EXPECTED_SHA is required")
@@ -100,6 +122,11 @@ def wait_for_exact_release() -> dict[str, Any]:
                     "x-vercel-id": headers.get("x-vercel-id"),
                     "server": headers.get("server"),
                     "cache-control": headers.get("cache-control"),
+                    "content-security-policy": headers.get("content-security-policy"),
+                    "strict-transport-security": headers.get("strict-transport-security"),
+                    "x-content-type-options": headers.get("x-content-type-options"),
+                    "x-frame-options": headers.get("x-frame-options"),
+                    "referrer-policy": headers.get("referrer-policy"),
                 }
                 return payload
 
@@ -313,12 +340,16 @@ def main() -> int:
         "wwwAlias": None,
         "sitemapRouteCount": 0,
         "browserChecks": [],
+        "runtimeSecurityHeaders": {},
         "error": None,
     }
 
     try:
         release = wait_for_exact_release()
         evidence["release"] = release
+        evidence["runtimeSecurityHeaders"] = validate_runtime_security_headers(
+            release["releaseEndpointHeaders"]
+        )
         validate_robots()
         urls = load_sitemap()
         evidence["sitemapRouteCount"] = len(urls)
@@ -379,6 +410,7 @@ def main() -> int:
             f"- Browser route/viewport checks: `{len(checks)}`",
             f"- Distinct x-vercel-id responses observed: `{len(vercel_ids)}`",
             f"- Browser-cancelled speculative Next.js RSC prefetches: `{cancelled_prefetch_count}` (recorded, non-blocking)",
+            "- Runtime security headers (HSTS, nosniff, frame, referrer): `PASS`",
             "- Mobile menu open/Escape-close: `PASS` for EN and TR",
             "- Horizontal overflow: `0 blocking findings`",
             "- Console/page/same-origin request failures: `0 blocking findings`",

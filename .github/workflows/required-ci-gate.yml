@@ -5,6 +5,15 @@ on:
   push:
     branches: [master]
   workflow_dispatch:
+    inputs:
+      security_lifecycle_gate:
+        description: "Security lifecycle scope; S2 requires full release-candidate validation."
+        required: true
+        default: S1
+        type: choice
+        options:
+          - S1
+          - S2
 
 permissions:
   contents: read
@@ -86,6 +95,36 @@ jobs:
           python -m services.software_factory_ci_supply_chain --repository-root .
           python -m services.desktop_ci_supply_chain --repository-root .
           python -m services.github_workflow_security_audit --repository-root .
+
+  dependency-vulnerability-scan:
+    name: Dependency vulnerability scanning
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Scan supported locked dependency ecosystems
+        uses: google/osv-scanner-action/osv-scanner-action@06b2ab4348248b456ee06c9e953637f55e03504f # v2.5.0
+        with:
+          scan-args: |-
+            --recursive
+            --format=json
+            --output=osv-results.json
+            ./
+
+      - name: Upload dependency vulnerability evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dependency-vulnerabilities-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}
+          path: osv-results.json
+          if-no-files-found: warn
+          retention-days: 30
 
   secret-scan:
     name: Secret scanning
@@ -285,6 +324,16 @@ jobs:
     if: needs.classify.outputs.website == 'true'
     uses: ./.github/workflows/website-ci.yml
 
+  release-candidate-platform:
+    name: S2 release-candidate platform validation
+    if: github.event_name == 'workflow_dispatch' && inputs.security_lifecycle_gate == 'S2'
+    uses: ./.github/workflows/platform-ci.yml
+
+  release-candidate-website:
+    name: S2 release-candidate website validation
+    if: github.event_name == 'workflow_dispatch' && inputs.security_lifecycle_gate == 'S2'
+    uses: ./.github/workflows/website-ci.yml
+
   malware:
     name: Repository malware scan
     uses: ./.github/workflows/malware-scan.yml
@@ -292,7 +341,7 @@ jobs:
   required-ci-gate:
     name: Required CI Gate
     if: always()
-    needs: [classify, supply-chain, secret-scan, db-migration-safety, api-contract-safety, operational-safety, assurance, final-closure-structure, malware, platform, website]
+    needs: [classify, supply-chain, dependency-vulnerability-scan, secret-scan, db-migration-safety, api-contract-safety, operational-safety, assurance, final-closure-structure, malware, platform, website, release-candidate-platform, release-candidate-website]
     runs-on: ubuntu-latest
     steps:
       - name: Enforce relevant validation results
@@ -300,6 +349,7 @@ jobs:
         env:
           CLASSIFY_RESULT: ${{ needs.classify.result }}
           SUPPLY_CHAIN_RESULT: ${{ needs.supply-chain.result }}
+          DEPENDENCY_VULNERABILITY_RESULT: ${{ needs.dependency-vulnerability-scan.result }}
           SECRET_SCAN_RESULT: ${{ needs.secret-scan.result }}
           DB_MIGRATION_SAFETY_RESULT: ${{ needs.db-migration-safety.result }}
           API_CONTRACT_SAFETY_RESULT: ${{ needs.api-contract-safety.result }}
@@ -311,6 +361,9 @@ jobs:
           PLATFORM_RESULT: ${{ needs.platform.result }}
           WEBSITE_REQUIRED: ${{ needs.classify.outputs.website }}
           WEBSITE_RESULT: ${{ needs.website.result }}
+          SECURITY_LIFECYCLE_GATE: ${{ inputs.security_lifecycle_gate || 'S1' }}
+          RELEASE_CANDIDATE_PLATFORM_RESULT: ${{ needs.release-candidate-platform.result }}
+          RELEASE_CANDIDATE_WEBSITE_RESULT: ${{ needs.release-candidate-website.result }}
         run: |
           set -euo pipefail
 
@@ -321,6 +374,11 @@ jobs:
 
           if [[ "$SUPPLY_CHAIN_RESULT" != "success" ]]; then
             echo "CI supply-chain hardening failed: $SUPPLY_CHAIN_RESULT"
+            exit 1
+          fi
+
+          if [[ "$DEPENDENCY_VULNERABILITY_RESULT" != "success" ]]; then
+            echo "Dependency vulnerability scanning failed: $DEPENDENCY_VULNERABILITY_RESULT"
             exit 1
           fi
 
@@ -369,4 +427,14 @@ jobs:
             exit 1
           fi
 
-          echo "Required CI Gate PASS"
+          if [[ "$SECURITY_LIFECYCLE_GATE" == "S2" && "$RELEASE_CANDIDATE_PLATFORM_RESULT" != "success" ]]; then
+            echo "S2 release-candidate platform validation failed: $RELEASE_CANDIDATE_PLATFORM_RESULT"
+            exit 1
+          fi
+
+          if [[ "$SECURITY_LIFECYCLE_GATE" == "S2" && "$RELEASE_CANDIDATE_WEBSITE_RESULT" != "success" ]]; then
+            echo "S2 release-candidate website validation failed: $RELEASE_CANDIDATE_WEBSITE_RESULT"
+            exit 1
+          fi
+
+          echo "Required CI Gate PASS; security lifecycle scope=$SECURITY_LIFECYCLE_GATE"
