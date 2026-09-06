@@ -71,6 +71,36 @@ def test_light_interactions_never_use_white_text_on_light_surfaces() -> None:
 
     assert 'html[data-theme="light"] :where(.button.secondary,.text-link,.contact-directory article > a)' in interaction
     assert "border-color: #2A2A2A !important;" in interaction
+    assert "-webkit-text-fill-color: #0A0A0A !important;" in interaction
+
+
+def test_light_normal_text_uses_high_contrast_neutral_gray() -> None:
+    interaction = INTERACTION.read_text(encoding="utf-8")
+
+    assert ".contact-directory article p" in interaction
+    assert ".status-note p" in interaction
+    assert ".product-stage-control p" in interaction
+    assert "color: #2A2A2A !important;" in interaction
+
+
+def test_light_primary_cta_and_dark_preview_text_are_visible() -> None:
+    interaction = INTERACTION.read_text(encoding="utf-8")
+
+    assert 'html[data-theme="light"] .button:not(.secondary)' in interaction
+    assert "background: #0A0A0A !important;" in interaction
+    assert "-webkit-text-fill-color: #FFFFFF !important;" in interaction
+    assert 'html[data-theme="light"] .result-preview {' in interaction
+    assert 'html[data-theme="light"] .result-preview :where(span,strong)' in interaction
+
+
+def test_dark_footer_has_no_blue_ui_text_authority() -> None:
+    interaction = INTERACTION.read_text(encoding="utf-8")
+
+    assert 'html[data-theme="dark"] .site-footer {' in interaction
+    assert 'html[data-theme="dark"] .site-footer :where(a,p,span,small)' in interaction
+    assert "color: #B3B3B3 !important;" in interaction
+    assert 'html[data-theme="dark"] .site-footer a:hover' in interaction
+    assert "color: #E6E6E6 !important;" in interaction
 
 
 def test_final_light_theme_authority_loads_after_legacy_theme_layers() -> None:
@@ -96,3 +126,49 @@ def test_themed_diagram_uses_the_existing_canonical_sprite_assets() -> None:
     assert "src={light}" not in diagram
     assert "diagram-sprite-dark" in diagram
     assert "diagram-sprite-light" in diagram
+
+
+def test_dark_header_and_navigation_use_one_neutral_surface() -> None:
+    interaction = INTERACTION.read_text(encoding="utf-8")
+
+    assert 'html[data-theme="dark"] .site-header .brand-link' in interaction
+    assert "background: #0A0A0A !important;" in interaction
+    assert 'html[data-theme="dark"] :where(.nav-panel,.explore-menu-panel)' in interaction
+    assert "background: #141414 !important;" in interaction
+
+
+def test_dark_surface_typography_is_explicitly_light_neutral() -> None:
+    interaction = INTERACTION.read_text(encoding="utf-8")
+
+    assert '.capability-matrix-row' in interaction
+    assert '.trust-gate > div' in interaction
+    assert '.plane-box' in interaction
+    assert ':where(h1,h2,h3,h4,strong,b)' in interaction
+    assert "color: #FFFFFF !important;" in interaction
+    assert ':where(p,small,span,li,i)' in interaction
+    assert "color: #B3B3B3 !important;" in interaction
+
+
+def test_product_experience_helper_text_is_neutral_in_both_themes() -> None:
+    interaction = INTERACTION.read_text(encoding="utf-8")
+
+    assert 'html[data-theme="dark"] .product-experience :where(.micro-label,.text-link,.evidence-preview,.evidence-preview span,.evidence-preview li,.product-stage-control p,.product-stage-tabs button,.product-mode-tabs button)' in interaction
+    assert 'html[data-theme="light"] .product-experience :where(.evidence-preview,.evidence-preview span,.evidence-preview li,.product-stage-control p,.product-stage-tabs button,.micro-label)' in interaction
+    assert "-webkit-text-fill-color: #B3B3B3 !important;" in interaction
+    assert "-webkit-text-fill-color: #2A2A2A !important;" in interaction
+
+
+def test_light_embedded_surfaces_do_not_inherit_dark_on_dark_text() -> None:
+    interaction = INTERACTION.read_text(encoding="utf-8")
+
+    assert 'html[data-theme="light"] :where(.detail-directory > a,.runtime-line > div,.capability-matrix-row,.factory-link-cloud a,.security-process article,.principle-directory article,.trust-gate > div,.plane-box,.system-visual-control,.spatial-stage)' in interaction
+    assert "background: #FFFFFF !important;" in interaction
+    assert "color: #0A0A0A !important;" in interaction
+    assert "color: #2A2A2A !important;" in interaction
+
+
+def test_final_render_authority_contains_no_cyan_or_blue_hex_values() -> None:
+    interaction = INTERACTION.read_text(encoding="utf-8").upper()
+
+    assert "#00C2D1" not in interaction
+    assert "#146BFF" not in interaction
