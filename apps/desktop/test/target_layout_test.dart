@@ -37,6 +37,7 @@ void main() {
       expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
       expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
       expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
+      expect(find.text('ILAIOS'), findsNothing);
       expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
       expect(find.byKey(const Key('reference-responsive-viewport-v11')), findsOneWidget);
       expect(find.byKey(const Key('reference-responsive-viewport-v10')), findsOneWidget);
@@ -101,6 +102,7 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
     expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
+    expect(find.text('ILAIOS'), findsNothing);
   });
 
   testWidgets('shell keeps seven primary categories and secondary access without deleting functions', (
@@ -134,6 +136,21 @@ void main() {
     expect(find.text('Goals'), findsOneWidget);
     expect(find.text('Live Workspace'), findsOneWidget);
     expect(find.text('Costs'), findsOneWidget);
+  });
+
+  testWidgets('1536x1024 Home uses scroll-safe geometry instead of overflowing', (
+    WidgetTester tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.binding.setSurfaceSize(const Size(1536, 1024));
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(
+      find.byKey(const Key('command-center-short-viewport-scroll')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('V4 Home remains overflow-free under 125 and 150 percent text scaling', (
@@ -198,6 +215,7 @@ void main() {
       expect(find.text('Ana Kontrol Merkezi'), findsNothing);
       expect(find.text('Aktif İş Akışı'), findsNothing);
       expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
+      expect(find.text('ILAIOS'), findsNothing);
       expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
     }
   });
