@@ -13,6 +13,31 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  full-history-secret-scan:
+    name: S5 full repository history secret scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout complete immutable history
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Scan complete repository history without disclosing values
+        run: |
+          set -euo pipefail
+          python -m services.software_factory_secret_scanning \\
+            --repository-root "$GITHUB_WORKSPACE" \\
+            --history \\
+            --head-sha "$GITHUB_SHA"
+
   provider-neutral-recovery-drills:
     name: S5 provider-neutral recovery and security drills
     runs-on: ubuntu-latest
