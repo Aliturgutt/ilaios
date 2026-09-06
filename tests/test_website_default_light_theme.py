@@ -252,3 +252,21 @@ def test_visual_qa_covers_all_localized_routes_in_light_and_dark_with_real_mobil
     assert "mobile navigation panel is too wide" in qa
     assert "header geometry drift" in qa
     assert '"localized_routes":len(ROUTES)*2' in qa
+
+
+def test_header_and_explore_close_on_outside_pointer_interaction() -> None:
+    chrome = CHROME.read_text(encoding="utf-8")
+
+    assert "useRef" in chrome
+    assert 'document.addEventListener("pointerdown", onPointerDown)' in chrome
+    assert "exploreMenu?.open && !exploreMenu.contains(event.target)" in chrome
+    assert "open && header && !header.contains(event.target)" in chrome
+    assert 'exploreRef.current?.removeAttribute("open")' in chrome
+
+
+def test_footer_links_use_existing_contrast_safe_text_link_authority() -> None:
+    chrome = CHROME.read_text(encoding="utf-8")
+
+    assert '<a className="text-link" href="mailto:contact@ilaios.com">' in chrome
+    assert '<Link className="text-link" key={href} href={href}>' in chrome
+    assert '<Link className="text-link" href={switchHref}>' in chrome
