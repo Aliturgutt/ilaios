@@ -3,13 +3,15 @@
 This module is provider-neutral. External news/trend integrations map their
 observations into ``DailyTopicCandidate`` objects. Selection never treats one
 provider as truth: candidates must carry independent source references before
-they can be admitted.
+they can be admitted. Recent topic/content fingerprints can be supplied from a
+durable caller-owned history so scheduler retries cannot recycle an episode.
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
+from hashlib import sha256
 from typing import Iterable
 
 
@@ -28,6 +30,7 @@ class DailyTopicCandidate:
     relevance_score: float
     advertiser_value_score: float
     freshness_score: float
+    content_fingerprint: str = ""
 
     def __post_init__(self) -> None:
         for name in ("topic_id", "title", "summary", "category"):
@@ -44,6 +47,17 @@ class DailyTopicCandidate:
             score = float(getattr(self, name))
             if score < 0.0 or score > 1.0:
                 raise DailyTopicSelectionError(f"{name} must be between 0 and 1")
+
+        fingerprint = self.content_fingerprint.strip().lower()
+        if fingerprint:
+            if len(fingerprint) != 64 or any(ch not in "0123456789abcdef" for ch in fingerprint):
+                raise DailyTopicSelectionError("content_fingerprint must be a lowercase SHA-256 digest")
+        else:
+            material = " ".join(
+                (self.title.casefold().strip(), self.summary.casefold().strip())
+            )
+            fingerprint = sha256(material.encode("utf-8")).hexdigest()
+        object.__setattr__(self, "content_fingerprint", fingerprint)
 
     @property
     def combined_score(self) -> float:
@@ -79,7 +93,7 @@ class DailyChannelPolicy:
 
 
 class DailyTopicSelector:
-    """Select one bounded topic while failing closed on weak evidence."""
+    """Select one bounded topic while failing closed on weak or recycled evidence."""
 
     def select(
         self,
@@ -87,11 +101,17 @@ class DailyTopicSelector:
         *,
         policy: DailyChannelPolicy,
         now: datetime | None = None,
+        recent_topic_ids: Iterable[str] = (),
+        recent_content_fingerprints: Iterable[str] = (),
     ) -> DailyTopicCandidate:
         current = now or datetime.now(timezone.utc)
         if current.tzinfo is None:
             raise DailyTopicSelectionError("now must be timezone-aware")
         oldest = current - timedelta(hours=policy.maximum_age_hours)
+        prior_topic_ids = {item.strip() for item in recent_topic_ids if item.strip()}
+        prior_fingerprints = {
+            item.strip().lower() for item in recent_content_fingerprints if item.strip()
+        }
 
         admitted: list[DailyTopicCandidate] = []
         for candidate in candidates:
@@ -105,10 +125,16 @@ class DailyTopicSelector:
                 continue
             if len(candidate.independent_source_refs) < policy.minimum_independent_sources:
                 continue
+            if candidate.topic_id in prior_topic_ids:
+                continue
+            if candidate.content_fingerprint in prior_fingerprints:
+                continue
             admitted.append(candidate)
 
         if not admitted:
-            raise DailyTopicSelectionError("no topic satisfies channel policy and source verification")
+            raise DailyTopicSelectionError(
+                "no fresh topic satisfies channel policy, source verification, and deduplication"
+            )
 
         admitted.sort(
             key=lambda item: (item.combined_score, item.published_at, item.topic_id),
