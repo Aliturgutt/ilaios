@@ -32,6 +32,20 @@ void main() {
       expect(status.detail, raw);
     });
 
+    test('missing bundled runtime is localized in Turkish', () {
+      const raw = 'Bundled ILAIOS control plane is not present in this build';
+
+      final status = presentDesktopRuntimeStatus(
+        raw,
+        connected: false,
+        turkish: true,
+      );
+
+      expect(status.kind, DesktopRuntimeStatusKind.unavailable);
+      expect(status.label, 'Bu derlemede yerel kontrol düzlemi kullanılamıyor.');
+      expect(status.detail, raw);
+    });
+
     test('known unreachable control plane is localized in Turkish', () {
       const raw = 'Control plane is unreachable';
 
