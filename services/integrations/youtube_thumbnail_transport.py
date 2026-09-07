@@ -12,7 +12,10 @@ from hashlib import sha256
 from pathlib import Path
 from urllib.parse import urlencode
 
-from services.integrations.social_publishing import SocialPublishTransportResult
+from services.integrations.social_publishing import (
+    SocialPublishTransport,
+    SocialPublishTransportResult,
+)
 from services.integrations.social_publishing_transports import (
     OAuthCredentialResolver,
     SocialHttpClient,
@@ -30,13 +33,11 @@ class YouTubeThumbnailUploadTransport:
     def __init__(
         self,
         *,
-        inner: object,
+        inner: SocialPublishTransport,
         credential_resolver: OAuthCredentialResolver,
         http: SocialHttpClient | None = None,
         require_thumbnail: bool = True,
     ) -> None:
-        if not hasattr(inner, "publish"):
-            raise SocialPublicationTransportError("inner transport must implement publish")
         self._inner = inner
         self._resolver = credential_resolver
         self._http = http or UrllibSocialHttpClient()
