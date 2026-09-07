@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/ilaios_locale.dart';
 import '../../control_plane/client.dart';
 import '../../control_plane/evidence_record.dart';
 import '../../control_plane/operational_snapshot.dart';
@@ -47,7 +48,7 @@ class GovernanceView extends StatelessWidget {
       );
     }
 
-    final turkish = Localizations.localeOf(context).languageCode == 'tr';
+    final turkish = IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
     return Container(
       key: const Key('reference-approvals-page'),
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -131,7 +132,7 @@ class _EvidenceViewState extends State<EvidenceView> {
 
   @override
   Widget build(BuildContext context) {
-    final tr = Localizations.localeOf(context).languageCode == 'tr';
+    final tr = IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
     final actions = widget.snapshot.evidenceRecords
         .map((record) => record.action.trim())
         .where((value) => value.isNotEmpty)
