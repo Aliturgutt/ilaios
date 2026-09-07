@@ -2,18 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../app/ilaios_locale.dart';
 import '../../control_plane/client.dart';
-import '../../control_plane/evidence_record.dart';
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
 import '../../identity/identity_client.dart';
 import '../create/reference_asset_picker.dart';
 import '../navigation/desktop_section.dart';
 
-/// Final-polish Home surface.
+/// Canonical 7-page Home surface.
 ///
-/// One governed prompt remains the primary interaction. Supporting content is
-/// authority-derived and responsive; compact layouts scroll instead of
-/// shrinking typography or overflowing.
+/// Geometry follows the user-approved 1536x1024 Home reference. Runtime values
+/// remain authority-derived; the screenshot's example counts are never copied
+/// into application state.
 class ReferenceHomeDashboardV3 extends StatefulWidget {
   const ReferenceHomeDashboardV3({
     required this.projection,
@@ -42,6 +41,7 @@ class ReferenceHomeDashboardV3 extends StatefulWidget {
 class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
   final TextEditingController _promptController = TextEditingController();
   bool _submitting = false;
+  String _objective = '';
 
   @override
   void dispose() {
@@ -50,16 +50,13 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
   }
 
   Future<void> _startWork() async {
+    final callback = widget.onPromptSubmit;
     final objective = _promptController.text.trim();
-    if (objective.isEmpty || widget.onPromptSubmit == null) {
-      widget.onNavigate(DesktopSection.goals);
-      return;
-    }
-    if (_submitting) return;
+    if (callback == null || objective.isEmpty || _submitting) return;
 
     setState(() => _submitting = true);
     try {
-      final submission = await widget.onPromptSubmit!(objective);
+      final submission = await callback(objective);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -73,7 +70,8 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
         ),
       );
       _promptController.clear();
-    } catch (error) {
+      setState(() => _objective = '');
+    } on Object catch (error) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -93,770 +91,459 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
 
   @override
   Widget build(BuildContext context) {
-    final model = _HomeModel(
-      projection: widget.projection,
-      snapshot: widget.snapshot,
-      status: widget.status,
-      userSession: widget.userSession,
-    );
     final referenceAssets = ReferenceAssetPickerScope.maybeOf(context);
+    final groups = _agentGroups(widget.snapshot);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        // Preserve native typography. Compact width or short desktop height
-        // scrolls instead of compressing panels into unreadable/overflowing
-        // geometry. The 1536x1024 shell leaves about 952 px below the top bar,
-        // so keep that geometry on the scroll-safe path rather than forcing the
-        // support panels into a height that already proved to overflow.
-        final textScale = MediaQuery.textScalerOf(context).scale(14) / 14;
-        final compact = constraints.maxWidth < 1300 ||
-            constraints.maxHeight < 960 || textScale > 1.0;
-        final outerPadding = compact ? 14.0 : 20.0;
-        final gap = compact ? 12.0 : 16.0;
-
-        if (compact) {
-          return SingleChildScrollView(
-            key: const Key('command-center-short-viewport-scroll'),
-            primary: false,
-            padding: EdgeInsets.fromLTRB(outerPadding, 14, outerPadding, 18),
-            child: Column(
-              key: const Key('command-center-home'),
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                _CommandHero(
-                  controller: _promptController,
-                  submitting: _submitting,
-                  model: model,
-                  referenceAssets: referenceAssets,
-                  onStartWork: _startWork,
-                  onNavigate: widget.onNavigate,
-                ),
-                SizedBox(height: gap),
-                _CompactSupportLayout(
-                  model: model,
-                  onNavigate: widget.onNavigate,
-                  gap: gap,
-                ),
-              ],
-            ),
-          );
-        }
-
-        return Padding(
-          padding: EdgeInsets.fromLTRB(outerPadding, 16, outerPadding, 18),
-          child: Column(
-            key: const Key('command-center-home'),
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _CommandHero(
-                controller: _promptController,
-                submitting: _submitting,
-                model: model,
-                referenceAssets: referenceAssets,
-                onStartWork: _startWork,
-                onNavigate: widget.onNavigate,
-              ),
-              SizedBox(height: gap),
-              Expanded(
-                child: _WideSupportLayout(
-                  model: model,
-                  onNavigate: widget.onNavigate,
-                  gap: gap,
-                ),
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _HomeModel {
-  const _HomeModel({
-    required this.projection,
-    required this.snapshot,
-    required this.status,
-    required this.userSession,
-  });
-
-  final ControlPlaneProjection projection;
-  final OperationalSnapshot snapshot;
-  final String status;
-  final DesktopUserSession? userSession;
-
-  List<Map<String, Object?>> get work =>
-      _mapList(snapshot.governanceState['work']);
-
-  List<Map<String, Object?>> get admissions =>
-      _mapList(snapshot.governanceState['admissions']);
-
-  List<Map<String, Object?>> get focusItems {
-    if (work.isNotEmpty) return work.reversed.take(3).toList(growable: false);
-    return snapshot.liveEvents.reversed.take(3).toList(growable: false);
-  }
-
-  int? get pendingApprovalCount {
-    if (!snapshot.governanceState.containsKey('work') &&
-        !snapshot.governanceState.containsKey('admissions')) {
-      return null;
-    }
-    final hasAdmissions = snapshot.governanceState.containsKey('admissions');
-    final required = <String>{};
-    for (final item in admissions) {
-      if (item['human_approval_required'] != true) continue;
-      final id = item['request_id'];
-      if (id is String && id.isNotEmpty) required.add(id);
-    }
-    return work.where((item) {
-      final state = _normalize(_text(item, const ['status', 'state']) ?? '');
-      if (state != 'pending') return false;
-      if (!hasAdmissions) return true;
-      final id = item['request_id'];
-      return id is String && required.contains(id);
-    }).length;
-  }
-
-  int get deniedCount => work.where((item) {
-        final state = _normalize(_text(item, const ['status', 'state']) ?? '');
-        return state == 'denied' || state == 'failed';
-      }).length;
-
-  List<_AttentionData> get attentionItems {
-    final items = <_AttentionData>[];
-    final pending = pendingApprovalCount;
-    if (pending != null && pending > 0) {
-      items.add(
-        _AttentionData(
-          title: pending == 1
-              ? '1 approval is waiting'
-              : '$pending approvals are waiting',
-          subtitle:
-              'Human approval is required before governed execution can continue.',
-          destination: DesktopSection.approvals,
-          critical: false,
-        ),
-      );
-    }
-    if (deniedCount > 0) {
-      items.add(
-        _AttentionData(
-          title: deniedCount == 1
-              ? '1 work item needs review'
-              : '$deniedCount work items need review',
-          subtitle: 'A governed work item was denied or failed.',
-          destination: DesktopSection.workflows,
-          critical: false,
-        ),
-      );
-    }
-    for (final event in snapshot.liveEvents.reversed) {
-      final state = _normalize(
-        _text(event, const ['status', 'state', 'event_type', 'type']) ?? '',
-      );
-      if (!state.contains('error') &&
-          !state.contains('failed') &&
-          !state.contains('critical')) {
-        continue;
-      }
-      items.add(
-        _AttentionData(
-          title: _humanEventTitle(event),
-          subtitle: _text(event, const ['detail', 'reason']) ??
-              'An authoritative runtime event needs review.',
-          destination: DesktopSection.workflows,
-          critical: true,
-        ),
-      );
-      break;
-    }
-    return items.take(3).toList(growable: false);
-  }
-
-  List<EvidenceRecord> get outputs =>
-      snapshot.evidenceRecords.reversed.take(3).toList(growable: false);
-}
-
-class _CommandHero extends StatelessWidget {
-  const _CommandHero({
-    required this.controller,
-    required this.submitting,
-    required this.model,
-    required this.referenceAssets,
-    required this.onStartWork,
-    required this.onNavigate,
-  });
-
-  final TextEditingController controller;
-  final bool submitting;
-  final _HomeModel model;
-  final ReferenceAssetPickerController? referenceAssets;
-  final Future<void> Function() onStartWork;
-  final ValueChanged<DesktopSection> onNavigate;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        key: const Key('command-center-hero'),
-        padding: const EdgeInsets.fromLTRB(22, 20, 22, 18),
-        decoration: _surface(context, emphasized: true),
+    return ColoredBox(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: SingleChildScrollView(
+        key: const Key('command-center-short-viewport-scroll'),
+        primary: false,
         child: Column(
+          key: const Key('command-center-home'),
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final stacked = constraints.maxWidth < 720;
-                final copy = Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _t(context, 'Start work', 'İş başlat'),
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontSize: 30,
-                            height: 1.1,
-                            fontWeight: FontWeight.w700,
-                          ),
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      _t(
-                        context,
-                        'Describe the finished result. ILAIOS will route the work through the existing governed execution system.',
-                        'Bitmiş sonucu tarif et. ILAIOS işi mevcut yönetişimli yürütme sistemi üzerinden yönlendirsin.',
-                      ),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            fontSize: 15,
-                            height: 1.4,
-                            color: Theme.of(context).colorScheme.onSurfaceVariant,
-                          ),
-                    ),
-                  ],
-                );
-                if (stacked) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      copy,
-                      const SizedBox(height: 12),
-                      Align(
-                        alignment: Alignment.centerLeft,
-                        child: _RuntimePill(model: model),
-                      ),
-                    ],
-                  );
-                }
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: copy),
-                    const SizedBox(width: 18),
-                    Flexible(child: _RuntimePill(model: model)),
-                  ],
-                );
-              },
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              key: const Key('home-command-prompt'),
-              controller: controller,
-              minLines: 2,
-              maxLines: 4,
-              style: const TextStyle(fontSize: 15, height: 1.35),
-              textInputAction: TextInputAction.newline,
-              decoration: InputDecoration(
-                hintText: _t(
-                  context,
-                  'Website, video, software or research — describe the result and constraints…',
-                  'Web sitesi, video, yazılım veya araştırma — sonucu ve kısıtları yaz…',
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 20, 27, 14),
+              decoration: BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                 ),
               ),
-            ),
-            if (referenceAssets != null) ...[
-              const SizedBox(height: 10),
-              ReferenceAssetPicker(
-                key: const Key('home-prompt-attachments'),
-                controller: referenceAssets!,
-                enabled: model.userSession != null && !submitting,
-                compact: true,
-              ),
-            ],
-            const SizedBox(height: 12),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final stacked = constraints.maxWidth < 760;
-                final routing = Text(
-                  _t(
-                    context,
-                    'Routing is automatic. Factory selection stays secondary.',
-                    'Yönlendirme otomatik. Factory seçimi ikincil kalır.',
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    _t(context, 'Start work', 'İş başlat'),
+                    style: const TextStyle(
+                      fontSize: 25,
+                      height: 1.12,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                  maxLines: stacked ? 2 : 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        fontSize: 13,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                );
-                final advanced = TextButton(
-                  onPressed: () => onNavigate(DesktopSection.goals),
-                  child: Text(
-                    _t(context, 'Advanced', 'Gelişmiş'),
-                    style: const TextStyle(fontSize: 13.5),
-                  ),
-                );
-                final start = FilledButton.icon(
-                  key: const Key('home-new-work'),
-                  onPressed: submitting ? null : onStartWork,
-                  icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                  label: Text(
-                    submitting
-                        ? _t(context, 'Starting…', 'Başlatılıyor…')
-                        : _t(context, 'Start', 'Başlat'),
-                    style: const TextStyle(fontSize: 14),
-                  ),
-                );
-                if (stacked) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                  const SizedBox(height: 16),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      routing,
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          advanced,
-                          const Spacer(),
-                          start,
-                        ],
+                      Expanded(
+                        child: SizedBox(
+                          height: 60,
+                          child: TextField(
+                            key: const Key('home-command-prompt'),
+                            controller: _promptController,
+                            minLines: 1,
+                            maxLines: 1,
+                            textAlignVertical: TextAlignVertical.center,
+                            onChanged: (value) =>
+                                setState(() => _objective = value.trim()),
+                            decoration: InputDecoration(
+                              prefixIcon: const Icon(
+                                Icons.attach_file_rounded,
+                                size: 22,
+                              ),
+                              hintText: _t(
+                                context,
+                                'Website, video, software or research — describe the result and criteria…',
+                                'Web sitesi, video, yazılım veya araştırma — sonucu ve kriterleri yaz...',
+                              ),
+                              hintStyle: const TextStyle(fontSize: 14),
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 18,
+                              ),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      SizedBox(
+                        width: 162,
+                        height: 60,
+                        child: FilledButton.icon(
+                          key: const Key('home-new-work'),
+                          onPressed: _objective.isNotEmpty &&
+                                  widget.onPromptSubmit != null &&
+                                  !_submitting
+                              ? _startWork
+                              : null,
+                          icon: _submitting
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Icon(Icons.play_arrow_outlined, size: 24),
+                          label: Text(
+                            _submitting
+                                ? _t(context, 'Starting…', 'Başlatılıyor…')
+                                : _t(context, 'Start', 'Başlat'),
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          style: FilledButton.styleFrom(
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
-                  );
-                }
-                return Row(
-                  children: [
-                    Expanded(child: routing),
-                    const SizedBox(width: 8),
-                    advanced,
-                    const SizedBox(width: 8),
-                    start,
+                  ),
+                  if (referenceAssets != null) ...[
+                    const SizedBox(height: 13),
+                    ReferenceAssetPicker(
+                      key: const Key('home-prompt-attachments'),
+                      controller: referenceAssets,
+                      enabled: widget.userSession != null && !_submitting,
+                      compact: true,
+                    ),
                   ],
-                );
-              },
+                ],
+              ),
             ),
-          ],
-        ),
-      );
-}
-
-class _RuntimePill extends StatelessWidget {
-  const _RuntimePill({required this.model});
-  final _HomeModel model;
-
-  @override
-  Widget build(BuildContext context) => Container(
-        constraints: const BoxConstraints(maxWidth: 250),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerLowest,
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.circle,
-              size: 8,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 8),
-            Flexible(
-              child: Text(
-                model.status,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 20, 27, 22),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Divider(
+                    height: 1,
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
+                  const SizedBox(height: 20),
+                  _AgentSection(
+                    groups: groups,
+                    onShowAll: () => widget.onNavigate(DesktopSection.agents),
+                  ),
+                ],
               ),
             ),
           ],
         ),
-      );
-}
-
-class _WideSupportLayout extends StatelessWidget {
-  const _WideSupportLayout({
-    required this.model,
-    required this.onNavigate,
-    required this.gap,
-  });
-
-  final _HomeModel model;
-  final ValueChanged<DesktopSection> onNavigate;
-  final double gap;
-
-  @override
-  Widget build(BuildContext context) => Column(
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(child: _FocusPanel(model: model, onNavigate: onNavigate)),
-                SizedBox(width: gap),
-                Expanded(child: _AttentionPanel(model: model, onNavigate: onNavigate)),
-              ],
-            ),
-          ),
-          SizedBox(height: gap),
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(child: _OutputsPanel(model: model, onNavigate: onNavigate)),
-                SizedBox(width: gap),
-                Expanded(child: _CompletedPanel(model: model, onNavigate: onNavigate)),
-              ],
-            ),
-          ),
-        ],
-      );
-}
-
-class _CompactSupportLayout extends StatelessWidget {
-  const _CompactSupportLayout({
-    required this.model,
-    required this.onNavigate,
-    required this.gap,
-  });
-
-  final _HomeModel model;
-  final ValueChanged<DesktopSection> onNavigate;
-  final double gap;
-
-  @override
-  Widget build(BuildContext context) => Column(
-        children: [
-          SizedBox(height: MediaQuery.textScalerOf(context).scale(210), child: _FocusPanel(model: model, onNavigate: onNavigate)),
-          SizedBox(height: gap),
-          SizedBox(height: MediaQuery.textScalerOf(context).scale(210), child: _AttentionPanel(model: model, onNavigate: onNavigate)),
-          SizedBox(height: gap),
-          SizedBox(height: MediaQuery.textScalerOf(context).scale(210), child: _OutputsPanel(model: model, onNavigate: onNavigate)),
-          SizedBox(height: gap),
-          SizedBox(height: MediaQuery.textScalerOf(context).scale(210), child: _CompletedPanel(model: model, onNavigate: onNavigate)),
-        ],
-      );
-}
-
-class _FocusPanel extends StatelessWidget {
-  const _FocusPanel({required this.model, required this.onNavigate});
-  final _HomeModel model;
-  final ValueChanged<DesktopSection> onNavigate;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = model.focusItems;
-    return _SectionPanel(
-      key: const Key('command-center-focus'),
-      title: _t(context, 'FOCUS WORK', 'ODAK İŞLER'),
-      actionLabel: _t(context, 'All work', 'Tüm işler'),
-      onAction: () => onNavigate(DesktopSection.workflows),
-      child: items.isEmpty
-          ? _EmptyState(
-              icon: Icons.track_changes_rounded,
-              title: _t(context, 'Nothing is running yet', 'Henüz çalışan iş yok'),
-              detail: _t(
-                context,
-                'Start from the prompt above. Work appears here only when authoritative runtime state exists.',
-                'Yukarıdaki prompttan başlat. İşler yalnızca doğrulanmış runtime durumu oluştuğunda burada görünür.',
-              ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              itemCount: items.length,
-              separatorBuilder: (_, _) => Divider(
-                height: 1,
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
-              itemBuilder: (context, index) => _WorkRow(item: items[index]),
-            ),
+      ),
     );
   }
 }
 
-class _WorkRow extends StatelessWidget {
-  const _WorkRow({required this.item});
-  final Map<String, Object?> item;
+class _AgentSection extends StatelessWidget {
+  const _AgentSection({required this.groups, required this.onShowAll});
+
+  final List<_AgentGroup> groups;
+  final VoidCallback onShowAll;
 
   @override
   Widget build(BuildContext context) {
-    final title = _humanWorkTitle(item);
-    final state = _humanState(_text(item, const ['status', 'state', 'phase']) ?? '');
-    final detail = _text(item, const ['description', 'message', 'task', 'phase', 'stage']);
-    final id = _text(item, const ['request_id', 'job_id', 'execution_id']);
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      child: Row(
+    final tr = IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
+    final subtitle = groups.isEmpty
+        ? (tr ? 'Doğrulanmış runtime ajan verisi yok' : 'No verified runtime agent data')
+        : (tr
+            ? '${groups.length} takım · gerçek zamanlı runtime durumu'
+            : '${groups.length} teams · real-time runtime state');
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    tr ? 'Ajanlar Çalışıyor' : 'Agents',
+                    style: const TextStyle(
+                      fontSize: 22,
+                      height: 1.1,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13.5,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            TextButton.icon(
+              onPressed: onShowAll,
+              label: Text(
+                tr ? 'Tüm Ajanları Görüntüle' : 'View all agents',
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+              iconAlignment: IconAlignment.end,
+              icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        if (groups.isEmpty)
+          Container(
+            height: 150,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainerLowest,
+              border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Text(
+              tr
+                  ? 'Ajan durumları runtime authority üzerinden geldiğinde burada gösterilir.'
+                  : 'Agent state appears here when supplied by the runtime authority.',
+              style: TextStyle(
+                fontSize: 13,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          )
+        else
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final visible = groups.take(8).toList(growable: false);
+              const gap = 12.0;
+              final width =
+                  (constraints.maxWidth - gap * (visible.length - 1)) / visible.length;
+              return Wrap(
+                spacing: gap,
+                runSpacing: gap,
+                children: [
+                  for (final group in visible)
+                    SizedBox(
+                      width: width.clamp(132.0, 190.0),
+                      child: _AgentGroupCard(group: group),
+                    ),
+                ],
+              );
+            },
+          ),
+      ],
+    );
+  }
+}
+
+class _AgentGroupCard extends StatelessWidget {
+  const _AgentGroupCard({required this.group});
+
+  final _AgentGroup group;
+
+  @override
+  Widget build(BuildContext context) {
+    final tr = IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
+    return Container(
+      height: 212,
+      padding: const EdgeInsets.fromLTRB(14, 14, 14, 12),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(
-            Icons.work_outline_rounded,
-            size: 20,
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          Text(
+            _displayTeam(group.team, tr),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800),
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                if (detail != null) ...[
-                  const SizedBox(height: 3),
-                  Text(detail, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                ],
-              ],
+          const Spacer(),
+          Center(
+            child: Icon(
+              Icons.smart_toy_outlined,
+              size: 64,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(width: 12),
-          Flexible(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(state, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600)),
-                if (id != null) ...[
-                  const SizedBox(height: 3),
-                  Text('ID ${_short(id, 12)}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-                ],
-              ],
+          const Spacer(),
+          if (group.active != null)
+            _StatusLine(
+              color: const Color(0xFF16B85A),
+              text: tr
+                  ? '${group.active} çalışıyor'
+                  : '${group.active} active',
             ),
-          ),
+          if (group.busy != null)
+            _StatusLine(
+              color: const Color(0xFFF0B81C),
+              text: tr ? '${group.busy} meşgul' : '${group.busy} busy',
+            ),
+          if (group.idle != null)
+            _StatusLine(
+              color: const Color(0xFF94A3B8),
+              text: tr ? '${group.idle} boşta' : '${group.idle} idle',
+            ),
+          if (group.active == null && group.busy == null && group.idle == null)
+            Text(
+              tr ? 'Durum doğrulanmadı' : 'State unverified',
+              style: TextStyle(
+                fontSize: 11.5,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
         ],
       ),
     );
   }
 }
 
-class _AttentionData {
-  const _AttentionData({required this.title, required this.subtitle, required this.destination, required this.critical});
-  final String title;
-  final String subtitle;
-  final DesktopSection destination;
-  final bool critical;
-}
-
-class _AttentionPanel extends StatelessWidget {
-  const _AttentionPanel({required this.model, required this.onNavigate});
-  final _HomeModel model;
-  final ValueChanged<DesktopSection> onNavigate;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = model.attentionItems;
-    return _SectionPanel(
-      key: const Key('command-center-attention'),
-      title: _t(context, 'NEEDS ATTENTION', 'DİKKAT GEREKTİRENLER'),
-      actionLabel: _t(context, 'Approvals', 'Onaylar'),
-      onAction: () => onNavigate(DesktopSection.approvals),
-      child: items.isEmpty
-          ? _EmptyState(
-              icon: Icons.verified_outlined,
-              title: _t(context, 'No action is required', 'İşlem gerekmiyor'),
-              detail: _t(
-                context,
-                'Only authoritative approvals, failures, or runtime issues appear here.',
-                'Burada yalnızca doğrulanmış onay, hata veya runtime sorunları görünür.',
-              ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              itemCount: items.length,
-              separatorBuilder: (_, _) => Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
-              itemBuilder: (context, index) {
-                final data = items[index];
-                return Material(
-                  color: Colors.transparent,
-                  child: ListTile(
-                    dense: true,
-                    leading: Icon(
-                      Icons.error_outline_rounded,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                    title: Text(data.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-                    subtitle: Text(data.subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
-                    trailing: const Icon(Icons.chevron_right_rounded),
-                    onTap: () => onNavigate(data.destination),
-                  ),
-                );
-              },
-            ),
-    );
-  }
-}
-
-class _OutputsPanel extends StatelessWidget {
-  const _OutputsPanel({required this.model, required this.onNavigate});
-  final _HomeModel model;
-  final ValueChanged<DesktopSection> onNavigate;
-
-  @override
-  Widget build(BuildContext context) {
-    final records = model.outputs;
-    return _SectionPanel(
-      key: const Key('command-center-artifacts'),
-      title: _t(context, 'LATEST OUTPUTS', 'SON ÇIKTILAR'),
-      actionLabel: _t(context, 'Outputs', 'Çıktılar'),
-      onAction: () => onNavigate(DesktopSection.artifacts),
-      child: records.isEmpty
-          ? _EmptyState(
-              icon: Icons.inventory_2_outlined,
-              title: _t(context, 'No output yet', 'Henüz çıktı yok'),
-              detail: _t(
-                context,
-                'Verified files and finished products appear here after governed execution produces evidence.',
-                'Doğrulanmış dosyalar ve bitmiş ürünler, yönetişimli yürütme evidence ürettiğinde burada görünür.',
-              ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              itemCount: records.length,
-              separatorBuilder: (_, _) => Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
-              itemBuilder: (context, index) => _OutputRow(record: records[index]),
-            ),
-    );
-  }
-}
-
-class _OutputRow extends StatelessWidget {
-  const _OutputRow({required this.record});
-  final EvidenceRecord record;
+class _StatusLine extends StatelessWidget {
+  const _StatusLine({required this.color, required this.text});
+  final Color color;
+  final String text;
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        padding: const EdgeInsets.only(top: 4),
         child: Row(
           children: [
-            Icon(
-              Icons.description_outlined,
-              size: 20,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(width: 12),
+            Icon(Icons.circle, size: 8, color: color),
+            const SizedBox(width: 7),
             Expanded(
-              child: Text(_humanAction(record.action), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-            ),
-            const SizedBox(width: 12),
-            Flexible(
-              child: Text('ID ${_short(record.executionId, 12)}', maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 12.5, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+              child: Text(
+                text,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11.5),
+              ),
             ),
           ],
         ),
       );
 }
 
-class _CompletedPanel extends StatelessWidget {
-  const _CompletedPanel({required this.model, required this.onNavigate});
-  final _HomeModel model;
-  final ValueChanged<DesktopSection> onNavigate;
+class _AgentGroup {
+  const _AgentGroup({
+    required this.team,
+    required this.active,
+    required this.busy,
+    required this.idle,
+  });
 
-  @override
-  Widget build(BuildContext context) {
-    final records = model.outputs;
-    return _SectionPanel(
-      key: const Key('command-center-completed'),
-      title: _t(context, 'RECENTLY COMPLETED', 'SON TAMAMLANANLAR'),
-      actionLabel: _t(context, 'Evidence', 'Evidence'),
-      onAction: () => onNavigate(DesktopSection.evidence),
-      child: records.isEmpty
-          ? _EmptyState(
-              icon: Icons.task_alt_rounded,
-              title: _t(context, 'No verified completion yet', 'Henüz doğrulanmış tamamlanma yok'),
-              detail: _t(
-                context,
-                'Completed work appears here only when the evidence chain contains a real record.',
-                'Tamamlanan işler yalnızca evidence zincirinde gerçek kayıt bulunduğunda burada görünür.',
-              ),
-            )
-          : ListView.separated(
-              padding: const EdgeInsets.symmetric(vertical: 6),
-              itemCount: records.length,
-              separatorBuilder: (_, _) => Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
-              itemBuilder: (context, index) => _OutputRow(record: records[index]),
-            ),
-    );
+  final String team;
+  final int? active;
+  final int? busy;
+  final int? idle;
+}
+
+List<_AgentGroup> _agentGroups(OperationalSnapshot snapshot) {
+  final registry = <String, Map<String, Object?>>{};
+  for (final item in _maps(snapshot.agentState['agents'])) {
+    final id = _text(item, const ['agent_id', 'id']);
+    if (id == null || !id.startsWith('ilaios.agent.')) continue;
+    registry[id] = Map<String, Object?>.of(item);
   }
-}
+  if (registry.isEmpty) return const [];
 
-class _SectionPanel extends StatelessWidget {
-  const _SectionPanel({required this.title, required this.child, this.actionLabel, this.onAction, super.key});
-  final String title;
-  final Widget child;
-  final String? actionLabel;
-  final VoidCallback? onAction;
+  void mergeTelemetry(Map<String, Object?> item) {
+    String? id;
+    for (final key in const [
+      'agent_id',
+      'worker_id',
+      'executor_id',
+      'agent',
+      'worker',
+      'id',
+    ]) {
+      final candidate = _text(item, [key]);
+      if (candidate != null && registry.containsKey(candidate)) {
+        id = candidate;
+        break;
+      }
+    }
+    if (id == null) return;
+    final status = _text(item, const [
+      'agent_status',
+      'worker_status',
+      'status',
+      'state',
+      'lease_state',
+    ]);
+    if (status != null) registry[id]!['runtime_status'] = status;
+  }
 
-  @override
-  Widget build(BuildContext context) => Container(
-        decoration: _surface(context),
-        clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 10, 10, 8),
-              child: Row(
-                children: [
-                  Expanded(child: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 16, letterSpacing: .1, fontWeight: FontWeight.w700))),
-                  if (actionLabel != null)
-                    TextButton(
-                      style: TextButton.styleFrom(
-                        visualDensity: VisualDensity.compact,
-                        minimumSize: const Size(0, 32),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      ),
-                      onPressed: onAction,
-                      child: Text(actionLabel!, style: const TextStyle(fontSize: 13.5)),
-                    ),
-                ],
-              ),
-            ),
-            Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
-            Expanded(child: child),
-          ],
+  for (final key in const ['agents', 'workers', 'executors', 'leases']) {
+    for (final item in _maps(snapshot.schedulerState[key])) {
+      mergeTelemetry(item);
+    }
+  }
+  for (final item in snapshot.runtimeRoutes) {
+    mergeTelemetry(item);
+  }
+  for (final item in snapshot.liveEvents) {
+    mergeTelemetry(item);
+  }
+
+  final buckets = <String, _MutableAgentGroup>{};
+  for (final entry in registry.entries) {
+    final item = entry.value;
+    final team = _text(item, const ['team', 'group', 'domain']) ??
+        _teamFromId(entry.key);
+    if (team == null) continue;
+    final bucket = buckets.putIfAbsent(team, () => _MutableAgentGroup(team));
+    final status = _text(item, const ['runtime_status']);
+    if (status == null) {
+      bucket.unknown++;
+      continue;
+    }
+    final normalized = _normalize(status);
+    if (normalized.contains('busy') ||
+        normalized.contains('running') ||
+        normalized.contains('executing') ||
+        normalized.contains('working')) {
+      bucket.busy++;
+    } else if (normalized.contains('idle') ||
+        normalized.contains('available') ||
+        normalized.contains('free')) {
+      bucket.idle++;
+    } else if (normalized.contains('active') ||
+        normalized.contains('ready') ||
+        normalized.contains('online')) {
+      bucket.active++;
+    } else {
+      bucket.unknown++;
+    }
+  }
+
+  final groups = buckets.values.toList()
+    ..sort((a, b) => a.team.compareTo(b.team));
+  return groups
+      .map(
+        (item) => _AgentGroup(
+          team: item.team,
+          active: item.active == 0 ? null : item.active,
+          busy: item.busy == 0 ? null : item.busy,
+          idle: item.idle == 0 ? null : item.idle,
         ),
-      );
+      )
+      .toList(growable: false);
 }
 
-class _EmptyState extends StatelessWidget {
-  const _EmptyState({required this.icon, required this.title, required this.detail});
-  final IconData icon;
-  final String title;
-  final String detail;
-
-  @override
-  Widget build(BuildContext context) => Center(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 24, color: Theme.of(context).colorScheme.onSurfaceVariant),
-              const SizedBox(height: 5),
-              Text(title, textAlign: TextAlign.center, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-              const SizedBox(height: 3),
-              Text(detail, textAlign: TextAlign.center, maxLines: 3, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 13, height: 1.35, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-            ],
-          ),
-        ),
-      );
+class _MutableAgentGroup {
+  _MutableAgentGroup(this.team);
+  final String team;
+  int active = 0;
+  int busy = 0;
+  int idle = 0;
+  int unknown = 0;
 }
 
-BoxDecoration _surface(BuildContext context, {bool emphasized = false}) =>
-    BoxDecoration(
-      color: Theme.of(context).colorScheme.surfaceContainerLow,
-      borderRadius: BorderRadius.circular(emphasized ? 12 : 10),
-      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-    );
+List<Map<String, Object?>> _maps(Object? raw) {
+  if (raw is! List<Object?>) return const [];
+  return raw.whereType<Map<String, Object?>>().toList(growable: false);
+}
 
-String _t(BuildContext context, String english, String turkish) =>
-    context.ilaiosLocale.locale == IlaiosLocale.turkish ? turkish : english;
-
-String _normalize(String value) => value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), ' ').trim();
-
-String? _text(Map<String, Object?>? source, List<String> keys) {
-  if (source == null) return null;
+String? _text(Map<String, Object?> source, List<String> keys) {
   for (final key in keys) {
     final value = source[key];
     if (value is String && value.trim().isNotEmpty) return value.trim();
@@ -865,36 +552,34 @@ String? _text(Map<String, Object?>? source, List<String> keys) {
   return null;
 }
 
-List<Map<String, Object?>> _mapList(Object? value) {
-  if (value is! List<Object?>) return const <Map<String, Object?>>[];
-  return value.whereType<Map<String, Object?>>().toList(growable: false);
+String? _teamFromId(String id) {
+  final parts = id.split('.');
+  if (parts.length < 4) return null;
+  return parts[2];
 }
 
-String _humanWorkTitle(Map<String, Object?> item) =>
-    _text(item, const ['project_name', 'title', 'objective', 'goal', 'task', 'description']) ?? 'Work item';
+String _normalize(String value) =>
+    value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '');
 
-String _humanEventTitle(Map<String, Object?> event) {
-  final message = _text(event, const ['message', 'title', 'event_type', 'type']);
-  return message == null ? 'Runtime issue' : _humanAction(message);
+String _displayTeam(String raw, bool tr) {
+  final value = raw.toLowerCase();
+  if (value.contains('core') || value.contains('kernel')) {
+    return tr ? 'Çekirdek' : 'Core';
+  }
+  if (value.contains('engineering')) return tr ? 'Mühendislik' : 'Engineering';
+  if (value.contains('security')) return tr ? 'Güvenlik' : 'Security';
+  if (value.contains('web')) return 'Web';
+  if (value.contains('media') || value.contains('video')) return tr ? 'Medya' : 'Media';
+  if (value.contains('research') || value.contains('data')) {
+    return tr ? 'Araştırma' : 'Research';
+  }
+  if (value.contains('operation')) return tr ? 'Operasyon' : 'Operations';
+  if (value.contains('meta')) return 'Meta';
+  if (raw.isEmpty) return tr ? 'Takım' : 'Team';
+  return '${raw[0].toUpperCase()}${raw.substring(1)}';
 }
 
-String _humanAction(String value) {
-  final cleaned = value.replaceAll(RegExp(r'[_\-.]+'), ' ').replaceAll(RegExp(r'\s+'), ' ').trim();
-  if (cleaned.isEmpty) return 'Verified output';
-  return cleaned[0].toUpperCase() + cleaned.substring(1);
-}
-
-String _humanState(String value) {
-  final normalized = _normalize(value);
-  if (normalized.isEmpty) return 'Status unavailable';
-  return switch (normalized) {
-    'in progress' || 'running' || 'active' => 'In progress',
-    'pending' || 'queued' => 'Waiting',
-    'completed' || 'complete' || 'succeeded' || 'success' => 'Completed',
-    'failed' || 'denied' => 'Needs review',
-    _ => _humanAction(value),
-  };
-}
-
-String _short(String value, int maxLength) =>
-    value.length <= maxLength ? value : '${value.substring(0, maxLength)}…';
+String _t(BuildContext context, String english, String turkish) =>
+    IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish
+        ? turkish
+        : english;
