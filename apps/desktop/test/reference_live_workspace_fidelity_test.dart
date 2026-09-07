@@ -3,7 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/evidence_record.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
+import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
+
+import 'secondary_navigation_test_support.dart';
 
 const _snapshot = OperationalSnapshot(
   runtimeRoutes: <Map<String, Object?>>[],
@@ -78,10 +81,8 @@ const _snapshot = OperationalSnapshot(
 );
 
 void main() {
-  Future<void> openWorkspace(WidgetTester tester) async {
-    await tester.tap(find.byKey(const ValueKey('nav-liveWorkspace')));
-    await tester.pumpAndSettle();
-  }
+  Future<void> openWorkspace(WidgetTester tester) =>
+      openSecondaryDesktopSection(tester, DesktopSection.liveWorkspace);
 
   testWidgets('Live Workspace keeps the approved dark reference hierarchy', (
     WidgetTester tester,

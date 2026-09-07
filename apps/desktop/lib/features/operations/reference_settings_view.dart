@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../../app/ilaios_locale.dart';
-import '../../app/ilaios_theme.dart';
 import '../../control_plane/projection.dart';
 import '../../identity/identity_client.dart';
 
@@ -40,21 +39,9 @@ class _ReferenceSettingsViewState extends State<ReferenceSettingsView> {
   bool _sidebarCollapsed = false;
   bool _animations = true;
   double _fontScale = 1;
-  int _accent = 0;
   late ThemeMode _previewTheme = widget.themeMode;
   String? _message;
   final List<String> _changes = <String>[];
-
-  static const _accents = <Color>[
-    IlaiosTheme.coreBlue,
-    Color(0xFF34A9E8),
-    IlaiosTheme.enterpriseCyan,
-    IlaiosTheme.success,
-    IlaiosTheme.violet,
-    Color(0xFFE52A91),
-    Color(0xFFF16522),
-    IlaiosTheme.warning,
-  ];
 
   void _record(String en, String tr) {
     final text = _copy(context, en, tr);
@@ -85,7 +72,7 @@ class _ReferenceSettingsViewState extends State<ReferenceSettingsView> {
                 current == IlaiosLocale.english
                     ? Icons.radio_button_checked
                     : Icons.radio_button_off,
-                color: IlaiosTheme.coreBlue,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               onTap: () =>
                   Navigator.of(dialogContext).pop(IlaiosLocale.english),
@@ -96,7 +83,7 @@ class _ReferenceSettingsViewState extends State<ReferenceSettingsView> {
                 current == IlaiosLocale.turkish
                     ? Icons.radio_button_checked
                     : Icons.radio_button_off,
-                color: IlaiosTheme.coreBlue,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               onTap: () =>
                   Navigator.of(dialogContext).pop(IlaiosLocale.turkish),
@@ -126,7 +113,6 @@ class _ReferenceSettingsViewState extends State<ReferenceSettingsView> {
       _sidebarCollapsed = false;
       _animations = true;
       _fontScale = 1;
-      _accent = 0;
       _previewTheme = widget.themeMode;
       _message = null;
     });
@@ -171,8 +157,6 @@ class _ReferenceSettingsViewState extends State<ReferenceSettingsView> {
                             sidebarCollapsed: _sidebarCollapsed,
                             animations: _animations,
                             fontScale: _fontScale,
-                            accentIndex: _accent,
-                            accents: _accents,
                             themeMode: _previewTheme,
                             onLanguage: _chooseLanguage,
                             onTheme: _setTheme,
@@ -195,10 +179,6 @@ class _ReferenceSettingsViewState extends State<ReferenceSettingsView> {
                             onScale: (value) => setState(() => _fontScale = value),
                             onScaleEnd: (_) =>
                                 _record('Font scale updated', 'Yazı ölçeği güncellendi'),
-                            onAccent: (value) {
-                              setState(() => _accent = value);
-                              _record('Accent preview updated', 'Vurgu önizlemesi güncellendi');
-                            },
                           )
                         : _AuthorityPanel(
                             section: _section,
@@ -218,7 +198,6 @@ class _ReferenceSettingsViewState extends State<ReferenceSettingsView> {
                       sidebarCollapsed: _sidebarCollapsed,
                       animations: _animations,
                       fontScale: _fontScale,
-                      accent: _accents[_accent],
                       connected: widget.projection.connected,
                       message: _message,
                       onSave: () => setState(
@@ -272,7 +251,6 @@ class _ReferenceSettingsViewState extends State<ReferenceSettingsView> {
               title: _copy(context, 'General', 'Genel'),
               subtitle: _copy(context, 'Core preferences', 'Temel ayarlar'),
               status: _copy(context, 'Local', 'Yerel'),
-              accent: IlaiosTheme.coreBlue,
               selected: _section == 0,
               onTap: () => _select(0),
             ),
@@ -285,7 +263,6 @@ class _ReferenceSettingsViewState extends State<ReferenceSettingsView> {
               title: _copy(context, 'Appearance', 'Görünüm'),
               subtitle: _copy(context, 'Theme and UI', 'Arayüz tercihleri'),
               status: _copy(context, 'Active', 'Aktif'),
-              accent: IlaiosTheme.violet,
               selected: _section == 1,
               onTap: () => _select(1),
             ),
@@ -298,7 +275,6 @@ class _ReferenceSettingsViewState extends State<ReferenceSettingsView> {
               title: _copy(context, 'Notifications', 'Bildirimler'),
               subtitle: _copy(context, 'Runtime preferences', 'Uyarı tercihleri'),
               status: _copy(context, 'Unavailable', 'Kullanılamıyor'),
-              accent: IlaiosTheme.warning,
               selected: _section == 6,
               onTap: () => _select(6),
             ),
@@ -313,7 +289,6 @@ class _ReferenceSettingsViewState extends State<ReferenceSettingsView> {
               status: widget.projection.connected
                   ? _copy(context, 'Connected', 'Bağlı')
                   : _copy(context, 'Offline', 'Çevrimdışı'),
-              accent: IlaiosTheme.success,
               selected: _section == 3,
               onTap: () => _select(3),
             ),
@@ -327,7 +302,6 @@ class _ReferenceSettingsViewState extends State<ReferenceSettingsView> {
               status: widget.providers.isEmpty
                   ? _copy(context, 'None', 'Yok')
                   : '${widget.providers.length}',
-              accent: IlaiosTheme.enterpriseCyan,
               selected: _section == 4,
               onTap: () => _select(4),
             ),
@@ -339,7 +313,6 @@ class _ReferenceSettingsViewState extends State<ReferenceSettingsView> {
               title: _copy(context, 'Integrations', 'Entegrasyonlar'),
               subtitle: _copy(context, 'External connections', 'Harici bağlantılar'),
               status: _copy(context, 'Unavailable', 'Kullanılamıyor'),
-              accent: IlaiosTheme.violet,
               selected: _section == 5,
               onTap: () => _select(5),
             ),
@@ -384,7 +357,6 @@ class _SummaryCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.status,
-    required this.accent,
     required this.selected,
     required this.onTap,
     super.key,
@@ -394,20 +366,19 @@ class _SummaryCard extends StatelessWidget {
   final String title;
   final String subtitle;
   final String status;
-  final Color accent;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) => Material(
         color: selected
-            ? accent.withValues(alpha: .08)
+            ? Theme.of(context).colorScheme.surfaceContainerHighest
             : Theme.of(context).colorScheme.surfaceContainerLowest,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(7),
           side: BorderSide(
             color: selected
-                ? accent.withValues(alpha: .55)
+                ? Theme.of(context).colorScheme.outline
                 : Theme.of(context).colorScheme.outlineVariant,
           ),
         ),
@@ -418,7 +389,13 @@ class _SummaryCard extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 8),
             child: Row(
               children: [
-                Icon(icon, size: 23, color: accent),
+                Icon(
+                  icon,
+                  size: 23,
+                  color: selected
+                      ? Theme.of(context).colorScheme.onSurface
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Column(
@@ -450,7 +427,7 @@ class _SummaryCard extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 7.7,
-                          color: accent,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -518,7 +495,7 @@ class _SectionNavigation extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 2),
                 child: Material(
                   color: selected == index
-                      ? IlaiosTheme.coreBlue.withValues(alpha: .14)
+                      ? Theme.of(context).colorScheme.surfaceContainerHighest
                       : Colors.transparent,
                   borderRadius: BorderRadius.circular(5),
                   child: InkWell(
@@ -532,7 +509,7 @@ class _SectionNavigation extends StatelessWidget {
                             icons[index],
                             size: 14,
                             color: selected == index
-                                ? IlaiosTheme.coreBlue
+                                ? Theme.of(context).colorScheme.onSurface
                                 : Theme.of(context).colorScheme.onSurfaceVariant,
                           ),
                           const SizedBox(width: 7),
@@ -547,7 +524,7 @@ class _SectionNavigation extends StatelessWidget {
                                     ? FontWeight.w600
                                     : FontWeight.w500,
                                 color: selected == index
-                                    ? IlaiosTheme.coreBlue
+                                    ? Theme.of(context).colorScheme.onSurface
                                     : Theme.of(context).colorScheme.onSurface,
                               ),
                             ),
@@ -572,8 +549,6 @@ class _AppearancePanel extends StatelessWidget {
     required this.sidebarCollapsed,
     required this.animations,
     required this.fontScale,
-    required this.accentIndex,
-    required this.accents,
     required this.themeMode,
     required this.onLanguage,
     required this.onTheme,
@@ -583,7 +558,6 @@ class _AppearancePanel extends StatelessWidget {
     required this.onAnimations,
     required this.onScale,
     required this.onScaleEnd,
-    required this.onAccent,
   });
 
   final bool compact;
@@ -591,8 +565,6 @@ class _AppearancePanel extends StatelessWidget {
   final bool sidebarCollapsed;
   final bool animations;
   final double fontScale;
-  final int accentIndex;
-  final List<Color> accents;
   final ThemeMode themeMode;
   final VoidCallback onLanguage;
   final ValueChanged<ThemeMode> onTheme;
@@ -602,7 +574,6 @@ class _AppearancePanel extends StatelessWidget {
   final ValueChanged<bool> onAnimations;
   final ValueChanged<double> onScale;
   final ValueChanged<double> onScaleEnd;
-  final ValueChanged<int> onAccent;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -701,40 +672,24 @@ class _AppearancePanel extends StatelessWidget {
                 ),
               ),
               _SettingRow(
-                title: _copy(context, 'Accent preview', 'Vurgu Önizlemesi'),
+                title: _copy(context, 'UI color policy', 'Arayüz renk politikası'),
                 child: SizedBox(
+                  key: const Key('settings-neutral-color-policy'),
                   width: 230,
                   height: 27,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      for (var i = 0; i < accents.length; i++)
-                        InkWell(
-                          onTap: () => onAccent(i),
-                          borderRadius: BorderRadius.circular(20),
-                          child: Container(
-                            width: 20,
-                            height: 20,
-                            decoration: BoxDecoration(
-                              color: accents[i],
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: i == accentIndex
-                                    ? Theme.of(context).colorScheme.onSurface
-                                    : Colors.transparent,
-                                width: 2,
-                              ),
-                            ),
-                            child: i == accentIndex
-                                ? const Icon(
-                                    Icons.check,
-                                    size: 11,
-                                    color: Colors.white,
-                                  )
-                                : null,
-                          ),
-                        ),
-                    ],
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      _copy(
+                        context,
+                        'Neutral black / white / gray',
+                        'Nötr siyah / beyaz / gri',
+                      ),
+                      style: TextStyle(
+                        fontSize: 8.1,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -919,7 +874,7 @@ class _ThemeButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Material(
         color: selected
-            ? IlaiosTheme.coreBlue
+            ? Theme.of(context).colorScheme.surfaceContainerHighest
             : Theme.of(context).colorScheme.surfaceContainerLowest,
         borderRadius: BorderRadius.circular(5),
         child: InkWell(
@@ -930,7 +885,7 @@ class _ThemeButton extends StatelessWidget {
             decoration: BoxDecoration(
               border: Border.all(
                 color: selected
-                    ? IlaiosTheme.coreBlue
+                    ? Theme.of(context).colorScheme.outline
                     : Theme.of(context).colorScheme.outlineVariant,
               ),
               borderRadius: BorderRadius.circular(5),
@@ -939,9 +894,7 @@ class _ThemeButton extends StatelessWidget {
               label,
               style: TextStyle(
                 fontSize: 7.8,
-                color: selected
-                    ? Colors.white
-                    : Theme.of(context).colorScheme.onSurface,
+                color: Theme.of(context).colorScheme.onSurface,
               ),
             ),
           ),
@@ -956,7 +909,6 @@ class _PreviewPanel extends StatelessWidget {
     required this.sidebarCollapsed,
     required this.animations,
     required this.fontScale,
-    required this.accent,
     required this.connected,
     required this.message,
     required this.onSave,
@@ -968,7 +920,6 @@ class _PreviewPanel extends StatelessWidget {
   final bool sidebarCollapsed;
   final bool animations;
   final double fontScale;
-  final Color accent;
   final bool connected;
   final String? message;
   final VoidCallback onSave;
@@ -1031,7 +982,7 @@ class _PreviewPanel extends StatelessWidget {
                               Icon(
                                 Icons.radio_button_checked,
                                 size: 9,
-                                color: accent,
+                                color: Theme.of(context).colorScheme.onSurfaceVariant,
                               ),
                               if (!sidebarCollapsed) ...[
                                 const SizedBox(width: 3),
@@ -1055,7 +1006,7 @@ class _PreviewPanel extends StatelessWidget {
                               width: sidebarCollapsed ? 11 : 34,
                               decoration: BoxDecoration(
                                 color: i == 1
-                                    ? accent.withValues(alpha: .65)
+                                    ? Theme.of(context).colorScheme.onSurfaceVariant
                                     : Theme.of(context).colorScheme.outlineVariant,
                                 borderRadius: BorderRadius.circular(2),
                               ),
@@ -1068,14 +1019,14 @@ class _PreviewPanel extends StatelessWidget {
                       child: Column(
                         children: [
                           Row(
-                            children: [
-                              Expanded(child: _PreviewBlock(accent: accent)),
-                              const SizedBox(width: 4),
-                              Expanded(child: _PreviewBlock(accent: accent)),
+                            children: const [
+                              Expanded(child: _PreviewBlock()),
+                              SizedBox(width: 4),
+                              Expanded(child: _PreviewBlock()),
                             ],
                           ),
                           const SizedBox(height: 4),
-                          Expanded(child: _PreviewBlock(accent: accent)),
+                          const Expanded(child: _PreviewBlock()),
                           const SizedBox(height: 4),
                           Text(
                             '${(fontScale * 100).round()}%',
@@ -1124,7 +1075,7 @@ class _PreviewPanel extends StatelessWidget {
                       ? Icons.cloud_done_outlined
                       : Icons.cloud_off_outlined,
                   size: 12,
-                  color: connected ? IlaiosTheme.success : IlaiosTheme.warning,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
                 const SizedBox(width: 4),
                 Expanded(
@@ -1157,8 +1108,7 @@ class _PreviewPanel extends StatelessWidget {
 }
 
 class _PreviewBlock extends StatelessWidget {
-  const _PreviewBlock({required this.accent});
-  final Color accent;
+  const _PreviewBlock();
 
   @override
   Widget build(BuildContext context) => Container(
@@ -1177,7 +1127,7 @@ class _PreviewBlock extends StatelessWidget {
             width: 20,
             height: 3,
             decoration: BoxDecoration(
-              color: accent.withValues(alpha: .72),
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -1293,7 +1243,11 @@ class _AuthorityPanel extends StatelessWidget {
                   ),
                   child: Row(
                     children: [
-                      Icon(value.$1, size: 16, color: IlaiosTheme.coreBlue),
+                      Icon(
+                        value.$1,
+                        size: 16,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                       const SizedBox(width: 8),
                       Expanded(
                         child: Text(
@@ -1351,7 +1305,6 @@ class _RecentChanges extends StatelessWidget {
                     Expanded(
                       child: _StatusLine(
                         icon: Icons.brightness_1,
-                        color: IlaiosTheme.coreBlue,
                         title: change,
                         value: _copy(context, 'This session', 'Bu oturum'),
                       ),
@@ -1377,9 +1330,6 @@ class _PolicyCard extends StatelessWidget {
                 icon: projection.connected
                     ? Icons.check_circle_outline
                     : Icons.warning_amber_rounded,
-                color: projection.connected
-                    ? IlaiosTheme.success
-                    : IlaiosTheme.warning,
                 title: _copy(context, 'Control plane', 'Kontrol düzlemi'),
                 value: projection.connected
                     ? _copy(context, 'Connected', 'Bağlı')
@@ -1389,7 +1339,6 @@ class _PolicyCard extends StatelessWidget {
             Expanded(
               child: _StatusLine(
                 icon: Icons.verified_user_outlined,
-                color: IlaiosTheme.enterpriseCyan,
                 title: _copy(context, 'Identity state', 'Kimlik durumu'),
                 value: identityStatus,
               ),
@@ -1397,7 +1346,6 @@ class _PolicyCard extends StatelessWidget {
             Expanded(
               child: _StatusLine(
                 icon: Icons.shield_outlined,
-                color: IlaiosTheme.violet,
                 title: _copy(context, 'Authority boundary', 'Yetki sınırı'),
                 value: _copy(
                   context,
@@ -1434,9 +1382,6 @@ class _ProvidersCard extends StatelessWidget {
                     Expanded(
                       child: _StatusLine(
                         icon: Icons.cloud_outlined,
-                        color: session?.providerId == provider.providerId
-                            ? IlaiosTheme.success
-                            : IlaiosTheme.enterpriseCyan,
                         title: provider.displayName,
                         value: session?.providerId == provider.providerId
                             ? _copy(context, 'Connected', 'Bağlı')
@@ -1467,7 +1412,11 @@ class _BottomCard extends StatelessWidget {
           children: [
             Row(
               children: [
-                Icon(icon, size: 13, color: IlaiosTheme.coreBlue),
+                Icon(
+                  icon,
+                  size: 13,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
                 const SizedBox(width: 5),
                 Expanded(
                   child: Text(
@@ -1489,19 +1438,21 @@ class _BottomCard extends StatelessWidget {
 class _StatusLine extends StatelessWidget {
   const _StatusLine({
     required this.icon,
-    required this.color,
     required this.title,
     required this.value,
   });
   final IconData icon;
-  final Color color;
   final String title;
   final String value;
 
   @override
   Widget build(BuildContext context) => Row(
         children: [
-          Icon(icon, size: 11, color: color),
+          Icon(
+            icon,
+            size: 11,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
           const SizedBox(width: 5),
           Expanded(
             child: Text(

@@ -3,8 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/control_plane/evidence_record.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
+import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
 import 'package:ilaios_desktop/identity/identity_client.dart';
+
+import 'secondary_navigation_test_support.dart';
 
 const _evidence = EvidenceRecord(
   sequence: 1,
@@ -31,8 +34,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const IlaiosDesktopApp());
-    await tester.tap(find.byKey(const ValueKey('nav-goals')));
-    await tester.pumpAndSettle();
+    await openSecondaryDesktopSection(tester, DesktopSection.goals);
     expect(find.text('What do you want ILAIOS to build?'), findsOneWidget);
     expect(
       tester
@@ -68,8 +70,7 @@ void main() {
         );
       },
     ));
-    await tester.tap(find.byKey(const ValueKey('nav-goals')));
-    await tester.pumpAndSettle();
+    await openSecondaryDesktopSection(tester, DesktopSection.goals);
 
     await tester.enterText(
       find.byKey(const Key('one-prompt-input')),
@@ -143,16 +144,25 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const IlaiosDesktopApp());
-    expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav-goals')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav-workflows')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav-agents')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav-liveWorkspace')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav-artifacts')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav-approvals')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav-evidence')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav-costs')), findsOneWidget);
-    expect(find.byKey(const ValueKey('nav-settings')), findsOneWidget);
+    for (final destination in <DesktopSection>[
+      DesktopSection.home,
+      DesktopSection.workflows,
+      DesktopSection.agents,
+      DesktopSection.artifacts,
+      DesktopSection.approvals,
+      DesktopSection.evidence,
+      DesktopSection.settings,
+    ]) {
+      expect(find.byKey(ValueKey('nav-${destination.name}')), findsOneWidget);
+    }
+    for (final destination in <DesktopSection>[
+      DesktopSection.goals,
+      DesktopSection.liveWorkspace,
+      DesktopSection.costs,
+    ]) {
+      expect(find.byKey(ValueKey('nav-${destination.name}')), findsNothing);
+    }
+    expect(find.byKey(const Key('reference-secondary-navigation')), findsOneWidget);
     expect(find.byKey(const ValueKey('nav-li')), findsNothing);
   });
 
@@ -162,8 +172,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const IlaiosDesktopApp());
-    await tester.tap(find.byKey(const ValueKey('nav-liveWorkspace')));
-    await tester.pumpAndSettle();
+    await openSecondaryDesktopSection(tester, DesktopSection.liveWorkspace);
     expect(find.text('Live Workspace'), findsWidgets);
     expect(find.text('Live Code'), findsWidgets);
     expect(find.text('Terminal'), findsWidgets);
@@ -400,7 +409,6 @@ void main() {
     expect(find.byKey(const ValueKey('deny-exec-medium')), findsNothing);
   });
 
-
   testWidgets('Li is hidden for a signed-in nonfounder session', (
     WidgetTester tester,
   ) async {
@@ -521,5 +529,4 @@ void main() {
     expect(find.text('New founder memory'), findsOneWidget);
     expect(find.text('Saved.'), findsOneWidget);
   });
-
 }

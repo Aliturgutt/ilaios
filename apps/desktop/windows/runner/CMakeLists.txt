@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.14)
 project(runner LANGUAGES CXX)
 
-set(ILAIOS_CANONICAL_APP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/../../../../brand/assets/05-ilaios-app-icon.jpg")
+set(ILAIOS_CANONICAL_APP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/../../../../brand/assets/04-ilaios-symbol-light.jpg")
 set(ILAIOS_WINDOWS_APP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/resources/app_icon.ico")
 set(ILAIOS_ICON_GENERATOR "${CMAKE_CURRENT_SOURCE_DIR}/../../tool/generate_windows_icon.ps1")
 
@@ -11,7 +11,7 @@ add_custom_command(
           -SourceJpeg "${ILAIOS_CANONICAL_APP_ICON}"
           -OutputIco "${ILAIOS_WINDOWS_APP_ICON}"
   DEPENDS "${ILAIOS_CANONICAL_APP_ICON}" "${ILAIOS_ICON_GENERATOR}"
-  COMMENT "Deriving Windows app icon from canonical ILAIOS app-icon master"
+  COMMENT "Deriving Windows app icon from canonical ILAIOS light symbol master"
   VERBATIM
 )
 add_custom_target(ilaios_brand_icon DEPENDS "${ILAIOS_WINDOWS_APP_ICON}")
@@ -32,7 +32,7 @@ add_executable(${BINARY_NAME} WIN32
 )
 
 # Apply the standard set of build settings. This can be removed for applications
-# that need different build settings.
+# that need different settings.
 apply_standard_settings(${BINARY_NAME})
 
 # Add preprocessor definitions for the build version.
@@ -45,8 +45,7 @@ target_compile_definitions(${BINARY_NAME} PRIVATE "FLUTTER_VERSION_BUILD=${FLUTT
 # Disable Windows macros that collide with C++ standard library functions.
 target_compile_definitions(${BINARY_NAME} PRIVATE "NOMINMAX")
 
-# Add dependency libraries and include directories. Add any application-specific
-# dependencies here.
+# Add dependency libraries and include directories here.
 target_link_libraries(${BINARY_NAME} PRIVATE flutter flutter_wrapper_app)
 target_link_libraries(${BINARY_NAME} PRIVATE "dwmapi.lib" "shell32.lib")
 target_include_directories(${BINARY_NAME} PRIVATE "${CMAKE_SOURCE_DIR}")
