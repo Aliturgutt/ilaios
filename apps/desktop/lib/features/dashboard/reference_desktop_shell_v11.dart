@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 
+import '../../app/ilaios_locale.dart';
 import '../../control_plane/client.dart';
 import '../../control_plane/evidence_record.dart';
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
 import '../../identity/desktop_identity_action_scope.dart';
 import '../../identity/identity_client.dart';
+import '../../presentation/desktop_runtime_status.dart';
 import '../create/governed_lifecycle_projection.dart';
 import '../create/reference_asset_picker.dart';
 import '../deliveries/delivery_identity_scope.dart';
@@ -66,45 +68,54 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
   final Future<void> Function(String requestId, GovernanceDecision decision)?
       onGovernanceDecision;
 
-  Widget _shell() => ReferenceAssetPickerScope(
-        controller: referenceAssets,
-        child: DesktopIdentityActionScope(
-          onSignIn: onSignIn,
-          onLogout: onLogout,
-          child: DeliveryIdentityScope(
-            session: userSession,
-            child: AgentProvisioningScope(
-              onProvisionAgent: onProvisionAgent,
-              child: HomeRuntimeBinding(
+  Widget _shell(BuildContext context) {
+    final locale = IlaiosLocaleScope.of(context).locale;
+    final presentedStatus = presentDesktopRuntimeStatus(
+      operationalStatus,
+      connected: projection.connected,
+      turkish: locale == IlaiosLocale.turkish,
+    );
+
+    return ReferenceAssetPickerScope(
+      controller: referenceAssets,
+      child: DesktopIdentityActionScope(
+        onSignIn: onSignIn,
+        onLogout: onLogout,
+        child: DeliveryIdentityScope(
+          session: userSession,
+          child: AgentProvisioningScope(
+            onProvisionAgent: onProvisionAgent,
+            child: HomeRuntimeBinding(
+              userSession: userSession,
+              onPromptSubmit: onPromptSubmit,
+              child: ReferenceDesktopShellV10(
+                projection: projection,
+                operationalSnapshot: operationalSnapshot,
+                operationalStatus: presentedStatus.label,
+                approverId: approverId,
+                identityProviders: identityProviders,
                 userSession: userSession,
+                identityStatus: identityStatus,
+                themeMode: themeMode,
+                referenceAssets: referenceAssets,
+                onThemeModeChanged: onThemeModeChanged,
+                onSignIn: onSignIn,
+                onLogout: onLogout,
                 onPromptSubmit: onPromptSubmit,
-                child: ReferenceDesktopShellV10(
-                  projection: projection,
-                  operationalSnapshot: operationalSnapshot,
-                  operationalStatus: operationalStatus,
-                  approverId: approverId,
-                  identityProviders: identityProviders,
-                  userSession: userSession,
-                  identityStatus: identityStatus,
-                  themeMode: themeMode,
-                  referenceAssets: referenceAssets,
-                  onThemeModeChanged: onThemeModeChanged,
-                  onSignIn: onSignIn,
-                  onLogout: onLogout,
-                  onPromptSubmit: onPromptSubmit,
-                  onSaveArtifact: onSaveArtifact,
-                  onFetchLiState: onFetchLiState,
-                  onFetchLiMemories: onFetchLiMemories,
-                  onRememberLiMemory: onRememberLiMemory,
-                  onRefreshRequested: onRefreshRequested,
-                  onProvisionAgent: onProvisionAgent,
-                  onGovernanceDecision: onGovernanceDecision,
-                ),
+                onSaveArtifact: onSaveArtifact,
+                onFetchLiState: onFetchLiState,
+                onFetchLiMemories: onFetchLiMemories,
+                onRememberLiMemory: onRememberLiMemory,
+                onRefreshRequested: onRefreshRequested,
+                onProvisionAgent: onProvisionAgent,
+                onGovernanceDecision: onGovernanceDecision,
               ),
             ),
           ),
         ),
-      );
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -116,7 +127,7 @@ class ReferenceDesktopShellV11 extends StatelessWidget {
 
     return SizedBox.expand(
       key: const Key('reference-responsive-viewport-v11'),
-      child: _shell(),
+      child: _shell(context),
     );
   }
 }

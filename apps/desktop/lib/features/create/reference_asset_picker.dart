@@ -7,6 +7,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../../app/ilaios_locale.dart';
 import '../../reference_assets/reference_asset_draft.dart';
 import 'company_knowledge_picker.dart';
 import 'reference_asset_picker_core.dart' as core;
@@ -16,9 +17,6 @@ const MethodChannel _referenceDropChannel = MethodChannel(
   'ilaios/reference-assets-drop',
 );
 
-/// Existing picker controller plus Windows-native image drag/drop, one
-/// separately governed source-video draft, and persistent company Knowledge
-/// documents. Each path retains its existing server authority.
 class ReferenceAssetPickerController extends core.ReferenceAssetPickerController {
   ReferenceAssetPickerController() {
     if (Platform.isWindows) {
@@ -108,8 +106,6 @@ class ReferenceAssetPickerController extends core.ReferenceAssetPickerController
   }
 }
 
-/// Read-only presentation scope for the single existing attachment controller.
-/// This does not own upload, identity, session, routing, or governance authority.
 class ReferenceAssetPickerScope extends InheritedWidget {
   const ReferenceAssetPickerScope({
     required this.controller,
@@ -127,11 +123,21 @@ class ReferenceAssetPickerScope extends InheritedWidget {
       controller != oldWidget.controller;
 }
 
-/// Shared private-input surface. Company documents are deliberately shown in
-/// the same prompt attachment surface, but are labeled persistent Knowledge
-/// because the current authenticated API does not provide a task-only document
-/// contract.
-class ReferenceAssetPicker extends StatelessWidget {
+enum _AttachmentPane { documents, images, video }
+
+const _factoryFamilies = <(String, String, IconData)>[
+  ('Web Factory', 'Web Factory', Icons.language_outlined),
+  ('Video / Media Factory', 'Video / Medya Factory', Icons.movie_outlined),
+  ('Software Factory', 'Yazılım Factory', Icons.code_outlined),
+  ('App Factory', 'Uygulama Factory', Icons.apps_outlined),
+  ('Research / Data Factory', 'Araştırma / Veri Factory', Icons.query_stats_outlined),
+  ('Security Factory', 'Güvenlik Factory', Icons.shield_outlined),
+  ('Creative / Document Factory', 'Yaratıcı / Doküman Factory', Icons.description_outlined),
+  ('Commerce / Growth Factory', 'Ticaret / Büyüme Factory', Icons.trending_up_outlined),
+  ('Personal Operations Factory', 'Kişisel Operasyonlar Factory', Icons.person_outline_rounded),
+];
+
+class ReferenceAssetPicker extends StatefulWidget {
   const ReferenceAssetPicker({
     required this.controller,
     required this.enabled,
@@ -143,22 +149,271 @@ class ReferenceAssetPicker extends StatelessWidget {
   final bool enabled;
   final bool compact;
 
+  @override
+  State<ReferenceAssetPicker> createState() => _ReferenceAssetPickerState();
+}
+
+class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
+  _AttachmentPane? _expanded;
+
+  @override
+  void initState() {
+    super.initState();
+    _listen(widget.controller);
+  }
+
+  @override
+  void didUpdateWidget(covariant ReferenceAssetPicker oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller == widget.controller) return;
+    _unlisten(oldWidget.controller);
+    _listen(widget.controller);
+  }
+
+  @override
+  void dispose() {
+    _unlisten(widget.controller);
+    super.dispose();
+  }
+
+  void _listen(ReferenceAssetPickerController controller) {
+    controller.addListener(_changed);
+    controller.sourceVideo.addListener(_changed);
+    controller.companyKnowledge.addListener(_changed);
+  }
+
+  void _unlisten(ReferenceAssetPickerController controller) {
+    controller.removeListener(_changed);
+    controller.sourceVideo.removeListener(_changed);
+    controller.companyKnowledge.removeListener(_changed);
+  }
+
+  void _changed() {
+    if (mounted) setState(() {});
+  }
+
+  bool get _isTurkish =>
+      IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
+
+  String _t(String english, String turkish) => _isTurkish ? turkish : english;
+
   Widget _images() => core.ReferenceAssetPicker(
-        controller: controller,
-        enabled: enabled,
-        compact: compact,
+        controller: widget.controller,
+        enabled: widget.enabled,
+        compact: true,
       );
 
   Widget _sourceVideo() => SourceVideoPicker(
-        controller: controller.sourceVideo,
-        enabled: enabled,
-        compact: compact,
+        controller: widget.controller.sourceVideo,
+        enabled: widget.enabled,
+        compact: true,
       );
 
   Widget _companyKnowledge() => CompanyKnowledgePicker(
-        controller: controller.companyKnowledge,
-        enabled: enabled,
-        compact: compact,
+        controller: widget.controller.companyKnowledge,
+        enabled: widget.enabled,
+        compact: true,
+      );
+
+  void _toggle(_AttachmentPane pane) {
+    setState(() => _expanded = _expanded == pane ? null : pane);
+  }
+
+  String _documentSummary() {
+    final count = widget.controller.companyKnowledge.documents.length;
+    if (count == 0) return 'PDF / DOCX / ZIP';
+    return _t('$count document attached', '$count belge eklendi');
+  }
+
+  String _imageSummary() {
+    final count = widget.controller.assets.length;
+    if (count == 0) return 'JPEG / PNG / WebP';
+    return _t('$count / 20 images attached', '$count / 20 görsel eklendi');
+  }
+
+  String _videoSummary() {
+    final source = widget.controller.sourceVideo.source;
+    if (source == null) return 'MP4';
+    return _t('1 source video attached', '1 kaynak video eklendi');
+  }
+
+  Widget _action({
+    required Key key,
+    required _AttachmentPane pane,
+    required IconData icon,
+    required String label,
+    required String summary,
+  }) {
+    final selected = _expanded == pane;
+    return Expanded(
+      child: OutlinedButton(
+        key: key,
+        onPressed: widget.enabled ? () => _toggle(pane) : null,
+        style: OutlinedButton.styleFrom(
+          alignment: Alignment.centerLeft,
+          minimumSize: const Size(0, 44),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          backgroundColor: selected
+              ? Theme.of(context).colorScheme.surfaceContainerHighest
+              : Theme.of(context).colorScheme.surfaceContainerLowest,
+        ),
+        child: Row(
+          children: [
+            Icon(icon, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    summary,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              selected ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+              size: 18,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _expandedPane() {
+    final pane = _expanded;
+    if (pane == null) return const SizedBox.shrink();
+    final child = switch (pane) {
+      _AttachmentPane.documents => _companyKnowledge(),
+      _AttachmentPane.images => _images(),
+      _AttachmentPane.video => _sourceVideo(),
+    };
+    return Container(
+      key: ValueKey('home-attachment-pane-${pane.name}'),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLow,
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: child,
+    );
+  }
+
+  Widget _factoryGrid() => Column(
+        key: const Key('home-canonical-factory-grid'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Text(
+            _t('Factories', 'Factory Alanları'),
+            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final columns = constraints.maxWidth >= 900 ? 3 : 2;
+              const spacing = 8.0;
+              final cardWidth =
+                  (constraints.maxWidth - spacing * (columns - 1)) / columns;
+              return Wrap(
+                spacing: spacing,
+                runSpacing: spacing,
+                children: [
+                  for (var index = 0; index < _factoryFamilies.length; index++)
+                    SizedBox(
+                      width: cardWidth,
+                      child: Container(
+                        key: ValueKey('home-factory-${index + 1}'),
+                        constraints: const BoxConstraints(minHeight: 48),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.surfaceContainerLowest,
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.outlineVariant,
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(_factoryFamilies[index].$3, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                _isTurkish
+                                    ? _factoryFamilies[index].$2
+                                    : _factoryFamilies[index].$1,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
+          ),
+        ],
+      );
+
+  Widget _progressiveHome() => Column(
+        key: const Key('home-progressive-attachments'),
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              _action(
+                key: const Key('home-add-document'),
+                pane: _AttachmentPane.documents,
+                icon: Icons.description_outlined,
+                label: _t('Add file', 'Dosya Ekle'),
+                summary: _documentSummary(),
+              ),
+              const SizedBox(width: 8),
+              _action(
+                key: const Key('home-add-image'),
+                pane: _AttachmentPane.images,
+                icon: Icons.image_outlined,
+                label: _t('Add image', 'Görsel Ekle'),
+                summary: _imageSummary(),
+              ),
+              const SizedBox(width: 8),
+              _action(
+                key: const Key('home-add-video'),
+                pane: _AttachmentPane.video,
+                icon: Icons.video_file_outlined,
+                label: _t('Add video', 'Video Ekle'),
+                summary: _videoSummary(),
+              ),
+            ],
+          ),
+          if (_expanded != null) ...[
+            const SizedBox(height: 8),
+            _expandedPane(),
+          ],
+          const SizedBox(height: 10),
+          _factoryGrid(),
+        ],
       );
 
   Widget _safeCompactStack() => Column(
@@ -178,10 +433,7 @@ class ReferenceAssetPicker extends StatelessWidget {
         ],
       );
 
-  @override
-  Widget build(BuildContext context) {
-    if (!compact) {
-      return Column(
+  Widget _legacyStack() => Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           _images(),
@@ -191,27 +443,13 @@ class ReferenceAssetPicker extends StatelessWidget {
           _companyKnowledge(),
         ],
       );
-    }
 
-    final inlineHome = key == const Key('home-prompt-attachments');
-    if (!inlineHome) return _safeCompactStack();
-
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        if (constraints.maxWidth < 840) return _safeCompactStack();
-        return Row(
-          key: const Key('compact-reference-asset-row'),
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: _companyKnowledge()),
-            const SizedBox(width: 8),
-            Expanded(child: _images()),
-            const SizedBox(width: 8),
-            Expanded(child: _sourceVideo()),
-          ],
-        );
-      },
-    );
+  @override
+  Widget build(BuildContext context) {
+    final inlineHome = widget.key == const Key('home-prompt-attachments');
+    if (inlineHome) return _progressiveHome();
+    if (widget.compact) return _safeCompactStack();
+    return _legacyStack();
   }
 }
 

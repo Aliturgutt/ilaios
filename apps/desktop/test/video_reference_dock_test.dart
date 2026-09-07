@@ -4,7 +4,10 @@ import 'package:ilaios_desktop/app/desktop_app.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/control_plane/projection.dart';
+import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/identity/identity_client.dart';
+
+import 'secondary_navigation_test_support.dart';
 
 const _connected = ControlPlaneProjection(
   connected: true,
@@ -44,13 +47,11 @@ IlaiosDesktopApp _app({
       ),
     );
 
-Future<void> _openGoals(WidgetTester tester) async {
-  await tester.tap(find.byKey(const ValueKey('nav-goals')));
-  await tester.pumpAndSettle();
-}
+Future<void> _openGoals(WidgetTester tester) =>
+    openSecondaryDesktopSection(tester, DesktopSection.goals);
 
 void main() {
-  testWidgets('V4 removes the global dock and exposes the governed picker inside Goals', (
+  testWidgets('V4 keeps Home compact and exposes the governed source-video picker on demand', (
     tester,
   ) async {
     _desktopViewport(tester);
@@ -59,7 +60,14 @@ void main() {
 
     expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
     expect(find.byKey(const Key('home-prompt-attachments')), findsOneWidget);
-    expect(find.byKey(const Key('video-reference-assets')), findsOneWidget);
+    expect(find.byKey(const Key('home-add-video')), findsOneWidget);
+    expect(find.byKey(const Key('source-video-picker')), findsNothing);
+
+    await tester.tap(find.byKey(const Key('home-add-video')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('home-attachment-pane-video')), findsOneWidget);
+    expect(find.byKey(const Key('source-video-picker')), findsOneWidget);
+    expect(find.byKey(const Key('source-video-add')), findsOneWidget);
 
     await _openGoals(tester);
 

@@ -37,13 +37,11 @@ void main() {
       expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
       expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
       expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
+      expect(find.text('ILAIOS'), findsNothing);
       expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
       expect(find.byKey(const Key('reference-responsive-viewport-v11')), findsOneWidget);
       expect(find.byKey(const Key('reference-responsive-viewport-v10')), findsOneWidget);
 
-      // Home receives the content viewport after the fixed 222px sidebar and
-      // 1px divider. A 900px Windows surface also leaves Home below the 900px
-      // short-height threshold once the shell chrome is accounted for.
       final homeContentWidth = size.width - 223;
       final shouldScrollCompactViewport =
           homeContentWidth < 1300 || size.height <= 900;
@@ -104,6 +102,55 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
     expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
+    expect(find.text('ILAIOS'), findsNothing);
+  });
+
+  testWidgets('shell keeps seven primary categories and secondary access without deleting functions', (
+    WidgetTester tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.binding.setSurfaceSize(const Size(1536, 1024));
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    for (final key in <String>[
+      'home',
+      'workflows',
+      'agents',
+      'artifacts',
+      'approvals',
+      'evidence',
+      'settings',
+    ]) {
+      expect(find.byKey(ValueKey('nav-$key')), findsOneWidget);
+    }
+    for (final key in <String>['goals', 'liveWorkspace', 'costs']) {
+      expect(find.byKey(ValueKey('nav-$key')), findsNothing);
+    }
+    expect(find.byKey(const Key('reference-secondary-navigation')), findsOneWidget);
+    expect(find.byKey(const Key('reference-bottom-status-v2')), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('reference-secondary-navigation')));
+    await tester.pumpAndSettle();
+    expect(find.text('Goals'), findsOneWidget);
+    expect(find.text('Live Workspace'), findsOneWidget);
+    expect(find.text('Costs'), findsOneWidget);
+  });
+
+  testWidgets('1536x1024 Home uses scroll-safe geometry instead of overflowing', (
+    WidgetTester tester,
+  ) async {
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.binding.setSurfaceSize(const Size(1536, 1024));
+    await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(
+      find.byKey(const Key('command-center-short-viewport-scroll')),
+      findsOneWidget,
+    );
   });
 
   testWidgets('V4 Home remains overflow-free under 125 and 150 percent text scaling', (
@@ -168,6 +215,7 @@ void main() {
       expect(find.text('Ana Kontrol Merkezi'), findsNothing);
       expect(find.text('Aktif İş Akışı'), findsNothing);
       expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
+      expect(find.text('ILAIOS'), findsNothing);
       expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
     }
   });
