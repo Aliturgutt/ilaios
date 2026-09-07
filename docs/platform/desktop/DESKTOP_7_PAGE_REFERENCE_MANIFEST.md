@@ -7,7 +7,7 @@ Base branch: `master`
 Base exact HEAD: `3c6170f7fbc5af99d5c64860b2119f6749df6f63`
 Migration branch: `desktop/7-page-canonical-migration-20260907`
 
-The user-supplied ZIP `Desktop_7_Page_References_FIXED(1).zip` is the only canonical visual reference set for this migration. Previous Desktop reference images, previous visual baselines, and the previous 10-screen visual design are not visual authorities for this task.
+The user-supplied ZIP `Desktop_7_Page_References_FIXED(1).zip` is the only canonical visual reference set for this migration. Previous Desktop reference images, previous visual baselines, previous logo presentation, and the previous 10-screen visual design are not visual authorities for this task.
 
 Canonical page mapping and verified source-file hashes:
 
@@ -24,8 +24,38 @@ Canonical page mapping and verified source-file hashes:
 
 ZIP SHA-256: `6a34896230fc032923c56107ac4db066cd3e3b1dbaeea2d38bfd7e52abf2eb6c`
 
+## Repository binary verification
+
+At PR #1407 exact head `c6881cea1b0f182fd51a015006e3159894bbbef1`, all eight files under `docs/platform/desktop/Desktop_7_Page_References/` were verified byte-identical to the user-supplied fixed ZIP by matching both byte size and Git blob SHA-1 calculated from the local canonical bytes.
+
+| File | Bytes | Git blob SHA-1 |
+| --- | ---: | --- |
+| `01_Ana_Sayfa.png` | 987565 | `7ccc313df587955fe9c297d841b3a7ecde1b3edb` |
+| `02_Is_Akislari.png` | 836024 | `5871bcb5d0d8519da0875d5ecba33f486d12f129` |
+| `03_Ajanlar.png` | 1342622 | `4dd19ecee85e083a387ce23b0881afb4dc9c07a7` |
+| `04_Ciktilar.png` | 802932 | `3f87be23b12955045ce7ab52187c2470dbbdffef` |
+| `05_Onaylar.png` | 833220 | `425293ecfb1ae29333bb6214c411d7a388140eab` |
+| `06_Kanitlar.png` | 799771 | `c767f5015e86c47b2476ce42bff65c128d390a60` |
+| `07_Ayarlar.png` | 709355 | `c8c18b38b5922e458c8e8382b842f86fdd8f5baf` |
+| `DESKTOP_VISUAL_SPEC.docx` | 14433 | `190382b7857f4a051e4338d47cff37143e993fbc` |
+
+This closes the reference-presence blocker. It does not constitute visual implementation acceptance.
+
+## Measured common shell geometry
+
+Measurements below are taken directly from the 1536×1024 canonical PNGs before implementation. One-pixel separator/anti-alias boundaries are recorded explicitly rather than rounded into old Desktop constants.
+
+- Canonical viewport: `1536×1024`.
+- Sidebar visual region: `x=0..218`; main vertical separator is approximately `x=219..220`.
+- Main/header region begins immediately after the sidebar separator.
+- Header visual height: approximately `68 px`; horizontal separator occupies the following boundary row.
+- Canonical main content begins below that header; page-specific content must not reuse the old 72 px topbar assumption.
+- Sidebar contains exactly seven top-level items: Ana Sayfa, İş Akışları, Ajanlar, Çıktılar, Onaylar, Kanıtlar, Ayarlar.
+- No secondary-navigation menu is present in any canonical reference.
+- The light horizontal ILAIOS lockup shown in the new references is the logo-presentation authority. Previous Desktop logo sizing/placement is superseded.
+
+Page-specific measurement is recorded immediately before each page implementation and must be compared against the corresponding canonical PNG. Do not copy screenshot telemetry or demo counts into runtime state.
+
 Runtime/business truth remains repo/runtime-authoritative. Screenshot values must never be copied as live runtime truth.
 
 Required implementation order: reference measurement → in-place Flutter implementation → real render → screenshot → overlay/diff → correction → re-render. Screenshot/CI success alone is not visual acceptance.
-
-Binary reference files are not represented by this manifest; their repository presence and byte-identical hashes must be verified before visual acceptance can be claimed.
