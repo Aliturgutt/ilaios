@@ -384,7 +384,7 @@ class _CanonicalSystemStatus extends StatelessWidget {
 
     return Container(
       key: const Key('reference-bottom-status-v2'),
-      minHeight: 67,
+      constraints: const BoxConstraints(minHeight: 67),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerLowest,
