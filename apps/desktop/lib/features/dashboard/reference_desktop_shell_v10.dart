@@ -16,7 +16,7 @@ import '../operations/live_workspace_view.dart';
 import '../operations/operational_views.dart';
 import '../operations/support_views.dart';
 import 'control_center_view.dart';
-import 'reference_agents_view.dart';
+import 'reference_agents_summary_view.dart';
 import 'reference_home_dashboard_v2.dart';
 
 /// Reference-faithful Desktop shell for the approved Home dark/light designs.
@@ -195,7 +195,7 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
           onRefreshRequested: widget.onRefreshRequested,
           onNavigate: _select,
         ),
-      DesktopSection.agents => ReferenceAgentsView(
+      DesktopSection.agents => ReferenceAgentsSummaryView(
           projection: widget.projection,
           snapshot: widget.operationalSnapshot,
           status: widget.operationalStatus,
@@ -220,6 +220,7 @@ class _ReferenceDesktopShellV10State extends State<ReferenceDesktopShellV10> {
       DesktopSection.evidence => EvidenceView(
           snapshot: widget.operationalSnapshot,
           status: widget.operationalStatus,
+          onSaveArtifact: widget.onSaveArtifact,
         ),
       DesktopSection.costs => CostsView(
           snapshot: widget.operationalSnapshot,
