@@ -125,16 +125,86 @@ class ReferenceAssetPickerScope extends InheritedWidget {
 
 enum _AttachmentPane { documents, images, video }
 
-const _factoryFamilies = <(String, String, IconData)>[
-  ('Web Factory', 'Web Factory', Icons.language_outlined),
-  ('Video / Media Factory', 'Video / Medya Factory', Icons.movie_outlined),
-  ('Software Factory', 'Yazılım Factory', Icons.code_outlined),
-  ('App Factory', 'Uygulama Factory', Icons.apps_outlined),
-  ('Research / Data Factory', 'Araştırma / Veri Factory', Icons.query_stats_outlined),
-  ('Security Factory', 'Güvenlik Factory', Icons.shield_outlined),
-  ('Creative / Document Factory', 'Yaratıcı / Doküman Factory', Icons.description_outlined),
-  ('Commerce / Growth Factory', 'Ticaret / Büyüme Factory', Icons.trending_up_outlined),
-  ('Personal Operations Factory', 'Kişisel Operasyonlar Factory', Icons.person_outline_rounded),
+const _factoryFamilies = <({
+  String en,
+  String tr,
+  String enDescription,
+  String trDescription,
+  IconData icon,
+  Color color,
+})>[
+  (
+    en: 'Web Factory',
+    tr: 'Web Fabrikası',
+    enDescription: 'Builds websites and web applications.',
+    trDescription: 'Web siteleri ve web uygulamaları üretir.',
+    icon: Icons.language_rounded,
+    color: Color(0xFF1388F2),
+  ),
+  (
+    en: 'Video and Media Factory',
+    tr: 'Video ve Medya Fabrikası',
+    enDescription: 'Produces video, animation and visual media.',
+    trDescription: 'Video, animasyon ve görsel medya üretir.',
+    icon: Icons.smart_display_outlined,
+    color: Color(0xFF7A2CF2),
+  ),
+  (
+    en: 'Software Factory',
+    tr: 'Yazılım Fabrikası',
+    enDescription: 'Builds software, automation and system solutions.',
+    trDescription: 'Yazılım, otomasyon ve sistem çözümleri üretir.',
+    icon: Icons.code_rounded,
+    color: Color(0xFFF06A12),
+  ),
+  (
+    en: 'App Factory',
+    tr: 'Uygulama Fabrikası',
+    enDescription: 'Builds mobile and desktop applications.',
+    trDescription: 'Mobil ve masaüstü uygulamalar üretir.',
+    icon: Icons.smartphone_rounded,
+    color: Color(0xFF21C86B),
+  ),
+  (
+    en: 'Security Factory',
+    tr: 'Güvenlik Fabrikası',
+    enDescription: 'Performs governed security analysis, tests and hardening.',
+    trDescription: 'Güvenlik analizi, test ve sertleştirme sağlar.',
+    icon: Icons.shield_rounded,
+    color: Color(0xFFFF3161),
+  ),
+  (
+    en: 'Research and Data Factory',
+    tr: 'Araştırma ve Veri Fabrikası',
+    enDescription: 'Produces research, data analysis and reports.',
+    trDescription: 'Araştırma, veri analizi ve raporlar üretir.',
+    icon: Icons.search_rounded,
+    color: Color(0xFF10A7C8),
+  ),
+  (
+    en: 'Creative Factory',
+    tr: 'Yaratıcı Fabrika',
+    enDescription: 'Produces design, brand, content and creative work.',
+    trDescription: 'Tasarım, marka, içerik ve yaratıcı işler üretir.',
+    icon: Icons.palette_outlined,
+    color: Color(0xFFFFB000),
+  ),
+  (
+    en: 'Marketing Factory',
+    tr: 'Pazarlama Fabrikası',
+    enDescription: 'Produces marketing content and growth workflows.',
+    trDescription: 'Pazarlama içerikleri ve büyüme çözümleri üretir.',
+    icon: Icons.campaign_rounded,
+    color: Color(0xFF19B947),
+  ),
+  (
+    en: 'Operations Factory',
+    tr: 'Operasyon Fabrikası',
+    enDescription: 'Supports workflows, operations and productivity.',
+    trDescription: 'İş süreçleri, operasyon ve verimlilik çözümleri üretir.',
+    icon: Icons.settings_suggest_rounded,
+    color: Color(0xFF7428E8),
+  ),
 ];
 
 class ReferenceAssetPicker extends StatefulWidget {
@@ -154,8 +224,6 @@ class ReferenceAssetPicker extends StatefulWidget {
 }
 
 class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
-  _AttachmentPane? _expanded;
-
   @override
   void initState() {
     super.initState();
@@ -197,150 +265,143 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
 
   String _t(String english, String turkish) => _isTurkish ? turkish : english;
 
-  Widget _images() => core.ReferenceAssetPicker(
-        controller: widget.controller,
-        enabled: widget.enabled,
-        compact: true,
-      );
+  Future<void> _openPane(_AttachmentPane pane) async {
+    if (!widget.enabled) return;
+    final title = switch (pane) {
+      _AttachmentPane.documents => _t('Add file', 'Dosya ekle'),
+      _AttachmentPane.images => _t('Add image', 'Görsel ekle'),
+      _AttachmentPane.video => _t('Add video', 'Video ekle'),
+    };
+    final body = switch (pane) {
+      _AttachmentPane.documents => CompanyKnowledgePicker(
+          controller: widget.controller.companyKnowledge,
+          enabled: widget.enabled,
+          compact: true,
+        ),
+      _AttachmentPane.images => core.ReferenceAssetPicker(
+          controller: widget.controller,
+          enabled: widget.enabled,
+          compact: true,
+        ),
+      _AttachmentPane.video => SourceVideoPicker(
+          controller: widget.controller.sourceVideo,
+          enabled: widget.enabled,
+          compact: true,
+        ),
+    };
 
-  Widget _sourceVideo() => SourceVideoPicker(
-        controller: widget.controller.sourceVideo,
-        enabled: widget.enabled,
-        compact: true,
-      );
-
-  Widget _companyKnowledge() => CompanyKnowledgePicker(
-        controller: widget.controller.companyKnowledge,
-        enabled: widget.enabled,
-        compact: true,
-      );
-
-  void _toggle(_AttachmentPane pane) {
-    setState(() => _expanded = _expanded == pane ? null : pane);
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: Text(title),
+        content: SizedBox(width: 620, child: body),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: Text(_t('Close', 'Kapat')),
+          ),
+        ],
+      ),
+    );
   }
 
-  String _documentSummary() {
-    final count = widget.controller.companyKnowledge.documents.length;
-    if (count == 0) return 'PDF / DOCX / ZIP';
-    return _t('$count document attached', '$count belge eklendi');
-  }
+  int _countFor(_AttachmentPane pane) => switch (pane) {
+        _AttachmentPane.documents => widget.controller.companyKnowledge.documents.length,
+        _AttachmentPane.images => widget.controller.assets.length,
+        _AttachmentPane.video => widget.controller.sourceVideo.source == null ? 0 : 1,
+      };
 
-  String _imageSummary() {
-    final count = widget.controller.assets.length;
-    if (count == 0) return 'JPEG / PNG / WebP';
-    return _t('$count / 20 images attached', '$count / 20 görsel eklendi');
-  }
-
-  String _videoSummary() {
-    final source = widget.controller.sourceVideo.source;
-    if (source == null) return 'MP4';
-    return _t('1 source video attached', '1 kaynak video eklendi');
-  }
-
-  Widget _action({
+  Widget _attachmentButton({
     required Key key,
     required _AttachmentPane pane,
     required IconData icon,
     required String label,
-    required String summary,
   }) {
-    final selected = _expanded == pane;
-    return Expanded(
-      child: OutlinedButton(
-        key: key,
-        onPressed: widget.enabled ? () => _toggle(pane) : null,
-        style: OutlinedButton.styleFrom(
-          alignment: Alignment.centerLeft,
-          minimumSize: const Size(0, 44),
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          backgroundColor: selected
-              ? Theme.of(context).colorScheme.surfaceContainerHighest
-              : Theme.of(context).colorScheme.surfaceContainerLowest,
-        ),
-        child: Row(
-          children: [
-            Icon(icon, size: 18),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 1),
-                  Text(
-                    summary,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(
-              selected ? Icons.expand_less_rounded : Icons.expand_more_rounded,
-              size: 18,
-            ),
-          ],
-        ),
+    final count = _countFor(pane);
+    return OutlinedButton.icon(
+      key: key,
+      onPressed: widget.enabled ? () => _openPane(pane) : null,
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(143, 47),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        foregroundColor: Theme.of(context).colorScheme.onSurface,
+        backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
+        side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
       ),
+      icon: Icon(icon, size: 20),
+      label: Text(count == 0 ? label : '$label ($count)'),
     );
   }
 
-  Widget _expandedPane() {
-    final pane = _expanded;
-    if (pane == null) return const SizedBox.shrink();
-    final child = switch (pane) {
-      _AttachmentPane.documents => _companyKnowledge(),
-      _AttachmentPane.images => _images(),
-      _AttachmentPane.video => _sourceVideo(),
-    };
-    return Container(
-      key: ValueKey('home-attachment-pane-${pane.name}'),
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerLow,
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: child,
-    );
-  }
+  Widget _attachmentRow() => Wrap(
+        spacing: 12,
+        runSpacing: 8,
+        children: [
+          _attachmentButton(
+            key: const Key('home-add-document'),
+            pane: _AttachmentPane.documents,
+            icon: Icons.file_upload_outlined,
+            label: _t('Add file', 'Dosya ekle'),
+          ),
+          _attachmentButton(
+            key: const Key('home-add-image'),
+            pane: _AttachmentPane.images,
+            icon: Icons.image_outlined,
+            label: _t('Add image', 'Görsel ekle'),
+          ),
+          _attachmentButton(
+            key: const Key('home-add-video'),
+            pane: _AttachmentPane.video,
+            icon: Icons.video_file_outlined,
+            label: _t('Add video', 'Video ekle'),
+          ),
+        ],
+      );
 
   Widget _factoryGrid() => Column(
         key: const Key('home-canonical-factory-grid'),
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            _t('Factories', 'Factory Alanları'),
-            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+            _t('ILAIOS Factories', 'ILAIOS Fabrikaları'),
+            style: const TextStyle(
+              fontSize: 22,
+              height: 1.1,
+              fontWeight: FontWeight.w800,
+            ),
           ),
           const SizedBox(height: 6),
+          Text(
+            _t(
+              'One or more factories can work together depending on the goal.',
+              'Hedefine göre bir veya birden fazla fabrika birlikte çalışabilir.',
+            ),
+            style: TextStyle(
+              fontSize: 13.5,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 14),
           LayoutBuilder(
             builder: (context, constraints) {
-              final columns = constraints.maxWidth >= 900 ? 3 : 2;
-              const spacing = 8.0;
+              final columns = constraints.maxWidth >= 980 ? 3 : 2;
+              const horizontalGap = 14.0;
+              const verticalGap = 13.0;
               final cardWidth =
-                  (constraints.maxWidth - spacing * (columns - 1)) / columns;
+                  (constraints.maxWidth - horizontalGap * (columns - 1)) / columns;
               return Wrap(
-                spacing: spacing,
-                runSpacing: spacing,
+                spacing: horizontalGap,
+                runSpacing: verticalGap,
                 children: [
                   for (var index = 0; index < _factoryFamilies.length; index++)
                     SizedBox(
                       width: cardWidth,
+                      height: 83,
                       child: Container(
                         key: ValueKey('home-factory-${index + 1}'),
-                        constraints: const BoxConstraints(minHeight: 48),
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surfaceContainerLowest,
                           border: Border.all(
@@ -350,21 +411,46 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
                         ),
                         child: Row(
                           children: [
-                            Icon(_factoryFamilies[index].$3, size: 18),
-                            const SizedBox(width: 8),
+                            Icon(
+                              _factoryFamilies[index].icon,
+                              size: 38,
+                              color: _factoryFamilies[index].color,
+                            ),
+                            const SizedBox(width: 18),
                             Expanded(
-                              child: Text(
-                                _isTurkish
-                                    ? _factoryFamilies[index].$2
-                                    : _factoryFamilies[index].$1,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 12.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    _isTurkish
+                                        ? _factoryFamilies[index].tr
+                                        : _factoryFamilies[index].en,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 5),
+                                  Text(
+                                    _isTurkish
+                                        ? _factoryFamilies[index].trDescription
+                                        : _factoryFamilies[index].enDescription,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      height: 1.2,
+                                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
+                            const SizedBox(width: 8),
+                            const Icon(Icons.chevron_right_rounded, size: 22),
                           ],
                         ),
                       ),
@@ -376,80 +462,21 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
         ],
       );
 
-  Widget _progressiveHome() => Column(
-        key: const Key('home-progressive-attachments'),
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              _action(
-                key: const Key('home-add-document'),
-                pane: _AttachmentPane.documents,
-                icon: Icons.description_outlined,
-                label: _t('Add file', 'Dosya Ekle'),
-                summary: _documentSummary(),
-              ),
-              const SizedBox(width: 8),
-              _action(
-                key: const Key('home-add-image'),
-                pane: _AttachmentPane.images,
-                icon: Icons.image_outlined,
-                label: _t('Add image', 'Görsel Ekle'),
-                summary: _imageSummary(),
-              ),
-              const SizedBox(width: 8),
-              _action(
-                key: const Key('home-add-video'),
-                pane: _AttachmentPane.video,
-                icon: Icons.video_file_outlined,
-                label: _t('Add video', 'Video Ekle'),
-                summary: _videoSummary(),
-              ),
-            ],
-          ),
-          if (_expanded != null) ...[
-            const SizedBox(height: 8),
-            _expandedPane(),
-          ],
-          const SizedBox(height: 10),
-          _factoryGrid(),
-        ],
-      );
-
-  Widget _safeCompactStack() => Column(
-        key: const Key('compact-reference-asset-stack'),
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(flex: 3, child: _images()),
-              const SizedBox(width: 8),
-              Expanded(flex: 2, child: _sourceVideo()),
-            ],
-          ),
-          const SizedBox(height: 6),
-          _companyKnowledge(),
-        ],
-      );
-
-  Widget _legacyStack() => Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _images(),
-          const SizedBox(height: 8),
-          _sourceVideo(),
-          const SizedBox(height: 8),
-          _companyKnowledge(),
-        ],
-      );
-
   @override
   Widget build(BuildContext context) {
     final inlineHome = widget.key == const Key('home-prompt-attachments');
-    if (inlineHome) return _progressiveHome();
-    if (widget.compact) return _safeCompactStack();
-    return _legacyStack();
+    if (inlineHome) {
+      return Column(
+        key: const Key('home-progressive-attachments'),
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          _attachmentRow(),
+          const SizedBox(height: 38),
+          _factoryGrid(),
+        ],
+      );
+    }
+    return _attachmentRow();
   }
 }
 
