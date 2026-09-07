@@ -101,6 +101,31 @@ DesktopRuntimeStatusPresentation presentDesktopRuntimeStatus(
     );
   }
 
+  if (turkish && normalized.contains('execution coordinator')) {
+    final blocked = normalized.contains('blocked') || normalized.contains('denied');
+    return DesktopRuntimeStatusPresentation(
+      kind: blocked
+          ? DesktopRuntimeStatusKind.unavailable
+          : (connected
+              ? DesktopRuntimeStatusKind.unknown
+              : DesktopRuntimeStatusKind.offline),
+      label: blocked
+          ? 'İş yürütmesi engellendi.'
+          : 'İş yürütme durumu güncellendi.',
+      detail: raw,
+    );
+  }
+
+  if (turkish && normalized.contains('evidence')) {
+    return DesktopRuntimeStatusPresentation(
+      kind: connected
+          ? DesktopRuntimeStatusKind.unknown
+          : DesktopRuntimeStatusKind.offline,
+      label: 'Kanıt durumu güncellendi.',
+      detail: raw,
+    );
+  }
+
   if (raw.isEmpty) {
     return DesktopRuntimeStatusPresentation(
       kind: connected
