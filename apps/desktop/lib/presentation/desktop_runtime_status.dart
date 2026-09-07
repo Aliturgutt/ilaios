@@ -37,6 +37,16 @@ DesktopRuntimeStatusPresentation presentDesktopRuntimeStatus(
     );
   }
 
+  if (normalized == 'bundled ilaios control plane is not present in this build') {
+    return DesktopRuntimeStatusPresentation(
+      kind: DesktopRuntimeStatusKind.unavailable,
+      label: turkish
+          ? 'Bu derlemede yerel kontrol düzlemi kullanılamıyor.'
+          : 'The local control plane is unavailable in this build.',
+      detail: raw,
+    );
+  }
+
   if (normalized == 'control plane is unreachable' ||
       normalized == 'control plane unreachable') {
     return DesktopRuntimeStatusPresentation(
