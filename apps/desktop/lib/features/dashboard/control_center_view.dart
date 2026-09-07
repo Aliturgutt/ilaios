@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../app/ilaios_locale.dart';
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
 import '../navigation/desktop_section.dart';
@@ -28,32 +29,43 @@ class ControlCenterView extends StatelessWidget {
   final ValueChanged<DesktopSection>? onNavigate;
 
   @override
-  Widget build(BuildContext context) => Stack(
-        children: [
-          Positioned.fill(
-            child: ReferenceWorkflowsView(
+  Widget build(BuildContext context) {
+    final underlyingProjection = ControlPlaneProjection(
+      connected: projection.connected,
+      status: projection.status,
+      goalCount: projection.goalCount,
+      jobCount: null,
+      lastEvent: projection.lastEvent,
+      schemaVersion: projection.schemaVersion,
+    );
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: ReferenceWorkflowsView(
+            projection: underlyingProjection,
+            snapshot: operationalSnapshot,
+            status: operationalStatus,
+            onRefreshRequested: onRefreshRequested,
+            onNavigate:
+                onNavigate ?? (section) => _navigationNotice(context, section),
+          ),
+        ),
+        Positioned(
+          left: 14,
+          right: 12,
+          top: 60,
+          height: 50,
+          child: IgnorePointer(
+            child: _WorkflowSummaryCards(
               projection: projection,
               snapshot: operationalSnapshot,
-              status: operationalStatus,
-              onRefreshRequested: onRefreshRequested,
-              onNavigate:
-                  onNavigate ?? (section) => _navigationNotice(context, section),
             ),
           ),
-          Positioned(
-            left: 14,
-            right: 12,
-            top: 60,
-            height: 50,
-            child: IgnorePointer(
-              child: _WorkflowSummaryCards(
-                projection: projection,
-                snapshot: operationalSnapshot,
-              ),
-            ),
-          ),
-        ],
-      );
+        ),
+      ],
+    );
+  }
 
   void _navigationNotice(BuildContext context, DesktopSection section) {
     final label = section.localizedLabel(context);
@@ -79,7 +91,7 @@ class _WorkflowSummaryCards extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tr = Localizations.localeOf(context).languageCode == 'tr';
+    final tr = IlaiosLocaleScope.of(context).locale == IlaiosLocale.turkish;
     final items = <({String id, String label, String value})>[
       (
         id: 'total',
