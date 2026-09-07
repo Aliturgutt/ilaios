@@ -71,6 +71,48 @@ void main() {
       expect(status.label, 'Yerel kontrol düzlemi bağlı.');
     });
 
+    test('execution coordinator status does not leak raw English in Turkish', () {
+      const raw = 'Execution coordinator accepted the work item';
+
+      final status = presentDesktopRuntimeStatus(
+        raw,
+        connected: true,
+        turkish: true,
+      );
+
+      expect(status.kind, DesktopRuntimeStatusKind.unknown);
+      expect(status.label, 'İş yürütme durumu güncellendi.');
+      expect(status.detail, raw);
+    });
+
+    test('blocked execution coordinator status stays truthful in Turkish', () {
+      const raw = 'Execution coordinator blocked the work item';
+
+      final status = presentDesktopRuntimeStatus(
+        raw,
+        connected: true,
+        turkish: true,
+      );
+
+      expect(status.kind, DesktopRuntimeStatusKind.unavailable);
+      expect(status.label, 'İş yürütmesi engellendi.');
+      expect(status.detail, raw);
+    });
+
+    test('evidence status does not leak raw English in Turkish', () {
+      const raw = 'Evidence record updated';
+
+      final status = presentDesktopRuntimeStatus(
+        raw,
+        connected: true,
+        turkish: true,
+      );
+
+      expect(status.kind, DesktopRuntimeStatusKind.unknown);
+      expect(status.label, 'Kanıt durumu güncellendi.');
+      expect(status.detail, raw);
+    });
+
     test('unknown authoritative status is never rewritten into a false state', () {
       const raw = 'Provider-specific degraded state';
 
