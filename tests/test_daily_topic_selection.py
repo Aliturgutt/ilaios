@@ -21,12 +21,14 @@ def _candidate(
     advertiser: float = 0.8,
     freshness: float = 0.8,
     age_hours: int = 1,
+    title: str | None = None,
+    summary: str = "Verified technology development",
 ) -> DailyTopicCandidate:
     now = datetime(2026, 9, 8, 0, 0, tzinfo=timezone.utc)
     return DailyTopicCandidate(
         topic_id=topic_id,
-        title=f"Topic {topic_id}",
-        summary="Verified technology development",
+        title=title or f"Topic {topic_id}",
+        summary=summary,
         category=category,
         published_at=now - timedelta(hours=age_hours),
         independent_source_refs=sources,
@@ -74,3 +76,38 @@ def test_selector_prefers_best_combined_score() -> None:
         now=datetime(2026, 9, 8, 0, 0, tzinfo=timezone.utc),
     )
     assert selected.topic_id == "higher"
+
+
+def test_selector_rejects_recent_topic_id_and_uses_next_candidate() -> None:
+    selector = DailyTopicSelector()
+    selected = selector.select(
+        [
+            _candidate("already-published", relevance=1.0, advertiser=1.0, freshness=1.0),
+            _candidate("fresh", relevance=0.8, advertiser=0.8, freshness=0.8),
+        ],
+        policy=_policy(),
+        now=datetime(2026, 9, 8, 0, 0, tzinfo=timezone.utc),
+        recent_topic_ids=("already-published",),
+    )
+    assert selected.topic_id == "fresh"
+
+
+def test_selector_rejects_duplicate_content_fingerprint() -> None:
+    selector = DailyTopicSelector()
+    previous = _candidate(
+        "previous",
+        title="Same verified development",
+        summary="Same factual summary",
+    )
+    recycled = _candidate(
+        "renamed-id",
+        title="Same verified development",
+        summary="Same factual summary",
+    )
+    with pytest.raises(DailyTopicSelectionError):
+        selector.select(
+            [recycled],
+            policy=_policy(),
+            now=datetime(2026, 9, 8, 0, 0, tzinfo=timezone.utc),
+            recent_content_fingerprints=(previous.content_fingerprint,),
+        )
