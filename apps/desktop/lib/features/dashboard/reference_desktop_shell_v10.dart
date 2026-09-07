@@ -247,7 +247,7 @@ class _Sidebar extends StatelessWidget {
     required this.onLiSelected,
   });
 
-  static const _darkLogo = '../../brand/assets/05-ilaios-app-icon.jpg';
+  static const _darkLogo = '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
   static const _lightLogo = '../../brand/assets/13-ilaios-primary-horizontal-light.jpg';
   static const _primarySections = <DesktopSection>[
     DesktopSection.home,
@@ -287,7 +287,7 @@ class _Sidebar extends StatelessWidget {
               image: true,
               child: Container(
                 key: const Key('reference-brand-lockup-v9'),
-                height: 76,
+                height: 60,
                 color: brandBackground,
                 alignment: Alignment.centerLeft,
                 child: Image.asset(
@@ -295,8 +295,8 @@ class _Sidebar extends StatelessWidget {
                   key: Key(isDark
                       ? 'reference-brand-horizontal-dark'
                       : 'reference-brand-horizontal-light'),
-                  width: isDark ? 68 : 184,
-                  height: isDark ? 68 : 50,
+                  width: 184,
+                  height: 50,
                   fit: BoxFit.contain,
                   alignment: Alignment.centerLeft,
                   filterQuality: FilterQuality.high,
