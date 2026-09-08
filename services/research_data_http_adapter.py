@@ -31,7 +31,9 @@ class _HTTPResult:
     media_type: str
 
 
-Resolver = Callable[[str, int], list[tuple[int, int, int, str, tuple[str, int]]]]
+SocketAddress = tuple[str, int] | tuple[str, int, int, int]
+AddressInfo = tuple[socket.AddressFamily, socket.SocketKind, int, str, SocketAddress]
+Resolver = Callable[[str, int], list[AddressInfo]]
 Transport = Callable[[str, str, int, int], _HTTPResult]
 
 
@@ -171,7 +173,7 @@ def register_research_https_source_handler(
     gateway.register_handler(tool_name, adapter.fetch_source)
 
 
-def _resolve_host(host: str, port: int) -> list[tuple[int, int, int, str, tuple[str, int]]]:
+def _resolve_host(host: str, port: int) -> list[AddressInfo]:
     return socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
 
 
