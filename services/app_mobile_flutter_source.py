@@ -47,6 +47,7 @@ def build_flutter_android_project_sources(
 
     escaped_name = xml_escape(display_name, {'"': '&quot;', "'": '&apos;'})
     dart_title = display_name.replace("\\", "\\\\").replace("'", "\\'")
+    package_path = application_id.replace(".", "/")
 
     files: tuple[tuple[str, bytes], ...] = (
         (
@@ -149,6 +150,23 @@ def build_flutter_android_project_sources(
                 "  </application>\n"
                 "</manifest>\n"
             ).encode("utf-8"),
+        ),
+        (
+            f"android/app/src/main/kotlin/{package_path}/MainActivity.kt",
+            (
+                f"package {application_id}\n\n"
+                "import io.flutter.embedding.android.FlutterActivity\n\n"
+                "class MainActivity : FlutterActivity()\n"
+            ).encode("utf-8"),
+        ),
+        (
+            "android/app/src/main/res/values/styles.xml",
+            b"<?xml version=\"1.0\" encoding=\"utf-8\"?>\n"
+            b"<resources>\n"
+            b"  <style name=\"LaunchTheme\" parent=\"@android:style/Theme.Light.NoTitleBar\">\n"
+            b"    <item name=\"android:windowBackground\">@android:color/white</item>\n"
+            b"  </style>\n"
+            b"</resources>\n",
         ),
         (
             "android/gradlew",
