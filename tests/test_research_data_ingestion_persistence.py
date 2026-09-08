@@ -193,44 +193,44 @@ def test_durable_storage_is_tenant_isolated(tmp_path: Path) -> None:
         restored_a.knowledge_projection("claim-b")
 
 
-@pytest.mark.parametrize(
-    ("payload", "match"),
-    [
-        (
-            FetchedResearchSource(
-                final_locator="https://data.example.test/report.json",
-                content=b"{not-json}",
-                retrieved_at="2026-09-08T20:00:00Z",
-                media_type="application/json",
-                provider_evidence_ref="evidence://egress/request-3",
-                tenant_id="tenant-a",
-            ),
-            "invalid",
-        ),
-        (
-            FetchedResearchSource(
-                final_locator="https://data.example.test/report.json",
-                content=b'{"ok": true}',
-                retrieved_at="2026-09-08T20:00:00Z",
-                media_type="application/json",
-                provider_evidence_ref="evidence://egress/request-4",
-                tenant_id="tenant-b",
-            ),
-            "tenant boundary",
-        ),
-    ],
-)
-def test_external_ingestion_fails_closed_on_invalid_receipts(
-    tmp_path: Path,
-    payload: FetchedResearchSource,
-    match: str,
-) -> None:
+def test_external_ingestion_fails_closed_on_invalid_json_receipt(tmp_path: Path) -> None:
+    payload = FetchedResearchSource(
+        final_locator="https://data.example.test/report.json",
+        content=b"{not-json}",
+        retrieved_at="2026-09-08T20:00:00Z",
+        media_type="application/json",
+        provider_evidence_ref="evidence://egress/request-3",
+        tenant_id="tenant-a",
+    )
     factory = ResearchDataFactory(
         database_path=tmp_path / "research.sqlite3",
         tenant_id="tenant-a",
         tool_gateway=_Gateway(payload),
     )
-    with pytest.raises(ResearchDataError, match=match):
+    with pytest.raises(ResearchDataError, match="invalid"):
+        factory.ingest_external_source(
+            "source-a",
+            locator="https://data.example.test/report.json",
+            source_format="json",
+            trusted=True,
+        )
+
+
+def test_external_ingestion_fails_closed_on_tenant_mismatch(tmp_path: Path) -> None:
+    payload = FetchedResearchSource(
+        final_locator="https://data.example.test/report.json",
+        content=b'{"ok": true}',
+        retrieved_at="2026-09-08T20:00:00Z",
+        media_type="application/json",
+        provider_evidence_ref="evidence://egress/request-4",
+        tenant_id="tenant-b",
+    )
+    factory = ResearchDataFactory(
+        database_path=tmp_path / "research.sqlite3",
+        tenant_id="tenant-a",
+        tool_gateway=_Gateway(payload),
+    )
+    with pytest.raises(ResearchDataError, match="tenant boundary"):
         factory.ingest_external_source(
             "source-a",
             locator="https://data.example.test/report.json",
