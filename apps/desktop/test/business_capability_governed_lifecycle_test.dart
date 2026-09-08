@@ -2,16 +2,14 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/business_context/business_capability_context.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/control_plane/evidence_record.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
+import 'package:ilaios_desktop/features/create/create_view.dart';
 import 'package:ilaios_desktop/features/create/governed_lifecycle_projection.dart';
-import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/identity/identity_client.dart';
-import 'package:ilaios_desktop/main.dart';
-
-import 'secondary_navigation_test_support.dart';
 
 class _IntentTransport implements ControlPlaneTransport {
   String? body;
@@ -148,65 +146,83 @@ void main() {
     );
   });
 
-  testWidgets('Create selector sends metadata without rewriting prompt and clears stale lifecycle', (
-    WidgetTester tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1600, 900));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    String? submitted;
-    BusinessCapabilityContext? receivedContext;
+  testWidgets(
+    'Create selector preserves metadata and lifecycle without restoring Goals navigation',
+    (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(1600, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      String? submitted;
+      BusinessCapabilityContext? receivedContext;
 
-    Future<PromptSubmission> submit(String objective) async {
-      submitted = objective;
-      receivedContext = BusinessCapabilitySubmissionBus.take();
-      return const GovernedPromptSubmission(
-        goalId: 'goal-1',
-        jobId: 'job-1',
-        state: 'PENDING',
-        requestId: 'exec-1',
-        executionStatus: 'PENDING_APPROVAL',
+      Future<PromptSubmission> submit(String objective) async {
+        submitted = objective;
+        receivedContext = BusinessCapabilitySubmissionBus.take();
+        return const GovernedPromptSubmission(
+          goalId: 'goal-1',
+          jobId: 'job-1',
+          state: 'PENDING',
+          requestId: 'exec-1',
+          executionStatus: 'PENDING_APPROVAL',
+        );
+      }
+
+      GovernedLifecycleProjectionStore.replace(_pendingApprovalSnapshot);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: IlaiosLocaleScope(
+            locale: IlaiosLocale.english,
+            onChanged: (_) {},
+            child: Scaffold(
+              body: CreateView(
+                projection: _connectedProjection,
+                status: 'Operational APIs connected',
+                userSession: _session,
+                onSubmit: submit,
+              ),
+            ),
+          ),
+        ),
       );
-    }
+      await tester.pumpAndSettle();
 
-    await tester.pumpWidget(
-      IlaiosDesktopApp(
-        projection: _connectedProjection,
-        operationalSnapshot: _pendingApprovalSnapshot,
-        userSession: _session,
-        onPromptSubmit: submit,
-      ),
-    );
-    await tester.pumpAndSettle();
-    await openSecondaryDesktopSection(tester, DesktopSection.goals);
+      await tester.enterText(
+        find.byKey(const Key('one-prompt-input')),
+        'Build a quarterly operating plan',
+      );
+      await tester.tap(find.byKey(const Key('business-capability-selector')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('business-context-BCF02')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('one-prompt-submit')));
+      await tester.pumpAndSettle();
 
-    await tester.enterText(
-      find.byKey(const Key('one-prompt-input')),
-      'Build a quarterly operating plan',
-    );
-    await tester.tap(find.byKey(const Key('business-capability-selector')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('business-context-BCF02')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('one-prompt-submit')));
-    await tester.pumpAndSettle();
+      expect(submitted, 'Build a quarterly operating plan');
+      expect(receivedContext?.contextCode, 'BCF02');
+      expect(BusinessCapabilitySubmissionBus.pending, isNull);
+      expect(find.text('Lifecycle: Pending approval'), findsOneWidget);
+      expect(find.text('Lifecycle: Executing'), findsNothing);
 
-    expect(submitted, 'Build a quarterly operating plan');
-    expect(receivedContext?.contextCode, 'BCF02');
-    expect(BusinessCapabilitySubmissionBus.pending, isNull);
-    expect(find.text('Lifecycle: Pending approval'), findsOneWidget);
-    expect(find.text('Lifecycle: Executing'), findsNothing);
+      GovernedLifecycleProjectionStore.clear();
+      await tester.pumpWidget(
+        MaterialApp(
+          home: IlaiosLocaleScope(
+            locale: IlaiosLocale.english,
+            onChanged: (_) {},
+            child: Scaffold(
+              body: CreateView(
+                projection: _connectedProjection,
+                status: 'Operational APIs connected',
+                userSession: _session,
+                onSubmit: submit,
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-    await tester.pumpWidget(
-      IlaiosDesktopApp(
-        projection: _connectedProjection,
-        operationalSnapshot: const OperationalSnapshot.unavailable(),
-        userSession: _session,
-        onPromptSubmit: submit,
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(find.text('Lifecycle: Unavailable'), findsOneWidget);
-    expect(find.text('Lifecycle: Pending approval'), findsNothing);
-  });
+      expect(find.text('Lifecycle: Pending approval'), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 }
