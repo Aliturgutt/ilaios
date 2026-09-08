@@ -35,7 +35,7 @@ Planning and external-gate annotations such as `PLANNED`, `EXTERNAL PROOF PENDIN
 | Knowledge / RAG — shared intelligence/context capability, not a factory | Merged bounded RAG implementation plus RAG.14 repository machinery | VERIFIED bounded reference implementation | Approved live production embeddings/index persistence, tenant/auth/DLP/leakage, SLO/recovery and exact deploy/rollback evidence |
 | Knowledge Graph | Repository implementation and targeted integration tests | VERIFIED foundation | Durable production-like graph persistence/query evidence |
 | Project Manager | Repository implementation and targeted integration tests | VERIFIED foundation | Durable workspace/project lifecycle evidence |
-| Security Factory | Defensive bounded SAST/secret/supply-chain/infra/local-DAST tests | VERIFIED bounded defensive factory | Production-safe exercises and independent external pentest where applicable |
+| Security Factory | Defensive bounded SAST/secret/supply-chain/infra/local-DAST tests plus exact-head ZAP/Nuclei/Semgrep/Trivy evidence and retest | VERIFIED bounded defensive factory | Continue recurring production-safe digital exercises, evidence retention, remediation and retest |
 | Research / Data Factory | Registry binding, provenance/claim gates and tests | VERIFIED bounded factory | Broader governed ingestion/persistence/data-source exercises |
 | Creative / Document Factory | Trusted-source/provenance/approval tests and registry binding | VERIFIED bounded factory | Broader format adapters and governed external publishing evidence |
 | Commerce / Growth Factory | Trusted-evidence/approval/paid-spend-denial tests | VERIFIED bounded review-only factory | Governed external channels; no paid-spend authority implied |

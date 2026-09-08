@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: "17 3 * * 0"
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/security-lifecycle-operations.yml'
+      - 'security/semgrep-security.yml'
+      - 'services/security_*.py'
+      - 'tests/test_security_*.py'
 
 permissions:
   contents: read
@@ -14,6 +20,7 @@ concurrency:
 
 jobs:
   dependency-vulnerability-reverification:
+    if: github.event_name != 'pull_request'
     name: S5 dependency vulnerability re-verification
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -44,6 +51,7 @@ jobs:
           retention-days: 30
 
   full-history-secret-scan:
+    if: github.event_name != 'pull_request'
     name: S5 full repository history secret scan
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -63,12 +71,13 @@ jobs:
       - name: Scan complete repository history without disclosing values
         run: |
           set -euo pipefail
-          python -m services.software_factory_secret_scanning \\
-            --repository-root "$GITHUB_WORKSPACE" \\
-            --history \\
+          python -m services.software_factory_secret_scanning \
+            --repository-root "$GITHUB_WORKSPACE" \
+            --history \
             --head-sha "$GITHUB_SHA"
 
   provider-neutral-recovery-drills:
+    if: github.event_name != 'pull_request'
     name: S5 provider-neutral recovery and security drills
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -119,4 +128,215 @@ jobs:
           name: security-lifecycle-continuous-${{ github.sha }}-${{ github.run_id }}
           path: artifacts/security-lifecycle-continuous
           if-no-files-found: warn
+          retention-days: 30
+
+  free-digital-security-suite:
+    name: Free digital pentest suite (real local ILAIOS)
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      SOURCE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+      SEMGREP_VERSION: "1.172.0"
+      TRIVY_VERSION: "0.74.0"
+      NUCLEI_VERSION: "3.11.1"
+      NUCLEI_TEMPLATES_VERSION: "10.4.8"
+      NUCLEI_TEMPLATES_SHA: "e5f19e6144135e107962bb943231413796fd7fe7"
+      ZAP_VERSION: "2.17.0"
+      LOCAL_TARGET: "http://127.0.0.1:3000"
+    steps:
+      - name: Checkout exact source commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Verify exact source identity
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          printf 'SECURITY_EXACT_SOURCE_SHA=%s\n' "$SOURCE_SHA"
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/website/package-lock.json
+
+      - name: Build and start exact-head ILAIOS website locally
+        run: |
+          set -euo pipefail
+          test "$LOCAL_TARGET" = "http://127.0.0.1:3000"
+          mkdir -p artifacts/security-free-digital
+          cd apps/website
+          npm ci --ignore-scripts --audit=false --fund=false
+          npm run build
+          nohup npm run start -- --hostname 127.0.0.1 --port 3000 > "$GITHUB_WORKSPACE/artifacts/security-free-digital/local-ilaios.log" 2>&1 &
+          echo $! > "$GITHUB_WORKSPACE/artifacts/security-free-digital/local-ilaios.pid"
+          cd "$GITHUB_WORKSPACE"
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error "$LOCAL_TARGET" >/dev/null; then
+              printf 'LOCAL_ILAIOS_TARGET=READY source_sha=%s target=%s\n' "$SOURCE_SHA" "$LOCAL_TARGET"
+              exit 0
+            fi
+            sleep 1
+          done
+          cat artifacts/security-free-digital/local-ilaios.log || true
+          echo 'exact-head local ILAIOS target failed to start' >&2
+          exit 1
+
+      - name: Install pinned Semgrep
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check "semgrep==$SEMGREP_VERSION"
+          semgrep --version | tee artifacts/security-free-digital/semgrep-version.txt
+
+      - name: Run Semgrep fail-closed repository scan
+        run: |
+          set -euo pipefail
+          semgrep scan \
+            --config security/semgrep-security.yml \
+            --error \
+            --json \
+            --output artifacts/security-free-digital/semgrep.json \
+            services src apps scripts
+
+      - name: Install checksum-verified Trivy
+        run: |
+          set -euo pipefail
+          asset="trivy_${TRIVY_VERSION}_Linux-64bit.tar.gz"
+          base="https://github.com/aquasecurity/trivy/releases/download/v${TRIVY_VERSION}"
+          curl --fail --location --retry 3 --output "$asset" "$base/$asset"
+          curl --fail --location --retry 3 --output trivy-checksums.txt "$base/trivy_${TRIVY_VERSION}_checksums.txt"
+          grep "  $asset$" trivy-checksums.txt | sha256sum --check
+          tar -xzf "$asset" trivy
+          ./trivy --version | tee artifacts/security-free-digital/trivy-version.txt
+
+      - name: Run Trivy high-critical repository scan
+        run: |
+          set -euo pipefail
+          ./trivy fs \
+            --scanners vuln,misconfig \
+            --severity HIGH,CRITICAL \
+            --exit-code 1 \
+            --format json \
+            --output artifacts/security-free-digital/trivy.json \
+            .
+
+      - name: Install checksum-verified Nuclei and pinned templates
+        run: |
+          set -euo pipefail
+          asset="nuclei_${NUCLEI_VERSION}_linux_amd64.zip"
+          base="https://github.com/projectdiscovery/nuclei/releases/download/v${NUCLEI_VERSION}"
+          curl --fail --location --retry 3 --output "$asset" "$base/$asset"
+          curl --fail --location --retry 3 --output nuclei-checksums.txt "$base/nuclei_${NUCLEI_VERSION}_checksums.txt"
+          grep "  $asset$" nuclei-checksums.txt | sha256sum --check
+          unzip -q "$asset" nuclei
+          chmod +x nuclei
+          ./nuclei -version 2>&1 | tee artifacts/security-free-digital/nuclei-version.txt
+          git clone --quiet --no-checkout https://github.com/projectdiscovery/nuclei-templates.git nuclei-templates
+          git -C nuclei-templates checkout --quiet "$NUCLEI_TEMPLATES_SHA"
+          test "$(git -C nuclei-templates rev-parse HEAD)" = "$NUCLEI_TEMPLATES_SHA"
+          printf 'nuclei-templates=%s sha=%s\n' "$NUCLEI_TEMPLATES_VERSION" "$NUCLEI_TEMPLATES_SHA" | tee artifacts/security-free-digital/nuclei-templates-version.txt
+
+      - name: Run Nuclei high-critical against exact-head localhost only
+        run: |
+          set -euo pipefail
+          test "$LOCAL_TARGET" = "http://127.0.0.1:3000"
+          : > artifacts/security-free-digital/nuclei.jsonl
+          ./nuclei \
+            -u "$LOCAL_TARGET" \
+            -t nuclei-templates/http/ \
+            -severity high,critical \
+            -jsonl-export artifacts/security-free-digital/nuclei.jsonl \
+            -disable-update-check \
+            -no-interactsh
+
+      - name: Run OWASP ZAP baseline against exact-head localhost only
+        run: |
+          set -euo pipefail
+          test "$LOCAL_TARGET" = "http://127.0.0.1:3000"
+          docker pull "ghcr.io/zaproxy/zaproxy:${ZAP_VERSION}"
+          docker image inspect "ghcr.io/zaproxy/zaproxy:${ZAP_VERSION}" --format '{{json .RepoDigests}}' > artifacts/security-free-digital/zap-image-digest.json
+          chmod 0777 artifacts/security-free-digital
+          docker run --rm --network host \
+            -v "$PWD/artifacts/security-free-digital:/zap/wrk/:rw" \
+            "ghcr.io/zaproxy/zaproxy:${ZAP_VERSION}" \
+            zap-baseline.py -t "$LOCAL_TARGET" -J zap.json -I
+          test -s artifacts/security-free-digital/zap.json
+          chmod 0755 artifacts/security-free-digital
+
+      - name: Canonical evidence and retest receipt
+        run: |
+          set -euo pipefail
+          test "$LOCAL_TARGET" = "http://127.0.0.1:3000"
+          curl --fail --silent --show-error "$LOCAL_TARGET" >/dev/null
+          test -s artifacts/security-free-digital/semgrep.json
+          test -s artifacts/security-free-digital/trivy.json
+          test -f artifacts/security-free-digital/nuclei.jsonl
+          test -s artifacts/security-free-digital/zap.json
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          from services.security_external_tool_evidence import report_from_external_tool
+
+          root = Path('artifacts/security-free-digital')
+          reports = {}
+          for tool, filename in (
+              ('semgrep', 'semgrep.json'),
+              ('trivy', 'trivy.json'),
+              ('nuclei', 'nuclei.jsonl'),
+              ('zap', 'zap.json'),
+          ):
+              report = report_from_external_tool(
+                  scope_id=f"free-digital-{os.environ['SOURCE_SHA']}",
+                  tool=tool,
+                  evidence_path=root / filename,
+              )
+              reports[tool] = {
+                  'passed': report.passed,
+                  'finding_count': len(report.findings),
+                  'blocking_finding_count': len(report.blocking_findings),
+              }
+
+          receipt = {
+              'source_sha': os.environ['SOURCE_SHA'],
+              'scope': 'exact-head-localhost-only',
+              'target': os.environ['LOCAL_TARGET'],
+              'provider_cost_usd': 0,
+              'tools': {
+                  'semgrep': os.environ['SEMGREP_VERSION'],
+                  'trivy': os.environ['TRIVY_VERSION'],
+                  'nuclei': os.environ['NUCLEI_VERSION'],
+                  'nuclei_templates': {
+                      'version': os.environ['NUCLEI_TEMPLATES_VERSION'],
+                      'sha': os.environ['NUCLEI_TEMPLATES_SHA'],
+                  },
+                  'zap': os.environ['ZAP_VERSION'],
+              },
+              'reports': reports,
+              'retest': 'PASS' if all(item['blocking_finding_count'] == 0 for item in reports.values()) else 'BLOCKED',
+              'external_independent_pentest': 'UNVERIFIED',
+          }
+          (root / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(receipt, sort_keys=True))
+          if receipt['retest'] != 'PASS':
+              raise SystemExit('blocking external-tool findings require remediation and retest')
+          print('FREE_DIGITAL_SECURITY_SUITE=PASS')
+          PY
+
+      - name: Upload free digital security evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: security-free-digital-${{ env.SOURCE_SHA }}-${{ github.run_id }}
+          path: artifacts/security-free-digital
+          if-no-files-found: error
           retention-days: 30
