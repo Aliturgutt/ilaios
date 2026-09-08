@@ -459,7 +459,7 @@ def main() -> int:
         "schema": "ilaios.website-v2.visual-qa.v5",
         "base_url": BASE_URL,
         "public_route_pairs": len(ROUTES),
-        "localized_routes": len(ROUTES) * 2,
+        "localized_routes":len(ROUTES)*2,
         "light_viewports": [name for name, *_ in VIEWPORTS],
         "dark_viewports": [name for name, *_ in DARK_VIEWPORTS],
         "checks": len(records),
