@@ -37,7 +37,7 @@ void main() {
       findsNothing,
     );
     expect(find.descendant(of: sidebar, matching: find.text('Maliyetler')), findsNothing);
-    expect(find.text('Çevrimdışı'), findsWidgets);
+    expect(find.text('Sistem Çevrimdışı'), findsOneWidget);
     expect(find.text('Home'), findsNothing);
   });
 
