@@ -1,0 +1,44 @@
+name: Security Next Lockfile Final Temp
+
+on:
+  push:
+    branches:
+      - security/next-critical-cve-remediation-20260908
+    paths:
+      - '.github/workflows/security-next-lockfile-final-temp.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  finalize-remediation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact security branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          ref: security/next-critical-cve-remediation-20260908
+          fetch-depth: 0
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/website/package-lock.json
+      - name: Generate patched lockfile without lifecycle scripts
+        working-directory: apps/website
+        run: npm install --package-lock-only --ignore-scripts --save-exact next@16.3.3 eslint-config-next@16.3.3
+      - name: Confirm patched versions
+        run: |
+          node -e "const p=require('./apps/website/package-lock.json'); if(p.packages['node_modules/next'].version!=='16.3.3') process.exit(1); if(p.packages['node_modules/eslint-config-next'].version!=='16.3.3') process.exit(1)"
+          grep -q '"next": "16.3.3"' services/integrations/web_project.py
+      - name: Remove temporary workflows
+        run: rm .github/workflows/security-next-lockfile-remediation-temp.yml .github/workflows/security-next-lockfile-commit-temp.yml .github/workflows/security-next-lockfile-final-temp.yml
+      - name: Commit bounded security remediation
+        run: |
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/website/package.json apps/website/package-lock.json services/integrations/web_project.py .github/workflows/security-next-lockfile-remediation-temp.yml .github/workflows/security-next-lockfile-commit-temp.yml .github/workflows/security-next-lockfile-final-temp.yml
+          git commit -m 'fix(security): remediate critical Next.js CVE'
+          git push origin HEAD:security/next-critical-cve-remediation-20260908
