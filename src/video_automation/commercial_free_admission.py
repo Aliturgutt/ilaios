@@ -96,8 +96,8 @@ def authorize_free_operation(
                 "model_id": model_id,
                 "provider_cost_microusd": provider_cost_microusd,
             }
-            for key, value in expected.items():
-                if row[key] != value:
+            for key, expected_value in expected.items():
+                if row[key] != expected_value:
                     raise CommercialAdmissionError(
                         "free-operation request_id already exists with different identity"
                     )
