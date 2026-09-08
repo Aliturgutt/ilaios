@@ -75,6 +75,7 @@ void main() {
       find.byKey(const Key('home-command-prompt')),
       'Build a premium website',
     );
+    await tester.pump();
     final submit = find.byKey(const Key('home-new-work'));
     await tester.ensureVisible(submit);
     await tester.tap(submit);
