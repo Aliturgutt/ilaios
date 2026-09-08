@@ -47,6 +47,7 @@ from src.video_automation.managed_credits import (
     ManagedCreditAccount,
     ManagedCreditError,
     ProviderCostQuote,
+    microusd_to_usd,
     usd_to_microusd,
 )
 from src.video_automation.models import ProviderRequest, ProviderResult
@@ -92,6 +93,12 @@ class _DispatchContext:
     authorization_id: str
     quote: LockedVideoQuote
     provider_cost_ceiling_microusd: int
+    estimated_cost_microusd: int
+    approved_budget_microusd: int
+    approval_id: str
+    tenant_id: str
+    user_id: str
+    model_id: str
     actual_cost_microusd: int | None = None
     actual_margin_bps: int | None = None
 
@@ -154,7 +161,7 @@ class ManagedDesktopVideoSession:
             policy=managed_credit_production_policy(
                 max_cost_per_video=float(max_request_cost_usd),
                 max_daily_cost=float(max_total_cost_usd),
-                max_retry_cost=0.0,
+                max_retry_cost=float(max_request_cost_usd),
             ),
             credit_store=self._credit_store,
             commercial_store=self._commercial_store,
@@ -194,7 +201,14 @@ class ManagedDesktopVideoSession:
 
     @property
     def max_total_cost_microusd(self) -> int:
+        return self._active_hard_cap_microusd()
+
+    def _active_hard_cap_microusd(self) -> int:
+        """Return the active aggregate cap; production subclasses bind user approval."""
         return self._max_total_cost_microusd
+
+    def _active_approval_id(self) -> str:
+        return "configured-managed-budget"
 
     def validate_model_id(self, model_id: str) -> None:
         if not model_id.strip() or model_id.endswith(":free"):
@@ -249,6 +263,34 @@ class ManagedDesktopVideoSession:
                 estimated_cost_microusd=price.estimated_total_microusd,
                 max_cost_microusd=provider_ceiling,
             )
+            approved_budget_microusd = self._active_hard_cap_microusd()
+            approval_id = self._active_approval_id()
+            current_account = self._credit_store.get_account(
+                tenant_id=self._account.tenant_id,
+                user_id=self._account.user_id,
+            )
+            if provider_ceiling > current_account.available_microusd:
+                return _provider_failure(
+                    request,
+                    "reapproval_required",
+                    "live provider estimate exceeds remaining approved job budget",
+                    metadata={
+                        "estimated_cost_usd": str(
+                            microusd_to_usd(price.estimated_total_microusd)
+                        ),
+                        "approved_budget_usd": str(
+                            microusd_to_usd(approved_budget_microusd)
+                        ),
+                        "approval_id": approval_id,
+                        "provider": OPENROUTER_MANAGED_PROVIDER_NAME,
+                        "model": model_id,
+                        "remaining_budget_usd": str(
+                            microusd_to_usd(current_account.available_microusd)
+                        ),
+                        "reapproval_required": "true",
+                        "budget_exceeded": "true",
+                    },
+                )
             quote = self._commercial_engine.create_locked_quote(
                 quote_id=f"desktop-managed-quote-{request.request_id}",
                 now_epoch_s=observed_at,
@@ -303,6 +345,12 @@ class ManagedDesktopVideoSession:
                     authorization_id=authorization_id,
                     quote=quote,
                     provider_cost_ceiling_microusd=provider_ceiling,
+                    estimated_cost_microusd=price.estimated_total_microusd,
+                    approved_budget_microusd=approved_budget_microusd,
+                    approval_id=approval_id,
+                    tenant_id=self._account.tenant_id,
+                    user_id=self._account.user_id,
+                    model_id=model_id,
                 )
             return result
         except Exception as exc:  # noqa: BLE001
@@ -354,21 +402,53 @@ class ManagedDesktopVideoSession:
                 context.actual_cost_microusd = actual_cost
                 context.actual_margin_bps = reconciliation.actual_margin_bps
                 settled_total = sum(
-                    item.actual_cost_microusd or 0 for item in self._contexts.values()
+                    item.actual_cost_microusd or 0
+                    for item in self._contexts.values()
+                    if item.approval_id == context.approval_id
                 )
-            if settled_total > self._max_total_cost_microusd:
-                raise VideoRuntimeError("managed Desktop aggregate cost exceeded hard cap")
+            if settled_total > context.approved_budget_microusd:
+                raise VideoRuntimeError("managed Desktop aggregate cost exceeded approved budget")
 
+        with self._lock:
+            cumulative_job_spend = sum(
+                item.actual_cost_microusd or 0
+                for item in self._contexts.values()
+                if item.approval_id == context.approval_id
+            )
+        remaining_budget = max(
+            0, context.approved_budget_microusd - cumulative_job_spend
+        )
         metadata = dict(observation.metadata)
         metadata.update(
             {
                 "managed_cost_proven": "true",
+                "estimated_cost_usd": str(
+                    microusd_to_usd(context.estimated_cost_microusd)
+                ),
+                "approved_budget_usd": str(
+                    microusd_to_usd(context.approved_budget_microusd)
+                ),
+                "approval_id": context.approval_id,
+                "provider": OPENROUTER_MANAGED_PROVIDER_NAME,
+                "model": context.model_id,
                 "actual_provider_cost_microusd": str(context.actual_cost_microusd),
+                "actual_provider_cost_usd": str(
+                    microusd_to_usd(context.actual_cost_microusd or 0)
+                ),
                 "provider_cost_ceiling_microusd": str(
                     context.provider_cost_ceiling_microusd
                 ),
+                "cumulative_job_spend_usd": str(
+                    microusd_to_usd(cumulative_job_spend)
+                ),
+                "remaining_budget_usd": str(microusd_to_usd(remaining_budget)),
+                "retry_spend_usd": "0",
+                "reapproval_required": "false",
+                "budget_exceeded": "false",
                 "actual_margin_bps": str(context.actual_margin_bps),
-                "aggregate_hard_cap_microusd": str(self._max_total_cost_microusd),
+                "aggregate_hard_cap_microusd": str(
+                    context.approved_budget_microusd
+                ),
             }
         )
         return replace(observation, metadata=metadata)
@@ -396,16 +476,17 @@ class ManagedDesktopVideoSession:
                 raise VideoRuntimeError("managed provider actual cost exceeded dispatch ceiling")
             actual_total += actual
             ceiling_total += ceiling
-        if actual_total > self._max_total_cost_microusd:
+        hard_cap = self._active_hard_cap_microusd()
+        if actual_total > hard_cap:
             raise VideoRuntimeError("managed provider actual total exceeded aggregate hard cap")
-        if ceiling_total > self._max_total_cost_microusd:
+        if ceiling_total > hard_cap:
             raise VideoRuntimeError("managed provider reserved ceilings exceeded aggregate hard cap")
         return ProviderCostEvidence(
             mode="managed-bounded",
             proven=True,
             zero=actual_total == 0,
             actual_microusd=actual_total,
-            ceiling_microusd=self._max_total_cost_microusd,
+            ceiling_microusd=hard_cap,
         )
 
     def _normalized_request(
@@ -544,15 +625,20 @@ def _provider_failure(
     request: ProviderRequest,
     code: str,
     message: str,
+    *,
+    metadata: Mapping[str, str] | None = None,
 ) -> ProviderResult:
+    failure_metadata = {
+        "backend": "openrouter",
+        "cost_mode": "managed-bounded",
+    }
+    if metadata is not None:
+        failure_metadata.update(metadata)
     return ProviderResult(
         request_id=request.request_id,
         provider_name=request.provider_name,
         success=False,
         error_code=code,
         error_message=message,
-        metadata={
-            "backend": "openrouter",
-            "cost_mode": "managed-bounded",
-        },
+        metadata=failure_metadata,
     )
