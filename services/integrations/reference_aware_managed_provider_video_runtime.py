@@ -56,44 +56,29 @@ _DEFAULT_MODEL_ID = "bytedance/seedance-2.0-fast"
 _DEFAULT_QA_MODEL_ID = "openrouter/free"
 _DEFAULT_REFERENCE_ANALYZER_MODEL_ID = "google/gemma-4-26b-a4b-it:free"
 _DEFAULT_RESOLUTION = "480p"
+_USD_MINOR_TO_MICROUSD = 10_000
 _TERMINAL_PROVIDER_STATUSES = frozenset(
     {ProviderJobStatus.SUCCEEDED, ProviderJobStatus.FAILED, ProviderJobStatus.CANCELLED}
 )
 
 
 class DurableProductIdentityResolver:
-    """Resolve one admitted Desktop product request to its durable tenant/principal."""
+    """Resolve one admitted Desktop product request to its durable identity/budget."""
 
     def __init__(self, product_database: Path) -> None:
         self._database = product_database
+        self._control_database = product_database.parent / "control-plane.sqlite3"
 
     def resolve(self, request_id: str) -> tuple[str, str]:
-        normalized_request = request_id.strip()
-        if not normalized_request:
-            raise VideoRuntimeError("managed Desktop product request identity is blank")
-        if not self._database.is_file():
-            raise VideoRuntimeError("managed Desktop product identity store is unavailable")
-        connection = sqlite3.connect(
-            self._database.resolve().as_uri() + "?mode=ro",
-            uri=True,
-            timeout=10,
+        normalized_request = self._normalized_request(request_id)
+        rows = self._product_rows(
+            "SELECT identity.tenant_id, identity.requester_id "
+            "FROM product_proofs AS proof "
+            "JOIN product_proof_identity AS identity "
+            "ON identity.request_id = proof.request_id "
+            "WHERE proof.request_id = ? LIMIT 2",
+            normalized_request,
         )
-        connection.row_factory = sqlite3.Row
-        try:
-            rows = connection.execute(
-                "SELECT identity.tenant_id, identity.requester_id "
-                "FROM product_proofs AS proof "
-                "JOIN product_proof_identity AS identity "
-                "ON identity.request_id = proof.request_id "
-                "WHERE proof.request_id = ? LIMIT 2",
-                (normalized_request,),
-            ).fetchall()
-        except sqlite3.Error as error:
-            raise VideoRuntimeError(
-                "managed Desktop product identity lookup failed"
-            ) from error
-        finally:
-            connection.close()
         if len(rows) != 1:
             raise VideoRuntimeError(
                 "managed Desktop product request lacks one durable product identity"
@@ -106,14 +91,84 @@ class DurableProductIdentityResolver:
             raise VideoRuntimeError("managed Desktop principal identity is unavailable")
         return tenant_id.strip(), requester_id.strip()
 
+    def approved_budget_microusd(self, request_id: str) -> int:
+        """Read the immutable Video proposal budget; it is not an approval by itself."""
+
+        normalized_request = self._normalized_request(request_id)
+        rows = self._product_rows(
+            "SELECT proposal_id FROM product_proofs WHERE request_id = ? LIMIT 2",
+            normalized_request,
+        )
+        if len(rows) != 1:
+            raise VideoRuntimeError(
+                "managed Desktop product request lacks one durable proposal binding"
+            )
+        proposal_id = rows[0]["proposal_id"]
+        if not isinstance(proposal_id, str) or not proposal_id.strip():
+            raise VideoRuntimeError("managed Desktop proposal identity is unavailable")
+        if not self._control_database.is_file():
+            raise VideoRuntimeError("managed Desktop proposal store is unavailable")
+        connection = sqlite3.connect(
+            self._control_database.resolve().as_uri() + "?mode=ro",
+            uri=True,
+            timeout=10,
+        )
+        connection.row_factory = sqlite3.Row
+        try:
+            proposal_rows = connection.execute(
+                "SELECT proposal_json FROM proposals WHERE proposal_id = ? LIMIT 2",
+                (proposal_id.strip(),),
+            ).fetchall()
+        except sqlite3.Error as error:
+            raise VideoRuntimeError("managed Desktop proposal budget lookup failed") from error
+        finally:
+            connection.close()
+        if len(proposal_rows) != 1:
+            raise VideoRuntimeError("managed Desktop proposal budget is unavailable")
+        try:
+            proposal = json.loads(str(proposal_rows[0]["proposal_json"]))
+            goal = proposal["goal"]
+            budget = goal["budget"]
+            minor = budget["max_external_spend_minor"]
+        except (KeyError, TypeError, json.JSONDecodeError) as error:
+            raise VideoRuntimeError("managed Desktop proposal budget is malformed") from error
+        if isinstance(minor, bool) or not isinstance(minor, int) or minor <= 0:
+            raise VideoRuntimeError("managed Desktop approved budget must be positive")
+        return minor * _USD_MINOR_TO_MICROUSD
+
+    def _normalized_request(self, request_id: str) -> str:
+        normalized_request = request_id.strip()
+        if not normalized_request:
+            raise VideoRuntimeError("managed Desktop product request identity is blank")
+        if not self._database.is_file():
+            raise VideoRuntimeError("managed Desktop product identity store is unavailable")
+        return normalized_request
+
+    def _product_rows(self, query: str, request_id: str) -> list[sqlite3.Row]:
+        connection = sqlite3.connect(
+            self._database.resolve().as_uri() + "?mode=ro",
+            uri=True,
+            timeout=10,
+        )
+        connection.row_factory = sqlite3.Row
+        try:
+            return list(connection.execute(query, (request_id,)).fetchall())
+        except sqlite3.Error as error:
+            raise VideoRuntimeError(
+                "managed Desktop product identity lookup failed"
+            ) from error
+        finally:
+            connection.close()
+
 
 class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
-    """Bind the existing durable managed-credit authority to the admitted identity."""
+    """Bind existing managed credits to durable identity + existing human approval."""
 
     def __init__(
         self,
         *,
         identity_resolver: DurableProductIdentityResolver,
+        governance: GovernedRuntimeGateway,
         root: Path,
         api_key: str,
         model_id: str,
@@ -128,26 +183,40 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
             max_total_cost_usd=max_total_cost_usd,
         )
         self._identity_resolver = identity_resolver
+        self._governance = governance
         self._account_switch_lock = threading.Lock()
         self._product_request_context: ContextVar[str | None] = ContextVar(
             f"managed-video-product-request-{id(self)}",
             default=None,
         )
+        self._approved_budget_context: ContextVar[int | None] = ContextVar(
+            f"managed-video-approved-budget-{id(self)}",
+            default=None,
+        )
 
     @contextmanager
     def bind_product_request(self, request_id: str) -> Iterator[None]:
-        """Bind provider dispatches to the exact admitted product request in this call."""
+        """Bind paid dispatches to the exact approved product request and budget."""
 
         normalized = request_id.strip()
         if not normalized:
             raise VideoRuntimeError("managed Desktop product request binding is blank")
         if self._product_request_context.get() is not None:
             raise VideoRuntimeError("managed Desktop product request binding is already active")
-        token = self._product_request_context.set(normalized)
+        # Human approval is the existing governance authority. The immutable
+        # proposal budget is only usable after that exact request is approved.
+        if not self._governance.approval_proven(normalized):
+            raise VideoRuntimeError(
+                "managed Desktop paid provider requires explicit human approval"
+            )
+        approved_budget = self._identity_resolver.approved_budget_microusd(normalized)
+        request_token = self._product_request_context.set(normalized)
+        budget_token = self._approved_budget_context.set(approved_budget)
         try:
             yield
         finally:
-            self._product_request_context.reset(token)
+            self._approved_budget_context.reset(budget_token)
+            self._product_request_context.reset(request_token)
 
     def _require_bound_product_request(self) -> str:
         request_id = self._product_request_context.get()
@@ -157,14 +226,28 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
             )
         return request_id
 
+    def _active_hard_cap_microusd(self) -> int:
+        approved = self._approved_budget_context.get()
+        if approved is None:
+            raise VideoRuntimeError(
+                "managed Desktop provider dispatch lacks approved job budget binding"
+            )
+        return approved
+
+    def _active_approval_id(self) -> str:
+        return self._require_bound_product_request()
+
     def execute(self, request: ProviderRequest) -> ProviderResult:
         product_request_id = self._require_bound_product_request()
+        approved_budget = self._active_hard_cap_microusd()
         tenant_id, requester_id = self._identity_resolver.resolve(product_request_id)
+        # Job-scope the existing ledger account so concurrent jobs cannot consume
+        # each other's approvals while preserving durable tenant/principal binding.
         account = self._credit_store.seed_account(
             ManagedCreditAccount(
                 tenant_id=tenant_id,
-                user_id=requester_id,
-                available_microusd=self.max_total_cost_microusd,
+                user_id=f"{requester_id}::video-job::{product_request_id}",
+                available_microusd=approved_budget,
             )
         )
         # ManagedDesktopVideoSession passes _account only to the synchronous
@@ -189,6 +272,7 @@ class NativeReferenceTenantBoundManagedDesktopVideoSession(
         *,
         native_reference_binder: NativeReferenceRelayBinder,
         identity_resolver: DurableProductIdentityResolver,
+        governance: GovernedRuntimeGateway,
         root: Path,
         api_key: str,
         model_id: str,
@@ -197,6 +281,7 @@ class NativeReferenceTenantBoundManagedDesktopVideoSession(
     ) -> None:
         super().__init__(
             identity_resolver=identity_resolver,
+            governance=governance,
             root=root,
             api_key=api_key,
             model_id=model_id,
@@ -336,6 +421,7 @@ class ManagedReferenceAwareProviderBackedDesktopVideoRuntime(
             session: TenantBoundManagedDesktopVideoSession = (
                 TenantBoundManagedDesktopVideoSession(
                     identity_resolver=resolver,
+                    governance=governance,
                     root=root / "managed-provider",
                     api_key=api_key,
                     model_id=model_id,
@@ -350,6 +436,7 @@ class ManagedReferenceAwareProviderBackedDesktopVideoRuntime(
                     relay=reference_relay,
                 ),
                 identity_resolver=resolver,
+                governance=governance,
                 root=root / "managed-provider",
                 api_key=api_key,
                 model_id=model_id,
