@@ -3,8 +3,32 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/main.dart';
 
+const _canonicalSections = <String>[
+  'home',
+  'workflows',
+  'agents',
+  'artifacts',
+  'approvals',
+  'evidence',
+  'settings',
+];
+
+void _expectCanonicalShell() {
+  expect(find.byKey(const Key('reference-responsive-viewport-v11')), findsOneWidget);
+  expect(find.byKey(const Key('canonical-7-page-sidebar')), findsOneWidget);
+  expect(find.byKey(const Key('canonical-7-page-topbar')), findsOneWidget);
+  expect(find.byKey(const Key('canonical-reference-logo')), findsOneWidget);
+  for (final section in _canonicalSections) {
+    expect(find.byKey(ValueKey('nav-$section')), findsOneWidget);
+  }
+  for (final legacy in <String>['goals', 'liveWorkspace', 'costs']) {
+    expect(find.byKey(ValueKey('nav-$legacy')), findsNothing);
+  }
+  expect(find.byKey(const Key('reference-secondary-navigation')), findsNothing);
+}
+
 void main() {
-  testWidgets('V4 Home remains the same design family at all desktop widths', (
+  testWidgets('canonical 7-page Home stays overflow-free across desktop widths', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -27,35 +51,16 @@ void main() {
         tester.takeException(),
         isNull,
         reason:
-            'Desktop V4 layout overflowed or threw at ${size.width}x${size.height}',
+            'Canonical 7-page layout overflowed or threw at ${size.width}x${size.height}',
       );
-      expect(find.byKey(const ValueKey('nav-home')), findsOneWidget);
+      _expectCanonicalShell();
       expect(find.byKey(const Key('command-center-home')), findsOneWidget);
-      expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
       expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
-      expect(find.text('Main Control Center'), findsNothing);
-      expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
-      expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
-      expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
-      expect(find.text('ILAIOS'), findsNothing);
-      expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
-      expect(find.byKey(const Key('reference-responsive-viewport-v11')), findsOneWidget);
-      expect(find.byKey(const Key('reference-responsive-viewport-v10')), findsOneWidget);
-
-      final homeContentWidth = size.width - 223;
-      final shouldScrollCompactViewport =
-          homeContentWidth < 1300 || size.height <= 900;
-      expect(
-        find.byKey(const Key('command-center-short-viewport-scroll')),
-        shouldScrollCompactViewport ? findsOneWidget : findsNothing,
-        reason: shouldScrollCompactViewport
-            ? 'Compact Desktop viewport must scroll without shrinking typography'
-            : 'Standard Desktop viewport should retain the one-viewport composition',
-      );
+      expect(find.byKey(const Key('home-new-work')), findsOneWidget);
     }
   });
 
-  testWidgets('V4 Home keeps prompt, focus and attention surfaces without a permanent detail rail', (
+  testWidgets('canonical Home keeps the governed prompt and attachment surface', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -64,48 +69,19 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-focus')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-attention')), findsOneWidget);
-    expect(find.byKey(const Key('home-new-work')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-session')), findsNothing);
-    expect(find.byKey(const Key('command-center-quick-actions')), findsNothing);
-  });
-
-  testWidgets('V4 Home places the existing governed attachment surface below the prompt', (
-    WidgetTester tester,
-  ) async {
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.binding.setSurfaceSize(const Size(1600, 900));
-    await tester.pumpWidget(const IlaiosDesktopApp());
-    await tester.pumpAndSettle();
-
-    expect(tester.takeException(), isNull);
+    _expectCanonicalShell();
     final prompt = find.byKey(const Key('home-command-prompt'));
     final attachments = find.byKey(const Key('home-prompt-attachments'));
     expect(prompt, findsOneWidget);
     expect(attachments, findsOneWidget);
+    expect(find.byKey(const Key('home-new-work')), findsOneWidget);
     expect(
       tester.getTopLeft(attachments).dy,
       greaterThan(tester.getBottomLeft(prompt).dy),
     );
   });
 
-  testWidgets('shell renders the canonical dark runtime symbol master', (
-    WidgetTester tester,
-  ) async {
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    await tester.binding.setSurfaceSize(const Size(1600, 900));
-    await tester.pumpWidget(const IlaiosDesktopApp());
-    await tester.pumpAndSettle();
-
-    expect(tester.takeException(), isNull);
-    expect(find.byKey(const Key('reference-brand-lockup-v9')), findsOneWidget);
-    expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
-    expect(find.text('ILAIOS'), findsNothing);
-  });
-
-  testWidgets('shell keeps seven primary categories and secondary access without deleting functions', (
+  testWidgets('shell exposes exactly seven top-level destinations', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -114,31 +90,11 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
-    for (final key in <String>[
-      'home',
-      'workflows',
-      'agents',
-      'artifacts',
-      'approvals',
-      'evidence',
-      'settings',
-    ]) {
-      expect(find.byKey(ValueKey('nav-$key')), findsOneWidget);
-    }
-    for (final key in <String>['goals', 'liveWorkspace', 'costs']) {
-      expect(find.byKey(ValueKey('nav-$key')), findsNothing);
-    }
-    expect(find.byKey(const Key('reference-secondary-navigation')), findsOneWidget);
+    _expectCanonicalShell();
     expect(find.byKey(const Key('reference-bottom-status-v2')), findsOneWidget);
-
-    await tester.tap(find.byKey(const Key('reference-secondary-navigation')));
-    await tester.pumpAndSettle();
-    expect(find.text('Goals'), findsOneWidget);
-    expect(find.text('Live Workspace'), findsOneWidget);
-    expect(find.text('Costs'), findsOneWidget);
   });
 
-  testWidgets('1536x1024 Home uses scroll-safe geometry instead of overflowing', (
+  testWidgets('1536x1024 canonical Home uses scroll-safe geometry', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -147,13 +103,14 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
+    _expectCanonicalShell();
     expect(
       find.byKey(const Key('command-center-short-viewport-scroll')),
       findsOneWidget,
     );
   });
 
-  testWidgets('V4 Home remains overflow-free under 125 and 150 percent text scaling', (
+  testWidgets('canonical Home remains overflow-free at 125 and 150 percent text scaling', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -169,24 +126,24 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
+
       expect(
         tester.takeException(),
         isNull,
-        reason: 'Desktop V4 layout failed at ${scale}x text scaling',
+        reason: 'Canonical 7-page layout failed at ${scale}x text scaling',
       );
+      _expectCanonicalShell();
       expect(find.byKey(const Key('command-center-home')), findsOneWidget);
       expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
-      expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
-      expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
       expect(
         find.byKey(const Key('command-center-short-viewport-scroll')),
         findsWidgets,
-        reason: 'Windows text scaling must preserve readable typography by scrolling, not shrinking',
+        reason: 'Windows text scaling must preserve readable typography by scrolling',
       );
     }
   });
 
-  testWidgets('Turkish V4 Home never falls back to the old workflow dashboard when resized', (
+  testWidgets('Turkish canonical Home remains on the 7-page shell when resized', (
     WidgetTester tester,
   ) async {
     addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -208,15 +165,12 @@ void main() {
       expect(
         tester.takeException(),
         isNull,
-        reason: 'Turkish Desktop V4 layout failed at ${size.width}x${size.height}',
+        reason:
+            'Turkish canonical 7-page layout failed at ${size.width}x${size.height}',
       );
+      _expectCanonicalShell();
       expect(find.text('İş başlat'), findsOneWidget);
       expect(find.byKey(const Key('command-center-home')), findsOneWidget);
-      expect(find.text('Ana Kontrol Merkezi'), findsNothing);
-      expect(find.text('Aktif İş Akışı'), findsNothing);
-      expect(find.byKey(const Key('reference-brand-horizontal-dark')), findsOneWidget);
-      expect(find.text('ILAIOS'), findsNothing);
-      expect(find.byKey(const Key('reference-scaled-viewport-v9')), findsNothing);
     }
   });
 }
