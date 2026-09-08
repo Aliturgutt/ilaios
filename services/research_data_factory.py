@@ -1,17 +1,34 @@
-"""Bounded Research/Data Factory with deterministic provenance and claim gates."""
+"""Bounded Research/Data Factory with governed ingestion, provenance and persistence."""
 
 from __future__ import annotations
 
+import csv
 import hashlib
+import io
 import json
+import sqlite3
 from dataclasses import dataclass
 from datetime import date
+from pathlib import Path
 from statistics import fmean
-from typing import Any
+from typing import Any, Protocol
+from urllib.parse import urlsplit
 
 
 class ResearchDataError(ValueError):
     """Research/Data work cannot satisfy a required provenance or validation gate."""
+
+
+class ResearchToolGateway(Protocol):
+    """Narrow dispatch contract implemented by the canonical ToolGateway."""
+
+    def dispatch(
+        self,
+        tool_name: str,
+        *args: Any,
+        path: str | None = None,
+        **kwargs: Any,
+    ) -> Any: ...
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,15 +68,63 @@ class DataAnalysis:
     mean: float
 
 
-class ResearchDataFactory:
-    """Create bounded research evidence without fetching arbitrary external data."""
+@dataclass(frozen=True, slots=True)
+class FetchedResearchSource:
+    """Exact payload returned by a governed external-source ToolGateway handler."""
 
-    def __init__(self) -> None:
+    final_locator: str
+    content: bytes
+    retrieved_at: str
+    media_type: str
+    provider_evidence_ref: str
+    tenant_id: str
+
+
+@dataclass(frozen=True, slots=True)
+class IngestionRecord:
+    ingestion_id: str
+    source_id: str
+    source_format: str
+    final_locator: str
+    retrieved_at: str
+    media_type: str
+    provider_evidence_ref: str
+    content_sha256: str
+
+
+class ResearchDataFactory:
+    """Create bounded research evidence using the incumbent governance authorities.
+
+    In-memory construction remains supported for backward compatibility. Durable or
+    external execution requires an explicit tenant. External reads are never fetched
+    directly by this factory: they must cross the canonical ToolGateway and return a
+    content/provenance receipt through ``FetchedResearchSource``.
+    """
+
+    def __init__(
+        self,
+        *,
+        database_path: str | Path | None = None,
+        tenant_id: str | None = None,
+        tool_gateway: ResearchToolGateway | None = None,
+    ) -> None:
         self._sources: dict[str, ResearchSource] = {}
         self._source_contents: dict[str, bytes] = {}
         self._claims: dict[str, ResearchClaim] = {}
         self._claim_evidence: dict[str, dict[str, ClaimEvidence]] = {}
         self._analyses: dict[str, DataAnalysis] = {}
+        self._ingestions: dict[str, IngestionRecord] = {}
+        self._database_path = str(database_path) if database_path is not None else None
+        self._tenant_id = tenant_id.strip() if tenant_id is not None else None
+        self._tool_gateway = tool_gateway
+
+        if tenant_id is not None:
+            _require_id(self._tenant_id or "", "tenant_id")
+        if self._database_path is not None:
+            if self._tenant_id is None:
+                raise ResearchDataError("durable Research/Data storage requires tenant_id")
+            self._migrate()
+            self._load_persisted_state()
 
     def register_source(
         self,
@@ -86,9 +151,106 @@ class ResearchDataFactory:
             trusted,
             normalized_metadata,
         )
+        self._persist_source(source, bytes(content))
         self._sources[source_id] = source
         self._source_contents[source_id] = bytes(content)
         return source
+
+    def ingest_external_source(
+        self,
+        source_id: str,
+        *,
+        locator: str,
+        source_format: str,
+        trusted: bool,
+        metadata: dict[str, str] | None = None,
+        tool_name: str = "research.fetch_source",
+        max_bytes: int = 5_000_000,
+    ) -> IngestionRecord:
+        """Fetch, validate, register and durably record one governed data source."""
+
+        if self._tenant_id is None:
+            raise ResearchDataError("external ingestion requires tenant_id")
+        if self._tool_gateway is None:
+            raise ResearchDataError("external ingestion requires canonical ToolGateway")
+        _require_public_https_locator(locator)
+        normalized_format = source_format.strip().lower()
+        if normalized_format not in {"json", "csv"}:
+            raise ResearchDataError("source_format must be json or csv")
+        if max_bytes < 1 or max_bytes > 25_000_000:
+            raise ResearchDataError("max_bytes is outside the bounded ingestion limit")
+        _require_id(tool_name, "tool_name")
+
+        fetched = self._tool_gateway.dispatch(
+            tool_name,
+            locator=locator,
+            tenant_id=self._tenant_id,
+            max_bytes=max_bytes,
+        )
+        if not isinstance(fetched, FetchedResearchSource):
+            raise ResearchDataError("research source adapter returned an invalid receipt")
+        if fetched.tenant_id != self._tenant_id:
+            raise ResearchDataError("research source adapter crossed tenant boundary")
+        _require_public_https_locator(fetched.final_locator)
+        if not fetched.content:
+            raise ResearchDataError("research source adapter returned empty content")
+        if len(fetched.content) > max_bytes:
+            raise ResearchDataError("research source exceeds bounded ingestion limit")
+        _require_text(fetched.retrieved_at, "retrieved_at")
+        _require_text(fetched.media_type, "media_type")
+        _require_text(fetched.provider_evidence_ref, "provider_evidence_ref")
+        self._validate_ingested_content(fetched.content, normalized_format)
+
+        ingestion_id = hashlib.sha256(
+            (
+                self._tenant_id
+                + "\n"
+                + source_id
+                + "\n"
+                + fetched.final_locator
+                + "\n"
+                + fetched.retrieved_at
+                + "\n"
+                + hashlib.sha256(fetched.content).hexdigest()
+            ).encode("utf-8")
+        ).hexdigest()
+        source_metadata = dict(metadata or {})
+        source_metadata.update(
+            {
+                "ingestion_id": ingestion_id,
+                "source_format": normalized_format,
+                "retrieved_at": fetched.retrieved_at,
+                "media_type": fetched.media_type,
+                "provider_evidence_ref": fetched.provider_evidence_ref,
+            }
+        )
+        source = self.register_source(
+            source_id,
+            locator=fetched.final_locator,
+            content=fetched.content,
+            trusted=trusted,
+            metadata=source_metadata,
+        )
+        record = IngestionRecord(
+            ingestion_id=ingestion_id,
+            source_id=source_id,
+            source_format=normalized_format,
+            final_locator=fetched.final_locator,
+            retrieved_at=fetched.retrieved_at,
+            media_type=fetched.media_type,
+            provider_evidence_ref=fetched.provider_evidence_ref,
+            content_sha256=source.content_sha256,
+        )
+        self._persist_ingestion(record)
+        self._ingestions[ingestion_id] = record
+        return record
+
+    def ingestion_record(self, ingestion_id: str) -> IngestionRecord:
+        _require_id(ingestion_id, "ingestion_id")
+        try:
+            return self._ingestions[ingestion_id]
+        except KeyError as exc:
+            raise ResearchDataError("ingestion record does not exist") from exc
 
     def propose_claim(
         self,
@@ -106,6 +268,7 @@ class ResearchDataFactory:
         if missing:
             raise ResearchDataError(f"claim references unknown sources: {missing}")
         claim = ResearchClaim(claim_id, statement, normalized_sources, False)
+        self._persist_claim(claim)
         self._claims[claim_id] = claim
         self._claim_evidence[claim_id] = {}
         return claim
@@ -120,12 +283,7 @@ class ResearchDataFactory:
         validator_evidence_ref: str,
         published_on: str,
     ) -> ClaimEvidence:
-        """Bind one exact source excerpt and validator decision to a claim.
-
-        The factory does not infer semantics itself. A factual verification path must
-        carry an existing validator evidence reference, while this gate proves that
-        the reviewed excerpt is byte-for-byte present in the registered source.
-        """
+        """Bind one exact source excerpt and validator decision to a claim."""
 
         claim = self._claims.get(claim_id)
         if claim is None:
@@ -152,6 +310,7 @@ class ResearchDataFactory:
         evidence_by_source = self._claim_evidence.setdefault(claim_id, {})
         if source_id in evidence_by_source:
             raise ResearchDataError("claim evidence already exists for source")
+        self._persist_claim_evidence(claim_id, evidence)
         evidence_by_source[source_id] = evidence
         return evidence
 
@@ -177,6 +336,7 @@ class ResearchDataFactory:
             True,
             "TRUST_THRESHOLD",
         )
+        self._persist_claim_verification(verified)
         self._claims[claim_id] = verified
         return verified
 
@@ -188,12 +348,7 @@ class ResearchDataFactory:
         max_source_age_days: int,
         min_independent_sources: int = 2,
     ) -> ResearchClaim:
-        """Fail closed unless evidence is content-bound, non-conflicting and fresh.
-
-        This stricter path is intended for factual publication workflows. It requires
-        exact source excerpts plus an upstream semantic-validator evidence reference;
-        it never treats source count alone as factual correctness.
-        """
+        """Fail closed unless evidence is content-bound, non-conflicting and fresh."""
 
         if min_independent_sources < 1:
             raise ResearchDataError("min_independent_sources must be positive")
@@ -242,6 +397,7 @@ class ResearchDataFactory:
             True,
             "CONTENT_BOUND_FACTUAL",
         )
+        self._persist_claim_verification(verified)
         self._claims[claim_id] = verified
         return verified
 
@@ -260,6 +416,7 @@ class ResearchDataFactory:
             max(values),
             fmean(values),
         )
+        self._persist_analysis(analysis)
         self._analyses[analysis_id] = analysis
         return analysis
 
@@ -308,6 +465,369 @@ class ResearchDataFactory:
         ]
         return {"fact": fact, "evidence": evidence, "edges": edges}
 
+    @staticmethod
+    def _validate_ingested_content(content: bytes, source_format: str) -> None:
+        try:
+            text = content.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise ResearchDataError("ingested source must be UTF-8") from exc
+        if source_format == "json":
+            try:
+                json.loads(text)
+            except json.JSONDecodeError as exc:
+                raise ResearchDataError("ingested JSON source is invalid") from exc
+            return
+        try:
+            rows = csv.reader(io.StringIO(text))
+            header = next(rows)
+        except (csv.Error, StopIteration) as exc:
+            raise ResearchDataError("ingested CSV source is invalid") from exc
+        if not header or any(not column.strip() for column in header):
+            raise ResearchDataError("ingested CSV source requires a non-empty header")
+
+    def _migrate(self) -> None:
+        assert self._database_path is not None
+        if self._database_path != ":memory:":
+            Path(self._database_path).parent.mkdir(parents=True, exist_ok=True)
+        with self._connect() as connection:
+            connection.executescript(
+                """
+                CREATE TABLE IF NOT EXISTS research_sources (
+                    tenant_id TEXT NOT NULL,
+                    source_id TEXT NOT NULL,
+                    locator TEXT NOT NULL,
+                    content BLOB NOT NULL,
+                    content_sha256 TEXT NOT NULL,
+                    trusted INTEGER NOT NULL,
+                    metadata_json TEXT NOT NULL,
+                    PRIMARY KEY (tenant_id, source_id)
+                );
+                CREATE TABLE IF NOT EXISTS research_claims (
+                    tenant_id TEXT NOT NULL,
+                    claim_id TEXT NOT NULL,
+                    statement TEXT NOT NULL,
+                    verified INTEGER NOT NULL,
+                    verification_mode TEXT NOT NULL,
+                    PRIMARY KEY (tenant_id, claim_id)
+                );
+                CREATE TABLE IF NOT EXISTS research_claim_sources (
+                    tenant_id TEXT NOT NULL,
+                    claim_id TEXT NOT NULL,
+                    ordinal INTEGER NOT NULL,
+                    source_id TEXT NOT NULL,
+                    PRIMARY KEY (tenant_id, claim_id, ordinal)
+                );
+                CREATE TABLE IF NOT EXISTS research_claim_evidence (
+                    tenant_id TEXT NOT NULL,
+                    claim_id TEXT NOT NULL,
+                    source_id TEXT NOT NULL,
+                    excerpt_sha256 TEXT NOT NULL,
+                    stance TEXT NOT NULL,
+                    validator_evidence_ref TEXT NOT NULL,
+                    published_on TEXT NOT NULL,
+                    PRIMARY KEY (tenant_id, claim_id, source_id)
+                );
+                CREATE TABLE IF NOT EXISTS research_analyses (
+                    tenant_id TEXT NOT NULL,
+                    analysis_id TEXT NOT NULL,
+                    values_sha256 TEXT NOT NULL,
+                    count INTEGER NOT NULL,
+                    minimum REAL NOT NULL,
+                    maximum REAL NOT NULL,
+                    mean REAL NOT NULL,
+                    PRIMARY KEY (tenant_id, analysis_id)
+                );
+                CREATE TABLE IF NOT EXISTS research_ingestions (
+                    tenant_id TEXT NOT NULL,
+                    ingestion_id TEXT NOT NULL,
+                    source_id TEXT NOT NULL,
+                    source_format TEXT NOT NULL,
+                    final_locator TEXT NOT NULL,
+                    retrieved_at TEXT NOT NULL,
+                    media_type TEXT NOT NULL,
+                    provider_evidence_ref TEXT NOT NULL,
+                    content_sha256 TEXT NOT NULL,
+                    PRIMARY KEY (tenant_id, ingestion_id)
+                );
+                """
+            )
+
+    def _connect(self) -> sqlite3.Connection:
+        if self._database_path is None:
+            raise ResearchDataError("durable Research/Data storage is not configured")
+        connection = sqlite3.connect(self._database_path, timeout=10)
+        connection.row_factory = sqlite3.Row
+        return connection
+
+    def _load_persisted_state(self) -> None:
+        assert self._tenant_id is not None
+        with self._connect() as connection:
+            for row in connection.execute(
+                """
+                SELECT source_id, locator, content, content_sha256, trusted, metadata_json
+                FROM research_sources WHERE tenant_id = ? ORDER BY source_id
+                """,
+                (self._tenant_id,),
+            ):
+                content = bytes(row["content"])
+                if hashlib.sha256(content).hexdigest() != row["content_sha256"]:
+                    raise ResearchDataError("persisted research source checksum mismatch")
+                metadata_raw = json.loads(row["metadata_json"])
+                if not isinstance(metadata_raw, dict):
+                    raise ResearchDataError("persisted research source metadata is invalid")
+                metadata = tuple(sorted((str(k), str(v)) for k, v in metadata_raw.items()))
+                source = ResearchSource(
+                    source_id=str(row["source_id"]),
+                    locator=str(row["locator"]),
+                    content_sha256=str(row["content_sha256"]),
+                    trusted=bool(row["trusted"]),
+                    metadata=metadata,
+                )
+                self._sources[source.source_id] = source
+                self._source_contents[source.source_id] = content
+
+            claim_sources: dict[str, list[str]] = {}
+            for row in connection.execute(
+                """
+                SELECT claim_id, source_id FROM research_claim_sources
+                WHERE tenant_id = ? ORDER BY claim_id, ordinal
+                """,
+                (self._tenant_id,),
+            ):
+                claim_sources.setdefault(str(row["claim_id"]), []).append(str(row["source_id"]))
+            for row in connection.execute(
+                """
+                SELECT claim_id, statement, verified, verification_mode
+                FROM research_claims WHERE tenant_id = ? ORDER BY claim_id
+                """,
+                (self._tenant_id,),
+            ):
+                claim_id = str(row["claim_id"])
+                sources = tuple(claim_sources.get(claim_id, []))
+                if not sources or any(source_id not in self._sources for source_id in sources):
+                    raise ResearchDataError("persisted research claim source binding is invalid")
+                self._claims[claim_id] = ResearchClaim(
+                    claim_id=claim_id,
+                    statement=str(row["statement"]),
+                    source_ids=sources,
+                    verified=bool(row["verified"]),
+                    verification_mode=str(row["verification_mode"]),
+                )
+                self._claim_evidence[claim_id] = {}
+
+            for row in connection.execute(
+                """
+                SELECT claim_id, source_id, excerpt_sha256, stance,
+                       validator_evidence_ref, published_on
+                FROM research_claim_evidence WHERE tenant_id = ?
+                ORDER BY claim_id, source_id
+                """,
+                (self._tenant_id,),
+            ):
+                claim_id = str(row["claim_id"])
+                source_id = str(row["source_id"])
+                claim = self._claims.get(claim_id)
+                if claim is None or source_id not in claim.source_ids:
+                    raise ResearchDataError("persisted claim evidence binding is invalid")
+                self._claim_evidence[claim_id][source_id] = ClaimEvidence(
+                    source_id=source_id,
+                    excerpt_sha256=str(row["excerpt_sha256"]),
+                    stance=str(row["stance"]),
+                    validator_evidence_ref=str(row["validator_evidence_ref"]),
+                    published_on=str(row["published_on"]),
+                )
+
+            for row in connection.execute(
+                """
+                SELECT analysis_id, values_sha256, count, minimum, maximum, mean
+                FROM research_analyses WHERE tenant_id = ? ORDER BY analysis_id
+                """,
+                (self._tenant_id,),
+            ):
+                analysis = DataAnalysis(
+                    analysis_id=str(row["analysis_id"]),
+                    values_sha256=str(row["values_sha256"]),
+                    count=int(row["count"]),
+                    minimum=float(row["minimum"]),
+                    maximum=float(row["maximum"]),
+                    mean=float(row["mean"]),
+                )
+                self._analyses[analysis.analysis_id] = analysis
+
+            for row in connection.execute(
+                """
+                SELECT ingestion_id, source_id, source_format, final_locator,
+                       retrieved_at, media_type, provider_evidence_ref, content_sha256
+                FROM research_ingestions WHERE tenant_id = ? ORDER BY ingestion_id
+                """,
+                (self._tenant_id,),
+            ):
+                source_id = str(row["source_id"])
+                source = self._sources.get(source_id)
+                if source is None or source.content_sha256 != row["content_sha256"]:
+                    raise ResearchDataError("persisted ingestion source binding is invalid")
+                record = IngestionRecord(
+                    ingestion_id=str(row["ingestion_id"]),
+                    source_id=source_id,
+                    source_format=str(row["source_format"]),
+                    final_locator=str(row["final_locator"]),
+                    retrieved_at=str(row["retrieved_at"]),
+                    media_type=str(row["media_type"]),
+                    provider_evidence_ref=str(row["provider_evidence_ref"]),
+                    content_sha256=str(row["content_sha256"]),
+                )
+                self._ingestions[record.ingestion_id] = record
+
+    def _persist_source(self, source: ResearchSource, content: bytes) -> None:
+        if self._database_path is None:
+            return
+        assert self._tenant_id is not None
+        try:
+            with self._connect() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO research_sources
+                    (tenant_id, source_id, locator, content, content_sha256, trusted, metadata_json)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        self._tenant_id,
+                        source.source_id,
+                        source.locator,
+                        content,
+                        source.content_sha256,
+                        int(source.trusted),
+                        json.dumps(dict(source.metadata), sort_keys=True, separators=(",", ":")),
+                    ),
+                )
+        except sqlite3.IntegrityError as exc:
+            raise ResearchDataError("source_id already exists in durable storage") from exc
+
+    def _persist_ingestion(self, record: IngestionRecord) -> None:
+        if self._database_path is None:
+            return
+        assert self._tenant_id is not None
+        with self._connect() as connection:
+            connection.execute(
+                """
+                INSERT INTO research_ingestions
+                (tenant_id, ingestion_id, source_id, source_format, final_locator,
+                 retrieved_at, media_type, provider_evidence_ref, content_sha256)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    self._tenant_id,
+                    record.ingestion_id,
+                    record.source_id,
+                    record.source_format,
+                    record.final_locator,
+                    record.retrieved_at,
+                    record.media_type,
+                    record.provider_evidence_ref,
+                    record.content_sha256,
+                ),
+            )
+
+    def _persist_claim(self, claim: ResearchClaim) -> None:
+        if self._database_path is None:
+            return
+        assert self._tenant_id is not None
+        try:
+            with self._connect() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO research_claims
+                    (tenant_id, claim_id, statement, verified, verification_mode)
+                    VALUES (?, ?, ?, ?, ?)
+                    """,
+                    (
+                        self._tenant_id,
+                        claim.claim_id,
+                        claim.statement,
+                        int(claim.verified),
+                        claim.verification_mode,
+                    ),
+                )
+                connection.executemany(
+                    """
+                    INSERT INTO research_claim_sources
+                    (tenant_id, claim_id, ordinal, source_id) VALUES (?, ?, ?, ?)
+                    """,
+                    [
+                        (self._tenant_id, claim.claim_id, ordinal, source_id)
+                        for ordinal, source_id in enumerate(claim.source_ids)
+                    ],
+                )
+        except sqlite3.IntegrityError as exc:
+            raise ResearchDataError("claim_id already exists in durable storage") from exc
+
+    def _persist_claim_evidence(self, claim_id: str, evidence: ClaimEvidence) -> None:
+        if self._database_path is None:
+            return
+        assert self._tenant_id is not None
+        try:
+            with self._connect() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO research_claim_evidence
+                    (tenant_id, claim_id, source_id, excerpt_sha256, stance,
+                     validator_evidence_ref, published_on)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        self._tenant_id,
+                        claim_id,
+                        evidence.source_id,
+                        evidence.excerpt_sha256,
+                        evidence.stance,
+                        evidence.validator_evidence_ref,
+                        evidence.published_on,
+                    ),
+                )
+        except sqlite3.IntegrityError as exc:
+            raise ResearchDataError("claim evidence already exists in durable storage") from exc
+
+    def _persist_claim_verification(self, claim: ResearchClaim) -> None:
+        if self._database_path is None:
+            return
+        assert self._tenant_id is not None
+        with self._connect() as connection:
+            cursor = connection.execute(
+                """
+                UPDATE research_claims
+                SET verified = ?, verification_mode = ?
+                WHERE tenant_id = ? AND claim_id = ?
+                """,
+                (int(claim.verified), claim.verification_mode, self._tenant_id, claim.claim_id),
+            )
+            if cursor.rowcount != 1:
+                raise ResearchDataError("durable claim verification target is missing")
+
+    def _persist_analysis(self, analysis: DataAnalysis) -> None:
+        if self._database_path is None:
+            return
+        assert self._tenant_id is not None
+        try:
+            with self._connect() as connection:
+                connection.execute(
+                    """
+                    INSERT INTO research_analyses
+                    (tenant_id, analysis_id, values_sha256, count, minimum, maximum, mean)
+                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        self._tenant_id,
+                        analysis.analysis_id,
+                        analysis.values_sha256,
+                        analysis.count,
+                        analysis.minimum,
+                        analysis.maximum,
+                        analysis.mean,
+                    ),
+                )
+        except sqlite3.IntegrityError as exc:
+            raise ResearchDataError("analysis_id already exists in durable storage") from exc
+
 
 def _metadata_value(source: ResearchSource, key: str) -> str | None:
     for metadata_key, value in source.metadata:
@@ -322,6 +842,24 @@ def _parse_iso_date(value: str, field: str) -> date:
         return date.fromisoformat(value.strip())
     except ValueError as exc:
         raise ResearchDataError(f"{field} must be an ISO-8601 date") from exc
+
+
+def _require_public_https_locator(value: str) -> None:
+    _require_text(value, "locator")
+    try:
+        parsed = urlsplit(value.strip())
+        port = parsed.port
+    except ValueError as exc:
+        raise ResearchDataError("research source locator is malformed") from exc
+    if parsed.scheme.casefold() != "https" or parsed.hostname is None:
+        raise ResearchDataError("external research source must use HTTPS")
+    if parsed.username is not None or parsed.password is not None:
+        raise ResearchDataError("external research source cannot contain userinfo")
+    host = parsed.hostname.casefold().rstrip(".")
+    if not host or host == "localhost" or host.endswith(".localhost"):
+        raise ResearchDataError("external research source cannot be local")
+    if port is not None and (port < 1 or port > 65535):
+        raise ResearchDataError("external research source port is invalid")
 
 
 def _require_id(value: str, field: str) -> None:
@@ -342,3 +880,15 @@ def _unique_ids(values: tuple[str, ...], field: str) -> tuple[str, ...]:
     if len(values) != len(set(values)):
         raise ResearchDataError(f"{field} must not contain duplicates")
     return values
+
+
+__all__ = [
+    "ClaimEvidence",
+    "DataAnalysis",
+    "FetchedResearchSource",
+    "IngestionRecord",
+    "ResearchClaim",
+    "ResearchDataError",
+    "ResearchDataFactory",
+    "ResearchSource",
+]
