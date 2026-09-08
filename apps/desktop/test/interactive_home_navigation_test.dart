@@ -3,10 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
 
-import 'secondary_navigation_test_support.dart';
-
 void main() {
-  testWidgets('V4 Home exposes only real bounded navigation actions', (
+  testWidgets('canonical Home exposes only real bounded navigation actions', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -16,30 +14,21 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('home-new-work')), findsOneWidget);
-    expect(find.text('Advanced'), findsOneWidget);
-    expect(find.text('All work'), findsOneWidget);
+    expect(find.text('Advanced'), findsNothing);
     expect(find.byKey(const Key('home-templates')), findsNothing);
     expect(find.byKey(const Key('home-last-session')), findsNothing);
     expect(find.byKey(const Key('home-assign-agent')), findsNothing);
     expect(find.byKey(const Key('home-factory-web')), findsNothing);
 
-    await tester.tap(find.text('All work'));
+    final viewAgents = find.text('View all agents');
+    expect(viewAgents, findsOneWidget);
+    await tester.tap(viewAgents);
     await tester.pumpAndSettle();
-    final workflowsPage = find.byKey(const Key('reference-workflows-page'));
-    expect(workflowsPage, findsOneWidget);
-    expect(
-      find.descendant(of: workflowsPage, matching: find.text('Workflows')),
-      findsOneWidget,
-    );
-
-    await tester.tap(find.byKey(const ValueKey('nav-home')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Advanced'));
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key('reference-goals-page')), findsOneWidget);
+    expect(find.byKey(const Key('reference-agents-page')), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
-  testWidgets('empty V4 Home remains truth-preserving', (
+  testWidgets('empty canonical Home remains truth-preserving', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -77,7 +66,7 @@ void main() {
     expect(find.byKey(const Key('command-center-home')), findsOneWidget);
   });
 
-  testWidgets('every Desktop destination renders in real light theme', (
+  testWidgets('every canonical Desktop destination renders in real light theme', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -122,16 +111,7 @@ void main() {
       DesktopSection.liveWorkspace,
       DesktopSection.costs,
     ]) {
-      await openSecondaryDesktopSection(tester, destination);
-      expect(
-        tester.takeException(),
-        isNull,
-        reason: '${destination.name} failed to render in light mode',
-      );
-      expect(
-        Theme.of(tester.element(find.byType(Scaffold).first)).brightness,
-        Brightness.light,
-      );
+      expect(find.byKey(ValueKey('nav-${destination.name}')), findsNothing);
     }
   });
 }
