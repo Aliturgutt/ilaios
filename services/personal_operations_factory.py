@@ -401,7 +401,7 @@ class PersonalOperationsFactory:
                         "personal_operations",
                         step.action,
                         "failure",
-                        {**details, "step_id": step.step_id, "retry_safe": True},
+                        {**details, "step_id": step.step_id, "retry_safe": "true"},
                     )
                     raise
                 except Exception:
@@ -410,7 +410,7 @@ class PersonalOperationsFactory:
                         "personal_operations",
                         step.action,
                         "ambiguous",
-                        {**details, "step_id": step.step_id, "retry_safe": False},
+                        {**details, "step_id": step.step_id, "retry_safe": "false"},
                     )
                     raise
                 if receipt.target_account != context.target_account:
