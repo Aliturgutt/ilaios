@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
-import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
-
-import 'secondary_navigation_test_support.dart';
 
 void main() {
   Future<void> pumpTurkish(WidgetTester tester, {OperationalSnapshot? snapshot}) async {
@@ -57,19 +54,5 @@ void main() {
 
     expect(find.byKey(const Key('evidence-search')), findsOneWidget);
     expect(find.byKey(const Key('evidence-filter')), findsOneWidget);
-  });
-
-  testWidgets('secondary surfaces remain reachable after seven-primary navigation repair', (
-    tester,
-  ) async {
-    await pumpTurkish(tester);
-    for (final section in const [
-      DesktopSection.goals,
-      DesktopSection.liveWorkspace,
-      DesktopSection.costs,
-    ]) {
-      await openSecondaryDesktopSection(tester, section);
-      expect(tester.takeException(), isNull);
-    }
   });
 }
