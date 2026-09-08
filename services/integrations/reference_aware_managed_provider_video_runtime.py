@@ -104,7 +104,7 @@ class ManagedVideoPreflightEstimate:
             "model": self.model,
             "resolution": self.resolution,
             "planned_generation_count": self.planned_generation_count,
-            "retry_policy": "no automatic paid retry; every retry uses the same approved job budget",
+            "retry_policy": "no automatic paid retry; every new paid dispatch shares the same approved job budget",
             "estimated_cost_usd": str(microusd_to_usd(self.estimated_cost_microusd)),
             "maximum_approved_spend_usd": str(
                 microusd_to_usd(self.approved_budget_microusd)
@@ -250,13 +250,14 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
             model_id=model_id,
             resolution=resolution,
             max_total_cost_usd=max_total_cost_usd,
+            max_request_cost_usd=max_total_cost_usd,
         )
         self._identity_resolver = identity_resolver
         self._approval_checker: Callable[[str], bool] | None = None
         self._account_switch_lock = threading.Lock()
         self._budget_jobs_lock = threading.Lock()
         self._budget_jobs: dict[str, tuple[ApprovedProductBudget, str]] = {}
-        self._settled_costs: dict[str, list[int]] = {}
+        self._budget_summaries: dict[str, dict[str, object]] = {}
         self._product_request_context: ContextVar[str | None] = ContextVar(
             f"managed-video-product-request-{id(self)}",
             default=None,
@@ -303,6 +304,7 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
         models = self._catalog.paid_eligible_models()
         estimated_total = 0
         reserved_total = 0
+        approved_budget_usd = microusd_to_usd(approved_budget_microusd)
         for shot_duration in durations:
             shape = CertificationShape(
                 model_id=self._model_id,
@@ -311,7 +313,7 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
                 aspect_ratio="16:9",
                 generate_audio=self._generate_audio,
                 max_unit_price_usd=self._max_unit_price_usd,
-                max_total_cost_usd=self._max_request_cost_usd,
+                max_total_cost_usd=approved_budget_usd,
             )
             model = select_certification_model(models, shape)
             price = certification_price(model, shape)
@@ -325,10 +327,6 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
         if reserved_total > approved_budget_microusd:
             raise VideoRuntimeError(
                 "estimated paid Seedance spend exceeds the user-approved job budget; reapproval required"
-            )
-        if approved_budget_microusd > self.max_total_cost_microusd:
-            raise VideoRuntimeError(
-                "user-approved job budget exceeds the configured production deployment ceiling"
             )
         return ManagedVideoPreflightEstimate(
             provider=OPENROUTER_MANAGED_PROVIDER_NAME,
@@ -344,6 +342,11 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
         product_request_id = self._require_bound_product_request()
         checker = self._approval_checker
         if checker is None:
+            self._store_reapproval_summary(
+                product_request_id,
+                approval_id=product_request_id,
+                reason="paid Seedance execution has no configured approval authority",
+            )
             return _budget_failure(
                 request,
                 "approval_required",
@@ -355,11 +358,12 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
                 product_request_id,
                 approval_proven=checker(product_request_id),
             )
-            if approved.approved_budget_microusd > self.max_total_cost_microusd:
-                raise VideoRuntimeError(
-                    "user-approved job budget exceeds the configured production deployment ceiling"
-                )
         except Exception as error:  # noqa: BLE001
+            self._store_reapproval_summary(
+                product_request_id,
+                approval_id=product_request_id,
+                reason=str(error).strip() or error.__class__.__name__,
+            )
             return _budget_failure(
                 request,
                 "approval_required",
@@ -367,9 +371,7 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
                 {"approval_id": product_request_id, "reapproval_required": "true"},
             )
 
-        account_user_id = (
-            f"{approved.requester_id}::video-job::{approved.request_id}"
-        )
+        account_user_id = f"{approved.requester_id}::video-job::{approved.request_id}"
         account = self._credit_store.seed_account(
             ManagedCreditAccount(
                 tenant_id=approved.tenant_id,
@@ -380,15 +382,38 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
         with self._account_switch_lock:
             previous = self._account
             self._account = account
+            previous_request_ceiling = self._max_request_cost_usd
+            self._max_request_cost_usd = microusd_to_usd(
+                approved.approved_budget_microusd
+            )
             try:
                 result = super().execute(request)
             finally:
+                self._max_request_cost_usd = previous_request_ceiling
                 self._account = previous
 
         metadata = dict(result.metadata)
-        metadata.update(_approval_metadata(approved))
+        metadata.update(_approval_metadata(approved, self._model_id))
         if not result.success or result.external_id is None:
             if "insufficient ILAIOS credits" in (result.error_message or ""):
+                current = self._credit_store.get_account(
+                    tenant_id=approved.tenant_id,
+                    user_id=account_user_id,
+                )
+                summary = _budget_summary(
+                    approved,
+                    model_id=self._model_id,
+                    actual_microusd=(
+                        approved.approved_budget_microusd
+                        - current.available_microusd
+                        - current.reserved_microusd
+                    ),
+                    remaining_microusd=current.available_microusd,
+                    event="REAPPROVAL_REQUIRED",
+                    reapproval_required=True,
+                )
+                with self._budget_jobs_lock:
+                    self._budget_summaries[approved.request_id] = summary
                 metadata.update(
                     {
                         "budget_event": "REAPPROVAL_REQUIRED",
@@ -434,7 +459,11 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
         return replace(result, metadata=metadata)
 
     def poll(self, provider_job_id: str) -> ProviderJobObservation:
-        observation = super().poll(provider_job_id)
+        with self._account_switch_lock:
+            observation = super().poll(provider_job_id)
+            if observation.status in _TERMINAL_PROVIDER_STATUSES:
+                with self._lock:
+                    self._contexts.pop(provider_job_id, None)
         if observation.status not in _TERMINAL_PROVIDER_STATUSES:
             return observation
         with self._budget_jobs_lock:
@@ -457,20 +486,26 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
             - current.available_microusd
             - current.reserved_microusd
         )
+        summary = _budget_summary(
+            approved,
+            model_id=self._model_id,
+            actual_microusd=cumulative,
+            remaining_microusd=current.available_microusd,
+            event="PROVIDER_COST_SETTLED",
+            reapproval_required=False,
+        )
         with self._budget_jobs_lock:
-            settled = self._settled_costs.setdefault(approved.request_id, [])
-            if len(settled) < 1 or settled[-1] != actual:
-                settled.append(actual)
-            retry_spend = sum(settled[1:])
+            self._budget_summaries[approved.request_id] = summary
+            self._budget_jobs.pop(provider_job_id, None)
         metadata.update(
-            _approval_metadata(approved)
+            _approval_metadata(approved, self._model_id)
             | {
                 "actual_provider_cost_usd": str(microusd_to_usd(actual)),
                 "cumulative_job_spend_usd": str(microusd_to_usd(cumulative)),
                 "remaining_budget_usd": str(
                     microusd_to_usd(current.available_microusd)
                 ),
-                "retry_spend_usd": str(microusd_to_usd(retry_spend)),
+                "retry_spend_usd": "0",
                 "budget_event": "PROVIDER_COST_SETTLED",
                 "reapproval_required": "false",
             }
@@ -502,6 +537,10 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
                 microusd_to_usd(approved.approved_budget_microusd)
             ):
                 raise VideoRuntimeError("managed provider approved budget evidence changed")
+            if metadata.get("budget_tenant_id") != approved.tenant_id:
+                raise VideoRuntimeError("managed provider tenant budget evidence changed")
+            if metadata.get("model") != self._model_id:
+                raise VideoRuntimeError("managed provider model budget evidence changed")
             try:
                 actual = int(metadata["actual_provider_cost_microusd"])
                 ceiling = int(metadata["provider_cost_ceiling_microusd"])
@@ -515,6 +554,28 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
             raise VideoRuntimeError("managed provider actual total exceeded approved job budget")
         if ceiling_total > approved.approved_budget_microusd:
             raise VideoRuntimeError("managed provider reserved total exceeded approved job budget")
+        account_user_id = f"{approved.requester_id}::video-job::{approved.request_id}"
+        current = self._credit_store.get_account(
+            tenant_id=approved.tenant_id,
+            user_id=account_user_id,
+        )
+        cumulative = (
+            approved.approved_budget_microusd
+            - current.available_microusd
+            - current.reserved_microusd
+        )
+        if cumulative != actual_total:
+            raise VideoRuntimeError("managed provider cumulative spend evidence is inconsistent")
+        summary = _budget_summary(
+            approved,
+            model_id=self._model_id,
+            actual_microusd=actual_total,
+            remaining_microusd=current.available_microusd,
+            event="FINAL_PROVIDER_COST_RECONCILED",
+            reapproval_required=False,
+        )
+        with self._budget_jobs_lock:
+            self._budget_summaries[approved.request_id] = summary
         return ProviderCostEvidence(
             mode="managed-user-approved-budget",
             proven=True,
@@ -522,6 +583,34 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
             actual_microusd=actual_total,
             ceiling_microusd=approved.approved_budget_microusd,
         )
+
+    def budget_evidence(self, request_id: str) -> dict[str, object]:
+        normalized = request_id.strip()
+        if not normalized:
+            raise VideoRuntimeError("managed Video budget evidence request is blank")
+        with self._budget_jobs_lock:
+            value = self._budget_summaries.get(normalized)
+            if value is None:
+                raise VideoRuntimeError("managed Video budget evidence is unavailable")
+            return dict(value)
+
+    def _store_reapproval_summary(
+        self,
+        request_id: str,
+        *,
+        approval_id: str,
+        reason: str,
+    ) -> None:
+        with self._budget_jobs_lock:
+            self._budget_summaries[request_id] = {
+                "approval_id": approval_id,
+                "provider": OPENROUTER_MANAGED_PROVIDER_NAME,
+                "model": self._model_id,
+                "budget_event": "REAPPROVAL_REQUIRED",
+                "budget_event_reason": reason,
+                "reapproval_required": True,
+                "retry_spend_usd": "0",
+            }
 
 
 class NativeReferenceTenantBoundManagedDesktopVideoSession(
@@ -759,6 +848,9 @@ class ManagedReferenceAwareProviderBackedDesktopVideoRuntime(
         )
         return estimate.as_dict()
 
+    def budget_evidence(self, request_id: str) -> dict[str, object]:
+        return self._managed_reference_session.budget_evidence(request_id)
+
     def _generate_finished_product(
         self,
         *,
@@ -778,7 +870,10 @@ class ManagedReferenceAwareProviderBackedDesktopVideoRuntime(
             )
 
 
-def _approval_metadata(approved: ApprovedProductBudget) -> dict[str, str]:
+def _approval_metadata(
+    approved: ApprovedProductBudget,
+    model_id: str,
+) -> dict[str, str]:
     return {
         "approval_id": approved.approval_id,
         "approved_budget_usd": str(
@@ -787,7 +882,41 @@ def _approval_metadata(approved: ApprovedProductBudget) -> dict[str, str]:
         "budget_tenant_id": approved.tenant_id,
         "budget_requester_id": approved.requester_id,
         "provider": OPENROUTER_MANAGED_PROVIDER_NAME,
-        "model": _DEFAULT_MODEL_ID,
+        "model": model_id,
+    }
+
+
+def _budget_summary(
+    approved: ApprovedProductBudget,
+    *,
+    model_id: str,
+    actual_microusd: int,
+    remaining_microusd: int,
+    event: str,
+    reapproval_required: bool,
+) -> dict[str, object]:
+    if actual_microusd < 0 or remaining_microusd < 0:
+        raise VideoRuntimeError("managed Video budget summary cannot be negative")
+    if actual_microusd + remaining_microusd > approved.approved_budget_microusd:
+        raise VideoRuntimeError("managed Video budget summary exceeds approved budget")
+    actual_usd = str(microusd_to_usd(actual_microusd))
+    return {
+        "approval_id": approved.approval_id,
+        "approved_budget_usd": str(
+            microusd_to_usd(approved.approved_budget_microusd)
+        ),
+        "provider": OPENROUTER_MANAGED_PROVIDER_NAME,
+        "model": model_id,
+        "budget_tenant_id": approved.tenant_id,
+        "budget_requester_id": approved.requester_id,
+        "actual_provider_cost_usd": actual_usd,
+        "cumulative_job_spend_usd": actual_usd,
+        "remaining_budget_usd": str(microusd_to_usd(remaining_microusd)),
+        "retry_spend_usd": "0",
+        "budget_event": event,
+        "budget_events": [event],
+        "reapproval_required": reapproval_required,
+        "final_actual_cost_usd": actual_usd,
     }
 
 
