@@ -30,7 +30,11 @@ class ConnectorReceipt:
             raise PersonalOperationsConnectorError("connector receipt must prove successful execution")
 
 
-class MailConnector(Protocol):
+class AccountBoundConnector(Protocol):
+    authenticated_account: str
+
+
+class MailConnector(AccountBoundConnector, Protocol):
     def send_email(
         self,
         *,
@@ -42,7 +46,7 @@ class MailConnector(Protocol):
     ) -> ConnectorReceipt: ...
 
 
-class CalendarConnector(Protocol):
+class CalendarConnector(AccountBoundConnector, Protocol):
     def create_event(
         self, *, target_account: str, payload: str, idempotency_key: str
     ) -> ConnectorReceipt: ...
@@ -57,16 +61,23 @@ class CalendarConnector(Protocol):
     ) -> ConnectorReceipt: ...
 
 
-class NotesConnector(Protocol):
+class NotesConnector(AccountBoundConnector, Protocol):
     def create_note(
         self, *, target_account: str, payload: str, idempotency_key: str
     ) -> ConnectorReceipt: ...
 
 
-class ReminderConnector(Protocol):
+class ReminderConnector(AccountBoundConnector, Protocol):
     def create_reminder(
         self, *, target_account: str, payload: str, idempotency_key: str
     ) -> ConnectorReceipt: ...
+
+
+def _require_account(authenticated_account: str, target_account: str) -> None:
+    if not authenticated_account.strip():
+        raise PersonalOperationsConnectorError("connector authenticated account is required")
+    if authenticated_account != target_account:
+        raise PersonalOperationsConnectorError("connector authenticated account does not match target account")
 
 
 def register_personal_operations_connectors(
@@ -77,13 +88,74 @@ def register_personal_operations_connectors(
     notes: NotesConnector | None = None,
     reminders: ReminderConnector | None = None,
 ) -> None:
-    """Register only explicitly configured authenticated connectors on the canonical gateway."""
+    """Register only explicitly configured account-bound connectors on the canonical gateway."""
     if mail is not None:
-        gateway.register_handler("personal_operations.send_email", mail.send_email)
+        def send_email(
+            *,
+            target_account: str,
+            recipient: str,
+            subject: str,
+            body: str,
+            idempotency_key: str,
+        ) -> ConnectorReceipt:
+            _require_account(mail.authenticated_account, target_account)
+            return mail.send_email(
+                target_account=target_account,
+                recipient=recipient,
+                subject=subject,
+                body=body,
+                idempotency_key=idempotency_key,
+            )
+
+        gateway.register_handler("personal_operations.send_email", send_email)
+
     if calendar is not None:
-        gateway.register_handler("personal_operations.create_calendar_event", calendar.create_event)
-        gateway.register_handler("personal_operations.update_calendar_event", calendar.update_event)
+        def create_calendar_event(
+            *, target_account: str, payload: str, idempotency_key: str
+        ) -> ConnectorReceipt:
+            _require_account(calendar.authenticated_account, target_account)
+            return calendar.create_event(
+                target_account=target_account,
+                payload=payload,
+                idempotency_key=idempotency_key,
+            )
+
+        def update_calendar_event(
+            *, target_account: str, event_id: str, payload: str, idempotency_key: str
+        ) -> ConnectorReceipt:
+            _require_account(calendar.authenticated_account, target_account)
+            return calendar.update_event(
+                target_account=target_account,
+                event_id=event_id,
+                payload=payload,
+                idempotency_key=idempotency_key,
+            )
+
+        gateway.register_handler("personal_operations.create_calendar_event", create_calendar_event)
+        gateway.register_handler("personal_operations.update_calendar_event", update_calendar_event)
+
     if notes is not None:
-        gateway.register_handler("personal_operations.create_note", notes.create_note)
+        def create_note(
+            *, target_account: str, payload: str, idempotency_key: str
+        ) -> ConnectorReceipt:
+            _require_account(notes.authenticated_account, target_account)
+            return notes.create_note(
+                target_account=target_account,
+                payload=payload,
+                idempotency_key=idempotency_key,
+            )
+
+        gateway.register_handler("personal_operations.create_note", create_note)
+
     if reminders is not None:
-        gateway.register_handler("personal_operations.create_reminder", reminders.create_reminder)
+        def create_reminder(
+            *, target_account: str, payload: str, idempotency_key: str
+        ) -> ConnectorReceipt:
+            _require_account(reminders.authenticated_account, target_account)
+            return reminders.create_reminder(
+                target_account=target_account,
+                payload=payload,
+                idempotency_key=idempotency_key,
+            )
+
+        gateway.register_handler("personal_operations.create_reminder", create_reminder)
