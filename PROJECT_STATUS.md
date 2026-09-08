@@ -103,7 +103,7 @@ Repository-side RAG.14 machinery remains bounded. Knowledge / RAG is a shared ca
 
 ### Other production breadth
 
-Still evidence-gated: production tenant-isolation exercise, managed KMS/HSM and rotation operations, privacy/compliance evidence, SLO/alert operations, recurring backup/recovery drills, independent security/pentest where applicable, broader factory workloads, Android/iOS, billing/subscriptions/entitlements, formal SBOM/notices/attestation/release packaging, and legal/licensing launch clearance.
+Still evidence-gated: production tenant-isolation exercise, managed KMS/HSM and rotation operations, privacy/compliance evidence, SLO/alert operations, recurring backup/recovery drills, broader factory workloads, Android/iOS, billing/subscriptions/entitlements, formal SBOM/notices/attestation/release packaging, and legal/licensing launch clearance.
 
 ## Current dependency-ordered direction
 
