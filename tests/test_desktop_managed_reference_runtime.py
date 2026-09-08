@@ -14,6 +14,10 @@ from services.integrations.reference_aware_managed_provider_video_runtime import
 )
 from services.integrations.video_runtime import VideoRuntimeError
 from src.video_automation.models import ProviderRequest
+from src.video_automation.openrouter_video_catalog import (
+    ManagedVideoFamily,
+    OpenRouterVideoModel,
+)
 
 
 def _identity_database(
@@ -79,6 +83,43 @@ def _request(request_id: str = "provider-dispatch-1") -> ProviderRequest:
             "items_json": "[]",
         },
     )
+
+
+def _seedance_model() -> OpenRouterVideoModel:
+    return OpenRouterVideoModel(
+        model_id="bytedance/seedance-2.0-fast",
+        canonical_slug="bytedance/seedance-2.0-fast",
+        name="Seedance 2.0 Fast",
+        generate_audio=True,
+        supported_aspect_ratios=("16:9",),
+        supported_durations=(4,),
+        supported_frame_images=(),
+        supported_resolutions=("480p",),
+        supported_sizes=("854x480",),
+        allowed_passthrough_parameters=(),
+        pricing_skus={"video_tokens": "0.0000042"},
+        family=ManagedVideoFamily.SEEDANCE,
+    )
+
+
+def _managed_session(tmp_path: Path, *, budget_minor: int = 500) -> TenantBoundManagedDesktopVideoSession:
+    resolver = DurableProductIdentityResolver(
+        _identity_database(tmp_path / "proof.sqlite3", budget_minor=budget_minor)
+    )
+    return TenantBoundManagedDesktopVideoSession(
+        identity_resolver=resolver,
+        root=tmp_path / "managed",
+        api_key="test-api-key",
+        model_id="bytedance/seedance-2.0-fast",
+        resolution="480p",
+        max_total_cost_usd=Decimal("20.00"),
+    )
+
+
+def _provider_side_effect_count(root: Path) -> int:
+    database = root / "managed-credit-ledger" / "managed_media_finops.sqlite3"
+    with sqlite3.connect(database) as connection:
+        return int(connection.execute("SELECT COUNT(*) FROM provider_side_effects").fetchone()[0])
 
 
 def test_managed_identity_resolver_uses_durable_product_request_identity(
@@ -147,15 +188,7 @@ def test_approved_product_budget_requires_exact_request_approval(tmp_path: Path)
 
 
 def test_managed_session_requires_explicit_product_request_binding(tmp_path: Path) -> None:
-    resolver = DurableProductIdentityResolver(_identity_database(tmp_path / "proof.sqlite3"))
-    session = TenantBoundManagedDesktopVideoSession(
-        identity_resolver=resolver,
-        root=tmp_path / "managed",
-        api_key="test-api-key",
-        model_id="bytedance/seedance-2.0-fast",
-        resolution="480p",
-        max_total_cost_usd=Decimal("20.00"),
-    )
+    session = _managed_session(tmp_path)
 
     with pytest.raises(VideoRuntimeError, match="lacks product request identity binding"):
         session._require_bound_product_request()
@@ -171,17 +204,7 @@ def test_managed_session_requires_explicit_product_request_binding(tmp_path: Pat
 
 
 def test_paid_seedance_without_approval_never_reaches_provider(tmp_path: Path) -> None:
-    resolver = DurableProductIdentityResolver(
-        _identity_database(tmp_path / "proof.sqlite3", budget_minor=500)
-    )
-    session = TenantBoundManagedDesktopVideoSession(
-        identity_resolver=resolver,
-        root=tmp_path / "managed",
-        api_key="test-api-key",
-        model_id="bytedance/seedance-2.0-fast",
-        resolution="480p",
-        max_total_cost_usd=Decimal("20.00"),
-    )
+    session = _managed_session(tmp_path)
     session.configure_approval_checker(lambda _request_id: False)
 
     with session.bind_product_request("request-1"):
@@ -190,7 +213,7 @@ def test_paid_seedance_without_approval_never_reaches_provider(tmp_path: Path) -
     assert result.success is False
     assert result.error_code == "approval_required"
     assert result.metadata["reapproval_required"] == "true"
-    assert not (tmp_path / "managed" / "managed-credit-ledger" / "provider_side_effects") .exists()
+    assert _provider_side_effect_count(tmp_path / "managed") == 0
 
 
 def test_tenant_a_approval_cannot_authorize_tenant_b_request(tmp_path: Path) -> None:
@@ -235,6 +258,46 @@ def test_tenant_a_approval_cannot_authorize_tenant_b_request(tmp_path: Path) -> 
 
     assert result.success is False
     assert result.error_code == "approval_required"
+    assert _provider_side_effect_count(tmp_path / "managed") == 0
+
+
+@pytest.mark.parametrize("approved_budget_usd", ("0.50", "1.00", "5.00", "20.00"))
+def test_preflight_accepts_user_budget_without_old_one_dollar_cap(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    approved_budget_usd: str,
+) -> None:
+    session = _managed_session(tmp_path)
+    monkeypatch.setattr(session._catalog, "paid_eligible_models", lambda: (_seedance_model(),))
+
+    estimate = session.preflight_estimate(
+        objective="Create an 8 second cinematic video",
+        approved_budget_microusd=int(Decimal(approved_budget_usd) * 1_000_000),
+    )
+
+    assert estimate.provider == "openrouter-video-managed"
+    assert estimate.model == "bytedance/seedance-2.0-fast"
+    assert estimate.planned_generation_count == 2
+    assert estimate.estimated_cost_microusd > 0
+    assert estimate.reserved_ceiling_microusd <= int(
+        Decimal(approved_budget_usd) * 1_000_000
+    )
+
+
+def test_preflight_blocks_when_estimate_exceeds_user_budget_before_provider_post(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    session = _managed_session(tmp_path)
+    monkeypatch.setattr(session._catalog, "paid_eligible_models", lambda: (_seedance_model(),))
+
+    with pytest.raises(VideoRuntimeError, match="reapproval required"):
+        session.preflight_estimate(
+            objective="Create an 8 second cinematic video",
+            approved_budget_microusd=200_000,
+        )
+
+    assert _provider_side_effect_count(tmp_path / "managed") == 0
 
 
 def test_managed_budget_requires_explicit_positive_deployment_ceiling(
@@ -259,6 +322,24 @@ def test_managed_budget_requires_explicit_positive_deployment_ceiling(
     monkeypatch.setenv("ILAIOS_VIDEO_MANAGED_MAX_TOTAL_USD", "1.0000001")
     with pytest.raises(VideoRuntimeError, match="microUSD precision"):
         _managed_budget()
+
+
+def test_certification_caps_remain_one_dollar_and_separate_from_production() -> None:
+    workflow = (
+        Path(__file__).resolve().parents[1]
+        / ".github"
+        / "workflows"
+        / "video-provider-production-certification.yml"
+    ).read_text(encoding="utf-8")
+
+    assert 'VIDEO_PROVIDER_MAX_TOTAL_COST_USD: "1.00"' in workflow
+    assert 'ILAIOS_VIDEO_MANAGED_E2E_MAX_TOTAL_USD: "1.00"' in workflow
+    assert "_MAX_MANAGED_DESKTOP_BUDGET_USD" not in (
+        Path(__file__).resolve().parents[1]
+        / "services"
+        / "integrations"
+        / "desktop_video_composition.py"
+    ).read_text(encoding="utf-8")
 
 
 def test_reference_analyzer_is_pinned_to_supported_free_multimodal_route() -> None:
