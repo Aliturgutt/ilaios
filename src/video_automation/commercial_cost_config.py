@@ -1,13 +1,12 @@
 """Versioned cost configuration for the existing commercial quote authority.
 
-The values here are operating inputs, not claims about live invoices or production
-pricing.  Unknown provider/infrastructure costs stay ``None`` and therefore fail
-closed when a governed paid quote is requested.
+These values are operating inputs, not claims about live invoices or production
+pricing. Unknown costs remain ``None`` and paid quoting fails closed.
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation, ROUND_CEILING
 
 from .commercial_quote import LockedVideoQuote
@@ -72,26 +71,30 @@ class CommercialCostConfig:
     storage_backup_per_active_user_monthly_try: Decimal = Decimal("10")
     payment_fee_reserve_bps: int = 500
     usd_try_fx_buffer_bps: int = 500
-    target_minimum_net_operating_profit_margin_bps: int = 4000
+    target_minimum_net_operating_profit_margin_bps: int = 4_000
     free_operations_per_active_user_per_month: int = 100
     income_tax_reserve_bps: int | None = None
 
     def __post_init__(self) -> None:
         require_text("version", self.version)
-        for name in (
+        try_fields = (
             "domain_email_monthly_try",
             "accounting_monthly_try",
             "labor_monthly_try",
             "internet_and_other_subscriptions_monthly_try",
             "fixed_base_monthly_try",
             "storage_backup_per_active_user_monthly_try",
+        )
+        for name in try_fields:
+            object.__setattr__(self, name, _decimal(name, getattr(self, name)))
+        for name in (
+            "render_monthly_usd",
+            "vercel_monthly_usd",
+            "cloudflare_monthly_usd",
         ):
-            value = _decimal(name, getattr(self, name), allow_zero=True)
-            object.__setattr__(self, name, value)
-        for name in ("render_monthly_usd", "vercel_monthly_usd", "cloudflare_monthly_usd"):
             value = getattr(self, name)
             if value is not None:
-                object.__setattr__(self, name, _decimal(name, value, allow_zero=True))
+                object.__setattr__(self, name, _decimal(name, value))
         rate_bps("payment_fee_reserve_bps", self.payment_fee_reserve_bps)
         rate_bps("usd_try_fx_buffer_bps", self.usd_try_fx_buffer_bps)
         rate_bps(
@@ -112,19 +115,19 @@ class CommercialCostConfig:
         )
         if components != self.fixed_base_monthly_try:
             raise CommercialAdmissionError(
-                "fixed_base_monthly_try must equal the configured fixed-cost components"
+                "fixed_base_monthly_try must equal configured fixed-cost components"
             )
 
     def require_paid_quote_ready(self) -> None:
         missing: list[str] = []
-        if self.render_monthly_usd is None:
-            missing.append("render_monthly_usd")
-        if self.vercel_monthly_usd is None:
-            missing.append("vercel_monthly_usd")
-        if self.cloudflare_monthly_usd is None:
-            missing.append("cloudflare_monthly_usd")
-        if self.income_tax_reserve_bps is None:
-            missing.append("income_tax_reserve_bps")
+        for name in (
+            "render_monthly_usd",
+            "vercel_monthly_usd",
+            "cloudflare_monthly_usd",
+            "income_tax_reserve_bps",
+        ):
+            if getattr(self, name) is None:
+                missing.append(name)
         if missing:
             raise CommercialAdmissionError(
                 "paid quote cost config incomplete: " + ", ".join(missing)
@@ -134,9 +137,10 @@ class CommercialCostConfig:
         """Map config into the existing quote authority; no second quote engine."""
 
         self.require_paid_quote_ready()
+        margin = self.target_minimum_net_operating_profit_margin_bps
         return CommercialPricingPolicy(
-            target_margin_bps=self.target_minimum_net_operating_profit_margin_bps,
-            hard_min_margin_bps=self.target_minimum_net_operating_profit_margin_bps,
+            target_margin_bps=margin,
+            hard_min_margin_bps=margin,
             contingency_bps=0,
             payment_fee_rate_bps=self.payment_fee_reserve_bps,
             payment_fixed_fee_microusd=0,
@@ -146,7 +150,7 @@ class CommercialCostConfig:
 
 @dataclass(frozen=True, slots=True)
 class CommercialCostAllocation:
-    """Evidence-bearing cost allocation fed into the existing VideoCostEnvelope."""
+    """Evidence-bearing allocation fed into the existing VideoCostEnvelope."""
 
     active_users: int
     chargeable_operations_per_active_user_month: int
@@ -202,17 +206,15 @@ def create_governed_locked_quote(
         nonnegative_int(name, value)
 
     denominator = active_users * chargeable_operations_per_active_user_month
-    fixed_share = _try_monthly_share_to_microusd(
-        config.fixed_base_monthly_try,
-        denominator=denominator,
-        usd_try=fx.usd_try,
+    fixed_share = _try_share_to_microusd(
+        config.fixed_base_monthly_try, denominator, fx.usd_try
     )
-    storage_share = _try_monthly_share_to_microusd(
+    storage_share = _try_share_to_microusd(
         config.storage_backup_per_active_user_monthly_try * active_users,
-        denominator=denominator,
-        usd_try=fx.usd_try,
+        denominator,
+        fx.usd_try,
     )
-    infrastructure_monthly_microusd = sum(
+    monthly_infrastructure = sum(
         usd_to_microusd(value)
         for value in (
             config.render_monthly_usd,
@@ -221,7 +223,7 @@ def create_governed_locked_quote(
         )
         if value is not None
     )
-    infrastructure_share = _ceil_div(infrastructure_monthly_microusd, denominator)
+    infrastructure_share = _ceil_div(monthly_infrastructure, denominator)
 
     usd_variable = (
         provider_generation_microusd
@@ -231,10 +233,7 @@ def create_governed_locked_quote(
     )
     fx_reserve = _ceil_bps(usd_variable, config.usd_try_fx_buffer_bps)
     pre_tax_reserve = (
-        provider_generation_microusd
-        + retry_microusd
-        + repair_microusd
-        + voice_audio_microusd
+        usd_variable
         + other_variable_microusd
         + fixed_share
         + storage_share
@@ -242,7 +241,7 @@ def create_governed_locked_quote(
         + fx_reserve
     )
     income_tax_bps = config.income_tax_reserve_bps
-    if income_tax_bps is None:  # narrowed by require_paid_quote_ready; defensive fail closed
+    if income_tax_bps is None:
         raise CommercialAdmissionError("income tax reserve is unknown")
     income_tax_reserve = _ceil_bps(pre_tax_reserve, income_tax_bps)
 
@@ -257,8 +256,9 @@ def create_governed_locked_quote(
         risk_reserve_microusd=income_tax_reserve,
         other_variable_microusd=other_variable_microusd,
     )
-    policy = config.pricing_policy(quote_ttl_seconds=quote_ttl_seconds)
-    quote = CommercialQuoteEngine(policy).create_locked_quote(
+    quote = CommercialQuoteEngine(
+        config.pricing_policy(quote_ttl_seconds=quote_ttl_seconds)
+    ).create_locked_quote(
         quote_id=quote_id,
         now_epoch_s=now_epoch_s,
         tax_profile=tax_profile,
@@ -271,7 +271,9 @@ def create_governed_locked_quote(
     )
     allocation = CommercialCostAllocation(
         active_users=active_users,
-        chargeable_operations_per_active_user_month=chargeable_operations_per_active_user_month,
+        chargeable_operations_per_active_user_month=(
+            chargeable_operations_per_active_user_month
+        ),
         fixed_cost_share_microusd=fixed_share,
         storage_backup_share_microusd=storage_share,
         infrastructure_share_microusd=infrastructure_share,
@@ -285,22 +287,18 @@ def create_governed_locked_quote(
     return quote, allocation
 
 
-def _decimal(name: str, value: Decimal, *, allow_zero: bool) -> Decimal:
+def _decimal(name: str, value: Decimal) -> Decimal:
     try:
         amount = Decimal(value)
     except (InvalidOperation, TypeError) as exc:
         raise CommercialAdmissionError(f"{name} must be numeric") from exc
-    minimum_ok = amount >= 0 if allow_zero else amount > 0
-    if not amount.is_finite() or not minimum_ok:
+    if not amount.is_finite() or amount < 0:
         raise CommercialAdmissionError(f"{name} must be finite and non-negative")
     return amount
 
 
-def _try_monthly_share_to_microusd(
-    monthly_try: Decimal,
-    *,
-    denominator: int,
-    usd_try: Decimal,
+def _try_share_to_microusd(
+    monthly_try: Decimal, denominator: int, usd_try: Decimal
 ) -> int:
     positive_int("denominator", denominator)
     usd = (monthly_try / usd_try) / Decimal(denominator)
