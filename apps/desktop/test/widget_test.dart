@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/control_plane/evidence_record.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
+import 'package:ilaios_desktop/features/li/li_view.dart';
 import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
 import 'package:ilaios_desktop/identity/identity_client.dart';
-
-import 'secondary_navigation_test_support.dart';
 
 const _evidence = EvidenceRecord(
   sequence: 1,
@@ -28,24 +28,23 @@ const _finishedProductEvidence = EvidenceRecord(
 );
 
 void main() {
-  testWidgets('disconnected goals surface disables one-prompt submission', (
+  testWidgets('disconnected canonical Home disables governed submission', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const IlaiosDesktopApp());
-    await openSecondaryDesktopSection(tester, DesktopSection.goals);
-    expect(find.text('What do you want ILAIOS to build?'), findsOneWidget);
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
     expect(
-      tester
-          .widget<FilledButton>(find.byKey(const Key('one-prompt-submit')))
-          .onPressed,
+      tester.widget<FilledButton>(find.byKey(const Key('home-new-work'))).onPressed,
       isNull,
     );
-    expect(find.byKey(const Key('one-prompt-accepted')), findsNothing);
+    expect(find.byKey(const Key('reference-secondary-navigation')), findsNothing);
   });
 
-  testWidgets('connected goals surface submits without claiming completion', (
+  testWidgets('connected canonical Home submits without claiming completion', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
@@ -70,26 +69,24 @@ void main() {
         );
       },
     ));
-    await openSecondaryDesktopSection(tester, DesktopSection.goals);
+    await tester.pumpAndSettle();
 
     await tester.enterText(
-      find.byKey(const Key('one-prompt-input')),
+      find.byKey(const Key('home-command-prompt')),
       'Build a premium website',
     );
-    final submit = find.byKey(const Key('one-prompt-submit'));
+    final submit = find.byKey(const Key('home-new-work'));
     await tester.ensureVisible(submit);
     await tester.tap(submit);
     await tester.pumpAndSettle();
 
     expect(submitted, 'Build a premium website');
-    expect(find.byKey(const Key('one-prompt-accepted')), findsOneWidget);
-    expect(find.text('Goal: goal-00000003'), findsOneWidget);
-    expect(find.text('Job: job-00000006'), findsOneWidget);
-    expect(find.text('Lifecycle: Unavailable'), findsOneWidget);
-    expect(find.textContaining('missing evidence stays unavailable'), findsOneWidget);
+    expect(find.textContaining('Work accepted'), findsOneWidget);
+    expect(find.textContaining('goal-00000003'), findsNothing);
+    expect(find.textContaining('job-00000006'), findsNothing);
   });
 
-  testWidgets('home renders truthful command center without synthetic telemetry', (
+  testWidgets('home renders truthful canonical surface without synthetic telemetry', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -97,7 +94,7 @@ void main() {
     await tester.pumpWidget(const IlaiosDesktopApp());
     await tester.pumpAndSettle();
     expect(find.byKey(const Key('command-center-home')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
+    expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
     expect(find.byKey(const Key('command-center-metrics')), findsNothing);
     expect(find.byKey(const Key('command-center-session')), findsNothing);
     expect(find.textContaining(r'$3.21'), findsNothing);
@@ -138,12 +135,13 @@ void main() {
     expect(refreshRequests, 1);
   });
 
-  testWidgets('wide navigation exposes target information architecture', (
+  testWidgets('wide navigation exposes exactly the canonical seven-page information architecture', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const IlaiosDesktopApp());
+    await tester.pumpAndSettle();
     for (final destination in <DesktopSection>[
       DesktopSection.home,
       DesktopSection.workflows,
@@ -162,28 +160,20 @@ void main() {
     ]) {
       expect(find.byKey(ValueKey('nav-${destination.name}')), findsNothing);
     }
-    expect(find.byKey(const Key('reference-secondary-navigation')), findsOneWidget);
+    expect(find.byKey(const Key('reference-secondary-navigation')), findsNothing);
     expect(find.byKey(const ValueKey('nav-li')), findsNothing);
   });
 
-  testWidgets('live workspace stays read-only when projections are unavailable', (
+  testWidgets('removed Live Workspace is not restored as a top-level Desktop surface', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     await tester.pumpWidget(const IlaiosDesktopApp());
-    await openSecondaryDesktopSection(tester, DesktopSection.liveWorkspace);
-    expect(find.text('Live Workspace'), findsWidgets);
-    expect(find.text('Live Code'), findsWidgets);
-    expect(find.text('Terminal'), findsWidgets);
-    expect(find.text('Browser'), findsWidgets);
-    expect(find.text('Files'), findsWidgets);
-    expect(find.text('Logs'), findsWidgets);
-    expect(find.text('Events'), findsWidgets);
-    expect(
-      find.textContaining('Authoritative source-file content'),
-      findsOneWidget,
-    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey('nav-liveWorkspace')), findsNothing);
+    expect(find.byKey(const Key('reference-secondary-navigation')), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets('verified evidence renders provenance metadata only', (
@@ -432,7 +422,7 @@ void main() {
     expect(find.byKey(const ValueKey('nav-li')), findsNothing);
   });
 
-  testWidgets('founder-only Li appears below Settings and revalidates state', (
+  testWidgets('founder-only Li revalidates state and memory without becoming an eighth page', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
@@ -460,51 +450,48 @@ void main() {
         createdAt: DateTime.utc(2026, 9, 2, 12),
       ),
     ];
+
     await tester.pumpWidget(
-      IlaiosDesktopApp(
-        userSession: session,
-        onFetchLiState: () async {
-          stateRequests += 1;
-          return const DesktopLiState(
-            name: 'Li',
-            founderOperator: true,
-            userId: 'usr_founder',
-            tenantId: 'tnt_founder',
-            source: 'canonical_desktop_session',
-          );
-        },
-        onFetchLiMemories: () async {
-          memoryReads += 1;
-          return List<DesktopLiMemory>.unmodifiable(memories);
-        },
-        onRememberLiMemory: (kind, content) async {
-          memoryWrites += 1;
-          final memory = DesktopLiMemory(
-            memoryId: 'li_mem_new',
-            kind: kind,
-            content: content,
-            source: 'desktop',
-            confidence: 1,
-            sensitivity: 'private',
-            createdAt: DateTime.utc(2026, 9, 2, 12, 1),
-          );
-          memories.insert(0, memory);
-          return memory;
-        },
+      MaterialApp(
+        home: IlaiosLocaleScope(
+          locale: IlaiosLocale.english,
+          onChanged: (_) {},
+          child: Scaffold(
+            body: LiView(
+              userSession: session,
+              onFetchState: () async {
+                stateRequests += 1;
+                return const DesktopLiState(
+                  name: 'Li',
+                  founderOperator: true,
+                  userId: 'usr_founder',
+                  tenantId: 'tnt_founder',
+                  source: 'canonical_desktop_session',
+                );
+              },
+              onFetchMemories: () async {
+                memoryReads += 1;
+                return List<DesktopLiMemory>.unmodifiable(memories);
+              },
+              onRemember: (kind, content) async {
+                memoryWrites += 1;
+                final memory = DesktopLiMemory(
+                  memoryId: 'li_mem_new',
+                  kind: kind,
+                  content: content,
+                  source: 'desktop',
+                  confidence: 1,
+                  sensitivity: 'private',
+                  createdAt: DateTime.utc(2026, 9, 2, 12, 1),
+                );
+                memories.insert(0, memory);
+                return memory;
+              },
+            ),
+          ),
+        ),
       ),
     );
-    await tester.pumpAndSettle();
-
-    final settings = find.byKey(const ValueKey('nav-settings'));
-    final li = find.byKey(const ValueKey('nav-li'));
-    expect(settings, findsOneWidget);
-    expect(li, findsOneWidget);
-    expect(
-      tester.getTopLeft(li).dy,
-      greaterThan(tester.getTopLeft(settings).dy),
-    );
-
-    await tester.tap(li);
     await tester.pumpAndSettle();
 
     expect(stateRequests, 1);
