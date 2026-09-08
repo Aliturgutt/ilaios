@@ -663,8 +663,8 @@ class ResearchDataFactory:
                 (self._tenant_id,),
             ):
                 source_id = str(row["source_id"])
-                source = self._sources.get(source_id)
-                if source is None or source.content_sha256 != row["content_sha256"]:
+                ingested_source = self._sources.get(source_id)
+                if ingested_source is None or ingested_source.content_sha256 != row["content_sha256"]:
                     raise ResearchDataError("persisted ingestion source binding is invalid")
                 record = IngestionRecord(
                     ingestion_id=str(row["ingestion_id"]),
