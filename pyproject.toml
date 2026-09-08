@@ -21,6 +21,10 @@ ignore_missing_imports = true
 module = ["jwt", "jwt.*"]
 ignore_missing_imports = true
 
+[[tool.mypy.overrides]]
+module = ["reportlab", "reportlab.*"]
+ignore_missing_imports = true
+
 # These standalone E2E entrypoints deliberately bootstrap the repository root
 # onto sys.path before importing ILAIOS packages. Keep the E402 exception
 # narrowly scoped to those executable scripts; the rest of the repository
