@@ -12,9 +12,18 @@ from services.research_data_http_adapter import (
 )
 
 
-def _public_resolver(
-    host: str, port: int
-) -> list[tuple[int, int, int, str, tuple[str, int]]]:
+ResolverResult = list[
+    tuple[
+        socket.AddressFamily,
+        socket.SocketKind,
+        int,
+        str,
+        tuple[str, int] | tuple[str, int, int, int],
+    ]
+]
+
+
+def _public_resolver(host: str, port: int) -> ResolverResult:
     return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", port))]
 
 
@@ -67,9 +76,7 @@ def test_fetch_source_denies_unallowlisted_host_before_transport() -> None:
 
 
 def test_fetch_source_denies_private_dns_answer() -> None:
-    def private_resolver(
-        host: str, port: int
-    ) -> list[tuple[int, int, int, str, tuple[str, int]]]:
+    def private_resolver(host: str, port: int) -> ResolverResult:
         return [(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", port))]
 
     adapter = GovernedResearchHTTPSAdapter(
