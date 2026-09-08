@@ -1,0 +1,37 @@
+name: Security Next Lockfile Remediation Temp
+
+on:
+  push:
+    branches:
+      - security/next-critical-cve-remediation-20260908
+    paths:
+      - '.github/workflows/security-next-lockfile-remediation-temp.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  generate-lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact branch revision
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Set up Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: apps/website/package-lock.json
+      - name: Generate patched lockfile without lifecycle scripts
+        working-directory: apps/website
+        run: npm install --package-lock-only --ignore-scripts --save-exact next@16.3.3 eslint-config-next@16.3.3
+      - name: Upload patched package metadata
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: security-next-16.3.3-package-metadata
+          path: |
+            apps/website/package.json
+            apps/website/package-lock.json
+          retention-days: 1
