@@ -87,6 +87,6 @@ void main() {
     expect(find.byKey(const Key('approvals-table')), findsOneWidget);
     expect(find.text('req-no-human-approval'), findsNothing);
     expect(find.byKey(const Key('approvals-selected-request')), findsNothing);
-    expect(find.byKey(const Key('approvals-right-rail')), findsNothing);
+    expect(find.byKey(const Key('approvals-right-rail')), findsOneWidget);
   });
 }
