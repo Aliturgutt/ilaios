@@ -2972,3 +2972,41 @@ verifiable
 and every material security decision remains evidence-bearing.
 
 **ILAIOS may automate work. It may not automate away accountability or authorization.**
+
+
+---
+
+# 125. Security Lifecycle Enforcement
+
+Security verification is a mandatory lifecycle of a bounded component, factory, application, or release scope. It is not a reminder, naming convention, or claim created because a workflow file exists. The existing repository security/release gate path remains the implementation boundary; this creates no second security authority, release authority, Tool Gateway, router, or evidence system.
+
+```text
+component/factory/app closure
+        -> S1 component-closure security verification
+        -> release candidate declaration
+        -> S2 production hardening
+        -> S3 exact-SHA security evidence
+        -> governed deployment
+        -> S4 post-deploy runtime verification
+        -> S5 continuous security operations
+```
+
+## S1 — Component Closure Security Verification
+
+S1 is scoped to the changed component and runs on the exact reviewed source revision. It retains existing applicable fail-closed controls, including secret detection, workflow/supply-chain policy, malware checks, and canonical CI-selected security regressions. S1 is not production certification and does not authorize deployment.
+
+## S2 — Release Candidate Production Security Hardening
+
+S2 begins only when the Release Authority explicitly declares a release candidate. It runs the full repository platform and website validation surfaces in addition to existing required security gates. Reduced path-selected validation is not sufficient. S2 fails closed when a required control fails, is unavailable, is skipped without explicit NOT_APPLICABLE justification, or is attached to another revision.
+
+## S3 — Exact-SHA Security Verification
+
+Evidence must identify the immutable source commit SHA checked out by the workflow. Branch name, PR number, later master SHA, or workflow existence is insufficient. Evidence identifies gate ID, scope, result, workflow/run identity, timestamp, tool version where available, and artifact digest where applicable.
+
+## S4 — Post-Deploy Runtime Security Verification
+
+S4 targets the deployed identity with non-destructive checks appropriate to that surface: deployment/version identity, HTTPS and relevant headers, health/readiness, safe authentication or authorization denial, and applicable session, CORS, CSRF, and rate-limit behavior. If deployment identity or safe runtime probe is unavailable, S4 is UNVERIFIED.
+
+## S5 — Continuous Security Operations
+
+S5 is distinct from release-time evidence: dependency and secret exposure, backup/restore drill health, alert-routing health, cost/spend guard health, and safe runtime re-verification. Cadence and provider implementation are operational configuration; this document does not claim any recurring check is active.

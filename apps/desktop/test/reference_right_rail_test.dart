@@ -3,7 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('V4 Home removes the permanent right rail at reference size', (
+  testWidgets('V4 Home removes the permanent right rail and keeps status in sidebar', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1536, 1024));
@@ -20,24 +20,32 @@ void main() {
     final hero = find.byKey(const Key('command-center-hero'));
     final attention = find.byKey(const Key('command-center-attention'));
     final completed = find.byKey(const Key('command-center-completed'));
+    final sidebar = find.byKey(const Key('reference-desktop-sidebar-v5'));
     final status = find.byKey(const Key('reference-bottom-status-v2'));
     final scroll = find.byKey(const Key('command-center-short-viewport-scroll'));
     expect(hero, findsOneWidget);
     expect(attention, findsOneWidget);
     expect(completed, findsOneWidget);
+    expect(sidebar, findsOneWidget);
     expect(status, findsOneWidget);
+    expect(
+      find.descendant(of: sidebar, matching: status),
+      findsOneWidget,
+    );
     expect(scroll, findsOneWidget);
     expect(tester.getTopLeft(hero).dy, greaterThanOrEqualTo(60));
 
     final statusTopBeforeScroll = tester.getTopLeft(status).dy;
+    final statusLeftBeforeScroll = tester.getTopLeft(status).dx;
     await tester.drag(scroll, const Offset(0, -1600));
     await tester.pumpAndSettle();
 
     expect(tester.takeException(), isNull);
     expect(tester.getTopLeft(status).dy, statusTopBeforeScroll);
+    expect(tester.getTopLeft(status).dx, statusLeftBeforeScroll);
     expect(
-      tester.getBottomRight(completed).dy,
-      lessThanOrEqualTo(tester.getTopLeft(status).dy + 1),
+      tester.getBottomRight(status).dy,
+      lessThanOrEqualTo(tester.getBottomRight(sidebar).dy),
     );
   });
 }

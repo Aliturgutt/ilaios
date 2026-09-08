@@ -237,7 +237,7 @@ class _ProviderActions extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   fontSize: 8,
-                  color: Theme.of(context).colorScheme.error,
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
           ],
@@ -291,9 +291,7 @@ class _ProviderActionRow extends StatelessWidget {
         Icon(
           connected ? Icons.cloud_done_outlined : Icons.cloud_outlined,
           size: 13,
-          color: connected
-              ? Theme.of(context).colorScheme.primary
-              : Theme.of(context).colorScheme.onSurfaceVariant,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
         const SizedBox(width: 6),
         Expanded(

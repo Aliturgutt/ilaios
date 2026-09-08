@@ -59,6 +59,21 @@ def test_verified_free_composition_does_not_reference_seedance_free_alias() -> N
     assert 'managed_model_id.endswith(":free")' in source
 
 
+def test_verified_free_stock_runtime_reuses_durable_product_tenant_identity() -> None:
+    root = Path(__file__).resolve().parents[1]
+    composition_source = (
+        root / "services" / "integrations" / "desktop_video_composition.py"
+    ).read_text(encoding="utf-8")
+    runtime_source = (
+        root / "services" / "integrations" / "governed_stock_video_runtime.py"
+    ).read_text(encoding="utf-8")
+
+    assert "DurableProductIdentityResolver(product_identity_database)" in composition_source
+    assert "tenant_id, requester_id = self._identity_resolver.resolve(request_id)" in runtime_source
+    assert "tenant_id=tenant_id" in runtime_source
+    assert "tenant_id=request_id" not in runtime_source
+
+
 def test_video_provider_certification_uses_public_stock_for_verified_free() -> None:
     workflow = (
         Path(__file__).resolve().parents[1]

@@ -45,6 +45,7 @@ from src.video_automation.wikimedia_stock_transport import WikimediaStockHttpTra
 
 from .governed_stock_video_runtime import GovernedStockDesktopVideoRuntime
 from .provider_video_runtime import ObjectiveResolver, UnavailableProviderVideoRuntime
+from .reference_aware_managed_provider_video_runtime import DurableProductIdentityResolver
 from .three_domain_video_runtime import (
     ThreeDomainManagedReferenceAwareProviderBackedDesktopVideoRuntime,
     ThreeDomainReceiptBoundNativeReferenceManagedDesktopVideoRuntime,
@@ -94,6 +95,7 @@ def compose_desktop_video_runtime(
             objective_resolver=objective_resolver,
             brand_logo=_official_brand_logo(),
             stock_selector=_governed_stock_selector_from_environment(),
+            identity_resolver=DurableProductIdentityResolver(product_identity_database),
         )
         return DesktopVideoComposition(
             runtime,

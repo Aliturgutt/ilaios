@@ -172,6 +172,21 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                 )
                 self._send_json(HTTPStatus.OK, execution)
                 return
+            if parsed.path == "/v1/web/deployments":
+                session = self._authenticated_session()
+                request_id = _single_query(parse_qs(parsed.query), "request_id")
+                self._send_json(
+                    HTTPStatus.OK,
+                    {
+                        "request_id": request_id,
+                        "deployments": self.server.coordinator.web_deployment_history(
+                            request_id,
+                            principal_id=session.principal_id,
+                            tenant_id=session.tenant_id,
+                        ),
+                    },
+                )
+                return
             self._send_error(HTTPStatus.NOT_FOUND, "unknown endpoint")
         except DesktopIdentityError as error:
             self._send_error(HTTPStatus.UNAUTHORIZED, str(error))
@@ -242,6 +257,12 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
                 return
             if path == "/v1/desktop/intent":
                 self._submit_authenticated_intent(body)
+                return
+            if path == "/v1/web/preview":
+                self._preview_web(body)
+                return
+            if path == "/v1/web/publish":
+                self._publish_web(body)
                 return
             if path == "/v1/execution/decision":
                 self._decide_authenticated_execution(body)
@@ -413,6 +434,38 @@ class DesktopIdentityRequestHandler(BaseHTTPRequestHandler):
             HTTPStatus.ACCEPTED,
             {"request_id": request_id, "execution_status": "EXECUTION_STARTED"},
         )
+
+    def _preview_web(self, body: dict[str, Any]) -> None:
+        session = self._authenticated_session()
+        request_id = _required_string(body, "request_id")
+        receipt = self.server.coordinator.preview_web(
+            request_id,
+            principal_id=session.principal_id,
+            tenant_id=session.tenant_id,
+            now=datetime.now(timezone.utc),
+        )
+        self._send_json(HTTPStatus.CREATED, receipt)
+
+    def _publish_web(self, body: dict[str, Any]) -> None:
+        session = self._authenticated_session()
+        request_id = _required_string(body, "request_id")
+        now = datetime.now(timezone.utc)
+        request = self.server.coordinator.request_web_publish(
+            request_id,
+            principal_id=session.principal_id,
+            tenant_id=session.tenant_id,
+            now=now,
+        )
+        if request["status"] != "approved":
+            self._send_json(HTTPStatus.ACCEPTED, request)
+            return
+        receipt = self.server.coordinator.publish_web(
+            request_id,
+            principal_id=session.principal_id,
+            tenant_id=session.tenant_id,
+            now=now,
+        )
+        self._send_json(HTTPStatus.CREATED, receipt)
 
     def _resume_authenticated_execution(self, body: dict[str, Any]) -> None:
         session = self._authenticated_session()

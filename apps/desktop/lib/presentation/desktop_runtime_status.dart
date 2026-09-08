@@ -37,6 +37,17 @@ DesktopRuntimeStatusPresentation presentDesktopRuntimeStatus(
     );
   }
 
+  if (normalized == 'control plane is unreachable' ||
+      normalized == 'control plane unreachable') {
+    return DesktopRuntimeStatusPresentation(
+      kind: DesktopRuntimeStatusKind.offline,
+      label: turkish
+          ? 'Kontrol düzlemine ulaşılamıyor.'
+          : 'Control plane is unreachable.',
+      detail: raw,
+    );
+  }
+
   if (normalized == 'bundled local control plane started') {
     return DesktopRuntimeStatusPresentation(
       kind: DesktopRuntimeStatusKind.connected,

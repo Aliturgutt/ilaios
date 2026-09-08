@@ -2,13 +2,19 @@ name: Website CI
 
 on:
   workflow_call:
+    inputs:
+      concurrency_scope:
+        description: "Caller-provided scope used to isolate concurrent reusable workflow invocations."
+        required: false
+        type: string
+        default: default
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: website-ci-${{ github.workflow }}-${{ github.ref }}
+  group: website-ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.concurrency_scope || 'default' }}
   cancel-in-progress: true
 
 jobs:

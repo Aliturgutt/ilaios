@@ -2,13 +2,19 @@ name: Platform CI
 
 on:
   workflow_call:
+    inputs:
+      concurrency_scope:
+        description: "Caller-specific scope used to isolate Platform CI concurrency."
+        required: false
+        type: string
+        default: default
   workflow_dispatch:
 
 permissions:
   contents: read
 
 concurrency:
-  group: platform-ci-${{ github.workflow }}-${{ github.ref }}
+  group: platform-ci-${{ github.workflow }}-${{ github.ref }}-${{ inputs.concurrency_scope || 'default' }}
   cancel-in-progress: true
 
 jobs:
