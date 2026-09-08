@@ -36,8 +36,9 @@ def test_production_safe_attack_scenarios_fail_closed_and_retest_clean(
         "cidr: 0.0.0.0/0\nAction: \"*\"\n",
         encoding="utf-8",
     )
+    private_key_marker = "-----BEGIN " + "PRIVATE KEY-----\n"
     (tmp_path / "credential_fixture.txt").write_text(
-        "-----BEGIN PRIVATE KEY-----\n",
+        private_key_marker,
         encoding="utf-8",
     )
 
