@@ -87,10 +87,16 @@ def test_paid_quote_fails_closed_when_unverified_cost_inputs_are_missing() -> No
 
 
 def test_paid_quote_fails_closed_on_stale_fx() -> None:
+    stale_fx = FxRateSnapshot(
+        source="stale-admin-rate",
+        usd_try=Decimal("48.45"),
+        observed_at_epoch_s=900,
+        expires_at_epoch_s=_NOW,
+    )
     with pytest.raises(CommercialAdmissionError, match="stale"):
         create_governed_locked_quote(
             config=_ready_config(),
-            fx=_fx(expires_at=_NOW),
+            fx=stale_fx,
             quote_id="quote-stale-fx",
             now_epoch_s=_NOW,
             tax_profile=TaxProfile.turkey_general_vat(),
@@ -142,7 +148,9 @@ def test_governed_quote_includes_fx_fixed_cost_tax_reserve_paytr_and_40_percent_
     assert profit * 10_000 // quote.net_price_ex_tax_microusd >= 4_000
 
 
-def test_free_admission_requires_exact_zero_cost_and_never_silently_falls_back(tmp_path) -> None:
+def test_free_admission_requires_exact_zero_cost_and_never_silently_falls_back(
+    tmp_path,
+) -> None:
     store = ManagedCreditLedgerStore(tmp_path)
     with pytest.raises(CommercialAdmissionError, match="paid quote required"):
         authorize_free_operation(
@@ -160,7 +168,9 @@ def test_free_admission_requires_exact_zero_cost_and_never_silently_falls_back(t
         )
 
 
-def test_free_admission_is_idempotent_tenant_user_scoped_and_quota_bounded(tmp_path) -> None:
+def test_free_admission_is_idempotent_tenant_user_scoped_and_quota_bounded(
+    tmp_path,
+) -> None:
     store = ManagedCreditLedgerStore(tmp_path)
     first = authorize_free_operation(
         store=store,
