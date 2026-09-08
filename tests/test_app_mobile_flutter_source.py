@@ -28,14 +28,19 @@ def test_build_flutter_android_project_sources_emits_required_repository_project
         "android/settings.gradle.kts",
         "android/app/build.gradle.kts",
         "android/app/src/main/AndroidManifest.xml",
+        "android/app/src/main/kotlin/com/ilaios/mobile/MainActivity.kt",
+        "android/app/src/main/res/values/styles.xml",
         "android/gradlew",
+        "android/gradlew.bat",
         "android/gradle/wrapper/gradle-wrapper.properties",
         "android/gradle/wrapper/gradle-wrapper.jar",
     }
     assert required <= set(by_path)
     assert all(change.operation == "create" for change in changes)
     assert by_path["android/gradle/wrapper/gradle-wrapper.jar"].content == wrapper
-    assert hashlib.sha256(by_path["android/gradle/wrapper/gradle-wrapper.jar"].content).hexdigest() == hashlib.sha256(wrapper).hexdigest()
+    assert hashlib.sha256(
+        by_path["android/gradle/wrapper/gradle-wrapper.jar"].content
+    ).hexdigest() == hashlib.sha256(wrapper).hexdigest()
 
 
 def test_sources_bind_application_id_and_product_identity_without_external_runtime() -> None:
@@ -49,15 +54,56 @@ def test_sources_bind_application_id_and_product_identity_without_external_runti
 
     app_gradle = by_path["android/app/build.gradle.kts"].content.decode()
     manifest = by_path["android/app/src/main/AndroidManifest.xml"].content.decode()
+    main_activity = by_path[
+        "android/app/src/main/kotlin/com/ilaios/mobile/MainActivity.kt"
+    ].content.decode()
+    styles = by_path["android/app/src/main/res/values/styles.xml"].content.decode()
     main = by_path["lib/main.dart"].content.decode()
-    wrapper_properties = by_path["android/gradle/wrapper/gradle-wrapper.properties"].content.decode()
+    wrapper_properties = by_path[
+        "android/gradle/wrapper/gradle-wrapper.properties"
+    ].content.decode()
 
     assert 'applicationId = "com.ilaios.mobile"' in app_gradle
     assert 'namespace = "com.ilaios.mobile"' in app_gradle
     assert 'android:label="ILAIOS"' in manifest
+    assert 'android:name=".MainActivity"' in manifest
+    assert 'android:theme="@style/LaunchTheme"' in manifest
+    assert "package com.ilaios.mobile" in main_activity
+    assert "class MainActivity : FlutterActivity()" in main_activity
+    assert '<style name="LaunchTheme"' in styles
     assert "Text('ILAIOS')" in main
     assert "services.gradle.org/distributions/gradle-8.10.2-bin.zip" in wrapper_properties
     assert "http://" not in wrapper_properties
+
+
+def test_sources_use_application_id_for_main_activity_package_path() -> None:
+    changes = build_flutter_android_project_sources(
+        app_id="customer-app",
+        application_id="io.example.customer.mobile",
+        display_name="Customer App",
+        gradle_wrapper_jar=b"wrapper",
+    )
+    by_path = _by_path(changes)
+
+    path = "android/app/src/main/kotlin/io/example/customer/mobile/MainActivity.kt"
+    assert path in by_path
+    assert by_path[path].content.decode().startswith("package io.example.customer.mobile\n")
+
+
+def test_sources_are_deterministic_for_identical_inputs() -> None:
+    first = build_flutter_android_project_sources(
+        app_id="ilaios-mobile",
+        application_id="com.ilaios.mobile",
+        display_name="ILAIOS",
+        gradle_wrapper_jar=b"wrapper",
+    )
+    second = build_flutter_android_project_sources(
+        app_id="ilaios-mobile",
+        application_id="com.ilaios.mobile",
+        display_name="ILAIOS",
+        gradle_wrapper_jar=b"wrapper",
+    )
+    assert first == second
 
 
 def test_sources_escape_display_name_for_xml_and_dart() -> None:
