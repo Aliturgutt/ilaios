@@ -4,7 +4,7 @@ import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('Turkish locale translates V4 Home without fabricating state', (
+  testWidgets('Turkish locale renders canonical 7-page Home without fabricating state', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -27,7 +27,8 @@ void main() {
 
     expect(find.text('Ana Kontrol Merkezi'), findsNothing);
     expect(find.text('İş başlat'), findsOneWidget);
-    expect(find.text('Gelişmiş'), findsOneWidget);
+    expect(find.byKey(const Key('canonical-7-page-sidebar')), findsOneWidget);
+    expect(find.byKey(const Key('reference-secondary-navigation')), findsNothing);
     expect(find.text('Şablonlar'), findsNothing);
     expect(find.text('Son işler'), findsNothing);
     expect(find.byKey(const Key('home-new-work')), findsOneWidget);
