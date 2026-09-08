@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from decimal import Decimal
+from pathlib import Path
 
 import pytest
 
@@ -42,13 +43,12 @@ def _pricing(*, expires_at: int = 2_000) -> ProviderPricingSnapshot:
     )
 
 
-def _ready_config(**changes: object) -> CommercialCostConfig:
-    base = CommercialCostConfig(
+def _ready_config() -> CommercialCostConfig:
+    return CommercialCostConfig(
         render_monthly_usd=Decimal("25"),
         cloudflare_monthly_usd=Decimal("5"),
         income_tax_reserve_bps=1_500,
     )
-    return replace(base, **changes)
 
 
 def _authorize_free(
@@ -173,7 +173,7 @@ def test_governed_quote_includes_fx_fixed_cost_tax_reserve_paytr_and_40_percent_
 
 
 def test_free_admission_requires_exact_zero_cost_and_never_silently_falls_back(
-    tmp_path,
+    tmp_path: Path,
 ) -> None:
     store = ManagedCreditLedgerStore(tmp_path)
     with pytest.raises(CommercialAdmissionError, match="paid quote required"):
@@ -185,7 +185,7 @@ def test_free_admission_requires_exact_zero_cost_and_never_silently_falls_back(
 
 
 def test_free_admission_is_idempotent_tenant_user_scoped_and_quota_bounded(
-    tmp_path,
+    tmp_path: Path,
 ) -> None:
     store = ManagedCreditLedgerStore(tmp_path)
     first = _authorize_free(store, request_id="free-request-001")
@@ -208,7 +208,7 @@ def test_free_admission_is_idempotent_tenant_user_scoped_and_quota_bounded(
     assert other_tenant.ordinal == 1
 
 
-def test_free_quota_cannot_be_overridden_outside_config(tmp_path) -> None:
+def test_free_quota_cannot_be_overridden_outside_config(tmp_path: Path) -> None:
     store = ManagedCreditLedgerStore(tmp_path)
     config = replace(
         CommercialCostConfig(),
