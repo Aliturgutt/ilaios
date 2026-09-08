@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import socket
+from collections.abc import Callable
+from typing import TypeVar, cast
 
 import pytest
 
@@ -15,7 +17,11 @@ from services.web_app_preview_runtime_probe import (
 from services.web_app_preview_sandbox_observer import observe_generated_preview_sandbox
 
 
-@pytest.fixture(autouse=True)  # type: ignore[misc]
+_FixtureFn = TypeVar("_FixtureFn", bound=Callable[..., object])
+_autouse_fixture = cast(Callable[[_FixtureFn], _FixtureFn], pytest.fixture(autouse=True))
+
+
+@_autouse_fixture
 def _stable_public_preview_dns(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep injected-transport unit tests deterministic and network-free."""
     monkeypatch.setattr(
