@@ -12,7 +12,14 @@ from dataclasses import dataclass
 from typing import Any, Iterable
 from urllib.parse import urlparse
 
-from services.security_factory import SecurityFactoryError, SecurityFinding, SecurityReport, Severity
+from services.security_factory import (
+    RetestResult,
+    SecurityFactory,
+    SecurityFactoryError,
+    SecurityFinding,
+    SecurityReport,
+    Severity,
+)
 
 
 class SecurityExternalToolAdapterError(SecurityFactoryError):
@@ -115,15 +122,17 @@ def normalize_external_tool_result(
     )
 
 
-def retest_external_tool_result(before: SecurityToolEvidence, after: SecurityToolEvidence):
+def retest_external_tool_result(
+    before: SecurityToolEvidence, after: SecurityToolEvidence
+) -> RetestResult:
     if before.tool != after.tool:
         raise SecurityExternalToolAdapterError("retest must use the same external tool")
     if before.target != after.target or before.source_sha == after.source_sha:
-        raise SecurityExternalToolAdapterError("retest target must match and source SHA must advance")
+        raise SecurityExternalToolAdapterError(
+            "retest target must match and source SHA must advance"
+        )
     if before.scope_id != after.scope_id:
         raise SecurityExternalToolAdapterError("retest scope must match")
-    from services.security_factory import SecurityFactory
-
     return SecurityFactory.retest(before.report, after.report)
 
 
@@ -136,4 +145,6 @@ def _validate_target(target: str, allow_staging_hosts: frozenset[str]) -> None:
     hostname = parsed.hostname or ""
     allowed = _ALLOWED_HOSTS | allow_staging_hosts
     if hostname not in allowed:
-        raise SecurityExternalToolAdapterError("production or unapproved external target is forbidden")
+        raise SecurityExternalToolAdapterError(
+            "production or unapproved external target is forbidden"
+        )
