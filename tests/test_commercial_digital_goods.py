@@ -10,9 +10,21 @@ import pytest
 
 from services.book_renderers import render_book_package
 from services.commercial_access import CommercialAccessError, CommercialAccessStore
-from services.commercial_digital_goods import CommercialDigitalGoodsExtension, DigitalOrderState
-from services.commercial_webhook import CommercialWebhookVerifier
-from services.creative_document_factory import BookChapter, BookMetadata, CreativeDocumentFactory
+from services.commercial_digital_goods import (
+    CommercialDigitalGoodsExtension,
+    DigitalBookProduct,
+    DigitalOrderState,
+)
+from services.commercial_webhook import (
+    CommercialWebhookVerifier,
+    VerifiedDigitalPaymentEvent,
+)
+from services.creative_document_factory import (
+    BookChapter,
+    BookManifest,
+    BookMetadata,
+    CreativeDocumentFactory,
+)
 from src.video_automation.managed_credit_store import ManagedCreditLedgerStore
 
 
@@ -25,7 +37,7 @@ def _commercial(tmp_path: Path) -> CommercialDigitalGoodsExtension:
     return CommercialDigitalGoodsExtension(access)
 
 
-def _book(*, approved: bool = True):
+def _book(*, approved: bool = True) -> BookManifest:
     factory = CreativeDocumentFactory()
     manifest = factory.compose_book(
         "book-1",
@@ -59,7 +71,9 @@ def _book(*, approved: bool = True):
     return manifest
 
 
-def _registered_product(extension: CommercialDigitalGoodsExtension, now: datetime):
+def _registered_product(
+    extension: CommercialDigitalGoodsExtension, now: datetime
+) -> DigitalBookProduct:
     book = _book()
     package = render_book_package(book)
     return extension.register_approved_book_product(
@@ -78,7 +92,7 @@ def _signed_payment_event(
     event_type: str,
     provider_order_id: str,
     now: datetime,
-):
+) -> VerifiedDigitalPaymentEvent:
     payload = json.dumps(
         {
             "event_id": event_id,
