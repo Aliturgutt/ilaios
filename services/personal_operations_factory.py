@@ -12,7 +12,10 @@ from typing import TypedDict
 
 from services.evidence import EvidenceStore
 from services.identity import AccessRequest, AuthorizationEngine, Principal
-from services.integrations.personal_operations import ConnectorReceipt
+from services.integrations.personal_operations import (
+    ConnectorReceipt,
+    PersonalOperationsConnectorRejectedError,
+)
 from services.runtime.grants import ExecutionGrant, GrantPolicy
 from src.core.audit_engine import AuditEngine
 from src.core.tool_gateway import ToolGateway
@@ -97,8 +100,14 @@ class ExternalExecutionReceipt:
     receipts: tuple[ConnectorReceipt, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class _StoredExecution:
+    status: str
+    receipt: ConnectorReceipt | None
+
+
 class _ExecutionStore:
-    """Durable idempotency store for provider-side mutation receipts."""
+    """Durable idempotency and ambiguity state for provider-side mutations."""
 
     def __init__(self, database_path: Path) -> None:
         database_path.parent.mkdir(parents=True, exist_ok=True)
@@ -106,21 +115,27 @@ class _ExecutionStore:
         with self._connect() as connection:
             connection.execute(
                 "CREATE TABLE IF NOT EXISTS personal_operation_execution ("
-                "execution_key TEXT PRIMARY KEY, receipt_json TEXT NOT NULL)"
+                "execution_key TEXT PRIMARY KEY, status TEXT NOT NULL DEFAULT 'confirmed', "
+                "receipt_json TEXT NOT NULL DEFAULT '{}')"
             )
+            columns = {
+                str(row[1])
+                for row in connection.execute(
+                    "PRAGMA table_info(personal_operation_execution)"
+                ).fetchall()
+            }
+            if "status" not in columns:
+                connection.execute(
+                    "ALTER TABLE personal_operation_execution "
+                    "ADD COLUMN status TEXT NOT NULL DEFAULT 'confirmed'"
+                )
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self._database_path)
 
-    def get(self, execution_key: str) -> ConnectorReceipt | None:
-        with self._connect() as connection:
-            row = connection.execute(
-                "SELECT receipt_json FROM personal_operation_execution WHERE execution_key = ?",
-                (execution_key,),
-            ).fetchone()
-        if row is None:
-            return None
-        payload = json.loads(str(row[0]))
+    @staticmethod
+    def _decode_receipt(payload_text: str) -> ConnectorReceipt:
+        payload = json.loads(payload_text)
         return ConnectorReceipt(
             provider=str(payload["provider"]),
             provider_id=str(payload["provider_id"]),
@@ -129,8 +144,9 @@ class _ExecutionStore:
             outcome=str(payload["outcome"]),
         )
 
-    def put(self, execution_key: str, receipt: ConnectorReceipt) -> None:
-        payload = json.dumps(
+    @staticmethod
+    def _encode_receipt(receipt: ConnectorReceipt) -> str:
+        return json.dumps(
             {
                 "provider": receipt.provider,
                 "provider_id": receipt.provider_id,
@@ -141,14 +157,69 @@ class _ExecutionStore:
             sort_keys=True,
             separators=(",", ":"),
         )
+
+    def reserve(self, execution_key: str) -> _StoredExecution:
         with self._connect() as connection:
-            try:
+            connection.execute("BEGIN IMMEDIATE")
+            row = connection.execute(
+                "SELECT status, receipt_json FROM personal_operation_execution "
+                "WHERE execution_key = ?",
+                (execution_key,),
+            ).fetchone()
+            if row is None:
                 connection.execute(
-                    "INSERT INTO personal_operation_execution VALUES (?, ?)",
-                    (execution_key, payload),
+                    "INSERT INTO personal_operation_execution "
+                    "(execution_key, status, receipt_json) VALUES (?, 'inflight', '{}')",
+                    (execution_key,),
                 )
-            except sqlite3.IntegrityError as error:
-                raise PersonalOperationsError("execution receipt already persisted") from error
+                return _StoredExecution("inflight", None)
+            status = str(row[0])
+            if status in {"confirmed", "complete"}:
+                return _StoredExecution(status, self._decode_receipt(str(row[1])))
+            if status == "ambiguous":
+                raise PersonalOperationsError(
+                    "external execution is ambiguous; reconciliation is required before retry"
+                )
+            raise PersonalOperationsError("external execution is already in progress")
+
+    def release_rejected(self, execution_key: str) -> None:
+        with self._connect() as connection:
+            connection.execute(
+                "DELETE FROM personal_operation_execution "
+                "WHERE execution_key = ? AND status = 'inflight'",
+                (execution_key,),
+            )
+
+    def mark_ambiguous(self, execution_key: str) -> None:
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "UPDATE personal_operation_execution SET status = 'ambiguous' "
+                "WHERE execution_key = ? AND status = 'inflight'",
+                (execution_key,),
+            )
+            if cursor.rowcount != 1:
+                raise PersonalOperationsError("could not persist ambiguous execution state")
+
+    def confirm(self, execution_key: str, receipt: ConnectorReceipt) -> None:
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "UPDATE personal_operation_execution "
+                "SET status = 'confirmed', receipt_json = ? "
+                "WHERE execution_key = ? AND status = 'inflight'",
+                (self._encode_receipt(receipt), execution_key),
+            )
+            if cursor.rowcount != 1:
+                raise PersonalOperationsError("could not persist confirmed execution receipt")
+
+    def complete(self, execution_key: str) -> None:
+        with self._connect() as connection:
+            cursor = connection.execute(
+                "UPDATE personal_operation_execution SET status = 'complete' "
+                "WHERE execution_key = ? AND status = 'confirmed'",
+                (execution_key,),
+            )
+            if cursor.rowcount != 1:
+                raise PersonalOperationsError("could not finalize execution evidence state")
 
 
 class PersonalOperationsFactory:
@@ -313,19 +384,55 @@ class PersonalOperationsFactory:
             execution_key = hashlib.sha256(
                 f"{plan.plan_sha256}:{step.step_id}:{context.target_account}".encode("utf-8")
             ).hexdigest()
-            previous = self._execution_store.get(execution_key)
-            if previous is not None:
-                if previous.target_account != context.target_account:
+            stored = self._execution_store.reserve(execution_key)
+            receipt = stored.receipt
+            if stored.status == "complete":
+                if receipt is None or receipt.target_account != context.target_account:
                     raise PersonalOperationsError("idempotency receipt target mismatch")
-                receipts.append(previous)
+                receipts.append(receipt)
                 continue
-            try:
-                receipt = self._dispatch_step(gateway, step, context.target_account, execution_key)
+
+            if stored.status == "inflight":
+                try:
+                    receipt = self._dispatch_step(gateway, step, context.target_account, execution_key)
+                except (PersonalOperationsConnectorRejectedError, ValueError):
+                    self._execution_store.release_rejected(execution_key)
+                    audit.record(
+                        "personal_operations",
+                        step.action,
+                        "failure",
+                        {**details, "step_id": step.step_id, "retry_safe": True},
+                    )
+                    raise
+                except Exception:
+                    self._execution_store.mark_ambiguous(execution_key)
+                    audit.record(
+                        "personal_operations",
+                        step.action,
+                        "ambiguous",
+                        {**details, "step_id": step.step_id, "retry_safe": False},
+                    )
+                    raise
                 if receipt.target_account != context.target_account:
+                    self._execution_store.mark_ambiguous(execution_key)
                     raise PersonalOperationsError("connector receipt target account mismatch")
-                artifact = evidence.put_artifact(_receipt_bytes(plan, step, receipt))
-                evidence.append_provenance(execution_key, artifact, f"personal_operations.{step.action}")
-                self._execution_store.put(execution_key, receipt)
+                self._execution_store.confirm(execution_key, receipt)
+
+            if receipt is None:
+                raise PersonalOperationsError("confirmed execution is missing provider receipt")
+            try:
+                existing = {
+                    record.execution_id
+                    for record in evidence.verify()
+                }
+                if execution_key not in existing:
+                    artifact = evidence.put_artifact(_receipt_bytes(plan, step, receipt))
+                    evidence.append_provenance(
+                        execution_key,
+                        artifact,
+                        f"personal_operations.{step.action}",
+                    )
+                self._execution_store.complete(execution_key)
                 audit.record(
                     "personal_operations",
                     step.action,
@@ -338,7 +445,7 @@ class PersonalOperationsFactory:
                 audit.record(
                     "personal_operations",
                     step.action,
-                    "failure",
+                    "evidence_failure",
                     {**details, "step_id": step.step_id},
                 )
                 raise
@@ -365,9 +472,13 @@ class PersonalOperationsFactory:
                 subject = str(payload["subject"])
                 body = str(payload["body"])
             except (KeyError, TypeError, json.JSONDecodeError) as error:
-                raise PersonalOperationsError("send_email payload requires JSON subject and body") from error
+                raise PersonalOperationsConnectorRejectedError(
+                    "send_email payload requires JSON subject and body"
+                ) from error
             if not subject.strip() or not body.strip():
-                raise PersonalOperationsError("send_email subject and body are required")
+                raise PersonalOperationsConnectorRejectedError(
+                    "send_email subject and body are required"
+                )
             kwargs.update({"recipient": step.target, "subject": subject, "body": body})
         elif step.action == "update_calendar_event":
             kwargs.update({"event_id": step.target, "payload": step.payload})
