@@ -135,6 +135,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
+      SOURCE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
       SEMGREP_VERSION: "1.172.0"
       TRIVY_VERSION: "0.74.0"
       NUCLEI_VERSION: "3.11.1"
@@ -146,9 +147,15 @@ jobs:
       - name: Checkout exact source commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Verify exact source identity
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          printf 'SECURITY_EXACT_SOURCE_SHA=%s\n' "$SOURCE_SHA"
 
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
@@ -175,7 +182,7 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           for attempt in $(seq 1 30); do
             if curl --fail --silent --show-error "$LOCAL_TARGET" >/dev/null; then
-              printf 'LOCAL_ILAIOS_TARGET=READY source_sha=%s target=%s\n' "$GITHUB_SHA" "$LOCAL_TARGET"
+              printf 'LOCAL_ILAIOS_TARGET=READY source_sha=%s target=%s\n' "$SOURCE_SHA" "$LOCAL_TARGET"
               exit 0
             fi
             sleep 1
@@ -248,7 +255,8 @@ jobs:
             -t nuclei-templates/http/ \
             -severity high,critical \
             -jsonl-export artifacts/security-free-digital/nuclei.jsonl \
-            -disable-update-check
+            -disable-update-check \
+            -no-interactsh
 
       - name: Run OWASP ZAP baseline against exact-head localhost only
         run: |
@@ -256,10 +264,13 @@ jobs:
           test "$LOCAL_TARGET" = "http://127.0.0.1:3000"
           docker pull "ghcr.io/zaproxy/zaproxy:${ZAP_VERSION}"
           docker image inspect "ghcr.io/zaproxy/zaproxy:${ZAP_VERSION}" --format '{{json .RepoDigests}}' > artifacts/security-free-digital/zap-image-digest.json
+          chmod 0777 artifacts/security-free-digital
           docker run --rm --network host \
             -v "$PWD/artifacts/security-free-digital:/zap/wrk/:rw" \
             "ghcr.io/zaproxy/zaproxy:${ZAP_VERSION}" \
-            zap-baseline.py -t "$LOCAL_TARGET" -J zap.json -r zap.html -I
+            zap-baseline.py -t "$LOCAL_TARGET" -J zap.json -I
+          test -s artifacts/security-free-digital/zap.json
+          chmod 0755 artifacts/security-free-digital
 
       - name: Canonical evidence and retest receipt
         run: |
@@ -285,7 +296,7 @@ jobs:
               ('zap', 'zap.json'),
           ):
               report = report_from_external_tool(
-                  scope_id=f"free-digital-{os.environ['GITHUB_SHA']}",
+                  scope_id=f"free-digital-{os.environ['SOURCE_SHA']}",
                   tool=tool,
                   evidence_path=root / filename,
               )
@@ -296,7 +307,7 @@ jobs:
               }
 
           receipt = {
-              'source_sha': os.environ['GITHUB_SHA'],
+              'source_sha': os.environ['SOURCE_SHA'],
               'scope': 'exact-head-localhost-only',
               'target': os.environ['LOCAL_TARGET'],
               'provider_cost_usd': 0,
@@ -315,6 +326,7 @@ jobs:
               'external_independent_pentest': 'UNVERIFIED',
           }
           (root / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
+          print(json.dumps(receipt, sort_keys=True))
           if receipt['retest'] != 'PASS':
               raise SystemExit('blocking external-tool findings require remediation and retest')
           print('FREE_DIGITAL_SECURITY_SUITE=PASS')
@@ -324,7 +336,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: security-free-digital-${{ github.sha }}-${{ github.run_id }}
+          name: security-free-digital-${{ env.SOURCE_SHA }}-${{ github.run_id }}
           path: artifacts/security-free-digital
           if-no-files-found: error
           retention-days: 30
