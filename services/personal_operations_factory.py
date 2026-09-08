@@ -409,8 +409,13 @@ class PersonalOperationsFactory:
                     audit.record(
                         "personal_operations",
                         step.action,
-                        "ambiguous",
-                        {**details, "step_id": step.step_id, "retry_safe": "false"},
+                        "failure",
+                        {
+                            **details,
+                            "step_id": step.step_id,
+                            "retry_safe": "false",
+                            "execution_state": "ambiguous",
+                        },
                     )
                     raise
                 if receipt.target_account != context.target_account:
@@ -421,10 +426,7 @@ class PersonalOperationsFactory:
             if receipt is None:
                 raise PersonalOperationsError("confirmed execution is missing provider receipt")
             try:
-                existing = {
-                    record.execution_id
-                    for record in evidence.verify()
-                }
+                existing = {record.execution_id for record in evidence.verify()}
                 if execution_key not in existing:
                     artifact = evidence.put_artifact(_receipt_bytes(plan, step, receipt))
                     evidence.append_provenance(
@@ -445,8 +447,8 @@ class PersonalOperationsFactory:
                 audit.record(
                     "personal_operations",
                     step.action,
-                    "evidence_failure",
-                    {**details, "step_id": step.step_id},
+                    "failure",
+                    {**details, "step_id": step.step_id, "failure_kind": "evidence_failure"},
                 )
                 raise
 
