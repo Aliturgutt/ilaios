@@ -39,16 +39,26 @@ class DailySourceObservation:
         for name in ("topic_id", "title", "summary", "category", "source_url"):
             value = getattr(self, name)
             if not value or value != value.strip():
-                raise DailyYouTubePlanningError(f"{name} must be normalized non-blank text")
+                raise DailyYouTubePlanningError(
+                    f"{name} must be normalized non-blank text"
+                )
         if self.published_at.tzinfo is None or self.published_at.utcoffset() is None:
             raise DailyYouTubePlanningError("published_at must be timezone-aware")
         parsed = urlparse(self.source_url)
         if parsed.scheme != "https" or not parsed.hostname:
-            raise DailyYouTubePlanningError("source_url must be an absolute HTTPS URL")
-        for name in ("relevance_score", "advertiser_value_score", "freshness_score"):
+            raise DailyYouTubePlanningError(
+                "source_url must be an absolute HTTPS URL"
+            )
+        for name in (
+            "relevance_score",
+            "advertiser_value_score",
+            "freshness_score",
+        ):
             score = float(getattr(self, name))
             if score < 0.0 or score > 1.0:
-                raise DailyYouTubePlanningError(f"{name} must be between 0 and 1")
+                raise DailyYouTubePlanningError(
+                    f"{name} must be between 0 and 1"
+                )
 
     @property
     def source_origin(self) -> str:
@@ -61,7 +71,10 @@ class DailySourceObservation:
 class DailySourceAggregator:
     """Build topic candidates only from genuinely independent source origins."""
 
-    def aggregate(self, observations: tuple[DailySourceObservation, ...]) -> tuple[DailyTopicCandidate, ...]:
+    def aggregate(
+        self,
+        observations: tuple[DailySourceObservation, ...],
+    ) -> tuple[DailyTopicCandidate, ...]:
         grouped: dict[str, list[DailySourceObservation]] = {}
         for observation in observations:
             grouped.setdefault(observation.topic_id, []).append(observation)
@@ -102,9 +115,13 @@ class DailySourceAggregator:
                     published_at=max(item.published_at for item in group),
                     independent_source_refs=source_urls,
                     relevance_score=max(item.relevance_score for item in group),
-                    advertiser_value_score=max(item.advertiser_value_score for item in group),
+                    advertiser_value_score=max(
+                        item.advertiser_value_score for item in group
+                    ),
                     freshness_score=max(item.freshness_score for item in group),
-                    content_fingerprint=sha256(material.encode("utf-8")).hexdigest(),
+                    content_fingerprint=sha256(
+                        material.encode("utf-8")
+                    ).hexdigest(),
                 )
             )
         return tuple(candidates)
@@ -122,14 +139,25 @@ class YouTubeEditorialPolicy:
     contains_synthetic_media: bool = False
 
     def __post_init__(self) -> None:
-        for name in ("account_id", "category_id", "default_language", "visibility"):
+        for name in (
+            "account_id",
+            "category_id",
+            "default_language",
+            "visibility",
+        ):
             value = getattr(self, name)
             if not value or value != value.strip():
-                raise DailyYouTubePlanningError(f"{name} must be normalized non-blank text")
+                raise DailyYouTubePlanningError(
+                    f"{name} must be normalized non-blank text"
+                )
         if not self.category_id.isdigit():
-            raise DailyYouTubePlanningError("category_id must be a numeric YouTube category id")
+            raise DailyYouTubePlanningError(
+                "category_id must be a numeric YouTube category id"
+            )
         if self.default_language != "en":
-            raise DailyYouTubePlanningError("daily channel metadata language must be English")
+            raise DailyYouTubePlanningError(
+                "daily channel metadata language must be English"
+            )
 
 
 def prepare_youtube_target(
@@ -150,21 +178,36 @@ def prepare_youtube_target(
         raise DailyYouTubePlanningError("scheduled_at must be timezone-aware")
     clean_title = title.strip()
     clean_description = description.strip()
-    if not clean_title or len(clean_title) > 100 or "<" in clean_title or ">" in clean_title:
-        raise DailyYouTubePlanningError("YouTube title must be 1-100 characters and exclude angle brackets")
+    if (
+        not clean_title
+        or len(clean_title) > 100
+        or "<" in clean_title
+        or ">" in clean_title
+    ):
+        raise DailyYouTubePlanningError(
+            "YouTube title must be 1-100 characters and exclude angle brackets"
+        )
     if not clean_description:
         raise DailyYouTubePlanningError("YouTube description must not be blank")
     if len(hashtags) < 3 or len(hashtags) > 5:
-        raise DailyYouTubePlanningError("YouTube description must carry 3-5 hashtags")
+        raise DailyYouTubePlanningError(
+            "YouTube description must carry 3-5 hashtags"
+        )
 
     normalized_hashtags: list[str] = []
+    seen_hashtags: set[str] = set()
     for hashtag in hashtags:
         value = hashtag.strip()
-        if not value.startswith("#") or len(value) < 2 or any(ch.isspace() for ch in value):
+        if (
+            not value.startswith("#")
+            or len(value) < 2
+            or any(ch.isspace() for ch in value)
+        ):
             raise DailyYouTubePlanningError("hashtags must be compact #tokens")
         folded = value.casefold()
-        if folded in {item.casefold() for item in normalized_hashtags}:
+        if folded in seen_hashtags:
             raise DailyYouTubePlanningError("hashtags must be unique")
+        seen_hashtags.add(folded)
         normalized_hashtags.append(value)
 
     normalized_tags = tuple(tag.strip().lower() for tag in tags)
@@ -173,23 +216,36 @@ def prepare_youtube_target(
     if len(normalized_tags) != len(set(normalized_tags)):
         raise DailyYouTubePlanningError("YouTube tags must be unique")
     if any(any(ch.isspace() for ch in tag) for tag in normalized_tags):
-        raise DailyYouTubePlanningError("YouTube tags must not contain whitespace")
+        raise DailyYouTubePlanningError(
+            "YouTube tags must not contain whitespace"
+        )
 
     if len(candidate.independent_source_refs) < 2:
-        raise DailyTopicSelectionError("YouTube factual episode requires at least two source references")
-    sources = "\n".join(f"- {ref}" for ref in candidate.independent_source_refs)
+        raise DailyTopicSelectionError(
+            "YouTube factual episode requires at least two source references"
+        )
+    sources = "\n".join(
+        f"- {ref}" for ref in candidate.independent_source_refs
+    )
     final_description = (
-        f"{clean_description}\n\nSources:\n{sources}\n\n{' '.join(normalized_hashtags)}"
+        f"{clean_description}\n\nSources:\n{sources}\n\n"
+        f"{' '.join(normalized_hashtags)}"
     )
     if len(final_description.encode("utf-8")) > 5000:
-        raise DailyYouTubePlanningError("YouTube description exceeds the 5000-byte API limit")
+        raise DailyYouTubePlanningError(
+            "YouTube description exceeds the 5000-byte API limit"
+        )
 
     thumb_path = thumbnail_path.strip()
     thumb_sha = thumbnail_sha256.strip().lower()
     if not thumb_path:
         raise DailyYouTubePlanningError("thumbnail_path must not be blank")
-    if len(thumb_sha) != 64 or any(ch not in "0123456789abcdef" for ch in thumb_sha):
-        raise DailyYouTubePlanningError("thumbnail_sha256 must be a lowercase SHA-256 digest")
+    if len(thumb_sha) != 64 or any(
+        ch not in "0123456789abcdef" for ch in thumb_sha
+    ):
+        raise DailyYouTubePlanningError(
+            "thumbnail_sha256 must be a lowercase SHA-256 digest"
+        )
 
     return PublishingTarget(
         platform="youtube",
@@ -202,8 +258,12 @@ def prepare_youtube_target(
         metadata={
             "youtube_category_id": policy.category_id,
             "youtube_default_language": policy.default_language,
-            "youtube_self_declared_made_for_kids": str(policy.self_declared_made_for_kids).lower(),
-            "youtube_contains_synthetic_media": str(policy.contains_synthetic_media).lower(),
+            "youtube_self_declared_made_for_kids": str(
+                policy.self_declared_made_for_kids
+            ).lower(),
+            "youtube_contains_synthetic_media": str(
+                policy.contains_synthetic_media
+            ).lower(),
             "youtube_thumbnail_path": thumb_path,
             "youtube_thumbnail_sha256": thumb_sha,
             "daily_topic_id": candidate.topic_id,
