@@ -148,6 +148,21 @@ def test_governed_quote_includes_fx_fixed_cost_tax_reserve_paytr_and_40_percent_
     assert profit * 10_000 // quote.net_price_ex_tax_microusd >= 4_000
 
 
+def _free_kwargs(*, request_id: str, tenant_id: str = "tenant-a", cost: int = 0) -> dict[str, object]:
+    return {
+        "config": CommercialCostConfig(),
+        "request_id": request_id,
+        "tenant_id": tenant_id,
+        "user_id": "user-a",
+        "month_key": "2026-09",
+        "provider_name": "openrouter",
+        "model_id": "openrouter/free" if cost == 0 else "not-free",
+        "provider_cost_microusd": cost,
+        "platform_free_budget_allowed": True,
+        "now_epoch_s": _NOW,
+    }
+
+
 def test_free_admission_requires_exact_zero_cost_and_never_silently_falls_back(
     tmp_path,
 ) -> None:
@@ -155,16 +170,7 @@ def test_free_admission_requires_exact_zero_cost_and_never_silently_falls_back(
     with pytest.raises(CommercialAdmissionError, match="paid quote required"):
         authorize_free_operation(
             store=store,
-            request_id="paid-cost-request",
-            tenant_id="tenant-a",
-            user_id="user-a",
-            month_key="2026-09",
-            provider_name="openrouter",
-            model_id="not-free",
-            provider_cost_microusd=1,
-            platform_free_budget_allowed=True,
-            monthly_limit=100,
-            now_epoch_s=_NOW,
+            **_free_kwargs(request_id="paid-cost-request", cost=1),
         )
 
 
@@ -174,74 +180,44 @@ def test_free_admission_is_idempotent_tenant_user_scoped_and_quota_bounded(
     store = ManagedCreditLedgerStore(tmp_path)
     first = authorize_free_operation(
         store=store,
-        request_id="free-request-001",
-        tenant_id="tenant-a",
-        user_id="user-a",
-        month_key="2026-09",
-        provider_name="openrouter",
-        model_id="openrouter/free",
-        provider_cost_microusd=0,
-        platform_free_budget_allowed=True,
-        monthly_limit=100,
-        now_epoch_s=_NOW,
+        **_free_kwargs(request_id="free-request-001"),
     )
     repeated = authorize_free_operation(
         store=store,
-        request_id="free-request-001",
-        tenant_id="tenant-a",
-        user_id="user-a",
-        month_key="2026-09",
-        provider_name="openrouter",
-        model_id="openrouter/free",
-        provider_cost_microusd=0,
-        platform_free_budget_allowed=True,
-        monthly_limit=100,
-        now_epoch_s=_NOW,
+        **_free_kwargs(request_id="free-request-001"),
     )
     assert first.ordinal == repeated.ordinal == 1
+    assert first.monthly_limit == 100
 
     for ordinal in range(2, 101):
         admitted = authorize_free_operation(
             store=store,
-            request_id=f"free-request-{ordinal:03d}",
-            tenant_id="tenant-a",
-            user_id="user-a",
-            month_key="2026-09",
-            provider_name="openrouter",
-            model_id="openrouter/free",
-            provider_cost_microusd=0,
-            platform_free_budget_allowed=True,
-            monthly_limit=100,
-            now_epoch_s=_NOW,
+            **_free_kwargs(request_id=f"free-request-{ordinal:03d}"),
         )
         assert admitted.ordinal == ordinal
 
     with pytest.raises(CommercialAdmissionError, match="quota exhausted"):
         authorize_free_operation(
             store=store,
-            request_id="free-request-101",
-            tenant_id="tenant-a",
-            user_id="user-a",
-            month_key="2026-09",
-            provider_name="openrouter",
-            model_id="openrouter/free",
-            provider_cost_microusd=0,
-            platform_free_budget_allowed=True,
-            monthly_limit=100,
-            now_epoch_s=_NOW,
+            **_free_kwargs(request_id="free-request-101"),
         )
 
     other_tenant = authorize_free_operation(
         store=store,
-        request_id="other-tenant-001",
-        tenant_id="tenant-b",
-        user_id="user-a",
-        month_key="2026-09",
-        provider_name="openrouter",
-        model_id="openrouter/free",
-        provider_cost_microusd=0,
-        platform_free_budget_allowed=True,
-        monthly_limit=100,
-        now_epoch_s=_NOW,
+        **_free_kwargs(request_id="other-tenant-001", tenant_id="tenant-b"),
     )
     assert other_tenant.ordinal == 1
+
+
+def test_free_quota_cannot_be_overridden_outside_config(tmp_path) -> None:
+    store = ManagedCreditLedgerStore(tmp_path)
+    config = replace(CommercialCostConfig(), free_operations_per_active_user_per_month=1)
+    first_kwargs = _free_kwargs(request_id="bounded-001")
+    first_kwargs["config"] = config
+    admitted = authorize_free_operation(store=store, **first_kwargs)
+    assert admitted.monthly_limit == 1
+
+    second_kwargs = _free_kwargs(request_id="bounded-002")
+    second_kwargs["config"] = config
+    with pytest.raises(CommercialAdmissionError, match="quota exhausted"):
+        authorize_free_operation(store=store, **second_kwargs)
