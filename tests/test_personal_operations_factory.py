@@ -18,6 +18,7 @@ from services.identity import (
 )
 from services.integrations.personal_operations import (
     ConnectorReceipt,
+    PersonalOperationsConnectorError,
     register_personal_operations_connectors,
 )
 from services.personal_operations_factory import (
@@ -52,7 +53,13 @@ class _NoopBootstrapValidator(BootstrapValidator):
 
 
 class _MailConnector:
-    def __init__(self, *, fail: bool = False) -> None:
+    def __init__(
+        self,
+        *,
+        authenticated_account: str = "account@example.com",
+        fail: bool = False,
+    ) -> None:
+        self.authenticated_account = authenticated_account
         self.calls = 0
         self.fail = fail
 
@@ -226,34 +233,50 @@ def test_duplicate_execution_is_idempotent_and_does_not_call_provider_twice(tmp_
     assert len(evidence.verify()) == 1
 
 
-@pytest.mark.parametrize(
-    ("context", "authorization", "match"),
-    [
+def test_external_execution_fail_closed_gates(tmp_path: Path) -> None:
+    cases: tuple[tuple[ExternalExecutionContext, AuthorizationEngine, str], ...] = (
         (_execution_context(approval_id=None), _authorization(), "explicit independent mutation approval"),
         (_execution_context(resource_tenant="tenant-b"), _authorization(), "cross-tenant access denied"),
         (_execution_context(grant_expires_at=NOW), _authorization(), "grant is expired"),
         (_execution_context(), _authorization(expires_at=NOW), "valid independent approval is required"),
-    ],
-)
-def test_external_execution_fail_closed_gates(
-    tmp_path: Path,
-    context: ExternalExecutionContext,
-    authorization: AuthorizationEngine,
-    match: str,
-) -> None:
+    )
+    for index, (context, authorization, match) in enumerate(cases):
+        case_path = tmp_path / f"case-{index}"
+        case_path.mkdir()
+        factory = _approved_factory(case_path)
+        gateway = _gateway(case_path)
+        register_personal_operations_connectors(gateway, mail=_MailConnector())
+        with pytest.raises((PersonalOperationsError, PermissionError), match=match):
+            factory.apply_external(
+                "plan-1",
+                context=context,
+                gateway=gateway,
+                authorization=authorization,
+                grants=GrantPolicy(),
+                audit=AuditEngine(),
+                evidence=EvidenceStore(case_path / "evidence"),
+            )
+
+
+def test_connector_account_mismatch_fails_before_provider_mutation(tmp_path: Path) -> None:
     factory = _approved_factory(tmp_path)
+    connector = _MailConnector(authenticated_account="wrong@example.com")
     gateway = _gateway(tmp_path)
-    register_personal_operations_connectors(gateway, mail=_MailConnector())
-    with pytest.raises((PersonalOperationsError, PermissionError), match=match):
+    register_personal_operations_connectors(gateway, mail=connector)
+
+    with pytest.raises(PersonalOperationsConnectorError, match="does not match target account"):
         factory.apply_external(
             "plan-1",
-            context=context,
+            context=_execution_context(),
             gateway=gateway,
-            authorization=authorization,
+            authorization=_authorization(),
             grants=GrantPolicy(),
             audit=AuditEngine(),
             evidence=EvidenceStore(tmp_path / "evidence"),
         )
+
+    assert connector.calls == 0
+    assert factory.review_projection("plan-1")["external_applied"] is False
 
 
 def test_missing_connector_and_provider_failure_do_not_mark_plan_applied(tmp_path: Path) -> None:
