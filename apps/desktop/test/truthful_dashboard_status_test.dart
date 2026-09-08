@@ -5,7 +5,7 @@ import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('connected control plane without runtime data never invents command-center telemetry', (
+  testWidgets('connected control plane without runtime data never invents canonical Home telemetry', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -28,39 +28,27 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('command-center-home')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-hero')), findsOneWidget);
-    expect(find.text('Connected'), findsWidgets);
-    // Final Polish deliberately removes the old KPI wall. Missing authority
-    // stays absent rather than being represented by screenshot/demo values.
-    expect(find.byKey(const Key('command-center-metrics')), findsNothing);
+    expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
+    expect(find.text('No verified runtime agent data'), findsOneWidget);
     expect(find.textContaining(r'$3.21'), findsNothing);
     expect(find.textContaining('18.362'), findsNothing);
     expect(find.text('96%'), findsNothing);
     expect(find.text('24'), findsNothing);
   });
 
-  testWidgets('command center projects populated authoritative runtime values', (
+  testWidgets('canonical Home projects only authority-derived agent runtime values', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
     const snapshot = OperationalSnapshot(
-      runtimeRoutes: <Map<String, Object?>>[
-        <String, Object?>{'route_id': 'software'},
-        <String, Object?>{'route_id': 'video'},
-      ],
+      runtimeRoutes: <Map<String, Object?>>[],
       schedulerState: <String, Object?>{
         'leases': <Map<String, Object?>>[
           <String, Object?>{
-            'role': 'Frontend Dev',
-            'task': 'render-authoritative-ui',
+            'agent_id': 'ilaios.agent.core.1',
             'status': 'running',
-          },
-          <String, Object?>{
-            'role': 'Test Engineer',
-            'task': 'verify-runtime-evidence',
-            'status': 'active',
           },
         ],
       },
@@ -68,26 +56,6 @@ void main() {
       governanceState: <String, Object?>{
         'total_cost_usd': '2.75',
         'budget_usd': '10.00',
-        'admissions': <Map<String, Object?>>[
-          <String, Object?>{
-            'request_id': 'approval-1',
-            'human_approval_required': true,
-          },
-        ],
-        'work': <Map<String, Object?>>[
-          <String, Object?>{
-            'request_id': 'approval-1',
-            'status': 'pending',
-          },
-          <String, Object?>{
-            'request_id': 'approval-2',
-            'status': 'approved',
-          },
-          <String, Object?>{
-            'request_id': 'approval-3',
-            'status': 'denied',
-          },
-        ],
       },
       evidenceRecords: <EvidenceRecord>[
         EvidenceRecord(
@@ -99,19 +67,15 @@ void main() {
           recordHash: 'record-authoritative-001',
         ),
       ],
-      liveEvents: <Map<String, Object?>>[
-        <String, Object?>{
-          'event_type': 'worker_progress',
-          'job_id': 'job-authoritative-001',
-          'started_at': '2026-08-16T16:00:00Z',
-          'elapsed': '00:02:15',
-          'estimated_finish': '2026-08-16T16:05:00Z',
-          'phase': 'Execution',
-          'status': 'running',
-          'progress_percent': 64,
-          'timestamp': '2026-08-16T16:02:15Z',
-        },
-      ],
+      liveEvents: <Map<String, Object?>>[],
+      agentState: <String, Object?>{
+        'agents': <Map<String, Object?>>[
+          <String, Object?>{
+            'agent_id': 'ilaios.agent.core.1',
+            'team': 'core',
+          },
+        ],
+      },
     );
 
     await tester.pumpWidget(
@@ -132,18 +96,9 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.byKey(const Key('command-center-home')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-attention')), findsOneWidget);
-
-    // Final Polish keeps authority-derived state but removes the old KPI wall
-    // and downgrades raw execution/request identifiers to technical detail.
-    expect(find.byKey(const Key('command-center-metrics')), findsNothing);
-    expect(find.text('approval-1'), findsNothing);
-    expect(find.text('approval-2'), findsNothing);
-    expect(find.text('approval-3'), findsNothing);
-    expect(find.text('job-authoritative-001'), findsNothing);
-    expect(find.text('00:02:15'), findsNothing);
-
-    // Demo reference telemetry is never promoted into runtime truth.
+    expect(find.text('Core'), findsOneWidget);
+    expect(find.text('1 busy'), findsOneWidget);
+    expect(find.text('execution-authoritative-001'), findsNothing);
     expect(find.textContaining(r'$3.21'), findsNothing);
     expect(find.textContaining('18.362'), findsNothing);
     expect(find.text('96%'), findsNothing);
