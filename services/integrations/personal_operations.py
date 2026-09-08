@@ -30,8 +30,14 @@ class ConnectorReceipt:
     outcome: str
 
     def __post_init__(self) -> None:
-        if not self.provider.strip() or not self.provider_id.strip() or not self.target_account.strip():
-            raise PersonalOperationsConnectorRejectedError("connector receipt identity is required")
+        if (
+            not self.provider.strip()
+            or not self.provider_id.strip()
+            or not self.target_account.strip()
+        ):
+            raise PersonalOperationsConnectorRejectedError(
+                "connector receipt identity is required"
+            )
         if self.occurred_at.tzinfo is None:
             raise PersonalOperationsConnectorRejectedError(
                 "connector receipt timestamp must be timezone-aware"
@@ -60,7 +66,11 @@ class MailConnector(AccountBoundConnector, Protocol):
 
 class CalendarConnector(AccountBoundConnector, Protocol):
     def create_event(
-        self, *, target_account: str, payload: str, idempotency_key: str
+        self,
+        *,
+        target_account: str,
+        payload: str,
+        idempotency_key: str,
     ) -> ConnectorReceipt: ...
 
     def update_event(
@@ -75,13 +85,21 @@ class CalendarConnector(AccountBoundConnector, Protocol):
 
 class NotesConnector(AccountBoundConnector, Protocol):
     def create_note(
-        self, *, target_account: str, payload: str, idempotency_key: str
+        self,
+        *,
+        target_account: str,
+        payload: str,
+        idempotency_key: str,
     ) -> ConnectorReceipt: ...
 
 
 class ReminderConnector(AccountBoundConnector, Protocol):
     def create_reminder(
-        self, *, target_account: str, payload: str, idempotency_key: str
+        self,
+        *,
+        target_account: str,
+        payload: str,
+        idempotency_key: str,
     ) -> ConnectorReceipt: ...
 
 
@@ -104,8 +122,10 @@ def register_personal_operations_connectors(
     notes: NotesConnector | None = None,
     reminders: ReminderConnector | None = None,
 ) -> None:
-    """Register only explicitly configured account-bound connectors on the canonical gateway."""
+    """Register only explicitly configured account-bound connectors."""
     if mail is not None:
+        mail_connector = mail
+
         def send_email(
             *,
             target_account: str,
@@ -114,8 +134,8 @@ def register_personal_operations_connectors(
             body: str,
             idempotency_key: str,
         ) -> ConnectorReceipt:
-            _require_account(mail.authenticated_account, target_account)
-            return mail.send_email(
+            _require_account(mail_connector.authenticated_account, target_account)
+            return mail_connector.send_email(
                 target_account=target_account,
                 recipient=recipient,
                 subject=subject,
@@ -126,36 +146,56 @@ def register_personal_operations_connectors(
         gateway.register_handler("personal_operations.send_email", send_email)
 
     if calendar is not None:
+        calendar_connector = calendar
+
         def create_calendar_event(
-            *, target_account: str, payload: str, idempotency_key: str
+            *,
+            target_account: str,
+            payload: str,
+            idempotency_key: str,
         ) -> ConnectorReceipt:
-            _require_account(calendar.authenticated_account, target_account)
-            return calendar.create_event(
+            _require_account(calendar_connector.authenticated_account, target_account)
+            return calendar_connector.create_event(
                 target_account=target_account,
                 payload=payload,
                 idempotency_key=idempotency_key,
             )
 
         def update_calendar_event(
-            *, target_account: str, event_id: str, payload: str, idempotency_key: str
+            *,
+            target_account: str,
+            event_id: str,
+            payload: str,
+            idempotency_key: str,
         ) -> ConnectorReceipt:
-            _require_account(calendar.authenticated_account, target_account)
-            return calendar.update_event(
+            _require_account(calendar_connector.authenticated_account, target_account)
+            return calendar_connector.update_event(
                 target_account=target_account,
                 event_id=event_id,
                 payload=payload,
                 idempotency_key=idempotency_key,
             )
 
-        gateway.register_handler("personal_operations.create_calendar_event", create_calendar_event)
-        gateway.register_handler("personal_operations.update_calendar_event", update_calendar_event)
+        gateway.register_handler(
+            "personal_operations.create_calendar_event",
+            create_calendar_event,
+        )
+        gateway.register_handler(
+            "personal_operations.update_calendar_event",
+            update_calendar_event,
+        )
 
     if notes is not None:
+        notes_connector = notes
+
         def create_note(
-            *, target_account: str, payload: str, idempotency_key: str
+            *,
+            target_account: str,
+            payload: str,
+            idempotency_key: str,
         ) -> ConnectorReceipt:
-            _require_account(notes.authenticated_account, target_account)
-            return notes.create_note(
+            _require_account(notes_connector.authenticated_account, target_account)
+            return notes_connector.create_note(
                 target_account=target_account,
                 payload=payload,
                 idempotency_key=idempotency_key,
@@ -164,14 +204,22 @@ def register_personal_operations_connectors(
         gateway.register_handler("personal_operations.create_note", create_note)
 
     if reminders is not None:
+        reminders_connector = reminders
+
         def create_reminder(
-            *, target_account: str, payload: str, idempotency_key: str
+            *,
+            target_account: str,
+            payload: str,
+            idempotency_key: str,
         ) -> ConnectorReceipt:
-            _require_account(reminders.authenticated_account, target_account)
-            return reminders.create_reminder(
+            _require_account(reminders_connector.authenticated_account, target_account)
+            return reminders_connector.create_reminder(
                 target_account=target_account,
                 payload=payload,
                 idempotency_key=idempotency_key,
             )
 
-        gateway.register_handler("personal_operations.create_reminder", create_reminder)
+        gateway.register_handler(
+            "personal_operations.create_reminder",
+            create_reminder,
+        )
