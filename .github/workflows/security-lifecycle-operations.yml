@@ -71,9 +71,9 @@ jobs:
       - name: Scan complete repository history without disclosing values
         run: |
           set -euo pipefail
-          python -m services.software_factory_secret_scanning \\
-            --repository-root "$GITHUB_WORKSPACE" \\
-            --history \\
+          python -m services.software_factory_secret_scanning \
+            --repository-root "$GITHUB_WORKSPACE" \
+            --history \
             --head-sha "$GITHUB_SHA"
 
   provider-neutral-recovery-drills:
@@ -138,6 +138,8 @@ jobs:
       SEMGREP_VERSION: "1.172.0"
       TRIVY_VERSION: "0.74.0"
       NUCLEI_VERSION: "3.11.1"
+      NUCLEI_TEMPLATES_VERSION: "10.4.8"
+      NUCLEI_TEMPLATES_SHA: "e5f19e6144135e107962bb943231413796fd7fe7"
       ZAP_VERSION: "2.17.0"
       LOCAL_TARGET: "http://127.0.0.1:3000"
     steps:
@@ -220,7 +222,7 @@ jobs:
             --output artifacts/security-free-digital/trivy.json \
             .
 
-      - name: Install checksum-verified Nuclei
+      - name: Install checksum-verified Nuclei and pinned templates
         run: |
           set -euo pipefail
           asset="nuclei_${NUCLEI_VERSION}_linux_amd64.zip"
@@ -231,6 +233,10 @@ jobs:
           unzip -q "$asset" nuclei
           chmod +x nuclei
           ./nuclei -version 2>&1 | tee artifacts/security-free-digital/nuclei-version.txt
+          git clone --quiet --no-checkout https://github.com/projectdiscovery/nuclei-templates.git nuclei-templates
+          git -C nuclei-templates checkout --quiet "$NUCLEI_TEMPLATES_SHA"
+          test "$(git -C nuclei-templates rev-parse HEAD)" = "$NUCLEI_TEMPLATES_SHA"
+          printf 'nuclei-templates=%s sha=%s\n' "$NUCLEI_TEMPLATES_VERSION" "$NUCLEI_TEMPLATES_SHA" | tee artifacts/security-free-digital/nuclei-templates-version.txt
 
       - name: Run Nuclei high-critical against exact-head localhost only
         run: |
@@ -239,6 +245,7 @@ jobs:
           : > artifacts/security-free-digital/nuclei.jsonl
           ./nuclei \
             -u "$LOCAL_TARGET" \
+            -t nuclei-templates/http/ \
             -severity high,critical \
             -jsonl-export artifacts/security-free-digital/nuclei.jsonl \
             -disable-update-check
@@ -297,6 +304,10 @@ jobs:
                   'semgrep': os.environ['SEMGREP_VERSION'],
                   'trivy': os.environ['TRIVY_VERSION'],
                   'nuclei': os.environ['NUCLEI_VERSION'],
+                  'nuclei_templates': {
+                      'version': os.environ['NUCLEI_TEMPLATES_VERSION'],
+                      'sha': os.environ['NUCLEI_TEMPLATES_SHA'],
+                  },
                   'zap': os.environ['ZAP_VERSION'],
               },
               'reports': reports,
