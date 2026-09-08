@@ -400,7 +400,7 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
                   .scale(1.0)
                   .clamp(1.0, 1.5)
                   .toDouble();
-              final cardHeight = 83.0 * textScale;
+              final cardHeight = 84.0 * textScale;
               return Wrap(
                 spacing: horizontalGap,
                 runSpacing: verticalGap,
