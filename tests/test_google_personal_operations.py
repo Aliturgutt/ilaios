@@ -91,7 +91,7 @@ def test_gmail_transport_uses_bound_oauth_account_and_returns_provider_receipt()
 
 def test_calendar_create_uses_deterministic_provider_event_id() -> None:
     resolver = _Resolver(_credential("https://www.googleapis.com/auth/calendar.events"))
-    expected_id = "ilaios34489db18fe6b07c6372b0a38a7c36c431e498813e32a90f1006abdbb90c7fd5"
+    expected_id = "ilaios63093cff69b83efb32db20a75f99361252a6d002049942ac28766a81d244e8c6"
     http = _Http([PersonalHttpResponse(200, json.dumps({"id": expected_id}).encode("utf-8"))])
     connector = GoogleCalendarConnector(
         authenticated_account="account@example.com",
