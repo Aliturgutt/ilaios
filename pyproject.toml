@@ -5,6 +5,7 @@ dependencies = [
     "requests",
     "python-dotenv",
     "pypdf",
+    "reportlab",
 ]
 
 [tool.mypy]
