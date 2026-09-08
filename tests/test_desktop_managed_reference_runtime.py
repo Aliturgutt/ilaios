@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import sqlite3
 from decimal import Decimal
 from pathlib import Path
@@ -12,25 +13,72 @@ from services.integrations.reference_aware_managed_provider_video_runtime import
     TenantBoundManagedDesktopVideoSession,
 )
 from services.integrations.video_runtime import VideoRuntimeError
+from src.video_automation.models import ProviderRequest
 
 
-def _identity_database(path: Path, *, tenant_id: str | None = "tenant-1") -> Path:
+def _identity_database(
+    path: Path,
+    *,
+    tenant_id: str | None = "tenant-1",
+    budget_minor: int = 100,
+    request_id: str = "request-1",
+    requester_id: str = "user-1",
+) -> Path:
+    proposal_id = f"proposal-{request_id}"
     with sqlite3.connect(path) as connection:
         connection.execute(
-            "CREATE TABLE product_proofs (request_id TEXT PRIMARY KEY, job_id TEXT NOT NULL)"
+            "CREATE TABLE product_proofs ("
+            "request_id TEXT PRIMARY KEY, job_id TEXT NOT NULL, proposal_id TEXT NOT NULL)"
         )
         connection.execute(
             "CREATE TABLE product_proof_identity ("
             "request_id TEXT PRIMARY KEY, requester_id TEXT NOT NULL, tenant_id TEXT)"
         )
         connection.execute(
-            "INSERT INTO product_proofs VALUES ('request-1', 'job-1')"
+            "INSERT INTO product_proofs VALUES (?, ?, ?)",
+            (request_id, f"job-{request_id}", proposal_id),
         )
         connection.execute(
-            "INSERT INTO product_proof_identity VALUES ('request-1', 'user-1', ?)",
-            (tenant_id,),
+            "INSERT INTO product_proof_identity VALUES (?, ?, ?)",
+            (request_id, requester_id, tenant_id),
+        )
+    with sqlite3.connect(path.parent / "control-plane.sqlite3") as connection:
+        connection.execute(
+            "CREATE TABLE IF NOT EXISTS proposals ("
+            "proposal_id TEXT PRIMARY KEY, proposal_json TEXT NOT NULL)"
+        )
+        connection.execute(
+            "INSERT OR REPLACE INTO proposals VALUES (?, ?)",
+            (
+                proposal_id,
+                json.dumps(
+                    {
+                        "goal": {
+                            "budget": {
+                                "max_attempts": 2,
+                                "max_runtime_seconds": 600,
+                                "max_external_spend_minor": budget_minor,
+                            }
+                        }
+                    },
+                    sort_keys=True,
+                ),
+            ),
         )
     return path
+
+
+def _request(request_id: str = "provider-dispatch-1") -> ProviderRequest:
+    return ProviderRequest(
+        request_id=request_id,
+        job_id="provider-job-1",
+        provider_name="openrouter-video-managed",
+        operation="video.generate",
+        payload={
+            "model_id": "bytedance/seedance-2.0-fast",
+            "items_json": "[]",
+        },
+    )
 
 
 def test_managed_identity_resolver_uses_durable_product_request_identity(
@@ -47,7 +95,7 @@ def test_managed_identity_resolver_does_not_treat_control_plane_job_as_product_r
     resolver = DurableProductIdentityResolver(_identity_database(tmp_path / "proof.sqlite3"))
 
     with pytest.raises(VideoRuntimeError, match="product request lacks one durable"):
-        resolver.resolve("job-1")
+        resolver.resolve("job-request-1")
 
 
 def test_managed_identity_resolver_fails_closed_without_tenant(tmp_path: Path) -> None:
@@ -66,6 +114,38 @@ def test_managed_identity_resolver_fails_closed_for_unknown_request(tmp_path: Pa
         resolver.resolve("request-missing")
 
 
+@pytest.mark.parametrize(
+    ("budget_minor", "expected_usd"),
+    ((50, "0.5"), (100, "1"), (500, "5"), (2000, "20")),
+)
+def test_approved_product_budget_accepts_user_amounts_above_old_one_dollar_cap(
+    tmp_path: Path,
+    budget_minor: int,
+    expected_usd: str,
+) -> None:
+    resolver = DurableProductIdentityResolver(
+        _identity_database(tmp_path / f"proof-{budget_minor}.sqlite3", budget_minor=budget_minor)
+    )
+
+    approved = resolver.approved_budget("request-1", approval_proven=True)
+
+    assert approved.tenant_id == "tenant-1"
+    assert approved.requester_id == "user-1"
+    assert approved.approval_id == "request-1"
+    assert Decimal(approved.approved_budget_microusd) / Decimal(1_000_000) == Decimal(
+        expected_usd
+    )
+
+
+def test_approved_product_budget_requires_exact_request_approval(tmp_path: Path) -> None:
+    resolver = DurableProductIdentityResolver(
+        _identity_database(tmp_path / "proof.sqlite3", budget_minor=500)
+    )
+
+    with pytest.raises(VideoRuntimeError, match="requires explicit approval"):
+        resolver.approved_budget("request-1", approval_proven=False)
+
+
 def test_managed_session_requires_explicit_product_request_binding(tmp_path: Path) -> None:
     resolver = DurableProductIdentityResolver(_identity_database(tmp_path / "proof.sqlite3"))
     session = TenantBoundManagedDesktopVideoSession(
@@ -74,7 +154,7 @@ def test_managed_session_requires_explicit_product_request_binding(tmp_path: Pat
         api_key="test-api-key",
         model_id="bytedance/seedance-2.0-fast",
         resolution="480p",
-        max_total_cost_usd=Decimal("1.00"),
+        max_total_cost_usd=Decimal("20.00"),
     )
 
     with pytest.raises(VideoRuntimeError, match="lacks product request identity binding"):
@@ -90,17 +170,95 @@ def test_managed_session_requires_explicit_product_request_binding(tmp_path: Pat
         session._require_bound_product_request()
 
 
-def test_managed_budget_requires_explicit_bounded_value(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_paid_seedance_without_approval_never_reaches_provider(tmp_path: Path) -> None:
+    resolver = DurableProductIdentityResolver(
+        _identity_database(tmp_path / "proof.sqlite3", budget_minor=500)
+    )
+    session = TenantBoundManagedDesktopVideoSession(
+        identity_resolver=resolver,
+        root=tmp_path / "managed",
+        api_key="test-api-key",
+        model_id="bytedance/seedance-2.0-fast",
+        resolution="480p",
+        max_total_cost_usd=Decimal("20.00"),
+    )
+    session.configure_approval_checker(lambda _request_id: False)
+
+    with session.bind_product_request("request-1"):
+        result = session.execute(_request())
+
+    assert result.success is False
+    assert result.error_code == "approval_required"
+    assert result.metadata["reapproval_required"] == "true"
+    assert not (tmp_path / "managed" / "managed-credit-ledger" / "provider_side_effects") .exists()
+
+
+def test_tenant_a_approval_cannot_authorize_tenant_b_request(tmp_path: Path) -> None:
+    database = _identity_database(
+        tmp_path / "proof.sqlite3",
+        tenant_id="tenant-a",
+        budget_minor=500,
+        request_id="request-a",
+        requester_id="user-a",
+    )
+    with sqlite3.connect(database) as connection:
+        connection.execute(
+            "INSERT INTO product_proofs VALUES ('request-b', 'job-b', 'proposal-request-b')"
+        )
+        connection.execute(
+            "INSERT INTO product_proof_identity VALUES ('request-b', 'user-b', 'tenant-b')"
+        )
+    with sqlite3.connect(tmp_path / "control-plane.sqlite3") as connection:
+        connection.execute(
+            "INSERT INTO proposals VALUES (?, ?)",
+            (
+                "proposal-request-b",
+                json.dumps(
+                    {"goal": {"budget": {"max_external_spend_minor": 500}}},
+                    sort_keys=True,
+                ),
+            ),
+        )
+    resolver = DurableProductIdentityResolver(database)
+    session = TenantBoundManagedDesktopVideoSession(
+        identity_resolver=resolver,
+        root=tmp_path / "managed",
+        api_key="test-api-key",
+        model_id="bytedance/seedance-2.0-fast",
+        resolution="480p",
+        max_total_cost_usd=Decimal("20.00"),
+    )
+    session.configure_approval_checker(lambda request_id: request_id == "request-a")
+
+    with session.bind_product_request("request-b"):
+        result = session.execute(_request("provider-dispatch-b"))
+
+    assert result.success is False
+    assert result.error_code == "approval_required"
+
+
+def test_managed_budget_requires_explicit_positive_deployment_ceiling(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     monkeypatch.delenv("ILAIOS_VIDEO_MANAGED_MAX_TOTAL_USD", raising=False)
     with pytest.raises(VideoRuntimeError, match="requires ILAIOS_VIDEO_MANAGED_MAX_TOTAL_USD"):
         _managed_budget()
 
-    monkeypatch.setenv("ILAIOS_VIDEO_MANAGED_MAX_TOTAL_USD", "1.01")
-    with pytest.raises(VideoRuntimeError, match="<= 1.00 USD"):
+    for value in ("0.50", "1.00", "5.00", "20.00"):
+        monkeypatch.setenv("ILAIOS_VIDEO_MANAGED_MAX_TOTAL_USD", value)
+        assert str(_managed_budget()) == value
+
+    monkeypatch.setenv("ILAIOS_VIDEO_MANAGED_MAX_TOTAL_USD", "0")
+    with pytest.raises(VideoRuntimeError, match="finite positive"):
         _managed_budget()
 
-    monkeypatch.setenv("ILAIOS_VIDEO_MANAGED_MAX_TOTAL_USD", "1.00")
-    assert str(_managed_budget()) == "1.00"
+    monkeypatch.setenv("ILAIOS_VIDEO_MANAGED_MAX_TOTAL_USD", "NaN")
+    with pytest.raises(VideoRuntimeError, match="finite positive"):
+        _managed_budget()
+
+    monkeypatch.setenv("ILAIOS_VIDEO_MANAGED_MAX_TOTAL_USD", "1.0000001")
+    with pytest.raises(VideoRuntimeError, match="microUSD precision"):
+        _managed_budget()
 
 
 def test_reference_analyzer_is_pinned_to_supported_free_multimodal_route() -> None:
@@ -143,3 +301,4 @@ def test_desktop_sidecar_managed_mode_is_explicit_and_truthful() -> None:
     assert "ManagedReferenceAwareProviderBackedDesktopVideoRuntime(" in composition
     assert "unknown Desktop Video provider mode" in composition
     assert "automatic" in composition and "fallback" in composition
+    assert "_MAX_MANAGED_DESKTOP_BUDGET_USD" not in composition
