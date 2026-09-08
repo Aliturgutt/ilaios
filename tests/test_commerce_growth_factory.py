@@ -222,8 +222,9 @@ def test_external_execution_uses_authorization_tool_gateway_audit_and_evidence()
     assert receipt.provider_receipt_id == "provider-receipt-1"
     assert receipt.evidence_hash == evidence.get_records()[0].data_hash
     assert evidence.verify_integrity() is True
-    assert audit.get_latest() is not None
-    assert audit.get_latest().status == "success"
+    latest_audit = audit.get_latest()
+    assert latest_audit is not None
+    assert latest_audit.status == "success"
     assert factory.execution_receipt("exec-1") == receipt
 
 
@@ -262,8 +263,9 @@ def test_provider_receipt_mismatch_fails_closed_and_is_audited() -> None:
             evidence=EvidenceChain(),
             now=now,
         )
-    assert audit.get_latest() is not None
-    assert audit.get_latest().status == "failure"
+    latest_audit = audit.get_latest()
+    assert latest_audit is not None
+    assert latest_audit.status == "failure"
 
 
 def test_provider_action_must_match_approved_plan_channel() -> None:
