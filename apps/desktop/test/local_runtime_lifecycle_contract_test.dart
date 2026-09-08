@@ -25,6 +25,7 @@ void main() {
     expect(sidecarSource, contains('parent_image != current_image'));
     expect(sidecarSource, contains('TerminateProcess(handle, 0)'));
     expect(sidecarSource, contains('parent_exit_timeout_ms = 2000'));
+    expect(sidecarSource, contains('process_query_limited_information | process_terminate | synchronize'));
     expect(sidecarSource, contains('WaitForSingleObject('));
     expect(sidecarSource, contains('wait_result != wait_object_0'));
     expect(sidecarSource, contains('os._exit(0)'));
