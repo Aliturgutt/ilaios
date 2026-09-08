@@ -5,6 +5,7 @@ dependencies = [
     "requests",
     "python-dotenv",
     "pypdf",
+    "reportlab",
 ]
 
 [tool.mypy]
@@ -18,6 +19,10 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["jwt", "jwt.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["reportlab", "reportlab.*"]
 ignore_missing_imports = true
 
 # These standalone E2E entrypoints deliberately bootstrap the repository root
