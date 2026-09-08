@@ -163,7 +163,7 @@ def test_unapproved_book_cannot_render() -> None:
 def test_factual_book_rejects_non_strict_research_projection() -> None:
     projection = _strict_projection()
     assert isinstance(projection["fact"], dict)
-    projection["fact"]["verification_mode"] = "TRUST_THRESHOLD"  # type: ignore[index]
+    projection["fact"]["verification_mode"] = "TRUST_THRESHOLD"
     factory = CreativeDocumentFactory()
     with pytest.raises(CreativeDocumentError, match="strict Research/Data verification"):
         factory.compose_book(
