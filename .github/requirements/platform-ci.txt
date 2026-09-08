@@ -21,6 +21,7 @@ pypdf==6.16.2
 pytest==9.1.1
 python-discovery==1.5.2
 python-dotenv==1.2.2
+reportlab==5.0.1
 requests==2.34.2
 ruff==0.1.9
 types-PyYAML==6.0.12.20260724
