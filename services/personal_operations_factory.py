@@ -426,7 +426,10 @@ class PersonalOperationsFactory:
             if receipt is None:
                 raise PersonalOperationsError("confirmed execution is missing provider receipt")
             try:
-                existing = {record.execution_id for record in evidence.verify()}
+                existing = {
+                    record.execution_id
+                    for record in evidence.verify()
+                }
                 if execution_key not in existing:
                     artifact = evidence.put_artifact(_receipt_bytes(plan, step, receipt))
                     evidence.append_provenance(
