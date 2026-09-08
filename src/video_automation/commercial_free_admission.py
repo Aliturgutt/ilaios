@@ -1,6 +1,6 @@
 """Fail-closed FREE admission using the existing managed-credit SQLite authority.
 
-This module does not create a second ledger.  It stores FREE-usage evidence in the
+This module does not create a second ledger. It stores FREE-usage evidence in the
 same ``managed_media_finops.sqlite3`` database owned by ``ManagedCreditLedgerStore``.
 """
 
@@ -8,7 +8,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from .commercial_types import CommercialAdmissionError, nonnegative_int, positive_int, require_text
+from .commercial_cost_config import CommercialCostConfig
+from .commercial_types import CommercialAdmissionError, nonnegative_int, require_text
 from .managed_credit_store import ManagedCreditLedgerStore
 
 
@@ -44,6 +45,7 @@ CREATE INDEX IF NOT EXISTS free_operation_usage_scope_idx
 def authorize_free_operation(
     *,
     store: ManagedCreditLedgerStore,
+    config: CommercialCostConfig,
     request_id: str,
     tenant_id: str,
     user_id: str,
@@ -52,7 +54,6 @@ def authorize_free_operation(
     model_id: str,
     provider_cost_microusd: int,
     platform_free_budget_allowed: bool,
-    monthly_limit: int,
     now_epoch_s: int,
 ) -> FreeOperationAdmission:
     """Admit one exact-zero-cost operation or fail closed without paid fallback."""
@@ -67,8 +68,8 @@ def authorize_free_operation(
     ):
         require_text(name, value)
     nonnegative_int("provider_cost_microusd", provider_cost_microusd)
-    positive_int("monthly_limit", monthly_limit)
     nonnegative_int("now_epoch_s", now_epoch_s)
+    monthly_limit = config.free_operations_per_active_user_per_month
     if provider_cost_microusd != 0:
         raise CommercialAdmissionError(
             "FREE admission requires authoritative zero provider cost; paid quote required"
