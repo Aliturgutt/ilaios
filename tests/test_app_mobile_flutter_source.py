@@ -91,14 +91,18 @@ def test_sources_use_application_id_for_main_activity_package_path() -> None:
 
 
 def test_sources_are_deterministic_for_identical_inputs() -> None:
-    kwargs = {
-        "app_id": "ilaios-mobile",
-        "application_id": "com.ilaios.mobile",
-        "display_name": "ILAIOS",
-        "gradle_wrapper_jar": b"wrapper",
-    }
-    first = build_flutter_android_project_sources(**kwargs)
-    second = build_flutter_android_project_sources(**kwargs)
+    first = build_flutter_android_project_sources(
+        app_id="ilaios-mobile",
+        application_id="com.ilaios.mobile",
+        display_name="ILAIOS",
+        gradle_wrapper_jar=b"wrapper",
+    )
+    second = build_flutter_android_project_sources(
+        app_id="ilaios-mobile",
+        application_id="com.ilaios.mobile",
+        display_name="ILAIOS",
+        gradle_wrapper_jar=b"wrapper",
+    )
     assert first == second
 
 
