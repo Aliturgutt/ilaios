@@ -102,7 +102,7 @@ def _package_json(spec: WebsiteSpec) -> bytes:
                 "typecheck": "tsc --noEmit",
             },
             "dependencies": {
-                "next": "16.2.11",
+                "next": "16.3.3",
                 "react": "19.2.0",
                 "react-dom": "19.2.0",
             },

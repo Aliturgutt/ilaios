@@ -17,7 +17,7 @@
     "test:quality": "npm run test:site && npm run test:design && npm run test:redteam && npm run test:motion && npm run test:docs && npm run test:brand"
   },
   "dependencies": {
-    "next": "16.2.11",
+    "next": "16.3.3",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
@@ -26,7 +26,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "eslint": "^9.0.0",
-    "eslint-config-next": "16.2.11",
+    "eslint-config-next": "16.3.3",
     "typescript": "^5.9.0"
   },
   "overrides": {
