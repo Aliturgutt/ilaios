@@ -16,6 +16,7 @@ from src.video_automation.commercial_admission import (
     authorize_free_operation,
     create_governed_locked_quote,
 )
+from src.video_automation.commercial_store import CommercialAuthorityStore
 from src.video_automation.managed_credit_store import ManagedCreditLedgerStore
 
 
@@ -89,9 +90,13 @@ def test_initial_cost_config_matches_locked_business_inputs() -> None:
     assert config.free_operations_per_active_user_per_month == 100
 
 
-def test_paid_quote_fails_closed_when_unverified_cost_inputs_are_missing() -> None:
+def test_paid_quote_fails_closed_when_unverified_cost_inputs_are_missing(
+    tmp_path: Path,
+) -> None:
+    store = CommercialAuthorityStore(tmp_path)
     with pytest.raises(CommercialAdmissionError, match="render_monthly_usd"):
         create_governed_locked_quote(
+            store=store,
             config=CommercialCostConfig(),
             fx=_fx(),
             quote_id="quote-missing-cost",
@@ -110,7 +115,7 @@ def test_paid_quote_fails_closed_when_unverified_cost_inputs_are_missing() -> No
         )
 
 
-def test_paid_quote_fails_closed_on_stale_fx() -> None:
+def test_paid_quote_fails_closed_on_stale_fx(tmp_path: Path) -> None:
     stale_fx = FxRateSnapshot(
         source="stale-admin-rate",
         usd_try=Decimal("48.45"),
@@ -119,6 +124,7 @@ def test_paid_quote_fails_closed_on_stale_fx() -> None:
     )
     with pytest.raises(CommercialAdmissionError, match="stale"):
         create_governed_locked_quote(
+            store=CommercialAuthorityStore(tmp_path),
             config=_ready_config(),
             fx=stale_fx,
             quote_id="quote-stale-fx",
@@ -137,8 +143,12 @@ def test_paid_quote_fails_closed_on_stale_fx() -> None:
         )
 
 
-def test_governed_quote_includes_fx_fixed_cost_tax_reserve_paytr_and_40_percent_margin() -> None:
+def test_governed_quote_includes_costs_margin_and_durable_evidence(
+    tmp_path: Path,
+) -> None:
+    store = CommercialAuthorityStore(tmp_path)
     quote, allocation = create_governed_locked_quote(
+        store=store,
         config=_ready_config(),
         fx=_fx(),
         quote_id="quote-governed",
@@ -170,6 +180,15 @@ def test_governed_quote_includes_fx_fixed_cost_tax_reserve_paytr_and_40_percent_
         - quote.expected_payment_fee_microusd
     )
     assert profit * 10_000 // quote.net_price_ex_tax_microusd >= 4_000
+    with store._connect() as connection:
+        evidence = connection.execute(
+            "SELECT * FROM commercial_quote_cost_evidence WHERE quote_id=?",
+            (quote.quote_id,),
+        ).fetchone()
+    assert evidence is not None
+    assert evidence["config_version"] == "2026-09-08-initial"
+    assert evidence["fx_source"] == "admin-timestamped-test-rate"
+    assert evidence["cost_envelope_sha256"] == quote.cost_envelope_sha256
 
 
 def test_free_admission_requires_exact_zero_cost_and_never_silently_falls_back(
@@ -192,14 +211,11 @@ def test_free_admission_is_idempotent_tenant_user_scoped_and_quota_bounded(
     repeated = _authorize_free(store, request_id="free-request-001")
     assert first.ordinal == repeated.ordinal == 1
     assert first.monthly_limit == 100
-
     for ordinal in range(2, 101):
         admitted = _authorize_free(store, request_id=f"free-request-{ordinal:03d}")
         assert admitted.ordinal == ordinal
-
     with pytest.raises(CommercialAdmissionError, match="quota exhausted"):
         _authorize_free(store, request_id="free-request-101")
-
     other_tenant = _authorize_free(
         store,
         request_id="other-tenant-001",
@@ -216,6 +232,5 @@ def test_free_quota_cannot_be_overridden_outside_config(tmp_path: Path) -> None:
     )
     admitted = _authorize_free(store, request_id="bounded-001", config=config)
     assert admitted.monthly_limit == 1
-
     with pytest.raises(CommercialAdmissionError, match="quota exhausted"):
         _authorize_free(store, request_id="bounded-002", config=config)
