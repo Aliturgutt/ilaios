@@ -30,7 +30,7 @@ COMMIT_SHA = "c" * 40
 PREVIEW_ORIGIN = "https://preview-123.example.net"
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture(autouse=True)  # type: ignore[misc] -- pytest fixture decorator is untyped in isolated CI
 def _stable_public_preview_dns(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep synthetic preview-host tests deterministic and network-free."""
     monkeypatch.setattr(
