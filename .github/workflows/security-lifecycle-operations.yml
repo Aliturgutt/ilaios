@@ -128,15 +128,15 @@ jobs:
           retention-days: 30
 
   free-digital-security-suite:
-    name: Free digital pentest suite (local-only)
+    name: Free digital pentest suite (real local ILAIOS)
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 40
     env:
       SEMGREP_VERSION: "1.172.0"
       TRIVY_VERSION: "0.74.0"
       NUCLEI_VERSION: "3.11.1"
       ZAP_VERSION: "2.17.0"
-      LOCAL_TARGET: "http://127.0.0.1:8765"
+      LOCAL_TARGET: "http://127.0.0.1:3000"
     steps:
       - name: Checkout exact source commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -150,20 +150,33 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Prepare evidence workspace and local-only target
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/website/package-lock.json
+
+      - name: Build and start exact-head ILAIOS website locally
         run: |
           set -euo pipefail
-          mkdir -p artifacts/security-free-digital local-security-target
-          printf '<!doctype html><html><body><h1>ILAIOS local security probe</h1></body></html>\n' > local-security-target/index.html
-          python -m http.server 8765 --bind 127.0.0.1 --directory local-security-target > artifacts/security-free-digital/local-server.log 2>&1 &
-          echo $! > artifacts/security-free-digital/local-server.pid
-          for attempt in $(seq 1 20); do
+          test "$LOCAL_TARGET" = "http://127.0.0.1:3000"
+          mkdir -p artifacts/security-free-digital
+          cd apps/website
+          npm ci --ignore-scripts --audit=false --fund=false
+          npm run build
+          nohup npm run start -- --hostname 127.0.0.1 --port 3000 > "$GITHUB_WORKSPACE/artifacts/security-free-digital/local-ilaios.log" 2>&1 &
+          echo $! > "$GITHUB_WORKSPACE/artifacts/security-free-digital/local-ilaios.pid"
+          cd "$GITHUB_WORKSPACE"
+          for attempt in $(seq 1 30); do
             if curl --fail --silent --show-error "$LOCAL_TARGET" >/dev/null; then
+              printf 'LOCAL_ILAIOS_TARGET=READY source_sha=%s target=%s\n' "$GITHUB_SHA" "$LOCAL_TARGET"
               exit 0
             fi
             sleep 1
           done
-          echo 'local test target failed to start' >&2
+          cat artifacts/security-free-digital/local-ilaios.log || true
+          echo 'exact-head local ILAIOS target failed to start' >&2
           exit 1
 
       - name: Install pinned Semgrep
@@ -216,10 +229,10 @@ jobs:
           chmod +x nuclei
           ./nuclei -version 2>&1 | tee artifacts/security-free-digital/nuclei-version.txt
 
-      - name: Run Nuclei high-critical localhost scan
+      - name: Run Nuclei high-critical against exact-head localhost only
         run: |
           set -euo pipefail
-          test "$LOCAL_TARGET" = "http://127.0.0.1:8765"
+          test "$LOCAL_TARGET" = "http://127.0.0.1:3000"
           : > artifacts/security-free-digital/nuclei.jsonl
           ./nuclei \
             -u "$LOCAL_TARGET" \
@@ -227,10 +240,10 @@ jobs:
             -jsonl-export artifacts/security-free-digital/nuclei.jsonl \
             -disable-update-check
 
-      - name: Run OWASP ZAP baseline against localhost only
+      - name: Run OWASP ZAP baseline against exact-head localhost only
         run: |
           set -euo pipefail
-          test "$LOCAL_TARGET" = "http://127.0.0.1:8765"
+          test "$LOCAL_TARGET" = "http://127.0.0.1:3000"
           docker pull "ghcr.io/zaproxy/zaproxy:${ZAP_VERSION}"
           docker image inspect "ghcr.io/zaproxy/zaproxy:${ZAP_VERSION}" --format '{{json .RepoDigests}}' > artifacts/security-free-digital/zap-image-digest.json
           docker run --rm --network host \
@@ -238,10 +251,10 @@ jobs:
             "ghcr.io/zaproxy/zaproxy:${ZAP_VERSION}" \
             zap-baseline.py -t "$LOCAL_TARGET" -J zap.json -r zap.html -I
 
-      - name: Retest local-only scope and evidence completeness
+      - name: Canonical evidence and retest receipt
         run: |
           set -euo pipefail
-          test "$LOCAL_TARGET" = "http://127.0.0.1:8765"
+          test "$LOCAL_TARGET" = "http://127.0.0.1:3000"
           curl --fail --silent --show-error "$LOCAL_TARGET" >/dev/null
           test -s artifacts/security-free-digital/semgrep.json
           test -s artifacts/security-free-digital/trivy.json
@@ -251,11 +264,30 @@ jobs:
           import json
           import os
           from pathlib import Path
+          from services.security_external_tool_evidence import report_from_external_tool
 
           root = Path('artifacts/security-free-digital')
+          reports = {}
+          for tool, filename in (
+              ('semgrep', 'semgrep.json'),
+              ('trivy', 'trivy.json'),
+              ('nuclei', 'nuclei.jsonl'),
+              ('zap', 'zap.json'),
+          ):
+              report = report_from_external_tool(
+                  scope_id=f"free-digital-{os.environ['GITHUB_SHA']}",
+                  tool=tool,
+                  evidence_path=root / filename,
+              )
+              reports[tool] = {
+                  'passed': report.passed,
+                  'finding_count': len(report.findings),
+                  'blocking_finding_count': len(report.blocking_findings),
+              }
+
           receipt = {
               'source_sha': os.environ['GITHUB_SHA'],
-              'scope': 'local-only',
+              'scope': 'exact-head-localhost-only',
               'target': os.environ['LOCAL_TARGET'],
               'provider_cost_usd': 0,
               'tools': {
@@ -264,10 +296,13 @@ jobs:
                   'nuclei': os.environ['NUCLEI_VERSION'],
                   'zap': os.environ['ZAP_VERSION'],
               },
-              'retest': 'PASS',
+              'reports': reports,
+              'retest': 'PASS' if all(item['blocking_finding_count'] == 0 for item in reports.values()) else 'BLOCKED',
               'external_independent_pentest': 'UNVERIFIED',
           }
           (root / 'receipt.json').write_text(json.dumps(receipt, indent=2) + '\n', encoding='utf-8')
+          if receipt['retest'] != 'PASS':
+              raise SystemExit('blocking external-tool findings require remediation and retest')
           print('FREE_DIGITAL_SECURITY_SUITE=PASS')
           PY
 
