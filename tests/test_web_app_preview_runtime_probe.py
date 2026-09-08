@@ -15,7 +15,7 @@ from services.web_app_preview_runtime_probe import (
 from services.web_app_preview_sandbox_observer import observe_generated_preview_sandbox
 
 
-@pytest.fixture(autouse=True)  # type: ignore[misc] -- pytest fixture decorator is untyped in isolated CI
+@pytest.fixture(autouse=True)  # type: ignore[misc]
 def _stable_public_preview_dns(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep injected-transport unit tests deterministic and network-free."""
     monkeypatch.setattr(
