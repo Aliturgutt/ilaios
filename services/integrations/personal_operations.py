@@ -10,7 +10,15 @@ from src.core.tool_gateway import ToolGateway
 
 
 class PersonalOperationsConnectorError(RuntimeError):
-    """Raised when an authenticated personal-operations connector cannot execute safely."""
+    """Base error for governed personal-operations connectors."""
+
+
+class PersonalOperationsConnectorRejectedError(PersonalOperationsConnectorError):
+    """Deterministic rejection that proves no provider mutation was attempted."""
+
+
+class PersonalOperationsConnectorAmbiguousError(PersonalOperationsConnectorError):
+    """Provider result is uncertain; blind retry is unsafe."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,11 +31,15 @@ class ConnectorReceipt:
 
     def __post_init__(self) -> None:
         if not self.provider.strip() or not self.provider_id.strip() or not self.target_account.strip():
-            raise PersonalOperationsConnectorError("connector receipt identity is required")
+            raise PersonalOperationsConnectorRejectedError("connector receipt identity is required")
         if self.occurred_at.tzinfo is None:
-            raise PersonalOperationsConnectorError("connector receipt timestamp must be timezone-aware")
+            raise PersonalOperationsConnectorRejectedError(
+                "connector receipt timestamp must be timezone-aware"
+            )
         if self.outcome != "success":
-            raise PersonalOperationsConnectorError("connector receipt must prove successful execution")
+            raise PersonalOperationsConnectorRejectedError(
+                "connector receipt must prove successful execution"
+            )
 
 
 class AccountBoundConnector(Protocol):
@@ -75,9 +87,13 @@ class ReminderConnector(AccountBoundConnector, Protocol):
 
 def _require_account(authenticated_account: str, target_account: str) -> None:
     if not authenticated_account.strip():
-        raise PersonalOperationsConnectorError("connector authenticated account is required")
+        raise PersonalOperationsConnectorRejectedError(
+            "connector authenticated account is required"
+        )
     if authenticated_account != target_account:
-        raise PersonalOperationsConnectorError("connector authenticated account does not match target account")
+        raise PersonalOperationsConnectorRejectedError(
+            "connector authenticated account does not match target account"
+        )
 
 
 def register_personal_operations_connectors(
