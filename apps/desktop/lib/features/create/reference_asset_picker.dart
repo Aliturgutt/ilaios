@@ -267,6 +267,7 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
 
   Future<void> _openPane(_AttachmentPane pane) async {
     if (!widget.enabled) return;
+    final localeScope = IlaiosLocaleScope.of(context);
     final title = switch (pane) {
       _AttachmentPane.documents => _t('Add file', 'Dosya ekle'),
       _AttachmentPane.images => _t('Add image', 'Görsel ekle'),
@@ -292,15 +293,19 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
 
     await showDialog<void>(
       context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(title),
-        content: SizedBox(width: 620, child: body),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(_t('Close', 'Kapat')),
-          ),
-        ],
+      builder: (dialogContext) => IlaiosLocaleScope(
+        locale: localeScope.locale,
+        onChanged: localeScope.onChanged,
+        child: AlertDialog(
+          title: Text(title),
+          content: SizedBox(width: 620, child: body),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(_t('Close', 'Kapat')),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -391,6 +396,11 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
               const verticalGap = 13.0;
               final cardWidth =
                   (constraints.maxWidth - horizontalGap * (columns - 1)) / columns;
+              final textScale = MediaQuery.textScalerOf(context)
+                  .scale(1.0)
+                  .clamp(1.0, 1.5)
+                  .toDouble();
+              final cardHeight = 83.0 * textScale;
               return Wrap(
                 spacing: horizontalGap,
                 runSpacing: verticalGap,
@@ -398,7 +408,7 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
                   for (var index = 0; index < _factoryFamilies.length; index++)
                     SizedBox(
                       width: cardWidth,
-                      height: 83,
+                      height: cardHeight,
                       child: Container(
                         key: ValueKey('home-factory-${index + 1}'),
                         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
@@ -441,7 +451,7 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      fontSize: 11.5,
+                                      fontSize: 12.5,
                                       height: 1.2,
                                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     ),

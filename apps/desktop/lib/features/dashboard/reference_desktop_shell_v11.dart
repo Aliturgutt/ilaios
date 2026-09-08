@@ -249,52 +249,88 @@ class _CanonicalSidebar extends StatelessWidget {
   final OperationalSnapshot snapshot;
   final ValueChanged<DesktopSection> onSelected;
 
+  Widget _logoWidget() => SizedBox(
+        height: 56,
+        child: Align(
+          alignment: Alignment.centerLeft,
+          child: Image.asset(
+            _logo,
+            key: const Key('canonical-reference-logo'),
+            width: 184,
+            height: 48,
+            fit: BoxFit.contain,
+            alignment: Alignment.centerLeft,
+            filterQuality: FilterQuality.high,
+            gaplessPlayback: true,
+          ),
+        ),
+      );
+
+  Widget _navigationContent(BuildContext context, {required bool compactHeight}) {
+    final children = <Widget>[
+      _logoWidget(),
+      const SizedBox(height: 20),
+      for (final section in _sections) ...[
+        _CanonicalNavItem(
+          section: section,
+          selected: selected == section,
+          onTap: () => onSelected(section),
+        ),
+        const SizedBox(height: 8),
+      ],
+    ];
+
+    if (compactHeight) {
+      children.add(
+        _CanonicalSystemStatus(
+          projection: projection,
+          snapshot: snapshot,
+        ),
+      );
+      return SingleChildScrollView(
+        primary: false,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        ...children,
+        const Spacer(),
+        _CanonicalSystemStatus(
+          projection: projection,
+          snapshot: snapshot,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final light = Theme.of(context).brightness == Brightness.light;
     final background = light
         ? const Color(0xFFF8FAFC)
         : Theme.of(context).colorScheme.surface;
+    final semanticsLabel = IlaiosLocaleScope.of(context).text('shell.primaryNavigation');
 
     return Container(
       key: const Key('canonical-7-page-sidebar'),
       width: 219,
       color: background,
       padding: const EdgeInsets.fromLTRB(14, 20, 14, 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(
-            height: 56,
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Image.asset(
-                _logo,
-                key: const Key('canonical-reference-logo'),
-                width: 184,
-                height: 48,
-                fit: BoxFit.contain,
-                alignment: Alignment.centerLeft,
-                filterQuality: FilterQuality.high,
-                gaplessPlayback: true,
-              ),
-            ),
+      child: Semantics(
+        container: true,
+        label: semanticsLabel,
+        child: LayoutBuilder(
+          builder: (context, constraints) => _navigationContent(
+            context,
+            compactHeight: constraints.maxHeight < 580,
           ),
-          const SizedBox(height: 20),
-          for (final section in _sections) ...[
-            _CanonicalNavItem(
-              section: section,
-              selected: selected == section,
-              onTap: () => onSelected(section),
-            ),
-            const SizedBox(height: 8),
-          ],
-          const Spacer(),
-          _CanonicalSystemStatus(
-            projection: projection,
-            snapshot: snapshot,
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -421,7 +457,7 @@ class _CanonicalSystemStatus extends StatelessWidget {
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 11.5,
+                    fontSize: 12.5,
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                 ),
@@ -470,60 +506,69 @@ class _CanonicalTopBar extends StatelessWidget {
           bottom: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
         ),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.end,
-        children: [
-          Text(
-            tr ? 'Bildirimler' : 'Notifications',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(width: 10),
-          IconButton(
-            tooltip: tr ? 'Bildirimler' : 'Notifications',
-            onPressed: () => _showNotificationState(context, tr),
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.notifications_none_rounded, size: 22),
-          ),
-          const SizedBox(width: 12),
-          Text(
-            tr ? 'TR' : 'EN',
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-          ),
-          PopupMenuButton<IlaiosLocale>(
-            tooltip: tr ? 'Dil' : 'Language',
-            icon: const Icon(Icons.language_rounded, size: 21),
-            onSelected: (locale) =>
-                IlaiosLocaleScope.of(context).onChanged(locale),
-            itemBuilder: (context) => [
-              for (final locale in IlaiosLocale.values)
-                PopupMenuItem(
-                  value: locale,
-                  child: Text(locale.displayName),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final compact = constraints.maxWidth < 600;
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              if (!compact) ...[
+                Text(
+                  tr ? 'Bildirimler' : 'Notifications',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500),
                 ),
+                const SizedBox(width: 10),
+              ],
+              IconButton(
+                tooltip: tr ? 'Bildirimler' : 'Notifications',
+                onPressed: () => _showNotificationState(context, tr),
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(Icons.notifications_none_rounded, size: 22),
+              ),
+              SizedBox(width: compact ? 4 : 12),
+              if (!compact)
+                Text(
+                  tr ? 'TR' : 'EN',
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                ),
+              PopupMenuButton<IlaiosLocale>(
+                tooltip: tr ? 'Dil' : 'Language',
+                icon: const Icon(Icons.language_rounded, size: 21),
+                onSelected: (locale) =>
+                    IlaiosLocaleScope.of(context).onChanged(locale),
+                itemBuilder: (context) => [
+                  for (final locale in IlaiosLocale.values)
+                    PopupMenuItem(
+                      value: locale,
+                      child: Text(locale.displayName),
+                    ),
+                ],
+              ),
+              IconButton(
+                key: const Key('theme-toggle'),
+                tooltip: tr ? 'Tema' : 'Theme',
+                visualDensity: VisualDensity.compact,
+                onPressed: () => onThemeModeChanged?.call(
+                  themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark,
+                ),
+                icon: Icon(
+                  themeMode == ThemeMode.dark
+                      ? Icons.light_mode_outlined
+                      : Icons.dark_mode_outlined,
+                  size: 22,
+                ),
+              ),
+              SizedBox(width: compact ? 4 : 12),
+              _CanonicalAccountControl(
+                identityProviders: identityProviders,
+                userSession: userSession,
+                onSignIn: onSignIn,
+                onLogout: onLogout,
+                compact: compact,
+              ),
             ],
-          ),
-          IconButton(
-            key: const Key('theme-toggle'),
-            tooltip: tr ? 'Tema' : 'Theme',
-            visualDensity: VisualDensity.compact,
-            onPressed: () => onThemeModeChanged?.call(
-              themeMode == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark,
-            ),
-            icon: Icon(
-              themeMode == ThemeMode.dark
-                  ? Icons.light_mode_outlined
-                  : Icons.dark_mode_outlined,
-              size: 22,
-            ),
-          ),
-          const SizedBox(width: 12),
-          _CanonicalAccountControl(
-            identityProviders: identityProviders,
-            userSession: userSession,
-            onSignIn: onSignIn,
-            onLogout: onLogout,
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -555,12 +600,14 @@ class _CanonicalAccountControl extends StatelessWidget {
     required this.userSession,
     required this.onSignIn,
     required this.onLogout,
+    required this.compact,
   });
 
   final List<IdentityProviderOption> identityProviders;
   final DesktopUserSession? userSession;
   final Future<void> Function(String providerId)? onSignIn;
   final Future<void> Function()? onLogout;
+  final bool compact;
 
   IdentityProviderOption? get _googleProvider {
     for (final provider in identityProviders) {
@@ -583,9 +630,12 @@ class _CanonicalAccountControl extends StatelessWidget {
 
     final content = Container(
       key: const Key('top-account-control'),
-      constraints: const BoxConstraints(minWidth: 194, maxWidth: 220),
+      constraints: BoxConstraints(
+        minWidth: compact ? 148 : 194,
+        maxWidth: compact ? 176 : 220,
+      ),
       height: 46,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 14),
       decoration: BoxDecoration(
         color: Theme.of(context).colorScheme.surfaceContainerLowest,
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
@@ -594,7 +644,7 @@ class _CanonicalAccountControl extends StatelessWidget {
       child: Row(
         children: [
           const Icon(Icons.person_outline_rounded, size: 22),
-          const SizedBox(width: 12),
+          SizedBox(width: compact ? 8 : 12),
           Expanded(
             child: Text(
               label,

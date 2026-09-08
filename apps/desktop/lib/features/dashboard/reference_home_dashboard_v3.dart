@@ -387,7 +387,7 @@ class _AgentGroupCard extends StatelessWidget {
             Text(
               tr ? 'Durum doğrulanmadı' : 'State unverified',
               style: TextStyle(
-                fontSize: 11.5,
+                fontSize: 12.5,
                 color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
@@ -414,7 +414,7 @@ class _StatusLine extends StatelessWidget {
                 text,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11.5),
+                style: const TextStyle(fontSize: 12.5),
               ),
             ),
           ],
