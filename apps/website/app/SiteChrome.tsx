@@ -37,7 +37,6 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
 
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);
   useEffect(() => {
-    setOpen(false);
     exploreRef.current?.removeAttribute("open");
   }, [pathname]);
   useEffect(() => {
