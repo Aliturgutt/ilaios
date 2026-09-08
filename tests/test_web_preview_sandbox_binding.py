@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import socket
+from collections.abc import Callable
 from dataclasses import replace
+from typing import TypeVar, cast
 
 import pytest
 
@@ -28,9 +30,11 @@ SOURCE_SHA256 = "a" * 64
 ARTIFACT_SHA256 = "b" * 64
 COMMIT_SHA = "c" * 40
 PREVIEW_ORIGIN = "https://preview-123.example.net"
+_FixtureFn = TypeVar("_FixtureFn", bound=Callable[..., object])
+_autouse_fixture = cast(Callable[[_FixtureFn], _FixtureFn], pytest.fixture(autouse=True))
 
 
-@pytest.fixture(autouse=True)  # type: ignore[misc]
+@_autouse_fixture
 def _stable_public_preview_dns(monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep synthetic preview-host tests deterministic and network-free."""
     monkeypatch.setattr(
