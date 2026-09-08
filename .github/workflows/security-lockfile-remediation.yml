@@ -1,0 +1,75 @@
+name: Security lockfile remediation helper
+
+on:
+  push:
+    branches:
+      - security/free-digital-pentest-20260909
+    paths:
+      - 'apps/website/package.json'
+      - '.github/workflows/security-lockfile-remediation.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: security-lockfile-remediation-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  regenerate-lockfile:
+    if: github.ref == 'refs/heads/security/free-digital-pentest-20260909'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact feature branch
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: security/free-digital-pentest-20260909
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: apps/website/package-lock.json
+
+      - name: Regenerate lockfile without lifecycle scripts
+        working-directory: apps/website
+        run: |
+          set -euo pipefail
+          npm install --package-lock-only --ignore-scripts --audit=false --fund=false
+          node - <<'NODE'
+          const lock = require('./package-lock.json');
+          const packages = lock.packages || {};
+          if (packages['node_modules/js-yaml']?.version !== '4.3.2') {
+            throw new Error(`js-yaml lock mismatch: ${packages['node_modules/js-yaml']?.version}`);
+          }
+          if (packages['node_modules/sharp']?.version !== '0.35.4') {
+            throw new Error(`sharp lock mismatch: ${packages['node_modules/sharp']?.version}`);
+          }
+          console.log('SECURITY_LOCKFILE_PATCHED=PASS');
+          NODE
+
+      - name: Enforce lockfile-only mutation
+        run: |
+          set -euo pipefail
+          changed="$(git status --porcelain | awk '{print $2}')"
+          if [ -z "$changed" ]; then
+            echo 'LOCKFILE_ALREADY_CURRENT=PASS'
+            exit 0
+          fi
+          test "$changed" = "apps/website/package-lock.json"
+          git diff --check
+
+      - name: Commit generated lockfile checkpoint
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- apps/website/package-lock.json; then
+            exit 0
+          fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add apps/website/package-lock.json
+          git commit -m 'fix(security): regenerate patched website lockfile'
+          git push origin HEAD:security/free-digital-pentest-20260909
