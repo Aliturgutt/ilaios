@@ -20,6 +20,7 @@ concurrency:
 
 jobs:
   dependency-vulnerability-reverification:
+    if: github.event_name != 'pull_request'
     name: S5 dependency vulnerability re-verification
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -50,6 +51,7 @@ jobs:
           retention-days: 30
 
   full-history-secret-scan:
+    if: github.event_name != 'pull_request'
     name: S5 full repository history secret scan
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -75,6 +77,7 @@ jobs:
             --head-sha "$GITHUB_SHA"
 
   provider-neutral-recovery-drills:
+    if: github.event_name != 'pull_request'
     name: S5 provider-neutral recovery and security drills
     runs-on: ubuntu-latest
     timeout-minutes: 20
