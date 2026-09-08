@@ -108,20 +108,29 @@ def test_prepare_youtube_target_carries_complete_metadata() -> None:
 
 
 def test_prepare_youtube_target_fails_closed_on_hashtag_or_thumbnail_evidence() -> None:
-    common = dict(
-        candidate=_candidate(),
-        scheduled_at=NOW,
-        policy=YouTubeEditorialPolicy(account_id="channel-001", category_id="28"),
-        title="AI Chip Market: What Changed",
-        description="Evidence-bound explanation.",
-        tags=("ai", "technology"),
-        thumbnail_path="/tmp/thumb.jpg",
-        thumbnail_sha256="a" * 64,
-    )
-    with pytest.raises(DailyYouTubePlanningError):
-        prepare_youtube_target(hashtags=("#AI", "#Tech"), **common)
+    candidate = _candidate()
+    policy = YouTubeEditorialPolicy(account_id="channel-001", category_id="28")
     with pytest.raises(DailyYouTubePlanningError):
         prepare_youtube_target(
+            candidate=candidate,
+            scheduled_at=NOW,
+            policy=policy,
+            title="AI Chip Market: What Changed",
+            description="Evidence-bound explanation.",
+            hashtags=("#AI", "#Tech"),
+            tags=("ai", "technology"),
+            thumbnail_path="/tmp/thumb.jpg",
+            thumbnail_sha256="a" * 64,
+        )
+    with pytest.raises(DailyYouTubePlanningError):
+        prepare_youtube_target(
+            candidate=candidate,
+            scheduled_at=NOW,
+            policy=policy,
+            title="AI Chip Market: What Changed",
+            description="Evidence-bound explanation.",
             hashtags=("#AI", "#Tech", "#Business"),
-            **{**common, "thumbnail_sha256": "bad"},
+            tags=("ai", "technology"),
+            thumbnail_path="/tmp/thumb.jpg",
+            thumbnail_sha256="bad",
         )
