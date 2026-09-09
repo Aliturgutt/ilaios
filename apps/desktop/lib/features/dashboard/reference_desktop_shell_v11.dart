@@ -19,7 +19,7 @@ import 'agent_provisioning_scope.dart';
 import 'control_center_view.dart';
 import 'home_runtime_binding.dart';
 import 'reference_agents_summary_view.dart';
-import 'reference_home_dashboard_v2.dart';
+import 'reference_home_dashboard_v3.dart';
 
 /// Active canonical Desktop shell for the 7-page migration.
 ///
@@ -101,7 +101,7 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
   }
 
   Widget _buildSection(String presentedStatus) => switch (_section) {
-        DesktopSection.home => ReferenceHomeDashboardV2(
+        DesktopSection.home => ReferenceHomeDashboardV3(
             projection: widget.projection,
             snapshot: widget.operationalSnapshot,
             status: presentedStatus,
