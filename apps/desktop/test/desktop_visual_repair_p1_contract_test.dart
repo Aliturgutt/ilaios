@@ -25,7 +25,8 @@ void main() {
 
     expect(find.byKey(const Key('reference-workflows-page')), findsOneWidget);
     expect(find.byKey(const Key('workflows-metrics')), findsOneWidget);
-    expect(find.byKey(const Key('workflows-table-panel')), findsOneWidget);
+    expect(find.byKey(const Key('workflow-search')), findsOneWidget);
+    expect(find.byKey(const Key('workflow-page-indicator')), findsOneWidget);
     for (final id in const ['total', 'active', 'approval', 'overdue', 'completed']) {
       expect(find.byKey(ValueKey('workflows-summary-$id')), findsNothing);
     }
