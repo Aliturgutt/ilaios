@@ -38,17 +38,17 @@ const copy = {
 } as const;
 
 const heroTitleStyle = {
-  fontSize: "clamp(2.25rem, 4.2vw, 4rem)",
-  lineHeight: 1.02,
-  letterSpacing: "-0.045em",
-  maxWidth: "15ch",
+  fontSize: "clamp(2.2rem, 3.55vw, 3.45rem)",
+  lineHeight: 1.04,
+  letterSpacing: "-0.042em",
+  maxWidth: "18ch",
 } as const;
 
 const missionTitleStyle = {
-  fontSize: "clamp(1.75rem, 2.8vw, 2.8rem)",
-  lineHeight: 1.08,
-  letterSpacing: "-0.035em",
-  maxWidth: "18ch",
+  fontSize: "clamp(1.65rem, 2.45vw, 2.45rem)",
+  lineHeight: 1.1,
+  letterSpacing: "-0.032em",
+  maxWidth: "21ch",
 } as const;
 
 export default function AboutPage({ locale }: { locale: Locale }) {
