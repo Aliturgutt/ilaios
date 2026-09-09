@@ -28,7 +28,17 @@ from services.commercial_webhook import VerifiedDigitalPaymentEvent
 _PAYTR_TOKEN_URL = "https://www.paytr.com/odeme/api/get-token"
 _PAYTR_IFRAME_URL = "https://www.paytr.com/odeme/guvenli/"
 _REFERENCE_PREFIXES = ("env://", "kms://", "vault://")
-_SUPPORTED_CURRENCIES = frozenset({"TL", "USD", "EUR", "GBP", "RUB"})
+_SUPPORTED_CURRENCIES = frozenset({"TRY", "USD", "EUR", "GBP", "RUB"})
+_PAYTR_CURRENCY_BY_CANONICAL = {
+    "TRY": "TL",
+    "USD": "USD",
+    "EUR": "EUR",
+    "GBP": "GBP",
+    "RUB": "RUB",
+}
+_CANONICAL_CURRENCY_BY_PAYTR = {
+    provider: canonical for canonical, provider in _PAYTR_CURRENCY_BY_CANONICAL.items()
+}
 
 
 class PayTRTransport(Protocol):
@@ -68,7 +78,7 @@ class PayTRCheckoutRequest:
     merchant_ok_url: str
     merchant_fail_url: str
     price_minor: int
-    currency: str = "TL"
+    currency: str = "TRY"
     no_installment: int = 0
     max_installment: int = 0
     test_mode: bool = True
@@ -150,6 +160,8 @@ class PayTRDigitalGoodsAdapter:
         _require_time("now", now)
         merchant_id, merchant_key, merchant_salt = self._credentials(request.tenant_id)
         provider_order_id = request.order_id
+        canonical_currency = _normalize_currency(request.currency)
+        provider_currency = _to_paytr_currency(canonical_currency)
         order = self._commercial.create_pending_order(
             order_id=request.order_id,
             provider_order_id=provider_order_id,
@@ -157,7 +169,7 @@ class PayTRDigitalGoodsAdapter:
             user_id=request.user_id,
             product_id=request.product_id,
             price_minor=request.price_minor,
-            currency=_normalize_currency(request.currency),
+            currency=canonical_currency,
             now=now,
         )
         basket = base64.b64encode(
@@ -168,7 +180,6 @@ class PayTRDigitalGoodsAdapter:
             ).encode("utf-8")
         ).decode("ascii")
         test_mode = "1" if request.test_mode else "0"
-        currency = _normalize_currency(request.currency)
         hash_text = (
             merchant_id
             + request.user_ip
@@ -178,7 +189,7 @@ class PayTRDigitalGoodsAdapter:
             + basket
             + str(request.no_installment)
             + str(request.max_installment)
-            + currency
+            + provider_currency
             + test_mode
         )
         paytr_token = base64.b64encode(
@@ -205,7 +216,7 @@ class PayTRDigitalGoodsAdapter:
             "merchant_ok_url": request.merchant_ok_url,
             "merchant_fail_url": request.merchant_fail_url,
             "timeout_limit": "30",
-            "currency": currency,
+            "currency": provider_currency,
             "test_mode": test_mode,
             "lang": "tr",
         }
@@ -238,7 +249,7 @@ class PayTRDigitalGoodsAdapter:
         total_amount = _required_field(fields, "total_amount")
         presented_hash = _required_field(fields, "hash")
         payment_amount = _parse_positive_int(_required_field(fields, "payment_amount"), "payment_amount")
-        currency = _normalize_currency(_required_field(fields, "currency"))
+        currency = _from_paytr_currency(_required_field(fields, "currency"))
         if merchant_oid != expected_order.provider_order_id:
             raise CommercialAccessError("PayTR callback order binding does not match")
         if payment_amount != expected_order.price_minor or currency != expected_order.currency:
@@ -337,6 +348,20 @@ def _normalize_currency(value: str) -> str:
     if normalized not in _SUPPORTED_CURRENCIES:
         raise CommercialAccessError("PayTR currency is unsupported")
     return normalized
+
+
+def _to_paytr_currency(canonical_currency: str) -> str:
+    normalized = _normalize_currency(canonical_currency)
+    return _PAYTR_CURRENCY_BY_CANONICAL[normalized]
+
+
+def _from_paytr_currency(provider_currency: str) -> str:
+    _require_text("currency", provider_currency)
+    normalized = provider_currency.upper()
+    canonical = _CANONICAL_CURRENCY_BY_PAYTR.get(normalized)
+    if canonical is None:
+        raise CommercialAccessError("PayTR currency is unsupported")
+    return canonical
 
 
 def _required_field(fields: Mapping[str, str], name: str) -> str:
