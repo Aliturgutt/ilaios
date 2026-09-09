@@ -155,27 +155,30 @@ def test_managed_identity_resolver_fails_closed_for_unknown_request(tmp_path: Pa
         resolver.resolve("request-missing")
 
 
-@pytest.mark.parametrize(
-    ("budget_minor", "expected_usd"),
-    ((50, "0.5"), (100, "1"), (500, "5"), (2000, "20")),
-)
 def test_approved_product_budget_accepts_user_amounts_above_old_one_dollar_cap(
     tmp_path: Path,
-    budget_minor: int,
-    expected_usd: str,
 ) -> None:
-    resolver = DurableProductIdentityResolver(
-        _identity_database(tmp_path / f"proof-{budget_minor}.sqlite3", budget_minor=budget_minor)
-    )
+    for budget_minor, expected_usd in (
+        (50, "0.5"),
+        (100, "1"),
+        (500, "5"),
+        (2000, "20"),
+    ):
+        resolver = DurableProductIdentityResolver(
+            _identity_database(
+                tmp_path / f"proof-{budget_minor}.sqlite3",
+                budget_minor=budget_minor,
+            )
+        )
 
-    approved = resolver.approved_budget("request-1", approval_proven=True)
+        approved = resolver.approved_budget("request-1", approval_proven=True)
 
-    assert approved.tenant_id == "tenant-1"
-    assert approved.requester_id == "user-1"
-    assert approved.approval_id == "request-1"
-    assert Decimal(approved.approved_budget_microusd) / Decimal(1_000_000) == Decimal(
-        expected_usd
-    )
+        assert approved.tenant_id == "tenant-1"
+        assert approved.requester_id == "user-1"
+        assert approved.approval_id == "request-1"
+        assert Decimal(approved.approved_budget_microusd) / Decimal(1_000_000) == Decimal(
+            expected_usd
+        )
 
 
 def test_approved_product_budget_requires_exact_request_approval(tmp_path: Path) -> None:
@@ -261,29 +264,28 @@ def test_tenant_a_approval_cannot_authorize_tenant_b_request(tmp_path: Path) -> 
     assert _provider_side_effect_count(tmp_path / "managed") == 0
 
 
-@pytest.mark.parametrize(
-    "approved_budget_usd", ("0.50", "1.00", "5.00", "20.00")
-)
 def test_preflight_accepts_user_budget_without_old_one_dollar_cap(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
-    approved_budget_usd: str,
 ) -> None:
-    session = _managed_session(tmp_path)
-    monkeypatch.setattr(session._catalog, "paid_eligible_models", lambda: (_seedance_model(),))
+    for approved_budget_usd in ("0.50", "1.00", "5.00", "20.00"):
+        case_root = tmp_path / f"budget-{approved_budget_usd.replace('.', '-')}"
+        case_root.mkdir()
+        session = _managed_session(case_root)
+        monkeypatch.setattr(session._catalog, "paid_eligible_models", lambda: (_seedance_model(),))
 
-    estimate = session.preflight_estimate(
-        objective="Create an 8 second cinematic video",
-        approved_budget_microusd=int(Decimal(approved_budget_usd) * 1_000_000),
-    )
+        estimate = session.preflight_estimate(
+            objective="Create an 8 second cinematic video",
+            approved_budget_microusd=int(Decimal(approved_budget_usd) * 1_000_000),
+        )
 
-    assert estimate.provider == "openrouter-video-managed"
-    assert estimate.model == "bytedance/seedance-2.0-fast"
-    assert estimate.planned_generation_count == 2
-    assert estimate.estimated_cost_microusd > 0
-    assert estimate.reserved_ceiling_microusd <= int(
-        Decimal(approved_budget_usd) * 1_000_000
-    )
+        assert estimate.provider == "openrouter-video-managed"
+        assert estimate.model == "bytedance/seedance-2.0-fast"
+        assert estimate.planned_generation_count == 2
+        assert estimate.estimated_cost_microusd > 0
+        assert estimate.reserved_ceiling_microusd <= int(
+            Decimal(approved_budget_usd) * 1_000_000
+        )
 
 
 def test_preflight_blocks_when_estimate_exceeds_user_budget_before_provider_post(
