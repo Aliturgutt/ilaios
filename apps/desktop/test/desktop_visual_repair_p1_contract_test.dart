@@ -18,13 +18,16 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('Workflows exposes five distinct summary cards', (tester) async {
+  testWidgets('Workflows renders the canonical seven-page metrics and table surface', (tester) async {
     await pumpTurkish(tester);
     await tester.tap(find.byKey(const ValueKey('nav-workflows')));
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const Key('reference-workflows-page')), findsOneWidget);
+    expect(find.byKey(const Key('workflows-metrics')), findsOneWidget);
+    expect(find.byKey(const Key('workflows-table-panel')), findsOneWidget);
     for (final id in const ['total', 'active', 'approval', 'overdue', 'completed']) {
-      expect(find.byKey(ValueKey('workflows-summary-$id')), findsOneWidget);
+      expect(find.byKey(ValueKey('workflows-summary-$id')), findsNothing);
     }
   });
 
