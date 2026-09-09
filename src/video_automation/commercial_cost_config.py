@@ -7,7 +7,7 @@ pricing. Unknown costs remain ``None`` and paid quoting fails closed.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation, ROUND_CEILING
+from decimal import ROUND_CEILING, Decimal, InvalidOperation
 
 from .commercial_quote import LockedVideoQuote
 from .commercial_quote_engine import CommercialQuoteEngine
@@ -70,6 +70,8 @@ class FxRateSnapshot:
 
     def require_fresh(self, now_epoch_s: int) -> None:
         nonnegative_int("now_epoch_s", now_epoch_s)
+        if now_epoch_s < self.observed_at_epoch_s:
+            raise CommercialAdmissionError("USD/TRY observation is in the future")
         if now_epoch_s >= self.expires_at_epoch_s:
             raise CommercialAdmissionError("USD/TRY rate is stale; paid quote forbidden")
 
@@ -164,6 +166,8 @@ def create_governed_locked_quote(
     voice_audio_microusd: int = 0,
     other_variable_microusd: int = 0,
     quote_ttl_seconds: int = 300,
+    checkout_locale: str | None = None,
+    payment_currencies: frozenset[str] = frozenset(),
 ) -> tuple[LockedVideoQuote, CommercialCostAllocation]:
     config.require_paid_quote_ready()
     fx.require_fresh(now_epoch_s)
@@ -187,7 +191,7 @@ def create_governed_locked_quote(
         raise CommercialAdmissionError("income tax reserve is unknown")
     income_tax_reserve = _ceil_bps(pre_tax_reserve, income_tax_bps)
     costs = VideoCostEnvelope(provider_generation_microusd=provider_generation_microusd, retry_microusd=retry_microusd, repair_microusd=repair_microusd, voice_audio_microusd=voice_audio_microusd, storage_microusd=storage_share, infrastructure_microusd=fixed_share + infrastructure_share, fx_reserve_microusd=fx_reserve, risk_reserve_microusd=income_tax_reserve, other_variable_microusd=other_variable_microusd)
-    quote = CommercialQuoteEngine(config.pricing_policy(quote_ttl_seconds=quote_ttl_seconds)).create_locked_quote(quote_id=quote_id, now_epoch_s=now_epoch_s, tax_profile=tax_profile, pricing=pricing, costs=costs, duration_seconds=duration_seconds, aggregate_generated_seconds=aggregate_generated_seconds, resolution=resolution, shot_count=shot_count)
+    quote = CommercialQuoteEngine(config.pricing_policy(quote_ttl_seconds=quote_ttl_seconds)).create_locked_quote(quote_id=quote_id, now_epoch_s=now_epoch_s, tax_profile=tax_profile, pricing=pricing, costs=costs, duration_seconds=duration_seconds, aggregate_generated_seconds=aggregate_generated_seconds, resolution=resolution, shot_count=shot_count, checkout_locale=checkout_locale, payment_currencies=payment_currencies, checkout_usd_try=fx.usd_try, checkout_fx_evidence=f"{fx.source}|{fx.usd_try}|{fx.observed_at_epoch_s}|{fx.expires_at_epoch_s}", checkout_fx_expires_at=fx.expires_at_epoch_s)
     allocation = CommercialCostAllocation(active_users=active_users, chargeable_operations_per_active_user_month=chargeable_operations_per_active_user_month, fixed_cost_share_microusd=fixed_share, storage_backup_share_microusd=storage_share, infrastructure_share_microusd=infrastructure_share, fx_reserve_microusd=fx_reserve, income_tax_reserve_microusd=income_tax_reserve, fx_source=fx.source, fx_observed_at_epoch_s=fx.observed_at_epoch_s, fx_expires_at_epoch_s=fx.expires_at_epoch_s, config_version=config.version)
     store.record_quote(quote)
     _record_cost_evidence(store, quote, allocation)
