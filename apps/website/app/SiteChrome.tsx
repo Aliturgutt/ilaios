@@ -17,7 +17,7 @@ const trExplore = [["Çözümler", "/tr/solutions"], ["Kurumlar İçin", "/tr/en
 function counterpart(pathname: string, isTr: boolean) {
   if (isTr) {
     const next = pathname.replace(/^\/tr(?=\/|$)/, "");
-    return next || "/";
+    return next || "/?lang=en";
   }
   return pathname === "/" ? "/tr" : `/tr${pathname}`;
 }
@@ -95,7 +95,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
     <a className="skip-link" href="#main-content" lang={lang}>{isTr ? "Ana içeriğe geç" : "Skip to main content"}</a>
     <header ref={headerRef} className="site-header" lang={lang}>
       <div className="shell nav">
-        <Link className="brand" href={isTr ? "/tr" : "/"} aria-label={isTr ? "ILAIOS ana sayfa" : "ILAIOS home"} onClick={() => setOpen(false)}>
+        <Link className="brand" href={isTr ? "/tr" : "/?lang=en"} aria-label={isTr ? "ILAIOS ana sayfa" : "ILAIOS home"} onClick={() => setOpen(false)}>
           <Image className="brand-logo brand-logo-dark" src="/brand/logo-horizontal-dark.jpg" alt="ILAIOS" width={2400} height={800} sizes="144px" priority unoptimized style={{ mixBlendMode: "lighten" }} />
           <Image className="brand-logo brand-logo-light" src="/brand/logo-horizontal-light.jpg" alt="ILAIOS" width={2400} height={800} sizes="144px" priority unoptimized />
         </Link>
