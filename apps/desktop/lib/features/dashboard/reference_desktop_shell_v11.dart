@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../app/ilaios_locale.dart';
@@ -249,22 +251,41 @@ class _CanonicalSidebar extends StatelessWidget {
   final OperationalSnapshot snapshot;
   final ValueChanged<DesktopSection> onSelected;
 
-  Widget _logoWidget() => SizedBox(
-        height: 56,
-        child: Align(
+  Widget _logoWidget() {
+    final executableDir = File(Platform.resolvedExecutable).parent.path;
+    final fallbackFile = File(
+      '$executableDir${Platform.pathSeparator}brand${Platform.pathSeparator}assets${Platform.pathSeparator}13-ilaios-primary-horizontal-light.jpg',
+    );
+
+    return SizedBox(
+      height: 56,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Image.asset(
+          _logo,
+          key: const Key('canonical-reference-logo'),
+          width: 184,
+          height: 48,
+          fit: BoxFit.contain,
           alignment: Alignment.centerLeft,
-          child: Image.asset(
-            _logo,
-            key: const Key('canonical-reference-logo'),
-            width: 184,
-            height: 48,
-            fit: BoxFit.contain,
-            alignment: Alignment.centerLeft,
-            filterQuality: FilterQuality.high,
-            gaplessPlayback: true,
-          ),
+          filterQuality: FilterQuality.high,
+          gaplessPlayback: true,
+          errorBuilder: (context, error, stackTrace) {
+            if (!fallbackFile.existsSync()) return const SizedBox.shrink();
+            return Image.file(
+              fallbackFile,
+              width: 184,
+              height: 48,
+              fit: BoxFit.contain,
+              alignment: Alignment.centerLeft,
+              filterQuality: FilterQuality.high,
+              gaplessPlayback: true,
+            );
+          },
         ),
-      );
+      ),
+    );
+  }
 
   Widget _navigationContent(BuildContext context, {required bool compactHeight}) {
     final children = <Widget>[
