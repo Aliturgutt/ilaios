@@ -437,10 +437,11 @@ def _terminate_frozen_sidecar_parent() -> None:
         return
     process_query_limited_information = 0x1000
     process_terminate = 0x0001
+    synchronize = 0x00100000
     kernel32 = ctypes.windll.kernel32
     kernel32.OpenProcess.restype = ctypes.c_void_p
     handle = kernel32.OpenProcess(
-        process_query_limited_information | process_terminate,
+        process_query_limited_information | process_terminate | synchronize,
         False,
         parent_pid,
     )

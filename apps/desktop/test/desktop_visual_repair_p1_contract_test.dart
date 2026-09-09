@@ -2,10 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
-import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
-
-import 'secondary_navigation_test_support.dart';
 
 void main() {
   Future<void> pumpTurkish(WidgetTester tester, {OperationalSnapshot? snapshot}) async {
@@ -21,13 +18,17 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets('Workflows exposes five distinct summary cards', (tester) async {
+  testWidgets('Workflows renders the canonical seven-page metrics and table surface', (tester) async {
     await pumpTurkish(tester);
     await tester.tap(find.byKey(const ValueKey('nav-workflows')));
     await tester.pumpAndSettle();
 
+    expect(find.byKey(const Key('reference-workflows-page')), findsOneWidget);
+    expect(find.byKey(const Key('workflows-metrics')), findsOneWidget);
+    expect(find.byKey(const Key('workflow-search')), findsOneWidget);
+    expect(find.byKey(const Key('workflow-page-indicator')), findsOneWidget);
     for (final id in const ['total', 'active', 'approval', 'overdue', 'completed']) {
-      expect(find.byKey(ValueKey('workflows-summary-$id')), findsOneWidget);
+      expect(find.byKey(ValueKey('workflows-summary-$id')), findsNothing);
     }
   });
 
@@ -57,19 +58,5 @@ void main() {
 
     expect(find.byKey(const Key('evidence-search')), findsOneWidget);
     expect(find.byKey(const Key('evidence-filter')), findsOneWidget);
-  });
-
-  testWidgets('secondary surfaces remain reachable after seven-primary navigation repair', (
-    tester,
-  ) async {
-    await pumpTurkish(tester);
-    for (final section in const [
-      DesktopSection.goals,
-      DesktopSection.liveWorkspace,
-      DesktopSection.costs,
-    ]) {
-      await openSecondaryDesktopSection(tester, section);
-      expect(tester.takeException(), isNull);
-    }
   });
 }
