@@ -212,6 +212,16 @@ class DesignObservation:
     motion_budget_failures: int = 0
     showcase_fallback_failures: int = 0
     text_scaling_failures: int = 0
+    giant_heading_failures: int = 0
+    empty_visual_placeholders: int = 0
+    excessive_whitespace_regions: int = 0
+    repeated_layout_failures: int = 0
+    cta_hierarchy_failures: int = 0
+    turkish_layout_failures: int = 0
+    mobile_hierarchy_failures: int = 0
+    section_rhythm_failures: int = 0
+    missing_brand_asset_failures: int = 0
+    text_heavy_without_structure: int = 0
     reduced_motion_supported: bool = True
     reduced_transparency_supported: bool = True
     increased_contrast_supported: bool = True
@@ -343,6 +353,16 @@ class NativeDesignQualityEvaluator:
             "motion_budget_failures",
             "showcase_fallback_failures",
             "text_scaling_failures",
+            "giant_heading_failures",
+            "empty_visual_placeholders",
+            "excessive_whitespace_regions",
+            "repeated_layout_failures",
+            "cta_hierarchy_failures",
+            "turkish_layout_failures",
+            "mobile_hierarchy_failures",
+            "section_rhythm_failures",
+            "missing_brand_asset_failures",
+            "text_heavy_without_structure",
         )
         for name in fields:
             if getattr(row, name) < 0:
@@ -531,6 +551,76 @@ class NativeDesignQualityEvaluator:
                 "p2",
                 "Text scaling breaks hierarchy, legibility, or layout.",
                 "Use scale-aware typography and spacing that survives user text-size changes.",
+            ),
+            (
+                "giant_heading_failures",
+                "design.typography-quality",
+                "major",
+                "Oversized heading or hero proportion detected.",
+                "Reduce the bounded type scale and rebalance the hero without global rewrite.",
+            ),
+            (
+                "empty_visual_placeholders",
+                "design.visual-quality",
+                "major",
+                "Empty visual placeholder detected.",
+                "Replace it with a meaningful diagram, schematic, or intentional typographic composition.",
+            ),
+            (
+                "excessive_whitespace_regions",
+                "design.layout-quality",
+                "p2",
+                "Excessive whitespace weakens information density.",
+                "Tighten section spacing or rebalance only the affected composition.",
+            ),
+            (
+                "repeated_layout_failures",
+                "design.component-diversity",
+                "major",
+                "Repeated page layout exceeds the allowed similarity threshold.",
+                "Diversify section composition using existing Web Factory primitives.",
+            ),
+            (
+                "cta_hierarchy_failures",
+                "design.cta-hierarchy",
+                "p2",
+                "CTA hierarchy is unclear or duplicated.",
+                "Restore one primary CTA and bounded contextual secondary actions.",
+            ),
+            (
+                "turkish_layout_failures",
+                "design.localization-parity",
+                "major",
+                "Turkish content degrades the intended layout.",
+                "Repair wrapping, type scale, or responsive composition for Turkish content.",
+            ),
+            (
+                "mobile_hierarchy_failures",
+                "design.responsive-quality",
+                "major",
+                "Mobile hierarchy is structurally usable but visually degraded.",
+                "Recompose the affected section for mobile instead of copying desktop layout.",
+            ),
+            (
+                "section_rhythm_failures",
+                "design.layout-quality",
+                "p2",
+                "Section rhythm is inconsistent.",
+                "Correct the bounded spacing/token decision for the affected section.",
+            ),
+            (
+                "missing_brand_asset_failures",
+                "design.brand-fidelity",
+                "major",
+                "Canonical brand asset is available but not used correctly.",
+                "Use canonical light/dark asset mapping without recolor or filter.",
+            ),
+            (
+                "text_heavy_without_structure",
+                "design.content-architecture",
+                "p2",
+                "Text-heavy page lacks meaningful visual structure.",
+                "Introduce content-specific sections or an intentional system visualization.",
             ),
         )
         out = [
