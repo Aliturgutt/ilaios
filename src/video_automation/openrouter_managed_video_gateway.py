@@ -1,4 +1,10 @@
-"""Catalog-bound managed OpenRouter dispatch without a second routing authority."""
+"""Catalog-bound managed OpenRouter dispatch without a second routing authority.
+
+Legacy per-job customer quoting and payment authorization are intentionally absent.
+Paid-provider safety is enforced by live catalog validation, managed-credit reservation,
+side-effect idempotency, and provider-cost ceilings. Subscription entitlement is owned
+outside this gateway by the commercial entitlement authority.
+"""
 
 from __future__ import annotations
 
@@ -7,9 +13,6 @@ import time
 from collections.abc import Callable, Mapping
 from typing import cast
 
-from .commercial_quote import CommercialDispatchAuthority
-from .commercial_store import CommercialAuthorityStore
-from .commercial_types import CommercialAdmissionError
 from .configuration import VideoAutomationPolicy
 from .managed_credit_store import ManagedCreditLedgerStore, ProviderSideEffectLedger
 from .managed_credits import ManagedCreditAccount, ManagedCreditError, ProviderCostQuote
@@ -37,7 +40,7 @@ class OpenRouterManagedVideoGatewayError(ValueError):
 
 
 class OpenRouterManagedVideoGateway:
-    """Bind commercial, catalog and managed-credit evidence to the paid POST boundary."""
+    """Bind live catalog and managed-credit evidence to the paid POST boundary."""
 
     def __init__(
         self,
@@ -45,7 +48,6 @@ class OpenRouterManagedVideoGateway:
         api_key: str,
         policy: VideoAutomationPolicy,
         credit_store: ManagedCreditLedgerStore,
-        commercial_store: CommercialAuthorityStore,
         catalog: OpenRouterVideoCatalogClient,
         transport: OpenRouterTransport | None = None,
         webhook_store: OpenRouterVideoWebhookStore | None = None,
@@ -57,7 +59,6 @@ class OpenRouterManagedVideoGateway:
         self._api_key = api_key
         self._policy = policy
         self._credit_store = credit_store
-        self._commercial_store = commercial_store
         self._catalog = catalog
         self._transport = transport
         self._webhook_store = webhook_store
@@ -71,29 +72,15 @@ class OpenRouterManagedVideoGateway:
         request: ProviderRequest,
         quote: ProviderCostQuote,
         routing_decision_id: str,
-        commercial_authority: CommercialDispatchAuthority,
     ) -> ProviderResult:
-        """Validate durable commercial/catalog facts, then perform at most one paid POST."""
+        """Validate live provider facts and bounded spend, then perform at most one paid POST."""
 
         if request.provider_name != OPENROUTER_MANAGED_PROVIDER_NAME:
             raise OpenRouterManagedVideoGatewayError(
                 "request is not bound to the managed OpenRouter provider"
             )
         model_id = _request_model_id(request)
-        now_epoch_s = int(self._clock())
-        _validate_commercial_authority_before_catalog(
-            authority=commercial_authority,
-            request=request,
-            quote=quote,
-            model_id=model_id,
-            now_epoch_s=now_epoch_s,
-        )
-        try:
-            self._commercial_store.verify_authority(
-                commercial_authority, now_epoch_s=now_epoch_s
-            )
-        except CommercialAdmissionError as exc:
-            raise OpenRouterManagedVideoGatewayError(str(exc)) from exc
+        _validate_provider_quote(request=request, quote=quote, model_id=model_id)
 
         side_effect_ledger = ProviderSideEffectLedger(self._credit_store)
         try:
@@ -132,24 +119,6 @@ class OpenRouterManagedVideoGateway:
             raise OpenRouterManagedVideoGatewayError(
                 "catalog lost last-known-good snapshot before dispatch"
             )
-        if commercial_authority.pricing_fingerprint != snapshot.catalog_digest:
-            raise OpenRouterManagedVideoGatewayError(
-                "live pricing/capability catalog changed after quote; requote required"
-            )
-        now_epoch_s = int(self._clock())
-        try:
-            commercial_authority.require_valid(now_epoch_s)
-            self._commercial_store.verify_authority(
-                commercial_authority, now_epoch_s=now_epoch_s
-            )
-            self._commercial_store.reserve_request(
-                authority=commercial_authority,
-                request_id=request.request_id,
-                provider_quote=quote,
-                now_epoch_s=now_epoch_s,
-            )
-        except CommercialAdmissionError as exc:
-            raise OpenRouterManagedVideoGatewayError(str(exc)) from exc
 
         provider = OpenRouterManagedVideoGenerationProvider(
             self._api_key,
@@ -163,16 +132,12 @@ class OpenRouterManagedVideoGateway:
             store=self._credit_store,
             side_effect_ledger=side_effect_ledger,
         )
-        try:
-            plan = coordinator.authorize(
-                account=account,
-                request=request,
-                quote=quote,
-                routing_decision_id=routing_decision_id,
-            )
-        except Exception:
-            self._commercial_store.release_request(request.request_id)
-            raise
+        plan = coordinator.authorize(
+            account=account,
+            request=request,
+            quote=quote,
+            routing_decision_id=routing_decision_id,
+        )
         result = coordinator.execute(provider=provider, plan=plan)
         if result.success:
             if result.external_id is None:
@@ -187,37 +152,20 @@ class OpenRouterManagedVideoGateway:
         return result
 
 
-def _validate_commercial_authority_before_catalog(
-    *,
-    authority: CommercialDispatchAuthority,
-    request: ProviderRequest,
-    quote: ProviderCostQuote,
-    model_id: str,
-    now_epoch_s: int,
+def _validate_provider_quote(
+    *, request: ProviderRequest, quote: ProviderCostQuote, model_id: str
 ) -> None:
-    if not isinstance(authority, CommercialDispatchAuthority):
+    if quote.provider_name != request.provider_name:
         raise OpenRouterManagedVideoGatewayError(
-            "commercial dispatch authority is required before paid generation"
+            "provider cost quote does not match request provider"
         )
-    try:
-        authority.require_valid(now_epoch_s)
-    except CommercialAdmissionError as exc:
-        raise OpenRouterManagedVideoGatewayError(str(exc)) from exc
-    if authority.provider_name != request.provider_name:
+    if quote.model_id != model_id:
         raise OpenRouterManagedVideoGatewayError(
-            "commercial authority provider does not match request"
+            "provider cost quote does not match request model"
         )
-    if authority.provider_name != quote.provider_name:
+    if quote.max_cost_microusd <= 0:
         raise OpenRouterManagedVideoGatewayError(
-            "commercial authority provider does not match provider quote"
-        )
-    if authority.model_id != model_id or quote.model_id != model_id:
-        raise OpenRouterManagedVideoGatewayError(
-            "commercial authority/model binding does not match request"
-        )
-    if quote.max_cost_microusd > authority.provider_cost_ceiling_microusd:
-        raise OpenRouterManagedVideoGatewayError(
-            "provider request cost exceeds commercial authority ceiling"
+            "provider cost quote must have a positive hard ceiling"
         )
 
 
