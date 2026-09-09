@@ -235,7 +235,8 @@ class _CanonicalSidebar extends StatelessWidget {
     required this.onSelected,
   });
 
-  static const _logo = '../../brand/assets/13-ilaios-primary-horizontal-light.jpg';
+  static const _darkLogo = '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
+  static const _lightLogo = '../../brand/assets/13-ilaios-primary-horizontal-light.jpg';
   static const _sections = <DesktopSection>[
     DesktopSection.home,
     DesktopSection.workflows,
@@ -251,10 +252,15 @@ class _CanonicalSidebar extends StatelessWidget {
   final OperationalSnapshot snapshot;
   final ValueChanged<DesktopSection> onSelected;
 
-  Widget _logoWidget() {
+  Widget _logoWidget(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final logo = dark ? _darkLogo : _lightLogo;
+    final fallbackAssetName = dark
+        ? '02-ilaios-primary-horizontal-dark.jpg'
+        : '13-ilaios-primary-horizontal-light.jpg';
     final executableDir = File(Platform.resolvedExecutable).parent.path;
     final fallbackFile = File(
-      '$executableDir${Platform.pathSeparator}brand${Platform.pathSeparator}assets${Platform.pathSeparator}13-ilaios-primary-horizontal-light.jpg',
+      '$executableDir${Platform.pathSeparator}brand${Platform.pathSeparator}assets${Platform.pathSeparator}$fallbackAssetName',
     );
 
     return SizedBox(
@@ -262,7 +268,7 @@ class _CanonicalSidebar extends StatelessWidget {
       child: Align(
         alignment: Alignment.centerLeft,
         child: Image.asset(
-          _logo,
+          logo,
           key: const Key('canonical-reference-logo'),
           width: 184,
           height: 48,
@@ -289,7 +295,7 @@ class _CanonicalSidebar extends StatelessWidget {
 
   Widget _navigationContent(BuildContext context, {required bool compactHeight}) {
     final children = <Widget>[
-      _logoWidget(),
+      _logoWidget(context),
       const SizedBox(height: 20),
       for (final section in _sections) ...[
         _CanonicalNavItem(
