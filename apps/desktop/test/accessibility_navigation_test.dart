@@ -3,10 +3,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
 
-import 'secondary_navigation_test_support.dart';
-
 void main() {
-  testWidgets('Desktop navigation is semantic and every destination is reachable', (
+  testWidgets('Desktop navigation is semantic and all seven canonical destinations are reachable', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -35,7 +33,7 @@ void main() {
       expect(
         navigation,
         findsOneWidget,
-        reason: 'Missing ${destination.name} primary navigation',
+        reason: 'Missing ${destination.name} canonical navigation',
       );
       await tester.tap(navigation);
       await tester.pumpAndSettle();
@@ -46,23 +44,18 @@ void main() {
       );
     }
 
-    for (final destination in <DesktopSection>[
+    for (final legacy in <DesktopSection>[
       DesktopSection.goals,
       DesktopSection.liveWorkspace,
       DesktopSection.costs,
     ]) {
       expect(
-        find.byKey(ValueKey('nav-${destination.name}')),
+        find.byKey(ValueKey('nav-${legacy.name}')),
         findsNothing,
-        reason: '${destination.name} must remain secondary, not primary',
-      );
-      await openSecondaryDesktopSection(tester, destination);
-      expect(
-        tester.takeException(),
-        isNull,
-        reason: '${destination.name} secondary navigation threw during rendering',
+        reason: '${legacy.name} must not reappear as a top-level destination',
       );
     }
+    expect(find.byKey(const Key('reference-secondary-navigation')), findsNothing);
 
     semantics.dispose();
   });

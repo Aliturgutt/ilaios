@@ -20,24 +20,20 @@ List<double> _fontSizes(String source) =>
         .toList(growable: false);
 
 void main() {
-  test('desktop shell never shrinks the whole UI or forces text below system scale', () {
-    final v10 = _repoFile(
-      'lib/features/dashboard/reference_desktop_shell_v10.dart',
-    ).readAsStringSync();
+  test('canonical desktop shell never shrinks the whole UI below system scale', () {
     final v11 = _repoFile(
       'lib/features/dashboard/reference_desktop_shell_v11.dart',
     ).readAsStringSync();
 
-    expect(v10, isNot(contains('TextScaler.linear(.95)')));
-    expect(v10, isNot(contains('FittedBox(')));
+    expect(v11, isNot(contains('TextScaler.linear(.95)')));
     expect(v11, isNot(contains('FittedBox(')));
-    expect(v10, contains("Key('reference-responsive-viewport-v10')"));
     expect(v11, contains("Key('reference-responsive-viewport-v11')"));
+    expect(v11, contains("Key('canonical-7-page-sidebar')"));
   });
 
-  test('shell user-facing text respects the final readability floor', () {
+  test('canonical shell user-facing text respects the readability floor', () {
     final source = _repoFile(
-      'lib/features/dashboard/reference_desktop_shell_v10.dart',
+      'lib/features/dashboard/reference_desktop_shell_v11.dart',
     ).readAsStringSync();
     final sizes = _fontSizes(source);
 
@@ -45,20 +41,24 @@ void main() {
     expect(
       sizes.where((size) => size < 12.5),
       isEmpty,
-      reason: 'Shell text must remain comfortably readable at normal Windows viewing distance.',
+      reason: 'Canonical shell text must remain readable at normal Windows viewing distance.',
     );
   });
 
-  test('Home primary prompt is wired directly to the existing governed submit callback', () {
-    final source = _repoFile(
-      'lib/features/dashboard/reference_desktop_shell_v10.dart',
+  test('Home primary prompt stays wired to the existing governed submit callback', () {
+    final shell = _repoFile(
+      'lib/features/dashboard/reference_desktop_shell_v11.dart',
+    ).readAsStringSync();
+    final home = _repoFile(
+      'lib/features/dashboard/reference_home_dashboard_v3.dart',
     ).readAsStringSync();
 
-    expect(source, contains('userSession: widget.userSession'));
-    expect(source, contains('onPromptSubmit: widget.onPromptSubmit'));
+    expect(shell, contains('onPromptSubmit: widget.onPromptSubmit'));
+    expect(home, contains('final callback = widget.onPromptSubmit'));
+    expect(home, contains('final submission = await callback(objective)'));
   });
 
-  test('Home rejects micro-text and keeps raw identifiers secondary', () {
+  test('canonical Home rejects micro-text and synthetic screenshot telemetry', () {
     final source = _repoFile(
       'lib/features/dashboard/reference_home_dashboard_v3.dart',
     ).readAsStringSync();
@@ -68,13 +68,12 @@ void main() {
     expect(
       sizes.where((size) => size < 12.5),
       isEmpty,
-      reason: 'Home must not reintroduce micro-text to preserve information density.',
+      reason: 'Canonical Home must not introduce micro-text.',
     );
     expect(source, isNot(contains('IlaiosTheme.coreBlue')));
-    expect(
-      source,
-      contains("const ['project_name', 'title', 'objective', 'goal', 'task', 'description']"),
-    );
-    expect(source, contains("'ID \${_short(record.executionId, 12)}'"));
+    expect(source, isNot(contains(r'$3.21')));
+    expect(source, isNot(contains('18.362')));
+    expect(source, isNot(contains("Key('command-center-hero')")));
+    expect(source, contains("Key('home-command-prompt')"));
   });
 }
