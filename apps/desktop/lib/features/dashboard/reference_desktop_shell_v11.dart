@@ -16,10 +16,10 @@ import '../navigation/desktop_section.dart';
 import '../operations/operational_views.dart';
 import '../operations/support_views.dart';
 import 'agent_provisioning_scope.dart';
-import 'control_center_view.dart';
 import 'home_runtime_binding.dart';
 import 'reference_agents_summary_view.dart';
 import 'reference_home_dashboard_v3.dart';
+import 'reference_workflows_view.dart';
 
 /// Active canonical Desktop shell for the 7-page migration.
 ///
@@ -110,10 +110,10 @@ class _ReferenceDesktopShellV11State extends State<ReferenceDesktopShellV11> {
             onNavigate: _select,
             onRefreshRequested: widget.onRefreshRequested,
           ),
-        DesktopSection.workflows => ControlCenterView(
+        DesktopSection.workflows => ReferenceWorkflowsView(
             projection: widget.projection,
-            operationalSnapshot: widget.operationalSnapshot,
-            operationalStatus: presentedStatus,
+            snapshot: widget.operationalSnapshot,
+            status: presentedStatus,
             onRefreshRequested: widget.onRefreshRequested,
             onNavigate: _select,
           ),
