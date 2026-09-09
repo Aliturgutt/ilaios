@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 
@@ -37,3 +38,26 @@ def test_full_local_windows_entrypoint_builds_app_and_sidecar() -> None:
     assert "ilaios_desktop.exe" in script
     assert "ilaios_control_plane.exe" in script
     assert "ILAIOS_DESKTOP_FULL_LOCAL_BUILD=PASS" in script
+
+
+def test_full_local_sidecar_packages_the_canonical_google_provider() -> None:
+    provider_path = (
+        ROOT
+        / "apps/desktop/packaging/identity/oidc-providers.public.json"
+    )
+    providers = json.loads(provider_path.read_text(encoding="utf-8"))
+    assert len(providers) == 1
+    google = providers[0]
+    assert google["provider_id"] == "google"
+    assert google["display_name"] == "Google"
+    assert google["issuer"] == "https://accounts.google.com"
+    assert google["authorization_endpoint"].startswith("https://accounts.google.com/")
+    assert google["client_id"].endswith(".apps.googleusercontent.com")
+    assert google["scopes"] == ["openid", "profile", "email"]
+    assert "client_secret" not in google
+
+    builder = (
+        ROOT / "apps/desktop/tool/build_control_plane_sidecar.ps1"
+    ).read_text(encoding="utf-8")
+    assert "oidc-providers.public.json" in builder
+    assert '--add-data "$identityProviders;desktop-identity"' in builder
