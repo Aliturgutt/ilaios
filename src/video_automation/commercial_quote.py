@@ -13,6 +13,17 @@ from .commercial_types import (
 )
 
 
+def currency_for_locale(locale: str) -> str:
+    """Resolve supported menu locales without using language as tax evidence."""
+    require_text("locale", locale)
+    normalized = locale.lower().replace("_", "-")
+    if normalized in {"tr", "tr-tr"}:
+        return "TRY"
+    if normalized in {"en", "en-us", "en-gb"}:
+        return "USD"
+    raise CommercialAdmissionError("unsupported checkout locale")
+
+
 @dataclass(frozen=True, slots=True)
 class LockedVideoQuote:
     quote_id: str
@@ -45,6 +56,10 @@ class LockedVideoQuote:
     hard_min_margin_bps: int
     created_at_epoch_s: int
     expires_at_epoch_s: int
+    # Provider economics above remain microUSD; checkout uses kurus/cents.
+    customer_amount_minor: int | None = None
+    checkout_locale: str | None = None
+    checkout_fx_evidence: str | None = None
 
     def __post_init__(self) -> None:
         for name in (
@@ -77,6 +92,17 @@ class LockedVideoQuote:
             raise CommercialAdmissionError("quote lifetime is invalid")
         if self.target_margin_bps < self.hard_min_margin_bps:
             raise CommercialAdmissionError("quote margin policy is invalid")
+        if self.currency not in {"TRY", "USD"}:
+            raise CommercialAdmissionError("unsupported checkout currency")
+        if self.checkout_locale is not None:
+            if currency_for_locale(self.checkout_locale) != self.currency:
+                raise CommercialAdmissionError("checkout locale/currency mismatch")
+            if self.customer_amount_minor is None:
+                raise CommercialAdmissionError("localized quote requires checkout amount")
+        if self.customer_amount_minor is not None:
+            positive_int("customer_amount_minor", self.customer_amount_minor)
+        if self.currency == "TRY" and (self.customer_amount_minor is None or not self.checkout_fx_evidence):
+            raise CommercialAdmissionError("TRY quote requires amount and FX evidence")
 
     def require_valid(self, now_epoch_s: int) -> None:
         nonnegative_int("now_epoch_s", now_epoch_s)
@@ -91,6 +117,8 @@ class PaymentAuthorization:
     secured_amount_microusd: int
     secured_at_epoch_s: int
     status: str = "SECURED"
+    currency: str = "USD"
+    secured_amount_minor: int | None = None
 
     def __post_init__(self) -> None:
         require_text("payment_authorization_id", self.payment_authorization_id)
@@ -98,6 +126,12 @@ class PaymentAuthorization:
         positive_int("secured_amount_microusd", self.secured_amount_microusd)
         nonnegative_int("secured_at_epoch_s", self.secured_at_epoch_s)
         require_text("status", self.status)
+        if self.currency not in {"TRY", "USD"}:
+            raise CommercialAdmissionError("unsupported payment currency")
+        if self.secured_amount_minor is not None:
+            positive_int("secured_amount_minor", self.secured_amount_minor)
+        if self.currency == "TRY" and self.secured_amount_minor is None:
+            raise CommercialAdmissionError("TRY payment requires secured minor amount")
 
     def require_secured_for(self, quote: LockedVideoQuote) -> None:
         if self.status != "SECURED":
@@ -106,6 +140,10 @@ class PaymentAuthorization:
             )
         if self.quote_id != quote.quote_id:
             raise CommercialAdmissionError("payment is bound to a different quote")
+        if self.currency != quote.currency:
+            raise CommercialAdmissionError("payment currency differs from locked quote")
+        if quote.customer_amount_minor is not None and self.secured_amount_minor != quote.customer_amount_minor:
+            raise CommercialAdmissionError("payment amount differs from locked checkout amount")
         if self.secured_amount_microusd < quote.gross_customer_price_microusd:
             raise CommercialAdmissionError(
                 "secured payment does not cover locked customer price"

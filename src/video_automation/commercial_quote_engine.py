@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from decimal import Decimal, ROUND_CEILING
+from decimal import ROUND_CEILING, Decimal
 
-from .commercial_quote import LockedVideoQuote
+from .commercial_quote import LockedVideoQuote, currency_for_locale
 from .commercial_types import (
     BPS,
     CommercialAdmissionError,
@@ -37,11 +37,22 @@ class CommercialQuoteEngine:
         resolution: str,
         shot_count: int,
         currency: str = "USD",
+        checkout_locale: str | None = None,
+        payment_currencies: frozenset[str] = frozenset(),
+        checkout_usd_try: Decimal | None = None,
+        checkout_fx_evidence: str | None = None,
+        checkout_fx_expires_at: int | None = None,
     ) -> LockedVideoQuote:
         require_text("quote_id", quote_id)
         nonnegative_int("now_epoch_s", now_epoch_s)
         require_text("resolution", resolution)
         require_text("currency", currency)
+        if checkout_locale is not None:
+            currency = currency_for_locale(checkout_locale)
+            if currency not in payment_currencies:
+                raise CommercialAdmissionError("payment currency support is not confirmed")
+        elif currency != "USD":
+            raise CommercialAdmissionError("non-USD checkout requires explicit locale and FX")
         positive_int("duration_seconds", duration_seconds)
         positive_int("aggregate_generated_seconds", aggregate_generated_seconds)
         positive_int("shot_count", shot_count)
@@ -61,7 +72,29 @@ class CommercialQuoteEngine:
         )
         if expires <= now_epoch_s:
             raise CommercialAdmissionError("quote cannot use stale pricing")
-        data = {
+        customer_amount_minor = None
+        if checkout_locale is not None:
+            rate = Decimal(1)
+            if currency == "TRY":
+                if (
+                    not isinstance(checkout_usd_try, Decimal)
+                    or not checkout_usd_try.is_finite()
+                    or checkout_usd_try <= 0
+                    or not checkout_fx_evidence
+                    or checkout_fx_expires_at is None
+                ):
+                    raise CommercialAdmissionError("TRY checkout requires verified FX evidence")
+                positive_int("checkout_fx_expires_at", checkout_fx_expires_at)
+                expires = min(expires, checkout_fx_expires_at)
+                if expires <= now_epoch_s:
+                    raise CommercialAdmissionError("checkout FX is stale")
+                rate = checkout_usd_try
+            customer_amount_minor = int(
+                (Decimal(gross) * rate / Decimal(10_000)).to_integral_value(
+                    rounding=ROUND_CEILING
+                )
+            )
+        data: dict[str, object] = {
             "quote_id": quote_id,
             "provider_name": pricing.provider_name,
             "model_id": pricing.model_id,
@@ -92,6 +125,13 @@ class CommercialQuoteEngine:
             "created_at_epoch_s": now_epoch_s,
             "expires_at_epoch_s": expires,
         }
+        if checkout_locale is not None:
+            data.update({
+                "checkout_locale": checkout_locale,
+                "customer_amount_minor": customer_amount_minor,
+                "checkout_fx_evidence": checkout_fx_evidence,
+                "checkout_usd_try": str(checkout_usd_try),
+            })
         quote_hash = digest_material(*(f"{k}={v}" for k, v in data.items()))
         return LockedVideoQuote(
             quote_id=quote_id,
@@ -124,6 +164,9 @@ class CommercialQuoteEngine:
             hard_min_margin_bps=self.policy.hard_min_margin_bps,
             created_at_epoch_s=now_epoch_s,
             expires_at_epoch_s=expires,
+            customer_amount_minor=customer_amount_minor,
+            checkout_locale=checkout_locale,
+            checkout_fx_evidence=checkout_fx_evidence if checkout_locale is not None else None,
         )
 
     def _minimum_safe_price(

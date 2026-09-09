@@ -106,6 +106,24 @@ class CommercialAuthorityStore:
         self._database = root / "video_commercial_finops.sqlite3"
         with self._connect() as connection:
             connection.executescript(_SCHEMA)
+            connection.execute("BEGIN IMMEDIATE")
+            # Additive migration: old rows retain their original USD semantics.
+            for table, additions in (
+                ("commercial_quotes", (
+                    ("currency", "TEXT NOT NULL DEFAULT 'USD'"),
+                    ("customer_amount_minor", "INTEGER"),
+                    ("checkout_locale", "TEXT"),
+                    ("checkout_fx_evidence", "TEXT"),
+                )),
+                ("commercial_payments", (
+                    ("currency", "TEXT NOT NULL DEFAULT 'USD'"),
+                    ("secured_amount_minor", "INTEGER"),
+                )),
+            ):
+                columns = {row["name"] for row in connection.execute(f"PRAGMA table_info({table})")}
+                for column, definition in additions:
+                    if column not in columns:
+                        connection.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
 
     def _connect(self) -> sqlite3.Connection:
         connection = sqlite3.connect(self._database)
@@ -127,7 +145,7 @@ class CommercialAuthorityStore:
                     )
                 return
             connection.execute(
-                "INSERT INTO commercial_quotes VALUES (?,?,?,?,?,?,?,?,?,?)", values
+                "INSERT INTO commercial_quotes VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)", values
             )
 
     def record_payment(self, payment: PaymentAuthorization) -> None:
@@ -142,12 +160,15 @@ class CommercialAuthorityStore:
                 raise CommercialAdmissionError("only secured payment may be persisted")
             if payment.secured_amount_microusd < int(quote["gross_customer_price_microusd"]):
                 raise CommercialAdmissionError("secured payment does not cover locked price")
+            self._validate_payment_currency(quote, payment.currency, payment.secured_amount_minor)
             values = (
                 payment.payment_authorization_id,
                 payment.quote_id,
                 payment.secured_amount_microusd,
                 payment.secured_at_epoch_s,
                 payment.status,
+                payment.currency,
+                payment.secured_amount_minor,
             )
             existing = connection.execute(
                 "SELECT * FROM commercial_payments WHERE payment_authorization_id=?",
@@ -160,7 +181,7 @@ class CommercialAuthorityStore:
                     )
                 return
             connection.execute(
-                "INSERT INTO commercial_payments VALUES (?,?,?,?,?)", values
+                "INSERT INTO commercial_payments VALUES (?,?,?,?,?,?,?)", values
             )
 
     def record_authority(self, authority: CommercialDispatchAuthority) -> None:
@@ -395,6 +416,10 @@ class CommercialAuthorityStore:
             quote.hard_min_margin_bps,
             quote.created_at_epoch_s,
             quote.expires_at_epoch_s,
+            quote.currency,
+            quote.customer_amount_minor,
+            quote.checkout_locale,
+            quote.checkout_fx_evidence,
         )
 
     @staticmethod
@@ -438,7 +463,19 @@ class CommercialAuthorityStore:
             raise CommercialAdmissionError("authority outlives locked quote")
         if payment["quote_id"] != authority.quote_id or payment["status"] != "SECURED":
             raise CommercialAdmissionError("authority payment binding is invalid")
+        CommercialAuthorityStore._validate_payment_currency(
+            quote, payment["currency"], payment["secured_amount_minor"]
+        )
         if int(payment["secured_amount_microusd"]) < int(
             quote["gross_customer_price_microusd"]
         ):
             raise CommercialAdmissionError("persisted payment is underfunded")
+
+    @staticmethod
+    def _validate_payment_currency(
+        quote: sqlite3.Row, currency: str, amount_minor: int | None
+    ) -> None:
+        if currency != quote["currency"]:
+            raise CommercialAdmissionError("payment currency differs from locked quote")
+        if quote["customer_amount_minor"] is not None and amount_minor != quote["customer_amount_minor"]:
+            raise CommercialAdmissionError("payment amount differs from locked checkout amount")

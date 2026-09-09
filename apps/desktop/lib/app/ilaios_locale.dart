@@ -1,6 +1,5 @@
 import 'dart:convert';
 import 'dart:io';
-import 'dart:ui';
 
 import 'package:flutter/widgets.dart';
 
@@ -14,14 +13,12 @@ enum IlaiosLocale {
   final String displayName;
 
   static IlaiosLocale fromCode(String? value) =>
-      value?.toLowerCase() == 'tr' ? IlaiosLocale.turkish : IlaiosLocale.english;
+      value?.toLowerCase() == 'en' ? IlaiosLocale.english : IlaiosLocale.turkish;
 }
 
 abstract final class IlaiosLocaleStore {
   static IlaiosLocale platformDefault() =>
-      PlatformDispatcher.instance.locale.languageCode.toLowerCase() == 'tr'
-          ? IlaiosLocale.turkish
-          : IlaiosLocale.english;
+      IlaiosLocale.turkish;
 
   static Future<IlaiosLocale> load() async {
     final file = _settingsFile();
