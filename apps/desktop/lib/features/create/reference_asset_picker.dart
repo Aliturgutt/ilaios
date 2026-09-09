@@ -395,7 +395,8 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
               const horizontalGap = 14.0;
               const verticalGap = 13.0;
               final cardWidth =
-                  (constraints.maxWidth - horizontalGap * (columns - 1)) / columns;
+                  ((constraints.maxWidth - horizontalGap * (columns - 1)) / columns)
+                      .floorToDouble();
               final textScale = MediaQuery.textScalerOf(context)
                   .scale(1.0)
                   .clamp(1.0, 1.5)
@@ -459,8 +460,6 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
                                 ],
                               ),
                             ),
-                            const SizedBox(width: 8),
-                            const Icon(Icons.chevron_right_rounded, size: 22),
                           ],
                         ),
                       ),

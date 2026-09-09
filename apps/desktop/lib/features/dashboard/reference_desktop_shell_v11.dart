@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 
 import '../../app/ilaios_locale.dart';
@@ -233,7 +235,8 @@ class _CanonicalSidebar extends StatelessWidget {
     required this.onSelected,
   });
 
-  static const _logo = '../../brand/assets/13-ilaios-primary-horizontal-light.jpg';
+  static const _darkLogo = '../../brand/assets/02-ilaios-primary-horizontal-dark.jpg';
+  static const _lightLogo = '../../brand/assets/13-ilaios-primary-horizontal-light.jpg';
   static const _sections = <DesktopSection>[
     DesktopSection.home,
     DesktopSection.workflows,
@@ -249,26 +252,50 @@ class _CanonicalSidebar extends StatelessWidget {
   final OperationalSnapshot snapshot;
   final ValueChanged<DesktopSection> onSelected;
 
-  Widget _logoWidget() => SizedBox(
-        height: 56,
-        child: Align(
+  Widget _logoWidget(BuildContext context) {
+    final dark = Theme.of(context).brightness == Brightness.dark;
+    final logo = dark ? _darkLogo : _lightLogo;
+    final fallbackAssetName = dark
+        ? '02-ilaios-primary-horizontal-dark.jpg'
+        : '13-ilaios-primary-horizontal-light.jpg';
+    final executableDir = File(Platform.resolvedExecutable).parent.path;
+    final fallbackFile = File(
+      '$executableDir${Platform.pathSeparator}brand${Platform.pathSeparator}assets${Platform.pathSeparator}$fallbackAssetName',
+    );
+
+    return SizedBox(
+      height: 56,
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Image.asset(
+          logo,
+          key: const Key('canonical-reference-logo'),
+          width: 184,
+          height: 48,
+          fit: BoxFit.contain,
           alignment: Alignment.centerLeft,
-          child: Image.asset(
-            _logo,
-            key: const Key('canonical-reference-logo'),
-            width: 184,
-            height: 48,
-            fit: BoxFit.contain,
-            alignment: Alignment.centerLeft,
-            filterQuality: FilterQuality.high,
-            gaplessPlayback: true,
-          ),
+          filterQuality: FilterQuality.high,
+          gaplessPlayback: true,
+          errorBuilder: (context, error, stackTrace) {
+            if (!fallbackFile.existsSync()) return const SizedBox.shrink();
+            return Image.file(
+              fallbackFile,
+              width: 184,
+              height: 48,
+              fit: BoxFit.contain,
+              alignment: Alignment.centerLeft,
+              filterQuality: FilterQuality.high,
+              gaplessPlayback: true,
+            );
+          },
         ),
-      );
+      ),
+    );
+  }
 
   Widget _navigationContent(BuildContext context, {required bool compactHeight}) {
     final children = <Widget>[
-      _logoWidget(),
+      _logoWidget(context),
       const SizedBox(height: 20),
       for (final section in _sections) ...[
         _CanonicalNavItem(
