@@ -125,6 +125,29 @@ def header_geometry(page: Page) -> dict[str, object]:
     )
 
 
+def select_theme(page: Page, theme: str, viewport_name: str) -> None:
+    actual_theme = page.evaluate("document.documentElement.dataset.theme")
+    if actual_theme == theme:
+        return
+    if theme != "dark":
+        raise RuntimeError(f"theme mismatch: expected {theme}, got {actual_theme}")
+
+    theme_toggle = page.locator(".site-header .theme-toggle")
+    opened_mobile_nav = False
+    if not theme_toggle.is_visible():
+        menu_toggle = page.locator(".site-header .menu-toggle")
+        if viewport_name != "mobile" or not menu_toggle.is_visible():
+            raise RuntimeError("theme control is unavailable")
+        menu_toggle.click()
+        opened_mobile_nav = True
+        if not theme_toggle.is_visible():
+            raise RuntimeError("theme control did not become visible")
+
+    theme_toggle.click()
+    if opened_mobile_nav:
+        page.keyboard.press("Escape")
+
+
 def inspect_navigation(page: Page, viewport_name: str, width: int) -> dict[str, object]:
     brand = page.locator(".site-header .brand")
     nav = page.locator(".site-header .nav-panel")
@@ -226,6 +249,7 @@ def run_page_checks(
 
     response = page.goto(f"{BASE_URL}{path}", wait_until="networkidle", timeout=45_000)
     status = response.status if response is not None else 0
+    select_theme(page, theme, viewport_name)
     actual_theme = page.evaluate("document.documentElement.dataset.theme")
     h1 = page.locator("main#main-content h1")
     overflow = float(page.evaluate("document.documentElement.scrollWidth - window.innerWidth"))
@@ -323,7 +347,6 @@ def main() -> int:
                     path = localized_path(locale, route)
                     page = context.new_page()
                     page.set_viewport_size({"width": width, "height": height})
-                    page.add_init_script("localStorage.removeItem('ilaios-theme')")
                     try:
                         record = run_page_checks(
                             page,
@@ -383,7 +406,6 @@ def main() -> int:
                     path = localized_path(locale, route)
                     page = context.new_page()
                     page.set_viewport_size({"width": width, "height": height})
-                    page.add_init_script("localStorage.setItem('ilaios-theme', 'dark')")
                     try:
                         record = run_page_checks(
                             page,
@@ -459,7 +481,7 @@ def main() -> int:
         "schema": "ilaios.website-v2.visual-qa.v5",
         "base_url": BASE_URL,
         "public_route_pairs": len(ROUTES),
-        "localized_routes":len(ROUTES)*2,
+        "localized_routes": len(ROUTES) * 2,
         "light_viewports": [name for name, *_ in VIEWPORTS],
         "dark_viewports": [name for name, *_ in DARK_VIEWPORTS],
         "checks": len(records),
