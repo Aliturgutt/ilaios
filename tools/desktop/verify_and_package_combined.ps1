@@ -25,7 +25,7 @@ $desktopRoot = Join-Path $repoRoot 'apps\desktop'
 $validator = Join-Path $PSScriptRoot 'apply_combined_typography_reference_patch.py'
 
 if (-not (Test-Path $validator -PathType Leaf)) {
-  Fail "V4 contract helper missing: $validator"
+  Fail "7-page contract helper missing: $validator"
 }
 
 $actualSha = (git -C $repoRoot rev-parse HEAD).Trim()
@@ -33,13 +33,13 @@ if ($actualSha -ne $SourceSha) {
   Fail "Exact-head mismatch. expected=$SourceSha actual=$actualSha"
 }
 
-Run-Native 'Verify fail-closed Desktop V4 combined contract' {
+Run-Native 'Verify fail-closed Desktop 7-page combined contract' {
   python $validator $repoRoot
 }
 
 $dirtyBefore = @(git -C $repoRoot status --porcelain)
 if ($dirtyBefore.Count -gt 0) {
-  Fail "V4 contract validation mutated source: $($dirtyBefore -join ', ')"
+  Fail "7-page contract validation mutated source: $($dirtyBefore -join ', ')"
 }
 
 $iconPath = Join-Path $desktopRoot 'windows\runner\resources\app_icon.ico'
@@ -58,8 +58,8 @@ Push-Location $desktopRoot
 try {
   Run-Native 'Resolve locked dependencies' { flutter pub get --enforce-lockfile }
   Run-Native 'Flutter analyze' { flutter analyze }
-  Run-Native 'Required 1366x768 / 1440x900 / 1920x1080 V4 viewport tests' {
-    flutter test test/desktop_combined_typography_reference_ux_test.dart
+  Run-Native 'Required canonical 7-page viewport tests' {
+    flutter test test/target_layout_test.dart
   }
   Run-Native 'Full Desktop tests' { flutter test }
   Run-Native 'Windows release build' { flutter build windows --release }
@@ -201,7 +201,7 @@ $manifest = [ordered]@{
   source_sha = $SourceSha
   run_id = $RunId
   flutter = '3.44.9 / 6b182d2c7585eba26d4edce0f97630effd256c33'
-  viewport_tests = @('1366x768','1440x900','1920x1080')
+  viewport_tests = @('canonical-7-page-target-layout')
   v4_source_mutations = 0
   static_analysis = 'PASS'
   full_flutter_tests = 'PASS'
@@ -213,7 +213,7 @@ $manifest | ConvertTo-Json -Depth 5 |
   Set-Content -Encoding UTF8 (Join-Path $artifactRoot 'CI_EVIDENCE.json')
 Set-Content -Encoding UTF8 `
   -Path (Join-Path $artifactRoot 'desktop-combined-ci.patch') `
-  -Value 'Desktop V4 is canonical source; Combined Final applied no ephemeral source patch.'
+  -Value 'Desktop canonical 7-page source is authoritative; Combined Final applied no ephemeral source patch.'
 
 $hashes = Get-ChildItem $runtime -File -Recurse | Sort-Object FullName | ForEach-Object {
   $relative = $_.FullName.Substring($runtime.Length + 1)
