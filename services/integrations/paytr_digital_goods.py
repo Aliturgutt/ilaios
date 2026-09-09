@@ -39,6 +39,7 @@ _PAYTR_CURRENCY_BY_CANONICAL = {
 _CANONICAL_CURRENCY_BY_PAYTR = {
     provider: canonical for canonical, provider in _PAYTR_CURRENCY_BY_CANONICAL.items()
 }
+_CURRENCY_BY_LOCALE = {"tr": "TRY", "en": "USD"}
 
 
 class PayTRTransport(Protocol):
@@ -79,6 +80,7 @@ class PayTRCheckoutRequest:
     merchant_fail_url: str
     price_minor: int
     currency: str = "TRY"
+    locale: str = "tr"
     no_installment: int = 0
     max_installment: int = 0
     test_mode: bool = True
@@ -161,6 +163,7 @@ class PayTRDigitalGoodsAdapter:
         merchant_id, merchant_key, merchant_salt = self._credentials(request.tenant_id)
         provider_order_id = request.order_id
         canonical_currency = _normalize_currency(request.currency)
+        locale = _normalize_locale(request.locale)
         provider_currency = _to_paytr_currency(canonical_currency)
         order = self._commercial.create_pending_order(
             order_id=request.order_id,
@@ -218,7 +221,7 @@ class PayTRDigitalGoodsAdapter:
             "timeout_limit": "30",
             "currency": provider_currency,
             "test_mode": test_mode,
-            "lang": "tr",
+            "lang": locale,
         }
         response = self._transport.post_form(_PAYTR_TOKEN_URL, fields)
         if response.get("status") != "success":
@@ -339,7 +342,10 @@ def _validate_checkout_request(request: PayTRCheckoutRequest) -> None:
         raise CommercialAccessError("PayTR no_installment value is invalid")
     if request.max_installment not in {0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12}:
         raise CommercialAccessError("PayTR max_installment value is invalid")
-    _normalize_currency(request.currency)
+    currency = _normalize_currency(request.currency)
+    locale = _normalize_locale(request.locale)
+    if _CURRENCY_BY_LOCALE[locale] != currency:
+        raise CommercialAccessError("checkout locale and currency do not match canonical pricing")
 
 
 def _normalize_currency(value: str) -> str:
@@ -347,6 +353,14 @@ def _normalize_currency(value: str) -> str:
     normalized = value.upper()
     if normalized not in _SUPPORTED_CURRENCIES:
         raise CommercialAccessError("PayTR currency is unsupported")
+    return normalized
+
+
+def _normalize_locale(value: str) -> str:
+    _require_text("locale", value)
+    normalized = value.lower()
+    if normalized not in _CURRENCY_BY_LOCALE:
+        raise CommercialAccessError("checkout locale is unsupported")
     return normalized
 
 
