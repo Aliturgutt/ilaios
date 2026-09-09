@@ -28,9 +28,9 @@ export default function Page() {
       <div className="shell">
         <div className="detail-directory">
           {docs.map(([title, text, href]) => href ? (
-            <Link href={href} key={title}><span>{title}</span><strong>{text}</strong><i>→</i></Link>
+            <Link className="dark-surface" href={href} key={title}><span>{title}</span><strong>{text}</strong><i>→</i></Link>
           ) : (
-            <article className="card" key={title}><div className="eyebrow">{title}</div><p>{text}</p></article>
+            <article className="card dark-surface" key={title}><div className="eyebrow">{title}</div><p>{text}</p></article>
           ))}
         </div>
       </div>
