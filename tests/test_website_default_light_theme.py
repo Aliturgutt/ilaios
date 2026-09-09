@@ -265,9 +265,11 @@ def test_header_and_explore_close_on_outside_pointer_interaction() -> None:
     assert 'exploreRef.current?.removeAttribute("open")' in chrome
 
 
-def test_footer_links_use_existing_contrast_safe_text_link_authority() -> None:
+def test_footer_keeps_contact_route_without_duplicate_mailbox_link() -> None:
     chrome = CHROME.read_text(encoding="utf-8")
 
-    assert '<a className="text-link" href="mailto:contact@ilaios.com">' in chrome
+    assert '<a className="text-link" href="mailto:contact@ilaios.com">' not in chrome
+    assert '["Contact", "/contact"]' in chrome
+    assert '["İletişim", "/tr/contact"]' in chrome
     assert '<Link className="text-link" key={href} href={href}>' in chrome
     assert '<Link className="text-link" href={switchHref}>' in chrome
