@@ -201,7 +201,7 @@ List<_AgentSummaryState> _canonicalAgents(OperationalSnapshot snapshot) {
           'state',
           'lease_state',
         ]) ??
-        (registered ? 'active' : 'offline');
+        (registered ? 'unknown' : 'offline');
     final value = _normalize(raw);
     if (value.contains('busy') ||
         value.contains('running') ||
@@ -220,7 +220,9 @@ List<_AgentSummaryState> _canonicalAgents(OperationalSnapshot snapshot) {
         value.contains('dead') ||
         value.contains('unregistered') ||
         value.contains('review') ||
-        value.contains('approval')) {
+        value.contains('approval') ||
+        value.contains('unknown') ||
+        value.contains('stale')) {
       return _AgentSummaryState.other;
     }
     return _AgentSummaryState.active;
