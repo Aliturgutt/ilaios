@@ -30,7 +30,7 @@ export default function Page() {
           {docs.map(([title, text, href]) => href ? (
             <Link href={href} key={title}><span>{title}</span><strong>{text}</strong><i>→</i></Link>
           ) : (
-            <div className="status-note" key={title}><span>{title}</span><p>{text}</p></div>
+            <article className="card" key={title}><div className="eyebrow">{title}</div><p>{text}</p></article>
           ))}
         </div>
       </div>

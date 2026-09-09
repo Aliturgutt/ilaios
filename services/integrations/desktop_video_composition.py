@@ -54,7 +54,6 @@ from .video_runtime import DeterministicLocalVideoRuntime, VideoRuntimeError
 
 _VERIFIED_FREE = "verified-free"
 _MANAGED_BOUNDED = "managed-bounded"
-_MAX_MANAGED_DESKTOP_BUDGET_USD = Decimal("1.00")
 _DEFAULT_MANAGED_MODEL_ID = "bytedance/seedance-2.0-fast"
 _DEFAULT_FREE_QA_MODEL_ID = "openrouter/free"
 
@@ -247,8 +246,8 @@ def _managed_budget() -> Decimal:
         value = Decimal(raw)
     except InvalidOperation as error:
         raise VideoRuntimeError("managed Desktop Video budget is not a decimal") from error
-    if not value.is_finite() or value <= 0 or value > _MAX_MANAGED_DESKTOP_BUDGET_USD:
-        raise VideoRuntimeError("managed Desktop Video budget must be > 0 and <= 1.00 USD")
+    if not value.is_finite() or value <= 0:
+        raise VideoRuntimeError("managed Desktop Video budget must be a finite positive USD amount")
     if value * Decimal(1_000_000) != (value * Decimal(1_000_000)).to_integral_value():
         raise VideoRuntimeError("managed Desktop Video budget must have microUSD precision")
     return value

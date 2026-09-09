@@ -15,6 +15,20 @@
 .canonical-dual>div{min-width:0}
 .canonical-dual>div>span{display:block;margin-bottom:7px;color:#aeb8be;font-size:.61rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
 
+/* Twelve-step request chains are a bounded ledger, not a 10+2 orphan wrap. */
+@media(min-width:901px){
+  .canonical-linear:has(> :nth-child(12):last-child){display:grid;grid-template-columns:repeat(6,minmax(0,1fr));overflow:visible}
+  .canonical-linear:has(> :nth-child(12):last-child)>div{min-width:0;flex:none}
+  .canonical-linear:has(> :nth-child(12):last-child)>div>i{display:none}
+  .canonical-linear:has(> :nth-child(12):last-child)>div:nth-child(7){border-left:1px solid #44505a}
+}
+
+@media(min-width:761px) and (max-width:1100px){
+  .canonical-linear:has(> :nth-child(12):last-child){grid-template-columns:repeat(4,minmax(0,1fr))}
+  .canonical-linear:has(> :nth-child(12):last-child)>div:nth-child(5),
+  .canonical-linear:has(> :nth-child(12):last-child)>div:nth-child(9){border-left:1px solid #44505a}
+}
+
 @media(max-width:760px){
   .canonical-detail-grid{gap:14px}
   .canonical-detail-panel{padding:14px}
