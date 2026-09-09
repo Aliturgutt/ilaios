@@ -63,8 +63,17 @@ class DurableVideoProductRuntime:
                 "request_id TEXT PRIMARY KEY, goal_id TEXT NOT NULL, "
                 "job_id TEXT NOT NULL, proposal_id TEXT NOT NULL, "
                 "workflow_id TEXT NOT NULL, worker_id TEXT NOT NULL, "
-                "lease_json TEXT NOT NULL, status TEXT NOT NULL, manifest_json TEXT)"
+                "lease_json TEXT NOT NULL, status TEXT NOT NULL, manifest_json TEXT, "
+                "budget_evidence_json TEXT)"
             )
+            columns = {
+                str(row["name"])
+                for row in connection.execute("PRAGMA table_info(product_proofs)").fetchall()
+            }
+            if "budget_evidence_json" not in columns:
+                connection.execute(
+                    "ALTER TABLE product_proofs ADD COLUMN budget_evidence_json TEXT"
+                )
             connection.execute(
                 "CREATE TABLE IF NOT EXISTS product_proof_identity ("
                 "request_id TEXT PRIMARY KEY, requester_id TEXT NOT NULL, tenant_id TEXT)"
@@ -102,9 +111,46 @@ class DurableVideoProductRuntime:
             raise ProductRuntimeError("unknown product risk classification")
         if not isinstance(data_class, DataClass):
             raise ProductRuntimeError("unknown product data classification")
-        execution_budget = budget or BudgetEnvelope(1, 60, 10)
-        risk_class = RiskClass(risk)
 
+        preflight = getattr(self._video, "preflight_cost_estimate", None)
+        managed_paid = callable(preflight)
+        if managed_paid and budget is None:
+            raise ProductRuntimeError(
+                "paid Seedance requires an explicit user budget before preparation"
+            )
+        execution_budget = budget or BudgetEnvelope(1, 60, 10)
+        effective_risk = "high" if managed_paid else risk
+        cost_estimate: dict[str, object] | None = None
+        if callable(preflight):
+            if execution_budget.max_external_spend_minor <= 0:
+                raise ProductRuntimeError(
+                    "paid Seedance requires a positive user budget before preparation"
+                )
+            try:
+                value = preflight(
+                    objective=objective,
+                    max_external_spend_minor=execution_budget.max_external_spend_minor,
+                )
+            except Exception as error:
+                raise ProductRuntimeError(
+                    f"paid Seedance preflight failed closed: {error}"
+                ) from error
+            if not isinstance(value, dict):
+                raise ProductRuntimeError("paid Seedance preflight evidence is malformed")
+            cost_estimate = cast(dict[str, object], value)
+            required = {
+                "provider",
+                "model",
+                "estimated_cost_usd",
+                "maximum_approved_spend_usd",
+                "planned_generation_count",
+            }
+            if not required <= cost_estimate.keys():
+                raise ProductRuntimeError("paid Seedance preflight evidence is incomplete")
+            if cost_estimate.get("estimate_is_actual_cost") is not False:
+                raise ProductRuntimeError("paid Seedance estimate/actual evidence is ambiguous")
+
+        risk_class = RiskClass(effective_risk)
         goal = self._control_plane.create_goal(token, objective)
         job = self._control_plane.create_job(token, goal.goal_id)
         proposal = self._control_plane.create_proposal(
@@ -142,7 +188,10 @@ class DurableVideoProductRuntime:
             "goal_id": goal.goal_id,
             "job_id": job.job_id,
             "objective": objective,
+            "max_external_spend_minor": execution_budget.max_external_spend_minor,
         }
+        if cost_estimate is not None:
+            governance_payload["paid_video_cost_estimate"] = cost_estimate
         if tenant_id is not None:
             governance_payload["tenant_id"] = tenant_id
         admission = self._governance.submit(
@@ -153,16 +202,16 @@ class DurableVideoProductRuntime:
             "video",
             governance_payload,
             (),
-            risk=risk,
+            risk=effective_risk,
         )
         admission_decision = admission.get("admission_decision")
         human_approval_required = admission.get("human_approval_required")
         valid_admission = (
-            risk in {"low", "medium"}
+            effective_risk in {"low", "medium"}
             and admission_decision == "ALLOW"
             and human_approval_required is False
         ) or (
-            risk == "high"
+            effective_risk == "high"
             and admission_decision == "REQUIRE_APPROVAL"
             and human_approval_required is True
         )
@@ -173,11 +222,25 @@ class DurableVideoProductRuntime:
         lease_json = (
             "{}" if lease is None else json.dumps(_lease_json(lease), sort_keys=True)
         )
+        stored_budget_evidence = None
+        if cost_estimate is not None:
+            stored_budget_evidence = json.dumps(
+                {
+                    **cost_estimate,
+                    "approval_id": request_id,
+                    "approval_status": "pending",
+                    "budget_event": "ESTIMATE_AWAITING_APPROVAL",
+                    "reapproval_required": False,
+                },
+                sort_keys=True,
+            )
         with self._connect() as connection:
             try:
                 connection.execute(
-                    "INSERT INTO product_proofs VALUES "
-                    "(?, ?, ?, ?, ?, ?, ?, 'pending', NULL)",
+                    "INSERT INTO product_proofs "
+                    "(request_id, goal_id, job_id, proposal_id, workflow_id, worker_id, "
+                    "lease_json, status, manifest_json, budget_evidence_json) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, 'pending', NULL, ?)",
                     (
                         request_id,
                         goal.goal_id,
@@ -186,6 +249,7 @@ class DurableVideoProductRuntime:
                         workflow_id,
                         worker_id,
                         lease_json,
+                        stored_budget_evidence,
                     ),
                 )
                 connection.execute(
@@ -196,7 +260,7 @@ class DurableVideoProductRuntime:
                 if lease is not None:
                     self._scheduler.release(lease)
                 raise ProductRuntimeError("product proof request already exists") from error
-        return {
+        result: dict[str, object] = {
             "request_id": request_id,
             "requester_id": requester_id,
             "tenant_id": tenant_id,
@@ -206,7 +270,7 @@ class DurableVideoProductRuntime:
             "workflow_id": workflow_id,
             "worker_id": worker_id,
             "lease": None if lease is None else _lease_json(lease),
-            "risk": risk,
+            "risk": effective_risk,
             "data_class": data_class.value,
             "budget": {
                 "max_attempts": execution_budget.max_attempts,
@@ -219,6 +283,9 @@ class DurableVideoProductRuntime:
             if human_approval_required is True
             else "admitted_pending_grant",
         }
+        if cost_estimate is not None:
+            result["paid_video_cost_estimate"] = cost_estimate
+        return result
 
     def execute(
         self, request_id: str, grant_id: str, *, token: str, now: datetime
@@ -230,6 +297,12 @@ class DurableVideoProductRuntime:
             admission = self._governance.admission_snapshot(request_id)
             if admission["admission_proven"] is not True:
                 raise ProductRuntimeError("governed execution admission is not proven")
+            stored_budget_evidence = self._stored_budget_evidence(row)
+            managed_paid = stored_budget_evidence is not None
+            if managed_paid and admission["approval_proven"] is not True:
+                raise ProductRuntimeError(
+                    "paid Seedance execution requires explicit approval before provider invocation"
+                )
             identity_proven = bool(identity["requester_id"])
             if not identity_proven:
                 raise ProductRuntimeError("product proof identity is not durable")
@@ -255,6 +328,7 @@ class DurableVideoProductRuntime:
                 )
             except Exception:
                 self._workflows.fail_attempt(video_attempt.attempt_id, reason="video failed")
+                self._persist_runtime_budget_evidence(request_id, stored_budget_evidence)
                 raise
             self._workflows.complete_attempt(video_attempt.attempt_id)
             self._control_plane.transition_job(
@@ -306,6 +380,28 @@ class DurableVideoProductRuntime:
             approval_proven = bool(admission["approval_proven"])
             admission_proven = bool(admission["admission_proven"])
             cost_proven = video["reserved_minor"] == video["actual_minor"]
+            budget_evidence = self._merged_budget_evidence(
+                request_id,
+                stored_budget_evidence,
+            )
+            if managed_paid:
+                cost_proven = bool(video.get("provider_cost_proven") is True)
+                required_budget_fields = {
+                    "estimated_cost_usd",
+                    "approved_budget_usd",
+                    "approval_id",
+                    "provider",
+                    "model",
+                    "actual_provider_cost_usd",
+                    "cumulative_job_spend_usd",
+                    "remaining_budget_usd",
+                    "retry_spend_usd",
+                    "final_actual_cost_usd",
+                }
+                if budget_evidence is None or not required_budget_fields <= budget_evidence.keys():
+                    raise ProductRuntimeError("managed Video budget evidence is incomplete")
+                if budget_evidence.get("reapproval_required") is True:
+                    raise ProductRuntimeError("managed Video budget requires reapproval")
             job_ready_proven = (
                 self._control_plane.get_job(token, str(row["job_id"])).state
                 is JobState.VALIDATING
@@ -322,6 +418,7 @@ class DurableVideoProductRuntime:
                     job_ready_proven,
                     qa.get("passed") is True,
                     verified_delivery["sha256"] == video["artifact_digest"],
+                    (not managed_paid) or approval_proven,
                 )
             )
             if not finalization_ready:
@@ -358,6 +455,9 @@ class DurableVideoProductRuntime:
                 "finalization_status": "finalizing",
                 "accepted": False,
             }
+            if budget_evidence is not None:
+                manifest["video_budget_evidence"] = budget_evidence
+                self._store_budget_evidence(request_id, budget_evidence)
             if not self._scheduler.release(lease):
                 raise ProductRuntimeError("worker lease disappeared before product closure")
             lease = None
@@ -501,7 +601,8 @@ class DurableVideoProductRuntime:
         identity = self._identity(request_id)
         with self._connect() as connection:
             row = connection.execute(
-                "SELECT status FROM product_proofs WHERE request_id = ?", (request_id,)
+                "SELECT status, budget_evidence_json FROM product_proofs WHERE request_id = ?",
+                (request_id,),
             ).fetchone()
             closure = connection.execute(
                 "SELECT terminal_status, reason, terminal_at FROM product_proof_closure "
@@ -510,7 +611,12 @@ class DurableVideoProductRuntime:
             ).fetchone()
         if row is None:
             raise ProductRuntimeError("unknown product proof")
-        return {
+        budget_evidence = None
+        if row["budget_evidence_json"] is not None:
+            value = json.loads(str(row["budget_evidence_json"]))
+            if isinstance(value, dict):
+                budget_evidence = cast(dict[str, object], value)
+        result: dict[str, object] = {
             "request_id": request_id,
             "requester_id": identity["requester_id"],
             "tenant_id": identity["tenant_id"],
@@ -520,6 +626,9 @@ class DurableVideoProductRuntime:
             "reason": None if closure is None else str(closure["reason"]),
             "terminal_at": None if closure is None else str(closure["terminal_at"]),
         }
+        if budget_evidence is not None:
+            result["video_budget_evidence"] = budget_evidence
+        return result
 
     def interrupt(
         self,
@@ -601,6 +710,63 @@ class DurableVideoProductRuntime:
             "requester_id": str(row["requester_id"]),
             "tenant_id": None if row["tenant_id"] is None else str(row["tenant_id"]),
         }
+
+    def _stored_budget_evidence(self, row: sqlite3.Row) -> dict[str, object] | None:
+        raw = row["budget_evidence_json"]
+        if raw is None:
+            return None
+        try:
+            value = json.loads(str(raw))
+        except json.JSONDecodeError as error:
+            raise ProductRuntimeError("stored Video budget evidence is malformed") from error
+        if not isinstance(value, dict):
+            raise ProductRuntimeError("stored Video budget evidence is malformed")
+        return cast(dict[str, object], value)
+
+    def _merged_budget_evidence(
+        self,
+        request_id: str,
+        stored: dict[str, object] | None,
+    ) -> dict[str, object] | None:
+        reader = getattr(self._video, "budget_evidence", None)
+        if not callable(reader):
+            return stored
+        runtime_value = reader(request_id)
+        if not isinstance(runtime_value, dict):
+            raise ProductRuntimeError("managed Video runtime budget evidence is malformed")
+        merged = {} if stored is None else dict(stored)
+        merged.update(cast(dict[str, object], runtime_value))
+        return merged
+
+    def _persist_runtime_budget_evidence(
+        self,
+        request_id: str,
+        stored: dict[str, object] | None,
+    ) -> None:
+        reader = getattr(self._video, "budget_evidence", None)
+        if not callable(reader):
+            return
+        try:
+            runtime_value = reader(request_id)
+        except Exception:
+            return
+        if not isinstance(runtime_value, dict):
+            return
+        merged = {} if stored is None else dict(stored)
+        merged.update(cast(dict[str, object], runtime_value))
+        self._store_budget_evidence(request_id, merged)
+
+    def _store_budget_evidence(
+        self,
+        request_id: str,
+        evidence: dict[str, object],
+    ) -> None:
+        serialized = json.dumps(evidence, sort_keys=True)
+        with self._connect() as connection:
+            connection.execute(
+                "UPDATE product_proofs SET budget_evidence_json = ? WHERE request_id = ?",
+                (serialized, request_id),
+            )
 
     def _fail_product_proof(
         self,
