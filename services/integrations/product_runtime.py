@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from datetime import datetime, timedelta
+from decimal import Decimal, InvalidOperation, ROUND_CEILING
 from pathlib import Path
 from typing import Any, cast
 
@@ -114,27 +115,25 @@ class DurableVideoProductRuntime:
 
         preflight = getattr(self._video, "preflight_cost_estimate", None)
         managed_paid = callable(preflight)
-        if managed_paid and budget is None:
-            raise ProductRuntimeError(
-                "paid Seedance requires an explicit user budget before preparation"
-            )
         execution_budget = budget or BudgetEnvelope(1, 60, 10)
         effective_risk = "high" if managed_paid else risk
         cost_estimate: dict[str, object] | None = None
         if callable(preflight):
-            if execution_budget.max_external_spend_minor <= 0:
-                raise ProductRuntimeError(
-                    "paid Seedance requires a positive user budget before preparation"
-                )
-            try:
-                value = preflight(
-                    objective=objective,
-                    max_external_spend_minor=execution_budget.max_external_spend_minor,
-                )
-            except Exception as error:
-                raise ProductRuntimeError(
-                    f"paid Seedance preflight failed closed: {error}"
-                ) from error
+            probe_minor = max(1, execution_budget.max_external_spend_minor)
+            while True:
+                try:
+                    value = preflight(
+                        objective=objective,
+                        max_external_spend_minor=probe_minor,
+                    )
+                    break
+                except Exception as error:
+                    message = str(error)
+                    if "exceeds the user-approved job budget" not in message:
+                        raise ProductRuntimeError(
+                            f"paid Seedance preflight failed closed: {error}"
+                        ) from error
+                    probe_minor *= 2
             if not isinstance(value, dict):
                 raise ProductRuntimeError("paid Seedance preflight evidence is malformed")
             cost_estimate = cast(dict[str, object], value)
@@ -142,13 +141,24 @@ class DurableVideoProductRuntime:
                 "provider",
                 "model",
                 "estimated_cost_usd",
-                "maximum_approved_spend_usd",
+                "reserved_provider_ceiling_usd",
                 "planned_generation_count",
             }
             if not required <= cost_estimate.keys():
                 raise ProductRuntimeError("paid Seedance preflight evidence is incomplete")
             if cost_estimate.get("estimate_is_actual_cost") is not False:
                 raise ProductRuntimeError("paid Seedance estimate/actual evidence is ambiguous")
+            quote_minor = _usd_to_minor_ceiling(cost_estimate["reserved_provider_ceiling_usd"])
+            execution_budget = BudgetEnvelope(
+                execution_budget.max_attempts,
+                execution_budget.max_runtime_seconds,
+                quote_minor,
+            )
+            cost_estimate["maximum_approved_spend_usd"] = str(
+                Decimal(quote_minor) / Decimal(100)
+            )
+            cost_estimate["quote_requires_user_approval"] = True
+            cost_estimate["spend_limit_source"] = "provider_quote"
 
         risk_class = RiskClass(effective_risk)
         goal = self._control_plane.create_goal(token, objective)
@@ -893,6 +903,19 @@ def _failure_reason(error: Exception) -> str:
     if not message:
         message = "execution failed without an error message"
     return f"{type(error).__name__}: {message}"[:2048]
+
+
+def _usd_to_minor_ceiling(value: object) -> int:
+    try:
+        amount = Decimal(str(value))
+    except (InvalidOperation, ValueError) as error:
+        raise ProductRuntimeError("paid Seedance quote amount is malformed") from error
+    if not amount.is_finite() or amount <= 0:
+        raise ProductRuntimeError("paid Seedance quote amount must be positive")
+    minor = int((amount * Decimal(100)).to_integral_value(rounding=ROUND_CEILING))
+    if minor <= 0:
+        raise ProductRuntimeError("paid Seedance quote amount is below billable precision")
+    return minor
 
 
 def _require_identity(value: str, field: str) -> None:
