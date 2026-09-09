@@ -19,7 +19,7 @@ jobs:
   rendered-visual-qa:
     name: Rendered EN/TR desktop-tablet-mobile QA
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 40
     steps:
       - name: Checkout exact V2 source commit
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -43,8 +43,60 @@ jobs:
       - name: Install website and pinned Chromium QA runtime
         run: |
           npm ci --prefix apps/website --ignore-scripts --audit=false --fund=false
-          python -m pip install --disable-pip-version-check playwright==1.55.0
+          python -m pip install --disable-pip-version-check playwright==1.55.0 requests
           python -m playwright install --with-deps chromium
+
+      - name: Generate isolated ILAIOS corporate candidate through canonical Web Factory
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ILAIOS_SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          ILAIOS_WEB_FACTORY_TRIAL_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/web-factory-ilaios-trial
+        run: python apps/website/scripts/web-factory-ilaios-trial.py
+
+      - name: Build generated Web Factory candidate
+        working-directory: artifacts/web-factory-ilaios-trial/source-project
+        run: |
+          npm install --ignore-scripts --no-audit --no-fund
+          npm run typecheck
+          npm run build
+
+      - name: Start generated Web Factory candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd artifacts/web-factory-ilaios-trial/source-project && npm run start -- -H 127.0.0.1 -p 3200) > /tmp/ilaios-web-factory-trial.log 2>&1 &
+          echo $! > /tmp/ilaios-web-factory-trial.pid
+          for attempt in $(seq 1 60); do
+            if curl --fail --silent --show-error http://127.0.0.1:3200/en >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/ilaios-web-factory-trial.log
+          exit 1
+
+      - name: Capture exact-head generated Web Factory candidate
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+          ILAIOS_WEB_FACTORY_TRIAL_ARTIFACT_DIR: ${{ github.workspace }}/artifacts/web-factory-ilaios-trial
+        run: python apps/website/scripts/web-factory-ilaios-trial.py --capture http://127.0.0.1:3200
+
+      - name: Stop generated Web Factory candidate
+        if: always()
+        shell: bash
+        run: |
+          if [ -f /tmp/ilaios-web-factory-trial.pid ]; then
+            kill "$(cat /tmp/ilaios-web-factory-trial.pid)" || true
+          fi
+
+      - name: Upload isolated Web Factory trial evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: web-factory-ilaios-trial-${{ github.event.pull_request.head.sha || github.sha }}-${{ github.run_id }}
+          path: artifacts/web-factory-ilaios-trial
+          if-no-files-found: error
+          retention-days: 30
 
       - name: Build production website
         working-directory: apps/website
