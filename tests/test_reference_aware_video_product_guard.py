@@ -82,7 +82,9 @@ def test_vertical_request_reaches_same_canonical_provider_runtime_with_shape(
     )
 
     assert outcome["requested_aspect_ratio"] == "9:16"
-    assert outcome["video_product_spec"]["aspect_ratio"] == "9:16"  # type: ignore[index]
+    product_spec = outcome["video_product_spec"]
+    assert isinstance(product_spec, dict)
+    assert product_spec["aspect_ratio"] == "9:16"
     assert captured["objective"] == "Create a vertical video for TikTok."
 
 
