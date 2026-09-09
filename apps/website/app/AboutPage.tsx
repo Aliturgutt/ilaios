@@ -52,9 +52,9 @@ const missionTitleStyle = {
 } as const;
 
 const founderTitleStyle = {
-  fontSize: "clamp(1.45rem, 2vw, 1.85rem)",
+  fontSize: "clamp(1.2rem, 1.6vw, 1.5rem)",
   lineHeight: 1.08,
-  letterSpacing: "-0.025em",
+  letterSpacing: "-0.02em",
   marginTop: "6px",
   marginBottom: 0,
 } as const;
