@@ -9,16 +9,25 @@ import json
 import textwrap
 import zipfile
 from dataclasses import dataclass
-from typing import Iterable
+from pathlib import Path
 
+import reportlab
 from reportlab.lib.pagesizes import A4
+from reportlab.lib.utils import ImageReader
+from reportlab.pdfbase import pdfmetrics
+from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
 from services.creative_document_factory import (
+    BookAsset,
+    BookChapter,
     BookExportManifest,
     BookManifest,
     CreativeDocumentError,
 )
+
+_PDF_FONT = "ILAIOS-Vera"
+_PDF_FONT_BOLD = "ILAIOS-Vera-Bold"
 
 
 @dataclass(frozen=True, slots=True)
@@ -32,16 +41,12 @@ class RenderedBookPackage:
 
 def render_book_package(manifest: BookManifest) -> RenderedBookPackage:
     """Render one approved book without gaining approval or publication authority."""
-
-    if not manifest.approved:
-        raise CreativeDocumentError("only approved books may render final exports")
+    _assert_approval_integrity(manifest)
     cover = _render_cover_svg(manifest)
     pdf = _render_pdf(manifest)
     epub = _render_epub(manifest, cover)
     provenance = _render_provenance(manifest)
-    source_map = tuple(
-        sorted((claim.claim_id, claim.source_ids) for claim in manifest.claims)
-    )
+    source_map = tuple(sorted((claim.claim_id, claim.source_ids) for claim in manifest.claims))
     export = BookExportManifest(
         book_id=manifest.book_id,
         title=manifest.metadata.title,
@@ -58,7 +63,6 @@ def render_book_package(manifest: BookManifest) -> RenderedBookPackage:
 
 def validate_epub_structure(epub: bytes) -> tuple[str, ...]:
     """Return EPUB3 entries after structural validation; fail closed on defects."""
-
     required = {
         "mimetype",
         "META-INF/container.xml",
@@ -74,11 +78,85 @@ def validate_epub_structure(epub: bytes) -> tuple[str, ...]:
             missing = required - set(names)
             if missing:
                 raise CreativeDocumentError(f"EPUB is missing required entries: {sorted(missing)}")
-            if len(archive.read("EPUB/package.opf")) == 0 or len(archive.read("EPUB/nav.xhtml")) == 0:
+            if not archive.read("EPUB/package.opf") or not archive.read("EPUB/nav.xhtml"):
                 raise CreativeDocumentError("EPUB package/navigation is empty")
     except (KeyError, zipfile.BadZipFile) as exc:
         raise CreativeDocumentError("EPUB is not a valid ZIP/EPUB container") from exc
     return names
+
+
+def _assert_approval_integrity(manifest: BookManifest) -> None:
+    if not manifest.approved:
+        raise CreativeDocumentError("only approved books may render final exports")
+    if _manifest_content_sha256(manifest) != manifest.content_sha256:
+        raise CreativeDocumentError(
+            "approved book content changed after approval; re-compose and re-approve before render"
+        )
+
+
+def _manifest_content_sha256(manifest: BookManifest) -> str:
+    canonical = {
+        "book_id": manifest.book_id,
+        "metadata": {
+            "title": manifest.metadata.title,
+            "subtitle": manifest.metadata.subtitle,
+            "author": manifest.metadata.author,
+            "publisher": manifest.metadata.publisher,
+            "language": manifest.metadata.language,
+            "edition": manifest.metadata.edition,
+            "publication_date": manifest.metadata.publication_date,
+            "description": manifest.metadata.description,
+            "keywords": list(manifest.metadata.keywords),
+            "isbn": manifest.metadata.isbn,
+        },
+        "chapters": [
+            {
+                "chapter_id": chapter.chapter_id,
+                "title": chapter.title,
+                "body": chapter.body,
+                "factual": chapter.factual,
+                "claim_ids": list(chapter.claim_ids),
+                "citations": [
+                    {
+                        "citation_id": citation.citation_id,
+                        "claim_id": citation.claim_id,
+                        "marker": citation.marker,
+                    }
+                    for citation in chapter.citations
+                ],
+                "editorial_evidence_ref": chapter.editorial_evidence_ref,
+                "originality_evidence_ref": chapter.originality_evidence_ref,
+                "image_asset_ids": list(chapter.image_asset_ids),
+            }
+            for chapter in manifest.chapters
+        ],
+        "claims": [
+            {
+                "claim_id": claim.claim_id,
+                "statement": claim.statement,
+                "source_ids": list(claim.source_ids),
+                "verification_mode": claim.verification_mode,
+                "evidence_refs": list(claim.evidence_refs),
+            }
+            for claim in manifest.claims
+        ],
+        "assets": [
+            {
+                "asset_id": asset.asset_id,
+                "sha256": asset.body_sha256,
+                "mime_type": asset.mime_type,
+                "provenance_ref": asset.provenance_ref,
+                "rights_state": asset.rights_state,
+                "alt_text": asset.alt_text,
+                "license_identifier": asset.license_identifier,
+                "attribution": asset.attribution,
+            }
+            for asset in manifest.assets
+        ],
+        "build_version": manifest.build_version,
+    }
+    payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
 def _render_cover_svg(manifest: BookManifest) -> bytes:
@@ -100,22 +178,37 @@ def _render_cover_svg(manifest: BookManifest) -> bytes:
     return svg.encode("utf-8")
 
 
+def _ensure_pdf_fonts() -> None:
+    registered = set(pdfmetrics.getRegisteredFontNames())
+    if _PDF_FONT in registered and _PDF_FONT_BOLD in registered:
+        return
+    fonts_dir = Path(reportlab.__file__).resolve().parent / "fonts"
+    regular = fonts_dir / "Vera.ttf"
+    bold = fonts_dir / "VeraBd.ttf"
+    if not regular.is_file() or not bold.is_file():
+        raise CreativeDocumentError("Unicode PDF font files are unavailable in the ReportLab runtime")
+    if _PDF_FONT not in registered:
+        pdfmetrics.registerFont(TTFont(_PDF_FONT, str(regular)))
+    if _PDF_FONT_BOLD not in registered:
+        pdfmetrics.registerFont(TTFont(_PDF_FONT_BOLD, str(bold)))
+
+
 def _render_pdf(manifest: BookManifest) -> bytes:
+    _ensure_pdf_fonts()
     buffer = io.BytesIO()
     pdf = canvas.Canvas(buffer, pagesize=A4, invariant=1, pageCompression=1)
     width, height = A4
     pdf.setTitle(manifest.metadata.title)
     pdf.setAuthor(manifest.metadata.author)
     pdf.setSubject(manifest.metadata.description)
-
     _pdf_cover(pdf, manifest, width, height)
-    _pdf_front_matter(pdf, manifest, width, height)
+    _pdf_front_matter(pdf, manifest, height)
     _pdf_toc(pdf, manifest, width, height)
     for index, chapter in enumerate(manifest.chapters, start=1):
         pdf.bookmarkPage(f"chapter-{chapter.chapter_id}")
         pdf.addOutlineEntry(chapter.title, f"chapter-{chapter.chapter_id}", level=0)
-        _pdf_chapter(pdf, manifest, index, chapter.title, chapter.body, chapter.citations, width, height)
-    _pdf_bibliography(pdf, manifest, width, height)
+        _pdf_chapter(pdf, manifest, index, chapter, width, height)
+    _pdf_bibliography(pdf, manifest, height)
     pdf.save()
     result = buffer.getvalue()
     if not result.startswith(b"%PDF-"):
@@ -124,22 +217,22 @@ def _render_pdf(manifest: BookManifest) -> bytes:
 
 
 def _pdf_cover(pdf: canvas.Canvas, manifest: BookManifest, width: float, height: float) -> None:
-    pdf.setFont("Helvetica-Bold", 28)
-    pdf.drawCentredString(width / 2, height * 0.68, _pdf_safe(manifest.metadata.title))
+    pdf.setFont(_PDF_FONT_BOLD, 28)
+    pdf.drawCentredString(width / 2, height * 0.68, manifest.metadata.title)
     if manifest.metadata.subtitle:
-        pdf.setFont("Helvetica", 16)
-        pdf.drawCentredString(width / 2, height * 0.60, _pdf_safe(manifest.metadata.subtitle))
-    pdf.setFont("Helvetica", 14)
-    pdf.drawCentredString(width / 2, height * 0.18, _pdf_safe(manifest.metadata.author))
+        pdf.setFont(_PDF_FONT, 16)
+        pdf.drawCentredString(width / 2, height * 0.60, manifest.metadata.subtitle)
+    pdf.setFont(_PDF_FONT, 14)
+    pdf.drawCentredString(width / 2, height * 0.18, manifest.metadata.author)
     pdf.showPage()
 
 
-def _pdf_front_matter(pdf: canvas.Canvas, manifest: BookManifest, width: float, height: float) -> None:
+def _pdf_front_matter(pdf: canvas.Canvas, manifest: BookManifest, height: float) -> None:
     y = height - 72
-    pdf.setFont("Helvetica-Bold", 18)
+    pdf.setFont(_PDF_FONT_BOLD, 18)
     pdf.drawString(72, y, "Publication information")
     y -= 36
-    pdf.setFont("Helvetica", 10)
+    pdf.setFont(_PDF_FONT, 10)
     lines = (
         f"Title: {manifest.metadata.title}",
         f"Author: {manifest.metadata.author}",
@@ -147,25 +240,26 @@ def _pdf_front_matter(pdf: canvas.Canvas, manifest: BookManifest, width: float, 
         f"Language: {manifest.metadata.language}",
         f"Edition: {manifest.metadata.edition}",
         f"Publication date: {manifest.metadata.publication_date}",
-        *( (f"ISBN: {manifest.metadata.isbn}",) if manifest.metadata.isbn else () ),
-        "Copyright and publication rights remain with the declared rights holders.",
+        *((f"ISBN: {manifest.metadata.isbn}",) if manifest.metadata.isbn else ()),
     )
     for line in lines:
-        pdf.drawString(72, y, _pdf_safe(line))
+        pdf.drawString(72, y, line)
         y -= 16
     pdf.showPage()
 
 
 def _pdf_toc(pdf: canvas.Canvas, manifest: BookManifest, width: float, height: float) -> None:
     y = height - 72
-    pdf.setFont("Helvetica-Bold", 18)
+    pdf.setFont(_PDF_FONT_BOLD, 18)
     pdf.drawString(72, y, "Table of Contents")
     y -= 32
-    pdf.setFont("Helvetica", 11)
+    pdf.setFont(_PDF_FONT, 11)
     for index, chapter in enumerate(manifest.chapters, start=1):
-        pdf.drawString(84, y, _pdf_safe(f"{index}. {chapter.title}"))
+        pdf.drawString(84, y, f"{index}. {chapter.title}")
+        pdf.linkAbsolute("", f"chapter-{chapter.chapter_id}", Rect=(80, y - 3, width - 72, y + 12), thickness=0)
         y -= 18
     pdf.drawString(84, y, "Bibliography")
+    pdf.linkAbsolute("", "bibliography", Rect=(80, y - 3, width - 72, y + 12), thickness=0)
     pdf.showPage()
 
 
@@ -173,19 +267,16 @@ def _pdf_chapter(
     pdf: canvas.Canvas,
     manifest: BookManifest,
     index: int,
-    title: str,
-    body: str,
-    citations: Iterable[object],
+    chapter: BookChapter,
     width: float,
     height: float,
 ) -> None:
-    del manifest, citations, width
     y = height - 72
-    pdf.setFont("Helvetica-Bold", 18)
-    pdf.drawString(72, y, _pdf_safe(f"Chapter {index}: {title}"))
+    pdf.setFont(_PDF_FONT_BOLD, 18)
+    pdf.drawString(72, y, f"Chapter {index}: {chapter.title}")
     y -= 34
-    pdf.setFont("Helvetica", 10)
-    for paragraph in body.split("\n"):
+    pdf.setFont(_PDF_FONT, 10)
+    for paragraph in chapter.body.split("\n"):
         if not paragraph.strip():
             y -= 10
             continue
@@ -193,35 +284,89 @@ def _pdf_chapter(
             if y < 72:
                 pdf.showPage()
                 y = height - 72
-                pdf.setFont("Helvetica", 10)
-            pdf.drawString(72, y, _pdf_safe(line))
+                pdf.setFont(_PDF_FONT, 10)
+            pdf.drawString(72, y, line)
+            y -= 14
+    y = _pdf_chapter_assets(pdf, manifest, chapter, y, width, height)
+    if chapter.citations:
+        if y < 110:
+            pdf.showPage()
+            y = height - 72
+        pdf.setFont(_PDF_FONT_BOLD, 11)
+        pdf.drawString(72, y, "Citations")
+        y -= 18
+        pdf.setFont(_PDF_FONT, 9)
+        for citation in chapter.citations:
+            if y < 72:
+                pdf.showPage()
+                y = height - 72
+                pdf.setFont(_PDF_FONT, 9)
+            pdf.drawString(84, y, f"{citation.marker} — {citation.claim_id}")
+            pdf.linkAbsolute("", f"claim-{citation.claim_id}", Rect=(80, y - 3, width - 72, y + 10), thickness=0)
             y -= 14
     pdf.showPage()
 
 
-def _pdf_bibliography(pdf: canvas.Canvas, manifest: BookManifest, width: float, height: float) -> None:
-    del width
+def _pdf_chapter_assets(
+    pdf: canvas.Canvas,
+    manifest: BookManifest,
+    chapter: BookChapter,
+    y: float,
+    width: float,
+    height: float,
+) -> float:
+    assets = {asset.asset_id: asset for asset in manifest.assets}
+    for asset_id in chapter.image_asset_ids:
+        asset = assets[asset_id]
+        if asset.mime_type == "image/svg+xml":
+            raise CreativeDocumentError("referenced SVG chapter images are not supported by the PDF renderer")
+        if y < 300:
+            pdf.showPage()
+            y = height - 72
+        try:
+            image = ImageReader(io.BytesIO(asset.body))
+            source_width, source_height = image.getSize()
+        except Exception as exc:
+            raise CreativeDocumentError(f"chapter image {asset.asset_id} could not be decoded for PDF") from exc
+        max_width = width - 144
+        max_height = 220.0
+        scale = min(max_width / source_width, max_height / source_height, 1.0)
+        draw_width = source_width * scale
+        draw_height = source_height * scale
+        pdf.drawImage(
+            image,
+            (width - draw_width) / 2,
+            y - draw_height,
+            width=draw_width,
+            height=draw_height,
+            preserveAspectRatio=True,
+            mask="auto",
+        )
+        y -= draw_height + 12
+        pdf.setFont(_PDF_FONT, 8)
+        pdf.drawCentredString(width / 2, y, asset.alt_text)
+        y -= 20
+    return y
+
+
+def _pdf_bibliography(pdf: canvas.Canvas, manifest: BookManifest, height: float) -> None:
+    pdf.bookmarkPage("bibliography")
     y = height - 72
-    pdf.setFont("Helvetica-Bold", 18)
+    pdf.setFont(_PDF_FONT_BOLD, 18)
     pdf.drawString(72, y, "Bibliography / Provenance")
     y -= 30
-    pdf.setFont("Helvetica", 9)
+    pdf.setFont(_PDF_FONT, 9)
     for claim in manifest.claims:
+        if y < 90:
+            pdf.showPage()
+            y = height - 72
+            pdf.setFont(_PDF_FONT, 9)
+        pdf.bookmarkPage(f"claim-{claim.claim_id}")
         line = f"{claim.claim_id}: {claim.statement} | sources: {', '.join(claim.source_ids)}"
         for wrapped in textwrap.wrap(line, width=100):
-            if y < 72:
-                pdf.showPage()
-                y = height - 72
-                pdf.setFont("Helvetica", 9)
-            pdf.drawString(72, y, _pdf_safe(wrapped))
+            pdf.drawString(72, y, wrapped)
             y -= 13
     pdf.showPage()
-
-
-def _pdf_safe(value: str) -> str:
-    # ReportLab's standard Helvetica uses WinAnsi. Preserve deterministic rendering
-    # while refusing malformed Unicode earlier in the Document Factory.
-    return value.encode("cp1252", "replace").decode("cp1252")
 
 
 def _render_epub(manifest: BookManifest, cover: bytes) -> bytes:
@@ -230,24 +375,13 @@ def _render_epub(manifest: BookManifest, cover: bytes) -> bytes:
         _zip_write(archive, "mimetype", b"application/epub+zip", compress=False)
         _zip_write(archive, "META-INF/container.xml", _container_xml())
         _zip_write(archive, "EPUB/cover.svg", cover)
-        chapter_entries: list[tuple[str, bytes]] = []
-        for index, chapter in enumerate(manifest.chapters, start=1):
-            chapter_entries.append(
-                (f"EPUB/chapter-{index}.xhtml", _chapter_xhtml(manifest, index))
-            )
-        for name, data in chapter_entries:
-            _zip_write(archive, name, data)
+        for index in range(1, len(manifest.chapters) + 1):
+            _zip_write(archive, f"EPUB/chapter-{index}.xhtml", _chapter_xhtml(manifest, index))
         _zip_write(archive, "EPUB/nav.xhtml", _nav_xhtml(manifest))
         _zip_write(archive, "EPUB/bibliography.xhtml", _bibliography_xhtml(manifest))
         _zip_write(archive, "EPUB/package.opf", _package_opf(manifest))
         for asset in manifest.assets:
-            extension = {
-                "image/png": "png",
-                "image/jpeg": "jpg",
-                "image/webp": "webp",
-                "image/svg+xml": "svg",
-            }[asset.mime_type]
-            _zip_write(archive, f"EPUB/assets/{asset.asset_id}.{extension}", asset.body)
+            _zip_write(archive, f"EPUB/assets/{asset.asset_id}.{_asset_extension(asset)}", asset.body)
     result = output.getvalue()
     validate_epub_structure(result)
     return result
@@ -263,16 +397,27 @@ def _container_xml() -> bytes:
     return b'''<?xml version="1.0" encoding="UTF-8"?>\n<container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container"><rootfiles><rootfile full-path="EPUB/package.opf" media-type="application/oebps-package+xml"/></rootfiles></container>'''
 
 
+def _asset_extension(asset: BookAsset) -> str:
+    return {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/svg+xml": "svg"}[asset.mime_type]
+
+
 def _chapter_xhtml(manifest: BookManifest, index: int) -> bytes:
     chapter = manifest.chapters[index - 1]
     paragraphs = "".join(f"<p>{html.escape(part)}</p>" for part in chapter.body.split("\n") if part.strip())
+    asset_map = {asset.asset_id: asset for asset in manifest.assets}
+    figures = "".join(_epub_figure(asset_map[asset_id]) for asset_id in chapter.image_asset_ids)
     citations = "".join(
-        f'<li id="{html.escape(citation.citation_id)}">{html.escape(citation.marker)} — {html.escape(citation.claim_id)}</li>'
+        f'<li id="{html.escape(citation.citation_id)}"><a href="bibliography.xhtml#claim-{html.escape(citation.claim_id)}">{html.escape(citation.marker)} — {html.escape(citation.claim_id)}</a></li>'
         for citation in chapter.citations
     )
     content = f'''<?xml version="1.0" encoding="UTF-8"?>
-<html xmlns="http://www.w3.org/1999/xhtml" lang="{html.escape(manifest.metadata.language)}"><head><title>{html.escape(chapter.title)}</title></head><body><h1>Chapter {index}: {html.escape(chapter.title)}</h1>{paragraphs}<section><h2>Citations</h2><ol>{citations}</ol></section></body></html>'''
+<html xmlns="http://www.w3.org/1999/xhtml" lang="{html.escape(manifest.metadata.language)}"><head><title>{html.escape(chapter.title)}</title></head><body><h1>Chapter {index}: {html.escape(chapter.title)}</h1>{paragraphs}{figures}<section><h2>Citations</h2><ol>{citations}</ol></section></body></html>'''
     return content.encode("utf-8")
+
+
+def _epub_figure(asset: BookAsset) -> str:
+    src = f"assets/{html.escape(asset.asset_id)}.{_asset_extension(asset)}"
+    return f'<figure><img src="{src}" alt="{html.escape(asset.alt_text)}"/><figcaption>{html.escape(asset.alt_text)}</figcaption></figure>'
 
 
 def _nav_xhtml(manifest: BookManifest) -> bytes:
@@ -280,14 +425,13 @@ def _nav_xhtml(manifest: BookManifest) -> bytes:
         f'<li><a href="chapter-{index}.xhtml">{index}. {html.escape(chapter.title)}</a></li>'
         for index, chapter in enumerate(manifest.chapters, start=1)
     )
-    content = f'''<?xml version="1.0" encoding="UTF-8"?>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head><body><nav epub:type="toc"><h1>Contents</h1><ol>{items}<li><a href="bibliography.xhtml">Bibliography</a></li></ol></nav></body></html>'''
-    return content.encode("utf-8")
+    return f'''<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops"><head><title>Contents</title></head><body><nav epub:type="toc"><h1>Contents</h1><ol>{items}<li><a href="bibliography.xhtml">Bibliography</a></li></ol></nav></body></html>'''.encode("utf-8")
 
 
 def _bibliography_xhtml(manifest: BookManifest) -> bytes:
     items = "".join(
-        f"<li>{html.escape(claim.claim_id)} — {html.escape(claim.statement)} — sources: {html.escape(', '.join(claim.source_ids))}</li>"
+        f'<li id="claim-{html.escape(claim.claim_id)}">{html.escape(claim.claim_id)} — {html.escape(claim.statement)} — sources: {html.escape(", ".join(claim.source_ids))}</li>'
         for claim in manifest.claims
     )
     return f'''<?xml version="1.0" encoding="UTF-8"?>
@@ -299,21 +443,23 @@ def _package_opf(manifest: BookManifest) -> bytes:
         f'<item id="chapter-{index}" href="chapter-{index}.xhtml" media-type="application/xhtml+xml"/>'
         for index in range(1, len(manifest.chapters) + 1)
     )
-    chapter_spine = "".join(
-        f'<itemref idref="chapter-{index}"/>' for index in range(1, len(manifest.chapters) + 1)
+    chapter_spine = "".join(f'<itemref idref="chapter-{index}"/>' for index in range(1, len(manifest.chapters) + 1))
+    asset_items = "".join(
+        f'<item id="asset-{html.escape(asset.asset_id)}" href="assets/{html.escape(asset.asset_id)}.{_asset_extension(asset)}" media-type="{asset.mime_type}"/>'
+        for asset in manifest.assets
     )
-    asset_items = []
-    for asset in manifest.assets:
-        extension = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp", "image/svg+xml": "svg"}[asset.mime_type]
-        asset_items.append(
-            f'<item id="asset-{html.escape(asset.asset_id)}" href="assets/{html.escape(asset.asset_id)}.{extension}" media-type="{asset.mime_type}"/>'
-        )
-    title = html.escape(manifest.metadata.title)
-    author = html.escape(manifest.metadata.author)
-    language = html.escape(manifest.metadata.language)
-    identifier = html.escape(manifest.metadata.isbn or manifest.book_id)
+    metadata = manifest.metadata
+    title = html.escape(metadata.title)
+    author = html.escape(metadata.author)
+    publisher = html.escape(metadata.publisher)
+    language = html.escape(metadata.language)
+    identifier = html.escape(metadata.isbn or manifest.book_id)
+    description = html.escape(metadata.description)
+    publication_date = html.escape(metadata.publication_date)
+    subjects = "".join(f"<dc:subject>{html.escape(keyword)}</dc:subject>" for keyword in metadata.keywords)
+    modified = f"{publication_date}T00:00:00Z"
     content = f'''<?xml version="1.0" encoding="UTF-8"?>
-<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="book-id">{identifier}</dc:identifier><dc:title>{title}</dc:title><dc:creator>{author}</dc:creator><dc:language>{language}</dc:language></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="cover" href="cover.svg" media-type="image/svg+xml" properties="cover-image"/><item id="bibliography" href="bibliography.xhtml" media-type="application/xhtml+xml"/>{chapter_manifest}{''.join(asset_items)}</manifest><spine>{chapter_spine}<itemref idref="bibliography"/></spine></package>'''
+<package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id"><metadata xmlns:dc="http://purl.org/dc/elements/1.1/"><dc:identifier id="book-id">{identifier}</dc:identifier><dc:title>{title}</dc:title><dc:creator>{author}</dc:creator><dc:publisher>{publisher}</dc:publisher><dc:language>{language}</dc:language><dc:date>{publication_date}</dc:date><dc:description>{description}</dc:description>{subjects}<meta property="dcterms:modified">{modified}</meta></metadata><manifest><item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" properties="nav"/><item id="cover" href="cover.svg" media-type="image/svg+xml" properties="cover-image"/><item id="bibliography" href="bibliography.xhtml" media-type="application/xhtml+xml"/>{chapter_manifest}{asset_items}</manifest><spine>{chapter_spine}<itemref idref="bibliography"/></spine></package>'''
     return content.encode("utf-8")
 
 

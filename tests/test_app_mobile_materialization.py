@@ -74,7 +74,18 @@ def _changes() -> tuple[AndroidSourceChange, ...]:
             "android/app/src/main/AndroidManifest.xml",
             b'<manifest package="com.ilaios.mobile" />\n',
         ),
+        AndroidSourceChange(
+            "create",
+            "android/app/src/main/kotlin/com/ilaios/mobile/MainActivity.kt",
+            b"package com.ilaios.mobile\n",
+        ),
+        AndroidSourceChange(
+            "create",
+            "android/app/src/main/res/values/styles.xml",
+            b'<resources><style name="LaunchTheme" /></resources>\n',
+        ),
         AndroidSourceChange("create", "android/gradlew", b"#!/bin/sh\n"),
+        AndroidSourceChange("create", "android/gradlew.bat", b"@echo off\r\n"),
         AndroidSourceChange(
             "create",
             "android/gradle/wrapper/gradle-wrapper.properties",
@@ -142,7 +153,25 @@ def test_materialization_fails_closed_on_incomplete_or_mutating_initial_project(
             projection=_projection(),
             app_id="ilaios-mobile",
             application_id="com.ilaios.mobile",
-            source_changes=changes[:-1],
+            source_changes=tuple(
+                change
+                for change in changes
+                if change.relative_path
+                != "android/app/src/main/kotlin/com/ilaios/mobile/MainActivity.kt"
+            ),
+        )
+
+    with pytest.raises(AppMobileMaterializationError, match="missing required project files"):
+        build_flutter_android_materialization_plan(
+            spec=_spec(),
+            projection=_projection(),
+            app_id="ilaios-mobile",
+            application_id="com.ilaios.mobile",
+            source_changes=tuple(
+                change
+                for change in changes
+                if change.relative_path != "android/app/src/main/res/values/styles.xml"
+            ),
         )
 
     modified_manifest = replace(
@@ -155,6 +184,27 @@ def test_materialization_fails_closed_on_incomplete_or_mutating_initial_project(
             app_id="ilaios-mobile",
             application_id="com.ilaios.mobile",
             source_changes=changes[:4] + (modified_manifest,) + changes[5:],
+        )
+
+
+def test_materialization_requires_package_derived_main_activity_path() -> None:
+    changes = tuple(
+        replace(
+            change,
+            relative_path="android/app/src/main/kotlin/com/ilaios/mobile/MainActivity.kt",
+        )
+        if change.relative_path
+        == "android/app/src/main/kotlin/io/example/customer/mobile/MainActivity.kt"
+        else change
+        for change in _changes()
+    )
+    with pytest.raises(AppMobileMaterializationError, match="missing required project files"):
+        build_flutter_android_materialization_plan(
+            spec=_spec(),
+            projection=_projection(),
+            app_id="ilaios-mobile",
+            application_id="io.example.customer.mobile",
+            source_changes=changes,
         )
 
 
