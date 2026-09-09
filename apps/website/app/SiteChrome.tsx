@@ -9,6 +9,11 @@ import ThemeToggle from "./ThemeToggle";
 type NavLink = readonly [label: string, href: string];
 type FooterGroup = { heading: string; links: readonly NavLink[] };
 
+const LOCALE_COOKIE = "ilaios-locale";
+const rememberLocale = (locale: "en" | "tr") => {
+  document.cookie = `${LOCALE_COOKIE}=${locale}; Path=/; Max-Age=31536000; SameSite=Lax`;
+};
+
 const enPrimary = [["Platform", "/platform"], ["Factories", "/factories"], ["Capabilities", "/capabilities"], ["Security", "/security"]] as const;
 const trPrimary = [["Platform", "/tr/platform"], ["Üretim", "/tr/factories"], ["Yetenekler", "/tr/capabilities"], ["Güvenlik", "/tr/security"]] as const;
 const enExplore = [["Solutions", "/solutions"], ["For Enterprises", "/enterprise"], ["For Individuals", "/individuals"], ["How It Works", "/how-it-works"], ["Use ILAIOS", "/use-ilaios"], ["ILAIOS Core", "/core"], ["Trust Center", "/trust"], ["Architecture", "/architecture"], ["Documentation", "/docs"], ["Resources", "/resources"], ["About", "/about"]] as const;
@@ -35,7 +40,10 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
   const active = (href: string) => pathname === href || (href !== "/" && href !== "/tr" && pathname.startsWith(`${href}/`));
   const exploreActive = explore.some(([, href]) => active(href));
 
-  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    rememberLocale(lang);
+  }, [lang]);
   useEffect(() => {
     exploreRef.current?.removeAttribute("open");
   }, [pathname]);
@@ -102,7 +110,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
         <button className="menu-toggle" type="button" aria-expanded={open} aria-controls="site-navigation" aria-label={open ? (isTr ? "Menüyü kapat" : "Close menu") : (isTr ? "Menüyü aç" : "Open menu")} onClick={() => setOpen(value => !value)}><span>{open ? (isTr ? "Kapat" : "Close") : (isTr ? "Menü" : "Menu")}</span><i aria-hidden="true" /></button>
         <nav id="site-navigation" className={`nav-panel ${open ? "is-open" : ""}`} aria-label={isTr ? "Ana menü" : "Primary navigation"}>
           <div className="nav-primary">{primary.map(([label, href]) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined} onClick={() => setOpen(false)}>{label}</Link>)}</div>
-          <div className="nav-utility"><details ref={exploreRef} className="explore-menu"><summary className={exploreActive ? "is-active" : undefined}>{isTr ? "Keşfet" : "Explore"}</summary><div className="explore-menu-panel">{explore.map(([label, href]) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined} onClick={() => setOpen(false)}>{label}</Link>)}</div></details><Link href={isTr ? "/tr/contact" : "/contact"} aria-current={active(isTr ? "/tr/contact" : "/contact") ? "page" : undefined} onClick={() => setOpen(false)}>{isTr ? "İletişim" : "Contact"}</Link><ThemeToggle locale={lang} /><span className="language-switch" aria-label={isTr ? "Dil seçimi" : "Language selection"}>{isTr ? <><Link href={switchHref} hrefLang="en" lang="en" onClick={() => setOpen(false)}>EN</Link><strong aria-current="true">TR</strong></> : <><strong aria-current="true">EN</strong><Link href={switchHref} hrefLang="tr" lang="tr" onClick={() => setOpen(false)}>TR</Link></>}</span></div>
+          <div className="nav-utility"><details ref={exploreRef} className="explore-menu"><summary className={exploreActive ? "is-active" : undefined}>{isTr ? "Keşfet" : "Explore"}</summary><div className="explore-menu-panel">{explore.map(([label, href]) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined} onClick={() => setOpen(false)}>{label}</Link>)}</div></details><Link href={isTr ? "/tr/contact" : "/contact"} aria-current={active(isTr ? "/tr/contact" : "/contact") ? "page" : undefined} onClick={() => setOpen(false)}>{isTr ? "İletişim" : "Contact"}</Link><ThemeToggle locale={lang} /><span className="language-switch" aria-label={isTr ? "Dil seçimi" : "Language selection"}>{isTr ? <><Link href={switchHref} hrefLang="en" lang="en" onClick={() => { rememberLocale("en"); setOpen(false); }}>EN</Link><strong aria-current="true">TR</strong></> : <><strong aria-current="true">EN</strong><Link href={switchHref} hrefLang="tr" lang="tr" onClick={() => { rememberLocale("tr"); setOpen(false); }}>TR</Link></>}</span></div>
         </nav>
       </div>
     </header>
@@ -112,7 +120,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
         <div className="footer-brand"><strong>ILAIOS</strong><p>{isTr ? "Kontrollü ve doğrulanabilir dijital sonuçlar için yönetilen yapay zekâ işletim sistemi." : "A governed AI operating system for controlled, verifiable finished digital outcomes."}</p><a className="text-link" href="mailto:contact@ilaios.com">contact@ilaios.com</a><div className="footer-social"><a className="text-link" href="https://www.linkedin.com/company/ilaios/" target="_blank" rel="noreferrer">LinkedIn</a><a className="text-link" href="https://x.com/ilaios" target="_blank" rel="noreferrer">X · @ilaios</a></div></div>
         <div className="footer-nav-grid">{footerGroups.map(group => <div key={group.heading}><strong>{group.heading}</strong>{group.links.map(([label, href]) => <Link className="text-link" key={href} href={href}>{label}</Link>)}</div>)}</div>
       </div>
-      <div className="shell footer-row"><span>© 2026 ILAIOS</span><span>{isTr ? "Kontrollü yürütme · doğrulanmış sonuç" : "Governed execution · verified outcome"}</span><Link className="text-link" href={switchHref}>{isTr ? "English" : "Türkçe"}</Link></div>
+      <div className="shell footer-row"><span>© 2026 ILAIOS</span><span>{isTr ? "Kontrollü yürütme · doğrulanmış sonuç" : "Governed execution · verified outcome"}</span><Link className="text-link" href={switchHref} onClick={() => rememberLocale(isTr ? "en" : "tr")}>{isTr ? "English" : "Türkçe"}</Link></div>
       <div aria-hidden="true" style={{ height: 24 }} />
     </footer>
   </>;
