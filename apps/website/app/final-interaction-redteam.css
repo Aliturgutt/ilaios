@@ -486,6 +486,14 @@ html[data-theme="dark"] .site-footer a:focus-visible {
 }
 
 @media (max-width: 940px) {
+  .site-header .nav-panel.is-open {
+    left: auto !important;
+    right: 16px !important;
+    width: min(320px, calc(100vw - 32px)) !important;
+    max-width: calc(100vw - 32px) !important;
+    grid-template-columns: 1fr !important;
+  }
+
   html[data-theme="light"] .site-header,
   html[data-theme="light"] .nav-panel,
   html[data-theme="light"] .explore-menu-panel {
