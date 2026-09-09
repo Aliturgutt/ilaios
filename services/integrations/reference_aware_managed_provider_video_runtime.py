@@ -168,7 +168,7 @@ class DurableProductIdentityResolver:
         if not control_plane_database.is_file():
             raise VideoRuntimeError("managed Desktop control-plane budget store is unavailable")
         connection = sqlite3.connect(
-            control_plane_database.resolve().as_uri() + "?mode=ro",
+            self._database.parent.joinpath("control-plane.sqlite3").resolve().as_uri() + "?mode=ro",
             uri=True,
             timeout=10,
         )
@@ -323,7 +323,7 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
             provider_ceiling = certification_provider_cost_ceiling(
                 price,
                 shape,
-                contingency_bps=self._commercial_policy.contingency_bps,
+                contingency_bps=0,
             )
             estimated_total += price.estimated_total_microusd
             reserved_total += provider_ceiling
