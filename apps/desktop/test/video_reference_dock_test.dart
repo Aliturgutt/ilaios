@@ -106,7 +106,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('home-add-image')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('reference-asset-picker')), findsOneWidget);
+    expect(find.byKey(const Key('video-reference-assets')), findsOneWidget);
     await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
 
