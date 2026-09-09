@@ -54,6 +54,57 @@
   overflow-wrap: anywhere;
 }
 
+/* Global Website typography balance. Applies identically in Light and Dark. */
+html body main h1 {
+  max-width: 820px !important;
+  font-size: clamp(1.9rem, 2.25vw, 2.3rem) !important;
+  line-height: 1.08 !important;
+  letter-spacing: -.035em !important;
+}
+html body main h2 {
+  font-size: clamp(1.4rem, 1.75vw, 1.8rem) !important;
+  line-height: 1.14 !important;
+  letter-spacing: -.025em !important;
+}
+html body .home-hero-copy h1 {
+  max-width: 600px !important;
+  font-size: clamp(2.05rem, 2.5vw, 2.4rem) !important;
+  line-height: 1.04 !important;
+}
+html body :where(.page-hero,.compact-page-hero) {
+  padding-top: 40px !important;
+  padding-bottom: 40px !important;
+}
+
+/* Trust page: keep the four principles balanced as a 2x2 matrix on desktop. */
+.trust-principle-directory {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+/* Control Plane remains a deliberate gray authority surface in both themes. */
+html body .trust-gate > div.is-authority {
+  background: #2A2A2A !important;
+  border-color: #444444 !important;
+}
+html body .trust-gate > div.is-authority :where(span,strong) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+/* Light theme uses light cards generally; the Control Plane authority card above is the exception. */
+html[data-theme="light"] body .card.dark-surface {
+  background: #FFFFFF !important;
+  border-color: #B3B3B3 !important;
+}
+html[data-theme="light"] body .card.dark-surface :where(h1,h2,h3,h4,strong,b) {
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+}
+html[data-theme="light"] body .card.dark-surface :where(p,small,span,li) {
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+}
+
 @media (max-width: 940px) {
   .nav-panel {
     left: max(12px, env(safe-area-inset-left));
@@ -73,6 +124,20 @@
   }
   .language-switch {
     margin-left: 0;
+  }
+}
+
+@media (max-width: 899px) {
+  html body main h1,
+  html body .home-hero-copy h1 {
+    font-size: clamp(1.8rem, 4.3vw, 2.1rem) !important;
+  }
+  html body main h2 {
+    font-size: clamp(1.32rem, 3.3vw, 1.65rem) !important;
+  }
+  html body :where(.page-hero,.compact-page-hero) {
+    padding-top: 30px !important;
+    padding-bottom: 30px !important;
   }
 }
 
@@ -96,6 +161,9 @@
   }
   .contact-channel-grid {
     grid-template-columns: 1fr;
+  }
+  .trust-principle-directory {
+    grid-template-columns: 1fr !important;
   }
 }
 
