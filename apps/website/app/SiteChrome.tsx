@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import ThemeToggle from "./ThemeToggle";
 
 type NavLink = readonly [label: string, href: string];
@@ -25,6 +25,8 @@ function counterpart(pathname: string, isTr: boolean) {
 export default function SiteChrome({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+  const exploreRef = useRef<HTMLDetailsElement>(null);
   const isTr = pathname === "/tr" || pathname.startsWith("/tr/");
   const primary = isTr ? trPrimary : enPrimary;
   const explore = isTr ? trExplore : enExplore;
@@ -35,17 +37,33 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
 
   useEffect(() => { document.documentElement.lang = lang; }, [lang]);
   useEffect(() => {
+    exploreRef.current?.removeAttribute("open");
+  }, [pathname]);
+  useEffect(() => {
     document.body.classList.toggle("menu-open", open);
-    if (!open) return () => document.body.classList.remove("menu-open");
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setOpen(false);
+        exploreRef.current?.removeAttribute("open");
         requestAnimationFrame(() => document.querySelector<HTMLButtonElement>(".menu-toggle")?.focus());
       }
     };
+    const onPointerDown = (event: PointerEvent) => {
+      if (!(event.target instanceof Node)) return;
+      const header = headerRef.current;
+      const exploreMenu = exploreRef.current;
+      if (exploreMenu?.open && !exploreMenu.contains(event.target)) {
+        exploreMenu.removeAttribute("open");
+      }
+      if (open && header && !header.contains(event.target)) {
+        setOpen(false);
+      }
+    };
     window.addEventListener("keydown", onKeyDown);
+    document.addEventListener("pointerdown", onPointerDown);
     return () => {
       window.removeEventListener("keydown", onKeyDown);
+      document.removeEventListener("pointerdown", onPointerDown);
       document.body.classList.remove("menu-open");
     };
   }, [open]);
@@ -75,26 +93,27 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
 
   return <>
     <a className="skip-link" href="#main-content" lang={lang}>{isTr ? "Ana içeriğe geç" : "Skip to main content"}</a>
-    <header className="site-header" lang={lang}>
+    <header ref={headerRef} className="site-header" lang={lang}>
       <div className="shell nav">
         <Link className="brand" href={isTr ? "/tr" : "/"} aria-label={isTr ? "ILAIOS ana sayfa" : "ILAIOS home"} onClick={() => setOpen(false)}>
-          <Image className="brand-logo brand-logo-dark" src="/brand/logo-horizontal-dark.jpg" alt="ILAIOS" width={2400} height={800} sizes="144px" priority unoptimized />
+          <Image className="brand-logo brand-logo-dark" src="/brand/logo-horizontal-dark.jpg" alt="ILAIOS" width={2400} height={800} sizes="144px" priority unoptimized style={{ mixBlendMode: "lighten" }} />
           <Image className="brand-logo brand-logo-light" src="/brand/logo-horizontal-light.jpg" alt="ILAIOS" width={2400} height={800} sizes="144px" priority unoptimized />
         </Link>
         <button className="menu-toggle" type="button" aria-expanded={open} aria-controls="site-navigation" aria-label={open ? (isTr ? "Menüyü kapat" : "Close menu") : (isTr ? "Menüyü aç" : "Open menu")} onClick={() => setOpen(value => !value)}><span>{open ? (isTr ? "Kapat" : "Close") : (isTr ? "Menü" : "Menu")}</span><i aria-hidden="true" /></button>
         <nav id="site-navigation" className={`nav-panel ${open ? "is-open" : ""}`} aria-label={isTr ? "Ana menü" : "Primary navigation"}>
           <div className="nav-primary">{primary.map(([label, href]) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined} onClick={() => setOpen(false)}>{label}</Link>)}</div>
-          <div className="nav-utility"><details className="explore-menu"><summary className={exploreActive ? "is-active" : undefined}>{isTr ? "Keşfet" : "Explore"}</summary><div className="explore-menu-panel">{explore.map(([label, href]) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined} onClick={() => setOpen(false)}>{label}</Link>)}</div></details><Link href={isTr ? "/tr/contact" : "/contact"} aria-current={active(isTr ? "/tr/contact" : "/contact") ? "page" : undefined} onClick={() => setOpen(false)}>{isTr ? "İletişim" : "Contact"}</Link><ThemeToggle locale={lang} /><span className="language-switch" aria-label={isTr ? "Dil seçimi" : "Language selection"}>{isTr ? <><Link href={switchHref} hrefLang="en" lang="en" onClick={() => setOpen(false)}>EN</Link><strong aria-current="true">TR</strong></> : <><strong aria-current="true">EN</strong><Link href={switchHref} hrefLang="tr" lang="tr" onClick={() => setOpen(false)}>TR</Link></>}</span></div>
+          <div className="nav-utility"><details ref={exploreRef} className="explore-menu"><summary className={exploreActive ? "is-active" : undefined}>{isTr ? "Keşfet" : "Explore"}</summary><div className="explore-menu-panel">{explore.map(([label, href]) => <Link key={href} href={href} aria-current={active(href) ? "page" : undefined} onClick={() => setOpen(false)}>{label}</Link>)}</div></details><Link href={isTr ? "/tr/contact" : "/contact"} aria-current={active(isTr ? "/tr/contact" : "/contact") ? "page" : undefined} onClick={() => setOpen(false)}>{isTr ? "İletişim" : "Contact"}</Link><ThemeToggle locale={lang} /><span className="language-switch" aria-label={isTr ? "Dil seçimi" : "Language selection"}>{isTr ? <><Link href={switchHref} hrefLang="en" lang="en" onClick={() => setOpen(false)}>EN</Link><strong aria-current="true">TR</strong></> : <><strong aria-current="true">EN</strong><Link href={switchHref} hrefLang="tr" lang="tr" onClick={() => setOpen(false)}>TR</Link></>}</span></div>
         </nav>
       </div>
     </header>
     <main id="main-content" lang={lang} tabIndex={-1}>{children}</main>
     <footer className="site-footer" lang={lang}>
       <div className="shell footer-main">
-        <div className="footer-brand"><strong>ILAIOS</strong><p>{isTr ? "Kontrollü ve doğrulanabilir dijital sonuçlar için yönetilen yapay zekâ işletim sistemi." : "A governed AI operating system for controlled, verifiable finished digital outcomes."}</p><a href="mailto:contact@ilaios.com">contact@ilaios.com</a><div className="footer-social"><a href="https://www.linkedin.com/company/ilaios/" target="_blank" rel="noreferrer">LinkedIn</a><a href="https://x.com/ilaios" target="_blank" rel="noreferrer">X · @ilaios</a></div></div>
-        <div className="footer-nav-grid">{footerGroups.map(group => <div key={group.heading}><strong>{group.heading}</strong>{group.links.map(([label, href]) => <Link key={href} href={href}>{label}</Link>)}</div>)}</div>
+        <div className="footer-brand"><strong>ILAIOS</strong><p>{isTr ? "Kontrollü ve doğrulanabilir dijital sonuçlar için yönetilen yapay zekâ işletim sistemi." : "A governed AI operating system for controlled, verifiable finished digital outcomes."}</p><a className="text-link" href="mailto:contact@ilaios.com">contact@ilaios.com</a><div className="footer-social"><a className="text-link" href="https://www.linkedin.com/company/ilaios/" target="_blank" rel="noreferrer">LinkedIn</a><a className="text-link" href="https://x.com/ilaios" target="_blank" rel="noreferrer">X · @ilaios</a></div></div>
+        <div className="footer-nav-grid">{footerGroups.map(group => <div key={group.heading}><strong>{group.heading}</strong>{group.links.map(([label, href]) => <Link className="text-link" key={href} href={href}>{label}</Link>)}</div>)}</div>
       </div>
-      <div className="shell footer-row"><span>© 2026 ILAIOS</span><span>{isTr ? "Kontrollü yürütme · doğrulanmış sonuç" : "Governed execution · verified outcome"}</span><Link href={switchHref}>{isTr ? "English" : "Türkçe"}</Link></div>
+      <div className="shell footer-row"><span>© 2026 ILAIOS</span><span>{isTr ? "Kontrollü yürütme · doğrulanmış sonuç" : "Governed execution · verified outcome"}</span><Link className="text-link" href={switchHref}>{isTr ? "English" : "Türkçe"}</Link></div>
+      <div aria-hidden="true" style={{ height: 24 }} />
     </footer>
   </>;
 }
