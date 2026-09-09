@@ -168,7 +168,7 @@ class DurableProductIdentityResolver:
         if not control_plane_database.is_file():
             raise VideoRuntimeError("managed Desktop control-plane budget store is unavailable")
         connection = sqlite3.connect(
-            self._database.parent.joinpath("control-plane.sqlite3").resolve().as_uri() + "?mode=ro",
+            control_plane_database.resolve().as_uri() + "?mode=ro",
             uri=True,
             timeout=10,
         )
