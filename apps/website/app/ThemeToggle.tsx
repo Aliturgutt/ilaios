@@ -3,8 +3,6 @@
 type Locale = "en" | "tr";
 type Theme = "dark" | "light";
 
-const STORAGE_KEY = "ilaios-theme";
-
 function currentTheme(): Theme {
   return document.documentElement.dataset.theme === "light" ? "light" : "dark";
 }
@@ -16,7 +14,6 @@ export default function ThemeToggle({ locale }: { locale: Locale }) {
     const next: Theme = currentTheme() === "dark" ? "light" : "dark";
     document.documentElement.dataset.theme = next;
     document.documentElement.style.colorScheme = next;
-    localStorage.setItem(STORAGE_KEY, next);
   };
 
   return <button className="theme-toggle" type="button" onClick={toggle} aria-label={label} title={label}>
