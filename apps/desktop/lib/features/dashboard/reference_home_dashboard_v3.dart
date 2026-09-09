@@ -139,10 +139,6 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
                             onChanged: (value) =>
                                 setState(() => _objective = value.trim()),
                             decoration: InputDecoration(
-                              prefixIcon: const Icon(
-                                Icons.attach_file_rounded,
-                                size: 22,
-                              ),
                               hintText: _t(
                                 context,
                                 'Website, video, software or research — describe the result and criteria…',
@@ -201,7 +197,7 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
                     ReferenceAssetPicker(
                       key: const Key('home-prompt-attachments'),
                       controller: referenceAssets,
-                      enabled: widget.userSession != null && !_submitting,
+                      enabled: !_submitting,
                       compact: true,
                     ),
                   ],
