@@ -48,7 +48,12 @@ def _commercial(tmp_path: Path) -> CommercialDigitalGoodsExtension:
     return CommercialDigitalGoodsExtension(access)
 
 
-def _register_product(extension: CommercialDigitalGoodsExtension, now: datetime) -> None:
+def _register_product(
+    extension: CommercialDigitalGoodsExtension,
+    now: datetime,
+    *,
+    currency: str = "TRY",
+) -> None:
     factory = CreativeDocumentFactory()
     factory.compose_book(
         "book-paytr",
@@ -84,7 +89,7 @@ def _register_product(extension: CommercialDigitalGoodsExtension, now: datetime)
         book=book,
         export=package.export_manifest,
         price_minor=129900,
-        currency="TL",
+        currency=currency,
         now=now,
     )
 
@@ -106,7 +111,7 @@ def _adapter(
     return adapter, transport
 
 
-def _checkout_request() -> PayTRCheckoutRequest:
+def _checkout_request(*, currency: str = "TRY") -> PayTRCheckoutRequest:
     return PayTRCheckoutRequest(
         order_id="order-paytr-1",
         tenant_id="tenant-1",
@@ -120,12 +125,17 @@ def _checkout_request() -> PayTRCheckoutRequest:
         merchant_ok_url="https://example.test/order/success",
         merchant_fail_url="https://example.test/order/fail",
         price_minor=129900,
-        currency="TL",
+        currency=currency,
         test_mode=True,
     )
 
 
-def _callback_fields(*, status: str, payment_amount: int = 129900) -> dict[str, str]:
+def _callback_fields(
+    *,
+    status: str,
+    payment_amount: int = 129900,
+    provider_currency: str = "TL",
+) -> dict[str, str]:
     merchant_oid = "order-paytr-1"
     total_amount = str(payment_amount)
     token_text = merchant_oid + _ENV["PAYTR_MERCHANT_SALT"] + status + total_amount
@@ -141,7 +151,7 @@ def _callback_fields(*, status: str, payment_amount: int = 129900) -> dict[str, 
         "status": status,
         "total_amount": total_amount,
         "payment_amount": str(payment_amount),
-        "currency": "TL",
+        "currency": provider_currency,
         "hash": signature,
         "test_mode": "1",
     }
@@ -156,6 +166,7 @@ def test_checkout_uses_server_price_and_opaque_secret_references(tmp_path: Path)
     checkout = adapter.create_checkout(_checkout_request(), now=now)
 
     assert checkout.order.state is DigitalOrderState.PENDING
+    assert checkout.order.currency == "TRY"
     assert checkout.test_mode is True
     assert checkout.iframe_url.endswith("iframe-token-1")
     assert len(transport.calls) == 1
@@ -166,6 +177,19 @@ def test_checkout_uses_server_price_and_opaque_secret_references(tmp_path: Path)
     serialized = repr(fields)
     assert _ENV["PAYTR_MERCHANT_KEY"] not in serialized
     assert _ENV["PAYTR_MERCHANT_SALT"] not in serialized
+
+
+def test_usd_remains_usd_for_english_pricing_path(tmp_path: Path) -> None:
+    now = datetime(2026, 9, 9, 5, 0, tzinfo=timezone.utc)
+    extension = _commercial(tmp_path)
+    _register_product(extension, now, currency="USD")
+    adapter, transport = _adapter(extension)
+
+    checkout = adapter.create_checkout(_checkout_request(currency="USD"), now=now)
+
+    assert checkout.order.currency == "USD"
+    _, fields = transport.calls[0]
+    assert fields["currency"] == "USD"
 
 
 def test_client_price_change_is_rejected_before_provider_call(tmp_path: Path) -> None:
