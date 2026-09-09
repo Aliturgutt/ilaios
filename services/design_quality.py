@@ -95,7 +95,12 @@ class NativeDesignStrategyEngine:
         )
         trusted = context.trust_requirement in {"high", "critical"}
         visual = context.visual_asset_availability in {"high", "rich"}
-        if category in {"developer platform", "security", "infrastructure", "enterprise software"}:
+        if category in {
+            "developer platform",
+            "security",
+            "infrastructure",
+            "enterprise software",
+        }:
             primary, secondary = (
                 ("technical-flow" if dense else "layered-architecture"),
                 ("evidence-trust", "documentation-led"),
@@ -159,7 +164,9 @@ class NativeDesignStrategyEngine:
             "reorder-reduce-and-recompose",
         )
 
-    def fingerprint(self, strategy: DesignStrategy, sections: tuple[str, ...]) -> CompositionFingerprint:
+    def fingerprint(
+        self, strategy: DesignStrategy, sections: tuple[str, ...]
+    ) -> CompositionFingerprint:
         if strategy.primary_composition not in COMPOSITIONS:
             raise ValueError("unsupported composition")
         return CompositionFingerprint(
@@ -205,16 +212,6 @@ class DesignObservation:
     motion_budget_failures: int = 0
     showcase_fallback_failures: int = 0
     text_scaling_failures: int = 0
-    giant_heading_failures: int = 0
-    empty_visual_placeholders: int = 0
-    excessive_whitespace_regions: int = 0
-    repeated_layout_failures: int = 0
-    cta_hierarchy_failures: int = 0
-    turkish_layout_failures: int = 0
-    mobile_hierarchy_failures: int = 0
-    section_rhythm_failures: int = 0
-    missing_brand_asset_failures: int = 0
-    text_heavy_without_structure: int = 0
     reduced_motion_supported: bool = True
     reduced_transparency_supported: bool = True
     increased_contrast_supported: bool = True
@@ -247,7 +244,9 @@ class DesignAssessment:
     @property
     def blocking_findings(self) -> tuple[DesignFinding, ...]:
         return tuple(
-            finding for finding in self.findings if finding.severity in BLOCKING_SEVERITIES
+            finding
+            for finding in self.findings
+            if finding.severity in BLOCKING_SEVERITIES
         )
 
 
@@ -290,9 +289,13 @@ class NativeDesignQualityEvaluator:
                     1.0,
                 )
             )
-        status = "FAIL" if any(
-            finding.severity in BLOCKING_SEVERITIES for finding in findings
-        ) else "PASS"
+        status = (
+            "FAIL"
+            if any(
+                finding.severity in BLOCKING_SEVERITIES for finding in findings
+            )
+            else "PASS"
+        )
         return DesignAssessment(
             self.evaluator_id,
             self.version,
@@ -304,81 +307,308 @@ class NativeDesignQualityEvaluator:
 
     @staticmethod
     def _validate(row: DesignObservation) -> None:
-        if row.locale not in {"en", "tr"} or not row.route.startswith("/") or row.viewport < 240:
+        if (
+            row.locale not in {"en", "tr"}
+            or not row.route.startswith("/")
+            or row.viewport < 240
+        ):
             raise ValueError("route, locale or viewport is invalid")
-        numeric_fields = (
-            "horizontal_overflow", "clipped_elements", "overlapping_elements",
-            "missing_focus_indicators", "undersized_touch_targets", "contrast_failures",
-            "unreadable_text_blocks", "inconsistent_components", "unexplained_decorative_patterns",
-            "repeated_equal_card_groups", "repeated_centered_sections", "missing_alt_text",
-            "unlabeled_icon_controls", "hover_only_interactions", "form_label_failures",
-            "field_feedback_failures", "layout_shift_failures", "navigation_hierarchy_failures",
-            "chart_accessibility_failures", "input_feedback_failures", "gesture_tracking_failures",
-            "non_interruptible_motion_failures", "velocity_handoff_failures", "spatial_transition_failures",
-            "scroll_jank_failures", "pointer_tracking_failures", "motion_budget_failures",
-            "showcase_fallback_failures", "text_scaling_failures", "giant_heading_failures",
-            "empty_visual_placeholders", "excessive_whitespace_regions", "repeated_layout_failures",
-            "cta_hierarchy_failures", "turkish_layout_failures", "mobile_hierarchy_failures",
-            "section_rhythm_failures", "missing_brand_asset_failures", "text_heavy_without_structure",
+        fields = (
+            "horizontal_overflow",
+            "clipped_elements",
+            "overlapping_elements",
+            "missing_focus_indicators",
+            "undersized_touch_targets",
+            "contrast_failures",
+            "unreadable_text_blocks",
+            "inconsistent_components",
+            "unexplained_decorative_patterns",
+            "repeated_equal_card_groups",
+            "repeated_centered_sections",
+            "missing_alt_text",
+            "unlabeled_icon_controls",
+            "hover_only_interactions",
+            "form_label_failures",
+            "field_feedback_failures",
+            "layout_shift_failures",
+            "navigation_hierarchy_failures",
+            "chart_accessibility_failures",
+            "input_feedback_failures",
+            "gesture_tracking_failures",
+            "non_interruptible_motion_failures",
+            "velocity_handoff_failures",
+            "spatial_transition_failures",
+            "scroll_jank_failures",
+            "pointer_tracking_failures",
+            "motion_budget_failures",
+            "showcase_fallback_failures",
+            "text_scaling_failures",
         )
-        for name in numeric_fields:
+        for name in fields:
             if getattr(row, name) < 0:
                 raise ValueError(f"{name} cannot be negative")
 
     def _findings(self, row: DesignObservation) -> list[DesignFinding]:
         rules = (
-            ("horizontal_overflow", "design.responsive-quality", "major", "Horizontal overflow detected.", "Repair responsive constraints without hiding required content."),
-            ("clipped_elements", "design.responsive-quality", "major", "Clipped elements detected.", "Repair measured layout constraints."),
-            ("overlapping_elements", "design.visual-quality", "major", "Overlapping elements detected.", "Repair hierarchy, sizing, or spacing at the root cause."),
-            ("missing_focus_indicators", "design.interaction-quality", "p2", "Visible keyboard focus is missing.", "Restore visible focus treatment."),
-            ("undersized_touch_targets", "design.interaction-quality", "p2", "Undersized touch targets detected.", "Increase target size or separation."),
-            ("contrast_failures", "design.typography-quality", "major", "Contrast failures detected.", "Correct semantic foreground/background tokens."),
-            ("unreadable_text_blocks", "design.technical-content-quality", "p2", "Unreadable text blocks detected.", "Repair text scale, line length, hierarchy, or density."),
-            ("inconsistent_components", "design.component-consistency", "p2", "Component inconsistency detected.", "Use the established component and token language."),
-            ("missing_alt_text", "design.accessibility", "major", "Meaningful visual content lacks text alternatives.", "Provide meaningful alternatives or mark pure decoration as such."),
-            ("unlabeled_icon_controls", "design.accessibility", "major", "Icon-only controls lack accessible names.", "Provide programmatic labels without changing visual hierarchy."),
-            ("hover_only_interactions", "design.interaction-quality", "p2", "Interaction depends on hover alone.", "Provide keyboard, touch, and persistent affordance equivalents."),
-            ("form_label_failures", "design.form-feedback", "major", "Form controls lack persistent labels.", "Use visible labels associated with the corresponding control."),
-            ("field_feedback_failures", "design.form-feedback", "p2", "Validation or error feedback is detached from its field.", "Place actionable feedback at the source and manage focus when needed."),
-            ("layout_shift_failures", "design.performance-quality", "p2", "Visible layout instability was observed.", "Reserve space and remove avoidable layout-shifting behavior."),
-            ("navigation_hierarchy_failures", "design.navigation-quality", "major", "Navigation hierarchy or back behavior is inconsistent.", "Restore predictable hierarchy, state, and route behavior."),
-            ("chart_accessibility_failures", "design.data-visualization", "p2", "Data visualization relies on inaccessible encoding.", "Provide labels, legends, non-color encoding, and accessible data context."),
-            ("input_feedback_failures", "design.interaction-response", "p2", "Interactive input feedback is delayed or discontinuous.", "Respond at interaction start and keep feedback continuous while the input is active."),
-            ("gesture_tracking_failures", "design.gesture-continuity", "p2", "Gesture-driven content does not track the active input continuously.", "Keep direct-manipulation state synchronized with pointer or touch movement."),
-            ("non_interruptible_motion_failures", "design.motion-quality", "p2", "User-driven motion cannot be safely interrupted or redirected.", "Retarget from the current presented state without locking interaction during motion."),
-            ("velocity_handoff_failures", "design.motion-quality", "p2", "Gesture release introduces a visible motion discontinuity.", "Preserve measured interaction momentum when transitioning to settled motion."),
-            ("spatial_transition_failures", "design.motion-quality", "p2", "Enter, exit, or reversible transitions break spatial continuity.", "Keep reversible transitions anchored to the same spatial source and path."),
-            ("scroll_jank_failures", "design.motion-performance", "p2", "Scroll-linked motion introduces visible jank or blocking work.", "Move scroll work to bounded animation-frame updates and compositor-friendly properties."),
-            ("pointer_tracking_failures", "design.interaction-quality", "p2", "Pointer-driven presentation loses continuity or exceeds its bounded surface.", "Keep pointer effects local, interruptible, and synchronized with the active surface."),
-            ("motion_budget_failures", "design.motion-performance", "p2", "Motion exceeds the accepted runtime performance budget.", "Reduce continuous work, animated area, or dependency cost before acceptance."),
-            ("showcase_fallback_failures", "design.motion-accessibility", "major", "Interactive showcase lacks an equivalent static or reduced-motion fallback.", "Provide a complete non-motion representation with the same information and actions."),
-            ("text_scaling_failures", "design.typography-quality", "p2", "Text scaling breaks hierarchy, legibility, or layout.", "Use scale-aware typography and spacing that survives user text-size changes."),
-            ("giant_heading_failures", "design.typography-quality", "major", "Oversized heading or hero proportion detected.", "Reduce the bounded type scale and rebalance the hero without global rewrite."),
-            ("empty_visual_placeholders", "design.visual-quality", "major", "Empty visual placeholder detected.", "Replace the placeholder with a meaningful diagram, schematic, or intentional typographic composition."),
-            ("excessive_whitespace_regions", "design.layout-quality", "p2", "Excessive whitespace weakens information density.", "Tighten section spacing or rebalance the affected composition."),
-            ("repeated_layout_failures", "design.component-diversity", "major", "Repeated page layout exceeds the allowed similarity threshold.", "Diversify section composition using existing Web Factory primitives."),
-            ("cta_hierarchy_failures", "design.cta-hierarchy", "p2", "CTA hierarchy is unclear or duplicated.", "Restore one primary CTA and bounded contextual secondary actions."),
-            ("turkish_layout_failures", "design.localization-parity", "major", "Turkish content degrades the intended layout.", "Repair wrapping, type scale, or responsive composition for Turkish content."),
-            ("mobile_hierarchy_failures", "design.responsive-quality", "major", "Mobile hierarchy is structurally usable but visually degraded.", "Recompose the affected section for the mobile breakpoint instead of copying desktop layout."),
-            ("section_rhythm_failures", "design.layout-quality", "p2", "Section rhythm is inconsistent.", "Correct the bounded spacing/token decision for the affected section."),
-            ("missing_brand_asset_failures", "design.brand-fidelity", "major", "Canonical brand asset is available but not used correctly.", "Use the canonical light/dark asset mapping without recolor or filter."),
-            ("text_heavy_without_structure", "design.content-architecture", "p2", "Text-heavy page lacks meaningful visual structure.", "Introduce content-specific sections or an intentional system visualization."),
+            (
+                "horizontal_overflow",
+                "design.responsive-quality",
+                "major",
+                "Horizontal overflow detected.",
+                "Repair responsive constraints without hiding required content.",
+            ),
+            (
+                "clipped_elements",
+                "design.responsive-quality",
+                "major",
+                "Clipped elements detected.",
+                "Repair measured layout constraints.",
+            ),
+            (
+                "overlapping_elements",
+                "design.visual-quality",
+                "major",
+                "Overlapping elements detected.",
+                "Repair hierarchy, sizing, or spacing at the root cause.",
+            ),
+            (
+                "missing_focus_indicators",
+                "design.interaction-quality",
+                "p2",
+                "Visible keyboard focus is missing.",
+                "Restore visible focus treatment.",
+            ),
+            (
+                "undersized_touch_targets",
+                "design.interaction-quality",
+                "p2",
+                "Undersized touch targets detected.",
+                "Increase target size or separation.",
+            ),
+            (
+                "contrast_failures",
+                "design.typography-quality",
+                "major",
+                "Contrast failures detected.",
+                "Correct semantic foreground/background tokens.",
+            ),
+            (
+                "unreadable_text_blocks",
+                "design.technical-content-quality",
+                "p2",
+                "Unreadable text blocks detected.",
+                "Repair text scale, line length, hierarchy, or density.",
+            ),
+            (
+                "inconsistent_components",
+                "design.component-consistency",
+                "p2",
+                "Component inconsistency detected.",
+                "Use the established component and token language.",
+            ),
+            (
+                "missing_alt_text",
+                "design.accessibility",
+                "major",
+                "Meaningful visual content lacks text alternatives.",
+                "Provide meaningful alternatives or mark pure decoration as such.",
+            ),
+            (
+                "unlabeled_icon_controls",
+                "design.accessibility",
+                "major",
+                "Icon-only controls lack accessible names.",
+                "Provide programmatic labels without changing visual hierarchy.",
+            ),
+            (
+                "hover_only_interactions",
+                "design.interaction-quality",
+                "p2",
+                "Interaction depends on hover alone.",
+                "Provide keyboard, touch, and persistent affordance equivalents.",
+            ),
+            (
+                "form_label_failures",
+                "design.form-feedback",
+                "major",
+                "Form controls lack persistent labels.",
+                "Use visible labels associated with the corresponding control.",
+            ),
+            (
+                "field_feedback_failures",
+                "design.form-feedback",
+                "p2",
+                "Validation or error feedback is detached from its field.",
+                "Place actionable feedback at the source and manage focus when needed.",
+            ),
+            (
+                "layout_shift_failures",
+                "design.performance-quality",
+                "p2",
+                "Visible layout instability was observed.",
+                "Reserve space and remove avoidable layout-shifting behavior.",
+            ),
+            (
+                "navigation_hierarchy_failures",
+                "design.navigation-quality",
+                "major",
+                "Navigation hierarchy or back behavior is inconsistent.",
+                "Restore predictable hierarchy, state, and route behavior.",
+            ),
+            (
+                "chart_accessibility_failures",
+                "design.data-visualization",
+                "p2",
+                "Data visualization relies on inaccessible encoding.",
+                "Provide labels, legends, non-color encoding, and accessible data context.",
+            ),
+            (
+                "input_feedback_failures",
+                "design.interaction-response",
+                "p2",
+                "Interactive input feedback is delayed or discontinuous.",
+                "Respond at interaction start and keep feedback continuous while the input is active.",
+            ),
+            (
+                "gesture_tracking_failures",
+                "design.gesture-continuity",
+                "p2",
+                "Gesture-driven content does not track the active input continuously.",
+                "Keep direct-manipulation state synchronized with pointer or touch movement.",
+            ),
+            (
+                "non_interruptible_motion_failures",
+                "design.motion-quality",
+                "p2",
+                "User-driven motion cannot be safely interrupted or redirected.",
+                "Retarget from the current presented state without locking interaction during motion.",
+            ),
+            (
+                "velocity_handoff_failures",
+                "design.motion-quality",
+                "p2",
+                "Gesture release introduces a visible motion discontinuity.",
+                "Preserve measured interaction momentum when transitioning to settled motion.",
+            ),
+            (
+                "spatial_transition_failures",
+                "design.motion-quality",
+                "p2",
+                "Enter, exit, or reversible transitions break spatial continuity.",
+                "Keep reversible transitions anchored to the same spatial source and path.",
+            ),
+            (
+                "scroll_jank_failures",
+                "design.motion-performance",
+                "p2",
+                "Scroll-linked motion introduces visible jank or blocking work.",
+                "Move scroll work to bounded animation-frame updates and compositor-friendly properties.",
+            ),
+            (
+                "pointer_tracking_failures",
+                "design.interaction-quality",
+                "p2",
+                "Pointer-driven presentation loses continuity or exceeds its bounded surface.",
+                "Keep pointer effects local, interruptible, and synchronized with the active surface.",
+            ),
+            (
+                "motion_budget_failures",
+                "design.motion-performance",
+                "p2",
+                "Motion exceeds the accepted runtime performance budget.",
+                "Reduce continuous work, animated area, or dependency cost before acceptance.",
+            ),
+            (
+                "showcase_fallback_failures",
+                "design.motion-accessibility",
+                "major",
+                "Interactive showcase lacks an equivalent static or reduced-motion fallback.",
+                "Provide a complete non-motion representation with the same information and actions.",
+            ),
+            (
+                "text_scaling_failures",
+                "design.typography-quality",
+                "p2",
+                "Text scaling breaks hierarchy, legibility, or layout.",
+                "Use scale-aware typography and spacing that survives user text-size changes.",
+            ),
         )
         out = [
-            self._finding(row, category, severity, message, {field: getattr(row, field)}, recommendation, 1.0)
+            self._finding(
+                row,
+                category,
+                severity,
+                message,
+                {field: getattr(row, field)},
+                recommendation,
+                1.0,
+            )
             for field, category, severity, message, recommendation in rules
             if getattr(row, field)
         ]
         if not row.reduced_motion_supported:
-            out.append(self._finding(row, "design.motion-quality", "p2", "Reduced-motion behavior is missing.", {"reduced_motion_supported": False}, "Honor prefers-reduced-motion.", 1.0))
+            out.append(
+                self._finding(
+                    row,
+                    "design.motion-quality",
+                    "p2",
+                    "Reduced-motion behavior is missing.",
+                    {"reduced_motion_supported": False},
+                    "Honor prefers-reduced-motion.",
+                    1.0,
+                )
+            )
         if not row.reduced_transparency_supported:
-            out.append(self._finding(row, "design.accessibility", "p2", "A required reduced-transparency fallback is missing.", {"reduced_transparency_supported": False}, "When translucent surfaces are used, provide a legible reduced-transparency fallback.", 1.0))
+            out.append(
+                self._finding(
+                    row,
+                    "design.accessibility",
+                    "p2",
+                    "A required reduced-transparency fallback is missing.",
+                    {"reduced_transparency_supported": False},
+                    "When translucent surfaces are used, provide a legible reduced-transparency fallback.",
+                    1.0,
+                )
+            )
         if not row.increased_contrast_supported:
-            out.append(self._finding(row, "design.accessibility", "p2", "A required increased-contrast fallback is missing.", {"increased_contrast_supported": False}, "Provide higher-contrast treatment where the platform requests increased contrast.", 1.0))
+            out.append(
+                self._finding(
+                    row,
+                    "design.accessibility",
+                    "p2",
+                    "A required increased-contrast fallback is missing.",
+                    {"increased_contrast_supported": False},
+                    "Provide higher-contrast treatment where the platform requests increased contrast.",
+                    1.0,
+                )
+            )
         if row.unexplained_decorative_patterns >= 3:
-            out.append(self._finding(row, "design.anti-generic-ai", "minor", "Repeated decorative patterns need contextual review.", {"count": row.unexplained_decorative_patterns}, "Keep only purposeful decoration.", 0.75))
+            out.append(
+                self._finding(
+                    row,
+                    "design.anti-generic-ai",
+                    "minor",
+                    "Repeated decorative patterns need contextual review.",
+                    {"count": row.unexplained_decorative_patterns},
+                    "Keep only purposeful decoration.",
+                    0.75,
+                )
+            )
         if row.repeated_equal_card_groups >= 3 and row.repeated_centered_sections >= 2:
-            out.append(self._finding(row, "design.anti-generic-ai", "p2", "Repeated equal-card and centered-section structure is generic.", {"card_groups": row.repeated_equal_card_groups, "centered_sections": row.repeated_centered_sections}, "Use content-specific compositions.", 0.95))
+            out.append(
+                self._finding(
+                    row,
+                    "design.anti-generic-ai",
+                    "p2",
+                    "Repeated equal-card and centered-section structure is generic.",
+                    {
+                        "card_groups": row.repeated_equal_card_groups,
+                        "centered_sections": row.repeated_centered_sections,
+                    },
+                    "Use content-specific compositions.",
+                    0.95,
+                )
+            )
         return out
 
     def _finding(
