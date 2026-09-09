@@ -4,10 +4,7 @@ import 'package:ilaios_desktop/app/desktop_app.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/control_plane/projection.dart';
-import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/identity/identity_client.dart';
-
-import 'secondary_navigation_test_support.dart';
 
 const _connected = ControlPlaneProjection(
   connected: true,
@@ -47,65 +44,60 @@ IlaiosDesktopApp _app({
       ),
     );
 
-Future<void> _openGoals(WidgetTester tester) =>
-    openSecondaryDesktopSection(tester, DesktopSection.goals);
-
 void main() {
-  testWidgets('V4 keeps Home compact and exposes the governed source-video picker on demand', (
+  testWidgets('canonical Home exposes governed source-video picker in a compact dialog', (
     tester,
   ) async {
     _desktopViewport(tester);
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
     expect(find.byKey(const Key('home-prompt-attachments')), findsOneWidget);
     expect(find.byKey(const Key('home-add-video')), findsOneWidget);
     expect(find.byKey(const Key('source-video-picker')), findsNothing);
 
     await tester.tap(find.byKey(const Key('home-add-video')));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('home-attachment-pane-video')), findsOneWidget);
+    expect(find.text('Add video'), findsWidgets);
     expect(find.byKey(const Key('source-video-picker')), findsOneWidget);
     expect(find.byKey(const Key('source-video-add')), findsOneWidget);
-
-    await _openGoals(tester);
-
-    expect(find.byKey(const Key('reference-goals-page')), findsOneWidget);
-    expect(find.byKey(const Key('goals-composer')), findsOneWidget);
-    expect(find.byKey(const Key('video-reference-assets')), findsOneWidget);
-    expect(find.byKey(const Key('video-reference-add')), findsOneWidget);
-    expect(find.textContaining('20'), findsWidgets);
-    expect(find.textContaining('never published as public URLs'), findsOneWidget);
-    expect(find.textContaining('free vision provider'), findsOneWidget);
+    expect(find.byKey(const Key('reference-secondary-navigation')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('Turkish locale localizes the Goals-integrated reference picker', (
+  testWidgets('Turkish canonical Home localizes the governed attachment controls', (
     tester,
   ) async {
     _desktopViewport(tester);
     await tester.pumpWidget(_app(locale: IlaiosLocale.turkish));
     await tester.pumpAndSettle();
-    await _openGoals(tester);
 
-    expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
-    expect(find.byKey(const Key('video-reference-assets')), findsOneWidget);
-    expect(find.textContaining('herkese açık URL'), findsOneWidget);
-    expect(find.textContaining('ücretsiz görsel sağlayıcısına'), findsOneWidget);
+    expect(find.text('Dosya ekle'), findsOneWidget);
     expect(find.text('Görsel ekle'), findsOneWidget);
+    expect(find.text('Video ekle'), findsOneWidget);
+    await tester.tap(find.byKey(const Key('home-add-video')));
+    await tester.pumpAndSettle();
+    expect(find.text('Video ekle'), findsWidgets);
+    expect(find.byKey(const Key('source-video-picker')), findsOneWidget);
   });
 
-  testWidgets('V4 keeps reference assets scoped to Goals even without a session', (
+  testWidgets('canonical Home keeps attachment actions fail closed without a session', (
     tester,
   ) async {
     _desktopViewport(tester);
     await tester.pumpWidget(_app(session: null));
     await tester.pumpAndSettle();
 
-    expect(find.byKey(const Key('reference-asset-dock-toggle')), findsNothing);
-    await _openGoals(tester);
-    expect(find.byKey(const Key('video-reference-assets')), findsOneWidget);
+    expect(find.byKey(const Key('home-prompt-attachments')), findsOneWidget);
+    final video = tester.widget<OutlinedButton>(
+      find.byKey(const Key('home-add-video')),
+    );
+    final image = tester.widget<OutlinedButton>(
+      find.byKey(const Key('home-add-image')),
+    );
+    expect(video.onPressed, isNull);
+    expect(image.onPressed, isNull);
+    expect(find.byKey(const Key('source-video-picker')), findsNothing);
     expect(tester.takeException(), isNull);
   });
 }

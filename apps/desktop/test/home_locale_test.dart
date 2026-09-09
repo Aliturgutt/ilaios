@@ -4,7 +4,7 @@ import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('Turkish locale translates V4 Home without fabricating state', (
+  testWidgets('Turkish locale renders canonical 7-page Home without fabricating state', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -27,19 +27,12 @@ void main() {
 
     expect(find.text('Ana Kontrol Merkezi'), findsNothing);
     expect(find.text('İş başlat'), findsOneWidget);
-    expect(find.text('Gelişmiş'), findsOneWidget);
-    expect(find.text('Şablonlar'), findsNothing);
-    expect(find.text('Son işler'), findsNothing);
+    expect(find.byKey(const Key('canonical-7-page-sidebar')), findsOneWidget);
+    expect(find.byKey(const Key('reference-secondary-navigation')), findsNothing);
+    expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
     expect(find.byKey(const Key('home-new-work')), findsOneWidget);
-    expect(find.byKey(const Key('command-center-metrics')), findsNothing);
-    expect(find.text('ODAK İŞLER'), findsOneWidget);
-    expect(find.text('DİKKAT GEREKTİRENLER'), findsOneWidget);
-    expect(find.text('SON ÇIKTILAR'), findsOneWidget);
-    expect(find.text('SON TAMAMLANANLAR'), findsOneWidget);
-    expect(find.byKey(const Key('command-center-quick-actions')), findsNothing);
-    expect(find.byKey(const Key('command-center-session')), findsNothing);
-    expect(find.byKey(const Key('command-center-activities')), findsNothing);
-    expect(find.byKey(const Key('command-center-alerts')), findsNothing);
+    expect(find.text('Ajanlar Çalışıyor'), findsOneWidget);
+    expect(find.text('Doğrulanmış runtime ajan verisi yok'), findsOneWidget);
     expect(find.textContaining('18.362'), findsNothing);
     expect(find.text('96%'), findsNothing);
     expect(find.textContaining(r'$3.21'), findsNothing);

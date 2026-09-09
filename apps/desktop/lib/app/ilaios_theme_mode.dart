@@ -6,21 +6,21 @@ import 'package:flutter/material.dart';
 abstract final class IlaiosThemeModeStore {
   static Future<ThemeMode> load() async {
     final file = _settingsFile();
-    if (file == null || !await file.exists()) return ThemeMode.dark;
+    if (file == null || !await file.exists()) return ThemeMode.light;
     try {
       final document = jsonDecode(await file.readAsString());
       if (document is Map<String, dynamic>) {
         final value = document['theme'] as String?;
         return switch (value) {
-          'light' => ThemeMode.light,
+          'dark' => ThemeMode.dark,
           'system' => ThemeMode.system,
-          _ => ThemeMode.dark,
+          _ => ThemeMode.light,
         };
       }
     } on Object {
       // Preference corruption must never block Desktop startup.
     }
-    return ThemeMode.dark;
+    return ThemeMode.light;
   }
 
   static Future<void> save(ThemeMode mode) async {

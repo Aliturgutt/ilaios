@@ -115,7 +115,7 @@ try {
   python -m PyInstaller `
     --noconfirm `
     --clean `
-    --onefile `
+    --onedir `
     --console `
     --name ilaios_control_plane `
     --paths $repoRoot `
@@ -140,7 +140,8 @@ finally {
   Pop-Location
 }
 
-$built = Join-Path $dist 'ilaios_control_plane.exe'
+$bundle = Join-Path $dist 'ilaios_control_plane'
+$built = Join-Path $bundle 'ilaios_control_plane.exe'
 if (-not (Test-Path $built)) { throw "Sidecar executable missing: $built" }
 if ((Get-Item $built).Length -le 0) { throw 'Bundled control-plane executable is empty.' }
 
@@ -150,8 +151,9 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host 'ILAIOS_DESKTOP_SIDECAR_IMPORT_SMOKE=PASS'
 
+Copy-Item (Join-Path $bundle '*') $OutputDirectory -Recurse -Force
 $target = Join-Path $OutputDirectory 'ilaios_control_plane.exe'
-Copy-Item $built $target -Force
+if (-not (Test-Path $target -PathType Leaf)) { throw "Bundled control-plane executable missing after copy: $target" }
 if ((Get-Item $target).Length -le 0) { throw 'Bundled control-plane executable is empty.' }
 $hash = (Get-FileHash $target -Algorithm SHA256).Hash.ToLowerInvariant()
 Write-Host "ILAIOS_DESKTOP_SIDECAR_PATH=$target"

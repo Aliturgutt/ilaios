@@ -6,6 +6,8 @@ on:
       - master
     paths:
       - 'apps/desktop/**'
+      - 'docs/platform/desktop/Desktop_7_Page_References/**'
+      - 'docs/platform/desktop/DESKTOP_7_PAGE_REFERENCE_MANIFEST.md'
       - 'tools/desktop/collect_v4_screenshot_evidence.ps1'
       - '.github/workflows/desktop-v4-screenshot-evidence.yml'
 
@@ -47,47 +49,22 @@ jobs:
         shell: pwsh
         run: flutter pub get --enforce-lockfile
 
-      - name: Render dark 1366x768 evidence
+      - name: Render canonical 7-page 1536x1024 evidence
         working-directory: apps/desktop
         shell: pwsh
-        run: flutter test test/desktop_v4_screenshot_evidence_test.dart
+        run: flutter test test/desktop_7_page_screenshot_evidence_test.dart
 
-      - name: Render dark 1440x900 evidence
-        working-directory: apps/desktop
-        shell: pwsh
-        run: flutter test test/desktop_v4_screenshot_evidence_dark_1440_test.dart
-
-      - name: Render dark 1920x1080 evidence
-        working-directory: apps/desktop
-        shell: pwsh
-        run: flutter test test/desktop_v4_screenshot_evidence_dark_1920_test.dart
-
-      - name: Render light 1366x768 evidence
-        working-directory: apps/desktop
-        shell: pwsh
-        run: flutter test test/desktop_v4_screenshot_evidence_light_1366_test.dart
-
-      - name: Render light 1440x900 evidence
-        working-directory: apps/desktop
-        shell: pwsh
-        run: flutter test test/desktop_v4_screenshot_evidence_light_1440_test.dart
-
-      - name: Render light 1920x1080 evidence
-        working-directory: apps/desktop
-        shell: pwsh
-        run: flutter test test/desktop_v4_screenshot_evidence_light_1920_test.dart
-
-      - name: Verify 60 PNGs and exact-head SHA manifest
+      - name: Verify 7 canonical PNGs and exact-head SHA manifest
         shell: pwsh
         run: |
           ./tools/desktop/collect_v4_screenshot_evidence.ps1 `
             -SourceSha '${{ github.event.pull_request.head.sha }}' `
             -RunId '${{ github.run_id }}'
 
-      - name: Upload exact-head V4 screenshot evidence
+      - name: Upload exact-head canonical 7-page screenshot evidence
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: desktop-v4-screenshot-evidence-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
-          path: artifacts/desktop-v4-visual-evidence/**
+          name: desktop-7-page-screenshot-evidence-${{ github.event.pull_request.head.sha }}-${{ github.run_id }}
+          path: artifacts/desktop-7-page-visual-evidence/**
           if-no-files-found: error
           retention-days: 30
