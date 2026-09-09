@@ -47,7 +47,7 @@ const structuredData = {
   ],
 };
 
-const themeBootstrap = `(() => { document.documentElement.dataset.theme = "light"; document.documentElement.style.colorScheme = "light"; })();`;
+const themeBootstrap = `(() => { const stored = localStorage.getItem("ilaios-theme"); const theme = stored === "light" || stored === "dark" ? stored : "light"; document.documentElement.dataset.theme = theme; document.documentElement.style.colorScheme = theme; })();`;
 
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const locale = (await headers()).get("x-ilaios-locale") === "tr" ? "tr" : "en";

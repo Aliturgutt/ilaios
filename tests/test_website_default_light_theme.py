@@ -16,9 +16,10 @@ def test_website_defaults_to_light_without_overriding_explicit_choice() -> None:
     layout = LAYOUT.read_text(encoding="utf-8")
     toggle = TOGGLE.read_text(encoding="utf-8")
 
+    assert 'localStorage.getItem("ilaios-theme")' in layout
     assert 'const theme = stored === "light" || stored === "dark" ? stored : "light";' in layout
-    assert 'document.documentElement.dataset.theme = "light"' in layout
-    assert 'document.documentElement.style.colorScheme = "light"' in layout
+    assert "document.documentElement.dataset.theme = theme" in layout
+    assert "document.documentElement.style.colorScheme = theme" in layout
     assert 'localStorage.setItem(STORAGE_KEY, next)' in toggle
 
 
@@ -251,7 +252,7 @@ def test_visual_qa_covers_all_localized_routes_in_light_and_dark_with_real_mobil
     assert "inspect_navigation" in qa
     assert "mobile navigation panel is too wide" in qa
     assert "header geometry drift" in qa
-    assert '"localized_routes":len(ROUTES)*2' in qa
+    assert '"localized_routes":len(ROUTES)*2' in qa.replace(" ", "")
 
 
 def test_header_and_explore_close_on_outside_pointer_interaction() -> None:
