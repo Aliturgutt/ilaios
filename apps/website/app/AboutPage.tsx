@@ -52,16 +52,16 @@ const missionTitleStyle = {
 } as const;
 
 const founderTitleStyle = {
-  fontSize: "clamp(1.8rem, 3vw, 2.4rem)",
-  lineHeight: 1.05,
-  letterSpacing: "-0.03em",
-  marginTop: "8px",
+  fontSize: "clamp(1.35rem, 3.2vw, 1.7rem)",
+  lineHeight: 1.08,
+  letterSpacing: "-0.025em",
+  marginTop: "6px",
   marginBottom: 0,
 } as const;
 
 const compactCopyStyle = {
-  fontSize: "clamp(.95rem, 1.35vw, 1.05rem)",
-  lineHeight: 1.55,
+  fontSize: "clamp(.88rem, 1.25vw, .98rem)",
+  lineHeight: 1.48,
   maxWidth: "60ch",
   margin: 0,
 } as const;
@@ -75,7 +75,7 @@ export default function AboutPage({ locale }: { locale: Locale }) {
       <article className="about-mission"><span className="micro-label">{c.missionLabel}</span><h2 style={missionTitleStyle}>{c.mission}</h2></article>
       <div className="about-principles"><span className="micro-label">{c.principlesLabel}</span>{c.principles.map(([title, text], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{text}</p></div></article>)}</div>
     </div></section>
-    <section className="section surface-section"><div className="shell founder-row" id="founder"><div><span className="micro-label">{c.founderLabel}</span><h2 style={founderTitleStyle}>{c.founder}</h2></div><p style={compactCopyStyle}>{c.founderText}</p></div></section>
-    <section className="section compact-section"><div className="shell about-truth"><div><span className="micro-label">{c.truthLabel}</span><p style={compactCopyStyle}>{c.truth}</p></div><div className="actions"><Link className="text-link" href={`${base}/solutions`}>{c.solutions}</Link><Link className="text-link" href={`${base}/architecture`}>{c.architecture}</Link></div></div></section>
+    <section className="section surface-section" style={{ paddingTop: 28, paddingBottom: 28 }}><div className="shell founder-row" id="founder"><div><span className="micro-label">{c.founderLabel}</span><h2 style={founderTitleStyle}>{c.founder}</h2></div><p style={compactCopyStyle}>{c.founderText}</p></div></section>
+    <section className="section compact-section" style={{ paddingTop: 22, paddingBottom: 24 }}><div className="shell about-truth"><div><span className="micro-label">{c.truthLabel}</span><p style={compactCopyStyle}>{c.truth}</p></div><div className="actions"><Link className="text-link" href={`${base}/solutions`}>{c.solutions} →</Link><Link className="text-link" href={`${base}/architecture`}>{c.architecture} →</Link></div></div></section>
   </>;
 }
