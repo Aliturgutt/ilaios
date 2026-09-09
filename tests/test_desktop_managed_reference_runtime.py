@@ -155,7 +155,7 @@ def test_managed_identity_resolver_fails_closed_for_unknown_request(tmp_path: Pa
         resolver.resolve("request-missing")
 
 
-@pytest.mark.parametrize(
+@pytest.mark.parametrize(  # type: ignore[untyped-decorator]
     ("budget_minor", "expected_usd"),
     ((50, "0.5"), (100, "1"), (500, "5"), (2000, "20")),
 )
@@ -261,7 +261,9 @@ def test_tenant_a_approval_cannot_authorize_tenant_b_request(tmp_path: Path) -> 
     assert _provider_side_effect_count(tmp_path / "managed") == 0
 
 
-@pytest.mark.parametrize("approved_budget_usd", ("0.50", "1.00", "5.00", "20.00"))
+@pytest.mark.parametrize(  # type: ignore[untyped-decorator]
+    "approved_budget_usd", ("0.50", "1.00", "5.00", "20.00")
+)
 def test_preflight_accepts_user_budget_without_old_one_dollar_cap(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

@@ -18,6 +18,7 @@ from contextvars import ContextVar
 from dataclasses import dataclass, replace
 from decimal import Decimal
 from pathlib import Path
+from typing import cast
 
 from services.evidence import EvidenceStore
 from services.governance import GovernedRuntimeGateway
@@ -33,7 +34,7 @@ from src.video_automation.managed_credits import (
     ManagedCreditAccount,
     microusd_to_usd,
 )
-from src.video_automation.models import ProviderRequest, ProviderResult
+from src.video_automation.models import MetadataValue, ProviderRequest, ProviderResult
 from src.video_automation.openrouter_managed_video_provider import (
     OPENROUTER_MANAGED_PROVIDER_NAME,
 )
@@ -228,7 +229,7 @@ class DurableProductIdentityResolver:
             raise VideoRuntimeError(
                 "managed Desktop product request lacks one durable product identity"
             )
-        return rows[0]
+        return cast(sqlite3.Row, rows[0])
 
 
 class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
@@ -924,7 +925,7 @@ def _budget_failure(
     request: ProviderRequest,
     code: str,
     message: str,
-    metadata: Mapping[str, str],
+    metadata: Mapping[str, MetadataValue],
 ) -> ProviderResult:
     return ProviderResult(
         request_id=request.request_id,

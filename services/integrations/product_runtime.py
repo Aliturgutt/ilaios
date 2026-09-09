@@ -121,7 +121,7 @@ class DurableVideoProductRuntime:
         execution_budget = budget or BudgetEnvelope(1, 60, 10)
         effective_risk = "high" if managed_paid else risk
         cost_estimate: dict[str, object] | None = None
-        if managed_paid:
+        if callable(preflight):
             if execution_budget.max_external_spend_minor <= 0:
                 raise ProductRuntimeError(
                     "paid Seedance requires a positive user budget before preparation"
