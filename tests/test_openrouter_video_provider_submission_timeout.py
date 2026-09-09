@@ -54,6 +54,9 @@ class _SubmissionTransport(OpenRouterTransport):
                         {
                             "id": SEEDANCE_FREE_MODEL_ID,
                             "pricing_skus": {"per-video-second": "0"},
+                            "supported_aspect_ratios": ["16:9", "9:16", "1:1"],
+                            "supported_durations": [4, 5, 6],
+                            "supported_resolutions": ["480p", "720p"],
                         }
                     ]
                 },
