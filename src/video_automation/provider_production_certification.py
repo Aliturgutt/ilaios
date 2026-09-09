@@ -1,10 +1,10 @@
 """Manual real-provider certification through canonical Video provider boundaries.
 
-This operational proof validates a paid provider route end to end. A locked
-customer quote is created and persisted before the provider POST. Terminal
-provider cost may be positive; acceptance is based on the locked provider
-ceiling and hard minimum margin. Exact-zero cost remains a property of the
-separate free-provider certification only.
+This operational proof validates a paid provider route end to end without any legacy
+per-job customer quote or payment authorization. Terminal provider cost may be positive;
+acceptance is based on live catalog pricing, a hard provider-cost ceiling, durable
+managed-credit reservation, terminal settlement, and immutable evidence. Exact-zero
+cost remains a property of the separate free-provider certification only.
 """
 
 from __future__ import annotations
@@ -20,19 +20,10 @@ from decimal import Decimal, InvalidOperation, ROUND_CEILING
 from pathlib import Path
 from typing import NoReturn
 
-from .commercial_admission import (
-    CommercialAdmissionEngine,
-    CommercialPricingPolicy,
-    PaymentAuthorization,
-    ProviderPricingSnapshot,
-    TaxProfile,
-    VideoCostEnvelope,
-)
-from .commercial_store import CommercialAuthorityStore
 from .generation_job_polling import ProviderJobStatus
 from .managed_credit_policy import managed_credit_production_policy
 from .managed_credit_store import ManagedCreditLedgerStore
-from .managed_credits import ManagedCreditAccount, ProviderCostQuote, usd_to_microusd
+from .managed_credits import ManagedCreditAccount, ManagedCreditError, ProviderCostQuote, usd_to_microusd
 from .models import ProviderRequest
 from .openrouter_managed_video_gateway import OpenRouterManagedVideoGateway
 from .openrouter_managed_video_provider import OPENROUTER_MANAGED_PROVIDER_NAME
@@ -104,31 +95,20 @@ def select_certification_model(
     models: tuple[OpenRouterVideoModel, ...],
     shape: CertificationShape,
 ) -> OpenRouterVideoModel:
-    """Require the configured model and exact proof capability."""
-
     selected = next((model for model in models if model.model_id == shape.model_id), None)
     if selected is None:
         raise ProviderProductionCertificationError(
             "configured certification model is not currently paid-eligible"
         )
-    if (
-        selected.supported_durations
-        and shape.duration_seconds not in selected.supported_durations
-    ):
+    if selected.supported_durations and shape.duration_seconds not in selected.supported_durations:
         raise ProviderProductionCertificationError(
             "configured certification duration is not currently supported"
         )
-    if (
-        selected.supported_resolutions
-        and shape.resolution not in selected.supported_resolutions
-    ):
+    if selected.supported_resolutions and shape.resolution not in selected.supported_resolutions:
         raise ProviderProductionCertificationError(
             "configured certification resolution is not currently supported"
         )
-    if (
-        selected.supported_aspect_ratios
-        and shape.aspect_ratio not in selected.supported_aspect_ratios
-    ):
+    if selected.supported_aspect_ratios and shape.aspect_ratio not in selected.supported_aspect_ratios:
         raise ProviderProductionCertificationError(
             "configured certification aspect ratio is not currently supported"
         )
@@ -154,17 +134,9 @@ def _catalog_decimal_price(raw_price: str) -> Decimal:
 
 
 def _certification_video_token_units(shape: CertificationShape) -> Decimal:
-    """Return conservative whole-token units for the explicitly proven shape.
-
-    OpenRouter documents ByteDance video-token quantity as
-    ``height * width * duration * 24 / 1024``. Production certification keeps
-    the pixel mapping deliberately narrow: only the exact 480p/16:9 proof shape
-    is admitted until another shape is independently evidenced.
-    """
-
-    dimensions = {
-        ("480p", "16:9"): (854, 480),
-    }.get((shape.resolution, shape.aspect_ratio))
+    dimensions = {("480p", "16:9"): (854, 480)}.get(
+        (shape.resolution, shape.aspect_ratio)
+    )
     if dimensions is None:
         raise ProviderProductionCertificationError(
             "token-priced certification lacks an approved pixel mapping"
@@ -183,8 +155,6 @@ def certification_price(
     model: OpenRouterVideoModel,
     shape: CertificationShape,
 ) -> CertificationPrice:
-    """Derive a conservative bounded quote from recognized live video-price SKUs."""
-
     per_second_skus = (
         f"per-video-second-{shape.resolution}",
         "per-video-second",
@@ -253,8 +223,6 @@ def certification_provider_cost_ceiling(
     *,
     contingency_bps: int,
 ) -> int:
-    """Reserve bounded provider variance before dispatch without widening the hard cap."""
-
     if contingency_bps < 0 or contingency_bps >= 10_000:
         raise ProviderProductionCertificationError(
             "provider reservation contingency must be between 0 and 9999 bps"
@@ -278,8 +246,6 @@ def build_certification_request(
     run_id: str,
     run_attempt: str,
 ) -> ProviderRequest:
-    """Build one unique managed-provider request for a manual certification run."""
-
     _text("run_id", run_id)
     _text("run_attempt", run_attempt)
     request_id = f"video-provider-cert-{run_id}-{run_attempt}"
@@ -324,24 +290,22 @@ def run_certification(
     poll_timeout_seconds: int = DEFAULT_POLL_TIMEOUT_SECONDS,
     poll_interval_seconds: int = DEFAULT_POLL_INTERVAL_SECONDS,
 ) -> dict[str, object]:
-    """Execute one paid proof with quote-before-generation and reconciliation."""
+    """Execute one paid proof using bounded managed-credit reservation and settlement."""
 
     proof_shape = shape if shape is not None else CertificationShape()
     proof_dir.mkdir(parents=True, exist_ok=True)
     receipt_path = proof_dir / "provider-receipt.json"
     video_path = proof_dir / "provider-proof.mp4"
     receipt: dict[str, object] = {
-        "schema": "ilaios.video.real-provider-proof.v3",
+        "schema": "ilaios.video.real-provider-proof.v4",
         "status": "STARTED",
         "revision_sha": revision_sha,
         "workflow_run_id": run_id,
         "workflow_run_attempt": run_attempt,
         "provider": OPENROUTER_MANAGED_PROVIDER_NAME,
         "model": proof_shape.model_id,
-        "cost_mode": "COMMERCIAL_BOUNDED",
-        "credential_reference": (
-            "github-environment-secret://Production/OPENROUTER_API_KEY"
-        ),
+        "cost_mode": "MANAGED_CREDIT_BOUNDED",
+        "credential_reference": "github-environment-secret://Production/OPENROUTER_API_KEY",
         "request_shape": {
             "duration_seconds": proof_shape.duration_seconds,
             "resolution": proof_shape.resolution,
@@ -383,13 +347,11 @@ def run_certification(
             str(exc),
         )
 
-    commercial_policy = CommercialPricingPolicy()
     provider_cost_ceiling_microusd = certification_provider_cost_ceiling(
         price,
         proof_shape,
-        contingency_bps=commercial_policy.contingency_bps,
+        contingency_bps=0,
     )
-
     snapshot = catalog.last_good_snapshot
     if snapshot is None:
         _fail(
@@ -407,7 +369,6 @@ def run_certification(
         "estimated_total_usd": str(price.estimated_total_usd),
         "reserved_provider_ceiling_microusd": provider_cost_ceiling_microusd,
     }
-    receipt["provider_reservation_contingency_bps"] = commercial_policy.contingency_bps
 
     request = build_certification_request(
         shape=proof_shape,
@@ -427,97 +388,30 @@ def run_certification(
         user_id="video-provider-proof",
         available_microusd=usd_to_microusd(proof_shape.max_total_cost_usd),
     )
+    credit_store.seed_account(account)
     policy = managed_credit_production_policy(
         max_cost_per_video=float(proof_shape.max_total_cost_usd),
         max_daily_cost=float(proof_shape.max_total_cost_usd),
         max_retry_cost=0.0,
     )
 
-    commercial_now = int(snapshot.observed_at_epoch_s)
-    commercial_pricing = ProviderPricingSnapshot(
-        provider_name=OPENROUTER_MANAGED_PROVIDER_NAME,
-        model_id=proof_shape.model_id,
-        pricing_fingerprint=snapshot.catalog_digest,
-        observed_at_epoch_s=commercial_now,
-        expires_at_epoch_s=commercial_now + 300,
-        estimated_job_cost_microusd=price.estimated_total_microusd,
-        max_job_cost_microusd=provider_cost_ceiling_microusd,
-    )
-    commercial_engine = CommercialAdmissionEngine(commercial_policy)
-    locked_quote = commercial_engine.create_locked_quote(
-        quote_id=f"video-provider-cert-quote-{run_id}-{run_attempt}",
-        now_epoch_s=commercial_now,
-        tax_profile=TaxProfile(
-            "INTERNAL_CERTIFICATION_NO_SALE",
-            "INTERNAL",
-            0,
-        ),
-        pricing=commercial_pricing,
-        costs=VideoCostEnvelope(
-            provider_generation_microusd=provider_cost_ceiling_microusd,
-        ),
-        duration_seconds=proof_shape.duration_seconds,
-        aggregate_generated_seconds=proof_shape.duration_seconds,
-        resolution=proof_shape.resolution,
-        shot_count=1,
-    )
-    payment = PaymentAuthorization(
-        payment_authorization_id=(
-            f"internal-certification-budget-{run_id}-{run_attempt}"
-        ),
-        quote_id=locked_quote.quote_id,
-        secured_amount_microusd=locked_quote.gross_customer_price_microusd,
-        secured_at_epoch_s=commercial_now,
-    )
-    commercial_authority = commercial_engine.authorize_paid_dispatch(
-        now_epoch_s=commercial_now,
-        quote=locked_quote,
-        payment=payment,
-        current_pricing=commercial_pricing,
-        provider_quote=provider_quote,
-    )
-    commercial_store = CommercialAuthorityStore(proof_dir / "commercial-authority")
-    commercial_store.record_quote(locked_quote)
-    commercial_store.record_payment(payment)
-    commercial_store.record_authority(commercial_authority)
-
     receipt["request_id"] = request.request_id
     receipt["routing_decision_id"] = routing_decision_id
     receipt["quoted_provider_cost_microusd"] = price.estimated_total_microusd
-    receipt["reserved_provider_cost_ceiling_microusd"] = (
-        provider_cost_ceiling_microusd
-    )
-    receipt["customer_quote"] = {
-        "quote_id": locked_quote.quote_id,
-        "quote_sha256": locked_quote.quote_sha256,
-        "net_price_ex_tax_microusd": locked_quote.net_price_ex_tax_microusd,
-        "tax_microusd": locked_quote.tax_microusd,
-        "gross_customer_price_microusd": locked_quote.gross_customer_price_microusd,
-        "provider_cost_ceiling_microusd": locked_quote.provider_cost_ceiling_microusd,
-        "target_margin_bps": locked_quote.target_margin_bps,
-        "hard_min_margin_bps": locked_quote.hard_min_margin_bps,
-        "expires_at_epoch_s": locked_quote.expires_at_epoch_s,
-    }
-    receipt["commercial_admission"] = {
+    receipt["reserved_provider_cost_ceiling_microusd"] = provider_cost_ceiling_microusd
+    receipt["budget_authority"] = {
         "funding_mode": "INTERNAL_CERTIFICATION_BUDGET",
-        "quote_id": locked_quote.quote_id,
-        "quote_sha256": locked_quote.quote_sha256,
-        "authority_sha256": commercial_authority.authority_sha256,
-        "tax_profile_id": locked_quote.tax_profile_id,
-        "provider_cost_ceiling_microusd": (
-            commercial_authority.provider_cost_ceiling_microusd
-        ),
-        "payment_secured_before_dispatch": True,
-        "quote_persisted_before_dispatch": True,
+        "managed_credit": True,
+        "provider_cost_ceiling_microusd": provider_cost_ceiling_microusd,
+        "legacy_customer_quote": False,
+        "legacy_payment_authorization": False,
     }
-    receipt["quote_ready_at"] = _utc_now()
     _persist(receipt_path, receipt)
 
     gateway = OpenRouterManagedVideoGateway(
         api_key=api_key,
         policy=policy,
         credit_store=credit_store,
-        commercial_store=commercial_store,
         catalog=catalog,
         transport=transport,
     )
@@ -528,7 +422,6 @@ def run_certification(
         request=request,
         quote=provider_quote,
         routing_decision_id=routing_decision_id,
-        commercial_authority=commercial_authority,
     )
     receipt["provider_result"] = {
         "success": result.success,
@@ -544,6 +437,14 @@ def run_certification(
             receipt,
             "FAILED_PROVIDER_SUBMIT",
             result.error_message or "canonical provider submission failed",
+        )
+    authorization_id = result.metadata.get("credit_authorization_id")
+    if not isinstance(authorization_id, str) or not authorization_id.strip():
+        _fail(
+            receipt_path,
+            receipt,
+            "FAILED_CREDIT_AUTHORIZATION_EVIDENCE",
+            "provider submission omitted managed-credit authorization evidence",
         )
 
     provider_job_id = result.external_id
@@ -580,10 +481,7 @@ def run_certification(
             final_asset_id = observation.output_asset_ids[0]
             terminal_observation = observation
             break
-        if observation.status in {
-            ProviderJobStatus.FAILED,
-            ProviderJobStatus.CANCELLED,
-        }:
+        if observation.status in {ProviderJobStatus.FAILED, ProviderJobStatus.CANCELLED}:
             terminal_observation = observation
             break
         sleep(float(poll_interval_seconds))
@@ -606,6 +504,18 @@ def run_certification(
         actual_provider_cost_microusd = actual_cost_microusd_from_observation(
             terminal_observation
         )
+        credit_store.settle(
+            authorization_id=authorization_id,
+            actual_cost_microusd=actual_provider_cost_microusd,
+            provider_job_id=provider_job_id,
+        )
+    except ManagedCreditError as exc:
+        _fail(
+            receipt_path,
+            receipt,
+            "FAILED_PROVIDER_COST_CEILING",
+            str(exc),
+        )
     except Exception as exc:
         _fail(
             receipt_path,
@@ -614,35 +524,13 @@ def run_certification(
             str(exc),
         )
 
-    reservation_violated = commercial_store.settle_request(
-        request_id=request.request_id,
-        actual_cost_microusd=actual_provider_cost_microusd,
-    )
-    reconciliation = commercial_engine.reconcile(
-        quote=locked_quote,
-        actual_provider_cost_microusd=actual_provider_cost_microusd,
-        actual_other_variable_cost_microusd=0,
-    )
-    receipt["commercial_reconciliation"] = {
+    receipt["cost_reconciliation"] = {
         "actual_provider_cost_microusd": actual_provider_cost_microusd,
-        "actual_total_cost_microusd": reconciliation.actual_total_cost_microusd,
-        "gross_profit_microusd": reconciliation.gross_profit_microusd,
-        "actual_margin_bps": reconciliation.actual_margin_bps,
-        "hard_min_margin_bps": locked_quote.hard_min_margin_bps,
-        "provider_cost_ceiling_microusd": locked_quote.provider_cost_ceiling_microusd,
-        "reservation_violated": reservation_violated,
-        "provider_quarantined": reconciliation.provider_quarantined,
-        "quarantine_reason": reconciliation.quarantine_reason,
+        "provider_cost_ceiling_microusd": provider_cost_ceiling_microusd,
+        "within_ceiling": actual_provider_cost_microusd <= provider_cost_ceiling_microusd,
+        "managed_credit_settled": True,
     }
     _persist(receipt_path, receipt)
-    if reservation_violated or reconciliation.provider_quarantined:
-        _fail(
-            receipt_path,
-            receipt,
-            "FAILED_COMMERCIAL_RECONCILIATION",
-            reconciliation.quarantine_reason
-            or "actual provider cost exceeded locked commercial authority",
-        )
 
     if terminal_observation.status is not ProviderJobStatus.SUCCEEDED:
         _fail(
@@ -673,7 +561,7 @@ def run_certification(
     receipt["generation_receipt_ref"] = f"openrouter://videos/{provider_job_id}"
     receipt["provider_terminal_metadata"] = dict(terminal_observation.metadata)
     receipt["provider_cost_zero"] = actual_provider_cost_microusd == 0
-    receipt["commercial_cost_proven"] = True
+    receipt["managed_cost_proven"] = True
     receipt["artifact"] = {
         "path": video_path.name,
         "source_asset_id": asset.source_asset_id,
@@ -689,8 +577,6 @@ def run_certification(
 
 
 def certification_from_environment() -> dict[str, object]:
-    """Run the manual GitHub Production-environment certification."""
-
     proof_dir = Path(
         os.environ.get(
             "VIDEO_PROVIDER_PROOF_DIR",
@@ -700,27 +586,16 @@ def certification_from_environment() -> dict[str, object]:
     shape = CertificationShape(
         model_id=os.environ.get("VIDEO_PROVIDER_MODEL", DEFAULT_MODEL_ID),
         duration_seconds=int(
-            os.environ.get(
-                "VIDEO_PROVIDER_DURATION_SECONDS",
-                str(DEFAULT_DURATION_SECONDS),
-            )
+            os.environ.get("VIDEO_PROVIDER_DURATION_SECONDS", str(DEFAULT_DURATION_SECONDS))
         ),
         resolution=os.environ.get("VIDEO_PROVIDER_RESOLUTION", DEFAULT_RESOLUTION),
-        aspect_ratio=os.environ.get(
-            "VIDEO_PROVIDER_ASPECT_RATIO", DEFAULT_ASPECT_RATIO
-        ),
+        aspect_ratio=os.environ.get("VIDEO_PROVIDER_ASPECT_RATIO", DEFAULT_ASPECT_RATIO),
         generate_audio=False,
         max_unit_price_usd=Decimal(
-            os.environ.get(
-                "VIDEO_PROVIDER_MAX_UNIT_PRICE_USD",
-                str(DEFAULT_MAX_UNIT_PRICE_USD),
-            )
+            os.environ.get("VIDEO_PROVIDER_MAX_UNIT_PRICE_USD", str(DEFAULT_MAX_UNIT_PRICE_USD))
         ),
         max_total_cost_usd=Decimal(
-            os.environ.get(
-                "VIDEO_PROVIDER_MAX_TOTAL_COST_USD",
-                str(DEFAULT_MAX_TOTAL_COST_USD),
-            )
+            os.environ.get("VIDEO_PROVIDER_MAX_TOTAL_COST_USD", str(DEFAULT_MAX_TOTAL_COST_USD))
         ),
     )
     return run_certification(

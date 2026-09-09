@@ -7,10 +7,10 @@ terminal cost-evidence policy. The default Desktop runtime remains verified-free
 
 Managed execution is fail closed:
 - live catalog capability and pricing are required before every provider POST;
-- a locked commercial authority and durable managed-credit reservation exist
-  before every provider POST;
+- durable managed-credit reservation exists before every provider POST;
 - the aggregate managed-credit account is the hard external-spend ceiling;
 - terminal provider usage is reconciled before the canonical runtime can accept;
+- no legacy per-job customer quote or payment authorization exists here;
 - no paid route is selected implicitly by this module.
 """
 
@@ -26,16 +26,6 @@ from pathlib import Path
 from services.evidence import EvidenceStore
 from services.governance import GovernedRuntimeGateway
 from services.runtime import DurableGrantPolicy
-from src.video_automation.commercial_admission import (
-    CommercialAdmissionEngine,
-    CommercialPricingPolicy,
-    LockedVideoQuote,
-    PaymentAuthorization,
-    ProviderPricingSnapshot,
-    TaxProfile,
-    VideoCostEnvelope,
-)
-from src.video_automation.commercial_store import CommercialAuthorityStore
 from src.video_automation.generation_execution_tracking import GenerationDispatchExecution
 from src.video_automation.generation_job_polling import (
     ProviderJobObservation,
@@ -90,10 +80,8 @@ _DEFAULT_MAX_REQUEST_COST_USD = Decimal("0.50")
 class _DispatchContext:
     request_id: str
     authorization_id: str
-    quote: LockedVideoQuote
     provider_cost_ceiling_microusd: int
     actual_cost_microusd: int | None = None
-    actual_margin_bps: int | None = None
 
 
 class ManagedDesktopVideoSession:
@@ -135,14 +123,8 @@ class ManagedDesktopVideoSession:
         self._max_unit_price_usd = max_unit_price_usd
         self._generate_audio = generate_audio
         self._transport = transport or UrllibOpenRouterTransport()
-        self._catalog = OpenRouterVideoCatalogClient(
-            api_key,
-            transport=self._transport,
-        )
+        self._catalog = OpenRouterVideoCatalogClient(api_key, transport=self._transport)
         self._credit_store = ManagedCreditLedgerStore(root / "managed-credit-ledger")
-        self._commercial_store = CommercialAuthorityStore(root / "commercial-authority")
-        self._commercial_policy = CommercialPricingPolicy()
-        self._commercial_engine = CommercialAdmissionEngine(self._commercial_policy)
         self._account = ManagedCreditAccount(
             tenant_id="ilaios-desktop-managed-proof",
             user_id="video-provider-proof",
@@ -157,7 +139,6 @@ class ManagedDesktopVideoSession:
                 max_retry_cost=0.0,
             ),
             credit_store=self._credit_store,
-            commercial_store=self._commercial_store,
             catalog=self._catalog,
             transport=self._transport,
         )
@@ -175,7 +156,6 @@ class ManagedDesktopVideoSession:
             metadata={
                 "backend": "openrouter",
                 "billing_authority": "managed_credits",
-                "commercial_authority": True,
                 "aggregate_hard_cap_microusd": self._max_total_cost_microusd,
             },
         )
@@ -220,73 +200,28 @@ class ManagedDesktopVideoSession:
                 max_unit_price_usd=self._max_unit_price_usd,
                 max_total_cost_usd=self._max_request_cost_usd,
             )
-            model = select_certification_model(
-                self._catalog.paid_eligible_models(),
-                shape,
-            )
+            model = select_certification_model(self._catalog.paid_eligible_models(), shape)
             price = certification_price(model, shape)
             provider_ceiling = certification_provider_cost_ceiling(
                 price,
                 shape,
-                contingency_bps=self._commercial_policy.contingency_bps,
+                contingency_bps=0,
             )
             snapshot = self._catalog.last_good_snapshot
             if snapshot is None:
                 raise VideoRuntimeError("managed Desktop catalog evidence is unavailable")
-            observed_at = int(snapshot.observed_at_epoch_s)
-            pricing = ProviderPricingSnapshot(
-                provider_name=OPENROUTER_MANAGED_PROVIDER_NAME,
-                model_id=model_id,
-                pricing_fingerprint=snapshot.catalog_digest,
-                observed_at_epoch_s=observed_at,
-                expires_at_epoch_s=observed_at + 300,
-                estimated_job_cost_microusd=price.estimated_total_microusd,
-                max_job_cost_microusd=provider_ceiling,
-            )
             provider_quote = ProviderCostQuote(
                 provider_name=OPENROUTER_MANAGED_PROVIDER_NAME,
                 model_id=model_id,
                 estimated_cost_microusd=price.estimated_total_microusd,
                 max_cost_microusd=provider_ceiling,
             )
-            quote = self._commercial_engine.create_locked_quote(
-                quote_id=f"desktop-managed-quote-{request.request_id}",
-                now_epoch_s=observed_at,
-                tax_profile=TaxProfile(
-                    "INTERNAL_DESKTOP_PROVIDER_PROOF_NO_SALE",
-                    "INTERNAL",
-                    0,
-                ),
-                pricing=pricing,
-                costs=VideoCostEnvelope(provider_generation_microusd=provider_ceiling),
-                duration_seconds=shape.duration_seconds,
-                aggregate_generated_seconds=shape.duration_seconds,
-                resolution=shape.resolution,
-                shot_count=1,
-            )
-            payment = PaymentAuthorization(
-                payment_authorization_id=f"desktop-managed-budget-{request.request_id}",
-                quote_id=quote.quote_id,
-                secured_amount_microusd=quote.gross_customer_price_microusd,
-                secured_at_epoch_s=observed_at,
-            )
-            authority = self._commercial_engine.authorize_paid_dispatch(
-                now_epoch_s=observed_at,
-                quote=quote,
-                payment=payment,
-                current_pricing=pricing,
-                provider_quote=provider_quote,
-            )
-            self._commercial_store.record_quote(quote)
-            self._commercial_store.record_payment(payment)
-            self._commercial_store.record_authority(authority)
             routing_decision_id = f"desktop-managed-route-{request.request_id}"
             result = self._gateway.submit(
                 account=self._account,
                 request=normalized,
                 quote=provider_quote,
                 routing_decision_id=routing_decision_id,
-                commercial_authority=authority,
             )
             if not result.success or result.external_id is None:
                 return result
@@ -301,7 +236,6 @@ class ManagedDesktopVideoSession:
                 self._contexts[result.external_id] = _DispatchContext(
                     request_id=normalized.request_id,
                     authorization_id=authorization_id,
-                    quote=quote,
                     provider_cost_ceiling_microusd=provider_ceiling,
                 )
             return result
@@ -334,25 +268,10 @@ class ManagedDesktopVideoSession:
                 )
             except ManagedCreditError as exc:
                 raise VideoRuntimeError("managed provider credit settlement failed") from exc
-            reservation_violated = self._commercial_store.settle_request(
-                request_id=context.request_id,
-                actual_cost_microusd=actual_cost,
-            )
-            reconciliation = self._commercial_engine.reconcile(
-                quote=context.quote,
-                actual_provider_cost_microusd=actual_cost,
-                actual_other_variable_cost_microusd=0,
-            )
-            if reservation_violated:
-                raise VideoRuntimeError("managed provider commercial reservation was violated")
-            if reconciliation.provider_quarantined:
-                raise VideoRuntimeError(
-                    reconciliation.quarantine_reason
-                    or "managed provider commercial reconciliation quarantined provider"
-                )
+            if actual_cost > context.provider_cost_ceiling_microusd:
+                raise VideoRuntimeError("managed provider actual cost exceeded dispatch ceiling")
             with self._lock:
                 context.actual_cost_microusd = actual_cost
-                context.actual_margin_bps = reconciliation.actual_margin_bps
                 settled_total = sum(
                     item.actual_cost_microusd or 0 for item in self._contexts.values()
                 )
@@ -367,15 +286,12 @@ class ManagedDesktopVideoSession:
                 "provider_cost_ceiling_microusd": str(
                     context.provider_cost_ceiling_microusd
                 ),
-                "actual_margin_bps": str(context.actual_margin_bps),
                 "aggregate_hard_cap_microusd": str(self._max_total_cost_microusd),
             }
         )
         return replace(observation, metadata=metadata)
 
-    def verify(
-        self, records: Sequence[GenerationDispatchExecution]
-    ) -> ProviderCostEvidence:
+    def verify(self, records: Sequence[GenerationDispatchExecution]) -> ProviderCostEvidence:
         if not records:
             raise VideoRuntimeError("managed provider cost evidence is missing")
         actual_total = 0
