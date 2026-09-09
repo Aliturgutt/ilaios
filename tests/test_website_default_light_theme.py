@@ -16,10 +16,12 @@ def test_website_defaults_to_light_without_overriding_explicit_choice() -> None:
     layout = LAYOUT.read_text(encoding="utf-8")
     toggle = TOGGLE.read_text(encoding="utf-8")
 
-    assert 'const theme = stored === "light" || stored === "dark" ? stored : "light";' in layout
     assert 'document.documentElement.dataset.theme = "light"' in layout
     assert 'document.documentElement.style.colorScheme = "light"' in layout
-    assert 'localStorage.setItem(STORAGE_KEY, next)' in toggle
+    assert "localStorage" not in layout
+    assert "localStorage" not in toggle
+    assert "document.documentElement.dataset.theme = next" in toggle
+    assert "document.documentElement.style.colorScheme = next" in toggle
 
 
 def test_website_default_theme_does_not_follow_system_dark_mode() -> None:
@@ -243,10 +245,11 @@ def test_visual_qa_covers_all_localized_routes_in_light_and_dark_with_real_mobil
     qa = VISUAL_QA.read_text(encoding="utf-8")
 
     assert 'DARK_VIEWPORTS = (("desktop", 1440, 1000), ("mobile", 390, 844))' in qa
-    assert 'page.add_init_script("localStorage.removeItem(\'ilaios-theme\')")' in qa
-    assert 'page.add_init_script("localStorage.setItem(\'ilaios-theme\', \'dark\')")' in qa
+    assert "select_theme(page, theme, viewport_name)" in qa
     assert 'theme="light"' in qa
     assert 'theme="dark"' in qa
+    assert 'theme_toggle = page.locator(".site-header .theme-toggle")' in qa
+    assert "theme_toggle.click()" in qa
     assert "visible_chromatic_ui" in qa
     assert "inspect_navigation" in qa
     assert "mobile navigation panel is too wide" in qa
