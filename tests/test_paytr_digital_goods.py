@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import hmac
+from dataclasses import replace
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Mapping
@@ -172,8 +173,7 @@ def test_client_price_change_is_rejected_before_provider_call(tmp_path: Path) ->
     extension = _commercial(tmp_path)
     _register_product(extension, now)
     adapter, transport = _adapter(extension)
-    request = _checkout_request()
-    changed = PayTRCheckoutRequest(**{**request.__dict__, "price_minor": 1})
+    changed = replace(_checkout_request(), price_minor=1)
 
     with pytest.raises(CommercialAccessError, match="server product price"):
         adapter.create_checkout(changed, now=now)
