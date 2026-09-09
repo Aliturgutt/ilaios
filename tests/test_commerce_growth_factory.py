@@ -1,6 +1,8 @@
 """Tests for bounded Commerce/Growth Factory governance and execution gates."""
 
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -19,6 +21,8 @@ from services.identity import (
 )
 from src.core.audit_engine import AuditEngine
 from src.core.evidence_chain import EvidenceChain
+from src.core.immutable_context import ExecutionContext
+from src.core.tool_gateway import ToolGateway
 
 
 def _factory() -> CommerceGrowthFactory:
@@ -226,6 +230,47 @@ def test_external_execution_uses_authorization_tool_gateway_audit_and_evidence()
     assert latest_audit is not None
     assert latest_audit.status == "success"
     assert factory.execution_receipt("exec-1") == receipt
+
+
+def test_external_execution_crosses_canonical_tool_gateway_handler() -> None:
+    factory = _factory()
+    _approved_email_plan(factory)
+    now = datetime(2026, 9, 9, tzinfo=timezone.utc)
+    validator = MagicMock()
+    gateway = ToolGateway(
+        ExecutionContext(
+            Path.cwd(),
+            "commerce/growth-execution-20260909",
+            "exact-test-sha",
+            "https://github.com/Aliturgutt/ilaios.git",
+        ),
+        validator,
+    )
+
+    def handler(*, payload: dict[str, str]) -> dict[str, str]:
+        return {
+            "outcome": "success",
+            "provider_receipt_id": "provider-receipt-canonical",
+            "provider_timestamp": "2026-09-09T00:00:00Z",
+            "target_account": payload["target_account"],
+            "idempotency_key": payload["idempotency_key"],
+        }
+
+    gateway.register_handler("commerce_growth.execute", handler)
+    receipt = factory.apply_external(
+        "plan-1",
+        request=_request(),
+        principal=_principal(),
+        authorization=_authorization(now),
+        approval_id="approval-1",
+        tool_gateway=gateway,
+        audit=AuditEngine(),
+        evidence=EvidenceChain(),
+        now=now,
+    )
+
+    validator.validate_git_identity.assert_called_once()
+    assert receipt.provider_receipt_id == "provider-receipt-canonical"
 
 
 def test_execution_requires_independent_unconsumed_approval() -> None:
