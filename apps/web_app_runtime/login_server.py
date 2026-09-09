@@ -49,7 +49,7 @@ _LOGIN_HTML_EN = """<!doctype html>
         <img class="brand-image brand-image-dark" src="/login/brand-dark.jpg" alt="ILAIOS">
       </div>
 
-      <h1 id="login-title">Welcome back</h1>
+      <h1 id="login-title">Welcome</h1>
       <p class="intro">Choose an account to continue.</p>
 
       <div class="providers" id="providers" aria-live="polite">
@@ -96,7 +96,7 @@ _LOGIN_HTML_TR = (
     .replace('aria-label="Theme"', 'aria-label="Tema"', 1)
     .replace(">Light</button>", ">Açık</button>", 1)
     .replace(">Dark</button>", ">Koyu</button>", 1)
-    .replace("<h1 id=\"login-title\">Welcome back</h1>", "<h1 id=\"login-title\">Tekrar hoş geldiniz</h1>", 1)
+    .replace("<h1 id=\"login-title\">Welcome</h1>", "<h1 id=\"login-title\">Hoş geldiniz</h1>", 1)
     .replace("Choose an account to continue.", "Devam etmek için bir hesap seçin.", 1)
     .replace("Continue with Google", "Google ile devam et", 1)
     .replace("Continue with Microsoft", "Microsoft ile devam et", 1)
