@@ -1,9 +1,8 @@
 """Provider-neutral signed webhook verification for commercial lifecycle events.
 
-This boundary authenticates external commercial subscription events, but it does not
-mint entitlement or select an ILAIOS user/tenant. A later server-side subscription
-binding must map the verified provider subscription identifier to canonical
-commercial access before ``CommercialAccessStore`` may be mutated.
+This boundary authenticates external commercial subscription and one-off payment
+signals, but it does not mint entitlement, choose an ILAIOS user/tenant, or publish
+products. Canonical binding remains a later server-side responsibility.
 """
 
 from __future__ import annotations
@@ -29,14 +28,25 @@ _ALLOWED_EVENT_TYPES = frozenset(
         "payment.refunded",
     }
 )
+_ALLOWED_DIGITAL_PAYMENT_EVENT_TYPES = frozenset(
+    {
+        "payment.succeeded",
+        "payment.refunded",
+        "payment.chargeback",
+        "payment.cancelled",
+    }
+)
 _REQUIRED_PAYLOAD_KEYS = frozenset(
     {"event_id", "event_type", "provider_subscription_id", "occurred_at"}
+)
+_REQUIRED_DIGITAL_PAYMENT_KEYS = frozenset(
+    {"event_id", "event_type", "provider_order_id", "occurred_at"}
 )
 
 
 @dataclass(frozen=True, slots=True)
 class VerifiedCommercialWebhookEvent:
-    """Cryptographically verified provider event with no canonical-account authority."""
+    """Cryptographically verified subscription event with no account authority."""
 
     event_id: str
     event_type: str
@@ -46,8 +56,20 @@ class VerifiedCommercialWebhookEvent:
     signature_timestamp: datetime
 
 
+@dataclass(frozen=True, slots=True)
+class VerifiedDigitalPaymentEvent:
+    """Cryptographically verified one-off payment event with no product/user authority."""
+
+    event_id: str
+    event_type: str
+    provider_order_id: str
+    occurred_at: datetime
+    payload_sha256: str
+    signature_timestamp: datetime
+
+
 class CommercialWebhookVerifier:
-    """Verify HMAC-signed commercial events before any billing-state mutation."""
+    """Verify HMAC-signed commercial events before any commercial-state mutation."""
 
     def __init__(
         self,
@@ -74,8 +96,68 @@ class CommercialWebhookVerifier:
         signature_header: str,
         now: datetime,
     ) -> VerifiedCommercialWebhookEvent:
-        """Return a verified provider event or fail closed without side effects."""
+        """Return a verified subscription event or fail closed without side effects."""
 
+        payload, signature_time = self._verify_signed_payload(
+            raw_body=raw_body,
+            signature_header=signature_header,
+            now=now,
+            required_keys=_REQUIRED_PAYLOAD_KEYS,
+        )
+        event_id = _required_text(payload, "event_id")
+        event_type = _required_text(payload, "event_type")
+        if event_type not in _ALLOWED_EVENT_TYPES:
+            raise CommercialAccessError("commercial webhook event type is unsupported")
+        provider_subscription_id = _required_text(payload, "provider_subscription_id")
+        occurred_at = _parse_event_time(_required_text(payload, "occurred_at"))
+
+        return VerifiedCommercialWebhookEvent(
+            event_id=event_id,
+            event_type=event_type,
+            provider_subscription_id=provider_subscription_id,
+            occurred_at=occurred_at,
+            payload_sha256=hashlib.sha256(raw_body).hexdigest(),
+            signature_timestamp=signature_time,
+        )
+
+    def verify_digital_payment(
+        self,
+        *,
+        raw_body: bytes,
+        signature_header: str,
+        now: datetime,
+    ) -> VerifiedDigitalPaymentEvent:
+        """Return a verified one-off payment event without granting entitlement."""
+
+        payload, signature_time = self._verify_signed_payload(
+            raw_body=raw_body,
+            signature_header=signature_header,
+            now=now,
+            required_keys=_REQUIRED_DIGITAL_PAYMENT_KEYS,
+        )
+        event_id = _required_text(payload, "event_id")
+        event_type = _required_text(payload, "event_type")
+        if event_type not in _ALLOWED_DIGITAL_PAYMENT_EVENT_TYPES:
+            raise CommercialAccessError("digital payment webhook event type is unsupported")
+        provider_order_id = _required_text(payload, "provider_order_id")
+        occurred_at = _parse_event_time(_required_text(payload, "occurred_at"))
+        return VerifiedDigitalPaymentEvent(
+            event_id=event_id,
+            event_type=event_type,
+            provider_order_id=provider_order_id,
+            occurred_at=occurred_at,
+            payload_sha256=hashlib.sha256(raw_body).hexdigest(),
+            signature_timestamp=signature_time,
+        )
+
+    def _verify_signed_payload(
+        self,
+        *,
+        raw_body: bytes,
+        signature_header: str,
+        now: datetime,
+        required_keys: frozenset[str],
+    ) -> tuple[dict[str, object], datetime]:
         _require_aware_time("now", now)
         if not isinstance(raw_body, bytes) or not raw_body:
             raise CommercialAccessError("commercial webhook body is required")
@@ -101,23 +183,7 @@ class CommercialWebhookVerifier:
         ).hexdigest()
         if not hmac.compare_digest(expected_signature, presented_signature):
             raise CommercialAccessError("commercial webhook signature is invalid")
-
-        payload = _parse_payload(raw_body)
-        event_id = _required_text(payload, "event_id")
-        event_type = _required_text(payload, "event_type")
-        if event_type not in _ALLOWED_EVENT_TYPES:
-            raise CommercialAccessError("commercial webhook event type is unsupported")
-        provider_subscription_id = _required_text(payload, "provider_subscription_id")
-        occurred_at = _parse_event_time(_required_text(payload, "occurred_at"))
-
-        return VerifiedCommercialWebhookEvent(
-            event_id=event_id,
-            event_type=event_type,
-            provider_subscription_id=provider_subscription_id,
-            occurred_at=occurred_at,
-            payload_sha256=hashlib.sha256(raw_body).hexdigest(),
-            signature_timestamp=signature_time,
-        )
+        return _parse_payload(raw_body, required_keys=required_keys), signature_time
 
 
 def _parse_signature_header(value: str) -> tuple[int, str]:
@@ -147,7 +213,7 @@ def _parse_signature_header(value: str) -> tuple[int, str]:
     return timestamp_seconds, signature.lower()
 
 
-def _parse_payload(raw_body: bytes) -> dict[str, object]:
+def _parse_payload(raw_body: bytes, *, required_keys: frozenset[str]) -> dict[str, object]:
     try:
         decoded = raw_body.decode("utf-8")
         payload = json.loads(decoded)
@@ -155,7 +221,7 @@ def _parse_payload(raw_body: bytes) -> dict[str, object]:
         raise CommercialAccessError("commercial webhook payload is malformed") from error
     if not isinstance(payload, dict):
         raise CommercialAccessError("commercial webhook payload must be an object")
-    if set(payload) != _REQUIRED_PAYLOAD_KEYS:
+    if set(payload) != required_keys:
         raise CommercialAccessError("commercial webhook payload fields are invalid")
     return payload
 
@@ -183,4 +249,8 @@ def _require_aware_time(name: str, value: datetime) -> None:
         raise CommercialAccessError(f"commercial webhook {name} must be timezone-aware")
 
 
-__all__ = ["CommercialWebhookVerifier", "VerifiedCommercialWebhookEvent"]
+__all__ = [
+    "CommercialWebhookVerifier",
+    "VerifiedCommercialWebhookEvent",
+    "VerifiedDigitalPaymentEvent",
+]
