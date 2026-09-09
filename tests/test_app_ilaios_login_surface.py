@@ -75,14 +75,14 @@ def test_root_defaults_to_turkish_light_first_login_with_optional_dark_mode(
     assert "frame-ancestors 'none'" in csp
     document = response.body.decode("utf-8")
     assert '<html lang="tr" data-theme="light">' in document
-    assert "Tekrar hoş geldiniz" in document
+    assert "Hoş geldiniz" in document
     assert "Devam etmek için bir hesap seçin." in document
     assert "Google ile devam et" in document
     assert "Microsoft ile devam et" in document
     assert "GitHub ile devam et" in document
     assert ">Açık</button>" in document
     assert ">Koyu</button>" in document
-    assert "Welcome back" not in document
+    assert "Welcome" not in document
     assert 'href="/auth/google/start"' in document
     assert 'href="/auth/microsoft/start"' in document
     assert 'href="/auth/github/start"' in document
@@ -103,14 +103,14 @@ def test_root_supports_explicit_english_locale(tmp_path: Path) -> None:
     assert response.status is HTTPStatus.OK
     document = response.body.decode("utf-8")
     assert '<html lang="en" data-theme="light">' in document
-    assert "Welcome back" in document
+    assert "Welcome" in document
     assert "Choose an account to continue." in document
     assert "Continue with Google" in document
     assert "Continue with Microsoft" in document
     assert "Continue with GitHub" in document
     assert ">Light</button>" in document
     assert ">Dark</button>" in document
-    assert "Tekrar hoş geldiniz" not in document
+    assert "Hoş geldiniz" not in document
 
 
 def test_root_supports_explicit_turkish_locale(tmp_path: Path) -> None:
@@ -124,7 +124,7 @@ def test_root_supports_explicit_turkish_locale(tmp_path: Path) -> None:
     assert response.status is HTTPStatus.OK
     document = response.body.decode("utf-8")
     assert '<html lang="tr" data-theme="light">' in document
-    assert "Tekrar hoş geldiniz" in document
+    assert "Hoş geldiniz" in document
 
 
 def test_dark_logo_blends_with_canonical_carbon_background(tmp_path: Path) -> None:
