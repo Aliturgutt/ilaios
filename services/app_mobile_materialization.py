@@ -41,7 +41,9 @@ _REQUIRED_FLUTTER_ANDROID_PATHS = frozenset(
         "android/settings.gradle.kts",
         "android/app/build.gradle.kts",
         "android/app/src/main/AndroidManifest.xml",
+        "android/app/src/main/res/values/styles.xml",
         "android/gradlew",
+        "android/gradlew.bat",
         "android/gradle/wrapper/gradle-wrapper.properties",
         "android/gradle/wrapper/gradle-wrapper.jar",
     }
@@ -83,15 +85,19 @@ def build_flutter_android_materialization_plan(
     if projection["objective"].strip() != spec.objective:
         raise AppMobileMaterializationError("AppFactory objective is not bound to the ProductSpec")
 
+    required_paths = set(_REQUIRED_FLUTTER_ANDROID_PATHS)
+    required_paths.add(
+        f"android/app/src/main/kotlin/{application_id.replace('.', '/')}/MainActivity.kt"
+    )
     paths = frozenset(change.relative_path for change in source_changes)
-    missing = sorted(_REQUIRED_FLUTTER_ANDROID_PATHS - paths)
+    missing = sorted(required_paths - paths)
     if missing:
         raise AppMobileMaterializationError(
             "Flutter Android materialization is missing required project files: "
             + ", ".join(missing)
         )
     for change in source_changes:
-        if change.relative_path in _REQUIRED_FLUTTER_ANDROID_PATHS:
+        if change.relative_path in required_paths:
             if change.operation != "create":
                 raise AppMobileMaterializationError(
                     "initial Flutter Android materialization requires create operations"
