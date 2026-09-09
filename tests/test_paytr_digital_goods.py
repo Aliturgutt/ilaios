@@ -111,7 +111,7 @@ def _adapter(
     return adapter, transport
 
 
-def _checkout_request(*, currency: str = "TRY") -> PayTRCheckoutRequest:
+def _checkout_request(*, currency: str = "TRY", locale: str = "tr") -> PayTRCheckoutRequest:
     return PayTRCheckoutRequest(
         order_id="order-paytr-1",
         tenant_id="tenant-1",
@@ -126,6 +126,7 @@ def _checkout_request(*, currency: str = "TRY") -> PayTRCheckoutRequest:
         merchant_fail_url="https://example.test/order/fail",
         price_minor=129900,
         currency=currency,
+        locale=locale,
         test_mode=True,
     )
 
@@ -157,7 +158,7 @@ def _callback_fields(
     }
 
 
-def test_checkout_uses_server_price_and_opaque_secret_references(tmp_path: Path) -> None:
+def test_checkout_defaults_to_turkish_try_and_uses_opaque_secret_references(tmp_path: Path) -> None:
     now = datetime(2026, 9, 9, 5, 0, tzinfo=timezone.utc)
     extension = _commercial(tmp_path)
     _register_product(extension, now)
@@ -173,23 +174,36 @@ def test_checkout_uses_server_price_and_opaque_secret_references(tmp_path: Path)
     _, fields = transport.calls[0]
     assert fields["payment_amount"] == "129900"
     assert fields["currency"] == "TL"
+    assert fields["lang"] == "tr"
     assert fields["test_mode"] == "1"
     serialized = repr(fields)
     assert _ENV["PAYTR_MERCHANT_KEY"] not in serialized
     assert _ENV["PAYTR_MERCHANT_SALT"] not in serialized
 
 
-def test_usd_remains_usd_for_english_pricing_path(tmp_path: Path) -> None:
+def test_english_selection_uses_usd_and_english_checkout(tmp_path: Path) -> None:
     now = datetime(2026, 9, 9, 5, 0, tzinfo=timezone.utc)
     extension = _commercial(tmp_path)
     _register_product(extension, now, currency="USD")
     adapter, transport = _adapter(extension)
 
-    checkout = adapter.create_checkout(_checkout_request(currency="USD"), now=now)
+    checkout = adapter.create_checkout(_checkout_request(currency="USD", locale="en"), now=now)
 
     assert checkout.order.currency == "USD"
     _, fields = transport.calls[0]
     assert fields["currency"] == "USD"
+    assert fields["lang"] == "en"
+
+
+def test_locale_currency_mismatch_fails_closed_before_provider_call(tmp_path: Path) -> None:
+    now = datetime(2026, 9, 9, 5, 0, tzinfo=timezone.utc)
+    extension = _commercial(tmp_path)
+    _register_product(extension, now, currency="USD")
+    adapter, transport = _adapter(extension)
+
+    with pytest.raises(CommercialAccessError, match="locale and currency"):
+        adapter.create_checkout(_checkout_request(currency="USD", locale="tr"), now=now)
+    assert transport.calls == []
 
 
 def test_client_price_change_is_rejected_before_provider_call(tmp_path: Path) -> None:
