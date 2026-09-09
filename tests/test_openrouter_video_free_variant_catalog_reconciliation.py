@@ -50,6 +50,9 @@ class _VariantCatalogTransport(OpenRouterTransport):
                         {
                             "id": "bytedance/seedance-2.0-fast",
                             "pricing_skus": {"per-video-second": "0.04035"},
+                            "supported_aspect_ratios": ["16:9", "9:16", "1:1"],
+                            "supported_durations": [4, 5, 6, 8],
+                            "supported_resolutions": ["480p", "720p"],
                         }
                     ]
                 },
