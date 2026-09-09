@@ -96,7 +96,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
     <header ref={headerRef} className="site-header" lang={lang}>
       <div className="shell nav">
         <Link className="brand" href={isTr ? "/tr" : "/"} aria-label={isTr ? "ILAIOS ana sayfa" : "ILAIOS home"} onClick={() => setOpen(false)}>
-          <Image className="brand-logo brand-logo-dark" src="/brand/logo-horizontal-dark.jpg" alt="ILAIOS" width={2400} height={800} sizes="144px" priority unoptimized />
+          <Image className="brand-logo brand-logo-dark" src="/brand/logo-horizontal-dark.jpg" alt="ILAIOS" width={2400} height={800} sizes="144px" priority unoptimized style={{ mixBlendMode: "lighten" }} />
           <Image className="brand-logo brand-logo-light" src="/brand/logo-horizontal-light.jpg" alt="ILAIOS" width={2400} height={800} sizes="144px" priority unoptimized />
         </Link>
         <button className="menu-toggle" type="button" aria-expanded={open} aria-controls="site-navigation" aria-label={open ? (isTr ? "Menüyü kapat" : "Close menu") : (isTr ? "Menüyü aç" : "Open menu")} onClick={() => setOpen(value => !value)}><span>{open ? (isTr ? "Kapat" : "Close") : (isTr ? "Menü" : "Menu")}</span><i aria-hidden="true" /></button>
@@ -113,6 +113,7 @@ export default function SiteChrome({ children }: { children: React.ReactNode }) 
         <div className="footer-nav-grid">{footerGroups.map(group => <div key={group.heading}><strong>{group.heading}</strong>{group.links.map(([label, href]) => <Link className="text-link" key={href} href={href}>{label}</Link>)}</div>)}</div>
       </div>
       <div className="shell footer-row"><span>© 2026 ILAIOS</span><span>{isTr ? "Kontrollü yürütme · doğrulanmış sonuç" : "Governed execution · verified outcome"}</span><Link className="text-link" href={switchHref}>{isTr ? "English" : "Türkçe"}</Link></div>
+      <div aria-hidden="true" style={{ height: 24 }} />
     </footer>
   </>;
 }
