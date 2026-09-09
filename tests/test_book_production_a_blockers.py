@@ -13,6 +13,7 @@ from services.creative_document_factory import (
     BookAsset,
     BookChapter,
     BookCitation,
+    BookManifest,
     BookMetadata,
     CreativeDocumentError,
     CreativeDocumentFactory,
@@ -66,7 +67,7 @@ def _projection() -> dict[str, object]:
     return research.knowledge_projection("claim-tr")
 
 
-def _approved_book():
+def _approved_book() -> BookManifest:
     metadata = BookMetadata(
         title="Türkçe Üretim Doğrulaması",
         subtitle="İçindekiler ve görsel testi",
