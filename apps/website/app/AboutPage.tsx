@@ -51,6 +51,21 @@ const missionTitleStyle = {
   maxWidth: "21ch",
 } as const;
 
+const founderTitleStyle = {
+  fontSize: "clamp(1.08rem, 1.3vw, 1.3rem)",
+  lineHeight: 1.12,
+  letterSpacing: "-0.015em",
+  marginTop: "6px",
+  marginBottom: 0,
+} as const;
+
+const compactCopyStyle = {
+  fontSize: "clamp(.92rem, 1.1vw, 1rem)",
+  lineHeight: 1.52,
+  maxWidth: "60ch",
+  margin: 0,
+} as const;
+
 export default function AboutPage({ locale }: { locale: Locale }) {
   const c = copy[locale];
   const base = locale === "tr" ? "/tr" : "";
@@ -60,7 +75,7 @@ export default function AboutPage({ locale }: { locale: Locale }) {
       <article className="about-mission"><span className="micro-label">{c.missionLabel}</span><h2 style={missionTitleStyle}>{c.mission}</h2></article>
       <div className="about-principles"><span className="micro-label">{c.principlesLabel}</span>{c.principles.map(([title, text], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{text}</p></div></article>)}</div>
     </div></section>
-    <section className="section surface-section"><div className="shell founder-row" id="founder"><div><span className="micro-label">{c.founderLabel}</span><h2>{c.founder}</h2></div><p>{c.founderText}</p></div></section>
-    <section className="section compact-section"><div className="shell about-truth"><div><span className="micro-label">{c.truthLabel}</span><p>{c.truth}</p></div><div className="actions"><Link className="button" href={`${base}/solutions`}>{c.solutions}</Link><Link className="button secondary" href={`${base}/architecture`}>{c.architecture}</Link></div></div></section>
+    <section className="section surface-section"><div className="shell founder-row" id="founder"><div><span className="micro-label">{c.founderLabel}</span><h2 style={founderTitleStyle}>{c.founder}</h2></div><p style={compactCopyStyle}>{c.founderText}</p></div></section>
+    <section className="section compact-section"><div className="shell about-truth"><div><span className="micro-label">{c.truthLabel}</span><p style={compactCopyStyle}>{c.truth}</p></div><div className="actions"><Link className="text-link" href={`${base}/solutions`}>{c.solutions}</Link><Link className="text-link" href={`${base}/architecture`}>{c.architecture}</Link></div></div></section>
   </>;
 }

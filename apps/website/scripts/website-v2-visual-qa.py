@@ -346,6 +346,7 @@ def main() -> int:
                 for viewport_name, width, height in VIEWPORTS:
                     path = localized_path(locale, route)
                     page = context.new_page()
+                    page.add_init_script("localStorage.removeItem('ilaios-theme')")
                     page.set_viewport_size({"width": width, "height": height})
                     try:
                         record = run_page_checks(
@@ -405,6 +406,7 @@ def main() -> int:
                 for viewport_name, width, height in DARK_VIEWPORTS:
                     path = localized_path(locale, route)
                     page = context.new_page()
+                    page.add_init_script("localStorage.setItem('ilaios-theme', 'dark')")
                     page.set_viewport_size({"width": width, "height": height})
                     try:
                         record = run_page_checks(

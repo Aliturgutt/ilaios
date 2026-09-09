@@ -2,13 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
-import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
 
-import 'secondary_navigation_test_support.dart';
-
 void main() {
-  testWidgets('Goals presents job.updated as human-readable copy without changing projection', (
+  testWidgets('canonical seven-page shell keeps projection truth without restoring Goals', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -24,18 +21,12 @@ void main() {
     );
 
     await tester.pumpWidget(const IlaiosDesktopApp(projection: projection));
-    await openSecondaryDesktopSection(tester, DesktopSection.goals);
+    await tester.pumpAndSettle();
 
-    final goals = find.byKey(const Key('reference-goals-page'));
-    expect(goals, findsOneWidget);
-    expect(
-      find.descendant(of: goals, matching: find.text('Job update')),
-      findsWidgets,
-    );
-    expect(
-      find.descendant(of: goals, matching: find.text('job.updated')),
-      findsNothing,
-    );
+    expect(find.byKey(const Key('canonical-7-page-sidebar')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-goals')), findsNothing);
+    expect(find.byKey(const Key('reference-secondary-navigation')), findsNothing);
+    expect(projection.lastEvent, 'job.updated');
 
     await tester.pumpWidget(
       const IlaiosDesktopApp(
@@ -44,22 +35,13 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await openSecondaryDesktopSection(tester, DesktopSection.goals);
 
-    final turkishGoals = find.byKey(const Key('reference-goals-page'));
-    expect(
-      find.descendant(of: turkishGoals, matching: find.text('İş güncellemesi')),
-      findsWidgets,
-    );
-    expect(
-      find.descendant(of: turkishGoals, matching: find.text('job.updated')),
-      findsNothing,
-    );
-
+    expect(find.byKey(const Key('canonical-7-page-sidebar')), findsOneWidget);
+    expect(find.byKey(const ValueKey('nav-goals')), findsNothing);
     expect(projection.lastEvent, 'job.updated');
   });
 
-  testWidgets('Home does not treat all pending work as approvals when admissions are present', (
+  testWidgets('pending work without approval admission stays out of Approvals', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -98,19 +80,13 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    final attention = find.byKey(const Key('command-center-attention'));
-    expect(attention, findsOneWidget);
-    expect(
-      find.descendant(of: attention, matching: find.text('No action is required')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: attention, matching: find.textContaining('approval is waiting')),
-      findsNothing,
-    );
-    expect(
-      find.descendant(of: attention, matching: find.textContaining('approvals are waiting')),
-      findsNothing,
-    );
+    await tester.tap(find.byKey(const ValueKey('nav-approvals')));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('reference-approvals-page')), findsOneWidget);
+    expect(find.byKey(const Key('approvals-table')), findsOneWidget);
+    expect(find.text('req-no-human-approval'), findsNothing);
+    expect(find.byKey(const Key('approvals-selected-request')), findsNothing);
+    expect(find.byKey(const Key('approvals-right-rail')), findsOneWidget);
   });
 }

@@ -4,7 +4,7 @@ import 'package:ilaios_desktop/main.dart';
 
 void main() {
   testWidgets(
-    'short desktop viewports scroll instead of shrinking typography',
+    'short desktop viewports scroll instead of shrinking canonical typography',
     (tester) async {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       for (final size in [const Size(1366, 768), const Size(1180, 720)]) {
@@ -24,7 +24,10 @@ void main() {
           findsOneWidget,
         );
         final input = find.byKey(const Key('home-command-prompt'));
-        expect(tester.widget<TextField>(input).style?.fontSize, 15);
+        expect(input, findsOneWidget);
+        expect(tester.getSize(input).height, 60);
+        final field = tester.widget<TextField>(input);
+        expect(field.decoration?.hintStyle?.fontSize, 14);
         final status = tester.getRect(
           find.byKey(const Key('reference-bottom-status-v2')),
         );

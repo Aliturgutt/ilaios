@@ -4,7 +4,7 @@ import 'package:ilaios_desktop/control_plane/client.dart';
 import 'package:ilaios_desktop/main.dart';
 
 void main() {
-  testWidgets('1536x1024 Home stays in one viewport without page scroll', (
+  testWidgets('1536x1024 canonical Home remains scroll-safe and bounded', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1536, 1024));
@@ -18,27 +18,15 @@ void main() {
       find.byKey(const Key('command-center-short-viewport-scroll')),
       findsOneWidget,
     );
-
-    final hero = find.byKey(const Key('command-center-hero'));
-    final artifacts = find.byKey(const Key('command-center-artifacts'));
-    final completed = find.byKey(const Key('command-center-completed'));
+    expect(find.byKey(const Key('command-center-home')), findsOneWidget);
+    expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
+    expect(find.byKey(const Key('home-new-work')), findsOneWidget);
     final bottomBar = find.byKey(const Key('reference-bottom-status-v2'));
-
-    expect(hero, findsOneWidget);
-    expect(artifacts, findsOneWidget);
-    expect(completed, findsOneWidget);
     expect(bottomBar, findsOneWidget);
-
-    await tester.ensureVisible(artifacts);
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
-    await tester.ensureVisible(completed);
-    await tester.pumpAndSettle();
-    expect(tester.takeException(), isNull);
     expect(tester.getBottomRight(bottomBar).dy, lessThanOrEqualTo(1024));
   });
 
-  testWidgets('V4 Home controls are real bounded interactive controls', (
+  testWidgets('canonical Home controls are real bounded interactive controls', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1536, 1024));
@@ -49,16 +37,17 @@ void main() {
 
     expect(find.byKey(const Key('home-command-prompt')), findsOneWidget);
     expect(find.byKey(const Key('home-new-work')), findsOneWidget);
-    expect(find.text('Advanced'), findsOneWidget);
-    expect(find.text('All work'), findsOneWidget);
+    expect(find.text('View all agents'), findsOneWidget);
     expect(find.byKey(const Key('home-templates')), findsNothing);
     expect(find.byKey(const Key('home-last-session')), findsNothing);
     expect(find.byKey(const Key('home-assign-agent')), findsNothing);
     expect(find.byKey(const Key('home-factory-video')), findsNothing);
 
-    await tester.tap(find.text('All work'));
+    final viewAll = find.text('View all agents');
+    await tester.ensureVisible(viewAll);
+    await tester.tap(viewAll);
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key('reference-workflows-page')), findsOneWidget);
+    expect(find.byKey(const Key('reference-agents-page')), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 
@@ -94,7 +83,12 @@ void main() {
       find.byKey(const Key('home-command-prompt')),
       'Build a verified website from the Home command center.',
     );
-    await tester.tap(find.byKey(const Key('home-new-work')));
+    await tester.pump();
+    final submit = find.byKey(const Key('home-new-work'));
+    await tester.ensureVisible(submit);
+    final button = tester.widget<FilledButton>(submit);
+    expect(button.onPressed, isNotNull);
+    await tester.tap(submit);
     await tester.pumpAndSettle();
 
     expect(

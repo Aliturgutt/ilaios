@@ -1,12 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
 import 'package:ilaios_desktop/main.dart';
 
-import 'secondary_navigation_test_support.dart';
-
 void main() {
-  testWidgets('V4 Workflows uses persistent navigation instead of a fabricated creation shortcut', (
+  testWidgets('canonical Workflows uses persistent seven-page navigation without a fabricated creation shortcut', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1600, 900));
@@ -21,10 +18,16 @@ void main() {
     expect(find.byKey(const Key('new-workflow-button')), findsNothing);
     expect(find.text('New Workflow'), findsNothing);
 
-    await openSecondaryDesktopSection(tester, DesktopSection.goals);
+    expect(find.byKey(const Key('reference-secondary-navigation')), findsNothing);
+    expect(find.byKey(const ValueKey('nav-goals')), findsNothing);
+    expect(find.byKey(const ValueKey('nav-liveWorkspace')), findsNothing);
+    expect(find.byKey(const ValueKey('nav-costs')), findsNothing);
 
-    expect(find.byKey(const Key('reference-goals-page')), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('nav-agents')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('reference-agents-page')), findsOneWidget);
     expect(find.byKey(const Key('reference-workflows-page')), findsNothing);
+
     expect(tester.takeException(), isNull);
   });
 }

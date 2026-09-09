@@ -2,39 +2,29 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/ilaios_locale.dart';
 import 'package:ilaios_desktop/control_plane/operational_snapshot.dart';
-import 'package:ilaios_desktop/features/navigation/desktop_section.dart';
-import 'package:ilaios_desktop/main.dart';
-
-import 'secondary_navigation_test_support.dart';
+import 'package:ilaios_desktop/features/operations/live_workspace_view.dart';
 
 void main() {
-  Future<void> pumpDesktop(
+  Future<void> pumpWorkspace(
     WidgetTester tester, {
     required OperationalSnapshot snapshot,
   }) async {
     await tester.pumpWidget(
-      IlaiosLocaleScope(
-        locale: IlaiosLocale.english,
-        onChanged: (_) {},
-        child: IlaiosDesktopApp(
-          projection: const ControlPlaneProjection(
-            connected: true,
-            status: 'Connected to authoritative control plane',
-            goalCount: 1,
-            jobCount: 1,
-            lastEvent: 'workspace.updated',
-            schemaVersion: '1',
+      MaterialApp(
+        home: IlaiosLocaleScope(
+          locale: IlaiosLocale.english,
+          onChanged: (_) {},
+          child: Scaffold(
+            body: LiveWorkspaceView(
+              snapshot: snapshot,
+              status: 'Operational APIs connected',
+            ),
           ),
-          operationalSnapshot: snapshot,
-          operationalStatus: 'Operational APIs connected',
         ),
       ),
     );
     await tester.pumpAndSettle();
   }
-
-  Future<void> openWorkspace(WidgetTester tester) =>
-      openSecondaryDesktopSection(tester, DesktopSection.liveWorkspace);
 
   Future<void> expectUnavailableAction(
     WidgetTester tester,
@@ -51,12 +41,12 @@ void main() {
   }
 
   testWidgets(
-    'Live Workspace visible write-like actions fail closed without a governed API contract',
+    'Live Workspace write-like actions remain fail closed without a governed API contract',
     (WidgetTester tester) async {
       await tester.binding.setSurfaceSize(const Size(1600, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      await pumpDesktop(
+      await pumpWorkspace(
         tester,
         snapshot: const OperationalSnapshot(
           runtimeRoutes: <Map<String, Object?>>[],
@@ -76,7 +66,6 @@ void main() {
           liveEvents: <Map<String, Object?>>[],
         ),
       );
-      await openWorkspace(tester);
 
       for (final label in <String>['Full Screen', 'Share', 'Save']) {
         await expectUnavailableAction(
@@ -112,7 +101,7 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1600, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
 
-      await pumpDesktop(
+      await pumpWorkspace(
         tester,
         snapshot: const OperationalSnapshot(
           runtimeRoutes: <Map<String, Object?>>[],
@@ -138,7 +127,6 @@ void main() {
           ],
         ),
       );
-      await openWorkspace(tester);
 
       final header = find.byKey(const Key('live-workspace-header'));
       expect(
