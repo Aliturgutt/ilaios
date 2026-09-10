@@ -3,6 +3,10 @@
 from __future__ import annotations
 
 import sqlite3
+import subprocess
+import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from services.control_plane.migrations import (
@@ -102,3 +106,74 @@ def test_rollback_backup_restores_committed_wal_data_with_integrity(tmp_path: Pa
                 ).fetchone() == ("committed-in-wal",)
         finally:
             writer.close()
+
+
+def test_concurrent_migrators_serialize_and_converge(tmp_path: Path) -> None:
+    database = tmp_path / "concurrent.db"
+    barrier = threading.Barrier(2)
+
+    def run_migration() -> int:
+        barrier.wait(timeout=10)
+        return migrate_database(database)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(run_migration) for _ in range(2)]
+        results = [future.result(timeout=30) for future in futures]
+
+    assert results == [LATEST_SCHEMA_VERSION, LATEST_SCHEMA_VERSION]
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("PRAGMA integrity_check").fetchone() == ("ok",)
+        versions = connection.execute(
+            "SELECT version FROM schema_migrations ORDER BY version"
+        ).fetchall()
+    assert versions == [(version,) for version in range(1, LATEST_SCHEMA_VERSION + 1)]
+
+
+def test_hard_crash_rolls_back_partial_schema_and_version(tmp_path: Path) -> None:
+    database = tmp_path / "crash.db"
+    crash_program = r'''
+import os
+import sys
+from pathlib import Path
+
+import sqlite3
+import services.control_plane.migrations as migrations
+
+
+def crash_after_first_statement(connection: sqlite3.Connection, script: str) -> None:
+    pending = ""
+    for line in script.splitlines(keepends=True):
+        pending += line
+        if not sqlite3.complete_statement(pending):
+            continue
+        statement = pending.strip()
+        if statement:
+            connection.execute(statement)
+            os._exit(91)
+        pending = ""
+    os._exit(92)
+
+
+migrations._execute_script_statements = crash_after_first_statement
+migrations.migrate_database(Path(sys.argv[1]))
+'''
+    completed = subprocess.run(
+        (sys.executable, "-c", crash_program, str(database)),
+        check=False,
+        timeout=30,
+    )
+    assert completed.returncode == 91
+
+    with sqlite3.connect(database) as connection:
+        assert connection.execute("PRAGMA integrity_check").fetchone() == ("ok",)
+        tables = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type = 'table'"
+            ).fetchall()
+        }
+    assert "goals" not in tables
+    assert "schema_migrations" not in tables
+
+    assert migrate_database(database) == LATEST_SCHEMA_VERSION
+    assert current_schema_version(database) == LATEST_SCHEMA_VERSION
