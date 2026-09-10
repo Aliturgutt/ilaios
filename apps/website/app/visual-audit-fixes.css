@@ -1,0 +1,96 @@
+/* Bounded visual audit fixes for the 2026-09-10 live-site review.
+   Website presentation only. Theme-toggle dimensions are intentionally untouched. */
+
+/* A — Improve light-theme explanatory copy contrast without changing the palette. */
+html[data-theme="light"] .home-process-rail-v2 article p,
+html[data-theme="light"] .evidence-story-copy p,
+html[data-theme="light"] .evidence-control p {
+  color: #5A5A5A !important;
+  -webkit-text-fill-color: #5A5A5A !important;
+}
+
+/* B — Keep unselected homepage stage controls readable in dark mode. */
+html[data-theme="dark"] .product-stage-tabs button:not(.is-active) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+/* C — Restore a readable minimum size for explanatory diagram/runtime text. */
+.spatial-map-head small,
+.spatial-node small,
+.runtime-line small,
+.evidence-control p {
+  font-size: .8125rem !important;
+  line-height: 1.5 !important;
+}
+
+/* D/E — Rebalance page hierarchy so section headings do not overpower H1s. */
+main:has(> .compact-page-hero) section h2,
+main:has(> .audience-hero) section h2,
+main:has(> .about-intro) section h2 {
+  font-size: clamp(1.75rem, 2.2vw, 2rem) !important;
+  line-height: 1.2 !important;
+}
+
+@media (min-width: 901px) {
+  main:has(> .audience-hero) section h2,
+  main:has(> .about-intro) section h2 {
+    max-width: 460px;
+  }
+}
+
+/* F — Align compact page heroes to the shared shell while retaining readable copy width. */
+.compact-page-hero {
+  max-width: 1240px !important;
+}
+
+.compact-page-hero > :where(.eyebrow, h1, .lead, .actions) {
+  max-width: 760px;
+}
+
+/* G — Remove desktop dead space from the homepage product preview. */
+@media (min-width: 901px) {
+  .product-experience-grid {
+    min-height: 260px !important;
+  }
+
+  .product-experience {
+    min-height: 0 !important;
+  }
+}
+
+/* H — Let audience cards follow their content instead of reserving empty height. */
+.audience-outcome-list article {
+  min-height: 148px !important;
+}
+
+/* I — Reduce compounded footer whitespace and keep footer copy comfortably readable. */
+.site-footer {
+  padding-top: 28px !important;
+}
+
+.footer-main {
+  padding-top: 20px !important;
+}
+
+.site-footer a,
+.site-footer p {
+  font-size: .8125rem !important;
+  line-height: 1.5 !important;
+}
+
+@media (max-width: 900px) {
+  main:has(> .compact-page-hero) section h2,
+  main:has(> .audience-hero) section h2,
+  main:has(> .about-intro) section h2 {
+    font-size: clamp(1.6rem, 5vw, 1.9rem) !important;
+  }
+
+  .compact-page-hero > :where(.eyebrow, h1, .lead, .actions) {
+    max-width: 100%;
+  }
+
+  .audience-outcome-list article {
+    min-height: 0 !important;
+  }
+}
