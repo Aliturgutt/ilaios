@@ -19,12 +19,17 @@ def test_plan_family_is_single_ordered_authority() -> None:
     assert get_commercial_plan("ENTERPRISE").parent is CommercialPlanId.POWER
 
 
-def test_uploaded_price_references_are_preserved() -> None:
+def test_approved_price_references_are_preserved() -> None:
     assert get_commercial_plan("FREE").monthly_price_usd == 0
+    assert get_commercial_plan("FREE").monthly_price_try == 0
     assert get_commercial_plan("PRO").monthly_price_usd == 49
+    assert get_commercial_plan("PRO").monthly_price_try == 2401
     assert get_commercial_plan("BUSINESS").monthly_price_usd == 99
+    assert get_commercial_plan("BUSINESS").monthly_price_try == 4851
     assert get_commercial_plan("POWER").monthly_price_usd == 199
+    assert get_commercial_plan("POWER").monthly_price_try == 9751
     assert get_commercial_plan("ENTERPRISE").monthly_price_usd is None
+    assert get_commercial_plan("ENTERPRISE").monthly_price_try is None
 
 
 def test_video_resolution_hierarchy_is_locked() -> None:
