@@ -75,6 +75,10 @@ test('subscription visual hierarchy remains monochrome and explicit', () => {
   assert.doesNotMatch(styles, /gradient/i);
 });
 
+test('dark brand raster blends its black field into the dark header', () => {
+  assert.match(styles, /html\[data-theme=dark\] \.page-header \.brand-image-dark\{display:block;mix-blend-mode:screen\}/);
+});
+
 test('unknown, malformed and offline states never claim an active plan', async () => {
   for (const options of [
     {fail: true}, {response: {status: 503}},
