@@ -321,7 +321,7 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
             provider_ceiling = certification_provider_cost_ceiling(
                 price,
                 shape,
-                contingency_bps=self._commercial_policy.contingency_bps,
+                contingency_bps=0,
             )
             estimated_total += price.estimated_total_microusd
             reserved_total += provider_ceiling

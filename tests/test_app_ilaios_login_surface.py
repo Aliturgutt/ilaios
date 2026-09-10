@@ -56,7 +56,9 @@ def _runtime(database: Path) -> LoginAppRuntime:
     )
 
 
-def test_root_is_light_first_login_with_optional_dark_mode(tmp_path: Path) -> None:
+def test_root_defaults_to_turkish_light_first_login_with_optional_dark_mode(
+    tmp_path: Path,
+) -> None:
     runtime = _runtime(tmp_path / "identity.db")
 
     response = runtime.dispatch(
@@ -72,17 +74,63 @@ def test_root_is_light_first_login_with_optional_dark_mode(tmp_path: Path) -> No
     assert "style-src 'self'" in csp
     assert "frame-ancestors 'none'" in csp
     document = response.body.decode("utf-8")
-    assert '<html lang="en" data-theme="light">' in document
-    assert "Welcome back" in document
-    assert "Sign in to ILAIOS" not in document
-    assert "Choose an account to continue." in document
+    assert '<html lang="tr" data-theme="light">' in document
+    assert "Hoş geldiniz" in document
+    assert "Devam etmek için bir hesap seçin." in document
+    assert "Google ile devam et" in document
+    assert "Microsoft ile devam et" in document
+    assert "GitHub ile devam et" in document
+    assert 'id="theme-toggle"' in document
+    assert 'aria-label="Temayı değiştir"' in document
+    assert '<span aria-hidden="true">◐</span>' in document
+    assert "<strong>Tema</strong>" in document
+    assert 'id="theme-light"' not in document
+    assert 'id="theme-dark"' not in document
+    assert "Welcome" not in document
     assert 'href="/auth/google/start"' in document
     assert 'href="/auth/microsoft/start"' in document
     assert 'href="/auth/github/start"' in document
-    assert 'id="theme-light"' in document
-    assert 'id="theme-dark"' in document
     assert '<script src="/login/app.js" defer></script>' in document
     assert "<style" not in document
+
+
+def test_root_supports_explicit_english_locale(tmp_path: Path) -> None:
+    runtime = _runtime(tmp_path / "identity.db")
+
+    response = runtime.dispatch(
+        RuntimeRequest(method="GET", target="/?lang=en", headers={}),
+        now=_NOW,
+    )
+
+    assert response.status is HTTPStatus.OK
+    document = response.body.decode("utf-8")
+    assert '<html lang="en" data-theme="light">' in document
+    assert "Welcome" in document
+    assert "Choose an account to continue." in document
+    assert "Continue with Google" in document
+    assert "Continue with Microsoft" in document
+    assert "Continue with GitHub" in document
+    assert 'id="theme-toggle"' in document
+    assert 'aria-label="Toggle theme"' in document
+    assert '<span aria-hidden="true">◐</span>' in document
+    assert "<strong>Theme</strong>" in document
+    assert 'id="theme-light"' not in document
+    assert 'id="theme-dark"' not in document
+    assert "Hoş geldiniz" not in document
+
+
+def test_root_supports_explicit_turkish_locale(tmp_path: Path) -> None:
+    runtime = _runtime(tmp_path / "identity.db")
+
+    response = runtime.dispatch(
+        RuntimeRequest(method="GET", target="/?lang=tr", headers={}),
+        now=_NOW,
+    )
+
+    assert response.status is HTTPStatus.OK
+    document = response.body.decode("utf-8")
+    assert '<html lang="tr" data-theme="light">' in document
+    assert "Hoş geldiniz" in document
 
 
 def test_dark_logo_blends_with_canonical_carbon_background(tmp_path: Path) -> None:
@@ -153,7 +201,9 @@ def test_theme_script_defaults_to_light_and_persists_explicit_dark_choice(
     assert "ilaios-theme" in script
     assert "storedTheme()==='dark'?'dark':'light'" in script
     assert "localStorage.setItem('ilaios-theme',value)" in script
-    assert "dark?'#0A0A0A':'#FFFFFF'" in script
+    assert "value==='dark'?'#0A0A0A':'#FFFFFF'" in script
+    assert "document.getElementById('theme-toggle')" in script
+    assert "root.dataset.theme==='dark'?'light':'dark'" in script
     assert "normalizeBrandBackground" in script
     assert "red<=12&&green<=12&&blue<=16" in script
     assert "red>=248&&green>=248&&blue>=248" in script
@@ -162,24 +212,39 @@ def test_theme_script_defaults_to_light_and_persists_explicit_dark_choice(
     assert "fetch('/auth/providers'" in script
 
 
-def test_login_assets_reject_query_parameters_and_non_get_methods(
+def test_login_rejects_unknown_or_ambiguous_query_parameters(
     tmp_path: Path,
 ) -> None:
     runtime = _runtime(tmp_path / "identity.db")
 
-    query = runtime.dispatch(
-        RuntimeRequest(method="GET", target="/?next=/li", headers={}),
-        now=_NOW,
-    )
-    post = runtime.dispatch(
+    responses = [
+        runtime.dispatch(
+            RuntimeRequest(method="GET", target="/?next=/li", headers={}), now=_NOW
+        ),
+        runtime.dispatch(
+            RuntimeRequest(method="GET", target="/?lang=de", headers={}), now=_NOW
+        ),
+        runtime.dispatch(
+            RuntimeRequest(method="GET", target="/?lang=tr&lang=en", headers={}),
+            now=_NOW,
+        ),
+    ]
+
+    for response in responses:
+        assert response.status is HTTPStatus.BAD_REQUEST
+        assert response.body == b'{"error":"unexpected query parameters"}'
+
+
+def test_login_rejects_non_get_root_method(tmp_path: Path) -> None:
+    runtime = _runtime(tmp_path / "identity.db")
+
+    response = runtime.dispatch(
         RuntimeRequest(method="POST", target="/", headers={}),
         now=_NOW,
     )
 
-    assert query.status is HTTPStatus.BAD_REQUEST
-    assert query.body == b'{"error":"unexpected query parameters"}'
-    assert post.status is HTTPStatus.METHOD_NOT_ALLOWED
-    assert dict(post.headers)["Allow"] == "GET"
+    assert response.status is HTTPStatus.METHOD_NOT_ALLOWED
+    assert dict(response.headers)["Allow"] == "GET"
 
 
 def test_login_runtime_delegates_existing_google_oauth_start(tmp_path: Path) -> None:
