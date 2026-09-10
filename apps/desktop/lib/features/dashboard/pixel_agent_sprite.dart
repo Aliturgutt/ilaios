@@ -89,7 +89,7 @@ class _PixelAgentSpriteState extends State<PixelAgentSprite> {
       fit: BoxFit.contain,
       filterQuality: FilterQuality.none,
       gaplessPlayback: true,
-      errorBuilder: (_, __, ___) => SizedBox(
+      errorBuilder: (_, _, _) => SizedBox(
         key: const Key('pixel-agent-missing-frame'),
         width: widget.size.width,
         height: widget.size.height,
