@@ -2,9 +2,28 @@
    Website presentation only. Theme-toggle dimensions are intentionally untouched. */
 
 /* A — Improve light-theme explanatory copy contrast without changing the palette. */
-html[data-theme="light"] .home-process-rail-v2 article p,
-html[data-theme="light"] .evidence-story-copy p,
-html[data-theme="light"] .evidence-control p {
+html[data-theme="light"] :where(
+  .home-process-rail-v2 article p,
+  .evidence-story-copy p,
+  .evidence-control p,
+  .lead,
+  .muted,
+  .card p,
+  .flow-card p,
+  .plane-card p,
+  .journey-card p,
+  .factory-detail p,
+  .factory-detail small,
+  .product-experience p,
+  .product-experience small,
+  .system-visual p,
+  .system-visual small,
+  .status-note p,
+  .factory-truth-note p,
+  .principle-directory p,
+  .security-process small,
+  .spatial-map-detail p
+) {
   color: #5A5A5A !important;
   -webkit-text-fill-color: #5A5A5A !important;
 }
@@ -19,7 +38,10 @@ html[data-theme="dark"] .product-stage-tabs button:not(.is-active) {
 .spatial-map-head small,
 .spatial-node small,
 .runtime-line small,
-.evidence-control p {
+.evidence-control p,
+.security-process small,
+.principle-directory p,
+.dark-surface p {
   font-size: .8125rem !important;
   line-height: 1.5 !important;
 }
@@ -77,6 +99,42 @@ main:has(> .about-intro) section h2 {
 .site-footer p {
   font-size: .8125rem !important;
   line-height: 1.5 !important;
+}
+
+/* J — Light-theme dark-surface/security copy must never resolve to white on white. */
+html[data-theme="light"] :where(.dark-surface, a.dark-surface, .card.dark-surface) {
+  background: #FFFFFF !important;
+  border-color: #B3B3B3 !important;
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] :where(
+  .dark-surface p,
+  .dark-surface small,
+  .security-process small,
+  .principle-directory p
+) {
+  color: #5A5A5A !important;
+  -webkit-text-fill-color: #5A5A5A !important;
+}
+
+/* K — Keep card surface and copy in the same light-theme contrast model. */
+html[data-theme="light"] .card {
+  background: #FFFFFF !important;
+  border-color: #B3B3B3 !important;
+  color: #0A0A0A !important;
+}
+
+html[data-theme="light"] .card :where(p, small) {
+  color: #5A5A5A !important;
+  -webkit-text-fill-color: #5A5A5A !important;
+}
+
+/* L — Selected spatial-map detail copy must remain readable in light mode. */
+html[data-theme="light"] .spatial-map-detail p {
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
 }
 
 @media (max-width: 900px) {
