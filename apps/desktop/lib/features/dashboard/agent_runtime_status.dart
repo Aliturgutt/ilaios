@@ -184,6 +184,7 @@ OperationalSnapshot canonicalAgentPresentationSnapshot(
         .toList(growable: false),
     agentState: <String, Object?>{
       ...snapshot.agentState,
+      'canonical_count': states.length,
       'agents': agents,
     },
   );
