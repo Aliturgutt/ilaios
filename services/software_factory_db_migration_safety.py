@@ -443,10 +443,13 @@ class SoftwareFactoryDBMigrationSafety:
                 failures.append("down migration versions must pair every up migration")
         required_recovery_fragments = (
             "if backup_path.exists():",
-            "shutil.copy2(database_path, backup_path)",
+            "_snapshot_database(database_path, backup_path)",
             "connection.executescript(_DOWN_MIGRATIONS[current])",
             "except Exception:",
-            "shutil.copy2(backup_path, database_path)",
+            "_restore_database(backup_path, database_path)",
+            "source.backup(snapshot)",
+            "snapshot.backup(database)",
+            'connection.execute("PRAGMA integrity_check")',
         )
         if any(fragment not in text for fragment in required_recovery_fragments):
             failures.append("rollback must preserve backup-before-change and restore-on-failure")
