@@ -56,7 +56,7 @@ def _runtime(database: Path) -> LoginAppRuntime:
     )
 
 
-def test_root_defaults_to_turkish_light_first_login_with_optional_dark_mode(
+def test_root_defaults_to_turkish_light_first_login_with_single_theme_toggle(
     tmp_path: Path,
 ) -> None:
     runtime = _runtime(tmp_path / "identity.db")
@@ -80,14 +80,22 @@ def test_root_defaults_to_turkish_light_first_login_with_optional_dark_mode(
     assert "Google ile devam et" in document
     assert "Microsoft ile devam et" in document
     assert "GitHub ile devam et" in document
-    assert ">Açık</button>" in document
-    assert ">Koyu</button>" in document
+    assert '<span>Tema</span>' in document
+    assert 'id="theme-toggle"' in document
+    assert 'aria-label="Temayı değiştir"' in document
+    assert ">Açık</button>" not in document
+    assert ">Koyu</button>" not in document
+    assert 'id="theme-light"' not in document
+    assert 'id="theme-dark"' not in document
+    assert 'href="/?lang=tr"' in document
+    assert 'href="/?lang=en"' in document
+    assert 'aria-label="Dil"' in document
+    assert 'lang="tr" hreflang="tr" aria-current="page">TR</a>' in document
+    assert 'lang="en" hreflang="en">EN</a>' in document
     assert "Welcome" not in document
     assert 'href="/auth/google/start"' in document
     assert 'href="/auth/microsoft/start"' in document
     assert 'href="/auth/github/start"' in document
-    assert 'id="theme-light"' in document
-    assert 'id="theme-dark"' in document
     assert '<script src="/login/app.js" defer></script>' in document
     assert "<style" not in document
 
@@ -108,8 +116,13 @@ def test_root_supports_explicit_english_locale(tmp_path: Path) -> None:
     assert "Continue with Google" in document
     assert "Continue with Microsoft" in document
     assert "Continue with GitHub" in document
-    assert ">Light</button>" in document
-    assert ">Dark</button>" in document
+    assert '<span>Theme</span>' in document
+    assert 'aria-label="Change theme"' in document
+    assert 'aria-label="Language"' in document
+    assert 'lang="en" hreflang="en" aria-current="page">EN</a>' in document
+    assert 'lang="tr" hreflang="tr">TR</a>' in document
+    assert ">Light</button>" not in document
+    assert ">Dark</button>" not in document
     assert "Hoş geldiniz" not in document
 
 
@@ -125,6 +138,7 @@ def test_root_supports_explicit_turkish_locale(tmp_path: Path) -> None:
     document = response.body.decode("utf-8")
     assert '<html lang="tr" data-theme="light">' in document
     assert "Hoş geldiniz" in document
+    assert 'aria-current="page">TR</a>' in document
 
 
 def test_dark_logo_blends_with_canonical_carbon_background(tmp_path: Path) -> None:
@@ -142,6 +156,9 @@ def test_dark_logo_blends_with_canonical_carbon_background(tmp_path: Path) -> No
     assert '.brand-lockup{width:218.5px;height:73.6px' in stylesheet
     assert '.brand-image-dark{display:none;background:#0A0A0A}' in stylesheet
     assert 'html[data-theme="dark"] .brand-lockup{background:#0A0A0A}' in stylesheet
+    assert '.theme-toggle{' in stylesheet
+    assert '.locale-control{' in stylesheet
+    assert '.theme-icon{' in stylesheet
     assert '#0B0E13' not in stylesheet
     assert 'mix-blend-mode' not in stylesheet
 
@@ -179,7 +196,7 @@ def test_login_heading_uses_refined_corporate_typography(tmp_path: Path) -> None
     assert 'font-weight:600' in stylesheet
 
 
-def test_theme_script_defaults_to_light_and_persists_explicit_dark_choice(
+def test_theme_script_defaults_to_light_and_single_toggle_persists_both_directions(
     tmp_path: Path,
 ) -> None:
     runtime = _runtime(tmp_path / "identity.db")
@@ -195,11 +212,16 @@ def test_theme_script_defaults_to_light_and_persists_explicit_dark_choice(
     assert "ilaios-theme" in script
     assert "storedTheme()==='dark'?'dark':'light'" in script
     assert "localStorage.setItem('ilaios-theme',value)" in script
+    assert "root.dataset.theme==='dark'?'light':'dark'" in script
+    assert "themeToggle.addEventListener('click'" in script
+    assert "themeToggle.setAttribute('aria-pressed',String(dark))" in script
     assert "dark?'#0A0A0A':'#FFFFFF'" in script
     assert "normalizeBrandBackground" in script
     assert "red<=12&&green<=12&&blue<=16" in script
     assert "red>=248&&green>=248&&blue>=248" in script
     assert "pixels[offset]=dark?10:255" in script
+    assert "theme-light" not in script
+    assert "theme-dark" not in script
     assert "#0B0E13" not in script
     assert "fetch('/auth/providers'" in script
 

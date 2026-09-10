@@ -39,9 +39,15 @@ _LOGIN_HTML_EN = """<!doctype html>
 </head>
 <body>
   <main class="shell">
-    <div class="theme-control" role="group" aria-label="Theme">
-      <button class="theme-button is-active" id="theme-light" type="button" aria-pressed="true">Light</button>
-      <button class="theme-button" id="theme-dark" type="button" aria-pressed="false">Dark</button>
+    <div class="display-controls" aria-label="Display controls">
+      <div class="locale-control" role="group" aria-label="Language">
+        <a class="locale-button" href="/?lang=tr" lang="tr" hreflang="tr">TR</a>
+        <a class="locale-button is-active" href="/?lang=en" lang="en" hreflang="en" aria-current="page">EN</a>
+      </div>
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-pressed="false" aria-label="Change theme">
+        <span class="theme-icon" aria-hidden="true"></span>
+        <span>Theme</span>
+      </button>
     </div>
 
     <section class="auth" aria-labelledby="login-title">
@@ -95,16 +101,18 @@ _LOGIN_HTML_TR = (
     _LOGIN_HTML_EN.decode("utf-8")
     .replace('<html lang="en"', '<html lang="tr"', 1)
     .replace("<title>Sign in | ILAIOS</title>", "<title>Giriş yap | ILAIOS</title>", 1)
-    .replace('aria-label="Theme"', 'aria-label="Tema"', 1)
-    .replace(">Light</button>", ">Açık</button>", 1)
-    .replace(">Dark</button>", ">Koyu</button>", 1)
+    .replace('aria-label="Display controls"', 'aria-label="Görünüm kontrolleri"', 1)
+    .replace('aria-label="Language"', 'aria-label="Dil"', 1)
+    .replace('class="locale-button" href="/?lang=tr" lang="tr" hreflang="tr">TR</a>', 'class="locale-button is-active" href="/?lang=tr" lang="tr" hreflang="tr" aria-current="page">TR</a>', 1)
+    .replace('class="locale-button is-active" href="/?lang=en" lang="en" hreflang="en" aria-current="page">EN</a>', 'class="locale-button" href="/?lang=en" lang="en" hreflang="en">EN</a>', 1)
+    .replace('aria-label="Change theme"', 'aria-label="Temayı değiştir"', 1)
+    .replace("<span>Theme</span>", "<span>Tema</span>", 1)
     .replace("<h1 id=\"login-title\">Welcome</h1>", "<h1 id=\"login-title\">Hoş geldiniz</h1>", 1)
     .replace("Choose an account to continue.", "Devam etmek için bir hesap seçin.", 1)
     .replace("Continue with Google", "Google ile devam et", 1)
     .replace("Continue with Microsoft", "Microsoft ile devam et", 1)
     .replace("Continue with GitHub", "GitHub ile devam et", 1)
-    .replace('href="/subscription?lang=en">Plans and subscription',
-             'href="/subscription?lang=tr">Planlar ve abonelik', 1)
+    .replace('href="/subscription?lang=en">Plans and subscription', 'href="/subscription?lang=tr">Planlar ve abonelik', 1)
     .replace(
         "By continuing, you acknowledge the ILAIOS authentication and security controls.",
         "Devam ederek ILAIOS kimlik doğrulama ve güvenlik kontrollerini kabul etmiş olursunuz.",
@@ -141,10 +149,14 @@ html,body{width:100%;min-height:100%}
 body{margin:0;min-height:100dvh;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
 button,a{font:inherit}
 .shell{position:relative;min-height:100dvh;display:grid;place-items:center;padding:48px 20px;background:var(--bg)}
-.theme-control{position:fixed;top:20px;right:22px;display:inline-flex;gap:4px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
-.theme-button{height:30px;padding:0 9px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer}
-.theme-button:hover{color:var(--text);background:var(--button-hover)}
-.theme-button.is-active{color:var(--text);background:var(--button-active)}
+.display-controls{position:fixed;top:20px;right:22px;display:flex;align-items:center;gap:8px}
+.locale-control{display:inline-flex;gap:2px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.locale-button{min-width:34px;height:30px;display:grid;place-items:center;padding:0 8px;border-radius:7px;color:var(--muted);font-size:12px;font-weight:600;text-decoration:none}
+.locale-button:hover{color:var(--text);background:var(--button-hover)}
+.locale-button.is-active{color:var(--text);background:var(--button-active)}
+.theme-toggle{height:38px;display:inline-flex;align-items:center;gap:8px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text);font-size:12px;font-weight:600;cursor:pointer}
+.theme-toggle:hover{background:var(--button-hover);border-color:var(--line-hover)}
+.theme-icon{width:13px;height:13px;border:1.5px solid currentColor;border-radius:50%;display:inline-block;background:linear-gradient(90deg,currentColor 0 50%,transparent 50% 100%)}
 .auth{width:min(100%,384px);text-align:center}
 .brand-lockup{width:218.5px;height:73.6px;margin:0 auto 30px;overflow:hidden;background:var(--bg)}
 .brand-image{display:block;width:100%;height:100%;object-fit:contain;object-position:center;background:var(--bg)}
@@ -164,20 +176,20 @@ h1{margin:0;font-family:"Segoe UI Variable Display","Segoe UI",Inter,ui-sans-ser
 .microsoft-logo{width:18px;height:18px}
 .github-logo{width:20px;height:20px;color:var(--text)}
 .provider[aria-disabled="true"]{color:var(--disabled);pointer-events:none}
-.theme-button:focus-visible,.provider:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.locale-button:focus-visible,.theme-toggle:focus-visible,.provider:focus-visible{outline:2px solid var(--text);outline-offset:2px}
 .notice{max-width:350px;margin:22px auto 0;color:var(--muted);font-size:11px;line-height:1.55}
-@media (max-width:560px){.shell{padding:72px 18px 32px}.theme-control{top:14px;right:14px}.auth{width:min(100%,360px)}.brand-lockup{width:197.8px;height:66.7px;margin-bottom:24px}h1{font-size:25px}.intro{margin-bottom:24px}.provider{height:48px}}
+@media (max-width:560px){.shell{padding:82px 18px 32px}.display-controls{top:14px;right:14px}.auth{width:min(100%,360px)}.brand-lockup{width:197.8px;height:66.7px;margin-bottom:24px}h1{font-size:25px}.intro{margin-bottom:24px}.provider{height:48px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
 """
 
 _LOGIN_JS = b"""(function(){\"use strict\";
-const root=document.documentElement;const lightButton=document.getElementById('theme-light');const darkButton=document.getElementById('theme-dark');
+const root=document.documentElement;const themeToggle=document.getElementById('theme-toggle');
 function storedTheme(){try{return localStorage.getItem('ilaios-theme');}catch(_error){return null;}}
 function storeTheme(value){try{localStorage.setItem('ilaios-theme',value);}catch(_error){return;}}
-function apply(theme){const value=theme==='dark'?'dark':'light';root.dataset.theme=value;const dark=value==='dark';lightButton.classList.toggle('is-active',!dark);darkButton.classList.toggle('is-active',dark);lightButton.setAttribute('aria-pressed',String(!dark));darkButton.setAttribute('aria-pressed',String(dark));const meta=document.querySelector('meta[name=theme-color]');if(meta){meta.setAttribute('content',dark?'#0A0A0A':'#FFFFFF');}}
+function apply(theme){const value=theme==='dark'?'dark':'light';root.dataset.theme=value;const dark=value==='dark';themeToggle.setAttribute('aria-pressed',String(dark));const meta=document.querySelector('meta[name=theme-color]');if(meta){meta.setAttribute('content',dark?'#0A0A0A':'#FFFFFF');}}
 function normalizeBrandBackground(image,dark){if(!image){return;}function run(){if(!image.naturalWidth||!image.naturalHeight){return;}try{const canvas=document.createElement('canvas');const width=image.naturalWidth;const height=image.naturalHeight;canvas.width=width;canvas.height=height;const context=canvas.getContext('2d',{willReadFrequently:true});if(!context){return;}context.drawImage(image,0,0);const frame=context.getImageData(0,0,width,height);const pixels=frame.data;const seen=new Uint8Array(width*height);const queue=new Int32Array(width*height);let head=0;let tail=0;function eligible(position){const offset=position*4;const red=pixels[offset];const green=pixels[offset+1];const blue=pixels[offset+2];return dark?(red<=12&&green<=12&&blue<=16):(red>=248&&green>=248&&blue>=248);}function enqueue(position){if(position<0||position>=width*height||seen[position]||!eligible(position)){return;}seen[position]=1;queue[tail++]=position;}for(let x=0;x<width;x++){enqueue(x);enqueue((height-1)*width+x);}for(let y=0;y<height;y++){enqueue(y*width);enqueue(y*width+width-1);}while(head<tail){const position=queue[head++];const offset=position*4;pixels[offset]=dark?10:255;pixels[offset+1]=dark?10:255;pixels[offset+2]=dark?10:255;pixels[offset+3]=255;const x=position%width;const y=(position/width)|0;if(x>0){enqueue(position-1);}if(x+1<width){enqueue(position+1);}if(y>0){enqueue(position-width);}if(y+1<height){enqueue(position+width);}}context.putImageData(frame,0,0);canvas.className=image.className;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',image.alt||'ILAIOS');image.replaceWith(canvas);}catch(_error){return;}}if(image.complete){run();}else{image.addEventListener('load',run,{once:true});}}
 normalizeBrandBackground(document.querySelector('.brand-image-light'),false);normalizeBrandBackground(document.querySelector('.brand-image-dark'),true);
-apply(storedTheme()==='dark'?'dark':'light');lightButton.addEventListener('click',function(){apply('light');storeTheme('light');});darkButton.addEventListener('click',function(){apply('dark');storeTheme('dark');});
+apply(storedTheme()==='dark'?'dark':'light');themeToggle.addEventListener('click',function(){const next=root.dataset.theme==='dark'?'light':'dark';apply(next);storeTheme(next);});
 fetch('/auth/providers',{credentials:'same-origin',cache:'no-store'}).then(function(response){if(!response.ok){return null;}return response.json();}).then(function(payload){if(!payload||!Array.isArray(payload.providers)){return;}const available=new Set(payload.providers);for(const link of document.querySelectorAll('[data-provider]')){const provider=link.getAttribute('data-provider');if(!available.has(provider)){link.setAttribute('aria-disabled','true');link.setAttribute('tabindex','-1');link.removeAttribute('href');}}}).catch(function(){return;});
 })();
 """
