@@ -99,6 +99,20 @@ Map<String, AgentRuntimeDisplayState> resolveCanonicalAgentRuntimeStates(
 
 AgentRuntimeDisplayState classifyAgentRuntimeDisplayState(String raw) {
   final value = _normalize(raw);
+  // Fail-closed states must be classified before positive substring matches.
+  // In particular, `unavailable` contains `available` after normalization and
+  // must never be projected as idle/available work capacity.
+  if (value.contains('unknown') ||
+      value.contains('stale') ||
+      value.contains('unavailable') ||
+      value.contains('offline') ||
+      value.contains('disconnected') ||
+      value.contains('disabled') ||
+      value.contains('stopped') ||
+      value.contains('dead') ||
+      value.contains('unregistered')) {
+    return AgentRuntimeDisplayState.offline;
+  }
   if (value.contains('busy') ||
       value.contains('running') ||
       value.contains('executing') ||
