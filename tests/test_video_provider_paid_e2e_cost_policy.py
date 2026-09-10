@@ -2,17 +2,15 @@ from __future__ import annotations
 
 import inspect
 from collections.abc import Mapping
+from pathlib import Path
+
+import pytest
 
 from src.video_automation import provider_production_certification
-from src.video_automation.commercial_admission import (
-    CommercialAdmissionEngine,
-    CommercialPricingPolicy,
-    LockedVideoQuote,
-    ProviderPricingSnapshot,
-    TaxProfile,
-    VideoCostEnvelope,
-)
 from src.video_automation.generation_job_polling import ProviderJobStatus
+from src.video_automation.managed_credit_store import ManagedCreditLedgerStore
+from src.video_automation.managed_credits import ManagedCreditAccount, ProviderCostQuote
+from src.video_automation.openrouter_managed_video_provider import OPENROUTER_MANAGED_PROVIDER_NAME
 from src.video_automation.openrouter_managed_video_runtime import (
     OpenRouterManagedVideoGenerationJobPoller,
     actual_cost_microusd_from_observation,
@@ -57,29 +55,6 @@ class _Transport(OpenRouterTransport):
         raise AssertionError("asset retrieval is outside this cost-policy unit test")
 
 
-def _quote() -> LockedVideoQuote:
-    engine = CommercialAdmissionEngine(CommercialPricingPolicy())
-    return engine.create_locked_quote(
-        quote_id="paid-e2e-quote",
-        now_epoch_s=1_000,
-        tax_profile=TaxProfile("TEST", "TEST", 0),
-        pricing=ProviderPricingSnapshot(
-            provider_name="openrouter-video-managed",
-            model_id="paid-video-model",
-            pricing_fingerprint="catalog-sha",
-            observed_at_epoch_s=1_000,
-            expires_at_epoch_s=1_300,
-            estimated_job_cost_microusd=200_000,
-            max_job_cost_microusd=200_000,
-        ),
-        costs=VideoCostEnvelope(provider_generation_microusd=200_000),
-        duration_seconds=4,
-        aggregate_generated_seconds=4,
-        resolution="480p",
-        shot_count=1,
-    )
-
-
 def test_paid_terminal_cost_may_be_positive() -> None:
     poller = OpenRouterManagedVideoGenerationJobPoller(
         "server-secret",
@@ -91,48 +66,71 @@ def test_paid_terminal_cost_may_be_positive() -> None:
             }
         ),
     )
-
     observation = poller.poll("job-paid-001")
-
     assert observation.status is ProviderJobStatus.SUCCEEDED
     assert actual_cost_microusd_from_observation(observation) == 170_000
 
 
-def test_positive_paid_cost_passes_when_locked_economics_remain_safe() -> None:
-    quote = _quote()
-    engine = CommercialAdmissionEngine(CommercialPricingPolicy())
-
-    reconciliation = engine.reconcile(
-        quote=quote,
-        actual_provider_cost_microusd=170_000,
-        actual_other_variable_cost_microusd=0,
+def test_managed_credit_settlement_accepts_cost_within_reserved_ceiling(tmp_path: Path) -> None:
+    store = ManagedCreditLedgerStore(tmp_path / "credits")
+    account = ManagedCreditAccount(
+        tenant_id="tenant",
+        user_id="user",
+        available_microusd=1_000_000,
     )
-
-    assert reconciliation.provider_quarantined is False
-    assert reconciliation.actual_provider_cost_microusd == 170_000
-    assert reconciliation.actual_margin_bps >= quote.hard_min_margin_bps
-
-
-def test_paid_cost_above_locked_ceiling_fails_closed() -> None:
-    quote = _quote()
-    engine = CommercialAdmissionEngine(CommercialPricingPolicy())
-
-    reconciliation = engine.reconcile(
-        quote=quote,
-        actual_provider_cost_microusd=200_001,
-        actual_other_variable_cost_microusd=0,
+    quote = ProviderCostQuote(
+        provider_name=OPENROUTER_MANAGED_PROVIDER_NAME,
+        model_id="paid-video-model",
+        estimated_cost_microusd=170_000,
+        max_cost_microusd=200_000,
     )
+    outcome = store.reserve(
+        account=account,
+        request_id="request-1",
+        routing_decision_id="route-1",
+        quote=quote,
+    )
+    settled = store.settle(
+        authorization_id=outcome.authorization.authorization_id,
+        actual_cost_microusd=170_000,
+        provider_job_id="job-1",
+    )
+    assert settled.settlement.actual_cost_microusd == 170_000
 
-    assert reconciliation.provider_quarantined is True
-    assert reconciliation.quarantine_reason is not None
-    assert "locked provider ceiling" in reconciliation.quarantine_reason
+
+def test_managed_credit_settlement_fails_above_reserved_ceiling(tmp_path: Path) -> None:
+    store = ManagedCreditLedgerStore(tmp_path / "credits")
+    account = ManagedCreditAccount(
+        tenant_id="tenant",
+        user_id="user",
+        available_microusd=1_000_000,
+    )
+    quote = ProviderCostQuote(
+        provider_name=OPENROUTER_MANAGED_PROVIDER_NAME,
+        model_id="paid-video-model",
+        estimated_cost_microusd=170_000,
+        max_cost_microusd=200_000,
+    )
+    outcome = store.reserve(
+        account=account,
+        request_id="request-1",
+        routing_decision_id="route-1",
+        quote=quote,
+    )
+    with pytest.raises(Exception, match="exceeded authorized maximum"):
+        store.settle(
+            authorization_id=outcome.authorization.authorization_id,
+            actual_cost_microusd=200_001,
+            provider_job_id="job-1",
+        )
 
 
-def test_paid_certification_never_reintroduces_free_only_poller() -> None:
+def test_paid_certification_contains_no_legacy_customer_payment_flow() -> None:
     source = inspect.getsource(provider_production_certification)
-
     assert "OpenRouterManagedVideoGenerationJobPoller" in source
     assert "OpenRouterVideoGenerationJobPoller(" not in source
-    assert '"cost_mode": "COMMERCIAL_BOUNDED"' in source
-    assert 'receipt["customer_quote"]' in source
-    assert 'receipt["commercial_reconciliation"]' in source
+    assert '"cost_mode": "MANAGED_CREDIT_BOUNDED"' in source
+    assert "PaymentAuthorization" not in source
+    assert "gross_customer_price_microusd" not in source
+    assert 'receipt["customer_quote"]' not in source
+    assert "commercial_reconciliation" not in source

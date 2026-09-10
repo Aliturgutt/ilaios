@@ -11,7 +11,7 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from http import HTTPStatus
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import parse_qs, urlsplit
 
 from apps.web_app_runtime.server import (
     AppHTTPServer,
@@ -26,7 +26,7 @@ _BRAND_DIR = _REPO_ROOT / "brand" / "assets"
 _BRAND_LIGHT = (_BRAND_DIR / "13-ilaios-primary-horizontal-light.jpg").read_bytes()
 _BRAND_DARK = (_BRAND_DIR / "02-ilaios-primary-horizontal-dark.jpg").read_bytes()
 
-_LOGIN_HTML = """<!doctype html>
+_LOGIN_HTML_EN = """<!doctype html>
 <html lang="en" data-theme="light">
 <head>
   <meta charset="utf-8">
@@ -49,7 +49,7 @@ _LOGIN_HTML = """<!doctype html>
         <img class="brand-image brand-image-dark" src="/login/brand-dark.jpg" alt="ILAIOS">
       </div>
 
-      <h1 id="login-title">Welcome back</h1>
+      <h1 id="login-title">Welcome</h1>
       <p class="intro">Choose an account to continue.</p>
 
       <div class="providers" id="providers" aria-live="polite">
@@ -88,6 +88,25 @@ _LOGIN_HTML = """<!doctype html>
 </body>
 </html>
 """.encode("utf-8")
+
+_LOGIN_HTML_TR = (
+    _LOGIN_HTML_EN.decode("utf-8")
+    .replace('<html lang="en"', '<html lang="tr"', 1)
+    .replace("<title>Sign in | ILAIOS</title>", "<title>Giriş yap | ILAIOS</title>", 1)
+    .replace('aria-label="Theme"', 'aria-label="Tema"', 1)
+    .replace(">Light</button>", ">Açık</button>", 1)
+    .replace(">Dark</button>", ">Koyu</button>", 1)
+    .replace("<h1 id=\"login-title\">Welcome</h1>", "<h1 id=\"login-title\">Hoş geldiniz</h1>", 1)
+    .replace("Choose an account to continue.", "Devam etmek için bir hesap seçin.", 1)
+    .replace("Continue with Google", "Google ile devam et", 1)
+    .replace("Continue with Microsoft", "Microsoft ile devam et", 1)
+    .replace("Continue with GitHub", "GitHub ile devam et", 1)
+    .replace(
+        "By continuing, you acknowledge the ILAIOS authentication and security controls.",
+        "Devam ederek ILAIOS kimlik doğrulama ve güvenlik kontrollerini kabul etmiş olursunuz.",
+        1,
+    )
+).encode("utf-8")
 
 _LOGIN_CSS = b""":root {
   color-scheme: light;
@@ -174,10 +193,20 @@ class LoginAppRuntime(AppRuntime):
         if split.path == "/":
             if method != "GET":
                 return self._method_not_allowed("GET")
+            language = "tr"
             if split.query:
-                return self._json_error(HTTPStatus.BAD_REQUEST, "unexpected query parameters")
+                query = parse_qs(split.query, keep_blank_values=True)
+                if (
+                    set(query) != {"lang"}
+                    or len(query["lang"]) != 1
+                    or query["lang"][0] not in {"tr", "en"}
+                ):
+                    return self._json_error(
+                        HTTPStatus.BAD_REQUEST, "unexpected query parameters"
+                    )
+                language = query["lang"][0]
             return self._asset_response(
-                _LOGIN_HTML,
+                _LOGIN_HTML_TR if language == "tr" else _LOGIN_HTML_EN,
                 "text/html; charset=utf-8",
                 csp=(
                     "default-src 'none'; script-src 'self'; style-src 'self'; "
