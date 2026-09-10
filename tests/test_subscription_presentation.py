@@ -102,7 +102,7 @@ def test_page_and_assets_render(tmp_path: Path) -> None:
         ).body
         assert b"data-theme=dark" in css
         assert b"gradient" not in css
-        assert b"brand-image-dark{display:block;mix-blend-mode:screen}" in css
+        assert b"brand-image-dark{display:block;mix-blend-mode:lighten}" in css
         assert b"subscription-shell{max-width:1280px;margin:auto;padding:24px 24px 28px}" in css
         assert b"account-intro>.eyebrow,.account-intro>h1,.account-intro>.lead{text-align:center}" in css
         assert b"account-actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;align-items:stretch" in css
