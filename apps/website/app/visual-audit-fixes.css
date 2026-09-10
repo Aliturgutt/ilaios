@@ -76,6 +76,65 @@ main:has(> .about-intro) .founder-row h2 {
     min-width: 0;
     min-height: 0 !important;
   }
+
+  /* Plans — match the approved five-card desktop reference. */
+  #plans .use-factory-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+    align-items: stretch;
+  }
+
+  #plans .use-factory-card {
+    min-width: 0;
+    min-height: 620px !important;
+    padding: 28px 22px !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 14px !important;
+    display: flex !important;
+    flex-direction: column;
+    background: var(--surface) !important;
+  }
+
+  #plans .use-factory-card:nth-child(4) {
+    border: 2px solid var(--text) !important;
+  }
+}
+
+#plans .use-factory-card > div:first-child {
+  margin-bottom: 20px;
+}
+
+#plans .use-factory-card h3 {
+  font-size: 1.15rem !important;
+  line-height: 1.2 !important;
+  margin: 0 0 22px !important;
+}
+
+#plans .use-factory-card > p {
+  font-size: .95rem !important;
+  line-height: 1.5 !important;
+  margin-bottom: 22px !important;
+}
+
+#plans .use-factory-card ul {
+  margin: 0 0 22px !important;
+  padding-left: 0 !important;
+  list-style: none !important;
+}
+
+#plans .use-factory-card li {
+  padding: 9px 0 !important;
+  border-bottom: 1px solid var(--line) !important;
+  font-size: .9rem !important;
+  line-height: 1.4 !important;
+}
+
+#plans .use-factory-card > small:last-child {
+  display: block;
+  margin-top: auto !important;
+  padding-top: 18px;
+  font-size: .82rem !important;
+  line-height: 1.5 !important;
 }
 
 /* F — Align compact page heroes to the shared shell while retaining readable copy width. */
@@ -152,6 +211,23 @@ html[data-theme="light"] .card :where(p, small) {
 html[data-theme="light"] .spatial-map-detail p {
   color: #2A2A2A !important;
   -webkit-text-fill-color: #2A2A2A !important;
+}
+
+@media (max-width: 1100px) and (min-width: 761px) {
+  #plans .use-factory-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  #plans .use-factory-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  #plans .use-factory-card {
+    min-height: 0 !important;
+    padding: 22px 18px !important;
+  }
 }
 
 @media (max-width: 900px) {
