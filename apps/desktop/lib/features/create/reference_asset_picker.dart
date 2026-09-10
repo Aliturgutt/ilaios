@@ -327,22 +327,22 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
       key: key,
       onPressed: widget.enabled ? () => _openPane(pane) : null,
       style: OutlinedButton.styleFrom(
-        minimumSize: const Size(143, 47),
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        minimumSize: const Size(132, 38),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         foregroundColor: Theme.of(context).colorScheme.onSurface,
         backgroundColor: Theme.of(context).colorScheme.surfaceContainerLowest,
         side: BorderSide(color: Theme.of(context).colorScheme.outlineVariant),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-        textStyle: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w700),
+        textStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
       ),
-      icon: Icon(icon, size: 20),
+      icon: Icon(icon, size: 18),
       label: Text(count == 0 ? label : '$label ($count)'),
     );
   }
 
   Widget _attachmentRow() => Wrap(
-        spacing: 12,
-        runSpacing: 8,
+        spacing: 10,
+        runSpacing: 6,
         children: [
           _attachmentButton(
             key: const Key('home-add-document'),
@@ -372,28 +372,28 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
           Text(
             _t('ILAIOS Factories', 'ILAIOS Fabrikaları'),
             style: const TextStyle(
-              fontSize: 22,
+              fontSize: 18,
               height: 1.1,
               fontWeight: FontWeight.w800,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             _t(
               'One or more factories can work together depending on the goal.',
               'Hedefine göre bir veya birden fazla fabrika birlikte çalışabilir.',
             ),
             style: TextStyle(
-              fontSize: 13.5,
+              fontSize: 12.5,
               color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 8),
           LayoutBuilder(
             builder: (context, constraints) {
               final columns = constraints.maxWidth >= 980 ? 3 : 2;
-              const horizontalGap = 14.0;
-              const verticalGap = 13.0;
+              const horizontalGap = 12.0;
+              const verticalGap = 8.0;
               final cardWidth =
                   ((constraints.maxWidth - horizontalGap * (columns - 1)) / columns)
                       .floorToDouble();
@@ -401,7 +401,7 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
                   .scale(1.0)
                   .clamp(1.0, 1.5)
                   .toDouble();
-              final cardHeight = 84.0 * textScale;
+              final cardHeight = 68.0 * textScale;
               return Wrap(
                 spacing: horizontalGap,
                 runSpacing: verticalGap,
@@ -412,7 +412,7 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
                       height: cardHeight,
                       child: Container(
                         key: ValueKey('home-factory-${index + 1}'),
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surfaceContainerLowest,
                           border: Border.all(
@@ -424,10 +424,10 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
                           children: [
                             Icon(
                               _factoryFamilies[index].icon,
-                              size: 38,
+                              size: 30,
                               color: _factoryFamilies[index].color,
                             ),
-                            const SizedBox(width: 18),
+                            const SizedBox(width: 14),
                             Expanded(
                               child: Column(
                                 mainAxisAlignment: MainAxisAlignment.center,
@@ -440,11 +440,11 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: const TextStyle(
-                                      fontSize: 14.5,
+                                      fontSize: 13.5,
                                       fontWeight: FontWeight.w800,
                                     ),
                                   ),
-                                  const SizedBox(height: 5),
+                                  const SizedBox(height: 3),
                                   Text(
                                     _isTurkish
                                         ? _factoryFamilies[index].trDescription
@@ -452,8 +452,8 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
                                     maxLines: 2,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
-                                      fontSize: 12.5,
-                                      height: 1.2,
+                                      fontSize: 12,
+                                      height: 1.15,
                                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                                     ),
                                   ),
@@ -480,7 +480,7 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           _attachmentRow(),
-          const SizedBox(height: 38),
+          const SizedBox(height: 14),
           _factoryGrid(),
         ],
       );
