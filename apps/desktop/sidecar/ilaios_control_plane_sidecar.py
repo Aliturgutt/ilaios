@@ -359,10 +359,15 @@ def main(argv: Sequence[str] | None = None) -> int:
             pass
         identity_server.shutdown()
 
-    def _force_exit_if_desktop_cleanup_stalls() -> None:
-        if not desktop_exit_cleanup_complete.wait(timeout=3):
-            _terminate_frozen_sidecar_parent()
-            os._exit(0)
+    def _force_exit_after_desktop_owner_loss() -> None:
+        # Once the authoritative Desktop process is gone, the bundled sidecar
+        # may finish graceful server cleanup but still be held alive by a
+        # runtime-owned non-daemon thread. Give cleanup a bounded window, then
+        # terminate this exact sidecar process unconditionally so owner loss
+        # cannot leave a packaged control-plane orphan.
+        desktop_exit_cleanup_complete.wait(timeout=3)
+        _terminate_frozen_sidecar_parent()
+        os._exit(0)
 
     def stop_identity_if_desktop_exits() -> None:
         desktop_pid = arguments.desktop_pid
@@ -370,13 +375,11 @@ def main(argv: Sequence[str] | None = None) -> int:
             return
         _wait_for_windows_process_exit(desktop_pid)
         # A GUI crash/forced termination cannot run DesktopRuntime.dispose().
-        # Start a bounded fail-safe before graceful server shutdown so any
-        # non-daemon runtime worker or PyInstaller bootloader cannot leave the
-        # packaged control plane orphaned indefinitely. Normal app exit still
-        # reaches the authenticated /v1/runtime/shutdown path first; this is a
-        # crash/owner-loss fallback only.
+        # Start a bounded owner-loss fail-safe before graceful server shutdown.
+        # Normal app exit reaches the authenticated /v1/runtime/shutdown path
+        # first; this is only the authoritative Desktop-owner-loss fallback.
         threading.Thread(
-            target=_force_exit_if_desktop_cleanup_stalls,
+            target=_force_exit_after_desktop_owner_loss,
             name="ilaios-desktop-bounded-exit",
             daemon=True,
         ).start()
