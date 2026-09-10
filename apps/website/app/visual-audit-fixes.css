@@ -85,7 +85,6 @@ main:has(> .about-intro) .founder-row h2 {
     max-width: 460px;
   }
 
-  /* Architecture primary — reduce unused lower-right field by matching the editorial list density to the map. */
   .architecture-primary {
     grid-template-columns: minmax(300px, .62fr) minmax(0, 1.38fr) !important;
     gap: 32px !important;
@@ -122,7 +121,6 @@ main:has(> .about-intro) .founder-row h2 {
     padding-bottom: 36px !important;
   }
 
-  /* Canonical request chain — 12 steps render as a balanced 6 + 6 desktop grid. */
   .canonical-linear:has(> :nth-child(12):last-child) {
     display: grid !important;
     grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
@@ -139,7 +137,6 @@ main:has(> .about-intro) .founder-row h2 {
     display: none !important;
   }
 
-  /* Solutions 01–04 — keep the four outcome cards in one balanced desktop row. */
   .solution-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
   }
@@ -149,7 +146,6 @@ main:has(> .about-intro) .founder-row h2 {
     min-height: 0 !important;
   }
 
-  /* Plans — match the approved five-card desktop reference. */
   #plans .use-factory-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
     gap: 14px !important;
@@ -171,7 +167,6 @@ main:has(> .about-intro) .founder-row h2 {
     border: 2px solid var(--text) !important;
   }
 
-  /* Payment steps — compact the section and keep 01–04 on one desktop row. */
   #plans + .section {
     padding-top: 44px !important;
     padding-bottom: 44px !important;
@@ -216,84 +211,26 @@ main:has(> .about-intro) .founder-row h2 {
   }
 }
 
-#plans .use-factory-card > div:first-child {
-  margin-bottom: 20px;
-}
+#plans .use-factory-card > div:first-child { margin-bottom: 20px; }
+#plans .use-factory-card h3 { font-size: 1.15rem !important; line-height: 1.2 !important; margin: 0 0 22px !important; }
+#plans .use-factory-card > p { font-size: .95rem !important; line-height: 1.5 !important; margin-bottom: 22px !important; }
+#plans .use-factory-card ul { margin: 0 0 22px !important; padding-left: 0 !important; list-style: none !important; }
+#plans .use-factory-card li { padding: 9px 0 !important; border-bottom: 1px solid var(--line) !important; font-size: .9rem !important; line-height: 1.4 !important; }
+#plans .use-factory-card > small:last-child { display: block; margin-top: auto !important; padding-top: 18px; font-size: .82rem !important; line-height: 1.5 !important; }
 
-#plans .use-factory-card h3 {
-  font-size: 1.15rem !important;
-  line-height: 1.2 !important;
-  margin: 0 0 22px !important;
-}
+.compact-page-hero { max-width: 1240px !important; }
+.compact-page-hero > :where(.eyebrow, h1, .lead, .actions) { max-width: 760px; }
 
-#plans .use-factory-card > p {
-  font-size: .95rem !important;
-  line-height: 1.5 !important;
-  margin-bottom: 22px !important;
-}
-
-#plans .use-factory-card ul {
-  margin: 0 0 22px !important;
-  padding-left: 0 !important;
-  list-style: none !important;
-}
-
-#plans .use-factory-card li {
-  padding: 9px 0 !important;
-  border-bottom: 1px solid var(--line) !important;
-  font-size: .9rem !important;
-  line-height: 1.4 !important;
-}
-
-#plans .use-factory-card > small:last-child {
-  display: block;
-  margin-top: auto !important;
-  padding-top: 18px;
-  font-size: .82rem !important;
-  line-height: 1.5 !important;
-}
-
-/* F — Align compact page heroes to the shared shell while retaining readable copy width. */
-.compact-page-hero {
-  max-width: 1240px !important;
-}
-
-.compact-page-hero > :where(.eyebrow, h1, .lead, .actions) {
-  max-width: 760px;
-}
-
-/* G — Remove desktop dead space from the homepage product preview. */
 @media (min-width: 901px) {
-  .product-experience-grid {
-    min-height: 260px !important;
-  }
-
-  .product-experience {
-    min-height: 0 !important;
-  }
+  .product-experience-grid { min-height: 260px !important; }
+  .product-experience { min-height: 0 !important; }
 }
 
-/* H — Let audience cards follow their content instead of reserving empty height. */
-.audience-outcome-list article {
-  min-height: 148px !important;
-}
+.audience-outcome-list article { min-height: 148px !important; }
+.site-footer { padding-top: 28px !important; }
+.footer-main { padding-top: 20px !important; }
+.site-footer a, .site-footer p { font-size: .8125rem !important; line-height: 1.5 !important; }
 
-/* I — Reduce compounded footer whitespace and keep footer copy comfortably readable. */
-.site-footer {
-  padding-top: 28px !important;
-}
-
-.footer-main {
-  padding-top: 20px !important;
-}
-
-.site-footer a,
-.site-footer p {
-  font-size: .8125rem !important;
-  line-height: 1.5 !important;
-}
-
-/* J — Light-theme dark-surface/security copy must never resolve to white on white. */
 html[data-theme="light"] :where(.dark-surface, a.dark-surface, .card.dark-surface) {
   background: #FFFFFF !important;
   border-color: #B3B3B3 !important;
@@ -301,23 +238,16 @@ html[data-theme="light"] :where(.dark-surface, a.dark-surface, .card.dark-surfac
   -webkit-text-fill-color: #2A2A2A !important;
 }
 
-html[data-theme="light"] :where(
-  .dark-surface p,
-  .dark-surface small,
-  .security-process small,
-  .principle-directory p
-) {
+html[data-theme="light"] :where(.dark-surface p, .dark-surface small, .security-process small, .principle-directory p) {
   color: #5A5A5A !important;
   -webkit-text-fill-color: #5A5A5A !important;
 }
 
-/* Security trust gate — client card is a light surface in light theme, so its labels must be dark. */
 html[data-theme="light"] .trust-gate > .dark-surface:not(.is-authority) :where(span, strong) {
   color: #0A0A0A !important;
   -webkit-text-fill-color: #0A0A0A !important;
 }
 
-/* K — Keep card surface and copy in the same light-theme contrast model. */
 html[data-theme="light"] .card {
   background: #FFFFFF !important;
   border-color: #B3B3B3 !important;
@@ -329,37 +259,59 @@ html[data-theme="light"] .card :where(p, small) {
   -webkit-text-fill-color: #5A5A5A !important;
 }
 
-/* L — Selected spatial-map detail copy must remain readable in light mode. */
 html[data-theme="light"] .spatial-map-detail p {
   color: #2A2A2A !important;
   -webkit-text-fill-color: #2A2A2A !important;
 }
 
-@media (max-width: 1100px) and (min-width: 761px) {
-  #plans .use-factory-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
+/* Docs directory — preserve readable text on hover/focus and give non-link cards the same complete frame. */
+html[data-theme="light"] .detail-directory > a:hover,
+html[data-theme="light"] .detail-directory > a:focus-visible {
+  background: #F2F2F2 !important;
+  border-color: #808080 !important;
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+}
 
-  #plans + .section .use-step-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-  }
+html[data-theme="light"] .detail-directory > a:hover :where(span, strong, i),
+html[data-theme="light"] .detail-directory > a:focus-visible :where(span, strong, i) {
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+}
+
+.detail-directory > article.card {
+  min-height: 116px !important;
+  padding: 20px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--v2-radius) !important;
+  background: var(--surface) !important;
+  box-sizing: border-box !important;
+}
+
+html[data-theme="dark"] .detail-directory > a:hover,
+html[data-theme="dark"] .detail-directory > a:focus-visible {
+  background: #242424 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html[data-theme="dark"] .detail-directory > a:hover :where(span, strong, i),
+html[data-theme="dark"] .detail-directory > a:focus-visible :where(span, strong, i) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+@media (max-width: 1100px) and (min-width: 761px) {
+  #plans .use-factory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  #plans + .section .use-step-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
 }
 
 @media (max-width: 760px) {
   #plans .use-factory-grid,
-  #plans + .section .use-step-grid {
-    grid-template-columns: 1fr !important;
-  }
-
+  #plans + .section .use-step-grid { grid-template-columns: 1fr !important; }
   #plans .use-factory-card,
-  #plans + .section .use-step-grid > article {
-    min-height: 0 !important;
-    padding: 22px 18px !important;
-  }
-
-  .factory-visual-section .themed-diagram {
-    max-width: 100% !important;
-  }
+  #plans + .section .use-step-grid > article { min-height: 0 !important; padding: 22px 18px !important; }
+  .factory-visual-section .themed-diagram { max-width: 100% !important; }
 }
 
 @media (max-width: 900px) {
@@ -368,16 +320,7 @@ html[data-theme="light"] .spatial-map-detail p {
   main:has(> .about-intro) section h2 {
     font-size: clamp(1.6rem, 5vw, 1.9rem) !important;
   }
-
-  main:has(> .about-intro) .founder-row h2 {
-    font-size: .9rem !important;
-  }
-
-  .compact-page-hero > :where(.eyebrow, h1, .lead, .actions) {
-    max-width: 100%;
-  }
-
-  .audience-outcome-list article {
-    min-height: 0 !important;
-  }
+  main:has(> .about-intro) .founder-row h2 { font-size: .9rem !important; }
+  .compact-page-hero > :where(.eyebrow, h1, .lead, .actions) { max-width: 100%; }
+  .audience-outcome-list article { min-height: 0 !important; }
 }
