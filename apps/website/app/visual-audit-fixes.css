@@ -85,6 +85,43 @@ main:has(> .about-intro) .founder-row h2 {
     max-width: 460px;
   }
 
+  /* Architecture primary — reduce unused lower-right field by matching the editorial list density to the map. */
+  .architecture-primary {
+    grid-template-columns: minmax(300px, .62fr) minmax(0, 1.38fr) !important;
+    gap: 32px !important;
+    align-items: start !important;
+  }
+
+  .architecture-primary > div:first-child > h2 {
+    margin-bottom: 14px !important;
+  }
+
+  .architecture-primary .architecture-layer-list article {
+    grid-template-columns: 28px minmax(132px, .38fr) minmax(0, 1fr) !important;
+    gap: 10px !important;
+    padding: 9px 0 !important;
+  }
+
+  .architecture-primary .architecture-layer-list article > strong {
+    font-size: .86rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .architecture-primary .architecture-layer-list article > p {
+    font-size: .78rem !important;
+    line-height: 1.42 !important;
+  }
+
+  .architecture-primary > .spatial-map {
+    align-self: start !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  section:has(> .architecture-primary) {
+    padding-bottom: 36px !important;
+  }
+
   /* Canonical request chain — 12 steps render as a balanced 6 + 6 desktop grid. */
   .canonical-linear:has(> :nth-child(12):last-child) {
     display: grid !important;
