@@ -79,6 +79,41 @@ main:has(> .about-intro) .founder-row h2 {
   aspect-ratio: 16 / 9 !important;
 }
 
+/* Resources — reduce unused vertical field and keep heading/cards proportionate. */
+.resources-hero {
+  padding-top: 38px !important;
+  padding-bottom: 34px !important;
+}
+
+.resources-hero h1 {
+  margin-bottom: 14px !important;
+}
+
+.resources-insights {
+  padding-top: 38px !important;
+  padding-bottom: 40px !important;
+}
+
+.resources-insights .compact-heading-row {
+  margin-bottom: 24px !important;
+}
+
+.resources-insights .compact-heading-row h2 {
+  max-width: 760px !important;
+  font-size: clamp(1.75rem, 2.2vw, 2rem) !important;
+  line-height: 1.18 !important;
+}
+
+.resources-insights .detail-directory {
+  align-items: stretch !important;
+}
+
+.resources-insights .detail-directory > a {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 18px 20px !important;
+}
+
 @media (min-width: 901px) {
   main:has(> .audience-hero) section h2,
   main:has(> .about-intro) section h2 {
@@ -330,6 +365,8 @@ html[data-theme="dark"] .detail-directory > a:focus-visible :where(span, strong,
   #plans .use-factory-card,
   #plans + .section .use-step-grid > article { min-height: 0 !important; padding: 22px 18px !important; }
   .factory-visual-section .themed-diagram { max-width: 100% !important; }
+  .resources-hero { padding-top: 28px !important; padding-bottom: 26px !important; }
+  .resources-insights { padding-top: 30px !important; padding-bottom: 32px !important; }
 }
 
 @media (max-width: 900px) {
