@@ -37,6 +37,7 @@ def test_free_plan_is_fail_closed_for_paid_provider_dispatch() -> None:
     free = get_commercial_plan("FREE")
     assert free.paid_provider_allowed is False
     assert free.monthly_provider_budget_usd == 0
+    assert free.paid_dispatch_budget_verified is False
     assert free.workspace_users == 1
     assert free.max_concurrent_jobs == 1
     assert free.max_active_projects == 3
@@ -47,10 +48,11 @@ def test_free_plan_is_fail_closed_for_paid_provider_dispatch() -> None:
 
 
 def test_paid_plans_remain_fail_closed_until_provider_budget_is_configured() -> None:
-    for plan_id in ("PRO", "BUSINESS", "POWER"):
+    for plan_id in ("PRO", "BUSINESS", "POWER", "ENTERPRISE"):
         plan = get_commercial_plan(plan_id)
         assert plan.paid_provider_allowed is True
         assert plan.monthly_provider_budget_usd is None
+        assert plan.paid_dispatch_budget_verified is False
 
 
 def test_unknown_plan_is_rejected() -> None:
