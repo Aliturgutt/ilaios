@@ -300,7 +300,7 @@ class OpenRouterVideoGenerationProvider:
             ),
             "catalog_zero_cost": True,
             "catalog_zero_cost_evidence_json": json.dumps(
-                dict(catalog_evidence), sort_keys=True, separators=(",", ":")
+                _sanitize_payload(catalog_evidence), sort_keys=True, separators=(",", ":")
             ),
             "catalog_zero_cost_evidence_source": str(
                 catalog_evidence.get("source", "openrouter_videos_models")
