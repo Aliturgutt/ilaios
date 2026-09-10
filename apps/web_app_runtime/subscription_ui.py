@@ -140,8 +140,7 @@ def render_subscription(locale: str) -> bytes:
 <main class="subscription-shell">
 <section class="plans-section" aria-labelledby="plans-title"><div class="section-heading"><h2 id="plans-title">{copy('Choose your plan', 'Planınızı seçin')}</h2><span>{copy('Monthly plans · USD', 'Aylık planlar · TL')}</span></div>
 <div class="plans">{''.join(cards)}</div>
-<p class="note">{copy('Model and quality choices use the same video pool at different rates. These are not separate model allowances.', 'Model ve kalite seçimi aynı video havuzunu farklı hızlarda tüketir. Süreler model başına ayrı haklar değildir.')}</p>
-<p class="note payment-note">{copy('Payment is not available yet. No charge or automatic plan change will occur.', 'Ödeme henüz kullanılamıyor. Tahsilat veya otomatik plan değişikliği yapılmaz.')}</p></section>
+<p class="note">{copy('Model and quality choices use the same video pool at different rates. These are not separate model allowances.', 'Model ve kalite seçimi aynı video havuzunu farklı hızlarda tüketir. Süreler model başına ayrı haklar değildir.')}</p></section>
 <section class="account-intro" aria-labelledby="subscription-title"><div class="eyebrow">ILAIOS / {copy('YOUR ACCOUNT', 'HESABINIZ')}</div>
 <h1 id="subscription-title">{escape(title)}</h1><p class="lead">{copy('One account. Included capacity across ILAIOS App and Desktop.', 'Tek hesap. ILAIOS App ve Desktop boyunca planınıza dahil kapasite.')}</p>
 <div class="value-strip" aria-label="{copy('Platform value', 'Platform kapsamı')}"><strong>{copy('9 production factories', '9 üretim fabrikası')}</strong><span>{copy('One subscription authority', 'Tek abonelik yetkisi')}</span><span>{copy('No automatic overage charges', 'Otomatik limit aşımı ücreti yok')}</span></div></section>
