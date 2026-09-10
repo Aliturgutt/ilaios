@@ -1,7 +1,7 @@
 """Read-only subscription projection; no pricing or entitlement authority.
 
 The caller supplies the incumbent commercial store and a verified principal.
-Missing runtime wiring, prices, usage and lifecycle policy remain unavailable.
+Missing runtime wiring, usage and lifecycle policy remain unavailable.
 """
 
 from __future__ import annotations
@@ -27,10 +27,11 @@ def plan_catalog(locale: str, currency: str | None = None) -> dict[str, object]:
     plans: list[dict[str, object]] = []
     for plan_id in commercial_plan_ids():
         plan = get_commercial_plan(plan_id)
-        # USD is a catalog reference, never a client-calculated checkout quote.
-        amount = plan.monthly_price_usd if selected_currency == "USD" else None
-        if plan.monthly_price_usd == 0:
-            amount = 0
+        amount = (
+            plan.monthly_price_try
+            if selected_currency == "TRY"
+            else plan.monthly_price_usd
+        )
         plans.append({
             "plan_id": plan_id,
             "parent": None if plan.parent is None else plan.parent.value,
