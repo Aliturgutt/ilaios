@@ -61,6 +61,24 @@ main:has(> .about-intro) .founder-row h2 {
   letter-spacing: -.01em !important;
 }
 
+/* Factory diagrams — preserve the supplied asset proportions and prevent oversized upscaling. */
+.factory-visual-section .themed-diagram {
+  width: min(100%, 960px) !important;
+  max-width: 960px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.factory-visual-section .diagram-sprite-frame,
+.factory-visual-section .diagram-sprite {
+  width: 100% !important;
+  height: auto !important;
+}
+
+.factory-visual-section .diagram-sprite {
+  aspect-ratio: 16 / 9 !important;
+}
+
 @media (min-width: 901px) {
   main:has(> .audience-hero) section h2,
   main:has(> .about-intro) section h2 {
@@ -277,6 +295,10 @@ html[data-theme="light"] .spatial-map-detail p {
   #plans + .section .use-step-grid > article {
     min-height: 0 !important;
     padding: 22px 18px !important;
+  }
+
+  .factory-visual-section .themed-diagram {
+    max-width: 100% !important;
   }
 }
 
