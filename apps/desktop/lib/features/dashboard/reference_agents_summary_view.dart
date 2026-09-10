@@ -214,18 +214,12 @@ List<_AgentSummaryState> _canonicalAgents(OperationalSnapshot snapshot) {
         value.contains('free')) {
       return _AgentSummaryState.idle;
     }
-    if (value.contains('offline') ||
-        value.contains('disabled') ||
-        value.contains('stopped') ||
-        value.contains('dead') ||
-        value.contains('unregistered') ||
-        value.contains('review') ||
-        value.contains('approval') ||
-        value.contains('unknown') ||
-        value.contains('stale')) {
-      return _AgentSummaryState.other;
+    if (value.contains('active') ||
+        value.contains('ready') ||
+        value.contains('online')) {
+      return _AgentSummaryState.active;
     }
-    return _AgentSummaryState.active;
+    return _AgentSummaryState.other;
   }).toList(growable: false);
 }
 
