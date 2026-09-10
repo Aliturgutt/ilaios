@@ -42,6 +42,7 @@ def test_login_language_selector_is_visible_and_switches_locale(tmp_path: Path) 
     tr_document = turkish.body.decode("utf-8")
     en_document = english.body.decode("utf-8")
 
+    assert 'class="header-controls"' in tr_document
     assert 'aria-label="Dil"' in tr_document
     assert 'href="/?lang=tr"' in tr_document
     assert 'href="/?lang=en"' in tr_document
@@ -64,3 +65,23 @@ def test_login_language_selector_is_visible_and_switches_locale(tmp_path: Path) 
     assert 'aria-label="Toggle theme"' in en_document
     assert 'id="theme-light"' not in tr_document
     assert 'id="theme-dark"' not in tr_document
+
+
+def test_login_header_controls_match_canonical_website_geometry(tmp_path: Path) -> None:
+    runtime = _runtime(tmp_path / "identity.db")
+
+    response = runtime.dispatch(
+        RuntimeRequest(method="GET", target="/login/styles.css", headers={}),
+        now=_NOW,
+    )
+
+    stylesheet = response.body.decode("utf-8")
+
+    assert '.header-controls{position:fixed;top:20px;right:22px;display:inline-flex;align-items:center;gap:8px' in stylesheet
+    assert '.theme-toggle{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:6px 10px;border:1px solid var(--line);border-radius:999px' in stylesheet
+    assert '.theme-toggle span{color:var(--text);font-size:.95rem}' in stylesheet
+    assert '.theme-toggle strong{font-size:.78rem}' in stylesheet
+    assert '.language-control{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:5px;border:1px solid var(--line);border-radius:999px' in stylesheet
+    assert '.language-link{height:24px;min-width:30px' in stylesheet
+    assert '.theme-toggle{width:36px;justify-content:center;padding:5px}' in stylesheet
+    assert '.theme-toggle strong{display:none}' in stylesheet
