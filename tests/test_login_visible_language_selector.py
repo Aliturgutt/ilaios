@@ -54,3 +54,13 @@ def test_login_language_selector_is_visible_and_switches_locale(tmp_path: Path) 
     assert 'aria-label="Language"' in en_document
     assert 'href="/?lang=tr"' in en_document
     assert 'href="/?lang=en"' in en_document
+
+    assert 'class="theme-toggle"' in tr_document
+    assert 'id="theme-toggle"' in tr_document
+    assert '<span aria-hidden="true">◐</span>' in tr_document
+    assert '<strong>Tema</strong>' in tr_document
+    assert 'aria-label="Temayı değiştir"' in tr_document
+    assert '<strong>Theme</strong>' in en_document
+    assert 'aria-label="Toggle theme"' in en_document
+    assert 'id="theme-light"' not in tr_document
+    assert 'id="theme-dark"' not in tr_document
