@@ -30,27 +30,26 @@ def _clean_matrix() -> list[DesignObservation]:
 
 
 def _observation_with_failure(field: str, value: int) -> DesignObservation:
-    common = {"route": "/product", "locale": "en", "viewport": REQUIRED_VIEWPORTS[0]}
     if field == "giant_heading_failures":
-        return DesignObservation(**common, giant_heading_failures=value)
+        return DesignObservation("/product", "en", REQUIRED_VIEWPORTS[0], giant_heading_failures=value)
     if field == "empty_visual_placeholders":
-        return DesignObservation(**common, empty_visual_placeholders=value)
+        return DesignObservation("/product", "en", REQUIRED_VIEWPORTS[0], empty_visual_placeholders=value)
     if field == "excessive_whitespace_regions":
-        return DesignObservation(**common, excessive_whitespace_regions=value)
+        return DesignObservation("/product", "en", REQUIRED_VIEWPORTS[0], excessive_whitespace_regions=value)
     if field == "repeated_layout_failures":
-        return DesignObservation(**common, repeated_layout_failures=value)
+        return DesignObservation("/product", "en", REQUIRED_VIEWPORTS[0], repeated_layout_failures=value)
     if field == "cta_hierarchy_failures":
-        return DesignObservation(**common, cta_hierarchy_failures=value)
+        return DesignObservation("/product", "en", REQUIRED_VIEWPORTS[0], cta_hierarchy_failures=value)
     if field == "turkish_layout_failures":
-        return DesignObservation(**common, turkish_layout_failures=value)
+        return DesignObservation("/product", "en", REQUIRED_VIEWPORTS[0], turkish_layout_failures=value)
     if field == "mobile_hierarchy_failures":
-        return DesignObservation(**common, mobile_hierarchy_failures=value)
+        return DesignObservation("/product", "en", REQUIRED_VIEWPORTS[0], mobile_hierarchy_failures=value)
     if field == "section_rhythm_failures":
-        return DesignObservation(**common, section_rhythm_failures=value)
+        return DesignObservation("/product", "en", REQUIRED_VIEWPORTS[0], section_rhythm_failures=value)
     if field == "missing_brand_asset_failures":
-        return DesignObservation(**common, missing_brand_asset_failures=value)
+        return DesignObservation("/product", "en", REQUIRED_VIEWPORTS[0], missing_brand_asset_failures=value)
     if field == "text_heavy_without_structure":
-        return DesignObservation(**common, text_heavy_without_structure=value)
+        return DesignObservation("/product", "en", REQUIRED_VIEWPORTS[0], text_heavy_without_structure=value)
     raise AssertionError(f"unsupported professional quality field: {field}")
 
 
