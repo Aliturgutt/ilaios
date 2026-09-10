@@ -62,6 +62,20 @@ test('canonical website theme and language control geometry is locked', () => {
   assert.match(styles, /@media\(max-width:660px\)\{[^}]*\.theme-control\{width:36px;min-width:36px;min-height:36px;padding:5px;justify-content:center\}\.theme-label\{display:none\}/);
 });
 
+test('all plan cards and plan CTAs use the same strong monochrome treatment', () => {
+  assert.match(styles, /\.plan\{[^}]*border:2px solid var\(--text\);[^}]*padding:21px 17px/);
+  assert.match(styles, /\.plan>\.button\{background:var\(--text\);color:var\(--bg\);border-color:var\(--text\)\}/);
+  assert.doesNotMatch(styles, /\.plan-power>\.button\{/);
+});
+
+test('account action cards stay proportionate on desktop and release forced height on smaller layouts', () => {
+  assert.match(styles, /\.account-actions-grid\{display:grid;[^}]*align-items:stretch/);
+  assert.match(styles, /\.account-actions-grid \.current,\.account-actions-grid \.management\{margin:0;height:100%;min-height:220px\}/);
+  assert.match(styles, /\.management\{display:flex;flex-direction:column;/);
+  assert.match(styles, /\.management \.muted\{margin-bottom:auto\}/);
+  assert.match(styles, /@media\(max-width:1050px\)\{[^}]*\.account-actions-grid\{grid-template-columns:1fr\}\.account-actions-grid \.current,\.account-actions-grid \.management\{min-height:0\}/);
+});
+
 test('dark brand raster blends its black field into the dark header', () => {
   assert.match(styles, /html\[data-theme=dark\] \.page-header \.brand-image-dark\{display:block;mix-blend-mode:screen\}/);
   assert.doesNotMatch(styles, /gradient/i);
