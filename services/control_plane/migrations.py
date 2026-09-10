@@ -499,9 +499,11 @@ _DOWN_MIGRATIONS = {
 
 
 def migrate_database(database_path: Path) -> int:
-    """Apply every pending migration and return the resulting version."""
+    """Apply every pending migration atomically under a single-writer lock."""
     database_path.parent.mkdir(parents=True, exist_ok=True)
-    with _connect(database_path) as connection:
+    connection = _connect(database_path)
+    try:
+        connection.execute("BEGIN IMMEDIATE")
         _ensure_version_table(connection)
         _adopt_legacy_schema(connection)
         current = _current_version(connection)
@@ -511,35 +513,48 @@ def migrate_database(database_path: Path) -> int:
                 f"{LATEST_SCHEMA_VERSION}"
             )
         for version in range(current + 1, LATEST_SCHEMA_VERSION + 1):
-            connection.executescript(_UP_MIGRATIONS[version])
+            _execute_script_statements(connection, _UP_MIGRATIONS[version])
             connection.execute(
                 "INSERT INTO schema_migrations (version) VALUES (?)", (version,)
             )
+        connection.commit()
+    except Exception:
+        connection.rollback()
+        raise
+    finally:
+        connection.close()
     return LATEST_SCHEMA_VERSION
 
 
 def rollback_database(database_path: Path, backup_path: Path) -> int:
-    """Back up the database, then roll one schema version back."""
+    """Back up the database, then roll one schema version back atomically."""
     if not database_path.is_file():
         raise MigrationError("database does not exist")
     if backup_path.exists():
         raise MigrationError("backup path already exists")
     backup_path.parent.mkdir(parents=True, exist_ok=True)
     _snapshot_database(database_path, backup_path)
+    connection = _connect(database_path)
     try:
-        with _connect(database_path) as connection:
-            _ensure_version_table(connection)
-            current = _current_version(connection)
-            if current == 0:
-                raise MigrationError("database is already at schema version 0")
-            connection.executescript(_DOWN_MIGRATIONS[current])
-            connection.execute(
-                "DELETE FROM schema_migrations WHERE version = ?", (current,)
-            )
+        connection.execute("BEGIN IMMEDIATE")
+        _ensure_version_table(connection)
+        current = _current_version(connection)
+        if current == 0:
+            raise MigrationError("database is already at schema version 0")
+        _execute_script_statements(connection, _DOWN_MIGRATIONS[current])
+        connection.execute(
+            "DELETE FROM schema_migrations WHERE version = ?", (current,)
+        )
+        connection.commit()
         return current - 1
     except Exception:
+        connection.rollback()
+        connection.close()
         _restore_database(backup_path, database_path)
         raise
+    finally:
+        if connection:
+            connection.close()
 
 
 def current_schema_version(database_path: Path) -> int:
@@ -555,9 +570,25 @@ def current_schema_version(database_path: Path) -> int:
 
 
 def _connect(database_path: Path) -> sqlite3.Connection:
-    connection = sqlite3.connect(database_path)
+    connection = sqlite3.connect(database_path, timeout=30.0, isolation_level=None)
     connection.execute("PRAGMA foreign_keys = ON")
+    connection.execute("PRAGMA busy_timeout = 30000")
     return connection
+
+
+def _execute_script_statements(connection: sqlite3.Connection, script: str) -> None:
+    """Execute complete SQL statements without implicit transaction boundaries."""
+    pending = ""
+    for line in script.splitlines(keepends=True):
+        pending += line
+        if not sqlite3.complete_statement(pending):
+            continue
+        statement = pending.strip()
+        if statement:
+            connection.execute(statement)
+        pending = ""
+    if pending.strip():
+        raise MigrationError("migration SQL contains an incomplete statement")
 
 
 def _snapshot_database(source_path: Path, snapshot_path: Path) -> None:
