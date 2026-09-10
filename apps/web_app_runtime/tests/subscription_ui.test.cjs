@@ -4,6 +4,7 @@ const {readFileSync} = require('node:fs');
 const {join} = require('node:path');
 const vm = require('node:vm');
 const code = readFileSync(join(__dirname, '../subscription_assets/app.js'), 'utf8');
+const styles = readFileSync(join(__dirname, '../subscription_assets/styles.css'), 'utf8');
 
 async function render({lang = 'tr', response, fail = false, storageFails = false} = {}) {
   const elements = new Map();
@@ -43,10 +44,22 @@ test('TR defaults light, EN labels and same-origin session reads', async () => {
     assert.equal(view.request.options.credentials, 'same-origin');
     assert.equal(view.request.options.cache, 'no-store');
     assert.equal(view.element('current-plan').textContent, lang === 'tr' ? 'Planınızı görmek için giriş yapın' : 'Sign in to view your plan');
+    const visibleLabel = lang === 'tr' ? 'Tema' : 'Theme';
+    assert.equal(view.element('theme-label').textContent, visibleLabel);
     view.element('subscription-theme').events.click();
     assert.equal(view.root.dataset.theme, 'dark');
     assert.equal(view.element('subscription-theme').attributes['aria-pressed'], 'true');
+    assert.equal(view.element('theme-label').textContent, visibleLabel);
   }
+});
+
+test('canonical website theme and language control geometry is locked', () => {
+  assert.match(styles, /\.preferences\{display:flex;align-items:center;gap:7px\}/);
+  assert.match(styles, /\.theme-control\{[^}]*gap:7px;[^}]*min-height:36px;[^}]*padding:6px 10px;[^}]*border:1px solid var\(--line\);[^}]*border-radius:999px/);
+  assert.match(styles, /\.theme-icon\{font-size:\.95rem/);
+  assert.match(styles, /\.theme-label\{font-size:\.78rem/);
+  assert.match(styles, /\.language-control\{[^}]*min-height:36px;[^}]*border:1px solid var\(--line\);[^}]*border-radius:999px/);
+  assert.match(styles, /@media\(max-width:660px\)\{[^}]*\.theme-control\{width:36px;min-width:36px;min-height:36px;padding:5px;justify-content:center\}\.theme-label\{display:none\}/);
 });
 
 test('unknown, malformed and offline states never claim an active plan', async () => {
