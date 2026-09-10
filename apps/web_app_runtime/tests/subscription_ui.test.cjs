@@ -55,10 +55,10 @@ test('TR defaults light, EN labels and same-origin session reads', async () => {
 
 test('canonical website theme and language control geometry is locked', () => {
   assert.match(styles, /\.preferences\{display:flex;align-items:center;gap:7px\}/);
-  assert.match(styles, /\.theme-control\{[^}]*gap:7px;[^}]*min-height:36px;[^}]*padding:6px 10px;[^}]*border:1px solid var\(--line\);[^}]*border-radius:999px/);
+  assert.match(styles, /\.theme-control\{box-sizing:border-box;[^}]*gap:7px;[^}]*min-height:36px;[^}]*padding:6px 10px;[^}]*border:1px solid var\(--line\);[^}]*border-radius:999px/);
   assert.match(styles, /\.theme-icon\{font-size:\.95rem/);
   assert.match(styles, /\.theme-label\{font-size:\.78rem/);
-  assert.match(styles, /\.language-control\{[^}]*min-height:36px;[^}]*border:1px solid var\(--line\);[^}]*border-radius:999px/);
+  assert.match(styles, /\.language-control\{box-sizing:border-box;[^}]*min-height:36px;[^}]*border:1px solid var\(--line\);[^}]*border-radius:999px/);
   assert.match(styles, /@media\(max-width:660px\)\{[^}]*\.theme-control\{width:36px;min-width:36px;min-height:36px;padding:5px;justify-content:center\}\.theme-label\{display:none\}/);
 });
 
