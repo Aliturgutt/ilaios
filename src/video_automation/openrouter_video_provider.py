@@ -220,6 +220,7 @@ class OpenRouterVideoGenerationProvider:
         try:
             self._validate_request(request)
             model_id, item = _parse_single_item_payload(request.payload)
+            _required_integral_duration(item, "duration_seconds")
             _require_free_model_id(model_id)
         except OpenRouterVideoProviderError as exc:
             return _failure_result(request, "invalid_request", str(exc))
