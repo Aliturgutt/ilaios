@@ -65,6 +65,7 @@ def test_paid_operational_allowances_are_locked() -> None:
     power = get_commercial_plan("POWER")
     assert (power.max_active_projects, power.max_active_automations, power.automation_runs_per_month) == (100, 25, 2000)
     assert (power.storage_limit_gb, power.max_concurrent_jobs, power.workspace_users) == (100, 8, 10)
+    assert get_commercial_plan("ENTERPRISE").max_concurrent_jobs is None
 
 
 def test_pro_video_allowance_is_one_shared_twenty_minute_pool() -> None:

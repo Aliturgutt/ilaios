@@ -7,12 +7,15 @@ import '../../control_plane/projection.dart';
 import '../../identity/identity_client.dart';
 import '../create/reference_asset_picker.dart';
 import '../navigation/desktop_section.dart';
+import 'agent_runtime_status.dart';
+import 'pixel_agent_presentation.dart';
+import 'pixel_agent_sprite.dart';
 
 /// Canonical 7-page Home surface.
 ///
 /// Geometry follows the user-approved 1536x1024 Home reference. Runtime values
-/// remain authority-derived; the screenshot's example counts are never copied
-/// into application state.
+/// remain authority-derived; screenshot example counts are never copied into
+/// application state.
 class ReferenceHomeDashboardV3 extends StatefulWidget {
   const ReferenceHomeDashboardV3({
     required this.projection,
@@ -92,7 +95,12 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
   @override
   Widget build(BuildContext context) {
     final referenceAssets = ReferenceAssetPickerScope.maybeOf(context);
-    final groups = _agentGroups(widget.snapshot);
+    final groups = _agentGroups(
+      widget.snapshot,
+      runtimeConnected: widget.projection.connected,
+      authorizedTenantId: widget.userSession?.tenantId,
+    );
+    final operator = desktopOperatorLabel(widget.userSession);
 
     return ColoredBox(
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -115,13 +123,30 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(
-                    _t(context, 'Start work', 'İş başlat'),
-                    style: const TextStyle(
-                      fontSize: 25,
-                      height: 1.12,
-                      fontWeight: FontWeight.w800,
-                    ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          _t(context, 'Start work', 'İş başlat'),
+                          style: const TextStyle(
+                            fontSize: 25,
+                            height: 1.12,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                      Text(
+                        _t(context, 'Operator · $operator', 'Operatör · $operator'),
+                        key: const Key('home-operator-identity'),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
                   Row(
@@ -139,10 +164,6 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
                             onChanged: (value) =>
                                 setState(() => _objective = value.trim()),
                             decoration: InputDecoration(
-                              prefixIcon: const Icon(
-                                Icons.attach_file_rounded,
-                                size: 22,
-                              ),
                               hintText: _t(
                                 context,
                                 'Website, video, software or research — describe the result and criteria…',
@@ -201,7 +222,7 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
                     ReferenceAssetPicker(
                       key: const Key('home-prompt-attachments'),
                       controller: referenceAssets,
-                      enabled: widget.userSession != null && !_submitting,
+                      enabled: !_submitting,
                       compact: true,
                     ),
                   ],
@@ -244,8 +265,8 @@ class _AgentSection extends StatelessWidget {
     final subtitle = groups.isEmpty
         ? (tr ? 'Doğrulanmış runtime ajan verisi yok' : 'No verified runtime agent data')
         : (tr
-            ? '${groups.length} takım · gerçek zamanlı runtime durumu'
-            : '${groups.length} teams · real-time runtime state');
+            ? '${groups.length} takım · aynı canonical runtime görünümü'
+            : '${groups.length} teams · same canonical runtime view');
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -313,7 +334,8 @@ class _AgentSection extends StatelessWidget {
               final visible = groups.take(8).toList(growable: false);
               const gap = 12.0;
               final width =
-                  (constraints.maxWidth - gap * (visible.length - 1)) / visible.length;
+                  (constraints.maxWidth - gap * (visible.length - 1)) /
+                      visible.length;
               return Wrap(
                 spacing: gap,
                 runSpacing: gap,
@@ -359,31 +381,34 @@ class _AgentGroupCard extends StatelessWidget {
           ),
           const Spacer(),
           Center(
-            child: Icon(
-              Icons.smart_toy_outlined,
-              size: 64,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            child: PixelAgentSprite(
+              key: ValueKey('home-pixel-${group.team}'),
+              team: group.team,
+              view: PixelAgentView.front,
+              motion: group.motion,
             ),
           ),
           const Spacer(),
-          if (group.active != null)
+          if (group.active > 0)
             _StatusLine(
-              color: const Color(0xFF16B85A),
-              text: tr
-                  ? '${group.active} çalışıyor'
-                  : '${group.active} active',
+              text: tr ? '${group.active} aktif' : '${group.active} active',
             ),
-          if (group.busy != null)
+          if (group.working > 0)
             _StatusLine(
-              color: const Color(0xFFF0B81C),
-              text: tr ? '${group.busy} meşgul' : '${group.busy} busy',
+              text: tr ? '${group.working} meşgul' : '${group.working} busy',
             ),
-          if (group.idle != null)
+          if (group.waiting > 0)
             _StatusLine(
-              color: const Color(0xFF94A3B8),
+              text: tr ? '${group.waiting} bekliyor' : '${group.waiting} waiting',
+            ),
+          if (group.idle > 0)
+            _StatusLine(
               text: tr ? '${group.idle} boşta' : '${group.idle} idle',
             ),
-          if (group.active == null && group.busy == null && group.idle == null)
+          if (group.active == 0 &&
+              group.working == 0 &&
+              group.waiting == 0 &&
+              group.idle == 0)
             Text(
               tr ? 'Durum doğrulanmadı' : 'State unverified',
               style: TextStyle(
@@ -398,8 +423,7 @@ class _AgentGroupCard extends StatelessWidget {
 }
 
 class _StatusLine extends StatelessWidget {
-  const _StatusLine({required this.color, required this.text});
-  final Color color;
+  const _StatusLine({required this.text});
   final String text;
 
   @override
@@ -407,7 +431,11 @@ class _StatusLine extends StatelessWidget {
         padding: const EdgeInsets.only(top: 4),
         child: Row(
           children: [
-            Icon(Icons.circle, size: 8, color: color),
+            Icon(
+              Icons.circle,
+              size: 8,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
             const SizedBox(width: 7),
             Expanded(
               child: Text(
@@ -426,121 +454,112 @@ class _AgentGroup {
   const _AgentGroup({
     required this.team,
     required this.active,
-    required this.busy,
+    required this.working,
+    required this.waiting,
     required this.idle,
+    required this.offline,
   });
 
   final String team;
-  final int? active;
-  final int? busy;
-  final int? idle;
+  final int active;
+  final int working;
+  final int waiting;
+  final int idle;
+  final int offline;
+
+  PixelAgentMotion get motion {
+    if (working > 0) return PixelAgentMotion.working;
+    if (waiting > 0) return PixelAgentMotion.waiting;
+    if (idle > 0 || active > 0) return PixelAgentMotion.idle;
+    return PixelAgentMotion.offline;
+  }
 }
 
-List<_AgentGroup> _agentGroups(OperationalSnapshot snapshot) {
-  final registry = <String, Map<String, Object?>>{};
-  for (final item in _maps(snapshot.agentState['agents'])) {
-    final id = _text(item, const ['agent_id', 'id']);
-    if (id == null || !id.startsWith('ilaios.agent.')) continue;
-    registry[id] = Map<String, Object?>.of(item);
-  }
-  if (registry.isEmpty) return const [];
+List<_AgentGroup> _agentGroups(
+  OperationalSnapshot snapshot, {
+  required bool runtimeConnected,
+  String? authorizedTenantId,
+}) {
+  final states = resolveCanonicalAgentRuntimeStates(
+    snapshot,
+    runtimeConnected: runtimeConnected,
+    authorizedTenantId: authorizedTenantId,
+  );
+  if (states.isEmpty) return const [];
 
-  void mergeTelemetry(Map<String, Object?> item) {
-    String? id;
-    for (final key in const [
-      'agent_id',
-      'worker_id',
-      'executor_id',
-      'agent',
-      'worker',
-      'id',
-    ]) {
-      final candidate = _text(item, [key]);
-      if (candidate != null && registry.containsKey(candidate)) {
-        id = candidate;
-        break;
+  final teamsById = <String, String>{};
+  final rawAgents = snapshot.agentState['agents'];
+  if (rawAgents is List<Object?>) {
+    for (final raw in rawAgents.whereType<Map<String, Object?>>()) {
+      final id = _text(raw, const ['agent_id']);
+      if (id == null || !states.containsKey(id)) continue;
+      final team = _text(raw, const ['team', 'group', 'domain']) ??
+          _teamFromId(id);
+      if (team != null && pixelAgentTeams.contains(team.toLowerCase())) {
+        teamsById[id] = team.toLowerCase();
       }
     }
-    if (id == null) return;
-    final status = _text(item, const [
-      'agent_status',
-      'worker_status',
-      'status',
-      'state',
-      'lease_state',
-    ]);
-    if (status != null) registry[id]!['runtime_status'] = status;
-  }
-
-  for (final key in const ['agents', 'workers', 'executors', 'leases']) {
-    for (final item in _maps(snapshot.schedulerState[key])) {
-      mergeTelemetry(item);
-    }
-  }
-  for (final item in snapshot.runtimeRoutes) {
-    mergeTelemetry(item);
-  }
-  for (final item in snapshot.liveEvents) {
-    mergeTelemetry(item);
   }
 
   final buckets = <String, _MutableAgentGroup>{};
-  for (final entry in registry.entries) {
-    final item = entry.value;
-    final team = _text(item, const ['team', 'group', 'domain']) ??
-        _teamFromId(entry.key);
-    if (team == null) continue;
-    final bucket = buckets.putIfAbsent(team, () => _MutableAgentGroup(team));
-    final status = _text(item, const ['runtime_status']);
-    if (status == null) {
-      bucket.unknown++;
-      continue;
-    }
-    final normalized = _normalize(status);
-    if (normalized.contains('busy') ||
-        normalized.contains('running') ||
-        normalized.contains('executing') ||
-        normalized.contains('working')) {
-      bucket.busy++;
-    } else if (normalized.contains('idle') ||
-        normalized.contains('available') ||
-        normalized.contains('free')) {
-      bucket.idle++;
-    } else if (normalized.contains('active') ||
-        normalized.contains('ready') ||
-        normalized.contains('online')) {
-      bucket.active++;
-    } else {
-      bucket.unknown++;
+  for (final entry in states.entries) {
+    final team = teamsById[entry.key] ?? _teamFromId(entry.key);
+    if (team == null || !pixelAgentTeams.contains(team.toLowerCase())) continue;
+    final normalizedTeam = team.toLowerCase();
+    final bucket = buckets.putIfAbsent(
+      normalizedTeam,
+      () => _MutableAgentGroup(normalizedTeam),
+    );
+    switch (entry.value) {
+      case AgentRuntimeDisplayState.active:
+        bucket.active++;
+      case AgentRuntimeDisplayState.working:
+        bucket.working++;
+      case AgentRuntimeDisplayState.waiting:
+        bucket.waiting++;
+      case AgentRuntimeDisplayState.idle:
+        bucket.idle++;
+      case AgentRuntimeDisplayState.offline:
+        bucket.offline++;
     }
   }
 
-  final groups = buckets.values.toList()
-    ..sort((a, b) => a.team.compareTo(b.team));
-  return groups
-      .map(
-        (item) => _AgentGroup(
-          team: item.team,
-          active: item.active == 0 ? null : item.active,
-          busy: item.busy == 0 ? null : item.busy,
-          idle: item.idle == 0 ? null : item.idle,
-        ),
-      )
-      .toList(growable: false);
+  const order = <String>[
+    'core',
+    'engineering',
+    'security',
+    'web',
+    'media',
+    'intelligence',
+    'operations',
+    'meta',
+  ];
+  final groups = <_AgentGroup>[];
+  for (final team in order) {
+    final bucket = buckets[team];
+    if (bucket == null) continue;
+    groups.add(
+      _AgentGroup(
+        team: team,
+        active: bucket.active,
+        working: bucket.working,
+        waiting: bucket.waiting,
+        idle: bucket.idle,
+        offline: bucket.offline,
+      ),
+    );
+  }
+  return groups;
 }
 
 class _MutableAgentGroup {
   _MutableAgentGroup(this.team);
   final String team;
   int active = 0;
-  int busy = 0;
+  int working = 0;
+  int waiting = 0;
   int idle = 0;
-  int unknown = 0;
-}
-
-List<Map<String, Object?>> _maps(Object? raw) {
-  if (raw is! List<Object?>) return const [];
-  return raw.whereType<Map<String, Object?>>().toList(growable: false);
+  int offline = 0;
 }
 
 String? _text(Map<String, Object?> source, List<String> keys) {
@@ -558,20 +577,23 @@ String? _teamFromId(String id) {
   return parts[2];
 }
 
-String _normalize(String value) =>
-    value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '');
-
 String _displayTeam(String raw, bool tr) {
   final value = raw.toLowerCase();
   if (value.contains('core') || value.contains('kernel')) {
     return tr ? 'Çekirdek' : 'Core';
   }
-  if (value.contains('engineering')) return tr ? 'Mühendislik' : 'Engineering';
+  if (value.contains('engineering')) {
+    return tr ? 'Mühendislik' : 'Engineering';
+  }
   if (value.contains('security')) return tr ? 'Güvenlik' : 'Security';
   if (value.contains('web')) return 'Web';
-  if (value.contains('media') || value.contains('video')) return tr ? 'Medya' : 'Media';
-  if (value.contains('research') || value.contains('data')) {
-    return tr ? 'Araştırma' : 'Research';
+  if (value.contains('media') || value.contains('video')) {
+    return tr ? 'Medya' : 'Media';
+  }
+  if (value.contains('intelligence') ||
+      value.contains('research') ||
+      value.contains('data')) {
+    return tr ? 'İstihbarat' : 'Intelligence';
   }
   if (value.contains('operation')) return tr ? 'Operasyon' : 'Operations';
   if (value.contains('meta')) return 'Meta';

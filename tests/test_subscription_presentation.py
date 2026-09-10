@@ -36,6 +36,7 @@ def test_catalog_projects_only_canonical_values() -> None:
             assert item["storage_limit_gb"] == canonical.storage_limit_gb
             assert item["video_pool_minutes"] == canonical.monthly_video_pool_mini_480p_equivalent_minutes
             assert item["max_video_resolution"] == canonical.max_video_resolution
+            assert item["max_concurrent_jobs"] == canonical.max_concurrent_jobs
             assert item["parent"] == (None if canonical.parent is None else canonical.parent.value)
             assert "monthly_provider_budget_usd" not in item
             expected_price = canonical.monthly_price_try if currency == "TRY" else canonical.monthly_price_usd
@@ -74,14 +75,19 @@ def test_page_and_assets_render(tmp_path: Path) -> None:
         assert "frame-ancestors 'none'" in dict(response.headers)["Content-Security-Policy"]
         assert "no-store" == dict(response.headers)["Cache-Control"]
         if locale == "tr":
+            assert "0 TL / ay" in html
             assert "2.401 TL / ay" in html
             assert "4.851 TL / ay" in html
             assert "9.751 TL / ay" in html
+            assert "Sözleşmeye özel" in html
             assert "TL fiyatı bekleniyor" not in html
+            assert '<th scope="row">Eşzamanlı iş</th><td>1</td><td>2</td><td>4</td><td>8</td><td>Sözleşmeye özel</td>' in html
         else:
             assert "$49 / month" in html
             assert "$99 / month" in html
             assert "$199 / month" in html
+            assert "Custom quote" in html
+            assert '<th scope="row">Concurrent jobs</th><td>1</td><td>2</td><td>4</td><td>8</td><td>Contract</td>' in html
         for path in ("/subscription/styles.css", "/subscription/app.js"):
             assert runtime.dispatch(
                 RuntimeRequest("GET", path, {}), now=_NOW
@@ -91,8 +97,7 @@ def test_page_and_assets_render(tmp_path: Path) -> None:
         ).body
         assert b"data-theme=dark" in css
         assert b"gradient" not in css
-        assert b"margin-bottom:0" in css
-        assert b"section+section{margin-top:30px}" in css
+        assert b"brand-image-dark{display:block;mix-blend-mode:screen}" in css
         script = runtime.dispatch(
             RuntimeRequest("GET", "/subscription/app.js", {}), now=_NOW
         ).body
@@ -128,6 +133,7 @@ def test_current_plan_uses_session_tenant_and_expiry(tmp_path: Path) -> None:
     cookies, token, session_id = _callback(runtime)
     principal = runtime.sessions.verify(session_id, token, _NOW)
     request = RuntimeRequest("GET", "/api/subscription", {"Cookie": _cookie_header(cookies)})
+    # Missing runtime wiring does not invent a Free subscription.
     response = runtime.dispatch(request, now=_NOW)
     assert json.loads(response.body)["current_plan"]["status"] == "UNKNOWN"
     store = CommercialAccessStore(tmp_path / "commercial", ManagedCreditLedgerStore(tmp_path / "credits"))
@@ -147,6 +153,7 @@ def test_current_plan_uses_session_tenant_and_expiry(tmp_path: Path) -> None:
     assert not any(body["actions"].values())
     expired = runtime.dispatch(request, now=_NOW+timedelta(minutes=11))
     assert json.loads(expired.body)["current_plan"]["status"] == "EXPIRED"
+    # The existing canonical logout makes the projection inaccessible too.
     logout_headers = {"Cookie": _cookie_header(cookies), "Origin": "https://app.ilaios.com",
                       "X-CSRF-Token": cookies["__Host-ilaios_csrf"]}
     runtime.dispatch(RuntimeRequest("POST", "/auth/logout", logout_headers), now=_NOW)

@@ -81,7 +81,7 @@ void main() {
     expect(find.byKey(const Key('source-video-picker')), findsOneWidget);
   });
 
-  testWidgets('canonical Home keeps attachment actions fail closed without a session', (
+  testWidgets('local attachment staging stays available before sign-in while submit remains governed', (
     tester,
   ) async {
     _desktopViewport(tester);
@@ -89,15 +89,31 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('home-prompt-attachments')), findsOneWidget);
-    final video = tester.widget<OutlinedButton>(
-      find.byKey(const Key('home-add-video')),
-    );
-    final image = tester.widget<OutlinedButton>(
-      find.byKey(const Key('home-add-image')),
-    );
-    expect(video.onPressed, isNull);
-    expect(image.onPressed, isNull);
-    expect(find.byKey(const Key('source-video-picker')), findsNothing);
+    for (final key in const [
+      Key('home-add-document'),
+      Key('home-add-image'),
+      Key('home-add-video'),
+    ]) {
+      final button = tester.widget<OutlinedButton>(find.byKey(key));
+      expect(button.onPressed, isNotNull);
+    }
+
+    await tester.tap(find.byKey(const Key('home-add-document')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('company-knowledge-picker')), findsOneWidget);
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('home-add-image')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('video-reference-assets')), findsOneWidget);
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('home-add-video')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('source-video-picker')), findsOneWidget);
+
     expect(tester.takeException(), isNull);
   });
 }
