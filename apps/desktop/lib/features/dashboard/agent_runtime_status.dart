@@ -36,9 +36,6 @@ Map<String, AgentRuntimeDisplayState> resolveCanonicalAgentRuntimeStates(
         ),
       );
 
-  // Connection and freshness are presentation admission conditions only. They
-  // never change the runtime authority. If a caller asks for freshness-bound
-  // projection, both clock and age bound are required; ambiguity fails closed.
   if (!runtimeConnected) return allOffline();
   if ((now == null) != (maxAge == null)) return allOffline();
   if (now != null &&
@@ -113,11 +110,87 @@ Map<String, AgentRuntimeDisplayState> resolveCanonicalAgentRuntimeStates(
   );
 }
 
+/// Returns a presentation-only copy in which every agent status field is
+/// normalized from the shared resolver. Existing task/capacity/health telemetry
+/// remains intact. This lets legacy Desktop views consume the same runtime truth
+/// without creating a second runtime or registry authority.
+OperationalSnapshot canonicalAgentPresentationSnapshot(
+  OperationalSnapshot snapshot, {
+  bool runtimeConnected = true,
+  String? authorizedTenantId,
+}) {
+  final states = resolveCanonicalAgentRuntimeStates(
+    snapshot,
+    runtimeConnected: runtimeConnected,
+    authorizedTenantId: authorizedTenantId,
+  );
+
+  String? canonicalId(Map<String, Object?> item) {
+    for (final key in const [
+      'agent_id',
+      'worker_id',
+      'executor_id',
+      'agent',
+      'worker',
+      'id',
+    ]) {
+      final value = _text(item, [key]);
+      if (value != null && states.containsKey(value)) return value;
+    }
+    return null;
+  }
+
+  Map<String, Object?> normalizeTelemetry(Map<String, Object?> item) {
+    final id = canonicalId(item);
+    if (id == null) return Map<String, Object?>.of(item);
+    final status = states[id]!.name;
+    return <String, Object?>{
+      ...item,
+      'agent_status': status,
+      'worker_status': status,
+      'status': status,
+      'state': status,
+      'lease_state': status,
+    };
+  }
+
+  final rawAgents = _maps(snapshot.agentState['agents']);
+  final agents = rawAgents
+      .where((item) {
+        final id = _text(item, const ['agent_id']);
+        return id != null && states.containsKey(id);
+      })
+      .map(normalizeTelemetry)
+      .toList(growable: false);
+
+  final scheduler = Map<String, Object?>.of(snapshot.schedulerState);
+  for (final key in const ['agents', 'workers', 'executors', 'leases']) {
+    final values = _maps(scheduler[key]);
+    if (values.isNotEmpty) {
+      scheduler[key] = values.map(normalizeTelemetry).toList(growable: false);
+    }
+  }
+
+  return OperationalSnapshot(
+    runtimeRoutes: snapshot.runtimeRoutes
+        .map(normalizeTelemetry)
+        .toList(growable: false),
+    schedulerState: scheduler,
+    grantsState: snapshot.grantsState,
+    governanceState: snapshot.governanceState,
+    evidenceRecords: snapshot.evidenceRecords,
+    liveEvents: snapshot.liveEvents
+        .map(normalizeTelemetry)
+        .toList(growable: false),
+    agentState: <String, Object?>{
+      ...snapshot.agentState,
+      'agents': agents,
+    },
+  );
+}
+
 AgentRuntimeDisplayState classifyAgentRuntimeDisplayState(String raw) {
   final value = _normalize(raw);
-  // Fail-closed states must be classified before positive substring matches.
-  // In particular, `unavailable` contains `available` after normalization and
-  // must never be projected as idle/available work capacity.
   if (value.contains('unknown') ||
       value.contains('stale') ||
       value.contains('unavailable') ||
