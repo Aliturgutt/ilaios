@@ -39,6 +39,10 @@ _LOGIN_HTML_EN = """<!doctype html>
 </head>
 <body>
   <main class="shell">
+    <nav class="language-control" aria-label="Language">
+      <a class="language-link" href="/?lang=tr" hreflang="tr">TR</a>
+      <a class="language-link is-active" href="/?lang=en" hreflang="en" aria-current="page">EN</a>
+    </nav>
     <div class="theme-control" role="group" aria-label="Theme">
       <button class="theme-button is-active" id="theme-light" type="button" aria-pressed="true">Light</button>
       <button class="theme-button" id="theme-dark" type="button" aria-pressed="false">Dark</button>
@@ -95,6 +99,17 @@ _LOGIN_HTML_TR = (
     _LOGIN_HTML_EN.decode("utf-8")
     .replace('<html lang="en"', '<html lang="tr"', 1)
     .replace("<title>Sign in | ILAIOS</title>", "<title>Giriş yap | ILAIOS</title>", 1)
+    .replace('aria-label="Language"', 'aria-label="Dil"', 1)
+    .replace(
+        '<a class="language-link" href="/?lang=tr" hreflang="tr">TR</a>',
+        '<a class="language-link is-active" href="/?lang=tr" hreflang="tr" aria-current="page">TR</a>',
+        1,
+    )
+    .replace(
+        '<a class="language-link is-active" href="/?lang=en" hreflang="en" aria-current="page">EN</a>',
+        '<a class="language-link" href="/?lang=en" hreflang="en">EN</a>',
+        1,
+    )
     .replace('aria-label="Theme"', 'aria-label="Tema"', 1)
     .replace(">Light</button>", ">Açık</button>", 1)
     .replace(">Dark</button>", ">Koyu</button>", 1)
@@ -141,6 +156,10 @@ html,body{width:100%;min-height:100%}
 body{margin:0;min-height:100dvh;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
 button,a{font:inherit}
 .shell{position:relative;min-height:100dvh;display:grid;place-items:center;padding:48px 20px;background:var(--bg)}
+.language-control{position:fixed;top:20px;left:22px;display:inline-flex;gap:4px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.language-link{height:30px;min-width:34px;display:grid;place-items:center;padding:0 9px;border-radius:7px;color:var(--muted);font-size:12px;font-weight:600;text-decoration:none}
+.language-link:hover{color:var(--text);background:var(--button-hover)}
+.language-link.is-active{color:var(--text);background:var(--button-active)}
 .theme-control{position:fixed;top:20px;right:22px;display:inline-flex;gap:4px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
 .theme-button{height:30px;padding:0 9px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer}
 .theme-button:hover{color:var(--text);background:var(--button-hover)}
@@ -164,9 +183,9 @@ h1{margin:0;font-family:"Segoe UI Variable Display","Segoe UI",Inter,ui-sans-ser
 .microsoft-logo{width:18px;height:18px}
 .github-logo{width:20px;height:20px;color:var(--text)}
 .provider[aria-disabled="true"]{color:var(--disabled);pointer-events:none}
-.theme-button:focus-visible,.provider:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.language-link:focus-visible,.theme-button:focus-visible,.provider:focus-visible{outline:2px solid var(--text);outline-offset:2px}
 .notice{max-width:350px;margin:22px auto 0;color:var(--muted);font-size:11px;line-height:1.55}
-@media (max-width:560px){.shell{padding:72px 18px 32px}.theme-control{top:14px;right:14px}.auth{width:min(100%,360px)}.brand-lockup{width:197.8px;height:66.7px;margin-bottom:24px}h1{font-size:25px}.intro{margin-bottom:24px}.provider{height:48px}}
+@media (max-width:560px){.shell{padding:72px 18px 32px}.language-control{top:14px;left:14px}.theme-control{top:14px;right:14px}.auth{width:min(100%,360px)}.brand-lockup{width:197.8px;height:66.7px;margin-bottom:24px}h1{font-size:25px}.intro{margin-bottom:24px}.provider{height:48px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
 """
 
