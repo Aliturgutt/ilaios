@@ -108,8 +108,10 @@ def test_page_and_assets_render(tmp_path: Path) -> None:
         assert b"account-actions-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:24px;align-items:stretch" in css
         assert b"account-actions-grid .current,.account-actions-grid .management{margin:0;min-height:0}" in css
         assert b"account-actions-grid .current{flex-direction:column;justify-content:flex-start;align-items:stretch}" in css
-        assert b"account-actions-grid .current>div:last-child{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:20px}" in css
-        assert b"account-actions-grid .current .support-link{margin-top:0}" in css
+        assert b"account-actions-grid .current>div:last-child{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-top:12px}" in css
+        assert b"account-actions-grid .current .support-link{display:inline-block;" in css
+        assert b"text-align:center;margin-top:0}" in css
+        assert b"management .actions{justify-content:flex-start;margin-top:28px}" in css
         assert b"@media(max-width:1050px){.plans{grid-template-columns:repeat(3,minmax(0,1fr))}.account-actions-grid{grid-template-columns:1fr}" in css
         script = runtime.dispatch(
             RuntimeRequest("GET", "/subscription/app.js", {}), now=_NOW
