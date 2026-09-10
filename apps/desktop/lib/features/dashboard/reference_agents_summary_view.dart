@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
 import '../navigation/desktop_section.dart';
+import 'agent_runtime_status.dart';
 import 'reference_agents_view.dart';
 
 /// Presentation-only wrapper for the canonical Agents surface.
@@ -59,18 +60,24 @@ class _AgentSummaryCards extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tr = Localizations.localeOf(context).languageCode == 'tr';
-    final agents = _canonicalAgents(snapshot);
+    final states = resolveCanonicalAgentRuntimeStates(snapshot);
     final total = _int(snapshot.agentState, const ['canonical_count']) ??
-        (agents.isEmpty ? null : agents.length);
-    final active = agents.isEmpty
+        (states.isEmpty ? null : states.length);
+    final active = states.isEmpty
         ? null
-        : agents.where((item) => item == _AgentSummaryState.active).length;
-    final busy = agents.isEmpty
+        : states.values
+            .where((item) => item == AgentRuntimeDisplayState.active)
+            .length;
+    final busy = states.isEmpty
         ? null
-        : agents.where((item) => item == _AgentSummaryState.busy).length;
-    final idle = agents.isEmpty
+        : states.values
+            .where((item) => item == AgentRuntimeDisplayState.working)
+            .length;
+    final idle = states.isEmpty
         ? null
-        : agents.where((item) => item == _AgentSummaryState.idle).length;
+        : states.values
+            .where((item) => item == AgentRuntimeDisplayState.idle)
+            .length;
     final items = <({String id, String label, String value})>[
       (
         id: 'total',
@@ -143,100 +150,6 @@ class _AgentSummaryCards extends StatelessWidget {
   }
 }
 
-enum _AgentSummaryState { active, busy, idle, other }
-
-List<_AgentSummaryState> _canonicalAgents(OperationalSnapshot snapshot) {
-  final merged = <String, Map<String, Object?>>{};
-  for (final item in _maps(snapshot.agentState['agents'])) {
-    final id = _text(item, const ['agent_id']);
-    if (id == null || !id.startsWith('ilaios.agent.')) continue;
-    merged[id] = Map<String, Object?>.of(item);
-  }
-
-  void mergeTelemetry(Map<String, Object?> item) {
-    String? canonicalId;
-    for (final key in const [
-      'agent_id',
-      'worker_id',
-      'executor_id',
-      'agent',
-      'worker',
-      'id',
-    ]) {
-      final candidate = _text(item, [key]);
-      if (candidate != null && merged.containsKey(candidate)) {
-        canonicalId = candidate;
-        break;
-      }
-    }
-    if (canonicalId == null) return;
-    final status = _text(item, const [
-      'agent_status',
-      'worker_status',
-      'status',
-      'state',
-      'lease_state',
-    ]);
-    if (status != null) merged[canonicalId]!['status'] = status;
-  }
-
-  for (final key in const ['agents', 'workers', 'executors', 'leases']) {
-    for (final item in _maps(snapshot.schedulerState[key])) {
-      mergeTelemetry(item);
-    }
-  }
-  for (final item in snapshot.runtimeRoutes) {
-    mergeTelemetry(item);
-  }
-  for (final item in snapshot.liveEvents) {
-    mergeTelemetry(item);
-  }
-
-  return merged.values.map((item) {
-    final registered = item['registered'] is bool ? item['registered'] as bool : true;
-    final raw = _text(item, const [
-          'agent_status',
-          'worker_status',
-          'status',
-          'state',
-          'lease_state',
-        ]) ??
-        (registered ? 'unknown' : 'offline');
-    final value = _normalize(raw);
-    if (value.contains('busy') ||
-        value.contains('running') ||
-        value.contains('executing') ||
-        value.contains('working')) {
-      return _AgentSummaryState.busy;
-    }
-    if (value.contains('idle') ||
-        value.contains('available') ||
-        value.contains('free')) {
-      return _AgentSummaryState.idle;
-    }
-    if (value.contains('active') ||
-        value.contains('ready') ||
-        value.contains('online')) {
-      return _AgentSummaryState.active;
-    }
-    return _AgentSummaryState.other;
-  }).toList(growable: false);
-}
-
-List<Map<String, Object?>> _maps(Object? raw) {
-  if (raw is! List<Object?>) return const [];
-  return raw.whereType<Map<String, Object?>>().toList(growable: false);
-}
-
-String? _text(Map<String, Object?> source, List<String> keys) {
-  for (final key in keys) {
-    final value = source[key];
-    if (value is String && value.trim().isNotEmpty) return value.trim();
-    if (value is num || value is bool) return '$value';
-  }
-  return null;
-}
-
 int? _int(Map<String, Object?> source, List<String> keys) {
   for (final key in keys) {
     final value = source[key];
@@ -245,6 +158,3 @@ int? _int(Map<String, Object?> source, List<String> keys) {
   }
   return null;
 }
-
-String _normalize(String value) =>
-    value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '');
