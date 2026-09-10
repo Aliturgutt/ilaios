@@ -15,6 +15,16 @@ def _runtime(database: Path) -> LoginAppRuntime:
             "ILAIOS_APP_ENV": "development",
             "ILAIOS_IDENTITY_DATABASE_PATH": str(database),
             "ILAIOS_SESSION_SIGNING_KEY": "test-signing-key",
+            "ILAIOS_GOOGLE_PRODUCTION_WEB_CLIENT_ID": "prod.apps.googleusercontent.com",
+            "ILAIOS_GOOGLE_DEVELOPMENT_WEB_CLIENT_ID": "dev.apps.googleusercontent.com",
+            "ILAIOS_GOOGLE_DESKTOP_CLIENT_ID": "desktop.apps.googleusercontent.com",
+            "ILAIOS_GOOGLE_PRODUCTION_WEB_REDIRECTS": (
+                "https://app.ilaios.com/auth/google/callback"
+            ),
+            "ILAIOS_GOOGLE_PRODUCTION_WEB_CLIENT_SECRET": "server-only-client-secret",
+            "ILAIOS_GOOGLE_WEB_OAUTH_STATE_SECRET": (
+                "state-secret-material-that-is-distinct-and-long-enough"
+            ),
         }
     )
     assert isinstance(runtime, LoginAppRuntime)
