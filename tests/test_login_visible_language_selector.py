@@ -10,13 +10,15 @@ _NOW = datetime(2026, 9, 10, tzinfo=UTC)
 
 
 def _runtime(database: Path) -> LoginAppRuntime:
-    return LoginAppRuntime.from_environment(
+    runtime = LoginAppRuntime.from_environment(
         {
             "ILAIOS_APP_ENV": "development",
             "ILAIOS_IDENTITY_DB_PATH": str(database),
             "ILAIOS_SESSION_SIGNING_KEY": "test-signing-key",
         }
     )
+    assert isinstance(runtime, LoginAppRuntime)
+    return runtime
 
 
 def test_login_language_selector_is_visible_and_switches_locale(tmp_path: Path) -> None:
