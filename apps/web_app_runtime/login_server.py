@@ -89,7 +89,7 @@ _LOGIN_HTML_EN = """<!doctype html>
       </div>
 
       <p class="notice">By continuing, you acknowledge the ILAIOS authentication and security controls.</p>
-      <a href="/subscription?lang=en">Plans and subscription</a>
+      <a class="subscription-link" href="/subscription?lang=en">Plans and subscription</a>
     </section>
   </main>
   <script src="/login/app.js" defer></script>
@@ -186,7 +186,8 @@ h1{margin:0;font-family:"Segoe UI Variable Display","Segoe UI",Inter,ui-sans-ser
 .microsoft-logo{width:18px;height:18px}
 .github-logo{width:20px;height:20px;color:var(--text)}
 .provider[aria-disabled="true"]{color:var(--disabled);pointer-events:none}
-.language-link:focus-visible,.theme-toggle:focus-visible,.provider:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.subscription-link,.subscription-link:visited{color:var(--text)}
+.language-link:focus-visible,.theme-toggle:focus-visible,.provider:focus-visible,.subscription-link:focus-visible{outline:2px solid var(--text);outline-offset:2px}
 .notice{max-width:350px;margin:22px auto 0;color:var(--muted);font-size:11px;line-height:1.55}
 @media (max-width:560px){.shell{padding:72px 18px 32px}.header-controls{top:14px;right:14px;gap:8px}.theme-toggle{width:36px;justify-content:center;padding:5px}.theme-toggle strong{display:none}.auth{width:min(100%,360px)}.brand-lockup{width:197.8px;height:66.7px;margin-bottom:24px}h1{font-size:25px}.intro{margin-bottom:24px}.provider{height:48px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
