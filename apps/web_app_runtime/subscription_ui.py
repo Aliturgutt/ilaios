@@ -31,15 +31,16 @@ def render_subscription(locale: str) -> bytes:
     rows: list[str] = []
     for plan in plans:
         plan_id = str(plan["plan_id"])
-        price = (
-            copy("Custom quote", "Özel teklif")
-            if plan["price_kind"] == "custom"
-            else copy("Price pending", "TL fiyatı bekleniyor")
-            if plan["monthly_price"] is None
-            else copy("Free", "Ücretsiz")
-            if plan["monthly_price"] == 0
-            else f'${plan["monthly_price"]} / {copy("month", "ay")}'
-        )
+        if plan["price_kind"] == "custom":
+            price = copy("Custom quote", "Özel teklif")
+        elif plan["monthly_price"] is None:
+            price = copy("Price pending", "Fiyat bekleniyor")
+        elif plan["monthly_price"] == 0:
+            price = copy("Free", "Ücretsiz")
+        elif catalog["currency"] == "TRY":
+            price = f'{int(plan["monthly_price"]):,}'.replace(",", ".") + " TL / ay"
+        else:
+            price = f'${plan["monthly_price"]} / month'
         parent = plan["parent"]
         inheritance = (
             copy("Start with included usage", "Dahil kullanımla başlayın")
