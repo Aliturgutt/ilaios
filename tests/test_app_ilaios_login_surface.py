@@ -80,14 +80,16 @@ def test_root_defaults_to_turkish_light_first_login_with_optional_dark_mode(
     assert "Google ile devam et" in document
     assert "Microsoft ile devam et" in document
     assert "GitHub ile devam et" in document
-    assert ">Açık</button>" in document
-    assert ">Koyu</button>" in document
+    assert 'id="theme-toggle"' in document
+    assert 'aria-label="Temayı değiştir"' in document
+    assert '<span aria-hidden="true">◐</span>' in document
+    assert "<strong>Tema</strong>" in document
+    assert 'id="theme-light"' not in document
+    assert 'id="theme-dark"' not in document
     assert "Welcome" not in document
     assert 'href="/auth/google/start"' in document
     assert 'href="/auth/microsoft/start"' in document
     assert 'href="/auth/github/start"' in document
-    assert 'id="theme-light"' in document
-    assert 'id="theme-dark"' in document
     assert '<script src="/login/app.js" defer></script>' in document
     assert "<style" not in document
 
@@ -108,8 +110,12 @@ def test_root_supports_explicit_english_locale(tmp_path: Path) -> None:
     assert "Continue with Google" in document
     assert "Continue with Microsoft" in document
     assert "Continue with GitHub" in document
-    assert ">Light</button>" in document
-    assert ">Dark</button>" in document
+    assert 'id="theme-toggle"' in document
+    assert 'aria-label="Toggle theme"' in document
+    assert '<span aria-hidden="true">◐</span>' in document
+    assert "<strong>Theme</strong>" in document
+    assert 'id="theme-light"' not in document
+    assert 'id="theme-dark"' not in document
     assert "Hoş geldiniz" not in document
 
 
@@ -195,7 +201,9 @@ def test_theme_script_defaults_to_light_and_persists_explicit_dark_choice(
     assert "ilaios-theme" in script
     assert "storedTheme()==='dark'?'dark':'light'" in script
     assert "localStorage.setItem('ilaios-theme',value)" in script
-    assert "dark?'#0A0A0A':'#FFFFFF'" in script
+    assert "value==='dark'?'#0A0A0A':'#FFFFFF'" in script
+    assert "document.getElementById('theme-toggle')" in script
+    assert "root.dataset.theme==='dark'?'light':'dark'" in script
     assert "normalizeBrandBackground" in script
     assert "red<=12&&green<=12&&blue<=16" in script
     assert "red>=248&&green>=248&&blue>=248" in script
