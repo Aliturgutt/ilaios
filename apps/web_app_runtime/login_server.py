@@ -196,7 +196,7 @@ h1{margin:0;font-family:"Segoe UI Variable Display","Segoe UI",Inter,ui-sans-ser
 _LOGIN_JS = b"""(function(){\"use strict\";
 const root=document.documentElement;const themeToggle=document.getElementById('theme-toggle');
 function storedTheme(){try{return localStorage.getItem('ilaios-theme');}catch(_error){return null;}}
-function storeTheme(value){try{return localStorage.setItem('ilaios-theme',value);}catch(_error){return;}}
+function storeTheme(value){try{localStorage.setItem('ilaios-theme',value);}catch(_error){return;}}
 function apply(theme){const value=theme==='dark'?'dark':'light';root.dataset.theme=value;root.style.colorScheme=value;const meta=document.querySelector('meta[name=theme-color]');if(meta){meta.setAttribute('content',value==='dark'?'#0A0A0A':'#FFFFFF');}}
 function normalizeBrandBackground(image,dark){if(!image){return;}function run(){if(!image.naturalWidth||!image.naturalHeight){return;}try{const canvas=document.createElement('canvas');const width=image.naturalWidth;const height=image.naturalHeight;canvas.width=width;canvas.height=height;const context=canvas.getContext('2d',{willReadFrequently:true});if(!context){return;}context.drawImage(image,0,0);const frame=context.getImageData(0,0,width,height);const pixels=frame.data;const seen=new Uint8Array(width*height);const queue=new Int32Array(width*height);let head=0;let tail=0;function eligible(position){const offset=position*4;const red=pixels[offset];const green=pixels[offset+1];const blue=pixels[offset+2];return dark?(red<=12&&green<=12&&blue<=16):(red>=248&&green>=248&&blue>=248);}function enqueue(position){if(position<0||position>=width*height||seen[position]||!eligible(position)){return;}seen[position]=1;queue[tail++]=position;}for(let x=0;x<width;x++){enqueue(x);enqueue((height-1)*width+x);}for(let y=0;y<height;y++){enqueue(y*width);enqueue(y*width+width-1);}while(head<tail){const position=queue[head++];const offset=position*4;pixels[offset]=dark?10:255;pixels[offset+1]=dark?10:255;pixels[offset+2]=dark?10:255;pixels[offset+3]=255;const x=position%width;const y=(position/width)|0;if(x>0){enqueue(position-1);}if(x+1<width){enqueue(position+1);}if(y>0){enqueue(position-width);}if(y+1<height){enqueue(position+width);}}context.putImageData(frame,0,0);canvas.className=image.className;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',image.alt||'ILAIOS');image.replaceWith(canvas);}catch(_error){return;}}if(image.complete){run();}else{image.addEventListener('load',run,{once:true});}}
 normalizeBrandBackground(document.querySelector('.brand-image-light'),false);normalizeBrandBackground(document.querySelector('.brand-image-dark'),true);
@@ -314,7 +314,6 @@ def build_runtime(env: Mapping[str, str] | None = None) -> LoginAppRuntime:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Run the login-enabled app runtime."""
     if argv:
         raise AppRuntimeConfigurationError("runtime does not accept CLI arguments")
     runtime = build_runtime()
