@@ -62,6 +62,19 @@ test('canonical website theme and language control geometry is locked', () => {
   assert.match(styles, /@media\(max-width:660px\)\{[^}]*\.theme-control\{width:36px;min-width:36px;min-height:36px;padding:5px;justify-content:center\}\.theme-label\{display:none\}/);
 });
 
+test('subscription visual hierarchy remains monochrome and explicit', () => {
+  assert.match(styles, /\.plan-power\{border:2px solid var\(--text\)/);
+  assert.match(styles, /\.price\{font-size:23px;[^}]*font-weight:700/);
+  assert.match(styles, /\.video\{font-size:13px;[^}]*color:var\(--text\);font-weight:520/);
+  assert.match(styles, /\.plan-facts strong\{color:var\(--text\);font-weight:700\}/);
+  assert.match(styles, /thead\{background:var\(--button-hover\);border-bottom:2px solid var\(--text\)\}/);
+  assert.match(styles, /tbody th\{font-weight:600;color:var\(--text\)\}/);
+  assert.match(styles, /\.button:hover,button:hover\{background:var\(--text\);border-color:var\(--text\);color:var\(--bg\)\}/);
+  assert.match(styles, /a:focus-visible,button:focus-visible,\.table-scroll:focus-visible\{outline:3px solid var\(--text\);outline-offset:3px\}/);
+  assert.doesNotMatch(styles, /#[0-9a-fA-F]{3,8}\b/);
+  assert.doesNotMatch(styles, /gradient/i);
+});
+
 test('unknown, malformed and offline states never claim an active plan', async () => {
   for (const options of [
     {fail: true}, {response: {status: 503}},
