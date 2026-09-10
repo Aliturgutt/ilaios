@@ -137,23 +137,26 @@ def render_subscription(locale: str) -> bytes:
 <nav class="preferences" aria-label="{copy('Preferences', 'Tercihler')}">
 <button class="theme-control" id="subscription-theme" type="button" aria-pressed="false"><span class="theme-icon" aria-hidden="true">◐</span><span id="theme-label">{copy('Theme', 'Tema')}</span></button>
 <div class="language-control" aria-label="{copy('Language', 'Dil')}"><a href="?lang=en" lang="en" class="{'active' if not tr else ''}">EN</a><a href="?lang=tr" lang="tr" class="{'active' if tr else ''}">TR</a></div></nav></header>
-<main class="subscription-shell"><div class="eyebrow">ILAIOS / {copy('YOUR ACCOUNT', 'HESABINIZ')}</div>
-<h1>{escape(title)}</h1><p class="lead">{copy('One account. Included capacity across ILAIOS App and Desktop.', 'Tek hesap. ILAIOS App ve Desktop boyunca planınıza dahil kapasite.')}</p>
-<section class="value-strip" aria-label="{copy('Platform value', 'Platform kapsamı')}"><strong>{copy('9 production factories', '9 üretim fabrikası')}</strong><span>{copy('One subscription authority', 'Tek abonelik yetkisi')}</span><span>{copy('No automatic overage charges', 'Otomatik limit aşımı ücreti yok')}</span></section>
+<main class="subscription-shell">
+<section class="plans-section" aria-labelledby="plans-title"><div class="section-heading"><h2 id="plans-title">{copy('Choose your plan', 'Planınızı seçin')}</h2><span>{copy('Monthly plans · USD', 'Aylık planlar · TL')}</span></div>
+<div class="plans">{''.join(cards)}</div>
+<p class="note">{copy('Model and quality choices use the same video pool at different rates. These are not separate model allowances.', 'Model ve kalite seçimi aynı video havuzunu farklı hızlarda tüketir. Süreler model başına ayrı haklar değildir.')}</p>
+<p class="note payment-note">{copy('Payment is not available yet. No charge or automatic plan change will occur.', 'Ödeme henüz kullanılamıyor. Tahsilat veya otomatik plan değişikliği yapılmaz.')}</p></section>
+<section class="account-intro" aria-labelledby="subscription-title"><div class="eyebrow">ILAIOS / {copy('YOUR ACCOUNT', 'HESABINIZ')}</div>
+<h1 id="subscription-title">{escape(title)}</h1><p class="lead">{copy('One account. Included capacity across ILAIOS App and Desktop.', 'Tek hesap. ILAIOS App ve Desktop boyunca planınıza dahil kapasite.')}</p>
+<div class="value-strip" aria-label="{copy('Platform value', 'Platform kapsamı')}"><strong>{copy('9 production factories', '9 üretim fabrikası')}</strong><span>{copy('One subscription authority', 'Tek abonelik yetkisi')}</span><span>{copy('No automatic overage charges', 'Otomatik limit aşımı ücreti yok')}</span></div></section>
+<section aria-labelledby="comparison-title"><h2 id="comparison-title">{copy('Compare included usage', 'Dahil kullanımı karşılaştırın')}</h2>
+<div class="table-scroll" role="region" aria-labelledby="comparison-title" tabindex="0"><table><thead><tr><th scope="col">{copy('Feature', 'Özellik')}</th>{''.join('<th scope="col">'+str(p['plan_id']).title()+'</th>' for p in plans)}</tr></thead><tbody>{''.join(rows)}</tbody></table></div>
+<p class="note">{copy('Enterprise limits are contract-specific.', 'Enterprise limitleri sözleşmeye özeldir.')}</p></section>
+<div class="account-actions-grid">
 <section class="current" aria-labelledby="current-title"><div><h2 id="current-title">{copy('Current plan', 'Mevcut plan')}</h2>
 <p id="current-plan" role="status">{copy('Loading subscription…', 'Abonelik bilgisi yükleniyor…')}</p>
 <p id="period" class="muted"></p><p id="usage" class="muted">{copy('Remaining usage is not available yet.', 'Kalan kullanım bilgisi henüz alınamıyor.')}</p></div>
 <div><a id="sign-in" class="button" href="/?lang={locale}">{copy('Sign in', 'Giriş yap')}</a>
 <a href="mailto:support@ilaios.com" class="support-link">{copy('Subscription support', 'Abonelik desteği')}</a></div></section>
-<section aria-labelledby="plans-title"><div class="section-heading"><h2 id="plans-title">{copy('Choose your plan', 'Planınızı seçin')}</h2><span>{copy('Monthly plans · USD', 'Aylık planlar · TL')}</span></div>
-<div class="plans">{''.join(cards)}</div>
-<p class="note">{copy('Model and quality choices use the same video pool at different rates. These are not separate model allowances.', 'Model ve kalite seçimi aynı video havuzunu farklı hızlarda tüketir. Süreler model başına ayrı haklar değildir.')}</p>
-<p class="note payment-note">{copy('Payment is not available yet. No charge or automatic plan change will occur.', 'Ödeme henüz kullanılamıyor. Tahsilat veya otomatik plan değişikliği yapılmaz.')}</p></section>
-<section aria-labelledby="comparison-title"><h2 id="comparison-title">{copy('Compare included usage', 'Dahil kullanımı karşılaştırın')}</h2>
-<div class="table-scroll" role="region" aria-labelledby="comparison-title" tabindex="0"><table><thead><tr><th scope="col">{copy('Feature', 'Özellik')}</th>{''.join('<th scope="col">'+str(p['plan_id']).title()+'</th>' for p in plans)}</tr></thead><tbody>{''.join(rows)}</tbody></table></div>
-<p class="note">{copy('Enterprise limits are contract-specific.', 'Enterprise limitleri sözleşmeye özeldir.')}</p></section>
 <section class="management"><h2>{copy('Manage subscription', 'Aboneliği yönet')}</h2><p class="muted">{copy('Renewal, cancellation and plan changes are not available yet. Contact support for assistance.', 'Yenileme, iptal ve plan değişikliği işlemleri henüz kullanılamıyor. Yardım için desteğe ulaşın.')}</p>
 <div class="actions"><button disabled>{copy('Upgrade', 'Plan yükselt')}</button><button disabled>{copy('Downgrade', 'Plan düşür')}</button><button disabled>{copy('Cancel subscription', 'Aboneliği iptal et')}</button></div></section>
+</div>
 <footer><p>{copy('Seller', 'Satıcı')}: Ali Turgut</p><a href="mailto:support@ilaios.com">{copy('Support', 'Destek')}</a> · <a href="mailto:privacy@ilaios.com">{copy('Privacy enquiries', 'Gizlilik talepleri')}</a> · <a href="mailto:contact@ilaios.com">{copy('Contact', 'İletişim')}</a></footer></main>
 <dialog id="checkout" aria-labelledby="checkout-title"><h2 id="checkout-title">{copy('Plan summary', 'Plan özeti')}</h2><p id="selected-plan"></p><p id="selected-price"></p>
 <p>{copy('Final payable amount is not available. Payment cannot begin yet.', 'Ödenecek kesin tutar henüz mevcut değil. Ödeme şu anda başlatılamaz.')}</p>
