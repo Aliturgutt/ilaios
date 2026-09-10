@@ -137,9 +137,7 @@ def render_subscription(locale: str) -> bytes:
 <nav class="preferences" aria-label="{copy('Preferences', 'Tercihler')}">
 <button class="theme-control" id="subscription-theme" type="button" aria-pressed="false"><span class="theme-icon" aria-hidden="true">◐</span><span id="theme-label">{copy('Theme', 'Tema')}</span></button>
 <div class="language-control" aria-label="{copy('Language', 'Dil')}"><a href="?lang=en" lang="en" class="{'active' if not tr else ''}">EN</a><a href="?lang=tr" lang="tr" class="{'active' if tr else ''}">TR</a></div></nav></header>
-<main class="subscription-shell"><div class="eyebrow">ILAIOS / {copy('YOUR ACCOUNT', 'HESABINIZ')}</div>
-<h1>{escape(title)}</h1><p class="lead">{copy('One account. Included capacity across ILAIOS App and Desktop.', 'Tek hesap. ILAIOS App ve Desktop boyunca planınıza dahil kapasite.')}</p>
-<section class="value-strip" aria-label="{copy('Platform value', 'Platform kapsamı')}"><strong>{copy('9 production factories', '9 üretim fabrikası')}</strong><span>{copy('One subscription authority', 'Tek abonelik yetkisi')}</span><span>{copy('No automatic overage charges', 'Otomatik limit aşımı ücreti yok')}</span></section>
+<main class="subscription-shell">
 <section class="current" aria-labelledby="current-title"><div><h2 id="current-title">{copy('Current plan', 'Mevcut plan')}</h2>
 <p id="current-plan" role="status">{copy('Loading subscription…', 'Abonelik bilgisi yükleniyor…')}</p>
 <p id="period" class="muted"></p><p id="usage" class="muted">{copy('Remaining usage is not available yet.', 'Kalan kullanım bilgisi henüz alınamıyor.')}</p></div>
@@ -149,6 +147,9 @@ def render_subscription(locale: str) -> bytes:
 <div class="plans">{''.join(cards)}</div>
 <p class="note">{copy('Model and quality choices use the same video pool at different rates. These are not separate model allowances.', 'Model ve kalite seçimi aynı video havuzunu farklı hızlarda tüketir. Süreler model başına ayrı haklar değildir.')}</p>
 <p class="note payment-note">{copy('Payment is not available yet. No charge or automatic plan change will occur.', 'Ödeme henüz kullanılamıyor. Tahsilat veya otomatik plan değişikliği yapılmaz.')}</p></section>
+<section class="account-intro" aria-labelledby="subscription-title"><div class="eyebrow">ILAIOS / {copy('YOUR ACCOUNT', 'HESABINIZ')}</div>
+<h1 id="subscription-title">{escape(title)}</h1><p class="lead">{copy('One account. Included capacity across ILAIOS App and Desktop.', 'Tek hesap. ILAIOS App ve Desktop boyunca planınıza dahil kapasite.')}</p>
+<div class="value-strip" aria-label="{copy('Platform value', 'Platform kapsamı')}"><strong>{copy('9 production factories', '9 üretim fabrikası')}</strong><span>{copy('One subscription authority', 'Tek abonelik yetkisi')}</span><span>{copy('No automatic overage charges', 'Otomatik limit aşımı ücreti yok')}</span></div></section>
 <section aria-labelledby="comparison-title"><h2 id="comparison-title">{copy('Compare included usage', 'Dahil kullanımı karşılaştırın')}</h2>
 <div class="table-scroll" role="region" aria-labelledby="comparison-title" tabindex="0"><table><thead><tr><th scope="col">{copy('Feature', 'Özellik')}</th>{''.join('<th scope="col">'+str(p['plan_id']).title()+'</th>' for p in plans)}</tr></thead><tbody>{''.join(rows)}</tbody></table></div>
 <p class="note">{copy('Enterprise limits are contract-specific.', 'Enterprise limitleri sözleşmeye özeldir.')}</p></section>
