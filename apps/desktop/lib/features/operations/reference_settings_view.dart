@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/ilaios_locale.dart';
 import '../../control_plane/projection.dart';
 import '../../identity/identity_client.dart';
+import 'subscription_entry.dart';
 
 /// Reference-faithful Settings surface for the approved dark/light Desktop UI.
 ///
@@ -127,7 +128,10 @@ class _ReferenceSettingsViewState extends State<ReferenceSettingsView> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _Header(),
+            Row(children: [
+              Expanded(child: _Header()),
+              const SubscriptionEntry(),
+            ]),
             const SizedBox(height: 7),
             SizedBox(
               key: const Key('settings-summary-strip'),

@@ -20,6 +20,7 @@ from apps.web_app_runtime.server import (
     RuntimeRequest,
     RuntimeResponse,
 )
+from apps.web_app_runtime.subscription_ui import render_subscription, subscription_asset
 
 _REPO_ROOT = Path(__file__).resolve().parents[2]
 _BRAND_DIR = _REPO_ROOT / "brand" / "assets"
@@ -82,6 +83,7 @@ _LOGIN_HTML_EN = """<!doctype html>
       </div>
 
       <p class="notice">By continuing, you acknowledge the ILAIOS authentication and security controls.</p>
+      <a href="/subscription?lang=en">Plans and subscription</a>
     </section>
   </main>
   <script src="/login/app.js" defer></script>
@@ -101,6 +103,8 @@ _LOGIN_HTML_TR = (
     .replace("Continue with Google", "Google ile devam et", 1)
     .replace("Continue with Microsoft", "Microsoft ile devam et", 1)
     .replace("Continue with GitHub", "GitHub ile devam et", 1)
+    .replace('href="/subscription?lang=en">Plans and subscription',
+             'href="/subscription?lang=tr">Planlar ve abonelik', 1)
     .replace(
         "By continuing, you acknowledge the ILAIOS authentication and security controls.",
         "Devam ederek ILAIOS kimlik doğrulama ve güvenlik kontrollerini kabul etmiş olursunuz.",
@@ -190,6 +194,32 @@ class LoginAppRuntime(AppRuntime):
     ) -> RuntimeResponse:
         split = urlsplit(request.target)
         method = request.method.strip().upper()
+        if split.path == "/subscription":
+            if method != "GET":
+                return self._method_not_allowed("GET")
+            query = parse_qs(split.query, keep_blank_values=True)
+            if (set(query) - {"lang"}
+                    or any(len(value) != 1 for value in query.values())):
+                return self._json_error(HTTPStatus.BAD_REQUEST, "unexpected query parameters")
+            language = query.get("lang", ["tr"])[0]
+            if language not in {"tr", "en"}:
+                return self._json_error(HTTPStatus.BAD_REQUEST, "invalid locale")
+            return self._asset_response(
+                render_subscription(language), "text/html; charset=utf-8",
+                csp=("default-src 'none'; script-src 'self'; style-src 'self'; "
+                     "connect-src 'self'; img-src 'self'; base-uri 'none'; "
+                     "frame-ancestors 'none'; form-action 'none'"),
+            )
+        if split.path in {"/subscription/styles.css", "/subscription/app.js"}:
+            if method != "GET":
+                return self._method_not_allowed("GET")
+            if split.query:
+                return self._json_error(HTTPStatus.BAD_REQUEST, "unexpected query parameters")
+            name = split.path.rsplit("/", 1)[1]
+            return self._asset_response(
+                subscription_asset(name),
+                "text/css; charset=utf-8" if name == "styles.css" else "text/javascript; charset=utf-8",
+            )
         if split.path == "/":
             if method != "GET":
                 return self._method_not_allowed("GET")
