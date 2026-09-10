@@ -66,6 +66,16 @@ main:has(> .about-intro) .founder-row h2 {
   main:has(> .about-intro) section h2 {
     max-width: 460px;
   }
+
+  /* Solutions 01–04 — keep the four outcome cards in one balanced desktop row. */
+  .solution-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .solution-grid > article {
+    min-width: 0;
+    min-height: 0 !important;
+  }
 }
 
 /* F — Align compact page heroes to the shared shell while retaining readable copy width. */
