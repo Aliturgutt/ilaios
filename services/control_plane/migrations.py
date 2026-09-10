@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import argparse
-import shutil
 import sqlite3
 from collections.abc import Sequence
 from pathlib import Path
@@ -526,7 +525,7 @@ def rollback_database(database_path: Path, backup_path: Path) -> int:
     if backup_path.exists():
         raise MigrationError("backup path already exists")
     backup_path.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copy2(database_path, backup_path)
+    _snapshot_database(database_path, backup_path)
     try:
         with _connect(database_path) as connection:
             _ensure_version_table(connection)
@@ -539,7 +538,7 @@ def rollback_database(database_path: Path, backup_path: Path) -> int:
             )
         return current - 1
     except Exception:
-        shutil.copy2(backup_path, database_path)
+        _restore_database(backup_path, database_path)
         raise
 
 
@@ -559,6 +558,33 @@ def _connect(database_path: Path) -> sqlite3.Connection:
     connection = sqlite3.connect(database_path)
     connection.execute("PRAGMA foreign_keys = ON")
     return connection
+
+
+def _snapshot_database(source_path: Path, snapshot_path: Path) -> None:
+    try:
+        with sqlite3.connect(source_path) as source:
+            with sqlite3.connect(snapshot_path) as snapshot:
+                source.backup(snapshot)
+        _verify_database_integrity(snapshot_path)
+    except sqlite3.Error as exc:
+        raise MigrationError(f"database snapshot failed: {source_path}") from exc
+
+
+def _restore_database(snapshot_path: Path, database_path: Path) -> None:
+    try:
+        with sqlite3.connect(snapshot_path) as snapshot:
+            with sqlite3.connect(database_path) as database:
+                snapshot.backup(database)
+        _verify_database_integrity(database_path)
+    except sqlite3.Error as exc:
+        raise MigrationError(f"database restore failed: {database_path}") from exc
+
+
+def _verify_database_integrity(database_path: Path) -> None:
+    with sqlite3.connect(database_path) as connection:
+        result = connection.execute("PRAGMA integrity_check").fetchone()
+    if result != ("ok",):
+        raise MigrationError(f"database integrity check failed: {database_path}")
 
 
 def _ensure_version_table(connection: sqlite3.Connection) -> None:
