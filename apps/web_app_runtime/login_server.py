@@ -43,10 +43,10 @@ _LOGIN_HTML_EN = """<!doctype html>
       <a class="language-link" href="/?lang=tr" hreflang="tr">TR</a>
       <a class="language-link is-active" href="/?lang=en" hreflang="en" aria-current="page">EN</a>
     </nav>
-    <div class="theme-control" role="group" aria-label="Theme">
-      <button class="theme-button is-active" id="theme-light" type="button" aria-pressed="true">Light</button>
-      <button class="theme-button" id="theme-dark" type="button" aria-pressed="false">Dark</button>
-    </div>
+    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle theme" title="Toggle theme">
+      <span aria-hidden="true">◐</span>
+      <strong>Theme</strong>
+    </button>
 
     <section class="auth" aria-labelledby="login-title">
       <div class="brand-lockup" aria-label="ILAIOS">
@@ -110,9 +110,9 @@ _LOGIN_HTML_TR = (
         '<a class="language-link" href="/?lang=en" hreflang="en">EN</a>',
         1,
     )
-    .replace('aria-label="Theme"', 'aria-label="Tema"', 1)
-    .replace(">Light</button>", ">Açık</button>", 1)
-    .replace(">Dark</button>", ">Koyu</button>", 1)
+    .replace('aria-label="Toggle theme"', 'aria-label="Temayı değiştir"', 1)
+    .replace('title="Toggle theme"', 'title="Temayı değiştir"', 1)
+    .replace("<strong>Theme</strong>", "<strong>Tema</strong>", 1)
     .replace("<h1 id=\"login-title\">Welcome</h1>", "<h1 id=\"login-title\">Hoş geldiniz</h1>", 1)
     .replace("Choose an account to continue.", "Devam etmek için bir hesap seçin.", 1)
     .replace("Continue with Google", "Google ile devam et", 1)
@@ -160,10 +160,10 @@ button,a{font:inherit}
 .language-link{height:30px;min-width:34px;display:grid;place-items:center;padding:0 9px;border-radius:7px;color:var(--muted);font-size:12px;font-weight:600;text-decoration:none}
 .language-link:hover{color:var(--text);background:var(--button-hover)}
 .language-link.is-active{color:var(--text);background:var(--button-active)}
-.theme-control{position:fixed;top:20px;right:22px;display:inline-flex;gap:4px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
-.theme-button{height:30px;padding:0 9px;border:0;border-radius:7px;background:transparent;color:var(--muted);font-size:12px;font-weight:600;cursor:pointer}
-.theme-button:hover{color:var(--text);background:var(--button-hover)}
-.theme-button.is-active{color:var(--text);background:var(--button-active)}
+.theme-toggle{position:fixed;top:20px;right:22px;display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--text);font:inherit;cursor:pointer}
+.theme-toggle span{color:var(--text);font-size:.95rem}
+.theme-toggle strong{font-size:.78rem}
+.theme-toggle:hover{background:var(--button-hover);border-color:var(--line-hover)}
 .auth{width:min(100%,384px);text-align:center}
 .brand-lockup{width:218.5px;height:73.6px;margin:0 auto 30px;overflow:hidden;background:var(--bg)}
 .brand-image{display:block;width:100%;height:100%;object-fit:contain;object-position:center;background:var(--bg)}
@@ -183,20 +183,20 @@ h1{margin:0;font-family:"Segoe UI Variable Display","Segoe UI",Inter,ui-sans-ser
 .microsoft-logo{width:18px;height:18px}
 .github-logo{width:20px;height:20px;color:var(--text)}
 .provider[aria-disabled="true"]{color:var(--disabled);pointer-events:none}
-.language-link:focus-visible,.theme-button:focus-visible,.provider:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+.language-link:focus-visible,.theme-toggle:focus-visible,.provider:focus-visible{outline:2px solid var(--text);outline-offset:2px}
 .notice{max-width:350px;margin:22px auto 0;color:var(--muted);font-size:11px;line-height:1.55}
-@media (max-width:560px){.shell{padding:72px 18px 32px}.language-control{top:14px;left:14px}.theme-control{top:14px;right:14px}.auth{width:min(100%,360px)}.brand-lockup{width:197.8px;height:66.7px;margin-bottom:24px}h1{font-size:25px}.intro{margin-bottom:24px}.provider{height:48px}}
+@media (max-width:560px){.shell{padding:72px 18px 32px}.language-control{top:14px;left:14px}.theme-toggle{top:14px;right:14px}.auth{width:min(100%,360px)}.brand-lockup{width:197.8px;height:66.7px;margin-bottom:24px}h1{font-size:25px}.intro{margin-bottom:24px}.provider{height:48px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
 """
 
 _LOGIN_JS = b"""(function(){\"use strict\";
-const root=document.documentElement;const lightButton=document.getElementById('theme-light');const darkButton=document.getElementById('theme-dark');
+const root=document.documentElement;const themeToggle=document.getElementById('theme-toggle');
 function storedTheme(){try{return localStorage.getItem('ilaios-theme');}catch(_error){return null;}}
 function storeTheme(value){try{localStorage.setItem('ilaios-theme',value);}catch(_error){return;}}
-function apply(theme){const value=theme==='dark'?'dark':'light';root.dataset.theme=value;const dark=value==='dark';lightButton.classList.toggle('is-active',!dark);darkButton.classList.toggle('is-active',dark);lightButton.setAttribute('aria-pressed',String(!dark));darkButton.setAttribute('aria-pressed',String(dark));const meta=document.querySelector('meta[name=theme-color]');if(meta){meta.setAttribute('content',dark?'#0A0A0A':'#FFFFFF');}}
+function apply(theme){const value=theme==='dark'?'dark':'light';root.dataset.theme=value;root.style.colorScheme=value;const meta=document.querySelector('meta[name=theme-color]');if(meta){meta.setAttribute('content',value==='dark'?'#0A0A0A':'#FFFFFF');}}
 function normalizeBrandBackground(image,dark){if(!image){return;}function run(){if(!image.naturalWidth||!image.naturalHeight){return;}try{const canvas=document.createElement('canvas');const width=image.naturalWidth;const height=image.naturalHeight;canvas.width=width;canvas.height=height;const context=canvas.getContext('2d',{willReadFrequently:true});if(!context){return;}context.drawImage(image,0,0);const frame=context.getImageData(0,0,width,height);const pixels=frame.data;const seen=new Uint8Array(width*height);const queue=new Int32Array(width*height);let head=0;let tail=0;function eligible(position){const offset=position*4;const red=pixels[offset];const green=pixels[offset+1];const blue=pixels[offset+2];return dark?(red<=12&&green<=12&&blue<=16):(red>=248&&green>=248&&blue>=248);}function enqueue(position){if(position<0||position>=width*height||seen[position]||!eligible(position)){return;}seen[position]=1;queue[tail++]=position;}for(let x=0;x<width;x++){enqueue(x);enqueue((height-1)*width+x);}for(let y=0;y<height;y++){enqueue(y*width);enqueue(y*width+width-1);}while(head<tail){const position=queue[head++];const offset=position*4;pixels[offset]=dark?10:255;pixels[offset+1]=dark?10:255;pixels[offset+2]=dark?10:255;pixels[offset+3]=255;const x=position%width;const y=(position/width)|0;if(x>0){enqueue(position-1);}if(x+1<width){enqueue(position+1);}if(y>0){enqueue(position-width);}if(y+1<height){enqueue(position+width);}}context.putImageData(frame,0,0);canvas.className=image.className;canvas.setAttribute('role','img');canvas.setAttribute('aria-label',image.alt||'ILAIOS');image.replaceWith(canvas);}catch(_error){return;}}if(image.complete){run();}else{image.addEventListener('load',run,{once:true});}}
 normalizeBrandBackground(document.querySelector('.brand-image-light'),false);normalizeBrandBackground(document.querySelector('.brand-image-dark'),true);
-apply(storedTheme()==='dark'?'dark':'light');lightButton.addEventListener('click',function(){apply('light');storeTheme('light');});darkButton.addEventListener('click',function(){apply('dark');storeTheme('dark');});
+apply(storedTheme()==='dark'?'dark':'light');themeToggle.addEventListener('click',function(){const next=root.dataset.theme==='dark'?'light':'dark';apply(next);storeTheme(next);});
 fetch('/auth/providers',{credentials:'same-origin',cache:'no-store'}).then(function(response){if(!response.ok){return null;}return response.json();}).then(function(payload){if(!payload||!Array.isArray(payload.providers)){return;}const available=new Set(payload.providers);for(const link of document.querySelectorAll('[data-provider]')){const provider=link.getAttribute('data-provider');if(!available.has(provider)){link.setAttribute('aria-disabled','true');link.setAttribute('tabindex','-1');link.removeAttribute('href');}}}).catch(function(){return;});
 })();
 """
