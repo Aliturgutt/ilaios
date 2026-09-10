@@ -1,8 +1,9 @@
 """Canonical commercial plan configuration for ILAIOS.
 
-This module defines plan identity and inheritance only. Entitlement state remains
-owned by services.commercial_access; provider spend reservation/settlement remains
-owned by the managed-credit ledger. Payment adapters cannot mint entitlement.
+This module defines plan identity, inheritance, and locked customer-facing plan
+allowances only. Entitlement state remains owned by services.commercial_access;
+provider spend reservation/settlement remains owned by the managed-credit ledger.
+Payment adapters cannot mint entitlement.
 """
 
 from __future__ import annotations
@@ -37,6 +38,11 @@ class CommercialPlan:
     history_evidence_retention_days: int | None
     paid_provider_allowed: bool
     monthly_provider_budget_usd: float | None
+    video_model_names: tuple[str, ...]
+    monthly_video_pool_mini_480p_equivalent_minutes: int | None
+    approximate_video_equivalents: tuple[str, ...]
+    free_video_requires_verified_zero_cost: bool
+    enterprise_custom_video_budget: bool
 
     def __post_init__(self) -> None:
         if self.max_concurrent_jobs < 1:
@@ -48,6 +54,7 @@ class CommercialPlan:
             "automation_runs_per_month",
             "storage_limit_gb",
             "history_evidence_retention_days",
+            "monthly_video_pool_mini_480p_equivalent_minutes",
         ):
             value = getattr(self, name)
             if value is not None and value < 1:
@@ -58,23 +65,44 @@ class CommercialPlan:
             raise CommercialPlanError("monthly_provider_budget_usd cannot be negative")
         if self.plan_id is CommercialPlanId.FREE:
             if self.monthly_price_usd != 0 or self.paid_provider_allowed:
-                raise CommercialPlanError("FREE must be zero-price and fail closed for paid providers")
+                raise CommercialPlanError(
+                    "FREE must be zero-price and fail closed for paid providers"
+                )
             if self.monthly_provider_budget_usd not in (None, 0):
                 raise CommercialPlanError("FREE cannot carry a paid provider budget")
+            if self.monthly_video_pool_mini_480p_equivalent_minutes is not None:
+                raise CommercialPlanError("FREE cannot carry a fixed paid-video minute pool")
+            if not self.free_video_requires_verified_zero_cost:
+                raise CommercialPlanError("FREE video must require verified zero provider cost")
         elif self.plan_id is not CommercialPlanId.ENTERPRISE:
             if self.monthly_price_usd is None or self.monthly_price_usd <= 0:
-                raise CommercialPlanError("paid plans require a positive monthly price reference")
+                raise CommercialPlanError(
+                    "paid plans require a positive monthly price reference"
+                )
             if not self.paid_provider_allowed:
-                raise CommercialPlanError("paid plans must permit governed paid-provider admission")
+                raise CommercialPlanError(
+                    "paid plans must permit governed paid-provider admission"
+                )
+            if self.monthly_video_pool_mini_480p_equivalent_minutes is None:
+                raise CommercialPlanError(
+                    "paid plans require the locked shared video minute allowance"
+                )
+        else:
+            if not self.enterprise_custom_video_budget:
+                raise CommercialPlanError(
+                    "ENTERPRISE video allowance must remain contract-specific"
+                )
 
     @property
     def paid_dispatch_budget_verified(self) -> bool:
         return self.paid_provider_allowed and self.monthly_provider_budget_usd is not None
 
 
-# Uploaded plan specifications lock these public price references. Provider budgets
-# remain UNKNOWN until evidence-backed economics are configured; paid dispatch must
-# therefore fail closed on paid_dispatch_budget_verified == False.
+# Customer-facing video allowances below are locked plan entitlements. They are a
+# single shared pool per plan, not independent per-model quotas. The separate
+# monthly_provider_budget_usd field is an internal provider-spend ceiling and is not
+# a customer credit balance; it remains UNKNOWN until evidence-backed economics are
+# configured.
 _PLANS: dict[CommercialPlanId, CommercialPlan] = {
     CommercialPlanId.FREE: CommercialPlan(
         plan_id=CommercialPlanId.FREE,
@@ -89,6 +117,11 @@ _PLANS: dict[CommercialPlanId, CommercialPlan] = {
         history_evidence_retention_days=30,
         paid_provider_allowed=False,
         monthly_provider_budget_usd=0,
+        video_model_names=("verified-zero-cost-provider/model",),
+        monthly_video_pool_mini_480p_equivalent_minutes=None,
+        approximate_video_equivalents=(),
+        free_video_requires_verified_zero_cost=True,
+        enterprise_custom_video_budget=False,
     ),
     CommercialPlanId.PRO: CommercialPlan(
         plan_id=CommercialPlanId.PRO,
@@ -103,6 +136,11 @@ _PLANS: dict[CommercialPlanId, CommercialPlan] = {
         history_evidence_retention_days=None,
         paid_provider_allowed=True,
         monthly_provider_budget_usd=None,
+        video_model_names=("Seedance 2.0 Mini",),
+        monthly_video_pool_mini_480p_equivalent_minutes=20,
+        approximate_video_equivalents=("Seedance 2.0 Mini 720p: 8-9 min",),
+        free_video_requires_verified_zero_cost=False,
+        enterprise_custom_video_budget=False,
     ),
     CommercialPlanId.BUSINESS: CommercialPlan(
         plan_id=CommercialPlanId.BUSINESS,
@@ -117,6 +155,14 @@ _PLANS: dict[CommercialPlanId, CommercialPlan] = {
         history_evidence_retention_days=None,
         paid_provider_allowed=True,
         monthly_provider_budget_usd=None,
+        video_model_names=("Seedance 2.0 Mini", "Seedance 2.0 Fast"),
+        monthly_video_pool_mini_480p_equivalent_minutes=30,
+        approximate_video_equivalents=(
+            "Seedance 2.0 Fast 480p: 10 min",
+            "Seedance 2.0 Fast 720p: 4-5 min",
+        ),
+        free_video_requires_verified_zero_cost=False,
+        enterprise_custom_video_budget=False,
     ),
     CommercialPlanId.POWER: CommercialPlan(
         plan_id=CommercialPlanId.POWER,
@@ -131,6 +177,18 @@ _PLANS: dict[CommercialPlanId, CommercialPlan] = {
         history_evidence_retention_days=None,
         paid_provider_allowed=True,
         monthly_provider_budget_usd=None,
+        video_model_names=(
+            "Seedance 2.0 Mini",
+            "Seedance 2.0 Fast",
+            "Seedance 2.0",
+        ),
+        monthly_video_pool_mini_480p_equivalent_minutes=50,
+        approximate_video_equivalents=(
+            "Seedance 2.0 Fast 480p: 16-17 min",
+            "Seedance 2.0 480p: 10 min",
+        ),
+        free_video_requires_verified_zero_cost=False,
+        enterprise_custom_video_budget=False,
     ),
     CommercialPlanId.ENTERPRISE: CommercialPlan(
         plan_id=CommercialPlanId.ENTERPRISE,
@@ -145,13 +203,25 @@ _PLANS: dict[CommercialPlanId, CommercialPlan] = {
         history_evidence_retention_days=None,
         paid_provider_allowed=True,
         monthly_provider_budget_usd=None,
+        video_model_names=(
+            "Seedance 2.0 Mini",
+            "Seedance 2.0 Fast",
+            "Seedance 2.0",
+            "contract-allowlisted-models",
+        ),
+        monthly_video_pool_mini_480p_equivalent_minutes=None,
+        approximate_video_equivalents=(),
+        free_video_requires_verified_zero_cost=False,
+        enterprise_custom_video_budget=True,
     ),
 }
 
 
 def get_commercial_plan(plan_id: str | CommercialPlanId) -> CommercialPlan:
     try:
-        canonical = plan_id if isinstance(plan_id, CommercialPlanId) else CommercialPlanId(plan_id)
+        canonical = (
+            plan_id if isinstance(plan_id, CommercialPlanId) else CommercialPlanId(plan_id)
+        )
     except ValueError as exc:
         raise CommercialPlanError("unknown commercial plan") from exc
     return _PLANS[canonical]
