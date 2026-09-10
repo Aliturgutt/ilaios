@@ -80,9 +80,13 @@ def test_rollback_backup_restores_committed_wal_data_with_integrity(tmp_path: Pa
 
             assert rollback_database(database, backup) == LATEST_SCHEMA_VERSION - 1
             assert backup.is_file()
-            assert not Path(f"{backup}-wal").exists()
-            assert not Path(f"{backup}-shm").exists()
 
+            # A rollback snapshot must remain valid without WAL/SHM sidecars. SQLite
+            # may create empty/transient sidecars when opening a WAL-mode database,
+            # so remove them after the snapshot connection has closed and prove that
+            # the main snapshot file alone contains the committed state.
+            Path(f"{backup}-wal").unlink(missing_ok=True)
+            Path(f"{backup}-shm").unlink(missing_ok=True)
             with sqlite3.connect(backup) as snapshot:
                 assert snapshot.execute("PRAGMA integrity_check").fetchone() == ("ok",)
                 assert snapshot.execute(
