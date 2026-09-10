@@ -218,14 +218,14 @@ def assess_visual_quality(
 def _score(rows: tuple[DesignObservation, ...]) -> VisualQualityScores:
     if not rows:
         raise ValueError("at least one design observation is required")
-    critical_penalty = 0
-    accessibility_penalty = 0
-    mobile_penalty = 0
-    overall_penalty = 0
+    critical_penalties: list[int] = []
+    accessibility_penalties: list[int] = []
+    mobile_penalties: list[int] = []
+    overall_penalties: list[int] = []
 
     for row in rows:
         geometry = row.horizontal_overflow + row.clipped_elements + row.overlapping_elements
-        critical_penalty += geometry * 16
+        critical_penalty = geometry * 16
 
         accessibility = (
             row.missing_focus_indicators
@@ -238,7 +238,7 @@ def _score(rows: tuple[DesignObservation, ...]) -> VisualQualityScores:
             + row.field_feedback_failures
             + row.text_scaling_failures
         )
-        accessibility_penalty += accessibility * 7
+        accessibility_penalty = accessibility * 7
         if not row.reduced_motion_supported:
             accessibility_penalty += 8
         if not row.reduced_transparency_supported:
@@ -258,10 +258,13 @@ def _score(rows: tuple[DesignObservation, ...]) -> VisualQualityScores:
             + row.missing_brand_asset_failures
             + row.text_heavy_without_structure
         )
-        overall_penalty += geometry * 10 + accessibility * 4 + professional * 6
+        overall_penalty = geometry * 10 + accessibility * 4 + professional * 6
 
+        critical_penalties.append(critical_penalty)
+        accessibility_penalties.append(accessibility_penalty)
+        overall_penalties.append(overall_penalty)
         if row.viewport <= 430:
-            mobile_penalty += (
+            mobile_penalties.append(
                 geometry * 15
                 + row.mobile_hierarchy_failures * 12
                 + row.giant_heading_failures * 8
@@ -269,13 +272,11 @@ def _score(rows: tuple[DesignObservation, ...]) -> VisualQualityScores:
                 + row.undersized_touch_targets * 6
             )
 
-    divisor = max(1, len(rows))
-    mobile_rows = max(1, sum(1 for row in rows if row.viewport <= 430))
     return VisualQualityScores(
-        overall=max(0, 100 - round(overall_penalty / divisor)),
-        critical=max(0, 100 - round(critical_penalty / divisor)),
-        accessibility=max(0, 100 - round(accessibility_penalty / divisor)),
-        mobile=max(0, 100 - round(mobile_penalty / mobile_rows)),
+        overall=max(0, 100 - max(overall_penalties)),
+        critical=max(0, 100 - max(critical_penalties)),
+        accessibility=max(0, 100 - max(accessibility_penalties)),
+        mobile=max(0, 100 - max(mobile_penalties or [0])),
     )
 
 
