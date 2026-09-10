@@ -54,7 +54,7 @@ main:has(> .about-intro) section h2 {
   line-height: 1.2 !important;
 }
 
-/* About founder name — intentionally much smaller than content section headings. */
+/* About founder name — approximately 70% smaller than the oversized rendered state. */
 main:has(> .about-intro) .founder-row h2 {
   font-size: clamp(.82rem, .9vw, .95rem) !important;
   line-height: 1.15 !important;
