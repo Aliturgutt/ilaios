@@ -33,12 +33,21 @@ def test_uploaded_price_references_are_preserved() -> None:
     assert get_commercial_plan("ENTERPRISE").monthly_price_usd is None
 
 
+def test_video_resolution_hierarchy_is_locked() -> None:
+    assert get_commercial_plan("FREE").max_video_resolution is None
+    assert get_commercial_plan("PRO").max_video_resolution == "480p"
+    assert get_commercial_plan("BUSINESS").max_video_resolution == "720p"
+    assert get_commercial_plan("POWER").max_video_resolution == "1080p"
+    assert get_commercial_plan("ENTERPRISE").max_video_resolution == "4K"
+
+
 def test_free_video_has_no_fixed_minutes_and_requires_verified_zero_cost() -> None:
     free = get_commercial_plan("FREE")
     assert free.paid_provider_allowed is False
     assert free.monthly_provider_budget_usd == 0
     assert free.paid_dispatch_budget_verified is False
     assert free.video_model_names == ("verified-zero-cost-provider/model",)
+    assert free.max_video_resolution is None
     assert free.monthly_video_pool_mini_480p_equivalent_minutes is None
     assert free.approximate_video_equivalents == ()
     assert free.free_video_requires_verified_zero_cost is True
@@ -54,10 +63,9 @@ def test_free_video_has_no_fixed_minutes_and_requires_verified_zero_cost() -> No
 def test_pro_video_allowance_is_one_shared_twenty_minute_pool() -> None:
     pro = get_commercial_plan("PRO")
     assert pro.video_model_names == ("Seedance 2.0 Mini",)
+    assert pro.max_video_resolution == "480p"
     assert pro.monthly_video_pool_mini_480p_equivalent_minutes == 20
-    assert pro.approximate_video_equivalents == (
-        "Seedance 2.0 Mini 720p: 8-9 min",
-    )
+    assert pro.approximate_video_equivalents == ()
 
 
 def test_business_video_allowance_is_one_shared_thirty_minute_pool() -> None:
@@ -66,6 +74,7 @@ def test_business_video_allowance_is_one_shared_thirty_minute_pool() -> None:
         "Seedance 2.0 Mini",
         "Seedance 2.0 Fast",
     )
+    assert business.max_video_resolution == "720p"
     assert business.monthly_video_pool_mini_480p_equivalent_minutes == 30
     assert business.approximate_video_equivalents == (
         "Seedance 2.0 Fast 480p: 10 min",
@@ -80,6 +89,7 @@ def test_power_video_allowance_is_one_shared_fifty_minute_pool() -> None:
         "Seedance 2.0 Fast",
         "Seedance 2.0",
     )
+    assert power.max_video_resolution == "1080p"
     assert power.monthly_video_pool_mini_480p_equivalent_minutes == 50
     assert power.approximate_video_equivalents == (
         "Seedance 2.0 Fast 480p: 16-17 min",
@@ -95,6 +105,7 @@ def test_enterprise_video_allowance_is_contract_specific() -> None:
         "Seedance 2.0",
         "contract-allowlisted-models",
     )
+    assert enterprise.max_video_resolution == "4K"
     assert enterprise.monthly_video_pool_mini_480p_equivalent_minutes is None
     assert enterprise.enterprise_custom_video_budget is True
 
