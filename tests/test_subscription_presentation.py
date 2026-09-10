@@ -77,6 +77,8 @@ def test_page_and_assets_render(tmp_path: Path) -> None:
         assert html.index('class="plans-section"') < html.index('class="account-intro"')
         assert html.index('class="account-intro"') < html.index('id="comparison-title"')
         assert html.index('id="comparison-title"') < html.index('class="account-actions-grid"')
+        assert "Payment is not available yet. No charge or automatic plan change will occur." not in html
+        assert "Ödeme henüz kullanılamıyor. Tahsilat veya otomatik plan değişikliği yapılmaz." not in html
         if locale == "tr":
             assert "0 TL / ay" in html
             assert "2.401 TL / ay" in html
@@ -102,6 +104,7 @@ def test_page_and_assets_render(tmp_path: Path) -> None:
         assert b"gradient" not in css
         assert b"brand-image-dark{display:block;mix-blend-mode:screen}" in css
         assert b"subscription-shell{max-width:1280px;margin:auto;padding:24px 24px 28px}" in css
+        assert b"account-intro>.eyebrow,.account-intro>h1,.account-intro>.lead{text-align:center}" in css
         assert b"account-actions-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(360px,520px)" in css
         script = runtime.dispatch(
             RuntimeRequest("GET", "/subscription/app.js", {}), now=_NOW
