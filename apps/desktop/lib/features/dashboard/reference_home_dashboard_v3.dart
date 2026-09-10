@@ -395,7 +395,7 @@ class _AgentGroupCard extends StatelessWidget {
             ),
           if (group.working > 0)
             _StatusLine(
-              text: tr ? '${group.working} çalışıyor' : '${group.working} working',
+              text: tr ? '${group.working} meşgul' : '${group.working} busy',
             ),
           if (group.waiting > 0)
             _StatusLine(
