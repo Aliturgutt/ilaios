@@ -13,7 +13,7 @@ def _runtime(database: Path) -> LoginAppRuntime:
     runtime = LoginAppRuntime.from_environment(
         {
             "ILAIOS_APP_ENV": "development",
-            "ILAIOS_IDENTITY_DB_PATH": str(database),
+            "ILAIOS_IDENTITY_DATABASE_PATH": str(database),
             "ILAIOS_SESSION_SIGNING_KEY": "test-signing-key",
         }
     )
