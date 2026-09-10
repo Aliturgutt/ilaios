@@ -274,6 +274,12 @@ html[data-theme="light"] :where(
   -webkit-text-fill-color: #5A5A5A !important;
 }
 
+/* Security trust gate — client card is a light surface in light theme, so its labels must be dark. */
+html[data-theme="light"] .trust-gate > .dark-surface:not(.is-authority) :where(span, strong) {
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+}
+
 /* K — Keep card surface and copy in the same light-theme contrast model. */
 html[data-theme="light"] .card {
   background: #FFFFFF !important;
