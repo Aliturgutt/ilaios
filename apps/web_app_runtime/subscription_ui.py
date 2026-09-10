@@ -142,7 +142,7 @@ def render_subscription(locale: str) -> bytes:
 <div class="plans">{''.join(cards)}</div>
 <p class="note">{copy('Model and quality choices use the same video pool at different rates. These are not separate model allowances.', 'Model ve kalite seçimi aynı video havuzunu farklı hızlarda tüketir. Süreler model başına ayrı haklar değildir.')}</p></section>
 <section class="account-intro" aria-labelledby="subscription-title"><div class="eyebrow">ILAIOS / {copy('YOUR ACCOUNT', 'HESABINIZ')}</div>
-<h1 id="subscription-title">{escape(title)}</h1><p class="lead">{copy('One account. Included capacity across ILAIOS App and Desktop.', 'Tek hesap. ILAIOS App ve Desktop boyunca planınıza dahil kapasite.')}</p>
+<h1 id="subscription-title">{escape(title)}</h1><p class="lead">{copy('One account. Included capacity across ILAIOS Web, Desktop and mobile apps.', 'Tek hesap. ILAIOS Web, Desktop ve mobil uygulamalar boyunca planınıza dahil kapasite.')}</p>
 <div class="value-strip" aria-label="{copy('Platform value', 'Platform kapsamı')}"><strong>{copy('9 production factories', '9 üretim fabrikası')}</strong><span>{copy('One subscription authority', 'Tek abonelik yetkisi')}</span><span>{copy('No automatic overage charges', 'Otomatik limit aşımı ücreti yok')}</span></div></section>
 <section aria-labelledby="comparison-title"><h2 id="comparison-title">{copy('Compare included usage', 'Dahil kullanımı karşılaştırın')}</h2>
 <div class="table-scroll" role="region" aria-labelledby="comparison-title" tabindex="0"><table><thead><tr><th scope="col">{copy('Feature', 'Özellik')}</th>{''.join('<th scope="col">'+str(p['plan_id']).title()+'</th>' for p in plans)}</tr></thead><tbody>{''.join(rows)}</tbody></table></div>
@@ -160,7 +160,6 @@ def render_subscription(locale: str) -> bytes:
 <dialog id="checkout" aria-labelledby="checkout-title"><h2 id="checkout-title">{copy('Plan summary', 'Plan özeti')}</h2><p id="selected-plan"></p><p id="selected-price"></p>
 <p>{copy('Final payable amount is not available. Payment cannot begin yet.', 'Ödenecek kesin tutar henüz mevcut değil. Ödeme şu anda başlatılamaz.')}</p>
 <p>{copy('Sales terms and cancellation conditions will be provided before payment becomes available.', 'Ödeme açılmadan önce satış sözleşmesi ve iptal koşulları sunulacaktır.')}</p>
-<a href="mailto:privacy@ilaios.com">{copy('Privacy enquiries', 'Gizlilik talepleri')}</a>
 <div class="actions"><button type="button" disabled>{copy('Proceed to payment', 'Ödemeye devam et')}</button><button type="button" id="close-checkout">{copy('Close', 'Kapat')}</button></div></dialog>
 <script src="/subscription/app.js" defer></script></body></html>'''
     return html.encode("utf-8")
