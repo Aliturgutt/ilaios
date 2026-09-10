@@ -39,9 +39,8 @@ class CommercialPlan:
     monthly_provider_budget_usd: float | None
 
     def __post_init__(self) -> None:
-        for name in ("max_concurrent_jobs",):
-            if getattr(self, name) < 1:
-                raise CommercialPlanError(f"{name} must be positive")
+        if self.max_concurrent_jobs < 1:
+            raise CommercialPlanError("max_concurrent_jobs must be positive")
         for name in (
             "workspace_users",
             "max_active_projects",
@@ -67,12 +66,15 @@ class CommercialPlan:
                 raise CommercialPlanError("paid plans require a positive monthly price reference")
             if not self.paid_provider_allowed:
                 raise CommercialPlanError("paid plans must permit governed paid-provider admission")
-            if self.monthly_provider_budget_usd is None:
-                raise CommercialPlanError("paid provider budget must be configured before paid dispatch")
+
+    @property
+    def paid_dispatch_budget_verified(self) -> bool:
+        return self.paid_provider_allowed and self.monthly_provider_budget_usd is not None
 
 
 # Uploaded plan specifications lock these public price references. Provider budgets
-# are intentionally fail-closed until evidence-backed economics are configured.
+# remain UNKNOWN until evidence-backed economics are configured; paid dispatch must
+# therefore fail closed on paid_dispatch_budget_verified == False.
 _PLANS: dict[CommercialPlanId, CommercialPlan] = {
     CommercialPlanId.FREE: CommercialPlan(
         plan_id=CommercialPlanId.FREE,
