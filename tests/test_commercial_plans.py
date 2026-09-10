@@ -19,12 +19,17 @@ def test_plan_family_is_single_ordered_authority() -> None:
     assert get_commercial_plan("ENTERPRISE").parent is CommercialPlanId.POWER
 
 
-def test_uploaded_price_references_are_preserved() -> None:
+def test_approved_price_references_are_preserved() -> None:
     assert get_commercial_plan("FREE").monthly_price_usd == 0
+    assert get_commercial_plan("FREE").monthly_price_try == 0
     assert get_commercial_plan("PRO").monthly_price_usd == 49
+    assert get_commercial_plan("PRO").monthly_price_try == 2401
     assert get_commercial_plan("BUSINESS").monthly_price_usd == 99
+    assert get_commercial_plan("BUSINESS").monthly_price_try == 4851
     assert get_commercial_plan("POWER").monthly_price_usd == 199
+    assert get_commercial_plan("POWER").monthly_price_try == 9751
     assert get_commercial_plan("ENTERPRISE").monthly_price_usd is None
+    assert get_commercial_plan("ENTERPRISE").monthly_price_try is None
 
 
 def test_video_resolution_hierarchy_is_locked() -> None:
@@ -60,6 +65,7 @@ def test_paid_operational_allowances_are_locked() -> None:
     power = get_commercial_plan("POWER")
     assert (power.max_active_projects, power.max_active_automations, power.automation_runs_per_month) == (100, 25, 2000)
     assert (power.storage_limit_gb, power.max_concurrent_jobs, power.workspace_users) == (100, 8, 10)
+    assert get_commercial_plan("ENTERPRISE").max_concurrent_jobs is None
 
 
 def test_pro_video_allowance_is_one_shared_twenty_minute_pool() -> None:

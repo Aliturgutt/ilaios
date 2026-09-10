@@ -62,6 +62,11 @@ test('canonical website theme and language control geometry is locked', () => {
   assert.match(styles, /@media\(max-width:660px\)\{[^}]*\.theme-control\{width:36px;min-width:36px;min-height:36px;padding:5px;justify-content:center\}\.theme-label\{display:none\}/);
 });
 
+test('dark brand raster blends its black field into the dark header', () => {
+  assert.match(styles, /html\[data-theme=dark\] \.page-header \.brand-image-dark\{display:block;mix-blend-mode:screen\}/);
+  assert.doesNotMatch(styles, /gradient/i);
+});
+
 test('unknown, malformed and offline states never claim an active plan', async () => {
   for (const options of [
     {fail: true}, {response: {status: 503}},

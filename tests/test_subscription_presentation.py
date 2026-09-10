@@ -36,10 +36,11 @@ def test_catalog_projects_only_canonical_values() -> None:
             assert item["storage_limit_gb"] == canonical.storage_limit_gb
             assert item["video_pool_minutes"] == canonical.monthly_video_pool_mini_480p_equivalent_minutes
             assert item["max_video_resolution"] == canonical.max_video_resolution
-            assert item["parent"] == canonical.parent
+            assert item["max_concurrent_jobs"] == canonical.max_concurrent_jobs
+            assert item["parent"] == (None if canonical.parent is None else canonical.parent.value)
             assert "monthly_provider_budget_usd" not in item
-            if currency == "TRY" and canonical.monthly_price_usd != 0:
-                assert item["monthly_price"] is None
+            expected_price = canonical.monthly_price_try if currency == "TRY" else canonical.monthly_price_usd
+            assert item["monthly_price"] == expected_price
 
 
 def test_invalid_presentation_parameters_fail_closed(tmp_path: Path) -> None:
@@ -73,6 +74,20 @@ def test_page_and_assets_render(tmp_path: Path) -> None:
         assert "<script>" not in html
         assert "frame-ancestors 'none'" in dict(response.headers)["Content-Security-Policy"]
         assert "no-store" == dict(response.headers)["Cache-Control"]
+        if locale == "tr":
+            assert "0 TL / ay" in html
+            assert "2.401 TL / ay" in html
+            assert "4.851 TL / ay" in html
+            assert "9.751 TL / ay" in html
+            assert "Sözleşmeye özel" in html
+            assert "TL fiyatı bekleniyor" not in html
+            assert '<th scope="row">Eşzamanlı iş</th><td>1</td><td>2</td><td>4</td><td>8</td><td>Sözleşmeye özel</td>' in html
+        else:
+            assert "$49 / month" in html
+            assert "$99 / month" in html
+            assert "$199 / month" in html
+            assert "Custom quote" in html
+            assert '<th scope="row">Concurrent jobs</th><td>1</td><td>2</td><td>4</td><td>8</td><td>Contract</td>' in html
         for path in ("/subscription/styles.css", "/subscription/app.js"):
             assert runtime.dispatch(
                 RuntimeRequest("GET", path, {}), now=_NOW
@@ -82,6 +97,7 @@ def test_page_and_assets_render(tmp_path: Path) -> None:
         ).body
         assert b"data-theme=dark" in css
         assert b"gradient" not in css
+        assert b"brand-image-dark{display:block;mix-blend-mode:screen}" in css
         script = runtime.dispatch(
             RuntimeRequest("GET", "/subscription/app.js", {}), now=_NOW
         ).body
@@ -94,7 +110,7 @@ def test_default_is_turkish_and_links_from_login(tmp_path: Path) -> None:
     runtime = _login_runtime(tmp_path)
     page = runtime.dispatch(RuntimeRequest("GET", "/subscription", {}), now=_NOW)
     assert b'lang="tr"' in page.body
-    assert "TL fiyatı bekleniyor" in page.body.decode()
+    assert "2.401 TL / ay" in page.body.decode()
     root = runtime.dispatch(RuntimeRequest("GET", "/", {}), now=_NOW)
     assert b'href="/subscription?lang=tr"' in root.body
 
