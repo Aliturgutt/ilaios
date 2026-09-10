@@ -5,8 +5,6 @@ from datetime import timedelta
 from http import HTTPStatus
 from pathlib import Path
 
-import pytest
-
 from apps.web_app_runtime.login_server import LoginAppRuntime
 from apps.web_app_runtime.server import RuntimeRequest
 from services.commercial_access import CommercialAccessStore, EntitlementState
@@ -26,54 +24,70 @@ def _login_runtime(tmp_path: Path) -> LoginAppRuntime:
     )
 
 
-@pytest.mark.parametrize("locale,currency", [("tr", "TRY"), ("en", "USD")])
-def test_catalog_projects_only_canonical_values(locale: str, currency: str) -> None:
-    catalog = plan_catalog(locale, currency)
-    assert catalog["currency"] == currency
-    plans = catalog["plans"]
-    assert isinstance(plans, list)
-    assert [p["plan_id"] for p in plans] == list(commercial_plan_ids())
-    for item in plans:
-        canonical = get_commercial_plan(item["plan_id"])
-        assert item["storage_limit_gb"] == canonical.storage_limit_gb
-        assert item["video_pool_minutes"] == canonical.monthly_video_pool_mini_480p_equivalent_minutes
-        assert item["max_video_resolution"] == canonical.max_video_resolution
-        assert item["parent"] == canonical.parent
-        assert "monthly_provider_budget_usd" not in item
-        if currency == "TRY" and canonical.monthly_price_usd != 0:
-            assert item["monthly_price"] is None
+def test_catalog_projects_only_canonical_values() -> None:
+    for locale, currency in (("tr", "TRY"), ("en", "USD")):
+        catalog = plan_catalog(locale, currency)
+        assert catalog["currency"] == currency
+        plans = catalog["plans"]
+        assert isinstance(plans, list)
+        assert [p["plan_id"] for p in plans] == list(commercial_plan_ids())
+        for item in plans:
+            canonical = get_commercial_plan(item["plan_id"])
+            assert item["storage_limit_gb"] == canonical.storage_limit_gb
+            assert item["video_pool_minutes"] == canonical.monthly_video_pool_mini_480p_equivalent_minutes
+            assert item["max_video_resolution"] == canonical.max_video_resolution
+            assert item["parent"] == canonical.parent
+            assert "monthly_provider_budget_usd" not in item
+            if currency == "TRY" and canonical.monthly_price_usd != 0:
+                assert item["monthly_price"] is None
 
 
-@pytest.mark.parametrize("query", ["lang=de", "lang=", "lang=tr&lang=en", "currency=EUR", "lang=en&currency=TRY", "price=1", "plan_id=POWER"])
-def test_invalid_presentation_parameters_fail_closed(tmp_path: Path, query: str) -> None:
+def test_invalid_presentation_parameters_fail_closed(tmp_path: Path) -> None:
     runtime = _login_runtime(tmp_path)
-    response = runtime.dispatch(RuntimeRequest("GET", "/api/subscription/plans?" + query, {}), now=_NOW)
-    assert response.status == HTTPStatus.BAD_REQUEST
+    for query in (
+        "lang=de", "lang=", "lang=tr&lang=en", "currency=EUR",
+        "lang=en&currency=TRY", "price=1", "plan_id=POWER",
+    ):
+        response = runtime.dispatch(
+            RuntimeRequest("GET", "/api/subscription/plans?" + query, {}), now=_NOW
+        )
+        assert response.status == HTTPStatus.BAD_REQUEST
 
 
-@pytest.mark.parametrize("locale,title", [("tr", "Planlar ve abonelik"), ("en", "Plans &amp; subscription")])
-def test_page_and_assets_render(tmp_path: Path, locale: str, title: str) -> None:
+def test_page_and_assets_render(tmp_path: Path) -> None:
     runtime = _login_runtime(tmp_path)
-    response = runtime.dispatch(RuntimeRequest("GET", "/subscription?lang=" + locale, {}), now=_NOW)
-    assert response.status == HTTPStatus.OK
-    html = response.body.decode()
-    assert f'lang="{locale}" data-theme="light"' in html
-    assert (title in html or title.replace("&amp;", "&") in html)
-    assert all(f'id="plan-{plan}"' in html for plan in commercial_plan_ids())
-    assert 'disabled' in html and 'showModal' not in html
-    assert 'mailto:contact@ilaios.com' in html
-    assert '<script>' not in html
-    assert "frame-ancestors 'none'" in dict(response.headers)["Content-Security-Policy"]
-    assert "no-store" == dict(response.headers)["Cache-Control"]
-    for path in ["/subscription/styles.css", "/subscription/app.js"]:
-        assert runtime.dispatch(RuntimeRequest("GET", path, {}), now=_NOW).status == HTTPStatus.OK
-    css = runtime.dispatch(RuntimeRequest("GET", "/subscription/styles.css", {}), now=_NOW).body
-    assert b'data-theme=dark' in css
-    assert b'gradient' not in css
-    script = runtime.dispatch(RuntimeRequest("GET", "/subscription/app.js", {}), now=_NOW).body
-    assert b'textContent' in script and b'innerHTML' not in script
-    assert b'normalizeBrandBackground' not in script
-    assert b'ilaios-theme' in script
+    for locale, title in (
+        ("tr", "Planlar ve abonelik"),
+        ("en", "Plans &amp; subscription"),
+    ):
+        response = runtime.dispatch(
+            RuntimeRequest("GET", "/subscription?lang=" + locale, {}), now=_NOW
+        )
+        assert response.status == HTTPStatus.OK
+        html = response.body.decode()
+        assert f'lang="{locale}" data-theme="light"' in html
+        assert title in html or title.replace("&amp;", "&") in html
+        assert all(f'id="plan-{plan}"' in html for plan in commercial_plan_ids())
+        assert "disabled" in html and "showModal" not in html
+        assert "mailto:contact@ilaios.com" in html
+        assert "<script>" not in html
+        assert "frame-ancestors 'none'" in dict(response.headers)["Content-Security-Policy"]
+        assert "no-store" == dict(response.headers)["Cache-Control"]
+        for path in ("/subscription/styles.css", "/subscription/app.js"):
+            assert runtime.dispatch(
+                RuntimeRequest("GET", path, {}), now=_NOW
+            ).status == HTTPStatus.OK
+        css = runtime.dispatch(
+            RuntimeRequest("GET", "/subscription/styles.css", {}), now=_NOW
+        ).body
+        assert b"data-theme=dark" in css
+        assert b"gradient" not in css
+        script = runtime.dispatch(
+            RuntimeRequest("GET", "/subscription/app.js", {}), now=_NOW
+        ).body
+        assert b"textContent" in script and b"innerHTML" not in script
+        assert b"normalizeBrandBackground" not in script
+        assert b"ilaios-theme" in script
 
 
 def test_default_is_turkish_and_links_from_login(tmp_path: Path) -> None:
@@ -87,8 +101,14 @@ def test_default_is_turkish_and_links_from_login(tmp_path: Path) -> None:
 
 def test_anonymous_and_forged_session_rejected(tmp_path: Path) -> None:
     runtime = _login_runtime(tmp_path)
-    for headers in [{}, {"Cookie": "__Host-ilaios_auth=fake; __Host-ilaios_session=fake"}]:
-        result = runtime.dispatch(RuntimeRequest("GET", "/api/subscription", headers), now=_NOW)
+    header_cases: list[dict[str, str]] = [
+        {},
+        {"Cookie": "__Host-ilaios_auth=fake; __Host-ilaios_session=fake"},
+    ]
+    for headers in header_cases:
+        result = runtime.dispatch(
+            RuntimeRequest("GET", "/api/subscription", headers), now=_NOW
+        )
         assert result.status in {HTTPStatus.FORBIDDEN, HTTPStatus.UNAUTHORIZED}
 
 
@@ -124,19 +144,35 @@ def test_current_plan_uses_session_tenant_and_expiry(tmp_path: Path) -> None:
     assert runtime.dispatch(request, now=_NOW).status != HTTPStatus.OK
 
 
-@pytest.mark.parametrize("changes", [{"payment_success": True}, {"subscription_active": True},
-                                     {"price": 1}, {"tenant_id": "other"}, {"plan_id": "UNKNOWN"},
-                                     {"locale": "de"}, {"currency": "EUR"}, {"currency": "TRY"},
-                                     {"plan_id": ["POWER"]}])
-def test_checkout_rejects_forged_authority(tmp_path: Path, changes: dict[str, object]) -> None:
+def test_checkout_rejects_forged_authority(tmp_path: Path) -> None:
     runtime = _login_runtime(tmp_path)
     cookies, _, _ = _callback(runtime)
     headers = {"Cookie": _cookie_header(cookies), "Origin": "https://app.ilaios.com",
                "X-CSRF-Token": cookies["__Host-ilaios_csrf"]}
-    payload: dict[str, object] = {"plan_id": "PRO", "locale": "en", "currency": "USD"}
-    payload.update(changes)
-    result = runtime.dispatch(RuntimeRequest("POST", "/api/subscription/checkout", headers, body=json.dumps(payload).encode()), now=_NOW)
-    assert result.status == HTTPStatus.BAD_REQUEST
+    changes_cases: tuple[dict[str, object], ...] = (
+        {"payment_success": True},
+        {"subscription_active": True},
+        {"price": 1},
+        {"tenant_id": "other"},
+        {"plan_id": "UNKNOWN"},
+        {"locale": "de"},
+        {"currency": "EUR"},
+        {"currency": "TRY"},
+        {"plan_id": ["POWER"]},
+    )
+    for changes in changes_cases:
+        payload: dict[str, object] = {
+            "plan_id": "PRO", "locale": "en", "currency": "USD",
+        }
+        payload.update(changes)
+        result = runtime.dispatch(
+            RuntimeRequest(
+                "POST", "/api/subscription/checkout", headers,
+                body=json.dumps(payload).encode(),
+            ),
+            now=_NOW,
+        )
+        assert result.status == HTTPStatus.BAD_REQUEST
 
 
 def test_valid_checkout_still_denied_and_csrf_required(tmp_path: Path) -> None:
