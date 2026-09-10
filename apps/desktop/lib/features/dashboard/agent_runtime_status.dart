@@ -8,13 +8,34 @@ import '../../control_plane/operational_snapshot.dart';
 enum AgentRuntimeDisplayState { active, working, idle, waiting, offline }
 
 Map<String, AgentRuntimeDisplayState> resolveCanonicalAgentRuntimeStates(
-  OperationalSnapshot snapshot,
-) {
+  OperationalSnapshot snapshot, {
+  bool runtimeConnected = true,
+  DateTime? now,
+  Duration? maxAge,
+}) {
   final merged = <String, Map<String, Object?>>{};
   for (final item in _maps(snapshot.agentState['agents'])) {
     final id = _text(item, const ['agent_id']);
     if (id == null || !id.startsWith('ilaios.agent.')) continue;
     merged[id] = Map<String, Object?>.of(item);
+  }
+
+  Map<String, AgentRuntimeDisplayState> allOffline() =>
+      Map<String, AgentRuntimeDisplayState>.unmodifiable(
+        merged.map(
+          (id, _) => MapEntry(id, AgentRuntimeDisplayState.offline),
+        ),
+      );
+
+  // Connection and freshness are presentation admission conditions only. They
+  // never change the runtime authority. If a caller asks for freshness-bound
+  // projection, both clock and age bound are required; ambiguity fails closed.
+  if (!runtimeConnected) return allOffline();
+  if ((now == null) != (maxAge == null)) return allOffline();
+  if (now != null &&
+      maxAge != null &&
+      !snapshot.isAuthoritativelyFresh(now: now, maxAge: maxAge)) {
+    return allOffline();
   }
 
   void mergeTelemetry(Map<String, Object?> item) {
