@@ -12,11 +12,20 @@ Map<String, AgentRuntimeDisplayState> resolveCanonicalAgentRuntimeStates(
   bool runtimeConnected = true,
   DateTime? now,
   Duration? maxAge,
+  String? authorizedTenantId,
 }) {
+  final normalizedTenant = authorizedTenantId?.trim();
   final merged = <String, Map<String, Object?>>{};
   for (final item in _maps(snapshot.agentState['agents'])) {
     final id = _text(item, const ['agent_id']);
     if (id == null || !id.startsWith('ilaios.agent.')) continue;
+    final itemTenant = _text(item, const ['tenant_id']);
+    if (normalizedTenant != null &&
+        normalizedTenant.isNotEmpty &&
+        itemTenant != null &&
+        itemTenant != normalizedTenant) {
+      continue;
+    }
     merged[id] = Map<String, Object?>.of(item);
   }
 
@@ -39,6 +48,13 @@ Map<String, AgentRuntimeDisplayState> resolveCanonicalAgentRuntimeStates(
   }
 
   void mergeTelemetry(Map<String, Object?> item) {
+    final telemetryTenant = _text(item, const ['tenant_id']);
+    if (normalizedTenant != null &&
+        normalizedTenant.isNotEmpty &&
+        telemetryTenant != null &&
+        telemetryTenant != normalizedTenant) {
+      return;
+    }
     String? canonicalId;
     for (final key in const [
       'agent_id',
