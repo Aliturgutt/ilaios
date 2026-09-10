@@ -39,6 +39,7 @@ class CommercialPlan:
     paid_provider_allowed: bool
     monthly_provider_budget_usd: float | None
     video_model_names: tuple[str, ...]
+    max_video_resolution: str | None
     monthly_video_pool_mini_480p_equivalent_minutes: int | None
     approximate_video_equivalents: tuple[str, ...]
     free_video_requires_verified_zero_cost: bool
@@ -70,6 +71,10 @@ class CommercialPlan:
                 )
             if self.monthly_provider_budget_usd not in (None, 0):
                 raise CommercialPlanError("FREE cannot carry a paid provider budget")
+            if self.max_video_resolution is not None:
+                raise CommercialPlanError(
+                    "FREE cannot promise a fixed paid-video resolution"
+                )
             if self.monthly_video_pool_mini_480p_equivalent_minutes is not None:
                 raise CommercialPlanError("FREE cannot carry a fixed paid-video minute pool")
             if not self.free_video_requires_verified_zero_cost:
@@ -83,11 +88,19 @@ class CommercialPlan:
                 raise CommercialPlanError(
                     "paid plans must permit governed paid-provider admission"
                 )
+            if self.max_video_resolution is None:
+                raise CommercialPlanError(
+                    "paid plans require a locked maximum video resolution"
+                )
             if self.monthly_video_pool_mini_480p_equivalent_minutes is None:
                 raise CommercialPlanError(
                     "paid plans require the locked shared video minute allowance"
                 )
         else:
+            if self.max_video_resolution != "4K":
+                raise CommercialPlanError(
+                    "ENTERPRISE must carry the locked 4K plan ceiling"
+                )
             if not self.enterprise_custom_video_budget:
                 raise CommercialPlanError(
                     "ENTERPRISE video allowance must remain contract-specific"
@@ -99,7 +112,10 @@ class CommercialPlan:
 
 
 # Customer-facing video allowances below are locked plan entitlements. They are a
-# single shared pool per plan, not independent per-model quotas. The separate
+# single shared pool per plan, not independent per-model quotas. Resolution is the
+# plan ceiling; actual dispatch still requires provider support, availability,
+# fresh pricing, remaining budget, and policy approval. Higher-cost model/quality
+# choices consume the same shared pool faster. The separate
 # monthly_provider_budget_usd field is an internal provider-spend ceiling and is not
 # a customer credit balance; it remains UNKNOWN until evidence-backed economics are
 # configured.
@@ -118,6 +134,7 @@ _PLANS: dict[CommercialPlanId, CommercialPlan] = {
         paid_provider_allowed=False,
         monthly_provider_budget_usd=0,
         video_model_names=("verified-zero-cost-provider/model",),
+        max_video_resolution=None,
         monthly_video_pool_mini_480p_equivalent_minutes=None,
         approximate_video_equivalents=(),
         free_video_requires_verified_zero_cost=True,
@@ -137,8 +154,9 @@ _PLANS: dict[CommercialPlanId, CommercialPlan] = {
         paid_provider_allowed=True,
         monthly_provider_budget_usd=None,
         video_model_names=("Seedance 2.0 Mini",),
+        max_video_resolution="480p",
         monthly_video_pool_mini_480p_equivalent_minutes=20,
-        approximate_video_equivalents=("Seedance 2.0 Mini 720p: 8-9 min",),
+        approximate_video_equivalents=(),
         free_video_requires_verified_zero_cost=False,
         enterprise_custom_video_budget=False,
     ),
@@ -156,6 +174,7 @@ _PLANS: dict[CommercialPlanId, CommercialPlan] = {
         paid_provider_allowed=True,
         monthly_provider_budget_usd=None,
         video_model_names=("Seedance 2.0 Mini", "Seedance 2.0 Fast"),
+        max_video_resolution="720p",
         monthly_video_pool_mini_480p_equivalent_minutes=30,
         approximate_video_equivalents=(
             "Seedance 2.0 Fast 480p: 10 min",
@@ -182,6 +201,7 @@ _PLANS: dict[CommercialPlanId, CommercialPlan] = {
             "Seedance 2.0 Fast",
             "Seedance 2.0",
         ),
+        max_video_resolution="1080p",
         monthly_video_pool_mini_480p_equivalent_minutes=50,
         approximate_video_equivalents=(
             "Seedance 2.0 Fast 480p: 16-17 min",
@@ -209,6 +229,7 @@ _PLANS: dict[CommercialPlanId, CommercialPlan] = {
             "Seedance 2.0",
             "contract-allowlisted-models",
         ),
+        max_video_resolution="4K",
         monthly_video_pool_mini_480p_equivalent_minutes=None,
         approximate_video_equivalents=(),
         free_video_requires_verified_zero_cost=False,
