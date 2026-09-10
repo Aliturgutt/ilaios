@@ -38,7 +38,8 @@ def render_subscription(locale: str) -> bytes:
         elif plan["monthly_price"] == 0:
             price = copy("Free", "Ücretsiz")
         elif catalog["currency"] == "TRY":
-            price = f'{int(plan["monthly_price"]):,}'.replace(",", ".") + " TL / ay"
+            monthly_price = cast(int, plan["monthly_price"])
+            price = f"{monthly_price:,}".replace(",", ".") + " TL / ay"
         else:
             price = f'${plan["monthly_price"]} / month'
         parent = plan["parent"]
