@@ -98,6 +98,50 @@ main:has(> .about-intro) .founder-row h2 {
   #plans .use-factory-card:nth-child(4) {
     border: 2px solid var(--text) !important;
   }
+
+  /* Payment steps — compact the section and keep 01–04 on one desktop row. */
+  #plans + .section {
+    padding-top: 44px !important;
+    padding-bottom: 44px !important;
+  }
+
+  #plans + .section .section-heading {
+    margin-bottom: 28px !important;
+    gap: 32px !important;
+  }
+
+  #plans + .section .section-heading h2 {
+    font-size: clamp(1.9rem, 2.5vw, 2.55rem) !important;
+    line-height: 1.08 !important;
+    max-width: 18ch;
+  }
+
+  #plans + .section .section-heading > p {
+    font-size: .98rem !important;
+    line-height: 1.5 !important;
+    max-width: 48ch;
+  }
+
+  #plans + .section .use-step-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+  }
+
+  #plans + .section .use-step-grid > article {
+    min-width: 0;
+    min-height: 210px !important;
+    padding: 24px 22px !important;
+  }
+
+  #plans + .section .use-step-grid > article strong {
+    font-size: 1rem !important;
+    line-height: 1.3 !important;
+  }
+
+  #plans + .section .use-step-grid > article p {
+    font-size: .9rem !important;
+    line-height: 1.5 !important;
+  }
 }
 
 #plans .use-factory-card > div:first-child {
@@ -217,14 +261,20 @@ html[data-theme="light"] .spatial-map-detail p {
   #plans .use-factory-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
   }
+
+  #plans + .section .use-step-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
 }
 
 @media (max-width: 760px) {
-  #plans .use-factory-grid {
+  #plans .use-factory-grid,
+  #plans + .section .use-step-grid {
     grid-template-columns: 1fr !important;
   }
 
-  #plans .use-factory-card {
+  #plans .use-factory-card,
+  #plans + .section .use-step-grid > article {
     min-height: 0 !important;
     padding: 22px 18px !important;
   }
