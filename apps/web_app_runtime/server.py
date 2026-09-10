@@ -35,6 +35,12 @@ from services.central_identity import (
     CentralIdentityError,
     CentralIdentityService,
 )
+from services.commercial_access import CommercialAccessStore
+from services.subscription_presentation import (
+    checkout_preview,
+    plan_catalog,
+    subscription_state,
+)
 from services.control_plane.migrations import migrate_database
 from services.email_auth import SQLiteEmailChallengeStore
 from services.github_web_oauth import (
@@ -110,6 +116,9 @@ _MAX_REQUEST_BODY_BYTES: Final = 16_384
 _MAX_RATE_LIMIT_BUCKETS: Final = 4_096
 _MAX_CONCURRENT_REQUESTS: Final = 32
 _RATE_LIMITS: Final = {
+    "/api/subscription/plans": (300, 60),
+    "/api/subscription": (300, 60),
+    "/api/subscription/checkout": (60, 60),
     "/auth/providers": (600, 60),
     "/auth/google/start": (120, 60),
     "/auth/google/callback": (240, 60),
@@ -337,6 +346,7 @@ class AppRuntime:
         github_oauth: GitHubWebOAuthService | None = None,
         li: LiFounderOperator | None = None,
         rate_limiter: AppRateLimiter | None = None,
+        commercial_access: CommercialAccessStore | None = None,
     ) -> None:
         self.environment = environment
         self.oauth = oauth
@@ -349,6 +359,8 @@ class AppRuntime:
         if not self.desktop_client_id:
             raise AppRuntimeConfigurationError("Desktop Google client id is unavailable")
         self.rate_limiter = rate_limiter or AppRateLimiter()
+        # Inject the existing owner only. Never create a second/default store.
+        self.commercial_access = commercial_access
 
     @classmethod
     def from_environment(cls, env: Mapping[str, str]) -> AppRuntime:
@@ -433,6 +445,11 @@ class AppRuntime:
             )
 
         try:
+            if path in {
+                "/api/subscription/plans", "/api/subscription",
+                "/api/subscription/checkout",
+            }:
+                return self._subscription(request, current)
             if path == "/health/ready":
                 if method != "GET":
                     return self._method_not_allowed("GET")
@@ -1183,6 +1200,48 @@ class AppRuntime:
                 "roles": sorted(principal.roles),
             },
         )
+
+    def _subscription(self, request: RuntimeRequest, now: datetime) -> RuntimeResponse:
+        split = urlsplit(request.target)
+        checkout = split.path == "/api/subscription/checkout"
+        method = "POST" if checkout else "GET"
+        if request.method.strip().upper() != method:
+            return self._method_not_allowed(method)
+        query = parse_qs(split.query, keep_blank_values=True)
+        if (set(query) - {"lang", "currency"}
+                or any(len(value) != 1 for value in query.values())
+                or (checkout and query)):
+            return self._json_error(HTTPStatus.BAD_REQUEST, "unexpected query parameters")
+        locale = query.get("lang", ["tr"])[0]
+        currency = query["currency"][0] if "currency" in query else None
+        try:
+            catalog = plan_catalog(locale, currency)
+        except ValueError:
+            return self._json_error(HTTPStatus.BAD_REQUEST, "invalid locale or currency")
+        if split.path == "/api/subscription/plans":
+            return self._json(HTTPStatus.OK, catalog)
+        credentials = self.browser.credentials(self._web_request(request))
+        principal = self.sessions.verify(
+            credentials.session_id, credentials.encoded_token, now
+        )
+        if not checkout:
+            return self._json(
+                HTTPStatus.OK, subscription_state(self.commercial_access, principal, now)
+            )
+        if not request.body or len(request.body) > _MAX_REQUEST_BODY_BYTES:
+            return self._json_error(HTTPStatus.BAD_REQUEST, "invalid checkout request")
+        try:
+            payload = json.loads(request.body)
+            if not isinstance(payload, dict) or set(payload) != {"plan_id", "locale", "currency"}:
+                raise ValueError("invalid checkout fields")
+            if not all(isinstance(value, str) for value in payload.values()):
+                raise ValueError("invalid checkout values")
+            preview = checkout_preview(payload["plan_id"], payload["locale"], payload["currency"])
+        except (ValueError, UnicodeDecodeError):
+            return self._json_error(HTTPStatus.BAD_REQUEST, "invalid checkout request")
+        # Provider approval, final prices and lifecycle policy are unresolved.
+        # No client flag or environment switch can activate payment here.
+        return self._json(HTTPStatus.SERVICE_UNAVAILABLE, preview)
 
     def _li_operator(self) -> LiFounderOperator | None:
         return self.li
