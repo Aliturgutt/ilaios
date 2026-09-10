@@ -39,14 +39,16 @@ _LOGIN_HTML_EN = """<!doctype html>
 </head>
 <body>
   <main class="shell">
-    <nav class="language-control" aria-label="Language">
-      <a class="language-link" href="/?lang=tr" hreflang="tr">TR</a>
-      <a class="language-link is-active" href="/?lang=en" hreflang="en" aria-current="page">EN</a>
-    </nav>
-    <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle theme" title="Toggle theme">
-      <span aria-hidden="true">◐</span>
-      <strong>Theme</strong>
-    </button>
+    <div class="header-controls">
+      <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Toggle theme" title="Toggle theme">
+        <span aria-hidden="true">◐</span>
+        <strong>Theme</strong>
+      </button>
+      <nav class="language-control" aria-label="Language">
+        <a class="language-link" href="/?lang=tr" hreflang="tr">TR</a>
+        <a class="language-link is-active" href="/?lang=en" hreflang="en" aria-current="page">EN</a>
+      </nav>
+    </div>
 
     <section class="auth" aria-labelledby="login-title">
       <div class="brand-lockup" aria-label="ILAIOS">
@@ -156,14 +158,15 @@ html,body{width:100%;min-height:100%}
 body{margin:0;min-height:100dvh;background:var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
 button,a{font:inherit}
 .shell{position:relative;min-height:100dvh;display:grid;place-items:center;padding:48px 20px;background:var(--bg)}
-.language-control{position:fixed;top:20px;left:22px;display:inline-flex;gap:4px;padding:3px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
-.language-link{height:30px;min-width:34px;display:grid;place-items:center;padding:0 9px;border-radius:7px;color:var(--muted);font-size:12px;font-weight:600;text-decoration:none}
-.language-link:hover{color:var(--text);background:var(--button-hover)}
-.language-link.is-active{color:var(--text);background:var(--button-active)}
-.theme-toggle{position:fixed;top:20px;right:22px;display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--text);font:inherit;cursor:pointer}
+.header-controls{position:fixed;top:20px;right:22px;display:inline-flex;align-items:center;gap:8px;z-index:1}
+.theme-toggle{display:inline-flex;align-items:center;gap:7px;min-height:36px;padding:6px 10px;border:1px solid var(--line);border-radius:999px;background:transparent;color:var(--text);font:inherit;cursor:pointer;white-space:nowrap}
 .theme-toggle span{color:var(--text);font-size:.95rem}
 .theme-toggle strong{font-size:.78rem}
 .theme-toggle:hover{background:var(--button-hover);border-color:var(--line-hover)}
+.language-control{display:inline-flex;align-items:center;gap:6px;min-height:36px;padding:5px;border:1px solid var(--line);border-radius:999px;background:transparent;white-space:nowrap}
+.language-link{height:24px;min-width:30px;display:grid;place-items:center;padding:3px 7px;border-radius:999px;color:var(--muted);font-size:.72rem;font-weight:600;line-height:1;text-decoration:none}
+.language-link:hover{color:var(--text);background:var(--button-hover)}
+.language-link.is-active{color:var(--text);background:var(--button-active)}
 .auth{width:min(100%,384px);text-align:center}
 .brand-lockup{width:218.5px;height:73.6px;margin:0 auto 30px;overflow:hidden;background:var(--bg)}
 .brand-image{display:block;width:100%;height:100%;object-fit:contain;object-position:center;background:var(--bg)}
@@ -185,7 +188,7 @@ h1{margin:0;font-family:"Segoe UI Variable Display","Segoe UI",Inter,ui-sans-ser
 .provider[aria-disabled="true"]{color:var(--disabled);pointer-events:none}
 .language-link:focus-visible,.theme-toggle:focus-visible,.provider:focus-visible{outline:2px solid var(--text);outline-offset:2px}
 .notice{max-width:350px;margin:22px auto 0;color:var(--muted);font-size:11px;line-height:1.55}
-@media (max-width:560px){.shell{padding:72px 18px 32px}.language-control{top:14px;left:14px}.theme-toggle{top:14px;right:14px}.auth{width:min(100%,360px)}.brand-lockup{width:197.8px;height:66.7px;margin-bottom:24px}h1{font-size:25px}.intro{margin-bottom:24px}.provider{height:48px}}
+@media (max-width:560px){.shell{padding:72px 18px 32px}.header-controls{top:14px;right:14px;gap:8px}.theme-toggle{width:36px;justify-content:center;padding:5px}.theme-toggle strong{display:none}.auth{width:min(100%,360px)}.brand-lockup{width:197.8px;height:66.7px;margin-bottom:24px}h1{font-size:25px}.intro{margin-bottom:24px}.provider{height:48px}}
 @media (prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important}}
 """
 
