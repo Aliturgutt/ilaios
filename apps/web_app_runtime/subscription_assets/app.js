@@ -4,11 +4,12 @@
   const tr = root.lang === 'tr';
   const copy = (en, turkish) => tr ? turkish : en;
   const themeButton = document.getElementById('subscription-theme');
+  const themeLabel = document.getElementById('theme-label');
   function theme(value) {
     const dark = value === 'dark';
     root.dataset.theme = dark ? 'dark' : 'light';
     themeButton.setAttribute('aria-pressed', String(dark));
-    themeButton.textContent = dark ? copy('Light theme', 'Açık tema') : copy('Dark theme', 'Koyu tema');
+    themeLabel.textContent = copy('Theme', 'Tema');
   }
   try { theme(localStorage.getItem('ilaios-theme')); } catch (_) { theme('light'); }
   themeButton.addEventListener('click', () => {

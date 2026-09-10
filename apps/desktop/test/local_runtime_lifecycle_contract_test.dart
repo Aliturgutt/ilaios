@@ -18,7 +18,7 @@ void main() {
     expect(sidecarSource, contains('stop_identity_if_desktop_exits'));
     expect(sidecarSource, contains('_wait_for_windows_process_exit(desktop_pid)'));
     expect(sidecarSource, contains('desktop_exit_cleanup_complete = threading.Event()'));
-    expect(sidecarSource, contains('_force_exit_if_desktop_cleanup_stalls'));
+    expect(sidecarSource, contains('_force_exit_after_desktop_owner_loss'));
     expect(sidecarSource, contains('desktop_exit_cleanup_complete.wait(timeout=3)'));
     expect(sidecarSource, contains('_terminate_frozen_sidecar_parent()'));
     expect(sidecarSource, contains('QueryFullProcessImageNameW'));
