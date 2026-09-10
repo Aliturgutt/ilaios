@@ -66,6 +66,9 @@ def test_login_language_selector_is_visible_and_switches_locale(tmp_path: Path) 
     assert 'id="theme-light"' not in tr_document
     assert 'id="theme-dark"' not in tr_document
 
+    assert 'class="subscription-link" href="/subscription?lang=tr"' in tr_document
+    assert 'class="subscription-link" href="/subscription?lang=en"' in en_document
+
 
 def test_login_header_controls_match_canonical_website_geometry(tmp_path: Path) -> None:
     runtime = _runtime(tmp_path / "identity.db")
@@ -85,3 +88,5 @@ def test_login_header_controls_match_canonical_website_geometry(tmp_path: Path) 
     assert '.language-link{height:24px;min-width:30px' in stylesheet
     assert '.theme-toggle{width:36px;justify-content:center;padding:5px}' in stylesheet
     assert '.theme-toggle strong{display:none}' in stylesheet
+    assert '.subscription-link,.subscription-link:visited{color:var(--text)}' in stylesheet
+    assert '.subscription-link:focus-visible{outline:2px solid var(--text);outline-offset:2px}' in stylesheet
