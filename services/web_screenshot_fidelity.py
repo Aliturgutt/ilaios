@@ -1,25 +1,38 @@
 """Deterministic screenshot-fidelity assessment for the canonical Web Factory.
 
-This module is an evidence/repair-planning layer only. It does not capture screenshots,
-mutate generated source, execute browsers, deploy, publish, or grant runtime authority.
-Repair execution must remain in the incumbent governed Web Factory path.
+This module is an evidence/repair-planning and scoring layer only. It does not capture
+screenshots, mutate generated source, execute browsers, deploy, publish, or grant runtime
+authority. Visual acceptance reuses the incumbent NativeDesignQualityEvaluator.
 """
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Literal
+from typing import Iterable, Literal
+
+from services.design_quality import (
+    DesignAssessment,
+    DesignObservation,
+    NativeDesignQualityEvaluator,
+)
 
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _ALLOWED_VIEWPORTS = frozenset({320, 360, 390, 412, 430, 768, 1024, 1440})
 _MAX_REPAIR_ATTEMPTS = 3
 
-# Fixed acceptance budgets. Callers cannot lower these thresholds between attempts.
+# Fixed fidelity budgets. Callers cannot lower these thresholds between attempts.
 _MAX_PIXEL_MISMATCH_RATIO = 0.08
 _MAX_LAYOUT_MISMATCH_RATIO = 0.03
 _MAX_TEXT_MISMATCH_RATIO = 0.02
 
+# Fixed professional visual-quality budgets from the Web Factory completion contract.
+_MIN_CRITICAL_SCORE = 70
+_MIN_OVERALL_SCORE = 80
+_MIN_ACCESSIBILITY_SCORE = 85
+_MIN_MOBILE_SCORE = 80
+
 FidelityStatus = Literal["PASS", "REVISE", "FAIL"]
+VisualQualityStatus = Literal["PASS", "REVISE", "DESIGN_QUALITY_FAILED"]
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,20 +72,36 @@ class ScreenshotFidelityAssessment:
         return self.status == "REVISE" and self.remaining_attempts > 0
 
 
+@dataclass(frozen=True, slots=True)
+class VisualQualityScores:
+    overall: int
+    critical: int
+    accessibility: int
+    mobile: int
+
+
+@dataclass(frozen=True, slots=True)
+class VisualQualityGate:
+    status: VisualQualityStatus
+    attempt: int
+    scores: VisualQualityScores
+    assessment: DesignAssessment
+    remaining_attempts: int
+    thresholds: dict[str, int]
+
+    @property
+    def accepted(self) -> bool:
+        return self.status == "PASS"
+
+
 def assess_screenshot_fidelity(
     observation: ScreenshotFidelityObservation,
     *,
     attempt: int,
 ) -> ScreenshotFidelityAssessment:
-    """Evaluate one immutable reference/generated screenshot pair fail-closed.
-
-    The bounded loop has at most three assessment attempts. Thresholds are module-owned
-    constants so retrying cannot silently weaken acceptance. Returned repair scopes are
-    descriptive only; they do not authorize filesystem or runtime mutation.
-    """
+    """Evaluate one immutable reference/generated screenshot pair fail-closed."""
     _validate_observation(observation)
-    if attempt < 1 or attempt > _MAX_REPAIR_ATTEMPTS:
-        raise ValueError("screenshot fidelity attempt must be between 1 and 3")
+    _validate_attempt(attempt)
 
     findings: list[ScreenshotFidelityFinding] = []
     if observation.horizontal_overflow_px > 0:
@@ -147,6 +176,114 @@ def assess_screenshot_fidelity(
     )
 
 
+def assess_visual_quality(
+    observations: Iterable[DesignObservation],
+    *,
+    attempt: int,
+) -> VisualQualityGate:
+    """Score real rendered observations while retaining the canonical evaluator authority."""
+    _validate_attempt(attempt)
+    rows = tuple(observations)
+    assessment = NativeDesignQualityEvaluator().evaluate(rows)
+    scores = _score(rows)
+    thresholds = {
+        "critical": _MIN_CRITICAL_SCORE,
+        "overall": _MIN_OVERALL_SCORE,
+        "accessibility": _MIN_ACCESSIBILITY_SCORE,
+        "mobile": _MIN_MOBILE_SCORE,
+    }
+    score_pass = (
+        scores.critical >= _MIN_CRITICAL_SCORE
+        and scores.overall >= _MIN_OVERALL_SCORE
+        and scores.accessibility >= _MIN_ACCESSIBILITY_SCORE
+        and scores.mobile >= _MIN_MOBILE_SCORE
+    )
+    passed = assessment.status == "PASS" and not assessment.blocking_findings and score_pass
+    if passed:
+        status: VisualQualityStatus = "PASS"
+    elif attempt < _MAX_REPAIR_ATTEMPTS:
+        status = "REVISE"
+    else:
+        status = "DESIGN_QUALITY_FAILED"
+    return VisualQualityGate(
+        status=status,
+        attempt=attempt,
+        scores=scores,
+        assessment=assessment,
+        remaining_attempts=_MAX_REPAIR_ATTEMPTS - attempt,
+        thresholds=thresholds,
+    )
+
+
+def _score(rows: tuple[DesignObservation, ...]) -> VisualQualityScores:
+    if not rows:
+        raise ValueError("at least one design observation is required")
+    critical_penalty = 0
+    accessibility_penalty = 0
+    mobile_penalty = 0
+    overall_penalty = 0
+
+    for row in rows:
+        geometry = row.horizontal_overflow + row.clipped_elements + row.overlapping_elements
+        critical_penalty += geometry * 16
+
+        accessibility = (
+            row.missing_focus_indicators
+            + row.undersized_touch_targets
+            + row.contrast_failures
+            + row.missing_alt_text
+            + row.unlabeled_icon_controls
+            + row.hover_only_interactions
+            + row.form_label_failures
+            + row.field_feedback_failures
+            + row.text_scaling_failures
+        )
+        accessibility_penalty += accessibility * 7
+        if not row.reduced_motion_supported:
+            accessibility_penalty += 8
+        if not row.reduced_transparency_supported:
+            accessibility_penalty += 4
+        if not row.increased_contrast_supported:
+            accessibility_penalty += 4
+
+        professional = (
+            row.giant_heading_failures
+            + row.empty_visual_placeholders
+            + row.excessive_whitespace_regions
+            + row.repeated_layout_failures
+            + row.cta_hierarchy_failures
+            + row.turkish_layout_failures
+            + row.mobile_hierarchy_failures
+            + row.section_rhythm_failures
+            + row.missing_brand_asset_failures
+            + row.text_heavy_without_structure
+        )
+        overall_penalty += geometry * 10 + accessibility * 4 + professional * 6
+
+        if row.viewport <= 430:
+            mobile_penalty += (
+                geometry * 15
+                + row.mobile_hierarchy_failures * 12
+                + row.giant_heading_failures * 8
+                + row.turkish_layout_failures * 8
+                + row.undersized_touch_targets * 6
+            )
+
+    divisor = max(1, len(rows))
+    mobile_rows = max(1, sum(1 for row in rows if row.viewport <= 430))
+    return VisualQualityScores(
+        overall=max(0, 100 - round(overall_penalty / divisor)),
+        critical=max(0, 100 - round(critical_penalty / divisor)),
+        accessibility=max(0, 100 - round(accessibility_penalty / divisor)),
+        mobile=max(0, 100 - round(mobile_penalty / mobile_rows)),
+    )
+
+
+def _validate_attempt(attempt: int) -> None:
+    if attempt < 1 or attempt > _MAX_REPAIR_ATTEMPTS:
+        raise ValueError("visual quality attempt must be between 1 and 3")
+
+
 def _validate_observation(observation: ScreenshotFidelityObservation) -> None:
     if not observation.route.startswith("/") or "\x00" in observation.route:
         raise ValueError("screenshot fidelity route is invalid")
@@ -194,5 +331,9 @@ __all__ = [
     "ScreenshotFidelityAssessment",
     "ScreenshotFidelityFinding",
     "ScreenshotFidelityObservation",
+    "VisualQualityGate",
+    "VisualQualityScores",
+    "VisualQualityStatus",
     "assess_screenshot_fidelity",
+    "assess_visual_quality",
 ]
