@@ -1,5 +1,5 @@
-name: ilaios_desktop
-description: "ILAIOS Desktop — Windows-first client projection for the ILAIOS control plane."
+﻿name: ilaios_desktop
+description: "ILAIOS Desktop â€” Windows-first client projection for the ILAIOS control plane."
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -24,3 +24,69 @@ flutter:
     - ../../brand/assets/04-ilaios-symbol-light.jpg
     - ../../brand/assets/05-ilaios-app-icon.jpg
     - ../../brand/assets/13-ilaios-primary-horizontal-light.jpg
+    - assets/pixel_agents/
+    - assets/pixel_agents/core/front/idle/
+    - assets/pixel_agents/core/front/working/
+    - assets/pixel_agents/core/front/waiting/
+    - assets/pixel_agents/core/front/offline/
+    - assets/pixel_agents/core/rear/idle/
+    - assets/pixel_agents/core/rear/working/
+    - assets/pixel_agents/core/rear/waiting/
+    - assets/pixel_agents/core/rear/offline/
+    - assets/pixel_agents/engineering/front/idle/
+    - assets/pixel_agents/engineering/front/working/
+    - assets/pixel_agents/engineering/front/waiting/
+    - assets/pixel_agents/engineering/front/offline/
+    - assets/pixel_agents/engineering/rear/idle/
+    - assets/pixel_agents/engineering/rear/working/
+    - assets/pixel_agents/engineering/rear/waiting/
+    - assets/pixel_agents/engineering/rear/offline/
+    - assets/pixel_agents/security/front/idle/
+    - assets/pixel_agents/security/front/working/
+    - assets/pixel_agents/security/front/waiting/
+    - assets/pixel_agents/security/front/offline/
+    - assets/pixel_agents/security/rear/idle/
+    - assets/pixel_agents/security/rear/working/
+    - assets/pixel_agents/security/rear/waiting/
+    - assets/pixel_agents/security/rear/offline/
+    - assets/pixel_agents/web/front/idle/
+    - assets/pixel_agents/web/front/working/
+    - assets/pixel_agents/web/front/waiting/
+    - assets/pixel_agents/web/front/offline/
+    - assets/pixel_agents/web/rear/idle/
+    - assets/pixel_agents/web/rear/working/
+    - assets/pixel_agents/web/rear/waiting/
+    - assets/pixel_agents/web/rear/offline/
+    - assets/pixel_agents/media/front/idle/
+    - assets/pixel_agents/media/front/working/
+    - assets/pixel_agents/media/front/waiting/
+    - assets/pixel_agents/media/front/offline/
+    - assets/pixel_agents/media/rear/idle/
+    - assets/pixel_agents/media/rear/working/
+    - assets/pixel_agents/media/rear/waiting/
+    - assets/pixel_agents/media/rear/offline/
+    - assets/pixel_agents/intelligence/front/idle/
+    - assets/pixel_agents/intelligence/front/working/
+    - assets/pixel_agents/intelligence/front/waiting/
+    - assets/pixel_agents/intelligence/front/offline/
+    - assets/pixel_agents/intelligence/rear/idle/
+    - assets/pixel_agents/intelligence/rear/working/
+    - assets/pixel_agents/intelligence/rear/waiting/
+    - assets/pixel_agents/intelligence/rear/offline/
+    - assets/pixel_agents/operations/front/idle/
+    - assets/pixel_agents/operations/front/working/
+    - assets/pixel_agents/operations/front/waiting/
+    - assets/pixel_agents/operations/front/offline/
+    - assets/pixel_agents/operations/rear/idle/
+    - assets/pixel_agents/operations/rear/working/
+    - assets/pixel_agents/operations/rear/waiting/
+    - assets/pixel_agents/operations/rear/offline/
+    - assets/pixel_agents/meta/front/idle/
+    - assets/pixel_agents/meta/front/working/
+    - assets/pixel_agents/meta/front/waiting/
+    - assets/pixel_agents/meta/front/offline/
+    - assets/pixel_agents/meta/rear/idle/
+    - assets/pixel_agents/meta/rear/working/
+    - assets/pixel_agents/meta/rear/waiting/
+    - assets/pixel_agents/meta/rear/offline/
+
