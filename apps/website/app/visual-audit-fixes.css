@@ -259,6 +259,24 @@ html[data-theme="light"] .card :where(p, small) {
   -webkit-text-fill-color: #5A5A5A !important;
 }
 
+/* Evidence/detail cards — force surface and all copy into the same readable light-theme contrast model. */
+html[data-theme="light"] .grid > .card {
+  background: #FFFFFF !important;
+  border-color: #B3B3B3 !important;
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+}
+
+html[data-theme="light"] .grid > .card :where(h2, h3, strong) {
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+}
+
+html[data-theme="light"] .grid > .card :where(p, small) {
+  color: #5A5A5A !important;
+  -webkit-text-fill-color: #5A5A5A !important;
+}
+
 html[data-theme="light"] .spatial-map-detail p {
   color: #2A2A2A !important;
   -webkit-text-fill-color: #2A2A2A !important;
