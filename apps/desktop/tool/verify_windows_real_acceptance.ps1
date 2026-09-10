@@ -1,3 +1,4 @@
+# Current-master Desktop real-acceptance checkpoint.
 [CmdletBinding()]
 param(
   [int]$StartupTimeoutSeconds = 90
