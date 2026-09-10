@@ -7,7 +7,11 @@ class CommercialPlanError(ValueError):
     """Raised when commercial plan configuration is invalid."""
 
 class CommercialPlanId(str, Enum):
-    FREE="FREE"; PRO="PRO"; BUSINESS="BUSINESS"; POWER="POWER"; ENTERPRISE="ENTERPRISE"
+    FREE="FREE"
+    PRO="PRO"
+    BUSINESS="BUSINESS"
+    POWER="POWER"
+    ENTERPRISE="ENTERPRISE"
 
 @dataclass(frozen=True, slots=True)
 class CommercialPlan:
