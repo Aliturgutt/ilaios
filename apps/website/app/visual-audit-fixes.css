@@ -85,6 +85,23 @@ main:has(> .about-intro) .founder-row h2 {
     max-width: 460px;
   }
 
+  /* Canonical request chain — 12 steps render as a balanced 6 + 6 desktop grid. */
+  .canonical-linear:has(> :nth-child(12):last-child) {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    overflow: visible !important;
+  }
+
+  .canonical-linear:has(> :nth-child(12):last-child) > div {
+    min-width: 0 !important;
+    width: auto !important;
+    flex: none !important;
+  }
+
+  .canonical-linear:has(> :nth-child(12):last-child) > div > i {
+    display: none !important;
+  }
+
   /* Solutions 01–04 — keep the four outcome cards in one balanced desktop row. */
   .solution-grid {
     grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
