@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+// Visual-audit closure refresh: runtime behavior is unchanged; this commit revalidates the current PR against the latest master.
 type Locale = "en" | "tr";
 
 const copy = {
