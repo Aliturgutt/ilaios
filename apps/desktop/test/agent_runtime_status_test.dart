@@ -116,4 +116,100 @@ void main() {
       AgentRuntimeDisplayState.offline,
     );
   });
+
+  test('disconnected runtime forces all canonical agents offline', () {
+    final states = resolveCanonicalAgentRuntimeStates(
+      _snapshot(
+        agents: const [
+          <String, Object?>{
+            'agent_id': 'ilaios.agent.core.orchestrator.v1',
+            'registered': true,
+            'agent_status': 'working',
+          },
+        ],
+      ),
+      runtimeConnected: false,
+    );
+
+    expect(
+      states['ilaios.agent.core.orchestrator.v1'],
+      AgentRuntimeDisplayState.offline,
+    );
+  });
+
+  test('stale authoritative snapshot forces working agent offline', () {
+    final states = resolveCanonicalAgentRuntimeStates(
+      _snapshot(
+        agents: const [
+          <String, Object?>{
+            'agent_id': 'ilaios.agent.core.orchestrator.v1',
+            'registered': true,
+          },
+        ],
+        liveEvents: const [
+          <String, Object?>{
+            'agent_id': 'ilaios.agent.core.orchestrator.v1',
+            'state': 'working',
+            'sequence': 10,
+            'timestamp': '2026-09-10T12:00:00Z',
+          },
+        ],
+      ),
+      now: DateTime.parse('2026-09-10T12:10:01Z'),
+      maxAge: const Duration(minutes: 10),
+    );
+
+    expect(
+      states['ilaios.agent.core.orchestrator.v1'],
+      AgentRuntimeDisplayState.offline,
+    );
+  });
+
+  test('fresh authoritative snapshot preserves real working state', () {
+    final states = resolveCanonicalAgentRuntimeStates(
+      _snapshot(
+        agents: const [
+          <String, Object?>{
+            'agent_id': 'ilaios.agent.core.orchestrator.v1',
+            'registered': true,
+          },
+        ],
+        liveEvents: const [
+          <String, Object?>{
+            'agent_id': 'ilaios.agent.core.orchestrator.v1',
+            'state': 'working',
+            'sequence': 11,
+            'timestamp': '2026-09-10T12:09:30Z',
+          },
+        ],
+      ),
+      now: DateTime.parse('2026-09-10T12:10:00Z'),
+      maxAge: const Duration(minutes: 10),
+    );
+
+    expect(
+      states['ilaios.agent.core.orchestrator.v1'],
+      AgentRuntimeDisplayState.working,
+    );
+  });
+
+  test('partial freshness arguments fail closed', () {
+    final states = resolveCanonicalAgentRuntimeStates(
+      _snapshot(
+        agents: const [
+          <String, Object?>{
+            'agent_id': 'ilaios.agent.core.orchestrator.v1',
+            'registered': true,
+            'agent_status': 'active',
+          },
+        ],
+      ),
+      now: DateTime.parse('2026-09-10T12:10:00Z'),
+    );
+
+    expect(
+      states['ilaios.agent.core.orchestrator.v1'],
+      AgentRuntimeDisplayState.offline,
+    );
+  });
 }
