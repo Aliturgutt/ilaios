@@ -53,10 +53,12 @@ void main() {
   });
 
   test('pixel workspace reference is present and packaged separately', () {
-    const assetPath = 'assets/pixel_agents/workspace/office_reference.jpg';
+    const assetPath = 'assets/pixel_agents/workspace/office_reference.b64';
     final workspace = File(assetPath);
     expect(workspace.existsSync(), isTrue, reason: assetPath);
-    final bytes = workspace.readAsBytesSync();
+    final encoded = workspace.readAsStringSync().trim();
+    expect(encoded, isNotEmpty, reason: assetPath);
+    final bytes = base64Decode(encoded);
     expect(bytes.length, greaterThan(1024), reason: assetPath);
     expect(bytes.take(3).toList(), <int>[255, 216, 255], reason: assetPath);
 
@@ -68,5 +70,6 @@ void main() {
     ).readAsStringSync();
     expect(agentsView, contains("key: const Key('agents-pixel-workspace')"));
     expect(agentsView, contains(assetPath));
+    expect(agentsView, contains('base64Decode'));
   });
 }
