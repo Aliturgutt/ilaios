@@ -251,7 +251,8 @@ def _review_acceptance(
     raw = evidence_path.read_bytes()
     evidence_sha256 = hashlib.sha256(raw).hexdigest()
     try:
-        payload = json.loads(raw.decode("utf-8"))
+        raw_text = raw.decode("utf-8")
+        payload = json.loads(raw_text)
     except (UnicodeDecodeError, json.JSONDecodeError) as error:
         raise DBMigrationSafetyError("SF-20 review evidence must be valid UTF-8 JSON") from error
     if not isinstance(payload, dict):
@@ -267,7 +268,6 @@ def _review_acceptance(
             "changeset_authors",
             "reviewer",
             "reviewed_at",
-            "evidence_commit_sha",
             "migration_files",
             "finding_fingerprints",
             "review_notes",
@@ -306,10 +306,6 @@ def _review_acceptance(
     _require_offset_timestamp(reviewed_at)
     _require_nonempty_string(payload["review_notes"], "review_notes")
 
-    evidence_commit_sha = _require_sha_value(
-        payload["evidence_commit_sha"], "review evidence commit SHA"
-    )
-
     migration_files = payload["migration_files"]
     if not isinstance(migration_files, list) or not all(
         isinstance(item, str) and item for item in migration_files
@@ -326,10 +322,24 @@ def _review_acceptance(
     if tuple(sorted(fingerprints)) != review_fingerprints:
         raise DBMigrationSafetyError("SF-20 review evidence finding fingerprints do not match")
 
+    evidence_commit_sha = _git_text(
+        repository_root,
+        (
+            "log",
+            "-1",
+            "--format=%H",
+            subject_head_sha,
+            "--",
+            relative_evidence_path.as_posix(),
+        ),
+        "unable to resolve SF-20 review evidence commit",
+    )
+    _require_sha(evidence_commit_sha, "review evidence commit SHA")
+
     _validate_evidence_provenance(
         repository_root,
         relative_evidence_path=relative_evidence_path.as_posix(),
-        raw_evidence=raw.decode("utf-8"),
+        raw_evidence=raw_text,
         evidence_commit_sha=evidence_commit_sha,
         evidence_base_sha=evidence_base_sha,
         subject_head_sha=subject_head_sha,
@@ -389,7 +399,9 @@ def _validate_evidence_provenance(
     )
     changed_paths = tuple(line.strip() for line in changed_paths_text.splitlines() if line.strip())
     if changed_paths != (relative_evidence_path,):
-        raise DBMigrationSafetyError("SF-20 review evidence commit must only change its evidence artifact")
+        raise DBMigrationSafetyError(
+            "SF-20 review evidence commit must only change its evidence artifact"
+        )
 
     committed_evidence = _git_text(
         repository_root,
@@ -398,7 +410,9 @@ def _validate_evidence_provenance(
         strip=False,
     )
     if committed_evidence != raw_evidence:
-        raise DBMigrationSafetyError("SF-20 review evidence content does not match evidence commit")
+        raise DBMigrationSafetyError(
+            "SF-20 review evidence content does not match evidence commit"
+        )
 
     if evidence_commit_sha in set(migration_commits):
         raise DBMigrationSafetyError("SF-20 review evidence must be a separate commit")
