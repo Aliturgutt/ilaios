@@ -9,9 +9,12 @@ backward-compatible; presentation-changing modes must be selected explicitly.
 from __future__ import annotations
 
 import re
+import time
 from dataclasses import dataclass
 from enum import Enum
 
+from services.capability_registry import capability
+from services.observability import PromptRefinementTelemetry, TelemetryStore
 from services.prompt_intent_compiler import PromptCompilation, compile_prompt
 
 
@@ -35,6 +38,8 @@ class PromptEvaluation:
     risk_cues: tuple[str, ...]
     risk_cues_preserved: bool | None
     unresolved_critical_information: tuple[str, ...]
+    factory_hints: tuple[str, ...]
+    factory_metadata_complete: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,6 +93,12 @@ _RISK_CUE = re.compile(
 _CLAUSE_BREAK = re.compile(r"(?:\s*;\s*|\n+|(?<=[.!?])\s+)")
 _BULLET_PREFIX = re.compile(r"^(?:[-*•]|\d+[.)])\s+")
 _HORIZONTAL_SPACE = re.compile(r"[^\S\r\n]+")
+_PROMPT_TELEMETRY = PromptRefinementTelemetry(TelemetryStore())
+
+
+def prompt_refinement_metrics_snapshot() -> dict[str, object]:
+    """Return aggregate non-content quality metrics from canonical telemetry."""
+    return _PROMPT_TELEMETRY.snapshot()
 
 
 def refine_prompt(
@@ -103,7 +114,10 @@ def refine_prompt(
     were not already represented in the text passed to the compiler. The
     default mode preserves normalized user intent; callers that want textual
     restructuring must opt into a presentation-changing mode explicitly.
+    Factory hints are read only from the canonical capability registry and are
+    advisory evaluation metadata; they never grant or select execution.
     """
+    started_ns = time.perf_counter_ns()
     if not isinstance(raw_prompt, str):
         raise ValueError("raw prompt must be text")
     if not raw_prompt.strip():
@@ -130,6 +144,7 @@ def refine_prompt(
         clause for clause in clauses if _ACCEPTANCE_CUE.search(clause)
     )
     risk_cues = tuple(match.group(0) for match in _RISK_CUE.finditer(source))
+    factory_hints, factory_metadata_complete = _factory_hints(compilation)
     issues: list[str] = []
     warnings: list[str] = []
     if raw_prompt != normalized:
@@ -143,6 +158,8 @@ def refine_prompt(
         warnings.append("governance-affecting text preserved as untrusted user data")
     if explicit_constraints:
         warnings.append("explicit constraints are represented in the compiler input")
+    if not factory_metadata_complete:
+        warnings.append("canonical factory metadata unavailable; factory hints omitted")
 
     if contains_injection_text or mode is PromptRefinementMode.PRESERVE_INTENT:
         refined = source
@@ -174,8 +191,10 @@ def refine_prompt(
         risk_cues=risk_cues,
         risk_cues_preserved=preserved_risk,
         unresolved_critical_information=compilation.missing_critical_information,
+        factory_hints=factory_hints,
+        factory_metadata_complete=factory_metadata_complete,
     )
-    return PromptRefinement(
+    result = PromptRefinement(
         original_prompt=raw_prompt,
         refined_prompt=refined,
         mode=mode,
@@ -188,6 +207,32 @@ def refine_prompt(
         warnings=tuple(warnings),
         evaluation=evaluation,
     )
+    _PROMPT_TELEMETRY.record(
+        mode=mode.value,
+        transformed=result.transformed,
+        issue_count=len(result.detected_issues),
+        ambiguity_detected=result.evaluation.ambiguity_detected,
+        constraints_detected=result.evaluation.constraints_detected,
+        risk_cues_preserved=result.evaluation.risk_cues_preserved,
+        factory_metadata_complete=result.evaluation.factory_metadata_complete,
+        latency_ms=(time.perf_counter_ns() - started_ns) // 1_000_000,
+        status="success",
+    )
+    return result
+
+
+def _factory_hints(compilation: PromptCompilation) -> tuple[tuple[str, ...], bool]:
+    """Resolve compiler-suggested capabilities through canonical registry only."""
+    hints: list[str] = []
+    for capability_id in compilation.suggested_capabilities:
+        try:
+            definition = capability(capability_id)
+        except KeyError:
+            return (), False
+        if definition.domain != "factory":
+            return (), False
+        hints.append(f"{definition.display_name} ({definition.capability_id})")
+    return tuple(hints), True
 
 
 def _normalize(text: str) -> str:

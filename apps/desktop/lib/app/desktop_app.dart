@@ -31,6 +31,7 @@ class IlaiosDesktopApp extends StatefulWidget {
     this.onSignIn,
     this.onLogout,
     this.onPromptSubmit,
+    this.onPromptRefine,
     this.onSaveArtifact,
     this.onFetchLiState,
     this.onFetchLiMemories,
@@ -54,6 +55,10 @@ class IlaiosDesktopApp extends StatefulWidget {
   final Future<void> Function(String providerId)? onSignIn;
   final Future<void> Function()? onLogout;
   final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
+  final Future<PromptRefinementPreview> Function(
+    String prompt,
+    PromptRefinementMode mode,
+  )? onPromptRefine;
   final Future<String> Function(EvidenceRecord record)? onSaveArtifact;
   final Future<DesktopLiState> Function()? onFetchLiState;
   final Future<List<DesktopLiMemory>> Function()? onFetchLiMemories;
@@ -237,6 +242,7 @@ class _IlaiosDesktopAppState extends State<IlaiosDesktopApp>
             onLogout: widget.onLogout,
             onPromptSubmit:
                 widget.onPromptSubmit == null ? null : _submitPrompt,
+            onPromptRefine: widget.onPromptRefine,
             onSaveArtifact: widget.onSaveArtifact,
             onFetchLiState: widget.onFetchLiState,
             onFetchLiMemories: widget.onFetchLiMemories,

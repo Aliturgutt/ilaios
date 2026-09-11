@@ -60,6 +60,7 @@ from services.knowledge_runtime import (
     KnowledgeRuntimeError,
     KnowledgeRuntimePolicy,
 )
+from services.prompt_refinement import PromptRefinement, PromptRefinementMode, refine_prompt
 from services.runtime import (
     BlastRadiusBudget,
     DurableGrantPolicy,
@@ -332,6 +333,13 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
             self.server.control_plane.authenticate(token)
             body = self._read_json()
             path = urlparse(self.path).path
+            if path == "/v1/prompts/refine":
+                refinement = refine_prompt(
+                    _required_string(body, "prompt"),
+                    PromptRefinementMode(_required_string(body, "mode")),
+                )
+                self._send_json(HTTPStatus.OK, _prompt_refinement_json(refinement))
+                return
             if path == "/v1/knowledge/commands":
                 self._send_json(HTTPStatus.OK, self._knowledge_command(body))
                 return
@@ -790,6 +798,32 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 now=_required_datetime(payload, "now"),
             )
         raise ValueError("unknown product-proof operation")
+
+
+def _prompt_refinement_json(result: PromptRefinement) -> dict[str, Any]:
+    return {
+        "original_prompt": result.original_prompt,
+        "refined_prompt": result.refined_prompt,
+        "mode": result.mode.value,
+        "transformed": result.transformed,
+        "detected_issues": list(result.detected_issues),
+        "preserved_constraints": list(result.preserved_constraints),
+        "unresolved_ambiguities": list(result.unresolved_ambiguities),
+        "warnings": list(result.warnings),
+        "evaluation": {
+            "clarity": result.evaluation.clarity,
+            "specificity": result.evaluation.specificity,
+            "structure": result.evaluation.structure,
+            "readiness": result.evaluation.readiness,
+            "ambiguity_detected": result.evaluation.ambiguity_detected,
+            "constraints_detected": result.evaluation.constraints_detected,
+            "risk_cues": list(result.evaluation.risk_cues),
+            "risk_cues_preserved": result.evaluation.risk_cues_preserved,
+            "unresolved_critical_information": list(
+                result.evaluation.unresolved_critical_information
+            ),
+        },
+    }
 
 
 def _record_json(record: GoalRecord | JobRecord) -> dict[str, Any]:

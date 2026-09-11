@@ -10,6 +10,7 @@ import '../navigation/desktop_section.dart';
 import 'agent_runtime_status.dart';
 import 'pixel_agent_presentation.dart';
 import 'pixel_agent_sprite.dart';
+import 'prompt_editor_panel.dart';
 
 /// Canonical 7-page Home surface.
 ///
@@ -24,6 +25,7 @@ class ReferenceHomeDashboardV3 extends StatefulWidget {
     required this.onNavigate,
     this.userSession,
     this.onPromptSubmit,
+    this.onPromptRefine,
     this.onRefreshRequested,
     super.key,
   });
@@ -34,6 +36,10 @@ class ReferenceHomeDashboardV3 extends StatefulWidget {
   final DesktopUserSession? userSession;
   final ValueChanged<DesktopSection> onNavigate;
   final Future<PromptSubmission> Function(String objective)? onPromptSubmit;
+  final Future<PromptRefinementPreview> Function(
+    String prompt,
+    PromptRefinementMode mode,
+  )? onPromptRefine;
   final VoidCallback? onRefreshRequested;
 
   @override
@@ -216,6 +222,12 @@ class _ReferenceHomeDashboardV3State extends State<ReferenceHomeDashboardV3> {
                         ),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 12),
+                  PromptEditorPanel(
+                    controller: _promptController,
+                    enabled: !_submitting && widget.projection.connected,
+                    onRefine: widget.onPromptRefine,
                   ),
                   if (referenceAssets != null) ...[
                     const SizedBox(height: 13),
