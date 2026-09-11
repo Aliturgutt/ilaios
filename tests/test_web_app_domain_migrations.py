@@ -109,7 +109,7 @@ def test_phase2_migration_creates_domain_schema_indexes_and_foreign_keys(
     tmp_path: Path,
 ) -> None:
     database = tmp_path / "state.sqlite3"
-    assert migrate_database(database) == LATEST_SCHEMA_VERSION == 10
+    assert migrate_database(database) == LATEST_SCHEMA_VERSION
 
     with _connect(database) as connection:
         tables = {
@@ -272,6 +272,9 @@ def test_phase2_expand_only_rollback_preserves_data_and_supports_reupgrade(
             "'2026-08-20T09:00:00Z', 1)"
         )
 
+    backup_v11 = tmp_path / "rollback-v11-backup.sqlite3"
+    assert rollback_database(database, backup_v11) == 10
+    assert current_schema_version(backup_v11) == 11
     assert rollback_database(database, backup_v10) == 9
     assert current_schema_version(database) == 9
     assert current_schema_version(backup_v10) == 10
