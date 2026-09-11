@@ -248,3 +248,55 @@ def test_runtime_adapters_dispatch_only_to_owned_methodology_skills(
         }
     )
     assert differential["scope_id"] == "diff"
+
+
+def test_infrastructure_adapter_surfaces_blocking_container_root_finding(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "Dockerfile").write_text(
+        "FROM python:3.13\nUSER root\n",
+        encoding="utf-8",
+    )
+
+    report = SecurityAgentRuntimeAdapters().runtime_adapters()[
+        INFRASTRUCTURE_ADAPTER_KIND
+    ](
+        {
+            "scope_id": "container-root",
+            "repository_root": str(tmp_path),
+        }
+    )
+
+    assert report["passed"] is False
+    assert report["blocking_finding_count"] == 1
+    assert {
+        item["finding_id"] for item in report["findings"]
+    } == {"CONTAINER-ROOT-USER"}
+    assert {
+        item["category"] for item in report["findings"]
+    } == {"container"}
+
+
+def test_infrastructure_adapter_keeps_non_root_container_clean(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "Dockerfile").write_text(
+        "FROM python:3.13\nUSER 10001\n",
+        encoding="utf-8",
+    )
+
+    report = SecurityAgentRuntimeAdapters().runtime_adapters()[
+        INFRASTRUCTURE_ADAPTER_KIND
+    ](
+        {
+            "scope_id": "container-non-root",
+            "repository_root": str(tmp_path),
+        }
+    )
+
+    assert report["passed"] is True
+    assert report["blocking_finding_count"] == 0
+    assert all(
+        item["finding_id"] != "CONTAINER-ROOT-USER"
+        for item in report["findings"]
+    )
