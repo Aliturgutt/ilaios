@@ -1,4 +1,5 @@
 import json
+from typing import cast
 
 import pytest
 
@@ -23,8 +24,11 @@ def test_prompt_refinement_metrics_are_aggregate_and_content_free() -> None:
     refine_prompt(secret_prompt, PromptRefinementMode.STRUCTURE)
     after = prompt_refinement_metrics_snapshot()
 
-    assert int(after["requests"]) == int(before["requests"]) + 1
-    assert "structure" in after["by_mode"]
+    before_requests = cast(int, before["requests"])
+    after_requests = cast(int, after["requests"])
+    by_mode = cast(dict[str, int], after["by_mode"])
+    assert after_requests == before_requests + 1
+    assert by_mode["structure"] >= 1
     serialized = json.dumps(after, sort_keys=True)
     assert secret_prompt not in serialized
     assert "hunter2" not in serialized
