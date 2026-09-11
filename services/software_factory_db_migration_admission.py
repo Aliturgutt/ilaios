@@ -117,11 +117,13 @@ class SoftwareFactoryDBMigrationAdmission:
             base_sha=base_sha,
             head_sha=head_sha,
         )
-        change_author = _git_text(
-            repository_root,
-            ("show", "-s", "--format=%ae", head_sha),
-            "unable to resolve reviewed changeset author",
-        )
+        change_author = ""
+        if report.disposition is MigrationDisposition.REVIEW_REQUIRED:
+            change_author = _git_text(
+                repository_root,
+                ("show", "-s", "--format=%ae", head_sha),
+                "unable to resolve reviewed changeset author",
+            )
         acceptance = _review_acceptance(
             repository_root,
             report=report,
@@ -163,11 +165,13 @@ class SoftwareFactoryDBMigrationAdmission:
             repository_root=repository_root,
             base_sha=base_sha,
         )
-        change_author = _git_text(
-            repository_root,
-            ("config", "user.email"),
-            "unable to resolve staged changeset author",
-        )
+        change_author = ""
+        if report.disposition is MigrationDisposition.REVIEW_REQUIRED:
+            change_author = _git_text(
+                repository_root,
+                ("config", "user.email"),
+                "unable to resolve staged changeset author",
+            )
         acceptance = _review_acceptance(
             repository_root,
             report=report,
