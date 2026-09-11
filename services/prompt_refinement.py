@@ -9,10 +9,12 @@ backward-compatible; presentation-changing modes must be selected explicitly.
 from __future__ import annotations
 
 import re
+import time
 from dataclasses import dataclass
 from enum import Enum
 
 from services.capability_registry import capability
+from services.observability import PromptRefinementTelemetry, TelemetryStore
 from services.prompt_intent_compiler import PromptCompilation, compile_prompt
 
 
@@ -91,6 +93,12 @@ _RISK_CUE = re.compile(
 _CLAUSE_BREAK = re.compile(r"(?:\s*;\s*|\n+|(?<=[.!?])\s+)")
 _BULLET_PREFIX = re.compile(r"^(?:[-*•]|\d+[.)])\s+")
 _HORIZONTAL_SPACE = re.compile(r"[^\S\r\n]+")
+_PROMPT_TELEMETRY = PromptRefinementTelemetry(TelemetryStore())
+
+
+def prompt_refinement_metrics_snapshot() -> dict[str, object]:
+    """Return aggregate non-content quality metrics from canonical telemetry."""
+    return _PROMPT_TELEMETRY.snapshot()
 
 
 def refine_prompt(
@@ -109,6 +117,7 @@ def refine_prompt(
     Factory hints are read only from the canonical capability registry and are
     advisory evaluation metadata; they never grant or select execution.
     """
+    started_ns = time.perf_counter_ns()
     if not isinstance(raw_prompt, str):
         raise ValueError("raw prompt must be text")
     if not raw_prompt.strip():
@@ -185,7 +194,7 @@ def refine_prompt(
         factory_hints=factory_hints,
         factory_metadata_complete=factory_metadata_complete,
     )
-    return PromptRefinement(
+    result = PromptRefinement(
         original_prompt=raw_prompt,
         refined_prompt=refined,
         mode=mode,
@@ -198,6 +207,18 @@ def refine_prompt(
         warnings=tuple(warnings),
         evaluation=evaluation,
     )
+    _PROMPT_TELEMETRY.record(
+        mode=mode.value,
+        transformed=result.transformed,
+        issue_count=len(result.detected_issues),
+        ambiguity_detected=result.evaluation.ambiguity_detected,
+        constraints_detected=result.evaluation.constraints_detected,
+        risk_cues_preserved=result.evaluation.risk_cues_preserved,
+        factory_metadata_complete=result.evaluation.factory_metadata_complete,
+        latency_ms=(time.perf_counter_ns() - started_ns) // 1_000_000,
+        status="success",
+    )
+    return result
 
 
 def _factory_hints(compilation: PromptCompilation) -> tuple[tuple[str, ...], bool]:
