@@ -1,0 +1,381 @@
+/* Bounded visual audit fixes for the 2026-09-10 live-site review.
+   Website presentation only. Theme-toggle dimensions are intentionally untouched. */
+
+/* A — Improve light-theme explanatory copy contrast without changing the palette. */
+html[data-theme="light"] :where(
+  .home-process-rail-v2 article p,
+  .evidence-story-copy p,
+  .evidence-control p,
+  .lead,
+  .muted,
+  .card p,
+  .flow-card p,
+  .plane-card p,
+  .journey-card p,
+  .factory-detail p,
+  .factory-detail small,
+  .product-experience p,
+  .product-experience small,
+  .system-visual p,
+  .system-visual small,
+  .status-note p,
+  .factory-truth-note p,
+  .principle-directory p,
+  .security-process small,
+  .spatial-map-detail p
+) {
+  color: #5A5A5A !important;
+  -webkit-text-fill-color: #5A5A5A !important;
+}
+
+/* B — Keep unselected homepage stage controls readable in dark mode. */
+html[data-theme="dark"] .product-stage-tabs button:not(.is-active) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+/* C — Restore a readable minimum size for explanatory diagram/runtime text. */
+.spatial-map-head small,
+.spatial-node small,
+.runtime-line small,
+.evidence-control p,
+.security-process small,
+.principle-directory p,
+.dark-surface p {
+  font-size: .8125rem !important;
+  line-height: 1.5 !important;
+}
+
+/* D/E — Rebalance page hierarchy so section headings do not overpower H1s. */
+main:has(> .compact-page-hero) section h2,
+main:has(> .audience-hero) section h2,
+main:has(> .about-intro) section h2 {
+  font-size: clamp(1.75rem, 2.2vw, 2rem) !important;
+  line-height: 1.2 !important;
+}
+
+/* About founder name — approximately 70% smaller than the oversized rendered state. */
+main:has(> .about-intro) .founder-row h2 {
+  font-size: clamp(.82rem, .9vw, .95rem) !important;
+  line-height: 1.15 !important;
+  letter-spacing: -.01em !important;
+}
+
+/* Factory diagrams — preserve the supplied asset proportions and prevent oversized upscaling. */
+.factory-visual-section .themed-diagram {
+  width: min(100%, 960px) !important;
+  max-width: 960px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+}
+
+.factory-visual-section .diagram-sprite-frame,
+.factory-visual-section .diagram-sprite {
+  width: 100% !important;
+  height: auto !important;
+}
+
+.factory-visual-section .diagram-sprite {
+  aspect-ratio: 16 / 9 !important;
+}
+
+/* Resources — reduce unused vertical field and keep heading/cards proportionate. */
+.resources-hero {
+  padding-top: 38px !important;
+  padding-bottom: 34px !important;
+}
+
+.resources-hero h1 {
+  margin-bottom: 14px !important;
+}
+
+.resources-insights {
+  padding-top: 38px !important;
+  padding-bottom: 40px !important;
+}
+
+.resources-insights .compact-heading-row {
+  margin-bottom: 24px !important;
+}
+
+.resources-insights .compact-heading-row h2 {
+  max-width: 760px !important;
+  font-size: clamp(1.75rem, 2.2vw, 2rem) !important;
+  line-height: 1.18 !important;
+}
+
+.resources-insights .detail-directory {
+  align-items: stretch !important;
+}
+
+.resources-insights .detail-directory > a {
+  min-height: 0 !important;
+  height: auto !important;
+  padding: 18px 20px !important;
+}
+
+@media (min-width: 901px) {
+  main:has(> .audience-hero) section h2,
+  main:has(> .about-intro) section h2 {
+    max-width: 460px;
+  }
+
+  .architecture-primary {
+    grid-template-columns: minmax(300px, .62fr) minmax(0, 1.38fr) !important;
+    gap: 32px !important;
+    align-items: start !important;
+  }
+
+  .architecture-primary > div:first-child > h2 {
+    margin-bottom: 14px !important;
+  }
+
+  .architecture-primary .architecture-layer-list article {
+    grid-template-columns: 28px minmax(132px, .38fr) minmax(0, 1fr) !important;
+    gap: 10px !important;
+    padding: 9px 0 !important;
+  }
+
+  .architecture-primary .architecture-layer-list article > strong {
+    font-size: .86rem !important;
+    line-height: 1.3 !important;
+  }
+
+  .architecture-primary .architecture-layer-list article > p {
+    font-size: .78rem !important;
+    line-height: 1.42 !important;
+  }
+
+  .architecture-primary > .spatial-map {
+    align-self: start !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+
+  section:has(> .architecture-primary) {
+    padding-bottom: 36px !important;
+  }
+
+  .canonical-linear:has(> :nth-child(12):last-child) {
+    display: grid !important;
+    grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
+    overflow: visible !important;
+  }
+
+  .canonical-linear:has(> :nth-child(12):last-child) > div {
+    min-width: 0 !important;
+    width: auto !important;
+    flex: none !important;
+  }
+
+  .canonical-linear:has(> :nth-child(12):last-child) > div > i {
+    display: none !important;
+  }
+
+  .solution-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  }
+
+  .solution-grid > article {
+    min-width: 0;
+    min-height: 0 !important;
+  }
+
+  #plans .use-factory-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+    align-items: stretch;
+  }
+
+  #plans .use-factory-card {
+    min-width: 0;
+    min-height: 620px !important;
+    padding: 28px 22px !important;
+    border: 1px solid var(--line) !important;
+    border-radius: 14px !important;
+    display: flex !important;
+    flex-direction: column;
+    background: var(--surface) !important;
+  }
+
+  #plans .use-factory-card:nth-child(4) {
+    border: 2px solid var(--text) !important;
+  }
+
+  #plans + .section {
+    padding-top: 44px !important;
+    padding-bottom: 44px !important;
+  }
+
+  #plans + .section .section-heading {
+    margin-bottom: 28px !important;
+    gap: 32px !important;
+  }
+
+  #plans + .section .section-heading h2 {
+    font-size: clamp(1.9rem, 2.5vw, 2.55rem) !important;
+    line-height: 1.08 !important;
+    max-width: 18ch;
+  }
+
+  #plans + .section .section-heading > p {
+    font-size: .98rem !important;
+    line-height: 1.5 !important;
+    max-width: 48ch;
+  }
+
+  #plans + .section .use-step-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+  }
+
+  #plans + .section .use-step-grid > article {
+    min-width: 0;
+    min-height: 210px !important;
+    padding: 24px 22px !important;
+  }
+
+  #plans + .section .use-step-grid > article strong {
+    font-size: 1rem !important;
+    line-height: 1.3 !important;
+  }
+
+  #plans + .section .use-step-grid > article p {
+    font-size: .9rem !important;
+    line-height: 1.5 !important;
+  }
+}
+
+#plans .use-factory-card > div:first-child { margin-bottom: 20px; }
+#plans .use-factory-card h3 { font-size: 1.15rem !important; line-height: 1.2 !important; margin: 0 0 22px !important; }
+#plans .use-factory-card > p { font-size: .95rem !important; line-height: 1.5 !important; margin-bottom: 22px !important; }
+#plans .use-factory-card ul { margin: 0 0 22px !important; padding-left: 0 !important; list-style: none !important; }
+#plans .use-factory-card li { padding: 9px 0 !important; border-bottom: 1px solid var(--line) !important; font-size: .9rem !important; line-height: 1.4 !important; }
+#plans .use-factory-card > small:last-child { display: block; margin-top: auto !important; padding-top: 18px; font-size: .82rem !important; line-height: 1.5 !important; }
+
+.compact-page-hero { max-width: 1240px !important; }
+.compact-page-hero > :where(.eyebrow, h1, .lead, .actions) { max-width: 760px; }
+
+@media (min-width: 901px) {
+  .product-experience-grid { min-height: 260px !important; }
+  .product-experience { min-height: 0 !important; }
+}
+
+.audience-outcome-list article { min-height: 148px !important; }
+.site-footer { padding-top: 28px !important; }
+.footer-main { padding-top: 20px !important; }
+.site-footer a, .site-footer p { font-size: .8125rem !important; line-height: 1.5 !important; }
+
+html[data-theme="light"] :where(.dark-surface, a.dark-surface, .card.dark-surface) {
+  background: #FFFFFF !important;
+  border-color: #B3B3B3 !important;
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] :where(.dark-surface p, .dark-surface small, .security-process small, .principle-directory p) {
+  color: #5A5A5A !important;
+  -webkit-text-fill-color: #5A5A5A !important;
+}
+
+html[data-theme="light"] .trust-gate > .dark-surface:not(.is-authority) :where(span, strong) {
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+}
+
+html[data-theme="light"] .card {
+  background: #FFFFFF !important;
+  border-color: #B3B3B3 !important;
+  color: #0A0A0A !important;
+}
+
+html[data-theme="light"] .card :where(p, small) {
+  color: #5A5A5A !important;
+  -webkit-text-fill-color: #5A5A5A !important;
+}
+
+/* Evidence/detail cards — force surface and all copy into the same readable light-theme contrast model. */
+html[data-theme="light"] .grid > .card {
+  background: #FFFFFF !important;
+  border-color: #B3B3B3 !important;
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+}
+
+html[data-theme="light"] .grid > .card :where(h2, h3, strong) {
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+}
+
+html[data-theme="light"] .grid > .card :where(p, small) {
+  color: #5A5A5A !important;
+  -webkit-text-fill-color: #5A5A5A !important;
+}
+
+html[data-theme="light"] .spatial-map-detail p {
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+}
+
+/* Docs directory — preserve readable text on hover/focus and give non-link cards the same complete frame. */
+html[data-theme="light"] .detail-directory > a:hover,
+html[data-theme="light"] .detail-directory > a:focus-visible {
+  background: #F2F2F2 !important;
+  border-color: #808080 !important;
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+}
+
+html[data-theme="light"] .detail-directory > a:hover :where(span, strong, i),
+html[data-theme="light"] .detail-directory > a:focus-visible :where(span, strong, i) {
+  color: #0A0A0A !important;
+  -webkit-text-fill-color: #0A0A0A !important;
+}
+
+.detail-directory > article.card {
+  min-height: 116px !important;
+  padding: 20px !important;
+  border: 1px solid var(--line) !important;
+  border-radius: var(--v2-radius) !important;
+  background: var(--surface) !important;
+  box-sizing: border-box !important;
+}
+
+html[data-theme="dark"] .detail-directory > a:hover,
+html[data-theme="dark"] .detail-directory > a:focus-visible {
+  background: #242424 !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+html[data-theme="dark"] .detail-directory > a:hover :where(span, strong, i),
+html[data-theme="dark"] .detail-directory > a:focus-visible :where(span, strong, i) {
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+}
+
+@media (max-width: 1100px) and (min-width: 761px) {
+  #plans .use-factory-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  #plans + .section .use-step-grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+@media (max-width: 760px) {
+  #plans .use-factory-grid,
+  #plans + .section .use-step-grid { grid-template-columns: 1fr !important; }
+  #plans .use-factory-card,
+  #plans + .section .use-step-grid > article { min-height: 0 !important; padding: 22px 18px !important; }
+  .factory-visual-section .themed-diagram { max-width: 100% !important; }
+  .resources-hero { padding-top: 28px !important; padding-bottom: 26px !important; }
+  .resources-insights { padding-top: 30px !important; padding-bottom: 32px !important; }
+}
+
+@media (max-width: 900px) {
+  main:has(> .compact-page-hero) section h2,
+  main:has(> .audience-hero) section h2,
+  main:has(> .about-intro) section h2 {
+    font-size: clamp(1.6rem, 5vw, 1.9rem) !important;
+  }
+  main:has(> .about-intro) .founder-row h2 { font-size: .9rem !important; }
+  .compact-page-hero > :where(.eyebrow, h1, .lead, .actions) { max-width: 100%; }
+  .audience-outcome-list article { min-height: 0 !important; }
+}

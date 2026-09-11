@@ -17,32 +17,32 @@ const copy = {
 
 const heroStyle = {
   display: "grid",
-  gridTemplateColumns: "minmax(0, 0.9fr) minmax(320px, 1.1fr)",
+  gridTemplateColumns: "minmax(0, 0.9fr) minmax(300px, 1.1fr)",
   alignItems: "center",
-  gap: "36px",
-  paddingTop: "36px",
-  paddingBottom: "30px",
+  gap: "28px",
+  paddingTop: "26px",
+  paddingBottom: "22px",
 } as const;
 
 const titleStyle = {
-  maxWidth: "560px",
-  marginTop: "10px",
+  maxWidth: "520px",
+  marginTop: "8px",
   marginBottom: 0,
-  fontSize: "clamp(2rem, 3.2vw, 3rem)",
-  lineHeight: 1.04,
-  letterSpacing: "-0.04em",
+  fontSize: "clamp(1.65rem, 2.45vw, 2.2rem)",
+  lineHeight: 1.06,
+  letterSpacing: "-0.035em",
 } as const;
 
 const leadWrapStyle = {
   justifySelf: "end",
-  width: "min(100%, 520px)",
+  width: "min(100%, 500px)",
 } as const;
 
 const leadStyle = {
   margin: 0,
   maxWidth: "42ch",
-  fontSize: "clamp(1rem, 1.25vw, 1.2rem)",
-  lineHeight: 1.5,
+  fontSize: "clamp(.95rem, 1.05vw, 1.08rem)",
+  lineHeight: 1.48,
 } as const;
 
 export default function ContactPage({ locale }: { locale: Locale }) {
@@ -52,6 +52,6 @@ export default function ContactPage({ locale }: { locale: Locale }) {
       <div><div className="eyebrow">{c.eyebrow}</div><h1 style={titleStyle}>{c.title}</h1></div>
       <div style={leadWrapStyle}><p className="lead" style={leadStyle}>{c.lead}</p></div>
     </section>
-    <section className="section compact-section" style={{paddingTop: "20px", paddingBottom: "28px"}}><div className="shell contact-directory" data-visual-role="contact-directory">{c.topics.map(([title, description, email], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{description}</p></div><a href={`mailto:${email}`}>{email}</a></article>)}</div></section>
+    <section className="section compact-section" style={{paddingTop: "16px", paddingBottom: "24px"}}><div className="shell contact-directory" data-visual-role="contact-directory">{c.topics.map(([title, description, email], index) => <article key={title}><span>{String(index + 1).padStart(2,"0")}</span><div><strong>{title}</strong><p>{description}</p></div><a href={`mailto:${email}`}>{email}</a></article>)}</div></section>
   </>;
 }
