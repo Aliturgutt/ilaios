@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "decision": "ACCEPT",
+  "base_sha": "1d194e4b76df46017d26214002e7e1aa56f11f5e",
+  "changeset_sha256": "18c63930f142e89eb51ce4dea18aa32fcbde72dfdf84cc70ad7380b28acaa736",
+  "changeset_authors": [
+    "codex@openai.com"
+  ],
+  "reviewer": "ai-subagent:/root/sf20_independent_review",
+  "reviewed_at": "2026-09-11T21:34:35.767657+00:00",
+  "migration_files": [
+    "services/control_plane/migrations.py"
+  ],
+  "finding_fingerprints": [
+    "409a79fa0322f5add48151f32497cb2e5b967ca3a34dd0d42860f4ac99cdaa70"
+  ],
+  "review_notes": "Independent AI subagent review by /root/sf20_independent_review; this reviewer did not author or modify the staged implementation. Reviewed all seven staged Identity F04/F05 files and canonical migration/admission owners. ACCEPT for the exact local migration delta: partial UNIQUE index enforces at most one ACTIVE primary per user in SQLite, including competing writers; BEGIN IMMEDIATE and transaction rollback preserve conflicting legacy data and schema version without choosing or deleting a membership. Expand-only down migration retains enforcement and uses existing backup authority. Both adapters reject ambiguous primary state and apply user, tenant and membership ACTIVE rules consistently. Dependency test edits follow the added schema version without production Login/Web edits. Independently executed stdlib runtime validation: 12 adapter status cases, two-connection concurrent promotions with one winner, rollback/reupgrade, duplicate legacy migration rejection with identical dump, version 10 and integrity_check ok; all PASS. Pytest execution attempted but unavailable in this environment (No module named pytest); no Pytest PASS claimed. Index creation can block writes and conflicting legacy data intentionally prevents upgrade; production data remediation and lock-duration validation remain deployment responsibilities, not authorized by this review. The user subsequently authorized this independent reviewer to create only a separate evidence commit; implementation changes remain staged and uncommitted. Canonical SF-20 must verify the resulting Git provenance before admitting the reviewed migration. Reviewer value is the actual AI subagent task identity, not a human identity or verified email."
+}
