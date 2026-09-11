@@ -158,6 +158,9 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 return
             token = self._bearer_token()
             self.server.control_plane.authenticate(token)
+            if path == "/v1/prompts/refine":
+                self._send_error(HTTPStatus.METHOD_NOT_ALLOWED, "method not allowed")
+                return
             if path == "/v1/knowledge/state":
                 knowledge = self._require_knowledge_runtime()
                 self._send_json(HTTPStatus.OK, knowledge.state())
@@ -331,12 +334,23 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
         try:
             token = self._bearer_token()
             self.server.control_plane.authenticate(token)
-            body = self._read_json()
             path = urlparse(self.path).path
+            if path == "/v1/prompts/refine" and not self._has_json_content_type():
+                self._send_error(
+                    HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+                    "Content-Type must be application/json",
+                )
+                return
+            body = self._read_json()
             if path == "/v1/prompts/refine":
+                if any(
+                    key in body
+                    for key in ("tenant_id", "project_id", "user_id", "principal_id")
+                ):
+                    raise ValueError("prompt refinement scope is server-resolved")
                 refinement = refine_prompt(
                     _required_string(body, "prompt"),
-                    PromptRefinementMode(_required_string(body, "mode")),
+                    _prompt_refinement_mode(_required_string(body, "mode")),
                 )
                 self._send_json(HTTPStatus.OK, _prompt_refinement_json(refinement))
                 return
@@ -458,6 +472,11 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
         if not header.startswith(prefix):
             raise AuthenticationError("missing bearer token")
         return header[len(prefix) :]
+
+    def _has_json_content_type(self) -> bool:
+        content_type = self.headers.get("Content-Type", "")
+        media_type = content_type.split(";", 1)[0].strip().casefold()
+        return media_type == "application/json"
 
     def _read_json(self) -> dict[str, Any]:
         raw_length = self.headers.get("Content-Length")
@@ -795,7 +814,7 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 _required_string(payload, "request_id"),
                 _required_string(payload, "grant_id"),
                 token=token,
-                now=_required_datetime(payload, "now"),
+                now=now,
             )
         raise ValueError("unknown product-proof operation")
 
@@ -824,6 +843,13 @@ def _prompt_refinement_json(result: PromptRefinement) -> dict[str, Any]:
             ),
         },
     }
+
+
+def _prompt_refinement_mode(value: str) -> PromptRefinementMode:
+    try:
+        return PromptRefinementMode(value)
+    except ValueError as error:
+        raise ValueError("invalid prompt refinement mode") from error
 
 
 def _record_json(record: GoalRecord | JobRecord) -> dict[str, Any]:
@@ -1092,7 +1118,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                     allowed_classifications=_csv_set(
                         cast(str, arguments.knowledge_classifications)
                     ),
-                    allowed_purposes=_csv_set(cast(str, arguments.knowledge_purposes)),
+                    allowed_purposes=frozenset(
+                        _csv_set(cast(str, arguments.knowledge_purposes))
+                    ),
                     allowed_residencies=_csv_set(
                         cast(str, arguments.knowledge_residencies)
                     ),
