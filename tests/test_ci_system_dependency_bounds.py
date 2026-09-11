@@ -13,13 +13,14 @@ def test_platform_ci_system_dependency_install_is_bounded() -> None:
     text = _workflow("platform-ci.yml")
 
     assert "timeout-minutes: 30" in text
-    assert "/etc/apt/apt-mirrors.txt" in text
-    assert "https://archive.ubuntu.com/ubuntu/" in text
-    assert "Acquire::Retries=3" in text
-    assert "Acquire::http::Timeout=15" in text
-    assert "Acquire::https::Timeout=15" in text
+    assert "command -v ffmpeg" in text
+    assert "command -v ffprobe" in text
+    assert "/etc/apt/apt-mirrors.txt" not in text
+    assert "Acquire::Retries=5" in text
+    assert "Acquire::http::Timeout=30" in text
+    assert "Acquire::https::Timeout=30" in text
     assert "sudo timeout 180s apt-get" in text
-    assert "sudo timeout 600s env DEBIAN_FRONTEND=noninteractive apt-get" in text
+    assert "sudo timeout 900s env DEBIAN_FRONTEND=noninteractive apt-get" in text
     assert "ffmpeg -version" in text
     assert "ffprobe -version" in text
     assert "python -m ruff check ." in text
