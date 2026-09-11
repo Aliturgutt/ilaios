@@ -12,6 +12,7 @@ import re
 from dataclasses import dataclass
 from enum import Enum
 
+from services.capability_registry import capability
 from services.prompt_intent_compiler import PromptCompilation, compile_prompt
 
 
@@ -35,6 +36,8 @@ class PromptEvaluation:
     risk_cues: tuple[str, ...]
     risk_cues_preserved: bool | None
     unresolved_critical_information: tuple[str, ...]
+    factory_hints: tuple[str, ...]
+    factory_metadata_complete: bool
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,6 +106,8 @@ def refine_prompt(
     were not already represented in the text passed to the compiler. The
     default mode preserves normalized user intent; callers that want textual
     restructuring must opt into a presentation-changing mode explicitly.
+    Factory hints are read only from the canonical capability registry and are
+    advisory evaluation metadata; they never grant or select execution.
     """
     if not isinstance(raw_prompt, str):
         raise ValueError("raw prompt must be text")
@@ -130,6 +135,7 @@ def refine_prompt(
         clause for clause in clauses if _ACCEPTANCE_CUE.search(clause)
     )
     risk_cues = tuple(match.group(0) for match in _RISK_CUE.finditer(source))
+    factory_hints, factory_metadata_complete = _factory_hints(compilation)
     issues: list[str] = []
     warnings: list[str] = []
     if raw_prompt != normalized:
@@ -143,6 +149,8 @@ def refine_prompt(
         warnings.append("governance-affecting text preserved as untrusted user data")
     if explicit_constraints:
         warnings.append("explicit constraints are represented in the compiler input")
+    if not factory_metadata_complete:
+        warnings.append("canonical factory metadata unavailable; factory hints omitted")
 
     if contains_injection_text or mode is PromptRefinementMode.PRESERVE_INTENT:
         refined = source
@@ -174,6 +182,8 @@ def refine_prompt(
         risk_cues=risk_cues,
         risk_cues_preserved=preserved_risk,
         unresolved_critical_information=compilation.missing_critical_information,
+        factory_hints=factory_hints,
+        factory_metadata_complete=factory_metadata_complete,
     )
     return PromptRefinement(
         original_prompt=raw_prompt,
@@ -188,6 +198,20 @@ def refine_prompt(
         warnings=tuple(warnings),
         evaluation=evaluation,
     )
+
+
+def _factory_hints(compilation: PromptCompilation) -> tuple[tuple[str, ...], bool]:
+    """Resolve compiler-suggested capabilities through canonical registry only."""
+    hints: list[str] = []
+    for capability_id in compilation.suggested_capabilities:
+        try:
+            definition = capability(capability_id)
+        except KeyError:
+            return (), False
+        if definition.domain != "factory":
+            return (), False
+        hints.append(f"{definition.display_name} ({definition.capability_id})")
+    return tuple(hints), True
 
 
 def _normalize(text: str) -> str:
