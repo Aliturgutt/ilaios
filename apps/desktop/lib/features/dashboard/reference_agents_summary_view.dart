@@ -49,8 +49,13 @@ class ReferenceAgentsSummaryView extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         const officeAspectRatio = 1614 / 537;
+        const minimumAgentsSurfaceHeight = 560.0;
+        final availableWorkspaceHeight =
+            (constraints.maxHeight - minimumAgentsSurfaceHeight - 8)
+                .clamp(0.0, 540.0);
         final workspaceHeight =
-            (constraints.maxWidth / officeAspectRatio).clamp(220.0, 540.0);
+            (constraints.maxWidth / officeAspectRatio)
+                .clamp(0.0, availableWorkspaceHeight);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -81,11 +86,13 @@ class ReferenceAgentsSummaryView extends StatelessWidget {
                 ],
               ),
             ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: workspaceHeight,
-              child: const _PixelWorkspacePanel(),
-            ),
+            if (workspaceHeight > 0) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                height: workspaceHeight,
+                child: const _PixelWorkspacePanel(),
+              ),
+            ],
           ],
         );
       },
