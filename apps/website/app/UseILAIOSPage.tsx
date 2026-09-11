@@ -5,6 +5,8 @@ type FactoryStatus = "preview" | "development";
 type Factory = { name: string; description: string; status: FactoryStatus; statusLabel: string; href: string; example: string };
 type Plan = { name: string; price: string; summary: string; included: readonly string[]; note: string };
 
+const APP_ORIGIN = "https://app.ilaios.com";
+
 const copy = {
   en: {
     eyebrow: "Use ILAIOS",
@@ -38,6 +40,8 @@ const copy = {
     truth: "Availability labels are intentionally conservative and do not imply that every provider or release path is production-verified.",
     works: "How ILAIOS works",
     factories: "Explore production areas",
+    openApp: "Open ILAIOS App",
+    openPlans: "Continue to plans in the app",
     factoryData: [
       { name: "Web", description: "New websites and site revisions moving through structure, design, implementation and QA.", status: "preview", statusLabel: "Preview", href: "/factories/web", example: "Build a premium bilingual website for my architecture studio." },
       { name: "Video / Media", description: "Reference-driven media work spanning script, assets, audio, render and validation.", status: "preview", statusLabel: "Preview", href: "/factories/video", example: "Create a 20-second launch video using these approved product images." },
@@ -82,6 +86,8 @@ const copy = {
     truth: "Erişilebilirlik etiketleri bilinçli olarak ihtiyatlıdır; her sağlayıcı veya release yolunun production-verified olduğu anlamına gelmez.",
     works: "ILAIOS nasıl çalışır?",
     factories: "Üretim alanlarını keşfet",
+    openApp: "ILAIOS Uygulamasını Aç",
+    openPlans: "Planlara uygulamada devam et",
     factoryData: [
       { name: "Web", description: "Yapı, tasarım, geliştirme ve QA üzerinden ilerleyen yeni web siteleri ve site revizyonları.", status: "preview", statusLabel: "Önizleme", href: "/tr/factories/web", example: "Mimarlık stüdyom için premium, iki dilli bir web sitesi oluştur." },
       { name: "Video / Medya", description: "Senaryo, varlık, ses, render ve doğrulamayı kapsayan referans odaklı medya çalışmaları.", status: "preview", statusLabel: "Önizleme", href: "/tr/factories/video", example: "Bu onaylı ürün görsellerini kullanarak 20 saniyelik lansman videosu oluştur." },
@@ -100,8 +106,8 @@ export default function UseILAIOSPage({ locale }: { locale: Locale }) {
   const c = copy[locale];
   const base = locale === "tr" ? "/tr" : "";
   return <>
-    <section className="shell page-hero use-hero"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p><div className="actions"><Link className="button" href={`${base}/factories`}>{c.factories}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.works}</Link></div></section>
-    <section className="section surface-section" id="plans"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.plansEyebrow}</div><h2>{c.plansTitle}</h2></div><p>{c.plansLead}</p></div><div className="use-factory-grid">{c.plans.map(plan => <article className="use-factory-card dark-surface" key={plan.name}><div className="use-factory-card-head"><span className="availability-chip is-preview">{plan.price}</span><small>{plan.name}</small></div><h3>{plan.name}</h3><p>{plan.summary}</p><ul>{plan.included.map(item => <li key={item}>{item}</li>)}</ul><small>{plan.note}</small></article>)}</div><p className="lead">{c.plansNote}</p></div></section>
+    <section className="shell page-hero use-hero"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p><div className="actions"><a className="button" href={`${APP_ORIGIN}/?lang=${locale}`}>{c.openApp}</a><Link className="button secondary" href={`${base}/factories`}>{c.factories}</Link><Link className="button secondary" href={`${base}/how-it-works`}>{c.works}</Link></div></section>
+    <section className="section surface-section" id="plans"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.plansEyebrow}</div><h2>{c.plansTitle}</h2></div><p>{c.plansLead}</p></div><div className="use-factory-grid">{c.plans.map(plan => <article className="use-factory-card dark-surface" key={plan.name}><div className="use-factory-card-head"><span className="availability-chip is-preview">{plan.price}</span><small>{plan.name}</small></div><h3>{plan.name}</h3><p>{plan.summary}</p><ul>{plan.included.map(item => <li key={item}>{item}</li>)}</ul><small>{plan.note}</small></article>)}</div><p className="lead">{c.plansNote}</p><div className="actions"><a className="button" href={`${APP_ORIGIN}/subscription?lang=${locale}`}>{c.openPlans}</a></div></div></section>
     <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.paymentEyebrow}</div><h2>{c.paymentTitle}</h2></div><p>{c.paymentLead}</p></div><div className="use-step-grid">{c.payment.map(([n,title,text]) => <article key={n}><span>{n}</span><strong>{title}</strong><p>{text}</p></article>)}</div></div></section>
     <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.createEyebrow}</div><h2>{c.createTitle}</h2></div><p>{c.truth}</p></div><div className="use-factory-grid">{c.factoryData.map(factory => <article className="use-factory-card dark-surface" key={factory.href}><div className="use-factory-card-head"><span className={`availability-chip is-${factory.status}`}>{factory.statusLabel}</span><small>{c.availability}</small></div><h3>{factory.name}</h3><p>{factory.description}</p><blockquote>{factory.example}</blockquote><Link className="text-link" href={factory.href}>{locale === "tr" ? "Ayrıntıyı aç" : "Open details"} →</Link></article>)}</div></div></section>
     <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{locale === "tr" ? "Kullanım akışı" : "Usage flow"}</div><h2>{c.howTitle}</h2></div><p>{c.howLead}</p></div><div className="use-step-grid">{c.steps.map(([n,title,text]) => <article key={n}><span>{n}</span><strong>{title}</strong><p>{text}</p></article>)}</div></div></section>
