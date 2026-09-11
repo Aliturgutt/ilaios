@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
@@ -93,11 +96,23 @@ class ReferenceAgentsSummaryView extends StatelessWidget {
 class _PixelWorkspacePanel extends StatelessWidget {
   const _PixelWorkspacePanel({required this.states, required this.teams});
 
-  static const _asset =
-      'assets/pixel_agents/workspace/office_reference.jpg';
+  static const _assetPayload =
+      'assets/pixel_agents/workspace/office_reference.b64';
 
   final Map<String, AgentRuntimeDisplayState> states;
   final Map<String, String> teams;
+
+  Widget _error(BuildContext context) => Center(
+        child: Text(
+          Localizations.localeOf(context).languageCode == 'tr'
+              ? 'Pixel çalışma alanı yüklenemedi.'
+              : 'Pixel workspace could not be loaded.',
+          style: TextStyle(
+            fontSize: 9,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -114,23 +129,27 @@ class _PixelWorkspacePanel extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            child: Image.asset(
-              _asset,
-              key: const Key('agents-pixel-workspace-image'),
-              fit: BoxFit.contain,
-              alignment: Alignment.center,
-              filterQuality: FilterQuality.medium,
-              errorBuilder: (context, error, stackTrace) => Center(
-                child: Text(
-                  Localizations.localeOf(context).languageCode == 'tr'
-                      ? 'Pixel çalışma alanı yüklenemedi.'
-                      : 'Pixel workspace could not be loaded.',
-                  style: TextStyle(
-                    fontSize: 9,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ),
+            child: FutureBuilder<String>(
+              future: rootBundle.loadString(_assetPayload),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) return _error(context);
+                final encoded = snapshot.data?.trim();
+                if (encoded == null) return const SizedBox.shrink();
+                if (encoded.isEmpty) return _error(context);
+                try {
+                  final bytes = base64Decode(encoded);
+                  return Image.memory(
+                    bytes,
+                    key: const Key('agents-pixel-workspace-image'),
+                    fit: BoxFit.contain,
+                    alignment: Alignment.center,
+                    filterQuality: FilterQuality.medium,
+                    errorBuilder: (context, error, stackTrace) => _error(context),
+                  );
+                } on FormatException {
+                  return _error(context);
+                }
+              },
             ),
           ),
           if (states.isNotEmpty) ...[
