@@ -9,14 +9,14 @@ import '../deliveries/delivery_identity_scope.dart';
 import '../navigation/desktop_section.dart';
 import 'agent_runtime_status.dart';
 import 'pixel_agent_presentation.dart';
-import 'pixel_agent_sprite.dart';
 import 'reference_agents_view.dart';
 
 /// Presentation-only wrapper for the canonical Agents surface.
 ///
 /// Identity, provisioning and runtime authority remain in [ReferenceAgentsView].
-/// Summary cards, the workspace reference and pixel sprites consume the same
-/// canonical state resolver; the workspace image never becomes runtime truth.
+/// Summary cards and the workspace reference consume the same canonical runtime
+/// projection without allowing the static workspace artwork to become runtime
+/// truth.
 class ReferenceAgentsSummaryView extends StatelessWidget {
   const ReferenceAgentsSummaryView({
     required this.projection,
@@ -46,11 +46,12 @@ class ReferenceAgentsSummaryView extends StatelessWidget {
       runtimeConnected: projection.connected,
       authorizedTenantId: session?.tenantId,
     );
-    final teams = _teamsById(presentationSnapshot);
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final workspaceHeight = (constraints.maxHeight * .34).clamp(180.0, 310.0);
+        const officeAspectRatio = 1614 / 537;
+        final workspaceHeight =
+            (constraints.maxWidth / officeAspectRatio).clamp(220.0, 540.0);
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
@@ -84,7 +85,7 @@ class ReferenceAgentsSummaryView extends StatelessWidget {
             const SizedBox(height: 8),
             SizedBox(
               height: workspaceHeight,
-              child: _PixelWorkspacePanel(states: states, teams: teams),
+              child: const _PixelWorkspacePanel(),
             ),
           ],
         );
@@ -93,14 +94,27 @@ class ReferenceAgentsSummaryView extends StatelessWidget {
   }
 }
 
-class _PixelWorkspacePanel extends StatelessWidget {
-  const _PixelWorkspacePanel({required this.states, required this.teams});
+class _PixelWorkspacePanel extends StatefulWidget {
+  const _PixelWorkspacePanel();
 
+  @override
+  State<_PixelWorkspacePanel> createState() => _PixelWorkspacePanelState();
+}
+
+class _PixelWorkspacePanelState extends State<_PixelWorkspacePanel> {
   static const _assetPayload =
       'assets/pixel_agents/workspace/office_reference.b64';
 
-  final Map<String, AgentRuntimeDisplayState> states;
-  final Map<String, String> teams;
+  late final Future<Uint8List> _officeBytes = _loadOfficeBytes();
+
+  Future<Uint8List> _loadOfficeBytes() async {
+    final payload = await rootBundle.loadString(_assetPayload, cache: true);
+    final encoded = payload.replaceAll(RegExp(r'[^A-Za-z0-9+/=]'), '');
+    if (encoded.isEmpty) {
+      throw const FormatException('Empty pixel workspace payload.');
+    }
+    return base64Decode(encoded);
+  }
 
   Widget _error(BuildContext context) => Center(
         child: Text(
@@ -108,7 +122,7 @@ class _PixelWorkspacePanel extends StatelessWidget {
               ? 'Pixel çalışma alanı yüklenemedi.'
               : 'Pixel workspace could not be loaded.',
           style: TextStyle(
-            fontSize: 9,
+            fontSize: 12.5,
             color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
@@ -125,47 +139,22 @@ class _PixelWorkspacePanel extends StatelessWidget {
         border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Expanded(
-            child: FutureBuilder<String>(
-              future: rootBundle.loadString(_assetPayload),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) return _error(context);
-                final encoded = snapshot.data?.replaceAll(
-                  RegExp(r'[^A-Za-z0-9+/=]'),
-                  '',
-                );
-                if (encoded == null) return const SizedBox.shrink();
-                if (encoded.isEmpty) return _error(context);
-                try {
-                  final bytes = base64Decode(encoded);
-                  return Image.memory(
-                    bytes,
-                    key: const Key('agents-pixel-workspace-image'),
-                    fit: BoxFit.contain,
-                    alignment: Alignment.center,
-                    filterQuality: FilterQuality.medium,
-                    errorBuilder: (context, error, stackTrace) => _error(context),
-                  );
-                } on FormatException {
-                  return _error(context);
-                }
-              },
-            ),
-          ),
-          if (states.isNotEmpty) ...[
-            Divider(
-              height: 1,
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-            SizedBox(
-              height: 70,
-              child: _RearPixelStrip(states: states, teams: teams),
-            ),
-          ],
-        ],
+      child: FutureBuilder<Uint8List>(
+        future: _officeBytes,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) return _error(context);
+          final bytes = snapshot.data;
+          if (bytes == null) return const SizedBox.shrink();
+          return Image.memory(
+            bytes,
+            key: const Key('agents-pixel-workspace-image'),
+            fit: BoxFit.contain,
+            alignment: Alignment.center,
+            filterQuality: FilterQuality.medium,
+            gaplessPlayback: true,
+            errorBuilder: (context, error, stackTrace) => _error(context),
+          );
+        },
       ),
     );
   }
@@ -229,7 +218,7 @@ class _AgentSummaryCards extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 8.5,
+                          fontSize: 12.5,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
@@ -238,7 +227,7 @@ class _AgentSummaryCards extends StatelessWidget {
                     Text(
                       items[index].value,
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -251,84 +240,6 @@ class _AgentSummaryCards extends StatelessWidget {
       ),
     );
   }
-}
-
-class _RearPixelStrip extends StatelessWidget {
-  const _RearPixelStrip({required this.states, required this.teams});
-
-  final Map<String, AgentRuntimeDisplayState> states;
-  final Map<String, String> teams;
-
-  @override
-  Widget build(BuildContext context) {
-    final byTeam = <String, AgentRuntimeDisplayState>{};
-    const priority = <AgentRuntimeDisplayState, int>{
-      AgentRuntimeDisplayState.offline: 0,
-      AgentRuntimeDisplayState.active: 1,
-      AgentRuntimeDisplayState.idle: 1,
-      AgentRuntimeDisplayState.waiting: 2,
-      AgentRuntimeDisplayState.working: 3,
-    };
-    for (final entry in states.entries) {
-      final team = teams[entry.key];
-      if (team == null || !pixelAgentTeams.contains(team)) continue;
-      final current = byTeam[team];
-      if (current == null || priority[entry.value]! > priority[current]!) {
-        byTeam[team] = entry.value;
-      }
-    }
-    const order = <String>[
-      'core',
-      'engineering',
-      'security',
-      'web',
-      'media',
-      'intelligence',
-      'operations',
-      'meta',
-    ];
-    final visible = order.where(byTeam.containsKey).toList(growable: false);
-    if (visible.isEmpty) return const SizedBox.shrink();
-    return Container(
-      key: const Key('agents-rear-pixel-strip'),
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          for (final team in visible)
-            PixelAgentSprite(
-              key: ValueKey('agents-pixel-$team'),
-              team: team,
-              view: PixelAgentView.rear,
-              motion: pixelMotionForRuntimeState(byTeam[team]!),
-              size: const Size(48, 60),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-Map<String, String> _teamsById(OperationalSnapshot snapshot) {
-  final result = <String, String>{};
-  final raw = snapshot.agentState['agents'];
-  if (raw is! List<Object?>) return result;
-  for (final item in raw.whereType<Map<String, Object?>>()) {
-    final id = _text(item, const ['agent_id']);
-    final team = _text(item, const ['team']);
-    if (id == null || team == null) continue;
-    final normalized = team.toLowerCase();
-    if (pixelAgentTeams.contains(normalized)) result[id] = normalized;
-  }
-  return result;
-}
-
-String? _text(Map<String, Object?> source, List<String> keys) {
-  for (final key in keys) {
-    final value = source[key];
-    if (value is String && value.trim().isNotEmpty) return value.trim();
-  }
-  return null;
 }
 
 int? _int(Map<String, Object?> source, List<String> keys) {
