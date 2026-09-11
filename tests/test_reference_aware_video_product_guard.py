@@ -6,6 +6,7 @@ from typing import cast
 
 import pytest
 
+from services.integrations.provider_video_runtime import ProviderBackedDesktopVideoRuntime
 from services.integrations.reference_aware_provider_video_runtime import (
     ReferenceAwareProviderBackedDesktopVideoRuntime,
 )
@@ -47,18 +48,57 @@ def _runtime(
     return runtime
 
 
-def test_vertical_request_is_rejected_before_reference_analysis_or_provider_generation(
+def test_vertical_request_preserves_shape_through_reference_aware_runtime(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    runtime = _runtime()
-    with pytest.raises(VideoRuntimeError, match="9:16"):
-        runtime._generate_finished_product(
-            run_root=tmp_path,
-            request_id="request-guard",
-            job_id="job-guard",
-            objective="Create a vertical video for TikTok.",
-            duration_seconds=20.0,
+    observed: dict[str, object] = {}
+
+    def _fake_generate_finished_product(
+        self: ProviderBackedDesktopVideoRuntime,
+        *,
+        run_root: Path,
+        request_id: str,
+        job_id: str,
+        objective: str,
+        duration_seconds: float,
+    ) -> dict[str, object]:
+        observed.update(
+            {
+                "run_root": run_root,
+                "request_id": request_id,
+                "job_id": job_id,
+                "objective": objective,
+                "duration_seconds": duration_seconds,
+            }
         )
+        return {"requested_aspect_ratio": "9:16"}
+
+    monkeypatch.setattr(
+        ProviderBackedDesktopVideoRuntime,
+        "_generate_finished_product",
+        _fake_generate_finished_product,
+    )
+    runtime = _runtime()
+    outcome = runtime._generate_finished_product(
+        run_root=tmp_path,
+        request_id="request-guard",
+        job_id="job-guard",
+        objective="Create a vertical video for TikTok.",
+        duration_seconds=20.0,
+    )
+
+    assert observed == {
+        "run_root": tmp_path,
+        "request_id": "request-guard",
+        "job_id": "job-guard",
+        "objective": "Create a vertical video for TikTok.",
+        "duration_seconds": 20.0,
+    }
+    assert outcome["requested_aspect_ratio"] == "9:16"
+    assert outcome["video_product_spec"]["aspect_ratio"] == "9:16"
+    assert outcome["reference_asset_count"] == 0
+    assert outcome["reference_conditioning_mode"] == "none"
 
 
 def test_source_video_revision_is_rejected_before_provider_generation(
