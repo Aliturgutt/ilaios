@@ -12,7 +12,8 @@ import 'reference_agents_view.dart';
 /// Presentation-only wrapper for the canonical Agents surface.
 ///
 /// Identity, provisioning and runtime authority remain in [ReferenceAgentsView].
-/// Summary cards and pixel sprites consume the same canonical state resolver.
+/// Summary cards, the workspace reference and pixel sprites consume the same
+/// canonical state resolver; the workspace image never becomes runtime truth.
 class ReferenceAgentsSummaryView extends StatelessWidget {
   const ReferenceAgentsSummaryView({
     required this.projection,
@@ -44,40 +45,106 @@ class ReferenceAgentsSummaryView extends StatelessWidget {
     );
     final teams = _teamsById(presentationSnapshot);
 
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: ReferenceAgentsView(
-            projection: projection,
-            snapshot: presentationSnapshot,
-            status: status,
-            onNavigate: onNavigate,
-            onRefreshRequested: onRefreshRequested,
-          ),
-        ),
-        Positioned(
-          left: 14,
-          right: 12,
-          top: 60,
-          height: 50,
-          child: IgnorePointer(
-            child: _AgentSummaryCards(
-              snapshot: presentationSnapshot,
-              states: states,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final workspaceHeight = (constraints.maxHeight * .34).clamp(180.0, 310.0);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: ReferenceAgentsView(
+                      projection: projection,
+                      snapshot: presentationSnapshot,
+                      status: status,
+                      onNavigate: onNavigate,
+                      onRefreshRequested: onRefreshRequested,
+                    ),
+                  ),
+                  Positioned(
+                    left: 14,
+                    right: 12,
+                    top: 60,
+                    height: 50,
+                    child: IgnorePointer(
+                      child: _AgentSummaryCards(
+                        snapshot: presentationSnapshot,
+                        states: states,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            SizedBox(
+              height: workspaceHeight,
+              child: _PixelWorkspacePanel(states: states, teams: teams),
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _PixelWorkspacePanel extends StatelessWidget {
+  const _PixelWorkspacePanel({required this.states, required this.teams});
+
+  static const _asset =
+      'assets/pixel_agents/workspace/office_reference.jpg';
+
+  final Map<String, AgentRuntimeDisplayState> states;
+  final Map<String, String> teams;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('agents-pixel-workspace'),
+      margin: const EdgeInsets.fromLTRB(14, 0, 12, 8),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Expanded(
+            child: Image.asset(
+              _asset,
+              key: const Key('agents-pixel-workspace-image'),
+              fit: BoxFit.contain,
+              alignment: Alignment.center,
+              filterQuality: FilterQuality.medium,
+              errorBuilder: (context, error, stackTrace) => Center(
+                child: Text(
+                  Localizations.localeOf(context).languageCode == 'tr'
+                      ? 'Pixel çalışma alanı yüklenemedi.'
+                      : 'Pixel workspace could not be loaded.',
+                  style: TextStyle(
+                    fontSize: 9,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ),
             ),
           ),
-        ),
-        if (states.isNotEmpty)
-          Positioned(
-            left: 14,
-            right: 12,
-            bottom: 8,
-            height: 88,
-            child: IgnorePointer(
+          if (states.isNotEmpty) ...[
+            Divider(
+              height: 1,
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
+            SizedBox(
+              height: 70,
               child: _RearPixelStrip(states: states, teams: teams),
             ),
-          ),
-      ],
+          ],
+        ],
+      ),
     );
   }
 }
