@@ -89,6 +89,7 @@ export default function FactoryExplorer({ locale }: { locale: Locale }) {
           className={active === index ? "is-active" : ""}
           key={item.href}
           ref={element => { refs.current[index] = element; }}
+          onMouseEnter={() => setActive(index)}
           onClick={() => setActive(index)}
           onKeyDown={event => {
             if (event.key === "ArrowDown" || event.key === "ArrowRight") { event.preventDefault(); move(active + 1); }
