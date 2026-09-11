@@ -74,11 +74,26 @@ def test_preserve_intent_normalizes_boundary_whitespace_for_compiler_input() -> 
     assert compile_prompt(result.refined_prompt).raw_objective == "only change one file"
 
 
+def test_multiline_preserve_intent_keeps_compiler_semantics() -> None:
+    prompt = "Build a website\n- responsive layout\n- never deploy production"
+    result = refine_prompt(prompt)
+    assert result.refined_prompt == prompt
+    assert compile_prompt(result.refined_prompt).canonical_objective == compile_prompt(
+        prompt
+    ).canonical_objective
+
+
 def test_compression_only_removes_adjacent_exact_duplicates() -> None:
     prompt = "Build a website. Build a website. Never deploy production."
     result = refine_prompt(prompt, PromptRefinementMode.COMPRESS)
     assert result.refined_prompt == "Build a website. Never deploy production."
     assert "Never deploy production." in result.refined_prompt
+
+
+def test_compression_keeps_non_adjacent_duplicates() -> None:
+    prompt = "Build a website. Use responsive layout. Build a website."
+    result = refine_prompt(prompt, PromptRefinementMode.COMPRESS)
+    assert result.refined_prompt.count("Build a website.") == 2
 
 
 def test_structure_exposes_only_evidenced_sections() -> None:
@@ -93,6 +108,34 @@ def test_structure_exposes_only_evidenced_sections() -> None:
     assert "Exclusions:" in result.refined_prompt
     assert "Acceptance conditions:" in result.refined_prompt
     assert "Unresolved ambiguity:" not in result.refined_prompt
+
+
+def test_positive_scope_constraints_are_not_exclusions() -> None:
+    prompts: tuple[str, ...] = (
+        "Build a website. Only change src/app.py.",
+        "Web sitesi yap. Sadece src/app.py dosyasını değiştir.",
+        "Web sitesi yap. Yalnızca src/app.py dosyasını değiştir.",
+    )
+    for prompt in prompts:
+        result = refine_prompt(prompt, PromptRefinementMode.STRUCTURE)
+        assert "Constraints:" in result.refined_prompt
+        assert "src/app.py" in result.refined_prompt
+        assert "Exclusions:" not in result.refined_prompt
+
+
+def test_multiline_bullets_are_split_into_real_clauses() -> None:
+    prompt = (
+        "Build a website\r\n"
+        "- Use responsive layout\r\n"
+        "- Only change src/app.py\r\n"
+        "- Never publish\r\n"
+        "1. Tests must pass"
+    )
+    result = refine_prompt(prompt, PromptRefinementMode.STRUCTURE)
+    assert "Requirements:\n- Use responsive layout" in result.refined_prompt
+    assert "Constraints:\n- Only change src/app.py" in result.refined_prompt
+    assert "Exclusions:\n- Never publish" in result.refined_prompt
+    assert "Acceptance conditions:\n- Tests must pass" in result.refined_prompt
 
 
 def test_explicit_constraints_are_in_actual_compiler_input() -> None:
@@ -117,12 +160,26 @@ def test_turkish_and_english_constraint_and_risk_cues_are_preserved() -> None:
             "personal sensitive customer data; do not reveal password, secret, "
             "API key, or token; approval before payment; budget and cost $10"
         ),
+        (
+            "Web sitesi yap; only modify src/app.py; asla production'a dağıtma; "
+            "customer personal data gönderme; approval olmadan payment yapma"
+        ),
     )
     for prompt in prompts:
         result = refine_prompt(prompt, PromptRefinementMode.STRUCTURE)
         assert result.evaluation.constraints_detected is True
         assert result.evaluation.risk_cues
         assert result.evaluation.risk_cues_preserved is True
+
+
+def test_near_limit_long_prompt_is_deterministic_and_bounded() -> None:
+    filler = "responsive layout requirement " * 700
+    prompt = ("Build a website. " + filler + "Never deploy production.")[:19_900]
+    first = refine_prompt(prompt)
+    second = refine_prompt(prompt)
+    assert first == second
+    assert len(first.refined_prompt) <= 20_000
+    assert compile_prompt(first.refined_prompt).domain is PromptDomain.WEB
 
 
 def test_absent_risk_cues_are_not_reported_as_preserved() -> None:
