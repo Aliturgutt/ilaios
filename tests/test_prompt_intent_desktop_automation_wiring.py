@@ -11,7 +11,8 @@ from services.prompt_intent_compiler import compile_prompt
 def test_desktop_automation_compiles_before_canonical_prepare() -> None:
     source = inspect.getsource(DesktopExecutionCoordinator.prepare)
 
-    assert source.index("compile_prompt(normalized)") < source.index("super().prepare")
+    assert source.index("refine_prompt(normalized)") < source.index("super().prepare")
+    assert source.index("compile_prompt(refinement.refined_prompt)") < source.index("super().prepare")
     assert "compilation.canonical_objective" in source
     assert "compilation.needs_clarification" in source
 

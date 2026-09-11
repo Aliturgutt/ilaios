@@ -21,6 +21,7 @@ from datetime import datetime
 
 from services.execution_coordinator import ExecutionCoordinator, ExecutionCoordinatorError
 from services.prompt_intent_compiler import compile_prompt
+from services.prompt_refinement import refine_prompt
 
 _NEGATED_EXTERNAL_SIDE_EFFECTS: tuple[re.Pattern[str], ...] = (
     re.compile(
@@ -124,7 +125,8 @@ class DesktopExecutionCoordinator(ExecutionCoordinator):
         now: datetime,
     ) -> dict[str, object]:
         normalized = normalize_desktop_execution_objective(objective)
-        compilation = compile_prompt(normalized)
+        refinement = refine_prompt(normalized)
+        compilation = compile_prompt(refinement.refined_prompt)
         if compilation.needs_clarification:
             question = compilation.clarification_questions[0]
             raise ExecutionCoordinatorError(f"clarification required: {question}")
