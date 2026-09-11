@@ -10,7 +10,7 @@ const insights=[
 ] as const;
 
 export default function Page(){return <>
-  <section className="shell page-hero compact-page-hero"><div className="eyebrow">Kaynaklar</div><h1>ILAIOS'un arkasındaki mühendislik yaklaşımı.</h1><p className="lead">Ürün mimarisi, güvenlik ve kontrollü otomasyon üzerine yazılar. Resources yaklaşımı açıklar; Docs teknik referansı taşır.</p></section>
-  <section className="section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">Güncel görüşler</div><h2>Sayfayı dokümantasyona dönüştürmeden okunabilir teknik bağlam.</h2></div></div><div className="detail-directory">{insights.map(([kind,title,text,href])=><Link href={href} key={href}><span>{kind}</span><strong>{title}</strong><i>→</i><p>{text}</p></Link>)}</div></div></section>
+  <section className="shell page-hero compact-page-hero resources-hero"><div className="eyebrow">Kaynaklar</div><h1>ILAIOS'un arkasındaki mühendislik yaklaşımı.</h1><p className="lead">Ürün mimarisi, güvenlik ve kontrollü otomasyon üzerine yazılar. Resources yaklaşımı açıklar; Docs teknik referansı taşır.</p></section>
+  <section className="section resources-insights"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">Güncel görüşler</div><h2>Sayfayı dokümantasyona dönüştürmeden okunabilir teknik bağlam.</h2></div></div><div className="detail-directory">{insights.map(([kind,title,text,href])=><Link href={href} key={href}><span>{kind}</span><strong>{title}</strong><i>→</i><p>{text}</p></Link>)}</div></div></section>
   <section className="section compact-section"><div className="shell actions"><Link className="text-link" href="/tr/updates">Geliştirme güncellemeleri →</Link><Link className="text-link" href="/tr/docs">Teknik dokümantasyon →</Link><Link className="text-link" href="/tr/architecture">Mimari →</Link></div></section>
 </>}
