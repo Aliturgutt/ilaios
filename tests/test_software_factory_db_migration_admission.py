@@ -75,7 +75,6 @@ def _evidence_payload(lines: tuple[ChangedLine, ...]) -> dict[str, object]:
         "changeset_authors": [_AUTHOR],
         "reviewer": _REVIEWER,
         "reviewed_at": "2026-09-11T10:00:00+00:00",
-        "evidence_commit_sha": _EVIDENCE_COMMIT_SHA,
         "migration_files": list(report.migration_files),
         "finding_fingerprints": sorted(
             finding.fingerprint for finding in report.findings
@@ -198,7 +197,9 @@ def test_exact_independent_git_provenance_is_accepted(
     ) -> str:
         del root, failure
         args = tuple(arguments)
-        if args[:3] == ("show", "-s", "--format=%ae"):
+        if args[:3] == ("log", "-1", "--format=%H"):
+            value = _EVIDENCE_COMMIT_SHA
+        elif args[:3] == ("show", "-s", "--format=%ae"):
             value = _REVIEWER
         elif args[:4] == ("diff-tree", "--no-commit-id", "--name-only", "-r"):
             value = f"docs/governance/sf20-reviews/{_changeset_sha256(lines)}.json"
@@ -227,11 +228,23 @@ def test_evidence_commit_author_must_match_reviewer(
     _write_evidence(tmp_path, lines, _evidence_payload(lines))
 
     monkeypatch.setattr(admission_module, "_git_success", lambda *_args, **_kwargs: True)
-    monkeypatch.setattr(
-        admission_module,
-        "_git_text",
-        lambda *_args, **_kwargs: "different-reviewer@example.com",
-    )
+
+    def fake_git_text(
+        root: Path,
+        arguments: Any,
+        failure: str,
+        *,
+        strip: bool = True,
+    ) -> str:
+        del root, failure, strip
+        args = tuple(arguments)
+        if args[:3] == ("log", "-1", "--format=%H"):
+            return _EVIDENCE_COMMIT_SHA
+        if args[:3] == ("show", "-s", "--format=%ae"):
+            return "different-reviewer@example.com"
+        raise AssertionError(f"unexpected git command: {args}")
+
+    monkeypatch.setattr(admission_module, "_git_text", fake_git_text)
 
     with pytest.raises(DBMigrationSafetyError, match="reviewer does not match evidence commit author"):
         _accept(tmp_path, lines)
