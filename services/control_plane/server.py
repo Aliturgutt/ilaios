@@ -814,7 +814,7 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 _required_string(payload, "request_id"),
                 _required_string(payload, "grant_id"),
                 token=token,
-                now=now,
+                now=_required_datetime(payload, "now"),
             )
         raise ValueError("unknown product-proof operation")
 
@@ -1118,9 +1118,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     allowed_classifications=_csv_set(
                         cast(str, arguments.knowledge_classifications)
                     ),
-                    allowed_purposes=frozenset(
-                        _csv_set(cast(str, arguments.knowledge_purposes))
-                    ),
+                    allowed_purposes=_csv_set(cast(str, arguments.knowledge_purposes)),
                     allowed_residencies=_csv_set(
                         cast(str, arguments.knowledge_residencies)
                     ),
