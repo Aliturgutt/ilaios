@@ -17,8 +17,39 @@ SF-20 adds a deterministic, fail-closed database-migration admission gate to the
 
 Destructive or high-risk schema changes require verified backup and rollback/compensation evidence. Compatibility-sensitive changes should follow expand → migrate/backfill → validate → contract sequencing rather than a one-step destructive cutover.
 
+## Canonical review acceptance
+
+`REVIEW_REQUIRED` is not downgraded or removed. The SF-20 admission owner may accept that disposition only when an independent review artifact exactly matches the migration changeset and its reviewer provenance is verified against Git history.
+
+The canonical evidence path is:
+
+`docs/governance/sf20-reviews/<changeset_sha256>.json`
+
+`changeset_sha256` is the SHA-256 of the deterministic full Git diff for the exact migration-file set. The digest therefore binds additions, deletions, replacements, file metadata, and the exact base/head (or staged) migration delta rather than only the lines that triggered a safety finding.
+
+The evidence object must contain exactly these fields:
+
+- `schema_version`: `1`
+- `decision`: `"ACCEPT"`
+- `base_sha`: exact lowercase 40-hex review base SHA
+- `changeset_sha256`: exact full migration-diff digest
+- `changeset_authors`: exact migration author identity set resolved from Git, or the staged Git author
+- `reviewer`: independent reviewer identity; it must not be one of the migration authors
+- `reviewed_at`: timezone-qualified ISO-8601 timestamp
+- `migration_files`: exact migration-file set from the SF-20 report
+- `finding_fingerprints`: exact set of all `REVIEW_REQUIRED` finding fingerprints
+- `review_notes`: non-empty review record explaining the independent assessment
+
+The evidence commit SHA is not self-declared inside the artifact. SF-20 resolves the latest commit for the exact evidence path from the subject Git history, avoiding a circular self-reference. That commit must descend from the declared review base, remain in the subject history, have a Git author matching `reviewer`, change only its own SF-20 evidence artifact, and contain bytes exactly matching the current evidence file.
+
+For staged changes, the evidence may be committed before the reviewed migration patch is committed: the full staged migration diff digest binds the patch that was reviewed, while SF-20 rejects the evidence if committed migration-file drift has occurred since the declared review base. In CI, the same full migration diff digest and exact base SHA must still match the reviewed changeset. This permits normal review-before-commit workflow without weakening exact changeset binding.
+
+Acceptance is fail-closed. Missing evidence leaves `REVIEW_REQUIRED` unresolved. Malformed evidence, wrong/stale base SHA, wrong full-diff digest, wrong author set, self-review, unverifiable reviewer provenance, mixed migration/evidence commit, wrong migration-file set, or incomplete/extra finding fingerprints is rejected. A `BLOCK` finding can never be accepted by review evidence.
+
+The safety report continues to show the original safety disposition. Admission records the accepted reviewer, evidence path, Git-resolved evidence commit SHA, and evidence SHA-256 separately so the risk classification is not rewritten and the review decision remains auditable.
+
 ## Evidence and authority boundary
 
-The SF-20 report is deterministic and bound to scan scope, exact base/head SHAs when running in CI, migration files, finding metadata, and a canonical report SHA-256. The gate does not execute SQL, open a database connection, publish artifacts, deploy, promote, mutate production, or authorize acceptance.
+The SF-20 report is deterministic and bound to scan scope, exact base/head SHAs when running in CI, migration files, finding metadata, and a canonical report SHA-256. The gate does not execute SQL, open a database connection, publish artifacts, deploy, promote, mutate production, or authorize any runtime migration action.
 
-A `PASS` proves only that the reviewed migration delta did not trigger the configured safety policy and that any touched canonical control-plane migration authority still satisfies its structural recovery invariants. It does not prove a production migration has been executed, that a live backup is restorable, or that database-specific lock/performance behavior is safe without the later deployment/runtime validation gates.
+A plain `PASS` proves only that the reviewed migration delta did not trigger the configured safety policy and that any touched canonical control-plane migration authority still satisfies its structural recovery invariants. An accepted `REVIEW_REQUIRED` proves only that exact SF-20 findings for the exact migration changeset received matching, Git-provenanced independent review evidence. Neither state proves a production migration has been executed, that a live backup is restorable, or that database-specific lock/performance behavior is safe without later deployment/runtime validation gates.
