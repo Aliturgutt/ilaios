@@ -133,7 +133,7 @@ class _PixelWorkspacePanel extends StatelessWidget {
               future: rootBundle.loadString(_assetPayload),
               builder: (context, snapshot) {
                 if (snapshot.hasError) return _error(context);
-                final encoded = snapshot.data?.trim();
+                final encoded = snapshot.data?.replaceAll(RegExp(r'\s+'), '');
                 if (encoded == null) return const SizedBox.shrink();
                 if (encoded.isEmpty) return _error(context);
                 try {
