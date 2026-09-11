@@ -56,7 +56,8 @@ void main() {
     const assetPath = 'assets/pixel_agents/workspace/office_reference.b64';
     final workspace = File(assetPath);
     expect(workspace.existsSync(), isTrue, reason: assetPath);
-    final encoded = workspace.readAsStringSync().replaceAll(RegExp(r'\s+'), '');
+    final raw = workspace.readAsStringSync();
+    final encoded = raw.replaceAll(RegExp(r'[^A-Za-z0-9+/=]'), '');
     expect(encoded, isNotEmpty, reason: assetPath);
     final bytes = base64Decode(encoded);
     expect(bytes.length, greaterThan(1024), reason: assetPath);
@@ -71,5 +72,6 @@ void main() {
     expect(agentsView, contains("key: const Key('agents-pixel-workspace')"));
     expect(agentsView, contains(assetPath));
     expect(agentsView, contains('base64Decode'));
+    expect(agentsView, contains("RegExp(r'[^A-Za-z0-9+/=]')"));
   });
 }
