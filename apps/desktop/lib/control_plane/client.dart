@@ -17,6 +17,46 @@ enum GovernanceDecision {
   final String wireValue;
 }
 
+enum PromptRefinementMode {
+  improve('improve'),
+  clarify('clarify'),
+  structure('structure'),
+  preserveIntent('preserve-intent'),
+  compress('compress'),
+  evaluate('evaluate');
+
+  const PromptRefinementMode(this.wireValue);
+  final String wireValue;
+}
+
+class PromptRefinementPreview {
+  const PromptRefinementPreview({
+    required this.originalPrompt,
+    required this.refinedPrompt,
+    required this.mode,
+    required this.transformed,
+    required this.detectedIssues,
+    required this.preservedConstraints,
+    required this.unresolvedAmbiguities,
+    required this.warnings,
+    required this.constraintsDetected,
+    required this.riskCues,
+    required this.riskCuesPreserved,
+  });
+
+  final String originalPrompt;
+  final String refinedPrompt;
+  final PromptRefinementMode mode;
+  final bool transformed;
+  final List<String> detectedIssues;
+  final List<String> preservedConstraints;
+  final List<String> unresolvedAmbiguities;
+  final List<String> warnings;
+  final bool constraintsDetected;
+  final List<String> riskCues;
+  final bool? riskCuesPreserved;
+}
+
 class ControlPlaneClientException implements Exception {
   const ControlPlaneClientException(this.message);
   final String message;
@@ -169,6 +209,65 @@ class ControlPlaneClient {
       );
     }
     return PromptSubmission(goalId: goalId, jobId: jobId, state: state);
+  }
+
+  Future<PromptRefinementPreview> refinePrompt(
+    String prompt,
+    PromptRefinementMode mode,
+  ) async {
+    if (prompt.trim().isEmpty) {
+      throw const ControlPlaneClientException('Prompt must not be empty');
+    }
+    if (prompt.length > 20000) {
+      throw const ControlPlaneClientException('Prompt exceeds the Desktop input limit');
+    }
+    final payload = await _postAuthenticatedObject(
+      '/v1/prompts/refine',
+      <String, Object?>{'prompt': prompt, 'mode': mode.wireValue},
+      'prompt refinement',
+      expectedStatus: HttpStatus.ok,
+    );
+    final original = payload['original_prompt'];
+    final refined = payload['refined_prompt'];
+    final returnedMode = payload['mode'];
+    final transformed = payload['transformed'];
+    final evaluation = payload['evaluation'];
+    if (original is! String ||
+        refined is! String ||
+        returnedMode != mode.wireValue ||
+        transformed is! bool ||
+        evaluation is! Map<String, dynamic>) {
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed prompt refinement',
+      );
+    }
+    final constraintsDetected = evaluation['constraints_detected'];
+    final riskCuesPreserved = evaluation['risk_cues_preserved'];
+    if (constraintsDetected is! bool ||
+        (riskCuesPreserved != null && riskCuesPreserved is! bool)) {
+      throw const ControlPlaneClientException(
+        'Control plane returned malformed prompt refinement evaluation',
+      );
+    }
+    return PromptRefinementPreview(
+      originalPrompt: original,
+      refinedPrompt: refined,
+      mode: mode,
+      transformed: transformed,
+      detectedIssues: _stringList(payload['detected_issues'], 'detected issues'),
+      preservedConstraints: _stringList(
+        payload['preserved_constraints'],
+        'preserved constraints',
+      ),
+      unresolvedAmbiguities: _stringList(
+        payload['unresolved_ambiguities'],
+        'unresolved ambiguities',
+      ),
+      warnings: _stringList(payload['warnings'], 'warnings'),
+      constraintsDetected: constraintsDetected,
+      riskCues: _stringList(evaluation['risk_cues'], 'risk cues'),
+      riskCuesPreserved: riskCuesPreserved as bool?,
+    );
   }
 
   Future<Map<String, Object?>> fetchJob(String jobId) async {
@@ -424,6 +523,15 @@ class ControlPlaneClient {
       throw ControlPlaneClientException('Control plane $label failed');
     }
     return _decodeObject(response, label);
+  }
+
+  static List<String> _stringList(Object? raw, String label) {
+    if (raw is! List<Object?> || raw.any((item) => item is! String)) {
+      throw ControlPlaneClientException(
+        'Control plane returned malformed prompt refinement $label',
+      );
+    }
+    return List<String>.unmodifiable(raw.cast<String>());
   }
 
   static List<Map<String, Object?>> _boundedLiveEvents(
