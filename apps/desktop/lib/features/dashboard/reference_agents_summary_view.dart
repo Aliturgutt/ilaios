@@ -110,16 +110,22 @@ class _PixelWorkspacePanel extends StatefulWidget {
 class _PixelWorkspacePanelState extends State<_PixelWorkspacePanel> {
   static const _assetPayload =
       'assets/pixel_agents/workspace/office_reference.b64';
+  static Uint8List? _cachedOfficeBytes;
 
   late final Future<Uint8List> _officeBytes = _loadOfficeBytes();
 
   Future<Uint8List> _loadOfficeBytes() async {
+    final cached = _cachedOfficeBytes;
+    if (cached != null) return cached;
+
     final payload = await rootBundle.loadString(_assetPayload, cache: true);
     final encoded = payload.replaceAll(RegExp(r'[^A-Za-z0-9+/=]'), '');
     if (encoded.isEmpty) {
       throw const FormatException('Empty pixel workspace payload.');
     }
-    return base64Decode(encoded);
+    final decoded = base64Decode(encoded);
+    _cachedOfficeBytes = decoded;
+    return decoded;
   }
 
   Widget _error(BuildContext context) => Center(
@@ -147,6 +153,7 @@ class _PixelWorkspacePanelState extends State<_PixelWorkspacePanel> {
       ),
       child: FutureBuilder<Uint8List>(
         future: _officeBytes,
+        initialData: _cachedOfficeBytes,
         builder: (context, snapshot) {
           if (snapshot.hasError) return _error(context);
           final bytes = snapshot.data;
