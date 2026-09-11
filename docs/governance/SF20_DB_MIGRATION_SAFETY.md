@@ -25,12 +25,14 @@ The canonical evidence path is:
 
 `docs/governance/sf20-reviews/<changeset_sha256>.json`
 
-`changeset_sha256` is the canonical SHA-256 of the selected migration added-line records (`path`, `line`, `text`). The evidence object must contain exactly these fields:
+`changeset_sha256` is the SHA-256 of the deterministic full Git diff for the exact migration-file set. The digest therefore binds additions, deletions, replacements, file metadata, and the exact base/head (or staged) migration delta rather than only the lines that triggered a safety finding.
+
+The evidence object must contain exactly these fields:
 
 - `schema_version`: `1`
 - `decision`: `"ACCEPT"`
 - `base_sha`: exact lowercase 40-hex review base SHA
-- `changeset_sha256`: exact canonical migration changeset digest
+- `changeset_sha256`: exact full migration-diff digest
 - `changeset_authors`: exact migration author identity set resolved from Git, or the staged Git author
 - `reviewer`: independent reviewer identity; it must not be one of the migration authors
 - `reviewed_at`: timezone-qualified ISO-8601 timestamp
@@ -38,9 +40,11 @@ The canonical evidence path is:
 - `finding_fingerprints`: exact set of all `REVIEW_REQUIRED` finding fingerprints
 - `review_notes`: non-empty review record explaining the independent assessment
 
-The evidence commit SHA is not self-declared inside the artifact. SF-20 resolves the latest commit for the exact evidence path from the subject Git history, avoiding a circular self-reference. That commit must be in the subject history, its Git author must equal `reviewer`, it must change only its own SF-20 evidence artifact, and the artifact content at that commit must exactly match the current evidence. In reviewed CI changesets, the evidence commit must be separate from and later than all migration-changing commits. For staged changes, the evidence base must remain free of committed migration-file drift before the staged patch is admitted.
+The evidence commit SHA is not self-declared inside the artifact. SF-20 resolves the latest commit for the exact evidence path from the subject Git history, avoiding a circular self-reference. That commit must descend from the declared review base, remain in the subject history, have a Git author matching `reviewer`, change only its own SF-20 evidence artifact, and contain bytes exactly matching the current evidence file.
 
-Acceptance is fail-closed. Missing evidence leaves `REVIEW_REQUIRED` unresolved. Malformed evidence, wrong/stale base SHA, wrong changeset digest, wrong author set, self-review, unverifiable reviewer provenance, mixed migration/evidence commit, wrong migration-file set, or incomplete/extra finding fingerprints is rejected. A `BLOCK` finding can never be accepted by review evidence.
+For staged changes, the evidence may be committed before the reviewed migration patch is committed: the full staged migration diff digest binds the patch that was reviewed, while SF-20 rejects the evidence if committed migration-file drift has occurred since the declared review base. In CI, the same full migration diff digest and exact base SHA must still match the reviewed changeset. This permits normal review-before-commit workflow without weakening exact changeset binding.
+
+Acceptance is fail-closed. Missing evidence leaves `REVIEW_REQUIRED` unresolved. Malformed evidence, wrong/stale base SHA, wrong full-diff digest, wrong author set, self-review, unverifiable reviewer provenance, mixed migration/evidence commit, wrong migration-file set, or incomplete/extra finding fingerprints is rejected. A `BLOCK` finding can never be accepted by review evidence.
 
 The safety report continues to show the original safety disposition. Admission records the accepted reviewer, evidence path, Git-resolved evidence commit SHA, and evidence SHA-256 separately so the risk classification is not rewritten and the review decision remains auditable.
 
