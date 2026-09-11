@@ -2,14 +2,17 @@ import 'package:flutter/material.dart';
 
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
+import '../deliveries/delivery_identity_scope.dart';
 import '../navigation/desktop_section.dart';
+import 'agent_runtime_status.dart';
+import 'pixel_agent_presentation.dart';
+import 'pixel_agent_sprite.dart';
 import 'reference_agents_view.dart';
 
 /// Presentation-only wrapper for the canonical Agents surface.
 ///
 /// Identity, provisioning and runtime authority remain in [ReferenceAgentsView].
-/// The wrapper only projects four distinct summary cards from the same canonical
-/// agent registry plus matched scheduler/runtime telemetry.
+/// Summary cards and pixel sprites consume the same canonical state resolver.
 class ReferenceAgentsSummaryView extends StatelessWidget {
   const ReferenceAgentsSummaryView({
     required this.projection,
@@ -27,71 +30,89 @@ class ReferenceAgentsSummaryView extends StatelessWidget {
   final VoidCallback? onRefreshRequested;
 
   @override
-  Widget build(BuildContext context) => Stack(
-        children: [
-          Positioned.fill(
-            child: ReferenceAgentsView(
-              projection: projection,
-              snapshot: snapshot,
-              status: status,
-              onNavigate: onNavigate,
-              onRefreshRequested: onRefreshRequested,
+  Widget build(BuildContext context) {
+    final session = DeliveryIdentityScope.maybeSessionOf(context);
+    final presentationSnapshot = canonicalAgentPresentationSnapshot(
+      snapshot,
+      runtimeConnected: projection.connected,
+      authorizedTenantId: session?.tenantId,
+    );
+    final states = resolveCanonicalAgentRuntimeStates(
+      snapshot,
+      runtimeConnected: projection.connected,
+      authorizedTenantId: session?.tenantId,
+    );
+    final teams = _teamsById(presentationSnapshot);
+
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: ReferenceAgentsView(
+            projection: projection,
+            snapshot: presentationSnapshot,
+            status: status,
+            onNavigate: onNavigate,
+            onRefreshRequested: onRefreshRequested,
+          ),
+        ),
+        Positioned(
+          left: 14,
+          right: 12,
+          top: 60,
+          height: 50,
+          child: IgnorePointer(
+            child: _AgentSummaryCards(
+              snapshot: presentationSnapshot,
+              states: states,
             ),
           ),
+        ),
+        if (states.isNotEmpty)
           Positioned(
             left: 14,
             right: 12,
-            top: 60,
-            height: 50,
+            bottom: 8,
+            height: 88,
             child: IgnorePointer(
-              child: _AgentSummaryCards(snapshot: snapshot),
+              child: _RearPixelStrip(states: states, teams: teams),
             ),
           ),
-        ],
-      );
+      ],
+    );
+  }
 }
 
 class _AgentSummaryCards extends StatelessWidget {
-  const _AgentSummaryCards({required this.snapshot});
+  const _AgentSummaryCards({required this.snapshot, required this.states});
 
   final OperationalSnapshot snapshot;
+  final Map<String, AgentRuntimeDisplayState> states;
 
   @override
   Widget build(BuildContext context) {
     final tr = Localizations.localeOf(context).languageCode == 'tr';
-    final agents = _canonicalAgents(snapshot);
     final total = _int(snapshot.agentState, const ['canonical_count']) ??
-        (agents.isEmpty ? null : agents.length);
-    final active = agents.isEmpty
+        (states.isEmpty ? null : states.length);
+    final active = states.isEmpty
         ? null
-        : agents.where((item) => item == _AgentSummaryState.active).length;
-    final busy = agents.isEmpty
+        : states.values
+            .where((item) => item == AgentRuntimeDisplayState.active)
+            .length;
+    final busy = states.isEmpty
         ? null
-        : agents.where((item) => item == _AgentSummaryState.busy).length;
-    final idle = agents.isEmpty
+        : states.values
+            .where((item) => item == AgentRuntimeDisplayState.working)
+            .length;
+    final idle = states.isEmpty
         ? null
-        : agents.where((item) => item == _AgentSummaryState.idle).length;
+        : states.values
+            .where((item) => item == AgentRuntimeDisplayState.idle)
+            .length;
     final items = <({String id, String label, String value})>[
-      (
-        id: 'total',
-        label: tr ? 'Toplam' : 'Total',
-        value: total?.toString() ?? '—',
-      ),
-      (
-        id: 'active',
-        label: tr ? 'Aktif' : 'Active',
-        value: active?.toString() ?? '—',
-      ),
-      (
-        id: 'busy',
-        label: tr ? 'Meşgul' : 'Busy',
-        value: busy?.toString() ?? '—',
-      ),
-      (
-        id: 'idle',
-        label: tr ? 'Boşta' : 'Idle',
-        value: idle?.toString() ?? '—',
-      ),
+      (id: 'total', label: tr ? 'Toplam' : 'Total', value: total?.toString() ?? '—'),
+      (id: 'active', label: tr ? 'Aktif' : 'Active', value: active?.toString() ?? '—'),
+      (id: 'busy', label: tr ? 'Meşgul' : 'Busy', value: busy?.toString() ?? '—'),
+      (id: 'idle', label: tr ? 'Boşta' : 'Idle', value: idle?.toString() ?? '—'),
     ];
 
     return Container(
@@ -143,100 +164,80 @@ class _AgentSummaryCards extends StatelessWidget {
   }
 }
 
-enum _AgentSummaryState { active, busy, idle, other }
+class _RearPixelStrip extends StatelessWidget {
+  const _RearPixelStrip({required this.states, required this.teams});
 
-List<_AgentSummaryState> _canonicalAgents(OperationalSnapshot snapshot) {
-  final merged = <String, Map<String, Object?>>{};
-  for (final item in _maps(snapshot.agentState['agents'])) {
-    final id = _text(item, const ['agent_id']);
-    if (id == null || !id.startsWith('ilaios.agent.')) continue;
-    merged[id] = Map<String, Object?>.of(item);
-  }
+  final Map<String, AgentRuntimeDisplayState> states;
+  final Map<String, String> teams;
 
-  void mergeTelemetry(Map<String, Object?> item) {
-    String? canonicalId;
-    for (final key in const [
-      'agent_id',
-      'worker_id',
-      'executor_id',
-      'agent',
-      'worker',
-      'id',
-    ]) {
-      final candidate = _text(item, [key]);
-      if (candidate != null && merged.containsKey(candidate)) {
-        canonicalId = candidate;
-        break;
+  @override
+  Widget build(BuildContext context) {
+    final byTeam = <String, AgentRuntimeDisplayState>{};
+    const priority = <AgentRuntimeDisplayState, int>{
+      AgentRuntimeDisplayState.offline: 0,
+      AgentRuntimeDisplayState.active: 1,
+      AgentRuntimeDisplayState.idle: 1,
+      AgentRuntimeDisplayState.waiting: 2,
+      AgentRuntimeDisplayState.working: 3,
+    };
+    for (final entry in states.entries) {
+      final team = teams[entry.key];
+      if (team == null || !pixelAgentTeams.contains(team)) continue;
+      final current = byTeam[team];
+      if (current == null || priority[entry.value]! > priority[current]!) {
+        byTeam[team] = entry.value;
       }
     }
-    if (canonicalId == null) return;
-    final status = _text(item, const [
-      'agent_status',
-      'worker_status',
-      'status',
-      'state',
-      'lease_state',
-    ]);
-    if (status != null) merged[canonicalId]!['status'] = status;
+    const order = <String>[
+      'core',
+      'engineering',
+      'security',
+      'web',
+      'media',
+      'intelligence',
+      'operations',
+      'meta',
+    ];
+    final visible = order.where(byTeam.containsKey).toList(growable: false);
+    if (visible.isEmpty) return const SizedBox.shrink();
+    return Container(
+      key: const Key('agents-rear-pixel-strip'),
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        children: [
+          for (final team in visible)
+            PixelAgentSprite(
+              key: ValueKey('agents-pixel-$team'),
+              team: team,
+              view: PixelAgentView.rear,
+              motion: pixelMotionForRuntimeState(byTeam[team]!),
+              size: const Size(48, 60),
+            ),
+        ],
+      ),
+    );
   }
-
-  for (final key in const ['agents', 'workers', 'executors', 'leases']) {
-    for (final item in _maps(snapshot.schedulerState[key])) {
-      mergeTelemetry(item);
-    }
-  }
-  for (final item in snapshot.runtimeRoutes) {
-    mergeTelemetry(item);
-  }
-  for (final item in snapshot.liveEvents) {
-    mergeTelemetry(item);
-  }
-
-  return merged.values.map((item) {
-    final registered = item['registered'] is bool ? item['registered'] as bool : true;
-    final raw = _text(item, const [
-          'agent_status',
-          'worker_status',
-          'status',
-          'state',
-          'lease_state',
-        ]) ??
-        (registered ? 'active' : 'offline');
-    final value = _normalize(raw);
-    if (value.contains('busy') ||
-        value.contains('running') ||
-        value.contains('executing') ||
-        value.contains('working')) {
-      return _AgentSummaryState.busy;
-    }
-    if (value.contains('idle') ||
-        value.contains('available') ||
-        value.contains('free')) {
-      return _AgentSummaryState.idle;
-    }
-    if (value.contains('offline') ||
-        value.contains('disabled') ||
-        value.contains('stopped') ||
-        value.contains('dead') ||
-        value.contains('unregistered') ||
-        value.contains('review') ||
-        value.contains('approval')) {
-      return _AgentSummaryState.other;
-    }
-    return _AgentSummaryState.active;
-  }).toList(growable: false);
 }
 
-List<Map<String, Object?>> _maps(Object? raw) {
-  if (raw is! List<Object?>) return const [];
-  return raw.whereType<Map<String, Object?>>().toList(growable: false);
+Map<String, String> _teamsById(OperationalSnapshot snapshot) {
+  final result = <String, String>{};
+  final raw = snapshot.agentState['agents'];
+  if (raw is! List<Object?>) return result;
+  for (final item in raw.whereType<Map<String, Object?>>()) {
+    final id = _text(item, const ['agent_id']);
+    final team = _text(item, const ['team']);
+    if (id == null || team == null) continue;
+    final normalized = team.toLowerCase();
+    if (pixelAgentTeams.contains(normalized)) result[id] = normalized;
+  }
+  return result;
 }
 
 String? _text(Map<String, Object?> source, List<String> keys) {
   for (final key in keys) {
     final value = source[key];
     if (value is String && value.trim().isNotEmpty) return value.trim();
-    if (value is num || value is bool) return '$value';
   }
   return null;
 }
@@ -249,6 +250,3 @@ int? _int(Map<String, Object?> source, List<String> keys) {
   }
   return null;
 }
-
-String _normalize(String value) =>
-    value.toLowerCase().replaceAll(RegExp(r'[^a-z0-9]+'), '');

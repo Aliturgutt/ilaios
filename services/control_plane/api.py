@@ -22,6 +22,7 @@ from services.control_plane.proposals import (
     propose_execution,
 )
 from services.prompt_intent_compiler import compile_prompt
+from services.prompt_refinement import refine_prompt
 from src.video_automation.job_state_machine import JobStateMachine
 from src.video_automation.models import JobState
 
@@ -89,7 +90,8 @@ class ControlPlane:
         if not objective or objective != objective.strip():
             raise ControlPlaneError("objective must be non-blank and trimmed")
         try:
-            compilation = compile_prompt(objective)
+            refinement = refine_prompt(objective)
+            compilation = compile_prompt(refinement.refined_prompt)
         except ValueError as error:
             raise ControlPlaneError(str(error)) from error
         if compilation.needs_clarification:

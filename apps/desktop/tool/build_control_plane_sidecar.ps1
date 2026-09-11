@@ -97,9 +97,21 @@ $metadata = Join-Path $desktopRoot 'build\sidecar\metadata'
 Remove-Item (Join-Path $desktopRoot 'build\sidecar') -Recurse -Force -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $work, $spec, $dist, $metadata | Out-Null
 
-$sourceHead = (& git -C $repoRoot rev-parse HEAD).Trim().ToLowerInvariant()
-if ($LASTEXITCODE -ne 0 -or $sourceHead -notmatch '^[0-9a-f]{40}$') {
-  throw 'Unable to bind Desktop sidecar to an exact source HEAD SHA.'
+$sourceHead = ''
+try {
+  $sourceHead = (& git -C $repoRoot rev-parse HEAD 2>$null).Trim().ToLowerInvariant()
+}
+catch {
+  $sourceHead = ''
+}
+if ($sourceHead -notmatch '^[0-9a-f]{40}$') {
+  $repoLeaf = Split-Path -Leaf ([string]$repoRoot)
+  if ($repoLeaf -match '^ilaios-([0-9a-fA-F]{40})$') {
+    $sourceHead = $Matches[1].ToLowerInvariant()
+  }
+}
+if ($sourceHead -notmatch '^[0-9a-f]{40}$') {
+  throw 'Unable to bind Desktop sidecar to an exact source HEAD SHA. Use a git checkout or an exact-SHA GitHub archive.'
 }
 $sourceHeadFile = Join-Path $metadata 'source-head.txt'
 [System.IO.File]::WriteAllText($sourceHeadFile, $sourceHead, [System.Text.UTF8Encoding]::new($false))

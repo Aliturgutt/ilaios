@@ -1,0 +1,13 @@
+{
+  "asset_count": 208,
+  "expected_asset_count": 208,
+  "canvas_size": [
+    64,
+    80
+  ],
+  "all_same_size": true,
+  "alpha_transparency_failures": [],
+  "empty_frames": [],
+  "exact_duplicate_sequences": [],
+  "status": "PASS"
+}

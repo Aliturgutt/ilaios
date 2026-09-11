@@ -42,3 +42,17 @@ def test_parent_pipe_eof_is_only_a_legacy_fallback_without_desktop_owner() -> No
     )
 """
     assert owner_guard in source
+
+
+def test_desktop_owner_loss_always_bounds_packaged_sidecar_lifetime() -> None:
+    source = SIDECAR.read_text(encoding="utf-8")
+
+    start = source.index("    def _force_exit_after_desktop_owner_loss() -> None:")
+    end = source.index("\n    def stop_identity_if_desktop_exits() -> None:", start)
+    fallback = source[start:end]
+
+    assert "desktop_exit_cleanup_complete.wait(timeout=3)" in fallback
+    assert "if not desktop_exit_cleanup_complete.wait" not in fallback
+    assert "_terminate_frozen_sidecar_parent()" in fallback
+    assert "os._exit(0)" in fallback
+    assert "target=_force_exit_after_desktop_owner_loss" in source

@@ -443,15 +443,29 @@ class SoftwareFactoryDBMigrationSafety:
                 failures.append("down migration versions must pair every up migration")
         required_recovery_fragments = (
             "if backup_path.exists():",
-            "shutil.copy2(database_path, backup_path)",
-            "connection.executescript(_DOWN_MIGRATIONS[current])",
+            "_snapshot_database(database_path, backup_path)",
+            "_execute_script_statements(connection, _DOWN_MIGRATIONS[current])",
+            "_execute_script_statements(connection, _UP_MIGRATIONS[version])",
+            'connection.execute("BEGIN IMMEDIATE")',
+            "connection.commit()",
+            "connection.rollback()",
             "except Exception:",
-            "shutil.copy2(backup_path, database_path)",
+            "_restore_database(backup_path, database_path)",
+            "source.backup(snapshot)",
+            "snapshot.backup(database)",
+            'connection.execute("PRAGMA integrity_check")',
+            'connection.execute("PRAGMA busy_timeout = 30000")',
         )
         if any(fragment not in text for fragment in required_recovery_fragments):
-            failures.append("rollback must preserve backup-before-change and restore-on-failure")
+            failures.append(
+                "migration and rollback must preserve serialized atomic transactions and recoverable backup invariants"
+            )
         if 'connection.execute("PRAGMA foreign_keys = ON")' not in text:
             failures.append("control-plane migration connections must enforce foreign keys")
+        if ".executescript(" in text:
+            failures.append(
+                "control-plane migration authority must not use executescript inside explicit transactions"
+            )
 
         findings: list[MigrationSafetyFinding] = []
         for index, reason in enumerate(failures, start=1):
@@ -465,7 +479,7 @@ class SoftwareFactoryDBMigrationSafety:
                     path=_CONTROL_PLANE_MIGRATIONS,
                     line=1,
                     reason=reason,
-                    remediation="restore version pairing, FK enforcement, and recoverable rollback invariants",
+                    remediation="restore version pairing, FK enforcement, atomic serialization, and recoverable rollback invariants",
                     backup_required=True,
                     rollback_or_compensation_required=True,
                     fingerprint=fingerprint,
