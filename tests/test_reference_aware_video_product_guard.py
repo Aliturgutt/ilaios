@@ -6,6 +6,7 @@ from typing import cast
 
 import pytest
 
+from services.integrations.provider_video_runtime import ProviderBackedDesktopVideoRuntime
 from services.integrations.reference_aware_provider_video_runtime import (
     ReferenceAwareProviderBackedDesktopVideoRuntime,
 )
@@ -47,18 +48,44 @@ def _runtime(
     return runtime
 
 
-def test_vertical_request_is_rejected_before_reference_analysis_or_provider_generation(
+def test_vertical_request_reaches_same_canonical_provider_runtime_with_shape(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     runtime = _runtime()
-    with pytest.raises(VideoRuntimeError, match="9:16"):
-        runtime._generate_finished_product(
-            run_root=tmp_path,
-            request_id="request-guard",
-            job_id="job-guard",
-            objective="Create a vertical video for TikTok.",
-            duration_seconds=20.0,
-        )
+    captured: dict[str, object] = {}
+
+    def fake_generate(
+        self: ProviderBackedDesktopVideoRuntime,
+        *,
+        run_root: Path,
+        request_id: str,
+        job_id: str,
+        objective: str,
+        duration_seconds: float,
+    ) -> dict[str, object]:
+        del self, run_root, request_id, job_id, duration_seconds
+        captured["objective"] = objective
+        return {"requested_aspect_ratio": "9:16"}
+
+    monkeypatch.setattr(
+        ProviderBackedDesktopVideoRuntime,
+        "_generate_finished_product",
+        fake_generate,
+    )
+    outcome = runtime._generate_finished_product(
+        run_root=tmp_path,
+        request_id="request-guard",
+        job_id="job-guard",
+        objective="Create a vertical video for TikTok.",
+        duration_seconds=20.0,
+    )
+
+    assert outcome["requested_aspect_ratio"] == "9:16"
+    product_spec = outcome["video_product_spec"]
+    assert isinstance(product_spec, dict)
+    assert product_spec["aspect_ratio"] == "9:16"
+    assert captured["objective"] == "Create a vertical video for TikTok."
 
 
 def test_source_video_revision_is_rejected_before_provider_generation(

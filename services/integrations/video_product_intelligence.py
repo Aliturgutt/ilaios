@@ -2,8 +2,8 @@
 
 This module does not generate media, choose providers, authorize spend, or create a
 second Video runtime. It classifies only the minimum product-shape information
-needed to prevent the current 16:9 create/reference runtime from silently claiming
-unsupported revision, localization, series-continuation, or output-shape work.
+needed to prevent unsupported revision, localization, series-continuation, or
+output-shape work from silently degrading into a different finished product.
 """
 
 from __future__ import annotations
@@ -138,11 +138,6 @@ def admit_current_desktop_video_product(
         raise VideoProductIntentError(
             "authenticated SeriesState is present but series-continuation execution is "
             "not materialized by the current Desktop finished-product runtime"
-        )
-    if spec.aspect_ratio != "16:9":
-        raise VideoProductIntentError(
-            f"requested aspect ratio '{spec.aspect_ratio}' is not materialized by the "
-            "current Desktop finished-product runtime; refusing a mismatched video"
         )
     return spec
 

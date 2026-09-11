@@ -64,6 +64,7 @@ from .provider_video_runtime import (
 from .reference_aware_provider_video_runtime import (
     ReferenceAwareProviderBackedDesktopVideoRuntime,
 )
+from .video_product_intelligence import derive_video_product_spec
 from .video_runtime import VideoRuntimeError
 
 _DEFAULT_MODEL_ID = "bytedance/seedance-2.0-fast"
@@ -302,6 +303,7 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
             raise VideoRuntimeError("paid Seedance preflight requires a positive approved budget")
         duration = requested_duration(objective)
         durations = _partition_duration(duration)
+        product_spec = derive_video_product_spec(objective)
         models = self._catalog.paid_eligible_models()
         estimated_total = 0
         reserved_total = 0
@@ -311,7 +313,7 @@ class TenantBoundManagedDesktopVideoSession(ManagedDesktopVideoSession):
                 model_id=self._model_id,
                 duration_seconds=int(round(shot_duration)),
                 resolution=self._resolution,
-                aspect_ratio="16:9",
+                aspect_ratio=product_spec.aspect_ratio,
                 generate_audio=self._generate_audio,
                 max_unit_price_usd=self._max_unit_price_usd,
                 max_total_cost_usd=approved_budget_usd,
