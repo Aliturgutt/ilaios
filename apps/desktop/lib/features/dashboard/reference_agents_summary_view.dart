@@ -1,5 +1,4 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -9,7 +8,6 @@ import '../../control_plane/projection.dart';
 import '../deliveries/delivery_identity_scope.dart';
 import '../navigation/desktop_section.dart';
 import 'agent_runtime_status.dart';
-import 'pixel_agent_presentation.dart';
 import 'reference_agents_view.dart';
 
 /// Presentation-only wrapper for the canonical Agents surface.
