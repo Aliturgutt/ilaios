@@ -50,20 +50,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -f /etc/apt/apt-mirrors.txt ]]; then
-            printf '%s\n' 'https://archive.ubuntu.com/ubuntu/' \
-              | sudo tee /etc/apt/apt-mirrors.txt >/dev/null
+          if command -v ffmpeg >/dev/null 2>&1 && command -v ffprobe >/dev/null 2>&1; then
+            echo "Using runner-provided ffmpeg toolchain"
+          else
+            sudo timeout 180s apt-get \
+              -o Acquire::Retries=5 \
+              -o Acquire::http::Timeout=30 \
+              -o Acquire::https::Timeout=30 \
+              update
+            sudo timeout 900s env DEBIAN_FRONTEND=noninteractive apt-get \
+              -o Acquire::Retries=5 \
+              -o Acquire::http::Timeout=30 \
+              -o Acquire::https::Timeout=30 \
+              install -y ffmpeg
           fi
-          sudo timeout 180s apt-get \
-            -o Acquire::Retries=3 \
-            -o Acquire::http::Timeout=15 \
-            -o Acquire::https::Timeout=15 \
-            update
-          sudo timeout 600s env DEBIAN_FRONTEND=noninteractive apt-get \
-            -o Acquire::Retries=3 \
-            -o Acquire::http::Timeout=15 \
-            -o Acquire::https::Timeout=15 \
-            install -y ffmpeg
           ffmpeg -version | head -n 1
           ffprobe -version | head -n 1
           sudo sysctl -w kernel.unprivileged_userns_clone=1 || true
