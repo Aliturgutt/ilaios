@@ -412,7 +412,7 @@ class _ReferenceAssetPickerState extends State<ReferenceAssetPicker> {
                       height: cardHeight,
                       child: Container(
                         key: ValueKey('home-factory-${index + 1}'),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
                         decoration: BoxDecoration(
                           color: Theme.of(context).colorScheme.surfaceContainerLowest,
                           border: Border.all(
