@@ -77,15 +77,15 @@ def test_bound_series_state_is_not_false_claimed_as_execution() -> None:
         )
 
 
-def test_vertical_and_square_requests_fail_before_current_16_9_materialization() -> None:
-    with pytest.raises(VideoProductIntentError, match="9:16"):
-        admit_current_desktop_video_product(
-            "Create a vertical video for a product launch.",
-        )
-    with pytest.raises(VideoProductIntentError, match="1:1"):
-        admit_current_desktop_video_product(
-            "Create a square video for the campaign.",
-        )
+def test_vertical_and_square_requests_are_admitted_for_runtime_capability_checks() -> None:
+    vertical = admit_current_desktop_video_product(
+        "Create a vertical video for a product launch."
+    )
+    square = admit_current_desktop_video_product(
+        "Create a square video for the campaign."
+    )
+    assert vertical.aspect_ratio == "9:16"
+    assert square.aspect_ratio == "1:1"
 
 
 def test_explicit_platform_shape_is_bounded_and_truthful() -> None:
