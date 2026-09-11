@@ -34,16 +34,15 @@ The canonical evidence path is:
 - `changeset_authors`: exact migration author identity set resolved from Git, or the staged Git author
 - `reviewer`: independent reviewer identity; it must not be one of the migration authors
 - `reviewed_at`: timezone-qualified ISO-8601 timestamp
-- `evidence_commit_sha`: exact Git commit containing this evidence artifact
 - `migration_files`: exact migration-file set from the SF-20 report
 - `finding_fingerprints`: exact set of all `REVIEW_REQUIRED` finding fingerprints
 - `review_notes`: non-empty review record explaining the independent assessment
 
-The evidence commit is itself validated. It must be in the subject history, its Git author must equal `reviewer`, it must change only its own SF-20 evidence artifact, and the artifact content at that commit must exactly match the current evidence. In reviewed CI changesets, the evidence commit must be separate from and later than all migration-changing commits. For staged changes, the evidence base must remain free of committed migration-file drift before the staged patch is admitted.
+The evidence commit SHA is not self-declared inside the artifact. SF-20 resolves the latest commit for the exact evidence path from the subject Git history, avoiding a circular self-reference. That commit must be in the subject history, its Git author must equal `reviewer`, it must change only its own SF-20 evidence artifact, and the artifact content at that commit must exactly match the current evidence. In reviewed CI changesets, the evidence commit must be separate from and later than all migration-changing commits. For staged changes, the evidence base must remain free of committed migration-file drift before the staged patch is admitted.
 
 Acceptance is fail-closed. Missing evidence leaves `REVIEW_REQUIRED` unresolved. Malformed evidence, wrong/stale base SHA, wrong changeset digest, wrong author set, self-review, unverifiable reviewer provenance, mixed migration/evidence commit, wrong migration-file set, or incomplete/extra finding fingerprints is rejected. A `BLOCK` finding can never be accepted by review evidence.
 
-The safety report continues to show the original safety disposition. Admission records the accepted reviewer, evidence path, evidence commit SHA, and evidence SHA-256 separately so the risk classification is not rewritten and the review decision remains auditable.
+The safety report continues to show the original safety disposition. Admission records the accepted reviewer, evidence path, Git-resolved evidence commit SHA, and evidence SHA-256 separately so the risk classification is not rewritten and the review decision remains auditable.
 
 ## Evidence and authority boundary
 
