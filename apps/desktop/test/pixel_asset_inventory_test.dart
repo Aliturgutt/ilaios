@@ -56,7 +56,7 @@ void main() {
     const assetPath = 'assets/pixel_agents/workspace/office_reference.b64';
     final workspace = File(assetPath);
     expect(workspace.existsSync(), isTrue, reason: assetPath);
-    final encoded = workspace.readAsStringSync().trim();
+    final encoded = workspace.readAsStringSync().replaceAll(RegExp(r'\s+'), '');
     expect(encoded, isNotEmpty, reason: assetPath);
     final bytes = base64Decode(encoded);
     expect(bytes.length, greaterThan(1024), reason: assetPath);
