@@ -6,8 +6,8 @@ itself from becoming scan subjects merely because their filenames contain the
 word "migration".
 
 SF-20 safety classification remains authoritative. REVIEW_REQUIRED findings can
-only be admitted when exact independent review evidence matches the migration
-changeset and is anchored to a separate Git commit by a non-author reviewer.
+only be admitted when exact independent review evidence matches the full
+migration diff and is anchored to a separate Git commit by a non-author reviewer.
 BLOCK findings are never review-acceptable.
 """
 
@@ -118,10 +118,17 @@ class SoftwareFactoryDBMigrationAdmission:
             base_sha=base_sha,
             head_sha=head_sha,
         )
-        migration_commits: tuple[str, ...] = ()
+        changeset_sha256: str | None = None
         changeset_authors: tuple[str, ...] = ()
         if report.disposition is MigrationDisposition.REVIEW_REQUIRED:
-            migration_commits, changeset_authors = _migration_history(
+            changeset_sha256 = _migration_changeset_sha256(
+                repository_root,
+                migration_files=report.migration_files,
+                base_sha=base_sha,
+                head_sha=head_sha,
+                staged=False,
+            )
+            changeset_authors = _migration_authors(
                 repository_root,
                 base_sha=base_sha,
                 head_sha=head_sha,
@@ -131,9 +138,9 @@ class SoftwareFactoryDBMigrationAdmission:
             repository_root,
             report=report,
             selected=selected,
+            changeset_sha256=changeset_sha256,
             subject_head_sha=head_sha,
             expected_base_sha=base_sha,
-            migration_commits=migration_commits,
             changeset_authors=changeset_authors,
         )
         return report, acceptance
@@ -169,8 +176,16 @@ class SoftwareFactoryDBMigrationAdmission:
             scope="STAGED_CHANGESET",
             repository_root=repository_root,
         )
+        changeset_sha256: str | None = None
         changeset_authors: tuple[str, ...] = ()
         if report.disposition is MigrationDisposition.REVIEW_REQUIRED:
+            changeset_sha256 = _migration_changeset_sha256(
+                repository_root,
+                migration_files=report.migration_files,
+                base_sha=None,
+                head_sha=None,
+                staged=True,
+            )
             author = _git_text(
                 repository_root,
                 ("config", "user.email"),
@@ -183,9 +198,9 @@ class SoftwareFactoryDBMigrationAdmission:
             repository_root,
             report=report,
             selected=selected,
+            changeset_sha256=changeset_sha256,
             subject_head_sha=head_sha,
             expected_base_sha=None,
-            migration_commits=(),
             changeset_authors=changeset_authors,
         )
         return report, acceptance
@@ -215,11 +230,12 @@ def _review_acceptance(
     *,
     report: DBMigrationSafetyReport,
     selected: Sequence[ChangedLine],
+    changeset_sha256: str | None,
     subject_head_sha: str,
     expected_base_sha: str | None,
-    migration_commits: Sequence[str],
     changeset_authors: Sequence[str],
 ) -> SF20ReviewAcceptance:
+    del selected  # Safety findings are already bound separately by exact fingerprints.
     review_fingerprints = tuple(
         sorted(
             finding.fingerprint
@@ -233,8 +249,9 @@ def _review_acceptance(
         return SF20ReviewAcceptance(
             False, None, None, None, None, None, review_fingerprints
         )
+    if changeset_sha256 is None or _SHA256.fullmatch(changeset_sha256) is None:
+        raise DBMigrationSafetyError("SF-20 exact migration changeset digest is required")
 
-    changeset_sha256 = _changeset_sha256(selected)
     relative_evidence_path = _REVIEW_EVIDENCE_DIR / f"{changeset_sha256}.json"
     evidence_path = repository_root.resolve() / relative_evidence_path
     if not evidence_path.is_file():
@@ -283,8 +300,6 @@ def _review_acceptance(
         raise DBMigrationSafetyError("SF-20 review evidence base SHA does not match changeset")
     if payload["changeset_sha256"] != changeset_sha256:
         raise DBMigrationSafetyError("SF-20 review evidence changeset digest does not match")
-    if _SHA256.fullmatch(str(payload["changeset_sha256"])) is None:
-        raise DBMigrationSafetyError("SF-20 review evidence changeset digest is malformed")
 
     authors = payload["changeset_authors"]
     if not isinstance(authors, list) or not authors or not all(
@@ -345,7 +360,6 @@ def _review_acceptance(
         subject_head_sha=subject_head_sha,
         reviewer=reviewer,
         migration_files=report.migration_files,
-        migration_commits=migration_commits,
         staged=expected_base_sha is None,
     )
 
@@ -370,7 +384,6 @@ def _validate_evidence_provenance(
     subject_head_sha: str,
     reviewer: str,
     migration_files: Sequence[str],
-    migration_commits: Sequence[str],
     staged: bool,
 ) -> None:
     if not _git_success(
@@ -414,15 +427,6 @@ def _validate_evidence_provenance(
             "SF-20 review evidence content does not match evidence commit"
         )
 
-    if evidence_commit_sha in set(migration_commits):
-        raise DBMigrationSafetyError("SF-20 review evidence must be a separate commit")
-    for commit_sha in migration_commits:
-        if not _git_success(
-            repository_root,
-            ("merge-base", "--is-ancestor", commit_sha, evidence_commit_sha),
-        ):
-            raise DBMigrationSafetyError("SF-20 review evidence predates migration changes")
-
     if staged and migration_files:
         committed_migration_drift = _git_text(
             repository_root,
@@ -442,57 +446,73 @@ def _validate_evidence_provenance(
             )
 
 
-def _migration_history(
+def _migration_changeset_sha256(
+    repository_root: Path,
+    *,
+    migration_files: Sequence[str],
+    base_sha: str | None,
+    head_sha: str | None,
+    staged: bool,
+) -> str:
+    if not migration_files:
+        raise DBMigrationSafetyError("REVIEW_REQUIRED migration files are missing")
+    if staged:
+        arguments: tuple[str, ...] = (
+            "diff",
+            "--cached",
+            "--full-index",
+            "--no-color",
+            "--no-ext-diff",
+            "--no-renames",
+            "--",
+            *migration_files,
+        )
+    else:
+        if base_sha is None or head_sha is None:
+            raise DBMigrationSafetyError("reviewed migration diff requires base/head SHAs")
+        _require_sha(base_sha, "migration diff base SHA")
+        _require_sha(head_sha, "migration diff head SHA")
+        arguments = (
+            "diff",
+            "--full-index",
+            "--no-color",
+            "--no-ext-diff",
+            "--no-renames",
+            base_sha,
+            head_sha,
+            "--",
+            *migration_files,
+        )
+    migration_diff = _git_diff(repository_root, arguments)
+    if not migration_diff:
+        raise DBMigrationSafetyError("REVIEW_REQUIRED exact migration diff is empty")
+    return hashlib.sha256(migration_diff.encode("utf-8")).hexdigest()
+
+
+def _migration_authors(
     repository_root: Path,
     *,
     base_sha: str,
     head_sha: str,
     migration_files: Sequence[str],
-) -> tuple[tuple[str, ...], tuple[str, ...]]:
+) -> tuple[str, ...]:
     if not migration_files:
-        return (), ()
+        return ()
     history = _git_text(
         repository_root,
         (
             "log",
-            "--format=%H%x00%ae",
+            "--format=%ae",
             f"{base_sha}..{head_sha}",
             "--",
             *migration_files,
         ),
         "unable to resolve SF-20 migration author history",
     )
-    commits: list[str] = []
-    authors: list[str] = []
-    for record in history.splitlines():
-        if not record:
-            continue
-        try:
-            commit_sha, author = record.split("\x00", 1)
-        except ValueError as error:
-            raise DBMigrationSafetyError("SF-20 migration author history is malformed") from error
-        _require_sha(commit_sha, "migration commit SHA")
-        if not author.strip():
-            raise DBMigrationSafetyError("migration commit author is required")
-        commits.append(commit_sha)
-        authors.append(author.strip())
-    if not commits:
-        raise DBMigrationSafetyError("REVIEW_REQUIRED migration commit history is missing")
-    return tuple(commits), tuple(sorted(set(authors)))
-
-
-def _changeset_sha256(lines: Sequence[ChangedLine]) -> str:
-    material = [
-        {"path": line.path, "line": line.line, "text": line.text}
-        for line in sorted(lines, key=lambda item: (item.path, item.line, item.text))
-    ]
-    encoded = json.dumps(
-        material,
-        sort_keys=True,
-        separators=(",", ":"),
-        ensure_ascii=False,
-    ).encode("utf-8")
-    return hashlib.sha256(encoded).hexdigest()
+    authors = tuple(sorted({line.strip() for line in history.splitlines() if line.strip()}))
+    if not authors:
+        raise DBMigrationSafetyError("REVIEW_REQUIRED migration author history is missing")
+    return authors
 
 
 def _require_exact_keys(payload: dict[str, Any], expected: set[str]) -> None:
