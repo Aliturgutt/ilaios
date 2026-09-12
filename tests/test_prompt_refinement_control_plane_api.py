@@ -66,16 +66,22 @@ def _request(
     *,
     token: str = "runtime-secret",
     payload: dict[str, object] | None = None,
+    raw_body: bytes | None = None,
+    content_type: str | None = "application/json",
 ) -> tuple[int, dict[str, Any]]:
-    body = None if payload is None else json.dumps(payload).encode("utf-8")
+    if payload is not None and raw_body is not None:
+        raise AssertionError("payload and raw_body are mutually exclusive")
+    body = raw_body
+    if payload is not None:
+        body = json.dumps(payload).encode("utf-8")
+    headers = {"Authorization": f"Bearer {token}"}
+    if content_type is not None:
+        headers["Content-Type"] = content_type
     request = Request(
         base_url + path,
         data=body,
         method=method,
-        headers={
-            "Authorization": f"Bearer {token}",
-            "Content-Type": "application/json",
-        },
+        headers=headers,
     )
     try:
         response = urlopen(request, timeout=5)
@@ -107,6 +113,7 @@ def test_prompt_refinement_preview_is_authenticated_and_advisory(tmp_path: Path)
                 "prompt": "Build a website. Never deploy to production.",
                 "mode": "structure",
             },
+            content_type="application/json; charset=utf-8",
         )
         assert status == 200
         assert result["mode"] == "structure"
@@ -124,13 +131,94 @@ def test_prompt_refinement_preview_is_authenticated_and_advisory(tmp_path: Path)
         assert after == before
 
 
-def test_prompt_refinement_preview_rejects_unknown_mode(tmp_path: Path) -> None:
+def test_prompt_refinement_preview_rejects_unknown_mode_without_reflection(
+    tmp_path: Path,
+) -> None:
+    with _running_service(tmp_path) as base_url:
+        attacker_value = "route-for-me-secret-token"
+        status, result = _request(
+            base_url,
+            "POST",
+            "/v1/prompts/refine",
+            payload={"prompt": "build a website", "mode": attacker_value},
+        )
+        assert status == 400
+        assert result["error"] == "invalid prompt refinement mode"
+        assert attacker_value not in result["error"]
+
+
+def test_prompt_refinement_preview_requires_json_content_type(tmp_path: Path) -> None:
     with _running_service(tmp_path) as base_url:
         status, result = _request(
             base_url,
             "POST",
             "/v1/prompts/refine",
-            payload={"prompt": "build a website", "mode": "route-for-me"},
+            payload={"prompt": "build a website", "mode": "improve"},
+            content_type="text/plain",
+        )
+        assert status == 415
+        assert result == {"error": "Content-Type must be application/json"}
+
+
+def test_prompt_refinement_preview_rejects_scope_override(tmp_path: Path) -> None:
+    with _running_service(tmp_path) as base_url:
+        status, result = _request(
+            base_url,
+            "POST",
+            "/v1/prompts/refine",
+            payload={
+                "prompt": "build a website",
+                "mode": "improve",
+                "tenant_id": "client-selected-tenant",
+            },
         )
         assert status == 400
-        assert "route-for-me" in result["error"]
+        assert result == {"error": "prompt refinement scope is server-resolved"}
+
+
+def test_prompt_refinement_preview_rejects_wrong_method(tmp_path: Path) -> None:
+    with _running_service(tmp_path) as base_url:
+        status, result = _request(base_url, "GET", "/v1/prompts/refine")
+        assert status == 405
+        assert result == {"error": "method not allowed"}
+
+
+def test_prompt_refinement_preview_rejects_malformed_and_invalid_input(
+    tmp_path: Path,
+) -> None:
+    with _running_service(tmp_path) as base_url:
+        malformed_status, malformed = _request(
+            base_url,
+            "POST",
+            "/v1/prompts/refine",
+            raw_body=b'{"prompt":',
+        )
+        assert malformed_status == 400
+        assert "prompt" not in malformed["error"].casefold()
+
+        non_string_status, non_string = _request(
+            base_url,
+            "POST",
+            "/v1/prompts/refine",
+            payload={"prompt": 7, "mode": "improve"},
+        )
+        assert non_string_status == 400
+        assert non_string == {"error": "prompt must be a string"}
+
+        blank_status, blank = _request(
+            base_url,
+            "POST",
+            "/v1/prompts/refine",
+            payload={"prompt": "   ", "mode": "improve"},
+        )
+        assert blank_status == 400
+        assert blank == {"error": "raw prompt must be non-blank"}
+
+        oversized_status, oversized = _request(
+            base_url,
+            "POST",
+            "/v1/prompts/refine",
+            payload={"prompt": "x" * 20_001, "mode": "improve"},
+        )
+        assert oversized_status == 400
+        assert oversized == {"error": "raw prompt exceeds one-prompt input limit"}
