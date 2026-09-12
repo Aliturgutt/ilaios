@@ -122,6 +122,8 @@ class DesktopExecutionCoordinator(ExecutionCoordinator):
         token: str,
         principal_id: str,
         tenant_id: str,
+        project_id: str | None = None,
+        workload_id: str | None = None,
         now: datetime,
     ) -> dict[str, object]:
         normalized = normalize_desktop_execution_objective(objective)
@@ -136,5 +138,7 @@ class DesktopExecutionCoordinator(ExecutionCoordinator):
             token=token,
             principal_id=principal_id,
             tenant_id=tenant_id,
+            project_id=project_id,
+            workload_id=workload_id,
             now=now,
         )

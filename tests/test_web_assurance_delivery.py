@@ -211,6 +211,8 @@ def test_recoverable_runtime_accepts_bounded_content_newsletter_and_search(
         token="token",
         principal_id="oidc|web@example.test",
         tenant_id="tenant/web",
+        project_id="web-assurance-project",
+        workload_id="web-assurance-workload",
         now=now,
     )
     assert prepared["execution_status"] == ExecutionState.ADMITTED.value
