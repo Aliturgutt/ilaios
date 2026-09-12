@@ -1976,20 +1976,23 @@ _AgentState _agentState(String raw) {
       value.contains('disabled') ||
       value.contains('stopped') ||
       value.contains('dead') ||
-      value.contains('unregistered'))
+      value.contains('unregistered')) {
     return _AgentState.offline;
+  }
   if (value.contains('review') || value.contains('approval')) {
     return _AgentState.review;
   }
   if (value.contains('busy') ||
       value.contains('running') ||
       value.contains('executing') ||
-      value.contains('working'))
+      value.contains('working')) {
     return _AgentState.busy;
+  }
   if (value.contains('idle') ||
       value.contains('available') ||
-      value.contains('free'))
+      value.contains('free')) {
     return _AgentState.idle;
+  }
   return _AgentState.active;
 }
 
