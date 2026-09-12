@@ -147,7 +147,7 @@ def test_dark_surface_typography_is_explicitly_light_neutral() -> None:
 def test_product_experience_helper_text_is_neutral_in_both_themes() -> None:
     interaction = INTERACTION.read_text(encoding="utf-8")
     assert 'html[data-theme="dark"] .product-experience :where(.micro-label,.text-link,.evidence-preview,.evidence-preview span,.evidence-preview li,.product-stage-control p,.product-stage-tabs button,.product-mode-tabs button)' in interaction
-    assert 'html[data-theme="light"] .product-experience :where(.evidence-preview,.evidence-preview span,.evidence-preview li,.product-stage-control p,.micro-label)' in interaction
+    assert 'html[data-theme="light"] .product-experience :where(.evidence-preview,.evidence-preview span,.evidence-preview li,.product-stage-control p,.product-stage-tabs button,.micro-label)' in interaction
     assert "-webkit-text-fill-color: #B3B3B3 !important;" in interaction
     assert "-webkit-text-fill-color: #2A2A2A !important;" in interaction
 
