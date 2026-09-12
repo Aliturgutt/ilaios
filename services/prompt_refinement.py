@@ -287,11 +287,14 @@ def _improve(
         for item in clauses[1:]
         if item not in constraints and item not in acceptance
     ]
+    rendered_constraints = tuple(item for item in constraints if item not in acceptance)
     sections = [f"Objective: {objective}"]
     if remaining:
         sections.extend(("Requirements:", *[f"- {item}" for item in remaining]))
-    if constraints:
-        sections.extend(("Constraints:", *[f"- {item}" for item in constraints]))
+    if rendered_constraints:
+        sections.extend(
+            ("Constraints:", *[f"- {item}" for item in rendered_constraints])
+        )
     if acceptance:
         sections.extend(
             ("Acceptance conditions:", *[f"- {item}" for item in acceptance])
@@ -309,11 +312,18 @@ def _structure(
     objective = clauses[0]
     classified = set(constraints) | set(acceptance)
     requirements = [item for item in clauses[1:] if item not in classified]
+    rendered_constraints = tuple(
+        item
+        for item in constraints
+        if item not in exclusions and item not in acceptance
+    )
     sections = [f"Objective: {objective}"]
     if requirements:
         sections.extend(("Requirements:", *[f"- {item}" for item in requirements]))
-    if constraints:
-        sections.extend(("Constraints:", *[f"- {item}" for item in constraints]))
+    if rendered_constraints:
+        sections.extend(
+            ("Constraints:", *[f"- {item}" for item in rendered_constraints])
+        )
     if exclusions:
         sections.extend(("Exclusions:", *[f"- {item}" for item in exclusions]))
     if acceptance:
