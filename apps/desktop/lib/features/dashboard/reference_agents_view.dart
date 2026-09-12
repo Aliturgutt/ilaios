@@ -1106,7 +1106,7 @@ class _SelectedPanel extends StatelessWidget {
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               Row(
                 children: [
                   CircleAvatar(
@@ -1151,7 +1151,7 @@ class _SelectedPanel extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: 8),
               _Info(label: _tr(context, 'Rol', 'Role'), value: agent!.role),
               _Info(label: _tr(context, 'Takım', 'Team'), value: agent!.team),
               _Info(
@@ -1174,7 +1174,7 @@ class _SelectedPanel extends StatelessWidget {
                 label: _tr(context, 'Sistem Sağlığı', 'System Health'),
                 value: agent!.health,
               ),
-              const SizedBox(height: 9),
+              const SizedBox(height: 6),
               Text(
                 _tr(context, 'Yetkinlikler', 'Capabilities'),
                 style: const TextStyle(
@@ -1182,7 +1182,7 @@ class _SelectedPanel extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 4),
               Wrap(
                 spacing: 4,
                 runSpacing: 4,
@@ -1191,7 +1191,7 @@ class _SelectedPanel extends StatelessWidget {
                     _Chip(text: capability, color: IlaiosTheme.enterpriseCyan),
                 ],
               ),
-              const SizedBox(height: 10),
+              const SizedBox(height: 6),
               Text(
                 '${_tr(context, 'Bekleyen İncelemeler', 'Pending Reviews')} (${reviews.length})',
                 style: const TextStyle(
@@ -1199,7 +1199,7 @@ class _SelectedPanel extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                 ),
               ),
-              const SizedBox(height: 5),
+              const SizedBox(height: 4),
               Expanded(
                 child: reviews.isEmpty
                     ? Center(
@@ -1272,7 +1272,7 @@ class _SelectedPanel extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 7),
+              const SizedBox(height: 4),
               OutlinedButton.icon(
                 key: const Key('agent-live-workspace'),
                 onPressed: onWorkspace,
