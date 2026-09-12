@@ -9,6 +9,7 @@ from services.integrations.video_daily_execution import (
     CanonicalDailyVideoExecutionMaterializer,
 )
 from src.media_quality import (
+    MediaAcceptanceEvidence,
     MediaAcceptanceGate,
     MediaKind,
     MediaQualityDomain,
@@ -70,7 +71,7 @@ def _final_acceptance(
     )
 
 
-def _media_acceptance(artifact: EpisodeAssemblyArtifact):
+def _media_acceptance(artifact: EpisodeAssemblyArtifact) -> MediaAcceptanceEvidence:
     observation = MediaQualityObservation(
         observation_id="technical-observation-001",
         domain=MediaQualityDomain.TECHNICAL,
