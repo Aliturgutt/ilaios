@@ -39,10 +39,10 @@ const copy = {
 } as const;
 
 const heroTitleStyle = {
-  fontSize: "clamp(1.95rem, 2.8vw, 2.7rem)",
-  lineHeight: 1.06,
-  letterSpacing: "-0.038em",
-  maxWidth: "20ch",
+  fontSize: "clamp(1.7rem, 2.15vw, 2.2rem)",
+  lineHeight: 1.08,
+  letterSpacing: "-0.032em",
+  maxWidth: "24ch",
 } as const;
 
 const missionTitleStyle = {
@@ -71,8 +71,8 @@ export default function AboutPage({ locale }: { locale: Locale }) {
   const c = copy[locale];
   const base = locale === "tr" ? "/tr" : "";
   return <>
-    <section className="shell about-intro" style={{paddingTop:"42px",paddingBottom:"34px",gridTemplateColumns:"minmax(0,1.05fr) minmax(320px,.95fr)",gap:"40px",alignItems:"end"}}><div><div className="eyebrow">{c.eyebrow}</div><h1 style={heroTitleStyle}>{c.title}</h1></div><p className="lead">{c.lead}</p></section>
-    <section className="section" style={{paddingTop:"34px",paddingBottom:"34px"}}><div className="shell about-editorial-grid">
+    <section className="shell about-intro" style={{paddingTop:"30px",paddingBottom:"26px",gridTemplateColumns:"minmax(0,.92fr) minmax(320px,1.08fr)",gap:"28px",alignItems:"center"}}><div><div className="eyebrow">{c.eyebrow}</div><h1 style={heroTitleStyle}>{c.title}</h1></div><p className="lead" style={{maxWidth:"54ch",margin:0}}>{c.lead}</p></section>
+    <section className="section" style={{paddingTop:"30px",paddingBottom:"30px"}}><div className="shell about-editorial-grid">
       <article className="about-mission"><span className="micro-label">{c.missionLabel}</span><h2 style={missionTitleStyle}>{c.mission}</h2></article>
       <div className="about-principles"><span className="micro-label">{c.principlesLabel}</span>{c.principles.map(([title, text], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{text}</p></div></article>)}</div>
     </div></section>

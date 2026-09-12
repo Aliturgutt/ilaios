@@ -37,6 +37,16 @@ def test_bound_source_video_is_recognized_but_not_false_claimed_as_edit_executio
         )
 
 
+def test_bound_source_revision_is_admitted_only_with_explicit_execution_capability() -> None:
+    spec = admit_current_desktop_video_product(
+        "Trim this video from 00:00:04 to 00:00:12.",
+        source_video_present=True,
+        revision_execution_available=True,
+    )
+    assert spec.mode is VideoProductMode.REVISION
+    assert spec.source_video_required is True
+
+
 def test_bound_source_video_is_never_silently_ignored_by_create_mode() -> None:
     with pytest.raises(VideoProductIntentError, match="silently ignore source media"):
         admit_current_desktop_video_product(
