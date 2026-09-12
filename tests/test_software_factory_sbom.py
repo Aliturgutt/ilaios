@@ -37,8 +37,8 @@ from services.software_factory_license_provenance import (
     ArtifactProvenanceInput,
     LicenseDisposition,
     LicenseProvenancePolicy,
-    LicenseProvenanceRequest,
     LicenseProvenanceRecord,
+    LicenseProvenanceRequest,
     ModelProviderMetadata,
     ProvenanceKind,
     ProvenanceUsage,
@@ -52,9 +52,9 @@ from services.software_factory_review import (
     SoftwareIndependentReviewRequest,
 )
 from services.software_factory_sbom import (
+    SBOM_DOCUMENT_FORMAT,
     SBOMComponentType,
     SBOMCoverage,
-    SBOM_DOCUMENT_FORMAT,
     SoftwareFactorySBOM,
     SoftwareSBOMRequest,
     render_sbom,

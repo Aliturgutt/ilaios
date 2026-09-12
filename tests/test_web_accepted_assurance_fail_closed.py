@@ -10,7 +10,9 @@ from typing import Any, cast
 import pytest
 
 from services.integrations.web_product_runtime import WebProductRuntimeError
-from services.integrations.web_product_runtime_recovery import RecoverableWebProductRuntime
+from services.integrations.web_product_runtime_recovery import (
+    RecoverableWebProductRuntime,
+)
 
 
 class _AcceptedRuntime(RecoverableWebProductRuntime):

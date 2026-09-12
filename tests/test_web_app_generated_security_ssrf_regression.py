@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from services.web_app_generated_security_gate import evaluate_generated_web_product
 
-
 _SAFE_CSP = "default-src 'self'; script-src 'self'; connect-src 'self' https://api.example.com; object-src 'none'; base-uri 'none'"
 _SSRF_SOURCES = (
     'axios.get("http://127.0.0.1:8080/admin")',

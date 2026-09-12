@@ -16,7 +16,6 @@ from services.control_plane.migrations import (
     rollback_database,
 )
 
-
 _EXPECTED_TABLES = {
     "web_app_tenants",
     "web_app_users",

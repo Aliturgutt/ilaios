@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from .series_state import SeriesStateError

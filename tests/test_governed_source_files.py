@@ -5,7 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from services.governed_source_files import GovernedSourceFileError, GovernedSourceFileStore
+from services.governed_source_files import (
+    GovernedSourceFileError,
+    GovernedSourceFileStore,
+)
 
 
 def test_source_bytes_survive_restart_with_exact_hash(tmp_path: Path) -> None:

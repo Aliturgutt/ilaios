@@ -6,7 +6,9 @@ from pathlib import Path
 
 import pytest
 
-from services.integrations.provider_video_runtime import ProviderBackedDesktopVideoRuntime
+from services.integrations.provider_video_runtime import (
+    ProviderBackedDesktopVideoRuntime,
+)
 from services.integrations.reference_aware_provider_video_runtime import (
     ReferenceAwareProviderBackedDesktopVideoRuntime,
 )

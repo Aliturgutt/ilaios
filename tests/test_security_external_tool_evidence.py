@@ -5,7 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from services.security_external_tool_evidence import ExternalSecurityEvidenceError, report_from_external_tool, retest_external_tool
+from services.security_external_tool_evidence import (
+    ExternalSecurityEvidenceError,
+    report_from_external_tool,
+    retest_external_tool,
+)
 
 
 def _write(path: Path, value: object) -> Path:

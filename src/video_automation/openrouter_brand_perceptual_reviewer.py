@@ -21,7 +21,7 @@ from .openrouter_perceptual_reviewer import (
     _extract_review,
     _sample_frames,
 )
-from .perceptual_review import PerceptualReviewSubmission, PerceptualReviewerKind
+from .perceptual_review import PerceptualReviewerKind, PerceptualReviewSubmission
 from .video_skills import QaDomain
 
 _DEFAULT_BASE_URL = "https://openrouter.ai/api/v1"

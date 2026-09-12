@@ -14,7 +14,6 @@ from services.rag14_embedding_certification import (
     load_candidate,
 )
 
-
 MANIFEST = (
     Path(__file__).resolve().parents[1]
     / "infra/rag/multilingual-e5-small-qint8.candidate.json"

@@ -1,7 +1,7 @@
 # ADR-0008 — Authorization-Aware Retrieval Is a Security Boundary
 
-**Status:** Accepted — Canonical Rationale  
-**Date:** 2026-08-13  
+**Status:** Accepted — Canonical Rationale
+**Date:** 2026-08-13
 **Authority:** This ADR records rationale only and does not override canonical documents.
 
 ## Context

@@ -17,7 +17,10 @@ from services.control_plane import (
 from services.control_plane.workflows import WorkflowStore, WorkflowStoreConfig
 from services.evidence import EvidenceStore
 from services.governance import GovernedRuntimeGateway
-from services.integrations import DeterministicLocalVideoRuntime, DurableVideoProductRuntime
+from services.integrations import (
+    DeterministicLocalVideoRuntime,
+    DurableVideoProductRuntime,
+)
 from services.integrations.product_runtime import ProductRuntimeError
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
 

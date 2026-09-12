@@ -18,7 +18,6 @@ from services.identity import (
     VerifiedOIDCClaims,
 )
 
-
 NOW = datetime(2026, 8, 25, 15, 0, tzinfo=timezone.utc)
 
 

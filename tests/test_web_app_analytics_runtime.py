@@ -6,7 +6,12 @@ from datetime import datetime, timezone
 
 import pytest
 
-from services.identity import AuthorizationEngine, IdentityError, IdentityKind, Principal
+from services.identity import (
+    AuthorizationEngine,
+    IdentityError,
+    IdentityKind,
+    Principal,
+)
 from services.web_app_analytics_runtime import (
     WebAppAnalyticsRuntime,
     WebAppAnalyticsRuntimeError,

@@ -9,7 +9,6 @@ import pytest
 from services.deployment import runtime as deployment_runtime
 from services.rag14_embedding_provider import PRODUCTION_EMBEDDING_MODE
 
-
 _KNOWLEDGE_ENV = {
     "ILAIOS_KNOWLEDGE_PRINCIPAL_ID": "service-rag-canary",
     "ILAIOS_KNOWLEDGE_TENANT_ID": "tenant-canary",

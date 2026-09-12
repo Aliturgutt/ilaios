@@ -5,8 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from services.integrations.native_reference_receipt_runtime import native_receipt_evidence
-from services.integrations.native_reference_verified_runtime import _native_provider_evidence
+from services.integrations.native_reference_receipt_runtime import (
+    native_receipt_evidence,
+)
+from services.integrations.native_reference_verified_runtime import (
+    _native_provider_evidence,
+)
 from services.reference_assets import ReferenceAssetRecord, ReferenceAssetRole
 
 

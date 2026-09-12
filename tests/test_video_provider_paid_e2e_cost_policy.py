@@ -10,7 +10,9 @@ from src.video_automation import provider_production_certification
 from src.video_automation.generation_job_polling import ProviderJobStatus
 from src.video_automation.managed_credit_store import ManagedCreditLedgerStore
 from src.video_automation.managed_credits import ManagedCreditAccount, ProviderCostQuote
-from src.video_automation.openrouter_managed_video_provider import OPENROUTER_MANAGED_PROVIDER_NAME
+from src.video_automation.openrouter_managed_video_provider import (
+    OPENROUTER_MANAGED_PROVIDER_NAME,
+)
 from src.video_automation.openrouter_managed_video_runtime import (
     OpenRouterManagedVideoGenerationJobPoller,
     actual_cost_microusd_from_observation,

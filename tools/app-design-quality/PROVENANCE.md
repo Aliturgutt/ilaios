@@ -1,6 +1,6 @@
 # ILAIOS App Design Quality — Provenance
 
-Status: ORIGINAL ILAIOS IMPLEMENTATION  
+Status: ORIGINAL ILAIOS IMPLEMENTATION
 Date: 2026-08-13
 
 The capability was created because the repository had a bounded App Factory and a Flutter desktop client but no reusable native-app design acceptance evaluator. Requirements were derived from the existing ILAIOS architecture, App Factory authority boundary, desktop implementation, widget tests, and the neutral design-quality families already documented by the ILAIOS-owned web evaluator.

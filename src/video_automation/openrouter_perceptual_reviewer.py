@@ -25,8 +25,8 @@ from urllib.request import Request, urlopen
 
 from .media_technical_validation import FfprobeMediaTechnicalProbe
 from .perceptual_review import (
-    PerceptualReviewSubmission,
     PerceptualReviewerKind,
+    PerceptualReviewSubmission,
 )
 from .video_skills import QaDomain
 

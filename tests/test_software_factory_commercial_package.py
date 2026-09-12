@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from services.software_factory_commercial_package import SoftwareFactoryCommercialPackage
+from services.software_factory_commercial_package import (
+    SoftwareFactoryCommercialPackage,
+)
 
 REPOSITORY_ROOT = Path(__file__).resolve().parents[1]
 

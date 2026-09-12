@@ -16,14 +16,19 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from decimal import Decimal, InvalidOperation, ROUND_CEILING
+from decimal import ROUND_CEILING, Decimal, InvalidOperation
 from pathlib import Path
 from typing import NoReturn
 
 from .generation_job_polling import ProviderJobStatus
 from .managed_credit_policy import managed_credit_production_policy
 from .managed_credit_store import ManagedCreditLedgerStore
-from .managed_credits import ManagedCreditAccount, ManagedCreditError, ProviderCostQuote, usd_to_microusd
+from .managed_credits import (
+    ManagedCreditAccount,
+    ManagedCreditError,
+    ProviderCostQuote,
+    usd_to_microusd,
+)
 from .models import ProviderRequest
 from .openrouter_managed_video_gateway import OpenRouterManagedVideoGateway
 from .openrouter_managed_video_provider import OPENROUTER_MANAGED_PROVIDER_NAME

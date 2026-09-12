@@ -5,7 +5,6 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
-
 RUNNER_PATH = Path("apps/website/scripts/production-certification-runner.py")
 
 

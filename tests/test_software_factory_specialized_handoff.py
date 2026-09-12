@@ -16,7 +16,10 @@ from services.control_plane.proposals import (
     GoalSpec,
     RiskClass,
 )
-from services.creative_document_factory import CreativeDocumentError, CreativeDocumentFactory
+from services.creative_document_factory import (
+    CreativeDocumentError,
+    CreativeDocumentFactory,
+)
 from services.integrations.software_specialized_handoff import (
     COMMERCE_GROWTH_CAPABILITY,
     CREATIVE_DOCUMENT_CAPABILITY,
@@ -34,10 +37,17 @@ from services.integrations.software_specialized_handoff import (
     SpecializedFactoryHandoffError,
     SpecializedFactoryHandoffRequest,
 )
-from services.personal_operations_factory import PersonalOperationsError, PersonalOperationsFactory
+from services.personal_operations_factory import (
+    PersonalOperationsError,
+    PersonalOperationsFactory,
+)
 from services.research_data_factory import ResearchDataError, ResearchDataFactory
 from services.security_factory import SecurityFactory
-from services.software_factory import EvidenceBundle, PromotionProposal, ValidationResult
+from services.software_factory import (
+    EvidenceBundle,
+    PromotionProposal,
+    ValidationResult,
+)
 from services.software_factory_agents import EngineeringAgentExecution
 from services.software_factory_skills import SkillExecutionResult
 

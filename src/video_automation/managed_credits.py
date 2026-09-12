@@ -10,7 +10,7 @@ accounting errors.
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from hashlib import sha256
 
 _MICRO_USD_PER_USD = 1_000_000

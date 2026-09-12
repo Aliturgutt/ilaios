@@ -13,7 +13,6 @@ from src.video_automation.daily_youtube_planning import (
     prepare_youtube_target,
 )
 
-
 NOW = datetime(2026, 9, 8, 0, 0, tzinfo=timezone.utc)
 
 

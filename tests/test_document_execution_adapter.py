@@ -17,10 +17,12 @@ from services.document_execution_adapter import register_document_runtime
 from services.evidence import EvidenceStore
 from services.execution_coordinator import ExecutionCoordinator, ExecutionState
 from services.governance import GovernedRuntimeGateway
-from services.integrations import DeterministicLocalVideoRuntime, DurableVideoProductRuntime
+from services.integrations import (
+    DeterministicLocalVideoRuntime,
+    DurableVideoProductRuntime,
+)
 from services.integrations.document_product_runtime import DocumentProductRuntime
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
-
 
 _DOCUMENT = "ilaios.capability.creative-document"
 

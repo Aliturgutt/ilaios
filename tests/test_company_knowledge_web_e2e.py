@@ -15,7 +15,10 @@ from services.evidence import EvidenceStore
 from services.execution_adapters import register_web_runtime
 from services.execution_coordinator import ExecutionCoordinator, ExecutionState
 from services.governance import GovernedRuntimeGateway
-from services.integrations import DeterministicLocalVideoRuntime, DurableVideoProductRuntime
+from services.integrations import (
+    DeterministicLocalVideoRuntime,
+    DurableVideoProductRuntime,
+)
 from services.integrations.company_knowledge_web import (
     CompanyKnowledgeWebError,
     execute_web_with_company_knowledge,
@@ -27,7 +30,6 @@ from services.knowledge_runtime import (
     KnowledgeRuntimePolicy,
 )
 from services.runtime import DurableGrantPolicy, DurableWorkerScheduler, GovernedRuntime
-
 
 _adapter_descriptor_snapshot: dict[str, object] | None = None
 

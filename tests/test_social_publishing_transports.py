@@ -15,7 +15,9 @@ from services.integrations.social_publishing_transports import (
     TikTokSocialPublishTransport,
     YouTubeSocialPublishTransport,
 )
-from src.video_automation.publishing_package_preparation import PlatformPublishingPackage
+from src.video_automation.publishing_package_preparation import (
+    PlatformPublishingPackage,
+)
 
 
 class _Resolver:

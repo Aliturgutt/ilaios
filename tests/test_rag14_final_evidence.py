@@ -8,7 +8,6 @@ from typing import cast
 
 from services.rag14_final_evidence import assemble
 
-
 _SOURCE = "a" * 40
 _DIGEST = "sha256:" + ("b" * 64)
 
