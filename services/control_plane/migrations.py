@@ -12,7 +12,7 @@ class MigrationError(RuntimeError):
     """Raised when a control-plane migration cannot complete safely."""
 
 
-LATEST_SCHEMA_VERSION = 10
+LATEST_SCHEMA_VERSION = 11
 
 _UP_MIGRATIONS = {
     1: """
@@ -445,6 +445,11 @@ _UP_MIGRATIONS = {
             consumed_at TEXT
         );
     """,
+    11: """
+        CREATE UNIQUE INDEX IF NOT EXISTS identity_memberships_one_active_primary
+        ON identity_memberships(user_id)
+        WHERE is_primary = 1 AND status = 'ACTIVE';
+    """,
 }
 
 _DOWN_MIGRATIONS = {
@@ -493,6 +498,10 @@ _DOWN_MIGRATIONS = {
         SELECT 1;
     """,
     10: """
+        SELECT 1;
+    """,
+    # Expand-only rollback retains the Identity invariant for older adapters.
+    11: """
         SELECT 1;
     """,
 }

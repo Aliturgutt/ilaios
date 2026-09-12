@@ -42,18 +42,21 @@ class SQLiteCentralIdentityStore:
         return None if row is None else self._row_to_link(row)
 
     def get_account(self, user_id: str) -> CanonicalAccount | None:
-        row = self._db.execute(
+        rows = self._db.execute(
             """
-            SELECT u.user_id, m.tenant_id, u.enabled
+            SELECT u.user_id, m.tenant_id, u.enabled, t.status, m.status
               FROM identity_users AS u
               JOIN identity_memberships AS m ON m.user_id = u.user_id
-             WHERE u.user_id = ? AND m.is_primary = 1 AND m.status = 'ACTIVE'
+              JOIN identity_tenants AS t ON t.tenant_id = m.tenant_id
+             WHERE u.user_id = ? AND m.is_primary = 1
             """,
             (user_id.strip(),),
-        ).fetchone()
-        if row is None:
+        ).fetchmany(2)
+        if len(rows) != 1:
             return None
-        return CanonicalAccount(user_id=row[0], tenant_id=row[1], enabled=bool(row[2]))
+        row = rows[0]
+        enabled = bool(row[2]) and row[3] == "ACTIVE" and row[4] == "ACTIVE"
+        return CanonicalAccount(user_id=row[0], tenant_id=row[1], enabled=enabled)
 
     def create_account_with_link(
         self, identity: VerifiedExternalIdentity
