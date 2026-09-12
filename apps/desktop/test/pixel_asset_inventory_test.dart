@@ -39,12 +39,39 @@ void main() {
             expect(file.existsSync(), isTrue, reason: path);
             final bytes = file.readAsBytesSync();
             expect(bytes.length, greaterThan(8), reason: path);
-            expect(bytes.take(8).toList(), <int>[137, 80, 78, 71, 13, 10, 26, 10], reason: path);
+            expect(
+              bytes.take(8).toList(),
+              <int>[137, 80, 78, 71, 13, 10, 26, 10],
+              reason: path,
+            );
             observed++;
           }
         }
       }
     }
     expect(observed, 208);
+  });
+
+  test('pixel workspace reference is present and packaged separately', () {
+    const assetPath = 'assets/pixel_agents/workspace/office_reference.b64';
+    final workspace = File(assetPath);
+    expect(workspace.existsSync(), isTrue, reason: assetPath);
+    final raw = workspace.readAsStringSync();
+    final encoded = raw.replaceAll(RegExp(r'[^A-Za-z0-9+/=]'), '');
+    expect(encoded, isNotEmpty, reason: assetPath);
+    final bytes = base64Decode(encoded);
+    expect(bytes.length, greaterThan(1024), reason: assetPath);
+    expect(bytes.take(3).toList(), <int>[255, 216, 255], reason: assetPath);
+
+    final pubspec = File('pubspec.yaml').readAsStringSync();
+    expect(pubspec, contains('- assets/pixel_agents/workspace/'));
+
+    final agentsView = File(
+      'lib/features/dashboard/reference_agents_summary_view.dart',
+    ).readAsStringSync();
+    expect(agentsView, contains("key: const Key('agents-pixel-workspace')"));
+    expect(agentsView, contains(assetPath));
+    expect(agentsView, contains('base64Decode'));
+    expect(agentsView, contains("RegExp(r'[^A-Za-z0-9+/=]')"));
   });
 }

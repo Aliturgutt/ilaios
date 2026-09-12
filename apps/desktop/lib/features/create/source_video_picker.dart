@@ -265,7 +265,7 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                             _reading
                                 ? _text('Reading…', 'Okunuyor…')
                                 : _text('Choose MP4', 'MP4 Seç'),
-                            style: const TextStyle(fontSize: 9),
+                            style: const TextStyle(fontSize: 12.5),
                           ),
                         ),
                       )
@@ -293,7 +293,7 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 8.8),
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 12.5),
                     ),
                   )
                 else ...[
@@ -302,7 +302,7 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
-                      fontSize: 9,
+                      fontSize: 12.5,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -313,7 +313,7 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                       '${_formatBytes(source.sizeBytes)} • SHA-256 ${source.sha256Hex.substring(0, 12)}…',
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 8.5),
+                      style: theme.textTheme.bodySmall?.copyWith(fontSize: 12.5),
                     ),
                   ),
                 ],
@@ -325,7 +325,7 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.error,
-                      fontSize: 8.5,
+                      fontSize: 12.5,
                     ),
                   ),
                 ],
@@ -363,7 +363,7 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                 if (source == null) ...[
                   Text(
                     explanation,
-                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 9.5),
+                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 13),
                   ),
                   const SizedBox(height: 8),
                   Align(
@@ -397,12 +397,12 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                   const SizedBox(height: 3),
                   Text(
                     '${_formatBytes(source.sizeBytes)} • SHA-256 ${source.sha256Hex.substring(0, 12)}…',
-                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 9),
+                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 13),
                   ),
                   const SizedBox(height: 6),
                   Text(
                     localDetail,
-                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 9),
+                    style: theme.textTheme.bodySmall?.copyWith(fontSize: 13),
                   ),
                 ],
                 if (_error != null) ...[
@@ -411,7 +411,7 @@ if (\$dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
                     _error!,
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.error,
-                      fontSize: 9,
+                      fontSize: 13,
                     ),
                   ),
                 ],

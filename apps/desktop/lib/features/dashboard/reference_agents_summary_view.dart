@@ -1,18 +1,21 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../../control_plane/operational_snapshot.dart';
 import '../../control_plane/projection.dart';
 import '../deliveries/delivery_identity_scope.dart';
 import '../navigation/desktop_section.dart';
 import 'agent_runtime_status.dart';
-import 'pixel_agent_presentation.dart';
-import 'pixel_agent_sprite.dart';
 import 'reference_agents_view.dart';
 
 /// Presentation-only wrapper for the canonical Agents surface.
 ///
 /// Identity, provisioning and runtime authority remain in [ReferenceAgentsView].
-/// Summary cards and pixel sprites consume the same canonical state resolver.
+/// Summary cards and the workspace reference consume the same canonical runtime
+/// projection without allowing the static workspace artwork to become runtime
+/// truth.
 class ReferenceAgentsSummaryView extends StatelessWidget {
   const ReferenceAgentsSummaryView({
     required this.projection,
@@ -42,42 +45,130 @@ class ReferenceAgentsSummaryView extends StatelessWidget {
       runtimeConnected: projection.connected,
       authorizedTenantId: session?.tenantId,
     );
-    final teams = _teamsById(presentationSnapshot);
 
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: ReferenceAgentsView(
-            projection: projection,
-            snapshot: presentationSnapshot,
-            status: status,
-            onNavigate: onNavigate,
-            onRefreshRequested: onRefreshRequested,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const officeAspectRatio = 1614 / 537;
+        const minimumAgentsSurfaceHeight = 560.0;
+        final availableWorkspaceHeight =
+            (constraints.maxHeight - minimumAgentsSurfaceHeight - 8)
+                .clamp(0.0, 540.0);
+        final workspaceHeight =
+            (constraints.maxWidth / officeAspectRatio)
+                .clamp(0.0, availableWorkspaceHeight);
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: ReferenceAgentsView(
+                      projection: projection,
+                      snapshot: presentationSnapshot,
+                      status: status,
+                      onNavigate: onNavigate,
+                      onRefreshRequested: onRefreshRequested,
+                    ),
+                  ),
+                  Positioned(
+                    left: 14,
+                    right: 12,
+                    top: 60,
+                    height: 50,
+                    child: IgnorePointer(
+                      child: _AgentSummaryCards(
+                        snapshot: presentationSnapshot,
+                        states: states,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (workspaceHeight > 0) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                height: workspaceHeight,
+                child: const _PixelWorkspacePanel(),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _PixelWorkspacePanel extends StatefulWidget {
+  const _PixelWorkspacePanel();
+
+  @override
+  State<_PixelWorkspacePanel> createState() => _PixelWorkspacePanelState();
+}
+
+class _PixelWorkspacePanelState extends State<_PixelWorkspacePanel> {
+  static const _assetPayload =
+      'assets/pixel_agents/workspace/office_reference.b64';
+  static Uint8List? _cachedOfficeBytes;
+
+  late final Future<Uint8List> _officeBytes = _loadOfficeBytes();
+
+  Future<Uint8List> _loadOfficeBytes() async {
+    final cached = _cachedOfficeBytes;
+    if (cached != null) return cached;
+
+    final payload = await rootBundle.loadString(_assetPayload, cache: true);
+    final encoded = payload.replaceAll(RegExp(r'[^A-Za-z0-9+/=]'), '');
+    if (encoded.isEmpty) {
+      throw const FormatException('Empty pixel workspace payload.');
+    }
+    final decoded = base64Decode(encoded);
+    _cachedOfficeBytes = decoded;
+    return decoded;
+  }
+
+  Widget _error(BuildContext context) => Center(
+        child: Text(
+          Localizations.localeOf(context).languageCode == 'tr'
+              ? 'Pixel çalışma alanı yüklenemedi.'
+              : 'Pixel workspace could not be loaded.',
+          style: TextStyle(
+            fontSize: 12.5,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
           ),
         ),
-        Positioned(
-          left: 14,
-          right: 12,
-          top: 60,
-          height: 50,
-          child: IgnorePointer(
-            child: _AgentSummaryCards(
-              snapshot: presentationSnapshot,
-              states: states,
-            ),
-          ),
-        ),
-        if (states.isNotEmpty)
-          Positioned(
-            left: 14,
-            right: 12,
-            bottom: 8,
-            height: 88,
-            child: IgnorePointer(
-              child: _RearPixelStrip(states: states, teams: teams),
-            ),
-          ),
-      ],
+      );
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const Key('agents-pixel-workspace'),
+      margin: const EdgeInsets.fromLTRB(14, 0, 12, 8),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerLowest,
+        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: FutureBuilder<Uint8List>(
+        future: _officeBytes,
+        initialData: _cachedOfficeBytes,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) return _error(context);
+          final bytes = snapshot.data;
+          if (bytes == null) return const SizedBox.shrink();
+          return Image.memory(
+            bytes,
+            key: const Key('agents-pixel-workspace-image'),
+            fit: BoxFit.contain,
+            alignment: Alignment.center,
+            filterQuality: FilterQuality.medium,
+            gaplessPlayback: true,
+            errorBuilder: (context, error, stackTrace) => _error(context),
+          );
+        },
+      ),
     );
   }
 }
@@ -140,7 +231,7 @@ class _AgentSummaryCards extends StatelessWidget {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontSize: 8.5,
+                          fontSize: 12.5,
                           color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
@@ -149,7 +240,7 @@ class _AgentSummaryCards extends StatelessWidget {
                     Text(
                       items[index].value,
                       style: const TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -162,84 +253,6 @@ class _AgentSummaryCards extends StatelessWidget {
       ),
     );
   }
-}
-
-class _RearPixelStrip extends StatelessWidget {
-  const _RearPixelStrip({required this.states, required this.teams});
-
-  final Map<String, AgentRuntimeDisplayState> states;
-  final Map<String, String> teams;
-
-  @override
-  Widget build(BuildContext context) {
-    final byTeam = <String, AgentRuntimeDisplayState>{};
-    const priority = <AgentRuntimeDisplayState, int>{
-      AgentRuntimeDisplayState.offline: 0,
-      AgentRuntimeDisplayState.active: 1,
-      AgentRuntimeDisplayState.idle: 1,
-      AgentRuntimeDisplayState.waiting: 2,
-      AgentRuntimeDisplayState.working: 3,
-    };
-    for (final entry in states.entries) {
-      final team = teams[entry.key];
-      if (team == null || !pixelAgentTeams.contains(team)) continue;
-      final current = byTeam[team];
-      if (current == null || priority[entry.value]! > priority[current]!) {
-        byTeam[team] = entry.value;
-      }
-    }
-    const order = <String>[
-      'core',
-      'engineering',
-      'security',
-      'web',
-      'media',
-      'intelligence',
-      'operations',
-      'meta',
-    ];
-    final visible = order.where(byTeam.containsKey).toList(growable: false);
-    if (visible.isEmpty) return const SizedBox.shrink();
-    return Container(
-      key: const Key('agents-rear-pixel-strip'),
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          for (final team in visible)
-            PixelAgentSprite(
-              key: ValueKey('agents-pixel-$team'),
-              team: team,
-              view: PixelAgentView.rear,
-              motion: pixelMotionForRuntimeState(byTeam[team]!),
-              size: const Size(48, 60),
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-Map<String, String> _teamsById(OperationalSnapshot snapshot) {
-  final result = <String, String>{};
-  final raw = snapshot.agentState['agents'];
-  if (raw is! List<Object?>) return result;
-  for (final item in raw.whereType<Map<String, Object?>>()) {
-    final id = _text(item, const ['agent_id']);
-    final team = _text(item, const ['team']);
-    if (id == null || team == null) continue;
-    final normalized = team.toLowerCase();
-    if (pixelAgentTeams.contains(normalized)) result[id] = normalized;
-  }
-  return result;
-}
-
-String? _text(Map<String, Object?> source, List<String> keys) {
-  for (final key in keys) {
-    final value = source[key];
-    if (value is String && value.trim().isNotEmpty) return value.trim();
-  }
-  return null;
 }
 
 int? _int(Map<String, Object?> source, List<String> keys) {
