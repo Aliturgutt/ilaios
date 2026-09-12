@@ -122,18 +122,27 @@ def _store(tmp_path: Path, *, accepted: bool) -> SeriesStateStore:
     return store
 
 
+def _project(series_id: str, tenant_id: str, user_id: str) -> str:
+    if (series_id, tenant_id, user_id) == ("series-001", "tenant-001", "user-001"):
+        return "project-001"
+    return ""
+
+
 def _context(store: SeriesStateStore) -> AuthenticatedVideoSeriesContext:
     return resolve_authenticated_video_series_context(
         store,
         series_id="series-001",
+        project_id="project-001",
         tenant_id="tenant-001",
         user_id="user-001",
+        series_project_resolver=_project,
     )
 
 
 def test_resolver_uses_authenticated_accepted_only_series_truth(tmp_path: Path) -> None:
     context = _context(_store(tmp_path, accepted=True))
 
+    assert context.project_id == "project-001"
     assert context.state.next_episode_number == 2
     assert context.previous_manifest.episode_id == "episode-001"
     assert context.continuity.previous_artifact_sha256 == "a" * 64
@@ -146,23 +155,37 @@ def test_resolver_uses_authenticated_accepted_only_series_truth(tmp_path: Path) 
     )
 
 
-def test_resolver_denies_cross_tenant_or_cross_user_access(tmp_path: Path) -> None:
+def test_resolver_denies_cross_tenant_user_or_project_access(tmp_path: Path) -> None:
     store = _store(tmp_path, accepted=True)
 
-    with pytest.raises(VideoSeriesContextError, match="authenticated tenant/user"):
+    with pytest.raises(VideoSeriesContextError, match="project"):
         resolve_authenticated_video_series_context(
             store,
             series_id="series-001",
-            tenant_id="tenant-other",
+            project_id="project-other",
+            tenant_id="tenant-001",
             user_id="user-001",
+            series_project_resolver=_project,
         )
 
-    with pytest.raises(VideoSeriesContextError, match="authenticated tenant/user"):
+    with pytest.raises(VideoSeriesContextError, match="project ownership"):
         resolve_authenticated_video_series_context(
             store,
             series_id="series-001",
+            project_id="project-001",
+            tenant_id="tenant-other",
+            user_id="user-001",
+            series_project_resolver=_project,
+        )
+
+    with pytest.raises(VideoSeriesContextError, match="project ownership"):
+        resolve_authenticated_video_series_context(
+            store,
+            series_id="series-001",
+            project_id="project-001",
             tenant_id="tenant-001",
             user_id="user-other",
+            series_project_resolver=_project,
         )
 
 
@@ -173,8 +196,10 @@ def test_resolver_requires_previous_accepted_final_truth(tmp_path: Path) -> None
         resolve_authenticated_video_series_context(
             store,
             series_id="series-001",
+            project_id="project-001",
             tenant_id="tenant-001",
             user_id="user-001",
+            series_project_resolver=_project,
         )
 
 
@@ -199,6 +224,7 @@ def test_series_binding_feeds_accepted_continuity_into_runtime_objective(tmp_pat
     assert standalone == "Create standalone-job in 16:9"
     assert "Create episode-002 in 16:9" in series
     assert "SERIES CONTINUITY — accepted prior truth only" in series
+    assert "project_id=project-001" in series
     assert "series_id=series-001" in series
     assert f"previous_artifact_sha256={'a' * 64}" in series
     assert "previous_final_frame=artifact://frame/final-001.png" in series
@@ -210,6 +236,7 @@ def test_series_binding_feeds_accepted_continuity_into_runtime_objective(tmp_pat
 def test_series_binding_fails_closed_on_stale_continuity(tmp_path: Path) -> None:
     context = _context(_store(tmp_path, accepted=True))
     stale = context.__class__(
+        project_id=context.project_id,
         state=context.state,
         bible=context.bible,
         previous_manifest=context.previous_manifest,
