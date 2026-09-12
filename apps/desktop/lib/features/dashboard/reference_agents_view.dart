@@ -18,6 +18,7 @@ class ReferenceAgentsView extends StatefulWidget {
     required this.status,
     required this.onNavigate,
     this.onRefreshRequested,
+    this.workspace,
     super.key,
   });
 
@@ -26,6 +27,7 @@ class ReferenceAgentsView extends StatefulWidget {
   final String status;
   final ValueChanged<DesktopSection> onNavigate;
   final VoidCallback? onRefreshRequested;
+  final Widget? workspace;
 
   @override
   State<ReferenceAgentsView> createState() => _ReferenceAgentsViewState();
@@ -251,6 +253,7 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
                         provisioning: _provisioning,
                         canProvision:
                             AgentProvisioningScope.maybeOf(context) != null,
+                        workspace: widget.workspace,
                         onTab: (value) => setState(() {
                           _tab = value;
                           _resetPosition();
@@ -480,6 +483,7 @@ class _TablePanel extends StatelessWidget {
     required this.hasFilters,
     required this.provisioning,
     required this.canProvision,
+    required this.workspace,
     required this.onTab,
     required this.onQuery,
     required this.onRole,
@@ -509,6 +513,7 @@ class _TablePanel extends StatelessWidget {
   final bool hasFilters;
   final bool provisioning;
   final bool canProvision;
+  final Widget? workspace;
   final ValueChanged<int> onTab;
   final ValueChanged<String> onQuery;
   final ValueChanged<String> onRole;
@@ -619,8 +624,23 @@ class _TablePanel extends StatelessWidget {
             ),
           ),
           Divider(height: 1, color: Theme.of(context).colorScheme.outlineVariant),
+          if (workspace != null)
+            Flexible(
+              flex: 3,
+              child: Padding(
+                key: const Key('agents-workspace-slot'),
+                padding: const EdgeInsets.fromLTRB(8, 8, 8, 6),
+                child: Center(
+                  child: AspectRatio(
+                    aspectRatio: 1614 / 537,
+                    child: workspace!,
+                  ),
+                ),
+              ),
+            ),
           const _AgentHeader(),
           Expanded(
+            flex: 2,
             child: agents.isEmpty
                 ? _EmptyAgents()
                 : Column(

@@ -46,56 +46,31 @@ class ReferenceAgentsSummaryView extends StatelessWidget {
       authorizedTenantId: session?.tenantId,
     );
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const officeAspectRatio = 1614 / 537;
-        const minimumAgentsSurfaceHeight = 560.0;
-        final availableWorkspaceHeight =
-            (constraints.maxHeight - minimumAgentsSurfaceHeight - 8)
-                .clamp(0.0, 540.0);
-        final workspaceHeight =
-            (constraints.maxWidth / officeAspectRatio)
-                .clamp(0.0, availableWorkspaceHeight);
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: ReferenceAgentsView(
-                      projection: projection,
-                      snapshot: presentationSnapshot,
-                      status: status,
-                      onNavigate: onNavigate,
-                      onRefreshRequested: onRefreshRequested,
-                    ),
-                  ),
-                  Positioned(
-                    left: 14,
-                    right: 12,
-                    top: 60,
-                    height: 50,
-                    child: IgnorePointer(
-                      child: _AgentSummaryCards(
-                        snapshot: presentationSnapshot,
-                        states: states,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: ReferenceAgentsView(
+            projection: projection,
+            snapshot: presentationSnapshot,
+            status: status,
+            onNavigate: onNavigate,
+            onRefreshRequested: onRefreshRequested,
+            workspace: const _PixelWorkspacePanel(),
+          ),
+        ),
+        Positioned(
+          left: 14,
+          right: 12,
+          top: 60,
+          height: 50,
+          child: IgnorePointer(
+            child: _AgentSummaryCards(
+              snapshot: presentationSnapshot,
+              states: states,
             ),
-            if (workspaceHeight > 0) ...[
-              const SizedBox(height: 8),
-              SizedBox(
-                height: workspaceHeight,
-                child: const _PixelWorkspacePanel(),
-              ),
-            ],
-          ],
-        );
-      },
+          ),
+        ),
+      ],
     );
   }
 }

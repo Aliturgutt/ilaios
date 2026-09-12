@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:crypto/crypto.dart';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/features/dashboard/pixel_agent_presentation.dart';
 
@@ -61,7 +63,16 @@ void main() {
     expect(encoded, isNotEmpty, reason: assetPath);
     final bytes = base64Decode(encoded);
     expect(bytes.length, greaterThan(1024), reason: assetPath);
-    expect(bytes.take(3).toList(), <int>[255, 216, 255], reason: assetPath);
+    expect(
+      bytes.take(8).toList(),
+      <int>[137, 80, 78, 71, 13, 10, 26, 10],
+      reason: assetPath,
+    );
+    expect(
+      sha256.convert(bytes).toString(),
+      '72fa37f69f0af4308bd9d544a3d659b0ffee0ce7ccab0f12c43f88115cdc11d2',
+      reason: assetPath,
+    );
 
     final pubspec = File('pubspec.yaml').readAsStringSync();
     expect(pubspec, contains('- assets/pixel_agents/workspace/'));
