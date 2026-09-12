@@ -19,18 +19,18 @@ const heroStyle = {
   display: "grid",
   gridTemplateColumns: "minmax(0, 0.9fr) minmax(300px, 1.1fr)",
   alignItems: "center",
-  gap: "28px",
-  paddingTop: "26px",
-  paddingBottom: "22px",
+  gap: "24px",
+  paddingTop: "22px",
+  paddingBottom: "18px",
 } as const;
 
 const titleStyle = {
-  maxWidth: "520px",
-  marginTop: "8px",
+  maxWidth: "480px",
+  marginTop: "7px",
   marginBottom: 0,
-  fontSize: "clamp(1.65rem, 2.45vw, 2.2rem)",
-  lineHeight: 1.06,
-  letterSpacing: "-0.035em",
+  fontSize: "clamp(1.45rem, 2vw, 1.9rem)",
+  lineHeight: 1.08,
+  letterSpacing: "-0.03em",
 } as const;
 
 const leadWrapStyle = {

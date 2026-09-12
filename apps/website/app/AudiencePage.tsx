@@ -54,12 +54,27 @@ const copy = {
   },
 } as const;
 
+const enterpriseTitleStyle = {
+  fontSize: "clamp(2.2rem, 3.3vw, 3.8rem)",
+  lineHeight: 1.04,
+  letterSpacing: "-0.045em",
+  maxWidth: "15ch",
+} as const;
+
+const enterpriseLeadColumnStyle = {
+  alignSelf: "center",
+  display: "flex",
+  flexDirection: "column",
+  justifyContent: "center",
+} as const;
+
 export default function AudiencePage({ locale, audience }: { locale: Locale; audience: Audience }) {
   const c = copy[locale][audience];
   const base = locale === "tr" ? "/tr" : "";
   const secondaryHref = audience === "enterprise" ? `${base}/architecture` : `${base}/how-it-works`;
+  const isEnterprise = audience === "enterprise";
   return <>
-    <section className={`shell audience-hero audience-${audience}`}><div><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1></div><div><p className="lead">{c.lead}</p><div className="actions"><Link className="button" href={`${base}/factories`}>{c.primary}</Link><Link className="button secondary" href={secondaryHref}>{c.secondary}</Link></div></div></section>
+    <section className={`shell audience-hero audience-${audience}`}><div><div className="eyebrow">{c.eyebrow}</div><h1 style={isEnterprise ? enterpriseTitleStyle : undefined}>{c.title}</h1></div><div style={isEnterprise ? enterpriseLeadColumnStyle : undefined}><p className="lead">{c.lead}</p><div className="actions"><Link className="button" href={`${base}/factories`}>{c.primary}</Link><Link className="button secondary" href={secondaryHref}>{c.secondary}</Link></div></div></section>
     <section className="section"><div className="shell audience-focus"><div><span className="micro-label">{c.focusLabel}</span><h2>{c.focusTitle}</h2></div><div className="audience-outcome-list">{c.outcomes.map(([title, text], index) => <article key={title}><span>{String(index + 1).padStart(2, "0")}</span><div><strong>{title}</strong><p>{text}</p></div></article>)}</div></div></section>
     <section className="section surface-section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">{locale === "tr" ? "Nasıl ilerler?" : "How it moves"}</div><h2>{locale === "tr" ? "Basit talep. Kontrollü çalışma. İncelenebilir sonuç." : "Simple request. Controlled work. Reviewable result."}</h2></div></div><div className="audience-process">{c.operating.map(([n, title, text]) => <article key={n}><span>{n}</span><strong>{title}</strong><p>{text}</p></article>)}</div></div></section>
   </>;

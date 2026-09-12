@@ -1,0 +1,63 @@
+/* Header control visual parity with app.ilaios.com.
+   Presentation only: preserve existing ThemeToggle/language behavior and control geometry. */
+
+.site-header .theme-toggle,
+.site-header .language-switch {
+  border-radius: 999px !important;
+  border: 1px solid var(--brand-text-tertiary) !important;
+  box-shadow: none !important;
+  background-image: none !important;
+  overflow: hidden;
+}
+
+.site-header .language-switch > :where(a, strong) {
+  border-radius: 999px !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="light"] .site-header .theme-toggle,
+html[data-theme="light"] .site-header .language-switch {
+  background: #FFFFFF !important;
+  border-color: #D9D9D9 !important;
+  color: #0A0A0A !important;
+}
+
+html[data-theme="light"] .site-header .theme-toggle :where(span, strong),
+html[data-theme="light"] .site-header .language-switch > a {
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+}
+
+html[data-theme="light"] .site-header .language-switch > strong {
+  background: #F2F2F2 !important;
+  color: #2A2A2A !important;
+  -webkit-text-fill-color: #2A2A2A !important;
+  box-shadow: none !important;
+}
+
+html[data-theme="dark"] .site-header .theme-toggle,
+html[data-theme="dark"] .site-header .language-switch {
+  background: #141414 !important;
+  border-color: #4A4A4A !important;
+  color: #FFFFFF !important;
+}
+
+html[data-theme="dark"] .site-header .theme-toggle :where(span, strong),
+html[data-theme="dark"] .site-header .language-switch > a {
+  color: #E6E6E6 !important;
+  -webkit-text-fill-color: #E6E6E6 !important;
+}
+
+html[data-theme="dark"] .site-header .language-switch > strong {
+  background: #2F2F2F !important;
+  color: #FFFFFF !important;
+  -webkit-text-fill-color: #FFFFFF !important;
+  box-shadow: none !important;
+}
+
+.site-header .theme-toggle:hover,
+.site-header .theme-toggle:focus-visible,
+.site-header .language-switch > a:hover,
+.site-header .language-switch > a:focus-visible {
+  background-color: var(--brand-hover) !important;
+}
