@@ -1,5 +1,6 @@
 import Link from "next/link";
 import SpatialArchitecture from "./SpatialArchitecture";
+import SystemArchitectureMap from "./SystemArchitectureMap";
 import SystemVisuals from "./SystemVisuals";
 
 type Locale = "en" | "tr";
@@ -43,7 +44,8 @@ export default function ArchitecturePage({ locale }: { locale: Locale }) {
   return <>
     <section className="shell page-hero compact-page-hero"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p><div className="actions"><Link className="button" href={`${base}/use-ilaios`}>{c.use}</Link></div></section>
     <section className="section"><div className="shell architecture-primary"><div><div className="eyebrow">{locale === "tr" ? "Sistem katmanları" : "System layers"}</div><h2>{c.flowTitle}</h2><div className="architecture-layer-list">{c.layers.map(([title,text],index)=><article key={title}><span>{String(index+1).padStart(2,"0")}</span><strong>{title}</strong><p>{text}</p></article>)}</div></div><SpatialArchitecture locale={locale} /></div></section>
-    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{locale === "tr" ? "Yönetilen yürütme" : "Governed execution"}</div><h2>{c.executionTitle}</h2></div><p>{c.executionLead}</p></div><SystemVisuals locale={locale} variant="execution" /></div></section>
+    <SystemArchitectureMap locale={locale} />
+    <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{locale === "tr" ? "Yönetilen yürütme" : "Governed execution"}</div><h2>{c.executionTitle}</h2></div><p>{c.executionLead}</p></div><SystemVisuals locale={locale} variant="execution" /></div></section>
     <section className="section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">{locale === "tr" ? "Güven sınırları" : "Trust boundaries"}</div><h2>{c.boundariesTitle}</h2></div></div><div className="boundary-ledger" style={{gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))"}}>{c.boundaries.map(([title,text],index)=><article key={title}><span>{String(index+1).padStart(2,"0")}</span><strong>{title}</strong><p>{text}</p></article>)}</div></div></section>
     <section className="section compact-section"><div className="shell compact-cta"><div><div className="eyebrow">{locale === "tr" ? "Teknik derinlik" : "Technical depth"}</div><h2>{c.ctaTitle}</h2></div><div className="actions"><Link className="button secondary" href={`${base}/core`}>{c.core}</Link><Link className="text-link" href={`${base}/docs`}>{c.docs} →</Link></div></div></section>
   </>;
