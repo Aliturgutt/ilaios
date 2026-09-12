@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import cast
 
 from src.video_automation.daily_topic_selection import (
@@ -64,24 +65,30 @@ def _candidate() -> DailyTopicCandidate:
     )
 
 
-def _observations() -> tuple[DailySourceObservation, ...]:
-    common = {
-        "topic_id": "topic-002",
-        "title": "Another verified topic",
-        "summary": "Independent reports describe the same current event.",
-        "category": "technology",
-        "published_at": datetime(2026, 9, 12, 9, 0, tzinfo=timezone.utc),
-        "relevance_score": 0.9,
-        "advertiser_value_score": 0.8,
-        "freshness_score": 0.95,
-    }
-    return (
-        DailySourceObservation(source_url="https://one.example/report", **common),
-        DailySourceObservation(source_url="https://two.example/report", **common),
+def _observation(source_url: str) -> DailySourceObservation:
+    return DailySourceObservation(
+        topic_id="topic-002",
+        title="Another verified topic",
+        summary="Independent reports describe the same current event.",
+        category="technology",
+        published_at=datetime(2026, 9, 12, 9, 0, tzinfo=timezone.utc),
+        source_url=source_url,
+        relevance_score=0.9,
+        advertiser_value_score=0.8,
+        freshness_score=0.95,
     )
 
 
-def test_durable_daily_history_round_trips_successful_topic_and_fingerprint(tmp_path) -> None:
+def _observations() -> tuple[DailySourceObservation, ...]:
+    return (
+        _observation("https://one.example/report"),
+        _observation("https://two.example/report"),
+    )
+
+
+def test_durable_daily_history_round_trips_successful_topic_and_fingerprint(
+    tmp_path: Path,
+) -> None:
     history = DurableDailyVideoHistory(tmp_path / "daily.sqlite3")
     candidate = _candidate()
 
@@ -100,7 +107,7 @@ def test_durable_daily_history_round_trips_successful_topic_and_fingerprint(tmp_
     assert history.recent_content_fingerprints() == (candidate.content_fingerprint,)
 
 
-def test_orchestrator_supplies_durable_history_to_topic_selector(tmp_path) -> None:
+def test_orchestrator_supplies_durable_history_to_topic_selector(tmp_path: Path) -> None:
     history = DurableDailyVideoHistory(tmp_path / "daily.sqlite3")
     prior = _candidate()
     history.record_success(
