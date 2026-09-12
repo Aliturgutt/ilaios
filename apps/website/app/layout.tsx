@@ -16,6 +16,7 @@ import "./live-density-fixes.css";
 import "./site-v2-finalization.css";
 import "./final-interaction-redteam.css";
 import "./visual-audit-fixes.css";
+import "./app-control-parity.css";
 import SiteChrome from "./SiteChrome";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://ilaios.com";

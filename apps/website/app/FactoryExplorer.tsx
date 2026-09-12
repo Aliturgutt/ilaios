@@ -68,6 +68,7 @@ export default function FactoryExplorer({ locale }: { locale: Locale }) {
   const [active, setActive] = useState(0);
   const refs = useRef<Array<HTMLButtonElement | null>>([]);
   const factory = c.factories[active];
+  const panelId = `factory-detail-${locale}`;
 
   const move = (next: number) => {
     const index = (next + c.factories.length) % c.factories.length;
@@ -83,19 +84,20 @@ export default function FactoryExplorer({ locale }: { locale: Locale }) {
           type="button"
           role="tab"
           aria-selected={active === index}
+          aria-controls={panelId}
           tabIndex={active === index ? 0 : -1}
           className={active === index ? "is-active" : ""}
           key={item.href}
           ref={element => { refs.current[index] = element; }}
-          onClick={() => setActive(index)}
           onMouseEnter={() => setActive(index)}
+          onClick={() => setActive(index)}
           onKeyDown={event => {
             if (event.key === "ArrowDown" || event.key === "ArrowRight") { event.preventDefault(); move(active + 1); }
             if (event.key === "ArrowUp" || event.key === "ArrowLeft") { event.preventDefault(); move(active - 1); }
           }}
         ><span>{String(index + 1).padStart(2, "0")}</span><strong>{item.label}</strong><small>{item.short}</small></button>)}
       </div>
-      <div className="factory-detail" role="tabpanel" tabIndex={0}>
+      <div id={panelId} className="factory-detail card" role="tabpanel" tabIndex={0}>
         <div className="factory-detail-top"><div><span className="micro-label">{factory.label}</span><h3>{factory.result}</h3><div className="factory-status-row"><span className={`availability-chip is-${factory.availability}`}>{factory.availabilityLabel}</span><small>{factory.availabilityDetail}</small></div></div><Link className="text-link" href={factory.href}>{c.open} →</Link></div>
         <div className="factory-pipeline"><span>{c.pipeline}</span><ol>{factory.pipeline.map((step, index) => <li key={step}><small>{String(index + 1).padStart(2, "0")}</small><strong>{step}</strong></li>)}</ol></div>
         <div className="factory-boundary"><span>{c.boundary}</span><p>{factory.boundary}</p></div>

@@ -17,10 +17,12 @@ def test_public_commercial_surface_lists_launch_plan_family_and_prices() -> None
         '$49 / month',
         '$99 / month',
         '$199 / month',
-        '≈ 2.495 TL / ay',
-        '≈ 5.040 TL / ay',
-        '≈ 10.130 TL / ay',
-        'Özel teklif',
+        '0 TL/ay',
+        '2.401 TL/ay',
+        '4.851 TL/ay',
+        '9.751 TL/ay',
+        'Sözleşmeye özel',
+        'Proje, otomasyon ve eşzamanlı iş: sözleşmeye özel',
     ):
         assert value in content
 
