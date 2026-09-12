@@ -60,6 +60,7 @@ from services.knowledge_runtime import (
     KnowledgeRuntimeError,
     KnowledgeRuntimePolicy,
 )
+from services.prompt_refinement import PromptRefinement, PromptRefinementMode, refine_prompt
 from services.runtime import (
     BlastRadiusBudget,
     DurableGrantPolicy,
@@ -157,6 +158,9 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 return
             token = self._bearer_token()
             self.server.control_plane.authenticate(token)
+            if path == "/v1/prompts/refine":
+                self._send_error(HTTPStatus.METHOD_NOT_ALLOWED, "method not allowed")
+                return
             if path == "/v1/knowledge/state":
                 knowledge = self._require_knowledge_runtime()
                 self._send_json(HTTPStatus.OK, knowledge.state())
@@ -330,8 +334,26 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
         try:
             token = self._bearer_token()
             self.server.control_plane.authenticate(token)
-            body = self._read_json()
             path = urlparse(self.path).path
+            if path == "/v1/prompts/refine" and not self._has_json_content_type():
+                self._send_error(
+                    HTTPStatus.UNSUPPORTED_MEDIA_TYPE,
+                    "Content-Type must be application/json",
+                )
+                return
+            body = self._read_json()
+            if path == "/v1/prompts/refine":
+                if any(
+                    key in body
+                    for key in ("tenant_id", "project_id", "user_id", "principal_id")
+                ):
+                    raise ValueError("prompt refinement scope is server-resolved")
+                refinement = refine_prompt(
+                    _required_string(body, "prompt"),
+                    _prompt_refinement_mode(_required_string(body, "mode")),
+                )
+                self._send_json(HTTPStatus.OK, _prompt_refinement_json(refinement))
+                return
             if path == "/v1/knowledge/commands":
                 self._send_json(HTTPStatus.OK, self._knowledge_command(body))
                 return
@@ -450,6 +472,11 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
         if not header.startswith(prefix):
             raise AuthenticationError("missing bearer token")
         return header[len(prefix) :]
+
+    def _has_json_content_type(self) -> bool:
+        content_type = self.headers.get("Content-Type", "")
+        media_type = content_type.split(";", 1)[0].strip().casefold()
+        return media_type == "application/json"
 
     def _read_json(self) -> dict[str, Any]:
         raw_length = self.headers.get("Content-Length")
@@ -790,6 +817,39 @@ class ControlPlaneRequestHandler(BaseHTTPRequestHandler):
                 now=_required_datetime(payload, "now"),
             )
         raise ValueError("unknown product-proof operation")
+
+
+def _prompt_refinement_json(result: PromptRefinement) -> dict[str, Any]:
+    return {
+        "original_prompt": result.original_prompt,
+        "refined_prompt": result.refined_prompt,
+        "mode": result.mode.value,
+        "transformed": result.transformed,
+        "detected_issues": list(result.detected_issues),
+        "preserved_constraints": list(result.preserved_constraints),
+        "unresolved_ambiguities": list(result.unresolved_ambiguities),
+        "warnings": list(result.warnings),
+        "evaluation": {
+            "clarity": result.evaluation.clarity,
+            "specificity": result.evaluation.specificity,
+            "structure": result.evaluation.structure,
+            "readiness": result.evaluation.readiness,
+            "ambiguity_detected": result.evaluation.ambiguity_detected,
+            "constraints_detected": result.evaluation.constraints_detected,
+            "risk_cues": list(result.evaluation.risk_cues),
+            "risk_cues_preserved": result.evaluation.risk_cues_preserved,
+            "unresolved_critical_information": list(
+                result.evaluation.unresolved_critical_information
+            ),
+        },
+    }
+
+
+def _prompt_refinement_mode(value: str) -> PromptRefinementMode:
+    try:
+        return PromptRefinementMode(value)
+    except ValueError as error:
+        raise ValueError("invalid prompt refinement mode") from error
 
 
 def _record_json(record: GoalRecord | JobRecord) -> dict[str, Any]:
