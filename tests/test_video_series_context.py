@@ -6,6 +6,7 @@ import pytest
 
 from services.integrations.video_series_context import (
     VideoSeriesContextError,
+    bind_series_context_to_objective_resolver,
     resolve_authenticated_video_series_context,
 )
 from src.video_automation.series_state import (
@@ -120,15 +121,19 @@ def _store(tmp_path: Path, *, accepted: bool) -> SeriesStateStore:
     return store
 
 
-def test_resolver_uses_authenticated_accepted_only_series_truth(tmp_path: Path) -> None:
-    store = _store(tmp_path, accepted=True)
-
-    context = resolve_authenticated_video_series_context(
+def _context(store: SeriesStateStore):
+    return resolve_authenticated_video_series_context(
         store,
         series_id="series-001",
         tenant_id="tenant-001",
         user_id="user-001",
     )
+
+
+def test_resolver_uses_authenticated_accepted_only_series_truth(tmp_path: Path) -> None:
+    store = _store(tmp_path, accepted=True)
+
+    context = _context(store)
 
     assert context.state.next_episode_number == 2
     assert context.previous_manifest.episode_id == "episode-001"
@@ -176,19 +181,65 @@ def test_resolver_requires_previous_accepted_final_truth(tmp_path: Path) -> None
 
 def test_resolver_is_restart_stable_and_idempotent(tmp_path: Path) -> None:
     store = _store(tmp_path, accepted=True)
-    first = resolve_authenticated_video_series_context(
-        store,
-        series_id="series-001",
-        tenant_id="tenant-001",
-        user_id="user-001",
-    )
+    first = _context(store)
 
     restarted = SeriesStateStore(tmp_path)
-    second = resolve_authenticated_video_series_context(
-        restarted,
-        series_id="series-001",
-        tenant_id="tenant-001",
-        user_id="user-001",
-    )
+    second = _context(restarted)
 
     assert second == first
+
+
+def test_series_binding_feeds_accepted_continuity_into_runtime_objective(tmp_path: Path) -> None:
+    context = _context(_store(tmp_path, accepted=True))
+    resolver = bind_series_context_to_objective_resolver(
+        lambda job_id: f"Create {job_id} in 16:9",
+        lambda job_id: context if job_id == "episode-002" else None,
+    )
+
+    standalone = resolver("standalone-job")
+    series = resolver("episode-002")
+
+    assert standalone == "Create standalone-job in 16:9"
+    assert "Create episode-002 in 16:9" in series
+    assert "SERIES CONTINUITY — accepted prior truth only" in series
+    assert "series_id=series-001" in series
+    assert f"previous_artifact_sha256={'a' * 64}" in series
+    assert "previous_final_frame=artifact://frame/final-001.png" in series
+    assert "grounded cyberpunk realism" in series
+    assert "no impossible camera teleportation" in series
+    assert "do not reveal creator before finale" in series
+
+
+def test_series_binding_fails_closed_on_stale_continuity(tmp_path: Path) -> None:
+    context = _context(_store(tmp_path, accepted=True))
+    stale = context.__class__(
+        state=context.state,
+        bible=context.bible,
+        previous_manifest=context.previous_manifest,
+        continuity=context.continuity.__class__(
+            series_id=context.continuity.series_id,
+            episode_id=context.continuity.episode_id,
+            previous_artifact_sha256="b" * 64,
+            previous_final_frame=context.continuity.previous_final_frame,
+            character_references=context.continuity.character_references,
+            location_references=context.continuity.location_references,
+            visual_style_fingerprint=context.continuity.visual_style_fingerprint,
+            color_language=context.continuity.color_language,
+            voice_references=context.continuity.voice_references,
+            audio_references=context.continuity.audio_references,
+            previous_episode_summary=context.continuity.previous_episode_summary,
+            open_narrative_threads=context.continuity.open_narrative_threads,
+            last_scene_reference=context.continuity.last_scene_reference,
+            next_scene_constraints=context.continuity.next_scene_constraints,
+            series_bible_revision=context.continuity.series_bible_revision,
+            privacy_classification=context.continuity.privacy_classification,
+            provenance=context.continuity.provenance,
+        ),
+    )
+    resolver = bind_series_context_to_objective_resolver(
+        lambda job_id: "Continue the series",
+        lambda job_id: stale,
+    )
+
+    with pytest.raises(VideoSeriesContextError, match="parent artifact is stale"):
+        resolver("episode-002")
