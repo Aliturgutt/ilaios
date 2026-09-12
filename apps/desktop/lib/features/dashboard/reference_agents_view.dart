@@ -77,17 +77,24 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
 
   List<_AgentRecord> _filtered(List<_AgentRecord> source) {
     Iterable<_AgentRecord> output = source;
-    if (_tab == 1)
+    if (_tab == 1) {
       output = output.where((item) => item.state == _AgentState.active);
-    if (_tab == 2)
+    }
+    if (_tab == 2) {
       output = output.where((item) => item.state == _AgentState.busy);
-    if (_tab == 3)
+    }
+    if (_tab == 3) {
       output = output.where((item) => item.state == _AgentState.idle);
-    if (_tab == 4)
+    }
+    if (_tab == 4) {
       output = output.where((item) => item.state == _AgentState.review);
-    if (_tab == 5)
+    }
+    if (_tab == 5) {
       output = output.where((item) => item.state == _AgentState.offline);
-    if (_role != _all) output = output.where((item) => item.role == _role);
+    }
+    if (_role != _all) {
+      output = output.where((item) => item.role == _role);
+    }
     if (_state != _all) {
       output = output.where((item) => item.state.name == _state);
     }
@@ -108,7 +115,9 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
   }
 
   Future<void> _provisionCanonicalAgent() async {
-    if (_provisioning) return;
+    if (_provisioning) {
+      return;
+    }
     final provisioner = AgentProvisioningScope.maybeOf(context);
     if (provisioner == null) {
       _notice(
@@ -175,12 +184,15 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
         ],
       ),
     );
-    if (selected == null || !mounted) return;
-
+    if (selected == null || !mounted) {
+      return;
+    }
     setState(() => _provisioning = true);
     try {
       await provisioner(selected.id);
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       _notice(
         _tr(
           context,
@@ -190,10 +202,14 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
       );
       widget.onRefreshRequested?.call();
     } on Object catch (error) {
-      if (!mounted) return;
+      if (!mounted) {
+        return;
+      }
       _notice(error.toString());
     } finally {
-      if (mounted) setState(() => _provisioning = false);
+      if (mounted) {
+        setState(() => _provisioning = false);
+      }
     }
   }
 
@@ -1658,7 +1674,9 @@ List<_AgentRecord> _agentRecords(OperationalSnapshot snapshot) {
   // it can never create a new Desktop agent or widen registry-owned authority.
   for (final item in _maps(snapshot.agentState['agents'])) {
     final id = _text(item, const ['agent_id']);
-    if (id == null || !id.startsWith('ilaios.agent.')) continue;
+    if (id == null || !id.startsWith('ilaios.agent.')) {
+      continue;
+    }
     merged[id] = Map<String, Object?>.of(item);
   }
 
@@ -1678,13 +1696,18 @@ List<_AgentRecord> _agentRecords(OperationalSnapshot snapshot) {
         break;
       }
     }
-    if (canonicalId == null) return;
-
+    if (canonicalId == null) {
+      return;
+    }
     final telemetry = <String, Object?>{};
     for (final key in _agentTelemetryKeys) {
-      if (item.containsKey(key)) telemetry[key] = item[key];
+      if (item.containsKey(key)) {
+        telemetry[key] = item[key];
+      }
     }
-    if (telemetry.isEmpty) return;
+    if (telemetry.isEmpty) {
+      return;
+    }
     merged[canonicalId] = <String, Object?>{
       ...merged[canonicalId]!,
       ...telemetry,
@@ -1812,7 +1835,9 @@ List<Map<String, Object?>> _pendingAssignments(OperationalSnapshot snapshot) {
     'pending_tasks',
   ]) {
     final values = _maps(snapshot.schedulerState[key]);
-    if (values.isNotEmpty) return values;
+    if (values.isNotEmpty) {
+      return values;
+    }
   }
   return const [];
 }
@@ -1831,7 +1856,9 @@ List<Map<String, Object?>> _pendingReviews(
   ]) {
     values.addAll(_maps(snapshot.governanceState[key]));
   }
-  if (id == null) return values;
+  if (id == null) {
+    return values;
+  }
   return values
       .where((item) {
         final owner = _text(item, const [
@@ -1846,7 +1873,9 @@ List<Map<String, Object?>> _pendingReviews(
 }
 
 List<Map<String, Object?>> _maps(Object? raw) {
-  if (raw is! List<Object?>) return const [];
+  if (raw is! List<Object?>) {
+    return const [];
+  }
   return raw.whereType<Map<String, Object?>>().toList(growable: false);
 }
 
@@ -1882,11 +1911,17 @@ List<String> _unique(Iterable<String> values) {
 }
 
 String? _text(Map<String, Object?>? source, List<String> keys) {
-  if (source == null) return null;
+  if (source == null) {
+    return null;
+  }
   for (final key in keys) {
     final value = source[key];
-    if (value is String && value.trim().isNotEmpty) return value.trim();
-    if (value is num || value is bool) return '$value';
+    if (value is String && value.trim().isNotEmpty) {
+      return value.trim();
+    }
+    if (value is num || value is bool) {
+      return '$value';
+    }
   }
   return null;
 }
@@ -1894,22 +1929,32 @@ String? _text(Map<String, Object?>? source, List<String> keys) {
 int? _int(Map<String, Object?> source, List<String> keys) {
   for (final key in keys) {
     final value = source[key];
-    if (value is int) return value;
-    if (value is num) return value.round();
+    if (value is int) {
+      return value;
+    }
+    if (value is num) {
+      return value.round();
+    }
   }
   return null;
 }
 
 double? _number(Object? value) {
-  if (value is num) return value.toDouble();
-  if (value is String) return double.tryParse(value.replaceAll('%', '').trim());
+  if (value is num) {
+    return value.toDouble();
+  }
+  if (value is String) {
+    return double.tryParse(value.replaceAll('%', '').trim());
+  }
   return null;
 }
 
 double? _ratio(Map<String, Object?> source, List<String> keys) {
   for (final key in keys) {
     final value = _number(source[key]);
-    if (value == null) continue;
+    if (value == null) {
+      continue;
+    }
     return (value.abs() > 1 ? value / 100 : value).clamp(0.0, 1.0);
   }
   return null;
@@ -1918,7 +1963,9 @@ double? _ratio(Map<String, Object?> source, List<String> keys) {
 double? _responseSeconds(Map<String, Object?> source) {
   final seconds =
       _number(source['response_seconds']) ?? _number(source['latency_seconds']);
-  if (seconds != null) return seconds;
+  if (seconds != null) {
+    return seconds;
+  }
   final ms = _number(source['response_ms']) ?? _number(source['latency_ms']);
   return ms == null ? null : ms / 1000;
 }
@@ -1931,8 +1978,9 @@ _AgentState _agentState(String raw) {
       value.contains('dead') ||
       value.contains('unregistered'))
     return _AgentState.offline;
-  if (value.contains('review') || value.contains('approval'))
+  if (value.contains('review') || value.contains('approval')) {
     return _AgentState.review;
+  }
   if (value.contains('busy') ||
       value.contains('running') ||
       value.contains('executing') ||
@@ -1963,17 +2011,25 @@ Color _stateColor(_AgentState state) => switch (state) {
 
 Color _roleColor(String role) {
   final value = _normalize(role);
-  if (value.contains('security')) return IlaiosTheme.danger;
-  if (value.contains('test') || value.contains('qa'))
+  if (value.contains('security')) {
+    return IlaiosTheme.danger;
+  }
+  if (value.contains('test') || value.contains('qa')) {
     return IlaiosTheme.success;
-  if (value.contains('backend')) return IlaiosTheme.warning;
-  if (value.contains('release') || value.contains('deploy'))
+  }
+  if (value.contains('backend')) {
+    return IlaiosTheme.warning;
+  }
+  if (value.contains('release') || value.contains('deploy')) {
     return IlaiosTheme.violet;
+  }
   return IlaiosTheme.enterpriseCyan;
 }
 
 String _filterLabel(BuildContext context, String id, String value) {
-  if (id != 'state') return value;
+  if (id != 'state') {
+    return value;
+  }
   final state = _AgentState.values.where((e) => e.name == value).firstOrNull;
   return state == null ? value : _stateLabel(context, state);
 }
