@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from services.integrations.video_series_context import (
+    AuthenticatedVideoSeriesContext,
     VideoSeriesContextError,
     bind_series_context_to_objective_resolver,
     resolve_authenticated_video_series_context,
@@ -121,7 +122,7 @@ def _store(tmp_path: Path, *, accepted: bool) -> SeriesStateStore:
     return store
 
 
-def _context(store: SeriesStateStore):
+def _context(store: SeriesStateStore) -> AuthenticatedVideoSeriesContext:
     return resolve_authenticated_video_series_context(
         store,
         series_id="series-001",
@@ -131,9 +132,7 @@ def _context(store: SeriesStateStore):
 
 
 def test_resolver_uses_authenticated_accepted_only_series_truth(tmp_path: Path) -> None:
-    store = _store(tmp_path, accepted=True)
-
-    context = _context(store)
+    context = _context(_store(tmp_path, accepted=True))
 
     assert context.state.next_episode_number == 2
     assert context.previous_manifest.episode_id == "episode-001"
@@ -180,9 +179,7 @@ def test_resolver_requires_previous_accepted_final_truth(tmp_path: Path) -> None
 
 
 def test_resolver_is_restart_stable_and_idempotent(tmp_path: Path) -> None:
-    store = _store(tmp_path, accepted=True)
-    first = _context(store)
-
+    first = _context(_store(tmp_path, accepted=True))
     restarted = SeriesStateStore(tmp_path)
     second = _context(restarted)
 
