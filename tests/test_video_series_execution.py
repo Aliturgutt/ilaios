@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from services.integrations.video_series_context import (
+    AuthenticatedVideoSeriesContext,
     VideoSeriesContextError,
     resolve_authenticated_video_series_context,
 )
@@ -131,7 +132,7 @@ def _store_with_episode_one(tmp_path: Path) -> SeriesStateStore:
     return store
 
 
-def _context(store: SeriesStateStore):
+def _context(store: SeriesStateStore) -> AuthenticatedVideoSeriesContext:
     return resolve_authenticated_video_series_context(
         store,
         series_id="series-001",
