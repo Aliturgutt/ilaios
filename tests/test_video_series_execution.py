@@ -132,12 +132,20 @@ def _store_with_episode_one(tmp_path: Path) -> SeriesStateStore:
     return store
 
 
+def _project(series_id: str, tenant_id: str, user_id: str) -> str:
+    if (series_id, tenant_id, user_id) == ("series-001", "tenant-001", "user-001"):
+        return "project-001"
+    return ""
+
+
 def _context(store: SeriesStateStore) -> AuthenticatedVideoSeriesContext:
     return resolve_authenticated_video_series_context(
         store,
         series_id="series-001",
+        project_id="project-001",
         tenant_id="tenant-001",
         user_id="user-001",
+        series_project_resolver=_project,
     )
 
 
