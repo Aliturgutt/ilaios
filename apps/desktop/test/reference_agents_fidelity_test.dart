@@ -84,32 +84,36 @@ Future<void> _selectAgent(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets('Agents keeps the V4 dark hierarchy and reveals details contextually', (
-    WidgetTester tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1648, 928));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
+  testWidgets(
+    'Agents keeps the V4 dark hierarchy and reveals details contextually',
+    (WidgetTester tester) async {
+      await tester.binding.setSurfaceSize(const Size(1648, 928));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    await tester.pumpWidget(
-      const IlaiosDesktopApp(operationalSnapshot: _snapshot),
-    );
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('nav-agents')));
-    await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        const IlaiosDesktopApp(operationalSnapshot: _snapshot),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('nav-agents')));
+      await tester.pumpAndSettle();
 
-    final page = find.byKey(const Key('reference-agents-page'));
-    expect(page, findsOneWidget);
-    expect(find.descendant(of: page, matching: find.text('Agents')), findsOneWidget);
-    expect(find.byKey(const Key('agents-metrics')), findsOneWidget);
-    expect(find.byKey(const Key('agents-table-panel')), findsWidgets);
-    expect(find.byKey(const Key('selected-agent-panel')), findsNothing);
-    expect(find.byKey(const Key('agents-bottom-panels')), findsOneWidget);
-    expect(find.text('Argus'), findsWidgets);
+      final page = find.byKey(const Key('reference-agents-page'));
+      expect(page, findsOneWidget);
+      expect(
+        find.descendant(of: page, matching: find.text('Agents')),
+        findsOneWidget,
+      );
+      expect(find.byKey(const Key('agents-metrics')), findsOneWidget);
+      expect(find.byKey(const Key('agents-table-panel')), findsWidgets);
+      expect(find.byKey(const Key('selected-agent-panel')), findsNothing);
+      expect(find.byKey(const Key('agents-bottom-panels')), findsOneWidget);
+      expect(find.text('Argus'), findsWidgets);
 
-    await _selectAgent(tester);
-    expect(find.byKey(const Key('selected-agent-panel')), findsWidgets);
-    expect(tester.takeException(), isNull);
-  });
+      await _selectAgent(tester);
+      expect(find.byKey(const Key('selected-agent-panel')), findsWidgets);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets('Agents renders the V4 Turkish light surface', (
     WidgetTester tester,
@@ -130,8 +134,14 @@ void main() {
 
     final page = find.byKey(const Key('reference-agents-page'));
     expect(page, findsOneWidget);
-    expect(find.descendant(of: page, matching: find.text('Ajanlar')), findsOneWidget);
-    expect(find.descendant(of: page, matching: find.text('Toplam')), findsWidgets);
+    expect(
+      find.descendant(of: page, matching: find.text('Ajanlar')),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(of: page, matching: find.text('Toplam')),
+      findsWidgets,
+    );
     expect(find.byKey(const Key('selected-agent-panel')), findsNothing);
 
     await _selectAgent(tester);
@@ -155,7 +165,71 @@ void main() {
     expect(find.text('34'), findsNothing);
     expect(find.text('98.4%'), findsNothing);
     expect(find.text('1.42 sn'), findsNothing);
-    expect(find.text('—'), findsWidgets);
+    expect(find.text('â€”'), findsWidgets);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Agents keeps explicit typography at readable Desktop scale', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const IlaiosDesktopApp(operationalSnapshot: _snapshot),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('nav-agents')));
+    await tester.pumpAndSettle();
+
+    final page = find.byKey(const Key('reference-agents-page'));
+    expect(page, findsOneWidget);
+
+    final explicitSizes = tester
+        .widgetList<Text>(
+          find.descendant(of: page, matching: find.byType(Text)),
+        )
+        .map((widget) => widget.style?.fontSize)
+        .whereType<double>();
+
+    expect(
+      explicitSizes.where((size) => size < 11),
+      isEmpty,
+      reason: 'Agents must not render explicit typography below 11px.',
+    );
+
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('Agents stays overflow-free at canonical Desktop viewports', (
+    WidgetTester tester,
+  ) async {
+    const sizes = <Size>[Size(1366, 768), Size(1600, 900), Size(1920, 1080)];
+
+    for (final size in sizes) {
+      await tester.binding.setSurfaceSize(size);
+
+      await tester.pumpWidget(
+        const IlaiosDesktopApp(operationalSnapshot: _snapshot),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('nav-agents')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key('reference-agents-page')), findsOneWidget);
+
+      expect(find.text('Agents'), findsOneWidget);
+
+      expect(tester.takeException(), isNull);
+
+      await _selectAgent(tester);
+
+      expect(find.byKey(const Key('selected-agent-panel')), findsWidgets);
+
+      expect(tester.takeException(), isNull);
+    }
+
+    await tester.binding.setSurfaceSize(null);
   });
 }

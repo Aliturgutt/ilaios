@@ -1,4 +1,4 @@
-import 'dart:math' as math;
+﻿import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -109,7 +109,7 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
       _notice(
         _tr(
           context,
-          'Ajan provision işlemi için doğrulanmış kullanıcı oturumu gerekiyor.',
+          'Ajan provision iÅŸlemi iÃ§in doÄŸrulanmÄ±ÅŸ kullanÄ±cÄ± oturumu gerekiyor.',
           'A verified user session is required to provision an agent.',
         ),
       );
@@ -123,7 +123,7 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
       _notice(
         _tr(
           context,
-          'Provision edilebilecek kayıtlı olmayan canonical ajan yok.',
+          'Provision edilebilecek kayÄ±tlÄ± olmayan canonical ajan yok.',
           'No unregistered canonical agent is available to provision.',
         ),
       );
@@ -147,7 +147,7 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
                 leading: const Icon(Icons.smart_toy_outlined),
                 title: Text(candidate.alias),
                 subtitle: Text(
-                  '${candidate.role} · ${candidate.team}\n${candidate.id}',
+                  '${candidate.role} Â· ${candidate.team}\n${candidate.id}',
                 ),
                 isThreeLine: true,
                 trailing: Text(candidate.readiness),
@@ -159,7 +159,7 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(dialogContext).pop(),
-            child: Text(_tr(context, 'Vazgeç', 'Cancel')),
+            child: Text(_tr(context, 'VazgeÃ§', 'Cancel')),
           ),
         ],
       ),
@@ -173,7 +173,7 @@ class _ReferenceAgentsViewState extends State<ReferenceAgentsView> {
       _notice(
         _tr(
           context,
-          '${selected.alias} canonical ajanı provision edildi.',
+          '${selected.alias} canonical ajanÄ± provision edildi.',
           '${selected.alias} canonical agent was provisioned.',
         ),
       );
@@ -356,11 +356,11 @@ class _Header extends StatelessWidget {
                   Text(
                     _tr(
                       context,
-                      'Canonical ajan durumunu, kapasiteyi ve gerçek runtime telemetrisini izleyin.',
+                      'Canonical ajan durumunu, kapasiteyi ve gerÃ§ek runtime telemetrisini izleyin.',
                       'Monitor canonical agent state, capacity and real runtime telemetry.',
                     ),
                     style: TextStyle(
-                      fontSize: 9.2,
+                      fontSize: 11,
                       color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
@@ -396,29 +396,29 @@ class _Metrics extends StatelessWidget {
       (
         Icons.groups_2_outlined,
         _tr(context, 'Toplam', 'Total'),
-        total?.toString() ?? '—',
+        total?.toString() ?? 'â€”',
         Theme.of(context).colorScheme.onSurfaceVariant,
       ),
       (
         Icons.circle,
         _tr(context, 'Aktif', 'Active'),
-        agents.isEmpty ? '—' : '$active',
+        agents.isEmpty ? 'â€”' : '$active',
         active > 0
             ? IlaiosTheme.success
             : Theme.of(context).colorScheme.onSurfaceVariant,
       ),
       (
         Icons.hexagon_outlined,
-        _tr(context, 'Meşgul', 'Busy'),
-        agents.isEmpty ? '—' : '$busy',
+        _tr(context, 'MeÅŸgul', 'Busy'),
+        agents.isEmpty ? 'â€”' : '$busy',
         busy > 0
             ? IlaiosTheme.warning
             : Theme.of(context).colorScheme.onSurfaceVariant,
       ),
       (
         Icons.person_outline_rounded,
-        _tr(context, 'Boşta', 'Idle'),
-        agents.isEmpty ? '—' : '$idle',
+        _tr(context, 'BoÅŸta', 'Idle'),
+        agents.isEmpty ? 'â€”' : '$idle',
         Theme.of(context).colorScheme.onSurfaceVariant,
       ),
     ];
@@ -443,7 +443,7 @@ class _Metrics extends StatelessWidget {
               Text(
                 summary[index].$2,
                 style: TextStyle(
-                  fontSize: 8.2,
+                  fontSize: 11,
                   color: Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
               ),
@@ -541,12 +541,12 @@ class _TablePanel extends StatelessWidget {
             child: Row(
               children: [
                 for (final item in <(String, String)>[
-                  ('Tümü', 'All'),
+                  ('TÃ¼mÃ¼', 'All'),
                   ('Aktif', 'Active'),
-                  ('Meşgul', 'Busy'),
-                  ('Boşta', 'Idle'),
-                  ('İncelemede', 'In Review'),
-                  ('Devre Dışı', 'Offline'),
+                  ('MeÅŸgul', 'Busy'),
+                  ('BoÅŸta', 'Idle'),
+                  ('Ä°ncelemede', 'In Review'),
+                  ('Devre DÄ±ÅŸÄ±', 'Offline'),
                 ].indexed)
                   _Tab(
                     label: _tr(context, item.$2.$1, item.$2.$2),
@@ -567,7 +567,7 @@ class _TablePanel extends StatelessWidget {
                 ),
                 PopupMenuButton<_ToolbarAction>(
                   key: const Key('agents-more-menu'),
-                  tooltip: _tr(context, 'Diğer', 'More'),
+                  tooltip: _tr(context, 'DiÄŸer', 'More'),
                   onSelected: (action) {
                     switch (action) {
                       case _ToolbarAction.refresh:
@@ -608,11 +608,11 @@ class _TablePanel extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 7),
-                  Expanded(child: _Filter(id: 'role', label: _tr(context, 'Rol Türü', 'Role Type'), value: role, options: roleOptions, onChanged: onRole)),
+                  Expanded(child: _Filter(id: 'role', label: _tr(context, 'Rol TÃ¼rÃ¼', 'Role Type'), value: role, options: roleOptions, onChanged: onRole)),
                   const SizedBox(width: 7),
-                  Expanded(child: _Filter(id: 'state', label: _tr(context, 'Durum Türü', 'Status Type'), value: state, options: _AgentState.values.map((e) => e.name).toList(growable: false), onChanged: onState)),
+                  Expanded(child: _Filter(id: 'state', label: _tr(context, 'Durum TÃ¼rÃ¼', 'Status Type'), value: state, options: _AgentState.values.map((e) => e.name).toList(growable: false), onChanged: onState)),
                   const SizedBox(width: 7),
-                  Expanded(child: _Filter(id: 'capability', label: _tr(context, 'Yetkinlik Türü', 'Capability Type'), value: capability, options: capabilityOptions, onChanged: onCapability)),
+                  Expanded(child: _Filter(id: 'capability', label: _tr(context, 'Yetkinlik TÃ¼rÃ¼', 'Capability Type'), value: capability, options: capabilityOptions, onChanged: onCapability)),
                   const SizedBox(width: 7),
                   OutlinedButton(
                     key: const Key('agent-clear-filters'),
@@ -665,7 +665,7 @@ class _TablePanel extends StatelessWidget {
                   Text(
                     totalFiltered == 0
                         ? _tr(context, '0 ajan', '0 agents')
-                        : '$first-$last / $totalFiltered ${_tr(context, 'ajan', 'agents')} · $totalAgents ${_tr(context, 'toplam', 'total')}',
+                        : '$first-$last / $totalFiltered ${_tr(context, 'ajan', 'agents')} Â· $totalAgents ${_tr(context, 'toplam', 'total')}',
                     style: const TextStyle(fontSize: 8),
                   ),
                   const Spacer(),
@@ -703,7 +703,7 @@ class _Filter extends StatelessWidget {
         initialValue: value,
         onSelected: onChanged,
         itemBuilder: (_) => [
-          PopupMenuItem(value: _ReferenceAgentsViewState._all, child: Text(_tr(context, 'Tümü', 'All'))),
+          PopupMenuItem(value: _ReferenceAgentsViewState._all, child: Text(_tr(context, 'TÃ¼mÃ¼', 'All'))),
           for (final option in options)
             PopupMenuItem(value: option, child: Text(_filterLabel(context, id, option))),
         ],
@@ -713,7 +713,7 @@ class _Filter extends StatelessWidget {
           decoration: BoxDecoration(border: Border.all(color: Theme.of(context).colorScheme.outlineVariant), borderRadius: BorderRadius.circular(5)),
           child: Row(
             children: [
-              Expanded(child: Text(value == _ReferenceAgentsViewState._all ? '$label: ${_tr(context, 'Tümü', 'All')}' : _filterLabel(context, id, value), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 7.7))),
+              Expanded(child: Text(value == _ReferenceAgentsViewState._all ? '$label: ${_tr(context, 'TÃ¼mÃ¼', 'All')}' : _filterLabel(context, id, value), maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11))),
               const Icon(Icons.keyboard_arrow_down, size: 14),
             ],
           ),
@@ -730,13 +730,13 @@ class _AgentHeader extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 10),
           child: Row(
             children: [
-              Expanded(flex: 24, child: Text(_tr(context, 'Ajan', 'Agent'), style: const TextStyle(fontSize: 7.5, fontWeight: FontWeight.w600))),
-              Expanded(flex: 17, child: Text(_tr(context, 'Uzmanlık', 'Specialty'), style: const TextStyle(fontSize: 7.5, fontWeight: FontWeight.w600))),
-              Expanded(flex: 12, child: Text(_tr(context, 'Durum', 'Status'), style: const TextStyle(fontSize: 7.5, fontWeight: FontWeight.w600))),
-              Expanded(flex: 20, child: Text(_tr(context, 'Mevcut Görev', 'Current Task'), style: const TextStyle(fontSize: 7.5, fontWeight: FontWeight.w600))),
-              Expanded(flex: 14, child: Text(_tr(context, 'Kapasite', 'Capacity'), style: const TextStyle(fontSize: 7.5, fontWeight: FontWeight.w600))),
-              Expanded(flex: 13, child: Text(_tr(context, 'Başarı Oranı', 'Success Rate'), style: const TextStyle(fontSize: 7.5, fontWeight: FontWeight.w600))),
-              Expanded(flex: 13, child: Text(_tr(context, 'Son Etkinlik', 'Last Activity'), style: const TextStyle(fontSize: 7.5, fontWeight: FontWeight.w600))),
+              Expanded(flex: 24, child: Text(_tr(context, 'Ajan', 'Agent'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
+              Expanded(flex: 17, child: Text(_tr(context, 'UzmanlÄ±k', 'Specialty'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
+              Expanded(flex: 12, child: Text(_tr(context, 'Durum', 'Status'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
+              Expanded(flex: 20, child: Text(_tr(context, 'Mevcut GÃ¶rev', 'Current Task'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
+              Expanded(flex: 14, child: Text(_tr(context, 'Kapasite', 'Capacity'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
+              Expanded(flex: 13, child: Text(_tr(context, 'BaÅŸarÄ± OranÄ±', 'Success Rate'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
+              Expanded(flex: 13, child: Text(_tr(context, 'Son Etkinlik', 'Last Activity'), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
             ],
           ),
         ),
@@ -772,14 +772,14 @@ class _AgentRow extends StatelessWidget {
                   CircleAvatar(radius: 13, backgroundColor: _roleColor(record.role).withValues(alpha: .12), child: Icon(Icons.smart_toy_outlined, size: 14, color: _roleColor(record.role))),
                   const SizedBox(width: 7),
                   Expanded(child: Column(mainAxisAlignment: MainAxisAlignment.center, crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text(record.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 8.3, fontWeight: FontWeight.w600)),
+                    Text(record.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                   ])),
                 ],
               ),
             ),
-            Expanded(flex: 17, child: Text(record.role, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 7.7))),
-            Expanded(flex: 12, child: Row(children: [Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)), const SizedBox(width: 5), Expanded(child: Text(_stateLabel(context, record.state), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 7.4, color: color)))])),
-            Expanded(flex: 20, child: Text(record.currentTask.isEmpty ? _tr(context, 'Görev yok', 'No task') : record.currentTask, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 7.5))),
+            Expanded(flex: 17, child: Text(record.role, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11))),
+            Expanded(flex: 12, child: Row(children: [Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)), const SizedBox(width: 5), Expanded(child: Text(_stateLabel(context, record.state), maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: color)))])),
+            Expanded(flex: 20, child: Text(record.currentTask.isEmpty ? _tr(context, 'GÃ¶rev yok', 'No task') : record.currentTask, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11))),
             Expanded(
               flex: 14,
               child: _Progress(
@@ -787,8 +787,8 @@ class _AgentRow extends StatelessWidget {
                 value: record.capacity,
               ),
             ),
-            Expanded(flex: 13, child: Text(record.successRate == null ? '—' : '${(record.successRate! * 100).toStringAsFixed(1)}%', style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w600))),
-            Expanded(flex: 13, child: Text(record.lastActivity, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 7.2))),
+            Expanded(flex: 13, child: Text(record.successRate == null ? 'â€”' : '${(record.successRate! * 100).toStringAsFixed(1)}%', style: const TextStyle(fontSize: 11 fontWeight: FontWeight.w600))),
+            Expanded(flex: 13, child: Text(record.lastActivity, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11))),
           ],
         ),
       ),
@@ -812,57 +812,57 @@ class _SelectedPanel extends StatelessWidget {
             ? Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(_tr(context, 'Seçili Ajan', 'Selected Agent'), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
-                  Expanded(child: Center(child: Text(_tr(context, 'Doğrulanmış ajan kaydı yok', 'No verified agent record')))),
+                  Text(_tr(context, 'SeÃ§ili Ajan', 'Selected Agent'), style: const TextStyle(fontSize: 12 fontWeight: FontWeight.w700)),
+                  Expanded(child: Center(child: Text(_tr(context, 'DoÄŸrulanmÄ±ÅŸ ajan kaydÄ± yok', 'No verified agent record')))),
                   OutlinedButton.icon(onPressed: connected ? onRefresh : null, icon: const Icon(Icons.refresh, size: 14), label: Text(_tr(context, 'Yenile', 'Refresh'))),
                 ],
               )
             : Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Text(_tr(context, 'Seçili Ajan', 'Selected Agent'), style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700)),
+                  Text(_tr(context, 'SeÃ§ili Ajan', 'Selected Agent'), style: const TextStyle(fontSize: 12 fontWeight: FontWeight.w700)),
                   const SizedBox(height: 10),
                   Row(children: [
                     CircleAvatar(radius: 20, backgroundColor: _roleColor(agent!.role).withValues(alpha: .12), child: Icon(Icons.smart_toy_outlined, color: _roleColor(agent!.role))),
                     const SizedBox(width: 9),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(agent!.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)), Text(agent!.id, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 7.5, color: Theme.of(context).colorScheme.onSurfaceVariant))])),
+                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(agent!.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600)), Text(agent!.id, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant))])),
                     _Chip(text: _stateLabel(context, agent!.state), color: _stateColor(agent!.state)),
                   ]),
                   const SizedBox(height: 12),
                   _Info(label: _tr(context, 'Rol', 'Role'), value: agent!.role),
-                  _Info(label: _tr(context, 'Takım', 'Team'), value: agent!.team),
+                  _Info(label: _tr(context, 'TakÄ±m', 'Team'), value: agent!.team),
                   _Info(label: _tr(context, 'Readiness', 'Readiness'), value: agent!.readiness),
-                  _Info(label: _tr(context, 'Provision', 'Provisioned'), value: agent!.registered ? _tr(context, 'Evet', 'Yes') : _tr(context, 'Hayır', 'No')),
-                  _Info(label: _tr(context, 'Mevcut Görev', 'Current Task'), value: agent!.currentTask.isEmpty ? _tr(context, 'Görev yok', 'No task') : agent!.currentTask),
-                  _Info(label: _tr(context, 'Sistem Sağlığı', 'System Health'), value: agent!.health),
+                  _Info(label: _tr(context, 'Provision', 'Provisioned'), value: agent!.registered ? _tr(context, 'Evet', 'Yes') : _tr(context, 'HayÄ±r', 'No')),
+                  _Info(label: _tr(context, 'Mevcut GÃ¶rev', 'Current Task'), value: agent!.currentTask.isEmpty ? _tr(context, 'GÃ¶rev yok', 'No task') : agent!.currentTask),
+                  _Info(label: _tr(context, 'Sistem SaÄŸlÄ±ÄŸÄ±', 'System Health'), value: agent!.health),
                   const SizedBox(height: 9),
-                  Text(_tr(context, 'Yetkinlikler', 'Capabilities'), style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600)),
+                  Text(_tr(context, 'Yetkinlikler', 'Capabilities'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 5),
                   Wrap(spacing: 4, runSpacing: 4, children: [for (final capability in agent!.capabilities.take(8)) _Chip(text: capability, color: IlaiosTheme.enterpriseCyan)]),
                   const SizedBox(height: 10),
-                  Text('${_tr(context, 'Bekleyen İncelemeler', 'Pending Reviews')} (${reviews.length})', style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600)),
+                  Text('${_tr(context, 'Bekleyen Ä°ncelemeler', 'Pending Reviews')} (${reviews.length})', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
                   const SizedBox(height: 5),
                   Expanded(
                     child: reviews.isEmpty
-                        ? Center(child: Text(_tr(context, 'Bekleyen inceleme yok', 'No pending review'), style: const TextStyle(fontSize: 7.5)))
+                        ? Center(child: Text(_tr(context, 'Bekleyen inceleme yok', 'No pending review'), style: const TextStyle(fontSize: 11)))
                         : ListView.builder(
                             itemCount: math.min(3, reviews.length),
                             itemBuilder: (_, index) => ListTile(
                               dense: true,
                               contentPadding: EdgeInsets.zero,
                               leading: const Icon(Icons.warning_amber_rounded, size: 15),
-                              title: Text(_text(reviews[index], const ['title', 'summary', 'request_id', 'id']) ?? '—', maxLines: 1, overflow: TextOverflow.ellipsis),
-                              subtitle: Text(_text(reviews[index], const ['severity', 'priority', 'risk', 'status']) ?? '—'),
+                              title: Text(_text(reviews[index], const ['title', 'summary', 'request_id', 'id']) ?? 'â€”', maxLines: 1, overflow: TextOverflow.ellipsis),
+                              subtitle: Text(_text(reviews[index], const ['severity', 'priority', 'risk', 'status']) ?? 'â€”'),
                             ),
                           ),
                   ),
                   Row(children: [
-                    Expanded(child: FilledButton(onPressed: () => _showAgentDetail(context, agent!), child: Text(_tr(context, 'Detayı Aç', 'Open Detail')))),
+                    Expanded(child: FilledButton(onPressed: () => _showAgentDetail(context, agent!), child: Text(_tr(context, 'DetayÄ± AÃ§', 'Open Detail')))),
                     const SizedBox(width: 8),
-                    Expanded(child: Tooltip(message: _tr(context, 'Governed assignment API henüz mevcut değil.', 'Governed assignment API is not available yet.'), child: OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.person_add_alt_1_outlined, size: 14), label: Text(_tr(context, 'Göreve Ata', 'Assign Task'))))),
+                    Expanded(child: Tooltip(message: _tr(context, 'Governed assignment API henÃ¼z mevcut deÄŸil.', 'Governed assignment API is not available yet.'), child: OutlinedButton.icon(onPressed: null, icon: const Icon(Icons.person_add_alt_1_outlined, size: 14), label: Text(_tr(context, 'GÃ¶reve Ata', 'Assign Task'))))),
                   ]),
                   const SizedBox(height: 7),
-                  OutlinedButton.icon(key: const Key('agent-live-workspace'), onPressed: onWorkspace, icon: const Icon(Icons.hub_outlined, size: 14), label: Text(_tr(context, 'Canlı Çalışma Alanına Git', 'Go to Live Workspace'))),
+                  OutlinedButton.icon(key: const Key('agent-live-workspace'), onPressed: onWorkspace, icon: const Icon(Icons.hub_outlined, size: 14), label: Text(_tr(context, 'CanlÄ± Ã‡alÄ±ÅŸma AlanÄ±na Git', 'Go to Live Workspace'))),
                 ],
               ),
       );
@@ -884,14 +884,14 @@ class _BottomPanels extends StatelessWidget {
     return Row(
       key: const Key('agents-bottom-panels'),
       children: [
-        Expanded(child: _Mini(title: _tr(context, 'Son Güncellemeler', 'Recent Updates'), lines: updates.map((item) => '${_text(item, const ['agent_id', 'worker_id', 'actor']) ?? '—'} · ${_text(item, const ['event_type', 'event', 'action', 'type']) ?? '—'}').toList(growable: false))),
+        Expanded(child: _Mini(title: _tr(context, 'Son GÃ¼ncellemeler', 'Recent Updates'), lines: updates.map((item) => '${_text(item, const ['agent_id', 'worker_id', 'actor']) ?? 'â€”'} Â· ${_text(item, const ['event_type', 'event', 'action', 'type']) ?? 'â€”'}').toList(growable: false))),
         const SizedBox(width: 8),
-        Expanded(child: _Mini(title: _tr(context, 'Bekleyen Atamalar', 'Pending Assignments'), lines: assignments.map((item) => '${_text(item, const ['title', 'task', 'job_id', 'id']) ?? '—'} · ${_text(item, const ['status', 'priority']) ?? '—'}').toList(growable: false))),
+        Expanded(child: _Mini(title: _tr(context, 'Bekleyen Atamalar', 'Pending Assignments'), lines: assignments.map((item) => '${_text(item, const ['title', 'task', 'job_id', 'id']) ?? 'â€”'} Â· ${_text(item, const ['status', 'priority']) ?? 'â€”'}').toList(growable: false))),
         const SizedBox(width: 8),
-        Expanded(child: _Mini(title: _tr(context, 'Performans Özeti (7 Gün)', 'Performance Summary (7 Days)'), lines: <String>[
-          '${_tr(context, 'Toplam Ajan', 'Total Agents')}: ${agents.isEmpty ? '—' : agents.length}',
+        Expanded(child: _Mini(title: _tr(context, 'Performans Ã–zeti (7 GÃ¼n)', 'Performance Summary (7 Days)'), lines: <String>[
+          '${_tr(context, 'Toplam Ajan', 'Total Agents')}: ${agents.isEmpty ? 'â€”' : agents.length}',
           '${_tr(context, 'Aktif', 'Active')}: ${agents.where((e) => e.state == _AgentState.active).length}',
-          '${_tr(context, 'Meşgul', 'Busy')}: ${agents.where((e) => e.state == _AgentState.busy).length}',
+          '${_tr(context, 'MeÅŸgul', 'Busy')}: ${agents.where((e) => e.state == _AgentState.busy).length}',
         ])),
         const SizedBox(width: 8),
         Expanded(child: _Mini(title: _tr(context, 'Ajan Rolleri', 'Agent Roles'), lines: roles.entries.take(5).map((e) => '${e.key}: ${e.value}').toList(growable: false))),
@@ -908,7 +908,7 @@ class _Mini extends StatelessWidget {
   Widget build(BuildContext context) => _Panel(
         padding: const EdgeInsets.all(8),
         child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: [
-          Text(title, style: const TextStyle(fontSize: 8.5, fontWeight: FontWeight.w600)),
+          Text(title, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
           const Divider(),
           Expanded(child: lines.isEmpty ? Center(child: Text(_tr(context, 'Veri yok', 'No data'), style: const TextStyle(fontSize: 7))) : Column(children: [for (final line in lines.take(4)) Expanded(child: Align(alignment: Alignment.centerLeft, child: Text(line, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 7.1))))])),
         ]),
@@ -927,7 +927,7 @@ class _Tab extends StatelessWidget {
           alignment: Alignment.center,
           padding: const EdgeInsets.symmetric(horizontal: 11),
           decoration: BoxDecoration(border: selected ? const Border(bottom: BorderSide(color: IlaiosTheme.enterpriseCyan, width: 2)) : null),
-          child: Text(label, style: TextStyle(fontSize: 8.4, fontWeight: selected ? FontWeight.w600 : FontWeight.w400)),
+          child: Text(label, style: TextStyle(fontSize: 11, fontWeight: selected ? FontWeight.w600 : FontWeight.w400)),
         ),
       );
 }
@@ -959,7 +959,7 @@ class _Progress extends StatelessWidget {
           SizedBox(
             width: 28,
             child: Text(
-              value == null ? '—' : '${(value! * 100).round()}%',
+              value == null ? 'â€”' : '${(value! * 100).round()}%',
               style: const TextStyle(fontSize: 7),
             ),
           ),
@@ -974,7 +974,7 @@ class _Info extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 3),
-        child: Row(children: [SizedBox(width: 95, child: Text(label, style: TextStyle(fontSize: 7.2, color: Theme.of(context).colorScheme.onSurfaceVariant))), Expanded(child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 7.8, fontWeight: FontWeight.w600)))]),
+        child: Row(children: [SizedBox(width: 95, child: Text(label, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurfaceVariant))), Expanded(child: Text(value, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)))]),
       );
 }
 
@@ -987,7 +987,7 @@ class _Chip extends StatelessWidget {
         constraints: const BoxConstraints(maxWidth: 140),
         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
         decoration: BoxDecoration(color: color.withValues(alpha: .10), borderRadius: BorderRadius.circular(4)),
-        child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 7, color: color)),
+        child: Text(text, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: color)),
       );
 }
 
@@ -1011,7 +1011,7 @@ class _EmptyAgents extends StatelessWidget {
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Icon(Icons.groups_2_outlined, size: 30, color: Theme.of(context).colorScheme.outline),
           const SizedBox(height: 7),
-          Text(_tr(context, 'Doğrulanmış ajan kaydı yok', 'No verified agent record'), style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w600)),
+          Text(_tr(context, 'DoÄŸrulanmÄ±ÅŸ ajan kaydÄ± yok', 'No verified agent record'), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
         ]),
       );
 }
@@ -1157,17 +1157,17 @@ List<_AgentRecord> _agentRecords(OperationalSnapshot snapshot) {
     return _AgentRecord(
       id: entry.key,
       name: _text(item, const ['alias', 'agent_name', 'worker_name', 'display_name', 'name', 'title']) ?? entry.key,
-      role: _text(item, const ['role', 'agent_role', 'worker_role', 'specialty', 'type']) ?? '—',
-      team: _text(item, const ['team']) ?? '—',
+      role: _text(item, const ['role', 'agent_role', 'worker_role', 'specialty', 'type']) ?? 'â€”',
+      team: _text(item, const ['team']) ?? 'â€”',
       state: _agentState(rawState),
       currentTask: _text(item, const ['current_task', 'task', 'workflow_name']) ?? '',
       capacity: _ratio(item, const ['capacity', 'utilization', 'load', 'capacity_used', 'usage_percent']),
       successRate: _ratio(item, const ['success_rate', 'success_ratio', 'success_percent', 'quality_score']),
       responseSeconds: _responseSeconds(item),
-      lastActivity: _text(item, const ['last_activity', 'last_seen', 'updated_at', 'timestamp', 'readiness_updated_at']) ?? '—',
-      health: _text(item, const ['health', 'health_status', 'system_health']) ?? '—',
+      lastActivity: _text(item, const ['last_activity', 'last_seen', 'updated_at', 'timestamp', 'readiness_updated_at']) ?? 'â€”',
+      health: _text(item, const ['health', 'health_status', 'system_health']) ?? 'â€”',
       capabilities: capabilities,
-      readiness: _text(item, const ['readiness']) ?? '—',
+      readiness: _text(item, const ['readiness']) ?? 'â€”',
       registered: registered,
     );
   }).toList(growable: false);
@@ -1177,10 +1177,10 @@ List<_CanonicalAgentCandidate> _canonicalCandidates(OperationalSnapshot snapshot
     _maps(snapshot.agentState['agents']).map((item) {
       return _CanonicalAgentCandidate(
         id: _text(item, const ['agent_id']) ?? '',
-        alias: _text(item, const ['alias']) ?? _text(item, const ['agent_id']) ?? '—',
-        role: _text(item, const ['role']) ?? '—',
-        team: _text(item, const ['team']) ?? '—',
-        readiness: _text(item, const ['readiness']) ?? '—',
+        alias: _text(item, const ['alias']) ?? _text(item, const ['agent_id']) ?? 'â€”',
+        role: _text(item, const ['role']) ?? 'â€”',
+        team: _text(item, const ['team']) ?? 'â€”',
+        readiness: _text(item, const ['readiness']) ?? 'â€”',
         registered: item['registered'] == true,
         authorityMatchesCanonical: item['authority_matches_canonical'] != false,
       );
@@ -1225,7 +1225,7 @@ List<String> _strings(Map<String, Object?> source, List<String> keys) {
 }
 
 List<String> _unique(Iterable<String> values) {
-  final result = values.where((e) => e.isNotEmpty && e != '—').toSet().toList(growable: false)..sort();
+  final result = values.where((e) => e.isNotEmpty && e != 'â€”').toSet().toList(growable: false)..sort();
   return result;
 }
 
@@ -1281,10 +1281,10 @@ _AgentState _agentState(String raw) {
 
 String _stateLabel(BuildContext context, _AgentState state) => switch (state) {
       _AgentState.active => _tr(context, 'Aktif', 'Active'),
-      _AgentState.busy => _tr(context, 'Meşgul', 'Busy'),
-      _AgentState.idle => _tr(context, 'Boşta', 'Idle'),
-      _AgentState.review => _tr(context, 'İncelemede', 'In Review'),
-      _AgentState.offline => _tr(context, 'Devre Dışı', 'Offline'),
+      _AgentState.busy => _tr(context, 'MeÅŸgul', 'Busy'),
+      _AgentState.idle => _tr(context, 'BoÅŸta', 'Idle'),
+      _AgentState.review => _tr(context, 'Ä°ncelemede', 'In Review'),
+      _AgentState.offline => _tr(context, 'Devre DÄ±ÅŸÄ±', 'Offline'),
     };
 
 Color _stateColor(_AgentState state) => switch (state) {
@@ -1328,13 +1328,13 @@ void _showAgentDetail(BuildContext context, _AgentRecord agent) {
           children: [
             Text('${_tr(context, 'Kimlik', 'ID')}: ${agent.id}'),
             Text('${_tr(context, 'Rol', 'Role')}: ${agent.role}'),
-            Text('${_tr(context, 'Takım', 'Team')}: ${agent.team}'),
+            Text('${_tr(context, 'TakÄ±m', 'Team')}: ${agent.team}'),
             Text('${_tr(context, 'Durum', 'Status')}: ${_stateLabel(context, agent.state)}'),
             Text('${_tr(context, 'Readiness', 'Readiness')}: ${agent.readiness}'),
             Text('${_tr(context, 'Provision', 'Provisioned')}: ${agent.registered}'),
-            Text('${_tr(context, 'Mevcut Görev', 'Current Task')}: ${agent.currentTask}'),
-            Text('${_tr(context, 'Kapasite', 'Capacity')}: ${agent.capacity == null ? '—' : '${(agent.capacity! * 100).round()}%'}'),
-            Text('${_tr(context, 'Başarı', 'Success')}: ${agent.successRate == null ? '—' : '${(agent.successRate! * 100).toStringAsFixed(1)}%'}'),
+            Text('${_tr(context, 'Mevcut GÃ¶rev', 'Current Task')}: ${agent.currentTask}'),
+            Text('${_tr(context, 'Kapasite', 'Capacity')}: ${agent.capacity == null ? 'â€”' : '${(agent.capacity! * 100).round()}%'}'),
+            Text('${_tr(context, 'BaÅŸarÄ±', 'Success')}: ${agent.successRate == null ? 'â€”' : '${(agent.successRate! * 100).toStringAsFixed(1)}%'}'),
             Text('${_tr(context, 'Son Etkinlik', 'Last Activity')}: ${agent.lastActivity}'),
           ],
         ),
@@ -1345,3 +1345,4 @@ void _showAgentDetail(BuildContext context, _AgentRecord agent) {
     ),
   );
 }
+
