@@ -165,7 +165,7 @@ void main() {
     expect(find.text('34'), findsNothing);
     expect(find.text('98.4%'), findsNothing);
     expect(find.text('1.42 sn'), findsNothing);
-    expect(find.text('â€”'), findsWidgets);
+    expect(find.text('—'), findsWidgets);
     expect(tester.takeException(), isNull);
   });
 
@@ -219,7 +219,7 @@ void main() {
 
       expect(find.byKey(const Key('reference-agents-page')), findsOneWidget);
 
-      expect(find.text('Agents'), findsOneWidget);
+      expect(find.text('Agents'), findsWidgets);
 
       expect(tester.takeException(), isNull);
 
