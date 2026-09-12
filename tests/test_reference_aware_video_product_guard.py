@@ -9,6 +9,9 @@ import pytest
 from services.integrations.reference_aware_provider_video_runtime import (
     ReferenceAwareProviderBackedDesktopVideoRuntime,
 )
+from services.integrations.video_product_intelligence import (
+    admit_current_desktop_video_product,
+)
 from services.integrations.video_runtime import VideoRuntimeError
 
 
@@ -47,18 +50,12 @@ def _runtime(
     return runtime
 
 
-def test_vertical_request_is_rejected_before_reference_analysis_or_provider_generation(
-    tmp_path: Path,
-) -> None:
-    runtime = _runtime()
-    with pytest.raises(VideoRuntimeError, match="9:16"):
-        runtime._generate_finished_product(
-            run_root=tmp_path,
-            request_id="request-guard",
-            job_id="job-guard",
-            objective="Create a vertical video for TikTok.",
-            duration_seconds=20.0,
-        )
+def test_vertical_request_is_admitted_by_product_guard() -> None:
+    spec = admit_current_desktop_video_product(
+        "Create a vertical 9:16 video for TikTok."
+    )
+
+    assert spec.aspect_ratio == "9:16"
 
 
 def test_source_video_revision_is_rejected_before_provider_generation(
