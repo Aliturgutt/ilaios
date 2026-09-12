@@ -229,10 +229,10 @@ class _PythonVisitor(ast.NodeVisitor):
         self.routes: set[str] = set()
         self.schemas: set[str] = set()
 
-    def visit_Import(self, node: ast.Import) -> None:
+    def visit_Import(self, node: ast.Import) -> None:  # noqa: N802
         self.imports.update(alias.name for alias in node.names)
 
-    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:  # noqa: N802
         if node.level:
             package = self.module.split(".")[:-1]
             retained = package[: max(0, len(package) - node.level + 1)]
@@ -244,7 +244,7 @@ class _PythonVisitor(ast.NodeVisitor):
         elif node.module:
             self.imports.add(node.module)
 
-    def visit_ClassDef(self, node: ast.ClassDef) -> None:
+    def visit_ClassDef(self, node: ast.ClassDef) -> None:  # noqa: N802
         bases = tuple(_expression_name(item) for item in node.bases)
         symbol = self._symbol(node.name, SymbolType.CLASS, node, bases=bases)
         self.symbols.append(symbol)
@@ -256,10 +256,10 @@ class _PythonVisitor(ast.NodeVisitor):
         self.generic_visit(node)
         self.parents.pop()
 
-    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:
+    def visit_FunctionDef(self, node: ast.FunctionDef) -> None:  # noqa: N802
         self._visit_function(node)
 
-    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:
+    def visit_AsyncFunctionDef(self, node: ast.AsyncFunctionDef) -> None:  # noqa: N802
         self._visit_function(node)
 
     def _visit_function(self, node: ast.FunctionDef | ast.AsyncFunctionDef) -> None:
