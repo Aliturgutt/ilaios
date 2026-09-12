@@ -1,12 +1,14 @@
 """Authenticated binding from canonical SeriesState into Video execution context.
 
 This module is an integration adapter only. It reuses the existing durable
-SeriesStateStore and does not create a second series store, scheduler, runtime,
-or acceptance authority.
+SeriesStateStore and the canonical provider runtime's existing objective
+resolver injection point. It does not create a second series store, scheduler,
+runtime, provider, reviewer, or acceptance authority.
 """
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from src.video_automation.series_state import (
@@ -110,8 +112,62 @@ def resolve_authenticated_video_series_context(
     )
 
 
+def bind_series_context_to_objective_resolver(
+    objective_resolver: Callable[[str], str],
+    context_resolver: Callable[[str], AuthenticatedVideoSeriesContext | None],
+) -> Callable[[str], str]:
+    """Feed accepted series continuity into the canonical runtime planning input.
+
+    The provider runtime already accepts an objective resolver as its canonical
+    planning input. This adapter enriches only explicitly bound series jobs.
+    Standalone jobs remain unchanged; a series resolver must never infer series
+    identity from free text.
+    """
+
+    def resolve(job_id: str) -> str:
+        objective = objective_resolver(job_id).strip()
+        if not objective:
+            return objective
+        context = context_resolver(job_id)
+        if context is None:
+            return objective
+        continuity = context.continuity
+        bible = context.bible
+        if continuity.series_id != context.state.series_id:
+            raise VideoSeriesContextError("series continuity belongs to another series")
+        if continuity.previous_artifact_sha256 != context.previous_manifest.final_artifact_sha256:
+            raise VideoSeriesContextError("series continuity parent artifact is stale")
+        if continuity.series_bible_revision != bible.revision:
+            raise VideoSeriesContextError("series continuity uses a stale bible revision")
+
+        constraints = " | ".join(continuity.next_scene_constraints)
+        characters = " | ".join(continuity.character_references)
+        locations = " | ".join(continuity.location_references)
+        voices = " | ".join(continuity.voice_references)
+        return (
+            f"{objective}\n\n"
+            "SERIES CONTINUITY — accepted prior truth only:\n"
+            f"series_id={context.state.series_id}\n"
+            f"series_bible_revision={bible.revision}\n"
+            f"previous_artifact_sha256={continuity.previous_artifact_sha256}\n"
+            f"previous_final_frame={continuity.previous_final_frame}\n"
+            f"previous_episode_summary={continuity.previous_episode_summary}\n"
+            f"visual_style={bible.visual_style}\n"
+            f"color_language={continuity.color_language}\n"
+            f"character_references={characters}\n"
+            f"location_references={locations}\n"
+            f"voice_references={voices}\n"
+            f"next_scene_constraints={constraints}\n"
+            "Preserve these accepted continuity facts unless the authenticated "
+            "series request explicitly advances them."
+        )
+
+    return resolve
+
+
 __all__ = [
     "AuthenticatedVideoSeriesContext",
     "VideoSeriesContextError",
+    "bind_series_context_to_objective_resolver",
     "resolve_authenticated_video_series_context",
 ]
