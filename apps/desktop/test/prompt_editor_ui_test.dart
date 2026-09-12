@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ilaios_desktop/app/desktop_app.dart';
@@ -120,5 +122,91 @@ void main() {
       find.byKey(const Key('prompt-use-refined')),
     );
     expect(apply.onPressed, isNull);
+  });
+
+  testWidgets('source edits invalidate in-flight and completed previews', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final pending = Completer<PromptRefinementPreview>();
+
+    await tester.pumpWidget(
+      IlaiosDesktopApp(
+        projection: const ControlPlaneProjection(
+          connected: true,
+          status: 'Connected',
+          goalCount: 0,
+          jobCount: 0,
+          lastEvent: null,
+        ),
+        onPromptRefine: (prompt, mode) => pending.future,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('home-command-prompt')),
+      'Original prompt. Never deploy.',
+    );
+    await tester.tap(find.byKey(const Key('prompt-refine-action')));
+    await tester.pump();
+    await tester.enterText(
+      find.byKey(const Key('home-command-prompt')),
+      'Changed prompt. Never deploy.',
+    );
+    await tester.pump();
+
+    pending.complete(
+      const PromptRefinementPreview(
+        originalPrompt: 'Original prompt. Never deploy.',
+        refinedPrompt: 'Stale refined prompt.',
+        mode: PromptRefinementMode.preserveIntent,
+        transformed: true,
+        detectedIssues: [],
+        preservedConstraints: ['Never deploy.'],
+        unresolvedAmbiguities: [],
+        warnings: [],
+        constraintsDetected: true,
+        riskCues: ['deploy'],
+        riskCuesPreserved: true,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('prompt-before-after')), findsNothing);
+    final field = tester.widget<TextField>(
+      find.byKey(const Key('home-command-prompt')),
+    );
+    expect(field.controller!.text, 'Changed prompt. Never deploy.');
+  });
+
+  testWidgets('refinement failures do not expose raw exception text', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1600, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      IlaiosDesktopApp(
+        projection: const ControlPlaneProjection(
+          connected: true,
+          status: 'Connected',
+          goalCount: 0,
+          jobCount: 0,
+          lastEvent: null,
+        ),
+        onPromptRefine: (prompt, mode) async {
+          throw StateError('secret-token=should-not-leak');
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.byKey(const Key('home-command-prompt')),
+      'Build a website.',
+    );
+    await tester.tap(find.byKey(const Key('prompt-refine-action')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('secret-token'), findsNothing);
+    expect(find.byKey(const Key('prompt-refinement-error')), findsOneWidget);
   });
 }
