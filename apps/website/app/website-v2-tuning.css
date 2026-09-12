@@ -123,8 +123,9 @@ html[data-theme="dark"] main :where(
   -webkit-text-fill-color: #C8C8C8 !important;
 }
 
-/* Active dark control surfaces must keep readable white copy in Light theme. */
-html[data-theme="light"] main :where(.evidence-control.is-active,.dark-surface,[data-surface="dark"]) :where(strong,p,small,span) {
+/* Only surfaces that are actually dark in Light theme may force white copy.
+   Generic .dark-surface elements are normalized to white by the later visual authority. */
+html[data-theme="light"] main :where(.evidence-control.is-active,[data-surface="dark"]) :where(strong,p,small,span) {
   color: #FFFFFF !important;
   -webkit-text-fill-color: #FFFFFF !important;
 }
