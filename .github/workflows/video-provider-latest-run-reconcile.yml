@@ -1,0 +1,104 @@
+name: Video Provider Latest Run Reconcile
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - .github/workflows/video-provider-latest-run-reconcile.yml
+
+permissions:
+  actions: read
+  contents: read
+  statuses: write
+
+jobs:
+  reconcile:
+    name: Reconcile latest bounded provider certification
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Publish latest post-sidecar provider run
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CURRENT_SHA: ${{ github.sha }}
+          REPOSITORY: ${{ github.repository }}
+          MIN_CREATED_AT: "2026-08-19T09:41:55Z"
+        run: |
+          set -euo pipefail
+
+          runs_json="${RUNNER_TEMP}/video-provider-runs.json"
+          payload_json="${RUNNER_TEMP}/video-provider-status.json"
+
+          curl --fail-with-body --silent --show-error --location \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${REPOSITORY}/actions/workflows/video-provider-production-certification.yml/runs?event=workflow_dispatch&branch=master&per_page=20" \
+            --output "$runs_json"
+
+          RUNS_JSON="$runs_json" PAYLOAD_JSON="$payload_json" python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          runs_path = Path(os.environ["RUNS_JSON"])
+          payload_path = Path(os.environ["PAYLOAD_JSON"])
+          minimum = os.environ["MIN_CREATED_AT"]
+          repository = os.environ["REPOSITORY"]
+
+          document = json.loads(runs_path.read_text(encoding="utf-8"))
+          candidates = [
+              run
+              for run in document.get("workflow_runs", [])
+              if run.get("event") == "workflow_dispatch"
+              and run.get("head_branch") == "master"
+              and str(run.get("created_at", "")) >= minimum
+          ]
+
+          if not candidates:
+              payload = {
+                  "state": "error",
+                  "context": "ILAIOS Video Provider Latest Run",
+                  "description": "No post-sidecar provider certification run found",
+                  "target_url": (
+                      f"https://github.com/{repository}/actions/workflows/"
+                      "video-provider-production-certification.yml"
+                  ),
+              }
+          else:
+              run = candidates[0]
+              status = str(run.get("status") or "unknown")
+              conclusion = str(run.get("conclusion") or "")
+              head_sha = str(run.get("head_sha") or "")
+              run_id = run.get("id")
+              target = str(run.get("html_url") or "")
+              if status != "completed":
+                  state = "pending"
+                  outcome = status
+              elif conclusion == "success":
+                  state = "success"
+                  outcome = "success"
+              else:
+                  state = "failure"
+                  outcome = conclusion or "unknown"
+              payload = {
+                  "state": state,
+                  "context": "ILAIOS Video Provider Latest Run",
+                  "description": (
+                      f"run {run_id} {outcome} head {head_sha[:12]}"
+                  )[:140],
+                  "target_url": target,
+              }
+
+          payload_path.write_text(json.dumps(payload), encoding="utf-8")
+          PY
+
+          curl --fail-with-body --silent --show-error --location \
+            --request POST \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${REPOSITORY}/statuses/${CURRENT_SHA}" \
+            --data-binary "@${payload_json}"
