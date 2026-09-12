@@ -6,9 +6,12 @@ type Locale = "en" | "tr";
 
 const copy = {
   en: {
-    eyebrow: "Production outcomes",
-    title: "Create different kinds of finished work from one goal.",
-    lead: "Websites, video, software, applications and research are different outcomes, but you should not have to operate them as separate AI products.",
+    eyebrow: "Nine production areas",
+    title: "Create different kinds of finished work from one governed product.",
+    lead: "ILAIOS has nine bounded production areas: Web, Video / Media, Software, App, Research / Data, Security, Creative / Document, Commerce / Growth and Personal Operations.",
+    overviewTitle: "See all nine production areas at a glance.",
+    overviewLead: "Each area owns a different kind of outcome, while identity, policy, approvals, routing, evidence and state remain shared platform controls.",
+    overview: [["Web", "/factories/web"], ["Video / Media", "/factories/video"], ["Software", "/factories/software"], ["App", "/factories/app"], ["Research / Data", "/factories/research-data"], ["Security", "/factories/security"], ["Creative / Document", "/factories/creative-document"], ["Commerce / Growth", "/factories/commerce-growth"], ["Personal Operations", "/factories/personal-operations"]],
     visualEyebrow: "One goal, the right production path",
     visualTitle: "ILAIOS coordinates the work needed for the outcome.",
     visualLead: "A request can use one or more production areas while the user stays focused on the result rather than provider, model or tool configuration.",
@@ -26,9 +29,12 @@ const copy = {
     closeSecondary: "How ILAIOS works",
   },
   tr: {
-    eyebrow: "Üretim sonuçları",
-    title: "Tek bir hedeften farklı türde bitmiş işler üret.",
-    lead: "Web sitesi, video, yazılım, uygulama ve araştırma farklı sonuçlardır; ancak bunları ayrı ayrı yapay zekâ ürünleri gibi işletmek zorunda olmamalısın.",
+    eyebrow: "Dokuz üretim alanı",
+    title: "Tek yönetilen üründen farklı türde bitmiş işler üret.",
+    lead: "ILAIOS'un dokuz sınırlandırılmış üretim alanı vardır: Web, Video / Medya, Yazılım, Uygulama, Araştırma / Veri, Güvenlik, Creative / Doküman, Commerce / Büyüme ve Kişisel Operasyon.",
+    overviewTitle: "Dokuz üretim alanının tamamını tek bakışta gör.",
+    overviewLead: "Her alan farklı bir sonuç türüne odaklanır; kimlik, politika, onay, routing, kanıt ve durum ortak platform kontrolleri olarak kalır.",
+    overview: [["Web", "/tr/factories/web"], ["Video / Medya", "/tr/factories/video"], ["Yazılım", "/tr/factories/software"], ["Uygulama", "/tr/factories/app"], ["Araştırma / Veri", "/tr/factories/research-data"], ["Güvenlik", "/tr/factories/security"], ["Creative / Doküman", "/tr/factories/creative-document"], ["Commerce / Büyüme", "/tr/factories/commerce-growth"], ["Kişisel Operasyon", "/tr/factories/personal-operations"]],
     visualEyebrow: "Tek hedef, doğru üretim yolu",
     visualTitle: "ILAIOS sonuç için gereken işi koordine eder.",
     visualLead: "Bir istek bir veya birden fazla üretim alanını kullanabilir; kullanıcı sağlayıcı, model veya araç ayarı yerine sonuca odaklanır.",
@@ -52,6 +58,7 @@ export default function FactoriesPage({ locale }: { locale: Locale }) {
   const base = locale === "tr" ? "/tr" : "";
   return <>
     <section className="shell page-hero compact-page-hero"><div className="eyebrow">{c.eyebrow}</div><h1>{c.title}</h1><p className="lead">{c.lead}</p></section>
+    <section className="section"><div className="shell capability-factory-band"><div><div className="eyebrow">{c.eyebrow}</div><h2>{c.overviewTitle}</h2><p>{c.overviewLead}</p></div><div className="factory-link-cloud">{c.overview.map(([label, href], index) => <Link key={href} href={href}><span>{String(index + 1).padStart(2, "0")}</span>{label}</Link>)}</div></div></section>
     <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.visualEyebrow}</div><h2>{c.visualTitle}</h2></div><p>{c.visualLead}</p></div><FactoryExplorer locale={locale} /></div></section>
     <section className="section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.combineEyebrow}</div><h2>{c.combineTitle}</h2></div><p>{c.combineLead}</p></div><div className="runtime-line">{c.combine.map(([title, detail], index) => <div key={title}><span>{String(index + 1).padStart(2, "0")}</span><strong>{title}</strong><small>{detail}</small></div>)}</div></div></section>
     <section className="section factory-shared-context" style={{ paddingTop: "32px", paddingBottom: "32px" }}><div className="shell"><div className="architecture-story-copy" style={{ maxWidth: "760px" }}><div className="eyebrow">{c.sharedEyebrow}</div><h2>{c.sharedTitle}</h2><p>{c.sharedLead}</p></div></div></section>
