@@ -329,9 +329,12 @@ class SeriesStateStore:
             raise SeriesStateError("series state must reference exact bible revision")
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
-            if connection.execute(
-                "SELECT 1 FROM media_series WHERE series_id = ?", (state.series_id,)
-            ).fetchone() is not None:
+            if (
+                connection.execute(
+                    "SELECT 1 FROM media_series WHERE series_id = ?", (state.series_id,)
+                ).fetchone()
+                is not None
+            ):
                 raise SeriesStateError("series_id already exists")
             connection.execute(
                 "INSERT INTO media_series VALUES (?, ?, ?, ?, ?)",
@@ -374,7 +377,9 @@ class SeriesStateStore:
         _text("checkpoint", checkpoint)
         state = self.load_series(series_id)
         if episode_number != state.next_episode_number:
-            raise SeriesStateError("episode_number is not the next accepted sequence number")
+            raise SeriesStateError(
+                "episode_number is not the next accepted sequence number"
+            )
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             active = connection.execute(
@@ -385,7 +390,9 @@ class SeriesStateStore:
             if active:
                 existing = _row(active[0])
                 if str(existing["episode_id"]) != episode_id:
-                    raise SeriesStateError("previous episode is incomplete; resume it first")
+                    raise SeriesStateError(
+                        "previous episode is incomplete; resume it first"
+                    )
                 return
             connection.execute(
                 "INSERT INTO media_episode_progress VALUES (?, ?, ?, ?, ?)",
@@ -463,7 +470,9 @@ class SeriesStateStore:
             EpisodeProgressState.IN_PROGRESS,
             EpisodeProgressState.INCOMPLETE,
         }:
-            raise SeriesStateError("episode is not eligible for final acceptance persistence")
+            raise SeriesStateError(
+                "episode is not eligible for final acceptance persistence"
+            )
         material = _manifest_json(manifest)
         manifest_sha = hashlib.sha256(material.encode("utf-8")).hexdigest()
         with self._connect() as connection:
@@ -494,7 +503,9 @@ class SeriesStateStore:
             )
         return manifest_sha
 
-    def advance_series_from_manifest(self, *, series_id: str, episode_id: str) -> SeriesState:
+    def advance_series_from_manifest(
+        self, *, series_id: str, episode_id: str
+    ) -> SeriesState:
         """Advance durable series state only from an immutable accepted manifest."""
 
         manifest = self.load_manifest(episode_id)
@@ -524,7 +535,9 @@ class SeriesStateStore:
                 raise SeriesStateError("series disappeared during advancement")
             current = _state_from_json(str(_row(stored)["state_json"]))
             if current != state:
-                raise SeriesStateError("series changed concurrently; recover from manifest")
+                raise SeriesStateError(
+                    "series changed concurrently; recover from manifest"
+                )
             connection.execute(
                 "UPDATE media_series SET state_json=? WHERE series_id=?",
                 (_state_json(next_state), series_id),
@@ -804,7 +817,9 @@ def _manifest_from_json(raw: str) -> AcceptedEpisodeManifest:
         shot_plan_reference=_string(data, "shot_plan_reference"),
         generated_clip_references=_string_tuple(data, "generated_clip_references"),
         source_reference_assets=_string_tuple(data, "source_reference_assets"),
-        provider_model_evidence_refs=_string_tuple(data, "provider_model_evidence_refs"),
+        provider_model_evidence_refs=_string_tuple(
+            data, "provider_model_evidence_refs"
+        ),
         voice_references=_string_tuple(data, "voice_references"),
         music_references=_string_tuple(data, "music_references"),
         sfx_references=_string_tuple(data, "sfx_references"),

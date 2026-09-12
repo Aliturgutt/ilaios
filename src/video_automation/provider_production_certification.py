@@ -100,20 +100,31 @@ def select_certification_model(
     models: tuple[OpenRouterVideoModel, ...],
     shape: CertificationShape,
 ) -> OpenRouterVideoModel:
-    selected = next((model for model in models if model.model_id == shape.model_id), None)
+    selected = next(
+        (model for model in models if model.model_id == shape.model_id), None
+    )
     if selected is None:
         raise ProviderProductionCertificationError(
             "configured certification model is not currently paid-eligible"
         )
-    if selected.supported_durations and shape.duration_seconds not in selected.supported_durations:
+    if (
+        selected.supported_durations
+        and shape.duration_seconds not in selected.supported_durations
+    ):
         raise ProviderProductionCertificationError(
             "configured certification duration is not currently supported"
         )
-    if selected.supported_resolutions and shape.resolution not in selected.supported_resolutions:
+    if (
+        selected.supported_resolutions
+        and shape.resolution not in selected.supported_resolutions
+    ):
         raise ProviderProductionCertificationError(
             "configured certification resolution is not currently supported"
         )
-    if selected.supported_aspect_ratios and shape.aspect_ratio not in selected.supported_aspect_ratios:
+    if (
+        selected.supported_aspect_ratios
+        and shape.aspect_ratio not in selected.supported_aspect_ratios
+    ):
         raise ProviderProductionCertificationError(
             "configured certification aspect ratio is not currently supported"
         )
@@ -486,7 +497,10 @@ def run_certification(
             final_asset_id = observation.output_asset_ids[0]
             terminal_observation = observation
             break
-        if observation.status in {ProviderJobStatus.FAILED, ProviderJobStatus.CANCELLED}:
+        if observation.status in {
+            ProviderJobStatus.FAILED,
+            ProviderJobStatus.CANCELLED,
+        }:
             terminal_observation = observation
             break
         sleep(float(poll_interval_seconds))
@@ -532,7 +546,8 @@ def run_certification(
     receipt["cost_reconciliation"] = {
         "actual_provider_cost_microusd": actual_provider_cost_microusd,
         "provider_cost_ceiling_microusd": provider_cost_ceiling_microusd,
-        "within_ceiling": actual_provider_cost_microusd <= provider_cost_ceiling_microusd,
+        "within_ceiling": actual_provider_cost_microusd
+        <= provider_cost_ceiling_microusd,
         "managed_credit_settled": True,
     }
     _persist(receipt_path, receipt)
@@ -591,16 +606,24 @@ def certification_from_environment() -> dict[str, object]:
     shape = CertificationShape(
         model_id=os.environ.get("VIDEO_PROVIDER_MODEL", DEFAULT_MODEL_ID),
         duration_seconds=int(
-            os.environ.get("VIDEO_PROVIDER_DURATION_SECONDS", str(DEFAULT_DURATION_SECONDS))
+            os.environ.get(
+                "VIDEO_PROVIDER_DURATION_SECONDS", str(DEFAULT_DURATION_SECONDS)
+            )
         ),
         resolution=os.environ.get("VIDEO_PROVIDER_RESOLUTION", DEFAULT_RESOLUTION),
-        aspect_ratio=os.environ.get("VIDEO_PROVIDER_ASPECT_RATIO", DEFAULT_ASPECT_RATIO),
+        aspect_ratio=os.environ.get(
+            "VIDEO_PROVIDER_ASPECT_RATIO", DEFAULT_ASPECT_RATIO
+        ),
         generate_audio=False,
         max_unit_price_usd=Decimal(
-            os.environ.get("VIDEO_PROVIDER_MAX_UNIT_PRICE_USD", str(DEFAULT_MAX_UNIT_PRICE_USD))
+            os.environ.get(
+                "VIDEO_PROVIDER_MAX_UNIT_PRICE_USD", str(DEFAULT_MAX_UNIT_PRICE_USD)
+            )
         ),
         max_total_cost_usd=Decimal(
-            os.environ.get("VIDEO_PROVIDER_MAX_TOTAL_COST_USD", str(DEFAULT_MAX_TOTAL_COST_USD))
+            os.environ.get(
+                "VIDEO_PROVIDER_MAX_TOTAL_COST_USD", str(DEFAULT_MAX_TOTAL_COST_USD)
+            )
         ),
     )
     return run_certification(

@@ -258,7 +258,9 @@ class OpenRouterVideoCatalogClient:
             )
         age = self._clock() - snapshot.observed_at_epoch_s
         if age < 0 or age > self._max_paid_staleness_seconds:
-            raise OpenRouterCatalogError("paid dispatch blocked: catalog pricing is stale")
+            raise OpenRouterCatalogError(
+                "paid dispatch blocked: catalog pricing is stale"
+            )
         if observation.health in {
             OpenRouterCatalogHealth.AUTH_FAILED,
             OpenRouterCatalogHealth.CATALOG_INVALID,

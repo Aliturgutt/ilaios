@@ -60,9 +60,7 @@ class AudioProcessingManifest:
             )
 
         if self.sample_rate <= 0:
-            raise AudioProcessingError(
-                "sample_rate must be greater than zero"
-            )
+            raise AudioProcessingError("sample_rate must be greater than zero")
 
         if self.narration_asset.job_id != self.job_id:
             raise AudioProcessingError(
@@ -70,9 +68,7 @@ class AudioProcessingManifest:
             )
 
         if self.narration_asset.media_type is not MediaType.VOICE:
-            raise AudioProcessingError(
-                "narration asset must use MediaType.VOICE"
-            )
+            raise AudioProcessingError("narration asset must use MediaType.VOICE")
 
         for asset in self.music_assets:
             if asset.job_id != self.job_id:
@@ -81,9 +77,7 @@ class AudioProcessingManifest:
                 )
 
             if asset.media_type is not MediaType.MUSIC:
-                raise AudioProcessingError(
-                    "music asset must use MediaType.MUSIC"
-                )
+                raise AudioProcessingError("music asset must use MediaType.MUSIC")
 
         for asset in self.sound_effect_assets:
             if asset.job_id != self.job_id:
@@ -104,14 +98,10 @@ class _PcmTrack:
 
     def __post_init__(self) -> None:
         if self.sample_rate <= 0:
-            raise AudioProcessingError(
-                "PCM sample_rate must be greater than zero"
-            )
+            raise AudioProcessingError("PCM sample_rate must be greater than zero")
 
         if not self.samples:
-            raise AudioProcessingError(
-                "PCM track must contain at least one sample"
-            )
+            raise AudioProcessingError("PCM track must contain at least one sample")
 
 
 class AudioProcessingCoordinator:
@@ -142,9 +132,7 @@ class AudioProcessingCoordinator:
             )
 
         if voice_asset.media_type is not MediaType.VOICE:
-            raise AudioProcessingError(
-                "voice_asset must use MediaType.VOICE"
-            )
+            raise AudioProcessingError("voice_asset must use MediaType.VOICE")
 
         for asset in music_assets:
             self._validate_auxiliary_identity(
@@ -168,9 +156,7 @@ class AudioProcessingCoordinator:
         target_frames = round(target_duration_seconds * sample_rate)
 
         if target_frames <= 0:
-            raise AudioProcessingError(
-                "target duration resolves to zero PCM frames"
-            )
+            raise AudioProcessingError("target duration resolves to zero PCM frames")
 
         output_root = Path(output_directory)
         output_root.mkdir(parents=True, exist_ok=True)
@@ -237,9 +223,7 @@ class AudioProcessingCoordinator:
             )
 
         if asset.media_type is not expected_media_type:
-            raise AudioProcessingError(
-                f"{role} asset has incorrect media_type"
-            )
+            raise AudioProcessingError(f"{role} asset has incorrect media_type")
 
     def _prepare_asset(
         self,
@@ -275,14 +259,9 @@ class AudioProcessingCoordinator:
             )
         )
 
-        processing_id = sha256(
-            identity_material.encode("utf-8")
-        ).hexdigest()
+        processing_id = sha256(identity_material.encode("utf-8")).hexdigest()
 
-        output_path = (
-            output_root
-            / f"m15-{role}-{processing_id[:20]}.wav"
-        )
+        output_path = output_root / f"m15-{role}-{processing_id[:20]}.wav"
 
         _write_pcm_wav(
             path=output_path,
@@ -293,13 +272,9 @@ class AudioProcessingCoordinator:
         body = _read_non_empty_file(output_path)
         checksum = sha256(body).hexdigest()
 
-        asset_identity = (
-            f"{source_asset.asset_id}\n{processing_id}\n{checksum}"
-        )
+        asset_identity = f"{source_asset.asset_id}\n{processing_id}\n{checksum}"
 
-        asset_id = (
-            f"audio-{sha256(asset_identity.encode('utf-8')).hexdigest()[:24]}"
-        )
+        asset_id = f"audio-{sha256(asset_identity.encode('utf-8')).hexdigest()[:24]}"
 
         return MediaAsset(
             asset_id=asset_id,
@@ -308,9 +283,7 @@ class AudioProcessingCoordinator:
             file_path=str(output_path.resolve()),
             checksum_sha256=checksum,
             provider_name=source_asset.provider_name,
-            source_reference=(
-                f"{source_asset.source_reference}#m15-audio-processed"
-            ),
+            source_reference=(f"{source_asset.source_reference}#m15-audio-processed"),
             validated=True,
         )
 
@@ -319,22 +292,16 @@ def _load_verified_pcm_asset(asset: MediaAsset) -> _PcmTrack:
     path = Path(asset.file_path)
 
     if not path.exists():
-        raise AudioProcessingError(
-            f"audio asset does not exist: {asset.asset_id}"
-        )
+        raise AudioProcessingError(f"audio asset does not exist: {asset.asset_id}")
 
     if not path.is_file():
-        raise AudioProcessingError(
-            f"audio asset path is not a file: {asset.asset_id}"
-        )
+        raise AudioProcessingError(f"audio asset path is not a file: {asset.asset_id}")
 
     body = _read_non_empty_file(path)
     checksum = sha256(body).hexdigest()
 
     if checksum != asset.checksum_sha256:
-        raise AudioProcessingError(
-            f"audio asset checksum changed: {asset.asset_id}"
-        )
+        raise AudioProcessingError(f"audio asset checksum changed: {asset.asset_id}")
 
     try:
         with wave.open(str(path), "rb") as wav_file:
@@ -350,9 +317,7 @@ def _load_verified_pcm_asset(asset: MediaAsset) -> _PcmTrack:
         ) from exc
 
     if channels != _CHANNELS:
-        raise AudioProcessingError(
-            "M15 local audio preparation requires mono PCM WAV"
-        )
+        raise AudioProcessingError("M15 local audio preparation requires mono PCM WAV")
 
     if sample_width != _SAMPLE_WIDTH_BYTES:
         raise AudioProcessingError(
@@ -360,14 +325,10 @@ def _load_verified_pcm_asset(asset: MediaAsset) -> _PcmTrack:
         )
 
     if sample_rate <= 0:
-        raise AudioProcessingError(
-            "audio WAV sample rate must be greater than zero"
-        )
+        raise AudioProcessingError("audio WAV sample rate must be greater than zero")
 
     if frame_count <= 0:
-        raise AudioProcessingError(
-            "audio WAV must contain at least one frame"
-        )
+        raise AudioProcessingError("audio WAV must contain at least one frame")
 
     if compression_type != "NONE":
         raise AudioProcessingError(
@@ -397,8 +358,7 @@ def _remove_noise_floor_and_edge_silence(
     samples: tuple[int, ...],
 ) -> tuple[int, ...]:
     gated = tuple(
-        0 if abs(sample) <= _NOISE_GATE_THRESHOLD else sample
-        for sample in samples
+        0 if abs(sample) <= _NOISE_GATE_THRESHOLD else sample for sample in samples
     )
 
     first_non_zero: int | None = None
@@ -433,9 +393,7 @@ def _normalize_peak(
     peak = max(abs(sample) for sample in samples)
 
     if peak <= 0:
-        raise AudioProcessingError(
-            "audio normalization requires non-zero signal"
-        )
+        raise AudioProcessingError("audio normalization requires non-zero signal")
 
     scale = _TARGET_PEAK / peak
 
@@ -454,9 +412,7 @@ def _align_duration(
     target_frames: int,
 ) -> tuple[int, ...]:
     if target_frames <= 0:
-        raise AudioProcessingError(
-            "target_frames must be greater than zero"
-        )
+        raise AudioProcessingError("target_frames must be greater than zero")
 
     if len(samples) >= target_frames:
         return samples[:target_frames]
@@ -473,14 +429,10 @@ def _write_pcm_wav(
     samples: tuple[int, ...],
 ) -> None:
     if sample_rate <= 0:
-        raise AudioProcessingError(
-            "sample_rate must be greater than zero"
-        )
+        raise AudioProcessingError("sample_rate must be greater than zero")
 
     if not samples:
-        raise AudioProcessingError(
-            "cannot write an empty PCM track"
-        )
+        raise AudioProcessingError("cannot write an empty PCM track")
 
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -499,23 +451,17 @@ def _write_pcm_wav(
             wav_file.setframerate(sample_rate)
             wav_file.writeframes(samples_array.tobytes())
     except (OSError, wave.Error) as exc:
-        raise AudioProcessingError(
-            f"failed to write processed WAV: {path}"
-        ) from exc
+        raise AudioProcessingError(f"failed to write processed WAV: {path}") from exc
 
 
 def _read_non_empty_file(path: Path) -> bytes:
     try:
         body = path.read_bytes()
     except OSError as exc:
-        raise AudioProcessingError(
-            f"audio file is unreadable: {path}"
-        ) from exc
+        raise AudioProcessingError(f"audio file is unreadable: {path}") from exc
 
     if not body:
-        raise AudioProcessingError(
-            f"audio file must not be empty: {path}"
-        )
+        raise AudioProcessingError(f"audio file must not be empty: {path}")
 
     return body
 
@@ -526,11 +472,7 @@ def _clamp_int16(value: int) -> int:
 
 def _require_non_blank(name: str, value: str) -> None:
     if not value or not value.strip():
-        raise AudioProcessingError(
-            f"{name} must not be blank"
-        )
+        raise AudioProcessingError(f"{name} must not be blank")
 
     if value != value.strip():
-        raise AudioProcessingError(
-            f"{name} must not contain surrounding whitespace"
-        )
+        raise AudioProcessingError(f"{name} must not contain surrounding whitespace")

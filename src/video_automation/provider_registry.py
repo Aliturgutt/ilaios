@@ -26,9 +26,7 @@ class ProviderDescriptor:
     def __post_init__(self) -> None:
         _validate_text("provider_name", self.provider_name)
         if self.provider_name != self.capabilities.provider_name:
-            raise ValueError(
-                "provider_name must match capabilities.provider_name"
-            )
+            raise ValueError("provider_name must match capabilities.provider_name")
 
 
 class ProviderRegistry:
@@ -85,8 +83,7 @@ class ProviderRegistry:
         """Return capabilities in deterministic provider-name order."""
 
         return tuple(
-            self._providers[name].capabilities
-            for name in self.list_provider_names()
+            self._providers[name].capabilities for name in self.list_provider_names()
         )
 
     def descriptors(self) -> tuple[ProviderDescriptor, ...]:

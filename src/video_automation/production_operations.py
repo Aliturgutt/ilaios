@@ -346,14 +346,20 @@ def _ratio(name: str, value: float) -> None:
 
 def _text(name: str, value: str) -> None:
     if not value or value != value.strip():
-        raise VideoProductionOperationsError(f"{name} must be normalized non-blank text")
+        raise VideoProductionOperationsError(
+            f"{name} must be normalized non-blank text"
+        )
 
 
 def _sha256(name: str, value: str) -> None:
-    if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+    if len(value) != 64 or any(
+        character not in "0123456789abcdef" for character in value
+    ):
         raise VideoProductionOperationsError(f"{name} must be lowercase SHA-256")
 
 
 def _git_sha(name: str, value: str) -> None:
-    if len(value) != 40 or any(character not in "0123456789abcdef" for character in value):
+    if len(value) != 40 or any(
+        character not in "0123456789abcdef" for character in value
+    ):
         raise VideoProductionOperationsError(f"{name} must be lowercase 40-hex Git SHA")

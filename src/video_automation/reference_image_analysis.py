@@ -44,15 +44,21 @@ class ReferenceImageInput:
 
     def __post_init__(self) -> None:
         if not self.content:
-            raise ReferenceImageAnalysisError("reference image content must not be empty")
+            raise ReferenceImageAnalysisError(
+                "reference image content must not be empty"
+            )
         if self.mime_type not in {"image/jpeg", "image/png", "image/webp"}:
             raise ReferenceImageAnalysisError("unsupported reference image MIME type")
         if sha256(self.content).hexdigest() != self.sha256_hex:
-            raise ReferenceImageAnalysisError("reference image digest does not match bytes")
+            raise ReferenceImageAnalysisError(
+                "reference image digest does not match bytes"
+            )
         if not self.role or self.role != self.role.strip():
             raise ReferenceImageAnalysisError("reference image role must be non-blank")
         if self.instruction is not None and len(self.instruction) > 500:
-            raise ReferenceImageAnalysisError("reference instruction exceeds 500 characters")
+            raise ReferenceImageAnalysisError(
+                "reference instruction exceeds 500 characters"
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,7 +89,9 @@ class OpenRouterReferenceImageAnalyzer:
                 "reference image analysis must use an explicitly free model"
             )
         if timeout_seconds <= 0:
-            raise ReferenceImageAnalysisError("reference analyzer timeout must be positive")
+            raise ReferenceImageAnalysisError(
+                "reference analyzer timeout must be positive"
+            )
         self._api_key = api_key
         self._model_id = model_id
         self._base_url = base_url.rstrip("/")
@@ -94,14 +102,22 @@ class OpenRouterReferenceImageAnalyzer:
     def analyzer_id(self) -> str:
         return f"openrouter-reference-analysis:{self._model_id}"
 
-    def analyze(self, references: Sequence[ReferenceImageInput]) -> ReferenceVisualBrief:
+    def analyze(
+        self, references: Sequence[ReferenceImageInput]
+    ) -> ReferenceVisualBrief:
         if not references:
-            raise ReferenceImageAnalysisError("at least one reference image is required")
+            raise ReferenceImageAnalysisError(
+                "at least one reference image is required"
+            )
         if len(references) > _MAX_REFERENCE_IMAGES:
-            raise ReferenceImageAnalysisError("at most 20 reference images may be analyzed")
+            raise ReferenceImageAnalysisError(
+                "at most 20 reference images may be analyzed"
+            )
         digests = tuple(reference.sha256_hex for reference in references)
         if len(set(digests)) != len(digests):
-            raise ReferenceImageAnalysisError("duplicate reference images are not allowed")
+            raise ReferenceImageAnalysisError(
+                "duplicate reference images are not allowed"
+            )
 
         # Normalize only one batch at a time. At the 100 MiB admitted input ceiling this
         # avoids retaining normalized copies of all twenty images simultaneously.
@@ -115,7 +131,9 @@ class OpenRouterReferenceImageAnalyzer:
             briefs.append(self._analyze_batch(normalized_batch, offset=offset))
         text = "\n\n".join(briefs).strip()
         if not text or len(text) > _MAX_BRIEF_CHARS:
-            raise ReferenceImageAnalysisError("reference visual brief is empty or oversized")
+            raise ReferenceImageAnalysisError(
+                "reference visual brief is empty or oversized"
+            )
         return ReferenceVisualBrief(text, digests, self.analyzer_id)
 
     def _analyze_batch(
@@ -241,18 +259,24 @@ def _downscale_to_jpeg(content: bytes) -> bytes:
             timeout=45,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired) as error:
-        raise ReferenceImageAnalysisError("reference image normalization failed") from error
+        raise ReferenceImageAnalysisError(
+            "reference image normalization failed"
+        ) from error
     if completed.returncode != 0 or not completed.stdout:
         raise ReferenceImageAnalysisError("FFmpeg rejected a reference image")
     if len(completed.stdout) > _MAX_NORMALIZED_IMAGE_BYTES:
-        raise ReferenceImageAnalysisError("normalized reference image remains oversized")
+        raise ReferenceImageAnalysisError(
+            "normalized reference image remains oversized"
+        )
     return completed.stdout
 
 
 def _extract_visual_brief(payload: Mapping[str, object]) -> str:
     choices = payload.get("choices")
     if not isinstance(choices, list) or not choices:
-        raise ReferenceImageAnalysisError("reference analysis response is missing choices")
+        raise ReferenceImageAnalysisError(
+            "reference analysis response is missing choices"
+        )
     first = choices[0]
     if not isinstance(first, Mapping):
         raise ReferenceImageAnalysisError("reference analysis choice is malformed")
@@ -265,9 +289,13 @@ def _extract_visual_brief(payload: Mapping[str, object]) -> str:
     try:
         document = json.loads(raw)
     except json.JSONDecodeError as error:
-        raise ReferenceImageAnalysisError("reference analysis content is invalid JSON") from error
+        raise ReferenceImageAnalysisError(
+            "reference analysis content is invalid JSON"
+        ) from error
     if not isinstance(document, dict):
-        raise ReferenceImageAnalysisError("reference analysis content must be an object")
+        raise ReferenceImageAnalysisError(
+            "reference analysis content must be an object"
+        )
     brief = document.get("visual_brief")
     if not isinstance(brief, str) or not brief.strip():
         raise ReferenceImageAnalysisError("reference analysis visual brief is missing")

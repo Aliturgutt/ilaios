@@ -97,10 +97,13 @@ class EpisodeAssemblyExecutorResult:
 
 class EpisodeAssemblyExecutor(Protocol):
     @property
-    def executor_id(self) -> str: ...
+    def executor_id(self) -> str:
+        ...
+
     def execute(
         self, request: EpisodeAssemblyExecutorRequest
-    ) -> EpisodeAssemblyExecutorResult: ...
+    ) -> EpisodeAssemblyExecutorResult:
+        ...
 
 
 class FfmpegEpisodeAssemblyExecutor:
@@ -229,7 +232,9 @@ class EpisodeAssemblyExecutionCoordinator:
         final_masterer: Final1080pMasterer | None = None,
     ) -> None:
         self._executor = executor
-        if final_masterer is None and isinstance(executor, FfmpegEpisodeAssemblyExecutor):
+        if final_masterer is None and isinstance(
+            executor, FfmpegEpisodeAssemblyExecutor
+        ):
             final_masterer = Final1080pMasterer(FfmpegMediaEngine(timeout_seconds=600))
         self._final_masterer = final_masterer
 
@@ -332,9 +337,9 @@ class EpisodeAssemblyExecutionCoordinator:
             )
         )
         metadata = dict(result.metadata)
-        metadata["technical_validation_manifest_id"] = (
-            manifest.technical_validation_manifest_id
-        )
+        metadata[
+            "technical_validation_manifest_id"
+        ] = manifest.technical_validation_manifest_id
         metadata.update(mastering_metadata)
         return EpisodeAssemblyArtifact(
             artifact_id=f"episode-assembly-artifact-{sha256(material.encode()).hexdigest()[:16]}",
@@ -391,9 +396,7 @@ def _validate_identity(
         raise EpisodeAssemblyExecutionError(
             "technical validation manifest must pass before assembly execution"
         )
-    if {c.asset_id for c in request.clips} != {
-        a.asset_id for a in manifest.assets
-    }:
+    if {c.asset_id for c in request.clips} != {a.asset_id for a in manifest.assets}:
         raise EpisodeAssemblyExecutionError(
             "assembly request assets must exactly match technical validation assets"
         )

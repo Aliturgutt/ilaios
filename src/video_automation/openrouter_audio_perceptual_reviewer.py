@@ -53,9 +53,15 @@ class OpenRouterAudioPerceptualReviewer:
         transport: OpenRouterReviewTransport | None = None,
         audio_extractor: AudioExtractor | None = None,
     ) -> None:
-        for name, value in (("api_key", api_key), ("model_id", model_id), ("base_url", base_url)):
+        for name, value in (
+            ("api_key", api_key),
+            ("model_id", model_id),
+            ("base_url", base_url),
+        ):
             if not value or value != value.strip():
-                raise OpenRouterPerceptualReviewError(f"{name} must be non-blank and trimmed")
+                raise OpenRouterPerceptualReviewError(
+                    f"{name} must be non-blank and trimmed"
+                )
         if timeout_seconds <= 0:
             raise OpenRouterPerceptualReviewError("timeout_seconds must be positive")
         if not 0 < threshold <= 1:
@@ -81,16 +87,24 @@ class OpenRouterAudioPerceptualReviewer:
         producer_id: str,
         review_id: str,
     ) -> PerceptualReviewSubmission:
-        for name, value in (("objective", objective), ("producer_id", producer_id), ("review_id", review_id)):
+        for name, value in (
+            ("objective", objective),
+            ("producer_id", producer_id),
+            ("review_id", review_id),
+        ):
             if not value or value != value.strip():
-                raise OpenRouterPerceptualReviewError(f"{name} must be non-blank and trimmed")
+                raise OpenRouterPerceptualReviewError(
+                    f"{name} must be non-blank and trimmed"
+                )
         _require_sha256(artifact_sha256)
         if self.reviewer_id == producer_id:
             raise OpenRouterPerceptualReviewError(
                 "perceptual reviewer must be independent from artifact producer"
             )
         if not video_path.is_file():
-            raise OpenRouterPerceptualReviewError("audio review video path is not a file")
+            raise OpenRouterPerceptualReviewError(
+                "audio review video path is not a file"
+            )
         actual_sha256 = sha256(video_path.read_bytes()).hexdigest()
         if actual_sha256 != artifact_sha256:
             raise OpenRouterPerceptualReviewError(
@@ -99,7 +113,9 @@ class OpenRouterAudioPerceptualReviewer:
 
         audio = self._audio_extractor(video_path)
         if not audio:
-            raise OpenRouterPerceptualReviewError("final video has no reviewable audio evidence")
+            raise OpenRouterPerceptualReviewError(
+                "final video has no reviewable audio evidence"
+            )
         audio_sha256 = sha256(audio).hexdigest()
         content: tuple[dict[str, object], ...] = (
             {
@@ -181,7 +197,9 @@ class OpenRouterAudioPerceptualReviewer:
                 f"openrouter-audio-review:model={self._model_id}:artifact={artifact_sha256}:"
                 f"audio={audio_sha256}"
             ),
-            repair_target=None if passed else (repair_target.strip() or "repair-audio-integrity"),
+            repair_target=None
+            if passed
+            else (repair_target.strip() or "repair-audio-integrity"),
         )
 
 
@@ -219,7 +237,9 @@ def _extract_pcm_wav(video_path: Path) -> bytes:
 
 
 def _require_sha256(value: str) -> None:
-    if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+    if len(value) != 64 or any(
+        character not in "0123456789abcdef" for character in value
+    ):
         raise OpenRouterPerceptualReviewError(
             "artifact_sha256 must be lowercase SHA-256"
         )

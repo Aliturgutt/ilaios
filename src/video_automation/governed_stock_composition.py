@@ -49,12 +49,19 @@ class GovernedStockCompositionInput:
                 "stock composition media SHA does not match admitted bytes"
             )
         if not self.provider.strip() or self.provider != self.provider.strip():
-            raise GovernedStockCompositionError("stock provider must be non-blank and trimmed")
+            raise GovernedStockCompositionError(
+                "stock provider must be non-blank and trimmed"
+            )
         if not self.source_url.startswith("https://"):
             raise GovernedStockCompositionError("stock source URL must use https")
         if not self.asset_id.strip() or self.asset_id != self.asset_id.strip():
-            raise GovernedStockCompositionError("stock asset id must be non-blank and trimmed")
-        if not self.license_name.strip() or self.license_name != self.license_name.strip():
+            raise GovernedStockCompositionError(
+                "stock asset id must be non-blank and trimmed"
+            )
+        if (
+            not self.license_name.strip()
+            or self.license_name != self.license_name.strip()
+        ):
             raise GovernedStockCompositionError(
                 "stock license name must be non-blank and trimmed"
             )
@@ -79,7 +86,9 @@ class GovernedStockCompositionInput:
         try:
             int(final_mp4_sha256, 16)
         except ValueError as exc:
-            raise GovernedStockCompositionError("final MP4 SHA must be hexadecimal") from exc
+            raise GovernedStockCompositionError(
+                "final MP4 SHA must be hexadecimal"
+            ) from exc
         return {
             "final_mp4_sha256": final_mp4_sha256,
             "stock_media_sha256": self.media_sha256,
@@ -129,7 +138,9 @@ def composition_input_from_selection(
     )
 
 
-def ffmpeg_stock_input_args(composition: GovernedStockCompositionInput) -> tuple[str, ...]:
+def ffmpeg_stock_input_args(
+    composition: GovernedStockCompositionInput,
+) -> tuple[str, ...]:
     """Return bounded ffmpeg input args for an admitted image/video stock asset."""
     if composition.media_type == "image":
         return ("-loop", "1", "-i", str(composition.media_path))

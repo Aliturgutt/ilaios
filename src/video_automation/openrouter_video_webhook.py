@@ -95,7 +95,9 @@ class OpenRouterVideoWebhookVerifier:
         try:
             decoded = json.loads(raw_body.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise OpenRouterWebhookError("webhook body is not valid UTF-8 JSON") from exc
+            raise OpenRouterWebhookError(
+                "webhook body is not valid UTF-8 JSON"
+            ) from exc
         if not isinstance(decoded, dict):
             raise OpenRouterWebhookError("webhook body must be a JSON object")
         event_type = decoded.get("type")
@@ -169,7 +171,9 @@ class OpenRouterVideoWebhookStore:
     ) -> None:
         _text("request_id", request_id)
         _text("provider_job_id", provider_job_id)
-        observed = time.time() if registered_at_epoch_s is None else registered_at_epoch_s
+        observed = (
+            time.time() if registered_at_epoch_s is None else registered_at_epoch_s
+        )
         with self._connect() as connection:
             connection.execute("BEGIN IMMEDIATE")
             existing = connection.execute(

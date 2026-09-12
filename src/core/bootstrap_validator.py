@@ -82,11 +82,13 @@ class BootstrapValidator:
                 capture_output=True,
                 text=True,
                 check=True,
-                timeout=30
+                timeout=30,
             )
             output = result.stdout.strip()
             if not output:
-                raise ContextError(f"Git command returned empty output: git {' '.join(args)}")
+                raise ContextError(
+                    f"Git command returned empty output: git {' '.join(args)}"
+                )
             return output
         except subprocess.CalledProcessError as e:
             error_msg = e.stderr.strip() if e.stderr else "Unknown error"
@@ -96,10 +98,6 @@ class BootstrapValidator:
                 f"Error: {error_msg}"
             ) from e
         except subprocess.TimeoutExpired as e:
-            raise ContextError(
-                f"Git command timed out: git {' '.join(args)}"
-            ) from e
+            raise ContextError(f"Git command timed out: git {' '.join(args)}") from e
         except FileNotFoundError as e:
-            raise ContextError(
-                "Git is not installed or not found in PATH"
-            ) from e
+            raise ContextError("Git is not installed or not found in PATH") from e

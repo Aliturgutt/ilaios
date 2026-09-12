@@ -36,12 +36,16 @@ class DailyTopicCandidate:
         for name in ("topic_id", "title", "summary", "category"):
             value = getattr(self, name)
             if not value or value != value.strip():
-                raise DailyTopicSelectionError(f"{name} must be normalized non-blank text")
+                raise DailyTopicSelectionError(
+                    f"{name} must be normalized non-blank text"
+                )
         if self.published_at.tzinfo is None:
             raise DailyTopicSelectionError("published_at must be timezone-aware")
         refs = tuple(ref.strip() for ref in self.independent_source_refs)
         if any(not ref for ref in refs) or len(refs) != len(set(refs)):
-            raise DailyTopicSelectionError("independent_source_refs must be unique and non-blank")
+            raise DailyTopicSelectionError(
+                "independent_source_refs must be unique and non-blank"
+            )
         object.__setattr__(self, "independent_source_refs", refs)
         for name in ("relevance_score", "advertiser_value_score", "freshness_score"):
             score = float(getattr(self, name))
@@ -50,8 +54,12 @@ class DailyTopicCandidate:
 
         fingerprint = self.content_fingerprint.strip().lower()
         if fingerprint:
-            if len(fingerprint) != 64 or any(ch not in "0123456789abcdef" for ch in fingerprint):
-                raise DailyTopicSelectionError("content_fingerprint must be a lowercase SHA-256 digest")
+            if len(fingerprint) != 64 or any(
+                ch not in "0123456789abcdef" for ch in fingerprint
+            ):
+                raise DailyTopicSelectionError(
+                    "content_fingerprint must be a lowercase SHA-256 digest"
+                )
         else:
             material = " ".join(
                 (self.title.casefold().strip(), self.summary.casefold().strip())
@@ -83,9 +91,13 @@ class DailyChannelPolicy:
         if len(categories) != len(set(categories)):
             raise DailyTopicSelectionError("allowed_categories must be unique")
         if any(not item for item in blocked) or len(blocked) != len(set(blocked)):
-            raise DailyTopicSelectionError("blocked_terms must be unique normalized text")
+            raise DailyTopicSelectionError(
+                "blocked_terms must be unique normalized text"
+            )
         if self.minimum_independent_sources < 2:
-            raise DailyTopicSelectionError("minimum_independent_sources must be at least 2")
+            raise DailyTopicSelectionError(
+                "minimum_independent_sources must be at least 2"
+            )
         if self.maximum_age_hours <= 0:
             raise DailyTopicSelectionError("maximum_age_hours must be positive")
         object.__setattr__(self, "allowed_categories", categories)
@@ -121,9 +133,15 @@ class DailyTopicSelector:
             text = f"{candidate.title} {candidate.summary}".lower()
             if any(term in text for term in policy.blocked_terms):
                 continue
-            if candidate.published_at < oldest or candidate.published_at > current + timedelta(minutes=5):
+            if (
+                candidate.published_at < oldest
+                or candidate.published_at > current + timedelta(minutes=5)
+            ):
                 continue
-            if len(candidate.independent_source_refs) < policy.minimum_independent_sources:
+            if (
+                len(candidate.independent_source_refs)
+                < policy.minimum_independent_sources
+            ):
                 continue
             if candidate.topic_id in prior_topic_ids:
                 continue

@@ -59,7 +59,8 @@ class NativeImageBackend(Protocol):
         *,
         manifest: MediaModelManifest,
         hardware: NativeWorkerHardware,
-    ) -> NativeImageReceipt: ...
+    ) -> NativeImageReceipt:
+        ...
 
 
 class NativeImageWorker(ImageGenerationProvider):
@@ -75,7 +76,10 @@ class NativeImageWorker(ImageGenerationProvider):
     ) -> None:
         if manifest.eligibility is not ModelEligibility.APPROVED_NATIVE:
             raise ValueError("native image worker requires APPROVED_NATIVE manifest")
-        if manifest.checkpoint_revision is None or manifest.checkpoint_digest_sha256 is None:
+        if (
+            manifest.checkpoint_revision is None
+            or manifest.checkpoint_digest_sha256 is None
+        ):
             raise ValueError("approved native image model requires checkpoint evidence")
         self._manifest = manifest
         self._hardware = hardware

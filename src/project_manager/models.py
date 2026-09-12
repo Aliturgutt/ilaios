@@ -12,11 +12,13 @@ class ProjectState(Enum):
 class Project:
     """Represents a managed project."""
 
-    def __init__(self,
-                 project_id: str,
-                 name: str,
-                 path: str,
-                 state: ProjectState = ProjectState.ACTIVE) -> None:
+    def __init__(
+        self,
+        project_id: str,
+        name: str,
+        path: str,
+        state: ProjectState = ProjectState.ACTIVE,
+    ) -> None:
         self.id = project_id
         self.name = name
         self.path = path

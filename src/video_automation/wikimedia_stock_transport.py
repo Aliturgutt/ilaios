@@ -52,7 +52,9 @@ class WikimediaStockHttpTransport:
             max_results=max_results,
         )
         if provider is not StockProvider.WIKIMEDIA:
-            raise StockSourceError("Wikimedia transport only accepts wikimedia requests")
+            raise StockSourceError(
+                "Wikimedia transport only accepts wikimedia requests"
+            )
 
         params = {
             "action": "query",
@@ -175,7 +177,9 @@ def _media_type(mime: Any) -> str | None:
 
 
 def _fetch_json(url: str) -> dict[str, Any]:
-    request = Request(url, headers={"User-Agent": _USER_AGENT, "Accept": "application/json"})
+    request = Request(
+        url, headers={"User-Agent": _USER_AGENT, "Accept": "application/json"}
+    )
     try:
         with urlopen(request, timeout=15) as response:  # noqa: S310 - fixed HTTPS host
             raw_payload: object = json.load(response)

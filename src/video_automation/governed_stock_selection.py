@@ -63,7 +63,9 @@ class GovernedStockSelector:
         if not resolved_order:
             raise GovernedStockSelectionError("provider_order must not be empty")
         if len(set(resolved_order)) != len(resolved_order):
-            raise GovernedStockSelectionError("provider_order must not contain duplicates")
+            raise GovernedStockSelectionError(
+                "provider_order must not contain duplicates"
+            )
         self._adapters = dict(adapters)
         self._provider_order = resolved_order
 
@@ -112,11 +114,19 @@ class GovernedStockSelector:
                 if candidate.media_type in media_types
             )
             attempts.append(
-                StockSelectionAttempt(provider, "selected" if admissible else "empty", len(result.candidates))
+                StockSelectionAttempt(
+                    provider,
+                    "selected" if admissible else "empty",
+                    len(result.candidates),
+                )
             )
             if admissible:
                 return GovernedStockSelection(admissible[0], tuple(attempts))
 
         if not configured_provider_seen:
-            raise GovernedStockSelectionError("no governed stock provider is configured")
-        raise GovernedStockSelectionError("no admissible governed stock asset was returned")
+            raise GovernedStockSelectionError(
+                "no governed stock provider is configured"
+            )
+        raise GovernedStockSelectionError(
+            "no admissible governed stock asset was returned"
+        )

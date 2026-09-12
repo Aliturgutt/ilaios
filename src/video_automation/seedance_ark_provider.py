@@ -80,7 +80,9 @@ class UrllibArkJsonTransport:
             raw = exc.read().decode("utf-8", errors="replace")
             return ArkJsonResponse(int(exc.code), _decode_json_object(raw))
         except URLError as exc:
-            raise SeedanceArkProviderError(f"Ark transport error: {exc.reason}") from exc
+            raise SeedanceArkProviderError(
+                f"Ark transport error: {exc.reason}"
+            ) from exc
         return ArkJsonResponse(status, _decode_json_object(raw))
 
 

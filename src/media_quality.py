@@ -52,9 +52,13 @@ class MediaQualityObservation:
             _text(name, value)
         _sha256("artifact_sha256", self.artifact_sha256)
         if self.producer_id == self.observer_id:
-            raise MediaQualityError("media quality observer must be independent from producer")
+            raise MediaQualityError(
+                "media quality observer must be independent from producer"
+            )
         if not 0 <= self.score <= 1 or not 0 <= self.threshold <= 1:
-            raise MediaQualityError("media quality score and threshold must be within [0, 1]")
+            raise MediaQualityError(
+                "media quality score and threshold must be within [0, 1]"
+            )
         if self.passed and self.repair_target is not None:
             raise MediaQualityError("passed observation must not request repair")
         if not self.passed:
@@ -131,28 +135,39 @@ class MediaAcceptanceGate:
         _sha256("artifact_sha256", artifact_sha256)
         required = tuple(required_domains)
         if not required or len(required) != len(set(required)):
-            raise MediaQualityError("required media quality domains must be non-empty and unique")
+            raise MediaQualityError(
+                "required media quality domains must be non-empty and unique"
+            )
         items = tuple(sorted(observations, key=lambda item: item.domain.value))
         if len(items) != len(required):
-            raise MediaQualityError("exactly one observation is required per requested domain")
+            raise MediaQualityError(
+                "exactly one observation is required per requested domain"
+            )
         if {item.domain for item in items} != set(required):
-            raise MediaQualityError("media quality observations do not match required domains")
+            raise MediaQualityError(
+                "media quality observations do not match required domains"
+            )
         ids = [item.observation_id for item in items]
         if len(ids) != len(set(ids)):
             raise MediaQualityError("media quality observation ids must be unique")
         for item in items:
             if item.artifact_sha256 != artifact_sha256:
-                raise MediaQualityError("quality observation artifact identity mismatch")
+                raise MediaQualityError(
+                    "quality observation artifact identity mismatch"
+                )
 
         failures = tuple(item for item in items if not item.passed)
         attempts = {} if prior_attempts is None else dict(prior_attempts)
         if any(value < 0 for value in attempts.values()):
             raise MediaQualityError("prior repair attempts must be non-negative")
-        known_targets = {item.repair_target for item in failures if item.repair_target is not None}
+        known_targets = {
+            item.repair_target for item in failures if item.repair_target is not None
+        }
         unknown_targets = set(attempts) - known_targets
         if unknown_targets:
             raise MediaQualityError(
-                "repair history references unknown targets: " + ", ".join(sorted(unknown_targets))
+                "repair history references unknown targets: "
+                + ", ".join(sorted(unknown_targets))
             )
 
         repair_plan: list[MediaRepairAction] = []
@@ -206,7 +221,9 @@ def video_required_domains() -> tuple[MediaQualityDomain, ...]:
     )
 
 
-def image_required_domains(*, continuity_required: bool) -> tuple[MediaQualityDomain, ...]:
+def image_required_domains(
+    *, continuity_required: bool
+) -> tuple[MediaQualityDomain, ...]:
     domains = [
         MediaQualityDomain.VISUAL,
         MediaQualityDomain.BRAND,
@@ -255,5 +272,7 @@ def _text(name: str, value: str) -> None:
 
 
 def _sha256(name: str, value: str) -> None:
-    if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+    if len(value) != 64 or any(
+        character not in "0123456789abcdef" for character in value
+    ):
         raise MediaQualityError(f"{name} must be lowercase SHA-256")

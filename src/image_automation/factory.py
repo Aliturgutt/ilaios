@@ -174,7 +174,8 @@ class ImageCandidateExecutor(Protocol):
         *,
         request: ImageGenerationRequest,
         candidate: ImageCandidate,
-    ) -> ImageBackendArtifact: ...
+    ) -> ImageBackendArtifact:
+        ...
 
 
 class ImageQualityEvaluator(Protocol):
@@ -184,7 +185,8 @@ class ImageQualityEvaluator(Protocol):
         request: ImageGenerationRequest,
         candidate: ImageCandidate,
         artifact: ImageBackendArtifact,
-    ) -> ImageQualityEvaluation: ...
+    ) -> ImageQualityEvaluation:
+        ...
 
 
 class ImageSelectiveRepairer(Protocol):
@@ -196,7 +198,8 @@ class ImageSelectiveRepairer(Protocol):
         artifact: ImageBackendArtifact,
         repair_targets: tuple[str, ...],
         attempt: int,
-    ) -> ImageBackendArtifact: ...
+    ) -> ImageBackendArtifact:
+        ...
 
 
 class GovernedImageFactory:
@@ -224,7 +227,9 @@ class GovernedImageFactory:
         routing_plan: ImageRoutingPlan,
     ) -> ImageArtifactEvidence:
         if request.routing_decision_id != routing_plan.routing_decision_id:
-            raise ImageExecutionError("routing plan does not match canonical routing decision")
+            raise ImageExecutionError(
+                "routing plan does not match canonical routing decision"
+            )
         failures: list[str] = []
         for candidate in routing_plan.candidates:
             artifact = self._executor.generate(request=request, candidate=candidate)
@@ -262,7 +267,8 @@ class GovernedImageFactory:
                 )
             failures.append(f"{candidate.candidate_id}:{evaluation.score:.3f}")
         raise ImageExecutionError(
-            "no governed image candidate met the acceptance floor: " + ",".join(failures)
+            "no governed image candidate met the acceptance floor: "
+            + ",".join(failures)
         )
 
     def _evaluate(

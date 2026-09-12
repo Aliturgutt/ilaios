@@ -74,9 +74,8 @@ def run_system_design(request: SystemDesignRequest) -> SystemDesignResult:
         and peak_rps >= 1_000
         and request.capacity.read_ratio >= 0.7
     )
-    use_queue = (
-        request.asynchronous_workload_fraction >= 0.05
-        or (peak_rps is not None and peak_rps >= 5_000)
+    use_queue = request.asynchronous_workload_fraction >= 0.05 or (
+        peak_rps is not None and peak_rps >= 5_000
     )
     failure_domain_count = 2 if high_availability else 1
 

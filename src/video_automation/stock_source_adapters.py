@@ -165,9 +165,13 @@ class _BoundProviderAdapter:
             max_results=request.max_results,
         )
         if result.request != request:
-            raise StockSourceError("transport result request must match adapter request")
+            raise StockSourceError(
+                "transport result request must match adapter request"
+            )
         if result.request.provider is not self.provider:
-            raise StockSourceError("transport result provider must match adapter provider")
+            raise StockSourceError(
+                "transport result provider must match adapter provider"
+            )
         return result
 
 

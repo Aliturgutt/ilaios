@@ -56,7 +56,9 @@ def _canonical_spec(spec: DiagramSpec) -> str:
         "dark_mode": spec.dark_mode,
         "theme": asdict(spec.theme),
     }
-    return json.dumps(payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+    return json.dumps(
+        payload, sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
 
 
 def _sha256_text(value: str) -> str:
@@ -179,7 +181,11 @@ def _edge_label(
         y = int(round(((sy + ty) / 2) / 8.0)) * 8
         vertical_gap = target_box.y - (source_box.y + source_box.height)
         if vertical_gap < 30:
-            x = max(source_box.x + source_box.width, target_box.x + target_box.width) + mask_width // 2 + 12
+            x = (
+                max(source_box.x + source_box.width, target_box.x + target_box.width)
+                + mask_width // 2
+                + 12
+            )
         else:
             x = max(sx, tx) + 12
 
@@ -204,7 +210,7 @@ def _wrap_label(label: str, width: int) -> tuple[str, ...]:
         if len(camel_words) > 1:
             words = camel_words
         else:
-            return (label[:max_chars], label[max_chars:max_chars * 2])
+            return (label[:max_chars], label[max_chars : max_chars * 2])
     first: list[str] = []
     second: list[str] = []
     target = first
@@ -214,7 +220,7 @@ def _wrap_label(label: str, width: int) -> tuple[str, ...]:
             target = second
             candidate = " ".join((*target, word))
         if target is second and len(candidate) > max_chars and second:
-            second[-1] = (second[-1][: max(1, max_chars - 1)] + "…")
+            second[-1] = second[-1][: max(1, max_chars - 1)] + "…"
             break
         target.append(word)
     first_line = " ".join(first)
@@ -435,7 +441,7 @@ def render_diagram(spec: DiagramSpec) -> RenderArtifact:
         f'role="img" aria-labelledby="{title_id} {desc_id}">'
         f'<title id="{title_id}">{escape(spec.title)}</title>'
         f'<desc id="{desc_id}">{escape(spec.description or spec.title)}</desc>'
-        f'{_definitions(spec, prefix)}'
+        f"{_definitions(spec, prefix)}"
         f'<rect width="{spec.width}" height="{spec.height}" fill="{spec.theme.background}"/>'
         f'<text x="48" y="50" font-family="Sora, Segoe UI, Arial, sans-serif" '
         f'font-size="24" font-weight="700" fill="{spec.theme.text}">{escape(spec.title)}</text>'
@@ -458,7 +464,7 @@ def wrap_html(artifact: RenderArtifact, *, page_title: str) -> str:
 
     title = escape(page_title)
     return (
-        "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\">"
+        '<!doctype html><html lang="en"><head><meta charset="utf-8">'
         '<meta name="viewport" content="width=device-width,initial-scale=1">'
         f"<title>{title}</title>"
         "<style>"

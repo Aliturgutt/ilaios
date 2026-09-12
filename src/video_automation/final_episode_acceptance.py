@@ -68,9 +68,7 @@ class FinalEpisodeAcceptancePolicy:
             _normalize_code(value) for value in self.required_quality_checks
         )
         if len(normalized) != len(set(normalized)):
-            raise FinalEpisodeAcceptanceError(
-                "required_quality_checks must be unique"
-            )
+            raise FinalEpisodeAcceptanceError("required_quality_checks must be unique")
         if self.min_duration_seconds <= 0:
             raise FinalEpisodeAcceptanceError(
                 "min_duration_seconds must be greater than zero"

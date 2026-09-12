@@ -241,7 +241,10 @@ def ltx2_review_candidate() -> MediaModelManifest:
 
 
 def _require_native_approval_material(manifest: MediaModelManifest) -> None:
-    if manifest.commercial_compatibility is not CommercialCompatibility.VERIFIED_COMPATIBLE:
+    if (
+        manifest.commercial_compatibility
+        is not CommercialCompatibility.VERIFIED_COMPATIBLE
+    ):
         raise ModelGovernanceError(
             "APPROVED_NATIVE requires verified commercial compatibility"
         )

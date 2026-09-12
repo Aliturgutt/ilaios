@@ -94,11 +94,15 @@ class CharacterSpec:
             raise ContinuityContractError("character revision must be >= 1")
         _unique_ids("canonical_reference_asset_ids", self.canonical_reference_asset_ids)
         if self.strict_identity and not self.canonical_reference_asset_ids:
-            raise ContinuityContractError("strict character continuity requires references")
+            raise ContinuityContractError(
+                "strict character continuity requires references"
+            )
         _texts("wardrobe_costume", self.wardrobe_costume)
         _texts("color_palette", self.color_palette)
         _texts("accessories_props", self.accessories_props)
-        _texts("provider_native_reference_handles", self.provider_native_reference_handles)
+        _texts(
+            "provider_native_reference_handles", self.provider_native_reference_handles
+        )
         _texts("negative_constraints", self.negative_constraints)
         _optional_text("face_appearance", self.face_appearance)
         _optional_text("age_range", self.age_range)
@@ -267,7 +271,9 @@ class ContinuityEvidence:
         if self.retry_parent_asset_sha256 is not None:
             _sha("retry_parent_asset_sha256", self.retry_parent_asset_sha256)
         if self.validation.generated_asset_sha256 != self.generated_asset_sha256:
-            raise ContinuityContractError("validation asset hash does not match evidence")
+            raise ContinuityContractError(
+                "validation asset hash does not match evidence"
+            )
 
 
 def validate_character_continuity(
@@ -370,5 +376,7 @@ def _unique_ids(name: str, values: tuple[str, ...]) -> None:
 
 
 def _sha(name: str, value: str) -> None:
-    if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+    if len(value) != 64 or any(
+        character not in "0123456789abcdef" for character in value
+    ):
         raise ContinuityContractError(f"{name} must be lowercase SHA-256")

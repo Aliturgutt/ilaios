@@ -83,7 +83,9 @@ class PixabayStockHttpTransport:
         remaining = _non_negative_int_header(headers, "x-ratelimit-remaining")
         reset = headers.get("x-ratelimit-reset")
         if remaining == 0 and not reset:
-            raise StockSourceError("Pixabay rate-limit reset is required at zero remaining")
+            raise StockSourceError(
+                "Pixabay rate-limit reset is required at zero remaining"
+            )
 
         return StockSearchResult(
             request=request,
@@ -152,7 +154,9 @@ def _non_negative_int_header(headers: dict[str, str], name: str) -> int | None:
 
 
 def _fetch_json(url: str) -> tuple[dict[str, Any], dict[str, str]]:
-    request = Request(url, headers={"User-Agent": _USER_AGENT, "Accept": "application/json"})
+    request = Request(
+        url, headers={"User-Agent": _USER_AGENT, "Accept": "application/json"}
+    )
     try:
         with urlopen(request, timeout=15) as response:  # noqa: S310 - fixed HTTPS host
             raw_payload: object = json.load(response)

@@ -84,7 +84,9 @@ class PublicationOperationsProjector:
             published=counts[PublicationState.PUBLISHED],
             ambiguous=counts[PublicationState.AMBIGUOUS],
             failed=counts[PublicationState.FAILED],
-            alerts=tuple(sorted(alerts, key=lambda item: (item.severity.value, item.package_id))),
+            alerts=tuple(
+                sorted(alerts, key=lambda item: (item.severity.value, item.package_id))
+            ),
         )
 
 
@@ -127,6 +129,8 @@ def _alert_for_record(
                 account_id=record.account_id,
                 severity=PublicationAlertSeverity.CRITICAL,
                 reason="publication remained SUBMITTING beyond the stale threshold",
-                recommended_actions=(PublicationRecoveryAction.RECONCILE_PLATFORM_STATE,),
+                recommended_actions=(
+                    PublicationRecoveryAction.RECONCILE_PLATFORM_STATE,
+                ),
             )
     return None

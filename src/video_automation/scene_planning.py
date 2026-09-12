@@ -114,7 +114,11 @@ class ShotPlannerConfig:
             raise ShotPlanningError(
                 "max_shot_seconds must be greater than or equal to min_shot_seconds"
             )
-        if not self.min_shot_seconds <= self.target_shot_seconds <= self.max_shot_seconds:
+        if (
+            not self.min_shot_seconds
+            <= self.target_shot_seconds
+            <= self.max_shot_seconds
+        ):
             raise ShotPlanningError(
                 "target_shot_seconds must be inside configured shot bounds"
             )
@@ -221,8 +225,12 @@ class CinematicShot:
         if self.next_shot_id is not None:
             _require_non_blank("next_shot_id", self.next_shot_id)
 
-        resolved_scene_id = self.source_beat_id if self.scene_id is None else self.scene_id
-        resolved_prompt = self.text if self.generation_prompt is None else self.generation_prompt
+        resolved_scene_id = (
+            self.source_beat_id if self.scene_id is None else self.scene_id
+        )
+        resolved_prompt = (
+            self.text if self.generation_prompt is None else self.generation_prompt
+        )
         _require_non_blank("scene_id", resolved_scene_id)
         _require_non_blank("generation_prompt", resolved_prompt)
         object.__setattr__(self, "scene_id", resolved_scene_id)
@@ -317,7 +325,9 @@ class ShotPlanner:
                         None if sequence == 1 else _shot_id(episode_id, sequence - 1)
                     ),
                     next_shot_id=(
-                        None if sequence == total_shots else _shot_id(episode_id, sequence + 1)
+                        None
+                        if sequence == total_shots
+                        else _shot_id(episode_id, sequence + 1)
                     ),
                     scene_id=beat.beat_id,
                     shot_type=beat.shot_type,
@@ -326,7 +336,11 @@ class ShotPlanner:
                     environment=beat.environment,
                     framing=beat.framing,
                     movement=beat.movement,
-                    generation_prompt=(text if beat.generation_prompt is None else beat.generation_prompt),
+                    generation_prompt=(
+                        text
+                        if beat.generation_prompt is None
+                        else beat.generation_prompt
+                    ),
                     required_provider_capability=beat.required_provider_capability,
                 )
             )

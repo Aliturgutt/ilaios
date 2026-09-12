@@ -54,17 +54,25 @@ class OpenRouterBrandPerceptualReviewer:
         transport: OpenRouterReviewTransport | None = None,
     ) -> None:
         if not api_key or api_key != api_key.strip():
-            raise OpenRouterPerceptualReviewError("api_key must be non-blank and trimmed")
+            raise OpenRouterPerceptualReviewError(
+                "api_key must be non-blank and trimmed"
+            )
         if not model_id or model_id != model_id.strip():
-            raise OpenRouterPerceptualReviewError("model_id must be non-blank and trimmed")
+            raise OpenRouterPerceptualReviewError(
+                "model_id must be non-blank and trimmed"
+            )
         if not base_url or base_url != base_url.strip():
-            raise OpenRouterPerceptualReviewError("base_url must be non-blank and trimmed")
+            raise OpenRouterPerceptualReviewError(
+                "base_url must be non-blank and trimmed"
+            )
         if timeout_seconds <= 0:
             raise OpenRouterPerceptualReviewError("timeout_seconds must be positive")
         if not 0 < threshold <= 1:
             raise OpenRouterPerceptualReviewError("threshold must be in (0, 1]")
         if sample_count < 2 or sample_count > 8:
-            raise OpenRouterPerceptualReviewError("sample_count must be between 2 and 8")
+            raise OpenRouterPerceptualReviewError(
+                "sample_count must be between 2 and 8"
+            )
         self._api_key = api_key
         self._model_id = model_id
         self._base_url = base_url.rstrip("/")
@@ -124,7 +132,8 @@ class OpenRouterBrandPerceptualReviewer:
             {
                 "type": "image_url",
                 "image_url": {
-                    "url": "data:image/jpeg;base64," + base64.b64encode(frame).decode("ascii")
+                    "url": "data:image/jpeg;base64,"
+                    + base64.b64encode(frame).decode("ascii")
                 },
             }
             for frame in frames
@@ -203,5 +212,7 @@ class OpenRouterBrandPerceptualReviewer:
                 f"openrouter-brand-review:model={self._model_id}:route={route}:"
                 f"artifact={artifact_sha256}"
             ),
-            repair_target=None if passed else (repair_target.strip() or "repair-brand-integrity"),
+            repair_target=None
+            if passed
+            else (repair_target.strip() or "repair-brand-integrity"),
         )

@@ -64,7 +64,9 @@ class GoldenDeliveryReceipt:
             )
 
         if not self.narration_present:
-            raise GoldenDeliveryEvidenceError("golden delivery requires narration evidence")
+            raise GoldenDeliveryEvidenceError(
+                "golden delivery requires narration evidence"
+            )
         if not self.sound_effects_present:
             raise GoldenDeliveryEvidenceError("golden delivery requires SFX evidence")
         if not self.music_present:
@@ -89,7 +91,9 @@ class GoldenDeliveryReceipt:
             "watermark_scan_artifact_sha256",
             self.watermark_scan_artifact_sha256,
         )
-        _require_non_blank("watermark_scan_evidence_ref", self.watermark_scan_evidence_ref)
+        _require_non_blank(
+            "watermark_scan_evidence_ref", self.watermark_scan_evidence_ref
+        )
         if self.watermark_scan_artifact_sha256 != self.final_mp4_sha256:
             raise GoldenDeliveryEvidenceError(
                 "watermark scan evidence does not match final MP4 artifact"
@@ -122,9 +126,13 @@ class GoldenDeliveryReceipt:
         try:
             digest = sha256(artifact.read_bytes()).hexdigest()
         except OSError as exc:
-            raise GoldenDeliveryEvidenceError("final MP4 artifact is unreadable") from exc
+            raise GoldenDeliveryEvidenceError(
+                "final MP4 artifact is unreadable"
+            ) from exc
         if digest != self.final_mp4_sha256:
-            raise GoldenDeliveryEvidenceError("final MP4 checksum does not match artifact bytes")
+            raise GoldenDeliveryEvidenceError(
+                "final MP4 checksum does not match artifact bytes"
+            )
 
 
 def _require_non_blank(name: str, value: str) -> None:

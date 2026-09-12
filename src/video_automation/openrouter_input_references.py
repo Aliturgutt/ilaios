@@ -52,7 +52,9 @@ def build_openrouter_input_references(
     seen_urls: set[str] = set()
     for entry in raw:
         if not isinstance(entry, Mapping):
-            raise NativeReferenceRoutingError("native reference entry must be an object")
+            raise NativeReferenceRoutingError(
+                "native reference entry must be an object"
+            )
         url = entry.get("url")
         role = entry.get("role")
         sha256_hex = entry.get("sha256")
@@ -81,4 +83,6 @@ def _require_https(name: str, value: str) -> None:
 
 
 def _is_sha256(value: str) -> bool:
-    return len(value) == 64 and all(character in "0123456789abcdef" for character in value)
+    return len(value) == 64 and all(
+        character in "0123456789abcdef" for character in value
+    )

@@ -68,7 +68,8 @@ class OpenRouterReviewTransport(Protocol):
         headers: Mapping[str, str],
         body: Mapping[str, object],
         timeout_seconds: float,
-    ) -> OpenRouterReviewResponse: ...
+    ) -> OpenRouterReviewResponse:
+        ...
 
 
 class UrllibOpenRouterReviewTransport:
@@ -100,7 +101,9 @@ class UrllibOpenRouterReviewTransport:
                     f"OpenRouter perceptual review transport error: {exc.reason}"
                 ) from exc
             return OpenRouterReviewResponse(status, _decode_object(raw))
-        raise OpenRouterPerceptualReviewError("OpenRouter transport retry state is invalid")
+        raise OpenRouterPerceptualReviewError(
+            "OpenRouter transport retry state is invalid"
+        )
 
 
 class OpenRouterPerceptualReviewer:
@@ -125,7 +128,9 @@ class OpenRouterPerceptualReviewer:
         if not 0 < threshold <= 1:
             raise OpenRouterPerceptualReviewError("threshold must be in (0, 1]")
         if sample_count < 2 or sample_count > 8:
-            raise OpenRouterPerceptualReviewError("sample_count must be between 2 and 8")
+            raise OpenRouterPerceptualReviewError(
+                "sample_count must be between 2 and 8"
+            )
         self._api_key = api_key
         self._model_id = model_id
         self._base_url = base_url.rstrip("/")
@@ -156,7 +161,9 @@ class OpenRouterPerceptualReviewer:
                 "perceptual reviewer must be independent from artifact producer"
             )
         frames = _sample_frames(video_path, self._sample_count)
-        frame_refs = tuple(f"frame-sha256:{sha256(frame).hexdigest()}" for frame in frames)
+        frame_refs = tuple(
+            f"frame-sha256:{sha256(frame).hexdigest()}" for frame in frames
+        )
         content: list[dict[str, object]] = [
             {
                 "type": "text",
@@ -173,7 +180,8 @@ class OpenRouterPerceptualReviewer:
             {
                 "type": "image_url",
                 "image_url": {
-                    "url": "data:image/jpeg;base64," + base64.b64encode(frame).decode("ascii")
+                    "url": "data:image/jpeg;base64,"
+                    + base64.b64encode(frame).decode("ascii")
                 },
             }
             for frame in frames
@@ -230,7 +238,10 @@ class OpenRouterPerceptualReviewer:
         try:
             result = _extract_review(response.payload)
         except OpenRouterPerceptualReviewError as exc:
-            if review_route != "prompt-json-fallback" or str(exc) != "review content is not valid JSON":
+            if (
+                review_route != "prompt-json-fallback"
+                or str(exc) != "review content is not valid JSON"
+            ):
                 raise
             response = self._transport.post_json(
                 endpoint,
@@ -268,7 +279,9 @@ class OpenRouterPerceptualReviewer:
                 f"openrouter-review:model={self._model_id}:route={review_route}:"
                 f"artifact={artifact_sha256}"
             ),
-            repair_target=None if passed else (repair_target.strip() or "regenerate-video"),
+            repair_target=None
+            if passed
+            else (repair_target.strip() or "regenerate-video"),
         )
 
 
@@ -333,7 +346,9 @@ def _extract_review(payload: Mapping[str, object]) -> dict[str, object]:
     try:
         value = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise OpenRouterPerceptualReviewError("review content is not valid JSON") from exc
+        raise OpenRouterPerceptualReviewError(
+            "review content is not valid JSON"
+        ) from exc
     if not isinstance(value, dict):
         raise OpenRouterPerceptualReviewError("review content must be an object")
     if frozenset(value) != _REVIEW_KEYS:
@@ -365,7 +380,9 @@ def _decode_object(raw: str) -> Mapping[str, object]:
     try:
         value = json.loads(raw)
     except json.JSONDecodeError as exc:
-        raise OpenRouterPerceptualReviewError("OpenRouter returned invalid JSON") from exc
+        raise OpenRouterPerceptualReviewError(
+            "OpenRouter returned invalid JSON"
+        ) from exc
     if not isinstance(value, dict):
         raise OpenRouterPerceptualReviewError("OpenRouter response must be an object")
     return value
@@ -388,7 +405,9 @@ def _bounded_retry_after_seconds(headers: object) -> float | None:
 
 
 def _sha256(name: str, value: str) -> None:
-    if len(value) != 64 or any(character not in "0123456789abcdef" for character in value):
+    if len(value) != 64 or any(
+        character not in "0123456789abcdef" for character in value
+    ):
         raise OpenRouterPerceptualReviewError(f"{name} must be lowercase SHA-256")
 
 

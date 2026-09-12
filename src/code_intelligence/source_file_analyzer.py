@@ -92,9 +92,7 @@ class SourceFileAnalyzer:
         max_file_size_bytes: int = DEFAULT_MAX_FILE_SIZE_BYTES,
     ) -> None:
         if max_file_size_bytes <= 0:
-            raise ValueError(
-                "max_file_size_bytes must be greater than zero"
-            )
+            raise ValueError("max_file_size_bytes must be greater than zero")
 
         self._root = Path(root).expanduser().resolve()
         self._max_file_size_bytes = max_file_size_bytes
@@ -143,8 +141,7 @@ class SourceFileAnalyzer:
 
         if language is None:
             raise UnsupportedSourceLanguageError(
-                f"unsupported source-file extension: "
-                f"{extension or '<none>'}"
+                f"unsupported source-file extension: " f"{extension or '<none>'}"
             )
 
         size_bytes = resolved_path.stat().st_size
@@ -165,8 +162,7 @@ class SourceFileAnalyzer:
             decoded_content = raw_content.decode("utf-8-sig")
         except UnicodeDecodeError as error:
             raise SourceFileDecodeError(
-                f"source file is not valid UTF-8: "
-                f"{relative_path.as_posix()}"
+                f"source file is not valid UTF-8: " f"{relative_path.as_posix()}"
             ) from error
 
         content = decoded_content.replace("\r\n", "\n").replace("\r", "\n")

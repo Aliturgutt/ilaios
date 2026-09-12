@@ -36,8 +36,6 @@ def technical_observation_from_assembled_validation(
         evidence_reference=validation.validation_id,
         provenance_reference=f"probe:{validation.probe_id}",
         repair_target=(
-            None
-            if passed
-            else f"artifact:{validation.artifact_id}:technical"
+            None if passed else f"artifact:{validation.artifact_id}:technical"
         ),
     )

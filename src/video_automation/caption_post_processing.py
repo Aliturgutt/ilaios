@@ -30,13 +30,17 @@ class CaptionedVideoArtifact:
 
 class CaptionRenderer(Protocol):
     @property
-    def renderer_id(self) -> str: ...
+    def renderer_id(self) -> str:
+        ...
 
-    def burn_in(self, *, clean: Path, subtitle: Path, output: Path) -> None: ...
+    def burn_in(self, *, clean: Path, subtitle: Path, output: Path) -> None:
+        ...
 
 
 class FfmpegCaptionRenderer:
-    def __init__(self, executable: str = "ffmpeg", timeout_seconds: float = 600.0) -> None:
+    def __init__(
+        self, executable: str = "ffmpeg", timeout_seconds: float = 600.0
+    ) -> None:
         if not executable.strip() or timeout_seconds <= 0:
             raise CaptionRenderError("invalid ffmpeg renderer configuration")
         self._executable = executable
