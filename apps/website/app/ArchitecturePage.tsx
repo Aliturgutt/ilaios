@@ -1,6 +1,7 @@
 import Link from "next/link";
 import SpatialArchitecture from "./SpatialArchitecture";
 import SystemVisuals from "./SystemVisuals";
+import SystemArchitectureMap from "./SystemArchitectureMap";
 
 type Locale = "en" | "tr";
 
@@ -15,6 +16,9 @@ const copy = {
     executionLead: "The system can use different capabilities or providers without turning any of them into a second authority source.",
     boundariesTitle: "Four boundaries keep capability separate from permission.",
     boundaries: [["Identity", "The request stays tied to the authenticated organizational context."], ["Authority", "Permission and required approval are resolved before consequential work proceeds."], ["Acceptance", "Generated output is not treated as finished until required checks pass."], ["Recovery", "Retry and repair remain bounded; unresolved work stops or escalates."]],
+    mapEyebrow: "Complete system map",
+    mapTitle: "The full operating model, from client request to company operations and external integrations.",
+    mapLead: "This map describes the governed product responsibilities. Availability remains evidence-bound: an architecture responsibility is not presented as generally available until its implemented product path is verified.",
     ctaTitle: "Go deeper only where you need the technical detail.",
     use: "See what ILAIOS can produce",
     core: "Explore Core",
@@ -30,6 +34,9 @@ const copy = {
     executionLead: "Sistem farklı yetenek veya sağlayıcıları kullanabilir; hiçbiri ikinci bir otorite kaynağına dönüşmez.",
     boundariesTitle: "Dört sınır, yeteneği izinden ayrı tutar.",
     boundaries: [["Kimlik", "Talep doğrulanmış organizasyon bağlamına bağlı kalır."], ["Yetki", "Önemli iş ilerlemeden önce izin ve gerekli onay çözülür."], ["Kabul", "Gerekli kontroller geçmeden üretilen çıktı bitmiş sayılmaz."], ["Kurtarma", "Yeniden deneme ve düzeltme sınırlandırılır; çözülemeyen iş durur veya yükseltilir."]],
+    mapEyebrow: "Tam sistem haritası",
+    mapTitle: "İstemci talebinden şirket operasyonlarına ve dış entegrasyonlara kadar bütün işletim modeli.",
+    mapLead: "Bu harita yönetilen ürün sorumluluklarını açıklar. Kullanılabilirlik kanıta bağlı kalır: bir mimari sorumluluk, uygulanmış ürün yolu doğrulanmadan genel kullanıma açık gibi sunulmaz.",
     ctaTitle: "Teknik ayrıntıya yalnız ihtiyaç duyduğun yerde in.",
     use: "ILAIOS neler üretebilir?",
     core: "Core'u incele",
@@ -45,6 +52,7 @@ export default function ArchitecturePage({ locale }: { locale: Locale }) {
     <section className="section"><div className="shell architecture-primary"><div><div className="eyebrow">{locale === "tr" ? "Sistem katmanları" : "System layers"}</div><h2>{c.flowTitle}</h2><div className="architecture-layer-list">{c.layers.map(([title,text],index)=><article key={title}><span>{String(index+1).padStart(2,"0")}</span><strong>{title}</strong><p>{text}</p></article>)}</div></div><SpatialArchitecture locale={locale} /></div></section>
     <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{locale === "tr" ? "Yönetilen yürütme" : "Governed execution"}</div><h2>{c.executionTitle}</h2></div><p>{c.executionLead}</p></div><SystemVisuals locale={locale} variant="execution" /></div></section>
     <section className="section"><div className="shell"><div className="compact-heading-row"><div><div className="eyebrow">{locale === "tr" ? "Güven sınırları" : "Trust boundaries"}</div><h2>{c.boundariesTitle}</h2></div></div><div className="boundary-ledger" style={{gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))"}}>{c.boundaries.map(([title,text],index)=><article key={title}><span>{String(index+1).padStart(2,"0")}</span><strong>{title}</strong><p>{text}</p></article>)}</div></div></section>
+    <section className="section surface-section"><div className="shell"><div className="section-heading"><div><div className="eyebrow">{c.mapEyebrow}</div><h2>{c.mapTitle}</h2></div><p>{c.mapLead}</p></div><SystemArchitectureMap locale={locale} /></div></section>
     <section className="section compact-section"><div className="shell compact-cta"><div><div className="eyebrow">{locale === "tr" ? "Teknik derinlik" : "Technical depth"}</div><h2>{c.ctaTitle}</h2></div><div className="actions"><Link className="button secondary" href={`${base}/core`}>{c.core}</Link><Link className="text-link" href={`${base}/docs`}>{c.docs} →</Link></div></div></section>
   </>;
 }
