@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -20,6 +21,16 @@ class _ConversationFixture {
   };
   bool created = false;
   int founderReads = 0;
+  final exchanges = <Map<String, dynamic>>[];
+
+  Map<String, dynamic> _record(Map<String, Object?> request,
+      Map<String, dynamic> response) {
+    // Snapshot transport evidence; later fixture mutations must not change it.
+    exchanges.add(jsonDecode(jsonEncode({
+      'request': request, 'response': response,
+    })) as Map<String, dynamic>);
+    return response;
+  }
 
   DesktopUserSession get session => DesktopUserSession(
     sessionId: sessionId, providerId: 'google', principalId: user,
@@ -33,9 +44,9 @@ class _ConversationFixture {
       'persona': founder ? 'li' : 'assistant',
     };
     if (request['operation'] == 'list') {
-      return {'binding': binding, 'conversations': <Map<String, dynamic>>[
+      return _record(request, {'binding': binding, 'conversations': <Map<String, dynamic>>[
         if (created) {'conversation_id': 'conversation-1'},
-      ]};
+      ]});
     }
     if (request['operation'] == 'create') created = true;
     document['binding'] = binding;
@@ -46,7 +57,7 @@ class _ConversationFixture {
       ]);
       document['version'] = (document['version'] as int) + 1;
     }
-    return {'binding': binding, 'conversation': document};
+    return _record(request, {'binding': binding, 'conversation': document});
   }
 
   Future<DesktopLiState> verify() async {
@@ -228,11 +239,27 @@ void main() {
     await tester.tap(find.byKey(const Key('nav-assistant')));
     await tester.pumpAndSettle();
     expect(find.text('My task'), findsOneWidget);
+    fixture.exchanges.clear();
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pumpWidget(fixture.app());
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('nav-assistant')));
     await tester.pumpAndSettle();
+    final trace = jsonEncode(fixture.exchanges);
+    expect(fixture.exchanges.map((entry) => entry['request']['operation']),
+        ['list', 'get'], reason: 'Restart request sequence: $trace');
+    final listed = fixture.exchanges[0]['response'];
+    expect(listed['conversations'], [{'conversation_id': 'conversation-1'}],
+        reason: 'Restart list response: $trace');
+    expect(fixture.exchanges[1]['request']['conversation_id'], 'conversation-1',
+        reason: 'Restart get target: $trace');
+    final restored = fixture.exchanges[1]['response']['conversation'];
+    expect(restored['messages'], contains({'role': 'user', 'text': 'My task'}),
+        reason: 'Restart get payload: $trace');
+    expect(find.byKey(const Key('assistant-error')), findsNothing,
+        reason: 'Restart load/accept rejected transport: $trace');
+    expect(find.byWidgetPredicate((widget) => widget is ListTile && widget.selected),
+        findsOneWidget, reason: 'Restored conversation was not selected: $trace');
     expect(find.text('My task'), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
