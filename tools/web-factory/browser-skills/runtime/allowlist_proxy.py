@@ -58,6 +58,7 @@ def _parse_authority(value: str) -> tuple[str, int]:
 
 
 def _global_addresses(host: str, port: int) -> tuple[tuple[int, tuple[object, ...]], ...]:
+    """Get globally routable socket addresses for the given host:port."""
     try:
         records = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
     except socket.gaierror as error:

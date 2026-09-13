@@ -50,10 +50,12 @@ def test_import_is_untrusted_and_scripts_fail_closed(tmp_path: Path) -> None:
     root = _write_skill(tmp_path)
     scripts = root / "scripts"
     scripts.mkdir()
-    (scripts / "run.py").write_text("print('not executed')\n", encoding="utf-8")
+    # Write with explicit LF line endings to avoid CRLF on Windows
+    (scripts / "run.py").write_bytes(b"print('not executed')\n")
     references = root / "references"
     references.mkdir()
-    (references / "REFERENCE.md").write_text("Reference only.\n", encoding="utf-8")
+    # Write with explicit LF line endings to avoid CRLF on Windows
+    (references / "REFERENCE.md").write_bytes(b"Reference only.\n")
 
     imported = load_agent_skill(root)
 
