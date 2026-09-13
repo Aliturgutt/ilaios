@@ -362,45 +362,47 @@ class _Header extends StatelessWidget {
   final VoidCallback? onRefresh;
 
   @override
-  Widget build(BuildContext context) => SizedBox(
-    height: 43,
-    child: Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                _tr(context, 'Ajanlar', 'Agents'),
-                style: const TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                  height: 1,
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) => SizedBox(
+      height: constraints.maxWidth < 760 ? 59 : 43,
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  _tr(context, 'Ajanlar', 'Agents'),
+                  style: const TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                    height: 1,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                _tr(
-                  context,
-                  'Canonical ajan durumunu, kapasiteyi ve gerçek runtime telemetrisini izleyin.',
-                  'Monitor canonical agent state, capacity and real runtime telemetry.',
+                const SizedBox(height: 5),
+                Text(
+                  _tr(
+                    context,
+                    'Canonical ajan durumunu, kapasiteyi ve gerçek runtime telemetrisini izleyin.',
+                    'Monitor canonical agent state, capacity and real runtime telemetry.',
+                  ),
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
-                style: TextStyle(
-                  fontSize: 11,
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-        IconButton(
-          key: const Key('agents-refresh'),
-          onPressed: connected ? onRefresh : null,
-          tooltip: _tr(context, 'Yenile', 'Refresh'),
-          icon: const Icon(Icons.refresh_rounded, size: 18),
-        ),
-      ],
+          IconButton(
+            key: const Key('agents-refresh'),
+            onPressed: connected ? onRefresh : null,
+            tooltip: _tr(context, 'Yenile', 'Refresh'),
+            icon: const Icon(Icons.refresh_rounded, size: 18),
+          ),
+        ],
+      ),
     ),
   );
 }
@@ -1067,152 +1069,161 @@ class _SelectedPanel extends StatelessWidget {
   Widget build(BuildContext context) => _Panel(
     key: const Key('selected-agent-panel'),
     padding: const EdgeInsets.all(10),
-    child: agent == null
-        ? Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                _tr(context, 'Seçili Ajan', 'Selected Agent'),
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+    child: SingleChildScrollView(
+      child: agent == null
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  _tr(context, 'Seçili Ajan', 'Selected Agent'),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
-              ),
-              Expanded(
-                child: Center(
-                  child: Text(
-                    _tr(
-                      context,
-                      'Doğrulanmış ajan kaydı yok',
-                      'No verified agent record',
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 32),
+                  child: Center(
+                    child: Text(
+                      _tr(
+                        context,
+                        'Doğrulanmış ajan kaydı yok',
+                        'No verified agent record',
+                      ),
                     ),
                   ),
                 ),
-              ),
-              OutlinedButton.icon(
-                onPressed: connected ? onRefresh : null,
-                icon: const Icon(Icons.refresh, size: 14),
-                label: Text(_tr(context, 'Yenile', 'Refresh')),
-              ),
-            ],
-          )
-        : Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Text(
-                _tr(context, 'Seçili Ajan', 'Selected Agent'),
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
+                OutlinedButton.icon(
+                  onPressed: connected ? onRefresh : null,
+                  icon: const Icon(Icons.refresh, size: 14),
+                  label: Text(_tr(context, 'Yenile', 'Refresh')),
                 ),
-              ),
-              const SizedBox(height: 6),
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 20,
-                    backgroundColor: _roleColor(
-                      agent!.role,
-                    ).withValues(alpha: .12),
-                    child: Icon(
-                      Icons.smart_toy_outlined,
-                      color: _roleColor(agent!.role),
-                    ),
+              ],
+            )
+          : Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  _tr(context, 'Seçili Ajan', 'Selected Agent'),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
                   ),
-                  const SizedBox(width: 9),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          agent!.name,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 20,
+                      backgroundColor: _roleColor(
+                        agent!.role,
+                      ).withValues(alpha: .12),
+                      child: Icon(
+                        Icons.smart_toy_outlined,
+                        color: _roleColor(agent!.role),
+                      ),
+                    ),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            agent!.name,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                        Text(
-                          agent!.id,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: Theme.of(
+                          Text(
+                            agent!.id,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _Chip(
+                      text: _stateLabel(context, agent!.state),
+                      color: _stateColor(agent!.state),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                _Info(label: _tr(context, 'Rol', 'Role'), value: agent!.role),
+                _Info(label: _tr(context, 'Takım', 'Team'), value: agent!.team),
+                _Info(
+                  label: _tr(context, 'Readiness', 'Readiness'),
+                  value: agent!.readiness,
+                ),
+                _Info(
+                  label: _tr(context, 'Provision', 'Provisioned'),
+                  value: agent!.registered
+                      ? _tr(context, 'Evet', 'Yes')
+                      : _tr(context, 'Hayır', 'No'),
+                ),
+                _Info(
+                  label: _tr(context, 'Mevcut Görev', 'Current Task'),
+                  value: agent!.currentTask.isEmpty
+                      ? _tr(context, 'Görev yok', 'No task')
+                      : agent!.currentTask,
+                ),
+                _Info(
+                  label: _tr(context, 'Sistem Sağlığı', 'System Health'),
+                  value: agent!.health,
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  _tr(context, 'Yetkinlikler', 'Capabilities'),
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Wrap(
+                  spacing: 4,
+                  runSpacing: 4,
+                  children: [
+                    for (final capability in agent!.capabilities.take(8))
+                      _Chip(
+                        text: capability,
+                        color: IlaiosTheme.enterpriseCyan,
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '${_tr(context, 'Bekleyen İncelemeler', 'Pending Reviews')} (${reviews.length})',
+                  style: const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                reviews.isEmpty
+                    ? Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        child: Center(
+                          child: Text(
+                            _tr(
                               context,
-                            ).colorScheme.onSurfaceVariant,
+                              'Bekleyen inceleme yok',
+                              'No pending review',
+                            ),
+                            style: const TextStyle(fontSize: 11),
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  _Chip(
-                    text: _stateLabel(context, agent!.state),
-                    color: _stateColor(agent!.state),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              _Info(label: _tr(context, 'Rol', 'Role'), value: agent!.role),
-              _Info(label: _tr(context, 'Takım', 'Team'), value: agent!.team),
-              _Info(
-                label: _tr(context, 'Readiness', 'Readiness'),
-                value: agent!.readiness,
-              ),
-              _Info(
-                label: _tr(context, 'Provision', 'Provisioned'),
-                value: agent!.registered
-                    ? _tr(context, 'Evet', 'Yes')
-                    : _tr(context, 'Hayır', 'No'),
-              ),
-              _Info(
-                label: _tr(context, 'Mevcut Görev', 'Current Task'),
-                value: agent!.currentTask.isEmpty
-                    ? _tr(context, 'Görev yok', 'No task')
-                    : agent!.currentTask,
-              ),
-              _Info(
-                label: _tr(context, 'Sistem Sağlığı', 'System Health'),
-                value: agent!.health,
-              ),
-              const SizedBox(height: 6),
-              Text(
-                _tr(context, 'Yetkinlikler', 'Capabilities'),
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Wrap(
-                spacing: 4,
-                runSpacing: 4,
-                children: [
-                  for (final capability in agent!.capabilities.take(8))
-                    _Chip(text: capability, color: IlaiosTheme.enterpriseCyan),
-                ],
-              ),
-              const SizedBox(height: 6),
-              Text(
-                '${_tr(context, 'Bekleyen İncelemeler', 'Pending Reviews')} (${reviews.length})',
-                style: const TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Expanded(
-                child: reviews.isEmpty
-                    ? Center(
-                        child: Text(
-                          _tr(
-                            context,
-                            'Bekleyen inceleme yok',
-                            'No pending review',
-                          ),
-                          style: const TextStyle(fontSize: 11),
                         ),
                       )
                     : ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
                         itemCount: math.min(3, reviews.length),
                         itemBuilder: (_, index) => ListTile(
                           dense: true,
@@ -1243,50 +1254,52 @@ class _SelectedPanel extends StatelessWidget {
                           ),
                         ),
                       ),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: () => _showAgentDetail(context, agent!),
-                      child: Text(_tr(context, 'Detayı Aç', 'Open Detail')),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Tooltip(
-                      message: _tr(
-                        context,
-                        'Governed assignment API henüz mevcut değil.',
-                        'Governed assignment API is not available yet.',
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton(
+                        onPressed: () => _showAgentDetail(context, agent!),
+                        child: Text(_tr(context, 'Detayı Aç', 'Open Detail')),
                       ),
-                      child: OutlinedButton.icon(
-                        onPressed: null,
-                        icon: const Icon(
-                          Icons.person_add_alt_1_outlined,
-                          size: 14,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Tooltip(
+                        message: _tr(
+                          context,
+                          'Governed assignment API henüz mevcut değil.',
+                          'Governed assignment API is not available yet.',
                         ),
-                        label: Text(_tr(context, 'Göreve Ata', 'Assign Task')),
+                        child: OutlinedButton.icon(
+                          onPressed: null,
+                          icon: const Icon(
+                            Icons.person_add_alt_1_outlined,
+                            size: 14,
+                          ),
+                          label: Text(
+                            _tr(context, 'Göreve Ata', 'Assign Task'),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 4),
-              OutlinedButton.icon(
-                key: const Key('agent-live-workspace'),
-                onPressed: onWorkspace,
-                icon: const Icon(Icons.hub_outlined, size: 14),
-                label: Text(
-                  _tr(
-                    context,
-                    'Canlı Çalışma Alanına Git',
-                    'Go to Live Workspace',
+                  ],
+                ),
+                const SizedBox(height: 4),
+                OutlinedButton.icon(
+                  key: const Key('agent-live-workspace'),
+                  onPressed: onWorkspace,
+                  icon: const Icon(Icons.hub_outlined, size: 14),
+                  label: Text(
+                    _tr(
+                      context,
+                      'Canlı Çalışma Alanına Git',
+                      'Go to Live Workspace',
+                    ),
                   ),
                 ),
-              ),
-            ],
-          ),
+              ],
+            ),
+    ),
   );
 }
 
